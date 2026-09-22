@@ -1,4 +1,4 @@
-"""⑤ 复盘校准产出契约（FR-REVIEW）。
+"""⑤ 复盘校准产出契约。
 
 验收锚点：只由真实行为信号触发，不允许系统自嗨式打扰；
 教练消息必须带一个最小可执行动作，基调鼓励而非施压。
@@ -36,10 +36,10 @@ class ReviewOutput(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    attribution: ReviewAttribution = Field(description="归因判别结论（FR-REVIEW-002）")
+    attribution: ReviewAttribution = Field(description="归因判别结论")
     progress: ProgressSnapshot = Field(default_factory=ProgressSnapshot)
     minimal_action: GuideTask = Field(
-        description="最小可执行动作，必须立即能勾掉（FR-REVIEW-003）"
+        description="最小可执行动作，必须立即能勾掉"
     )
     next_handoff_stage: Optional[LoopStage] = Field(
         default=None,

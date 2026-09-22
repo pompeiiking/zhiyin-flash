@@ -1,6 +1,6 @@
 """资产版本与影响面读写（asset_version + report / direction_plan / action_plan）。
 
-影响面传播（FR-ORCH-004 / R-BIZ-012）：
+影响面传播（R-BIZ-012）：
 画像字段更新 → list_affected_assets 找出依赖该字段的资产 → 只重算受影响片段
 → save_version(version + 1) → 写 diff。禁止整篇重新生成。
 """
@@ -64,7 +64,7 @@ class AssetRepository(ABC):
 
     @abstractmethod
     async def select_direction_plan(self, user_id: str, plan_id: str) -> DirectionPlan:
-        """做出可撤回的选择（FR-DECIDE-003）。"""
+        """做出可撤回的选择。"""
 
     # ---------- 行动计划 ----------
 
@@ -77,5 +77,11 @@ class AssetRepository(ABC):
         """保存行动计划。"""
 
     @abstractmethod
-    async def mark_task_done(self, user_id: str, task_id: str) -> ActionPlan:
-        """勾掉一个任务，返回更新后的计划。"""
+    async def mark_task_done(
+        self, user_id: str, task_id: str, *, done: bool = True
+    ) -> ActionPlan:
+        """勾掉 / 取消勾选一个任务，返回更新后的计划。
+
+        `done=False` 是"勾错了要撤回"。只支持单向勾选的话，用户点错一次就再也
+        回不去 —— 而行动环节的验收锚点恰恰是"任务勾得动"，不包括"勾错了只能认"。
+        """

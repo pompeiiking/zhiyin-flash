@@ -5,7 +5,7 @@
 - SchedulerGateway → LocalScheduler（内存延迟队列 + 轮询）
 - NotifyGateway    → LocalNotify（写本地消息表 + 打日志）
 
-TODO(第二期)：分别替换为 Kafka / Redis ZSET + Kafka / SSE·WS·短信。
+TODO：按自有基础设施演进。
 """
 
 from __future__ import annotations

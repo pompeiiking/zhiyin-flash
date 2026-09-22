@@ -1,11 +1,11 @@
-"""向量同步 / 嵌入补偿 Worker（**骨架**，方法体未实现）。
+"""向量同步 / 嵌入补偿 Worker。
 
 落位：`infrastructure/workers/vector_sync.py` —— 基础设施负责人（纯数据管道）。
 依赖：`KnowledgeGateway`（知识源）+ `EmbedGateway`（嵌入）+ `VectorGateway`（向量库）。
 
 为什么在基础设施层而不是 `business/workers/`
 -------------------------------------------
-《目标架构设计》§5.4 的分家口径：**"什么情况该重算"是业务规则，"把文档写进向量库"
+分家口径：**"什么情况该重算"是业务规则，"把文档写进向量库"
 是纯数据管道**。
 
 - 业务侧 Worker（`impact` / `active_event`）需要判断阈值、冷却期、打扰上限，
@@ -30,35 +30,53 @@
 
 from __future__ import annotations
 
-from zhiyin_data_sdk.gateways.ai import EmbedGateway, KnowledgeGateway
-from zhiyin_data_sdk.gateways.vector import VectorGateway
-from zhiyin_kernel.worker import Worker
+import hashlib
+from typing import Optional
 
-_TODO = "TODO(骨架): VectorSyncWorker 未实现"
+from zhiyin_infrastructure.rag import JsonKnowledgeDocumentSource, RagPipeline
+from zhiyin_infrastructure.postgres.vector_sync_state import PostgresVectorSyncState
+from zhiyin_kernel.worker import Worker
 
 
 class VectorSyncWorker(Worker):
-    """向量同步执行者（骨架）。"""
+    """把知识文档同步进向量库。"""
 
     name = "vector_sync"
-    IMPLEMENTATION_STATUS = "skeleton"
+    IMPLEMENTATION_STATUS = "wired"
 
     def __init__(
         self,
-        knowledge: KnowledgeGateway,
-        embedding: EmbedGateway,
-        vector: VectorGateway,
+        source: JsonKnowledgeDocumentSource,
+        rag: RagPipeline,
+        state: Optional[PostgresVectorSyncState] = None,
     ) -> None:
-        self._knowledge = knowledge
-        self._embedding = embedding
-        self._vector = vector
+        self._source = source
+        self._rag = rag
+        self._state = state
 
     async def run_once(self) -> int:
-        """同步一轮待嵌入 / 待重嵌入的文档，返回本轮处理条数（0 = 无待处理）。"""
-        raise NotImplementedError(
-            f"{_TODO}：扫待同步文档 → EmbedGateway 嵌入 → VectorGateway upsert（按 "
-            "doc_id + 模型版本幂等）"
-        )
+        """同步一轮知识文档，返回写入的 chunk 数。"""
+        documents = await self._source.list_documents()
+        total = 0
+        for document in documents:
+            content_hash = hashlib.sha256(document.text.encode("utf-8")).hexdigest()
+            model = await self._rag.resolve_model_id()
+            if self._state is not None and not await self._state.needs_sync(
+                document.id, model=model, content_hash=content_hash
+            ):
+                continue
+            indexed = await self._rag.index_text(
+                "knowledge",
+                document.id,
+                document.text,
+                metadata=document.metadata,
+            )
+            total += indexed
+            if self._state is not None and indexed > 0:
+                await self._state.mark_synced(
+                    document.id, model=model, content_hash=content_hash
+                )
+        return total
 
 
 __all__ = ["VectorSyncWorker"]

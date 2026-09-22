@@ -1,11 +1,11 @@
-"""向量检索 Gateway（pgvector / 专用向量库的接缝）。
+"""向量检索 Gateway。
 
 为什么现在就要有这个契约
 ------------------------
-《技术架构文档》第八章的检索路径设计（纯向量 / 混合 / 降级）、《第一期数据层设计》
-的 `embed_task` / `retrieval_log` 都要挂在一个向量 Port 上。此前 SDK 只有
+检索路径设计（纯向量 / 混合 / 降级）与 `embed_task` / `retrieval_log`
+都要挂在一个向量 Port 上。此前 SDK 只有
 `SearchGateway.vector(embedding)` 一个孤立的查询方法，没有写入与删除，也没有
-模型版本路由，第二期接 pgvector 时必然要先回头补接口 —— 那就是返工。
+模型版本路由是必须保留的契约。
 
 三个不可省略的约定
 ------------------
@@ -73,6 +73,10 @@ class VectorGateway(ABC):
     @abstractmethod
     async def delete(self, namespace: str, ids: Sequence[str]) -> int:
         """按 id 删除，返回删除条数。"""
+
+    @abstractmethod
+    async def delete_by_source(self, namespace: str, source_id: str) -> int:
+        """按来源文档删除全部 chunk，用于文档重建与删除。"""
 
     @abstractmethod
     async def clear_namespace(self, namespace: str) -> None:

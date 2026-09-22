@@ -1,6 +1,6 @@
 """本地功能开关（LocalFeatureFlagStore）。
 
-为什么单独成文件：功能开关属于**动态资源**（《分层实现与接口设计》§3.1 系统配置），
+为什么单独成文件：功能开关属于**动态资源**（系统配置），
 "文案、开关、规则不允许散落在代码里"。此前 `Settings.feature_flags` 把开关写死在
 Python 常量里，等于给后续留了一个硬编码入口，这里改成读 `feature_flags.json`。
 
@@ -10,7 +10,7 @@ Python 常量里，等于给后续留了一个硬编码入口，这里改成读 
 契约在 `zhiyin_data_sdk.gateways.feature_flag.FeatureFlagGateway`：
 本类实现它，因此 BFF 侧的业务读服务可以在**不认识本地实现**的前提下拿到开关
 （api 被禁止 import data_sdk，业务服务只面向 SDK 契约）。公开方法是 async——
-与其它 Gateway 一致，换 MySQL / 配置中心实现时调用方一行不改。
+与其它 Gateway 一致，换配置实现时调用方一行不改。
 """
 
 from __future__ import annotations
@@ -26,7 +26,7 @@ class LocalFeatureFlagStore(FeatureFlagGateway):
     """功能开关读取。默认关闭未知开关，避免"配置漏了反而打开"。"""
 
     FILENAME = "feature_flags.json"
-    IMPLEMENTATION_STATUS = "wired"
+    IMPLEMENTATION_STATUS = "skeleton"
 
     def __init__(self, data_dir: str = "data/registry") -> None:
         self._path = Path(data_dir) / self.FILENAME

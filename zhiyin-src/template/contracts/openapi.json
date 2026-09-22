@@ -1,6 +1,559 @@
 {
   "components": {
     "schemas": {
+      "AcademicCourseView": {
+        "additionalProperties": false,
+        "description": "课表里的一门课（教务系统取回来的原样，不改口径）。",
+        "properties": {
+          "category": {
+            "default": "",
+            "title": "Category",
+            "type": "string"
+          },
+          "credit": {
+            "default": "",
+            "title": "Credit",
+            "type": "string"
+          },
+          "end_period": {
+            "default": 0,
+            "title": "End Period",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "place": {
+            "default": "",
+            "title": "Place",
+            "type": "string"
+          },
+          "start_period": {
+            "default": 0,
+            "title": "Start Period",
+            "type": "integer"
+          },
+          "teacher": {
+            "default": "",
+            "title": "Teacher",
+            "type": "string"
+          },
+          "weekday": {
+            "default": 0,
+            "description": "1=周一 … 7=周日；0 表示没解析出",
+            "title": "Weekday",
+            "type": "integer"
+          },
+          "weeks": {
+            "default": "",
+            "title": "Weeks",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "AcademicCourseView",
+        "type": "object"
+      },
+      "AcademicGradeView": {
+        "additionalProperties": false,
+        "description": "成绩单里的一条。等级制就照原样记，不换算。",
+        "properties": {
+          "category": {
+            "default": "",
+            "title": "Category",
+            "type": "string"
+          },
+          "credit": {
+            "default": "",
+            "title": "Credit",
+            "type": "string"
+          },
+          "kind": {
+            "default": "",
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "point": {
+            "default": "",
+            "title": "Point",
+            "type": "string"
+          },
+          "score": {
+            "default": "",
+            "title": "Score",
+            "type": "string"
+          },
+          "term": {
+            "default": "",
+            "title": "Term",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "AcademicGradeView",
+        "type": "object"
+      },
+      "AcademicImportAck": {
+        "additionalProperties": false,
+        "description": "导入回执：读到了什么、写进了哪两条画像摘要。",
+        "properties": {
+          "courses": {
+            "default": 0,
+            "title": "Courses",
+            "type": "integer"
+          },
+          "grades": {
+            "default": 0,
+            "title": "Grades",
+            "type": "integer"
+          },
+          "imported_at": {
+            "default": "",
+            "title": "Imported At",
+            "type": "string"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "school": {
+            "default": "",
+            "title": "School",
+            "type": "string"
+          },
+          "source": {
+            "default": "",
+            "title": "Source",
+            "type": "string"
+          },
+          "term": {
+            "default": "",
+            "title": "Term",
+            "type": "string"
+          },
+          "wrote_profile": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Wrote Profile",
+            "type": "array"
+          }
+        },
+        "title": "AcademicImportAck",
+        "type": "object"
+      },
+      "AcademicImportRequest": {
+        "additionalProperties": false,
+        "description": "一次导入：贴进来的原文（课表、成绩单可各自为空）。\n\n长度上限不是\"防用户\"，是**防一次误操作把服务打满**：教务系统整页复制很容易\n带上几千行样式表，解析器是纯文本处理，几百 KB 的无意义输入会白烧 CPU。\n这里给一个宽到不会挡住真实用量的界（200 KB 量级），超了就让用户删掉无关部分 ——\n比默默接收再跑一遍解析更诚实。",
+        "properties": {
+          "courses": {
+            "default": "",
+            "description": "课表原文：页面整页复制 / 表格 / JSON",
+            "maxLength": 200000,
+            "title": "Courses",
+            "type": "string"
+          },
+          "grades": {
+            "default": "",
+            "description": "成绩单原文",
+            "maxLength": 200000,
+            "title": "Grades",
+            "type": "string"
+          },
+          "school": {
+            "default": "",
+            "description": "学校名（可留空）",
+            "maxLength": 120,
+            "title": "School",
+            "type": "string"
+          },
+          "term": {
+            "default": "",
+            "description": "学期（可留空，多数情况能从原文里读到）",
+            "maxLength": 40,
+            "title": "Term",
+            "type": "string"
+          }
+        },
+        "title": "AcademicImportRequest",
+        "type": "object"
+      },
+      "AcademicPanelView": {
+        "additionalProperties": false,
+        "description": "学生自己导入的课表与成绩单。\n\n它不是一个数组而是一份**快照**：学校、学期、取数时刻，加上课与成绩。\n为什么要把\"什么时候取的\"一起给前端：课表会变（退课、调课、补考），\n界面必须能说出这份数据是哪一天的，否则用户没法判断它还算不算数。",
+        "properties": {
+          "courses": {
+            "items": {
+              "$ref": "#/components/schemas/AcademicCourseView"
+            },
+            "title": "Courses",
+            "type": "array"
+          },
+          "grades": {
+            "items": {
+              "$ref": "#/components/schemas/AcademicGradeView"
+            },
+            "title": "Grades",
+            "type": "array"
+          },
+          "imported_at": {
+            "default": "",
+            "title": "Imported At",
+            "type": "string"
+          },
+          "note": {
+            "default": "",
+            "description": "导入时发现、但不足以拒绝的情况",
+            "title": "Note",
+            "type": "string"
+          },
+          "school": {
+            "default": "",
+            "title": "School",
+            "type": "string"
+          },
+          "source": {
+            "default": "",
+            "description": "按哪种版式读出来的：qz / zf / table / json",
+            "title": "Source",
+            "type": "string"
+          },
+          "term": {
+            "default": "",
+            "title": "Term",
+            "type": "string"
+          }
+        },
+        "title": "AcademicPanelView",
+        "type": "object"
+      },
+      "AcademicRevokeAck": {
+        "additionalProperties": false,
+        "description": "清空导入的回执。",
+        "properties": {
+          "revoked": {
+            "description": "授权与取回的数据是否已经删掉",
+            "title": "Revoked",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "revoked"
+        ],
+        "title": "AcademicRevokeAck",
+        "type": "object"
+      },
+      "ActionPhaseView": {
+        "additionalProperties": false,
+        "description": "行动阶段：一段时间的里程碑与它下面的任务。",
+        "properties": {
+          "date_range": {
+            "default": "",
+            "title": "Date Range",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "tag": {
+            "default": "",
+            "title": "Tag",
+            "type": "string"
+          },
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/ActionTaskView"
+            },
+            "title": "Tasks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "ActionPhaseView",
+        "type": "object"
+      },
+      "ActionPlanView": {
+        "additionalProperties": false,
+        "description": "行动计划正文（只读资产视图）。\n\n`has_plan=False` 是\"还没有计划\"（③ 还没走完），与\"有计划但没有任务\"是两件事 ——\n界面上必须是两句话，所以这里用 has_plan 显式区分，而不是让前端去猜空数组的含义。",
+        "properties": {
+          "exported_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exported At"
+          },
+          "has_plan": {
+            "default": false,
+            "title": "Has Plan",
+            "type": "boolean"
+          },
+          "id": {
+            "default": "",
+            "title": "Id",
+            "type": "string"
+          },
+          "next_task": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ActionTaskView"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "第一件还没勾掉的任务 —— 界面上的'现在这一件'"
+          },
+          "phases": {
+            "items": {
+              "$ref": "#/components/schemas/ActionPhaseView"
+            },
+            "title": "Phases",
+            "type": "array"
+          },
+          "plan_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "关联的方向方案 id",
+            "title": "Plan Id"
+          },
+          "reminders_synced": {
+            "default": false,
+            "description": "关键节点是否已写入日历",
+            "title": "Reminders Synced",
+            "type": "boolean"
+          }
+        },
+        "title": "ActionPlanView",
+        "type": "object"
+      },
+      "ActionTaskDoneRequest": {
+        "additionalProperties": false,
+        "description": "勾掉 / 取消勾选一个行动任务。",
+        "properties": {
+          "done": {
+            "default": true,
+            "title": "Done",
+            "type": "boolean"
+          },
+          "task_id": {
+            "title": "Task Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id"
+        ],
+        "title": "ActionTaskDoneRequest",
+        "type": "object"
+      },
+      "ActionTaskView": {
+        "additionalProperties": false,
+        "description": "行动任务：颗粒度是\"今天/本周勾得掉\"。",
+        "properties": {
+          "done": {
+            "default": false,
+            "title": "Done",
+            "type": "boolean"
+          },
+          "done_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Done At"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "phase": {
+            "default": "",
+            "description": "所属阶段名",
+            "title": "Phase",
+            "type": "string"
+          },
+          "task_id": {
+            "description": "勾选时回传的标识（阶段名:任务文本）",
+            "title": "Task Id",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id",
+          "text"
+        ],
+        "title": "ActionTaskView",
+        "type": "object"
+      },
+      "AgentBadgeView": {
+        "additionalProperties": false,
+        "description": "主理徽章：此刻是谁在帮我、依据哪些理论。",
+        "properties": {
+          "agent_id": {
+            "title": "Agent Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "role_summary": {
+            "default": "",
+            "title": "Role Summary",
+            "type": "string"
+          },
+          "theory_refs": {
+            "items": {
+              "$ref": "#/components/schemas/TheoryRefView"
+            },
+            "title": "Theory Refs",
+            "type": "array"
+          }
+        },
+        "required": [
+          "agent_id",
+          "name"
+        ],
+        "title": "AgentBadgeView",
+        "type": "object"
+      },
+      "ApiResponse_AcademicImportAck_": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode",
+            "default": 0
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AcademicImportAck"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "default": "ok",
+            "title": "Message",
+            "type": "string"
+          },
+          "trace_id": {
+            "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "title": "ApiResponse[AcademicImportAck]",
+        "type": "object"
+      },
+      "ApiResponse_AcademicRevokeAck_": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode",
+            "default": 0
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AcademicRevokeAck"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "default": "ok",
+            "title": "Message",
+            "type": "string"
+          },
+          "trace_id": {
+            "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "title": "ApiResponse[AcademicRevokeAck]",
+        "type": "object"
+      },
+      "ApiResponse_ActionPlanView_": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode",
+            "default": 0
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ActionPlanView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "default": "ok",
+            "title": "Message",
+            "type": "string"
+          },
+          "trace_id": {
+            "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "title": "ApiResponse[ActionPlanView]",
+        "type": "object"
+      },
       "ApiResponse_BootstrapView_": {
         "additionalProperties": false,
         "properties": {
@@ -63,6 +616,37 @@
         "title": "ApiResponse[ConversationTurnView]",
         "type": "object"
       },
+      "ApiResponse_DirectionPlanListView_": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode",
+            "default": 0
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DirectionPlanListView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "default": "ok",
+            "title": "Message",
+            "type": "string"
+          },
+          "trace_id": {
+            "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "title": "ApiResponse[DirectionPlanListView]",
+        "type": "object"
+      },
       "ApiResponse_ExportResultView_": {
         "additionalProperties": false,
         "properties": {
@@ -92,6 +676,161 @@
           }
         },
         "title": "ApiResponse[ExportResultView]",
+        "type": "object"
+      },
+      "ApiResponse_IntelListView_": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode",
+            "default": 0
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IntelListView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "default": "ok",
+            "title": "Message",
+            "type": "string"
+          },
+          "trace_id": {
+            "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "title": "ApiResponse[IntelListView]",
+        "type": "object"
+      },
+      "ApiResponse_LoginResult_": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode",
+            "default": 0
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LoginResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "default": "ok",
+            "title": "Message",
+            "type": "string"
+          },
+          "trace_id": {
+            "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "title": "ApiResponse[LoginResult]",
+        "type": "object"
+      },
+      "ApiResponse_NoteAck_": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode",
+            "default": 0
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NoteAck"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "default": "ok",
+            "title": "Message",
+            "type": "string"
+          },
+          "trace_id": {
+            "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "title": "ApiResponse[NoteAck]",
+        "type": "object"
+      },
+      "ApiResponse_NoteView_": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode",
+            "default": 0
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NoteView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "default": "ok",
+            "title": "Message",
+            "type": "string"
+          },
+          "trace_id": {
+            "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "title": "ApiResponse[NoteView]",
+        "type": "object"
+      },
+      "ApiResponse_PortalView_": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode",
+            "default": 0
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PortalView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "default": "ok",
+            "title": "Message",
+            "type": "string"
+          },
+          "trace_id": {
+            "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "title": "ApiResponse[PortalView]",
         "type": "object"
       },
       "ApiResponse_ReportFullTextView_": {
@@ -187,6 +926,37 @@
         "title": "ApiResponse[TaskSessionView]",
         "type": "object"
       },
+      "ApiResponse_TheoryCardView_": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode",
+            "default": 0
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TheoryCardView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "default": "ok",
+            "title": "Message",
+            "type": "string"
+          },
+          "trace_id": {
+            "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "title": "ApiResponse[TheoryCardView]",
+        "type": "object"
+      },
       "ApiResponse_TrackEventAck_": {
         "additionalProperties": false,
         "properties": {
@@ -249,6 +1019,39 @@
         "title": "ApiResponse[WorkspacePageView]",
         "type": "object"
       },
+      "ApiResponse_dict_": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode",
+            "default": 0
+          },
+          "data": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "message": {
+            "default": "ok",
+            "title": "Message",
+            "type": "string"
+          },
+          "trace_id": {
+            "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "title": "ApiResponse[dict]",
+        "type": "object"
+      },
       "ApiResponse_list_AssetVersionView__": {
         "additionalProperties": false,
         "properties": {
@@ -282,6 +1085,181 @@
           }
         },
         "title": "ApiResponse[list[AssetVersionView]]",
+        "type": "object"
+      },
+      "ApiResponse_list_CalendarNodeView__": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode",
+            "default": 0
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/CalendarNodeView"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "message": {
+            "default": "ok",
+            "title": "Message",
+            "type": "string"
+          },
+          "trace_id": {
+            "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "title": "ApiResponse[list[CalendarNodeView]]",
+        "type": "object"
+      },
+      "ApiResponse_list_CoachNotificationView__": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode",
+            "default": 0
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/CoachNotificationView"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "message": {
+            "default": "ok",
+            "title": "Message",
+            "type": "string"
+          },
+          "trace_id": {
+            "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "title": "ApiResponse[list[CoachNotificationView]]",
+        "type": "object"
+      },
+      "ApiResponse_list_ConversationMessageView__": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode",
+            "default": 0
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ConversationMessageView"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "message": {
+            "default": "ok",
+            "title": "Message",
+            "type": "string"
+          },
+          "trace_id": {
+            "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "title": "ApiResponse[list[ConversationMessageView]]",
+        "type": "object"
+      },
+      "ApiResponse_list_NoteView__": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode",
+            "default": 0
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/NoteView"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "message": {
+            "default": "ok",
+            "title": "Message",
+            "type": "string"
+          },
+          "trace_id": {
+            "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "title": "ApiResponse[list[NoteView]]",
+        "type": "object"
+      },
+      "ApiResponse_list_TrackEventView__": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode",
+            "default": 0
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/TrackEventView"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "message": {
+            "default": "ok",
+            "title": "Message",
+            "type": "string"
+          },
+          "trace_id": {
+            "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "title": "ApiResponse[list[TrackEventView]]",
         "type": "object"
       },
       "AssetType": {
@@ -342,6 +1320,30 @@
         "title": "AssetVersionView",
         "type": "object"
       },
+      "AuthRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "account": {
+            "description": "账号（即用户 ID）",
+            "maxLength": 64,
+            "minLength": 2,
+            "title": "Account",
+            "type": "string"
+          },
+          "password": {
+            "maxLength": 128,
+            "minLength": 6,
+            "title": "Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "account",
+          "password"
+        ],
+        "title": "AuthRequest",
+        "type": "object"
+      },
       "BannerView": {
         "additionalProperties": false,
         "description": "横幅 / 运营位（可上下线、可排序）。",
@@ -375,6 +1377,70 @@
           "title"
         ],
         "title": "BannerView",
+        "type": "object"
+      },
+      "BehaviorGuideView": {
+        "additionalProperties": false,
+        "description": "行为引导：一轮回复的收尾。四选一，禁止空转寒暄。",
+        "properties": {
+          "kind": {
+            "enum": [
+              "question",
+              "options",
+              "task",
+              "reminder"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "options": {
+            "items": {
+              "$ref": "#/components/schemas/GuideOptionView"
+            },
+            "title": "Options",
+            "type": "array"
+          },
+          "question": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Question"
+          },
+          "reminder": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GuideReminderView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "task": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GuideTaskView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "text": {
+            "default": "",
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "BehaviorGuideView",
         "type": "object"
       },
       "BootstrapView": {
@@ -460,6 +1526,264 @@
         "title": "BootstrapView",
         "type": "object"
       },
+      "CalendarNodeView": {
+        "additionalProperties": false,
+        "description": "关键节点日历里的一条。\n\n规划师写入（④ 行动环节的 reminders）、教练读取、工作台展示 —— 三处看的是**同一份**。\n此前只有写没有读：库里躺着节点，界面上没有任何一处能看到它们。",
+        "properties": {
+          "due_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due At"
+          },
+          "node_id": {
+            "title": "Node Id",
+            "type": "string"
+          },
+          "related_task_text": {
+            "default": "",
+            "description": "这条节点对应哪件事",
+            "title": "Related Task Text",
+            "type": "string"
+          },
+          "source": {
+            "default": "planner",
+            "description": "谁写进来的：规划师 / 教练 / 用户自己",
+            "enum": [
+              "planner",
+              "coach",
+              "manual"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "node_id",
+          "title"
+        ],
+        "title": "CalendarNodeView",
+        "type": "object"
+      },
+      "ChartPointView": {
+        "additionalProperties": false,
+        "description": "图上的一个点。",
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "label",
+          "value"
+        ],
+        "title": "ChartPointView",
+        "type": "object"
+      },
+      "ChartView": {
+        "additionalProperties": false,
+        "description": "主理在对话里给的那张图。\n\n值来自服务端**实测数据**（画像各维把握、方案匹配度…），不是模型写的数字 ——\n图上的每个点都能追回它来自哪条记录。",
+        "properties": {
+          "kind": {
+            "const": "bars",
+            "default": "bars",
+            "title": "Kind",
+            "type": "string"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/ChartPointView"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "title": {
+            "default": "",
+            "title": "Title",
+            "type": "string"
+          },
+          "unit": {
+            "default": "",
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "title": "ChartView",
+        "type": "object"
+      },
+      "CoachNotificationView": {
+        "description": "教练主动介入的通知（前端浮窗轮询消费）。\n\n形状由两个读侧实现共同决定：`InMemoryNotificationRepository`（本地消息表）与\n`PostgresNotificationRepository`（`orc_notification`）。两边都至少有\nid / title / body / channel / occurred_at，本地那份还多带 user_id 这类调试字段。\n\n因此这里用 `extra=\"ignore\"` 而不是 `forbid`：**多出来的字段不该让这个接口报 500**，\n但 `id` / `title` 缺了前端就没法渲染，仍需强制。\n\n此前这个接口的返回类型是裸 `list`，前端只能猜字段（它猜的是 `by`——\n后端从来没有这个字段），于是每条通知署名永远为空。现在逐字段声明。",
+        "properties": {
+          "action": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "可点的动作",
+            "title": "Action"
+          },
+          "body": {
+            "default": "",
+            "title": "Body",
+            "type": "string"
+          },
+          "channel": {
+            "default": "",
+            "description": "通知渠道：in_app / email / sms",
+            "title": "Channel",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "occurred_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ISO8601 时间串",
+            "title": "Occurred At"
+          },
+          "related_task_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Related Task Id"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ],
+        "title": "CoachNotificationView",
+        "type": "object"
+      },
+      "CollectionItemView": {
+        "additionalProperties": false,
+        "description": "采集清单里的一条。",
+        "properties": {
+          "available": {
+            "default": true,
+            "description": "这个源头现在能不能用",
+            "title": "Available",
+            "type": "boolean"
+          },
+          "got": {
+            "default": false,
+            "title": "Got",
+            "type": "boolean"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "source": {
+            "description": "chsi / conversation / academic",
+            "title": "Source",
+            "type": "string"
+          },
+          "why": {
+            "description": "这条数据挡着哪一步判断 —— 给用户看的理由",
+            "title": "Why",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "source",
+          "why"
+        ],
+        "title": "CollectionItemView",
+        "type": "object"
+      },
+      "CollectionPanelView": {
+        "additionalProperties": false,
+        "description": "动态采集策略：还缺什么、去哪儿取、为什么是它。\n\n它不是\"还差几条\"的计数器，是**下一步该做什么**的判据：\n界面按 `by_source` 分组说\"从哪取\"，按 `items` 的顺序说\"先取哪一条\"。",
+        "properties": {
+          "blocked": {
+            "description": "有缺口、但没有源头",
+            "items": {
+              "type": "string"
+            },
+            "title": "Blocked",
+            "type": "array"
+          },
+          "by_source": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "description": "每个源还差几条",
+            "title": "By Source",
+            "type": "object"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CollectionItemView"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "missing": {
+            "default": 0,
+            "description": "还差几条",
+            "title": "Missing",
+            "type": "integer"
+          },
+          "next_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "下一步最该走的源头",
+            "title": "Next Source"
+          }
+        },
+        "title": "CollectionPanelView",
+        "type": "object"
+      },
       "ConversationMessageView": {
         "additionalProperties": false,
         "description": "对话气泡。",
@@ -486,6 +1810,17 @@
             ],
             "title": "Agent Name"
           },
+          "chart": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChartView"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "这一轮顺手给的图；没有就是 null"
+          },
           "created_at": {
             "anyOf": [
               {
@@ -497,6 +1832,14 @@
               }
             ],
             "title": "Created At"
+          },
+          "intel_refs": {
+            "description": "这一轮用到的外部情报来源，可点回原页面",
+            "items": {
+              "$ref": "#/components/schemas/IntelRefView"
+            },
+            "title": "Intel Refs",
+            "type": "array"
           },
           "role": {
             "enum": [
@@ -514,8 +1857,7 @@
           "theory_refs": {
             "description": "可点开的理论标签",
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/TheoryRefView"
             },
             "title": "Theory Refs",
             "type": "array"
@@ -530,19 +1872,16 @@
       },
       "ConversationTurnView": {
         "additionalProperties": false,
-        "description": "一轮回复的完整视图。\n\n对应架构文档 §5 的调用链返回：最短结论 + 显式告知 + 行为引导 + 管线卡。",
+        "description": "一轮回复的完整视图。\n\n对应编排调用链的返回：最短结论 + 显式告知 + 行为引导 + 管线卡。",
         "properties": {
           "badge": {
-            "additionalProperties": true,
-            "description": "顶栏主理徽章：agent_id/name/依据",
-            "title": "Badge",
-            "type": "object"
+            "$ref": "#/components/schemas/AgentBadgeView",
+            "description": "顶栏主理徽章：谁在帮我 + 依据哪些理论"
           },
           "changed_assets": {
             "description": "本轮变化的资产版本，用于工作台刷新",
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/AssetVersionView"
             },
             "title": "Changed Assets",
             "type": "array"
@@ -550,21 +1889,17 @@
           "disclosure": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "$ref": "#/components/schemas/DisclosureView"
               },
               {
                 "type": "null"
               }
             ],
-            "description": "换主理/换理论/结论变化的显式告知行",
-            "title": "Disclosure"
+            "description": "换主理/换理论/结论变化的显式告知行"
           },
           "guide": {
-            "additionalProperties": true,
-            "description": "行为引导：question/options/task/reminder 四选一",
-            "title": "Guide",
-            "type": "object"
+            "$ref": "#/components/schemas/BehaviorGuideView",
+            "description": "行为引导：question/options/task/reminder 四选一"
           },
           "messages": {
             "items": {
@@ -590,14 +1925,16 @@
         },
         "required": [
           "task_id",
-          "stage"
+          "stage",
+          "badge",
+          "guide"
         ],
         "title": "ConversationTurnView",
         "type": "object"
       },
       "DependencyEdgeView": {
         "additionalProperties": false,
-        "description": "依赖可视化（FR-WB-005 简版）。",
+        "description": "依赖可视化（简版）。",
         "properties": {
           "from_asset": {
             "title": "From Asset",
@@ -620,6 +1957,172 @@
           "to_asset"
         ],
         "title": "DependencyEdgeView",
+        "type": "object"
+      },
+      "DirectionPlanListView": {
+        "additionalProperties": false,
+        "description": "三套方案 + \"现在选的是哪一套\"。\n\n`selected_id` 单独给一份，是因为前端要用它做高亮：只靠 plans[].selected 也能算，\n但\"当前选择\"在产品口径里是一个独立事实（可撤回、可对比），\n让它显式存在，界面上就不会出现\"两套都亮着\"这种状态。",
+        "properties": {
+          "match_score_method": {
+            "default": "三叶草契合度 × 可达性",
+            "description": "匹配度口径说明 —— 分值必须能解释，所以口径要对用户可见",
+            "title": "Match Score Method",
+            "type": "string"
+          },
+          "plans": {
+            "items": {
+              "$ref": "#/components/schemas/DirectionPlanView"
+            },
+            "title": "Plans",
+            "type": "array"
+          },
+          "selected_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selected Id"
+          }
+        },
+        "title": "DirectionPlanListView",
+        "type": "object"
+      },
+      "DirectionPlanView": {
+        "additionalProperties": false,
+        "description": "一套方向方案（主攻 / 平行 / 保底）。",
+        "properties": {
+          "fit_reason": {
+            "default": "",
+            "description": "契合依据",
+            "title": "Fit Reason",
+            "type": "string"
+          },
+          "gaps": {
+            "items": {
+              "$ref": "#/components/schemas/PlanGapView"
+            },
+            "title": "Gaps",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "main_risk": {
+            "default": "",
+            "description": "主要风险",
+            "title": "Main Risk",
+            "type": "string"
+          },
+          "match_score": {
+            "default": 0.0,
+            "description": "匹配度（解释性分值，非严谨算法）",
+            "title": "Match Score",
+            "type": "number"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "revocable": {
+            "default": true,
+            "description": "恒为 True：选择随时可撤回",
+            "title": "Revocable",
+            "type": "boolean"
+          },
+          "role": {
+            "$ref": "#/components/schemas/PlanRole",
+            "description": "主攻 / 平行 / 保底"
+          },
+          "selected": {
+            "default": false,
+            "description": "是不是当前选中那一套",
+            "title": "Selected",
+            "type": "boolean"
+          },
+          "selected_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selected At"
+          },
+          "target_desc": {
+            "default": "",
+            "description": "目标描述",
+            "title": "Target Desc",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "role",
+          "name"
+        ],
+        "title": "DirectionPlanView",
+        "type": "object"
+      },
+      "DisclosureView": {
+        "additionalProperties": false,
+        "description": "显式告知行：换主理 / 换理论依据 / 结论变化。",
+        "properties": {
+          "from_agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Agent"
+          },
+          "kind": {
+            "enum": [
+              "lead_change",
+              "theory_change",
+              "conclusion_change"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "theory_refs": {
+            "items": {
+              "$ref": "#/components/schemas/TheoryRefView"
+            },
+            "title": "Theory Refs",
+            "type": "array"
+          },
+          "to_agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "To Agent"
+          }
+        },
+        "required": [
+          "kind",
+          "text"
+        ],
+        "title": "DisclosureView",
         "type": "object"
       },
       "ErrorCode": {
@@ -663,7 +2166,7 @@
       },
       "ExportResultView": {
         "additionalProperties": false,
-        "description": "导出结果。第一期 available 恒 False，仅预留入口。",
+        "description": "导出结果。\n\n`message` 会原样显示在用户面前，所以它必须是一句用户能照做的话 ——\n默认值不再写\"仅预留导出入口\"这种只有我们知道什么意思的说法。",
         "properties": {
           "available": {
             "default": false,
@@ -671,7 +2174,7 @@
             "type": "boolean"
           },
           "message": {
-            "default": "第一期仅预留导出入口",
+            "default": "导出还在准备中：现在可以用「打印 / 存成 PDF」把这一版存下来。",
             "title": "Message",
             "type": "string"
           },
@@ -715,6 +2218,93 @@
         "title": "FaqView",
         "type": "object"
       },
+      "GuideOptionView": {
+        "additionalProperties": false,
+        "description": "行为引导 · 可点选项。",
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "option_id": {
+            "title": "Option Id",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value"
+          }
+        },
+        "required": [
+          "option_id",
+          "label"
+        ],
+        "title": "GuideOptionView",
+        "type": "object"
+      },
+      "GuideReminderView": {
+        "additionalProperties": false,
+        "description": "行为引导 · 提醒。",
+        "properties": {
+          "detail": {
+            "default": "",
+            "title": "Detail",
+            "type": "string"
+          },
+          "due_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due At"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "title": "GuideReminderView",
+        "type": "object"
+      },
+      "GuideTaskView": {
+        "additionalProperties": false,
+        "description": "行为引导 · 小任务。",
+        "properties": {
+          "due_date": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "task_id": {
+            "title": "Task Id",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id",
+          "text"
+        ],
+        "title": "GuideTaskView",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -726,6 +2316,180 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "IntelItemView": {
+        "additionalProperties": false,
+        "description": "一条外部情报。\n\n`source_url` 是这类信息的**依据**：说\"这个岗位要 XX 能力\"就得能点回原页面。\n没有来源的条目在服务层就被丢掉了，不会出现在这里。",
+        "properties": {
+          "fetched_at": {
+            "default": "",
+            "title": "Fetched At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "default": "",
+            "description": "机器可读的类别",
+            "title": "Kind",
+            "type": "string"
+          },
+          "kind_label": {
+            "default": "",
+            "description": "类别的中文名（界面显示它）",
+            "title": "Kind Label",
+            "type": "string"
+          },
+          "source_name": {
+            "default": "",
+            "description": "来源的中文称呼（界面显示它）",
+            "title": "Source Name",
+            "type": "string"
+          },
+          "source_url": {
+            "default": "",
+            "title": "Source Url",
+            "type": "string"
+          },
+          "text": {
+            "default": "",
+            "title": "Text",
+            "type": "string"
+          },
+          "title": {
+            "default": "",
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "IntelItemView",
+        "type": "object"
+      },
+      "IntelListView": {
+        "additionalProperties": false,
+        "description": "外部情报清单。",
+        "properties": {
+          "fetched_at": {
+            "default": "",
+            "description": "这一批的取回时间",
+            "title": "Fetched At",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/IntelItemView"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "title": "IntelListView",
+        "type": "object"
+      },
+      "IntelRefView": {
+        "additionalProperties": false,
+        "description": "对话里引用的一条外部情报（可点回原页面）。",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind_label": {
+            "default": "",
+            "title": "Kind Label",
+            "type": "string"
+          },
+          "source_name": {
+            "default": "",
+            "title": "Source Name",
+            "type": "string"
+          },
+          "source_url": {
+            "default": "",
+            "title": "Source Url",
+            "type": "string"
+          },
+          "title": {
+            "default": "",
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "IntelRefView",
+        "type": "object"
+      },
+      "LayoutBlockView": {
+        "additionalProperties": false,
+        "description": "控制台上一个气泡的编排结果。",
+        "properties": {
+          "hint": {
+            "default": "",
+            "title": "Hint",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "default": "",
+            "title": "Label",
+            "type": "string"
+          },
+          "priority": {
+            "default": 100,
+            "title": "Priority",
+            "type": "integer"
+          },
+          "weight": {
+            "default": 1.0,
+            "title": "Weight",
+            "type": "number"
+          },
+          "why": {
+            "default": "",
+            "description": "排在这一位的原因，可直接显示给用户",
+            "title": "Why",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "LayoutBlockView",
+        "type": "object"
+      },
+      "LoginResult": {
+        "additionalProperties": false,
+        "properties": {
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "token": {
+            "title": "Token",
+            "type": "string"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "user_id",
+          "role"
+        ],
+        "title": "LoginResult",
         "type": "object"
       },
       "LoopStage": {
@@ -807,6 +2571,98 @@
         "title": "MessageRequest",
         "type": "object"
       },
+      "NoteAck": {
+        "additionalProperties": false,
+        "description": "删除回执。",
+        "properties": {
+          "removed": {
+            "title": "Removed",
+            "type": "string"
+          }
+        },
+        "required": [
+          "removed"
+        ],
+        "title": "NoteAck",
+        "type": "object"
+      },
+      "NoteCreateRequest": {
+        "additionalProperties": false,
+        "description": "写下一条。",
+        "properties": {
+          "kind": {
+            "default": "todo",
+            "description": "todo / goal",
+            "title": "Kind",
+            "type": "string"
+          },
+          "text": {
+            "description": "用户的原话",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "NoteCreateRequest",
+        "type": "object"
+      },
+      "NoteDoneRequest": {
+        "additionalProperties": false,
+        "description": "勾掉 / 取消勾掉。",
+        "properties": {
+          "done": {
+            "title": "Done",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "done"
+        ],
+        "title": "NoteDoneRequest",
+        "type": "object"
+      },
+      "NoteView": {
+        "additionalProperties": false,
+        "description": "一条他写下的内容。",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "done": {
+            "default": false,
+            "title": "Done",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "description": "todo / goal",
+            "title": "Kind",
+            "type": "string"
+          },
+          "text": {
+            "description": "用户的原话",
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "text",
+          "created_at"
+        ],
+        "title": "NoteView",
+        "type": "object"
+      },
       "PipelineCardView": {
         "additionalProperties": false,
         "description": "右栏管线卡（①-⑤ 每环节一卡）。\n\n三态：当前产出 / 可展开理论模型 / 可展开评价状态。",
@@ -859,8 +2715,7 @@
           "theory_models": {
             "description": "态②：可展开的理论模型",
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/TheoryRefView"
             },
             "title": "Theory Models",
             "type": "array"
@@ -877,6 +2732,186 @@
         "title": "PipelineCardView",
         "type": "object"
       },
+      "PlanGapView": {
+        "additionalProperties": false,
+        "description": "方案内的一条差距：要求 − 现状 = 差距 + 补齐建议。",
+        "properties": {
+          "current_state": {
+            "default": "",
+            "description": "你现在在哪",
+            "title": "Current State",
+            "type": "string"
+          },
+          "requirement": {
+            "description": "这条方向要求什么",
+            "title": "Requirement",
+            "type": "string"
+          },
+          "suggestion": {
+            "default": "",
+            "description": "怎么补",
+            "title": "Suggestion",
+            "type": "string"
+          }
+        },
+        "required": [
+          "requirement"
+        ],
+        "title": "PlanGapView",
+        "type": "object"
+      },
+      "PlanRole": {
+        "description": "方向方案角色。",
+        "enum": [
+          "main",
+          "parallel",
+          "fallback"
+        ],
+        "title": "PlanRole",
+        "type": "string"
+      },
+      "PortalView": {
+        "additionalProperties": false,
+        "description": "门户内容（**公开**：不需要登录）。\n\n为什么单独一个视图而不是复用 BootstrapView：那一份带着\"我是谁\"（identity）、\n菜单、路由、个人任务入口 —— 那些是登录后的事。门户只回答\"这是什么、凭什么信\"，\n内容全是产品自己的话（文案包 + 信任块 + 横幅 + FAQ + 功能开关），\n所以它可以、也应该在没有身份的情况下返回。\n\n此前门户文案写死在前端（`data/portal.ts`）—— 那是本仓底线之一\"文案不进代码\"\n的最后一处例外：改一句主张要发一次前端版本。",
+        "properties": {
+          "app_name": {
+            "default": "",
+            "title": "App Name",
+            "type": "string"
+          },
+          "banners": {
+            "items": {
+              "$ref": "#/components/schemas/BannerView"
+            },
+            "title": "Banners",
+            "type": "array"
+          },
+          "copy_bundle": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "文案包（含全部 portal.* 键）",
+            "title": "Copy Bundle",
+            "type": "object"
+          },
+          "faqs": {
+            "items": {
+              "$ref": "#/components/schemas/FaqView"
+            },
+            "title": "Faqs",
+            "type": "array"
+          },
+          "feature_flags": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "title": "Feature Flags",
+            "type": "object"
+          },
+          "task_entries": {
+            "description": "任务入口：门户上展示的'能做什么'",
+            "items": {
+              "$ref": "#/components/schemas/TaskEntryView"
+            },
+            "title": "Task Entries",
+            "type": "array"
+          },
+          "trust_blocks": {
+            "items": {
+              "$ref": "#/components/schemas/TrustBlockView"
+            },
+            "title": "Trust Blocks",
+            "type": "array"
+          }
+        },
+        "title": "PortalView",
+        "type": "object"
+      },
+      "ProfileFieldView": {
+        "additionalProperties": false,
+        "description": "画像里的一条字段（活状态的最小单位）。\n\n此前这里是 `dict[str, Any]`：契约只说\"有 fields\"，不说每条里有什么。\n前端要按 `confidence` 画把握度、按 `evidence` 做可溯源展示、按 `source`\n说明这条从哪来 —— 全是猜的字段名。现在逐字段声明。",
+        "properties": {
+          "confidence": {
+            "default": 0.0,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "type": "number"
+          },
+          "evidence": {
+            "description": "证据来源引用",
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "key": {
+            "description": "字段键，如 major / skills / interest（取数用，不直接展示）",
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "default": "",
+            "description": "字段的展示名（来自动态资源）；为空表示这份配置里没有它，界面回落到 key",
+            "title": "Label",
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/components/schemas/ProfileSource"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "value": {
+            "description": "字段值，结构由画像 schema 决定",
+            "title": "Value"
+          }
+        },
+        "required": [
+          "key",
+          "source",
+          "updated_at"
+        ],
+        "title": "ProfileFieldView",
+        "type": "object"
+      },
+      "ProfileGapView": {
+        "additionalProperties": false,
+        "description": "画像缺口：还缺哪条、为什么算缺、建议怎么补。",
+        "properties": {
+          "key": {
+            "description": "缺口字段键（取数用，不直接展示）",
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "default": "",
+            "description": "缺口的展示名（来自动态资源）；为空表示这份配置里没有它，界面回落到 key",
+            "title": "Label",
+            "type": "string"
+          },
+          "reason": {
+            "description": "为什么算缺口",
+            "title": "Reason",
+            "type": "string"
+          },
+          "suggested_next_action": {
+            "default": "",
+            "description": "建议的下一步采集动作",
+            "title": "Suggested Next Action",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "reason"
+        ],
+        "title": "ProfileGapView",
+        "type": "object"
+      },
       "ProfilePanelView": {
         "additionalProperties": false,
         "description": "① 画像状态：字段覆盖度 / 置信度 / 缺口 / 更新时间。",
@@ -891,16 +2926,14 @@
           },
           "fields": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/ProfileFieldView"
             },
             "title": "Fields",
             "type": "array"
           },
           "gaps": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/ProfileGapView"
             },
             "title": "Gaps",
             "type": "array"
@@ -928,38 +2961,114 @@
         "title": "ProfilePanelView",
         "type": "object"
       },
+      "ProfileSource": {
+        "description": "画像字段来源。",
+        "enum": [
+          "resume",
+          "conversation",
+          "assessment",
+          "behavior_inference",
+          "mentor",
+          "record"
+        ],
+        "title": "ProfileSource",
+        "type": "string"
+      },
+      "ReportDimensionItemView": {
+        "additionalProperties": false,
+        "description": "15 维里的单维。**逐字段声明**而不是 `dict`：前端要按 `tag` 上色、\n按 `evidence` 做可溯源展示，字段名一旦漂移，界面会静默变成空白。",
+        "properties": {
+          "conclusion": {
+            "title": "Conclusion",
+            "type": "string"
+          },
+          "evidence": {
+            "description": "证据引用，必须可溯源",
+            "title": "Evidence",
+            "type": "string"
+          },
+          "index": {
+            "description": "维度序号 1-15",
+            "title": "Index",
+            "type": "integer"
+          },
+          "name": {
+            "description": "维度名，如 兴趣倾向",
+            "title": "Name",
+            "type": "string"
+          },
+          "tag": {
+            "description": "维度标签：优势 / 短板 / 待验证",
+            "title": "Tag",
+            "type": "string"
+          }
+        },
+        "required": [
+          "index",
+          "name",
+          "tag",
+          "conclusion",
+          "evidence"
+        ],
+        "title": "ReportDimensionItemView",
+        "type": "object"
+      },
       "ReportFullTextView": {
         "additionalProperties": false,
-        "description": "完整报告页正文（只读资产视图，不承载实时对话）。",
+        "description": "完整报告页正文（只读资产视图，不承载实时对话）。\n\n形状的变迁：`toc` / `sections` 原来是 `list[dict[...]]`，属于\"契约里有这个字段、\n但没人知道里面是什么\"。代价在两处真实发生过：后端按 `anchor/group/group_method`\n写、前端按 `id/title/body` 读，两边都没错，只是从来没对上过 —— 而 `dict` 类型\n让这种错在编译期完全不可见。现在逐字段声明，前端类型由它生成。",
         "properties": {
           "generated_at": {
             "format": "date-time",
             "title": "Generated At",
             "type": "string"
           },
+          "methodologies": {
+            "description": "本次使用的理论模型名",
+            "items": {
+              "type": "string"
+            },
+            "title": "Methodologies",
+            "type": "array"
+          },
           "report_id": {
             "title": "Report Id",
             "type": "string"
           },
           "sections": {
-            "description": "15 维全景 / 方案 / 行动计划 / 个人画像",
+            "description": "按分组切开的 15 维正文",
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/ReportSectionView"
             },
             "title": "Sections",
             "type": "array"
           },
+          "sources": {
+            "description": "事实来源清单",
+            "items": {
+              "type": "string"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "swot": {
+            "additionalProperties": true,
+            "description": "SWOT 四象限",
+            "title": "Swot",
+            "type": "object"
+          },
           "toc": {
             "description": "左侧目录导航",
             "items": {
-              "additionalProperties": {
-                "type": "string"
-              },
-              "type": "object"
+              "$ref": "#/components/schemas/ReportTocItemView"
             },
             "title": "Toc",
             "type": "array"
+          },
+          "verdict": {
+            "additionalProperties": true,
+            "description": "综合结论 {title, summary}",
+            "title": "Verdict",
+            "type": "object"
           },
           "version": {
             "title": "Version",
@@ -972,6 +3081,61 @@
           "generated_at"
         ],
         "title": "ReportFullTextView",
+        "type": "object"
+      },
+      "ReportSectionView": {
+        "additionalProperties": false,
+        "description": "报告正文的一个分组（自我画像 / 职业环境 / 决策与风险）。",
+        "properties": {
+          "id": {
+            "description": "锚点 id",
+            "title": "Id",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReportDimensionItemView"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "method": {
+            "default": "",
+            "description": "支撑该分组的方法论",
+            "title": "Method",
+            "type": "string"
+          },
+          "title": {
+            "description": "分组展示名",
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ],
+        "title": "ReportSectionView",
+        "type": "object"
+      },
+      "ReportTocItemView": {
+        "additionalProperties": false,
+        "description": "报告目录项。`id` 与对应 `ReportSectionView.id` 相同，用于锚点跳转。",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ],
+        "title": "ReportTocItemView",
         "type": "object"
       },
       "RouteView": {
@@ -1056,9 +3220,9 @@
             "$ref": "#/components/schemas/LoopStage"
           },
           "theory_models": {
+            "description": "该环节用到的理论模型（可点开看正文）",
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/TheoryRefView"
             },
             "title": "Theory Models",
             "type": "array"
@@ -1100,7 +3264,7 @@
       },
       "TaskEnterRequest": {
         "additionalProperties": false,
-        "description": "进入任务（FR-HOME-002）。task_code 取自 bootstrap 的任务入口。",
+        "description": "进入任务。task_code 取自 bootstrap 的任务入口。",
         "properties": {
           "task_code": {
             "title": "Task Code",
@@ -1115,7 +3279,7 @@
       },
       "TaskEntryView": {
         "additionalProperties": false,
-        "description": "首页任务入口（FR-HOME-001）。文案必须用\"用户自己的话\"。",
+        "description": "首页任务入口。文案必须用\"用户自己的话\"。",
         "properties": {
           "code": {
             "title": "Code",
@@ -1163,7 +3327,7 @@
       },
       "TaskSessionView": {
         "additionalProperties": false,
-        "description": "左栏会话项。按\"任务/环节\"命名，不按 agent 名排布（FR-CONV-003）。",
+        "description": "左栏会话项。按\"任务/环节\"命名，不按 agent 名排布。",
         "properties": {
           "last_active_at": {
             "anyOf": [
@@ -1230,6 +3394,73 @@
         "title": "TaskStatus",
         "type": "string"
       },
+      "TheoryCardView": {
+        "additionalProperties": false,
+        "description": "理论卡正文。前端点开理论标签时展示的内容。\n\n四个字段都来自动态资源 `data/registry/theory_cards.json`——\n这里只做搬运，不生成、不改写。`summary` 是给用户看的通俗说明，\n`product_usage` 说清\"这条理论在本产品里怎么被用\"（可解释性的落点）。",
+        "properties": {
+          "id": {
+            "description": "理论卡 id，与 TheoryRef.theory_id 对应",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "product_usage": {
+            "default": "",
+            "description": "在本产品里怎么被用",
+            "title": "Product Usage",
+            "type": "string"
+          },
+          "school": {
+            "default": "",
+            "description": "所属流派 / 出处",
+            "title": "School",
+            "type": "string"
+          },
+          "summary": {
+            "default": "",
+            "description": "给用户看的通俗说明",
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "TheoryCardView",
+        "type": "object"
+      },
+      "TheoryRefView": {
+        "additionalProperties": false,
+        "description": "理论引用。前端据此渲染「理论标签」，点开取 `GET /app/theory-cards/{id}` 的正文。\n\n这里只有 id / 展示名 / 所属环节：**正文不随引用一起下发**（一次回复可能引三五个\n理论，正文按需取）。标签本身可点开，靠的就是 id 与接口路径对得上。",
+        "properties": {
+          "name": {
+            "description": "展示名，如 霍兰德 RIASEC",
+            "title": "Name",
+            "type": "string"
+          },
+          "stage": {
+            "default": "",
+            "description": "所属环节标识",
+            "title": "Stage",
+            "type": "string"
+          },
+          "theory_id": {
+            "description": "理论卡 id，与 /app/theory-cards/{theory_id} 对应",
+            "title": "Theory Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "theory_id",
+          "name"
+        ],
+        "title": "TheoryRefView",
+        "type": "object"
+      },
       "TrackEventAck": {
         "additionalProperties": false,
         "description": "上报确认。第一期只确认接收，不返回处理详情。",
@@ -1284,9 +3515,92 @@
         "title": "TrackEventRequest",
         "type": "object"
       },
+      "TrackEventView": {
+        "additionalProperties": false,
+        "description": "跟踪时间线里的一条：复盘环节的载体。\n\n类型只有五种（里程碑完成 / 提醒 / 警告 / 学期复盘 / 教练消息），\n由内核契约定死 —— 界面上不同基调的展示依赖它，不能是自由字符串。",
+        "properties": {
+          "detail": {
+            "default": "",
+            "title": "Detail",
+            "type": "string"
+          },
+          "due_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "occurred_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Occurred At"
+          },
+          "related_stage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Related Stage"
+          },
+          "related_task_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Related Task Id"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "milestone_done",
+              "reminder",
+              "warning",
+              "semester_review",
+              "coach_message"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "title"
+        ],
+        "title": "TrackEventView",
+        "type": "object"
+      },
       "TrustBlockView": {
         "additionalProperties": false,
-        "description": "信任背书块（FR-HOME-005）。只讲一条主线，可点开方法论示例。",
+        "description": "信任背书块。只讲一条主线，可点开方法论示例。",
         "properties": {
           "body": {
             "default": "",
@@ -1359,6 +3673,17 @@
         "additionalProperties": false,
         "description": "工作台聚合视图。",
         "properties": {
+          "academic_panel": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AcademicPanelView"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "教务系统取回来的课表与成绩单；为 null 表示还没授权过"
+          },
           "action_panel": {
             "anyOf": [
               {
@@ -1379,17 +3704,11 @@
                 "type": "null"
               }
             ],
-            "description": "轴 A 阶段过滤依据（FR-WB-004）",
+            "description": "轴 A 阶段过滤依据",
             "title": "Axis A Stage"
           },
-          "blocks": {
-            "additionalProperties": true,
-            "description": "功能块入口与静态数据（FR-WB-007）",
-            "title": "Blocks",
-            "type": "object"
-          },
           "coach_messages": {
-            "description": "教练消息汇总（FR-WB-006）",
+            "description": "教练消息汇总",
             "items": {
               "additionalProperties": true,
               "type": "object"
@@ -1397,11 +3716,23 @@
             "title": "Coach Messages",
             "type": "array"
           },
+          "collection_panel": {
+            "$ref": "#/components/schemas/CollectionPanelView",
+            "description": "采集动线（动态策略）"
+          },
           "dependencies": {
             "items": {
               "$ref": "#/components/schemas/DependencyEdgeView"
             },
             "title": "Dependencies",
+            "type": "array"
+          },
+          "layout_panel": {
+            "description": "气泡编排（已排序）：顺序、空间与出现条件来自动态资源",
+            "items": {
+              "$ref": "#/components/schemas/LayoutBlockView"
+            },
+            "title": "Layout Panel",
             "type": "array"
           },
           "plan_panel": {
@@ -1448,10 +3779,74 @@
   },
   "info": {
     "title": "职引 API",
-    "version": "0.1.0"
+    "version": "1.0.0"
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/app/academic": {
+      "delete": {
+        "description": "清空导入的课表与成绩（画像里那两条摘要一起删）。\n\n只清快照不删摘要的话，采集清单会一直显示\"课程表已拿到\"，\n用户再也回不到导入入口 —— 那是\"看起来清掉了\"。",
+        "operationId": "revoke_academic_api_v1_app_academic_delete",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_AcademicRevokeAck_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Revoke Academic",
+        "tags": [
+          "workspace"
+        ]
+      }
+    },
+    "/api/v1/app/academic/import": {
+      "post": {
+        "description": "导入课表与成绩单（学生自己贴原文）。\n\n这条路是产品有意选的：不做替学生登录学校系统，也不经手他校内账号的密码。\n用户的体验压在解析上 —— 贴进来的东西读不出来时，回执要说清楚**改哪里**。",
+        "operationId": "import_academic_api_v1_app_academic_import_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcademicImportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_AcademicImportAck_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Import Academic",
+        "tags": [
+          "workspace"
+        ]
+      }
+    },
     "/api/v1/app/assets/export": {
       "post": {
         "description": "导出资产。第一期仅预留入口，available 恒 False。",
@@ -1536,6 +3931,112 @@
         ]
       }
     },
+    "/api/v1/app/auth/login": {
+      "post": {
+        "description": "账号密码登录，签发 JWT。",
+        "operationId": "login_api_v1_app_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_LoginResult_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Login",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/app/auth/logout": {
+      "post": {
+        "description": "登出：撤销当前令牌（吊销表落库）。",
+        "operationId": "logout_api_v1_app_auth_logout_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_dict_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Logout",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/app/auth/register": {
+      "post": {
+        "description": "注册并直接登录（返回 token）。",
+        "operationId": "register_api_v1_app_auth_register_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_LoginResult_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Register",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/api/v1/app/bootstrap": {
       "get": {
         "description": "启动装配：菜单 / 路由 / 任务入口 / 文案 / 功能开关。\n\n前端启动只请求一次即可渲染首页。",
@@ -1555,6 +4056,90 @@
         "summary": "Bootstrap",
         "tags": [
           "app"
+        ]
+      }
+    },
+    "/api/v1/app/brief/today": {
+      "post": {
+        "description": "今日简报：今天为什么是这两件事。",
+        "operationId": "brief_today_api_v1_app_brief_today_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Brief Today",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
+    "/api/v1/app/calendar": {
+      "get": {
+        "description": "关键节点日历（④ 行动环节写进来的节点）。\n\n此前这张表**只写不读**：库里有节点，界面上没有任何一处能看到 ——\n\"规划师写入、教练读取\"里的\"读取\"那一半没有实现。",
+        "operationId": "list_calendar_nodes_api_v1_app_calendar_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_list_CalendarNodeView__"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Calendar Nodes",
+        "tags": [
+          "asset"
+        ]
+      }
+    },
+    "/api/v1/app/chsi/bind": {
+      "post": {
+        "description": "学信网绑定管线：核验在线验证码 → 读学籍 → 写画像。\n\n请求体 `arg` 是用户在学信档案申请到的**在线验证码**。\n不接收、也不要求用户的学信网账号密码 —— 那条路既不合法，也不必要。",
+        "operationId": "chsi_bind_api_v1_app_chsi_bind_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Chsi Bind",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
+    "/api/v1/app/config/reload": {
+      "post": {
+        "description": "重新装载动态配置（环节口径 / 气泡编排 / 采集规则）。",
+        "operationId": "reload_config_api_v1_app_config_reload_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_dict_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Reload Config",
+        "tags": [
+          "config"
         ]
       }
     },
@@ -1597,6 +4182,669 @@
         "summary": "Send Message",
         "tags": [
           "conversation"
+        ]
+      }
+    },
+    "/api/v1/app/day/{day}/advice": {
+      "post": {
+        "description": "「这一天的建议」：日历里点开某一天时生成（`day` 是 YYYY-MM-DD）。\n\n日历上其余的东西都是事实（那天有哪几门课、哪个节点到期、哪件事该做完），\n前端直接读；这一条是那一天**怎么用**的建议，要模型下判断。\n\n请求体里的 `arg` 是客户端的时区偏移（分钟，东为正）—— \"那一天\"是用户\n手表上的那一天，不带这个偏移，傍晚以后的事会被算到前一天。",
+        "operationId": "day_advice_api_v1_app_day__day__advice_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day",
+            "required": true,
+            "schema": {
+              "title": "Day",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Day Advice",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
+    "/api/v1/app/dimensions/{dimension_id}": {
+      "post": {
+        "description": "维度解读（点开才生成，后端缓存）。",
+        "operationId": "dimension_api_v1_app_dimensions__dimension_id__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dimension_id",
+            "required": true,
+            "schema": {
+              "title": "Dimension Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Dimension",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
+    "/api/v1/app/gaps/{gap_key}/clarify": {
+      "post": {
+        "description": "缺口追问话术。",
+        "operationId": "gap_clarify_api_v1_app_gaps__gap_key__clarify_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "gap_key",
+            "required": true,
+            "schema": {
+              "title": "Gap Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Gap Clarify",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
+    "/api/v1/app/intel": {
+      "get": {
+        "description": "外部情报：公开事实（学职平台 + 通用网络检索）。\n\n**不要求登录**：登了录就按你的画像收窄，没登录就按 `?q=` 或平台通用数据取。\n每条都带来源链接 —— 这类信息\"凭什么这么说\"就是那个链接，\n所以取不到来源的条目在服务层就被丢掉了，不会返回。",
+        "operationId": "get_intel_api_v1_app_intel_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Q",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_IntelListView_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Intel",
+        "tags": [
+          "workspace"
+        ]
+      }
+    },
+    "/api/v1/app/intel/refresh": {
+      "post": {
+        "description": "现在去取一次（用户主动点）。同样**不要求登录**。\n\n只在这条路上推通知：后台顺带取到的东西不弹 ——\n浮窗要留给\"值得打断他\"的事，而\"他自己刚点的\"就是值得回一句的事。\n（未登录时没有收件人，自然也不推。）",
+        "operationId": "refresh_intel_api_v1_app_intel_refresh_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Q",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_IntelListView_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Refresh Intel",
+        "tags": [
+          "workspace"
+        ]
+      }
+    },
+    "/api/v1/app/match/careers": {
+      "post": {
+        "description": "学职网匹配：矩阵 + 排名 + 推荐。",
+        "operationId": "match_careers_api_v1_app_match_careers_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Match Careers",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
+    "/api/v1/app/notes": {
+      "get": {
+        "description": "他写下的全部内容（新写的在前）。",
+        "operationId": "list_notes_api_v1_app_notes_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_list_NoteView__"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Notes",
+        "tags": [
+          "note"
+        ]
+      },
+      "post": {
+        "description": "写一条。",
+        "operationId": "add_note_api_v1_app_notes_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NoteCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_NoteView_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Note",
+        "tags": [
+          "note"
+        ]
+      }
+    },
+    "/api/v1/app/notes/{note_id}": {
+      "delete": {
+        "description": "删掉一条。",
+        "operationId": "remove_note_api_v1_app_notes__note_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "note_id",
+            "required": true,
+            "schema": {
+              "title": "Note Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_NoteAck_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Remove Note",
+        "tags": [
+          "note"
+        ]
+      },
+      "patch": {
+        "description": "勾掉 / 取消勾掉一条待办。",
+        "operationId": "set_note_done_api_v1_app_notes__note_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "note_id",
+            "required": true,
+            "schema": {
+              "title": "Note Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NoteDoneRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_NoteView_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Note Done",
+        "tags": [
+          "note"
+        ]
+      }
+    },
+    "/api/v1/app/notifications/pending": {
+      "get": {
+        "description": "教练主动介入通知出队（前端浮窗轮询消费）。",
+        "operationId": "list_pending_notifications_api_v1_app_notifications_pending_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_list_CoachNotificationView__"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Pending Notifications",
+        "tags": [
+          "app"
+        ]
+      }
+    },
+    "/api/v1/app/notifications/{message_id}/read": {
+      "post": {
+        "description": "把一条通知标成已读。\n\n浮窗关掉时前端调它。不调的话，读侧按\"未读\"出队，用户下次进页面\n还会看到同一条 —— \"我明明关过\"就是这么来的。",
+        "operationId": "mark_notification_read_api_v1_app_notifications__message_id__read_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "message_id",
+            "required": true,
+            "schema": {
+              "title": "Message Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_dict_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Mark Notification Read",
+        "tags": [
+          "app"
+        ]
+      }
+    },
+    "/api/v1/app/plan/action": {
+      "get": {
+        "description": "行动计划正文（阶段 / 任务 / 现在这一件）。没有计划时 has_plan=False。",
+        "operationId": "get_action_plan_api_v1_app_plan_action_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_ActionPlanView_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Action Plan",
+        "tags": [
+          "asset"
+        ]
+      }
+    },
+    "/api/v1/app/plan/action/tasks": {
+      "patch": {
+        "description": "勾掉 / 取消勾选一个行动任务。\n\n`done=false` 是\"勾错了要撤回\"：只支持单向勾选的话，用户点错一次就再也回不去。",
+        "operationId": "set_action_task_done_api_v1_app_plan_action_tasks_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActionTaskDoneRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_ActionPlanView_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Action Task Done",
+        "tags": [
+          "asset"
+        ]
+      }
+    },
+    "/api/v1/app/plan/directions": {
+      "get": {
+        "description": "三套方向方案（主攻 / 平行 / 保底）+ 当前选中那一套。",
+        "operationId": "get_direction_plans_api_v1_app_plan_directions_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_DirectionPlanListView_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Direction Plans",
+        "tags": [
+          "asset"
+        ]
+      }
+    },
+    "/api/v1/app/plan/directions/{option_id}/select": {
+      "post": {
+        "description": "选中一套方案。选择可撤回 —— 再选另一套就是撤回，没有单独的撤销接口。\n\n方案 id 不存在时按 1002（资源不存在）返回：前端据此如实说\"这套方案已经不在了\"，\n而不是把界面停在一个被选中的幽灵方案上。",
+        "operationId": "select_direction_plan_api_v1_app_plan_directions__option_id__select_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "option_id",
+            "required": true,
+            "schema": {
+              "title": "Option Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_DirectionPlanListView_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Select Direction Plan",
+        "tags": [
+          "asset"
+        ]
+      }
+    },
+    "/api/v1/app/plan/timetable": {
+      "post": {
+        "description": "课表 → 可投入时间。",
+        "operationId": "plan_timetable_api_v1_app_plan_timetable_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Plan Timetable",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
+    "/api/v1/app/plan/todos/suggestions": {
+      "post": {
+        "description": "待办建议（可采纳 / 可否决，回流画像）。",
+        "operationId": "plan_todo_suggestions_api_v1_app_plan_todos_suggestions_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Plan Todo Suggestions",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
+    "/api/v1/app/portal": {
+      "get": {
+        "description": "门户内容 —— **公开接口，不解析身份**。\n\n门户是访客第一眼看到的那一页，内容全是产品自己的话（文案 / 信任块 / 横幅 /\nFAQ / 任务入口 / 开关）。它不需要知道\"你是谁\"，所以这里不调\n`resolve_user_id` —— 那是全站唯一一个不要求登录的业务读接口。\n\n为什么要开这个口子：门户文案此前写死在前端 `data/portal.ts`，\n改一句主张要发一次前端版本 —— 那是本仓\"文案不进代码\"这条底线上的最后一处例外。",
+        "operationId": "portal_api_v1_app_portal_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_PortalView_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Portal",
+        "tags": [
+          "app"
+        ]
+      }
+    },
+    "/api/v1/app/portrait/analysis": {
+      "post": {
+        "description": "「对你的分析」：整份画像合起来的一段判断（打开画像时生成）。\n\n与「维度解读」的分工：那一条回答\"这条字段是什么、凭什么\"，\n这一条回答\"这些合起来说明我现在是个什么处境\"。两件都要有 ——\n只有前者的时候，画像看起来就是一张信息标签表。",
+        "operationId": "portrait_analysis_api_v1_app_portrait_analysis_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Portrait Analysis",
+        "tags": [
+          "ai"
         ]
       }
     },
@@ -1650,6 +4898,26 @@
         ]
       }
     },
+    "/api/v1/app/report/summary": {
+      "post": {
+        "description": "整份报告的结论段。",
+        "operationId": "report_summary_api_v1_app_report_summary_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Report Summary",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
     "/api/v1/app/sessions": {
       "get": {
         "description": "左栏会话列表（并行任务会话，按任务/环节命名）。",
@@ -1667,6 +4935,59 @@
           }
         },
         "summary": "List Sessions",
+        "tags": [
+          "conversation"
+        ]
+      }
+    },
+    "/api/v1/app/sessions/{task_id}/turns": {
+      "get": {
+        "description": "一条会话的逐轮原文。\n\n会话列表点进去要能看见\"这条会话发生过什么\" —— 此前只有一张清单，\n因为逐轮原文压根没落库（库里只有累积摘要）。",
+        "operationId": "list_session_turns_api_v1_app_sessions__task_id__turns_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "title": "Task Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 200,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_list_ConversationMessageView__"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Session Turns",
         "tags": [
           "conversation"
         ]
@@ -1714,6 +5035,49 @@
         ]
       }
     },
+    "/api/v1/app/theory-cards/{theory_id}": {
+      "get": {
+        "description": "理论卡正文：点开理论标签时拉一次。\n\n内容是**动态资源**（`data/registry/theory_cards.json`），改它不发版。\n取不到按 1002（资源不存在）返回 —— 前端据此如实说\"这张卡还没配\"，\n而不是渲染一张只有标题的空卡（那看起来像加载失败）。",
+        "operationId": "get_theory_card_api_v1_app_theory_cards__theory_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "theory_id",
+            "required": true,
+            "schema": {
+              "title": "Theory Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_TheoryCardView_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Theory Card",
+        "tags": [
+          "app"
+        ]
+      }
+    },
     "/api/v1/app/track": {
       "post": {
         "description": "前端上报一条埋点事件。",
@@ -1756,9 +5120,53 @@
         ]
       }
     },
+    "/api/v1/app/track/events": {
+      "get": {
+        "description": "跟踪时间线（复盘环节的载体）。\n\n与 `/app/track` 是同一份数据的两个方向：那条写（前端埋点），这条读。\n复盘页要回答\"这段时间发生过什么\"，靠的就是它 —— 此前只有写、没有读。",
+        "operationId": "list_track_events_api_v1_app_track_events_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_list_TrackEventView__"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Track Events",
+        "tags": [
+          "track"
+        ]
+      }
+    },
     "/api/v1/app/workspace": {
       "get": {
-        "description": "工作台聚合视图：画像 / 报告 / 方案 / 计划 / 跟踪 + 功能块。\n\n进入工作台属于持久化行为，游客在此处被登录拦截（PRD §5.3）。",
+        "description": "工作台聚合视图：画像 / 报告 / 方案 / 计划 / 跟踪 + 功能块。\n\n进入工作台属于持久化行为，游客在此处被登录拦截。",
         "operationId": "get_workspace_api_v1_app_workspace_get",
         "responses": {
           "200": {

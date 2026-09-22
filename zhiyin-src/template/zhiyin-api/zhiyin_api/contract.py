@@ -2,7 +2,7 @@
 
 为什么需要它
 ------------
-《前端 README》§四本来就写着"字段口径以 `src/api/types.ts` 为准（由后端 OpenAPI
+前端 README 本来就写着"字段口径以 `src/api/types.ts` 为准（由后端 OpenAPI
 生成，不手写）"，但生成方式只有一条命令：
 
     openapi-typescript http://localhost:8000/api/v1/openapi.json -o src/api/types.ts

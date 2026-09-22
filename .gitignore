@@ -46,6 +46,7 @@ dist-ssr/
 .vscode/*
 !.vscode/extensions.json
 .idea/
+.trae/
 *.swp
 .DS_Store
 Thumbs.db
@@ -57,3 +58,9 @@ Thumbs.db
 !.env.example
 *.pem
 *.key
+
+# ---- 迁移文件与发布件 ----
+# 迁移文件里含 `infra_ai_provider.config.api_key`（模型密钥只存库，这是它的唯一副本），
+# 是**要随发布件发给部署方**的东西，但绝不该进版本库。
+deploy/migration.json
+release/

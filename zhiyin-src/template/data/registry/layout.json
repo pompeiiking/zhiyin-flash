@@ -1,0 +1,127 @@
+[
+  {
+    "code": "default",
+    "name": "控制台编排策略",
+    "note": "气泡的**顺序**和**空间**由这张表决定，不由前端写死。base 越小越靠前；命中 boost_when 的会提前 boost 位；show_when 为空表示总在画布上。",
+    "blocks": [
+      {
+        "id": "talk",
+        "label": "和主理聊聊",
+        "hint": "说不清楚的时候，一句话就够",
+        "weight": 2.4,
+        "base": 30,
+        "boost": 70,
+        "boost_when": "ask_wants_chat",
+        "why": "AI 正在等你回话时，先把对话递到手上 —— 别让人先去找入口。"
+      },
+      {
+        "id": "collect",
+        "label": "采集动线",
+        "hint": "还差什么、去哪儿取",
+        "weight": 2.4,
+        "base": 40,
+        "boost": 80,
+        "boost_when": "collection_missing",
+        "why": "缺的东西挡着后面每一步，所以缺着的时候排在最前面。"
+      },
+      {
+        "id": "portrait",
+        "label": "你的画像",
+        "hint": "系统现在怎么看你、还差哪几条",
+        "weight": 3,
+        "base": 60,
+        "boost": 40,
+        "boost_when": "has_profile",
+        "why": "画像是一切的底；有内容时它值得占最大的一块。"
+      },
+      {
+        "id": "todo",
+        "label": "今天要做的事",
+        "hint": "现在这一件",
+        "weight": 3,
+        "base": 50,
+        "boost": 45,
+        "boost_when": "has_action",
+        "why": "有画像内容才排得出今天要做的事 —— 一开始就摆一块空待办，用户只会以为它坏了。",
+        "show_when": "has_profile"
+      },
+        {
+          "id": "timetable",
+          "label": "本周课表",
+          "hint": "课表算出来的可投入空档",
+          "weight": 2,
+          "base": 70,
+          "show_when": "has_courses",
+          "why": "只有真拿到课程数据才出现 —— 学信网不提供课表。"
+        },
+        {
+          "id": "calendar",
+          "label": "日历",
+          "hint": "哪一天有什么 · 那一天怎么用",
+          "weight": 2.4,
+          "base": 69,
+          "why": "课表看的是每周重复的那几门课，日历看的是具体某一天 —— 到期的事与到期没做完的任务不需要课表，所以它不挂在 has_courses 上。"
+        },
+      {
+        "id": "match",
+        "label": "匹配与推荐",
+        "hint": "方向优先级",
+        "weight": 2.2,
+        "base": 75,
+        "show_when": "has_courses",
+        "why": "同上：没有课程与成绩，比对就没有输入。"
+      },
+      {
+        "id": "plans",
+        "label": "方向方案",
+        "hint": "主攻 / 平行 / 保底 · 选一套，随时可撤回",
+        "weight": 2.8,
+        "base": 65,
+        "show_when": "has_direction_plans",
+        "why": "决策环节的产出就是这三套方案 —— 有它才谈得上「选哪套」，没有就是还没走到这一步。"
+      },
+      {
+        "id": "action",
+        "label": "行动计划",
+        "hint": "阶段与任务 · 今天勾得掉",
+        "weight": 2.8,
+        "base": 68,
+        "show_when": "has_action",
+        "why": "行动环节的产出是分阶段的任务清单；没有它时「今天要做什么」只能靠待办顶着。"
+      },
+      {
+        "id": "greet",
+        "label": "今日简报",
+        "hint": "为什么是这两件",
+        "weight": 1.1,
+        "base": 80,
+        "why": "开场的一句话，位置稳定在后面。"
+      },
+      {
+        "id": "market",
+        "label": "外部情报",
+        "hint": "岗位与窗口",
+        "weight": 1,
+        "base": 90,
+        "why": "外部情报在开始分析之后才有意义：拿画像去公开渠道比对，才有'和你有关'可言。",
+        "show_when": "reached_analysis"
+      },
+      {
+        "id": "people",
+        "label": "谁在帮你",
+        "hint": "交接说明",
+        "weight": 1,
+        "base": 95,
+        "why": "交接记录是回看用的。"
+      },
+      {
+        "id": "review",
+        "label": "上周复盘",
+        "hint": "做过的事有没有用",
+        "weight": 1,
+        "base": 100,
+        "why": "复盘在一周的末尾才重要。"
+      }
+    ]
+  }
+]

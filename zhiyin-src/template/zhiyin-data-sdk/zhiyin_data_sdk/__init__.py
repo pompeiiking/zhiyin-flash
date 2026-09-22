@@ -7,4 +7,4 @@ Repository 与 Gateway 接口。本层不承载业务规则，不知道"五环�
 依赖方向：只允许依赖 zhiyin-infrastructure。
 """
 
-__all__ = ["errors", "transaction", "contracts", "repositories", "gateways"]
+__all__ = ["errors", "repositories", "gateways"]

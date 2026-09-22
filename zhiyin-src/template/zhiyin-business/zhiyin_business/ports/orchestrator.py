@@ -1,6 +1,6 @@
 """编排器（轴 C）契约。
 
-职责（PRD §3.3）：
+职责：
 1. 识别用户意图 → 判定当前环节（轴 B）；
 2. 按（轴 A 阶段 × 轴 B 环节 × 意图）选择主理（及协理 / 信息侦查员）；
 3. 定义跨智能体交接；
@@ -33,7 +33,7 @@ from zhiyin_business.ports.blackboard import BlackboardView
 class IntentType(str, Enum):
     """用户意图分类。
 
-    对应首页任务入口（FR-HOME-001）与兜底"直接开聊"（FR-HOME-003）。
+    对应首页任务入口与兜底"直接开聊"。
     """
 
     CONFUSED = "confused"                  # 还不太清楚自己适合什么
@@ -46,7 +46,7 @@ class IntentType(str, Enum):
 
 
 class StageDecision(BaseModel):
-    """环节判定结果（FR-ORCH-001）。判定不确定时必须用澄清追问，不硬跳。"""
+    """环节判定结果。判定不确定时必须用澄清追问，不硬跳。"""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -57,7 +57,7 @@ class StageDecision(BaseModel):
 
 
 class LeadDecision(BaseModel):
-    """主理选择结果（FR-ORCH-002）。"""
+    """主理选择结果。"""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -70,7 +70,7 @@ class LeadDecision(BaseModel):
 
 
 class HandoffDecision(BaseModel):
-    """交接结果（FR-ORCH-003）。换主理必须显式告知。"""
+    """交接结果。换主理必须显式告知。"""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -96,7 +96,7 @@ class TurnRequest(BaseModel):
 class TurnResult(BaseModel):
     """一次用户回合的输出。
 
-    严格对应"单轮回复骨架"（FR-ORCH-006 / PRD §8.2）：
+    严格对应"单轮回复骨架"：
     读黑板 → 环节判定 → 选主理 → 理论链产出 → 行为引导收尾。
     """
 
@@ -139,7 +139,7 @@ class Orchestrator(ABC):
     async def infer_axis_a(self, user_id: str, task_id: str) -> AxisAStage:
         """推断轴 A 阶段。
 
-        口径（《业务口径决策记录-v1.0》决策 1/2）：五段全量，
+        口径：五段全量，
         "规则优先 + LLM 兜底"。规则写在 `policies/`，本方法只负责调规则、
         必要时走模型兜底；**前台不让用户自选阶段**。
         """
@@ -160,6 +160,15 @@ class Orchestrator(ABC):
         self, user_id: str, task_id: str, to_stage: LoopStage, reason: str
     ) -> HandoffDecision:
         """执行交接并生成显式告知。"""
+
+    @abstractmethod
+    async def enter_task(self, user_id: str, task_code: str) -> TaskSession:
+        """从首页任务入口进入任务：判环节 → 选主理 → 建会话或续接。
+
+        同一任务已有进行中的会话时返回既有会话（续接），否则新建。
+        任务名 / 目标环节 / 默认主理取动态资源 task_entries；
+        目标环节为空的入口（直接开聊）回落 ① 采集 + 建档分析师。
+        """
 
     @abstractmethod
     async def handle_message(self, request: TurnRequest) -> TurnResult:

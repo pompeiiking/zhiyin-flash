@@ -6,14 +6,14 @@
 - `zhiyin-boot` 在 wire 阶段构造一份 `AssemblyReport` 并调用 `configure_runtime()`；
 - api 只读这份报告，不认识 boot 的任何类型。
 
-这样 §九 验收项 8「骨架隔离」变得可观测：healthz 会列出所有仍走本地/默认通过
+这样「骨架隔离」变得可观测：healthz 会列出所有仍走本地/默认通过
 实现的部件，以及第一期已知的功能缺口。
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Any, Callable, Optional
 
 # 部件状态取值
 WIRED = "wired"
@@ -26,13 +26,12 @@ class AssemblyReport:
     """一次启动的装配快照。
 
     分组与装配清单（`zhiyin_boot.container.ports`）一一对应：
-    Gateways / Repositories / Transactions / Orchestration / Services / Workers。
+    Gateways / Repositories / Orchestration / Services / Workers。
     """
 
     env: str = "local"
     gateways: dict[str, str] = field(default_factory=dict)
     repositories: dict[str, str] = field(default_factory=dict)
-    transactions: dict[str, str] = field(default_factory=dict)
     orchestration: dict[str, str] = field(default_factory=dict)
     services: dict[str, str] = field(default_factory=dict)
     workers: dict[str, str] = field(default_factory=dict)
@@ -50,11 +49,15 @@ class AssemblyReport:
         groups = (
             self.gateways,
             self.repositories,
-            self.transactions,
             self.orchestration,
             self.services,
             self.workers,
         )
+        if not any(groups):
+            # 空报告（裸 create_app，或 boot 传了一份什么都没装进去的报告）不是"健康"。
+            # 此前这里对空字典做 `NOT_WIRED in {}` 必然为 False，于是"什么都没装配"
+            # 会被报成 healthy: true —— 恰好是装配报告最不该撒的那个谎。
+            return False
         return not any(NOT_WIRED in group.values() for group in groups)
 
     def to_dict(self) -> dict:
@@ -63,7 +66,6 @@ class AssemblyReport:
             "healthy": self.healthy,
             "gateways": dict(self.gateways),
             "repositories": dict(self.repositories),
-            "transactions": dict(self.transactions),
             "orchestration": dict(self.orchestration),
             "services": dict(self.services),
             "workers": dict(self.workers),
@@ -74,11 +76,33 @@ class AssemblyReport:
 
 _report: Optional[AssemblyReport] = None
 
+#: 读缓存自述探针：由 boot 在装配时注册成 `container.read_cache.stats`。
+#:
+#: 单独一条通道（而不是塞进 AssemblyReport）是因为装配报告是**一次启动的快照**，
+#: 而缓存命中率是**持续变化**的运行时计数 —— 探针每次请求现取，报告保持不变。
+_cache_probe: Optional[Callable[[], dict[str, Any]]] = None
+
 
 def configure_runtime(report: AssemblyReport) -> None:
     """由 zhiyin-boot 在启动时调用。"""
     global _report
     _report = report
+
+
+def configure_cache_probe(probe: Optional[Callable[[], dict[str, Any]]]) -> None:
+    """由 zhiyin-boot 在装配时注册读缓存自述探针（未装配读缓存时传 None）。"""
+    global _cache_probe
+    _cache_probe = probe
+
+
+def cache_snapshot() -> dict[str, Any]:
+    """现取读缓存自述；没有读缓存（或探针抛错）时返回空字典，探针本身不影响健康判定。"""
+    if _cache_probe is None:
+        return {}
+    try:
+        return _cache_probe()
+    except Exception:  # noqa: BLE001 - 自述失败不该让 /healthz 变成 500
+        return {}
 
 
 def get_runtime() -> AssemblyReport:
@@ -88,5 +112,6 @@ def get_runtime() -> AssemblyReport:
 
 def reset_runtime() -> None:
     """清空装配报告。供测试隔离使用，业务代码不应调用。"""
-    global _report
+    global _report, _cache_probe
     _report = None
+    _cache_probe = None

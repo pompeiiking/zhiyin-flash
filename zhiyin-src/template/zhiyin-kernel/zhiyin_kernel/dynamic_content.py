@@ -5,7 +5,7 @@
 基础设施层要读出它们、业务读侧服务要转手给 BFF。若定义在 api 层，
 SDK 与基础设施就要反向依赖 api，依赖倒置立刻失效。
 
-对应《分层实现与接口设计》§4.1「前端动态内容表」13 张里的 7 张
+对应「前端动态内容表」13 张里的 7 张
 （`app_menu` / `app_route` / `app_task_entry` / `app_copy` / `app_banner` /
 `app_trust_block` / `app_faq`）。
 
@@ -30,7 +30,7 @@ ContentStatus = Literal["enabled", "disabled"]
 
 
 class ContentSpec(BaseModel):
-    """动态内容公共字段（《分层实现与接口设计》§3.2 统一配置模式）。
+    """动态内容公共字段（统一配置模式）。
 
     所有前端动态内容都带 `code` / `status` / `sort_order`：运营侧靠 code 定位、
     靠 status 上下线、靠 sort_order 排序，三者不齐就没法"改配置不发版"。
@@ -44,7 +44,7 @@ class ContentSpec(BaseModel):
 
 
 class MenuSpec(ContentSpec):
-    """顶层导航菜单（FR-HOME / 前端设计 §3.2）。
+    """顶层导航菜单。
 
     只允许「首页 / 核心对话页 / 智能工作台」三条主线；功能块不进主线导航。
     """
@@ -55,7 +55,7 @@ class MenuSpec(ContentSpec):
 
 
 class RouteSpec(ContentSpec):
-    """前端路由（页面锚点口径见《前端页面设计 v1.0》§2.2）。"""
+    """前端路由（页面锚点口径）。"""
 
     path: str
     page_code: str = Field(description="页面锚点，如 screen-home / screen-conv")
@@ -80,7 +80,7 @@ class BannerSpec(ContentSpec):
 
 
 class TrustBlockSpec(ContentSpec):
-    """信任背书块（FR-HOME-005）。
+    """信任背书块。
 
     口径：只讲一条主线「你做的每步都基于职业咨询的成熟方法」，不堆数字炫技。
     `expandable_ref` 指向可点开的方法论示例（脱敏演示数据）。

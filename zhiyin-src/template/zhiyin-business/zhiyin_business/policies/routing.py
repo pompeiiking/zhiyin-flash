@@ -1,6 +1,6 @@
 """意图识别与环节判定规则（轴 B）。
 
-对应 FR-ORCH-001：识别用户意图 → 判定当前环节；判定不确定时必须回落到
+对应：识别用户意图 → 判定当前环节；判定不确定时必须回落到
 澄清追问，不允许"猜一个环节硬跳"（产品硬约束）。
 
 与 `ports/orchestrator.py` 的关系：Orchestrator 是**调用方**，本模块是
@@ -17,7 +17,7 @@ from zhiyin_business.ports.orchestrator import IntentType, StageDecision
 
 
 class IntentPolicy(ABC):
-    """把一条用户消息归类为意图（FR-HOME-001 / FR-HOME-003）。"""
+    """把一条用户消息归类为意图。"""
 
     @abstractmethod
     async def classify(self, *, message: str, blackboard: BlackboardView) -> IntentType:

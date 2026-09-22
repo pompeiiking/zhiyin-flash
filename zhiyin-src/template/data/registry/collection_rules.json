@@ -1,0 +1,100 @@
+[
+  {
+    "key": "major",
+    "label": "专业",
+    "source": "chsi",
+    "why": "不知道你学什么，方向推荐就无从谈起",
+    "order": 1
+  },
+  {
+    "key": "degree_level",
+    "label": "层次",
+    "source": "chsi",
+    "why": "本科、专科、硕士对应的窗口期完全不同",
+    "order": 2
+  },
+  {
+    "key": "expected_graduation",
+    "label": "预计毕业",
+    "source": "chsi",
+    "why": "它决定你还有几个秋招窗口 —— 冲刺阶段的第一约束",
+    "order": 3
+  },
+  {
+    "key": "school",
+    "label": "学校",
+    "source": "chsi",
+    "why": "同一份简历，学校会影响哪些岗位值得投",
+    "order": 4
+  },
+  {
+    "key": "enrollment_status",
+    "label": "学籍状态",
+    "source": "chsi",
+    "why": "在读、休学、已毕业，能做的事不一样",
+    "order": 5
+  },
+  {
+    "key": "duration",
+    "label": "学制",
+    "source": "chsi",
+    "why": "排完整的时间安排要用它",
+    "order": 6
+  },
+  {
+    "key": "study_mode",
+    "label": "学习形式",
+    "source": "chsi",
+    "why": "全日制和非全日制，能投入的时间差很多",
+    "order": 7
+  },
+  {
+    "key": "enrolled_at",
+    "label": "入学日期",
+    "source": "chsi",
+    "why": "用来推算你现在几年级",
+    "order": 8
+  },
+  {
+    "key": "values",
+    "label": "价值取向",
+    "source": "conversation",
+    "why": "决定「稳定优先」还是「成长优先」，别人替不了你",
+    "order": 9
+  },
+  {
+    "key": "interest",
+    "label": "兴趣",
+    "source": "conversation",
+    "why": "方向里哪些你愿意长期做，只有你说得清",
+    "order": 10
+  },
+  {
+    "key": "experience",
+    "label": "经历",
+    "source": "conversation",
+    "why": "实习与项目是方向判断里最硬的一条证据",
+    "order": 11
+  },
+  {
+    "key": "skills",
+    "label": "能力自评",
+    "source": "conversation",
+    "why": "和专业训练相互印证，避免只看成绩",
+    "order": 12
+  },
+  {
+    "key": "courses",
+    "label": "课程表",
+    "source": "academic",
+    "why": "没有课表就算不出这周真正能用的空档 —— 在教务系统里全选复制，贴进来就行",
+    "order": 13
+  },
+  {
+    "key": "scores",
+    "label": "成绩单",
+    "source": "academic",
+    "why": "把课程成绩折算成能力证据 —— 从教务系统导出后导入即可",
+    "order": 14
+  }
+]

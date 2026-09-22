@@ -1,0 +1,125 @@
+{
+  "_note": "职引 · 编排判定规则。属动态资源：改本文件不需要发版。落库为 biz_registry_item 的 routing_rules 类别。两类：kind=intent（用户说了哪些词算哪种意图）、kind=stage（哪种意图进哪一步）。sort_order 越小越先判定；同一序号按 id 稳定排序。未命中任何规则时的行为不在这张表里——它是策略（退回当前环节交给模型，连环节都没有才澄清追问），属于代码。",
+  "items": [
+    {
+      "id": "intent.confused",
+      "kind": "intent",
+      "sort_order": 10,
+      "match": ["迷茫", "不知道", "不清楚", "适合什么", "不知道干什么", "没方向", "从哪开始", "没头绪"],
+      "intent": "confused",
+      "stage": "",
+      "status": "enabled",
+      "note": "用户连问题都还没成形时的说法。命中它进采集，先问出一个能答的问题。"
+    },
+    {
+      "id": "intent.verify_direction",
+      "kind": "intent",
+      "sort_order": 20,
+      "match": ["验证", "行不行", "适不适合", "能不能", "有没有机会", "差多少", "够不够"],
+      "intent": "verify_direction",
+      "stage": "",
+      "status": "enabled",
+      "note": "已经有方向、想核实行不行。这类要给差距，不给鼓励。"
+    },
+    {
+      "id": "intent.undecided",
+      "kind": "intent",
+      "sort_order": 30,
+      "match": ["拿不准", "纠结", "选哪个", "比较", "几个方向", "犹豫", "两个都想要"],
+      "intent": "undecided",
+      "stage": "",
+      "status": "enabled",
+      "note": "在两个以上方向之间摇摆。这类要给可撤回的选择。"
+    },
+    {
+      "id": "intent.how_to_act",
+      "kind": "intent",
+      "sort_order": 40,
+      "match": ["怎么动", "下一步", "怎么做", "投哪些", "准备什么", "行动计划", "从哪下手"],
+      "intent": "how_to_act",
+      "stage": "",
+      "status": "enabled",
+      "note": "方向已定、缺的是动作。这类要给带时长的小任务。"
+    },
+    {
+      "id": "intent.stuck",
+      "kind": "intent",
+      "sort_order": 50,
+      "match": ["卡住", "没进展", "坚持不下去", "停滞", "动不起来", "拖延", "动不了"],
+      "intent": "stuck",
+      "stage": "",
+      "status": "enabled",
+      "note": "在推进但停住了。这类要先判归因，再给最小动作。"
+    },
+    {
+      "id": "intent.review_due",
+      "kind": "intent",
+      "sort_order": 60,
+      "match": ["复盘", "好久没管", "该看看", "总结一下", "回顾", "回头看看"],
+      "intent": "review_due",
+      "stage": "",
+      "status": "enabled",
+      "note": "想回头看。与卡住共用复盘环节，但基调不同：一个是找原因，一个是看效果。"
+    },
+    {
+      "id": "stage.confused",
+      "kind": "stage",
+      "sort_order": 10,
+      "match": [],
+      "intent": "confused",
+      "stage": "collect",
+      "status": "enabled",
+      "note": "连自己是什么样都不清楚，没有比先了解情况更前面的步骤。"
+    },
+    {
+      "id": "stage.verify_direction",
+      "kind": "stage",
+      "sort_order": 20,
+      "match": [],
+      "intent": "verify_direction",
+      "stage": "diagnose",
+      "status": "enabled",
+      "note": "有方向可验，就需要把条件与要求比一比。"
+    },
+    {
+      "id": "stage.undecided",
+      "kind": "stage",
+      "sort_order": 30,
+      "match": [],
+      "intent": "undecided",
+      "stage": "decide",
+      "status": "enabled",
+      "note": "信息够了才谈得上选；不够时诊断环节会把人退回来。"
+    },
+    {
+      "id": "stage.how_to_act",
+      "kind": "stage",
+      "sort_order": 40,
+      "match": [],
+      "intent": "how_to_act",
+      "stage": "act",
+      "status": "enabled",
+      "note": "方向定了只缺动作。"
+    },
+    {
+      "id": "stage.stuck",
+      "kind": "stage",
+      "sort_order": 50,
+      "match": [],
+      "intent": "stuck",
+      "stage": "review",
+      "status": "enabled",
+      "note": "停住了先判原因，再决定交回诊断还是重拆计划。"
+    },
+    {
+      "id": "stage.review_due",
+      "kind": "stage",
+      "sort_order": 60,
+      "match": [],
+      "intent": "review_due",
+      "stage": "review",
+      "status": "enabled",
+      "note": "主动回看效果。"
+    }
+  ]
+}

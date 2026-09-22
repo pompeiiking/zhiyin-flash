@@ -4,7 +4,7 @@
 ------------
 装配是**全局注入**：`zhiyin_boot.wire_application()` 会把装配报告写进
 `zhiyin_api.runtime`、把 Facade 实现写进 `zhiyin_api.facade`。这是"api 不能反向
-依赖 boot"逼出来的设计（见《开发指南》§5.2），但代价是**用例之间会串状态**：
+依赖 boot"逼出来的设计，但代价是**用例之间会串状态**：
 
 - 某个用例若 wire 过一次，后面的用例就会看到别人的 Facade——
   `test_app.py::test_unimplemented_capability_degrades_instead_of_500` 期望

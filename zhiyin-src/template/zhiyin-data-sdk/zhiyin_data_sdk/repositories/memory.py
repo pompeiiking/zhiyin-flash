@@ -5,7 +5,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Optional
 
-from zhiyin_kernel.blackboard import ConversationMemory
+from zhiyin_kernel.blackboard import ConversationMemory, ConversationTurn
 
 
 class ConversationMemoryRepository(ABC):
@@ -26,3 +26,21 @@ class ConversationMemoryRepository(ABC):
     @abstractmethod
     async def delete(self, user_id: str, task_id: str) -> None:
         """删除会话记忆。"""
+
+
+class ConversationTurnRepository(ABC):
+    """逐轮对话原文（`biz_conversation_turn`）。
+
+    与记忆分开的理由见 `ConversationTurn` 的 docstring：
+    记忆是给模型续接用的累积摘要，这里要的是"他当时到底怎么说的"。
+    """
+
+    @abstractmethod
+    async def append(self, turn: ConversationTurn) -> ConversationTurn:
+        """追加一轮（只追加、不修改：历史不该被后来的改写覆盖）。"""
+
+    @abstractmethod
+    async def list_by_task(
+        self, user_id: str, task_id: str, *, limit: int = 200
+    ) -> list[ConversationTurn]:
+        """按时间正序列出一条会话的全部轮次。"""

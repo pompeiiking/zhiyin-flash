@@ -1,0 +1,35 @@
+{
+  "_note": "职引 · 成就解锁规则。属动态资源：改本文件不需要发版。判据是「哪条行为解锁哪个成就」，成就本身仍由行为日志实时推导、永不落表（只由行为日志驱动，防自嗨）。trigger_events 的取值来自 zhiyin_kernel.enums.BehaviorEventType；命中任一即解锁。",
+  "items": [
+    {
+      "code": "first_answer",
+      "trigger_events": ["answer"],
+      "sort_order": 1,
+      "note": "第一次认真回答：门槛最低的一枚，作用是让用户知道「记录下来了」"
+    },
+    {
+      "code": "first_gap_claim",
+      "trigger_events": ["gap_claim"],
+      "sort_order": 2,
+      "note": "第一次认领差距：这是诊断走向动作的那一步，值得单独给一枚"
+    },
+    {
+      "code": "decision_made",
+      "trigger_events": ["decision_select"],
+      "sort_order": 3,
+      "note": "第一次做出可撤回的选择"
+    },
+    {
+      "code": "first_task_done",
+      "trigger_events": ["task_done"],
+      "sort_order": 4,
+      "note": "第一次勾掉任务：从「想清楚」到「做了」的分界"
+    },
+    {
+      "code": "first_review",
+      "trigger_events": ["review"],
+      "sort_order": 5,
+      "note": "第一次复盘"
+    }
+  ]
+}

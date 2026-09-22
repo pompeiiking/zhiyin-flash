@@ -1,38 +1,41 @@
 """内存 Repository 实现（第一期默认）。
 
-用途：让业务层与前端在 MySQL 未就绪时也能端到端联调（"Mock 先行"）。
-实现原则：行为必须与 MySQL 版一致（含版本 +1、只追加、影响面匹配），
+用途：让业务层与前端能端到端联调。
+实现原则：行为保持一致（含版本 +1、只追加、影响面匹配），
 否则切真后会暴露契约之外的差异。
 
 约定：
 - 返回值一律是 `deepcopy` 出来的快照，避免调用方改内存对象绕过 Repository 语义；
-- `behavior_log` 只允许追加，不提供任何 UPDATE 路径（PRD §十一 埋点为唯一事实来源）；
+- `behavior_log` 只允许追加，不提供任何 UPDATE 路径（行为日志是唯一事实来源）；
 - 资产版本单调递增：传入的 version 若不大于当前最新版本，会被提升为 latest+1，
   以保证「影响面传播 → 版本 +1」这条验收口径在任何调用顺序下都成立。
 
 异步口径：契约里的公开方法在本文件里也全部是 `async`，但内部**没有**任何真 IO
 （纯内存字典），因此私有辅助函数（`_ensure` / `_by_type` / `_require` / `_load`）
-保持同步，不需要为了"看起来异步"而层层 await。第二期换成 MySQL 实现时，
+保持同步，不需要为了"看起来异步"而层层 await。切换实现时，
 方法签名不变，只把 `await` 换成真实查询。
 
-TODO(第二期)：替换为 MySQL 实现（见 persistence/database.py 的 SqlAlchemyTransactionManager）。
+TODO：按自有基础设施演进。
 """
 
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
 from typing import Any, Optional, Sequence
 from uuid import uuid4
 
-from zhiyin_kernel.assets import ActionPlan, DirectionPlan, Report
+from zhiyin_kernel.assets import ActionPlan, CalendarNode, DirectionPlan, Report, TrackEvent
 from zhiyin_kernel.blackboard import (
     AssetVersion,
     BehaviorLog,
     ConversationMemory,
+    ConversationTurn,
     Profile,
     ProfileField,
     ProfileGap,
     TaskSession,
+    UserNote,
 )
 from zhiyin_kernel.dynamic_content import (
     BannerSpec,
@@ -48,24 +51,44 @@ from zhiyin_kernel.enums import (
     LoopStage,
     TaskStatus,
 )
-from zhiyin_kernel.identity import AuthSession, UserAccount
+from zhiyin_kernel.identity import UserAccount
 from zhiyin_kernel.registry import (
     AgentDescriptor,
+    BadgeRuleSpec,
+    ChsiFieldSpec,
+    CollectionRuleSpec,
+    LayoutPolicy,
     OutputContractSpec,
     PolicyParamSet,
+    PromptSpec,
+    RoutingRuleSpec,
+    StageSpec,
     TaskEntrySpec,
+    TaskProgressSpec,
     TheoryCard,
     TrackEventSpec,
+    UserSignalSpec,
 )
+from zhiyin_kernel.errors import ResourceNotFound
 from zhiyin_data_sdk.repositories import (
+    AcademicSnapshotRepository,
     AssetRepository,
     BehaviorRepository,
     ConversationMemoryRepository,
+    ConversationTurnRepository,
     ProfileRepository,
     RegistryRepository,
     TaskSessionRepository,
+    UserNoteRepository,
     UserRepository,
 )
+from zhiyin_data_sdk.repositories import (
+    AiTaskResultRepository,
+    CalendarNodeRepository,
+    NotificationRepository,
+    TrackEventRepository,
+)
+from zhiyin_data_sdk.gateways.academic import AcademicSnapshot
 
 
 def _now() -> datetime:
@@ -110,6 +133,14 @@ class InMemoryProfileRepository(ProfileRepository):
         profile.version += 1
         profile.updated_at = _now()
         return _snapshot(incoming)
+
+    async def delete_field(self, user_id: str, key: str) -> None:
+        profile = self._ensure(user_id)
+        kept = [field for field in profile.fields if field.key != key]
+        if len(kept) != len(profile.fields):
+            profile.fields = kept
+            profile.version += 1
+            profile.updated_at = _now()
 
     async def list_fields(
         self, user_id: str, keys: Optional[Sequence[str]] = None
@@ -218,6 +249,75 @@ class InMemoryConversationMemoryRepository(ConversationMemoryRepository):
         self._memories.pop((user_id, task_id), None)
 
 
+class InMemoryConversationTurnRepository(ConversationTurnRepository):
+    """逐轮对话原文：内存实现。只追加，不改写历史。"""
+
+    def __init__(self) -> None:
+        self._turns: list[ConversationTurn] = []
+
+    async def append(self, turn: ConversationTurn) -> ConversationTurn:
+        stored = _snapshot(turn)
+        if not stored.id:
+            stored.id = _new_id("turn")
+        self._turns.append(stored)
+        return _snapshot(stored)
+
+    async def list_by_task(
+        self, user_id: str, task_id: str, *, limit: int = 200
+    ) -> list[ConversationTurn]:
+        items = [
+            turn
+            for turn in self._turns
+            if turn.user_id == user_id and (turn.task_id or "") == (task_id or "")
+        ]
+        items.sort(key=lambda item: item.created_at)
+        return [_snapshot(item) for item in items][-limit:]
+
+
+class InMemoryUserNoteRepository(UserNoteRepository):
+    """用户自建内容：内存实现，语义与 Postgres 版一致（更新即改 updated_at）。"""
+
+    def __init__(self) -> None:
+        self._notes: dict[str, UserNote] = {}
+
+    async def list_by_user(self, user_id: str) -> list[UserNote]:
+        items = [note for note in self._notes.values() if note.user_id == user_id]
+        items.sort(key=lambda item: item.created_at, reverse=True)
+        return [_snapshot(item) for item in items]
+
+    async def upsert(self, note: UserNote) -> UserNote:
+        stored = _snapshot(note)
+        if not stored.id:
+            stored.id = _new_id("note")
+        stored.updated_at = _now()
+        self._notes[stored.id] = stored
+        return _snapshot(stored)
+
+    async def delete(self, user_id: str, note_id: str) -> None:
+        existing = self._notes.get(note_id)
+        if existing is not None and existing.user_id == user_id:
+            self._notes.pop(note_id, None)
+
+
+class InMemoryAcademicSnapshotRepository(AcademicSnapshotRepository):
+    """教务系统快照：内存实现，语义与 Postgres 版一致（重新取数即替换）。"""
+
+    def __init__(self) -> None:
+        self._snapshots: dict[str, AcademicSnapshot] = {}
+
+    async def get(self, user_id: str) -> Optional[AcademicSnapshot]:
+        snapshot = self._snapshots.get(user_id)
+        return _snapshot(snapshot) if snapshot is not None else None
+
+    async def upsert(self, user_id: str, snapshot: AcademicSnapshot) -> AcademicSnapshot:
+        stored = _snapshot(snapshot)
+        self._snapshots[user_id] = stored
+        return _snapshot(stored)
+
+    async def delete(self, user_id: str) -> None:
+        self._snapshots.pop(user_id, None)
+
+
 class InMemoryAssetRepository(AssetRepository):
     """资产版本与内容。版本单调递增，影响面按 depends_on_profile_keys 匹配。"""
 
@@ -305,18 +405,26 @@ class InMemoryAssetRepository(AssetRepository):
         self._plans[user_id] = stored
 
     async def select_direction_plan(self, user_id: str, plan_id: str) -> DirectionPlan:
+        """选中一个方向方案，其余取消选中。
+
+        顺序很关键：**先确认目标存在，再落状态变更**。
+        此前是"在同一个循环里边找边把其它方案置为未选"，于是传入一个不存在的
+        `plan_id` 时，用户的当前选择会先被抹掉、然后才抛异常 —— 调用方即使捕获了
+        异常，数据也已经被改坏（且内存实现没有回滚）。
+        """
         plans = self._plans.get(user_id, [])
-        target: Optional[DirectionPlan] = None
+        target = next((item for item in plans if item.id == plan_id), None)
+        if target is None:
+            raise ResourceNotFound(f"方向方案不存在：{plan_id}")
+
+        now = _now()
         for item in plans:
-            if item.id == plan_id:
+            if item is target:
                 item.selected = True
-                item.selected_at = _now()
-                target = item
+                item.selected_at = now
             else:
                 item.selected = False
                 item.selected_at = None
-        if target is None:
-            raise LookupError(f"方向方案不存在：{plan_id}")
         return _snapshot(target)
 
     # ---------- 行动计划 ----------
@@ -332,17 +440,21 @@ class InMemoryAssetRepository(AssetRepository):
         self._action_plans[user_id] = stored
         return _snapshot(stored)
 
-    async def mark_task_done(self, user_id: str, task_id: str) -> ActionPlan:
+    async def mark_task_done(
+        self, user_id: str, task_id: str, *, done: bool = True
+    ) -> ActionPlan:
         plan = self._action_plans.get(user_id)
         if plan is None:
-            raise LookupError(f"行动计划不存在：{user_id}")
+            raise ResourceNotFound(f"行动计划不存在：{user_id}")
         for phase in plan.phases:
             for task in phase.tasks:
-                if _task_key(phase.name, task.text) == task_id or task.text == task_id:
-                    task.done = True
-                    task.done_at = _now()
+                # 优先按任务 id 定位（新数据）；老数据没有 id，回落到
+                # 「阶段名:任务文本」与"裸任务文本"两种历史口径。
+                if task_id in {task.id, _task_key(phase.name, task.text), task.text}:
+                    task.done = done
+                    task.done_at = _now() if done else None
                     return _snapshot(plan)
-        raise LookupError(f"行动任务不存在：{task_id}")
+        raise ResourceNotFound(f"行动任务不存在：{task_id}")
 
     # ---------- 内部 ----------
 
@@ -417,7 +529,7 @@ class InMemoryTaskSessionRepository(TaskSessionRepository):
     def _require(self, session_id: str) -> TaskSession:
         session = self._sessions.get(session_id)
         if session is None:
-            raise LookupError(f"任务会话不存在：{session_id}")
+            raise ResourceNotFound(f"任务会话不存在：{session_id}")
         return session
 
 
@@ -426,7 +538,6 @@ class InMemoryUserRepository(UserRepository):
 
     def __init__(self) -> None:
         self._users: dict[str, UserAccount] = {}
-        self._sessions: dict[str, AuthSession] = {}
 
     async def get_by_id(self, user_id: str) -> Optional[UserAccount]:
         user = self._users.get(user_id)
@@ -448,18 +559,8 @@ class InMemoryUserRepository(UserRepository):
     async def touch_last_login(self, user_id: str, at: datetime) -> None:
         user = self._users.get(user_id)
         if user is None:
-            raise LookupError(f"用户不存在：{user_id}")
+            raise ResourceNotFound(f"用户不存在：{user_id}")
         user.last_login_at = at
-
-    async def save_auth_session(self, session: AuthSession) -> AuthSession:
-        stored = _snapshot(session)
-        self._sessions[stored.token] = stored
-        return _snapshot(stored)
-
-    async def get_auth_session(self, token: str) -> Optional[AuthSession]:
-        session = self._sessions.get(token)
-        return _snapshot(session) if session is not None else None
-
 
 class LocalJsonRegistryRepository(RegistryRepository):
     """动态资源：第一期读本地 JSON。
@@ -468,9 +569,9 @@ class LocalJsonRegistryRepository(RegistryRepository):
     policy_params,menus,routes,copies,banners,trust_blocks,faqs}.json`
     文件内容支持两种形状：顶层数组，或 `{"items": [...]}`。
 
-    设计意图（《分层实现与接口设计》§三）：页面文案、任务入口、智能体、理论卡、
+    设计意图：页面文案、任务入口、智能体、理论卡、
     产出契约、规则参数都必须是**动态资源**。放 JSON 而不是写进代码，是为了在第一期
-    就能验证"改配置不发版"这条口径；接 pami 动态资源表时只替换本类。
+    就能验证"改配置不发版"这条口径。
 
     前端页面内容（菜单 / 路由 / 文案 / 横幅 / 信任块 / FAQ）的取数口径统一在本类：
     只返回 `status == "enabled"` 且按 `sort_order` 升序——上下线与排序是数据语义，
@@ -490,6 +591,25 @@ class LocalJsonRegistryRepository(RegistryRepository):
         "trust_blocks": "trust_blocks.json",
         "faqs": "faqs.json",
         "track_events": "track_events.json",
+        # AI 提示词与编排规则：它们曾经没有来源（只能写在装配代码里），
+        # 现在与其他动态资源同一套读法。
+        "prompts": "prompts.json",
+        "routing_rules": "routing_rules.json",
+        # 编排与展示口径：环节、气泡编排、采集规则、用户信号。
+        # ⚠️ 这四类此前只在 Postgres 实现里有读方法，本地实现缺了它们 ——
+        # 而 `dynamic_config` 用 `except Exception` 兜底，于是本地模式下
+        # 环节标题全空、气泡编排退化、采集规则回落代码内置表，
+        # 且 `--check` 依然全绿（它只读文件，不读这条链路）。
+        "stages": "stages.json",
+        "layout": "layout.json",
+        "collection_rules": "collection_rules.json",
+        "user_signals": "user_signals.json",
+        # 产品口径：成就规则 / AI 任务进度文案 / 学信网字段清单。
+        # 它们此前写在业务层代码里（`_BADGE_RULES` / `_PROGRESS_NOTES` /
+        # `_CHSI_PROFILE_KEYS`）—— 都是"改一次要发一次版"的口径。
+        "badge_rules": "badge_rules.json",
+        "task_progress": "task_progress.json",
+        "chsi_fields": "chsi_fields.json",
     }
 
     def __init__(self, data_dir: str = "data/registry") -> None:
@@ -543,6 +663,51 @@ class LocalJsonRegistryRepository(RegistryRepository):
         entries.sort(key=lambda item: item.sort_order)
         return entries
 
+    # ---------- 环节口径与编排（此前本地实现缺这四类，导致静默降级） ----------
+
+    async def get_layout_policy(self, code: str) -> Optional[LayoutPolicy]:
+        """按 code 取气泡编排策略。取不到返回 None（调用方决定怎么解释"没配"）。"""
+        for raw in self._load("layout"):
+            if raw.get("code") == code:
+                return LayoutPolicy.model_validate(raw)
+        return None
+
+    async def list_stages(self) -> list[StageSpec]:
+        """五个环节的展示口径，按 order 升序。"""
+        items = [StageSpec.model_validate(raw) for raw in self._load("stages")]
+        items.sort(key=lambda item: item.order)
+        return items
+
+    async def list_collection_rules(self) -> list[CollectionRuleSpec]:
+        """采集规则，按 order 升序（同档内越小的越先）。"""
+        items = [CollectionRuleSpec.model_validate(raw) for raw in self._load("collection_rules")]
+        items.sort(key=lambda item: item.order)
+        return items
+
+    async def list_user_signals(self) -> list[UserSignalSpec]:
+        """用户信号：用户自己写下的话 → 哪个画像字段变成前提。"""
+        items = [UserSignalSpec.model_validate(raw) for raw in self._load("user_signals")]
+        items.sort(key=lambda item: item.order)
+        return items
+
+    async def list_badge_rules(self) -> list[BadgeRuleSpec]:
+        """成就解锁规则。顺序由 sort_order 决定。"""
+        items = [BadgeRuleSpec.model_validate(raw) for raw in self._load("badge_rules")]
+        items.sort(key=lambda item: item.sort_order)
+        return items
+
+    async def list_task_progress(self) -> list[TaskProgressSpec]:
+        """生成类 AI 任务的进度文案。"""
+        items = [TaskProgressSpec.model_validate(raw) for raw in self._load("task_progress")]
+        items.sort(key=lambda item: item.sort_order)
+        return items
+
+    async def list_chsi_fields(self) -> list[ChsiFieldSpec]:
+        """学信网字段清单（写哪些、叫什么、什么顺序）。"""
+        items = [ChsiFieldSpec.model_validate(raw) for raw in self._load("chsi_fields")]
+        items.sort(key=lambda item: item.order)
+        return items
+
     # ---------- 规则参数 ----------
 
     async def get_policy_params(self, code: str) -> Optional[PolicyParamSet]:
@@ -575,6 +740,47 @@ class LocalJsonRegistryRepository(RegistryRepository):
     async def list_track_events(self) -> list[TrackEventSpec]:
         items = [TrackEventSpec.model_validate(raw) for raw in self._load("track_events")]
         return sorted(items, key=lambda item: item.code)
+
+    # ---------- AI 提示词与编排规则 ----------
+
+    async def get_prompt(self, code: str) -> Optional[PromptSpec]:
+        """按 code 取一条提示词。`code` 是稳定标识，不按位置找。"""
+        for raw in self._load("prompts"):
+            if raw.get("code") == code:
+                spec = PromptSpec.model_validate(raw)
+                return spec if spec.status == "enabled" else None
+        return None
+
+    async def list_prompts(
+        self,
+        *,
+        layer: Optional[str] = None,
+        agent_id: Optional[str] = None,
+        stage: Optional[str] = None,
+    ) -> list[PromptSpec]:
+        items = [PromptSpec.model_validate(raw) for raw in self._load("prompts")]
+        items = [item for item in items if item.status == "enabled"]
+        if layer is not None:
+            items = [item for item in items if item.layer == layer]
+        if agent_id is not None:
+            items = [item for item in items if item.agent_id == agent_id]
+        if stage is not None:
+            items = [item for item in items if item.stage == stage]
+        items.sort(key=lambda item: item.sort_order)
+        return items
+
+    async def list_routing_rules(
+        self, kind: Optional[str] = None
+    ) -> list[RoutingRuleSpec]:
+        items = [
+            RoutingRuleSpec.model_validate(raw) for raw in self._load("routing_rules")
+        ]
+        items = [item for item in items if item.status == "enabled"]
+        if kind is not None:
+            items = [item for item in items if item.kind == kind]
+        # 稳定排序：序号相同时按 id，保证同一份配置每次读出来的顺序一致。
+        items.sort(key=lambda item: (item.sort_order, item.id))
+        return items
 
     # ---------- 内部 ----------
 
@@ -610,12 +816,138 @@ class LocalJsonRegistryRepository(RegistryRepository):
         self._cache.clear()
 
 
+class InMemoryCalendarNodeRepository(CalendarNodeRepository):
+    """关键节点日历：内存实现，语义与 Postgres 版一致（同 node_id 覆盖）。"""
+
+    def __init__(self) -> None:
+        self._nodes: dict[str, list[CalendarNode]] = {}
+
+    async def list_nodes(self, user_id: str) -> list[CalendarNode]:
+        items = list(self._nodes.get(user_id, ()))
+        # 没有 due_at 的排最后：它们还没被排进时间轴，不该插在已排定的前面。
+        items.sort(key=lambda item: (item.due_at is None, item.due_at or _now()))
+        return [_snapshot(item) for item in items]
+
+    async def upsert_node(self, user_id: str, node: CalendarNode) -> CalendarNode:
+        stored = _snapshot(node)
+        stored.user_id = user_id
+        nodes = self._nodes.setdefault(user_id, [])
+        nodes[:] = [item for item in nodes if item.node_id != stored.node_id]
+        nodes.append(stored)
+        return _snapshot(stored)
+
+    async def delete_node(self, user_id: str, node_id: str) -> int:
+        nodes = self._nodes.get(user_id)
+        if not nodes:
+            return 0
+        before = len(nodes)
+        nodes[:] = [item for item in nodes if item.node_id != node_id]
+        return before - len(nodes)
+
+
+class InMemoryTrackEventRepository(TrackEventRepository):
+    """跟踪时间线：只追加。"""
+
+    def __init__(self) -> None:
+        self._events: dict[str, list[TrackEvent]] = {}
+
+    async def list_events(self, user_id: str, *, limit: int = 50) -> list[TrackEvent]:
+        items = sorted(
+            self._events.get(user_id, ()),
+            key=lambda item: item.occurred_at or _now(),
+            reverse=True,
+        )
+        return [_snapshot(item) for item in items[: max(limit, 0)]]
+
+    async def append_event(self, user_id: str, event: TrackEvent) -> TrackEvent:
+        stored = _snapshot(event)
+        stored.user_id = user_id
+        if not stored.id:
+            stored.id = _new_id("track")
+        if stored.occurred_at is None:
+            stored.occurred_at = _now()
+        self._events.setdefault(user_id, []).append(stored)
+        return _snapshot(stored)
+
+
+class InMemoryNotificationRepository(NotificationRepository):
+    """通知读侧：内存实现。
+
+    它只服务"纯本地模式"（没有 Postgres 时通知本来也只在本进程里）。
+    Postgres 模式下读的是 `orc_notification`，与写侧同一张表。
+    """
+
+    def __init__(self) -> None:
+        self._messages: dict[str, list[dict[str, Any]]] = {}
+
+    def add(self, user_id: str, message: dict[str, Any]) -> None:
+        """写侧入口（`LocalNotify` 推消息时调）。"""
+        self._messages.setdefault(user_id, []).append(dict(message))
+
+    def store(self, user_id: str) -> list[dict[str, Any]]:
+        """原始列表（含已读）。调试与单测用，业务读侧请走 `list_pending`。"""
+        return self._messages.get(user_id, ())
+
+    async def list_pending(self, user_id: str) -> list[dict]:
+        return [dict(item) for item in self._messages.get(user_id, ()) if not item.get("read_at")]
+
+    async def mark_read(self, user_id: str, message_id: str) -> int:
+        changed = 0
+        for item in self._messages.get(user_id, ()):
+            if item.get("id") == message_id and not item.get("read_at"):
+                item["read_at"] = _now().isoformat()
+                changed += 1
+        return changed
+
+    async def last_sent_at(self, user_id: str) -> Optional[datetime]:
+        stamps = [
+            datetime.fromisoformat(str(item["occurred_at"]))
+            for item in self._messages.get(user_id, ())
+            if item.get("occurred_at")
+        ]
+        return max(stamps) if stamps else None
+
+    async def count_since(self, user_id: str, since: datetime) -> int:
+        return sum(
+            1
+            for item in self._messages.get(user_id, ())
+            if item.get("occurred_at")
+            and datetime.fromisoformat(str(item["occurred_at"])) >= since
+        )
+
+
+class InMemoryAiTaskResultRepository(AiTaskResultRepository):
+    """AI 任务产出：内存实现（语义与 Postgres 版一致）。"""
+
+    def __init__(self) -> None:
+        self._items: dict[tuple[str, str], dict[str, Any]] = {}
+
+    async def get(self, user_id: str, task_key: str) -> Optional[dict[str, Any]]:
+        value = self._items.get((user_id, task_key))
+        return json.loads(json.dumps(value)) if value is not None else None
+
+    async def put(self, user_id: str, task_key: str, payload: dict[str, Any]) -> None:
+        self._items[(user_id, task_key)] = json.loads(json.dumps(payload))
+
+    async def delete_prefix(self, user_id: str, prefix: str = "") -> int:
+        doomed = [key for key in self._items if key[0] == user_id and key[1].startswith(prefix)]
+        for key in doomed:
+            self._items.pop(key, None)
+        return len(doomed)
+
+
 __all__ = [
+    "InMemoryAiTaskResultRepository",
     "InMemoryAssetRepository",
+    "InMemoryAcademicSnapshotRepository",
     "InMemoryBehaviorRepository",
+    "InMemoryCalendarNodeRepository",
     "InMemoryConversationMemoryRepository",
+    "InMemoryNotificationRepository",
     "InMemoryProfileRepository",
     "InMemoryTaskSessionRepository",
+    "InMemoryTrackEventRepository",
+    "InMemoryUserNoteRepository",
     "InMemoryUserRepository",
     "LocalJsonRegistryRepository",
 ]

@@ -1,0 +1,100 @@
+[
+  {
+    "id": "sig-autumn",
+    "keyword": "秋招",
+    "key": "expected_graduation",
+    "why": "你写下的方向里，秋招是最看时间的那一个 —— 先知道还剩几个窗口，才知道该不该现在就动手",
+    "order": 1
+  },
+  {
+    "id": "sig-campus",
+    "keyword": "校招",
+    "key": "expected_graduation",
+    "why": "校招按毕业年份放窗口，先知道你什么时候毕业，才排得出先投哪一届",
+    "order": 2
+  },
+  {
+    "id": "sig-postgrad",
+    "keyword": "考研",
+    "key": "degree_level",
+    "why": "考研和本科就业是两条时间线，先确认你现在这一层，才能判断考研是主路还是备选",
+    "order": 3
+  },
+  {
+    "id": "sig-recommend",
+    "keyword": "保研",
+    "key": "degree_level",
+    "why": "保研看的是本科学籍里的排名口径，先确认层次与专业，才谈得上够不够得着",
+    "order": 4
+  },
+  {
+    "id": "sig-civil",
+    "keyword": "考公",
+    "key": "values",
+    "why": "你提到体制内方向 —— 稳定优先还是成长优先，这一条只有你自己说得清，我不替你定",
+    "order": 5
+  },
+  {
+    "id": "sig-public",
+    "keyword": "考编",
+    "key": "values",
+    "why": "编制方向通常伴随对稳定性的偏好，先确认你真正看重什么，后面才不用反复改方向",
+    "order": 6
+  },
+  {
+    "id": "sig-abroad",
+    "keyword": "留学",
+    "key": "school",
+    "why": "留学申请里学校是硬门槛，先拿到它，清单才能按你实际的起点算",
+    "order": 7
+  },
+  {
+    "id": "sig-overseas",
+    "keyword": "出国",
+    "key": "school",
+    "why": "你提到了出国这条路 —— 学校背景决定要补的是语言、科研还是实习",
+    "order": 8
+  },
+  {
+    "id": "sig-intern",
+    "keyword": "实习",
+    "key": "experience",
+    "why": "你在为实习做准备，而实习与项目是方向判断里最硬的一条证据",
+    "order": 9
+  },
+  {
+    "id": "sig-resume",
+    "keyword": "简历",
+    "key": "experience",
+    "why": "改简历时要往上写的东西，正是你的经历本身 —— 先把它说清楚，简历才有东西可写",
+    "order": 10
+  },
+  {
+    "id": "sig-timetable",
+    "keyword": "课表",
+    "key": "courses",
+    "why": "你提到了课表 —— 没有它就算不出这周真正能用的空档（这一步需要教务系统，目前还没接）",
+    "order": 11
+  },
+  {
+    "id": "sig-gpa",
+    "keyword": "绩点",
+    "key": "scores",
+    "why": "你提到了成绩 —— 把课程成绩折算成能力证据要用它（这一步需要教务系统，目前还没接）",
+    "order": 12
+  },
+  {
+    "id": "sig-major-change",
+    "keyword": "转专业",
+    "key": "major",
+    "why": "转专业意味着方向可能和现在学的不一样，先确认你实际在读的专业，别按旧信息算",
+    "order": 13
+  },
+  {
+    "id": "sig-graduation",
+    "keyword": "毕业",
+    "key": "expected_graduation",
+    "why": "你提到了毕业时间 —— 它决定你还有几个窗口，冲刺阶段的第一约束",
+    "order": 14
+  }
+]

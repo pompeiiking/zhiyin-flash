@@ -1,11 +1,11 @@
 """鉴权 / 安全 / 限流 Gateway —— 第一期的"默认通过层"。
 
-第一期约束（《职引技术架构文档-第一期》§7.1）：
+第一期约束：
 - AuthGateway       → DefaultPassAuth：固定演示用户，不校验真实凭证
 - SecurityGateway   → NoopSecurity：不加密、不脱敏、不审计
 - RateLimitGateway  → NoopRateLimit：恒放行
 
-替换真实实现（pami IAM / JWT / 加密 / 限流）时只替换 Adapter，不改业务代码。
+替换真实实现（JWT / 加密 / 限流）时只替换 Adapter，不改业务代码。
 """
 
 from __future__ import annotations
@@ -40,6 +40,39 @@ class AuthGateway(ABC):
     @abstractmethod
     async def is_authenticated(self, request: dict[str, Any]) -> bool:
         """是否已认证。"""
+
+    @abstractmethod
+    async def issue_token(
+        self, principal: AuthPrincipal, *, ttl_s: Optional[int] = None
+    ) -> str:
+        """签发登录令牌。"""
+
+    @abstractmethod
+    async def revoke_token(self, token: str) -> None:
+        """撤销登录令牌。"""
+
+    @abstractmethod
+    async def create_password(self, user_id: str, password: str) -> None:
+        """**首次**设置密码；账号已存在时抛 `DuplicateResource`，绝不覆盖。
+
+        与 `set_password` 的分工必须保留：
+
+        - 这条是「创建」，注册路径走它 —— 否则「重复注册」会变成
+          「把别人的密码改掉」，任何人只要知道账号名就能接管账号；
+        - `set_password` 是「设置 / 重置」，只允许在已确认身份之后调用。
+
+        「先查再写」会有 TOCTOU 竞态（两个并发注册同时通过存在性检查），
+        所以实现必须用「插入即冲突检测」（`ON CONFLICT DO NOTHING` + 影响行数），
+        而不是在实现里另做一次 `SELECT`。
+        """
+
+    @abstractmethod
+    async def set_password(self, user_id: str, password: str) -> None:
+        """设置 / 重置用户密码（允许覆盖）。注册路径不要用它。"""
+
+    @abstractmethod
+    async def verify_password(self, user_id: str, password: str) -> bool:
+        """校验用户密码。"""
 
 
 class SecurityGateway(ABC):

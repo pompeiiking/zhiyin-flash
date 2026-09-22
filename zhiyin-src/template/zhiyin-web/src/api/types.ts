@@ -5,6 +5,26 @@
 
 
 export interface paths {
+  "/api/v1/app/academic": {
+    /**
+     * Revoke Academic
+     * @description 清空导入的课表与成绩（画像里那两条摘要一起删）。
+     *
+     * 只清快照不删摘要的话，采集清单会一直显示"课程表已拿到"，
+     * 用户再也回不到导入入口 —— 那是"看起来清掉了"。
+     */
+    delete: operations["revoke_academic_api_v1_app_academic_delete"];
+  };
+  "/api/v1/app/academic/import": {
+    /**
+     * Import Academic
+     * @description 导入课表与成绩单（学生自己贴原文）。
+     *
+     * 这条路是产品有意选的：不做替学生登录学校系统，也不经手他校内账号的密码。
+     * 用户的体验压在解析上 —— 贴进来的东西读不出来时，回执要说清楚**改哪里**。
+     */
+    post: operations["import_academic_api_v1_app_academic_import_post"];
+  };
   "/api/v1/app/assets/export": {
     /**
      * Export Asset
@@ -19,6 +39,27 @@ export interface paths {
      */
     get: operations["list_asset_versions_api_v1_app_assets__asset_type__versions_get"];
   };
+  "/api/v1/app/auth/login": {
+    /**
+     * Login
+     * @description 账号密码登录，签发 JWT。
+     */
+    post: operations["login_api_v1_app_auth_login_post"];
+  };
+  "/api/v1/app/auth/logout": {
+    /**
+     * Logout
+     * @description 登出：撤销当前令牌（吊销表落库）。
+     */
+    post: operations["logout_api_v1_app_auth_logout_post"];
+  };
+  "/api/v1/app/auth/register": {
+    /**
+     * Register
+     * @description 注册并直接登录（返回 token）。
+     */
+    post: operations["register_api_v1_app_auth_register_post"];
+  };
   "/api/v1/app/bootstrap": {
     /**
      * Bootstrap
@@ -28,12 +69,215 @@ export interface paths {
      */
     get: operations["bootstrap_api_v1_app_bootstrap_get"];
   };
+  "/api/v1/app/brief/today": {
+    /**
+     * Brief Today
+     * @description 今日简报：今天为什么是这两件事。
+     */
+    post: operations["brief_today_api_v1_app_brief_today_post"];
+  };
+  "/api/v1/app/calendar": {
+    /**
+     * List Calendar Nodes
+     * @description 关键节点日历（④ 行动环节写进来的节点）。
+     *
+     * 此前这张表**只写不读**：库里有节点，界面上没有任何一处能看到 ——
+     * "规划师写入、教练读取"里的"读取"那一半没有实现。
+     */
+    get: operations["list_calendar_nodes_api_v1_app_calendar_get"];
+  };
+  "/api/v1/app/chsi/bind": {
+    /**
+     * Chsi Bind
+     * @description 学信网绑定管线：核验在线验证码 → 读学籍 → 写画像。
+     *
+     * 请求体 `arg` 是用户在学信档案申请到的**在线验证码**。
+     * 不接收、也不要求用户的学信网账号密码 —— 那条路既不合法，也不必要。
+     */
+    post: operations["chsi_bind_api_v1_app_chsi_bind_post"];
+  };
+  "/api/v1/app/config/reload": {
+    /**
+     * Reload Config
+     * @description 重新装载动态配置（环节口径 / 气泡编排 / 采集规则）。
+     */
+    post: operations["reload_config_api_v1_app_config_reload_post"];
+  };
   "/api/v1/app/conversation/message": {
     /**
      * Send Message
      * @description 发送一轮消息，返回最短结论 + 显式告知 + 行为引导 + 管线卡。
      */
     post: operations["send_message_api_v1_app_conversation_message_post"];
+  };
+  "/api/v1/app/day/{day}/advice": {
+    /**
+     * Day Advice
+     * @description 「这一天的建议」：日历里点开某一天时生成（`day` 是 YYYY-MM-DD）。
+     *
+     * 日历上其余的东西都是事实（那天有哪几门课、哪个节点到期、哪件事该做完），
+     * 前端直接读；这一条是那一天**怎么用**的建议，要模型下判断。
+     *
+     * 请求体里的 `arg` 是客户端的时区偏移（分钟，东为正）—— "那一天"是用户
+     * 手表上的那一天，不带这个偏移，傍晚以后的事会被算到前一天。
+     */
+    post: operations["day_advice_api_v1_app_day__day__advice_post"];
+  };
+  "/api/v1/app/dimensions/{dimension_id}": {
+    /**
+     * Dimension
+     * @description 维度解读（点开才生成，后端缓存）。
+     */
+    post: operations["dimension_api_v1_app_dimensions__dimension_id__post"];
+  };
+  "/api/v1/app/gaps/{gap_key}/clarify": {
+    /**
+     * Gap Clarify
+     * @description 缺口追问话术。
+     */
+    post: operations["gap_clarify_api_v1_app_gaps__gap_key__clarify_post"];
+  };
+  "/api/v1/app/intel": {
+    /**
+     * Get Intel
+     * @description 外部情报：公开事实（学职平台 + 通用网络检索）。
+     *
+     * **不要求登录**：登了录就按你的画像收窄，没登录就按 `?q=` 或平台通用数据取。
+     * 每条都带来源链接 —— 这类信息"凭什么这么说"就是那个链接，
+     * 所以取不到来源的条目在服务层就被丢掉了，不会返回。
+     */
+    get: operations["get_intel_api_v1_app_intel_get"];
+  };
+  "/api/v1/app/intel/refresh": {
+    /**
+     * Refresh Intel
+     * @description 现在去取一次（用户主动点）。同样**不要求登录**。
+     *
+     * 只在这条路上推通知：后台顺带取到的东西不弹 ——
+     * 浮窗要留给"值得打断他"的事，而"他自己刚点的"就是值得回一句的事。
+     * （未登录时没有收件人，自然也不推。）
+     */
+    post: operations["refresh_intel_api_v1_app_intel_refresh_post"];
+  };
+  "/api/v1/app/match/careers": {
+    /**
+     * Match Careers
+     * @description 学职网匹配：矩阵 + 排名 + 推荐。
+     */
+    post: operations["match_careers_api_v1_app_match_careers_post"];
+  };
+  "/api/v1/app/notes": {
+    /**
+     * List Notes
+     * @description 他写下的全部内容（新写的在前）。
+     */
+    get: operations["list_notes_api_v1_app_notes_get"];
+    /**
+     * Add Note
+     * @description 写一条。
+     */
+    post: operations["add_note_api_v1_app_notes_post"];
+  };
+  "/api/v1/app/notes/{note_id}": {
+    /**
+     * Remove Note
+     * @description 删掉一条。
+     */
+    delete: operations["remove_note_api_v1_app_notes__note_id__delete"];
+    /**
+     * Set Note Done
+     * @description 勾掉 / 取消勾掉一条待办。
+     */
+    patch: operations["set_note_done_api_v1_app_notes__note_id__patch"];
+  };
+  "/api/v1/app/notifications/pending": {
+    /**
+     * List Pending Notifications
+     * @description 教练主动介入通知出队（前端浮窗轮询消费）。
+     */
+    get: operations["list_pending_notifications_api_v1_app_notifications_pending_get"];
+  };
+  "/api/v1/app/notifications/{message_id}/read": {
+    /**
+     * Mark Notification Read
+     * @description 把一条通知标成已读。
+     *
+     * 浮窗关掉时前端调它。不调的话，读侧按"未读"出队，用户下次进页面
+     * 还会看到同一条 —— "我明明关过"就是这么来的。
+     */
+    post: operations["mark_notification_read_api_v1_app_notifications__message_id__read_post"];
+  };
+  "/api/v1/app/plan/action": {
+    /**
+     * Get Action Plan
+     * @description 行动计划正文（阶段 / 任务 / 现在这一件）。没有计划时 has_plan=False。
+     */
+    get: operations["get_action_plan_api_v1_app_plan_action_get"];
+  };
+  "/api/v1/app/plan/action/tasks": {
+    /**
+     * Set Action Task Done
+     * @description 勾掉 / 取消勾选一个行动任务。
+     *
+     * `done=false` 是"勾错了要撤回"：只支持单向勾选的话，用户点错一次就再也回不去。
+     */
+    patch: operations["set_action_task_done_api_v1_app_plan_action_tasks_patch"];
+  };
+  "/api/v1/app/plan/directions": {
+    /**
+     * Get Direction Plans
+     * @description 三套方向方案（主攻 / 平行 / 保底）+ 当前选中那一套。
+     */
+    get: operations["get_direction_plans_api_v1_app_plan_directions_get"];
+  };
+  "/api/v1/app/plan/directions/{option_id}/select": {
+    /**
+     * Select Direction Plan
+     * @description 选中一套方案。选择可撤回 —— 再选另一套就是撤回，没有单独的撤销接口。
+     *
+     * 方案 id 不存在时按 1002（资源不存在）返回：前端据此如实说"这套方案已经不在了"，
+     * 而不是把界面停在一个被选中的幽灵方案上。
+     */
+    post: operations["select_direction_plan_api_v1_app_plan_directions__option_id__select_post"];
+  };
+  "/api/v1/app/plan/timetable": {
+    /**
+     * Plan Timetable
+     * @description 课表 → 可投入时间。
+     */
+    post: operations["plan_timetable_api_v1_app_plan_timetable_post"];
+  };
+  "/api/v1/app/plan/todos/suggestions": {
+    /**
+     * Plan Todo Suggestions
+     * @description 待办建议（可采纳 / 可否决，回流画像）。
+     */
+    post: operations["plan_todo_suggestions_api_v1_app_plan_todos_suggestions_post"];
+  };
+  "/api/v1/app/portal": {
+    /**
+     * Portal
+     * @description 门户内容 —— **公开接口，不解析身份**。
+     *
+     * 门户是访客第一眼看到的那一页，内容全是产品自己的话（文案 / 信任块 / 横幅 /
+     * FAQ / 任务入口 / 开关）。它不需要知道"你是谁"，所以这里不调
+     * `resolve_user_id` —— 那是全站唯一一个不要求登录的业务读接口。
+     *
+     * 为什么要开这个口子：门户文案此前写死在前端 `data/portal.ts`，
+     * 改一句主张要发一次前端版本 —— 那是本仓"文案不进代码"这条底线上的最后一处例外。
+     */
+    get: operations["portal_api_v1_app_portal_get"];
+  };
+  "/api/v1/app/portrait/analysis": {
+    /**
+     * Portrait Analysis
+     * @description 「对你的分析」：整份画像合起来的一段判断（打开画像时生成）。
+     *
+     * 与「维度解读」的分工：那一条回答"这条字段是什么、凭什么"，
+     * 这一条回答"这些合起来说明我现在是个什么处境"。两件都要有 ——
+     * 只有前者的时候，画像看起来就是一张信息标签表。
+     */
+    post: operations["portrait_analysis_api_v1_app_portrait_analysis_post"];
   };
   "/api/v1/app/report/full-text": {
     /**
@@ -42,12 +286,29 @@ export interface paths {
      */
     get: operations["get_report_full_text_api_v1_app_report_full_text_get"];
   };
+  "/api/v1/app/report/summary": {
+    /**
+     * Report Summary
+     * @description 整份报告的结论段。
+     */
+    post: operations["report_summary_api_v1_app_report_summary_post"];
+  };
   "/api/v1/app/sessions": {
     /**
      * List Sessions
      * @description 左栏会话列表（并行任务会话，按任务/环节命名）。
      */
     get: operations["list_sessions_api_v1_app_sessions_get"];
+  };
+  "/api/v1/app/sessions/{task_id}/turns": {
+    /**
+     * List Session Turns
+     * @description 一条会话的逐轮原文。
+     *
+     * 会话列表点进去要能看见"这条会话发生过什么" —— 此前只有一张清单，
+     * 因为逐轮原文压根没落库（库里只有累积摘要）。
+     */
+    get: operations["list_session_turns_api_v1_app_sessions__task_id__turns_get"];
   };
   "/api/v1/app/task/enter": {
     /**
@@ -58,6 +319,17 @@ export interface paths {
      */
     post: operations["enter_task_api_v1_app_task_enter_post"];
   };
+  "/api/v1/app/theory-cards/{theory_id}": {
+    /**
+     * Get Theory Card
+     * @description 理论卡正文：点开理论标签时拉一次。
+     *
+     * 内容是**动态资源**（`data/registry/theory_cards.json`），改它不发版。
+     * 取不到按 1002（资源不存在）返回 —— 前端据此如实说"这张卡还没配"，
+     * 而不是渲染一张只有标题的空卡（那看起来像加载失败）。
+     */
+    get: operations["get_theory_card_api_v1_app_theory_cards__theory_id__get"];
+  };
   "/api/v1/app/track": {
     /**
      * Track Event
@@ -65,12 +337,22 @@ export interface paths {
      */
     post: operations["track_event_api_v1_app_track_post"];
   };
+  "/api/v1/app/track/events": {
+    /**
+     * List Track Events
+     * @description 跟踪时间线（复盘环节的载体）。
+     *
+     * 与 `/app/track` 是同一份数据的两个方向：那条写（前端埋点），这条读。
+     * 复盘页要回答"这段时间发生过什么"，靠的就是它 —— 此前只有写、没有读。
+     */
+    get: operations["list_track_events_api_v1_app_track_events_get"];
+  };
   "/api/v1/app/workspace": {
     /**
      * Get Workspace
      * @description 工作台聚合视图：画像 / 报告 / 方案 / 计划 / 跟踪 + 功能块。
      *
-     * 进入工作台属于持久化行为，游客在此处被登录拦截（PRD §5.3）。
+     * 进入工作台属于持久化行为，游客在此处被登录拦截。
      */
     get: operations["get_workspace_api_v1_app_workspace_get"];
   };
@@ -84,6 +366,382 @@ export type webhooks = Record<string, never>;
 
 export interface components {
   schemas: {
+    /**
+     * AcademicCourseView
+     * @description 课表里的一门课（教务系统取回来的原样，不改口径）。
+     */
+    AcademicCourseView: {
+      /**
+       * Category
+       * @default
+       */
+      category?: string;
+      /**
+       * Credit
+       * @default
+       */
+      credit?: string;
+      /**
+       * End Period
+       * @default 0
+       */
+      end_period?: number;
+      /** Name */
+      name: string;
+      /**
+       * Place
+       * @default
+       */
+      place?: string;
+      /**
+       * Start Period
+       * @default 0
+       */
+      start_period?: number;
+      /**
+       * Teacher
+       * @default
+       */
+      teacher?: string;
+      /**
+       * Weekday
+       * @description 1=周一 … 7=周日；0 表示没解析出
+       * @default 0
+       */
+      weekday?: number;
+      /**
+       * Weeks
+       * @default
+       */
+      weeks?: string;
+    };
+    /**
+     * AcademicGradeView
+     * @description 成绩单里的一条。等级制就照原样记，不换算。
+     */
+    AcademicGradeView: {
+      /**
+       * Category
+       * @default
+       */
+      category?: string;
+      /**
+       * Credit
+       * @default
+       */
+      credit?: string;
+      /**
+       * Kind
+       * @default
+       */
+      kind?: string;
+      /** Name */
+      name: string;
+      /**
+       * Point
+       * @default
+       */
+      point?: string;
+      /**
+       * Score
+       * @default
+       */
+      score?: string;
+      /**
+       * Term
+       * @default
+       */
+      term?: string;
+    };
+    /**
+     * AcademicImportAck
+     * @description 导入回执：读到了什么、写进了哪两条画像摘要。
+     */
+    AcademicImportAck: {
+      /**
+       * Courses
+       * @default 0
+       */
+      courses?: number;
+      /**
+       * Grades
+       * @default 0
+       */
+      grades?: number;
+      /**
+       * Imported At
+       * @default
+       */
+      imported_at?: string;
+      /** Notes */
+      notes?: string[];
+      /**
+       * School
+       * @default
+       */
+      school?: string;
+      /**
+       * Source
+       * @default
+       */
+      source?: string;
+      /**
+       * Term
+       * @default
+       */
+      term?: string;
+      /** Wrote Profile */
+      wrote_profile?: string[];
+    };
+    /**
+     * AcademicImportRequest
+     * @description 一次导入：贴进来的原文（课表、成绩单可各自为空）。
+     *
+     * 长度上限不是"防用户"，是**防一次误操作把服务打满**：教务系统整页复制很容易
+     * 带上几千行样式表，解析器是纯文本处理，几百 KB 的无意义输入会白烧 CPU。
+     * 这里给一个宽到不会挡住真实用量的界（200 KB 量级），超了就让用户删掉无关部分 ——
+     * 比默默接收再跑一遍解析更诚实。
+     */
+    AcademicImportRequest: {
+      /**
+       * Courses
+       * @description 课表原文：页面整页复制 / 表格 / JSON
+       * @default
+       */
+      courses?: string;
+      /**
+       * Grades
+       * @description 成绩单原文
+       * @default
+       */
+      grades?: string;
+      /**
+       * School
+       * @description 学校名（可留空）
+       * @default
+       */
+      school?: string;
+      /**
+       * Term
+       * @description 学期（可留空，多数情况能从原文里读到）
+       * @default
+       */
+      term?: string;
+    };
+    /**
+     * AcademicPanelView
+     * @description 学生自己导入的课表与成绩单。
+     *
+     * 它不是一个数组而是一份**快照**：学校、学期、取数时刻，加上课与成绩。
+     * 为什么要把"什么时候取的"一起给前端：课表会变（退课、调课、补考），
+     * 界面必须能说出这份数据是哪一天的，否则用户没法判断它还算不算数。
+     */
+    AcademicPanelView: {
+      /** Courses */
+      courses?: components["schemas"]["AcademicCourseView"][];
+      /** Grades */
+      grades?: components["schemas"]["AcademicGradeView"][];
+      /**
+       * Imported At
+       * @default
+       */
+      imported_at?: string;
+      /**
+       * Note
+       * @description 导入时发现、但不足以拒绝的情况
+       * @default
+       */
+      note?: string;
+      /**
+       * School
+       * @default
+       */
+      school?: string;
+      /**
+       * Source
+       * @description 按哪种版式读出来的：qz / zf / table / json
+       * @default
+       */
+      source?: string;
+      /**
+       * Term
+       * @default
+       */
+      term?: string;
+    };
+    /**
+     * AcademicRevokeAck
+     * @description 清空导入的回执。
+     */
+    AcademicRevokeAck: {
+      /**
+       * Revoked
+       * @description 授权与取回的数据是否已经删掉
+       */
+      revoked: boolean;
+    };
+    /**
+     * ActionPhaseView
+     * @description 行动阶段：一段时间的里程碑与它下面的任务。
+     */
+    ActionPhaseView: {
+      /**
+       * Date Range
+       * @default
+       */
+      date_range?: string;
+      /** Name */
+      name: string;
+      /**
+       * Tag
+       * @default
+       */
+      tag?: string;
+      /** Tasks */
+      tasks?: components["schemas"]["ActionTaskView"][];
+    };
+    /**
+     * ActionPlanView
+     * @description 行动计划正文（只读资产视图）。
+     *
+     * `has_plan=False` 是"还没有计划"（③ 还没走完），与"有计划但没有任务"是两件事 ——
+     * 界面上必须是两句话，所以这里用 has_plan 显式区分，而不是让前端去猜空数组的含义。
+     */
+    ActionPlanView: {
+      /** Exported At */
+      exported_at?: string | null;
+      /**
+       * Has Plan
+       * @default false
+       */
+      has_plan?: boolean;
+      /**
+       * Id
+       * @default
+       */
+      id?: string;
+      /** @description 第一件还没勾掉的任务 —— 界面上的'现在这一件' */
+      next_task?: components["schemas"]["ActionTaskView"] | null;
+      /** Phases */
+      phases?: components["schemas"]["ActionPhaseView"][];
+      /**
+       * Plan Id
+       * @description 关联的方向方案 id
+       */
+      plan_id?: string | null;
+      /**
+       * Reminders Synced
+       * @description 关键节点是否已写入日历
+       * @default false
+       */
+      reminders_synced?: boolean;
+    };
+    /**
+     * ActionTaskDoneRequest
+     * @description 勾掉 / 取消勾选一个行动任务。
+     */
+    ActionTaskDoneRequest: {
+      /**
+       * Done
+       * @default true
+       */
+      done?: boolean;
+      /** Task Id */
+      task_id: string;
+    };
+    /**
+     * ActionTaskView
+     * @description 行动任务：颗粒度是"今天/本周勾得掉"。
+     */
+    ActionTaskView: {
+      /**
+       * Done
+       * @default false
+       */
+      done?: boolean;
+      /** Done At */
+      done_at?: string | null;
+      /** Due Date */
+      due_date?: string | null;
+      /**
+       * Phase
+       * @description 所属阶段名
+       * @default
+       */
+      phase?: string;
+      /**
+       * Task Id
+       * @description 勾选时回传的标识（阶段名:任务文本）
+       */
+      task_id: string;
+      /** Text */
+      text: string;
+    };
+    /**
+     * AgentBadgeView
+     * @description 主理徽章：此刻是谁在帮我、依据哪些理论。
+     */
+    AgentBadgeView: {
+      /** Agent Id */
+      agent_id: string;
+      /** Name */
+      name: string;
+      /**
+       * Role Summary
+       * @default
+       */
+      role_summary?: string;
+      /** Theory Refs */
+      theory_refs?: components["schemas"]["TheoryRefView"][];
+    };
+    /** ApiResponse[AcademicImportAck] */
+    ApiResponse_AcademicImportAck_: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      data?: components["schemas"]["AcademicImportAck"] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
+    /** ApiResponse[AcademicRevokeAck] */
+    ApiResponse_AcademicRevokeAck_: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      data?: components["schemas"]["AcademicRevokeAck"] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
+    /** ApiResponse[ActionPlanView] */
+    ApiResponse_ActionPlanView_: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      data?: components["schemas"]["ActionPlanView"] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
     /** ApiResponse[BootstrapView] */
     ApiResponse_BootstrapView_: {
       /** @default 0 */
@@ -116,11 +774,107 @@ export interface components {
        */
       trace_id?: string;
     };
+    /** ApiResponse[DirectionPlanListView] */
+    ApiResponse_DirectionPlanListView_: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      data?: components["schemas"]["DirectionPlanListView"] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
     /** ApiResponse[ExportResultView] */
     ApiResponse_ExportResultView_: {
       /** @default 0 */
       code?: components["schemas"]["ErrorCode"];
       data?: components["schemas"]["ExportResultView"] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
+    /** ApiResponse[IntelListView] */
+    ApiResponse_IntelListView_: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      data?: components["schemas"]["IntelListView"] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
+    /** ApiResponse[LoginResult] */
+    ApiResponse_LoginResult_: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      data?: components["schemas"]["LoginResult"] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
+    /** ApiResponse[NoteAck] */
+    ApiResponse_NoteAck_: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      data?: components["schemas"]["NoteAck"] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
+    /** ApiResponse[NoteView] */
+    ApiResponse_NoteView_: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      data?: components["schemas"]["NoteView"] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
+    /** ApiResponse[PortalView] */
+    ApiResponse_PortalView_: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      data?: components["schemas"]["PortalView"] | null;
       /**
        * Message
        * @default ok
@@ -180,6 +934,22 @@ export interface components {
        */
       trace_id?: string;
     };
+    /** ApiResponse[TheoryCardView] */
+    ApiResponse_TheoryCardView_: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      data?: components["schemas"]["TheoryCardView"] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
     /** ApiResponse[TrackEventAck] */
     ApiResponse_TrackEventAck_: {
       /** @default 0 */
@@ -212,12 +982,116 @@ export interface components {
        */
       trace_id?: string;
     };
+    /** ApiResponse[dict] */
+    ApiResponse_dict_: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      /** Data */
+      data?: {
+        [key: string]: unknown;
+      } | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
     /** ApiResponse[list[AssetVersionView]] */
     ApiResponse_list_AssetVersionView__: {
       /** @default 0 */
       code?: components["schemas"]["ErrorCode"];
       /** Data */
       data?: components["schemas"]["AssetVersionView"][] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
+    /** ApiResponse[list[CalendarNodeView]] */
+    ApiResponse_list_CalendarNodeView__: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      /** Data */
+      data?: components["schemas"]["CalendarNodeView"][] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
+    /** ApiResponse[list[CoachNotificationView]] */
+    ApiResponse_list_CoachNotificationView__: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      /** Data */
+      data?: components["schemas"]["CoachNotificationView"][] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
+    /** ApiResponse[list[ConversationMessageView]] */
+    ApiResponse_list_ConversationMessageView__: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      /** Data */
+      data?: components["schemas"]["ConversationMessageView"][] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
+    /** ApiResponse[list[NoteView]] */
+    ApiResponse_list_NoteView__: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      /** Data */
+      data?: components["schemas"]["NoteView"][] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
+    /** ApiResponse[list[TrackEventView]] */
+    ApiResponse_list_TrackEventView__: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      /** Data */
+      data?: components["schemas"]["TrackEventView"][] | null;
       /**
        * Message
        * @default ok
@@ -255,6 +1129,16 @@ export interface components {
       /** Version */
       version: number;
     };
+    /** AuthRequest */
+    AuthRequest: {
+      /**
+       * Account
+       * @description 账号（即用户 ID）
+       */
+      account: string;
+      /** Password */
+      password: string;
+    };
     /**
      * BannerView
      * @description 横幅 / 运营位（可上下线、可排序）。
@@ -279,6 +1163,28 @@ export interface components {
       code: string;
       /** Title */
       title: string;
+    };
+    /**
+     * BehaviorGuideView
+     * @description 行为引导：一轮回复的收尾。四选一，禁止空转寒暄。
+     */
+    BehaviorGuideView: {
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind: "question" | "options" | "task" | "reminder";
+      /** Options */
+      options?: components["schemas"]["GuideOptionView"][];
+      /** Question */
+      question?: string | null;
+      reminder?: components["schemas"]["GuideReminderView"] | null;
+      task?: components["schemas"]["GuideTaskView"] | null;
+      /**
+       * Text
+       * @default
+       */
+      text?: string;
     };
     /**
      * BootstrapView
@@ -335,6 +1241,181 @@ export interface components {
       trust_blocks?: components["schemas"]["TrustBlockView"][];
     };
     /**
+     * CalendarNodeView
+     * @description 关键节点日历里的一条。
+     *
+     * 规划师写入（④ 行动环节的 reminders）、教练读取、工作台展示 —— 三处看的是**同一份**。
+     * 此前只有写没有读：库里躺着节点，界面上没有任何一处能看到它们。
+     */
+    CalendarNodeView: {
+      /** Due At */
+      due_at?: string | null;
+      /** Node Id */
+      node_id: string;
+      /**
+       * Related Task Text
+       * @description 这条节点对应哪件事
+       * @default
+       */
+      related_task_text?: string;
+      /**
+       * Source
+       * @description 谁写进来的：规划师 / 教练 / 用户自己
+       * @default planner
+       * @enum {string}
+       */
+      source?: "planner" | "coach" | "manual";
+      /** Title */
+      title: string;
+    };
+    /**
+     * ChartPointView
+     * @description 图上的一个点。
+     */
+    ChartPointView: {
+      /** Label */
+      label: string;
+      /** Value */
+      value: number;
+    };
+    /**
+     * ChartView
+     * @description 主理在对话里给的那张图。
+     *
+     * 值来自服务端**实测数据**（画像各维把握、方案匹配度…），不是模型写的数字 ——
+     * 图上的每个点都能追回它来自哪条记录。
+     */
+    ChartView: {
+      /**
+       * Kind
+       * @default bars
+       * @constant
+       */
+      kind?: "bars";
+      /** Points */
+      points?: components["schemas"]["ChartPointView"][];
+      /**
+       * Title
+       * @default
+       */
+      title?: string;
+      /**
+       * Unit
+       * @default
+       */
+      unit?: string;
+    };
+    /**
+     * CoachNotificationView
+     * @description 教练主动介入的通知（前端浮窗轮询消费）。
+     *
+     * 形状由两个读侧实现共同决定：`InMemoryNotificationRepository`（本地消息表）与
+     * `PostgresNotificationRepository`（`orc_notification`）。两边都至少有
+     * id / title / body / channel / occurred_at，本地那份还多带 user_id 这类调试字段。
+     *
+     * 因此这里用 `extra="ignore"` 而不是 `forbid`：**多出来的字段不该让这个接口报 500**，
+     * 但 `id` / `title` 缺了前端就没法渲染，仍需强制。
+     *
+     * 此前这个接口的返回类型是裸 `list`，前端只能猜字段（它猜的是 `by`——
+     * 后端从来没有这个字段），于是每条通知署名永远为空。现在逐字段声明。
+     */
+    CoachNotificationView: {
+      /**
+       * Action
+       * @description 可点的动作
+       */
+      action?: {
+        [key: string]: unknown;
+      } | null;
+      /**
+       * Body
+       * @default
+       */
+      body?: string;
+      /**
+       * Channel
+       * @description 通知渠道：in_app / email / sms
+       * @default
+       */
+      channel?: string;
+      /** Id */
+      id: string;
+      /**
+       * Occurred At
+       * @description ISO8601 时间串
+       */
+      occurred_at?: string | null;
+      /** Related Task Id */
+      related_task_id?: string | null;
+      /** Title */
+      title: string;
+    };
+    /**
+     * CollectionItemView
+     * @description 采集清单里的一条。
+     */
+    CollectionItemView: {
+      /**
+       * Available
+       * @description 这个源头现在能不能用
+       * @default true
+       */
+      available?: boolean;
+      /**
+       * Got
+       * @default false
+       */
+      got?: boolean;
+      /** Key */
+      key: string;
+      /** Label */
+      label: string;
+      /**
+       * Source
+       * @description chsi / conversation / academic
+       */
+      source: string;
+      /**
+       * Why
+       * @description 这条数据挡着哪一步判断 —— 给用户看的理由
+       */
+      why: string;
+    };
+    /**
+     * CollectionPanelView
+     * @description 动态采集策略：还缺什么、去哪儿取、为什么是它。
+     *
+     * 它不是"还差几条"的计数器，是**下一步该做什么**的判据：
+     * 界面按 `by_source` 分组说"从哪取"，按 `items` 的顺序说"先取哪一条"。
+     */
+    CollectionPanelView: {
+      /**
+       * Blocked
+       * @description 有缺口、但没有源头
+       */
+      blocked?: string[];
+      /**
+       * By Source
+       * @description 每个源还差几条
+       */
+      by_source?: {
+        [key: string]: number;
+      };
+      /** Items */
+      items?: components["schemas"]["CollectionItemView"][];
+      /**
+       * Missing
+       * @description 还差几条
+       * @default 0
+       */
+      missing?: number;
+      /**
+       * Next Source
+       * @description 下一步最该走的源头
+       */
+      next_source?: string | null;
+    };
+    /**
      * ConversationMessageView
      * @description 对话气泡。
      */
@@ -343,8 +1424,15 @@ export interface components {
       agent_id?: string | null;
       /** Agent Name */
       agent_name?: string | null;
+      /** @description 这一轮顺手给的图；没有就是 null */
+      chart?: components["schemas"]["ChartView"] | null;
       /** Created At */
       created_at?: string | null;
+      /**
+       * Intel Refs
+       * @description 这一轮用到的外部情报来源，可点回原页面
+       */
+      intel_refs?: components["schemas"]["IntelRefView"][];
       /**
        * Role
        * @enum {string}
@@ -356,45 +1444,26 @@ export interface components {
        * Theory Refs
        * @description 可点开的理论标签
        */
-      theory_refs?: {
-          [key: string]: unknown;
-        }[];
+      theory_refs?: components["schemas"]["TheoryRefView"][];
     };
     /**
      * ConversationTurnView
      * @description 一轮回复的完整视图。
      *
-     * 对应架构文档 §5 的调用链返回：最短结论 + 显式告知 + 行为引导 + 管线卡。
+     * 对应编排调用链的返回：最短结论 + 显式告知 + 行为引导 + 管线卡。
      */
     ConversationTurnView: {
-      /**
-       * Badge
-       * @description 顶栏主理徽章：agent_id/name/依据
-       */
-      badge?: {
-        [key: string]: unknown;
-      };
+      /** @description 顶栏主理徽章：谁在帮我 + 依据哪些理论 */
+      badge: components["schemas"]["AgentBadgeView"];
       /**
        * Changed Assets
        * @description 本轮变化的资产版本，用于工作台刷新
        */
-      changed_assets?: {
-          [key: string]: unknown;
-        }[];
-      /**
-       * Disclosure
-       * @description 换主理/换理论/结论变化的显式告知行
-       */
-      disclosure?: {
-        [key: string]: unknown;
-      } | null;
-      /**
-       * Guide
-       * @description 行为引导：question/options/task/reminder 四选一
-       */
-      guide?: {
-        [key: string]: unknown;
-      };
+      changed_assets?: components["schemas"]["AssetVersionView"][];
+      /** @description 换主理/换理论/结论变化的显式告知行 */
+      disclosure?: components["schemas"]["DisclosureView"] | null;
+      /** @description 行为引导：question/options/task/reminder 四选一 */
+      guide: components["schemas"]["BehaviorGuideView"];
       /** Messages */
       messages?: components["schemas"]["ConversationMessageView"][];
       /** Pipeline Cards */
@@ -405,7 +1474,7 @@ export interface components {
     };
     /**
      * DependencyEdgeView
-     * @description 依赖可视化（FR-WB-005 简版）。
+     * @description 依赖可视化（简版）。
      */
     DependencyEdgeView: {
       /** From Asset */
@@ -414,6 +1483,97 @@ export interface components {
       to_asset: string;
       /** Via Profile Keys */
       via_profile_keys?: string[];
+    };
+    /**
+     * DirectionPlanListView
+     * @description 三套方案 + "现在选的是哪一套"。
+     *
+     * `selected_id` 单独给一份，是因为前端要用它做高亮：只靠 plans[].selected 也能算，
+     * 但"当前选择"在产品口径里是一个独立事实（可撤回、可对比），
+     * 让它显式存在，界面上就不会出现"两套都亮着"这种状态。
+     */
+    DirectionPlanListView: {
+      /**
+       * Match Score Method
+       * @description 匹配度口径说明 —— 分值必须能解释，所以口径要对用户可见
+       * @default 三叶草契合度 × 可达性
+       */
+      match_score_method?: string;
+      /** Plans */
+      plans?: components["schemas"]["DirectionPlanView"][];
+      /** Selected Id */
+      selected_id?: string | null;
+    };
+    /**
+     * DirectionPlanView
+     * @description 一套方向方案（主攻 / 平行 / 保底）。
+     */
+    DirectionPlanView: {
+      /**
+       * Fit Reason
+       * @description 契合依据
+       * @default
+       */
+      fit_reason?: string;
+      /** Gaps */
+      gaps?: components["schemas"]["PlanGapView"][];
+      /** Id */
+      id: string;
+      /**
+       * Main Risk
+       * @description 主要风险
+       * @default
+       */
+      main_risk?: string;
+      /**
+       * Match Score
+       * @description 匹配度（解释性分值，非严谨算法）
+       * @default 0
+       */
+      match_score?: number;
+      /** Name */
+      name: string;
+      /**
+       * Revocable
+       * @description 恒为 True：选择随时可撤回
+       * @default true
+       */
+      revocable?: boolean;
+      /** @description 主攻 / 平行 / 保底 */
+      role: components["schemas"]["PlanRole"];
+      /**
+       * Selected
+       * @description 是不是当前选中那一套
+       * @default false
+       */
+      selected?: boolean;
+      /** Selected At */
+      selected_at?: string | null;
+      /**
+       * Target Desc
+       * @description 目标描述
+       * @default
+       */
+      target_desc?: string;
+    };
+    /**
+     * DisclosureView
+     * @description 显式告知行：换主理 / 换理论依据 / 结论变化。
+     */
+    DisclosureView: {
+      /** From Agent */
+      from_agent?: string | null;
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind: "lead_change" | "theory_change" | "conclusion_change";
+      /** Text */
+      text: string;
+      /** Theory Refs */
+      theory_refs?: components["schemas"]["TheoryRefView"][];
+      /** To Agent */
+      to_agent?: string | null;
     };
     /**
      * ErrorCode
@@ -436,7 +1596,10 @@ export interface components {
     };
     /**
      * ExportResultView
-     * @description 导出结果。第一期 available 恒 False，仅预留入口。
+     * @description 导出结果。
+     *
+     * `message` 会原样显示在用户面前，所以它必须是一句用户能照做的话 ——
+     * 默认值不再写"仅预留导出入口"这种只有我们知道什么意思的说法。
      */
     ExportResultView: {
       /**
@@ -446,7 +1609,7 @@ export interface components {
       available?: boolean;
       /**
        * Message
-       * @default 第一期仅预留导出入口
+       * @default 导出还在准备中：现在可以用「打印 / 存成 PDF」把这一版存下来。
        */
       message?: string;
       /** Object Key */
@@ -464,10 +1627,183 @@ export interface components {
       /** Question */
       question: string;
     };
+    /**
+     * GuideOptionView
+     * @description 行为引导 · 可点选项。
+     */
+    GuideOptionView: {
+      /** Label */
+      label: string;
+      /** Option Id */
+      option_id: string;
+      /** Value */
+      value?: unknown;
+    };
+    /**
+     * GuideReminderView
+     * @description 行为引导 · 提醒。
+     */
+    GuideReminderView: {
+      /**
+       * Detail
+       * @default
+       */
+      detail?: string;
+      /** Due At */
+      due_at?: string | null;
+      /** Title */
+      title: string;
+    };
+    /**
+     * GuideTaskView
+     * @description 行为引导 · 小任务。
+     */
+    GuideTaskView: {
+      /** Due Date */
+      due_date?: string | null;
+      /** Task Id */
+      task_id: string;
+      /** Text */
+      text: string;
+    };
     /** HTTPValidationError */
     HTTPValidationError: {
       /** Detail */
       detail?: components["schemas"]["ValidationError"][];
+    };
+    /**
+     * IntelItemView
+     * @description 一条外部情报。
+     *
+     * `source_url` 是这类信息的**依据**：说"这个岗位要 XX 能力"就得能点回原页面。
+     * 没有来源的条目在服务层就被丢掉了，不会出现在这里。
+     */
+    IntelItemView: {
+      /**
+       * Fetched At
+       * @default
+       */
+      fetched_at?: string;
+      /** Id */
+      id: string;
+      /**
+       * Kind
+       * @description 机器可读的类别
+       * @default
+       */
+      kind?: string;
+      /**
+       * Kind Label
+       * @description 类别的中文名（界面显示它）
+       * @default
+       */
+      kind_label?: string;
+      /**
+       * Source Name
+       * @description 来源的中文称呼（界面显示它）
+       * @default
+       */
+      source_name?: string;
+      /**
+       * Source Url
+       * @default
+       */
+      source_url?: string;
+      /**
+       * Text
+       * @default
+       */
+      text?: string;
+      /**
+       * Title
+       * @default
+       */
+      title?: string;
+    };
+    /**
+     * IntelListView
+     * @description 外部情报清单。
+     */
+    IntelListView: {
+      /**
+       * Fetched At
+       * @description 这一批的取回时间
+       * @default
+       */
+      fetched_at?: string;
+      /** Items */
+      items?: components["schemas"]["IntelItemView"][];
+    };
+    /**
+     * IntelRefView
+     * @description 对话里引用的一条外部情报（可点回原页面）。
+     */
+    IntelRefView: {
+      /** Id */
+      id: string;
+      /**
+       * Kind Label
+       * @default
+       */
+      kind_label?: string;
+      /**
+       * Source Name
+       * @default
+       */
+      source_name?: string;
+      /**
+       * Source Url
+       * @default
+       */
+      source_url?: string;
+      /**
+       * Title
+       * @default
+       */
+      title?: string;
+    };
+    /**
+     * LayoutBlockView
+     * @description 控制台上一个气泡的编排结果。
+     */
+    LayoutBlockView: {
+      /**
+       * Hint
+       * @default
+       */
+      hint?: string;
+      /** Id */
+      id: string;
+      /**
+       * Label
+       * @default
+       */
+      label?: string;
+      /**
+       * Priority
+       * @default 100
+       */
+      priority?: number;
+      /**
+       * Weight
+       * @default 1
+       */
+      weight?: number;
+      /**
+       * Why
+       * @description 排在这一位的原因，可直接显示给用户
+       * @default
+       */
+      why?: string;
+    };
+    /** LoginResult */
+    LoginResult: {
+      /** Role */
+      role: string;
+      /** Token */
+      token: string;
+      /** User Id */
+      user_id: string;
     };
     /**
      * LoopStage
@@ -513,6 +1849,67 @@ export interface components {
       task_id: string;
     };
     /**
+     * NoteAck
+     * @description 删除回执。
+     */
+    NoteAck: {
+      /** Removed */
+      removed: string;
+    };
+    /**
+     * NoteCreateRequest
+     * @description 写下一条。
+     */
+    NoteCreateRequest: {
+      /**
+       * Kind
+       * @description todo / goal
+       * @default todo
+       */
+      kind?: string;
+      /**
+       * Text
+       * @description 用户的原话
+       */
+      text: string;
+    };
+    /**
+     * NoteDoneRequest
+     * @description 勾掉 / 取消勾掉。
+     */
+    NoteDoneRequest: {
+      /** Done */
+      done: boolean;
+    };
+    /**
+     * NoteView
+     * @description 一条他写下的内容。
+     */
+    NoteView: {
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /**
+       * Done
+       * @default false
+       */
+      done?: boolean;
+      /** Id */
+      id: string;
+      /**
+       * Kind
+       * @description todo / goal
+       */
+      kind: string;
+      /**
+       * Text
+       * @description 用户的原话
+       */
+      text: string;
+    };
+    /**
      * PipelineCardView
      * @description 右栏管线卡（①-⑤ 每环节一卡）。
      *
@@ -550,11 +1947,149 @@ export interface components {
        * Theory Models
        * @description 态②：可展开的理论模型
        */
-      theory_models?: {
-          [key: string]: unknown;
-        }[];
+      theory_models?: components["schemas"]["TheoryRefView"][];
       /** Title */
       title: string;
+    };
+    /**
+     * PlanGapView
+     * @description 方案内的一条差距：要求 − 现状 = 差距 + 补齐建议。
+     */
+    PlanGapView: {
+      /**
+       * Current State
+       * @description 你现在在哪
+       * @default
+       */
+      current_state?: string;
+      /**
+       * Requirement
+       * @description 这条方向要求什么
+       */
+      requirement: string;
+      /**
+       * Suggestion
+       * @description 怎么补
+       * @default
+       */
+      suggestion?: string;
+    };
+    /**
+     * PlanRole
+     * @description 方向方案角色。
+     * @enum {string}
+     */
+    PlanRole: "main" | "parallel" | "fallback";
+    /**
+     * PortalView
+     * @description 门户内容（**公开**：不需要登录）。
+     *
+     * 为什么单独一个视图而不是复用 BootstrapView：那一份带着"我是谁"（identity）、
+     * 菜单、路由、个人任务入口 —— 那些是登录后的事。门户只回答"这是什么、凭什么信"，
+     * 内容全是产品自己的话（文案包 + 信任块 + 横幅 + FAQ + 功能开关），
+     * 所以它可以、也应该在没有身份的情况下返回。
+     *
+     * 此前门户文案写死在前端（`data/portal.ts`）—— 那是本仓底线之一"文案不进代码"
+     * 的最后一处例外：改一句主张要发一次前端版本。
+     */
+    PortalView: {
+      /**
+       * App Name
+       * @default
+       */
+      app_name?: string;
+      /** Banners */
+      banners?: components["schemas"]["BannerView"][];
+      /**
+       * Copy Bundle
+       * @description 文案包（含全部 portal.* 键）
+       */
+      copy_bundle?: {
+        [key: string]: string;
+      };
+      /** Faqs */
+      faqs?: components["schemas"]["FaqView"][];
+      /** Feature Flags */
+      feature_flags?: {
+        [key: string]: boolean;
+      };
+      /**
+       * Task Entries
+       * @description 任务入口：门户上展示的'能做什么'
+       */
+      task_entries?: components["schemas"]["TaskEntryView"][];
+      /** Trust Blocks */
+      trust_blocks?: components["schemas"]["TrustBlockView"][];
+    };
+    /**
+     * ProfileFieldView
+     * @description 画像里的一条字段（活状态的最小单位）。
+     *
+     * 此前这里是 `dict[str, Any]`：契约只说"有 fields"，不说每条里有什么。
+     * 前端要按 `confidence` 画把握度、按 `evidence` 做可溯源展示、按 `source`
+     * 说明这条从哪来 —— 全是猜的字段名。现在逐字段声明。
+     */
+    ProfileFieldView: {
+      /**
+       * Confidence
+       * @default 0
+       */
+      confidence?: number;
+      /**
+       * Evidence
+       * @description 证据来源引用
+       */
+      evidence?: string[];
+      /**
+       * Key
+       * @description 字段键，如 major / skills / interest（取数用，不直接展示）
+       */
+      key: string;
+      /**
+       * Label
+       * @description 字段的展示名（来自动态资源）；为空表示这份配置里没有它，界面回落到 key
+       * @default
+       */
+      label?: string;
+      source: components["schemas"]["ProfileSource"];
+      /**
+       * Updated At
+       * Format: date-time
+       */
+      updated_at: string;
+      /**
+       * Value
+       * @description 字段值，结构由画像 schema 决定
+       */
+      value?: unknown;
+    };
+    /**
+     * ProfileGapView
+     * @description 画像缺口：还缺哪条、为什么算缺、建议怎么补。
+     */
+    ProfileGapView: {
+      /**
+       * Key
+       * @description 缺口字段键（取数用，不直接展示）
+       */
+      key: string;
+      /**
+       * Label
+       * @description 缺口的展示名（来自动态资源）；为空表示这份配置里没有它，界面回落到 key
+       * @default
+       */
+      label?: string;
+      /**
+       * Reason
+       * @description 为什么算缺口
+       */
+      reason: string;
+      /**
+       * Suggested Next Action
+       * @description 建议的下一步采集动作
+       * @default
+       */
+      suggested_next_action?: string;
     };
     /**
      * ProfilePanelView
@@ -568,13 +2103,9 @@ export interface components {
        */
       coverage?: number;
       /** Fields */
-      fields?: {
-          [key: string]: unknown;
-        }[];
+      fields?: components["schemas"]["ProfileFieldView"][];
       /** Gaps */
-      gaps?: {
-          [key: string]: unknown;
-        }[];
+      gaps?: components["schemas"]["ProfileGapView"][];
       /**
        * Overall Confidence
        * @default 0
@@ -584,8 +2115,48 @@ export interface components {
       updated_at?: string | null;
     };
     /**
+     * ProfileSource
+     * @description 画像字段来源。
+     * @enum {string}
+     */
+    ProfileSource: "resume" | "conversation" | "assessment" | "behavior_inference" | "mentor" | "record";
+    /**
+     * ReportDimensionItemView
+     * @description 15 维里的单维。**逐字段声明**而不是 `dict`：前端要按 `tag` 上色、
+     * 按 `evidence` 做可溯源展示，字段名一旦漂移，界面会静默变成空白。
+     */
+    ReportDimensionItemView: {
+      /** Conclusion */
+      conclusion: string;
+      /**
+       * Evidence
+       * @description 证据引用，必须可溯源
+       */
+      evidence: string;
+      /**
+       * Index
+       * @description 维度序号 1-15
+       */
+      index: number;
+      /**
+       * Name
+       * @description 维度名，如 兴趣倾向
+       */
+      name: string;
+      /**
+       * Tag
+       * @description 维度标签：优势 / 短板 / 待验证
+       */
+      tag: string;
+    };
+    /**
      * ReportFullTextView
      * @description 完整报告页正文（只读资产视图，不承载实时对话）。
+     *
+     * 形状的变迁：`toc` / `sections` 原来是 `list[dict[...]]`，属于"契约里有这个字段、
+     * 但没人知道里面是什么"。代价在两处真实发生过：后端按 `anchor/group/group_method`
+     * 写、前端按 `id/title/body` 读，两边都没错，只是从来没对上过 —— 而 `dict` 类型
+     * 让这种错在编译期完全不可见。现在逐字段声明，前端类型由它生成。
      */
     ReportFullTextView: {
       /**
@@ -593,24 +2164,78 @@ export interface components {
        * Format: date-time
        */
       generated_at: string;
+      /**
+       * Methodologies
+       * @description 本次使用的理论模型名
+       */
+      methodologies?: string[];
       /** Report Id */
       report_id: string;
       /**
        * Sections
-       * @description 15 维全景 / 方案 / 行动计划 / 个人画像
+       * @description 按分组切开的 15 维正文
        */
-      sections?: {
-          [key: string]: unknown;
-        }[];
+      sections?: components["schemas"]["ReportSectionView"][];
+      /**
+       * Sources
+       * @description 事实来源清单
+       */
+      sources?: string[];
+      /**
+       * Swot
+       * @description SWOT 四象限
+       */
+      swot?: {
+        [key: string]: unknown;
+      };
       /**
        * Toc
        * @description 左侧目录导航
        */
-      toc?: {
-          [key: string]: string;
-        }[];
+      toc?: components["schemas"]["ReportTocItemView"][];
+      /**
+       * Verdict
+       * @description 综合结论 {title, summary}
+       */
+      verdict?: {
+        [key: string]: unknown;
+      };
       /** Version */
       version: number;
+    };
+    /**
+     * ReportSectionView
+     * @description 报告正文的一个分组（自我画像 / 职业环境 / 决策与风险）。
+     */
+    ReportSectionView: {
+      /**
+       * Id
+       * @description 锚点 id
+       */
+      id: string;
+      /** Items */
+      items?: components["schemas"]["ReportDimensionItemView"][];
+      /**
+       * Method
+       * @description 支撑该分组的方法论
+       * @default
+       */
+      method?: string;
+      /**
+       * Title
+       * @description 分组展示名
+       */
+      title: string;
+    };
+    /**
+     * ReportTocItemView
+     * @description 报告目录项。`id` 与对应 `ReportSectionView.id` 相同，用于锚点跳转。
+     */
+    ReportTocItemView: {
+      /** Id */
+      id: string;
+      /** Title */
+      title: string;
     };
     /**
      * RouteView
@@ -661,10 +2286,11 @@ export interface components {
        */
       evaluation?: string;
       stage: components["schemas"]["LoopStage"];
-      /** Theory Models */
-      theory_models?: {
-          [key: string]: unknown;
-        }[];
+      /**
+       * Theory Models
+       * @description 该环节用到的理论模型（可点开看正文）
+       */
+      theory_models?: components["schemas"]["TheoryRefView"][];
       /** Title */
       title: string;
       /** Updated At */
@@ -674,7 +2300,7 @@ export interface components {
     };
     /**
      * TaskEnterRequest
-     * @description 进入任务（FR-HOME-002）。task_code 取自 bootstrap 的任务入口。
+     * @description 进入任务。task_code 取自 bootstrap 的任务入口。
      */
     TaskEnterRequest: {
       /** Task Code */
@@ -682,7 +2308,7 @@ export interface components {
     };
     /**
      * TaskEntryView
-     * @description 首页任务入口（FR-HOME-001）。文案必须用"用户自己的话"。
+     * @description 首页任务入口。文案必须用"用户自己的话"。
      */
     TaskEntryView: {
       /** Code */
@@ -704,7 +2330,7 @@ export interface components {
     };
     /**
      * TaskSessionView
-     * @description 左栏会话项。按"任务/环节"命名，不按 agent 名排布（FR-CONV-003）。
+     * @description 左栏会话项。按"任务/环节"命名，不按 agent 名排布。
      */
     TaskSessionView: {
       /** Last Active At */
@@ -739,6 +2365,66 @@ export interface components {
      * @enum {string}
      */
     TaskStatus: "active" | "paused" | "completed";
+    /**
+     * TheoryCardView
+     * @description 理论卡正文。前端点开理论标签时展示的内容。
+     *
+     * 四个字段都来自动态资源 `data/registry/theory_cards.json`——
+     * 这里只做搬运，不生成、不改写。`summary` 是给用户看的通俗说明，
+     * `product_usage` 说清"这条理论在本产品里怎么被用"（可解释性的落点）。
+     */
+    TheoryCardView: {
+      /**
+       * Id
+       * @description 理论卡 id，与 TheoryRef.theory_id 对应
+       */
+      id: string;
+      /** Name */
+      name: string;
+      /**
+       * Product Usage
+       * @description 在本产品里怎么被用
+       * @default
+       */
+      product_usage?: string;
+      /**
+       * School
+       * @description 所属流派 / 出处
+       * @default
+       */
+      school?: string;
+      /**
+       * Summary
+       * @description 给用户看的通俗说明
+       * @default
+       */
+      summary?: string;
+    };
+    /**
+     * TheoryRefView
+     * @description 理论引用。前端据此渲染「理论标签」，点开取 `GET /app/theory-cards/{id}` 的正文。
+     *
+     * 这里只有 id / 展示名 / 所属环节：**正文不随引用一起下发**（一次回复可能引三五个
+     * 理论，正文按需取）。标签本身可点开，靠的就是 id 与接口路径对得上。
+     */
+    TheoryRefView: {
+      /**
+       * Name
+       * @description 展示名，如 霍兰德 RIASEC
+       */
+      name: string;
+      /**
+       * Stage
+       * @description 所属环节标识
+       * @default
+       */
+      stage?: string;
+      /**
+       * Theory Id
+       * @description 理论卡 id，与 /app/theory-cards/{theory_id} 对应
+       */
+      theory_id: string;
+    };
     /**
      * TrackEventAck
      * @description 上报确认。第一期只确认接收，不返回处理详情。
@@ -776,8 +2462,39 @@ export interface components {
       };
     };
     /**
+     * TrackEventView
+     * @description 跟踪时间线里的一条：复盘环节的载体。
+     *
+     * 类型只有五种（里程碑完成 / 提醒 / 警告 / 学期复盘 / 教练消息），
+     * 由内核契约定死 —— 界面上不同基调的展示依赖它，不能是自由字符串。
+     */
+    TrackEventView: {
+      /**
+       * Detail
+       * @default
+       */
+      detail?: string;
+      /** Due At */
+      due_at?: string | null;
+      /** Id */
+      id: string;
+      /** Occurred At */
+      occurred_at?: string | null;
+      /** Related Stage */
+      related_stage?: string | null;
+      /** Related Task Id */
+      related_task_id?: string | null;
+      /** Title */
+      title: string;
+      /**
+       * Type
+       * @enum {string}
+       */
+      type: "milestone_done" | "reminder" | "warning" | "semester_review" | "coach_message";
+    };
+    /**
      * TrustBlockView
-     * @description 信任背书块（FR-HOME-005）。只讲一条主线，可点开方法论示例。
+     * @description 信任背书块。只讲一条主线，可点开方法论示例。
      */
     TrustBlockView: {
       /**
@@ -814,29 +2531,31 @@ export interface components {
      * @description 工作台聚合视图。
      */
     WorkspacePageView: {
+      /** @description 教务系统取回来的课表与成绩单；为 null 表示还没授权过 */
+      academic_panel?: components["schemas"]["AcademicPanelView"] | null;
       /** @description ④ 计划与日历 */
       action_panel?: components["schemas"]["StagePanelView"] | null;
       /**
        * Axis A Stage
-       * @description 轴 A 阶段过滤依据（FR-WB-004）
+       * @description 轴 A 阶段过滤依据
        */
       axis_a_stage?: string | null;
       /**
-       * Blocks
-       * @description 功能块入口与静态数据（FR-WB-007）
-       */
-      blocks?: {
-        [key: string]: unknown;
-      };
-      /**
        * Coach Messages
-       * @description 教练消息汇总（FR-WB-006）
+       * @description 教练消息汇总
        */
       coach_messages?: {
           [key: string]: unknown;
         }[];
+      /** @description 采集动线（动态策略） */
+      collection_panel?: components["schemas"]["CollectionPanelView"];
       /** Dependencies */
       dependencies?: components["schemas"]["DependencyEdgeView"][];
+      /**
+       * Layout Panel
+       * @description 气泡编排（已排序）：顺序、空间与出现条件来自动态资源
+       */
+      layout_panel?: components["schemas"]["LayoutBlockView"][];
       /** @description ③ 方案 */
       plan_panel?: components["schemas"]["StagePanelView"] | null;
       profile_panel?: components["schemas"]["ProfilePanelView"];
@@ -859,6 +2578,51 @@ export type external = Record<string, never>;
 
 export interface operations {
 
+  /**
+   * Revoke Academic
+   * @description 清空导入的课表与成绩（画像里那两条摘要一起删）。
+   *
+   * 只清快照不删摘要的话，采集清单会一直显示"课程表已拿到"，
+   * 用户再也回不到导入入口 —— 那是"看起来清掉了"。
+   */
+  revoke_academic_api_v1_app_academic_delete: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_AcademicRevokeAck_"];
+        };
+      };
+    };
+  };
+  /**
+   * Import Academic
+   * @description 导入课表与成绩单（学生自己贴原文）。
+   *
+   * 这条路是产品有意选的：不做替学生登录学校系统，也不经手他校内账号的密码。
+   * 用户的体验压在解析上 —— 贴进来的东西读不出来时，回执要说清楚**改哪里**。
+   */
+  import_academic_api_v1_app_academic_import_post: {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["AcademicImportRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_AcademicImportAck_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   /**
    * Export Asset
    * @description 导出资产。第一期仅预留入口，available 恒 False。
@@ -910,6 +2674,70 @@ export interface operations {
     };
   };
   /**
+   * Login
+   * @description 账号密码登录，签发 JWT。
+   */
+  login_api_v1_app_auth_login_post: {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["AuthRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_LoginResult_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /**
+   * Logout
+   * @description 登出：撤销当前令牌（吊销表落库）。
+   */
+  logout_api_v1_app_auth_logout_post: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_dict_"];
+        };
+      };
+    };
+  };
+  /**
+   * Register
+   * @description 注册并直接登录（返回 token）。
+   */
+  register_api_v1_app_auth_register_post: {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["AuthRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_LoginResult_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /**
    * Bootstrap
    * @description 启动装配：菜单 / 路由 / 任务入口 / 文案 / 功能开关。
    *
@@ -921,6 +2749,68 @@ export interface operations {
       200: {
         content: {
           "application/json": components["schemas"]["ApiResponse_BootstrapView_"];
+        };
+      };
+    };
+  };
+  /**
+   * Brief Today
+   * @description 今日简报：今天为什么是这两件事。
+   */
+  brief_today_api_v1_app_brief_today_post: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": unknown;
+        };
+      };
+    };
+  };
+  /**
+   * List Calendar Nodes
+   * @description 关键节点日历（④ 行动环节写进来的节点）。
+   *
+   * 此前这张表**只写不读**：库里有节点，界面上没有任何一处能看到 ——
+   * "规划师写入、教练读取"里的"读取"那一半没有实现。
+   */
+  list_calendar_nodes_api_v1_app_calendar_get: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_list_CalendarNodeView__"];
+        };
+      };
+    };
+  };
+  /**
+   * Chsi Bind
+   * @description 学信网绑定管线：核验在线验证码 → 读学籍 → 写画像。
+   *
+   * 请求体 `arg` 是用户在学信档案申请到的**在线验证码**。
+   * 不接收、也不要求用户的学信网账号密码 —— 那条路既不合法，也不必要。
+   */
+  chsi_bind_api_v1_app_chsi_bind_post: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": unknown;
+        };
+      };
+    };
+  };
+  /**
+   * Reload Config
+   * @description 重新装载动态配置（环节口径 / 气泡编排 / 采集规则）。
+   */
+  reload_config_api_v1_app_config_reload_post: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_dict_"];
         };
       };
     };
@@ -951,6 +2841,445 @@ export interface operations {
     };
   };
   /**
+   * Day Advice
+   * @description 「这一天的建议」：日历里点开某一天时生成（`day` 是 YYYY-MM-DD）。
+   *
+   * 日历上其余的东西都是事实（那天有哪几门课、哪个节点到期、哪件事该做完），
+   * 前端直接读；这一条是那一天**怎么用**的建议，要模型下判断。
+   *
+   * 请求体里的 `arg` 是客户端的时区偏移（分钟，东为正）—— "那一天"是用户
+   * 手表上的那一天，不带这个偏移，傍晚以后的事会被算到前一天。
+   */
+  day_advice_api_v1_app_day__day__advice_post: {
+    parameters: {
+      path: {
+        day: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /**
+   * Dimension
+   * @description 维度解读（点开才生成，后端缓存）。
+   */
+  dimension_api_v1_app_dimensions__dimension_id__post: {
+    parameters: {
+      path: {
+        dimension_id: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /**
+   * Gap Clarify
+   * @description 缺口追问话术。
+   */
+  gap_clarify_api_v1_app_gaps__gap_key__clarify_post: {
+    parameters: {
+      path: {
+        gap_key: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /**
+   * Get Intel
+   * @description 外部情报：公开事实（学职平台 + 通用网络检索）。
+   *
+   * **不要求登录**：登了录就按你的画像收窄，没登录就按 `?q=` 或平台通用数据取。
+   * 每条都带来源链接 —— 这类信息"凭什么这么说"就是那个链接，
+   * 所以取不到来源的条目在服务层就被丢掉了，不会返回。
+   */
+  get_intel_api_v1_app_intel_get: {
+    parameters: {
+      query?: {
+        q?: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_IntelListView_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /**
+   * Refresh Intel
+   * @description 现在去取一次（用户主动点）。同样**不要求登录**。
+   *
+   * 只在这条路上推通知：后台顺带取到的东西不弹 ——
+   * 浮窗要留给"值得打断他"的事，而"他自己刚点的"就是值得回一句的事。
+   * （未登录时没有收件人，自然也不推。）
+   */
+  refresh_intel_api_v1_app_intel_refresh_post: {
+    parameters: {
+      query?: {
+        q?: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_IntelListView_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /**
+   * Match Careers
+   * @description 学职网匹配：矩阵 + 排名 + 推荐。
+   */
+  match_careers_api_v1_app_match_careers_post: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": unknown;
+        };
+      };
+    };
+  };
+  /**
+   * List Notes
+   * @description 他写下的全部内容（新写的在前）。
+   */
+  list_notes_api_v1_app_notes_get: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_list_NoteView__"];
+        };
+      };
+    };
+  };
+  /**
+   * Add Note
+   * @description 写一条。
+   */
+  add_note_api_v1_app_notes_post: {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["NoteCreateRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_NoteView_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /**
+   * Remove Note
+   * @description 删掉一条。
+   */
+  remove_note_api_v1_app_notes__note_id__delete: {
+    parameters: {
+      path: {
+        note_id: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_NoteAck_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /**
+   * Set Note Done
+   * @description 勾掉 / 取消勾掉一条待办。
+   */
+  set_note_done_api_v1_app_notes__note_id__patch: {
+    parameters: {
+      path: {
+        note_id: string;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["NoteDoneRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_NoteView_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /**
+   * List Pending Notifications
+   * @description 教练主动介入通知出队（前端浮窗轮询消费）。
+   */
+  list_pending_notifications_api_v1_app_notifications_pending_get: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_list_CoachNotificationView__"];
+        };
+      };
+    };
+  };
+  /**
+   * Mark Notification Read
+   * @description 把一条通知标成已读。
+   *
+   * 浮窗关掉时前端调它。不调的话，读侧按"未读"出队，用户下次进页面
+   * 还会看到同一条 —— "我明明关过"就是这么来的。
+   */
+  mark_notification_read_api_v1_app_notifications__message_id__read_post: {
+    parameters: {
+      path: {
+        message_id: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_dict_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /**
+   * Get Action Plan
+   * @description 行动计划正文（阶段 / 任务 / 现在这一件）。没有计划时 has_plan=False。
+   */
+  get_action_plan_api_v1_app_plan_action_get: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_ActionPlanView_"];
+        };
+      };
+    };
+  };
+  /**
+   * Set Action Task Done
+   * @description 勾掉 / 取消勾选一个行动任务。
+   *
+   * `done=false` 是"勾错了要撤回"：只支持单向勾选的话，用户点错一次就再也回不去。
+   */
+  set_action_task_done_api_v1_app_plan_action_tasks_patch: {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ActionTaskDoneRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_ActionPlanView_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /**
+   * Get Direction Plans
+   * @description 三套方向方案（主攻 / 平行 / 保底）+ 当前选中那一套。
+   */
+  get_direction_plans_api_v1_app_plan_directions_get: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_DirectionPlanListView_"];
+        };
+      };
+    };
+  };
+  /**
+   * Select Direction Plan
+   * @description 选中一套方案。选择可撤回 —— 再选另一套就是撤回，没有单独的撤销接口。
+   *
+   * 方案 id 不存在时按 1002（资源不存在）返回：前端据此如实说"这套方案已经不在了"，
+   * 而不是把界面停在一个被选中的幽灵方案上。
+   */
+  select_direction_plan_api_v1_app_plan_directions__option_id__select_post: {
+    parameters: {
+      path: {
+        option_id: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_DirectionPlanListView_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /**
+   * Plan Timetable
+   * @description 课表 → 可投入时间。
+   */
+  plan_timetable_api_v1_app_plan_timetable_post: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": unknown;
+        };
+      };
+    };
+  };
+  /**
+   * Plan Todo Suggestions
+   * @description 待办建议（可采纳 / 可否决，回流画像）。
+   */
+  plan_todo_suggestions_api_v1_app_plan_todos_suggestions_post: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": unknown;
+        };
+      };
+    };
+  };
+  /**
+   * Portal
+   * @description 门户内容 —— **公开接口，不解析身份**。
+   *
+   * 门户是访客第一眼看到的那一页，内容全是产品自己的话（文案 / 信任块 / 横幅 /
+   * FAQ / 任务入口 / 开关）。它不需要知道"你是谁"，所以这里不调
+   * `resolve_user_id` —— 那是全站唯一一个不要求登录的业务读接口。
+   *
+   * 为什么要开这个口子：门户文案此前写死在前端 `data/portal.ts`，
+   * 改一句主张要发一次前端版本 —— 那是本仓"文案不进代码"这条底线上的最后一处例外。
+   */
+  portal_api_v1_app_portal_get: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_PortalView_"];
+        };
+      };
+    };
+  };
+  /**
+   * Portrait Analysis
+   * @description 「对你的分析」：整份画像合起来的一段判断（打开画像时生成）。
+   *
+   * 与「维度解读」的分工：那一条回答"这条字段是什么、凭什么"，
+   * 这一条回答"这些合起来说明我现在是个什么处境"。两件都要有 ——
+   * 只有前者的时候，画像看起来就是一张信息标签表。
+   */
+  portrait_analysis_api_v1_app_portrait_analysis_post: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": unknown;
+        };
+      };
+    };
+  };
+  /**
    * Get Report Full Text
    * @description 完整报告页正文。只读资产版本，不重新生成。
    */
@@ -976,6 +3305,20 @@ export interface operations {
     };
   };
   /**
+   * Report Summary
+   * @description 整份报告的结论段。
+   */
+  report_summary_api_v1_app_report_summary_post: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": unknown;
+        };
+      };
+    };
+  };
+  /**
    * List Sessions
    * @description 左栏会话列表（并行任务会话，按任务/环节命名）。
    */
@@ -985,6 +3328,37 @@ export interface operations {
       200: {
         content: {
           "application/json": components["schemas"]["ApiResponse_SessionListView_"];
+        };
+      };
+    };
+  };
+  /**
+   * List Session Turns
+   * @description 一条会话的逐轮原文。
+   *
+   * 会话列表点进去要能看见"这条会话发生过什么" —— 此前只有一张清单，
+   * 因为逐轮原文压根没落库（库里只有累积摘要）。
+   */
+  list_session_turns_api_v1_app_sessions__task_id__turns_get: {
+    parameters: {
+      query?: {
+        limit?: number;
+      };
+      path: {
+        task_id: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_list_ConversationMessageView__"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -1006,6 +3380,35 @@ export interface operations {
       200: {
         content: {
           "application/json": components["schemas"]["ApiResponse_TaskSessionView_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /**
+   * Get Theory Card
+   * @description 理论卡正文：点开理论标签时拉一次。
+   *
+   * 内容是**动态资源**（`data/registry/theory_cards.json`），改它不发版。
+   * 取不到按 1002（资源不存在）返回 —— 前端据此如实说"这张卡还没配"，
+   * 而不是渲染一张只有标题的空卡（那看起来像加载失败）。
+   */
+  get_theory_card_api_v1_app_theory_cards__theory_id__get: {
+    parameters: {
+      path: {
+        theory_id: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_TheoryCardView_"];
         };
       };
       /** @description Validation Error */
@@ -1042,10 +3445,38 @@ export interface operations {
     };
   };
   /**
+   * List Track Events
+   * @description 跟踪时间线（复盘环节的载体）。
+   *
+   * 与 `/app/track` 是同一份数据的两个方向：那条写（前端埋点），这条读。
+   * 复盘页要回答"这段时间发生过什么"，靠的就是它 —— 此前只有写、没有读。
+   */
+  list_track_events_api_v1_app_track_events_get: {
+    parameters: {
+      query?: {
+        limit?: number;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_list_TrackEventView__"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /**
    * Get Workspace
    * @description 工作台聚合视图：画像 / 报告 / 方案 / 计划 / 跟踪 + 功能块。
    *
-   * 进入工作台属于持久化行为，游客在此处被登录拦截（PRD §5.3）。
+   * 进入工作台属于持久化行为，游客在此处被登录拦截。
    */
   get_workspace_api_v1_app_workspace_get: {
     responses: {

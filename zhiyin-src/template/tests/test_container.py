@@ -11,7 +11,7 @@ from zhiyin_boot import (
     describe_assembly,
     wire_application,
 )
-from zhiyin_api.runtime import NOT_WIRED, WIRED
+from zhiyin_api.runtime import WIRED
 
 
 @pytest.fixture
@@ -27,6 +27,13 @@ def settings() -> Settings:
         local_registry_dir=str(data_dir / "registry"),
         local_knowledge_dir=str(data_dir / "knowledge"),
         local_object_dir=str(data_dir / "objects"),
+        # 有真模型才有智能体引擎 —— 本项目不提供 mock 产出，
+        # 所以"没有模型"的容器应当如实缺 llm 与 agent_engine。
+        # 构造真网关不发请求，测试里给一个占位密钥即可。
+        use_remote_llm=True,
+        llm_api_key="sk-test",
+        llm_base_url="https://api.deepseek.com",
+        llm_model="deepseek-flash",
     )
 
 
@@ -50,9 +57,10 @@ def test_orchestration_primitives_are_wired(settings: Settings) -> None:
 
 def test_business_service_depends_on_agent_engine(settings: Settings) -> None:
     container = build_container(settings)
-    assert container.loop is not None
-    # loop 必须复用容器里的同一个 AgentEngine 实例，而不是自己 new 一个。
-    assert container.loop._agent is container.agent_engine
+    # 生成类 AI 任务必须复用容器里的同一个 AgentEngine 实例 —— 自己 new 一个
+    # 就会出现"两份引擎配置、改了库只有一份生效"。
+    assert container.ai_task_service is not None
+    assert container.ai_task_service._engine is container.agent_engine
 
 
 def test_scheduler_gateway_can_publish(settings: Settings) -> None:
@@ -62,7 +70,7 @@ def test_scheduler_gateway_can_publish(settings: Settings) -> None:
 
 
 async def test_feature_flags_come_from_dynamic_resource(settings: Settings) -> None:
-    """功能开关必须来自动态资源，而不是代码里的常量（§3.1）。"""
+    """功能开关必须来自动态资源，而不是代码里的常量。"""
     container = build_container(settings)
     flags = await container.feature_flags.all()
     assert flags.get("report_full_text") is True
@@ -74,14 +82,20 @@ def test_assembly_report_marks_pending_services(settings: Settings) -> None:
     container = build_container(settings)
     report = describe_assembly(container)
 
-    # 已实现的部分必须是 wired
+    # 已实现的部分必须是 wired（模型网关是装配好的真网关）
     assert report.orchestration["agent_engine"] == WIRED
-    assert report.services["loop"] == WIRED
     assert report.gateways["llm"] == WIRED
 
-    # 业务服务与 Facade 第一期未实现，必须如实报 not_wired 而不是假装装好
-    assert report.services["orchestrator"] == NOT_WIRED
-    assert report.services["facade"] == NOT_WIRED
+    # 编排器、黑板服务与 BFF 门面已实现（联调期交付），必须如实报 wired
+    assert report.services["orchestrator"] == WIRED
+    assert report.services["profile_service"] == WIRED
+    assert report.services["asset_service"] == WIRED
+    assert report.services["workspace_service"] == WIRED
+    assert report.services["function_service"] == WIRED
+    assert report.services["facade"] == WIRED
+    assert report.workers["impact"] == WIRED
+    assert report.workers["active_event"] == WIRED
+    # vector_sync 依赖 PostgreSQL，本地装配仍缺 → 缺口必须列出
     assert report.missing, "装配报告必须列出缺口"
     assert not report.healthy
 

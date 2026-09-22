@@ -1,6 +1,6 @@
 """Repository 语义契约。
 
-这些断言描述的是**任何实现都必须成立的行为**（内存版、MySQL 版、未来的其它版）：
+这些断言描述的是**任何实现都必须成立的行为**（本地版、未来的其它版）：
 
 - 画像：按 key 幂等覆盖、版本递增、读取是快照；
 - 行为日志：只追加、按时间倒序、可按类型取最后发生时间；
@@ -283,7 +283,7 @@ async def test_registry_contract(repositories) -> None:
     )
 
     # 产出契约按 (agent_id, stage) 查：同一智能体的不同环节必须是两条契约。
-    # 任何实现（本地 JSON / MySQL）都必须按这个键建立索引，不得按契约 id 查。
+    # 任何实现都必须按这个键建立索引，不得按契约 id 查。
     diagnose = await repo.get_output_contract("career_advisor", LoopStage.DIAGNOSE)
     decide = await repo.get_output_contract("career_advisor", LoopStage.DECIDE)
     assert diagnose is not None and decide is not None

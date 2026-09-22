@@ -1,0 +1,15 @@
+.git
+.github
+**/.env
+**/.env.*
+!.env.example
+**/__pycache__
+**/.pytest_cache
+**/.ruff_cache
+**/.venv
+**/node_modules
+**/dist
+**/build
+zhiyin-src/template/zhiyin-web
+zhiyin-src/template/tests
+docs

@@ -1,5 +1,5 @@
 {
-  "_note": "职引 · 理论卡（DEMO）。理论名与归属取自《职引-PRD-v2.0》§3.3 各智能体的理论包。第二期迁移到 theory_card 表。",
+  "_note": "职引 · 理论卡。理论名与归属取自各智能体的理论包。第二期迁移到 theory_card 表。",
   "items": [
     {
       "id": "parsons_self",

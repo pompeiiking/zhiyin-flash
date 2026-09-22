@@ -1,0 +1,46 @@
+/* 磨砂质感：集中管理，且只在 GPU 合成可用时启用（main.ts 里按帧率探测，
+ * 软件渲染环境会挂 html.no-glass，跳过 backdrop-filter —— 它在软渲染下
+ * 意味着"每帧全页重模糊"，是此前 21fps 的元凶）。 */
+
+html:not(.no-glass) .bubble,
+html:not(.no-glass) .float-card,
+html:not(.no-glass) .chat,
+html:not(.no-glass) .chat__bar,
+html:not(.no-glass) .launcher,
+html:not(.no-glass) .overlay {
+  /* 只留 blur：saturate 是第二遍色彩通道运算，在奶油纸上看不出差别，去掉省一半 */
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+}
+
+/*
+ * 没有磨砂的时候，表面必须变得更实。
+ *
+ * 底色本来就写在各个组件的 --glass-* 里（0.82 / 0.93 的半透明白）。
+ * 有 blur 时那点透明度没关系；一旦 blur 被关掉（低帧机器、或者拖动期间），
+ * 0.82 的白就成了"纯透明面板"，字压在底下的内容上根本看不清。
+ * 所以这里只改令牌：所有用 --glass-* 的表面一起变实，不用逐个组件去补。
+ */
+html.no-glass {
+  --glass-1: rgba(255, 255, 255, 0.95);
+  --glass-2: rgba(255, 255, 255, 0.98);
+}
+
+/*
+ * 拖动期间关掉整片模糊。
+ *
+ * backdrop-filter 的代价和"底下有多少东西在动"成正比：拖着块走的时候，
+ * 8 块大面积气泡每帧都要重新取一次背景并重算模糊 —— 这是拖拽卡顿的主因。
+ * 拖动时换成实底（glass-2，0.93），手感优先；松手立刻恢复磨砂。
+ */
+html:not(.no-glass) .canvas.arming .bubble {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: var(--glass-2);
+}
+
+/* 顶部栏自带呼吸动画：逐帧模糊 = 每帧全页重算，任何环境都不给它 blur，
+   用更实的底色补偿质感 */
+.deck__bar {
+  background: var(--glass-2);
+}

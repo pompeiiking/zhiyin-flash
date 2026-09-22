@@ -9,6 +9,10 @@ from zhiyin_api.controllers.conversation_controller import router as conversatio
 from zhiyin_api.controllers.workspace_controller import router as workspace_router
 from zhiyin_api.controllers.asset_controller import router as asset_router
 from zhiyin_api.controllers.track_controller import router as track_router
+from zhiyin_api.controllers.ai_controller import router as ai_router
+from zhiyin_api.controllers.auth_controller import router as auth_router
+from zhiyin_api.controllers.config_controller import router as config_router
+from zhiyin_api.controllers.note_controller import router as note_router
 
 # 全部路由清单：供 zhiyin-boot 统一挂载
 ROUTERS = [
@@ -17,6 +21,10 @@ ROUTERS = [
     workspace_router,
     asset_router,
     track_router,
+    ai_router,
+    auth_router,
+    config_router,
+    note_router,
 ]
 
 __all__ = [
@@ -26,4 +34,8 @@ __all__ = [
     "workspace_router",
     "asset_router",
     "track_router",
+    "ai_router",
+    "auth_router",
+    "config_router",
+    "note_router",
 ]

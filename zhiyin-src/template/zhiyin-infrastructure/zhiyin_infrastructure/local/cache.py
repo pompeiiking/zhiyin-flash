@@ -4,7 +4,7 @@
 并使缓存命名空间与失效范围在接口层就被固定下来。进程重启即失效 —— 这与
 第一期"纯内存、可演示"的整体口径一致。
 
-第二期替换点：`RedisCacheGateway`，实现同一份 `CacheGateway` 契约，装配处改一行。
+实现同一份 `CacheGateway` 契约，装配处改一行。
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ from zhiyin_data_sdk.gateways.cache import CacheGateway
 class InMemoryCache(CacheGateway):
     """按命名空间隔离、支持 TTL 的进程内缓存。"""
 
-    IMPLEMENTATION_STATUS = "wired"
+    IMPLEMENTATION_STATUS = "skeleton"
 
     def __init__(self, default_ttl_s: Optional[int] = 300) -> None:
         self._default_ttl_s = default_ttl_s

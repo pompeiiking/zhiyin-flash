@@ -1,13 +1,629 @@
 {
-  "_note": "职引 · 文案（DEMO）。属动态资源：改本文件不需要发版。前端不得硬编码展示文案，BFF 把整包下发给前端按 key 取用。note 字段写清口径来源与定稿程度；文案本身是候选稿，需真实用户语言化测试后再定稿。",
+  "_note": "职引 · 文案。属动态资源：改本文件不需要发版。口径：这里只放**真的有人读**的键 —— 门户页（`portal.*`，前端 `PortalView` 按 key 取用）与后端拼装时要用的一句（`app.name` / `notify.stall.*` / `report.group.*`）。应用内页面的标签跟着组件走（它们与版式绑在一起，放进这里只会有两份『同一句话』）。空条目会被 `tests/test_registry_copy_consumption.py` 挡下：先接线，再登记。",
   "items": [
-    { "code": "app.name", "text": "职引", "bundle": "zh-CN", "status": "enabled", "sort_order": 1, "note": "应用名" },
-    { "code": "home.tagline", "text": "用自己的话说清困惑，一步一步把方向走出来", "bundle": "zh-CN", "status": "enabled", "sort_order": 2, "note": "首页定位，用户视角，不列功能" },
-    { "code": "home.task_group_title", "text": "你现在最想解决的是哪件事？", "bundle": "zh-CN", "status": "enabled", "sort_order": 3, "note": "任务卡组标题" },
-    { "code": "conv.pipeline_title", "text": "微循环管线", "bundle": "zh-CN", "status": "enabled", "sort_order": 4, "note": "右栏管线卡标题" },
-    { "code": "wb.title", "text": "智能工作台", "bundle": "zh-CN", "status": "enabled", "sort_order": 5, "note": "工作台标题" },
-    { "code": "report.export_label", "text": "导出", "bundle": "zh-CN", "status": "enabled", "sort_order": 6, "note": "完整报告页导出按钮" },
-    { "code": "demo.data_notice", "text": "以下为演示数据，仅用于展示流程", "bundle": "zh-CN", "status": "enabled", "sort_order": 7, "note": "演示数据必须显式标注（第一期硬约束：不得出现真实敏感数据）" },
-    { "code": "mock.source_notice", "text": "本期为 Mock 产出，未接真实模型", "bundle": "zh-CN", "status": "enabled", "sort_order": 8, "note": "Mock 来源标注：不得让 Mock 结论被误读为真实能力（见《架构与代码结构评估》B5）" }
+    {
+      "code": "app.name",
+      "text": "职引",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 1,
+      "note": "应用名"
+    },
+    {
+      "code": "portal.kicker",
+      "text": "给正在一步步走向求职的大学生",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 2,
+      "note": "门户：主张上方的小字。口径是「一步步走向求职」，不是「找不到工作的人」—— 读者是还在校、正在往前走的实习生候选人"
+    },
+    {
+      "code": "portal.claim_lines",
+      "text": "求职是一步一步|走出来的，//你只要知道|下一步|做什么。",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 3,
+      "note": "门户：主张。`|` 是行内词的分组、`//` 是换行 —— 文案在这里，排版在前端（前端只按分隔符摆）。第二行第 2 个词是前端画圈圈住的那个（CIRCLED）"
+    },
+    {
+      "code": "portal.lede",
+      "text": "每天只推一件事，并且说清楚为什么是这件。",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 4,
+      "note": "门户：主张下面的一句"
+    },
+    {
+      "code": "portal.cta",
+      "text": "开始用",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 5,
+      "note": "门户：主按钮文案"
+    },
+    {
+      "code": "portal.stop.s1.label",
+      "text": "你在这儿",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 6,
+      "note": "门户地图第 1 站：标签（坐标等视觉参数在前端）"
+    },
+    {
+      "code": "portal.stop.s1.at",
+      "text": "现在",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 7,
+      "note": "门户地图第 1 站：时间标记"
+    },
+    {
+      "code": "portal.stop.s1.more",
+      "text": "七条维度里五条已经够用，接下来补上「呈现」这一环。",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 8,
+      "note": "门户地图第 1 站：悬停/点开才出现的一句"
+    },
+    {
+      "code": "portal.stop.s2.label",
+      "text": "一个窗口开了",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 9,
+      "note": "门户地图第 2 站：标签"
+    },
+    {
+      "code": "portal.stop.s2.at",
+      "text": "08:40",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 10,
+      "note": "门户地图第 2 站：时间标记"
+    },
+    {
+      "code": "portal.stop.s2.more",
+      "text": "中建某院后天截止 —— 你收藏过，材料一直没交。",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 11,
+      "note": "门户地图第 2 站：说明"
+    },
+    {
+      "code": "portal.stop.s3.label",
+      "text": "材料补齐了",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 12,
+      "note": "门户地图第 3 站：标签"
+    },
+    {
+      "code": "portal.stop.s3.at",
+      "text": "12:10",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 13,
+      "note": "门户地图第 3 站：时间标记"
+    },
+    {
+      "code": "portal.stop.s3.more",
+      "text": "它把四份材料对齐了岗位要求，缺的那一条替你标了出来。",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 14,
+      "note": "门户地图第 3 站：说明"
+    },
+    {
+      "code": "portal.stop.s4.label",
+      "text": "今天这一件",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 15,
+      "note": "门户地图第 4 站：标签"
+    },
+    {
+      "code": "portal.stop.s4.at",
+      "text": "15:00",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 16,
+      "note": "门户地图第 4 站：时间标记"
+    },
+    {
+      "code": "portal.stop.s4.more",
+      "text": "它只放一件事：开题提纲。今天做得完，也是作品集里最重的一块。",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 17,
+      "note": "门户地图第 4 站：说明"
+    },
+    {
+      "code": "portal.stop.s5.label",
+      "text": "有人接上了",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 18,
+      "note": "门户地图第 5 站：标签"
+    },
+    {
+      "code": "portal.stop.s5.at",
+      "text": "周三",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 19,
+      "note": "门户地图第 5 站：时间标记"
+    },
+    {
+      "code": "portal.stop.s5.more",
+      "text": "你把「要不要投」交出去之后，它替你比了三份在投的岗位，一条条说清为什么。",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 20,
+      "note": "门户地图第 5 站：说明"
+    },
+    {
+      "code": "portal.stop.s6.label",
+      "text": "换了一条路",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 21,
+      "note": "门户地图第 6 站：标签"
+    },
+    {
+      "code": "portal.stop.s6.at",
+      "text": "周五",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 22,
+      "note": "门户地图第 6 站：时间标记"
+    },
+    {
+      "code": "portal.stop.s6.more",
+      "text": "原方案被否了一次 —— 报告里写清楚了为什么换，不是拍脑袋。",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 23,
+      "note": "门户地图第 6 站：说明"
+    },
+    {
+      "code": "portal.stop.s7.label",
+      "text": "复盘有没有用",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 24,
+      "note": "门户地图第 7 站：标签"
+    },
+    {
+      "code": "portal.stop.s7.at",
+      "text": "周日",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 25,
+      "note": "门户地图第 7 站：时间标记"
+    },
+    {
+      "code": "portal.stop.s7.more",
+      "text": "哪一步真的有用，它按结果说话，不按感觉。",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 26,
+      "note": "门户地图第 7 站：说明"
+    },
+    {
+      "code": "portal.stop.s8.label",
+      "text": "不用再问一遍",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 27,
+      "note": "门户地图第 8 站：标签"
+    },
+    {
+      "code": "portal.stop.s8.at",
+      "text": "下周一",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 28,
+      "note": "门户地图第 8 站：时间标记"
+    },
+    {
+      "code": "portal.stop.s8.more",
+      "text": "同一类问题不再问你第二遍 —— 上次的答案它记着，这次直接用。",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 29,
+      "note": "门户地图第 8 站：说明"
+    },
+    {
+      "code": "portal.cost",
+      "text": "第一次 5 分钟 · 不用填表 · 随时可以停",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 30,
+      "note": "门户：主按钮旁边的成本说明"
+    },
+    {
+      "code": "report.group.self_portrait",
+      "text": "自我画像",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 33,
+      "note": "15 维第一组（6 维）"
+    },
+    {
+      "code": "report.group.job_market",
+      "text": "职业环境",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 34,
+      "note": "15 维第二组（5 维）"
+    },
+    {
+      "code": "report.group.decision_risk",
+      "text": "决策与风险",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 35,
+      "note": "15 维第三组（4 维）"
+    },
+    {
+      "code": "notify.stall.title",
+      "text": "好久没动了，我帮你把进度接上",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 36,
+      "note": "主动干预通知标题（停滞提醒）"
+    },
+    {
+      "code": "notify.stall.body",
+      "text": "距离你上一次关键动作已经 {days} 天。回来我们从上次停下的地方继续。",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 37,
+      "note": "主动干预通知正文；{days} 由 Worker 填充"
+    },
+    {
+      "code": "profile.field.target_direction",
+      "text": "目标方向",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 906,
+      "note": "画像字段的中文对照：模型新写字段时会给 label，这一份是老数据（没有 label）的兜底"
+    },
+    {
+      "code": "profile.field.target_direction.job_posting",
+      "text": "目标岗位",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 907,
+      "note": "画像字段的中文对照：模型新写字段时会给 label，这一份是老数据（没有 label）的兜底"
+    },
+    {
+      "code": "profile.field.stuck_point",
+      "text": "卡住的地方",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 908,
+      "note": "画像字段的中文对照：模型新写字段时会给 label，这一份是老数据（没有 label）的兜底"
+    },
+    {
+      "code": "profile.field.constraints",
+      "text": "现实约束",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 910,
+      "note": "画像字段的中文对照：模型新写字段时会给 label，这一份是老数据（没有 label）的兜底"
+    },
+    {
+      "code": "profile.field.major",
+      "text": "专业",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 901,
+      "note": "画像字段词表 + 中文名：字段门禁只收这里的键，界面也用它显示"
+    },
+    {
+      "code": "profile.field.degree_level",
+      "text": "层次",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 902,
+      "note": "画像字段词表 + 中文名：字段门禁只收这里的键，界面也用它显示"
+    },
+    {
+      "code": "profile.field.expected_graduation",
+      "text": "预计毕业",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 903,
+      "note": "画像字段词表 + 中文名：字段门禁只收这里的键，界面也用它显示"
+    },
+    {
+      "code": "profile.field.school",
+      "text": "学校",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 904,
+      "note": "画像字段词表 + 中文名：字段门禁只收这里的键，界面也用它显示"
+    },
+    {
+      "code": "profile.field.enrollment_status",
+      "text": "学籍状态",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 905,
+      "note": "画像字段词表 + 中文名：字段门禁只收这里的键，界面也用它显示"
+    },
+    {
+      "code": "profile.field.duration",
+      "text": "学制",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 906,
+      "note": "画像字段词表 + 中文名：字段门禁只收这里的键，界面也用它显示"
+    },
+    {
+      "code": "profile.field.study_mode",
+      "text": "学习形式",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 907,
+      "note": "画像字段词表 + 中文名：字段门禁只收这里的键，界面也用它显示"
+    },
+    {
+      "code": "profile.field.enrolled_at",
+      "text": "入学日期",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 908,
+      "note": "画像字段词表 + 中文名：字段门禁只收这里的键，界面也用它显示"
+    },
+    {
+      "code": "profile.field.values",
+      "text": "价值取向",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 909,
+      "note": "画像字段词表 + 中文名：字段门禁只收这里的键，界面也用它显示"
+    },
+    {
+      "code": "profile.field.interest",
+      "text": "兴趣",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 910,
+      "note": "画像字段词表 + 中文名：字段门禁只收这里的键，界面也用它显示"
+    },
+    {
+      "code": "profile.field.experience",
+      "text": "经历",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 911,
+      "note": "画像字段词表 + 中文名：字段门禁只收这里的键，界面也用它显示"
+    },
+    {
+      "code": "profile.field.skills",
+      "text": "能力自评",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 912,
+      "note": "画像字段词表 + 中文名：字段门禁只收这里的键，界面也用它显示"
+    },
+    {
+      "code": "profile.field.courses",
+      "text": "课程表",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 913,
+      "note": "画像字段词表 + 中文名：字段门禁只收这里的键，界面也用它显示"
+    },
+    {
+      "code": "profile.field.scores",
+      "text": "成绩单",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 914,
+      "note": "画像字段词表 + 中文名：字段门禁只收这里的键，界面也用它显示"
+    },
+    {
+      "code": "profile.field.resume_material",
+      "text": "简历与作品材料",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 915,
+      "note": "画像字段词表 + 中文名（模型实测会写的键，补进词表以免被门禁挡掉）"
+    },
+    {
+      "code": "profile.alias.grade",
+      "text": "degree_level",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 2001,
+      "note": "画像字段同义词 → 规范键：模型写左边这个键时归到右边那条，不让同一个意思在画像里占三格"
+    },
+    {
+      "code": "profile.alias.education_stage",
+      "text": "degree_level",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 2002,
+      "note": "画像字段同义词 → 规范键：模型写左边这个键时归到右边那条，不让同一个意思在画像里占三格"
+    },
+    {
+      "code": "profile.alias.enrollment",
+      "text": "enrollment_status",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 2003,
+      "note": "画像字段同义词 → 规范键：模型写左边这个键时归到右边那条，不让同一个意思在画像里占三格"
+    },
+    {
+      "code": "profile.alias.internship",
+      "text": "experience",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 2004,
+      "note": "画像字段同义词 → 规范键：模型写左边这个键时归到右边那条，不让同一个意思在画像里占三格"
+    },
+    {
+      "code": "profile.alias.internship_experience",
+      "text": "experience",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 2005,
+      "note": "画像字段同义词 → 规范键：模型写左边这个键时归到右边那条，不让同一个意思在画像里占三格"
+    },
+    {
+      "code": "profile.alias.course_project_history",
+      "text": "experience",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 2006,
+      "note": "画像字段同义词 → 规范键：模型写左边这个键时归到右边那条，不让同一个意思在画像里占三格"
+    },
+    {
+      "code": "profile.alias.interest_direction",
+      "text": "interest",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 2007,
+      "note": "画像字段同义词 → 规范键：模型写左边这个键时归到右边那条，不让同一个意思在画像里占三格"
+    },
+    {
+      "code": "profile.alias.interest_domain",
+      "text": "interest",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 2008,
+      "note": "画像字段同义词 → 规范键：模型写左边这个键时归到右边那条，不让同一个意思在画像里占三格"
+    },
+    {
+      "code": "profile.alias.career_interest",
+      "text": "interest",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 2009,
+      "note": "画像字段同义词 → 规范键：模型写左边这个键时归到右边那条，不让同一个意思在画像里占三格"
+    },
+    {
+      "code": "profile.alias.course_selection_pattern",
+      "text": "courses",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 2010,
+      "note": "画像字段同义词 → 规范键：模型写左边这个键时归到右边那条，不让同一个意思在画像里占三格"
+    },
+    {
+      "code": "profile.alias.course_choice_pattern",
+      "text": "courses",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 2011,
+      "note": "画像字段同义词 → 规范键：模型写左边这个键时归到右边那条，不让同一个意思在画像里占三格"
+    },
+    {
+      "code": "profile.alias.repeated_choice",
+      "text": "courses",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 2012,
+      "note": "画像字段同义词 → 规范键：模型写左边这个键时归到右边那条，不让同一个意思在画像里占三格"
+    },
+    {
+      "code": "profile.alias.repeat_choice_pattern",
+      "text": "courses",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 2013,
+      "note": "画像字段同义词 → 规范键：模型写左边这个键时归到右边那条，不让同一个意思在画像里占三格"
+    },
+    {
+      "code": "profile.alias.considering_options",
+      "text": "target_direction",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 2014,
+      "note": "画像字段同义词 → 规范键：模型写左边这个键时归到右边那条，不让同一个意思在画像里占三格"
+    },
+    {
+      "code": "profile.alias.pending_options",
+      "text": "target_direction",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 2015,
+      "note": "画像字段同义词 → 规范键：模型写左边这个键时归到右边那条，不让同一个意思在画像里占三格"
+    },
+    {
+      "code": "profile.alias.target_job",
+      "text": "target_direction",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 2016,
+      "note": "画像字段同义词 → 规范键：模型写左边这个键时归到右边那条，不让同一个意思在画像里占三格"
+    },
+    {
+      "code": "profile.alias.ability_strength",
+      "text": "skills",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 2017,
+      "note": "画像字段同义词 → 规范键：模型写左边这个键时归到右边那条，不让同一个意思在画像里占三格"
+    },
+    {
+      "code": "profile.alias.value_anchor",
+      "text": "values",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 2018,
+      "note": "画像字段同义词 → 规范键：模型写左边这个键时归到右边那条，不让同一个意思在画像里占三格"
+    },
+    {
+      "code": "profile.alias.decision_window",
+      "text": "expected_graduation",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 2019,
+      "note": "画像字段同义词 → 规范键：模型写左边这个键时归到右边那条，不让同一个意思在画像里占三格"
+    },
+    {
+      "code": "profile.alias.real_constraint",
+      "text": "constraints",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 2020,
+      "note": "画像字段同义词 → 规范键：模型写左边这个键时归到右边那条，不让同一个意思在画像里占三格"
+    },
+    {
+      "code": "profile.alias.open_question",
+      "text": "stuck_point",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 2021,
+      "note": "画像字段同义词 → 规范键：模型写左边这个键时归到右边那条，不让同一个意思在画像里占三格"
+    },
+    {
+      "code": "profile.alias.resume_material.raw",
+      "text": "resume_material",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 2022,
+      "note": "画像字段同义词 → 规范键：模型写左边这个键时归到右边那条，不让同一个意思在画像里占三格"
+    },
+    {
+      "code": "profile.alias.resume_material.detail",
+      "text": "resume_material",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 2023,
+      "note": "画像字段同义词 → 规范键：模型写左边这个键时归到右边那条，不让同一个意思在画像里占三格"
+    },
+    {
+      "code": "profile.field.current_status",
+      "text": "当前状态",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 901,
+      "note": "画像字段词表 + 中文名"
+    }
   ]
 }

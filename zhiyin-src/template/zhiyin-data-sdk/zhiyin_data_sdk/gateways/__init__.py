@@ -2,8 +2,7 @@
 
 Gateway = 对外部能力（模型 / 嵌入 / 向量 / 缓存 / 裸查询 / 知识库 / 检索 /
 对象存储 / 事件 / 调度 / 通知 / 鉴权 / 安全 / 限流）的抽象。第一期全部提供
-Local / Mock / Noop 默认实现，由 zhiyin-boot 装配；后续替换为 pami / MySQL /
-pgvector / Redis / Kafka 真实适配器时，上层代码不变。
+本地默认实现由 zhiyin-boot 装配；替换具体实现时上层代码不变。
 
 分工口径：
 - 本包只定义**抽象与数据形状**，实现一律在 `zhiyin-infrastructure`；
@@ -22,7 +21,21 @@ from zhiyin_data_sdk.gateways.ai import (
     SearchHit,
 )
 from zhiyin_data_sdk.gateways.cache import CacheGateway
-from zhiyin_data_sdk.gateways.db import Params, RawQueryGateway
+from zhiyin_data_sdk.gateways.datasource import (
+    DataSourceGateway,
+    DataSourceRecord,
+    DataSourceRequest,
+    DataSourceResult,
+)
+from zhiyin_data_sdk.gateways.academic import (
+    AcademicImportError,
+    AcademicImportGateway,
+    AcademicImportKind,
+    AcademicSnapshot,
+    CourseEntry,
+    GradeEntry,
+    ImportFormat,
+)
 from zhiyin_data_sdk.gateways.feature_flag import FeatureFlagGateway
 from zhiyin_data_sdk.gateways.storage import ObjectStoreGateway, StoredObject
 from zhiyin_data_sdk.gateways.messaging import (
@@ -41,7 +54,18 @@ from zhiyin_data_sdk.gateways.security import (
 from zhiyin_data_sdk.gateways.vector import VectorGateway, VectorHit, VectorRecord
 
 __all__ = [
+    "AcademicImportError",
+    "AcademicImportGateway",
+    "AcademicImportKind",
+    "AcademicSnapshot",
+    "CourseEntry",
+    "GradeEntry",
+    "ImportFormat",
     "CacheGateway",
+    "DataSourceGateway",
+    "DataSourceRecord",
+    "DataSourceRequest",
+    "DataSourceResult",
     "EmbedGateway",
     "FeatureFlagGateway",
     "KnowledgeGateway",
@@ -49,8 +73,6 @@ __all__ = [
     "LLMGateway",
     "LLMMessage",
     "LLMResult",
-    "Params",
-    "RawQueryGateway",
     "SearchGateway",
     "SearchHit",
     "ObjectStoreGateway",

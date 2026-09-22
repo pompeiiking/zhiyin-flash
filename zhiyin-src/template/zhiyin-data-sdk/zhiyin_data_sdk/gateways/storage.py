@@ -1,7 +1,7 @@
 """对象存储 Gateway。
 
 第一期默认实现：LocalFileStore（本地目录）。
-TODO(第二期)：替换为 MinIO。
+TODO：按自有基础设施演进。
 """
 
 from __future__ import annotations

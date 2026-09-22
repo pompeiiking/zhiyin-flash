@@ -7,7 +7,7 @@
 "嵌入质量不可用"这件事由嵌入实现的 `skeleton` 状态单独标注。这样
 `/healthz` 能准确表达"链路通了、模型还没接"，而不是笼统地说没做好。
 
-第二期替换点：`PgVectorGateway`（pgvector），实现同一份契约，装配处改一行。
+实现同一份契约，装配处改一行。
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ from zhiyin_data_sdk.gateways.vector import VectorGateway, VectorHit, VectorReco
 class LocalVectorStore(VectorGateway):
     """进程内向量库。"""
 
-    IMPLEMENTATION_STATUS = "wired"
+    IMPLEMENTATION_STATUS = "skeleton"
 
     def __init__(self) -> None:
         # namespace → id → (record, model)
@@ -70,6 +70,17 @@ class LocalVectorStore(VectorGateway):
             if bucket.pop(item_id, None) is not None:
                 removed += 1
         return removed
+
+    async def delete_by_source(self, namespace: str, source_id: str) -> int:
+        bucket = self._items.get(namespace, {})
+        removable = [
+            item_id
+            for item_id, (record, _) in bucket.items()
+            if record.source_id == source_id
+        ]
+        for item_id in removable:
+            bucket.pop(item_id, None)
+        return len(removable)
 
     async def clear_namespace(self, namespace: str) -> None:
         self._items.pop(namespace, None)

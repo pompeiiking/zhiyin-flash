@@ -28,6 +28,16 @@ class ProfileRepository(ABC):
         """写入 / 更新单个画像字段。已存在则覆盖并刷新 updated_at。"""
 
     @abstractmethod
+    async def delete_field(self, user_id: str, key: str) -> None:
+        """删掉一个画像字段。
+
+        为什么需要它，而不只是"把值改成空"：采集清单判断"这条还需要吗"看的是
+        **字段在不在**，不是值空不空。撤销教务系统授权之后，如果只是把摘要清空，
+        "课程表 / 成绩单"会永远显示已取到 —— 用户再也回不到取数入口。
+        所以撤销要真的把这条抹掉，让它重新变成一件待办。
+        """
+
+    @abstractmethod
     async def list_fields(
         self, user_id: str, keys: Optional[Sequence[str]] = None
     ) -> list[ProfileField]:

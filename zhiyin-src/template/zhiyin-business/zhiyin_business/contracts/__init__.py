@@ -30,6 +30,22 @@ from zhiyin_business.contracts.review import (
     ProgressSnapshot,
     ReviewOutput,
 )
+from zhiyin_kernel.enums import LoopStage
+
+STAGE_CONTRACTS: dict[LoopStage, type] = {
+    LoopStage.COLLECT: CollectOutput,
+    LoopStage.DIAGNOSE: DiagnoseOutput,
+    LoopStage.DECIDE: DecideOutput,
+    LoopStage.ACT: ActOutput,
+    LoopStage.REVIEW: ReviewOutput,
+}
+"""环节 → 产出契约。**这是唯一一份**。
+
+它以前在三个地方各写了一遍：编排器的 `_SCHEMAS`、Loop 协调器的
+`STAGE_OUTPUT_CONTRACTS`、以及文档。三份里的任何一份加一个环节，另外两份都不会动 ——
+而症状是"某个环节的产出没被校验"，不会报错。所以收敛到契约包这一处：
+环节与契约的对应关系属于契约本身，不属于任何一个调用方。
+"""
 
 __all__ = [
     "AgentBadge",
@@ -54,4 +70,5 @@ __all__ = [
     "NodeReminder",
     "ProgressSnapshot",
     "ReviewOutput",
+    "STAGE_CONTRACTS",
 ]

@@ -1,7 +1,7 @@
 """行为日志写入与查询（behavior_log）。
 
 行为日志是北极星指标的唯一事实来源，也是复盘主动干预的唯一触发信号来源
-（FR-REVIEW-001：不允许系统自嗨式打扰）。
+（不允许系统自嗨式打扰）。
 """
 
 from __future__ import annotations

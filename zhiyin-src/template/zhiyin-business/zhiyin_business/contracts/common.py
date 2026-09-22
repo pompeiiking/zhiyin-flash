@@ -1,6 +1,6 @@
 """业务契约的通用构件。
 
-三条全局设计约束（前端设计文档 §2.3，业务底线）在本模块固化为模型：
+三条全局设计约束（业务底线）在本模块固化为模型：
 1. 长内容不进对话流 —— 契约里只出现"最短结论"，全文走资产；
 2. 换主理必须显式告知 —— Disclosure 是各环节产出的必填项之一；
 3. 每轮以行为引导收尾 —— BehaviorGuide 是各环节产出的必填项之一。
@@ -67,7 +67,7 @@ class GuideReminder(BaseModel):
 
 
 class BehaviorGuide(BaseModel):
-    """行为引导收尾（FR-ORCH-007）。
+    """行为引导收尾。
 
     结尾必须是四选一：一个追问 / 一组选项 / 一个小任务 / 一条提醒。
     禁止空转寒暄与无下一步的总结。
@@ -84,7 +84,7 @@ class BehaviorGuide(BaseModel):
 
 
 class Disclosure(BaseModel):
-    """显式告知（FR-ORCH-003）。三种场合：换主理 / 换理论依据 / 结论变化。"""
+    """显式告知。三种场合：换主理 / 换理论依据 / 结论变化。"""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -106,6 +106,48 @@ class AgentBadge(BaseModel):
     theory_refs: list[TheoryRef] = Field(default_factory=list)
 
 
+class ChartPoint(BaseModel):
+    """图上的一个点。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    label: str
+    value: float
+
+
+class ChartSpec(BaseModel):
+    """主理在对话里给的一张图。
+
+    为什么由**服务端按真实数据生成**，而不是让模型自由写图表规格：
+    模型写的数字没人能核对（它连画像里有几条都常常说错）。这里只允许
+    用服务端手上已有的实测值（画像各维把握、方案匹配度…），图上的每个点
+    都能追回它来自哪条数据。
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["bars"] = "bars"
+    title: str = ""
+    unit: str = ""
+    points: list[ChartPoint] = Field(default_factory=list)
+
+
+class IntelRef(BaseModel):
+    """对话里引用的一条外部情报。
+
+    它让"这句话凭什么"能点回原页面 —— 与理论卡引用是同一套道理：
+    引用只给 id 与展示名，正文与原链接按需展开。
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    title: str = ""
+    kind_label: str = ""
+    source_name: str = ""
+    source_url: str = ""
+
+
 class ConversationMessage(BaseModel):
     """对话消息。长内容不进对话流，这里只放最短结论。"""
 
@@ -115,13 +157,17 @@ class ConversationMessage(BaseModel):
     text: str
     agent_id: Optional[str] = None
     theory_refs: list[TheoryRef] = Field(default_factory=list)
+    #: 这一轮主理顺手给的图（真实数据，见 `ChartSpec`）；没有就是 None
+    chart: Optional[ChartSpec] = None
+    #: 这一轮用到的外部情报来源（可点回原页面）；没有就是空表
+    intel_refs: list[IntelRef] = Field(default_factory=list)
     created_at: Optional[datetime] = None
 
 
 class BehaviorEventDraft(BaseModel):
     """待写入的行为日志草稿。
 
-    环节产出里声明要记什么行为，由黑板服务统一落库（FR-REVIEW-007）。
+    环节产出里声明要记什么行为，由黑板服务统一落库。
     """
 
     model_config = ConfigDict(extra="forbid")

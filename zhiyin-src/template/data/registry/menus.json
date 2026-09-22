@@ -1,8 +1,8 @@
 {
-  "_note": "职引 · 顶层导航菜单（DEMO）。属动态资源：改本文件不需要前端或后端发版。口径见《前端设计 v1.0》§3.2：顶层导航只允许「首页 / 核心对话页 / 智能工作台」三条主线，功能块不进主线导航。",
+  "_note": "职引 · 顶层导航菜单。属动态资源：改本文件不需要前端或后端发版。口径：导航只指向真实存在的路由（tests/test_frontend_alignment.py 校验），指向不存在的路径在界面上只会表现为「点了没反应」。",
   "items": [
-    { "code": "home", "label": "首页", "route": "/", "visible": true, "status": "enabled", "sort_order": 1 },
-    { "code": "conversation", "label": "核心对话页", "route": "/conv", "visible": true, "status": "enabled", "sort_order": 2 },
-    { "code": "workspace", "label": "智能工作台", "route": "/wb", "visible": true, "status": "enabled", "sort_order": 3 }
+    { "code": "console", "label": "今天", "route": "/", "visible": true, "status": "enabled", "sort_order": 1 },
+    { "code": "portal", "label": "产品门户", "route": "/portal", "visible": false, "status": "enabled", "sort_order": 2 },
+    { "code": "report", "label": "完整报告", "route": "/report", "visible": true, "status": "enabled", "sort_order": 3 }
   ]
 }

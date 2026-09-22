@@ -9,11 +9,11 @@ Orchestrator 或某个 Service 的方法体里，结果是规则改一处要动�
 
 因此本包按"规则类别"分文件，每条规则一个 ABC，**只声明输入与输出**：
 
-    routing.py        意图识别 → 环节判定（轴 B）        FR-ORCH-001
-    teaming.py        轴 A × 轴 B × 意图 → 主理/协理      FR-ORCH-002
-    handoff.py        交接与"换主理必须告知"              FR-ORCH-003
-    impact.py         画像字段 → 受影响资产（重算范围）   FR-ORCH-004
-    intervention.py   停滞阈值 / 冷却期 / 打扰上限        FR-REVIEW-001
+    routing.py        意图识别 → 环节判定（轴 B）
+    teaming.py        轴 A × 轴 B × 意图 → 主理/协理
+    handoff.py        交接与"换主理必须告知"
+    impact.py         画像字段 → 受影响资产（重算范围）
+    intervention.py   停滞阈值 / 冷却期 / 打扰上限
 
 依赖方向（单向，禁止倒流）
 --------------------------
@@ -28,22 +28,35 @@ Orchestrator 或某个 Service 的方法体里，结果是规则改一处要动�
 阈值、冷却期、话术这类**可调参数一律来自动态资源**（`data/registry/*.json`），
 不得写死在规则实现里。规则实现只负责"怎么用参数"，不负责"参数是多少"。
 
-状态：接口已冻结，**业务口径已定稿**（见《业务口径决策记录-v1.0》）。
+状态：接口已冻结，**业务口径已定稿**。
 由各业务线在此补实现；规则的参数已写进 `data/registry/policy_params.json`
 （`intervention` / `profile_collection` / `routing` 三项 `confirmed`）。
 """
 
 from zhiyin_business.policies.handoff import HandoffPolicy
 from zhiyin_business.policies.impact import ImpactPolicy
+from zhiyin_business.policies.intel_query import intel_topic
 from zhiyin_business.policies.intervention import InterventionPolicy
 from zhiyin_business.policies.routing import IntentPolicy, StagePolicy
 from zhiyin_business.policies.teaming import LeadPolicy
+from zhiyin_business.policies.handoff_rules import DisclosureHandoffPolicy
+from zhiyin_business.policies.impact_rules import DependencyImpactPolicy
+from zhiyin_business.policies.intervention_rules import ThresholdInterventionPolicy
+from zhiyin_business.policies.routing_rules import KeywordIntentPolicy, RuleStagePolicy
+from zhiyin_business.policies.teaming_rules import RegistryLeadPolicy
 
 __all__ = [
     "HandoffPolicy",
     "ImpactPolicy",
+    "intel_topic",
     "IntentPolicy",
     "InterventionPolicy",
     "LeadPolicy",
     "StagePolicy",
+    "DisclosureHandoffPolicy",
+    "DependencyImpactPolicy",
+    "KeywordIntentPolicy",
+    "RegistryLeadPolicy",
+    "RuleStagePolicy",
+    "ThresholdInterventionPolicy",
 ]

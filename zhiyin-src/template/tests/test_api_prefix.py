@@ -34,6 +34,12 @@ HEALTHZ_PATH = "/healthz"
 def _settings() -> Settings:
     data_dir = TEMPLATE_ROOT / "data"
     return Settings(
+        # 本项目不提供 mock 产出：没有真模型就没有智能体引擎。
+        # 构造真网关不发请求，测试里给一个占位密钥即可。
+        use_remote_llm=True,
+        llm_api_key="sk-test",
+        llm_base_url="https://api.deepseek.com",
+        llm_model="deepseek-flash",
         env="test",
         local_data_dir=str(data_dir),
         local_registry_dir=str(data_dir / "registry"),

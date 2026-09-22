@@ -1,5 +1,5 @@
 {
-  "_note": "职引 · 业务规则参数（DEMO）。属动态资源：调阈值不需要发版。业务规则是代码（zhiyin_business/policies/），规则的参数必须来自这里，不得写死在 Settings 或规则实现里。status=confirmed 表示口径已由《业务口径决策记录-v1.0》拍板。",
+  "_note": "职引 · 业务规则参数。属动态资源：调阈值不需要发版。业务规则是代码（zhiyin_business/policies/），规则的参数必须来自这里，不得写死在 Settings 或规则实现里。status=confirmed 表示口径已拍板确认。",
   "items": [
     {
       "code": "intervention",
@@ -15,19 +15,17 @@
     {
       "code": "profile_collection",
       "status": "confirmed",
-      "note": "决策 5=A：关键字段覆盖 + 加权平均。覆盖率 80% 且整体置信度 ≥ 0.7 才算采集完成；缺口 = 未覆盖或置信度 < 0.6 的关键字段，按缺口决定追问顺序。",
+      "note": "关键字段覆盖 + 加权把握：覆盖 >= 50% 且整体把握 >= 0.5 即算采集完成。门槛刻意定低（小步快跑）：先让人跑起来，缺的几条以缺口形式继续跟着他，后面每一轮都会继续补。改它不发版。",
       "value": {
         "key_fields": [
-          "career_interest",
-          "ability_strength",
-          "value_anchor",
+          "major",
+          "interest",
           "target_direction",
-          "decision_window",
-          "real_constraint"
+          "expected_graduation"
         ],
-        "coverage_threshold": 0.8,
-        "overall_confidence_threshold": 0.7,
-        "gap_confidence_floor": 0.6
+        "coverage_threshold": 0.5,
+        "overall_confidence_threshold": 0.5,
+        "gap_confidence_floor": 0.45
       }
     },
     {
@@ -37,6 +35,46 @@
       "value": {
         "clarify_attempts": 1,
         "fallback_stage": "collect"
+      }
+    },
+    {
+      "code": "cache",
+      "status": "confirmed",
+      "note": "读缓存策略。三层口径：①进程内装载（动态资源，reload 时整体替换）②这里配的读缓存（Redis，只放可重建的读模型）③数据库与向量库（长期保存，随迁移搬走）。缓存永远不是唯一事实来源：丢了就从库重建，Redis 挂了就直接读库。",
+      "value": {
+        "default_ttl_s": 300,
+        "namespaces": [
+          {
+            "namespace": "workspace",
+            "ttl_s": 20,
+            "invalidate_on": [
+              "profile_field_updated",
+              "asset_version_changed",
+              "asset_state_changed",
+              "note_changed",
+              "academic_changed",
+              "calendar_changed",
+              "session_changed"
+            ],
+            "note": "工作台聚合读（画像+采集+资产面板+编排+课表）。它是全站最重的一次读，也是最容易读到旧值的一次 —— 所以 TTL 短，且上面那几个事件都会立刻失效它。"
+          },
+          {
+            "namespace": "report",
+            "ttl_s": 900,
+            "invalidate_on": [
+              "asset_version_changed"
+            ],
+            "note": "报告正文按版本读：同一版本的内容不会变，所以 TTL 可以长；资产一升版就失效（旧版本各自那份还在，键里带版本号）。"
+          },
+          {
+            "namespace": "theory",
+            "ttl_s": 3600,
+            "invalidate_on": [
+              "registry_reloaded"
+            ],
+            "note": "理论卡正文：动态资源里的静态内容，改它是一次运维重载 —— 所以 TTL 长，重载时整体失效。"
+          }
+        ]
       }
     }
   ]

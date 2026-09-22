@@ -66,10 +66,26 @@ def _to_channel(raw: str) -> NotifyChannel:
 
 
 def _render_prompt(prompt_vars: dict[str, Any], blackboard: dict[str, Any]) -> str:
+    """把这一轮的上下文拼成给模型看的一段话。
+
+    两条口径：
+
+    - **`context_text` 存在时，它就是上下文**，直接原样用；此时不再 dump 黑板快照。
+      这是给"上下文已经渲染成短行文本"的调用方准备的（AI 任务的调用都是这种）——
+      把同一样东西既写成短行又 dump 成 JSON，模型会看到两份说法。
+    - 否则维持原样：输入变量与共享状态各一段 JSON。走这条路的只有还没改渲染的调用方。
+    """
     blocks = []
+    context_text = prompt_vars.get("context_text") if prompt_vars else None
+    rendered = isinstance(context_text, str) and bool(context_text.strip())
+    if rendered:
+        blocks.append(context_text.strip())
+        prompt_vars = {
+            key: value for key, value in prompt_vars.items() if key != "context_text"
+        }
     if prompt_vars:
         blocks.append("【输入变量】\n" + json.dumps(prompt_vars, ensure_ascii=False, indent=2))
-    if blackboard:
+    if blackboard and not rendered:
         blocks.append("【共享状态】\n" + json.dumps(blackboard, ensure_ascii=False, indent=2))
     return "\n\n".join(blocks)
 

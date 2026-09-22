@@ -1,0 +1,281 @@
+@import "./tokens.css";
+@import "./motion.css";
+@import "./fonts.css";
+@import "./glass.css";
+
+*, *::before, *::after { box-sizing: border-box; }
+
+/*
+ * 长串不许把版面挤成**竖排**。
+ *
+ * 这是用户实际反馈过的一种样子：某一块里出现一行网址（或一段没有空格的英文），
+ * 容器又窄，浏览器只能一个字符一行地排下去 —— 看起来像"文本变成上下的了"。
+ * 这两个属性只在"这个词真的放不下"时才断，正常的中文排版不受影响。
+ */
+p, span, li, dt, dd, h1, h2, h3, h4, h5, h6, a, button, label, td, th, summary {
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+/* 网址这种连字符都没有的长串：允许在任意位置断，别撑破容器 */
+code, pre, .mono, [data-long-token] { overflow-wrap: anywhere; }
+
+html, body, #app { height: 100%; }
+
+body {
+  margin: 0;
+  background: var(--n-0);
+  color: var(--ink-1);
+  font: var(--t-body)/var(--lh-body) var(--font-sans);
+  font-variant-numeric: tabular-nums;   /* 数字等宽，数据不跳动 */
+  cursor: var(--cursor-arrow);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/*
+ * 底料三层。**这一层不是装饰，是"纸"与"色块"的分界**：
+ *
+ *   1. 一盏光（顶部中央，纯白）—— 给整屏一个受光方向；
+ *   2. 一圈极淡的暗角 —— 视线收在中间，边缘沉下去，页面才有"纵深"；
+ *   3. 一层颗粒（feTurbulence，multiply）—— 大面积浅色如果没有颗粒，
+ *      在屏幕上看就是一块平色块；有颗粒才像"面"。
+ *
+ * 【这里曾经是两团彩色光晕】左上偏绿、右上偏紫 —— 那正是用户说的
+ * "奶油色渐变有些廉价"：底色本来已经够浅，再叠两团带色的光，整屏就发浑。
+ * 现在只留一盏中性白光 + 暗角，颜色全部交给内容。
+ */
+body::before {
+  content: "";
+  position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background:
+    radial-gradient(120% 70% at 50% -18%, rgba(255, 255, 255, 0.85), transparent 62%),
+    radial-gradient(140% 120% at 50% 45%, transparent 56%, rgba(23, 22, 20, 0.05) 100%);
+}
+body::after {
+  content: "";
+  position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  opacity: 0.22;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.28'/%3E%3C/svg%3E");
+  mix-blend-mode: multiply;
+}
+#app { position: relative; z-index: 1; }
+
+h1, h2, h3, h4 { margin: 0; font-family: var(--font-display); font-weight: 600; }
+h1 { font-size: var(--t-h1); line-height: var(--lh-tight); letter-spacing: var(--track-h); }
+h2 { font-size: var(--t-h2); line-height: var(--lh-snug); letter-spacing: var(--track-h); }
+h3 { font-size: var(--t-h3); line-height: var(--lh-snug); letter-spacing: -0.012em; }
+h1, h2 { text-wrap: balance; }
+p { margin: 0; }
+
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+/*
+ * 按钮文字：**允许按钮长高，不再裁切文字**。
+ *
+ * 上一版这里写的是 `white-space: nowrap; overflow: hidden; text-overflow: ellipsis`
+ * —— 为了挡住"看时间线三个字顶出圆角外"。那是治错了地方：真正的原因是按钮
+ * 高度写死 38px、又被 flex 压窄，文字只能往外挤。裁切只是把"挤出边框"
+ * 换成"文字被切掉一半"（用户看到的"按钮字体都出来了"）。
+ *
+ * 正解在原地：高度改成 min-height，内边距给足，文字允许折行。
+ */
+button { min-width: 0; white-space: normal; }
+/* 能点的地方换成手绘圆环光标；可拖的块另外指定 */
+button, a, [role="button"], summary, label { cursor: var(--cursor-dot); }
+a { color: inherit; text-decoration: none; }
+img { display: block; max-width: 100%; }
+
+/* 控件文字一律显式定义，不用浏览器默认字号 */
+button, input, textarea, select { font-family: inherit; font-size: var(--t-sm); }
+
+/* 选中态：绿底浅字，和强调色一致 */
+::selection { background: var(--accent); color: var(--accent-ink); }
+::placeholder { color: var(--ink-4); }
+
+/* 焦点环：2px 实心 + 2px 间距，浅底深底都看得见（WCAG 2.2 AA） */
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--r-xs);
+}
+
+/* 滚动条：细、低对比，不抢视线 */
+* { scrollbar-width: thin; scrollbar-color: var(--line-3) transparent; }
+*::-webkit-scrollbar { width: 9px; height: 9px; }
+*::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 999px; border: 2px solid transparent; background-clip: content-box; }
+*::-webkit-scrollbar-thumb:hover { background: var(--line-3); background-clip: content-box; }
+*::-webkit-scrollbar-track { background: transparent; }
+
+/* ── 通用原子 ───────────────────────────────────────────────────── */
+
+/*
+ * 数字与短标识：等宽，只为了**对齐**，不再为了"技术感"。
+ *
+ * 原来这里是"等宽 + 大字距 + 全大写"。那套在拉丁文里成立，落到中文界面有两个问题：
+ * 一是全大写对小写拉丁以外的文字没有意义（中文根本不受影响，反而让混排的
+ * 英文词看起来在喊），二是 0.13em 的字距会把 "2026-09-22" 这种日期拉成散点。
+ * 现在只保留等宽与等宽数字（tabular），字距归零。
+ */
+.mono {
+  font-family: var(--font-mono);
+  font-size: var(--t-label);
+  letter-spacing: 0;
+  color: var(--ink-3);
+  font-feature-settings: "tnum";
+}
+
+/*
+ * 中文小标签。
+ *
+ * 等宽字体没有中文字形，中文写进 .mono 实际会落到回退字体 ——
+ * 结果是"字体对不上 + 字距被拉散 + 字重偏细"，一屏小字全在飘。
+ * 所以中文标签用这一档：常规无衬线、稍重一档、几乎不加字距。
+ *
+ * 尺寸从 11.5 提到 12.5：中文没有小写字母那种"半个字高"的缓冲，
+ * 11px 的中文不是"小一号"，是"看不清"——笔画多的字（"求职""截止""复盘"）
+ * 在这个尺寸下会糊成一块灰。字距也从 0.03em 收到 0.02em：
+ * 中文本来就是一个字一个方块，再拉字距只会让它散架。
+ */
+.label {
+  font-family: var(--font-sans);
+  font-size: var(--t-xs);
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1.6;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 编辑体：只给大字号用（门户主张、报告标题、大数字） */
+.editorial {
+  font-family: var(--font-editorial);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.serif { font-family: var(--font-editorial); }
+.dim { color: var(--ink-2); }
+.faint { color: var(--ink-3); }
+
+.rule { height: 1px; background: var(--line-1); border: 0; margin: 0; }
+
+/*
+ * 表面：一张受光的纸。
+ *
+ * 三件事凑出"纸"：**受光渐变**（上亮下暗）、**2px 描边**、**三层投影**。
+ * 圆角走手抖值 —— 每个角不一样长，是手画出来的框。
+ */
+.surface {
+  background: var(--paper-lit-soft);
+  border: var(--card-border);
+  border-radius: var(--r-sketch-md);
+  box-shadow: var(--e-2), var(--inner-hi);
+}
+
+/*
+ * 薄片：覆盖层里那种更大、更厚的卡。
+ *
+ * 发丝线 + 柔和微影，干净克制 —— 框与影子都不许抢内容的戏。
+ */
+.sheet {
+  position: relative;
+  border-radius: var(--r-lg);
+  background: var(--c-paper);
+  border: var(--bw) solid var(--line-2);
+  box-shadow: var(--e-4);
+  overflow: hidden;
+}
+.sheet--quiet { box-shadow: var(--e-3); background: var(--n-0); }
+
+/* 薄片入场：从下方 14px 浮上来 */
+@keyframes sheet-in {
+  from { opacity: 0; transform: translateY(14px) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes sheet-in-left {
+  from { opacity: 0; transform: translateX(-16px) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+
+.btn {
+  display: inline-flex; align-items: center; gap: var(--s2);
+  /*
+   * `min-height` 而不是 `height`：中文按钮文案长短不一，写死高度就会出现
+   * "文案顶出圆角"（用户报的"按钮字体都出来了"）。允许它长高，问题就不存在。
+   */
+  min-height: 38px; padding: 8px var(--s4);
+  border: var(--bw) solid var(--line-2); border-radius: var(--r-sketch-sm);
+  background: var(--paper-lit-soft);
+  font-size: var(--t-sm); font-weight: 500; line-height: 1.25;
+  box-shadow: var(--e-2), var(--inner-hi);
+  transition: border-color var(--dur-micro) var(--ease-out),
+              background var(--dur-micro) var(--ease-out),
+              color var(--dur-micro) var(--ease-out),
+              transform var(--dur-micro) var(--ease-out),
+              box-shadow var(--dur-micro) var(--ease-out);
+}
+.btn:hover {
+  border-color: var(--line-4);
+  transform: translateY(-1px);
+  box-shadow: var(--e-3), var(--inner-hi);
+}
+.btn:active { transform: translateY(1px); box-shadow: none; }
+.btn.primary {
+  background: var(--accent); color: var(--accent-ink);
+  border-color: var(--accent); font-weight: 600;
+  box-shadow: 0 1px 1px rgba(23, 22, 20, 0.12), 0 6px 14px -6px rgba(10, 88, 66, 0.5);
+}
+.btn.primary:hover { background: var(--accent-deep); border-color: var(--accent-deep); }
+.btn.ghost { border-color: transparent; color: var(--ink-2); background: transparent; box-shadow: none; }
+.btn.ghost:hover { color: var(--ink-1); border-color: var(--line-2); background: var(--fill-hover); }
+
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 28px; padding: 0 12px;
+  border: 1px solid var(--line-2); border-radius: var(--r-pill);
+  /* 标签大多是中文 —— 用无衬线，别让中文落到等宽字体的回退字形上 */
+  font-family: var(--font-sans); font-size: var(--t-xs); font-weight: 500;
+  letter-spacing: 0; color: var(--ink-2);
+  background: var(--paper-lit-soft);
+  box-shadow: var(--e-1), var(--inner-hi);
+  transition: color var(--dur-micro) var(--ease-out),
+              border-color var(--dur-micro) var(--ease-out),
+              background var(--dur-micro) var(--ease-out);
+}
+.chip.live { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.chip.risk { border-color: var(--warn); color: var(--warn); }
+.chip.fact { border-color: var(--fact); color: var(--fact); }
+
+.disclose {
+  display: inline-flex; align-items: center; gap: 6px;
+  color: var(--ink-3);
+  font-family: var(--font-sans); font-size: var(--t-xs); font-weight: 500;
+  transition: color var(--dur-micro) var(--ease-out);
+}
+.disclose:hover { color: var(--accent); }
+.disclose .caret { transition: transform var(--dur-exit) var(--ease-out); }
+.disclose[aria-expanded="true"] .caret { transform: rotate(90deg); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+/*
+ * 可"解决"的气泡：右下角是「解决」键的固定位置（`.bubble__done`，绝对定位）。
+ * 块自己的页脚常常也把 CTA 放右边 —— 两者叠在一起，CTA 就被压住点不动。
+ * 这里统一给那一角留出宽度，块内不用各自记这条规则。
+ */
+.bubble.has-done .foot { padding-right: 92px; }
+
+/*
+ * 极矮格位（<200px 高）的统一收缩：内边距与间距各收一档。
+ *
+ * 这一条放在全局而不是每个块里，理由和上面那条一样："格位太矮"是所有块
+ * 共有的处境，每个块各写一遍，迟早在某一块上漏掉 —— 漏掉的那一块就是
+ * 用户截图里"字被切掉半句"的那一块。全局只保证"框先让出空间"，
+ * 具体内容怎么取舍由各块自己的 is-tiny 规则决定。
+ */
+.bubble.is-tiny { padding: var(--s3); gap: var(--s2); }

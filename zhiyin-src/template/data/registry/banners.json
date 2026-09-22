@@ -1,23 +1,14 @@
 {
-  "_note": "职引 · 横幅与运营位（DEMO）。属动态资源：可配置上下线与排序，改本文件不需要发版。第一期只保留一条演示入口，不堆运营位。",
+  "_note": "职引 · 横幅与运营位。属动态资源：可配置上下线与排序，改本文件不需要发版。status=disabled 的条目不下发。",
   "items": [
     {
-      "code": "demo_entry",
-      "title": "先看一遍完整流程",
-      "body": "用脱敏演示数据走完首页 → 对话 → 工作台，不写真实黑板",
-      "action_label": "查看示例",
-      "action_route": "/wb",
+      "code": "first_run",
+      "title": "先从一个真问题开始",
+      "body": "把你的处境说一句，系统判断该走哪个环节，并派对应的主理先问你一个问题。",
+      "action_label": "开始对话",
+      "action_route": "/",
       "status": "enabled",
       "sort_order": 1
-    },
-    {
-      "code": "prelaunch_notice",
-      "title": "（示例：已下线的运营位）",
-      "body": "status=disabled 的条目不会下发给前端——上下线靠改这一个字段，不需要发版。",
-      "action_label": "",
-      "action_route": "",
-      "status": "disabled",
-      "sort_order": 2
     }
   ]
 }

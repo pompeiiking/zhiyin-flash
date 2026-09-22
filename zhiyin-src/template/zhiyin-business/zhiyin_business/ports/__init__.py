@@ -7,7 +7,7 @@
 - 本包不 import `services/` 与 `policies/`（方向是 services → policies → ports）。
 
 命名说明：本目录原名 `domain/`，但里面装的全是 ABC 与读模型、没有领域行为，
-名字与内容不符；已按《职引-目标架构设计-v1.0》§4.1 改为 `ports/`。
+名字与内容不符；已改为 `ports/`。
 """
 
 from zhiyin_business.ports.orchestrator import (
@@ -18,12 +18,6 @@ from zhiyin_business.ports.orchestrator import (
     StageDecision,
     TurnRequest,
     TurnResult,
-)
-from zhiyin_business.ports.loop import (
-    LoopContext,
-    LoopCoordinator,
-    LoopEntry,
-    LoopResult,
 )
 from zhiyin_business.ports.blackboard import (
     AssetService,
@@ -45,10 +39,6 @@ __all__ = [
     "StageDecision",
     "TurnRequest",
     "TurnResult",
-    "LoopContext",
-    "LoopCoordinator",
-    "LoopEntry",
-    "LoopResult",
     "AssetService",
     "BehaviorService",
     "BlackboardView",

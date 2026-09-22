@@ -1,5 +1,5 @@
 {
-  "_note": "职引 · 公共知识库示例（DEMO）。职业与专业条目结构遵循《业务数据采集与存储来源设计》§3.1：以职业编码 / 专业代码为唯一键，必须保留 source_url 与 fetched_at。这里只放结构示例，真实数据由采集链路写入。",
+  "_note": "职引 · 公共知识库示例（DEMO）。**职业**条目：以职业编码（occupation_code）为唯一键，必须保留 source_url 与 fetched_at。专业条目（major_code）在 profession.json。文件与条目自述的 namespace 必须一致 —— LocalKnowledgeRepo 按 {namespace}.json 读文件，条目自述用于按 namespace 过滤，两者不一致时调用方会拿到自相矛盾的答案。这里只放结构示例，真实数据由采集链路写入。",
   "items": [
     {
       "id": "occ-2-02-10-01",
@@ -32,17 +32,6 @@
       "fetched_at": "2026-09-14T00:00:00+00:00",
       "source": "学职平台",
       "namespace": "occupation"
-    },
-    {
-      "id": "mj-0809",
-      "title": "计算机类专业",
-      "summary": "培养计算系统与软件设计能力，主干课程含程序设计、数据结构、操作系统、数据库与计算机网络。",
-      "tags": ["计算机", "专业", "课程"],
-      "major_code": "0809",
-      "source_url": "https://gk.chsi.com.cn",
-      "fetched_at": "2026-09-14T00:00:00+00:00",
-      "source": "阳光志愿信息服务系统",
-      "namespace": "profession"
     }
   ]
 }

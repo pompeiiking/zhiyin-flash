@@ -1,0 +1,42 @@
+[
+  {
+    "id": "collect",
+    "order": 1,
+    "label": "① 采集建模",
+    "title": "① 采集建模",
+    "asset": "",
+    "note": "把零散信息沉淀成带置信度与缺口的结构化画像"
+  },
+  {
+    "id": "diagnose",
+    "order": 2,
+    "label": "② 诊断匹配",
+    "title": "② 诊断匹配",
+    "asset": "report",
+    "note": "拿画像与职业环境比对，产出结论与决策线"
+  },
+  {
+    "id": "decide",
+    "order": 3,
+    "label": "③ 决策",
+    "title": "③ 决策",
+    "asset": "direction_plan",
+    "note": "在主攻 / 平行 / 保底之间做出可撤回的选择"
+  },
+  {
+    "id": "act",
+    "order": 4,
+    "label": "④ 行动",
+    "title": "④ 行动",
+    "asset": "action_plan",
+    "note": "把选择拆成今天就能做的一步"
+  },
+  {
+    "id": "review",
+    "order": 5,
+    "label": "⑤ 复盘校准",
+    "title": "⑤ 复盘校准",
+    "asset": "",
+    "note": "回头看看做过的事有没有用，没用就换"
+  }
+]

@@ -1,0 +1,20 @@
+{
+  "_note": "职引 · 公共知识库示例（DEMO）。与 occupation.json 同一套条目结构，区别只在 namespace：本文件放**专业**（条目带 major_code），occupation.json 放**职业**（条目带 occupation_code）。分文件是既有约定：LocalKnowledgeRepo 按 namespace 读 {namespace}.json —— 条目自述的 namespace 必须与所在文件一致，否则按 namespace 过滤时会出现自相矛盾的答案。只放结构示例，真实数据由采集链路写入。",
+  "items": [
+    {
+      "id": "mj-0809",
+      "title": "计算机类专业",
+      "summary": "培养计算系统与软件设计能力，主干课程含程序设计、数据结构、操作系统、数据库与计算机网络。",
+      "tags": [
+        "计算机",
+        "专业",
+        "课程"
+      ],
+      "major_code": "0809",
+      "source_url": "https://gk.chsi.com.cn",
+      "fetched_at": "2026-09-14T00:00:00+00:00",
+      "source": "阳光志愿信息服务系统",
+      "namespace": "profession"
+    }
+  ]
+}

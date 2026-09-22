@@ -31,6 +31,5 @@
 
 from zhiyin_business.workers.active_event import ActiveEventWorker
 from zhiyin_business.workers.impact import ImpactPropagationWorker
-from zhiyin_kernel.worker import Worker
 
-__all__ = ["ActiveEventWorker", "ImpactPropagationWorker", "Worker"]
+__all__ = ["ActiveEventWorker", "ImpactPropagationWorker"]

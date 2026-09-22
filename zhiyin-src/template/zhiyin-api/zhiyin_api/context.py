@@ -107,17 +107,61 @@ class RequestContextMiddleware:
 
         trace_id = normalize_trace_id(_inbound_trace_id(scope))
         token = bind_trace_id(trace_id)
+        started = False
 
         async def send_with_trace(message: MutableMapping[str, Any]) -> None:
+            nonlocal started
             if message.get("type") == "http.response.start":
+                started = True
                 headers = MutableHeaders(scope=message)
                 headers[TRACE_HEADER] = trace_id
             await send(message)
 
         try:
             await self._app(scope, receive, send_with_trace)
+        except Exception as exc:  # noqa: BLE001 - 兜底必须是最宽的
+            # 未捕获异常此前会穿透本中间件，由最外层的 ServerErrorMiddleware 返回一条
+            # 纯文本 500 —— 既没有统一信封，也没有 X-Trace-Id。于是「日志里那个 id」
+            # 恰恰在最需要它的那次请求上不存在。这里补上：响应头与信封用同一个 id。
+            if started:
+                # 响应已经开始，改不了头也换不了体，只能让它继续失败（交给外层）。
+                raise
+            await send_with_trace(
+                {
+                    "type": "http.response.start",
+                    "status": 500,
+                    "headers": [
+                        (b"content-type", b"application/json; charset=utf-8"),
+                    ],
+                }
+            )
+            await send(
+                {
+                    "type": "http.response.body",
+                    "body": _internal_error_body(exc, trace_id),
+                }
+            )
         finally:
             reset_trace_id(token)
+
+
+def _internal_error_body(exc: BaseException, trace_id: str) -> bytes:
+    """兜底 500 的响应体：统一信封，且不回显异常细节之外的内部对象。
+
+    延迟 import `dto.common`：它反过来 import 本模块的 `current_trace_id`，
+    模块级 import 会成环。
+    """
+    import json
+    import logging
+
+    from zhiyin_api.dto.common import ApiResponse, ErrorCode
+
+    logging.getLogger(__name__).exception("未捕获异常（trace=%s）：%s", trace_id, exc)
+    body = ApiResponse[None](
+        code=ErrorCode.INTERNAL,
+        message=f"服务内部错误（trace_id={trace_id}）",
+    ).model_dump(mode="json")
+    return json.dumps(body, ensure_ascii=False).encode("utf-8")
 
 
 __all__ = [

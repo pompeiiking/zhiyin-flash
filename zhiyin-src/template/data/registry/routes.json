@@ -1,10 +1,8 @@
 {
-  "_note": "职引 · 前端路由（DEMO）。属动态资源：改本文件不需要发版。page_code 是页面锚点口径（《前端设计 v1.0》§2.2），必须与 zhiyin-web/src/router/index.ts 的 PAGE_ANCHORS 一致；#screen-subagent / #screen-mentor 属 PRD v2.0 未定义的扩展页，不纳入第一期。",
+  "_note": "职引 · 前端路由。属动态资源：改本文件不需要发版。page_code 是埋点用的页面锚点；path 与 require_login 必须与 zhiyin-web/src/router.ts 一致（tests/test_frontend_alignment.py 双向校验）。",
   "items": [
-    { "code": "home", "path": "/", "page_code": "screen-home", "require_login": false, "status": "enabled", "sort_order": 1 },
-    { "code": "auth", "path": "/auth", "page_code": "screen-auth", "require_login": false, "status": "enabled", "sort_order": 2 },
-    { "code": "conversation", "path": "/conv", "page_code": "screen-conv", "require_login": true, "status": "enabled", "sort_order": 3 },
-    { "code": "workspace", "path": "/wb", "page_code": "screen-wb", "require_login": true, "status": "enabled", "sort_order": 4 },
-    { "code": "report", "path": "/report", "page_code": "screen-report", "require_login": true, "status": "enabled", "sort_order": 5 }
+    { "code": "console", "path": "/", "page_code": "screen-console", "require_login": true, "status": "enabled", "sort_order": 1 },
+    { "code": "portal", "path": "/portal", "page_code": "screen-portal", "require_login": false, "status": "enabled", "sort_order": 2 },
+    { "code": "report", "path": "/report", "page_code": "screen-report", "require_login": true, "status": "enabled", "sort_order": 3 }
   ]
 }

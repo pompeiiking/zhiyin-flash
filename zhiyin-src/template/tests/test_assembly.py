@@ -26,7 +26,6 @@ from zhiyin_boot.container.ports import (
     ORCHESTRATION_PORTS,
     REPOSITORY_PORTS,
     SERVICE_PORTS,
-    TRANSACTION_PORTS,
     WORKER_PORTS,
 )
 
@@ -37,7 +36,6 @@ REGISTRY_DIR = DATA_DIR / "registry"
 GROUP_PORTS: dict[str, tuple[str, ...]] = {
     "gateways": GATEWAY_PORTS,
     "repositories": REPOSITORY_PORTS,
-    "transactions": TRANSACTION_PORTS,
     "orchestration": ORCHESTRATION_PORTS,
     "services": SERVICE_PORTS,
     "workers": WORKER_PORTS,
@@ -47,6 +45,12 @@ GROUP_PORTS: dict[str, tuple[str, ...]] = {
 @pytest.fixture
 def settings() -> Settings:
     return Settings(
+        # 本项目不提供 mock 产出：没有真模型就没有智能体引擎。
+        # 构造真网关不发请求，测试里给一个占位密钥即可。
+        use_remote_llm=True,
+        llm_api_key="sk-test",
+        llm_base_url="https://api.deepseek.com",
+        llm_model="deepseek-flash",
         env="test",
         local_data_dir=str(DATA_DIR),
         local_registry_dir=str(REGISTRY_DIR),
@@ -185,7 +189,6 @@ def test_minimum_viable_is_checked_against_known_ports() -> None:
 # 下面 4 个是**有意**的例外，各自有更强的形状约束。登记在这里等于把这份对照写下来，
 # 免得下一个人"顺手"把 workers 拆成三个字段、或把事务管理器加成一个新能力位。
 PORT_NOT_A_CONTAINER_FIELD: dict[str, str] = {
-    "transaction_manager": "container.transactions（单个事务管理器，不是每能力位一个字段）",
     "impact": "container.workers 列表（Worker 按自身的 name 寻址）",
     "active_event": "container.workers 列表（Worker 按自身的 name 寻址）",
     "vector_sync": "container.workers 列表（Worker 按自身的 name 寻址）",

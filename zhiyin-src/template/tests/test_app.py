@@ -10,13 +10,18 @@ from fastapi.testclient import TestClient
 from zhiyin_api.app import API_PREFIX
 from zhiyin_boot import Settings, build_container, wire_application
 from zhiyin_api.app import create_app
-from zhiyin_api.dto.common import ErrorCode
 
 
 @pytest.fixture
 def settings() -> Settings:
     data_dir = Path(__file__).resolve().parents[1] / "data"
     return Settings(
+        # 本项目不提供 mock 产出：没有真模型就没有智能体引擎。
+        # 构造真网关不发请求，测试里给一个占位密钥即可。
+        use_remote_llm=True,
+        llm_api_key="sk-test",
+        llm_base_url="https://api.deepseek.com",
+        llm_model="deepseek-flash",
         env="test",
         local_registry_dir=str(data_dir / "registry"),
         local_knowledge_dir=str(data_dir / "knowledge"),
@@ -40,9 +45,9 @@ def test_healthz_reports_assembly(client: TestClient) -> None:
     assembly = body["assembly"]
     # 已实现的部件必须如实报 wired
     assert assembly["orchestration"]["agent_engine"] == "wired"
-    assert assembly["services"]["loop"] == "wired"
-    # 未实现的部件必须如实报 not_wired，而不是装作装好了
-    assert assembly["services"]["facade"] == "not_wired"
+    assert assembly["services"]["ai_task_service"] == "wired"
+    # 联调期交付的门面必须如实报 wired；剩余缺口（如 vector_sync）仍要列出
+    assert assembly["services"]["facade"] == "wired"
     assert assembly["missing"]
 
 
@@ -57,16 +62,18 @@ def test_openapi_is_served(client: TestClient) -> None:
     assert "/healthz" in paths
 
 
-def test_unimplemented_capability_degrades_instead_of_500(client: TestClient) -> None:
-    """第一期 Facade 未实现：接口按 DEPENDENCY_UNAVAILABLE 降级，不返回 500（§6.2）。"""
+def test_wired_facade_serves_bootstrap(client: TestClient) -> None:
+    """Facade 已装配：bootstrap 返回动态资源数据，而不是 DEPENDENCY_UNAVAILABLE。"""
     response = client.get(f"{API_PREFIX}/app/bootstrap")
-    assert response.status_code == 503
+    assert response.status_code == 200
 
     body = response.json()
-    assert body["code"] == ErrorCode.DEPENDENCY_UNAVAILABLE
-    assert body["message"]
+    assert body["code"] == 0
     # 统一信封字段齐备（R-API-006）
     assert set(body) >= {"code", "message", "data", "trace_id"}
+    data = body["data"]
+    assert data["task_entries"], "任务入口必须来自动态资源"
+    assert "app.name" in data["copy_bundle"]
 
 
 def test_healthz_works_without_assembly() -> None:

@@ -1,24 +1,219 @@
-/**
- * 设计令牌（tokens）。
+/*
+ * 职引 · 设计令牌
  *
- * 口径来源：《原型设计说明.md》§2（设计令牌全表：颜色 / 字体 / 圆角 / 阴影）。
- * TODO(骨架): 从原型抽取真实数值。下面只声明分组，不含具体取值，
- * 避免与原型不一致时出现"两套令牌"。
+ * 三层结构（primitive → semantic → component）：
+ *   一层是原始值，只在这里出现一次；
+ *   二层是用途别名，组件只认这一层；
+ *   三层是具体物件的取值（气泡、薄片、按钮）。
+ * 组件里不写十六进制 —— 换风格只改这一个文件。
+ *
+ * 视觉语言：**疯狂艺术家的草稿台**（2026-09-22 第三次定调）。
+ *
+ * 用户原话："不是什么水墨风，是更激进的艺术风格、草稿风"；"不应该想象成
+ * 乖乖女认真写上课笔记，而是疯狂艺术家胡乱的草稿和涂鸦"。据此立三条铁律：
+ *
+ *   1. **平面纸**：卡面一律纯色，不许出现"上亮下暗"的渐变和顶部高光 ——
+ *      那是印刷品的哑光腔，和草稿气质相反（用户点名"渐变块非常丑"）。
+ *   2. **硬偏移阴影**：纸片浮起来靠"错位的那张影子"，不靠大软模糊 ——
+ *      像 cut & paste 拼贴，不像 SaaS 卡片。
+ *   3. **不规整**：圆角每个角不一样长（手抖框）、块整体歪着放、
+ *      字用站酷快乐体（笔画歪扭的马克笔字）。楷体/宋体/黑体都试过，
+ *      用户判的是"规整=错误"。
  */
-
 :root {
-  /* 颜色 —— 语义色板 */
-  /* TODO: --color-bg / --color-surface / --color-text-primary / --color-brand ... */
+  /* ── 一层：原始值 ───────────────────────────────────────────────── */
+  --c-plaster: #f4efe1;    /* 桌面（暖草稿纸） */
+  --c-paper: #fffdf4;      /* 纸面 */
+  --c-sand-1: #ece4cd;     /* 内嵌填色（凹槽/折角背面） */
+  --c-ink: #2b2721;        /* 正文（重铅笔芯） */
 
-  /* 字体 —— 字号与行高阶梯 */
-  /* TODO: --font-size-xs ... --font-size-3xl，--line-height-* */
+  /* 绿阶：签名色是荧光记号笔绿，深的那档写字，亮的那档画图形 */
+  --g-10: #e4f0dd;  --g-20: #cfe5c4;  --g-30: #a4d3a2;  --g-40: #6fb878;
+  --g-100: #1f6b3d; --g-110: #14512c; --g-120: #3da45c;
 
-  /* 圆角 */
-  /* TODO: --radius-sm / --radius-md / --radius-lg */
+  --p-80: #7a4bb0;
 
-  /* 阴影 */
-  /* TODO: --shadow-card / --shadow-overlay */
+  --o-80: #c4551f;
+  --b-80: #2f56b8;
 
-  /* 间距 */
-  /* TODO: --space-1 ... --space-8 */
+  /*
+   * 分类色（彩铅笔，七对深/浅）。
+   * 这一版**放开饱和度**：矿物色那版被用户判"不搭调"，现在是真彩铅笔——
+   * 深的那支仍守得住对纸白 ≥4.5:1（它们要当文字用），浅的只做填充。
+   */
+  --mk-green: #257040;   --mk-green-soft: #e0f0d8;
+  --mk-purple: #6f42a8;  --mk-purple-soft: #ece2f8;
+  --mk-orange: #bf5518;  --mk-orange-soft: #fce4cf;
+  --mk-pink: #c23a62;    --mk-pink-soft: #fbdfe7;
+  --mk-blue: #2f56b8;    --mk-blue-soft: #e0e6f9;
+  --mk-teal: #17766b;    --mk-teal-soft: #d8efe9;
+  --mk-yellow: #91721a;  --mk-yellow-soft: #f7ebc3;
+
+  /* ── 二层：语义（组件只认这一层） ────────────────────────────────── */
+
+  /* 表面：桌面 → 纸面 → 内嵌 */
+  --n-0: var(--c-plaster);
+  --n-1: var(--c-paper);
+  --n-3: var(--c-sand-1);
+
+  /* 描边：铅笔线 = 暖墨低透明度 */
+  --line-1: rgba(43, 39, 33, 0.10);
+  --line-2: rgba(43, 39, 33, 0.18);
+  --line-3: rgba(43, 39, 33, 0.30);
+  --line-4: rgba(43, 39, 33, 0.48);
+
+  /* 文字：铅笔芯四档 */
+  --ink-1: var(--c-ink);
+  --ink-2: #584f3f;
+  --ink-3: #6c614c;
+  --ink-4: #a89c80;   /* 只做装饰，不承载信息 */
+
+  /* 强调：绿是签名色 */
+  --accent: var(--g-100);
+  --accent-deep: var(--g-110);
+  --accent-ink: #fffdf4;
+  --accent-bright: var(--g-120);
+  --accent-glow: rgba(31, 107, 61, 0.16);
+  --accent-soft: var(--g-10);
+
+  --fact: var(--b-80);      /* 外部事实 */
+  --warn: var(--o-80);      /* 风险 / 要判断 */
+  --violet: var(--p-80);    /* 交接 / 智能体 */
+
+  /* 玻璃：浮窗那几片仍半透明，但不再有"高级磨砂"的讲究 */
+  --glass-blur: 9px;
+  --glass-1: rgba(253, 251, 240, 0.85);
+  --glass-2: rgba(253, 251, 240, 0.94);
+
+  /*
+   * 阴影：**柔和微影**。
+   *
+   * 硬偏移阴影（拼贴风）与 2px 粗框被用户点名去除 —— 参照 Excalidraw / Linear
+   * 那一档的克制：影子只负责"轻轻浮在桌面上"，永远不抢内容的戏。
+   */
+  --e-1: 0 1px 2px rgba(43, 39, 33, 0.06);
+  --e-2: 0 1px 2px rgba(43, 39, 33, 0.05), 0 2px 8px rgba(43, 39, 33, 0.07);
+  --e-3: 0 2px 6px rgba(43, 39, 33, 0.05), 0 10px 28px rgba(43, 39, 33, 0.10);
+  --e-4: 0 4px 12px rgba(43, 39, 33, 0.06), 0 20px 48px rgba(43, 39, 33, 0.14);
+  /* 顶部高光废除：平面纸不装"受光"（保留变量名为 none，旧引用零成本失效） */
+  --inner-hi: 0 0 0 rgba(0, 0, 0, 0);
+
+  /*
+   * 面的填色：平面。变量名保留（--paper-lit 被大量引用），值回归纯色 ——
+   * "渐变块"就此绝迹。
+   */
+  --paper-lit: var(--c-paper);
+  --paper-lit-soft: var(--c-paper);
+
+  /* ── 三层：具体物件 ─────────────────────────────────────────────── */
+  --bw: 1px;                                  /* 描边：发丝线，不抢内容 */
+  --card-border: var(--bw) solid var(--line-2);
+  --fill-subtle: rgba(43, 39, 33, 0.04);
+  --fill-hover: rgba(43, 39, 33, 0.06);
+  --fill-press: rgba(43, 39, 33, 0.10);
+  --focus-ring: var(--g-100);
+
+  /*
+   * 光标：自己画的（手绘箭头 / 圆环 / 圆珠笔）—— 草稿台的本命配件，保留。
+   */
+  --cursor-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='26' viewBox='0 0 26 26'%3E%3Cpath d='M3.4 1.8 L3 19.4 L8.3 15.1 L11.4 22.6 L14.6 21.2 L11.5 13.9 L18.6 13.5 Z' fill='%23fffdf4' stroke='%232b2721' stroke-width='1.9' stroke-linejoin='round'/%3E%3Ccircle cx='7.4' cy='7.2' r='1.55' fill='%231f6b3d'/%3E%3C/svg%3E") 3 2, default;
+  --cursor-dot: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='26' viewBox='0 0 26 26'%3E%3Ccircle cx='12.6' cy='12.4' r='7.4' fill='none' stroke='%232b2721' stroke-width='1.9'/%3E%3Ccircle cx='12.6' cy='12.4' r='2.6' fill='%231f6b3d'/%3E%3Cpath d='M12.6 2.4 L12.8 6.6' stroke='%232b2721' stroke-width='1.7' stroke-linecap='round'/%3E%3C/svg%3E") 13 12, pointer;
+  /* 门户是一张纸，纸上的光标是一支圆珠笔：笔尖在左下角（热点 3 23） */
+  --cursor-pen: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='26' viewBox='0 0 26 26'%3E%3Cpath d='M5.6 17.8 L21.4 4.4 L24.2 7.2 L8.8 21 Z' fill='%23fffdf4' stroke='%232b2721' stroke-width='1.6' stroke-linejoin='round'/%3E%3Cpath d='M8.4 15.2 L11.5 18.2 L9.8 19.9 L6.7 16.9 Z' fill='%231f6b3d'/%3E%3Cpath d='M5.6 17.8 L8.8 21 L3.4 23.6 C2.5 24 1.7 23.1 2.1 22.3 Z' fill='%23fffdf4' stroke='%232b2721' stroke-width='1.5' stroke-linejoin='round'/%3E%3Ccircle cx='3.1' cy='22.9' r='1.3' fill='%232b2721'/%3E%3C/svg%3E") 3 23, crosshair;
+
+  /* ── 字体 ───────────────────────────────────────────────────────── */
+  --font-cjk: "PingFang SC", "HarmonyOS Sans SC", "Source Han Sans SC", "Noto Sans SC",
+              "Microsoft YaHei UI", "Microsoft YaHei", system-ui, sans-serif;
+  --font-cjk-serif: "Songti SC", "Source Han Serif SC", "Noto Serif SC", "STSong", SimSun, Georgia, serif;
+
+  /*
+   * 全站主打字：**站酷快乐体**（npm @fontsource/zcool-kuaile 自托管分片）。
+   *
+   * 笔画歪歪扭扭的马克笔字 —— "疯狂艺术家的草稿"的字面担当。
+   * 楷体（文楷）、宋体（思源宋）先后都被用户判了"规整=错误"，这条路上
+   * 不再回头。MiSans 兜底生僻字，等宽只管数字对齐。
+   */
+  --font-sans: "MiSans VF", "MiSans", var(--font-cjk);
+  --font-display: "ZCOOL KuaiLe", var(--font-cjk);
+  /*
+   * 等宽：`var(--font-cjk)` 放在泛型 `monospace` **前面** ——
+   * 数字/时间仍然是等宽的（"08:40" 对齐），中文落到中文字族。
+   */
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, var(--font-cjk);
+  /* 可变字重中文：只给"字重随光标变"这类需要真字重轴的地方用 */
+  --font-var: "Zhiyin Var SC", var(--font-cjk);
+  /* 手绘字：门户主标题的「职引」两个字（子集在前，整包兜底） */
+  --font-hand: "Zhiyin Hand", "ZCOOL KuaiLe", var(--font-cjk);
+  /* 编辑感类名：与 display 同源（快乐体），保留兼容旧用法 */
+  --font-editorial: "ZCOOL KuaiLe", var(--font-cjk);
+
+  /* 字号阶梯（只允许这几档）。下限 12px */
+  --t-h1: clamp(26px, 2.8vw, 38px);
+  --t-h2: 22px;
+  --t-h4: 19px;
+  --t-h3: 17px;
+  --t-body: 15px;
+  --t-sm: 13.5px;
+  --t-xs: 12.5px;
+  --t-label: 12px;
+
+  --lh-tight: 1.16;
+  --lh-snug: 1.4;
+  --lh-body: 1.68;
+
+  --track-h: 0em;
+
+  /* 间距（4 的倍数） */
+  --s1: 4px;   --s2: 8px;   --s3: 12px;  --s4: 16px;
+  --s5: 24px;  --s6: 32px;  --s7: 48px;  --s8: 64px;
+  --s9: 96px;  --s10: 128px;
+
+  /*
+   * 圆角：统一的小圆角。手抖圆角连同折角一起被用户点名去除 ——
+   * 参照成熟产品的干净做法，个性交给字体与涂鸦层，不给框。
+   */
+  --r-xs: 6px;
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-pill: 999px;
+
+  --r-sketch-lg: 16px;
+  --r-sketch-md: 12px;
+  --r-sketch-sm: 8px;
+
+  /* 动效：退出 ≈ 进入的 60%，位移错开 40ms */
+  --dur-micro: 140ms;
+  --dur-exit: 240ms;
+  --dur-enter: 420ms;
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+
+  /* 层级 */
+  --z-shell: 10;
+  --z-float: 30;
+  --z-drawer: 40;
+  --z-overlay: 60;
+  --z-toast: 80;
+
+  /*
+   * 旧令牌名映射。
+   * 早期组件用的是这一批名字，保留下来免得一次性改十几个文件。
+   */
+  --ink: var(--ink-1);
+  --ink-dim: var(--ink-2);
+  --ink-faint: var(--ink-3);
+  --line: var(--line-1);
+  --line-strong: var(--line-3);
+
+  --fs-lg: var(--t-h4);
+  --fs-body: var(--t-body);
+  --fs-small: var(--t-sm);
+  --fs-label: var(--t-label);
+
+  --dur-fast: var(--dur-micro);
+  --dur: var(--dur-exit);
 }

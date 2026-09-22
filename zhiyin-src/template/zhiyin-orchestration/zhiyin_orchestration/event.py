@@ -4,7 +4,7 @@
 - 本模块是**语义契约**，业务层只面向它编程：收发的是带信封的 DomainEvent
   （event_id / occurred_at / idempotency_key），因此幂等和追溯由本层保证。
 - 传输由 zhiyin-data-sdk 的 `EventBusGateway` 承担，第一期实现为
-  InMemoryEventBus（进程内派发），后续换 Kafka 时本层与业务层都不改动。
+  InMemoryEventBus（进程内派发），后续换实现时本层与业务层都不改动。
 - 第一期默认实现见 `zhiyin_orchestration.impl.GatewayEventBus`。
 """
 

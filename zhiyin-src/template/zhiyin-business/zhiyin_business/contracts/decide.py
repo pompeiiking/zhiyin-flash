@@ -1,4 +1,4 @@
-"""③ 决策产出契约（FR-DECIDE）。
+"""③ 决策产出契约。
 
 验收锚点：给"可撤回的选择 + 依据"，不给"唯一正确答案"。
 """
@@ -16,7 +16,7 @@ from zhiyin_business.contracts.common import (
 
 
 class PlanOption(BaseModel):
-    """单套方案结构（FR-DECIDE-002）。"""
+    """单套方案结构。"""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -25,7 +25,7 @@ class PlanOption(BaseModel):
     name: str
     target_desc: str
     match_score: float = Field(
-        description="匹配度 = 三叶草契合度 × 可达性，解释性分值（FR-DECIDE-004）"
+        description="匹配度 = 三叶草契合度 × 可达性，解释性分值"
     )
     gaps: list[str] = Field(default_factory=list, description="该方向下的差距要点")
     fit_reason: str = Field(description="契合依据")

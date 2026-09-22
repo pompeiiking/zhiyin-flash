@@ -3,7 +3,7 @@ policy_params / app_menu / app_route / app_copy / app_banner / app_trust_block /
 app_faq）。
 
 第一期允许实现为本地 JSON / YAML，但接口形状不变，统一标记 TODO(第二期) 接
-pami 动态资源表。
+自有动态资源存储。
 
 两类动态资源各有归属，不要混：
 - **内容型动态资源**（本文件）：智能体 / 理论卡 / 产出契约 / 任务入口 / 规则参数 /
@@ -27,9 +27,14 @@ from zhiyin_kernel.dynamic_content import (
 )
 from zhiyin_kernel.registry import (
     AgentDescriptor,
+    BadgeRuleSpec,
+    ChsiFieldSpec,
     OutputContractSpec,
     PolicyParamSet,
+    PromptSpec,
+    RoutingRuleSpec,
     TaskEntrySpec,
+    TaskProgressSpec,
     TheoryCard,
     TrackEventSpec,
 )
@@ -67,7 +72,7 @@ class RegistryRepository(ABC):
 
     @abstractmethod
     async def list_task_entries(self) -> list[TaskEntrySpec]:
-        """读取首页任务入口清单（FR-HOME-001 动态文案）。"""
+        """读取首页任务入口清单（动态文案）。"""
 
     @abstractmethod
     async def get_policy_params(self, code: str) -> Optional[PolicyParamSet]:
@@ -77,7 +82,7 @@ class RegistryRepository(ABC):
         读不到时实现方返回 None（由调用方决定回落口径），不要静默造默认值。
         """
 
-    # ---------- 前端页面内容（FR-HOME / R-API-001） ----------
+    # ---------- 前端页面内容（R-API-001） ----------
     #
     # 为什么这些读接口在"动态资源 Repository"而不是 api 层直接读 JSON：
     # `zhiyin-api` 被依赖矩阵禁止 import `zhiyin_data_sdk`（见
@@ -116,11 +121,63 @@ class RegistryRepository(ABC):
     async def list_faqs(self) -> list[FaqSpec]:
         """常见问题。"""
 
-    # ---------- 埋点事件归属（PRD §十一 / 决策 14） ----------
+    # ---------- 埋点事件归属（决策 14：后端派生为主 + 前端上报为辅） ----------
 
     @abstractmethod
     async def list_track_events(self) -> list[TrackEventSpec]:
         """埋点事件归属表（后端派生 / 前端上报）。
 
         供 `POST /app/track` 与埋点实现校验"这个事件该由谁记"。
+        """
+
+    # ---------- 产品口径：成就规则 / 进度文案 / 学信网字段 ----------
+
+    @abstractmethod
+    async def list_badge_rules(self) -> list[BadgeRuleSpec]:
+        """成就解锁规则：哪条行为解锁哪个成就（已按 sort_order 排序）。"""
+
+    @abstractmethod
+    async def list_task_progress(self) -> list[TaskProgressSpec]:
+        """生成类 AI 任务的进度文案，按 code 取用。"""
+
+    @abstractmethod
+    async def list_chsi_fields(self) -> list[ChsiFieldSpec]:
+        """学信网报告字段 → 画像键 + 展示名（已按 order 排序）。"""
+
+    # ---------- AI 提示词与编排规则（AI 面向切面的读侧） ----------
+    #
+    # 这一类与其他动态资源的访问特征不同：它在**每一次模型调用前**都会被读一次，
+    # 是热路径。因此实现方必须按 (layer, agent_id, stage) 建立索引后再取，
+    # 不要每次全量加载再过滤。
+
+    @abstractmethod
+    async def get_prompt(self, code: str) -> Optional[PromptSpec]:
+        """按 code 读取一条提示词模板。取不到返回 None，由调用方决定回落口径。
+
+        **不要静默编一条默认提示词**：提示词缺席时模型会用通用聊天的方式回答，
+        而症状是"这个环节突然不说人话了"，比直接报错难查得多。
+        """
+
+    @abstractmethod
+    async def list_prompts(
+        self,
+        *,
+        layer: Optional[str] = None,
+        agent_id: Optional[str] = None,
+        stage: Optional[str] = None,
+    ) -> list[PromptSpec]:
+        """按归属读取提示词，只返回启用项。
+
+        三个条件都是可选的窄化，不是精确匹配的组合键：调用方通常先按
+        `agent_id` 取该角色的全部条目，再自己按 `stage` 挑一条。
+        """
+
+    @abstractmethod
+    async def list_routing_rules(
+        self, kind: Optional[str] = None
+    ) -> list[RoutingRuleSpec]:
+        """编排判定规则，已按 `priority` 升序、只返回启用项。
+
+        `kind` 取 `intent` / `stage` / `lead`；为空表示全部返回。
+        排序是数据语义（越小越先判定），不要让每个调用方各排一遍。
         """

@@ -2,7 +2,7 @@
 
 为什么需要这一层
 ----------------
-身份解析的**能力**来自外部（第一期 `DefaultPassAuth`，第二期 pami IAM），
+身份解析的**能力**来自自有鉴权实现（当前 `DefaultPassAuth`），
 契约由 `zhiyin_data_sdk.gateways.security.AuthGateway` 定义——那是数据访问契约，
 **api 层按依赖矩阵不许 import data_sdk**（`test_api_does_not_touch_data_sdk`）。
 
@@ -39,7 +39,7 @@ from zhiyin_kernel.identity import UserAccount
 
 
 class IdentityService(ABC):
-    """当前用户解析（FR-AUTH）。"""
+    """当前用户解析。"""
 
     @abstractmethod
     async def current_user(self, *, token: Optional[str] = None) -> UserAccount:
@@ -52,8 +52,26 @@ class IdentityService(ABC):
           否则下游（画像 / 行为 / 资产）会写到一个不存在的 user_id 上；
         - 游客同样走本方法（`role=guest`），不与登录用户分叉。
 
-        TODO(FR-AUTH)：游客会话合并（`GuestSession`）与登录态刷新接进来。
+        TODO：游客会话合并（`GuestSession`）与登录态刷新接进来。
         """
+
+    @abstractmethod
+    async def login(self, account: str, password: str) -> dict:
+        """账号密码登录：校验凭证 → 签发 JWT。返回 {token, user_id, role}。"""
+
+    @abstractmethod
+    async def account(self, user_id: str) -> UserAccount:
+        """按 `user_id` 取本地用户记录（不存在则补齐）。
+
+        为什么需要它：调用方**已经**通过 `current_user()` 拿到 `user_id` 之后，
+        还要再取一次身份形状（启动装配 / 工作台标题等）时，不能再拿
+        `token=None` 去重新认证一次 —— 那等于把刚验过的凭证丢掉，
+        在真实 JWT 下必然失败。身份只认证一次，之后按 id 取记录。
+        """
+
+    @abstractmethod
+    async def register(self, account: str, password: str, nickname: str = "") -> str:
+        """注册账号（user_id 即账号名）。已存在抛 ValueError。"""
 
 
 __all__ = ["IdentityService"]

@@ -21,6 +21,20 @@ class AgentRequest(BaseModel):
     stage: Optional[str] = Field(
         default=None, description="通用阶段标识，取值由业务层决定；编排层不解释其含义"
     )
+    prompt_code: Optional[str] = Field(
+        default=None,
+        description=(
+            "指定提示词条目（按 code 取，如 AI 任务的 task.brief.today）；"
+            "为空时按 (agent_id, stage) 取角色提示词"
+        ),
+    )
+    use_tools: bool = Field(
+        default=True,
+        description=(
+            "是否按注册表白名单挂工具。生成类 AI 任务默认不挂（上下文一次备齐、"
+            "产出要可复现）；需要自己去取数的任务显式置 True。"
+        ),
+    )
     blackboard: dict[str, Any] = Field(
         default_factory=dict, description="共享状态快照（已序列化）"
     )

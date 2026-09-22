@@ -19,7 +19,7 @@ from zhiyin_kernel.enums import LoopStage
 
 
 class TaskEntryView(BaseModel):
-    """首页任务入口（FR-HOME-001）。文案必须用"用户自己的话"。"""
+    """首页任务入口。文案必须用"用户自己的话"。"""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -68,7 +68,7 @@ class BannerView(BaseModel):
 
 
 class TrustBlockView(BaseModel):
-    """信任背书块（FR-HOME-005）。只讲一条主线，可点开方法论示例。"""
+    """信任背书块。只讲一条主线，可点开方法论示例。"""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -86,6 +86,33 @@ class FaqView(BaseModel):
     code: str
     question: str
     answer: str
+
+
+class PortalView(BaseModel):
+    """门户内容（**公开**：不需要登录）。
+
+    为什么单独一个视图而不是复用 BootstrapView：那一份带着"我是谁"（identity）、
+    菜单、路由、个人任务入口 —— 那些是登录后的事。门户只回答"这是什么、凭什么信"，
+    内容全是产品自己的话（文案包 + 信任块 + 横幅 + FAQ + 功能开关），
+    所以它可以、也应该在没有身份的情况下返回。
+
+    此前门户文案写死在前端（`data/portal.ts`）—— 那是本仓底线之一"文案不进代码"
+    的最后一处例外：改一句主张要发一次前端版本。
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    app_name: str = ""
+    copy_bundle: dict[str, str] = Field(
+        default_factory=dict, description="文案包（含全部 portal.* 键）"
+    )
+    task_entries: list[TaskEntryView] = Field(
+        default_factory=list, description="任务入口：门户上展示的'能做什么'"
+    )
+    trust_blocks: list[TrustBlockView] = Field(default_factory=list)
+    banners: list[BannerView] = Field(default_factory=list)
+    faqs: list[FaqView] = Field(default_factory=list)
+    feature_flags: dict[str, bool] = Field(default_factory=dict)
 
 
 class BootstrapView(BaseModel):
@@ -114,3 +141,20 @@ class BootstrapView(BaseModel):
     identity: dict[str, str] = Field(
         default_factory=dict, description="当前身份：role / nickname / avatar"
     )
+
+
+class TheoryCardView(BaseModel):
+    """理论卡正文。前端点开理论标签时展示的内容。
+
+    四个字段都来自动态资源 `data/registry/theory_cards.json`——
+    这里只做搬运，不生成、不改写。`summary` 是给用户看的通俗说明，
+    `product_usage` 说清"这条理论在本产品里怎么被用"（可解释性的落点）。
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str = Field(description="理论卡 id，与 TheoryRef.theory_id 对应")
+    name: str
+    school: str = Field(default="", description="所属流派 / 出处")
+    summary: str = Field(default="", description="给用户看的通俗说明")
+    product_usage: str = Field(default="", description="在本产品里怎么被用")

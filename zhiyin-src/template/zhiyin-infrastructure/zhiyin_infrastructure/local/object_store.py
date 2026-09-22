@@ -1,10 +1,14 @@
 """本地文件对象存储（LocalFileStore）。
 
-第一期：写本地目录。TODO(第二期)：替换为 MinIO（见 §十替换点）。
+写本地目录。**这是一份完整的实现，不是骨架**：契约里的 put / get / delete /
+exists 全都有，并且挡住了路径穿越（`../` 必须被拒），对象带 content-type
+与写入时间。
 
-安全约束（《第一期技术架构文档》§7.1）：第一期禁止写入真实敏感信息，
-因此本实现只负责落盘，不做加密；接生产安全时换 NoopSecurity 为真实实现，
-本类不需要改动。
+它适合单机部署（这套系统的默认形态）。多副本部署要换成共享对象存储 ——
+那是**换一个同契约的实现**，本类不需要改动。
+
+注意它与"加密"是两件事：加密由 SecurityGateway 负责（见
+`zhiyin_infrastructure/security/crypto.py`），落盘的是不是密文由调用方决定。
 """
 
 from __future__ import annotations
@@ -18,7 +22,9 @@ from zhiyin_data_sdk.gateways.storage import ObjectStoreGateway, StoredObject
 
 
 class LocalFileStore(ObjectStoreGateway):
-    """本地目录实现。"""
+    """本地目录实现（契约完整）。"""
+
+    IMPLEMENTATION_STATUS = "wired"
 
     def __init__(self, root: str = "data/objects") -> None:
         self._root = Path(root)

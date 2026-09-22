@@ -1,5 +1,5 @@
 {
-  "_note": "职引 · 产出契约（DEMO）。唯一键是 (agent_id, stage)，不是 id —— id 只用于日志与溯源。json_schema 故意留空：留空表示由业务层 Pydantic 模型生成 Schema（见 AgentDrivenLoopCoordinator._output_schema），这样契约只有一处事实来源、不会与模型漂移。需要在不发版的情况下调整契约时，再把完整 JSON Schema 填进来；填之前请确认你填的这一条 (agent_id, stage) 就是调用方要查的那一条（职业顾问同时拥有 ②诊断 与 ③决策 两条契约）。",
+  "_note": "职引 · 产出契约。唯一键是 (agent_id, stage)，不是 id —— id 只用于日志与溯源。json_schema 故意留空：留空表示由业务层 Pydantic 模型生成 Schema（唯一一份映射在 zhiyin_business.contracts.STAGE_CONTRACTS），这样契约只有一处事实来源、不会与模型漂移。需要在不发版的情况下调整契约时，再把完整 JSON Schema 填进来；填之前请确认你填的这一条 (agent_id, stage) 就是调用方要查的那一条（职业顾问同时拥有 ②诊断 与 ③决策 两条契约）。",
   "items": [
     {
       "id": "oc_collect",

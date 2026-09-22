@@ -15,7 +15,7 @@ from zhiyin_orchestration.impl._shared import _coerce_event
 class GatewayEventBus(EventBus):
     """把领域事件信封落到 EventBusGateway 上的实现。
 
-    信封（DomainEvent）整体序列化进 payload，因此在切换 Kafka 时协议不变；
+    信封（DomainEvent）整体序列化进 payload，因此在切换实现时协议不变；
     消费方拿到的仍是完整信封，不需要回查状态。
     """
 

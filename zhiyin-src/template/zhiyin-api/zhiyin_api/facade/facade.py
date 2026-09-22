@@ -23,19 +23,28 @@ get_facade() 获取。这样 Controller 不依赖任何具体实现，替换实�
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Optional
+from collections.abc import AsyncIterator
+from typing import Any, Optional
 
 from fastapi import Request
 
 from zhiyin_kernel.enums import AssetType
 from zhiyin_api.dto.asset import (
+    ActionPlanView,
+    ActionTaskDoneRequest,
     AssetVersionView,
+    CalendarNodeView,
+    DirectionPlanListView,
+    TrackEventView,
     ExportRequest,
     ExportResultView,
     ReportFullTextView,
 )
-from zhiyin_api.dto.bootstrap import BootstrapView
+from zhiyin_api.dto.bootstrap import BootstrapView, TheoryCardView
+from zhiyin_api.dto.bootstrap import PortalView
+from zhiyin_api.dto.common import CoachNotificationView
 from zhiyin_api.dto.conversation import (
+    ConversationMessageView,
     ConversationTurnView,
     MessageRequest,
     SessionListView,
@@ -44,6 +53,12 @@ from zhiyin_api.dto.conversation import (
 )
 from zhiyin_api.dto.workspace import WorkspacePageView
 from zhiyin_api.dto.track import TrackEventAck, TrackEventRequest
+from zhiyin_api.dto.note import NoteAck, NoteCreateRequest, NoteDoneRequest, NoteView
+from zhiyin_api.dto.workspace import (
+    AcademicImportAck,
+    AcademicImportRequest,
+    AcademicRevokeAck,
+)
 
 
 class ApplicationFacade(ABC):
@@ -63,14 +78,42 @@ class ApplicationFacade(ABC):
     # ---------- 启动 ----------
 
     @abstractmethod
-    def bootstrap(self, user_id: str) -> BootstrapView:
-        """启动装配视图。"""
+    async def bootstrap(self, user_id: str) -> BootstrapView:
+        """启动装配视图。底层取数全 async，因此本方法也是 async。"""
+
+    @abstractmethod
+    async def get_portal(self) -> PortalView:
+        """门户内容（**公开，不需要身份**）。
+
+        门户是访客第一眼看到的一页，它的内容全是产品自己的话（文案 / 信任块 /
+        横幅 / FAQ / 任务入口 / 开关），与"我是谁"无关 —— 所以这个接口不解析身份。
+        此前门户文案写死在前端，是"文案不进代码"这条底线上的最后一处例外。
+        """
+
+    @abstractmethod
+    async def get_theory_card(self, theory_id: str) -> Optional[TheoryCardView]:
+        """理论卡正文（点开理论标签时用）。
+
+        取不到返回 None，前端据此如实说明"这张卡还没配" ——
+        理论卡是"一切都能追溯"的可见部分，宁可说没有，也不要显示一张空卡。
+        """
 
     # ---------- 对话 ----------
 
     @abstractmethod
-    def list_sessions(self, user_id: str) -> SessionListView:
+    async def list_sessions(self, user_id: str) -> SessionListView:
         """左栏会话列表。"""
+
+    @abstractmethod
+    async def list_session_turns(
+        self, user_id: str, task_id: str, *, limit: int = 200
+    ) -> list[ConversationMessageView]:
+        """一条会话的逐轮原文（用户与主理各算一轮），按时间正序。
+
+        为什么要有它：`list_sessions` 只给会话清单，点进去看不到"这条会话发生过什么"。
+        逐轮原文此前**完全没有落库**（库里只有累积摘要），所以这不是界面缺一半，
+        是数据缺一半。
+        """
 
     @abstractmethod
     async def enter_task(self, user_id: str, body: TaskEnterRequest) -> TaskSessionView:
@@ -85,19 +128,19 @@ class ApplicationFacade(ABC):
     # ---------- 工作台 ----------
 
     @abstractmethod
-    def get_workspace(self, user_id: str) -> WorkspacePageView:
+    async def get_workspace(self, user_id: str) -> WorkspacePageView:
         """工作台聚合视图。"""
 
     # ---------- 资产 ----------
 
     @abstractmethod
-    def list_asset_versions(
+    async def list_asset_versions(
         self, user_id: str, asset_type: AssetType
     ) -> list[AssetVersionView]:
         """资产版本列表（含 diff 与依赖字段）。"""
 
     @abstractmethod
-    def get_report_full_text(
+    async def get_report_full_text(
         self, user_id: str, version: Optional[int] = None
     ) -> ReportFullTextView:
         """完整报告页正文。"""
@@ -105,6 +148,64 @@ class ApplicationFacade(ABC):
     @abstractmethod
     async def export_asset(self, user_id: str, body: ExportRequest) -> ExportResultView:
         """导出资产（第一期占位）。"""
+
+    # ---------- ③ 决策 / ④ 行动（资产正文 + 用户动作） ----------
+
+    @abstractmethod
+    async def get_direction_plans(self, user_id: str) -> DirectionPlanListView:
+        """三套方向方案（主攻 / 平行 / 保底）。没有方案时返回空列表。"""
+
+    @abstractmethod
+    async def select_direction_plan(
+        self, user_id: str, option_id: str
+    ) -> DirectionPlanListView:
+        """选中一套方案（可撤回：再选另一套就是撤回），返回更新后的全量方案。"""
+
+    @abstractmethod
+    async def get_action_plan(self, user_id: str) -> ActionPlanView:
+        """行动计划正文（含"现在这一件"）。没有计划时 `has_plan=False`。"""
+
+    @abstractmethod
+    async def list_calendar_nodes(self, user_id: str) -> list[CalendarNodeView]:
+        """关键节点日历（规划师写入、教练读取）。此前只有写、没有读。"""
+
+    @abstractmethod
+    async def list_track_events(
+        self, user_id: str, *, limit: int = 50
+    ) -> list[TrackEventView]:
+        """跟踪时间线（复盘环节的载体）。此前同样只有写、没有读。"""
+
+    @abstractmethod
+    async def set_action_task_done(
+        self, user_id: str, body: ActionTaskDoneRequest
+    ) -> ActionPlanView:
+        """勾掉 / 取消勾选一个行动任务，返回更新后的计划。"""
+
+    # ---------- AI 任务（SSE） ----------
+
+    @abstractmethod
+    def run_ai_task(self, user_id: str, key: str, arg: str = "") -> AsyncIterator[dict]:
+        """执行一个 AI 任务，逐帧 yield 进度 / 终帧。"""
+
+    # ---------- 主动介入通知 ----------
+
+    @abstractmethod
+    async def list_pending_notifications(self, user_id: str) -> list[CoachNotificationView]:
+        """教练主动介入通知出队（前端浮窗轮询）。"""
+
+    # ---------- 鉴权 ----------
+
+    @abstractmethod
+    async def login_account(self, account: str, password: str) -> dict:
+        """账号密码登录。"""
+
+    @abstractmethod
+    async def register_account(self, account: str, password: str) -> str:
+        """注册账号。"""
+
+    @abstractmethod
+    async def revoke_token(self, token: str) -> None:
+        """撤销令牌（登出）。"""
 
     # ---------- 埋点 ----------
 
@@ -119,6 +220,48 @@ class ApplicationFacade(ABC):
         本层不写事件归属判断，只编排。
         """
 
+    # ---------- 他自己写下的东西（自建待办 / 写下的目标） ----------
+
+    @abstractmethod
+    async def revoke_academic(self, user_id: str) -> "AcademicRevokeAck":
+        """清空导入的课表与成绩（画像里那两条摘要一起删）。"""
+
+    @abstractmethod
+    async def import_academic(
+        self, user_id: str, body: "AcademicImportRequest"
+    ) -> "AcademicImportAck":
+        """导入课表与成绩单（学生自己贴原文）。"""
+
+    @abstractmethod
+    async def list_notes(self, user_id: str) -> list["NoteView"]:
+        """他写下的全部内容，新写的在前。"""
+
+    @abstractmethod
+    async def add_note(self, user_id: str, body: "NoteCreateRequest") -> "NoteView":
+        """记下他写的一句话。"""
+
+    @abstractmethod
+    async def set_note_done(
+        self, user_id: str, note_id: str, body: "NoteDoneRequest"
+    ) -> "NoteView":
+        """勾掉 / 取消勾掉一条。"""
+
+    @abstractmethod
+    async def remove_note(self, user_id: str, note_id: str) -> "NoteAck":
+        """删掉一条。"""
+
+    @abstractmethod
+    async def reload_dynamic_config(self) -> dict[str, Any]:
+        """重新装载动态配置（环节口径 / 气泡编排 / 采集规则）。
+
+        配置的生效时机是**可控的时刻**：启动一次，之后只在收到这个指令时再读。
+        不做"每次请求读库"——那种灵活会让"刚才还好的行为突然变了"无从解释。
+
+        ⚠️ 这是个**运维动作**，不是普通用户接口。当前部署是单机本地，
+        所以只要求已登录；接入多用户之前必须先有管理员角色（UserRole.ADMIN
+        已经定义好了，但还没有任何地方签发它）。
+        """
+
 
 # ---------- 装配与获取 ----------
 
@@ -129,7 +272,7 @@ class FacadeNotConfiguredError(RuntimeError):
     """Facade 未装配。
 
     第一期业务服务尚未实现，接口层会得到本异常；`create_app` 会把它统一映射为
-    ErrorCode.DEPENDENCY_UNAVAILABLE（§6.2：不中断核心调用链，也不静默吞掉）。
+    ErrorCode.DEPENDENCY_UNAVAILABLE：不中断核心调用链，也不静默吞掉。
     """
 
 

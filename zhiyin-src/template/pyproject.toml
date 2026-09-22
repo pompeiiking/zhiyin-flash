@@ -4,22 +4,40 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "zhiyin"
-version = "0.1.0"
+version = "1.0.0"
 description = "职引 · 第一期工程（模块化单体：api / business / orchestration / data-sdk / infrastructure / boot）"
-readme = "README.md"
-requires-python = ">=3.10"
+# 不再声明 readme：原来指向的 `README.md`（本目录下那份工程说明）已按文档收敛删掉，
+# 留着就是一个指向不存在文件的引用（setuptools 会静默容忍，但这是"元数据在说谎"）。
+# 再要长描述时，请把文件放回本目录并同步这一行。
+requires-python = ">=3.11"
 license = { text = "Proprietary" }
 
-# 运行依赖：只保留第一期真正用到的。
-# sqlalchemy 是可选的（仅启用 ZHIYIN_USE_MYSQL 时 import），因此放在 extra 里。
+# 运行依赖：只保留自有基础设施真正用到的部分。
 dependencies = [
     "fastapi>=0.110",
     "uvicorn>=0.29",
     "pydantic>=2.6",
+    "redis>=5.0",
+    "asyncpg>=0.29",
+    "pgvector>=0.2",
+    "PyJWT>=2.8",
+    "httpx>=0.27",
+    # 真加密（AES-GCM）：`CryptoSecurity` 用它。此前安全网关是 no-op，
+    # 密文其实就是明文；换成真实现就必须有这一条。
+    "cryptography>=42.0",
+    "agno>=2.0",
+    # agno 把「模型后端」做成可选安装（extra），`agno.models.openai` 自己不会
+    # 把 openai 带上。我们走的就是 OpenAI 兼容那一个后端
+    # （见 zhiyin_infrastructure/ai/agno_runtime.py），所以这个分布必须由本包声明。
+    #
+    # 漏掉它的症状只在**部署镜像**里出现：容器 `import agno.models.openai` 直接
+    # ImportError → 起来就崩、一直 Restarting。本机与 CI 看不见，因为那种环境里
+    # 的 openai 是别的项目（document-agent / langchain-openai）顺手装进来的。
+    # tests/test_declared_dependencies.py 守着这一条。
+    "openai>=1.40",
 ]
 
 [project.optional-dependencies]
-mysql = ["sqlalchemy>=2.0"]
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",
@@ -54,16 +72,19 @@ packages = [
     "zhiyin_data_sdk.gateways",
     "zhiyin_data_sdk.repositories",
     "zhiyin_infrastructure",
-    "zhiyin_infrastructure.kafka",
-    "zhiyin_infrastructure.llm",
+    "zhiyin_infrastructure.academic",
+    "zhiyin_infrastructure.auth",
+    "zhiyin_infrastructure.ai",
+    "zhiyin_infrastructure.chsi",
     "zhiyin_infrastructure.local",
-    "zhiyin_infrastructure.minio",
-    "zhiyin_infrastructure.mysql",
-    "zhiyin_infrastructure.pami",
-    "zhiyin_infrastructure.persistence",
-    "zhiyin_infrastructure.pgvector",
+    "zhiyin_infrastructure.postgres",
+    "zhiyin_infrastructure.postgres.schema",
+    "zhiyin_infrastructure.rag",
     "zhiyin_infrastructure.redis",
+    "zhiyin_infrastructure.search",
+    "zhiyin_infrastructure.security",
     "zhiyin_infrastructure.workers",
+    "zhiyin_infrastructure.xuezhi",
     "zhiyin_boot",
     "zhiyin_boot.container",
 ]
@@ -97,7 +118,9 @@ pythonpath = [
 
 [tool.ruff]
 line-length = 100
-target-version = "py310"
+# 与 `requires-python` / CI（3.11）/ 镜像（python:3.11-slim）对齐：
+# 测试里用到 `tomllib`（3.11+），代码只按 3.11 跑过，就别声称支持 3.10。
+target-version = "py311"
 
 [tool.ruff.lint]
 # 只开启「真问题」类别：E/W 语法与错误、F 未使用/未定义、B 常见缺陷。

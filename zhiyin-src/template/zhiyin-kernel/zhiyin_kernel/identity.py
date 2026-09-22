@@ -13,49 +13,34 @@ from pydantic import BaseModel, ConfigDict, Field
 from zhiyin_kernel.enums import UserRole
 
 
-class ProfileSummary(BaseModel):
-    """用户摘要，用于顶栏与导师列表展示。"""
-
-    model_config = ConfigDict(extra="forbid")
-
-    grade: Optional[str] = None
-    major: Optional[str] = None
-    school: Optional[str] = None
-
-
 class UserAccount(BaseModel):
     """用户账号。
 
     约束：第一期禁止写入真实手机号 / 简历 / 身份证，演示数据必须显式标记 DEMO。
+
+    只保留真有生产者与消费者的字段：`email` / `avatar_url` / `profile_summary`
+    在仓库里既没人写也没人读（顶栏展示的是 `identity.nickname` 与 `role`），
+    留着会让"用户模型有哪些字段"这个问题多出三个假答案。
     """
 
     model_config = ConfigDict(extra="forbid")
 
     id: str
     phone: Optional[str] = Field(default=None, description="第一期仅允许演示值")
-    email: Optional[str] = None
     nickname: str = ""
-    avatar_url: Optional[str] = None
     role: UserRole = UserRole.STUDENT
-    profile_summary: ProfileSummary = Field(default_factory=ProfileSummary)
     created_at: datetime
     last_login_at: Optional[datetime] = None
 
 
-class AuthSession(BaseModel):
-    """登录会话与 token。"""
-
-    model_config = ConfigDict(extra="forbid")
-
-    user_id: str
-    token: str
-    refresh_token: Optional[str] = None
-    expires_at: Optional[datetime] = None
-    device_info: Optional[str] = None
-
-
 class GuestSession(BaseModel):
-    """游客临时会话。不落长期业务库，登录合并后清除。"""
+    """游客临时会话。不落长期业务库，登录合并后清除。
+
+    保留原因：设计文档把"游客答到第 3 问被拦 → 登录后原地继续、合并游客会话"
+    写成验收项，本类就是那条流程的数据形状。实现之前它没有生产者是对的，
+    **但形状要先冻结**（与 `AuthSession` 的区别是：那条会话的真正载体是
+    `infra_auth_session` 表 + JWT，模型重复，已删除）。
+    """
 
     model_config = ConfigDict(extra="forbid")
 

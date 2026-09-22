@@ -1,0 +1,55 @@
+{
+  "_note": "职引 · 生成类 AI 任务的进度文案。属动态资源：改本文件不需要发版。code 与 AiTaskService 的任务 key 对齐（brief.today / dim / gap / report.summary / bind.chsi / plan.timetable / plan.todos / match.careers）。这些是给用户看的话：说清系统在做什么，比「加载中…」有用。取不到时只是少几行进度提示，不影响任务本身。",
+  "items": [
+    {
+      "code": "brief.today",
+      "notes": ["读你现在的处境与画像版本", "核对最近变过的信息", "排出今天最该动的两件"],
+      "sort_order": 1
+    },
+    {
+      "code": "dim",
+      "notes": ["读取该维度全部依据与时间", "比对目标岗位的决策线", "组织成一段能读的解读"],
+      "sort_order": 2
+    },
+    {
+      "code": "gap",
+      "notes": ["读取缺口定义与原因", "生成一次温和的追问"],
+      "sort_order": 3
+    },
+    {
+      "code": "portrait.analysis",
+      "notes": ["读完全部画像记录与来源", "把互相印证和互相矛盾的地方分开", "收成一段关于他的判断"],
+      "sort_order": 9
+    },
+    {
+      "code": "day.advice",
+      "notes": ["读这一天的课与到期的事", "看那天还剩多少能自己用的时间", "排成这一天怎么做"],
+      "sort_order": 10
+    },
+    {
+      "code": "report.summary",
+      "notes": ["读完各维度与全部依据", "找出互相冲突的地方", "把结论压到能行动的长度"],
+      "sort_order": 4
+    },
+    {
+      "code": "bind.chsi",
+      "notes": ["读取在线验证码", "向学信网核验这份报告", "解析报告里的学籍信息", "写进画像"],
+      "sort_order": 5
+    },
+    {
+      "code": "plan.timetable",
+      "notes": ["读课程时间与地点", "算出本周空档", "对齐窗口期排出动作"],
+      "sort_order": 6
+    },
+    {
+      "code": "plan.todos",
+      "notes": ["看课表里能用的空档", "看画像里还没补的缺口", "排出不靠意志力的顺序"],
+      "sort_order": 7
+    },
+    {
+      "code": "match.careers",
+      "notes": ["读职业能力要求", "把课程成绩折算成能力证据", "排出方向优先级"],
+      "sort_order": 8
+    }
+  ]
+}

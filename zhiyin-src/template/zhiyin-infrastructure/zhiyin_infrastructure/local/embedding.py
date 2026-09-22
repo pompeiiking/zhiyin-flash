@@ -7,7 +7,7 @@
 `IMPLEMENTATION_STATUS = "skeleton"` 会让 `/healthz` 与 `--check` 如实标注它，
 避免"装上了向量检索"的误读。
 
-第二期替换点：接 pami / 供应商嵌入模型，实现同一份 `EmbedGateway` 契约。
+实现同一份 `EmbedGateway` 契约。
 """
 
 from __future__ import annotations

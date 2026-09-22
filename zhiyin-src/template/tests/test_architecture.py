@@ -1,4 +1,4 @@
-"""架构守卫：把《第一期技术架构文档》§九 验收项 1 变成可执行断言。
+"""架构守卫：把「代码依赖图不存在反向依赖或跨层直连」变成可执行断言。
 
 验收项 1 原文：「代码依赖图不存在反向依赖或跨层直连」。
 
@@ -6,7 +6,7 @@
 `contracts.enums` 却无人发现的情况。本测试用 AST 静态解析所有源码的 import，
 对照允许矩阵逐条校验，任何越层都会让 CI 直接失败。
 
-本文件同时守卫《职引-目标架构设计-v1.0》§三的三条硬规则：
+本文件同时守卫三条硬规则：
 1. 同一能力不得在两处定义（内核符号不得在别处重新定义）；
 2. `zhiyin_kernel` 内不得 import 任何其它 zhiyin 包；
 3. 包清单必须与 pyproject.toml 的发布单元一致（新增包不允许漏挂守卫）。
@@ -33,7 +33,7 @@ PACKAGE_DIRS: dict[str, str] = {
 
 ALL_PACKAGES = frozenset(PACKAGE_DIRS)
 
-# 允许的依赖方向，来源：《第一期技术架构文档》§1.4、《职引-目标架构设计-v1.0》§2.1
+# 允许的依赖方向：
 ALLOWED_DEPENDENCIES: dict[str, frozenset[str]] = {
     # 共享内核：零依赖，只放数据形状。
     "zhiyin_kernel": frozenset({"zhiyin_kernel"}),
@@ -45,7 +45,7 @@ ALLOWED_DEPENDENCIES: dict[str, frozenset[str]] = {
     "zhiyin_business": frozenset(
         {"zhiyin_business", "zhiyin_orchestration", "zhiyin_data_sdk", "zhiyin_kernel"}
     ),
-    # 编排层只依赖 SDK 与共享形状（R-ORC-008：不直连 MySQL / Redis / Kafka）。
+    # 编排层只依赖 SDK 与共享形状（R-ORC-008：不直连具体基础设施实现）。
     "zhiyin_orchestration": frozenset(
         {"zhiyin_orchestration", "zhiyin_data_sdk", "zhiyin_kernel"}
     ),
@@ -110,7 +110,7 @@ def test_no_cross_layer_or_reverse_dependency(package: str) -> None:
                 )
 
     assert not violations, (
-        f"{package} 出现越层/反向依赖，违反 §九 验收项 1：\n  "
+        f"{package} 出现越层/反向依赖：\n  "
         + "\n  ".join(violations)
     )
 
@@ -122,21 +122,6 @@ def test_api_does_not_touch_data_sdk() -> None:
         if "zhiyin_data_sdk" in _imported_roots(source):
             offenders.append(source.relative_to(TEMPLATE_ROOT))
     assert not offenders, f"api 层不得直接依赖 data-sdk：{offenders}"
-
-
-def test_raw_query_is_infra_only() -> None:
-    """受限裸查询逃生口只对基础设施层开放。
-
-    没有这条守卫，`gateways/db.py` 会很快变成"业务层随手写 SQL"的后门，
-    Repository 抽象就白做了。它以规则的形式存在：**偶发的高性能查询有合法去处，
-    但业务层永远看不到 SQL**。
-    """
-    offenders: list[str] = []
-    for package in ("zhiyin_business", "zhiyin_orchestration", "zhiyin_api"):
-        for source in _iter_sources(package):
-            if "zhiyin_data_sdk.gateways.db" in source.read_text(encoding="utf-8"):
-                offenders.append(str(source.relative_to(TEMPLATE_ROOT)))
-    assert not offenders, f"裸查询只允许基础设施层使用，违规引用：{offenders}"
 
 
 def test_business_actually_uses_orchestration() -> None:
@@ -292,7 +277,10 @@ def _submodule_names(package: str) -> list[str]:
     return [
         item.name
         for item in root.iterdir()
-        if item.is_dir() and not item.name.startswith("__") and item.name != "__pycache__"
+        if item.is_dir()
+        and not item.name.startswith("__")
+        and item.name != "__pycache__"
+        and (item / "__init__.py").is_file()
     ]
 
 

@@ -1,4 +1,4 @@
-"""② 诊断匹配产出契约（FR-DIAG）。
+"""② 诊断匹配产出契约。
 
 验收锚点：产出必须收敛到"用户认领差距"，不能停在"我帮你分析完了"。
 """
@@ -21,7 +21,7 @@ from zhiyin_business.contracts.common import (
 
 
 class DiagnoseGap(BaseModel):
-    """差距清单条目：要求 − 现状 = 差距 + 补齐建议（FR-DIAG-003）。"""
+    """差距清单条目：要求 − 现状 = 差距 + 补齐建议。"""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -33,7 +33,7 @@ class DiagnoseGap(BaseModel):
 
 
 class FactItem(BaseModel):
-    """信息侦查员供的事实（FR-DIAG-005）。不进入对话主线闲聊。"""
+    """信息侦查员供的事实。不进入对话主线闲聊。"""
 
     model_config = ConfigDict(extra="forbid")
 

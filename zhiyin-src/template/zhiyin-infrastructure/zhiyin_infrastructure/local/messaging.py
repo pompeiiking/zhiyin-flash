@@ -6,7 +6,7 @@
 - LocalScheduler：内存延迟队列 + 轮询，进程重启即丢失；
 - LocalNotify：写本地消息表 + 打日志，不接真实推送。
 
-替换点（《第一期技术架构文档》§十）：Kafka / Redis ZSET / SSE·WS·短信。
+替换点：自有事件总线 / 调度 / 通知。
 """
 
 from __future__ import annotations
@@ -27,12 +27,15 @@ from zhiyin_data_sdk.gateways.messaging import (
     ScheduledTask,
     SchedulerGateway,
 )
+from zhiyin_infrastructure.local.repository import InMemoryNotificationRepository
 
 logger = logging.getLogger(__name__)
 
 
 class InMemoryEventBus(EventBusGateway):
     """进程内事件总线。"""
+
+    IMPLEMENTATION_STATUS = "skeleton"
 
     def __init__(self) -> None:
         self._handlers: dict[str, list[EventHandler]] = {}
@@ -57,6 +60,8 @@ class LocalScheduler(SchedulerGateway):
     到点后把 `ScheduledTask` 原样投递给事件总线（event_type + payload），
     由上层（编排层的 Scheduler）决定冷却期与触发次数上限这类策略。
     """
+
+    IMPLEMENTATION_STATUS = "skeleton"
 
     def __init__(
         self,
@@ -120,7 +125,7 @@ class LocalScheduler(SchedulerGateway):
         return fired
 
     def start_polling(self) -> None:
-        """启动后台轮询。第一期本地演示可用，生产替换为 Redis ZSET + Kafka。"""
+        """启动后台轮询。"""
         if self._poller is not None and not self._poller.done():
             return
         self._poller = asyncio.get_event_loop().create_task(self._poll_forever())
@@ -138,18 +143,35 @@ class LocalScheduler(SchedulerGateway):
     async def _poll_forever(self) -> None:
         while True:
             await asyncio.sleep(self._poll_interval_s)
-            await self.tick()
+            try:
+                await self.tick()
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                # 轮询任务一旦因为 tick() 抛错而退出，**之后再也不会有人唤醒它**：
+                # 到期任务永久不再触发，而且没有任何日志（只有关停时才以
+                # "Task exception was never retrieved" 的形式露一下）。
+                # 与 postgres/scheduler.py 的 `_poll_forever` 保持同一口径：记日志继续跑。
+                logger.exception("本地调度轮询失败，将在 %s 秒后重试", self._poll_interval_s)
 
 
 class LocalNotify(NotifyGateway):
     """本地通知：写本地消息表 + 打日志。
 
-    第一阶段不接真实通道，但保留"消息表"这一形态，方便复盘页与工作台读取
-    教练消息（FR-WB-006）。
+    第一阶段不接真实通道，但保留"消息表"这一形态，方便复盘页与工作台读取教练消息。
+
+    **写侧与读侧共用同一个存储**：本类把消息写进 `InMemoryNotificationRepository`，
+    而 `FunctionService.list_pending_notifications` 与 `ActiveEventWorker` 的
+    打扰度判定都从那个仓储读。此前两边各持一份（本类一个 list、读侧一个 dict），
+    于是"通知发出去了，前端什么都读不到"—— 在 Postgres 模式下是同一个毛病
+    （写 `orc_notification`、读进程内队列），现在两边都收口到同一处。
     """
 
-    def __init__(self) -> None:
-        self._messages: list[dict[str, Any]] = []
+    IMPLEMENTATION_STATUS = "skeleton"
+
+    def __init__(self, notifications: InMemoryNotificationRepository | None = None) -> None:
+        # 不传就自己建一个：单测里 `LocalNotify()` 仍然自洽（写进去就能读出来）。
+        self._notifications = notifications or InMemoryNotificationRepository()
 
     async def push(
         self,
@@ -162,7 +184,8 @@ class LocalNotify(NotifyGateway):
         related_task_id: Optional[str] = None,
     ) -> NotifyResult:
         message_id = f"msg_{uuid4().hex[:12]}"
-        self._messages.append(
+        self._notifications.add(
+            user_id,
             {
                 "id": message_id,
                 "user_id": user_id,
@@ -171,14 +194,15 @@ class LocalNotify(NotifyGateway):
                 "channel": channel.value,
                 "action": action,
                 "related_task_id": related_task_id,
-                "created_at": _now(),
-            }
+                "occurred_at": _now().isoformat(),
+            },
         )
         logger.info("本地通知：user=%s channel=%s title=%s", user_id, channel.value, title)
         return NotifyResult(message_id=message_id, channel=channel, delivered=True)
 
     def list_messages(self, user_id: str) -> list[dict[str, Any]]:
-        return [item for item in self._messages if item["user_id"] == user_id]
+        """列出该用户的全部消息（含已读）。调试与单测用。"""
+        return [dict(item) for item in self._notifications.store(user_id)]
 
 
 def _now() -> datetime:

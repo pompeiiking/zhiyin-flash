@@ -1,0 +1,16 @@
+{
+  "_note": "职引 · 学信网在线验证报告的字段清单。属动态资源：改本文件不需要发版。这张表同时管两件事：**写哪些字段进画像**（多写一个字段是一个隐私决定，不该由代码顺手决定）与**界面上叫什么**（属文案）。order 与学信网报告页的字段顺序一致，用户对照着看不容易错行。student_name 保留但标注了口径：只用于回执里对一下是谁的报告，不进画像判断。",
+  "items": [
+    { "key": "school", "label": "学校", "order": 1, "note": "采集与诊断都要用" },
+    { "key": "department", "label": "院系", "order": 2, "note": "判断专业归属" },
+    { "key": "major", "label": "专业", "order": 3, "note": "方向匹配的输入" },
+    { "key": "degree_level", "label": "层次", "order": 4, "note": "本科 / 专科 / 硕士，影响窗口期" },
+    { "key": "duration", "label": "学制", "order": 5, "note": "推算毕业时间" },
+    { "key": "study_mode", "label": "学习形式", "order": 6, "note": "全日制 / 非全日制，影响可投入时间" },
+    { "key": "enrolled_at", "label": "入学日期", "order": 7, "note": "推算年级" },
+    { "key": "expected_graduation", "label": "预计毕业", "order": 8, "note": "窗口期的核心字段" },
+    { "key": "enrollment_status", "label": "学籍状态", "order": 9, "note": "在读 / 休学，影响行动建议" },
+    { "key": "student_no", "label": "学号", "order": 10, "note": "只作报告归属核对，不参与任何判断" },
+    { "key": "student_name", "label": "姓名", "order": 11, "note": "同上：作归属核对，不进画像判断" }
+  ]
+}

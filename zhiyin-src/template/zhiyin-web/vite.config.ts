@@ -1,22 +1,22 @@
 import { fileURLToPath, URL } from 'node:url'
-import vue from '@vitejs/plugin-vue'
 import { defineConfig } from 'vite'
+import vue from '@vitejs/plugin-vue'
 
-// 开发期把 /api 转发到 zhiyin-boot 启动的后端，避免跨域配置
 export default defineConfig({
   plugins: [vue()],
   resolve: {
-    alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url)),
-    },
+    alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
   server: {
+    host: "127.0.0.1",
+    // 与 docker compose 里 web 服务对外暴露的 5173 对齐：本地开发与部署读同一个地址，
+    // 不必先想"这次该开哪个端口"。
     port: 5173,
     proxy: {
-      '/api': {
-        target: process.env.VITE_DEV_BACKEND ?? 'http://localhost:8000',
-        changeOrigin: true,
-      },
+      // 后端目标可配：默认 docker 外壳 8000；本地裸跑联调时
+      // ZHIYIN_API_TARGET=http://127.0.0.1:8012 npm run dev
+      '/api': { target: process.env.ZHIYIN_API_TARGET ?? 'http://127.0.0.1:8000', changeOrigin: true },
+      '/healthz': { target: process.env.ZHIYIN_API_TARGET ?? 'http://127.0.0.1:8000', changeOrigin: true },
     },
   },
 })

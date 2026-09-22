@@ -1,4 +1,4 @@
-"""交接规则与"换主理必须显式告知"（FR-ORCH-003）。
+"""交接规则与"换主理必须显式告知"。
 
 三条产品硬约束之一：**换主理必须显式告知**。告知不是渲染层的事，而是规则层
 的判定结果——`HandoffDecision.disclosure` 为空即视为违规，前端 `DisclosureRow`
@@ -25,6 +25,7 @@ class HandoffPolicy(ABC):
         from_stage: LoopStage,
         from_agent: str,
         to_stage: LoopStage,
+        to_agent: str,
         reason: str,
     ) -> HandoffDecision:
         """产出交接决策（含显式告知文案的构造依据）。"""

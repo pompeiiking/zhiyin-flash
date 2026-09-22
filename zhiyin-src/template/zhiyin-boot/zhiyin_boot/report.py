@@ -3,7 +3,7 @@
 设计原则（来自评估结论的具体缺陷）：
 
 1. **状态由实现自己声明**：适配器类上的 `IMPLEMENTATION_STATUS`（wired / skeleton）
-   优先，其次才回落到"pami / persistence 目录即骨架"的路径启发式。
+   优先，其次才回落到"本地实现目录"的路径启发式。
    这样 `/healthz` 不会因为"文件放对目录了"就谎报 wired。
 2. **缺口带归属**：负责人清单读 `data/registry/ownership.json`，不再硬编码在
    Python 里（此前 `_KNOWN_PENDING` 把团队信息写进了装配代码）。
@@ -24,13 +24,14 @@ from zhiyin_boot.container.ports import (
     ORCHESTRATION_PORTS,
     REPOSITORY_PORTS,
     SERVICE_PORTS,
-    TRANSACTION_PORTS,
     WORKER_PORTS,
 )
 
 if TYPE_CHECKING:  # pragma: no cover
     from zhiyin_api.runtime import AssemblyReport
     from zhiyin_boot.container import Container
+
+from zhiyin_boot import runtime_config
 
 DEFAULT_OWNER = "待认领"
 
@@ -45,8 +46,15 @@ def _read_json(path: Path) -> Any:
 
 
 def load_ownership(registry_dir: str) -> dict[str, str]:
-    """读取能力位 → 负责人映射。文件缺失或损坏时返回空表（不阻断启动）。"""
-    raw = _read_json(Path(registry_dir) / "ownership.json")
+    """读取能力位 → 负责人映射。
+
+    优先用**启动时从 `infra_runtime_config` 读到的那份**（键 `assembly.ownership`）；
+    库里没有才退回读文件。文件只是首次种子 —— 换一台机器只搬数据库，
+    不该还要把 JSON 一起带过去。
+    """
+    raw = runtime_config.get(runtime_config.OWNERSHIP_KEY)
+    if raw is None:
+        raw = _read_json(Path(registry_dir) / "ownership.json")
     if not isinstance(raw, dict):
         return {}
     items = raw.get("items")
@@ -75,7 +83,7 @@ def _status_of(value: Any, *, skeleton_markers: tuple[str, ...]) -> str:
 
 
 def describe_assembly(container: "Container") -> "AssemblyReport":
-    """生成装配报告，供 `/healthz` 与 `--check` 使用（§九 验收项 8）。"""
+    """生成装配报告，供 `/healthz` 与 `--check` 使用。"""
     from zhiyin_api.runtime import WIRED, AssemblyReport
 
     report = AssemblyReport(env=container.settings.env)
@@ -83,17 +91,12 @@ def describe_assembly(container: "Container") -> "AssemblyReport":
 
     for name in GATEWAY_PORTS:
         report.gateways[name] = _status_of(
-            getattr(container, name, None), skeleton_markers=(".pami.",)
+            getattr(container, name, None), skeleton_markers=()
         )
 
     for name in REPOSITORY_PORTS:
         report.repositories[name] = _status_of(
             getattr(container, name, None), skeleton_markers=(".persistence.",)
-        )
-
-    for name in TRANSACTION_PORTS:
-        report.transactions[name] = (
-            WIRED if container.transactions is not None else "not_wired"
         )
 
     for name in ORCHESTRATION_PORTS:
@@ -139,7 +142,6 @@ def _collect_skeletons(
     groups = {
         "gateways": report.gateways,
         "repositories": report.repositories,
-        "transactions": report.transactions,
         "orchestration": report.orchestration,
         "services": report.services,
         "workers": report.workers,
@@ -162,7 +164,6 @@ def _collect_missing(
     groups = {
         "gateways": report.gateways,
         "repositories": report.repositories,
-        "transactions": report.transactions,
         "orchestration": report.orchestration,
         "services": report.services,
         "workers": report.workers,
@@ -215,8 +216,10 @@ class GateResult:
 
 
 def load_gates(registry_dir: str) -> list[PhaseGate]:
-    """读取门禁定义（动态资源，不进代码）。"""
-    raw = _read_json(Path(registry_dir) / "assembly_gates.json")
+    """读取门禁定义（与归属同一口径：库优先，文件兜底）。"""
+    raw = runtime_config.get(runtime_config.GATES_KEY)
+    if raw is None:
+        raw = _read_json(Path(registry_dir) / "assembly_gates.json")
     if not isinstance(raw, dict):
         return []
     items = raw.get("items")
@@ -250,7 +253,6 @@ def evaluate_gate(report: "AssemblyReport", gate: PhaseGate) -> GateResult:
     groups: dict[str, Mapping[str, str]] = {
         "gateways": report.gateways,
         "repositories": report.repositories,
-        "transactions": report.transactions,
         "orchestration": report.orchestration,
         "services": report.services,
         "workers": report.workers,

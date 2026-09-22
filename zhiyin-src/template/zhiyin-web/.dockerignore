@@ -1,0 +1,8 @@
+# node_modules 在镜像里由 `npm ci` 重新装（宿主机的可能是 Windows 原生模块，
+# 直接拷进 alpine 会跑不起来）；dist 由镜像里的 `npm run build` 现做。
+node_modules
+dist
+
+.env
+.env.*
+!.env.example

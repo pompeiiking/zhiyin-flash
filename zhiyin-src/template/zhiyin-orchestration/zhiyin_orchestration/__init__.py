@@ -18,9 +18,16 @@ from zhiyin_orchestration.errors import (
     WorkflowFailedError,
 )
 from zhiyin_orchestration.event import DomainEvent, EventBus, EventHandler
+from zhiyin_orchestration.datasource import (
+    DataSourceRecord,
+    DataSourceRequest,
+    DataSourceResult,
+    ExternalDataSource,
+)
 from zhiyin_orchestration.impl import (
     SCHEDULE_TICK_EVENT,
-    ContractAgentEngine,
+    AgnoAgentEngine,
+    GatewayDataSource,
     GatewayEventBus,
     GatewayNotifier,
     GatewayScheduler,
@@ -44,9 +51,13 @@ __all__ = [
     "AgentRequest",
     "AgentResult",
     "DomainEvent",
+    "DataSourceRecord",
+    "DataSourceRequest",
+    "DataSourceResult",
     "EventBus",
     "EventHandler",
     "Notifier",
+    "ExternalDataSource",
     "NotifyDelivery",
     "NotifyMessage",
     "ScheduleSpec",
@@ -55,6 +66,8 @@ __all__ = [
     "StateStore",
     "WorkflowEngine",
     "WorkflowResult",
+    # ---- 实现（引擎只有这一个：全量基于 agno） ----
+    "AgnoAgentEngine",
     "WorkflowSpec",
     "WorkflowStep",
     # ---- 异常 ----
@@ -64,7 +77,7 @@ __all__ = [
     "WorkflowFailedError",
     # ---- 第一期默认实现 ----
     "SCHEDULE_TICK_EVENT",
-    "ContractAgentEngine",
+    "GatewayDataSource",
     "GatewayEventBus",
     "GatewayNotifier",
     "GatewayScheduler",

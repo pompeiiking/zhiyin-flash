@@ -12,8 +12,8 @@
 这样做的价值是：测试即验收口径。实现者不需要问"e2e 到底测什么"，
 也不会在实现完之后才发现口径不一致而返工。
 
-覆盖的验收项（《第一期技术架构文档》§九）
-----------------------------------------
+覆盖的验收项
+------------
 1. 首页任务路由           → 任务入口 → 目标环节
 2. 可拆可续               → 从任一环节进入，前序资产不丢
 3. 动态组队               → 环节变化时主理（及协理）随之变化
@@ -44,6 +44,12 @@ DATA_DIR = TEMPLATE_ROOT / "data"
 
 def _settings() -> Settings:
     return Settings(
+        # 本项目不提供 mock 产出：没有真模型就没有智能体引擎。
+        # 构造真网关不发请求，测试里给一个占位密钥即可。
+        use_remote_llm=True,
+        llm_api_key="sk-test",
+        llm_base_url="https://api.deepseek.com",
+        llm_model="deepseek-flash",
         env="test",
         local_data_dir=str(DATA_DIR),
         local_registry_dir=str(DATA_DIR / "registry"),
@@ -103,7 +109,35 @@ async def test_acceptance_1_home_task_routes_to_target_stage() -> None:
 @pytest.mark.asyncio
 async def test_acceptance_2_resume_from_any_stage_keeps_prior_assets() -> None:
     """验收项 2：可拆可续。从后续环节进入时，前序资产必须仍在。"""
-    pytest.skip("待 Facade 实现后补：从 ②③④⑤ 任一环节进入 → 前序资产仍在")
+    from uuid import uuid4
+
+    from zhiyin_business.contracts.common import AssetUpdateDraft
+    from zhiyin_kernel.enums import AssetType
+
+    container = _container()
+    user = f"e2e-resume-{uuid4().hex[:6]}"
+
+    # 先在 ① 采集阶段留下资产：一版依赖画像字段的报告 + 一个画像字段
+    version = await container.asset_service.save_version(
+        user,
+        AssetUpdateDraft(
+            asset_type=AssetType.REPORT,
+            depends_on_profile_keys=["major"],
+            reason="e2e 首版",
+        ),
+    )
+    await container.profile_service.update_field(
+        user, "major", "土木工程", confidence=0.9, source="conversation"
+    )
+
+    # 直接从 ③ 决策进入（跳过 ①②），前序资产必须仍在
+    session = await container.orchestrator.enter_task(user, "undecided")
+    blackboard = await container.orchestrator.read_blackboard(user, session.id)
+    assert any(v.id == version.id for v in blackboard.asset_versions), (
+        "换环节进入后，前序资产必须自动继承（可拆可续）"
+    )
+    keys = {f.key for f in (blackboard.profile.fields if blackboard.profile else [])}
+    assert "major" in keys, "画像字段必须跨会话可读"
 
 
 @pytest.mark.asyncio
@@ -113,28 +147,185 @@ async def test_acceptance_3_handoff_changes_lead_and_discloses() -> None:
     这是产品硬约束的端到端落点：`TurnResult.disclosure` 与
     `TurnResult.badge` 必须同时变化，且 disclosure 非空。
     """
-    pytest.skip("需要在 Orchestrator 实现后补：断言换环节 → 主理变化 + 告知非空")
+    from uuid import uuid4
+
+    from zhiyin_api.dto.conversation import MessageRequest
+    from zhiyin_boot import wire_application
+
+    container = _container()
+    wire_application(container)
+    facade = container.facade
+    user = f"e2e-handoff-{uuid4().hex[:6]}"
+
+    session = await container.orchestrator.enter_task(user, "confused")
+    assert session.lead_agent == "profile_analyst"
+
+    # 关键词把环节推向 ④ 行动（"行动计划"→ HOW_TO_ACT），主理必须换人且显式告知
+    turn = await facade.send_message(
+        user, MessageRequest(task_id=session.id, message="方向定了，给我一份行动计划")
+    )
+    assert turn.badge.agent_id != "profile_analyst", "环节变化后主理必须换人"
+    assert turn.disclosure is not None, "换主理必须显式告知（产品硬约束）"
+    assert turn.disclosure.text, "告知行不能为空"
+    assert turn.guide.kind in {"question", "options", "task", "reminder"}, (
+        "每轮必须以行为引导收尾（四选一）"
+    )
 
 
 @pytest.mark.asyncio
 async def test_acceptance_4_blackboard_is_shared_across_sessions() -> None:
     """验收项 4：黑板一致。第二个会话必须能读到第一个会话写入的画像与资产。"""
-    pytest.skip("需要在黑板四件套实现后补：断言跨会话读取")
+    from uuid import uuid4
+
+    container = _container()
+    user = f"e2e-blackboard-{uuid4().hex[:6]}"
+
+    session_a = await container.orchestrator.enter_task(user, "confused")
+    await container.profile_service.update_field(
+        user,
+        "career_interest",
+        "结构设计与 BIM 交叉",
+        confidence=0.7,
+        source="conversation",
+        evidence=["e2e 会话 A 写入"],
+    )
+    await container.memory_service.upsert(
+        user,
+        session_a.id,
+        loop_stage=session_a.loop_stage,
+        lead_agent=session_a.lead_agent,
+        summary_delta="会话 A 摘要",
+    )
+
+    session_b = await container.orchestrator.enter_task(user, "verify_direction")
+    assert session_b.id != session_a.id, "两个会话必须独立"
+    blackboard = await container.orchestrator.read_blackboard(user, session_b.id)
+    keys = {f.key for f in (blackboard.profile.fields if blackboard.profile else [])}
+    assert "career_interest" in keys, "会话 B 必须读到会话 A 写入的画像"
+    assert any(m.task_id == session_a.id for m in blackboard.memories), (
+        "会话记忆必须跨会话可读"
+    )
 
 
 @pytest.mark.asyncio
 async def test_acceptance_5_profile_update_propagates_only_affected_assets() -> None:
     """验收项 5：影响面传播。只重算受影响资产，版本 +1，未命中资产版本不变。"""
-    pytest.skip("需要在 AssetService + ImpactPolicy 实现后补：断言版本单调与命中范围")
+    from uuid import uuid4
+
+    from zhiyin_business.contracts.common import AssetUpdateDraft
+    from zhiyin_kernel.enums import AssetType
+
+    container = _container()
+    user = f"e2e-impact-{uuid4().hex[:6]}"
+
+    hit = await container.asset_service.save_version(
+        user,
+        AssetUpdateDraft(asset_type=AssetType.REPORT, depends_on_profile_keys=["major"]),
+    )
+    miss = await container.asset_service.save_version(
+        user,
+        AssetUpdateDraft(
+            asset_type=AssetType.DIRECTION_PLAN,
+            depends_on_profile_keys=["career_interest"],
+        ),
+    )
+
+    # 画像只更新了 major：只有依赖它的 report 允许被重算
+    changed = await container.asset_service.propagate(user, ["major"])
+    assert [v.asset_type for v in changed] == [AssetType.REPORT], (
+        "只允许命中依赖字段的资产进入重算"
+    )
+    assert changed[0].version == hit.version + 1, "命中的资产版本必须 +1"
+    reports = await container.asset_service.list_versions(user, AssetType.REPORT)
+    assert reports[-1].version == hit.version + 1
+    assert reports[-1].diff_from_previous, "升版必须带 diff 说明（因更新了什么）"
+    plans = await container.asset_service.list_versions(user, AssetType.DIRECTION_PLAN)
+    assert plans[-1].version == miss.version, "未命中的资产版本不得变化"
 
 
 @pytest.mark.asyncio
 async def test_acceptance_6_action_loop_writes_behavior_log() -> None:
     """验收项 6：行为闭环。认领差距 / 选择方案 / 勾任务 / 复盘都产生行为日志。"""
-    pytest.skip("需要在 LoopResult.behavior_events 填充后补：断言四类事件都落库")
+    """验收项 6：行为闭环。环节轮次产生行为日志，停滞检测有据可依。
+
+    口径说明：gap_claim / decision_select / task_done 的入站动作（选方案 /
+    认领差距 / 勾任务）挂在后续的资产操作端点上；本用例先锁住"每轮对话都写
+    ANSWER 行为"这条闭环底线——它是停滞检测的唯一信号源。
+    """
+    from uuid import uuid4
+
+    from zhiyin_api.dto.conversation import MessageRequest
+    from zhiyin_boot import wire_application
+    from zhiyin_kernel.enums import BehaviorEventType
+
+    container = _container()
+    wire_application(container)
+    facade = container.facade
+    user = f"e2e-behavior-{uuid4().hex[:6]}"
+
+    session = await container.orchestrator.enter_task(user, "confused")
+    await facade.send_message(
+        user, MessageRequest(task_id=session.id, message="我想先弄清楚自己适合什么")
+    )
+    await facade.send_message(
+        user, MessageRequest(task_id=session.id, message="给我一份行动计划")
+    )
+
+    answers = await container.behavior_service.recent(
+        user, event_types=[BehaviorEventType.ANSWER]
+    )
+    assert len(answers) >= 2, "每轮对话都必须写行为日志（ANSWER）"
+    days = await container.behavior_service.days_since_last(user, BehaviorEventType.ANSWER)
+    assert days == 0, "刚发生过作答，停滞天数必须是 0"
 
 
 @pytest.mark.asyncio
 async def test_acceptance_7_stall_triggers_coach_message() -> None:
     """验收项 7：主动干预。停滞触发教练消息，且带最小可执行动作。"""
-    pytest.skip("需要在 ActiveEventWorker 实现后补：断言调度触发 + 通知内容")
+    """验收项 7：主动干预。停滞触发教练消息，且带最小可执行动作。"""
+    from datetime import datetime, timedelta, timezone
+    from uuid import uuid4
+
+    from zhiyin_business.policies.intervention_rules import ThresholdInterventionPolicy
+    from zhiyin_business.workers import ActiveEventWorker
+    from zhiyin_kernel.blackboard import BehaviorLog
+    from zhiyin_kernel.enums import BehaviorEventType
+
+    container = _container()
+    user = f"e2e-stall-{uuid4().hex[:6]}"
+
+    # 唯一的关键动作发生在 4 天前（阈值 3 天）→ 构成停滞
+    stale = datetime.now(timezone.utc) - timedelta(days=4)
+    await container.behaviors.append(
+        BehaviorLog(
+            id=f"bhv-e2e-{uuid4().hex[:8]}",
+            user_id=user,
+            event_type=BehaviorEventType.TASK_DONE,
+            occurred_at=stale,
+            payload={},
+        )
+    )
+
+    params = await container.registry.get_policy_params("intervention")
+    assert params is not None and params.status == "confirmed", (
+        "干预参数必须来自已确认的动态资源"
+    )
+    worker = ActiveEventWorker(
+        behaviors=container.behavior_service,
+        policy_factory=lambda value: ThresholdInterventionPolicy(
+            stall_threshold_days=int(value.get("stall_threshold_days", 3)),
+            cooldown_hours=int(value.get("cooldown_hours", 48)),
+            max_notifications_per_window=int(value.get("max_notifications_per_window", 2)),
+            window_days=int(value.get("window_days", 7)),
+        ),
+        registry=container.registry,
+        notifications=container.notifications,
+        scheduler=container.scheduler_primitive,
+        notifier=container.notifier_primitive,
+        user_provider=lambda: [user],
+    )
+    triggered = await worker.run_once()
+    assert triggered >= 1, "停滞 4 天必须触发一次主动干预"
+
+    # 冷却期内不再打扰（48 小时冷却）
+    assert await worker.run_once() == 0, "冷却期内不得重复打扰"

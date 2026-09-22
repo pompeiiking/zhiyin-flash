@@ -8,7 +8,7 @@
 3. 门禁 JSON 里引用的名字若不存在，`tests/test_assembly.py::test_gates_reference_known_ports`
    会直接失败；`tests/test_shell_completeness.py` 另外守住"落位表 ↔ 真实文件"一致。
 
-清单是"能力位"，不是"实现"：同一能力位换实现（local → mysql → pami）不改本文件。
+清单是"能力位"，不是"实现"：同一能力位换实现不改本文件。
 """
 
 # 外部能力（SDK 定义契约，基础设施实现）
@@ -27,7 +27,13 @@ GATEWAY_PORTS: tuple[str, ...] = (
     "security",
     "rate_limit",
     "feature_flags",
-    "raw_query",
+    "external_data",
+    # 学信网：与 external_data（学职平台公开数据）分开列，
+    # 因为它读的是**用户本人的**学籍/学历，权限与合规要求都不一样。
+    "chsi",
+    # 教务系统：课表与成绩单的唯一来源（学信网没有这两个数据）。
+    # 它是唯一一个"要用户账号密码"的能力位，所以单独占一格、单独设开关。
+    "academic",
 )
 
 # 数据访问（读写契约）
@@ -39,13 +45,13 @@ REPOSITORY_PORTS: tuple[str, ...] = (
     "sessions",
     "registry",
     "users",
+    "notes",
+    "academic_records",
 )
-
-# 事务（开启 MySQL 时才有）
-TRANSACTION_PORTS: tuple[str, ...] = ("transaction_manager",)
 
 # 编排层语义原语
 ORCHESTRATION_PORTS: tuple[str, ...] = (
+    "data_sources",
     "event_bus_primitive",
     "scheduler_primitive",
     "notifier_primitive",
@@ -56,14 +62,16 @@ ORCHESTRATION_PORTS: tuple[str, ...] = (
 
 # 业务服务（含 BFF 门面）
 SERVICE_PORTS: tuple[str, ...] = (
-    "loop",
     "orchestrator",
     "profile_service",
     "behavior_service",
     "memory_service",
+    "note_service",
+    "academic_service",
     "asset_service",
     "workspace_service",
     "function_service",
+    "ai_task_service",
     "identity_service",
     "registry_service",
     "facade",
@@ -92,7 +100,6 @@ MINIMUM_VIABLE: tuple[str, ...] = (
 ALL_PORTS: tuple[str, ...] = (
     GATEWAY_PORTS
     + REPOSITORY_PORTS
-    + TRANSACTION_PORTS
     + ORCHESTRATION_PORTS
     + SERVICE_PORTS
     + WORKER_PORTS
@@ -105,6 +112,5 @@ __all__ = [
     "ORCHESTRATION_PORTS",
     "REPOSITORY_PORTS",
     "SERVICE_PORTS",
-    "TRANSACTION_PORTS",
     "WORKER_PORTS",
 ]

@@ -4,7 +4,17 @@
 避免"数据库字段变更影响前端"（R-API-007）。
 """
 
-from zhiyin_api.dto.common import ApiResponse, ErrorCode
+from zhiyin_api.dto.common import (
+    AgentBadgeView,
+    ApiResponse,
+    BehaviorGuideView,
+    DisclosureView,
+    ErrorCode,
+    GuideOptionView,
+    GuideReminderView,
+    GuideTaskView,
+    TheoryRefView,
+)
 from zhiyin_api.dto.bootstrap import (
     BannerView,
     BootstrapView,
@@ -12,6 +22,7 @@ from zhiyin_api.dto.bootstrap import (
     MenuView,
     RouteView,
     TaskEntryView,
+    TheoryCardView,
     TrustBlockView,
 )
 from zhiyin_api.dto.conversation import (
@@ -25,6 +36,8 @@ from zhiyin_api.dto.conversation import (
 )
 from zhiyin_api.dto.workspace import (
     DependencyEdgeView,
+    ProfileFieldView,
+    ProfileGapView,
     ProfilePanelView,
     StagePanelView,
     WorkspacePageView,
@@ -33,19 +46,30 @@ from zhiyin_api.dto.asset import (
     AssetVersionView,
     ExportRequest,
     ExportResultView,
+    ReportDimensionItemView,
     ReportFullTextView,
+    ReportSectionView,
+    ReportTocItemView,
 )
 from zhiyin_api.dto.track import TrackEventAck, TrackEventRequest
 
 __all__ = [
     "ApiResponse",
     "ErrorCode",
+    "AgentBadgeView",
+    "BehaviorGuideView",
+    "DisclosureView",
+    "GuideOptionView",
+    "GuideReminderView",
+    "GuideTaskView",
+    "TheoryRefView",
     "BootstrapView",
     "BannerView",
     "FaqView",
     "MenuView",
     "RouteView",
     "TaskEntryView",
+    "TheoryCardView",
     "TrustBlockView",
     "ConversationMessageView",
     "ConversationTurnView",
@@ -55,6 +79,8 @@ __all__ = [
     "TaskEnterRequest",
     "TaskSessionView",
     "DependencyEdgeView",
+    "ProfileFieldView",
+    "ProfileGapView",
     "ProfilePanelView",
     "StagePanelView",
     "WorkspacePageView",
@@ -62,6 +88,9 @@ __all__ = [
     "ExportRequest",
     "ExportResultView",
     "ReportFullTextView",
+    "ReportTocItemView",
+    "ReportSectionView",
+    "ReportDimensionItemView",
     "TrackEventAck",
     "TrackEventRequest",
 ]

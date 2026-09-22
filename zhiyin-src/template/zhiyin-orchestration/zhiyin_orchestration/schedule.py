@@ -2,7 +2,7 @@
 
 **契约分工**：本模块是语义契约（业务侧注册"停滞检测"等真实信号任务，并声明
 冷却期与触发次数上限）；到点投递动作由 zhiyin-data-sdk 的 `SchedulerGateway`
-承担（第一期 LocalScheduler，后续 Redis ZSET + Kafka）。
+承担（当前 LocalScheduler）。
 第一期默认实现见 `zhiyin_orchestration.impl.GatewayScheduler`。
 """
 
@@ -26,7 +26,7 @@ class ScheduleSpec(BaseModel):
     trigger_at: Optional[datetime] = None
     interval_s: Optional[float] = None
     cooldown_s: Optional[float] = Field(
-        default=None, description="冷却期；用于打扰度控制（FR-REVIEW-005）"
+        default=None, description="冷却期；用于打扰度控制"
     )
     max_triggers: Optional[int] = Field(default=None, description="打扰度上限")
 

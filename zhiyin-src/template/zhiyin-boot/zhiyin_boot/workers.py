@@ -19,7 +19,10 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import logging
 from typing import Protocol
+
+logger = logging.getLogger(__name__)
 
 
 class Runnable(Protocol):
@@ -40,7 +43,16 @@ async def run_forever(worker: Runnable, interval_s: float) -> None:
     if interval_s <= 0:
         raise ValueError("interval_s 必须为正数")
     while True:
-        await worker.run_once()
+        try:
+            await worker.run_once()
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception(
+                "Worker %s 单轮执行失败，将在 %s 秒后继续重试",
+                getattr(worker, "name", type(worker).__name__),
+                interval_s,
+            )
         await asyncio.sleep(interval_s)
 
 
@@ -50,7 +62,18 @@ async def run_until_cancelled(
     """在 `stop` 被设置前轮询；用于 lifespan 内的统一启停。"""
     task = asyncio.create_task(run_forever(worker, interval_s))
     try:
-        await stop.wait()
+        # 与"驱动任务自己挂掉"竞速：只等 stop 的话，run_forever 在运行期抛出
+        # （例如 interval_s <= 0）会被 task 静默持有，调用方永远等在一个
+        # 不会再有进展的 stop 上。谁先完成谁说话。
+        stop_task = asyncio.ensure_future(stop.wait())
+        done, _pending = await asyncio.wait(
+            {task, stop_task}, return_when=asyncio.FIRST_COMPLETED
+        )
+        if task in done:
+            # 驱动方自己结束了：把它的异常原样抛出（CancelledError 也照抛）
+            stop_task.cancel()
+            await task
+        stop_task.cancel()
     finally:
         task.cancel()
         with contextlib.suppress(asyncio.CancelledError):

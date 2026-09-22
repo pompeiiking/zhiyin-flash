@@ -1,4 +1,4 @@
-"""核心对话页接口（FR-HOME-002 / FR-CONV / R-API-002 / R-API-003）。
+"""核心对话页接口（R-API-002 / R-API-003）。
 
 调用链：Controller → Facade → Orchestrator.handle_message
 （读黑板 → 环节判定 → 选主理 → 理论链产出 → 行为引导收尾）
@@ -10,6 +10,7 @@ from fastapi import APIRouter, Request
 
 from zhiyin_api.dto.common import ApiResponse
 from zhiyin_api.dto.conversation import (
+    ConversationMessageView,
     ConversationTurnView,
     MessageRequest,
     SessionListView,
@@ -26,7 +27,24 @@ async def list_sessions(request: Request) -> ApiResponse[SessionListView]:
     """左栏会话列表（并行任务会话，按任务/环节命名）。"""
     facade = get_facade()
     user_id = await facade.resolve_user_id(request)
-    return ApiResponse(data=facade.list_sessions(user_id))
+    return ApiResponse(data=await facade.list_sessions(user_id))
+
+
+@router.get(
+    "/app/sessions/{task_id}/turns",
+    response_model=ApiResponse[list[ConversationMessageView]],
+)
+async def list_session_turns(
+    request: Request, task_id: str, limit: int = 200
+) -> ApiResponse[list[ConversationMessageView]]:
+    """一条会话的逐轮原文。
+
+    会话列表点进去要能看见"这条会话发生过什么" —— 此前只有一张清单，
+    因为逐轮原文压根没落库（库里只有累积摘要）。
+    """
+    facade = get_facade()
+    user_id = await facade.resolve_user_id(request)
+    return ApiResponse(data=await facade.list_session_turns(user_id, task_id, limit=limit))
 
 
 @router.post("/app/task/enter", response_model=ApiResponse[TaskSessionView])

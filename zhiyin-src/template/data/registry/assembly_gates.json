@@ -1,5 +1,5 @@
 {
-  "_note": "职引 · 装配分级门禁（DEMO）。属动态资源：调整门禁口径不需要改代码。验收口径此前是二值的（healthy true/false），导致第一期永远处于『未达标』而失去信号价值；这里按里程碑分级，CI 用 `python -m zhiyin_boot --check --phase=N` 精确卡口。require 里的名字必须能在 zhiyin_boot/container/ports.py 找到，否则测试会失败。",
+  "_note": "职引 · 装配分级门禁。属动态资源：调整门禁口径不需要改代码。验收口径此前是二值的（healthy true/false），导致第一期永远处于『未达标』而失去信号价值；这里按里程碑分级，CI 用 `python -m zhiyin_boot --check --phase=N` 精确卡口。require 里的名字必须能在 zhiyin_boot/container/ports.py 找到，否则测试会失败。",
   "items": [
     {
       "phase": 1,
@@ -29,6 +29,7 @@
           "users"
         ],
         "orchestration": [
+          "data_sources",
           "event_bus_primitive",
           "scheduler_primitive",
           "notifier_primitive",
@@ -71,6 +72,7 @@
           "users"
         ],
         "orchestration": [
+          "data_sources",
           "event_bus_primitive",
           "scheduler_primitive",
           "notifier_primitive",
@@ -79,7 +81,6 @@
           "workflow_engine"
         ],
         "services": [
-          "loop",
           "orchestrator",
           "profile_service",
           "behavior_service",
@@ -91,7 +92,10 @@
           "registry_service",
           "facade"
         ],
-        "workers": ["impact", "active_event"]
+        "workers": [
+          "impact",
+          "active_event"
+        ]
       },
       "manual": [
         "五环节主路径 e2e 测试通过（tests/e2e/）",
@@ -101,7 +105,7 @@
     {
       "phase": 3,
       "name": "真实存储",
-      "description": "MySQL / Redis / pgvector 替换内存实现，不允许再留骨架。",
+      "description": "自有基础设施完成真实实现，不允许再留骨架。",
       "allow_skeleton": false,
       "require": {
         "gateways": [
@@ -119,7 +123,7 @@
           "security",
           "rate_limit",
           "feature_flags",
-          "raw_query"
+          "external_data"
         ],
         "repositories": [
           "profiles",
@@ -130,8 +134,8 @@
           "registry",
           "users"
         ],
-        "transactions": ["transaction_manager"],
         "orchestration": [
+          "data_sources",
           "event_bus_primitive",
           "scheduler_primitive",
           "notifier_primitive",
@@ -140,7 +144,6 @@
           "workflow_engine"
         ],
         "services": [
-          "loop",
           "orchestrator",
           "profile_service",
           "behavior_service",
@@ -152,10 +155,14 @@
           "registry_service",
           "facade"
         ],
-        "workers": ["impact", "active_event", "vector_sync"]
+        "workers": [
+          "impact",
+          "active_event",
+          "vector_sync"
+        ]
       },
       "manual": [
-        "同一套 Port 契约测试对 MySQL / Redis / pgvector 实现同样通过",
+        "同一套 Port 契约测试对本基础设施实现同样通过",
         "向量模型版本路由验证（换嵌入模型后检索不串空间）"
       ]
     },
@@ -180,7 +187,7 @@
           "security",
           "rate_limit",
           "feature_flags",
-          "raw_query"
+          "external_data"
         ],
         "repositories": [
           "profiles",
@@ -191,8 +198,8 @@
           "registry",
           "users"
         ],
-        "transactions": ["transaction_manager"],
         "orchestration": [
+          "data_sources",
           "event_bus_primitive",
           "scheduler_primitive",
           "notifier_primitive",
@@ -201,7 +208,6 @@
           "workflow_engine"
         ],
         "services": [
-          "loop",
           "orchestrator",
           "profile_service",
           "behavior_service",
@@ -213,7 +219,11 @@
           "registry_service",
           "facade"
         ],
-        "workers": ["impact", "active_event", "vector_sync"]
+        "workers": [
+          "impact",
+          "active_event",
+          "vector_sync"
+        ]
       },
       "manual": [
         "事件可靠性：至少一次投递 + 重试 + 死信",

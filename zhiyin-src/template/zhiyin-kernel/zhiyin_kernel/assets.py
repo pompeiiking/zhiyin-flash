@@ -1,7 +1,7 @@
 """资产与跟踪类契约。
 
-对应《职引-PRD-v2.0》§7.3 15 维报告 / §7.4 方向方案 / §7.5 行动计划 / §7.6 跟踪与成就。
-字段结构对齐 PRD，第一期不追求索引与分区优化。
+对应 15 维报告 / 方向方案 / 行动计划 / 跟踪与成就。
+字段结构以设计文档为准，第一期不追求索引与分区优化。
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ class Verdict(BaseModel):
 
 
 class Swot(BaseModel):
-    """SWOT。每项不少于 2 条（FR-DIAG-002）。"""
+    """SWOT。每项不少于 2 条。"""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -57,7 +57,7 @@ class ReportDimensionGroup(BaseModel):
 
 
 class GapClaim(BaseModel):
-    """差距认领记录。诊断 → 决策的衔接点（FR-DIAG-004）。"""
+    """差距认领记录。诊断 → 决策的衔接点。"""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -103,6 +103,10 @@ class DirectionPlan(BaseModel):
     name: str
     target_desc: str = Field(description="目标描述")
     match_score: float = Field(description="匹配度，解释性分值，非严谨算法")
+    match_method: str = Field(
+        default="",
+        description="匹配度口径（同一批方案共用一句），如「三叶草契合度 × 可达性」",
+    )
     gaps: list[PlanGap] = Field(default_factory=list)
     fit_reason: str = Field(description="契合依据")
     main_risk: str = Field(description="主要风险")
@@ -116,6 +120,14 @@ class ActionTask(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    id: str = Field(
+        default="",
+        description=(
+            "任务标识。勾选 / 取消按它定位 —— 用任务文本当标识时，"
+            "同一阶段里两条同名任务会互相顶掉。老数据没有这一列，"
+            "仓储侧保留「阶段名:任务文本」作为回落口径。"
+        ),
+    )
     text: str
     due_date: Optional[datetime] = None
     done: bool = False
@@ -146,7 +158,12 @@ class ActionPlan(BaseModel):
 
 
 class TrackEvent(BaseModel):
-    """跟踪时间线事件。复盘产出的载体。"""
+    """跟踪时间线事件。复盘产出的载体。
+
+    **第一期不落表**：`FunctionService` 用进程内登记承载（P0 形态），
+    所以数据库里没有对应的表。实现持久化时再建 —— 表跟着实现走，
+    不走在实现前面（一张 0 行的表看起来像"这个能力已经有了"）。
+    """
 
     model_config = ConfigDict(extra="forbid")
 
@@ -164,7 +181,16 @@ class TrackEvent(BaseModel):
 
 
 class Achievement(BaseModel):
-    """成就。只由行为日志驱动，防自嗨（FR-BLOCK-003）。"""
+    """成就。只由行为日志驱动，防自嗨。
+
+    **永远不落表**：成就是每次从行为日志**实时推导**出来的，不是一份独立记录。
+    落一张成就表等于给它开了第二个事实来源，越往后越对不上
+    （行为日志是只追加的，成就是推导结果）。
+
+    注意这里**没有** `driven_by_behavior_log_only` 这类恒为真的标记字段：
+    它自带默认值、又没有任何读取者，表达的是上面这段话已经说清的口径，
+    只会让"成就模型有哪些字段"多一个假答案。
+    """
 
     model_config = ConfigDict(extra="forbid")
 
@@ -173,15 +199,17 @@ class Achievement(BaseModel):
     badge_key: str
     unlocked: bool = False
     unlocked_at: Optional[datetime] = None
-    driven_by_behavior_log_only: bool = Field(default=True)
 
 
 class CalendarNode(BaseModel):
-    """关键节点日历条目（FR-BLOCK-002）。
+    """关键节点日历条目。
 
-    放在 contracts 而不是业务层：它是**需要落库的数据形状**（key_calendar_node 表），
-    基础设施层的表清单必须能指向契约。若留在业务层，persistence 就会反向引用业务
-    模型，破坏单向依赖（§九 验收项 1）。规划师写入、教练读取的业务规则仍在业务层。
+    放在 contracts 而不是业务层：它是**跨层共用的数据形状**（规划师写入、
+    教练读取、工作台展示）。若留在业务层，基础设施层就会反向引用业务模型，
+    破坏单向依赖。
+
+    **第一期不落表**：与跟踪时间线同样，现在由 `FunctionService` 的进程内登记
+    承载；等真正要持久化时再建表，形状不变。
     """
 
     model_config = ConfigDict(extra="forbid")

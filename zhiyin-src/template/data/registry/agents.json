@@ -1,5 +1,5 @@
 {
-  "_note": "职引 · 动态资源种子数据（DEMO）。来源：《职引-PRD-v2.0》§3.3 智能体能力池。第一期由 LocalJsonRegistryRepository 读取；接 pami 动态资源表后本文件不再需要。注意：本文件不含 output_contract_id —— 产出契约按 (agent_id, stage) 查，一个智能体可以拥有多个环节的契约（如职业顾问同时负责 ②诊断 与 ③决策）。",
+  "_note": "职引 · 动态资源种子数据。来源：设计文档的智能体能力池。由 LocalJsonRegistryRepository 读取。注意：本文件不含 output_contract_id —— 产出契约按 (agent_id, stage) 查，一个智能体可以拥有多个环节的契约（如职业顾问同时负责 ②诊断 与 ③决策）。 tools 是**真实工具名**（见 ai/tools.py 的 build_tool_catalog），不是描述性短语：引擎按它决定给这个智能体挂哪些工具。\n\n【外部事实从哪来】主理手上的取数能力只有一条：`xuezhi.search`（学职平台公开页面），**不需要任何密钥** —— 情报是爬公开页面的，登录只影响能不能按画像收窄。所以白名单里没有、也不该有联网搜索那一项。\n\n【将来要开联网检索】`web.search` 属于「配了搜索服务才存在」的可选能力（`.env` 的 `ZHIYIN_SEARCH_API_KEY`）。要开是两步：① 在 .env 配上搜索服务，② 把 `web.search` 加回 career_advisor / info_scout 的白名单。只做①会多出一个谁也不能用的工具，只做②就是这条记录一直说的那个缺陷。\n\n【白名单与部署不一致时】未注册的工具名会被引擎跳过并记一条 error（这一轮照常跑完，缺的能力留在日志里）—— 配置缺口不该由用户那一轮消息来承担。",
   "items": [
     {
       "id": "profile_analyst",
@@ -12,9 +12,16 @@
         "super_life_stage",
         "career_anchor"
       ],
-      "tools": ["访谈话术", "画像字段 schema", "测评解释"],
-      "call_scenarios": ["任何环节发现画像缺信息或置信度低时"],
-      "not_to_do": ["不替用户下判断"],
+      "tools": [
+        "profile.read",
+        "behavior.recent"
+      ],
+      "call_scenarios": [
+        "任何环节发现画像缺信息或置信度低时"
+      ],
+      "not_to_do": [
+        "不替用户下判断"
+      ],
       "status": "enabled"
     },
     {
@@ -29,29 +36,65 @@
         "decision_balance",
         "vroom"
       ],
-      "tools": ["职业库", "岗位要求", "差距算法", "方案生成"],
-      "call_scenarios": ["诊断", "多方案", "方向存疑判别"],
-      "not_to_do": ["不替用户执行"],
+      "tools": [
+        "profile.read",
+        "behavior.recent",
+        "kb.search",
+        "xuezhi.search"
+      ],
+      "call_scenarios": [
+        "诊断",
+        "多方案",
+        "方向存疑判别"
+      ],
+      "not_to_do": [
+        "不替用户执行"
+      ],
       "status": "enabled"
     },
     {
       "id": "path_planner",
       "name": "路径规划师",
       "role_summary": "把选择拆成带日历、今天就能勾掉的行动",
-      "theory_packages": ["smart", "if_then", "planned_happenstance"],
-      "tools": ["节点日历", "窗口模板", "任务拆解"],
-      "call_scenarios": ["决策落地成计划", "计划重拆"],
-      "not_to_do": ["不评判方向对错"],
+      "theory_packages": [
+        "smart",
+        "if_then",
+        "planned_happenstance"
+      ],
+      "tools": [
+        "profile.read",
+        "kb.search"
+      ],
+      "call_scenarios": [
+        "决策落地成计划",
+        "计划重拆"
+      ],
+      "not_to_do": [
+        "不评判方向对错"
+      ],
       "status": "enabled"
     },
     {
       "id": "companion_coach",
       "name": "陪伴教练",
       "role_summary": "盯执行、给反馈、触发再入环",
-      "theory_packages": ["super_development", "bandura_self_efficacy", "planned_happenstance"],
-      "tools": ["行为日志", "节律", "提醒通道", "成就体系"],
-      "call_scenarios": ["主动干预", "复盘", "停滞预警（唯一可主动发起会话者）"],
-      "not_to_do": ["不越界代产出诊断或方案"],
+      "theory_packages": [
+        "super_development",
+        "bandura_self_efficacy",
+        "planned_happenstance"
+      ],
+      "tools": [
+        "profile.read",
+        "behavior.recent"
+      ],
+      "call_scenarios": [
+        "主动干预",
+        "复盘",
+        "停滞预警（唯一可主动发起会话者）"
+      ],
+      "not_to_do": [
+        "不越界代产出诊断或方案"
+      ],
       "status": "enabled"
     },
     {
@@ -59,9 +102,17 @@
       "name": "信息侦查员",
       "role_summary": "按需供给外部事实，不参与结论",
       "theory_packages": [],
-      "tools": ["学职平台库", "JD", "行情", "时间窗口"],
-      "call_scenarios": ["任何环节需外部事实时被按需调用"],
-      "not_to_do": ["不与用户闲聊", "不给建议"],
+      "tools": [
+        "xuezhi.search",
+        "kb.search"
+      ],
+      "call_scenarios": [
+        "任何环节需外部事实时被按需调用"
+      ],
+      "not_to_do": [
+        "不与用户闲聊",
+        "不给建议"
+      ],
       "status": "enabled"
     }
   ]

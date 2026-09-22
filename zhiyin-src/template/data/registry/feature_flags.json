@@ -1,11 +1,10 @@
 {
-  "_note": "职引 · 功能开关（DEMO）。属动态资源：改本文件不需要发版。此前硬编码在 Settings.feature_flags 里，已改为本地 JSON 读取。第二期迁移到 feature_flag 表。",
+  "_note": "职引 · 功能开关。属动态资源：改本文件不需要发版。此前硬编码在 Settings.feature_flags 里，已改为本地 JSON 读取；数据层已有 feature_flag 表。**诚实交代**：一期没有任何一处按开关分支（开关随 /app/bootstrap 下发，前端还没接），所以现在改这里的值不会改变界面 —— 要用时先在消费点接上，别以为它已经在生效。`demo` 这条是早期联调留下的、谁也没读的开关，已删。",
   "items": [
     { "code": "report_full_text", "enabled": true },
     { "code": "export", "enabled": false },
     { "code": "calendar", "enabled": true },
     { "code": "achievements", "enabled": true },
-    { "code": "mentor", "enabled": false },
-    { "code": "demo", "enabled": true }
+    { "code": "mentor", "enabled": false }
   ]
 }

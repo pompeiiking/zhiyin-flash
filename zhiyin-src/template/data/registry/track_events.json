@@ -1,28 +1,140 @@
 {
-  "_note": "职引 · 埋点事件归属表（PRD §十一，23 个事件）。决策 14=A：后端派生为主 + 前端上报为辅。channel=frontend 的纯体验型事件走 POST /app/track 上报；channel=backend 的事件由后端行为/接口推导，不接收入站上报。属动态资源：改归属不需要发版。",
+  "_note": "职引 · 埋点事件归属表（23 个事件）。决策 14=A：后端派生为主 + 前端上报为辅。channel=frontend 的纯体验型事件走 POST /app/track 上报；channel=backend 的事件由后端行为/接口推导，不接收入站上报。属动态资源：改归属不需要发版。",
   "items": [
-    { "code": "home_task_select", "channel": "backend", "note": "进入任务即可派生，无需前端上报" },
-    { "code": "home_chat_open", "channel": "backend", "note": "进入 free_chat 任务入口派生" },
-    { "code": "conv_loop_enter", "channel": "backend", "note": "环节推进派生" },
-    { "code": "conv_lead_handoff", "channel": "backend", "note": "编排器交接派生" },
-    { "code": "conv_disclosure_open", "channel": "frontend", "note": "点开理论依据/显式告知，纯前端事件" },
-    { "code": "collect_field_update", "channel": "backend", "note": "画像字段更新派生" },
-    { "code": "collect_gap_show", "channel": "frontend", "note": "展示画像缺口，纯前端事件" },
-    { "code": "diagnosis_view", "channel": "frontend", "note": "查看 15 维诊断与停留时长，纯前端事件" },
-    { "code": "gap_claim", "channel": "backend", "note": "认领差距派生为行为日志" },
-    { "code": "decision_compare", "channel": "frontend", "note": "并排比较方案，纯前端事件" },
-    { "code": "decision_select", "channel": "backend", "note": "做出选择派生为行为日志" },
-    { "code": "decision_reselect", "channel": "backend", "note": "修改选择派生为行为日志" },
-    { "code": "action_task_done", "channel": "backend", "note": "勾掉任务派生为行为日志" },
-    { "code": "action_decompose", "channel": "backend", "note": "任务重新拆解由编排器派生" },
-    { "code": "review_trigger", "channel": "backend", "note": "复盘触发由调度/编排器派生" },
-    { "code": "review_warning_show", "channel": "frontend", "note": "停滞预警展示，纯前端事件" },
-    { "code": "review_warning_response", "channel": "backend", "note": "响应预警作为行为派生" },
-    { "code": "blackboard_propagate", "channel": "backend", "note": "影响面传播由 Worker 派生" },
-    { "code": "wb_enter", "channel": "frontend", "note": "进入智能工作台，纯前端事件" },
-    { "code": "asset_export", "channel": "backend", "note": "导出接口本身可派生" },
-    { "code": "achievement_unlock", "channel": "backend", "note": "成就解锁由行为事件派生" },
-    { "code": "auth_login_success", "channel": "backend", "note": "登录成功由鉴权派生" },
-    { "code": "auth_guest_merge", "channel": "backend", "note": "游客合并由身份服务派生" }
+    {
+      "code": "home_task_select",
+      "channel": "backend",
+      "note": "进入任务即可派生，无需前端上报"
+    },
+    {
+      "code": "home_chat_open",
+      "channel": "backend",
+      "note": "进入 free_chat 任务入口派生"
+    },
+    {
+      "code": "conv_loop_enter",
+      "channel": "backend",
+      "note": "环节推进派生"
+    },
+    {
+      "code": "conv_lead_handoff",
+      "channel": "backend",
+      "note": "编排器交接派生"
+    },
+    {
+      "code": "conv_disclosure_open",
+      "channel": "frontend",
+      "note": "点开理论依据/显式告知，纯前端事件"
+    },
+    {
+      "code": "collect_field_update",
+      "channel": "backend",
+      "note": "画像字段更新派生"
+    },
+    {
+      "code": "collect_gap_show",
+      "channel": "frontend",
+      "note": "展示画像缺口，纯前端事件"
+    },
+    {
+      "code": "diagnosis_view",
+      "channel": "frontend",
+      "note": "查看 15 维诊断与停留时长，纯前端事件"
+    },
+    {
+      "code": "gap_claim",
+      "channel": "backend",
+      "note": "认领差距派生为行为日志"
+    },
+    {
+      "code": "decision_compare",
+      "channel": "frontend",
+      "note": "并排比较方案，纯前端事件"
+    },
+    {
+      "code": "decision_select",
+      "channel": "backend",
+      "note": "做出选择派生为行为日志"
+    },
+    {
+      "code": "decision_reselect",
+      "channel": "backend",
+      "note": "修改选择派生为行为日志"
+    },
+    {
+      "code": "action_task_done",
+      "channel": "backend",
+      "note": "勾掉任务派生为行为日志"
+    },
+    {
+      "code": "action_decompose",
+      "channel": "backend",
+      "note": "任务重新拆解由编排器派生"
+    },
+    {
+      "code": "review_trigger",
+      "channel": "backend",
+      "note": "复盘触发由调度/编排器派生"
+    },
+    {
+      "code": "review_warning_show",
+      "channel": "frontend",
+      "note": "停滞预警展示，纯前端事件"
+    },
+    {
+      "code": "review_warning_response",
+      "channel": "backend",
+      "note": "响应预警作为行为派生"
+    },
+    {
+      "code": "blackboard_propagate",
+      "channel": "backend",
+      "note": "影响面传播由 Worker 派生"
+    },
+    {
+      "code": "wb_enter",
+      "channel": "frontend",
+      "note": "进入智能工作台，纯前端事件"
+    },
+    {
+      "code": "asset_export",
+      "channel": "backend",
+      "note": "导出接口本身可派生"
+    },
+    {
+      "code": "achievement_unlock",
+      "channel": "backend",
+      "note": "成就解锁由行为事件派生"
+    },
+    {
+      "code": "auth_login_success",
+      "channel": "backend",
+      "note": "登录成功由鉴权派生"
+    },
+    {
+      "code": "auth_guest_merge",
+      "channel": "backend",
+      "note": "游客合并由身份服务派生"
+    },
+    {
+      "code": "todo_suggestion_accept",
+      "channel": "frontend",
+      "note": "采纳一条智能体待办建议（前端交互，接受与否本身是信息）"
+    },
+    {
+      "code": "todo_suggestion_dismiss",
+      "channel": "frontend",
+      "note": "否决一条智能体待办建议（前端交互，连续否决要回流模型）"
+    },
+    {
+      "code": "task_done_click",
+      "channel": "frontend",
+      "note": "前端勾掉一个任务（后端仍派生 action_task_done 作为行为日志）"
+    },
+    {
+      "code": "talk_open",
+      "channel": "frontend",
+      "note": "前端叫出对话层（任何一处入口）—— 与 home_chat_open 不同：那条是首页入口，这条是“任何地方都能开口”这个动作本身"
+    }
   ]
 }

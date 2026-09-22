@@ -1,9 +1,9 @@
 """本地知识与检索（LocalKnowledgeRepo / LocalKeywordSearch）。
 
 第一期：知识卡与理论卡从本地 JSON 读取；检索退化为关键词匹配。
-TODO(第二期)：替换为 pami 向量检索 / RAG（见 §十替换点）。
+TODO：按自有基础设施演进。
 
-与《业务数据采集与存储来源设计》的对应关系：
+对应关系：
 - `data/knowledge/{namespace}.json` 是**公共知识库**（专业 / 职业 / 岗位 / 政策），
   只作报告与方案里的 evidence / sources 引用，**不写入 profile_field**；
 - 命中结果必须带 `source_url` 与 `fetched_at`（该文档 R-CRAWL-006），
@@ -13,6 +13,7 @@ TODO(第二期)：替换为 pami 向量检索 / RAG（见 §十替换点）。
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 from typing import Any, Optional
 
@@ -24,6 +25,8 @@ from zhiyin_data_sdk.gateways.ai import (
 )
 
 _DEFAULT_NAMESPACES = ("profession", "occupation", "jd", "theory")
+
+logger = logging.getLogger(__name__)
 
 
 class LocalKnowledgeRepo(KnowledgeGateway):
@@ -52,7 +55,11 @@ class LocalKnowledgeRepo(KnowledgeGateway):
                 score = _score(raw, terms)
                 if score <= 0:
                     continue
-                metadata = {**raw, "namespace": space}
+                # 条目自述的 namespace 优先：文件只是存放位置，条目自己说清了归属
+                # （`occupation.json` 里曾混进一条自称 profession 的专业条目，
+                # 被这里统一改写成 occupation —— 自述与实际取值不一致，
+                # 按 namespace 过滤的调用方会得到互相矛盾的答案）。
+                metadata = {**raw, "namespace": str(raw.get("namespace") or space)}
                 scored.append(
                     (
                         score,
@@ -75,9 +82,15 @@ class LocalKnowledgeRepo(KnowledgeGateway):
         path = self._data_dir / f"{namespace}.json"
         items: list[dict[str, Any]] = []
         if path.is_file():
-            raw = json.loads(path.read_text(encoding="utf-8"))
-            payload = raw.get("items", []) if isinstance(raw, dict) else raw
-            items = [item for item in payload if isinstance(item, dict)]
+            try:
+                raw = json.loads(path.read_text(encoding="utf-8"))
+                payload = raw.get("items", []) if isinstance(raw, dict) else raw
+                items = [item for item in payload if isinstance(item, dict)]
+            except (OSError, json.JSONDecodeError):
+                # 读坏一个文件不该让**整类检索**失败。缓存空结果而不是不缓存：
+                # 不缓存的话，坏文件会让每一次检索都重新读、重新抛。
+                logger.exception("知识库文件读不出来，本次按空处理：%s", path)
+                items = []
         self._cache[namespace] = items
         return items
 
@@ -88,6 +101,8 @@ class LocalKnowledgeRepo(KnowledgeGateway):
 
 class LocalKeywordSearch(SearchGateway):
     """本地关键词检索。第一期为包含匹配 + 打分排序。"""
+
+    IMPLEMENTATION_STATUS = "skeleton"
 
     def __init__(self, data_dir: str = "data/knowledge") -> None:
         self._repo = LocalKnowledgeRepo(data_dir)
@@ -100,7 +115,7 @@ class LocalKeywordSearch(SearchGateway):
         ]
 
     async def vector(self, embedding: list[float], *, top_k: int = 10) -> list[SearchHit]:
-        """第一期固定返回空列表（TODO(第二期) 接 pgvector）。"""
+        """当前固定返回空列表，待自有检索实现补齐。"""
         return []
 
     async def hybrid(self, query: str, *, top_k: int = 10) -> list[SearchHit]:

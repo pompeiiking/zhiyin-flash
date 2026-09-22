@@ -1,6 +1,6 @@
 """枚举契约。
 
-取值口径以《职引-PRD-v2.0》§7 数据模型与《职引技术架构文档-第一期》§6 为准。
+取值口径以设计文档为准。
 本模块只定义取值，不定义业务规则。
 """
 
@@ -22,7 +22,7 @@ class LoopStage(str, Enum):
 class AxisAStage(str, Enum):
     """轴 A · 用户职业发展进程（隐性，后台推断，前台不让用户选）。
 
-    五段全量口径（《业务口径决策记录-v1.0》决策 1 = B）：
+    五段全量口径：
     探索自我 → 验证定向 → 冲刺行动 → 适应 → 再定位。
     它改变"同一环节被服务的深度与口气"，不新增页面层级。
     """
@@ -75,7 +75,7 @@ class AssetType(str, Enum):
 
 
 class BehaviorEventType(str, Enum):
-    """行为日志事件类型（对应 PRD §十一 埋点）。"""
+    """行为日志事件类型（对应埋点事件表）。"""
 
     ANSWER = "answer"                                  # 作答
     GAP_CLAIM = "gap_claim"                            # 认领差距
@@ -96,6 +96,7 @@ class ProfileSource(str, Enum):
     ASSESSMENT = "assessment"                  # 测评
     BEHAVIOR_INFERENCE = "behavior_inference"  # 行为推断
     MENTOR = "mentor"                          # 导师建议
+    RECORD = "record"                          # 客观档案（学信网等权威机构出具的记录）
 
 
 class UserRole(str, Enum):
@@ -124,7 +125,7 @@ class PlanRole(str, Enum):
 
 
 class ReviewAttribution(str, Enum):
-    """复盘归因判别结果（FR-REVIEW-002）。"""
+    """复盘归因判别结果。"""
 
     TASK_TOO_BIG = "task_too_big"          # 任务太大
     LOW_MOTIVATION = "low_motivation"      # 动机不足

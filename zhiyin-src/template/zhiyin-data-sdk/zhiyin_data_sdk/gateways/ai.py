@@ -1,7 +1,7 @@
 """AI 相关 Gateway：模型调用 / 嵌入 / 知识库检索 / 全文与向量检索。
 
 第一期默认实现（见 zhiyin-infrastructure）：
-- LLMGateway           → LocalOrMockLLM（有环境变量接模型，否则返回固定结构化结果）
+- LLMGateway           → DeepSeekLLMGateway（真模型；本项目不提供 mock 产出）
 - EmbedGateway         → LocalHashEmbedder（确定性伪向量，仅用于打通链路）
 - KnowledgeGateway     → LocalKnowledgeRepo（本地 JSON）
 - SearchGateway        → LocalKeywordSearch（简单关键词匹配）
@@ -126,7 +126,7 @@ class SearchGateway(ABC):
     async def vector(
         self, embedding: list[float], *, top_k: int = 10
     ) -> list[SearchHit]:
-        """向量检索。第一期固定返回空列表（TODO(第二期) 接 pgvector）。"""
+        """向量检索。当前固定返回空列表，待自有检索实现补齐。"""
 
     @abstractmethod
     async def hybrid(self, query: str, *, top_k: int = 10) -> list[SearchHit]:

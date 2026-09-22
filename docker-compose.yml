@@ -1,0 +1,103 @@
+services:
+  zhiyin-flash:
+    image: zhiyin-flash
+    container_name: zhiyin-flash
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      ZHIYIN_ENV: docker
+      ZHIYIN_USE_REDIS: "1"
+      ZHIYIN_REDIS_URL: redis://redis:6379/0
+      ZHIYIN_REDIS_KEY_PREFIX: zhiyin
+      ZHIYIN_USE_POSTGRES: "1"
+      ZHIYIN_POSTGRES_DSN: postgresql://zhiyin:zhiyin@postgres:5432/zhiyin
+      ZHIYIN_AUTH_JWT_SECRET: ${ZHIYIN_AUTH_JWT_SECRET:?ZHIYIN_AUTH_JWT_SECRET is required}
+      ZHIYIN_AUTH_TOKEN_TTL_S: "86400"
+    volumes:
+      # 迁移文件（策略与配置）只读挂进来，供一次性导入用：
+      #   docker compose run --rm zhiyin-flash \
+      #     python scripts/migrate_db.py import \
+      #     --dsn postgresql://zhiyin:zhiyin@postgres:5432/zhiyin --in /migration/migration.json
+      # 挂**目录**而不是单个文件：文件不存在时 docker 会静默建出一个同名目录，
+      # 那时候报的错会指向"打不开文件"，与真正的原因（文件没随包发出去）差得很远。
+      - ./deploy:/migration:ro
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - zhiyin-flash-net
+
+  web:
+    image: zhiyin-flash-web
+    container_name: zhiyin-flash-web
+    build:
+      context: ./zhiyin-src/template/zhiyin-web
+      dockerfile: Dockerfile
+    ports:
+      # 前端站点。与 `npm run dev` 用同一个端口，避免"该开哪个地址"的歧义。
+      - "5173:80"
+    restart: unless-stopped
+    depends_on:
+      - zhiyin-flash
+    networks:
+      - zhiyin-flash-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: zhiyin-flash-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    restart: unless-stopped
+    ports:
+      # 只绑回环：方便在宿主机上直接跑服务/测试时连同一个 Redis。
+      # 端口避开 6379：本机已有 Redis 时不会撞。
+      - "127.0.0.1:56379:6379"
+    volumes:
+      - zhiyin-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks:
+      - zhiyin-flash-net
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: zhiyin-flash-postgres
+    environment:
+      POSTGRES_USER: zhiyin
+      POSTGRES_PASSWORD: zhiyin
+      POSTGRES_DB: zhiyin
+    restart: unless-stopped
+    volumes:
+      - zhiyin-postgres-data:/var/lib/postgresql/data
+    ports:
+      # 只绑回环：**宿主机与容器用的是同一个库**。
+      # 不发布这个端口的话，宿主机上直接跑服务（python -m zhiyin_boot）就没有库可连，
+      # 于是很容易在旁边另起一个 Postgres —— 两个库、两份动态资源，
+      # 界面上看着正常、实际读的是过期那份。端口避开 5432：本机已有 Postgres 时不会撞。
+      - "127.0.0.1:55432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zhiyin -d zhiyin"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks:
+      - zhiyin-flash-net
+
+volumes:
+  zhiyin-redis-data:
+  zhiyin-postgres-data:
+
+networks:
+  zhiyin-flash-net:
+    name: zhiyin-flash-net

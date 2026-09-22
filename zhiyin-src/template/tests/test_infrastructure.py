@@ -1,6 +1,6 @@
-"""基础设施层测试：语义必须与 MySQL 版一致。
+"""基础设施层测试：语义必须保持一致。
 
-本文件的自述原则是「行为必须与 MySQL 版一致（含版本 +1、只追加、影响面匹配），
+本文件的自述原则是「行为必须保持一致（含版本 +1、只追加、影响面匹配），
 否则切真后会暴露契约之外的差异」。这里把这些语义逐条钉住。
 """
 
@@ -28,7 +28,6 @@ from zhiyin_kernel.identity import UserAccount
 
 from zhiyin_infrastructure.local.feature_flag import LocalFeatureFlagStore
 from zhiyin_infrastructure.local.knowledge import LocalKnowledgeRepo
-from zhiyin_infrastructure.local.llm import synthesize_from_schema
 from zhiyin_infrastructure.local.object_store import LocalFileStore
 from zhiyin_infrastructure.local.repository import (
     InMemoryAssetRepository,
@@ -37,13 +36,6 @@ from zhiyin_infrastructure.local.repository import (
     InMemoryTaskSessionRepository,
     LocalJsonRegistryRepository,
 )
-from zhiyin_infrastructure.persistence.models import (
-    BACKEND_DYNAMIC_TABLES,
-    CORE_TABLES,
-    FRONTEND_DYNAMIC_TABLES,
-    TABLE_INVENTORY,
-)
-
 DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 
 
@@ -166,7 +158,7 @@ async def test_behavior_filters_and_last_occurred() -> None:
     assert await repo.last_occurred_at("u1", BehaviorEventType.TASK_DONE) == datetime(
         2026, 9, 13, tzinfo=timezone.utc
     )
-    # 停滞检测的唯一依据（FR-REVIEW-001）
+    # 停滞检测的唯一依据
     assert await repo.last_occurred_at("u1", BehaviorEventType.GAP_CLAIM) is None
 
 
@@ -374,58 +366,6 @@ async def test_feature_flags_come_from_json() -> None:
 # --------------------------------------------------------------------------
 
 
-def test_mock_llm_synthesizes_schema_valid_payload() -> None:
-    schema = {
-        "type": "object",
-        "required": ["kind", "nested"],
-        "properties": {
-            "kind": {"enum": ["a", "b"]},
-            "nested": {
-                "type": "object",
-                "required": ["name"],
-                "properties": {"name": {"type": "string", "minLength": 3}},
-            },
-        },
-    }
-    payload = synthesize_from_schema(schema)
-    assert payload["kind"] == "a"
-    assert len(payload["nested"]["name"]) >= 3
-
-
-def test_mock_llm_skips_nullable_optional_fields() -> None:
-    """可空可选字段必须跳过，否则 Mock 会凭空造出"换主理告知"这类内容。"""
-    schema = {
-        "type": "object",
-        "required": ["must"],
-        "properties": {
-            "must": {"anyOf": [{"type": "null"}, {"type": "string"}]},
-            "maybe": {"anyOf": [{"type": "null"}, {"type": "string"}]},
-            "always": {"type": "string"},
-        },
-    }
-    payload = synthesize_from_schema(schema)
-    assert isinstance(payload["must"], str)
-    assert "maybe" not in payload
-    assert "always" in payload
-
-
-def test_mock_llm_handles_refs() -> None:
-    schema = {
-        "type": "object",
-        "required": ["item"],
-        "properties": {"item": {"$ref": "#/$defs/Item"}},
-        "$defs": {
-            "Item": {
-                "type": "object",
-                "required": ["id"],
-                "properties": {"id": {"type": "string"}},
-            }
-        },
-    }
-    payload = synthesize_from_schema(schema)
-    assert "id" in payload["item"]
-
-
 # --------------------------------------------------------------------------
 # 对象存储 / 知识库
 # --------------------------------------------------------------------------
@@ -469,41 +409,179 @@ async def test_knowledge_search_vector_degrades_to_empty() -> None:
     assert await search.hybrid("霍兰德", top_k=2) == await search.keyword("霍兰德", top_k=2)
 
 
+# ---------------------------------------------------------------------------
+# AI 面向切面：agno 框架运行时与工具注册表（基础设施层维护，见设计文档 6.5）
+# ---------------------------------------------------------------------------
+
+
+def test_agno_model_runtime_builds_client_with_system_role_map() -> None:
+    """框架维护切面：role_map 必须显式把 system 拉回（agno 默认 developer，DeepSeek 不认）。"""
+    from agno.models.openai import OpenAIChat
+
+    from zhiyin_infrastructure.ai.agno_runtime import AgnoModelRuntime
+
+    runtime = AgnoModelRuntime(
+        api_key="sk-test",
+        base_url="https://api.deepseek.com",
+        model="deepseek-flash",
+        temperature=0.3,
+    )
+    model = runtime.create_model()
+    assert isinstance(model, OpenAIChat)
+    assert model.id == "deepseek-flash"
+    assert model.role_map["system"] == "system", (
+        "system 角色必须显式映射，否则 DeepSeek 拒绝请求"
+    )
+    assert model.temperature == 0.3
+
+
+def test_tool_registry_register_lookup_and_whitelist() -> None:
+    """工具维护切面：注册 / 查询 / 按业务白名单过滤；MCP server 可登记。"""
+    import pytest as _pytest
+
+    from zhiyin_infrastructure.ai.tools import ToolRegistry, ToolSpec
+
+    registry = ToolRegistry()
+    registry.register(ToolSpec(name="xuezhi.search", description="学职网取数", handler=lambda: None))
+    registry.register_mcp_server("career-radar", {"transport": "stdio", "command": "radar"})
+
+    assert registry.get("xuezhi.search").source == "local"
+    assert registry.get("mcp:career-radar").source == "mcp"
+    with _pytest.raises(LookupError):
+        registry.get("not.registered")
+    with _pytest.raises(ValueError):
+        registry.register(ToolSpec(name="xuezhi.search"))
+
+    # 业务白名单过滤：信息侦查员的 tools 字段只放行列出的工具
+    visible = registry.list(allowed={"mcp:career-radar"})
+    assert [t.name for t in visible] == ["mcp:career-radar"]
+
+
 # --------------------------------------------------------------------------
-# 表清单
+# 工具目录：真实能力包成工具，且模型拿不到用户标识
 # --------------------------------------------------------------------------
 
 
-def test_table_inventory_covers_documented_scope() -> None:
-    """表清单必须覆盖文档口径，而不是只列核心表。
+class _FakeSearch:
+    async def hybrid(self, query: str, *, top_k: int = 10):
+        from zhiyin_data_sdk.gateways.ai import SearchHit
 
-    修复前 TABLE_INVENTORY 只有 21 张，缺 17+ 张动态资源表，
-    等于把"动态资源入库"这条验收口径悬空了。
-    """
-    assert len(CORE_TABLES) >= 19
-    assert len(FRONTEND_DYNAMIC_TABLES) == 13
-    assert len(BACKEND_DYNAMIC_TABLES) == 25
+        return [SearchHit(id="k1", content=f"关于 {query} 的方法论片段", score=0.9)]
 
-    # 共享表只计一次
-    assert len(TABLE_INVENTORY) == len(
-        set(CORE_TABLES) | set(FRONTEND_DYNAMIC_TABLES) | set(BACKEND_DYNAMIC_TABLES)
+
+class _FakeExternalData:
+    async def fetch(self, request):
+        from zhiyin_data_sdk.gateways.datasource import DataSourceRecord, DataSourceResult
+
+        return DataSourceResult(
+            source=request.source,
+            records=[
+                DataSourceRecord(
+                    id="o1",
+                    kind="occupation",
+                    title="结构设计",
+                    text=f"要求：{request.query} 相关能力",
+                    source_url="https://example.test/o1",
+                    fetched_at="2026-09-21",
+                )
+            ],
+        )
+
+
+class _FakeProfile:
+    fields = [type("F", (), {"key": "major", "value": "土木工程", "confidence": 0.9, "source": "record"})()]
+    gaps = [type("G", (), {"key": "values", "reason": "决定稳定还是成长"})()]
+
+
+def _full_catalog():
+    from zhiyin_infrastructure.ai.tools import build_tool_catalog
+
+    class _FakeWebSearch:
+        async def search(self, query: str, *, count=None):  # noqa: ANN001, ANN202
+            return []
+
+    async def read_profile(user_id: str):
+        return _FakeProfile()
+
+    async def read_behaviors(user_id: str, limit: int = 10):
+        return [type("B", (), {"event_type": "task_done", "occurred_at": None})()]
+
+    return build_tool_catalog(
+        search=_FakeSearch(),
+        external_data=_FakeExternalData(),
+        # 通用网络搜索是可配的：测试里给一个假的，好让"白名单里的名字都得注册"
+        # 这条断言覆盖到它（真的没配时那个名字本来就不该出现在白名单里）。
+        web_search=_FakeWebSearch(),
+        profile_reader=read_profile,
+        behavior_reader=read_behaviors,
     )
 
-    for name in (
-        "prompt_template",
-        "workflow_template",
-        "decision_rule",
-        "handoff_rule",
-        "event_rule",
-        "schedule_rule",
-        "notify_template",
-        "knowledge_source",
-        "feature_flag",
-        "app_page",
-        "app_copy",
-    ):
-        assert name in TABLE_INVENTORY, f"表清单缺少动态资源表：{name}"
+
+def test_tool_catalog_exposes_real_capabilities() -> None:
+    """能力齐备时，五类只读工具都在，而且都能被 agno 认出来。
+
+    （`web.search` 属于"配了搜索密钥才有"，这里给的是假网关，所以它在。）
+    """
+    from agno.tools.function import Function
+
+    catalog = _full_catalog()
+    assert set(catalog) == {
+        "kb.search",
+        "xuezhi.search",
+        "web.search",
+        "profile.read",
+        "behavior.recent",
+    }
+    for spec in catalog.values():
+        assert callable(spec.handler), f"{spec.name} 没有可调用的实现"
+        fn = Function.from_callable(spec.handler)
+        assert fn.description, f"{spec.name} 缺少给模型看的说明"
 
 
-def test_table_inventory_has_no_duplicates() -> None:
-    assert len(TABLE_INVENTORY) == len(set(TABLE_INVENTORY))
+def test_tools_never_let_the_model_pass_user_identity() -> None:
+    """用户标识由运行上下文注入，**不出现在工具参数表里**。
+
+    让模型自己报 user_id 等于把越权入口摆在它面前：它可以填别人的。
+    所以工具的 `run_context` 参数必须被框架排除在参数 schema 之外。
+    """
+    from agno.tools.function import Function
+
+    for name, spec in _full_catalog().items():
+        fn = Function.from_callable(spec.handler)
+        params = set((fn.parameters or {}).get("properties", {}).keys())
+        assert "run_context" not in params, f"{name} 把运行上下文暴露成了模型参数"
+        assert not any("user" in param.lower() for param in params), (
+            f"{name} 的参数里有用户标识：{params}"
+        )
+
+
+def test_agent_tool_whitelist_matches_registered_tools() -> None:
+    """智能体注册表里写的工具名必须真的注册过。
+
+    写错一个名字，引擎会在调用那一刻抛错（不会静默少挂一个），
+    但那时用户已经在等回复了。这里提前在测试阶段挡住。
+    """
+    import json
+
+    template_root = Path(__file__).resolve().parents[1]
+    agents = json.loads(
+        (template_root / "data" / "registry" / "agents.json").read_text(encoding="utf-8")
+    )["items"]
+    registered = set(_full_catalog())
+    for agent in agents:
+        unknown = sorted(set(agent.get("tools", [])) - registered)
+        assert not unknown, f"智能体 {agent['id']} 的白名单里有未注册的工具：{unknown}"
+
+
+def test_side_effecting_capabilities_are_not_tools() -> None:
+    """有副作用的动作不许做成模型随手可调的工具。
+
+    核验学籍、抓课表成绩、写日历都要走业务侧的完整链路（核验 → 解析 → 写画像 → 回执），
+    模型看不到那条链路的副作用边界，而写画像的代价是不可逆的。
+    """
+    catalog = _full_catalog()
+    forbidden = ("chsi", "academic", "write", "bind")
+    offenders = sorted(
+        name for name in catalog if any(word in name for word in forbidden)
+    )
+    assert not offenders, f"这些有明显副作用的动作被做成了工具：{offenders}"

@@ -1,5 +1,5 @@
 {
-  "_note": "职引 · 公共知识库示例（DEMO，仅用于本地链路验证，不是真实采集结果）。依据《业务数据采集与存储来源设计》：公共知识只作报告引用，绝不写入 profile_field；每条必须带 source_url 与 fetched_at 以便溯源与下架（R-CRAWL-006）。第二期由 pami knowledge-service 替代。",
+  "_note": "职引 · 公共知识库示例（DEMO，仅用于本地链路验证，不是真实采集结果）。依据：公共知识只作报告引用，绝不写入 profile_field；每条必须带 source_url 与 fetched_at 以便溯源与下架（R-CRAWL-006）。",
   "items": [
     {
       "id": "theory-holland-riasec",

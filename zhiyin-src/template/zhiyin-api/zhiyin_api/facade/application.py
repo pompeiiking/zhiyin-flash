@@ -1,27 +1,19 @@
-"""Application Facade 实现（**骨架**，方法体未实现）。
+"""Application Facade 实现。
 
 落位：`api/facade/application.py` —— 接口/前端联调负责人。
 依赖：业务层的服务 Port（只调不实现）+ `api/dto/mappers.py`。
 
-为什么它决定前端能否并行开工
-----------------------------
-前端只需要这一个实现：它把业务模型翻成 `dto/` 的 View，前端就拿到稳定的 JSON 形状。
-本文件未实现时，所有 `/app/*` 接口按约定返回 503（code 1007），前端连不上——
-这也是当前 `--check` 里 `services.facade=not_wired` 的含义。
-
-三条不越界的要求：
+职责边界（三条不越界）：
 - 不写业务规则（规则在 `business/policies/`，调用在 `business/services/`）；
 - 不直接访问 Repository / Gateway（只经业务服务）；
-- 只做"编排调用 + 交给 Mapper"，字段映射全部在 `api/dto/mappers.py`；
-  本文件里不应出现 `XxxView(...)` 的直接构造。
+- 只做"编排调用 + 交给 Mapper"，字段映射全部在 `api/dto/mappers.py`。
 
-两个硬前置（构造时必须注入，否则 `/app/bootstrap` 无数据可返回）
----------------------------------------------------------------
+两个硬前置（构造时必须注入，否则 `/app/bootstrap` 无数据可返回）：
 - `IdentityService`：解析当前用户（api 拿不到 `AuthGateway`）；
 - `RegistryService`：菜单 / 路由 / 任务入口 / 文案 / 开关（api 拿不到 `RegistryRepository`）。
 
-两者都是"api 需要、契约却在 data_sdk"逼出来的业务侧出口，
-判据与决策见 `business/ports/identity.py` 与 `business/ports/registry.py` 的模块 docstring。
+IO 口径：底层服务全部 async，因此本 Facade 的全部方法都是 `async`
+（Controller 侧 `await` 即可）。
 
 装配：`zhiyin_boot.wire_application()` 在启动时调用
 `configure_facade(DefaultApplicationFacade(...))`；未装配时 `get_facade()` 抛
@@ -30,111 +22,624 @@
 
 from __future__ import annotations
 
-from typing import Optional
+import asyncio
+from typing import Any, Optional
 
 from fastapi import Request
 
 from zhiyin_api.dto.asset import (
+    ActionPlanView,
+    ActionTaskDoneRequest,
     AssetVersionView,
+    CalendarNodeView,
+    DirectionPlanListView,
+    TrackEventView,
     ExportRequest,
     ExportResultView,
     ReportFullTextView,
 )
-from zhiyin_api.dto.bootstrap import BootstrapView
+from zhiyin_api.dto.bootstrap import BootstrapView, TheoryCardView
+from zhiyin_api.dto.bootstrap import PortalView
+from zhiyin_api.dto.common import CoachNotificationView
 from zhiyin_api.dto.conversation import (
+    ConversationMessageView,
     ConversationTurnView,
     MessageRequest,
     SessionListView,
     TaskEnterRequest,
     TaskSessionView,
 )
-from zhiyin_api.dto.workspace import WorkspacePageView
 from zhiyin_api.dto.track import TrackEventAck, TrackEventRequest
+from zhiyin_api.dto.note import NoteAck, NoteCreateRequest, NoteDoneRequest, NoteView
+from zhiyin_api.dto.workspace import (
+    AcademicImportAck,
+    AcademicImportRequest,
+    AcademicRevokeAck,
+    IntelListView,
+    WorkspacePageView,
+)
+from zhiyin_api.dto import mappers
 from zhiyin_api.facade.facade import ApplicationFacade
-from zhiyin_business.ports.identity import IdentityService
-from zhiyin_business.ports.registry import RegistryService
-from zhiyin_kernel.enums import AssetType
+from collections.abc import AsyncIterator
 
-_TODO = "TODO(骨架): ApplicationFacade 未实现"
+from zhiyin_business.ports.blackboard import AcademicService, AssetService
+from zhiyin_business.ports.blackboard import BehaviorService
+from zhiyin_business.ports.blackboard import ConversationMemoryService
+from zhiyin_business.ports.cache import ReadCacheService, cache_key
+from zhiyin_business.contracts.common import BehaviorEventDraft
+from zhiyin_kernel.enums import BehaviorEventType
+from zhiyin_business.ports.blackboard import UserNoteService
+from zhiyin_business.ports.function import FunctionService
+from zhiyin_business.ports.ai_tasks import AiTaskService
+from zhiyin_business.ports.identity import IdentityService
+from zhiyin_business.ports.orchestrator import Orchestrator, TurnRequest
+from zhiyin_business.ports.registry import RegistryService
+from zhiyin_business.ports.workspace import WorkspaceService
+from zhiyin_kernel.enums import AssetType
+from zhiyin_kernel.errors import ResourceNotFound
+from zhiyin_kernel.registry import AgentDescriptor
+
+#: 15 维分组的展示名在动态资源里的 code（与 `copies.json` 对齐）。
+_REPORT_GROUP_COPY: dict[str, str] = {
+    "SELF-PORTRAIT": "report.group.self_portrait",
+    "JOB-MARKET": "report.group.job_market",
+    "DECISION-RISK": "report.group.decision_risk",
+}
 
 
 class DefaultApplicationFacade(ApplicationFacade):
-    """BFF 门面默认实现（骨架）。"""
+    """BFF 门面默认实现。"""
 
-    IMPLEMENTATION_STATUS = "skeleton"
+    IMPLEMENTATION_STATUS = "wired"
 
-    def __init__(self, *, identity: IdentityService, registry: RegistryService) -> None:
+    def __init__(
+        self,
+        *,
+        identity: IdentityService,
+        registry: RegistryService,
+        orchestrator: Orchestrator,
+        workspace: WorkspaceService,
+        assets: AssetService,
+        function: FunctionService,
+        ai_tasks: AiTaskService,
+        notes: Optional[UserNoteService] = None,
+        academic: Optional[AcademicService] = None,
+        behaviors: Optional[BehaviorService] = None,
+        memories: Optional[ConversationMemoryService] = None,
+        read_cache: Optional[ReadCacheService] = None,
+    ) -> None:
         """构造依赖由 boot 注入。
 
         身份解析走业务 Port：api 被禁止 import `zhiyin_data_sdk`，拿不到
-        `AuthGateway`；由 `DefaultIdentityService` 把它包成业务抽象
-        （决策见 `business/ports/identity.py` 的模块 docstring）。
+        `AuthGateway`；由 `DefaultIdentityService` 把它包成业务抽象。
 
         动态资源同理：菜单 / 路由 / 任务入口 / 文案 / 开关经
-        `DefaultRegistryService` 取（`business/ports/registry.py`）。
-
-        `resolve_user_id` 的职责边界：**只做 HTTP → 业务形状的翻译**
-        （从请求里取 token），用户记录的补齐、游客会话、登录合并都在业务侧。
+        `DefaultRegistryService` 取。其余能力（对话 / 工作台 / 资产）
+        分别走 `Orchestrator` 与 `WorkspaceService` / `AssetService` /
+        `FunctionService`。
         """
         self._identity = identity
         self._registry = registry
+        self._orchestrator = orchestrator
+        self._workspace = workspace
+        self._assets = assets
+        self._function = function
+        self._ai_tasks = ai_tasks
+        # 他自己写下的东西：它不是"待办清单"这个界面的私事，
+        # 采集策略要读它，所以走业务 Port 进来（api 拿不到 data_sdk）。
+        self._notes = notes
+        # 教务系统取回来的课表与成绩单：绑定任务存、界面读、撤销时删
+        self._academic = academic
+        # 用户对资产的动作（③ 选方案 / ④ 勾任务）是**业务行为**，要进行为日志：
+        # 它是"停滞判定"与"成就解锁"的输入之一。允许缺省（纯 api 单测的装配），
+        # 缺省时只做状态变更、不记行为。
+        self._behaviors = behaviors
+        # 逐轮原文的读侧。缺省时 list_session_turns 返回空列表（纯 api 单测的装配）。
+        self._memories = memories
+        # 读缓存：可缺省 —— 缺省时 facade 直接读库（缓存不该是必需依赖）。
+        self._cache = read_cache
 
     # ---------- 身份 ----------
 
     async def resolve_user_id(self, request: Request) -> str:
-        raise NotImplementedError(
-            f"{_TODO}：从 Request 取 token → IdentityService.current_user() → 返回 user_id"
-        )
+        """从 Authorization: Bearer <token> 取凭证 → IdentityService → user_id。
+
+        第一期鉴权为"默认通过"（本地演示用户）；无 token 时传空，
+        由 AuthGateway 落到游客/演示账号。
+        """
+        authorization = request.headers.get("Authorization", "")
+        token = authorization.removeprefix("Bearer ").strip() or None
+        user = await self._identity.current_user(token=token)
+        return user.id
 
     # ---------- 启动 ----------
 
-    def bootstrap(self, user_id: str) -> BootstrapView:
-        raise NotImplementedError(
-            f"{_TODO}：RegistryService 取数（菜单 / 路由 / 任务入口 / 文案 / "
-            "横幅 / 信任块 / FAQ / 开关）→ mappers.bootstrap_view"
+    async def get_portal(self) -> PortalView:
+        """门户内容（公开）。取数与 bootstrap 同源，只是**不解析身份**。"""
+        (
+            copy_bundle,
+            task_entries,
+            trust_blocks,
+            banners,
+            faqs,
+            feature_flags,
+        ) = await asyncio.gather(
+            self._registry.get_copy_bundle(),
+            self._registry.list_task_entries(),
+            self._registry.list_trust_blocks(),
+            self._registry.list_banners(),
+            self._registry.list_faqs(),
+            self._registry.feature_flags(),
+        )
+        agents: dict[str, AgentDescriptor] = {}
+        for entry in task_entries:
+            if entry.lead_agent and entry.lead_agent not in agents:
+                agent = await self._registry.get_agent(entry.lead_agent)
+                if agent is not None:
+                    agents[entry.lead_agent] = agent
+        return mappers.portal_view(
+            copy_bundle=copy_bundle,
+            task_entries=task_entries,
+            agents=agents,
+            trust_blocks=trust_blocks,
+            banners=banners,
+            faqs=faqs,
+            feature_flags=feature_flags,
+        )
+
+    async def bootstrap(self, user_id: str) -> BootstrapView:
+        """Registry 取数 → mappers.bootstrap_view。"""
+        (
+            copy_bundle,
+            menus,
+            routes,
+            task_entries,
+            trust_blocks,
+            banners,
+            faqs,
+            feature_flags,
+        ) = await asyncio.gather(
+            self._registry.get_copy_bundle(),
+            self._registry.list_menus(),
+            self._registry.list_routes(),
+            self._registry.list_task_entries(),
+            self._registry.list_trust_blocks(),
+            self._registry.list_banners(),
+            self._registry.list_faqs(),
+            self._registry.feature_flags(),
+        )
+        agents: dict[str, AgentDescriptor] = {}
+        for entry in task_entries:
+            if entry.lead_agent and entry.lead_agent not in agents:
+                agent = await self._registry.get_agent(entry.lead_agent)
+                if agent is not None:
+                    agents[entry.lead_agent] = agent
+        return mappers.bootstrap_view(
+            copy_bundle=copy_bundle,
+            menus=menus,
+            routes=routes,
+            task_entries=task_entries,
+            agents=agents,
+            trust_blocks=trust_blocks,
+            banners=banners,
+            faqs=faqs,
+            feature_flags=feature_flags,
+            # 身份已经在 resolve_user_id 里认证过一次了；这里只按 id 取记录，
+            # 不能再传 token=None 重新认证（真实 JWT 下那会直接把首页打成 401）。
+            identity=await self._identity.account(user_id),
+        )
+
+    async def get_theory_card(self, theory_id: str) -> Optional[TheoryCardView]:
+        """理论卡正文：`RegistryService` 取卡 → Mapper 翻形状。
+
+        按**单卡**取而不是拉全表：理论标签一次只点开一张，
+        没必要为了一个标签把 16 张卡的正文都搬过来。
+        """
+        card = await self._registry.get_theory_card(theory_id)
+        if card is None:
+            return None
+        if self._cache is None:
+            return mappers.theory_card_view(card)
+
+        # loader 必须是**可等待**的（契约如此）。写成同步 lambda 的话，
+        # `await loader()` 会抛 TypeError —— 而且只在装上了缓存的那条路径上抛，
+        # 没装缓存时一切正常，属于"上缓存才炸"的典型。
+        async def load() -> TheoryCardView:
+            return mappers.theory_card_view(card)
+
+        # 理论卡是动态资源里的静态内容：TTL 长，运维重载时整片失效。
+        return await self._cache.get_or_load(
+            "theory",
+            cache_key(theory_id),
+            load,
+            model=TheoryCardView,
         )
 
     # ---------- 对话 ----------
 
-    def list_sessions(self, user_id: str) -> SessionListView:
-        raise NotImplementedError(f"{_TODO}：左栏会话列表")
+    async def list_sessions(self, user_id: str) -> SessionListView:
+        sessions = await self._workspace.list_sessions(user_id)
+        views = []
+        for session in sessions:
+            agent = await self._registry.get_agent(session.lead_agent)
+            views.append(
+                mappers.task_session_view(
+                    session,
+                    task_name=session.task_name,
+                    lead_agent_name=agent.name if agent else "",
+                )
+            )
+        return mappers.session_list_view(views)
+
+    async def list_session_turns(
+        self, user_id: str, task_id: str, *, limit: int = 200
+    ) -> list[ConversationMessageView]:
+        """一条会话的逐轮原文（用户与主理各算一轮），按时间正序。
+
+        主理展示名从注册表取：库里存的是 agent_id，而界面要显示名字 ——
+        名字会改（改动态资源即可），历史里存一份名字就等于冻结了当时的叫法。
+        """
+        if self._memories is None:
+            return []
+        turns = await self._memories.list_turns(user_id, task_id, limit=limit)
+        names: dict[str, str] = {}
+        messages: list[ConversationMessageView] = []
+        for turn in turns:
+            agent_name: str | None = None
+            if turn.agent_id:
+                if turn.agent_id not in names:
+                    agent = await self._registry.get_agent(turn.agent_id)
+                    names[turn.agent_id] = agent.name if agent else turn.agent_id
+                agent_name = names[turn.agent_id]
+            messages.append(mappers.conversation_message_view(turn, agent_name=agent_name))
+        return messages
 
     async def enter_task(self, user_id: str, body: TaskEnterRequest) -> TaskSessionView:
-        raise NotImplementedError(f"{_TODO}：判环节 → 选主理 → 建会话或续接")
+        session = await self._orchestrator.enter_task(user_id, body.task_code)
+        agent = await self._registry.get_agent(session.lead_agent)
+        return mappers.task_session_view(
+            session,
+            task_name=session.task_name,
+            lead_agent_name=agent.name if agent else "",
+        )
 
     async def send_message(
         self, user_id: str, body: MessageRequest
     ) -> ConversationTurnView:
-        raise NotImplementedError(f"{_TODO}：一轮消息 → 结论 + 告知 + 引导 + 管线卡")
+        turn = await self._orchestrator.handle_message(
+            TurnRequest(
+                user_id=user_id,
+                task_id=body.task_id,
+                message=body.message,
+                client_msg_id=body.client_msg_id,
+            )
+        )
+        return mappers.conversation_turn_view(turn)
 
     # ---------- 工作台 ----------
 
-    def get_workspace(self, user_id: str) -> WorkspacePageView:
-        raise NotImplementedError(f"{_TODO}：工作台聚合视图")
+    async def get_workspace(self, user_id: str) -> WorkspacePageView:
+        """工作台聚合视图（带读缓存）。
+
+        这是全站最重的一次读：画像 + 采集 + 四个资产面板 + 会话记忆 + 课表 + 编排。
+        缓存域 `workspace`（TTL 短、上面那几个事件都会让它失效）——
+        口径见 `data/registry/policy_params.json` 的 cache 一条。
+        """
+        if self._cache is None:
+            view = await self._workspace.build_view(user_id)
+            return mappers.workspace_page_view(view)
+        return await self._cache.get_or_load(
+            "workspace",
+            cache_key(user_id),
+            lambda: self._build_workspace_view(user_id),
+            model=WorkspacePageView,
+        )
+
+    async def _build_workspace_view(self, user_id: str) -> WorkspacePageView:
+        return mappers.workspace_page_view(await self._workspace.build_view(user_id))
 
     # ---------- 资产 ----------
 
-    def list_asset_versions(
+    async def list_asset_versions(
         self, user_id: str, asset_type: AssetType
     ) -> list[AssetVersionView]:
-        raise NotImplementedError(f"{_TODO}：资产版本列表（含 diff 与依赖字段）")
+        versions = await self._assets.list_versions(user_id, asset_type)
+        views: list[AssetVersionView] = []
+        for index, version in enumerate(versions):
+            previous = versions[index - 1] if index > 0 else None
+            views.append(mappers.asset_version_view(version, previous=previous))
+        return views
 
-    def get_report_full_text(
+    async def get_report_full_text(
         self, user_id: str, version: Optional[int] = None
     ) -> ReportFullTextView:
-        raise NotImplementedError(f"{_TODO}：完整报告页正文（只读，不重新生成）")
+        """完整报告正文（带读缓存）。
+
+        键里带版本号：**同一版本的内容不会变**，所以缓存是安全的；
+        资产一升版（`asset_version_changed`）整片失效，旧版本那份也就跟着走了。
+        不传版本时用 `latest` 作为键片段 —— 它是"当前版本"这个语义，不是具体数字。
+        """
+        if self._cache is None:
+            return await self._load_report(user_id, version)
+        return await self._cache.get_or_load(
+            "report",
+            cache_key(user_id, version if version is not None else "latest"),
+            lambda: self._load_report(user_id, version),
+            model=ReportFullTextView,
+        )
+
+    async def _load_report(
+        self, user_id: str, version: Optional[int]
+    ) -> ReportFullTextView:
+        data = await self._function.get_report_full_text(user_id, version)
+        # 尚无报告资产时 Mapper 返回空正文，前端据此渲染"报告未生成"空态。
+        return mappers.report_full_text_view(
+            data.get("report"), group_labels=await self._report_group_labels()
+        )
+
+    # ---------- ③ 决策 / ④ 行动 ----------
+
+    async def get_direction_plans(self, user_id: str) -> DirectionPlanListView:
+        """三套方向方案。还没走完 ③ 时返回空列表 —— 界面据此说"还没有方案"。"""
+        plans = await self._assets.list_direction_plans(user_id)
+        return mappers.direction_plan_list_view(plans)
+
+    async def select_direction_plan(
+        self, user_id: str, option_id: str
+    ) -> DirectionPlanListView:
+        """选中一套方案：状态变更 + 行为日志，返回更新后的全量方案。
+
+        返回全量而不是被选中的那一套：界面上三套卡要一起重绘（一套亮、两套灭），
+        只回一套的话前端还得自己推断另外两套的状态。
+        """
+        chosen = await self._assets.select_direction_plan(user_id, option_id)
+        await self._log_behavior(
+            user_id,
+            BehaviorEventType.DECISION_SELECT,
+            {"plan_id": chosen.id, "role": chosen.role.value, "name": chosen.name},
+        )
+        # 选方案不产生新版本，但工作台那份 `plan_panel` 的文案跟着变 —— 缓存要作废
+        await self._invalidate("asset_state_changed")
+        plans = await self._assets.list_direction_plans(user_id)
+        return mappers.direction_plan_list_view(plans)
+
+    async def get_action_plan(self, user_id: str) -> ActionPlanView:
+        """行动计划正文。没有计划时 `has_plan=False`（与"有计划但任务为空"不同）。"""
+        return mappers.action_plan_view(await self._assets.get_action_plan(user_id))
+
+    async def list_calendar_nodes(self, user_id: str) -> list[CalendarNodeView]:
+        """关键节点日历：④ 行动环节写进去的那些节点，这里读出来。
+
+        写入侧在 FunctionService（规划师写）、读取侧同样走它 ——
+        两边必须是同一份数据，否则会出现"计划里说有节点、日历里一条都没有"。
+        """
+        nodes = await self._function.list_calendar_nodes(user_id)
+        return [mappers.calendar_node_view(node) for node in nodes]
+
+    async def list_track_events(
+        self, user_id: str, *, limit: int = 50
+    ) -> list[TrackEventView]:
+        """跟踪时间线：⑤ 复盘环节的载体。
+
+        它是"这段时间发生过什么"的事实清单（里程碑、提醒、警告、教练消息），
+        与对话原文分开：对话是过程，这里是结果。此前只有写、没有读。
+        """
+        events = await self._function.list_track_events(user_id)
+        return [mappers.track_event_view(event) for event in events[:limit]]
+
+    async def set_action_task_done(
+        self, user_id: str, body: ActionTaskDoneRequest
+    ) -> ActionPlanView:
+        """勾掉 / 取消勾选一个任务：状态变更 + 行为日志，返回更新后的计划。"""
+        plan = await self._assets.mark_action_task_done(
+            user_id, body.task_id, done=body.done
+        )
+        # 只有"真的勾掉"才记行为：`done=false` 是**纠正误点**，不是一条行为信号。
+        # 之前这里把取消勾选记成了 TASK_STALL（任务停滞）—— 语义完全相反，
+        # 而停滞判定会读行为日志，等于让"点错了"去喂养"他卡住了"的判断。
+        if body.done:
+            await self._log_behavior(
+                user_id,
+                BehaviorEventType.TASK_DONE,
+                {"task_id": body.task_id},
+            )
+        await self._invalidate("asset_state_changed")
+        return mappers.action_plan_view(plan)
+
+    async def _log_behavior(
+        self, user_id: str, event_type: BehaviorEventType, payload: dict[str, Any]
+    ) -> None:
+        """记一条业务行为。
+
+        没有接行为服务时**静默跳过**（纯 api 单测的装配）：行为日志是旁路，
+        卡住它只会让"用户点了没反应"。要确认有没有记上，看行为日志表那一条。
+        """
+        if self._behaviors is None:
+            return
+        await self._behaviors.log(
+            user_id, BehaviorEventDraft(event_type=event_type, payload=payload)
+        )
+
+    async def _invalidate(self, event: str) -> None:
+        """按事件失效读缓存（映射在动态资源里，写侧只报"发生了什么"）。
+
+        没有接缓存时是空操作 —— 缓存不是必需依赖，它的缺失只该表现为"多读一次库"。
+        """
+        if self._cache is None:
+            return
+        await self._cache.invalidate_for_event(event)
+
+    async def _report_group_labels(self) -> dict[str, str]:
+        """15 维分组的展示名：分组标识 → 文案。
+
+        文案是**产品口径**，只在 `data/registry/copies.json` 里有一份；
+        Facade 负责把它取出来交给 Mapper（Mapper 只做形状翻译、不做取数）。
+        取不到就返回空字典，由 Mapper 回落到分组标识。
+        """
+        bundle = await self._registry.get_copy_bundle()
+        return {
+            key: bundle[code] for key, code in _REPORT_GROUP_COPY.items() if code in bundle
+        }
 
     async def export_asset(self, user_id: str, body: ExportRequest) -> ExportResultView:
-        raise NotImplementedError(f"{_TODO}：导出（第一期占位）")
+        result = await self._function.export_asset(
+            user_id, body.asset_type.value, body.format
+        )
+        return mappers.export_result_view(result)
+
+    async def get_external_intel(
+        self, user_id: Optional[str], *, topic: str = "", refresh: bool = False
+    ) -> IntelListView:
+        """外部情报：去公开渠道取回事实条目。**不要求登录**。
+
+        登录只影响一件事：能不能按**你**的画像把结果收窄。
+        没登录就按 `topic` 取，或者取平台上的通用公开数据 ——
+        情报是爬公开数据的，信息源非常广，不可能每个网站都登一次。
+
+        取到的每条都带来源链接，没有来源的条目在服务层就被丢掉了。
+
+        主题没给时**由取数服务按画像推**（`intel_topic`）—— 与对话那条入口
+        用同一条规则、同一个缓存桶，所以面板里看到的这一批，就是主理刚引用的那一批。
+        """
+        items = await self._function.fetch_external_intel(
+            user_id, topic=topic, limit=12, refresh=refresh
+        )
+        return mappers.intel_list_view(items)
+
+    # ---------- AI 任务（SSE） ----------
+
+    async def run_ai_task(self, user_id: str, key: str, arg: str = "") -> AsyncIterator[dict]:
+        """执行一个 AI 任务，逐帧 yield 进度 / 终帧（传输约定见设计文档 6.2）。"""
+        async for frame in self._ai_tasks.stream(user_id, key, arg):
+            yield frame
+
+    # ---------- 主动介入通知 ----------
+
+    async def list_pending_notifications(self, user_id: str) -> list[CoachNotificationView]:
+        """未读教练通知（前端浮窗轮询）。形状翻译交给 mapper，Facade 不拼字段。"""
+        items = await self._function.list_pending_notifications(user_id)
+        return [mappers.coach_notification_view(item) for item in items]
+
+    async def mark_notification_read(self, user_id: str, message_id: str) -> bool:
+        """浮窗关掉时回执：这条已经看过了，别再飘一次。"""
+        return await self._function.mark_notification_read(user_id, message_id) > 0
+
+    # ---------- 鉴权 ----------
+
+    async def login_account(self, account: str, password: str) -> dict:
+        return await self._identity.login(account, password)
+
+    async def register_account(self, account: str, password: str) -> str:
+        return await self._identity.register(account, password)
+
+    async def revoke_token(self, token: str) -> None:
+        revoke = getattr(self._identity._auth, "revoke_token", None)
+        if revoke is not None:
+            await revoke(token)
 
     # ---------- 埋点 ----------
 
     async def track_event(
         self, user_id: str, body: TrackEventRequest
     ) -> TrackEventAck:
-        raise NotImplementedError(
-            f"{_TODO}：RegistryService 校验 frontend 事件 → 落库（口径待定）"
+        """先经 Registry 校验事件属于 frontend 通道，再交功能块服务落时间线。"""
+        events = {spec.code: spec for spec in await self._registry.list_track_events()}
+        spec = events.get(body.event)
+        if spec is None or spec.channel != "frontend":
+            return TrackEventAck(accepted=False, event=body.event)
+        await self._function.record_track_event(user_id, body.event, body.payload)
+        await self._invalidate("note_changed")
+        return TrackEventAck(accepted=True, event=body.event)
+
+    # ---------- 他自己写下的东西 ----------
+
+    async def revoke_academic(self, user_id: str) -> AcademicRevokeAck:
+        """清空导入：课表成绩与画像摘要一起删（判断与删除都在业务服务里）。"""
+        if self._academic is None:
+            return AcademicRevokeAck(revoked=False)
+        await self._academic.revoke(user_id)
+        await self._invalidate("academic_changed")
+        return AcademicRevokeAck(revoked=True)
+
+    async def import_academic(
+        self, user_id: str, body: "AcademicImportRequest"
+    ) -> "AcademicImportAck":
+        """导入课表与成绩单（用户自己贴的原文）。
+
+        解析不出来时抛 `AcademicImportError`，由 api 层翻成"该改哪里"的提示 ——
+        它不是一个内部错误，而是一件用户能自己修的事。
+        """
+        if self._academic is None:
+            raise RuntimeError("导入服务未装配（Container.academic_service）")
+        result = await self._academic.import_(
+            user_id,
+            courses_raw=body.courses,
+            grades_raw=body.grades,
+            school=body.school,
+            term=body.term,
         )
+        # 课表进了库，工作台那份缓存（含 academic_panel 与采集清单）必须立刻作废
+        await self._invalidate("academic_changed")
+        return AcademicImportAck(
+            school=result.school,
+            source=result.source,
+            term=result.term,
+            courses=result.courses,
+            grades=result.grades,
+            imported_at=result.imported_at,
+            notes=list(result.notes),
+            wrote_profile=list(result.wrote_profile),
+        )
+
+    async def list_notes(self, user_id: str) -> list[NoteView]:
+        """他写下的全部内容。"""
+        return [mappers.note_view(note) for note in await self._require_notes().list_by_user(user_id)]
+
+    async def add_note(self, user_id: str, body: NoteCreateRequest) -> NoteView:
+        """写一条。
+
+        空内容由服务层拒绝（`ValueError`）—— 接口层不替它兜底成一条空待办：
+        空待办会变成采集策略里的一条噪音，而它看起来就像用户真的写过。
+        """
+        note = await self._require_notes().add(user_id, body.text, kind=body.kind)
+        await self._invalidate("note_changed")
+        return mappers.note_view(note)
+
+    async def set_note_done(
+        self, user_id: str, note_id: str, body: NoteDoneRequest
+    ) -> NoteView:
+        """勾掉 / 取消勾掉。"""
+        note = await self._require_notes().set_done(user_id, note_id, body.done)
+        if note is None:
+            raise ResourceNotFound(f"没有这条内容：{note_id}")
+        await self._invalidate("note_changed")
+        return mappers.note_view(note)
+
+    async def remove_note(self, user_id: str, note_id: str) -> NoteAck:
+        """删掉一条。"""
+        await self._require_notes().remove(user_id, note_id)
+        await self._invalidate("note_changed")
+        return NoteAck(removed=note_id)
+
+    def _require_notes(self) -> UserNoteService:
+        """没装配就明确报错，不返回一份"看起来能写"的空实现。"""
+        if self._notes is None:
+            raise RuntimeError("用户自建内容服务未装配（Container.notes）")
+        return self._notes
+
+    async def reload_dynamic_config(self) -> dict[str, Any]:
+        """重新装载动态配置，并回报这一次装到了什么。"""
+        from zhiyin_business.services.dynamic_config import load_snapshot
+
+        snapshot = await load_snapshot(self._registry)
+        return {
+            "loaded_at": snapshot.loaded_at,
+            "source": snapshot.source,
+            "stages": len(snapshot.stages),
+            "layout_blocks": len(snapshot.layout.blocks) if snapshot.layout else 0,
+            "collection_rules": len(snapshot.collection_rules),
+            "user_signals": len(snapshot.user_signals),
+        }
 
 
 __all__ = ["DefaultApplicationFacade"]

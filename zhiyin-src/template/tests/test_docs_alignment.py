@@ -1,20 +1,19 @@
-"""文档对齐守卫。
+"""文档对齐守卫（单文档口径）。
 
-为什么值得守：本期实测发现 **18 处断链**（引用了已移动或不存在的文档），
-以及若干"文档写了、代码没有"的漂移（8 个服务只写在表格里、
-`business/workers/base.py` 已删除但文档仍在引用、接口路径与 `/api/v1` 前缀不一致）。
-文档漂移的代价是**照错抄**：新人照着文档去改一个不存在的文件。
+本仓只有**一份**设计文档：`docs/职引-完整设计文档.md`。产品与业务口径一律以它为准。
+此前那些 PRD / 前端页面设计 / 技术架构 / 评审记录 / 原型说明已整体移除，
+本文件同时负责"不让它们借尸还魂"。
 
-本文件只守两件机械可判的事：
+为什么值得守：文档漂移的代价是**照错抄**——新人（或 AI）照着文档去改一个不存在的
+文件，或者引用一份已经不存在的文档。这类错不会报错，只会把时间浪费在找不到的东西上。
 
-1. 文档里的**相对链接必须能解析到真实文件**（仓外文档用文字引用、不放链接）；
-2. **文档地图**（第一份该读的文件）必须齐全。
+本文件只守五件机械可判的事：
 
-在此基础上补三类"照错抄"风险最高的检查（第三轮补充）：
-
-3. 文档里用代码片段引用的**仓库路径必须存在**（含目录与文件）；
-4. 文档里的**能力位数量必须与 `container/ports.py` 一致**；
-5. 门禁 JSON 的 `manual` 项里提到的**目录必须存在**（否则验收口径悬空）。
+1. 唯一设计文档必须存在，且 `docs/` 下不允许再出现第二份；
+2. 入口 README（根 README + 前端 README）必须指向它，且相对链接必须能解析到真实文件；
+3. 已移除的文档不得再被引用（文档名 / 仓库路径 / 需求编号 / 章节号）；
+4. 入口文档里用代码片段引用的**仓库路径必须存在**；
+5. 门禁 JSON 的 `manual` 项里提到的**目录必须存在**。
 
 它不检查文字表述是否正确——那需要人看。
 """
@@ -33,68 +32,105 @@ REPO_ROOT = TEMPLATE_ROOT.parents[1]
 DOCS_ROOT = REPO_ROOT / "docs"
 REGISTRY_DIR = TEMPLATE_ROOT / "data" / "registry"
 
-# 外部协议：不解析成本地文件
-EXTERNAL_PREFIXES = ("http://", "https://", "mailto:", "codex:", "tel:")
+# 唯一设计文档：全仓产品与业务口径的来源。
+DESIGN_DOC = "docs/职引-完整设计文档.md"
 
-# 文档地图：这几份是"第一份该读的"，缺任何一份都说明文档结构被破坏
-CANONICAL_DOCS: dict[str, str] = {
-    "README.md": "仓根入口（五分钟上手 + 五条底线）",
-    "docs/README.md": "文档索引（先读哪几份）",
-    "docs/开发指南.md": "开发入口：架构地图与落位手册",
-    "docs/PRD/职引-PRD-v2.0.md": "需求基线",
-    "docs/技术架构文档/职引技术架构文档.md": "总体技术架构",
-    "docs/技术架构文档/职引-目标架构设计-v1.0.md": "目标架构与落地状态",
-    "docs/评审/职引-架构与结构评估-最终版.md": "架构与结构评估（唯一当前状态）",
-    "docs/评审/业务口径决策记录-v1.0.md": "业务口径基线（16 项已定稿）",
-    "docs/技术架构文档/第一期工程/第一期技术架构文档/职引技术架构文档-第一期.md": "第一期架构基线",
-    "docs/前端设计/职引-前端页面设计-v1.0.md": "页面与交互口径",
-    "prototype/原型设计说明.md": "高保真原型规格",
-    "zhiyin-src/template/README.md": "工程上手说明",
-}
-
-# 需要做"引用路径存在性"检查的文档：都是**当前有效**的文档（不是历史快照）。
-# 历史评估（v1.0 / v1.1 / v1.2）已降级为快照，不在检查范围内——
-# 它们顶部的"已废弃"横幅已指向最终版，读者不会再被旧路径误导。
+# 需要做"链接 / 路径引用存在性"检查的文档：本仓全部 markdown 入口。
 CURRENT_DOCS: tuple[str, ...] = (
     "README.md",
-    "docs/README.md",
-    "docs/开发指南.md",
-    "docs/前端设计/职引-前端页面设计-v1.0.md",
-    "docs/评审/职引-架构与结构评估-最终版.md",
-    "docs/评审/业务口径决策记录-v1.0.md",
-    "docs/技术架构文档/职引-目标架构设计-v1.0.md",
-    "docs/技术架构文档/第一期工程/第一期技术架构文档/职引技术架构文档-第一期.md",
-    "docs/技术架构文档/第一期工程/第一期分层设计文档/职引技术架构-分层详细设计.md",
-    "docs/技术架构文档/第一期工程/第一期分层设计文档/第一期分层设计定义/职引技术架构-分层实现与接口设计.md",
-    "zhiyin-src/template/README.md",
+    DESIGN_DOC,
     "zhiyin-src/template/zhiyin-web/README.md",
 )
 
-# 文档里**故意**提到的不存在路径，逐条给出理由。
-# 加一条之前先问：能不能把文档改成指向真实文件？能改就改，别往这里加。
-DOCUMENTED_MISSING_PATHS: dict[str, str] = {
-    # 历史名 / 已删除物：文档在讲"它原来叫什么、为什么拆"，本身就不该存在
-    "business/domain/": "改名前的目录名（`domain/` → `ports/`）",
-    "domain/": "同上",
-    "workers/base.py": "已删除（Worker 基类下放到 zhiyin_kernel/worker.py）",
-    "business/workers/base.py": "同上",
-    "zhiyin_data_sdk/contracts/": "已迁出（共享内核归位到 zhiyin-kernel）",
-    "zhiyin-data-sdk/zhiyin_data_sdk/contracts/": "同上",
-    "zhiyin_orchestration/impl.py": "已拆为 impl/（一原语一文件）",
+# 外部协议：不解析成本地文件
+EXTERNAL_PREFIXES = ("http://", "https://", "mailto:", "codex:", "tel:")
+
+# 已被移除的文档留下的痕迹。加一条之前先问：读者会不会照着它去找一个不存在的东西？
+# 会，就加进来；不会（比如普通中文词），就别加。
+REMOVED_DOC_MARKERS: tuple[str, ...] = (
+    # 需求文档与它的编号体系
+    "PRD",
+    "FR-",
+    # 章节号：本仓只有一份文档，且它不用章节号，出现即是从别处抄来的
+    "§",
+    # 已移除的文档名（含简称）
+    "原型设计说明",
+    "移动端原型技术方案",
+    "前端页面设计",
+    "前端设计文档",
+    "开发指南",
+    "技术架构文档",
+    "职引技术架构",
+    "分层详细设计",
+    "分层实现与接口设计",
+    "目标架构设计",
+    "第一期技术架构",
+    "第一期数据层设计",
+    "业务数据采集与存储来源设计",
+    "架构与代码结构评估",
+    "架构外壳完整度评估",
+    "架构与结构评估",
+    "业务口径决策记录",
+    # 已移除的路径
+    "prototype/",
+    "docs/README.md",
+    "docs/PRD/",
+    "docs/开发指南.md",
+    "docs/技术架构文档/",
+    "docs/评审/",
+    "docs/前端设计/",
+)
+
+# 扫描范围：手写文本文件。二进制与锁文件跳过（package-lock 里不会有这些词）。
+SCANNED_SUFFIXES = (".md", ".py", ".json", ".ts", ".vue", ".css", ".yml", ".yaml", ".toml")
+SCANNED_SKIP_DIRS = {
+    ".git",
+    "node_modules",
+    "__pycache__",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".venv",
+    "dist",
+    # 打包产物：`release/` 里是整仓的一份副本（deploy/package_release.py 生成，
+    # 已在 .gitignore 里）。扫它只会让"包里那份旧代码"把本仓判成违规，
+    # 而且每加一条标记就要多扫一遍全仓 —— 它不是源码。
+    "release",
+    "_archive-wireframe-v0",
+    # IDE 本地配置（.trae/ 同 .idea/ 一样只在开发者机器上，已进 .gitignore）。
+    # 里面装的第三方技能文件自带"§6"这类章节引用，扫它只会误伤。
+    ".trae",
+}
+
+"""审计 / 评审产物：**必须**引用旧文档名、章节号与"已移除"清单（那正是它们要记录的东西），
+所以它们不能进本守卫 —— 否则"把问题记下来"这个动作本身会被判成违规。
+
+这里只放两类：本仓的审计报告目录与报告本体。产品文档（README / 设计文档 / 指南）
+一个都不能加进来。
+"""
+AUDIT_OUTPUT_NAMES = {
+    "审计报告.md",
+    "codex-audit",
 }
 
 
-def _markdown_files() -> list[Path]:
-    files = sorted(DOCS_ROOT.rglob("*.md"))
-    files += sorted((REPO_ROOT / "prototype").rglob("*.md"))
-    files.append(REPO_ROOT / "README.md")
-    files.append(TEMPLATE_ROOT / "README.md")
-    files.append(TEMPLATE_ROOT / "zhiyin-web" / "README.md")
-    return [path for path in files if path.is_file()]
+def _text_files() -> list[Path]:
+    files: list[Path] = []
+    for path in REPO_ROOT.rglob("*"):
+        if not path.is_file() or path.suffix not in SCANNED_SUFFIXES:
+            continue
+        parts = path.relative_to(REPO_ROOT).parts
+        if any(part in SCANNED_SKIP_DIRS for part in parts):
+            continue
+        if parts and parts[0] in AUDIT_OUTPUT_NAMES:
+            continue
+        if path.name == "package-lock.json":
+            continue
+        files.append(path)
+    return sorted(files)
 
 
 def _relative_links(path: Path) -> list[str]:
-    """取出一条 markdown 文档里的全部相对链接目标（去掉锚点）。"""
+    """取出一份 markdown 里的全部相对链接目标（去掉锚点）。"""
     text = path.read_text(encoding="utf-8")
     targets: list[str] = []
     for match in re.finditer(r"\[[^\]]*\]\(([^)]+)\)", text):
@@ -107,31 +143,89 @@ def _relative_links(path: Path) -> list[str]:
     return targets
 
 
-@pytest.mark.parametrize("doc", _markdown_files(), ids=lambda p: str(p.name))
-def test_relative_links_resolve(doc: Path) -> None:
+# --------------------------------------------------------------------------
+# 1. 唯一设计文档
+# --------------------------------------------------------------------------
+
+
+def test_single_design_doc_exists() -> None:
+    """`docs/` 下只能有一份 markdown：唯一设计文档。"""
+    doc = REPO_ROOT / DESIGN_DOC
+    assert doc.is_file(), f"缺少唯一设计文档：{DESIGN_DOC}"
+
+    others = sorted(
+        path.relative_to(REPO_ROOT).as_posix()
+        for path in DOCS_ROOT.rglob("*")
+        if path.is_file()
+    )
+    assert others == [DESIGN_DOC], (
+        "docs/ 下出现了设计文档以外的文件：\n  "
+        + "\n  ".join(others)
+        + "\n本仓只有一份文档；新增内容请并入唯一设计文档，不要另开文件。"
+    )
+
+
+@pytest.mark.parametrize(
+    "relative_doc", [doc for doc in CURRENT_DOCS if doc != DESIGN_DOC]
+)
+def test_entry_docs_link_to_design_doc(relative_doc: str) -> None:
+    """入口 README 必须给出指向唯一设计文档的相对链接。"""
+    doc = REPO_ROOT / relative_doc
+    depth = len(doc.parent.relative_to(REPO_ROOT).parts)
+    expected = "/".join([".."] * depth + DESIGN_DOC.split("/"))
+
+    links = {unquote(link).replace("\\", "/") for link in _relative_links(doc)}
+    assert expected in links, (
+        f"{relative_doc} 没有指向唯一设计文档 {DESIGN_DOC}；"
+        f"相对链接应写成 `{expected}`。"
+    )
+
+
+@pytest.mark.parametrize("relative_doc", CURRENT_DOCS)
+def test_relative_links_resolve(relative_doc: str) -> None:
     """文档里的相对链接必须指向真实存在的文件。
 
-    仓外文档（如原 `recourse/` 下的 BRD / FRD）**不要**写成链接：断链比没有链接
-    更容易误导——读者会以为文件在仓库里。
+    仓外文档（如 BRD / FRD）**不要**写成链接：断链比没有链接更容易误导——
+    读者会以为文件在仓库里。
     """
+    doc = REPO_ROOT / relative_doc
     broken = [
         target
         for target in _relative_links(doc)
         if not (doc.parent / target).resolve().exists()
     ]
     assert not broken, (
-        f"{doc.relative_to(REPO_ROOT)} 存在断链：{broken}。"
+        f"{relative_doc} 存在断链：{broken}。"
         "指向仓外文档时请改为文字引用并标注『仓外文档，未纳入本仓』"
     )
 
 
-@pytest.mark.parametrize("relative_path", sorted(CANONICAL_DOCS))
-def test_canonical_doc_exists(relative_path: str) -> None:
-    """文档地图必须齐全：这几份是团队上手与对齐的入口。"""
-    path = REPO_ROOT / relative_path
-    assert path.is_file(), (
-        f"文档地图缺件：{relative_path}（{CANONICAL_DOCS[relative_path]}）。"
-        "若确实要改位置，请同步更新本测试与 docs/开发指南.md"
+# --------------------------------------------------------------------------
+# 2. 已移除的文档不得再被引用
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("marker", REMOVED_DOC_MARKERS)
+def test_removed_documents_are_not_referenced(marker: str) -> None:
+    """全仓不得再出现已移除文档的名字、路径、章节号或需求编号。
+
+    这条守的是"只有一个文档"这个事实本身：留着旧引用，读者就会当成还有那份文档。
+    本守卫文件自己当然会出现这些词，因此跳过自己。
+    """
+    hits: list[str] = []
+    for path in _text_files():
+        if path.resolve() == Path(__file__).resolve():
+            continue
+        text = path.read_text(encoding="utf-8", errors="ignore")
+        for lineno, line in enumerate(text.splitlines(), start=1):
+            if marker in line:
+                hits.append(f"{path.relative_to(REPO_ROOT)}:{lineno}: {line.strip()[:120]}")
+
+    assert not hits, (
+        f"以下位置仍在引用已移除的文档（标记：{marker}）：\n  "
+        + "\n  ".join(hits[:20])
+        + ("\n  …" if len(hits) > 20 else "")
+        + "\n本仓只有一份设计文档；这些引用请删除或改写到真实文件。"
     )
 
 
@@ -201,22 +295,25 @@ def _looks_like_repo_path(span: str) -> bool:
     # （`task/enter`）当成文件路径：
     #   ① 带文件扩展名；② 至少两段的目录（`data/registry/`）；
     #   ③ 带仓库根前缀的路径（`zhiyin-src/...`）。
-    # 单个叶子目录（目录树里的 `minio/`、`local/`）无法判断父目录，不算。
+    # 单个叶子目录（目录树里的 `local/`）无法判断父目录，不算。
     has_inner_slash = "/" in span.rstrip("/")
     if span.endswith(_PATH_EXTENSIONS):
         return True
     if span.endswith("/") and has_inner_slash:
         return True
-    return span.startswith(
-        ("docs/", "zhiyin-src/", "prototype/", "tests/", "data/", ".github/")
-    )
+    return span.startswith(("docs/", "zhiyin-src/", "tests/", "data/", ".github/"))
 
 
 def _path_references(text: str) -> set[str]:
     """取出一段文本里的路径引用：行内代码片段 + 围栏代码块（目录树 / 流程图里也可能写路径）。"""
     spans = {match.group(1).strip() for match in re.finditer(r"`([^`]+)`", text)}
     for block in re.findall(r"```[a-zA-Z]*\n([\s\S]*?)```", text):
-        for token in re.findall(r"[A-Za-z0-9_][A-Za-z0-9_./\-]*", block):
+        # 起始字符带上 `/`：否则 `--in /migration/migration.json` 里的
+        # **容器内绝对路径**会被截成 `migration/migration.json`，再被当成
+        # 仓库相对路径 —— 于是"部署命令里提到了容器路径"会被判成文档漂移。
+        # 带上 `/` 之后，绝对路径仍然以 `/` 开头，由 `_looks_like_repo_path`
+        # 的开头判断排除掉（判断口径不变，只是不再误伤）。
+        for token in re.findall(r"[/A-Za-z0-9_][A-Za-z0-9_./\-]*", block):
             spans.add(token)
     return {span for span in spans if _looks_like_repo_path(span)}
 
@@ -226,75 +323,24 @@ def test_documented_repo_paths_exist(relative_doc: str) -> None:
     """文档里用代码片段引用的仓库路径必须真实存在。
 
     这条守的是最贵的漂移：文档说"改这个文件"，而文件不在那儿。
-    历史名与"按需新增"的计划目录在 `DOCUMENTED_MISSING_PATHS` 里逐条登记理由，
-    其余一律必须存在。
     """
     doc = REPO_ROOT / relative_doc
     assert doc.is_file(), f"待检查的文档不存在：{relative_doc}"
-    missing: dict[str, str] = {}
-    for span in _path_references(doc.read_text(encoding="utf-8")):
-        if span in DOCUMENTED_MISSING_PATHS:
-            continue
-        if not _resolves(span, doc.parent):
-            missing[span] = relative_doc
-
+    missing = sorted(
+        span
+        for span in _path_references(doc.read_text(encoding="utf-8"))
+        if not _resolves(span, doc.parent)
+    )
     assert not missing, (
-        "以下文档引用了不存在的仓库路径（照错抄风险）：\n  "
-        + "\n  ".join(f"{span}（{doc_name}）" for span, doc_name in sorted(missing.items()))
-        + "\n若它是历史名或计划中的目录，请登记到 DOCUMENTED_MISSING_PATHS 并写清理由；"
-        "否则请把文档改到真实路径。"
+        f"{relative_doc} 引用了不存在的仓库路径（照错抄风险）：\n  "
+        + "\n  ".join(missing)
+        + "\n请把文档改到真实路径。"
     )
 
 
-def test_capability_counts_in_docs_match_code() -> None:
-    """文档里的能力位数量必须与装配清单一致。
-
-    开发指南用一行写死了"15 Gateway / 7 Repository / 1 事务 / 6 编排原语 / 11 服务 /
-    3 Worker"。新增一个能力位却忘了改文档，读文档的人就会以为缺口只剩那些——
-    这类数字漂移最容易被忽略，也最容易误导排期。
-    """
-    from zhiyin_boot.container.ports import (
-        GATEWAY_PORTS,
-        ORCHESTRATION_PORTS,
-        REPOSITORY_PORTS,
-        SERVICE_PORTS,
-        TRANSACTION_PORTS,
-        WORKER_PORTS,
-    )
-
-    guide = (DOCS_ROOT / "开发指南.md").read_text(encoding="utf-8")
-    match = re.search(
-        r"（(\d+) Gateway / (\d+) Repository / (\d+) 事务 / (\d+) 编排原语 / (\d+) 服务 / (\d+) Worker）",
-        guide,
-    )
-    assert match, (
-        "docs/开发指南.md 里找不到能力位数量那一行（形如"
-        "「15 Gateway / 7 Repository / 1 事务 / 6 编排原语 / 11 服务 / 3 Worker」）。"
-        "改文案时请保留这行，它是本守卫的锚点。"
-    )
-
-    declared = {
-        "Gateway": int(match.group(1)),
-        "Repository": int(match.group(2)),
-        "事务": int(match.group(3)),
-        "编排原语": int(match.group(4)),
-        "服务": int(match.group(5)),
-        "Worker": int(match.group(6)),
-    }
-    actual = {
-        "Gateway": len(GATEWAY_PORTS),
-        "Repository": len(REPOSITORY_PORTS),
-        "事务": len(TRANSACTION_PORTS),
-        "编排原语": len(ORCHESTRATION_PORTS),
-        "服务": len(SERVICE_PORTS),
-        "Worker": len(WORKER_PORTS),
-    }
-    drift = {
-        key: f"文档 {declared[key]} / 代码 {actual[key]}"
-        for key in actual
-        if declared[key] != actual[key]
-    }
-    assert not drift, f"docs/开发指南.md 的能力位数量与 container/ports.py 不一致：{drift}"
+# --------------------------------------------------------------------------
+# 4. 门禁里的落点必须真实存在
+# --------------------------------------------------------------------------
 
 
 def test_gate_manual_paths_exist() -> None:
@@ -315,57 +361,41 @@ def test_gate_manual_paths_exist() -> None:
 
     assert referenced, "门禁里应当有可解析的目录引用（如 tests/e2e/）"
     missing = sorted(
-        span
-        for span in referenced
-        if span not in DOCUMENTED_MISSING_PATHS and not _resolves(span, TEMPLATE_ROOT)
+        span for span in referenced if not _resolves(span, TEMPLATE_ROOT)
     )
     assert not missing, f"门禁引用了不存在的目录：{missing}"
 
 
 # --------------------------------------------------------------------------
-# 6. "唯一当前状态"标记（防止版本膨胀后读者/AI 不知道读哪份）
+# 5. 表清单与 DDL 对齐（防重复设计）
 # --------------------------------------------------------------------------
 
-FINAL_ASSESSMENT = "docs/评审/职引-架构与结构评估-最终版.md"
-CURRENT_STATE_MARKER = 'CURRENT_STATE = "职引-架构与结构评估-最终版.md"'
-DEPRECATED_ASSESSMENTS = (
-    "docs/评审/职引-架构与代码结构评估-v1.0.md",
-    "docs/评审/职引-架构外壳完整度评估-v1.1.md",
-    "docs/评审/职引-架构外壳完整度评估-v1.2.md",
-)
 
+def test_table_inventory_matches_schema() -> None:
+    """第十一节的表清单必须与 DDL 完全一致：不多、不少、不重名。
 
-def test_exactly_one_current_assessment() -> None:
-    """仓库里只能有一份文档自称"当前状态"。
+    为什么值得守：这份清单是"新东西该放哪张表"的判断依据。
+    - 清单里少一张 → 后来的人以为它不存在，于是再建一张同义的表；
+    - 清单里多一张 → 他去找一张根本没有的表；
+    - 清单里重名 → 同一张表被登记成两种用途，读者不知道该信哪一条。
 
-    多份版本化评估最容易造成"AI/新人读错版本"：两份都自称 current，
-    读者只能靠日期猜。这里用一条机器可判的标记把"谁是当前"钉死，
-    历史文档必须降级为"已废弃"，否则本测试失败。
+    三种错都不会报错，只会让人做出重复设计 —— 所以在这里挡住。
     """
-    final = REPO_ROOT / FINAL_ASSESSMENT
-    assert final.is_file(), f"缺少唯一当前评估：{FINAL_ASSESSMENT}"
+    doc = (REPO_ROOT / DESIGN_DOC).read_text(encoding="utf-8")
+    assert "## 十一、" in doc, "缺少第十一节（数据库表清单）"
+    section = doc.split("## 十一、", 1)[1].split("\n## ", 1)[0]
+    listed = re.findall(r"^\|\s*`([a-z_]+)`\s*\|", section, re.M)
 
-    carriers = [
-        path
-        for path in DOCS_ROOT.rglob("*.md")
-        if CURRENT_STATE_MARKER in path.read_text(encoding="utf-8")
-    ]
-    assert carriers == [final], (
-        "「当前状态」标记只应出现在最终版一份文档里：\n"
-        + "\n".join(str(path.relative_to(REPO_ROOT)) for path in carriers)
-    )
+    from zhiyin_infrastructure.postgres.schema import SCHEMA_SQL
 
+    declared = set(re.findall(r"CREATE TABLE IF NOT EXISTS (\w+)", SCHEMA_SQL))
 
-@pytest.mark.parametrize("relative", DEPRECATED_ASSESSMENTS)
-def test_historical_assessments_are_marked_deprecated(relative: str) -> None:
-    """历史评估必须在顶部明确"已废弃"并指向最终版。
+    duplicated = sorted({name for name in listed if listed.count(name) > 1})
+    assert not duplicated, f"第十一节的表清单里重复登记了：{duplicated}"
 
-    否则读者会把它当成现状，又或者 AI 检索到旧的数字/路径去改代码。
-    """
-    doc = REPO_ROOT / relative
-    assert doc.is_file(), f"历史评估缺失：{relative}"
-    text = doc.read_text(encoding="utf-8")
-    assert "已废弃" in text, f"{relative} 顶部缺少「已废弃」声明"
-    assert Path(FINAL_ASSESSMENT).name in text, (
-        f"{relative} 未指向最终版 {FINAL_ASSESSMENT}"
+    assert set(listed) == declared, (
+        "第十一节的表清单与 DDL 不一致：\n"
+        f"  清单里有、DDL 里没有：{sorted(set(listed) - declared)}\n"
+        f"  DDL 里有、清单没登记：{sorted(declared - set(listed))}\n"
+        "新增或删除表时，两处一起改。"
     )
