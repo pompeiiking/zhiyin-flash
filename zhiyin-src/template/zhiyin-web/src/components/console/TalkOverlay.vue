@@ -16,6 +16,7 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import Overlay from '@/components/console/Overlay.vue'
+import RenderableBlock from '@/components/render/RenderableBlock.vue'
 import { getTheoryCard, track, uploadMaterial } from '@/api/client'
 import { useSessionStore } from '@/stores/session'
 import type { GuideOption } from '@/lib/asks'
@@ -393,21 +394,17 @@ function openDisclosure() {
             </div>
 
             <!--
-              主理顺手给的图。值来自服务端实测数据（画像各维把握、方案匹配度…），
+              这一轮摆在回复里的**可视件**（图 / 时间线 / 对比表…）。
+              值来自服务端实测数据（画像各维把握、方案匹配度…），
               所以它不是"AI 画的示意图"，是这条结论的另一种写法。
+              按 kind 分发在 `RenderableBlock` 里 —— 加一种新的可视件，
+              这里是零改动。
             -->
-            <figure v-if="turn.chart?.points?.length" class="chart">
-              <figcaption class="label chart__k">{{ turn.chart.title || '这一轮的分布' }}</figcaption>
-              <ul class="chart__rows">
-                <li v-for="p in turn.chart.points" :key="p.label">
-                  <span class="chart__label">{{ p.label }}</span>
-                  <span class="chart__bar">
-                    <i :style="{ width: `${Math.max(2, Math.min(100, p.value * 100))}%` }" />
-                  </span>
-                  <span class="mono chart__num">{{ p.value.toFixed(2) }}</span>
-                </li>
-              </ul>
-            </figure>
+            <RenderableBlock
+              v-for="(item, index) in turn.renderables ?? []"
+              :key="`${item.kind}-${index}`"
+              :item="item"
+            />
 
             <!-- 这一轮用到的外部情报：点开就是来源与原文 -->
             <div v-if="turn.intelRefs?.length" class="refs">
@@ -770,16 +767,6 @@ function openDisclosure() {
 .hold__x:hover { color: var(--warn); text-decoration: underline; }
 
 .tie { display: flex; align-items: center; justify-content: space-between; gap: var(--s4); }
-
-/* 对话里那张图：横条 + 数值。窄也放得下，因为它本来就是"比较"用的 */
-.chart { margin: 2px 0 6px; display: grid; gap: 6px; }
-.chart__k { color: var(--ink-3); }
-.chart__rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
-.chart__rows li { display: grid; grid-template-columns: minmax(3.5em, 6em) 1fr 3.2em; gap: var(--s2); align-items: center; }
-.chart__label { font-size: var(--fs-small); color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.chart__bar { height: 8px; border-radius: 999px; background: var(--fill-subtle); overflow: hidden; }
-.chart__bar i { display: block; height: 100%; border-radius: inherit; background: var(--mk-green); }
-.chart__num { font-size: var(--fs-small); color: var(--ink-3); text-align: right; }
 
 /* 引用的外部信息：一行一条，点开是来源与原文 */
 .refs { display: grid; gap: 4px; margin: 2px 0 6px; }

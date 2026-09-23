@@ -1362,43 +1362,6 @@ export interface components {
       title: string;
     };
     /**
-     * ChartPointView
-     * @description 图上的一个点。
-     */
-    ChartPointView: {
-      /** Label */
-      label: string;
-      /** Value */
-      value: number;
-    };
-    /**
-     * ChartView
-     * @description 主理在对话里给的那张图。
-     *
-     * 值来自服务端**实测数据**（画像各维把握、方案匹配度…），不是模型写的数字 ——
-     * 图上的每个点都能追回它来自哪条记录。
-     */
-    ChartView: {
-      /**
-       * Kind
-       * @default bars
-       * @constant
-       */
-      kind?: "bars";
-      /** Points */
-      points?: components["schemas"]["ChartPointView"][];
-      /**
-       * Title
-       * @default
-       */
-      title?: string;
-      /**
-       * Unit
-       * @default
-       */
-      unit?: string;
-    };
-    /**
      * CoachNotificationView
      * @description 教练主动介入的通知（前端浮窗轮询消费）。
      *
@@ -1551,8 +1514,6 @@ export interface components {
       agent_id?: string | null;
       /** Agent Name */
       agent_name?: string | null;
-      /** @description 这一轮顺手给的图；没有就是 null */
-      chart?: components["schemas"]["ChartView"] | null;
       /** Created At */
       created_at?: string | null;
       /**
@@ -1562,7 +1523,7 @@ export interface components {
       intel_refs?: components["schemas"]["IntelRefView"][];
       /**
        * Renderables
-       * @description 这一轮主理自己产出的可视件（它调了工具）。前端按 kind 选组件渲染；`chart` 是其中柱状图那一种的兼容字段
+       * @description 这一轮要摆给用户看的可视件：主理自己调工具产出的，或这一环节默认补的那张。前端按 kind 选组件渲染，数值由服务端填
        */
       renderables?: components["schemas"]["RenderableView"][];
       /**

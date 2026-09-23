@@ -72,6 +72,14 @@ export const BLOCK_RETURN_MS: Record<string, number> = {
 }
 
 /**
+ * 工作台数据"读到第几轮"的序号（见 `loadBackend` 里的读侧排序）。
+ *
+ * 放在模块级而不是 state 里：它是**并发控制**用的，界面不该读到它，
+ * 也不该有人把它当业务状态去渲染。
+ */
+let loadSeq = 0
+
+/**
  * 通知渠道 → 界面上的署名。
  *
  * 后端给的是 `channel`（in_app / email / sms），不是"谁发的"——
@@ -509,6 +517,9 @@ export const useSessionStore = defineStore('session', {
      * 三处读的都是这一份，改它一处，三处同时跟上。
      */
     applyActionPlan(plan: ActionPlan | null) {
+      // 这一份比任何**正在飞**的读都新（它是写的结果）：把序号推一格，
+      // 让那些更早发起的读回来时自己作废，别拿旧计划盖掉刚勾完的结果。
+      loadSeq += 1
       this.actionPlan = plan
       this.bumpData()
     },
@@ -519,27 +530,48 @@ export const useSessionStore = defineStore('session', {
       // 敲一遍只会得到一串"缺少登录令牌"，然后靠 try/catch 咽掉。
       if (!authToken()) return
       try {
+        /*
+         * **这一拉属于哪一轮。**
+         *
+         * 同一时刻可能有两个在飞：进页面那次、一轮对话之后那次（还有动作之后的
+         * `revalidate`）。它们不保证按发起的顺序返回 —— 先发的那次后回来，
+         * 就会拿旧数据盖掉新数据。实测症状很具体：一轮对话刚重排了计划，
+         * 随后那次较早的读把旧计划写回 store，界面手上那个 `task_id`
+         * 在库里已经不存在了，点勾选就是 404（而再点一次又好了，因为那时新数据回来了）。
+         *
+         * 所以读侧排序：**谁最后发起，谁说了算**。晚发起的读一定看到更晚的事实
+         * （都在同一张库上），所以"发起得晚"就是"更可信"。这一条不做的话，
+         * 后面写多少"动作之后重拉"都会被一次慢响应带回旧世界。
+         */
+        const mySeq = ++loadSeq
+        /*
+         * 先把要读的**全部读完**，再开始写：中间不留 await，
+         * 于是"这份数据还算不算数"只需要判一次（下面那行）。
+         */
         const [ws, boot, notes, report] = await Promise.all([
           getWorkspace(),
           getBootstrap().catch(() => null),
           listNotes().catch(() => null),
           getReportFullText().catch(() => null),
         ])
-        this.report = report
         /*
          * 行动计划：待办卡片的"为什么这一件"要用它。
          *
          * 读不到就是 null（还没到 ④），界面据此说"这一件还没定下来"，
          * 而不是拿阶段固定文案顶上 —— 那句文案回答了"这个阶段在做什么"，
          * 回答不了"为什么是这一件"。
-         */
-        /*
+         *
          * 取失败（catch 成 null）**不覆盖**手上那份：一次刷新没连上，
          * 不该把待办卡片上的"现在这一件"和日历上那一天的任务一起抹掉 ——
          * 那是把"我没读到"显示成了"你没有计划"。
          * 真没有计划时后端给的是 `has_plan=false` 的一份，不是 null。
          */
         const plan = await getActionPlan().catch(() => null)
+        const notices = await getPendingNotifications().catch(() => [])
+        // 期间又发起了一次更新的一拉 → 这一份作废（整份丢，不做半截写入）
+        if (mySeq !== loadSeq) return
+
+        this.report = report
         if (plan) this.actionPlan = plan
         /*
          * 他写下过的东西要跟着账号回来。
@@ -650,7 +682,6 @@ export const useSessionStore = defineStore('session', {
               updatedAt: pp.updated_at ?? null,
             }
           : null
-        const notices = await getPendingNotifications().catch(() => [])
         for (const n of notices) {
           if (this.acceptedNotices.includes(n.id)) continue
           this.pushFloat({
@@ -1228,7 +1259,8 @@ export const useSessionStore = defineStore('session', {
             role: 'ai',
             text: message.text,
             actor: message.agent_name ?? turn.badge.name,
-            chart: message.chart ?? undefined,
+            // 可视件按 kind 分发渲染（见 RenderableBlock）；没有就是空数组
+            renderables: message.renderables ?? [],
             intelRefs: message.intel_refs ?? [],
           } as ChatTurn,
         ]

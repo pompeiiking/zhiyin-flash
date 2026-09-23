@@ -14,8 +14,6 @@ from zhiyin_business.contracts.common import (
     AgentBadge,
     BehaviorEventDraft,
     BehaviorGuide,
-    ChartPoint,
-    ChartSpec,
     ConversationMessage,
     Disclosure,
     IntelRef,
@@ -39,7 +37,6 @@ from zhiyin_business.ports.orchestrator import (
     IntentType,
     LeadDecision,
     Orchestrator,
-    StageDecision,
     TurnRequest,
     TurnResult,
 )
@@ -238,10 +235,6 @@ class DefaultOrchestrator(Orchestrator):
             current_stage=session.loop_stage if session else None,
         )
 
-    async def detect_intent(self, user_id: str, message: str) -> IntentType:
-        blackboard = await self.read_blackboard(user_id, task_id="")
-        return await self._intent_policy.classify(message=message, blackboard=blackboard)
-
     async def collection_gate(self, user_id: str) -> "CollectionGate":
         """判一次"采集够了吗"（策略来自动态资源，见 `policies/collection_gate.py`）。
 
@@ -253,16 +246,6 @@ class DefaultOrchestrator(Orchestrator):
         gate = evaluate_gate(fields, policy)
         logger.info("采集门槛：%s", gate.line)
         return gate
-
-    async def detect_stage(
-        self, user_id: str, task_id: str, intent: IntentType
-    ) -> StageDecision:
-        blackboard = await self.read_blackboard(user_id, task_id)
-        return await self._stage_policy.decide(
-            blackboard=blackboard,
-            intent=intent,
-            message="",
-        )
 
     async def infer_axis_a(self, user_id: str, task_id: str) -> AxisAStage:
         blackboard = await self.read_blackboard(user_id, task_id)
@@ -615,17 +598,15 @@ class DefaultOrchestrator(Orchestrator):
                 ),
                 agent_id=lead.lead_agent,
                 theory_refs=badge.theory_refs,
-                # 图与情报引用都来自**这一轮的实测数据**：图用画像/方案的实测分值，
+                # 可视件与情报引用都来自**这一轮的实测数据**：可视件由服务端按 kind 填，
                 # 引用用这一轮真的取回的外部事实 —— 不是让模型自己编。
                 #
-                # 两条来源，先看主理自己点的那张：它调 `chart.render` 时，
-                # 点位是工具从库里读出来的（模型只挑了"画哪一类"，碰不到数值）。
-                # 它没点，就用这一环节默认那张（仍然是实测分值）。
-                chart=(
-                    _charts_from_renderables(model_renderables)
-                    or _chart_for(stage, structured)
+                # 两种来源，同一个形状：主理自己调的（它调 `chart.render` 时，
+                # 点位是工具从库里读出来的 —— 模型只挑了"画哪一类"，碰不到数值）；
+                # 它没点，就补上这一环节默认那张（仍然是实测分值）。
+                renderables=_renderables_for_turn(
+                    model_renderables, stage, structured
                 ),
-                renderables=model_renderables,
                 intel_refs=_intel_refs(prompt_vars.get("external_data")),
             )
         ]
@@ -1322,69 +1303,68 @@ def _theory_refs(raw: Any) -> list[TheoryRef]:
     return refs
 
 
-def _charts_from_renderables(renderables: Sequence[Renderable]) -> Optional[ChartSpec]:
-    """可视件里的**柱状图**转成兼容字段 `chart`（前端已经在渲染它）。
+def _renderables_for_turn(
+    from_model: Sequence[Renderable], stage: Any, structured: dict[str, Any]
+) -> list[Renderable]:
+    """这一轮要摆给用户看的可视件：主理自己点的那张，或者这一环节默认那张。
 
-    等前端全面按 kind 分发之后，这个兼容层可以删掉；现在留着是为了
-    "后端加了一种新可视件"与"前端还没跟上"这两件事能各自推进。
-    一件可视件都转不出柱状图时返回 None —— 那时 `chart` 就是空的。
-    """
-    for item in renderables:
-        if item.kind != "bars_chart":
-            continue
-        try:
-            return ChartSpec(
-                kind="bars",
-                title=item.title,
-                unit=str(item.payload.get("unit") or ""),
-                points=[
-                    ChartPoint(label=str(point["label"]), value=float(point["value"]))
-                    for point in item.payload.get("points") or []
-                ],
-            )
-        except Exception:  # noqa: BLE001 - 转不出来就当没有，不猜
-            logger.warning("可视件转柱状图失败，已跳过：%s", str(item.payload)[:120])
-    return None
+    **只有一种形状**（`Renderable`），前端按 `kind` 分发渲染。
+    以前这里另有一条"柱状图专用字段 `chart`"的兼容通道 —— 前端当时只认它。
+    现在前端按 kind 走，那条通道就删了：少了"同一张图有两个字段"的歧义
+    （改一处漏一处，就会出现"图没变、别处变了"这种说不清的现象）。
 
-
-def _chart_for(stage: Any, structured: dict[str, Any]) -> Optional[ChartSpec]:
-    """这一轮顺手给的那张图。
-
-    只从**实测分值**里取点：
+    默认那张只从**实测分值**里取点：
       · ② 诊断 —— 画像各维的把握度（"你现在哪一块最薄"一眼能看出来）；
       · ③ 决策 —— 三套方案的匹配度（"三套差多少"比三行字清楚）。
-    取不到就返回 None：宁可没有图，也不要拿编出来的数字画一张。
+    取不到就不补：宁可没有图，也不要拿编出来的数字画一张。
     """
+    kept = list(from_model)
+    if any(item.kind == "bars_chart" for item in kept):
+        return kept
+    fallback = _default_bars(stage, structured)
+    if fallback is not None:
+        kept.append(fallback)
+    return kept
+
+
+def _default_bars(stage: Any, structured: dict[str, Any]) -> Optional[Renderable]:
+    """这一环节顺手给的那张柱状图（点全部来自库里已存的分值）。"""
     try:
         if stage is LoopStage.DECIDE:
-            plans = structured.get("plans") or []
             points = [
-                ChartPoint(
-                    label=str(plan.get("name") or f"方案{i + 1}")[:12],
-                    value=float(plan.get("match_score") or 0.0),
-                )
-                for i, plan in enumerate(plans)
+                {
+                    "label": str(plan.get("name") or f"方案{i + 1}")[:12],
+                    "value": float(plan.get("match_score") or 0.0),
+                }
+                for i, plan in enumerate(structured.get("plans") or [])
                 if isinstance(plan, dict)
             ]
             if len(points) >= 2:
                 # 标题是**用户要读的**：不写"三套方案"这种内部说法（实测用户看不懂
                 # "三条路""三套方案"指的是什么），写他一看就懂的那件事。
-                return ChartSpec(kind="bars", title="各方向和你手上的东西合不合", unit="分", points=points)
-        if stage is LoopStage.DIAGNOSE:
-            gaps = structured.get("gaps") or structured.get("dimensions") or []
-            points = [
-                ChartPoint(
-                    label=str(item.get("name") or item.get("dimension") or "")[:12],
-                    value=float(item.get("score") or item.get("value") or 0.0),
+                return Renderable(
+                    kind="bars_chart",
+                    title="各方向和你手上的东西合不合",
+                    payload={"unit": "分", "points": points},
                 )
-                for item in gaps
+        if stage is LoopStage.DIAGNOSE:
+            points = [
+                {
+                    "label": str(item.get("name") or item.get("dimension") or "")[:12],
+                    "value": float(item.get("score") or item.get("value") or 0.0),
+                }
+                for item in (structured.get("gaps") or structured.get("dimensions") or [])
                 if isinstance(item, dict)
             ]
-            points = [p for p in points if p.label]
+            points = [point for point in points if point["label"]]
             if len(points) >= 3:
-                return ChartSpec(kind="bars", title="这几项你现在各有多少把握", unit="分", points=points[:8])
+                return Renderable(
+                    kind="bars_chart",
+                    title="这几项你现在各有多少把握",
+                    payload={"unit": "分", "points": points[:8]},
+                )
     except Exception:  # noqa: BLE001 - 画不出图不该影响这一轮回复
-        logger.warning("这一轮没能构造图表，跳过", exc_info=True)
+        logger.warning("这一轮没能构造默认可视件，跳过", exc_info=True)
     return None
 
 

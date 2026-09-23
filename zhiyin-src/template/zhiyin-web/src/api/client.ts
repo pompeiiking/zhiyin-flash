@@ -45,6 +45,8 @@ export type AcademicImportAck = Schema['AcademicImportAck']
 export type TheoryRef = Schema['TheoryRefView']
 export type ProfileField = Schema['ProfileFieldView']
 export type ProfileGap = Schema['ProfileGapView']
+/** 对话里摆出来的一块可视件（图 / 时间线 / 对比表…）—— 前端按 `kind` 分发渲染 */
+export type RenderableView = Schema['RenderableView']
 
 export class BackendUnavailableError extends Error {}
 export class UnauthorizedError extends Error {}

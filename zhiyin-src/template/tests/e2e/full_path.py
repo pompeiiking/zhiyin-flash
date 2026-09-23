@@ -955,6 +955,32 @@ with sync_playwright() as p:
     else:
         check("简报浮层能打开", False)
 
+    # ── 可视件：模型自己画的那张图，前端按 kind 分发渲染 ─────────
+    #
+    # 这条路径以前是"专用字段 chart"，现在只有一种东西：`renderables`（按 kind 分发）。
+    # 所以这里必须从**界面上**看一眼：模型点了工具之后，那张图是不是真的画出来了，
+    # 而且数值是给人看的写法（不是 `0.95` 这种要用户自己换算的）。
+    phase("可视件：模型自己画图 → 前端按 kind 渲染")
+    rendered = 0
+    for attempt in range(2):
+        before = send_chat(page, "能不能给我画个图，让我看看现在各项情况把握得怎么样？")
+        wait_reply(page, before, timeout_s=180)
+        page.wait_for_timeout(2000)
+        rendered = page.locator(".thread .rb__rows li").count()
+        if rendered:
+            break
+        print(f"    （第 {attempt + 1} 次问，模型这一轮没画 —— 再问一次）")
+    check("主理画的那张图在对话里渲染出来了（按 kind 分发）", rendered >= 2, f"{rendered} 行")
+    if rendered:
+        numbers = [n.strip() for n in page.locator(".thread .rb__num").all_text_contents()]
+        check(
+            "图上的数值是给人看的写法（不是 0.95 / 95.00）",
+            all(n.endswith(("%", "分")) for n in numbers) if numbers else False,
+            f"{numbers}",
+        )
+        shot(page, "15-renderable-bars")
+    close_overlay(page)
+
     # ── I. 异常与边界 ───────────────────────────────────────────
     phase("L. 异常与边界")
     ensure_talk(page)

@@ -97,18 +97,22 @@ def main() -> int:
     print(f"【主理】{((data.get('messages') or [{}])[0]).get('text') or ''}\n")
 
     message = (data.get("messages") or [{}])[0]
-    chart = message.get("chart")
     renderables = message.get("renderables") or []
+    chart = next(
+        (item for item in renderables if item.get("kind") == "bars_chart"), None
+    )
     checks: list[tuple[str, bool, str]] = []
-    checks.append(("主理自己画了一张图（没人告诉它调哪个工具）", bool(chart), str(chart)[:80]))
+    checks.append(
+        ("主理自己画了一张图（没人告诉它调哪个工具）", bool(chart), str([item.get("kind") for item in renderables]))
+    )
     checks.append(
         (
-            "同时出现在可视件列表里（前端按 kind 分发；chart 是兼容字段）",
-            any(item.get("kind") == "bars_chart" for item in renderables),
-            str([item.get("kind") for item in renderables]),
+            "这张图就是可视件本身（前端按 kind 分发，没有第二条通道）",
+            all(set(item) <= {"kind", "title", "payload", "source_refs"} for item in renderables),
+            str(sorted({key for item in renderables for key in item})),
         )
     )
-    points = (chart or {}).get("points") or []
+    points = ((chart or {}).get("payload") or {}).get("points") or []
     checks.append(("图至少有两个点", len(points) >= 2, f"{len(points)} 个点"))
     if points:
         pairs = {

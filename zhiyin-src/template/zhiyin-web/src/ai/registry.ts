@@ -66,6 +66,15 @@ export interface DimensionReading {
   next: string
 }
 
+/**
+ * 一条缺口的追问话术（后端 `GapClarify`）。
+ *
+ * 这一份**现在还没有界面入口**：画像页里点一条缺口，展开的是采集策略给出的
+ * 现成理由与建议（`ProfileGapView` 里的 `question` / `suggested`），
+ * 没有走模型生成。契约仍然对齐着，因为仓库有一条守卫要求"后端每种产出形状，
+ * 前端都得有对应的一份"（见 `tests/test_ai_task_contract_alignment.py`）——
+ * 那种一致不是装饰：要接的时候，接上的是同一份声明，不用先追一遍后端改了什么。
+ */
 export interface GapClarify {
   question: string
   options: { label: string; why: string }[]
@@ -205,7 +214,14 @@ export function dayAdviceTask(day: string): AiTask<DayAdvice> {
   }
 }
 
-/** 一条缺口的追问话术 —— 用户点"补这一条"时生成 */
+/**
+ * 一条缺口的追问话术 —— 用户点"补这一条"时生成。
+ *
+ * 注意：这一条**目前没有界面入口**（见上面 `GapClarify` 的说明），
+ * 但它是后端 `/app/gaps/{key}/clarify` 的对应声明 ——
+ * 仓库守卫要求后端每个端点在前端都有使用者，删掉它只会让守卫变红，
+ * 而真正该做的是把它接上（或者连后端一起下掉，那是一次产品决定）。
+ */
 export function gapTask(gapKey: string): AiTask<GapClarify> {
   return { key: `gap.${gapKey}`, label: '正在准备这一条的追问' }
 }

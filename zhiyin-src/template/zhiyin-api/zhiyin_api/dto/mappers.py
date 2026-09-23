@@ -60,8 +60,6 @@ from zhiyin_api.dto.conversation import (
     PipelineCardView,
     SessionListView,
     TaskSessionView,
-    ChartPointView,
-    ChartView,
     IntelRefView,
     RenderableView,
 )
@@ -86,7 +84,6 @@ from zhiyin_business.ports.function import ExternalIntel
 from zhiyin_business.contracts.common import (
     AgentBadge,
     BehaviorGuide,
-    ChartSpec,
     Disclosure,
     IntelRef,
     Renderable,
@@ -384,10 +381,7 @@ def conversation_turn_view(turn: TurnResult) -> ConversationTurnView:
                 if message.agent_id and message.agent_id == turn.badge.agent_id
                 else None,
                 theory_refs=[theory_ref_view(ref) for ref in message.theory_refs],
-                chart=chart_view(message.chart),
-                renderables=[
-                    renderable_view(item) for item in getattr(message, "renderables", [])
-                ],
+                renderables=[renderable_view(item) for item in message.renderables],
                 intel_refs=[intel_ref_view(ref) for ref in message.intel_refs],
                 created_at=message.created_at,
             )
@@ -924,18 +918,6 @@ def material_view(material: "ConversationMaterial") -> "ConversationMaterialView
         name=material.name,
         size=material.size,
         chars=material.chars,
-    )
-
-
-def chart_view(chart: Optional[ChartSpec]) -> Optional[ChartView]:
-    """对话里那张图（没有就是 None）。"""
-    if chart is None or not chart.points:
-        return None
-    return ChartView(
-        kind=chart.kind,
-        title=chart.title,
-        unit=chart.unit,
-        points=[ChartPointView(label=p.label, value=p.value) for p in chart.points],
     )
 
 

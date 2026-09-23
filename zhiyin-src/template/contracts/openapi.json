@@ -1686,57 +1686,6 @@
         "title": "CalendarNodeView",
         "type": "object"
       },
-      "ChartPointView": {
-        "additionalProperties": false,
-        "description": "图上的一个点。",
-        "properties": {
-          "label": {
-            "title": "Label",
-            "type": "string"
-          },
-          "value": {
-            "title": "Value",
-            "type": "number"
-          }
-        },
-        "required": [
-          "label",
-          "value"
-        ],
-        "title": "ChartPointView",
-        "type": "object"
-      },
-      "ChartView": {
-        "additionalProperties": false,
-        "description": "主理在对话里给的那张图。\n\n值来自服务端**实测数据**（画像各维把握、方案匹配度…），不是模型写的数字 ——\n图上的每个点都能追回它来自哪条记录。",
-        "properties": {
-          "kind": {
-            "const": "bars",
-            "default": "bars",
-            "title": "Kind",
-            "type": "string"
-          },
-          "points": {
-            "items": {
-              "$ref": "#/components/schemas/ChartPointView"
-            },
-            "title": "Points",
-            "type": "array"
-          },
-          "title": {
-            "default": "",
-            "title": "Title",
-            "type": "string"
-          },
-          "unit": {
-            "default": "",
-            "title": "Unit",
-            "type": "string"
-          }
-        },
-        "title": "ChartView",
-        "type": "object"
-      },
       "CoachNotificationView": {
         "description": "教练主动介入的通知（前端浮窗轮询消费）。\n\n形状由两个读侧实现共同决定：`InMemoryNotificationRepository`（本地消息表）与\n`PostgresNotificationRepository`（`orc_notification`）。两边都至少有\nid / title / body / channel / occurred_at，本地那份还多带 user_id 这类调试字段。\n\n因此这里用 `extra=\"ignore\"` 而不是 `forbid`：**多出来的字段不该让这个接口报 500**，\n但 `id` / `title` 缺了前端就没法渲染，仍需强制。\n\n此前这个接口的返回类型是裸 `list`，前端只能猜字段（它猜的是 `by`——\n后端从来没有这个字段），于是每条通知署名永远为空。现在逐字段声明。",
         "properties": {
@@ -1959,17 +1908,6 @@
             ],
             "title": "Agent Name"
           },
-          "chart": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ChartView"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "这一轮顺手给的图；没有就是 null"
-          },
           "created_at": {
             "anyOf": [
               {
@@ -1991,7 +1929,7 @@
             "type": "array"
           },
           "renderables": {
-            "description": "这一轮主理自己产出的可视件（它调了工具）。前端按 kind 选组件渲染；`chart` 是其中柱状图那一种的兼容字段",
+            "description": "这一轮要摆给用户看的可视件：主理自己调工具产出的，或这一环节默认补的那张。前端按 kind 选组件渲染，数值由服务端填",
             "items": {
               "$ref": "#/components/schemas/RenderableView"
             },

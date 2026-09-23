@@ -153,16 +153,6 @@ class Orchestrator(ABC):
         """读取黑板快照。所有环节进入前都必须先读黑板。"""
 
     @abstractmethod
-    async def detect_intent(self, user_id: str, message: str) -> IntentType:
-        """识别用户意图。规则优先 + 关键词/LLM 兜底。"""
-
-    @abstractmethod
-    async def detect_stage(
-        self, user_id: str, task_id: str, intent: IntentType
-    ) -> StageDecision:
-        """判定目标环节（轴 B）。"""
-
-    @abstractmethod
     async def infer_axis_a(self, user_id: str, task_id: str) -> AxisAStage:
         """推断轴 A 阶段。
 

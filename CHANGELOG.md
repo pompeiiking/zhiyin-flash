@@ -2814,3 +2814,139 @@ TypeError: Cannot read properties of null (reading 'id')
 改法：三个动作各走一个有守卫的方法（拿不到就当没点）——
 那一条本来就是已经被收走的那条。`advance()`（"还有 N 条 · 看下一条"）当初就是这么写的，
 这次把另外三个补齐，口径一致。
+
+---
+
+## 四十四、清掉上一轮改动留下的旧内容（2026-09-23）
+
+**用户反馈**："感觉改完后的旧内容没清理吧，把没用的废弃的逻辑和文件都清除掉。"
+
+做法是先审计、再动手，而且**每一条都写清判据** —— 因为"没人用"有三种：
+真废弃（该删）、设计上就有意未接（该留，但要写明白）、以及守卫根本不让你删的那类。
+这一轮三种都碰到了。
+
+### 44.1 已删：`chart` 兼容字段（上一轮明确说"等前端跟上就删"的那条）
+
+40.1 里写过一句话："`chart` 保留为兼容字段（前端已经在渲染它），
+**等前端全面按 kind 分发之后可以删**"。核了一遍：前端确实只认 `chart`，
+`renderables` 那边只有一个生成的类型声明，没有任何渲染 —— 也就是说那条兼容通道
+其实是**唯一**通道，而契约里同时挂着两个字段。
+
+这一轮把它收干净：
+
+| 删掉什么 | 落位 |
+| --- | --- |
+| 契约里的 `ChartSpec` / `ChartPoint` 与 `ConversationMessage.chart` | `business/contracts/common.py` |
+| DTO 里的 `ChartView` / `ChartPointView` 与消息上的 `chart` | `api/dto/conversation.py` |
+| 映射 `chart_view()` 与它的调用 | `api/dto/mappers.py` |
+| 兼容层 `_charts_from_renderables()` | `business/services/orchestrator.py`（连同 `_chart_for` 一起改成 `_default_bars`，产出的是**可视件**） |
+| 前端的 `ChatTurn.chart` 与那段 figure 渲染 | `data/content.ts`、`stores/session.ts`、`console/TalkOverlay.vue` |
+| 前端自己手抄的那份可视件形状 | 换成 `RenderableView`（接口契约生成的类型，见 `api/client.ts` 的导出） |
+
+补上的是**分发点**：`zhiyin-web/src/components/render/RenderableBlock.vue` ——
+拿到一块可视件，按 `kind` 选组件画。于是"模型自己点的那张图"与"这一环节默认补的那张图"
+变成同一种东西（以前是两条通道），加一种新可视件时，对话气泡那边零改动。
+
+顺带修掉一处一直记着的瑕疵：图上的数值以前写的是 `0.95`（甚至 `95.00`），
+要用户自己换算；现在按同一套刻度写成 `95%` / `82分`，单位来自这一件自己的 `payload`。
+
+**这次核验不是接口层自说自话**：`full_path.py` 新增一条浏览器检查 ——
+让主理画图，然后在**界面上**数那几行横条（`.rb__rows li`），并检查数值写法。
+`chart_probe.py` 改成只从 `renderables` 里取那张图，值仍然与库里逐项相等（95/90/85）。
+
+### 44.2 已删：三个"声明了没人调"的 Port 方法
+
+| 方法 | 为什么是废弃 |
+| --- | --- |
+| `Orchestrator.detect_intent` | 一轮的意图判定走的是 `_intent_policy.classify()`（`handle_message` 里直接调）；这个方法只是同一个调用的另一层壳，全仓零调用点 |
+| `Orchestrator.detect_stage` | 同上：真正在用的是 `_stage_policy.decide()` |
+| `WorkspaceService.list_sessions_summary` | 已经被 `list_sessions` 取代（左栏会话列表读的是后者），实现留着但没人读 |
+
+两个 Port 声明一起删。判据是"有第二个名字做同一件事"——那正是会让下一个人
+挑错入口的那类代码。
+
+### 44.3 保留：三处"有意未接"，但现在都写明白了
+
+审计里同样被扫出来的，还有几处**看起来没人用、其实是有意的**。它们不删，
+但都在代码里写清了"为什么留着、要接的时候接哪儿"：
+
+- **成就**（`FunctionService.list_achievements` + `badge_rules.json` + `Achievement`）：
+  设计文档把它写成"完成记录页"的能力，且有独立的功能开关；
+  它是从行为日志**实时推导**的，不落表（这条口径本身是设计结论）。
+  目前**没有任何出口**（没有路由、界面上也没有入口）。要么给它开个口，要么整块删 ——
+  那是一次产品决定，不是清理，所以留着并在此记名。
+- **缺口追问**（前端 `gapTask` / `GapClarify` ↔ 后端 `POST /app/gaps/{id}/clarify`）：
+  画像页点一条缺口，展开的是采集策略给出的现成理由与建议，**没有走模型**。
+  我第一遍把前端那一半也删了，结果**三条守卫同时变红**：
+  `test_registry_covers_every_stage_contract`（后端每种产出形状前端都要有对应 interface）、
+  `test_backend_business_endpoints_are_all_used_by_the_frontend`（后端每个端点前端都要有使用者）、
+  以及前端落位表守卫。也就是说"前后端契约一一覆盖"在这仓库里是**被强制的不变量**：
+  删掉前端那一半不会让系统更干净，只会让守卫失明。于是恢复，并把"现在还没有入口"
+  写进 `registry.ts` 的注释。
+- **`GuestSession`**（游客会话合并的数据形状）：类 docstring 里本来就写着保留原因
+  （设计文档的验收项，形状先冻结）。不动。
+
+### 44.4 清掉的工作区遗留物（不是删，是挪走）
+
+这些都不在版本库里（已被 `.gitignore` 挡住），但**留在工作区里会骗人** ——
+搜代码时会命中它们的副本、看起来像"这段逻辑还有人在用"：
+
+| 什么 | 为什么清 |
+| --- | --- |
+| `zhiyin-src/template/build/` | 一次 `pip install -e` 留下的**整份旧代码副本**（215 个文件），搜代码时最容易撞上的就是它 |
+| `zhiyin-src/template/zhiyin.egg-info/` | setuptools 元数据；真实安装信息在 `.venv` 的 `dist-info` 里 |
+| `release/`（12.2 MB） | 两轮打包验证留下的发布件（含 `probe/.env` —— 那份**带着真密钥**的副本，尤其不该散落在工作区） |
+| `.playwright-mcp/` | 一次浏览器调试留下的控制台日志 |
+
+全部 `Move` 到 `%TEMP%\zhiyin-cleanup-20260923-201453\`（**没有删除**，随时可搬回）。
+`release/` 由 `python deploy/package_release.py` 随时可再生产，所以要重新打包也只是一条命令。
+
+（顺带再提一次：`release/probe/.env` 与仓库根 `.env` 里那两把模型密钥建议轮换 ——
+副本落在过工作区，就不该再当它没暴露过。）
+
+### 44.5 验证
+
+```
+pytest -q                          → 462 passed
+ruff check .                       → All checks passed
+scripts/export_openapi.py --check  → 契约快照与代码一致（本次改过契约，快照已重导）
+npm run gen:api                    → 前端类型按新契约重生成
+npm run typecheck / npm run build  → 通过
+tests/e2e/chart_probe.py           → 5/5（图只从 renderables 取，值与库里逐项相等）
+tests/e2e/loop_verify.py           → 35/35
+tests/e2e/full_path.py             → 75/75（含 44.1 新增的可视件检查、44.7 修掉的两条勾选）
+```
+
+### 44.6 这一轮之后仍然留着的
+
+- 成就那一整条（规则 + 推导）没有出口 —— 要不要开、要不要删，等你定；
+- 缺口追问的模型话术没有界面入口（契约对齐着，见 44.3）；
+- 图表数值格式**已顺手修掉**（44.1 末尾），从"没做的"里划掉。
+
+### 44.7 顺手抓到的第四个问题：两次并发的工作台读取，旧的会盖掉新的
+
+清完之后跑浏览器全流程，`④ 行动` 那两条勾选检查红了：**第一次点勾选，库里的 done 数还是 0；
+再点一次（这次是取消勾选），done 数变成 1** —— 也就是第一次那一按没进库。
+
+复现与定位（真栈）：
+
+- 单开一个干净账号、只做"开浮层 → 点第一颗勾"，PATCH 是 200、done=1，一切正常；
+- 那么差的就是**这一下之前发生过什么**。全流程里它前面紧接着一轮对话，
+  而那一轮刚重排了行动计划。
+
+根因是前端 store 的读侧竞态，和这次清理没关系、但被这次核验逮住了：
+同一时刻可能有两个工作台读在飞（进页面那次、一轮对话之后那次、动作之后的 `revalidate`），
+它们**不保证按发起的顺序返回**。于是较早那次回来时，会把**更新的**计划写回 store ——
+界面手上那个 `task_id` 在库里已经不存在了，点勾选就是 404（那一下没进库），
+再点一次时新数据已经回来，于是又好了。用户看到的是"点一下没反应，再点一下才有反应"。
+
+改法（`stores/session.ts`）：
+
+- 给 `loadBackend` 排一个**发起序号** `loadSeq`，回来时对不上就整份作废
+  （整份丢、不做半截写入 —— 顺带把"读之间夹着写"改成"先读完再写"）；
+  口径是**谁最后发起谁说了算**：都在同一张库上，晚发起的一定看到更晚的事实。
+- 动作回包（`applyActionPlan`）把序号推一格：它比任何在飞的读都新，
+  那些读回来时自己作废，不会拿旧计划盖掉刚勾完的结果。
+
+修完再跑：`full_path.py` **75/75**（此前 73/75），那两条红消掉，
+新加的可视件检查也一次通过。

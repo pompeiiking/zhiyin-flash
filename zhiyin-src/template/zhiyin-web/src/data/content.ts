@@ -12,6 +12,8 @@
  * 既渲染不出东西，又让"哪份数据是真的"看不出来。已整体删除。
  */
 
+import type { RenderableView } from '@/api/client'
+
 export type StageId = 'explore' | 'aim' | 'sprint' | 'adapt' | 'relocate'
 
 export interface Stage {
@@ -110,17 +112,16 @@ export interface ChatTurn {
   /** 一句话之后可以顺手做的动作 */
   ask?: { label: string; kind: 'tasks' | 'portrait' | 'report' }
   /**
-   * 这一轮顺手给的图。
+   * 这一轮摆在回复里的**可视件**（图 / 时间线 / 对比表…）。
    *
+   * 形状直接用接口契约生成的那一份（`RenderableView`），
+   * 前端不再自己抄一遍：抄一遍的下场是"后端加了字段、这里还是旧形状"，
+   * 而那一处永远不会报错，只会安静地少显示一点东西。
    * 值全部来自**服务端实测数据**（画像各维把握、方案匹配度…），
-   * 不是模型写的数字 —— 图上的每个点都能追回它来自哪条记录。
+   * 不是模型写的数字 —— 图上每个点都能追回它来自哪条记录。
+   * 按 kind 分发渲染见 `components/render/RenderableBlock.vue`。
    */
-  chart?: {
-    kind: 'bars'
-    title: string
-    unit: string
-    points: { label: string; value: number }[]
-  }
+  renderables?: RenderableView[]
   /** 这一轮用到的外部情报来源（可点回原页面）；没有就是空 */
   intelRefs?: { id: string; title: string; kind_label: string; source_name: string; source_url: string }[]
 }

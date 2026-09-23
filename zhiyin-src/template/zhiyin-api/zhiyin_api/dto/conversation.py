@@ -83,30 +83,6 @@ class ConversationMaterialView(BaseModel):
     chars: int = Field(default=0, description="读出来的正文字数")
 
 
-class ChartPointView(BaseModel):
-    """图上的一个点。"""
-
-    model_config = ConfigDict(extra="forbid")
-
-    label: str
-    value: float
-
-
-class ChartView(BaseModel):
-    """主理在对话里给的那张图。
-
-    值来自服务端**实测数据**（画像各维把握、方案匹配度…），不是模型写的数字 ——
-    图上的每个点都能追回它来自哪条记录。
-    """
-
-    model_config = ConfigDict(extra="forbid")
-
-    kind: Literal["bars"] = "bars"
-    title: str = ""
-    unit: str = ""
-    points: list[ChartPointView] = Field(default_factory=list)
-
-
 class IntelRefView(BaseModel):
     """对话里引用的一条外部情报（可点回原页面）。"""
 
@@ -150,14 +126,11 @@ class ConversationMessageView(BaseModel):
     theory_refs: list[TheoryRefView] = Field(
         default_factory=list, description="可点开的理论标签"
     )
-    chart: Optional[ChartView] = Field(
-        default=None, description="这一轮顺手给的图；没有就是 null"
-    )
     renderables: list[RenderableView] = Field(
         default_factory=list,
         description=(
-            "这一轮主理自己产出的可视件（它调了工具）。前端按 kind 选组件渲染；"
-            "`chart` 是其中柱状图那一种的兼容字段"
+            "这一轮要摆给用户看的可视件：主理自己调工具产出的，"
+            "或这一环节默认补的那张。前端按 kind 选组件渲染，数值由服务端填"
         ),
     )
     intel_refs: list[IntelRefView] = Field(
