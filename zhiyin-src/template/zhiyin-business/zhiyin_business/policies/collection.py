@@ -57,6 +57,14 @@ class CollectionStep:
     """这个源头现在能不能用"""
     heard: str = ""
     """用户自己写下的那句话里，命中的原话片段。空表示这条不是被用户的话顶上来的。"""
+    ask: str = ""
+    """要问用户的那一句（只有 `conversation` 源有）。
+
+    为什么这一句必须从清单里带出来、不能由界面按字段名拼：
+    "补兴趣"这种按钮点进去，用户面对的应该是一个**能一句话答上来**的问题，
+    而不是"请填写：兴趣"。问题本身是采集口径的一部分，所以它跟 `why` 一样
+    属于策略层输出 —— 改它不发版。
+    """
 
 
 @dataclass(frozen=True)
@@ -86,8 +94,19 @@ class CollectionPlan:
     """有缺口、但没有源头的项（必须如实告诉用户）"""
 
     def next_source(self) -> Optional[CollectionSource]:
-        """下一步最该走的源头：还缺着、且取得到的那个。"""
-        for source in (CollectionSource.CHSI, CollectionSource.CONVERSATION):
+        """下一步最该走的源头：还缺着、且取得到的那个。
+
+        口径是"一次动作补最多条"：学信网一次核验拿全学籍，所以排在最前；
+        其次是问本人一句；最后才是教务系统导入。
+
+        这里踩过一个**静默的坑**：候选源头曾经只有学信网与对话，
+        而 `by_source` 是照 `available_sources` 算的 —— 装配层早就把
+        `academic` 算成可用了。于是"只剩课表/成绩没补"的账号会得到
+        `next_source = None`：前端主 CTA 说"没有可自动补的项了"，
+        同一屏里课表那两行却还挂着"去导入"。判断与入口自相矛盾，
+        而两处都不报错。候选源头现在由枚举驱动，不再手写一份子集。
+        """
+        for source in _SOURCE_PRIORITY:
             if self.by_source.get(source.value, 0) > 0:
                 return source
         return None
@@ -96,29 +115,57 @@ class CollectionPlan:
 # ------------------------------------------------------------------ 规则表
 
 """
-字段 →（中文名、为什么需要它、去哪儿取）。
+字段 →（中文名、为什么需要它、去哪儿取、问用户的那一句）。
 
 "为什么"这一列是给用户看的，所以写的必须是**这条数据挡着哪一步判断**，
 而不是"这是必填项"。用户凭什么再花一次动作，全看这一列说没说清楚。
+
+"问哪一句"只对 `conversation` 源有意义 —— 它是点"去回答"之后落在输入框上方
+的那个问题。要求同样是"一句话答得上来"：问一个还要想半天的问题，
+等于把补缺口这件事又推回给用户。
 """
-_RULES: tuple[tuple[str, str, CollectionSource, str], ...] = (
+_RULES: tuple[tuple[str, str, CollectionSource, str, str], ...] = (
     # ---- 学信网能给的：都是客观事实，一次核验全拿到 ----
-    ("major", "专业", CollectionSource.CHSI, "不知道你学什么，方向推荐就无从谈起"),
-    ("degree_level", "层次", CollectionSource.CHSI, "本科、专科、硕士对应的窗口期完全不同"),
-    ("expected_graduation", "预计毕业", CollectionSource.CHSI, "它决定你还有几个秋招窗口 —— 冲刺阶段的第一约束"),
-    ("school", "学校", CollectionSource.CHSI, "同一份简历，学校会影响哪些岗位值得投"),
-    ("enrollment_status", "学籍状态", CollectionSource.CHSI, "在读、休学、已毕业，能做的事不一样"),
-    ("duration", "学制", CollectionSource.CHSI, "排完整的时间安排要用它"),
-    ("study_mode", "学习形式", CollectionSource.CHSI, "全日制和非全日制，能投入的时间差很多"),
-    ("enrolled_at", "入学日期", CollectionSource.CHSI, "用来推算你现在几年级"),
+    ("major", "专业", CollectionSource.CHSI, "不知道你学什么，方向推荐就无从谈起", ""),
+    ("degree_level", "层次", CollectionSource.CHSI, "本科、专科、硕士对应的窗口期完全不同", ""),
+    ("expected_graduation", "预计毕业", CollectionSource.CHSI, "它决定你还有几个秋招窗口 —— 冲刺阶段的第一约束", ""),
+    ("school", "学校", CollectionSource.CHSI, "同一份简历，学校会影响哪些岗位值得投", ""),
+    ("enrollment_status", "学籍状态", CollectionSource.CHSI, "在读、休学、已毕业，能做的事不一样", ""),
+    ("duration", "学制", CollectionSource.CHSI, "排完整的时间安排要用它", ""),
+    ("study_mode", "学习形式", CollectionSource.CHSI, "全日制和非全日制，能投入的时间差很多", ""),
+    ("enrolled_at", "入学日期", CollectionSource.CHSI, "用来推算你现在几年级", ""),
     # ---- 只有本人知道的：问一句就有 ----
-    ("values", "价值取向", CollectionSource.CONVERSATION, "决定「稳定优先」还是「成长优先」，别人替不了你"),
-    ("interest", "兴趣", CollectionSource.CONVERSATION, "方向里哪些你愿意长期做，只有你说得清"),
-    ("experience", "经历", CollectionSource.CONVERSATION, "实习与项目是方向判断里最硬的一条证据"),
-    ("skills", "能力自评", CollectionSource.CONVERSATION, "和专业训练相互印证，避免只看成绩"),
+    (
+        "values",
+        "价值取向",
+        CollectionSource.CONVERSATION,
+        "决定「稳定优先」还是「成长优先」，别人替不了你",
+        "找工作的时候，你更在意稳定，还是更在意能不能长本事？",
+    ),
+    (
+        "interest",
+        "兴趣",
+        CollectionSource.CONVERSATION,
+        "方向里哪些你愿意长期做，只有你说得清",
+        "有没有什么事，你愿意反复做、做起来不觉得累？",
+    ),
+    (
+        "experience",
+        "经历",
+        CollectionSource.CONVERSATION,
+        "实习与项目是方向判断里最硬的一条证据",
+        "到目前为止，你花时间最多的那件事是什么？实习、项目、社团都算。",
+    ),
+    (
+        "skills",
+        "能力自评",
+        CollectionSource.CONVERSATION,
+        "和专业训练相互印证，避免只看成绩",
+        "别人最常夸你的一点是什么？一句话就行。",
+    ),
     # ---- 学信网没有、只能靠学生自己导入的：界面上要说清"怎么导" ----
-    ("courses", "课程表", CollectionSource.ACADEMIC, "没有课表就算不出这周真正能用的空档"),
-    ("scores", "成绩单", CollectionSource.ACADEMIC, "把课程成绩折算成能力证据"),
+    ("courses", "课程表", CollectionSource.ACADEMIC, "没有课表就算不出这周真正能用的空档", ""),
+    ("scores", "成绩单", CollectionSource.ACADEMIC, "把课程成绩折算成能力证据", ""),
 )
 
 """出厂可用的源头。
@@ -134,6 +181,18 @@ _DEFAULT_AVAILABLE: frozenset[CollectionSource] = frozenset(
     {CollectionSource.CHSI, CollectionSource.CONVERSATION}
 )
 
+"""下一步的候选顺序。
+
+三个阶段各是一类动作（核验 / 问一句 / 导入），顺序就是界面上的推荐顺序；
+**不得只列一部分** —— 少列一个源头，那个源头就会在"下一步"里永久消失，
+而它在清单里仍显示"能取"（见 `next_source` 的说明）。
+"""
+_SOURCE_PRIORITY: tuple[CollectionSource, ...] = (
+    CollectionSource.CHSI,
+    CollectionSource.CONVERSATION,
+    CollectionSource.ACADEMIC,
+)
+
 """所在阶段最卡的几项 —— 同一条缺口，在冲刺期比在探索期更该先补。"""
 _STAGE_FIRST: dict[str, tuple[str, ...]] = {
     "sprint": ("expected_graduation", "courses"),
@@ -144,13 +203,13 @@ _STAGE_FIRST: dict[str, tuple[str, ...]] = {
 }
 
 
-def _rules_from(specs: Sequence[Any]) -> tuple[tuple[str, str, CollectionSource, str], ...]:
-    """把动态资源里的规则收敛成内部用的四元组。
+def _rules_from(specs: Sequence[Any]) -> tuple[tuple[str, str, CollectionSource, str, str], ...]:
+    """把动态资源里的规则收敛成内部用的五元组。
 
     认不出的来源直接跳过，并**保持顺序** —— 顺序就是"先取哪一条"，
     换一份配置不该顺带把优先级也打乱。
     """
-    table: list[tuple[str, str, CollectionSource, str]] = []
+    table: list[tuple[str, str, CollectionSource, str, str]] = []
     for spec in specs:
         try:
             source = CollectionSource(getattr(spec, "source", "") or "")
@@ -165,6 +224,7 @@ def _rules_from(specs: Sequence[Any]) -> tuple[tuple[str, str, CollectionSource,
                 str(getattr(spec, "label", "") or key),
                 source,
                 str(getattr(spec, "why", "") or ""),
+                str(getattr(spec, "ask", "") or ""),
             )
         )
     return tuple(table)
@@ -289,7 +349,7 @@ def plan_collection(
     blocked: list[str] = []
     missing = 0
 
-    for key, label, source, why in table:
+    for key, label, source, why, ask in table:
         got = key in have
         available = source.value in usable
         signal = heard_by_key.get(key)
@@ -310,6 +370,9 @@ def plan_collection(
                 got=got,
                 available=available,
                 heard=signal.said if signal is not None else "",
+                # 只有"问一句"那一类才有问题；已经拿到的不再问，所以也不给问题 ——
+                # 界面据此不给已完成的条目挂"去回答"。
+                ask=ask if (source is CollectionSource.CONVERSATION and not got) else "",
             )
         )
 

@@ -12,6 +12,8 @@
  * 既渲染不出东西，又让"哪份数据是真的"看不出来。已整体删除。
  */
 
+import type { RenderableView } from '@/api/client'
+
 export type StageId = 'explore' | 'aim' | 'sprint' | 'adapt' | 'relocate'
 
 export interface Stage {
@@ -96,6 +98,13 @@ export interface ChatTurn {
   id: number
   role: 'ai' | 'me'
   text: string
+  /**
+   * 这一轮交上去的材料。
+   *
+   * 只有"它是什么"（名字 + 读到多少字）——**没有正文**：正文在服务端，
+   * 只在用到它的那一轮进模型输入。把正文摊在对话里正是要避免的那件事。
+   */
+  material?: { name: string; chars: number }
   /** 真后端联调时：这句是谁说的（主理展示名 / 编排器） */
   actor?: string
   /** AI 顺手给出的可点选项 —— 对话里也一样，先给选择再要求打字 */
@@ -103,17 +112,16 @@ export interface ChatTurn {
   /** 一句话之后可以顺手做的动作 */
   ask?: { label: string; kind: 'tasks' | 'portrait' | 'report' }
   /**
-   * 这一轮顺手给的图。
+   * 这一轮摆在回复里的**可视件**（图 / 时间线 / 对比表…）。
    *
+   * 形状直接用接口契约生成的那一份（`RenderableView`），
+   * 前端不再自己抄一遍：抄一遍的下场是"后端加了字段、这里还是旧形状"，
+   * 而那一处永远不会报错，只会安静地少显示一点东西。
    * 值全部来自**服务端实测数据**（画像各维把握、方案匹配度…），
-   * 不是模型写的数字 —— 图上的每个点都能追回它来自哪条记录。
+   * 不是模型写的数字 —— 图上每个点都能追回它来自哪条记录。
+   * 按 kind 分发渲染见 `components/render/RenderableBlock.vue`。
    */
-  chart?: {
-    kind: 'bars'
-    title: string
-    unit: string
-    points: { label: string; value: number }[]
-  }
+  renderables?: RenderableView[]
   /** 这一轮用到的外部情报来源（可点回原页面）；没有就是空 */
   intelRefs?: { id: string; title: string; kind_label: string; source_name: string; source_url: string }[]
 }

@@ -14,7 +14,8 @@
 
 支持四种形态，因为用户手上就这几种：
    · 强智课表页 / 成绩页的整页复制（HTML）
-   · 正方课表 / 成绩接口的 JSON
+   · 正方课表 / 成绩接口的 JSON（kbList 那套固定字段名）
+   · 用户自己导出的 JSON —— 顶层是数组、每门课一条，字段名各系统不同
    · 任何系统复制出来的表格文本（制表符 / 逗号分隔，带表头）
 """
 
@@ -68,8 +69,15 @@ def looks_like_html(raw: str) -> bool:
 
 
 def looks_like_json(raw: str) -> bool:
+    """JSON 的两种开头都要认：对象 `{…}` 与数组 `[…]`。
+
+    此前只认 `{`：**导出的 JSON 常常是数组**（一门课一个对象，整体包成 `[…]`），
+    于是那种文件连"这是 JSON"都算不上，被丢给表格读法，
+    最后报的是"读不出这是课表，请在课表页 Ctrl+A 全选复制" ——
+    用户手上的东西明明是对的，提示却在让他换一种复制方式。
+    """
     probe = (raw or "").strip()
-    return probe.startswith("{") and '"' in probe
+    return (probe.startswith("{") or probe.startswith("[")) and '"' in probe
 
 
 """页面指纹：出现其中之一就按那套版式读。
@@ -318,6 +326,282 @@ def parse_qz_grades(html: str) -> list[GradeEntry]:
             kind=AcademicImportKind.NO_ROWS,
         )
     return grades
+
+
+# ------------------------------------------------------------------ JSON
+#
+# JSON 有两个来源，界面上都叫「接口 JSON」：
+#
+#   1. **某个系统的固定版式**（正方：`kbList` + `kcmc/xqj/jcs…`）；
+#   2. **用户自己导出的通用形状**：顶层是数组、每门课一个对象，
+#      字段名各校各版不同（`course_name` / `kcmc` / `课程名称`…）。
+#
+# 第 2 种此前读不出来 —— 解析器只认 `kbList`，认不出就退回表格读法，
+# 报的是"读不出这是课表，去课表页 Ctrl+A 全选复制"。用户传上来一份**完全正确**
+# 的 JSON，看到的却是一句让他换复制方式的提示。这一层现在按**字段名**读：
+# 认不出的键名跳过，认得出的一条条落下来，一条都读不出时再如实说读不出。
+
+"""容器键：记录数组常常包在某个键里面。键名归一化后再比（见 `_normalize_key`）。"""
+_RECORD_KEYS: tuple[str, ...] = (
+    "kblist",
+    "kb_list",
+    "items",
+    "cjlist",
+    "rows",
+    "records",
+    "list",
+    "courses",
+    "courselist",
+    "gradelist",
+    "data",
+    "result",
+    "results",
+    "content",
+)
+
+"""
+字段同义词。**中英文都收**：学校自己导出的 JSON 里，"课程名称"和 `course_name`
+一样常见，收一半就等于对一半用户报"读不出"。
+
+顺序即优先级：同一行里同时有 `period` 和 `time` 时取 `period` ——
+`time` 常常只是钟点（08:20-10:00），而钟点换算成节次是编的（见 `parse_periods`）。
+"""
+_COURSE_JSON_KEYS: dict[str, tuple[str, ...]] = {
+    "name": (
+        "kcmc", "course_name", "coursename", "course", "name", "title",
+        "课程名称", "课程名", "课程", "科目",
+    ),
+    "teacher": (
+        "xm", "jsxm", "teacher", "teacher_name", "instructor",
+        "教师", "老师", "任课教师", "授课教师",
+    ),
+    "weekday": (
+        "xqj", "weekday", "week_day", "day", "day_of_week", "week",
+        "星期", "星期几", "周几", "上课星期",
+    ),
+    "period": (
+        "jcs", "jcor", "jcs2", "period", "periods", "section", "sections",
+        "节次", "上课节次", "时间", "上课时间", "time",
+    ),
+    "weeks": ("zcd", "zcmc", "weeks", "week_text", "周次", "上课周次"),
+    "place": (
+        "cdmc", "jxdd", "place", "location", "room", "classroom",
+        "地点", "教室", "上课地点", "上课教室",
+    ),
+    "credit": ("xf", "credit", "学分"),
+    "category": (
+        "kcxzmc", "kclbmc", "category", "course_type",
+        "课程性质", "课程类别", "类别", "性质",
+    ),
+}
+
+_GRADE_JSON_KEYS: dict[str, tuple[str, ...]] = {
+    "name": ("kcmc", "course_name", "coursename", "course", "name", "课程名称", "课程名", "课程"),
+    "credit": ("xf", "credit", "学分"),
+    "score": ("cj", "zcj", "score", "grade", "成绩", "总成绩", "分数"),
+    "point": ("jd", "gpoint", "point", "gpa", "绩点"),
+    "category": ("kcxzmc", "kclbmc", "category", "课程性质", "课程类别", "类别"),
+    "kind": ("kcsx", "kcxz", "kind", "课程属性", "必修选修", "属性"),
+    "term": ("xnmmc", "xn", "xqmmc", "xqm", "term", "学期", "学年学期", "学年"),
+}
+
+
+def parse_json_courses(payload: Any) -> tuple[str, list[CourseEntry]]:
+    """读课表 JSON →（学期, 课程表）。
+
+    两个读法按可靠性排序：**固定版式优先**（正方 `kbList` 的字段名是确定的），
+    认不出再按通用字段名逐条读。两种都读不出才报错 —— 报错也要说清是"没有可读的记录"
+    还是"记录的字段名一个都不认识"。
+    """
+    data = _load_json(payload)
+    if isinstance(data, dict) and any(key in data for key in ("kbList", "kb_list")):
+        try:
+            return parse_zf_schedule(data)
+        except AcademicImportError:
+            pass
+
+    rows = _record_rows(data) or _lone_record(data, _COURSE_JSON_KEYS["name"])
+    courses = [course for course in (_course_from_json_row(row) for row in rows) if course]
+    if not courses:
+        raise AcademicImportError(
+            "这段 JSON 里没读出课 —— 每门课要是一条带课名的记录"
+            "（课名字段常见的是「课程名称 / kcmc / course_name」）。"
+            "如果这是接口返回的整包数据，整段复制过来再试一次。",
+            kind=AcademicImportKind.NO_ROWS if rows else AcademicImportKind.UNRECOGNIZED,
+            detail=f"rows={len(rows)}",
+        )
+    return _term_from_json(data, rows), courses
+
+
+def parse_json_grades(payload: Any) -> list[GradeEntry]:
+    """读成绩 JSON。同 `parse_json_courses`：固定版式优先，认不出再按字段名读。"""
+    data = _load_json(payload)
+    if isinstance(data, dict) and any(key in data for key in ("items", "cjList")):
+        try:
+            return parse_zf_grades(data)
+        except AcademicImportError:
+            pass
+
+    rows = _record_rows(data) or _lone_record(data, _GRADE_JSON_KEYS["name"])
+    grades = [grade for grade in (_grade_from_json_row(row) for row in rows) if grade]
+    if not grades:
+        raise AcademicImportError(
+            "这段 JSON 里没读出成绩 —— 每条要是一行带课名的记录"
+            "（录名字段常见的是「课程名称 / kcmc / course_name」，成绩是「成绩 / cj / score」）。",
+            kind=AcademicImportKind.NO_ROWS if rows else AcademicImportKind.UNRECOGNIZED,
+            detail=f"rows={len(rows)}",
+        )
+    return grades
+
+
+def _record_rows(data: Any, *, depth: int = 2) -> list[dict[str, Any]]:
+    """从 JSON 里取出「一条记录一个对象」的数组。
+
+    只看**形状**（是不是一串对象），不看键名叫什么 —— 键名是各系统自己起的，
+    认键名就等于只支持我们见过的那几种。往下一层找是为了
+    `{"code":0,"data":{"list":[…]}}` 这类包了一层的返回；深度给 2 层就够，
+    再深就不是"记录数组"，而是别的东西了（继续找会把无关的数组当成课表）。
+    """
+    if isinstance(data, list):
+        return [row for row in data if isinstance(row, dict)]
+    if not isinstance(data, dict) or depth <= 0:
+        return []
+
+    normalized = _normalized_keys(data)
+    for key in _RECORD_KEYS:
+        value = normalized.get(key)
+        if not isinstance(value, list):
+            continue
+        rows = [row for row in value if isinstance(row, dict)]
+        if rows:
+            return rows
+
+    # 键名不在上面那张表里：看谁的值是"一串对象"，多个候选就取最长的那条
+    candidates = [
+        [row for row in value if isinstance(row, dict)]
+        for value in data.values()
+        if isinstance(value, list)
+    ]
+    candidates = [rows for rows in candidates if rows]
+    if candidates:
+        return max(candidates, key=len)
+
+    for value in data.values():
+        if isinstance(value, dict):
+            rows = _record_rows(value, depth=depth - 1)
+            if rows:
+                return rows
+    return []
+
+
+def _normalize_key(key: str) -> str:
+    """键名归一化：`course_name` / `courseName` / `Course-Name` 认成同一个键。"""
+    return re.sub(r"[\s_\-.]", "", (key or "").strip().lower())
+
+
+def _lone_record(data: Any, name_keys: tuple[str, ...]) -> list[dict[str, Any]]:
+    """整份 JSON 就是**一条**记录时的兜底：把那个对象自己当成一行。
+
+    有人从课表里挑一条存下来，文件里就一个对象（没有数组）。它有课名字段，
+    形状上就是一条记录 —— 认它，比让他"再导出一次完整课表"有用。
+    """
+    if isinstance(data, dict) and _pick_json(data, name_keys):
+        return [data]
+    return []
+
+
+def _normalized_keys(row: dict[str, Any]) -> dict[str, Any]:
+    return {_normalize_key(str(key)): value for key, value in row.items()}
+
+
+def _pick_json(row: dict[str, Any], keys: tuple[str, ...]) -> str:
+    """按同义词取一个字段值。取不到返回空串 —— **不按位置硬套**。"""
+    normalized = _normalized_keys(row)
+    for key in keys:
+        value = normalized.get(_normalize_key(key))
+        if isinstance(value, (list, tuple)):
+            value = " ".join(str(part) for part in value if part not in (None, ""))
+        if value is None or value == "":
+            continue
+        text = str(value).strip()
+        if text:
+            return text
+    return ""
+
+
+def _pick_json_many(row: dict[str, Any], keys: tuple[str, ...]) -> str:
+    """把多个字段拼成一句（学年 + 学期号 = 学期）—— 只在这里拼，别处不拼。"""
+    normalized = _normalized_keys(row)
+    parts: list[str] = []
+    for key in keys:
+        value = normalized.get(_normalize_key(key))
+        if value is None or value == "" or isinstance(value, (list, dict)):
+            continue
+        text = str(value).strip()
+        if text and text not in parts:
+            parts.append(text)
+    return " ".join(parts)
+
+
+def _course_from_json_row(row: dict[str, Any]) -> Optional[CourseEntry]:
+    name = _pick_json(row, _COURSE_JSON_KEYS["name"])
+    if not name:
+        return None
+    start, end = parse_periods(_pick_json(row, _COURSE_JSON_KEYS["period"]))
+    return CourseEntry(
+        name=name,
+        teacher=_pick_json(row, _COURSE_JSON_KEYS["teacher"]),
+        weekday=parse_weekday(_pick_json(row, _COURSE_JSON_KEYS["weekday"])),
+        start_period=start,
+        end_period=end,
+        weeks=_pick_json(row, _COURSE_JSON_KEYS["weeks"]),
+        place=_pick_json(row, _COURSE_JSON_KEYS["place"]),
+        credit=_pick_json(row, _COURSE_JSON_KEYS["credit"]),
+        category=_pick_json(row, _COURSE_JSON_KEYS["category"]),
+    )
+
+
+def _grade_from_json_row(row: dict[str, Any]) -> Optional[GradeEntry]:
+    name = _pick_json(row, _GRADE_JSON_KEYS["name"])
+    if not name:
+        return None
+    return GradeEntry(
+        term=_pick_json_many(row, _GRADE_JSON_KEYS["term"]),
+        name=name,
+        credit=_pick_json(row, _GRADE_JSON_KEYS["credit"]),
+        score=_pick_json(row, _GRADE_JSON_KEYS["score"]),
+        point=_pick_json(row, _GRADE_JSON_KEYS["point"]),
+        category=_pick_json(row, _GRADE_JSON_KEYS["category"]),
+        kind=_pick_json(row, _GRADE_JSON_KEYS["kind"]),
+    )
+
+
+def _term_from_json(data: Any, rows: list[dict[str, Any]]) -> str:
+    """学期：先看记录里有没有，再看整包数据的头部。
+
+    读不到就留空 —— 界面上写"本学期"也比编一个学期名好。
+    """
+    for row in rows:
+        term = _pick_json_many(row, _GRADE_JSON_KEYS["term"])
+        if term:
+            return term
+    if isinstance(data, dict):
+        return _pick_json_many(data, _GRADE_JSON_KEYS["term"])
+    return ""
+
+
+def _load_json(payload: Any) -> Any:
+    """把 JSON 原文读成对象 / 数组。不是合法 JSON 时如实报错（不猜）。"""
+    if not isinstance(payload, str):
+        return payload
+    try:
+        return json.loads(payload)
+    except json.JSONDecodeError as exc:
+        raise AcademicImportError(
+            "这段 JSON 不完整（括号或引号没闭合）—— 确认整段复制过来。",
+            kind=AcademicImportKind.UNRECOGNIZED,
+            detail=str(exc),
+        ) from exc
 
 
 # ------------------------------------------------------------------ 正方（JSON）
@@ -660,6 +944,8 @@ __all__ = [
     "looks_like_html",
     "looks_like_json",
     "parse_periods",
+    "parse_json_courses",
+    "parse_json_grades",
     "parse_qz_grades",
     "parse_qz_schedule",
     "parse_tabular_courses",

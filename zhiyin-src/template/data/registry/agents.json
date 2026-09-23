@@ -39,8 +39,10 @@
       "tools": [
         "profile.read",
         "behavior.recent",
+        "plan.read",
         "kb.search",
-        "xuezhi.search"
+        "xuezhi.search",
+        "chart.render"
       ],
       "call_scenarios": [
         "诊断",
@@ -63,7 +65,9 @@
       ],
       "tools": [
         "profile.read",
-        "kb.search"
+        "plan.read",
+        "kb.search",
+        "chart.render"
       ],
       "call_scenarios": [
         "决策落地成计划",
@@ -85,7 +89,9 @@
       ],
       "tools": [
         "profile.read",
-        "behavior.recent"
+        "behavior.recent",
+        "plan.read",
+        "chart.render"
       ],
       "call_scenarios": [
         "主动干预",

@@ -15,6 +15,10 @@ license = { text = "Proprietary" }
 # 运行依赖：只保留自有基础设施真正用到的部分。
 dependencies = [
     "fastapi>=0.110",
+    # FastAPI 解析 multipart 表单（`UploadFile` / `Form`）要用它，而它**不在** fastapi
+    # 的必装依赖里：不声明的话，本机（碰巧装了）跑得通，镜像里一调上传接口就 500。
+    # 课表/成绩的"上传文件"入口就落在这一条上（见 api/controllers/workspace_controller.py）。
+    "python-multipart>=0.0.9",
     "uvicorn>=0.29",
     "pydantic>=2.6",
     "redis>=5.0",

@@ -23,13 +23,19 @@ const session = useSessionStore()
 const router = useRouter()
 
 /**
- * 同时最多摆四片。
- * 消息会一直来，屏幕上不能一直堆 —— 多出来的收成一条计数。
+ * **一次只摆一片。**
+ *
+ * 原来最多摆四片（叠成书签），实测的后果是：后台一次拉回几条（教练提醒 + 集群给的
+ * 下一步 + 交接），屏幕右上角**同时跳出来五个**（这层四片 + 轨道播报一片）。
+ * 用户的原话是"无论拉取几个信息都只跳一个才对" —— 对。
+ *
+ * 消息是"顺路看一眼"的东西，不是任务列表：一片一片看，看完了下一条自己顶上来。
+ * 还剩几条用一行计数说清楚，点它就直接看下一条。
  *
  * 外部情报（tone=intel）**不归这一层管**：它走右上轨道的实时播报体系
  * （AgentRail 的 pops，和"谁接手了"同一套显示），不再单飞到右下角。
  */
-const MAX_OPEN = 4
+const MAX_OPEN = 1
 const mine = computed(() => session.floats.filter((f) => f.tone !== 'intel'))
 const visible = computed(() => mine.value.slice(0, MAX_OPEN))
 const overflow = computed(() => mine.value.slice(MAX_OPEN))
@@ -194,22 +200,25 @@ function onAction(kind: string, id: string) {
         />
       </TransitionGroup>
 
-      <div v-if="overflow.length || mine.length > 1" class="layer__foot">
+      <div v-if="overflow.length" class="layer__foot">
+        <!--
+          一次只摆一片，前提是"还剩几条"必须看得见，而且得能接着看。
+          所以这一行的两条动作是：**看下一条**（把当前这条收掉，下一条自己顶上来）
+          与**全部收掉**（用户不想一条条看的时候）。
+        -->
         <button
-          v-if="overflow.length"
           class="layer__more label"
           type="button"
-          @click="overflow.forEach((f) => session.dismissFloat(f.id))"
+          @click="session.dismissFloat(visible[0]?.id ?? '')"
         >
-          还有 {{ overflow.length }} 条较旧的 · 清掉
+          还有 {{ overflow.length }} 条 · 看下一条
         </button>
         <button
-          v-if="mine.length > 1"
           class="layer__clear label"
           type="button"
           @click="mine.forEach((f) => session.dismissFloat(f.id))"
         >
-          全部清掉（{{ mine.length }}）
+          全部收掉（{{ mine.length }}）
         </button>
       </div>
     </template>

@@ -273,6 +273,23 @@ class InMemoryConversationTurnRepository(ConversationTurnRepository):
         items.sort(key=lambda item: item.created_at)
         return [_snapshot(item) for item in items][-limit:]
 
+    async def find_reply_by_client_msg_id(
+        self, user_id: str, client_msg_id: str
+    ) -> Optional[ConversationTurn]:
+        if not client_msg_id:
+            return None
+        matched = [
+            turn
+            for turn in self._turns
+            if turn.user_id == user_id
+            and turn.client_msg_id == client_msg_id
+            and turn.role == "agent"
+        ]
+        if not matched:
+            return None
+        matched.sort(key=lambda item: item.created_at)
+        return _snapshot(matched[-1])
+
 
 class InMemoryUserNoteRepository(UserNoteRepository):
     """用户自建内容：内存实现，语义与 Postgres 版一致（更新即改 updated_at）。"""
@@ -367,6 +384,25 @@ class InMemoryAssetRepository(AssetRepository):
         affected.sort(key=lambda item: (item.asset_type.value, item.version))
         return [_snapshot(item) for item in affected]
 
+    async def mark_needs_recompute(
+        self, user_id: str, asset_type: AssetType, *, reason: str
+    ) -> Optional[AssetVersion]:
+        matched = self._by_type(user_id, asset_type)
+        if not matched:
+            return None
+        latest = matched[-1]
+        # 原地改最新那一版：不追加版本、不动正文，只把"这版是旧的"如实记下来。
+        marker = latest.model_copy(
+            update={"needs_recompute": True, "recompute_reason": reason}
+        )
+        # 按**身份**替换，不按 `==`：Pydantic 的相等是按字段比，两条内容一样的
+        # 版本会互相顶掉（旧版被改新、新版原样留着），这种错不报错、只错数据。
+        for index, item in enumerate(self._versions):
+            if item is latest:
+                self._versions[index] = marker
+                break
+        return _snapshot(marker)
+
     # ---------- 诊断报告 ----------
 
     async def get_report(self, user_id: str, version: Optional[int] = None) -> Optional[Report]:
@@ -375,10 +411,10 @@ class InMemoryAssetRepository(AssetRepository):
             return None
         if version is None:
             return _snapshot(reports[-1])
-        for item in reports:
-            if item.version == version:
-                return _snapshot(item)
-        return None
+        # 指定版本没有正文时退到"不晚于它的最新一版"：影响面传播留下的空版本
+        # （只有版本行、没有正文）点了不该是空白页 —— 见 mark_needs_recompute。
+        candidates = [item for item in reports if item.version <= version]
+        return _snapshot(candidates[-1]) if candidates else None
 
     async def save_report(self, report: Report) -> Report:
         stored = _snapshot(report)

@@ -140,6 +140,10 @@ class ConversationTurn(BaseModel):
     text: str
     loop_stage: LoopStage
     agent_id: str = Field(default="", description="role=agent 时是哪位主理")
+    client_msg_id: str = Field(
+        default="",
+        description="前端给的幂等键。重发同一条消息时据此认出「这条已经答过了」，不再走一遍模型",
+    )
     created_at: datetime
 
 
@@ -160,6 +164,17 @@ class AssetVersion(BaseModel):
     depends_on_profile_keys: list[str] = Field(default_factory=list)
     diff_from_previous: Optional[str] = Field(
         default=None, description="v(n-1) → v(n) 的差异说明，首版为空"
+    )
+    needs_recompute: bool = Field(
+        default=False,
+        description=(
+            "画像变了、这一版还没跟着重算。**只标记，不升版** —— "
+            "升版意味着「内容真的重算过」，而校验过的新正文是在下一次进入该环节时才产出的"
+        ),
+    )
+    recompute_reason: str = Field(
+        default="",
+        description="为什么要重算：给用户看的一句话，说明是哪次画像更新让这一版过期了",
     )
 
 

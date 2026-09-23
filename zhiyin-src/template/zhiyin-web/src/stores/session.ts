@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { CHAT_SEED, type ChatTurn, type FloatItem, type StageId } from '@/data/content'
-import { buildAsk, type Ask, type BehaviorGuide } from '@/lib/asks'
+import { buildAsk, type Ask, type BehaviorGuide, type GuideOption } from '@/lib/asks'
 import { readFetched, readIntelText } from '@/lib/intel'
 import {
   BackendUnavailableError,
@@ -19,12 +19,16 @@ import {
   getPendingNotifications,
   markNotificationRead,
   getBootstrap,
+  getActionPlan,
+  getAchievements,
+  type AchievementListView,
   listNotes,
   addNote,
   setNoteDone,
   removeNote,
   authenticate,
   signOutRemote,
+  type ActionPlan,
   type ReportFullText,
   type ProfileField,
   type TheoryRef,
@@ -68,6 +72,14 @@ export const BLOCK_RETURN_MS: Record<string, number> = {
   people: 40000,
   review: 68000,
 }
+
+/**
+ * 工作台数据"读到第几轮"的序号（见 `loadBackend` 里的读侧排序）。
+ *
+ * 放在模块级而不是 state 里：它是**并发控制**用的，界面不该读到它，
+ * 也不该有人把它当业务状态去渲染。
+ */
+let loadSeq = 0
 
 /**
  * 通知渠道 → 界面上的署名。
@@ -191,6 +203,8 @@ export const useSessionStore = defineStore('session', {
       | 'sessions'
       /* ⑤ 复盘：这段时间发生过什么 */
       | 'review'
+      /* 完成记录：做到过的那几件事（由行为日志推导，不落表） */
+      | 'achievements'
       /* 外部情报：从公开渠道按你的方向取回的一批事实 */
       | 'intel',
     portraitFocus: null as 'gaps' | null,
@@ -210,6 +224,26 @@ export const useSessionStore = defineStore('session', {
     intelTopic: '',
     intelBusy: false,
     intelError: '',
+    /**
+     * 行动计划的正文（`GET /app/plan/action`）。
+     *
+     * 待办卡片的"为什么这一件"必须回答"为什么是这件、不是别的"，
+     * 而那个答案只能来自**这一版计划本身**（阶段、截止、下一条）。
+     * 让组件点一下再去取，按钮就少了那一下的反馈；所以跟着工作台一起取进来。
+     */
+    actionPlan: null as null | ActionPlan,
+    /**
+     * 完成记录（`GET /app/achievements`）。
+     *
+     * 与其余"共享切片"同一个道理放在 store：画布上那一块与浮层读的是同一份，
+     * 一次取数两处读。它跟着 `loadBackend` 一起刷新 —— 也就是说**做完一件事
+     * （勾任务、选方案、复盘）之后，那一块与浮层会一起多出一枚**，
+     * 不需要用户重新进页面。
+     *
+     * 名字与"怎么拿到"不在这里：那两句按 `badge.<key>.label` / `.how`
+     * 从 `copyBundle` 取（文案包，运营可改）。
+     */
+    achievements: null as null | AchievementListView,
     /** 从别处（对话里的引用）跳进来时，要停在**哪一条**上 */
     intelFocus: '' as string,
     /**
@@ -222,6 +256,20 @@ export const useSessionStore = defineStore('session', {
 
     /* 浮窗 */
     floats: [] as FloatItem[],
+
+    /**
+     * **数据版本号 —— 组件之间唯一的联动信号。**
+     *
+     * 为什么需要它：后端那条联动是完整的（画像一变就失效读侧缓存、资产标"待重算"、
+     * AI 任务缓存作废），但前端是**各组件各拉各的**：有的地方一轮对话后会重拉
+     * （工作台那一片），有的地方**拉过一次就再也不拉**（日历的月历点与那一天的任务，
+     * 它是随画布挂载的，等于整页会话里冻住不动）。
+     * 实测症状：你聊了几轮、计划都重算过了，点开日历还是进来那一刻的样子。
+     *
+     * 所以：任何一次"库里的数据变了"都把这个数 +1，各组件自己按它决定要不要重拉。
+     * 拉不拉、拉什么仍然由组件决定（有的贵、有的便宜），但**变没变**只有一处说了算。
+     */
+    dataVersion: 0,
     /** 已经塞过浮窗的"下一步"（按 ask id 去重：同一件事只提醒一次） */
     askFloatSeen: [] as string[],
     acceptedNotices: [] as string[],
@@ -229,6 +277,15 @@ export const useSessionStore = defineStore('session', {
 
     /* 被用户关掉的主画布块：id -> 什么时候该回来 */
     hiddenBlocks: {} as Record<string, number>,
+    /**
+     * 已经"知道/读过"的块：本会话内不再飘回来。
+     *
+     * 和 `hiddenBlocks` 是两件事：关掉只是**让位**（过一会儿还回来，那是刻意的），
+     * 而"知道"是**认了这件事**——交接提醒读过一次就不该再提醒第二次。
+     * 之前这两件事共用一个行为，于是"知道"按下去等于"暂时收起"，
+     * 用户分不出它到底生效没有。
+     */
+    ackedBlocks: [] as string[],
 
     /*
      * 业务对话。
@@ -291,7 +348,27 @@ export const useSessionStore = defineStore('session', {
 
     /* 对话里"正在等用户回答的那一句" —— 从某个动作点进来时带过来的 */
     chatPrompt: '' as string,
-    chatOptions: [] as string[],
+    /**
+     * 此刻可以点的选项 —— **带着身份**，不是一串显示文字。
+     *
+     * 之前这里存的是 `string[]`（只有 label）。后果很具体：
+     * 用户点"我先把代码传上去"，发回去的只是一句文本，后端分不清
+     * "他选了上一轮那个选项"和"他随口说了这几个字"，于是同一个问题
+     * 连同同一组选项又问了一遍 —— 用户看到的是"点了没反应"。
+     * 现在原样留着 `option_id` / `value`（见 `sendChat`）。
+     */
+    chatOptions: [] as GuideOption[],
+    /**
+     * 这一轮**已经点过**的那个选项。
+     *
+     * 用途只有一个：后端没能推进时（又问了同一句、同一组选项），
+     * 界面上那一条要显示成"已答"，并给出明确的澄清 —— 不能让用户
+     * 对着一模一样的问题再点一次，那看起来就是坏了。
+     */
+    chatAnswered: null as null
+      | { question: string; optionId: string; label: string; optionLabels: string[] },
+    /** 后端没能推进这一轮时，界面上那句明白话 */
+    chatClarify: '',
     authNotice: '',
     wsPanels: null as null | {
       action: string
@@ -326,6 +403,8 @@ export const useSessionStore = defineStore('session', {
         label: string
         source: string
         why: string
+        /** 这条缺口对应的那一句追问（只有 conversation 源有）。空 = 没有可点的直接动作 */
+        ask: string
         got: boolean
         available: boolean
       }[]
@@ -410,19 +489,112 @@ export const useSessionStore = defineStore('session', {
   },
 
   actions: {
+    /**
+     * 库里的数据变了 → 版本号 +1。
+     *
+     * 调用点有两类，两类都必须有：
+     *   · 一轮对话结束（`loadBackend` 之后）—— 画像、缺口、资产、计划都可能刚变；
+     *   · 用户在界面上做了动作（勾任务、选方案、导入课表、收下建议…）——
+     *     那些接口各自改了一部分库，而**日历/画像/报告读的是另一份**。
+     * 漏掉哪一类，那一类数据就会"停在进来那一刻"，而且是静默的。
+     */
+    bumpData() {
+      this.dataVersion += 1
+    },
+
+    /**
+     * 动作之后：把**共享切片**重拉一遍，再叫醒所有组件。
+     *
+     * 和 `bumpData` 的区别是"谁去补数据"：
+     *   · `bumpData` 只说"变了"，谁手上有一份谁自己去补（日历、情报这类自取的）；
+     *   · `revalidate` 连**store 自己持有的那几份**（画像、采集动线、面板、计划、通知、
+     *     气泡编排）一起重拉 —— 这些是画布上大多数块读的东西，一次动作就可能
+     *     碰到其中好几份（勾掉一件任务会改面板口径与"现在这一件"；
+     *     选一套方向会改关键节点与下一步）。
+     *
+     * 为什么值得多这一趟：动作的落点常常**不在**用户看的那块界面上。
+     * 勾任务发生在计划浮层里，而"今天该做的是…"写在今日简报、点写在日历上 ——
+     * 只通知不重拉的话，那两处会停在点下去之前的样子，而且没有任何提示。
+     *
+     * 顺序是先通知再重拉：重拉要等网络，组件不该陪着等。
+     * `loadBackend` 结尾还会再通知一次（它自己拉完也得说），两次不冲突 ——
+     * 组件按版本号判断，正在拉的会 join 同一个请求。
+     */
+    async revalidate() {
+      this.bumpData()
+      await this.loadBackend()
+    },
+
+    /**
+     * 界面动作直接拿回来的最新一份行动计划 → 落到共享切片上。
+     *
+     * `PATCH /app/plan/action/tasks` 的**回包就是这一版计划本身**，比再取一次准，
+     * 也比再取一次快：待办卡片的"现在这一件"、日历上那一天的任务、计划浮层里的勾，
+     * 三处读的都是这一份，改它一处，三处同时跟上。
+     */
+    applyActionPlan(plan: ActionPlan | null) {
+      // 这一份比任何**正在飞**的读都新（它是写的结果）：把序号推一格，
+      // 让那些更早发起的读回来时自己作废，别拿旧计划盖掉刚勾完的结果。
+      loadSeq += 1
+      this.actionPlan = plan
+      this.bumpData()
+    },
+
     /** 挂载时拉真实工作台数据；失败静默（演示回落），成功后画像气泡换真数据 */
     async loadBackend() {
       // 没登录就别去敲这些端点：它们按登录态返回 401，
       // 敲一遍只会得到一串"缺少登录令牌"，然后靠 try/catch 咽掉。
       if (!authToken()) return
       try {
+        /*
+         * **这一拉属于哪一轮。**
+         *
+         * 同一时刻可能有两个在飞：进页面那次、一轮对话之后那次（还有动作之后的
+         * `revalidate`）。它们不保证按发起的顺序返回 —— 先发的那次后回来，
+         * 就会拿旧数据盖掉新数据。实测症状很具体：一轮对话刚重排了计划，
+         * 随后那次较早的读把旧计划写回 store，界面手上那个 `task_id`
+         * 在库里已经不存在了，点勾选就是 404（而再点一次又好了，因为那时新数据回来了）。
+         *
+         * 所以读侧排序：**谁最后发起，谁说了算**。晚发起的读一定看到更晚的事实
+         * （都在同一张库上），所以"发起得晚"就是"更可信"。这一条不做的话，
+         * 后面写多少"动作之后重拉"都会被一次慢响应带回旧世界。
+         */
+        const mySeq = ++loadSeq
+        /*
+         * 先把要读的**全部读完**，再开始写：中间不留 await，
+         * 于是"这份数据还算不算数"只需要判一次（下面那行）。
+         */
         const [ws, boot, notes, report] = await Promise.all([
           getWorkspace(),
           getBootstrap().catch(() => null),
           listNotes().catch(() => null),
           getReportFullText().catch(() => null),
         ])
+        /*
+         * 行动计划：待办卡片的"为什么这一件"要用它。
+         *
+         * 读不到就是 null（还没到 ④），界面据此说"这一件还没定下来"，
+         * 而不是拿阶段固定文案顶上 —— 那句文案回答了"这个阶段在做什么"，
+         * 回答不了"为什么是这一件"。
+         *
+         * 取失败（catch 成 null）**不覆盖**手上那份：一次刷新没连上，
+         * 不该把待办卡片上的"现在这一件"和日历上那一天的任务一起抹掉 ——
+         * 那是把"我没读到"显示成了"你没有计划"。
+         * 真没有计划时后端给的是 `has_plan=false` 的一份，不是 null。
+         */
+        const plan = await getActionPlan().catch(() => null)
+        const notices = await getPendingNotifications().catch(() => [])
+        /*
+         * 完成记录：取不到就**保留手上那份**（与计划同一条道理）——
+         * 一次刷新没连上，不该让"你已经拿到 3 枚"变成"一枚都没有"。
+         */
+        const achievements = await getAchievements().catch(() => null)
+        // 期间又发起了一次更新的一拉 → 这一份作废（整份丢，不做半截写入）
+        if (mySeq !== loadSeq) return
+
         this.report = report
+        if (plan) this.actionPlan = plan
+        if (achievements) this.achievements = achievements
         /*
          * 他写下过的东西要跟着账号回来。
          *
@@ -450,7 +622,7 @@ export const useSessionStore = defineStore('session', {
         // 采集动线：缺什么、去哪取、为什么 —— 只搬形状，不重算
         const cp = ws.collection_panel
         if (cp) {
-          this.collection = {
+        this.collection = {
             missing: cp.missing ?? 0,
             bySource: cp.by_source ?? {},
             blocked: cp.blocked ?? [],
@@ -460,6 +632,7 @@ export const useSessionStore = defineStore('session', {
               label: it.label ?? it.key,
               source: it.source ?? '',
               why: it.why ?? '',
+              ask: it.ask ?? '',
               got: !!it.got,
               available: it.available !== false,
             })),
@@ -531,7 +704,6 @@ export const useSessionStore = defineStore('session', {
               updatedAt: pp.updated_at ?? null,
             }
           : null
-        const notices = await getPendingNotifications().catch(() => [])
         for (const n of notices) {
           if (this.acceptedNotices.includes(n.id)) continue
           this.pushFloat({
@@ -552,6 +724,8 @@ export const useSessionStore = defineStore('session', {
         }
         // 集群判断的"下一步"也进同一叠（初次进入时就能看到）
         this.syncAskFloat()
+        // 数据落定：告诉所有组件"库里的东西变了"（画像/缺口/资产/编排都在这一拉里）
+        this.bumpData()
       } catch (cause) {
         if (cause instanceof UnauthorizedError) {
           /*
@@ -711,6 +885,8 @@ export const useSessionStore = defineStore('session', {
         )
         this.assignTodoDue(localId, undefined)
         this.assignTodoDue(saved.id, due)
+        // 写进库了：采集动线要引用"他自己写下的"这些话，让它跟着变
+        void this.revalidate()
       } catch (cause) {
         if (cause instanceof UnauthorizedError || cause instanceof BackendUnavailableError) {
           this.todoSynced = false
@@ -735,6 +911,13 @@ export const useSessionStore = defineStore('session', {
       } catch {
         // 后端不可达：界面上的勾选状态先保留，不回滚 —— 回滚比没同步更让人费解
       }
+      /*
+       * 自建内容也是库里的一份事实，而且别处真的会读它：采集动线的优先级
+       * 要引用"他自己写下的"那些话，今日简报也一样。所以这里不是只发个通知，
+       * 而是把共享切片一起重拉（`revalidate`）—— 只通知的话，采集那块会停在
+       * 你写下这条之前的样子。
+       */
+      void this.revalidate()
     },
     async removeCustomTodo(id: string) {
       this.customTodos = this.customTodos.filter((t) => t.id !== id)
@@ -743,6 +926,7 @@ export const useSessionStore = defineStore('session', {
       } catch {
         // 同上：本地已经删掉，就不把它弹回来
       }
+      void this.revalidate()
     },
 
     /* ---- 智能体建议 ---- */
@@ -778,6 +962,7 @@ export const useSessionStore = defineStore('session', {
         | 'calendar'
         | 'sessions'
         | 'review'
+        | 'achievements'
         | 'intel',
       focus: 'gaps' | null = null,
     ) {
@@ -817,6 +1002,19 @@ export const useSessionStore = defineStore('session', {
       const wait = BLOCK_RETURN_MS[id] ?? 45000
       this.hiddenBlocks = { ...this.hiddenBlocks, [id]: Date.now() + wait }
     },
+    /**
+     * "知道了" —— 认下这件事，本会话不再提醒。
+     *
+     * 与 `hideBlock` 的区别是语义：那个是"让位，过会儿还回来"（时间到了自己飘回），
+     * 这个是"我读过了，别再问了"。交接提醒（谁在帮你）按下"知道"就该是后者，
+     * 否则 40 秒后同一张卡又回来，用户只会以为刚才那一下没生效。
+     */
+    ackBlock(id: string) {
+      if (!this.ackedBlocks.includes(id)) this.ackedBlocks = [...this.ackedBlocks, id]
+      const next = { ...this.hiddenBlocks }
+      delete next[id]
+      this.hiddenBlocks = next
+    },
     /** 每秒扫一次：到点的块自己飘回来 */
     sweep() {
       const now = Date.now()
@@ -841,9 +1039,11 @@ export const useSessionStore = defineStore('session', {
      * 这是整个"AI 指哪打哪"的落点：用户不用先找到对话入口、再想一遍该说什么，
      * 点完就已经站在问题上了。
      */
-    askChat(prompt = '', options: string[] = []) {
+    askChat(prompt = '', options: GuideOption[] = []) {
       this.chatPrompt = prompt
       this.chatOptions = options
+      this.chatAnswered = null
+      this.chatClarify = ''
       this.overlay = 'talk'
     },
 
@@ -888,7 +1088,8 @@ export const useSessionStore = defineStore('session', {
       const ask = this.nextAsk
       if (!ask) return
       if (ask.target.to === 'chat') {
-        this.askChat(ask.target.prompt, ask.target.options.map((o) => o.label))
+        // 选项原样带过去（含 option_id / value），点下去之后才知道用户选的是哪一个
+        this.askChat(ask.target.prompt, ask.target.options)
         return
       }
       if (ask.target.to === 'tasks') {
@@ -996,14 +1197,54 @@ export const useSessionStore = defineStore('session', {
     clearChatPrompt() {
       this.chatPrompt = ''
       this.chatOptions = []
+      this.chatClarify = ''
     },
 
-    async sendChat(text: string) {
+    /**
+     * 发一轮话。
+     *
+     * `option` 是"这一轮点的是哪个选项"。带它的时候，**选项的身份一起发下去**
+     * （`sendMessage` 的 option_id / value），而不是只把它当一句话 ——
+     * 只发 label 的话后端认不出这是"选了上一轮的那个选项"，
+     * 于是可能把同一个问题再问一遍（见 store.chatOptions 的说明）。
+     *
+     * `materials` 是"这一轮一起交上去的材料"（已经上传完成、拿到 id 的）。
+     * 只发 id：正文在服务端，发 `text` 里就等于把文件又摊开在对话里 ——
+     * 那正是用户抱怨过的那件事。气泡上显示的是一枚材料卡。
+     */
+    async sendChat(
+      text: string,
+      option?: GuideOption,
+      materials: { material_id: string; name: string; chars: number }[] = [],
+    ) {
       const value = text.trim()
-      if (!value) return
+      // 只交材料、不写字也是完整的一轮（"这是我传的材料"本身就是一句话）
+      if (!value && !materials.length) return
+      const names = materials.map((m) => m.name).join('、')
+      // 一个字都没打时替他补一句短的：**不补正文**，补的是"我交了什么"
+      const spoken = value || `我传了一份材料：${names}`
+      // 记住"这一轮答的是哪一句、答的哪一条"：后端若原地打转，界面要靠它说清楚
+      this.chatAnswered = option
+        ? {
+            question: this.chatPrompt,
+            optionId: option.option_id ?? option.label,
+            label: option.label,
+            optionLabels: this.chatOptions.map((o) => o.label),
+          }
+        : null
       // 用户已经在答了，那句话的使命就结束了
       this.clearChatPrompt()
-      this.chatTurns = [...this.chatTurns, { id: this.chatSeq++, role: 'me', text: value }]
+      this.chatTurns = [
+        ...this.chatTurns,
+        {
+          id: this.chatSeq++,
+          role: 'me',
+          text: spoken,
+          material: materials.length
+            ? { name: names, chars: materials.reduce((sum, m) => sum + m.chars, 0) }
+            : undefined,
+        },
+      ]
       this.chatTyping = true
       try {
         // 真后端：free_chat 任务入口 → 编排器单轮骨架（判环节→选主理→产出→引导收尾）
@@ -1011,9 +1252,15 @@ export const useSessionStore = defineStore('session', {
           const session = await enterTask('free_chat')
           this.backendTaskId = session.task_id
         }
-        const turn = await sendMessage(this.backendTaskId as string, value)
-        this.applyTurn(turn)
+        const turn = await sendMessage(
+          this.backendTaskId as string,
+          spoken,
+          option,
+          materials.map((m) => m.material_id),
+        )
+        this.applyTurn(turn, option)
       } catch (cause) {
+        this.chatAnswered = null
         this.chatTyping = false
         this.chatTurns = [
           ...this.chatTurns,
@@ -1025,7 +1272,7 @@ export const useSessionStore = defineStore('session', {
     },
 
     /** 把一轮真实回包写进本地状态：对话气泡 + AgentRail 的权威状态 */
-    applyTurn(turn: TurnView) {
+    applyTurn(turn: TurnView, chosen?: GuideOption) {
       for (const message of turn.messages ?? []) {
         if (message.role !== 'agent') continue
         this.chatTurns = [
@@ -1035,7 +1282,8 @@ export const useSessionStore = defineStore('session', {
             role: 'ai',
             text: message.text,
             actor: message.agent_name ?? turn.badge.name,
-            chart: message.chart ?? undefined,
+            // 可视件按 kind 分发渲染（见 RenderableBlock）；没有就是空数组
+            renderables: message.renderables ?? [],
             intelRefs: message.intel_refs ?? [],
           } as ChatTurn,
         ]
@@ -1087,8 +1335,39 @@ export const useSessionStore = defineStore('session', {
        * 再想一遍怎么答；而它其实就应该待在那儿等着被回答。
        */
       if (this.guide && (this.guide.kind === 'question' || this.guide.kind === 'options')) {
-        this.chatPrompt = this.guide.question || this.guide.text
-        this.chatOptions = (this.guide.options ?? []).map((o) => o.label)
+        const question = this.guide.question || this.guide.text
+        const options = this.guide.options ?? []
+        this.chatPrompt = question
+        this.chatOptions = options
+        /*
+         * 原地打转要说出来。
+         *
+         * 用户点了选项、回复也追加了，但回包又问回**同一句**（或同一组选项），
+         * 其中还含着刚点过的那一条 —— 这一轮系统没有往前走。
+         * 之前的界面在这种情况下静默地把一模一样的问题再摆一遍，
+         * 用户只能得出"点了没用"的结论。现在：那条选项标成已答，
+         * 并给一句能继续往下走的提示。
+         *
+         * 判据是"同一个选项又出现了"，不看措辞是否一字不差 ——
+         * 模型复述问题时经常换标点或换个说法。
+         */
+        const answered = this.chatAnswered
+        const repeated =
+          !!chosen &&
+          !!answered &&
+          options.some((o) => (o.option_id ?? o.label) === answered.optionId) &&
+          (question.trim() === answered.question.trim() ||
+            (options.length > 0 &&
+              options.length === answered.optionLabels.length &&
+              options.every((o, i) => o.label === answered.optionLabels[i])))
+        this.chatClarify = repeated && answered
+          ? `「${answered.label}」这条我收到了，但这一轮没往前走。换一条，或者直接把你的情况补一句。`
+          : ''
+      } else {
+        // 这一轮不是"等你回答"（小任务 / 提醒）：旧的选项与澄清都不能留在输入框上方
+        this.chatPrompt = ''
+        this.chatOptions = []
+        this.chatClarify = ''
       }
 
       // 集群判断出的"下一步"同时塞进浮窗叠：用户可能没在看对话，

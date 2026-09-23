@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import Overlay from '@/components/console/Overlay.vue'
 import {
   getActionPlan,
@@ -60,6 +60,20 @@ async function load() {
 
 onMounted(load)
 
+/*
+ * 别处改了这份计划（对话里重排了一版、日历那边勾掉了同一条）→ 这一屏跟着改。
+ *
+ * 浮层是打开才挂载的，看上去不需要这条；但"打开着"的时候计划也可能变：
+ * 一轮对话就发生在它背后。不跟的话，用户手上这份和库里那份是两个版本，
+ * 点下去就是 404（这条路径真出现过：勾选报错，因为 task_id 已经不在新版里）。
+ */
+watch(
+  () => session.actionPlan,
+  (plan) => {
+    if (plan) data.value = plan
+  },
+)
+
 /** 关键节点是谁写的。取值由内核契约限定为 planner / coach / manual，界面只把它翻成人话。 */
 const NODE_SOURCE: Record<string, string> = {
   planner: '路径规划师写进日历',
@@ -84,6 +98,14 @@ async function toggle(task: ActionTask) {
   busy.value = task.task_id
   try {
     data.value = await setActionTaskDone(task.task_id, !task.done)
+    /*
+     * 回包就是改完的那一版计划：先落到共享切片上 ——
+     * 待办卡片的"现在这一件"、日历上那一天的任务、这一屏，读的都是它，
+     * 于是三处**同时**变成刚勾完的样子，不用等下面那一趟网络。
+     */
+    session.applyActionPlan(data.value)
+    // 再后台重拉其余切片（面板口径、画像、通知、编排）：勾掉一件会带动它们
+    void session.revalidate()
   } catch (cause) {
     /*
      * 勾选失败最常见的原因不是"点错了"，而是**这一版计划已经过期**：

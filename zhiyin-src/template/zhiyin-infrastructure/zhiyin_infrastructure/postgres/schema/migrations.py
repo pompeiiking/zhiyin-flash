@@ -37,6 +37,13 @@ MIGRATION_SQL = "\n".join(
         "ADD COLUMN IF NOT EXISTS label TEXT NOT NULL DEFAULT '';",
         "ALTER TABLE biz_profile_gap "
         "ADD COLUMN IF NOT EXISTS label TEXT NOT NULL DEFAULT '';",
+        # 2026-09-23 —— 幂等：前端每条消息都带一个 client_msg_id，而这条链路上
+        # 从来没有人读它。双击一次发送就是两条轮次 + 两次模型调用（记录翻倍、
+        # 钱也翻倍）。补一列把它存下来，重复消息直接返回上一次的原文。
+        "ALTER TABLE biz_conversation_turn "
+        "ADD COLUMN IF NOT EXISTS client_msg_id TEXT NOT NULL DEFAULT '';",
+        "CREATE INDEX IF NOT EXISTS idx_biz_conversation_turn_client_msg "
+        "ON biz_conversation_turn (user_id, client_msg_id);",
     ]
 )
 

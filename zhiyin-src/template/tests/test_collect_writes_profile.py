@@ -25,6 +25,7 @@ from zhiyin_kernel.enums import ProfileSource
 
 def _collect_payload(*, bad: bool = False) -> dict:
     payload = {
+        "conclusion": "你说你二年级就开始做结构方向的课程设计，这条我记下了。",
         "field_updates": [
             {
                 "key": "interest",

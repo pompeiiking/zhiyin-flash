@@ -102,33 +102,54 @@ class DefaultFunctionService(FunctionService):
         return await self._calendar.upsert_node(user_id, node)
 
     async def list_achievements(self, user_id: str) -> list[Achievement]:
-        recent = await self._behaviors.recent(user_id, limit=200)
-        seen = {behavior.event_type for behavior in recent}
-        now = datetime.now(timezone.utc)
-        badges: list[Achievement] = []
         rules = await self._registry.list_badge_rules() if self._registry is not None else []
+        if not rules:
+            return []
+        # 规则里的 trigger_events 是事件名（字符串），比对时统一成 value 口径，
+        # 免得"规则写的是 answer，代码里比的是 BehaviorEventType.ANSWER"这类错位。
+        # 认不出的事件名**跳过该触发项并记日志**：一条配错的规则不该让完成记录整页打不开。
+        triggers: dict[str, set[BehaviorEventType]] = {}
+        wanted: set[BehaviorEventType] = set()
         for rule in rules:
-            # 规则里的 trigger_events 是事件名（字符串），比对时统一成 value 口径，
-            # 免得"规则写的是 answer，代码里比的是 BehaviorEventType.ANSWER"这类错位。
-            # 认不出的事件名**跳过该触发项并记日志**：一条配错的规则不该让成就页整页打不开。
-            triggers: set[BehaviorEventType] = set()
+            matched: set[BehaviorEventType] = set()
             for name in rule.trigger_events:
                 try:
-                    triggers.add(BehaviorEventType(name))
+                    matched.add(BehaviorEventType(name))
                 except ValueError:
                     logger.warning(
-                        "成就规则 %s 引用了不存在的行为事件：%s（已跳过该触发项）",
+                        "完成记录规则 %s 引用了不存在的行为事件：%s（已跳过该触发项）",
                         rule.code,
                         name,
                     )
-            unlocked = bool(triggers & seen)
+            triggers[rule.code] = matched
+            wanted |= matched
+
+        # 一次读够：判断"做到了没"和"什么时候做到的"读的是同一份日志。
+        #
+        # 为什么不再写 `unlocked_at=now`：那等于每次打开都告诉用户"你刚刚拿到这枚"，
+        # 而事实是他可能三周前就做到了 —— 完成记录的可信度全在这种细节上。
+        # 只读最近 200 条（限定在这几类触发行为上）：一个用户在这几类行为里积到
+        # 200 条以上还不重复，现实中不会出现；真到了那天，该换成仓储层的"首次发生时间"。
+        events = await self._behaviors.recent(
+            user_id, event_types=sorted(wanted, key=lambda item: item.value), limit=200
+        )
+        first_at: dict[BehaviorEventType, datetime] = {}
+        for event in events:
+            current = first_at.get(event.event_type)
+            if current is None or event.occurred_at < current:
+                first_at[event.event_type] = event.occurred_at
+
+        badges: list[Achievement] = []
+        for rule in rules:
+            times = [first_at[item] for item in triggers[rule.code] if item in first_at]
+            unlocked_at = min(times) if times else None
             badges.append(
                 Achievement(
                     id=f"ach-{user_id}-{rule.code}",
                     user_id=user_id,
                     badge_key=rule.code,
-                    unlocked=unlocked,
-                    unlocked_at=now if unlocked else None,
+                    unlocked=unlocked_at is not None,
+                    unlocked_at=unlocked_at,
                 )
             )
         return badges
@@ -178,6 +199,7 @@ class DefaultFunctionService(FunctionService):
         topic: str = "",
         limit: int = 12,
         refresh: bool = False,
+        allow_fetch: bool = True,
     ) -> list[ExternalIntel]:
         """去公开渠道取回外部情报。**不要求登录**。
 
@@ -195,6 +217,9 @@ class DefaultFunctionService(FunctionService):
         cached = self._intel_cache.get(cache_key)
         if not refresh and cached and cached[0] > time.monotonic():
             return cached[1]
+        if not allow_fetch:
+            # 只读缓存：没命中就不取。见 Port 上的说明（采集 / 复盘走这条）。
+            return []
 
         previous = cached[1] if cached else []
         items = await self._collect_intel(user_id, topic=topic, limit=limit)

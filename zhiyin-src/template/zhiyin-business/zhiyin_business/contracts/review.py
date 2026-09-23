@@ -36,6 +36,14 @@ class ReviewOutput(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    conclusion: str = Field(
+        default="",
+        description=(
+            "这一轮对他说的话：2 到 4 句，每句不超过 40 字。先说清你看见的是什么"
+            "（具体到那件事），再说这一轮把力气放在哪。不施压、不追究。"
+            "**不要**写成「我为什么要问他这个」这类场外话。"
+        )
+    )
     attribution: ReviewAttribution = Field(description="归因判别结论")
     progress: ProgressSnapshot = Field(default_factory=ProgressSnapshot)
     minimal_action: GuideTask = Field(
@@ -49,5 +57,8 @@ class ReviewOutput(BaseModel):
         default_factory=list, description="本次解锁的成就 badge_key（只由行为日志驱动）"
     )
     theory_refs: list[TheoryRef] = Field(default_factory=list)
-    guide: BehaviorGuide = Field(description="下一步：让用户做一次小行动 → 再入环")
+    guide: BehaviorGuide | None = Field(
+        default=None,
+        description="下一步：让用户做一次小行动 → 再入环。没想好就给 null",
+    )
     disclosure: Disclosure | None = None

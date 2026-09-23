@@ -60,6 +60,7 @@ class Container:
     vector: Any
     cache: Any
     object_store: Any
+    documents: Any
     event_bus: Any
     scheduler: Any
     notifier: Any

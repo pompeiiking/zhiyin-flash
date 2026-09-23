@@ -257,10 +257,15 @@ def test_intel_topic_is_pushed_from_the_profile() -> None:
 
 
 class _StubFunctions:
-    """功能块服务桩：只记录情报取数请求，不发网络。"""
+    """功能块服务桩：只记录情报取数请求，不发网络。
+
+    `allow_fetch=False`（只读缓存那一档）时返回空表，模拟"缓存里没有" ——
+    真实实现里这一档是不打站点的，用户该看到的是"这一轮没有外部事实"，
+    而不是等几秒换来一批他这一轮用不上的东西。
+    """
 
     def __init__(self, items: list[Any] | None = None) -> None:
-        self.calls: list[tuple[str, str, int]] = []
+        self.calls: list[dict[str, Any]] = []
         self._items = items or []
 
     async def fetch_external_intel(
@@ -270,26 +275,33 @@ class _StubFunctions:
         topic: str = "",
         limit: int = 12,
         refresh: bool = False,
+        allow_fetch: bool = True,
     ):
-        self.calls.append((user_id or "", topic, limit))
+        self.calls.append(
+            {
+                "user_id": user_id or "",
+                "topic": topic,
+                "limit": limit,
+                "allow_fetch": allow_fetch,
+            }
+        )
+        if not allow_fetch:
+            return []
         return list(self._items)
 
     def drop_intel_cache(self, user_id: str) -> None:  # pragma: no cover - 桩
         return None
 
 
-async def test_collect_stage_fetches_through_the_cached_intel_service(
+async def test_diagnose_stage_fetches_through_the_cached_intel_service(
     container: Container,
 ) -> None:
-    """① 采集也要外部事实，而且必须走**面板同一条**取数链路。
+    """② 诊断主动取外部事实，而且必须走**面板同一条**取数链路。
 
-    为什么这一条值得单测：
-
-    - 采集原来不取外数（`_EXTERNAL_STAGES` 里只有 ②③④），于是"你这个专业
-      对口哪些职业"这种外面查得到的问题也会被拿去问用户；
-    - 取数有两条入口（对话 / 面板）。两边一旦各走各的，用户会看到面板一批、
-      主理引的是另一批。所以这里钉住：装配了功能块服务时，编排器走它，
-      并把**画像推出来的主题**传下去（缓存也按这个主题分桶）。
+    为什么这一条值得单测：取数有两条入口（对话 / 面板）。两边一旦各走各的，
+    用户会看到面板一批、主理引的是另一批。所以这里钉住：装配了功能块服务时，
+    编排器走它，并把**画像推出来的主题**传下去（缓存也按这个主题分桶），
+    而且②这一档是真的会去打站点的（`allow_fetch=True`）。
     """
     from zhiyin_business.ports.function import ExternalIntel
     from zhiyin_business.ports.orchestrator import TurnRequest
@@ -330,19 +342,81 @@ async def test_collect_stage_fetches_through_the_cached_intel_service(
         data_sources=gateway,     # 只作兜底：装了功能块服务就不该用它
     )
 
+    # 从"验证方向"这个入口进：它直接把会话定在 ② 诊断，正是主动取数的那一档。
+    session = await orchestrator.enter_task(USER_ID, "verify_direction")
     await orchestrator.handle_message(
-        TurnRequest(user_id=USER_ID, task_id="t-collect", message="嗯，我是学会计的")
+        TurnRequest(user_id=USER_ID, task_id=session.id, message="我这个方向到底行不行")
     )
 
-    assert engine.requests[0].stage == "collect", (
-        "这条用例要的是一轮采集；换测试话术时先确认环节判定没变"
+    assert engine.requests[0].stage == "diagnose", (
+        "这条用例要的是一轮诊断；换测试话术时先确认环节判定没变"
     )
-    assert functions.calls and functions.calls[0][1] == "会计学", (
+    assert functions.calls and functions.calls[0]["topic"] == "会计学", (
         "情报主题必须来自画像里的专业，而不是用户那句话"
     )
+    assert functions.calls[0]["allow_fetch"] is True, "② 诊断要主动取，不是只读缓存"
     assert gateway.requests == [], "装了功能块服务时不该再直接打取数网关"
     external = engine.requests[0].prompt_vars["external_data"]
     assert external["records"][0]["title"] == "会计学"
+
+
+async def test_collect_stage_only_reads_the_cache(container: Container) -> None:
+    """① 采集**不主动取**外部事实：缓存里有就用，没有就不取。
+
+    为什么要把这两档分开（实测数据）：采集阶段的每个回合都会去爬一遍学职平台
+    —— 10 次请求、约 7 秒，而这一轮总共才 15 秒。用户在等的就是这几秒，
+    而采集问的是"你的情况"，外面那批岗位信息这一轮基本用不上。
+    设计文档 9.3 第 8 步写的也是"只在诊断 / 决策 / 行动三个环节取"。
+    """
+    from zhiyin_business.ports.function import ExternalIntel
+    from zhiyin_business.ports.orchestrator import TurnRequest
+
+    await container.profile_service.update_field(
+        USER_ID, "major", "会计学", confidence=0.9, source="conversation"
+    )
+    functions = _StubFunctions(
+        [
+            ExternalIntel(
+                id="S1",
+                kind="speciality",
+                kind_label="专业",
+                title="会计学",
+                text="专业：会计学",
+                source_url="https://xz.chsi.com.cn/speciality/detail.action?specId=S1",
+                source_name="学职平台 · 学信网",
+                fetched_at="09/22/2026 22:21:17",
+            )
+        ]
+    )
+    engine = _RecordingEngine()
+    orchestrator = DefaultOrchestrator(
+        profiles=container.profile_service,
+        behaviors=container.behavior_service,
+        memories=container.memory_service,
+        assets=container.asset_service,
+        intent_policy=KeywordIntentPolicy(container.registry_service),
+        stage_policy=RuleStagePolicy(container.registry_service),
+        lead_policy=RegistryLeadPolicy(container.registry_service),
+        handoff_policy=DisclosureHandoffPolicy(),
+        agent_engine=engine,
+        sessions=container.sessions,
+        registry=container.registry_service,
+        event_bus=container.event_bus_primitive,
+        functions=functions,
+    )
+
+    session = await orchestrator.enter_task(USER_ID, "confused")
+    await orchestrator.handle_message(
+        TurnRequest(user_id=USER_ID, task_id=session.id, message="嗯，我是学会计的")
+    )
+
+    assert engine.requests[0].stage == "collect"
+    assert functions.calls and functions.calls[0]["allow_fetch"] is False, (
+        "采集档必须只读缓存：主动取会把每轮对话拖慢七八秒"
+    )
+    external = engine.requests[0].prompt_vars["external_data"]
+    assert external["records"] == [], "缓存里没有就如实报空，不能编"
+    assert external["degraded"] is True, "没取到要如实标注，不能让上游以为取到了"
 
 
 # --------------------------------------------------------------------------

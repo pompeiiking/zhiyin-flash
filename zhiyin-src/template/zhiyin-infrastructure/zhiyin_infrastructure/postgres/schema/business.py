@@ -72,10 +72,14 @@ CREATE TABLE IF NOT EXISTS biz_conversation_turn (
     text TEXT NOT NULL DEFAULT '',
     loop_stage TEXT NOT NULL DEFAULT 'collect',
     agent_id TEXT NOT NULL DEFAULT '',
+    client_msg_id TEXT NOT NULL DEFAULT '',
     created_at TIMESTAMPTZ NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_biz_conversation_turn_task
     ON biz_conversation_turn (user_id, task_id, created_at ASC);
+-- 幂等键的索引不写在这里：老库上这张表已经存在（`CREATE TABLE IF NOT EXISTS`
+-- 是空操作），此时按 client_msg_id 建索引会因为列还没补而直接报错。
+-- 列与索引都放在 MIGRATION_SQL 里（见 schema/migrations.py）。
 
 -- 用户自己写下的东西（自建待办 / 写下的目标）。
 -- 单独一张表，不并进会话记忆：记忆里的 loop_stage 参与"现在走到哪一环节"的判断，

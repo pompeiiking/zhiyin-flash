@@ -20,13 +20,20 @@ const props = withDefaults(
     resolvable?: boolean
     /** 正在被解决：表层盖一层绿膜，手绘对勾画出来，然后才收缩让位 */
     resolved?: boolean
+    /**
+     * 表层那句话。
+     *
+     * 默认「已解决」对应"这件事办完了"；交接卡那种"读过了、别再提醒"按下去是**另一种结果**，
+     * 用同一句话就分不出来 —— 用户会以为自己在宣布交接完结。
+     */
+    resolvedLabel?: string
     /** 每块一个很小的角度，让整屏不像表格 */
     tilt?: number
     label?: string
     /** 这一块是"现在该点的那一个"：深色边框呼吸，把用户的眼睛领过去 */
     next?: boolean
   }>(),
-  { size: 'md', tone: 'plain', interactive: false, closable: true, resolvable: false, resolved: false, tilt: 0, label: '', next: false }
+  { size: 'md', tone: 'plain', interactive: false, closable: true, resolvable: false, resolved: false, resolvedLabel: '已解决', tilt: 0, label: '', next: false }
 )
 
 const emit = defineEmits<{ (e: 'close'): void; (e: 'resolve'): void }>()
@@ -72,7 +79,7 @@ const emit = defineEmits<{ (e: 'close'): void; (e: 'resolve'): void }>()
           stroke-linejoin="round"
         />
       </svg>
-      <span class="label veil__label">已解决</span>
+      <span class="label veil__label">{{ props.resolvedLabel }}</span>
     </span>
 
     <!-- 拖动把手：只是提示可拖，真正的拖动由画布统一接管 -->

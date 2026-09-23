@@ -10,6 +10,7 @@ import CalendarOverlay from '@/components/console/CalendarOverlay.vue'
 import TodoBubble from '@/components/console/TodoBubble.vue'
 import PeopleBubble from '@/components/console/PeopleBubble.vue'
 import ReviewBubble from '@/components/console/ReviewBubble.vue'
+import AchievementsBubble from '@/components/console/AchievementsBubble.vue'
 import AgentRail from '@/components/console/AgentRail.vue'
 import NextAsk from '@/components/console/NextAsk.vue'
 import BindOverlay from '@/components/console/BindOverlay.vue'
@@ -19,6 +20,7 @@ import PlansOverlay from '@/components/console/PlansOverlay.vue'
 import ActionOverlay from '@/components/console/ActionOverlay.vue'
 import SessionsOverlay from '@/components/console/SessionsOverlay.vue'
 import ReviewOverlay from '@/components/console/ReviewOverlay.vue'
+import AchievementsOverlay from '@/components/console/AchievementsOverlay.vue'
 import CanvasMenu, { type MenuItem } from '@/components/console/CanvasMenu.vue'
 import FloatLayer from '@/components/float/FloatLayer.vue'
 import TalkBubble from '@/components/console/TalkBubble.vue'
@@ -89,6 +91,8 @@ const TILE_WEIGHTS: Record<string, number> = {
   action: 2.8,
   /** 外部情报：一眼扫过的量，和交接/复盘同一档 */
   market: 1.6,
+  /** 完成记录：一行数字 + 最近一枚，占一格就够 */
+  achievements: 1.6,
 }
 
 /**
@@ -200,6 +204,7 @@ const renderedIds = computed(() => {
   push('match', session.chsiBound)
   push('market', inStrategy('market') && visible('market'))
   push('greet', visible('greet'))
+  push('achievements', inStrategy('achievements') && visible('achievements'))
   push('people', visible('people'))
   push('review', visible('review'))
   return ids
@@ -451,7 +456,14 @@ function playFlip() {
 /** 拖动引擎：抽离网格 → 其余块补位 → 松手吸附 */
 const drag = useCanvasDrag(canvas, { before: captureLayout, after: playFlip, reorder })
 
-const hidden = (id: string) => (session.hiddenBlocks[id] ?? 0) > Date.now()
+/*
+ * 一块现在该不该藏起来。两件事都算：
+ *   · `hiddenBlocks`：被关掉/解决过，过一会儿自己回来（那是刻意的，用户需要能清走挡视线的块）；
+ *   · `ackedBlocks`：已经被"知道了"认下来的，本会话**不再回来** —— 交接提醒读过一次
+ *     就不该再提醒第二次（见 store.ackBlock）。
+ */
+const hidden = (id: string) =>
+  session.ackedBlocks.includes(id) || (session.hiddenBlocks[id] ?? 0) > Date.now()
 /** 正在收缩淡出的块还要留在 DOM 里，动画播完才真的移除 */
 const visible = (id: string) => !hidden(id) || leaving.value.has(id)
 const isLeaving = (id: string) => leaving.value.has(id)
@@ -555,7 +567,7 @@ const BLOCK_LABELS: Record<string, string> = {
   talk: '和主理聊聊', portrait: '你的画像', todo: '待办', collect: '采集动线',
   plans: '方向方案', action: '行动计划', calendar: '日历', timetable: '本周课表',
   match: '匹配与推荐', greet: '今日简报', people: '交接', review: '上周复盘',
-  market: '外部情报',
+  market: '外部情报', achievements: '完成记录',
 }
 
 const BLOCK_MENUS: Record<string, MenuItem[]> = {
@@ -882,6 +894,11 @@ onBeforeUnmount(() => {
           采集动线：还缺什么、去哪儿取。
           它取代了原来那块固定写死"核验学籍"的气泡 ——
           那块不管你是谁都说同一句话；这块是照画像算出来的，补完自己会变。
+
+          第三档（is-tiny）必须一起给。CollectBubble 自己写了 `.bubble.is-tiny`
+          的收法（矮格位里先把"其余几条"和来源胶囊收掉），可是这里以前没传这个类 ——
+          于是它永远停在第二档：1440×900 实测这一格 194px、内容要 238px，
+          底下两行被 overflow: hidden 裁掉，用户看到的是"半句话的绿块"。
         -->
         <CollectBubble
           v-if="visible('collect')"
@@ -890,6 +907,7 @@ onBeforeUnmount(() => {
           :class="{
             leaving: isLeaving('collect'),
             'is-compact': compactIds.has('collect'),
+            'is-tiny': tinyIds.has('collect'),
             'is-next': session.nextBlockId === 'collect',
           }"
           :style="tileStyle('collect')"
@@ -1118,6 +1136,20 @@ onBeforeUnmount(() => {
           @resolve="resolveBlock('review')"
           @close="closeBlock('review')"
         />
+
+        <AchievementsBubble
+          v-if="inStrategy('achievements') && visible('achievements')"
+          data-block="achievements"
+          class="b-achievements"
+          :class="{
+            leaving: isLeaving('achievements'),
+            'is-compact': compactIds.has('achievements'),
+            'is-tiny': tinyIds.has('achievements'),
+          }"
+          :style="tileStyle('achievements')"
+          :data-span="tileSpan('achievements')"
+          @close="closeBlock('achievements')"
+        />
       </div>
     </main>
 
@@ -1145,6 +1177,7 @@ onBeforeUnmount(() => {
     <CalendarOverlay v-if="session.overlay === 'calendar'" />
     <SessionsOverlay v-if="session.overlay === 'sessions'" />
     <ReviewOverlay v-if="session.overlay === 'review'" />
+    <AchievementsOverlay v-if="session.overlay === 'achievements'" />
     <EvidenceDrawer />
 
     <!-- 右键功能栏：空白处叫块，块上处理它 -->

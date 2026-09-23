@@ -106,32 +106,6 @@ class AgentBadge(BaseModel):
     theory_refs: list[TheoryRef] = Field(default_factory=list)
 
 
-class ChartPoint(BaseModel):
-    """图上的一个点。"""
-
-    model_config = ConfigDict(extra="forbid")
-
-    label: str
-    value: float
-
-
-class ChartSpec(BaseModel):
-    """主理在对话里给的一张图。
-
-    为什么由**服务端按真实数据生成**，而不是让模型自由写图表规格：
-    模型写的数字没人能核对（它连画像里有几条都常常说错）。这里只允许
-    用服务端手上已有的实测值（画像各维把握、方案匹配度…），图上的每个点
-    都能追回它来自哪条数据。
-    """
-
-    model_config = ConfigDict(extra="forbid")
-
-    kind: Literal["bars"] = "bars"
-    title: str = ""
-    unit: str = ""
-    points: list[ChartPoint] = Field(default_factory=list)
-
-
 class IntelRef(BaseModel):
     """对话里引用的一条外部情报。
 
@@ -148,6 +122,34 @@ class IntelRef(BaseModel):
     source_url: str = ""
 
 
+class Renderable(BaseModel):
+    """一个**可视件**：这一轮要摆到用户眼前的一块界面。
+
+    为什么要有它（而不是继续加 `chart` 这种专用字段）：
+    产品会不断做出新的"功能模块" —— 后端一段取数逻辑 + 前端一整套渲染效果。
+    每做一个就往契约里加一个字段（chart / timeline / matrix / …），
+    模型侧、服务端、前端三处都要跟着改，而且**模型看得见的字段会越来越杂**。
+
+    所以这里把"可视件"抽象成一种东西：
+
+    · `kind` 决定前端用哪个组件画（也是服务端的白名单键，见 `policies/renderers.py`）；
+    · `payload` 是那个组件要的数据，**由服务端校验**，模型碰不到数值；
+    · `source_refs` 是"这些数据哪来的"，能点回原页面 —— 与结论可溯源是同一条口径。
+
+    新增一个模块 = 注册一种 kind（服务端校验）+ 写一个前端组件 + 把它挂成工具。
+    契约这边**不用再动**。
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: str = Field(description="渲染件类型，前端按它选组件")
+    title: str = Field(default="", description="给用户看的一句话标题")
+    payload: dict[str, Any] = Field(default_factory=dict, description="组件要的数据")
+    source_refs: list[IntelRef] = Field(
+        default_factory=list, description="数据来源，可点回原页面；没有来源就留空"
+    )
+
+
 class ConversationMessage(BaseModel):
     """对话消息。长内容不进对话流，这里只放最短结论。"""
 
@@ -157,8 +159,10 @@ class ConversationMessage(BaseModel):
     text: str
     agent_id: Optional[str] = None
     theory_refs: list[TheoryRef] = Field(default_factory=list)
-    #: 这一轮主理顺手给的图（真实数据，见 `ChartSpec`）；没有就是 None
-    chart: Optional[ChartSpec] = None
+    #: 这一轮要摆给用户看的**可视件**（图 / 时间线 / 对比表…）。
+    #: 两种来源共用这一个字段：主理自己调工具产出的，或这一环节默认补的那张。
+    #: 前端按 `kind` 选组件渲染，数值一律由服务端填（见 `Renderable`）。
+    renderables: list[Renderable] = Field(default_factory=list)
     #: 这一轮用到的外部情报来源（可点回原页面）；没有就是空表
     intel_refs: list[IntelRef] = Field(default_factory=list)
     created_at: Optional[datetime] = None

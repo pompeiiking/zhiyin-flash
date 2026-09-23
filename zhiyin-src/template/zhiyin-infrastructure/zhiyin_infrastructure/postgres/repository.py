@@ -515,8 +515,9 @@ class PostgresConversationTurnRepository(ConversationTurnRepository):
         await self._db.execute(
             """
             INSERT INTO biz_conversation_turn
-                (id, user_id, task_id, role, text, loop_stage, agent_id, created_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                (id, user_id, task_id, role, text, loop_stage, agent_id,
+                 client_msg_id, created_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             """,
             stored.id,
             stored.user_id,
@@ -525,16 +526,50 @@ class PostgresConversationTurnRepository(ConversationTurnRepository):
             stored.text,
             stored.loop_stage.value,
             stored.agent_id,
+            stored.client_msg_id,
             stored.created_at,
         )
         return stored
+
+    async def find_reply_by_client_msg_id(
+        self, user_id: str, client_msg_id: str
+    ) -> Optional[ConversationTurn]:
+        if not client_msg_id:
+            return None
+        row = await self._db.fetchrow(
+            """
+            SELECT id, user_id, task_id, role, text, loop_stage, agent_id,
+                   client_msg_id, created_at
+            FROM biz_conversation_turn
+            WHERE user_id = $1 AND client_msg_id = $2 AND role = 'agent'
+            ORDER BY created_at DESC LIMIT 1
+            """,
+            user_id,
+            client_msg_id,
+        )
+        return (
+            ConversationTurn(
+                id=row["id"],
+                user_id=row["user_id"],
+                task_id=row["task_id"] or None,
+                role=row["role"],
+                text=row["text"],
+                loop_stage=LoopStage(row["loop_stage"]),
+                agent_id=row["agent_id"],
+                client_msg_id=row["client_msg_id"],
+                created_at=row["created_at"],
+            )
+            if row
+            else None
+        )
 
     async def list_by_task(
         self, user_id: str, task_id: str, *, limit: int = 200
     ) -> list[ConversationTurn]:
         rows = await self._db.fetch(
             """
-            SELECT id, user_id, task_id, role, text, loop_stage, agent_id, created_at
+            SELECT id, user_id, task_id, role, text, loop_stage, agent_id,
+                   client_msg_id, created_at
             FROM biz_conversation_turn
             WHERE user_id = $1 AND task_id = $2
             ORDER BY created_at ASC
@@ -553,6 +588,7 @@ class PostgresConversationTurnRepository(ConversationTurnRepository):
                 text=row["text"],
                 loop_stage=LoopStage(row["loop_stage"]),
                 agent_id=row["agent_id"],
+                client_msg_id=row["client_msg_id"],
                 created_at=row["created_at"],
             )
             for row in rows
@@ -759,6 +795,39 @@ class PostgresAssetRepository(AssetRepository):
         affected.sort(key=lambda item: (item.asset_type.value, item.version))
         return affected
 
+    async def mark_needs_recompute(
+        self, user_id: str, asset_type: AssetType, *, reason: str
+    ) -> Optional[AssetVersion]:
+        async with self._db.transaction() as connection:
+            await _lock(connection, f"asset_version:{user_id}:{asset_type.value}")
+            row = await connection.fetchrow(
+                """
+                SELECT version, payload FROM biz_asset_version
+                WHERE user_id = $1 AND asset_type = $2
+                ORDER BY version DESC LIMIT 1
+                """,
+                user_id,
+                asset_type.value,
+            )
+            if row is None:
+                return None
+            latest = _load(AssetVersion, row["payload"])
+            marker = latest.model_copy(
+                update={"needs_recompute": True, "recompute_reason": reason}
+            )
+            # 原地更新**这一版**的 payload：不加行、不升版，正文一个字不动。
+            await connection.execute(
+                """
+                UPDATE biz_asset_version SET payload = $3::jsonb
+                WHERE user_id = $1 AND asset_type = $2 AND version = $4
+                """,
+                user_id,
+                asset_type.value,
+                _dump(marker),
+                latest.version,
+            )
+        return marker
+
     async def get_report(
         self, user_id: str, version: Optional[int] = None
     ) -> Optional[Report]:
@@ -772,11 +841,13 @@ class PostgresAssetRepository(AssetRepository):
                 user_id,
             )
         else:
+            # 指定版本没有正文时退到"不晚于它的最新一版"：影响面传播留下的空版本
+            # （只有版本行、没有正文）点了不该是空白页 —— 见 mark_needs_recompute。
             row = await self._db.fetchrow(
                 """
                 SELECT payload FROM biz_asset_content
-                WHERE user_id = $1 AND asset_type = 'report' AND version = $2
-                ORDER BY created_at DESC LIMIT 1
+                WHERE user_id = $1 AND asset_type = 'report' AND version <= $2
+                ORDER BY version DESC LIMIT 1
                 """,
                 user_id,
                 version,

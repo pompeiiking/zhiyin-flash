@@ -4,6 +4,7 @@ import NextAsk from '@/components/console/NextAsk.vue'
 import { PORTRAIT } from '@/data/content'
 import { computed } from 'vue'
 import { useSessionStore } from '@/stores/session'
+import { splitProfile } from '@/lib/profile'
 
 /**
  * 画像气泡 —— 第一眼要看到自己。
@@ -11,19 +12,44 @@ import { useSessionStore } from '@/stores/session'
  *
  * 【字与色】摘要是这一块的标题戏，用衬线排（纸上的结论句）；
  * 维度条一根一个马克笔色相 —— 分类色是这套语言里本来就有的标点。
+ *
+ * 【这一版只画判断维度】
+ *
+ * 原来这里把**所有**字段都画成一根条，于是从学信网导完学籍之后，这一块长出
+ * 九根全满的条，最上面那根还写着 `student_name` —— 整个气泡等于在说
+ * "你的学校、学制、入学日期把握都很大"。那不是画像，是学籍表的复印件。
+ * 现在只有**判断维度**（兴趣、价值取向、经历、能力自评……）上条，
+ * 档案事实不进这一块：它们没有"把握度"可言（见 lib/profile.ts）。
+ * 一条判断都没有时，这里退回空槽 + 一句实话，而不是把档案冒充成判断。
  */
 const session = useSessionStore()
 const emit = defineEmits<{ (e: 'close'): void }>()
+
+/** 判断维度：档案事实（学校/专业/学籍…）不算 —— 它们不是"你怎么看自己" */
+const judgments = computed(() => splitProfile(session.profile?.fields ?? []).judgments)
+
 const P = computed(() => {
   const p = session.profile
-  if (!p) return PORTRAIT
+  if (!p) return { ...PORTRAIT, judgments: [] as { id: string; name: string; value: number }[] }
+  const dims = judgments.value.map((f) => ({
+    id: f.key,
+    name: f.label || session.copyBundle[`profile.field.${f.key}`] || f.key,
+    value: f.confidence ?? 0,
+  }))
   return {
     ...PORTRAIT,
     overall: Math.round(p.overall * 100) / 100,
-    summary: p.updatedAt
-      ? `${p.dimensions.length} 个方面 · 覆盖 ${Math.round(p.coverage * 100)}%`
-      : PORTRAIT.summary,
-    dimensions: p.dimensions.length ? p.dimensions : PORTRAIT.dimensions,
+    /*
+     * 结论句说的是**判断**的条数，不是字段总数。
+     * "13 个方面"这种话在只导了学籍的画像上会被读成"你已经被看透 13 个方面"，
+     * 而那 13 条里可能 9 条是学校、学制、入学日期。
+     */
+    summary: !p.updatedAt
+      ? PORTRAIT.summary
+      : dims.length
+        ? `${dims.length} 条判断 · 覆盖 ${Math.round(p.coverage * 100)}%`
+        : `${p.fields.length} 条档案 · 还没有你的判断`,
+    judgments: dims,
     gaps: p.gaps.length
       ? p.gaps.map((g) => ({ id: g.id, name: g.name, confidence: 0.5, question: g.question }))
       : PORTRAIT.gaps,
@@ -53,24 +79,27 @@ const hueOf = (i: number) => `var(--mk-${HUES[i % HUES.length]})`
 
     <p class="summary">{{ P.summary }}</p>
 
-    <ul v-if="P.dimensions.length" class="dims" aria-hidden="true">
-      <li v-for="(dim, i) in P.dimensions" :key="dim.id">
+    <ul v-if="P.judgments.length" class="dims" aria-hidden="true">
+      <li v-for="(dim, i) in P.judgments.slice(0, 5)" :key="dim.id">
         <span class="dims__name">{{ dim.name }}</span>
         <span class="dims__bar"><i :style="{ width: dim.value * 100 + '%', background: hueOf(i) }" /></span>
       </li>
     </ul>
 
     <!--
-      画像还是空的时候：**摆一排空槽**，而不是留一片白。
+      还没有判断维度的时候：**摆一排空槽**，而不是留一片白。
       这些槽不是"占位骨架"，它就是这个空状态本身要说的话 ——
       "这里会被一条条填起来"。空白看着像加载中，空槽看着像还没写。
+      （档案已经导进来了也走这一支：导进来的事实填不上这一块。）
     -->
     <div v-else class="slots">
-      <span class="label slots__k">对话之后，这里会一条条填起来</span>
+      <span class="label slots__k">
+        {{ session.profile?.fields.length ? '记下的都是档案，还没你的判断' : '对话之后，这里会一条条填起来' }}
+      </span>
       <ul aria-hidden="true">
         <li v-for="n in 3" :key="n"><i /></li>
       </ul>
-      <span class="label slots__d">每一条都写着它从哪来、有多大把握。</span>
+      <span class="label slots__d">兴趣、价值取向、经历 —— 这几条只能你亲口说。</span>
     </div>
 
     <div class="change">

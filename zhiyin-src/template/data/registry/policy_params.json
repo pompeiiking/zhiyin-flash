@@ -29,15 +29,6 @@
       }
     },
     {
-      "code": "routing",
-      "status": "confirmed",
-      "note": "决策 4=A：意图不确定时温和追问一次，连续两次仍不确定回落 ① 采集；用户明确纠正时允许进入指定环节。",
-      "value": {
-        "clarify_attempts": 1,
-        "fallback_stage": "collect"
-      }
-    },
-    {
       "code": "cache",
       "status": "confirmed",
       "note": "读缓存策略。三层口径：①进程内装载（动态资源，reload 时整体替换）②这里配的读缓存（Redis，只放可重建的读模型）③数据库与向量库（长期保存，随迁移搬走）。缓存永远不是唯一事实来源：丢了就从库重建，Redis 挂了就直接读库。",

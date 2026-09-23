@@ -16,8 +16,10 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import Overlay from '@/components/console/Overlay.vue'
-import { getTheoryCard, track } from '@/api/client'
+import RenderableBlock from '@/components/render/RenderableBlock.vue'
+import { getTheoryCard, track, uploadMaterial } from '@/api/client'
 import { useSessionStore } from '@/stores/session'
+import type { GuideOption } from '@/lib/asks'
 
 const session = useSessionStore()
 const router = useRouter()
@@ -101,9 +103,49 @@ watch(
   { immediate: true }
 )
 
-function send(text: string) {
-  session.sendChat(text)
+/**
+ * 发一轮话。
+ *
+ * `option` 只在**点选项**时给：它带着那条选项的身份（option_id / value），
+ * 让后端知道"用户选的是上一轮的那一条"。只发 label 的话，这一轮就退化成自由文本，
+ * 同一个问题可能又被问一遍（见 session store 的 chatOptions）。
+ */
+/**
+ * 发一轮。
+ *
+ * **待发的材料跟着这一轮走**：用户传完材料再打字，那一句和材料本来就是一件事
+ * （"简历在这，你看看"）。分开成两次发送，模型会先看到一份没有上下文材料、
+ * 再看到一句不知道在说谁的话 —— 而用户以为自己只做了一次动作。
+ */
+function send(text: string, option?: GuideOption) {
+  const material = pending.value
+  pending.value = null
+  attachError.value = ''
+  session.sendChat(text, option, material ? [material] : [])
   draft.value = ''
+}
+
+/** 这一轮刚点过的那一条：它要显示成"已答"，不能再让人点第三次 */
+const answeredId = computed(() => session.chatAnswered?.optionId ?? '')
+const isAnswered = (opt: GuideOption) => (opt.option_id ?? opt.label) === answeredId.value
+
+/**
+ * 行动阶段的"这一件具体是什么"。
+ *
+ * 后端给的是 `guide.kind = 'task'`（含任务正文与截止），而之前前端只把它当成
+ * 一句普通回复：输入框仍写着"直接说就行"，页面上也没有可以点的下一步 ——
+ * 用户不知道要回什么，也不知道回完了会发生什么。这里把它摊开成三件事：
+ * **做什么、回什么、做不动怎么办**。
+ */
+const task = computed(() => (session.guide?.kind === 'task' ? session.guide.task : null))
+
+/** 行动阶段回话的两种模板：一个"做完了"，一个"卡住了"（后者命中 stuck 意图 → 复盘环节给最小动作） */
+const TASK_DONE = '做完了，我来说说结果'
+const TASK_BLOCKED = '这件事我卡住了，帮我拆小一点'
+
+function openAction() {
+  session.closeOverlay()
+  session.openOverlay('action')
 }
 
 /*
@@ -111,49 +153,55 @@ function send(text: string) {
  *
  * 主理会说"把简历给我看看" —— 那时候**得有一个能交东西的地方**，否则用户只能
  * 把整份简历手打一遍（实测：这一步是整条链路里最容易卡死人的地方）。
- * 这里不做上传服务器：文件在浏览器里读成文本，作为这一轮的话发过去 ——
- * 与"他自己复制粘贴一段"走的是同一条路，链路不变。
+ *
+ * 这一版改的是**交的方式**：文件真的传上去，正文留在服务端，对话框里只有一枚
+ * 材料卡（名字 + 读到多少字）。此前是把文件读成一大段文本直接发成一条消息 ——
+ * 一份简历几百行当场铺满对话框，用户要读的是主理的回话，不是自己刚交的原文。
+ * 顺带解决了两件事：GBK 导出的文本不再变成乱码（编码识别在服务端），
+ * 体积上限也不再由浏览器那一侧的两行判断决定。
  */
 const attach = ref<HTMLInputElement | null>(null)
 const attachError = ref('')
-const attachName = ref('')
+const attaching = ref(false)
 
-/** 只收能被模型读懂的纯文本形态；二进制（PDF/图片）如实说明，不假装读得懂 */
-const TEXT_SUFFIX = /\.(txt|md|markdown|csv|tsv|json|html?|xml|ya?ml)$/i
-const MAX_BYTES = 400 * 1024
+/** 已经传上去、等着随下一句一起发出的材料（**上传完成 ≠ 已经给他**，所以下面那条卡写"这一轮一起发"） */
+const pending = ref<{ material_id: string; name: string; chars: number } | null>(null)
 
 function pickFile() {
   attachError.value = ''
   attach.value?.click()
 }
 
-function onFile(event: Event) {
+async function onFile(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
   input.value = '' // 同一个文件连选两次也要能触发
   if (!file) return
-  if (!TEXT_SUFFIX.test(file.name)) {
-    attachError.value = '这个格式我读不了，先导出成 Word / PDF 里的文字，或存成 txt 再传。'
-    return
-  }
-  if (file.size > MAX_BYTES) {
-    attachError.value = '文件太大了（超过 400KB），先截取和这次问题相关的那一段。'
-    return
-  }
-  const reader = new FileReader()
-  reader.onload = () => {
-    const text = String(reader.result ?? '').trim()
-    if (!text) {
-      attachError.value = '这个文件里没有文字。'
-      return
+  attaching.value = true
+  try {
+    const material = await uploadMaterial(file)
+    // 后端字段是可选的（契约里默认空），这里补齐成本地形状：
+    // 少一个字段就少一处 `?? ''` —— 材料卡上有名字与字数才算"读到了"
+    pending.value = {
+      material_id: material.material_id,
+      name: material.name ?? file.name,
+      chars: material.chars ?? 0,
     }
-    attachName.value = file.name
-    send(`【我传了一份材料：${file.name}】\n${text}`)
+  } catch (cause) {
+    // 读不出来的原因由服务端说清（Excel 先另存为 CSV / 文件是空的 / 超了 2MB），原样显示
+    attachError.value = cause instanceof Error ? cause.message : String(cause)
+  } finally {
+    attaching.value = false
   }
-  reader.onerror = () => {
-    attachError.value = '文件读不出来，换一个试试。'
-  }
-  reader.readAsText(file, 'utf-8')
+}
+
+function dropMaterial() {
+  pending.value = null
+}
+
+/** 字数：给"我读到了"一个可见的把握（不是精确报告，量级对就够） */
+function charsLabel(chars: number): string {
+  return chars >= 1000 ? `约 ${(chars / 1000).toFixed(1)} 千字` : `${chars} 字`
 }
 
 function goReport() {
@@ -324,21 +372,39 @@ function openDisclosure() {
             </p>
 
             <!--
-              主理顺手给的图。值来自服务端实测数据（画像各维把握、方案匹配度…），
-              所以它不是"AI 画的示意图"，是这条结论的另一种写法。
+              这一轮交上去的材料：**只显示"它是什么"**，不摊开正文。
+              正文在服务端，主理读得到；摆在这里的几百行只会把对话挤没，
+              而用户要读的是主理的回话。
             -->
-            <figure v-if="turn.chart?.points?.length" class="chart">
-              <figcaption class="label chart__k">{{ turn.chart.title || '这一轮的分布' }}</figcaption>
-              <ul class="chart__rows">
-                <li v-for="p in turn.chart.points" :key="p.label">
-                  <span class="chart__label">{{ p.label }}</span>
-                  <span class="chart__bar">
-                    <i :style="{ width: `${Math.max(2, Math.min(100, p.value * 100))}%` }" />
-                  </span>
-                  <span class="mono chart__num">{{ p.value.toFixed(2) }}</span>
-                </li>
-              </ul>
-            </figure>
+            <div v-if="turn.material" class="material">
+              <svg width="15" height="17" viewBox="0 0 34 40" aria-hidden="true">
+                <path
+                  d="M3 3.6h19l9 9v23.8a1.6 1.6 0 0 1-1.6 1.6H3a1.6 1.6 0 0 1-1.6-1.6V5.2A1.6 1.6 0 0 1 3 3.6Z"
+                  fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"
+                />
+                <path
+                  d="M22 3.6v9h9M9 23h16M9 29h11" fill="none" stroke="currentColor"
+                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                />
+              </svg>
+              <span class="material__name mono">{{ turn.material.name }}</span>
+              <span class="label material__meta">
+                已交给主理 · {{ charsLabel(turn.material.chars) }}
+              </span>
+            </div>
+
+            <!--
+              这一轮摆在回复里的**可视件**（图 / 时间线 / 对比表…）。
+              值来自服务端实测数据（画像各维把握、方案匹配度…），
+              所以它不是"AI 画的示意图"，是这条结论的另一种写法。
+              按 kind 分发在 `RenderableBlock` 里 —— 加一种新的可视件，
+              这里是零改动。
+            -->
+            <RenderableBlock
+              v-for="(item, index) in turn.renderables ?? []"
+              :key="`${item.kind}-${index}`"
+              :item="item"
+            />
 
             <!-- 这一轮用到的外部情报：点开就是来源与原文 -->
             <div v-if="turn.intelRefs?.length" class="refs">
@@ -371,14 +437,43 @@ function openDisclosure() {
             <div v-if="session.chatOptions.length" class="prompt__opts">
               <button
                 v-for="opt in session.chatOptions"
-                :key="opt"
+                :key="opt.option_id ?? opt.label"
                 class="opt"
+                :class="{ 'opt--used': isAnswered(opt) }"
                 type="button"
                 :disabled="session.chatTyping"
-                @click="send(opt)"
+                @click="send(opt.label, opt)"
               >
-                {{ opt }}
+                {{ opt.label }}
               </button>
+            </div>
+            <!--
+              点了选项但这一轮没往前走时，必须**说出来**。
+              不说的话，用户看到的是"一模一样的问题又回来了"，只能认为点了没用。
+            -->
+            <p v-if="session.chatClarify" class="prompt__note" role="status">
+              {{ session.chatClarify }}
+            </p>
+          </div>
+
+          <!--
+            行动阶段：把"现在这一件"摊开 —— 做什么、回什么、做不动怎么办。
+            没有这一段，输入框那句"直接说就行"等于没给任何可执行的动作。
+          -->
+          <div v-if="task" class="task">
+            <span class="label task__k">现在做这一件</span>
+            <p class="task__t">{{ task.text }}</p>
+            <p class="label task__d">
+              做完回来说一句就行；做不动也说一声 —— 卡住不是失败，是这条任务拆得还不够小。
+            </p>
+            <div class="task__acts">
+              <button class="opt" type="button" :disabled="session.chatTyping" @click="send(TASK_DONE)">
+                做完了
+              </button>
+              <button class="opt" type="button" :disabled="session.chatTyping" @click="send(TASK_BLOCKED)">
+                做不到，拆小一点
+              </button>
+              <button class="opt opt--quiet" type="button" @click="openAction">去行动计划勾掉</button>
             </div>
           </div>
 
@@ -387,9 +482,9 @@ function openDisclosure() {
             <button
               class="clip"
               type="button"
-              :disabled="session.chatTyping"
-              aria-label="上传一份材料（txt / md / csv / json / html）"
-              title="上传一份材料（txt / md / csv / json / html）"
+                :disabled="session.chatTyping"
+              aria-label="上传一份材料（txt / csv / json / html）"
+              title="上传一份材料（txt / csv / json / html；Excel 请先另存为 CSV）"
               @click="pickFile"
             >
               <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true">
@@ -409,17 +504,42 @@ function openDisclosure() {
               ref="box"
               v-model="draft"
               type="text"
-              :placeholder="session.chatPrompt ? '照上面那句答就行' : '直接说就行，不用想好怎么问'"
+              :placeholder="
+                pending
+                  ? '要补一句就说；不补也行，直接交上去'
+                  : session.chatPrompt
+                  ? '照上面那句答就行'
+                  : task
+                    ? '做完就说一句；做不动也说一声'
+                    : '直接说就行，不用想好怎么问'
+              "
               aria-label="对话输入"
               @keydown.enter="send(draft)"
             >
-            <button class="btn primary" type="button" :disabled="!draft.trim()" @click="send(draft)">
-              发送
+            <button
+              class="btn primary"
+              type="button"
+              :disabled="(!draft.trim() && !pending) || session.chatTyping"
+              @click="send(draft)"
+            >
+              {{ pending && !draft.trim() ? '交上去' : '发送' }}
             </button>
           </div>
 
           <p v-if="attachError" class="label clip__err" role="alert">{{ attachError }}</p>
-          <p v-else-if="attachName" class="label clip__ok">已把「{{ attachName }}」交给他了。</p>
+          <p v-else-if="attaching" class="label clip__busy">正在读你传的材料…</p>
+
+          <!--
+            待发的材料：一栏薄卡，带"移除"。
+            它还没发出去，所以不能装成已经交上去了 —— 文案是"这一轮一起发"，
+            不是"已交给主理"（后者是发出去之后气泡上那枚卡的说法）。
+          -->
+          <div v-else-if="pending" class="hold">
+            <span class="label hold__k">这一轮一起发</span>
+            <span class="hold__name mono">{{ pending.name }}</span>
+            <span class="label hold__meta">{{ charsLabel(pending.chars) }}</span>
+            <button class="label hold__x" type="button" @click="dropMaterial">移除</button>
+          </div>
 
           <div class="tie">
             <span class="label">聊完它会接着往下做 —— 不用你回头找路。</span>
@@ -561,6 +681,39 @@ function openDisclosure() {
 }
 .prompt__opts .opt:hover { background: var(--accent); color: var(--accent-ink); }
 .prompt__opts .opt:disabled { opacity: 0.5; cursor: not-allowed; }
+/*
+ * 已经点过的那一条：划掉 + 降一级 —— 它就是"这一条答过了"的样子，
+ * 而不是一个还能再点的按钮（再点一次只会把同一个状态又走一遍）。
+ */
+.prompt__opts .opt--used {
+  border-style: dashed; color: var(--ink-3); text-decoration: line-through;
+}
+.prompt__opts .opt--used:disabled { opacity: 0.75; }
+.prompt__note { font-size: var(--fs-small); color: var(--warn); line-height: 1.7; max-width: 62ch; }
+
+/* 行动阶段那一块：和"在等你回答"同一个位置、同一套材质，只是内容是任务不是问题 */
+.task {
+  display: flex; flex-direction: column; gap: 5px;
+  padding: var(--s3) var(--s4);
+  border: var(--bw) solid var(--line-3);
+  border-left: 3px solid var(--mk-green);
+  border-radius: var(--r-sm);
+  background: var(--fill-subtle);
+}
+.task__k { color: var(--mk-green); }
+.task__t { font-size: var(--fs-small); font-weight: 600; color: var(--ink-1); line-height: 1.6; max-width: 62ch; }
+.task__d { color: var(--ink-3); line-height: 1.7; max-width: 62ch; }
+.task__acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+.task__acts .opt {
+  padding: 5px 12px; border-radius: var(--r-pill);
+  border: 1px solid var(--mk-green); background: var(--n-1);
+  font-size: var(--t-xs); color: var(--ink-1);
+  transition: background var(--dur-micro) var(--ease-out), color var(--dur-micro) var(--ease-out);
+}
+.task__acts .opt:hover { background: var(--mk-green); color: var(--n-0); }
+.task__acts .opt:disabled { opacity: 0.5; cursor: not-allowed; }
+.task__acts .opt--quiet { border-color: var(--line-2); color: var(--ink-2); }
+.task__acts .opt--quiet:hover { background: var(--n-1); color: var(--ink-1); border-color: var(--line-4); }
 
 .row { display: flex; gap: var(--s2); }
 .row input {
@@ -586,19 +739,34 @@ function openDisclosure() {
 .clip:disabled { opacity: 0.5; cursor: default; }
 .clip__input { display: none; }
 .clip__err { color: var(--warn); }
-.clip__ok { color: var(--accent); }
+.clip__busy { color: var(--accent); }
+
+/* 已交上去的材料（气泡下面那枚卡）：名字 + 一句话，**没有正文** */
+.material {
+  align-self: flex-end;
+  display: inline-flex; align-items: center; gap: var(--s2);
+  max-width: 100%;
+  padding: 7px var(--s3);
+  border: var(--bw) solid var(--accent); border-radius: var(--r-sm);
+  background: var(--accent-soft); color: var(--accent-deep);
+}
+.material__name { font-size: var(--t-xs); color: var(--ink-1); overflow-wrap: anywhere; }
+.material__meta { color: var(--accent-deep); white-space: nowrap; }
+
+/* 待发的材料（输入框下面那条）：虚线 = 还没发出去 */
+.hold {
+  display: flex; align-items: center; gap: var(--s2);
+  padding: 6px var(--s3);
+  border: 1px dashed var(--line-3); border-radius: var(--r-sm);
+  background: var(--fill-subtle);
+}
+.hold__k { color: var(--ink-3); white-space: nowrap; }
+.hold__name { font-size: var(--t-xs); color: var(--ink-1); overflow-wrap: anywhere; }
+.hold__meta { color: var(--ink-faint); white-space: nowrap; }
+.hold__x { margin-left: auto; color: var(--ink-3); white-space: nowrap; }
+.hold__x:hover { color: var(--warn); text-decoration: underline; }
 
 .tie { display: flex; align-items: center; justify-content: space-between; gap: var(--s4); }
-
-/* 对话里那张图：横条 + 数值。窄也放得下，因为它本来就是"比较"用的 */
-.chart { margin: 2px 0 6px; display: grid; gap: 6px; }
-.chart__k { color: var(--ink-3); }
-.chart__rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
-.chart__rows li { display: grid; grid-template-columns: minmax(3.5em, 6em) 1fr 3.2em; gap: var(--s2); align-items: center; }
-.chart__label { font-size: var(--fs-small); color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.chart__bar { height: 8px; border-radius: 999px; background: var(--fill-subtle); overflow: hidden; }
-.chart__bar i { display: block; height: 100%; border-radius: inherit; background: var(--mk-green); }
-.chart__num { font-size: var(--fs-small); color: var(--ink-3); text-align: right; }
 
 /* 引用的外部信息：一行一条，点开是来源与原文 */
 .refs { display: grid; gap: 4px; margin: 2px 0 6px; }

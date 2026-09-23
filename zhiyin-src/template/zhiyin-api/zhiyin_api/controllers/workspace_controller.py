@@ -5,17 +5,20 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, File, Form, Request, UploadFile
 
 from zhiyin_api.dto.common import ApiResponse
+from zhiyin_api.dto.achievement import AchievementListView
 from zhiyin_api.dto.workspace import (
     AcademicImportAck,
     AcademicImportRequest,
+    AcademicImportUpload,
     AcademicRevokeAck,
     IntelListView,
     WorkspacePageView,
 )
 from zhiyin_api.facade import get_facade
+from zhiyin_kernel.errors import InvalidRequest
 
 router = APIRouter(tags=["workspace"])
 
@@ -45,6 +48,65 @@ async def import_academic(
     return ApiResponse(data=await facade.import_academic(user_id, body))
 
 
+"""单个文件的大小上限（2 MB）。
+
+课表与成绩单本身只有几十 KB；到 MB 量级的多半是"另存整页"带上了别的东西。
+限流不是防用户，是防一次误操作把解析器拖住（解析是纯文本处理，几百 KB 的无意义输入
+会白烧 CPU）。超了如实说，让他确认传的是哪一份 —— 比默默接收再跑一遍解析诚实。
+"""
+_MAX_UPLOAD_BYTES = 2_000_000
+
+
+@router.post("/app/academic/import/file", response_model=ApiResponse[AcademicImportAck])
+async def import_academic_files(
+    request: Request,
+    courses_file: UploadFile | None = File(default=None),
+    grades_file: UploadFile | None = File(default=None),
+    courses_text: str = Form(default="", max_length=200_000),
+    grades_text: str = Form(default="", max_length=200_000),
+    school: str = Form(default="", max_length=120),
+    term: str = Form(default="", max_length=40),
+) -> ApiResponse[AcademicImportAck]:
+    """导入课表与成绩单（**上传文件**那一版：multipart/form-data）。
+
+    为什么和上面那条并存，而不是合成一条：粘贴与上传是两种真实动作，
+    表单上也是两个不同的入口。合成一条的话，每次都要把"这次有没有文件"编码进
+    同一种请求体里，读的人得先解码一遍才知道这条路在做什么。两条路共用同一条业务
+    链路（`import_files` → `import_`），所以"同一份数据读出来必须一样"这件事
+    由业务层保证，不靠接口形状。
+
+    文件在这一层只做一件事：**限大小**。编码识别与二进制格式拒绝都在网关里
+    （见 `AcademicImportGateway.read_text`）—— 那一层才知道"读不出来"该怎么说。
+    """
+    facade = get_facade()
+    user_id = await facade.resolve_user_id(request)
+    body = AcademicImportUpload(
+        courses_file=await _read_upload(courses_file),
+        grades_file=await _read_upload(grades_file),
+        courses_name=courses_file.filename if courses_file else "",
+        grades_name=grades_file.filename if grades_file else "",
+        courses_text=courses_text,
+        grades_text=grades_text,
+        school=school,
+        term=term,
+    )
+    return ApiResponse(data=await facade.import_academic_files(user_id, body))
+
+
+async def _read_upload(file: UploadFile | None) -> bytes | None:
+    """把上传的文件读成字节。多读一个字节用来判断"超没超"，因此超限时不会截断。"""
+    if file is None:
+        return None
+    data = await file.read(_MAX_UPLOAD_BYTES + 1)
+    if len(data) > _MAX_UPLOAD_BYTES:
+        label = file.filename or "这个文件"
+        raise InvalidRequest(
+            f"「{label}」超过 2MB，读起来会拖住这一屏。"
+            "课表和成绩单正常的导出只有几十 KB —— 确认一下传的是哪一份。"
+        )
+    return data
+
+
 @router.delete("/app/academic", response_model=ApiResponse[AcademicRevokeAck])
 async def revoke_academic(request: Request) -> ApiResponse[AcademicRevokeAck]:
     """清空导入的课表与成绩（画像里那两条摘要一起删）。
@@ -69,6 +131,18 @@ async def _optional_user(request: Request) -> str | None:
         return await get_facade().resolve_user_id(request)
     except AccessDenied:
         return None
+
+
+@router.get("/app/achievements", response_model=ApiResponse[AchievementListView])
+async def list_achievements(request: Request) -> ApiResponse[AchievementListView]:
+    """完成记录：这个人做到过的那几件事（界面上叫「完成记录」，不叫成就）。
+
+    要登录：它读的是**你自己的**行为日志，没有别人能看的版本。
+    返回的是全部规则 + 其中拿到几枚（没拿到的也返回，界面上要能说"还差哪几件"）。
+    """
+    facade = get_facade()
+    user_id = await facade.resolve_user_id(request)
+    return ApiResponse(data=await facade.list_achievements(user_id))
 
 
 @router.get("/app/intel", response_model=ApiResponse[IntelListView])

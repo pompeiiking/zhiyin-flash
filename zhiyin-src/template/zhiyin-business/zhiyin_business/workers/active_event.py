@@ -24,6 +24,7 @@ from typing import Any, Awaitable, Callable, Mapping, Sequence
 
 from zhiyin_business.policies.intervention import InterventionPolicy
 from zhiyin_business.ports.blackboard import BehaviorService
+from zhiyin_business.contracts.common import BehaviorEventDraft
 from zhiyin_data_sdk.repositories import RegistryRepository
 from zhiyin_data_sdk.repositories import NotificationRepository
 from zhiyin_kernel.enums import BehaviorEventType
@@ -114,6 +115,19 @@ class ActiveEventWorker(Worker):
             if not title:
                 # 文案没配就不打扰 —— 主动干预是"宁可不发"的一侧。
                 continue
+            # 记一条停滞信号。它是"他停住了"这个事实的**唯一来源**：
+            # 轴A 的"重新定位"、复盘页的时间线都要读它，而此前全仓没有一处写
+            # （枚举与判定都写着 `task_stall`，却永远不会出现）。
+            # 只记一次：同一段停滞在没有新动作之前不重复记，否则日志会被刷满，
+            # 复盘时间线也会变成一串同样的行。
+            if not await self._stall_already_recorded(user_id):
+                await self._behaviors.log(
+                    user_id,
+                    BehaviorEventDraft(
+                        event_type=BehaviorEventType.TASK_STALL,
+                        payload={"days_inactive": days_inactive},
+                    ),
+                )
             await self._notifier.push(
                 NotifyMessage(user_id=user_id, title=title, body=body, channel="in_app")
             )
@@ -145,6 +159,38 @@ class ActiveEventWorker(Worker):
             if value is not None:
                 days.append(value)
         return min(days) if days else None
+
+    async def _stall_already_recorded(self, user_id: str) -> bool:
+        """这一段停滞是否已经记过。
+
+        判据是"停滞信号的年龄 ≤ 最近一次动作的年龄"：中间只要有新动作，
+        上一次的停滞信号就属于上一段，该重新记一条。读不到历史时按"没记过"
+        处理并留日志 —— 少记一条的代价（时间线缺一行）比漏记一次停滞小。
+        """
+        try:
+            events = await self._behaviors.recent(user_id, limit=50)
+        except Exception:  # noqa: BLE001
+            logger.warning("读取行为历史失败，停滞信号按未记录处理", exc_info=True)
+            return False
+        last_action_at = max(
+            (
+                event.occurred_at
+                for event in events
+                if event.event_type in _ACTION_EVENTS
+            ),
+            default=None,
+        )
+        last_stall_at = max(
+            (
+                event.occurred_at
+                for event in events
+                if event.event_type is BehaviorEventType.TASK_STALL
+            ),
+            default=None,
+        )
+        if last_stall_at is None:
+            return False
+        return last_action_at is None or last_stall_at >= last_action_at
 
 
 __all__ = ["ActiveEventWorker"]

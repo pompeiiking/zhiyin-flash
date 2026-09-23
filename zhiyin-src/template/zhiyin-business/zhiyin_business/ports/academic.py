@@ -19,6 +19,14 @@ class AcademicImportResult(BaseModel):
     source: str = Field(default="", description="按哪种版式读出来的")
     term: str = ""
     courses: int = 0
+    courses_scheduled: int = Field(
+        default=0,
+        description=(
+            "课表里**读出了上课时间**（星期 + 节次）的课数。"
+            "与 `courses` 分开报，是因为它们是两件事：课程进了库，但它不一定进得了课表 ——"
+            "只报总数的话，用户看到的是「导入完成」，而这一周的课表还是空的。"
+        ),
+    )
     grades: int = 0
     imported_at: str = ""
     notes: list[str] = Field(

@@ -14,14 +14,14 @@ from zhiyin_business.contracts.common import (
     AgentBadge,
     BehaviorEventDraft,
     BehaviorGuide,
-    ChartPoint,
-    ChartSpec,
     ConversationMessage,
     Disclosure,
     IntelRef,
+    Renderable,
     TheoryRef,
 )
 from zhiyin_business.policies.handoff import HandoffPolicy
+from zhiyin_business.policies.renderers import validate_renderables
 from zhiyin_business.policies.routing_rules import CLARIFY_PROMPT_CODE
 from zhiyin_business.policies.routing import IntentPolicy, StagePolicy
 from zhiyin_business.policies.teaming import LeadPolicy
@@ -37,7 +37,6 @@ from zhiyin_business.ports.orchestrator import (
     IntentType,
     LeadDecision,
     Orchestrator,
-    StageDecision,
     TurnRequest,
     TurnResult,
 )
@@ -46,6 +45,7 @@ from zhiyin_business.ports.function import FunctionService
 from zhiyin_data_sdk.errors import MissingConfigError
 from zhiyin_data_sdk.repositories import TaskSessionRepository
 from zhiyin_kernel.blackboard import AssetVersion, TaskSession
+from zhiyin_kernel.assets import GapClaim
 from zhiyin_kernel import dynamic_config
 from zhiyin_business.policies.collection_gate import CollectionGate, evaluate_gate
 from zhiyin_kernel.errors import ResourceNotFound
@@ -75,24 +75,27 @@ _EXTERNAL_SOURCE = "xuezhi"
 # 由规则实现持有（它同时是那条策略的一部分），这里复用同一个常量。
 _LEAD_CHANGE_PROMPT = "disclosure.lead_change"
 _LEAD_CHANGE_REASON_PROMPT = "disclosure.reason.{stage}"
-# 哪些环节需要外部事实支撑。
+#: 结论变化告知：画像补了新信息、这一版跟着重算过时要说的那句。
+#: 它是设计里三种告知（换主理 / 换理论 / 结论变化）的第三种。
+_CONCLUSION_CHANGE_PROMPT = "disclosure.conclusion_change"
+# 外部事实：哪些环节**主动去取**，哪些环节**只用手上有的**。
 #
-# ② 诊断要有依据，③ 决策要有选项，④ 行动要有样板 —— 这三条从第一版就有。
-# 这一版补上 ① 采集与 ⑤ 复盘，理由都是"少了它，那一环会自己编"：
+# 分两档，判据是"没它会不会自己编"：
 #
-#   · ① 采集：外面能直接答的（"你这个专业对口哪些职业"），就不该拿去问用户。
-#     采集环节手上没有外部事实时，只能把这些问题全抛给用户。补上之后，
-#     "问用户"与"自己查"才分得开；
-#   · ⑤ 复盘：复盘问的是"上周那件事有没有用"，而"有没有用"有一半取决于
-#     外部条件变没变（岗位要求更新、窗口期过了）。没有外部事实，
-#     复盘只能拿用户自己的行为反推，那是半份依据。
+#   · 主动取 —— ② 诊断要有依据、③ 决策要有选项、④ 行动要有样板。
+#     这三环少了外部事实，模型只能拿画像硬凑，而"硬凑的岗位要求"看起来和真的一样。
+#   · 只读缓存 —— ① 采集问的是"你的情况"，⑤ 复盘问的是"这段时间的事"：
+#     外部事实是加分项，不是依据来源。缓存里有就用（例如用户刚开过情报面板），
+#     没有就不取，这一轮照常答。
 #
-# 代价（必须写清楚）：这两个环节的取数走的是**带缓存**的那条（900 秒、
-# 按人与主题分桶，见 FunctionService.INTEL_TTL_S），且取不到就不取 ——
-# 慢一轮比编一句强，但也只慢一轮。
-_EXTERNAL_STAGES = frozenset(
-    {LoopStage.COLLECT, LoopStage.DIAGNOSE, LoopStage.DECIDE, LoopStage.ACT, LoopStage.REVIEW}
+# 为什么要把这条线划出来（实测数据）：采集阶段的每个回合都会去爬一遍学职平台
+# —— 10 次请求、约 7 秒，而这一轮总共才 15 秒。用户等的就是这几秒，
+# 站点也被白打一遍。设计文档 9.3 第 8 步写的是"只在诊断 / 决策 / 行动三个环节取"，
+# 代码一度扩到五个环节，现在按文档收回来。
+_EXTERNAL_FETCH_STAGES = frozenset(
+    {LoopStage.DIAGNOSE, LoopStage.DECIDE, LoopStage.ACT}
 )
+_EXTERNAL_CACHE_ONLY_STAGES = frozenset({LoopStage.COLLECT, LoopStage.REVIEW})
 
 class DefaultOrchestrator(Orchestrator):
     """职引业务编排器。"""
@@ -145,8 +148,13 @@ class DefaultOrchestrator(Orchestrator):
         user_id: str,
         message: str,
         profile_fields: Sequence[Any],
+        allow_fetch: bool = True,
     ) -> dict[str, Any] | None:
         """这一轮的外部事实。
+
+        `allow_fetch=False`（① 采集 / ⑤ 复盘）时**只读缓存、不打站点**：
+        缓存里没有就如实报"这一轮没有外部事实"，而不是让用户等七八秒换一批
+        他这一轮用不上的东西。理由与两档划分见 `_EXTERNAL_FETCH_STAGES`。
 
         两条路，优先走**功能块服务**（生产环境装配的就是它）：
 
@@ -168,7 +176,7 @@ class DefaultOrchestrator(Orchestrator):
         if self._functions is not None:
             try:
                 items = await self._functions.fetch_external_intel(
-                    user_id, topic=topic, limit=8
+                    user_id, topic=topic, limit=8, allow_fetch=allow_fetch
                 )
             except Exception:  # noqa: BLE001 - 取不到不算这一轮失败，如实报空
                 logger.warning("外部情报取数失败（topic=%s），这一轮按没有处理", topic, exc_info=True)
@@ -176,12 +184,21 @@ class DefaultOrchestrator(Orchestrator):
             return {
                 "source": _EXTERNAL_SOURCE,
                 "records": [item.model_dump(mode="json") for item in items],
-                "degraded": False,
+                # 只读缓存且没命中 → 如实标注"这一轮没有"，不谎称取过又取不到。
+                "degraded": not allow_fetch and not items,
                 "topic": topic,
             }
 
         if self._data_sources is None:
             return None
+        if not allow_fetch:
+            # 取数原语没有缓存这一层：这一档直接不给事实，也不打站点。
+            return {
+                "source": _EXTERNAL_SOURCE,
+                "records": [],
+                "degraded": True,
+                "topic": topic,
+            }
         external = await self._data_sources.fetch(
             DataSourceRequest(
                 source=_EXTERNAL_SOURCE,
@@ -218,10 +235,6 @@ class DefaultOrchestrator(Orchestrator):
             current_stage=session.loop_stage if session else None,
         )
 
-    async def detect_intent(self, user_id: str, message: str) -> IntentType:
-        blackboard = await self.read_blackboard(user_id, task_id="")
-        return await self._intent_policy.classify(message=message, blackboard=blackboard)
-
     async def collection_gate(self, user_id: str) -> "CollectionGate":
         """判一次"采集够了吗"（策略来自动态资源，见 `policies/collection_gate.py`）。
 
@@ -233,16 +246,6 @@ class DefaultOrchestrator(Orchestrator):
         gate = evaluate_gate(fields, policy)
         logger.info("采集门槛：%s", gate.line)
         return gate
-
-    async def detect_stage(
-        self, user_id: str, task_id: str, intent: IntentType
-    ) -> StageDecision:
-        blackboard = await self.read_blackboard(user_id, task_id)
-        return await self._stage_policy.decide(
-            blackboard=blackboard,
-            intent=intent,
-            message="",
-        )
 
     async def infer_axis_a(self, user_id: str, task_id: str) -> AxisAStage:
         blackboard = await self.read_blackboard(user_id, task_id)
@@ -394,6 +397,19 @@ class DefaultOrchestrator(Orchestrator):
             # 不向调用方暴露"这个 id 确实存在"，也避免前端把它误读成登录态问题。
             _require_owner(session, request.user_id)
 
+        # 幂等：同一条消息重发（双击发送、断网重试）直接返回上一次的答复。
+        #
+        # 前端每条消息都带 `client_msg_id`，而这条链路上**从来没有人读它** ——
+        # 双击一次就是两条轮次 + 两次模型调用：记录里多一段重复的往返，
+        # 用户白等一次，钱也白花一次。设计文档 9.3 第 1 步写的正是这一条。
+        #
+        # 重放的是**主理那一条原文**，不重放"下一步"引导：再推一次同一个问题，
+        # 用户会以为又发生了什么（那时他自己已经答过了）。
+        if request.client_msg_id:
+            replay = await self._replay_reply(request, session)
+            if replay is not None:
+                return replay
+
         blackboard = await self.read_blackboard(request.user_id, request.task_id)
         intent = await self._intent_policy.classify(
             message=request.message, blackboard=blackboard
@@ -403,7 +419,7 @@ class DefaultOrchestrator(Orchestrator):
         )
         if stage_decision.need_clarify or stage_decision.stage is None:
             question = stage_decision.clarify_question or await self._clarify_text()
-            return TurnResult(
+            result = TurnResult(
                 task_id=request.task_id,
                 session=session,
                 stage=session.loop_stage,
@@ -417,6 +433,11 @@ class DefaultOrchestrator(Orchestrator):
                     kind="question", text=question, question=question
                 ),
             )
+            # 澄清这一轮**也要落库**：它此前直接 return，既不写逐轮原文、也不记行为、
+            # 也不更新会话记忆 —— 用户回头翻这条会话时，这一段是空白的，
+            # 而"他说过什么、被问了什么"正好是他判断"这东西有没有在记"的依据。
+            await self._remember_turn(request, result, loop_stage=session.loop_stage)
+            return result
 
         stage = stage_decision.stage
         # 采够了就往前走 —— 不等用户说"暗号"。
@@ -424,7 +445,13 @@ class DefaultOrchestrator(Orchestrator):
         # 环节推进原来是**纯关键词**的：用户得说出"帮我分析"这类话才会离开 ①。
         # 而真实场景是"我就想先聊两句"：门槛早就过了，系统还在一条条追问，
         # 于是人在这里失去兴趣走了。现在按策略表判一次 —— 够了就进分析。
-        if stage is LoopStage.COLLECT:
+        # 门禁只顶掉"没命中意图"的那两种情况（progress / fallback）。
+        #
+        # 用户**明确**说"我不知道自己适合什么、有点迷茫"时（source=intent），
+        # 他就是要回到"了解自己"这一步 —— 那时把他顶去诊断等于不听他说话，
+        # 而且他后面补的情况一个字都进不了画像（诊断契约里没有字段更新）。
+        # 实测就是这样：有人说了家里希望他求稳，画像里什么都没留下。
+        if stage is LoopStage.COLLECT and stage_decision.source != "intent":
             gate = await self.collection_gate(request.user_id)
             if gate.ready:
                 logger.info("采集门槛已过（%s），本轮直接进入诊断", gate.line)
@@ -449,10 +476,31 @@ class DefaultOrchestrator(Orchestrator):
             )
 
         prompt_vars: dict[str, Any] = {
-            "user_input": request.message,
+            "user_input": _user_input_with_material(request),
             "task_id": request.task_id,
             "intent": intent.value,
         }
+        # 最近几条对话必须一并给模型（自己与他各一句）。
+        #
+        # 少了它，模型手上只有"这一句 + 黑板快照"：它看不到上一轮自己问了什么、用户
+        # 答了什么，每一轮都像在对一个刚见面的陌生人开口 —— 接不上话，也认不出
+        # "这条上一轮已经问过了"。实测症状就是"像在说梦话"：每句都像那么回事，
+        # 但没有一句是在回应你。
+        turn_group = await self._turn_group(request.user_id, request.task_id)
+        if turn_group:
+            prompt_vars["turn_group"] = turn_group
+        # 这一轮如果是**点选项**而不是手打，就把那个选项的身份一并给模型。
+        #
+        # 只发 label 的后果实测过：用户点了「我现在还在念书」，回包又把同一个问题
+        # 连同同一组选项问了一遍 —— 因为模型看到的只是一句话，它不知道那是
+        # 上一轮自己给的选项之一，也就没有理由把状态往前推。带上 option_id / value
+        # 之后，"用户选了什么"是可判定的，不是猜的。
+        if request.option_id or request.option_value is not None:
+            prompt_vars["chosen_option"] = {
+                "option_id": request.option_id or "",
+                "value": request.option_value,
+                "label": request.message,
+            }
         # 把**合法的理论卡清单**一并给模型：`theory_refs` 要填 id，
         # 而模型手上原本没有一份可选的清单，只能照名字编（实测编出过 theo_clover）。
         # 给它 id + 名字，引用才落在真实卡片上；编出来的 id 会在
@@ -472,11 +520,15 @@ class DefaultOrchestrator(Orchestrator):
             {"key": spec.key, "label": spec.label}
             for spec in self._profile_vocabulary()
         ]
-        if blackboard.profile is not None and stage in _EXTERNAL_STAGES:
+        # 主动取 / 只读缓存，两档见 `_EXTERNAL_FETCH_STAGES` 的说明。
+        if blackboard.profile is not None and stage in (
+            _EXTERNAL_FETCH_STAGES | _EXTERNAL_CACHE_ONLY_STAGES
+        ):
             external = await self._fetch_external(
                 user_id=request.user_id,
                 message=request.message,
                 profile_fields=blackboard.profile.fields,
+                allow_fetch=stage in _EXTERNAL_FETCH_STAGES,
             )
             if external is not None:
                 prompt_vars["external_data"] = external
@@ -504,18 +556,40 @@ class DefaultOrchestrator(Orchestrator):
             )
         # 产出合规就**落成资产**：这一步此前完全缺失 —— 模型把 15 维诊断生成并
         # 通过契约校验之后，正文被直接丢掉，于是报告页恒空、工作台恒无版本。
+        stale_before = await self._stale_asset_types(request.user_id)
         changed_assets = await self._persist_stage_output(
             stage, request.user_id, structured, valid=result.valid
         )
+        # 这一轮真的把一份"待重算"的资产重算掉了 → **必须显式告知**（结论变化），
+        # 否则用户手上那份旧结论被换掉而他不知道。这是设计里三种告知中的一种，
+        # 此前只有"换主理"这一种真的会发出。
+        if changed_assets and stale_before & {item.asset_type for item in changed_assets}:
+            notice = await self._conclusion_change_disclosure()
+            if disclosure is None:
+                disclosure = notice
+            else:
+                # 同一轮里既换了主理、又重算了一份旧结论 —— 两件事都得说，
+                # 不能因为契约里只有一个位置就只说一件（实测：换主理那句把
+                # "结论变了"整个盖住，用户不知道手上的旧结论已经被换掉）。
+                disclosure = disclosure.model_copy(
+                    update={"text": f"{disclosure.text.rstrip()} {notice.text.strip()}"}
+                )
         # ① 采集的产出**不是资产，是画像本身**：这一步此前同样缺失 ——
         # 见 `_apply_collect` 的说明（模型结构化返回的字段被丢掉，画像恒空）。
-        if stage is LoopStage.COLLECT and result.valid:
+        #
+        # **不看 `result.valid`**：采集这一环的硬指标只有一个 —— 他说的话有没有被记下来。
+        # 整份产出别处不合契约（少个字段、格式歪了）不该连累这一条：字段能解析就落库，
+        # 其余的问题留在日志里。`_apply_collect` 自己会挑出能解析的部分。
+        if stage is LoopStage.COLLECT:
             await self._apply_collect(request.user_id, structured)
         badge = await self._badge(
             lead.lead_agent,
             await self._known_theory_refs(structured.get("theory_refs")),
         )
         guide = _guide(structured.get("guide"), structured)
+        # 主理这一轮自己产出的可视件：逐个按 kind 校验（不认识的、形状不对的丢掉留日志）。
+        # 模型只挑了"看哪一类"，点位是工具从库里读的 —— 校验在 `policies/renderers.py`。
+        model_renderables = validate_renderables(result.renderables)
         messages = [
             ConversationMessage(
                 role="agent",
@@ -524,51 +598,46 @@ class DefaultOrchestrator(Orchestrator):
                 ),
                 agent_id=lead.lead_agent,
                 theory_refs=badge.theory_refs,
-                # 图与情报引用都来自**这一轮的实测数据**：图用画像/方案的实测分值，
+                # 可视件与情报引用都来自**这一轮的实测数据**：可视件由服务端按 kind 填，
                 # 引用用这一轮真的取回的外部事实 —— 不是让模型自己编。
-                chart=_chart_for(stage, structured),
+                #
+                # 两种来源，同一个形状：主理自己调的（它调 `chart.render` 时，
+                # 点位是工具从库里读出来的 —— 模型只挑了"画哪一类"，碰不到数值）；
+                # 它没点，就补上这一环节默认那张（仍然是实测分值）。
+                renderables=_renderables_for_turn(
+                    model_renderables, stage, structured
+                ),
                 intel_refs=_intel_refs(prompt_vars.get("external_data")),
             )
         ]
-        await self._memories.upsert(
-            request.user_id,
-            request.task_id,
+        await self._remember_turn(
+            request,
+            TurnResult(
+                task_id=request.task_id,
+                session=session,
+                stage=stage,
+                badge=badge,
+                messages=messages,
+                guide=guide,
+            ),
             loop_stage=stage,
-            lead_agent=lead.lead_agent,
-            summary_delta=result.raw_text or "",
+            answer_payload={
+                "stage": stage.value,
+                "intent": intent.value,
+                # 点选项与手打要分得开：复盘"用户是怎么答的"时，
+                # "点了哪个选项"是行为本身的一部分，丢了就只剩一句文字。
+                **({"option_id": request.option_id} if request.option_id else {}),
+            },
         )
-        # 逐轮原文也要留一份：摘要给模型续接用，原文给"会话列表点进去看历史"与复盘取证用。
-        # 这一条此前完全缺失 —— 用户自己说的话一个字都没落库，"回到旧会话"只能是空屏。
-        try:
-            await self._memories.record_turn(
-                request.user_id,
-                request.task_id,
-                role="user",
-                text=request.message,
-                loop_stage=stage,
-            )
-            for message in messages:
-                await self._memories.record_turn(
-                    request.user_id,
-                    request.task_id,
-                    role=message.role,
-                    text=message.text,
-                    loop_stage=stage,
-                    agent_id=message.agent_id or "",
-                )
-        except Exception:  # noqa: BLE001 - 原文落库失败不该让这一轮白答
-            logger.exception("对话原文落库失败：task_id=%s", request.task_id)
         # 这一轮可能改了画像（① 采集）、资产（②③④ 产出）或会话状态 —— 工作台那一片失效。
         # 只报"发生了什么"：哪片缓存受影响由动态资源里的策略决定。
         if self._cache is not None:
             for event in ("profile_field_updated", "asset_version_changed", "session_changed"):
                 await self._cache.invalidate_for_event(event)
-        await self._behaviors.log(
-            request.user_id,
-            BehaviorEventDraft(
-                event_type=BehaviorEventType.ANSWER,
-                payload={"stage": stage.value, "intent": intent.value},
-            ),
+        await self._log_stage_events(
+            stage,
+            request,
+            valid=result.valid,
         )
         return TurnResult(
             task_id=request.task_id,
@@ -580,6 +649,152 @@ class DefaultOrchestrator(Orchestrator):
             guide=guide,
             asset_versions=changed_assets,
         )
+
+    async def _replay_reply(
+        self, request: TurnRequest, session: TaskSession
+    ) -> Optional[TurnResult]:
+        """这条消息是不是答过了？答过就把上次那条原文再给一次。
+
+        只回**主理那一句**，不带 guide：重复的"下一步"会让人以为又发生了什么。
+        读不到（老数据没有这个键、或收藏层没接）就返回 None，照常走这一轮 ——
+        幂等是省一次调用，不是拦下用户的话。
+        """
+        try:
+            reply = await self._memories.find_reply(
+                request.user_id, request.client_msg_id or ""
+            )
+        except Exception:  # noqa: BLE001 - 幂等查询失败不该拦下这一轮
+            logger.warning(
+                "幂等查询失败（client_msg_id=%s），按新消息处理",
+                request.client_msg_id,
+                exc_info=True,
+            )
+            return None
+        if reply is None or not reply.text.strip():
+            return None
+        logger.info("重复消息（client_msg_id=%s），返回上一次的答复", request.client_msg_id)
+        return TurnResult(
+            task_id=request.task_id,
+            session=session,
+            stage=session.loop_stage,
+            badge=await self._badge(reply.agent_id or session.lead_agent, []),
+            messages=[
+                ConversationMessage(
+                    role="agent", text=reply.text, agent_id=reply.agent_id or None
+                )
+            ],
+            guide=BehaviorGuide(kind="question", text="", question=None),
+        )
+
+    async def _remember_turn(
+        self,
+        request: TurnRequest,
+        result: TurnResult,
+        *,
+        loop_stage: LoopStage,
+        answer_payload: dict[str, Any] | None = None,
+    ) -> None:
+        """把这一轮记进三本账：会话摘要、逐轮原文、行为日志。
+
+        三条都**不影响回包**：任何一条写不进去都只记日志，让用户这一轮已经说完的话
+        不至于白说（与本文件其它落库口径一致）。
+
+        摘要写的是**人话**（他那一句 + 主理那一句），不再是模型的产出 JSON。
+        原来那是 `result.raw_text`（一整坨 JSON），实测 12 轮就长到 24.9KB，
+        每一轮都随黑板塞回模型：既是白花的 token，也会让模型把五轮前的旧结论
+        当成当前的。摘要的用处是"接着上次聊"，那就该是对话本身。
+        """
+        lead_agent = result.badge.agent_id if result.badge else ""
+        spoken = " ".join(
+            _single_line(message.text) for message in result.messages if message.text
+        )
+        try:
+            await self._memories.upsert(
+                request.user_id,
+                request.task_id,
+                loop_stage=loop_stage,
+                lead_agent=lead_agent,
+                summary_delta=f"他：{_single_line(request.message, limit=60)}\n"
+                f"主理：{_single_line(spoken, limit=120)}\n",
+            )
+        except Exception:  # noqa: BLE001
+            logger.exception("会话摘要落库失败：task_id=%s", request.task_id)
+
+        # 逐轮原文也要留一份：摘要给模型续接用，原文给"会话列表点进去看历史"
+        # 与复盘取证用。少了它，"回到旧会话"只能是空屏。
+        try:
+            await self._memories.record_turn(
+                request.user_id,
+                request.task_id,
+                role="user",
+                text=request.message,
+                loop_stage=loop_stage,
+                client_msg_id=request.client_msg_id or "",
+            )
+            for message in result.messages:
+                await self._memories.record_turn(
+                    request.user_id,
+                    request.task_id,
+                    role=message.role,
+                    text=message.text,
+                    loop_stage=loop_stage,
+                    agent_id=message.agent_id or "",
+                    # 主理那一轮也带上幂等键：下一次重复消息靠它认出"这条答过了"。
+                    client_msg_id=request.client_msg_id or "",
+                )
+        except Exception:  # noqa: BLE001 - 原文落库失败不该让这一轮白答
+            logger.exception("对话原文落库失败：task_id=%s", request.task_id)
+
+        # 行为日志：每答一轮就是一次动作。停滞检测、环节推进、复盘时间线都读它。
+        try:
+            await self._behaviors.log(
+                request.user_id,
+                BehaviorEventDraft(
+                    event_type=BehaviorEventType.ANSWER, payload=dict(answer_payload or {})
+                ),
+            )
+        except Exception:  # noqa: BLE001
+            logger.exception("行为日志落库失败：task_id=%s", request.task_id)
+
+    async def _log_stage_events(
+        self, stage: LoopStage, request: TurnRequest, *, valid: bool
+    ) -> None:
+        """把"这一步真的发生了什么"记进行为日志。
+
+        为什么必须记：行为日志是**唯一的事实来源** —— 停滞干预靠它判断"他最近有没有动作"，
+        环节推进靠它判断"能不能往下走"，复盘时间线靠它说清"这段时间发生过什么"。
+        少记一条，链条上就有一处永远读不到东西，而且不报错。
+
+        这里补的三条此前**都没有生产者**（枚举、干预白名单、轴A 判定里都写着它们，
+        而全仓没有一处写）：
+
+        · ② 认领差距：用户在诊断环节点了一个选项，就是认领了那一条差距 ——
+          这正是设计里 ②→③ 的衔接点（见 `Report.gap_claims` 与 `GapClaim`）；
+        · ⑤ 完成复盘：复盘环节产出了合规结论，才算走过一次复盘；
+        · ④ 任务停滞：由停滞 Worker 记（不在这里，见 `workers/active_event.py`）。
+        """
+        if stage is LoopStage.DIAGNOSE and request.option_id:
+            await self._behaviors.log(
+                request.user_id,
+                BehaviorEventDraft(
+                    event_type=BehaviorEventType.GAP_CLAIM,
+                    payload={
+                        "stage": stage.value,
+                        "gap_id": request.option_id,
+                        # 原话一起留：报告与复盘要能显示"他认领的是哪一条"，
+                        # 只存一个 id 的话，界面上只剩一串没人看得懂的标识。
+                        "label": request.message,
+                    },
+                ),
+            )
+        if stage is LoopStage.REVIEW and valid:
+            await self._behaviors.log(
+                request.user_id,
+                BehaviorEventDraft(
+                    event_type=BehaviorEventType.REVIEW,
+                    payload={"stage": stage.value},
+                ),
+            )
 
     async def _persist_stage_output(
         self,
@@ -635,16 +850,35 @@ class DefaultOrchestrator(Orchestrator):
 
         落库失败不打断这一轮：用户的话已经答完了，错误进日志即可（与资产落库同一条口径）。
         """
-        from zhiyin_business.contracts.collect import CollectOutput
+        from zhiyin_business.contracts.collect import CollectOutput, FieldUpdate
 
         try:
             output = CollectOutput.model_validate(structured)
-        except Exception:  # noqa: BLE001 - 契约不齐时不猜、不半写
-            logger.warning("① 采集产出不符合契约，本轮的画像更新未落库")
-            return
+        except Exception:  # noqa: BLE001
+            # 整份不合契约时，**仍然把能解析的字段捞出来**。
+            #
+            # 这是这一环唯一的硬指标：他说的话有没有被记下来。因为缺了别的字段
+            # （比如没写 conclusion、少了一个数组）就把这一轮的画像更新整段丢掉，
+            # 代价是用户白说一遍、采集清单还挂着"还差 N 条" —— 而那正是他刚答过的。
+            salvaged: list[Any] = []
+            for item in structured.get("field_updates") or []:
+                if not isinstance(item, dict):
+                    continue
+                try:
+                    salvaged.append(FieldUpdate.model_validate(item))
+                except Exception:  # noqa: BLE001 - 这一条解析不了就跳过这一条
+                    continue
+            if not salvaged:
+                logger.warning("① 采集产出里没有可解析的字段，本轮不写画像")
+                return
+            logger.warning(
+                "① 采集产出不合契约，仍从里面救回 %d 条字段更新", len(salvaged)
+            )
+            output = CollectOutput(field_updates=salvaged)
 
         allowed = self._allowed_profile_keys()
         dropped: list[str] = []
+        written: list[str] = []
         for update in output.field_updates:
             key = self._normalize_profile_key(update.key)
             # **字段门禁**：画像只有一份固定词表（动态资源的采集规则）。
@@ -668,6 +902,20 @@ class DefaultOrchestrator(Orchestrator):
                 )
             except Exception:  # noqa: BLE001 - 同资产：一条写不进去不该断整轮
                 logger.exception("画像字段落库失败：key=%s", update.key)
+                continue
+            written.append(key)
+
+        # 画像更新本身也是一次**动作**：干预判定要能看见"他刚补了信息"，
+        # 否则一个只补画像、不勾任务的人会被判成"好几天没动"。
+        # 这条事件类型一直躺在干预白名单里，此前没有任何生产者（实测库里 0 行）。
+        for key in written:
+            await self._behaviors.log(
+                user_id,
+                BehaviorEventDraft(
+                    event_type=BehaviorEventType.PROFILE_FIELD_UPDATED,
+                    payload={"field_key": key, "stage": LoopStage.COLLECT.value},
+                ),
+            )
 
         if dropped:
             # 不静默：被门禁挡掉的键要能被发现（多半是提示词需要补一条同义词）
@@ -677,9 +925,11 @@ class DefaultOrchestrator(Orchestrator):
                 len(allowed),
             )
 
-        # 画像变了 → 之前那份"外部情报"作废（它是按画像取的）。
-        # 不丢的话，新用户先取过一次空的，补完画像之后十几分钟里界面还是空。
-        if self._functions is not None:
+        # **画像真的变了**才作废那份"外部情报"（它是按画像取的）。
+        # 不丢的话，新用户先取过一次空的，补完画像之后十几分钟里界面还是空；
+        # 但**每轮都丢**的代价更大：采集阶段每轮都会重爬一遍外部站点（实测 10 次请求、
+        # 约 7 秒），而多数轮次一个字段都没改 —— 用户为此白等，站点也被白打。
+        if written and self._functions is not None:
             self._functions.drop_intel_cache(user_id)
 
         if output.remaining_gaps:
@@ -761,6 +1011,12 @@ class DefaultOrchestrator(Orchestrator):
 
         output = DiagnoseOutput.model_validate(structured)
         report = report_from_diagnose(output, user_id=user_id)
+        # 认领是**用户行为**，不该被重算冲掉：报告里的 gap_claims 是从行为日志
+        # 还原出来的快照，而不是模型这一轮的输出。事实来源只有一个（行为日志），
+        # 报告只是把"他已经认领了哪几条"摆回正文里给他看得见。
+        claims = await self._claimed_gaps(user_id)
+        if claims:
+            report = report.model_copy(update={"gap_claims": claims})
         version = await self._assets.save_report(
             user_id,
             report,
@@ -768,6 +1024,35 @@ class DefaultOrchestrator(Orchestrator):
             diff_from_previous="② 诊断产出：15 维与 SWOT",
         )
         return [version]
+
+    async def _claimed_gaps(self, user_id: str) -> list[GapClaim]:
+        """用户认领过的差距（事实来源是行为日志，见 `_log_stage_events`）。
+
+        读不到就返回空表：认领记录丢了不该让这一轮报告生成失败，
+        更不该编一条出来（报告的每一格都要能追回一条真实记录）。
+        """
+        try:
+            behaviors = await self._behaviors.recent(user_id, limit=50)
+        except Exception:  # noqa: BLE001
+            logger.warning("读取认领记录失败，报告里的差距认领按空处理", exc_info=True)
+            return []
+        claims: list[GapClaim] = []
+        seen: set[str] = set()
+        for event in behaviors:
+            if event.event_type is not BehaviorEventType.GAP_CLAIM:
+                continue
+            gap_id = str(event.payload.get("gap_id") or "").strip()
+            if not gap_id or gap_id in seen:
+                continue
+            seen.add(gap_id)
+            claims.append(
+                GapClaim(
+                    gap_id=gap_id,
+                    label=str(event.payload.get("label") or ""),
+                    claimed_at=event.occurred_at,
+                )
+            )
+        return claims
 
     async def _save_direction_plans(
         self, user_id: str, structured: dict[str, Any]
@@ -850,6 +1135,83 @@ class DefaultOrchestrator(Orchestrator):
                     ref.theory_id,
                 )
         return kept
+
+    # ------------------------------------------------------------------
+    # 对话回灌：上一轮说了什么
+    # ------------------------------------------------------------------
+
+    #: 回灌几轮。规格是"最近三条对话（自己与他各一句）"，一条对话两轮，
+    #: 取 6 条正好是三次来回；再多只会把这一轮真正要看的东西挤下去。
+    _TURN_GROUP_SIZE = 6
+    #: 扫描上限。仓储接口是"按时间正序 + LIMIT"，返回的是**最早**的若干条，
+    #: 所以这里只能多取一批再从尾巴上切。上限与前端"点开历史"用的是同一个量级。
+    _TURN_GROUP_SCAN = 200
+    #: 每行上限。原文里可能有几百字的附件正文（用户传一份简历就是一整篇）。
+    _TURN_LINE_MAX = 30
+
+    async def _turn_group(self, user_id: str, task_id: str) -> list[str]:
+        """最近几条对话的短行（`他：…` / `职业顾问：…`）。
+
+        取**逐轮原文**（`biz_conversation_turn`），不是累积摘要：摘要里塞的是历次
+        产出的 JSON 原文，越到后面越像一坨内部数据，模型读不出"刚才聊到哪"。
+
+        取不到就返回空表 —— 这一轮照常走完，只是"接不上话"这件事会如实留在
+        这一轮里，而不是拿一份编出来的对话顶上。
+        """
+        try:
+            turns = await self._memories.list_turns(
+                user_id, task_id, limit=self._TURN_GROUP_SCAN
+            )
+        except Exception:  # noqa: BLE001 - 回灌失败不该吃掉用户这一轮的话
+            logger.warning("读取逐轮原文失败：task_id=%s", task_id, exc_info=True)
+            return []
+        lines: list[str] = []
+        for turn in turns[-self._TURN_GROUP_SIZE :]:
+            text = _single_line(turn.text, limit=self._TURN_LINE_MAX)
+            if not text:
+                continue
+            who = "他" if turn.role == "user" else await self._spoken_name(turn.agent_id)
+            lines.append(f"{who}：{text}")
+        return lines
+
+    async def _spoken_name(self, agent_id: str) -> str:
+        """agent_id → 用户称呼；取不到就用「主理」顶上。
+
+        与 `_display_name` 不同，这里**不抛**：回灌的是历史，一句称呼缺了，
+        不该让用户这一轮已经说完的话白说。
+        """
+        if not agent_id:
+            return "主理"
+        descriptor = await self._registry.get_agent(agent_id)
+        name = descriptor.name if descriptor else ""
+        return name or "主理"
+
+    async def _stale_asset_types(self, user_id: str) -> set[AssetType]:
+        """哪些资产的当前版本是"画像变过、还没重算"的。
+
+        读的是三本正文资产的最新版本标记（见 `AssetVersion.needs_recompute`）。
+        读不到不算这一轮失败：标记只用来决定"要不要补一句告知"，
+        所以异常按"没有待重算的资产"处理并留日志。
+        """
+        stale: set[AssetType] = set()
+        for asset_type in (
+            AssetType.REPORT,
+            AssetType.DIRECTION_PLAN,
+            AssetType.ACTION_PLAN,
+        ):
+            try:
+                latest = await self._assets.get_latest_version(user_id, asset_type)
+            except Exception:  # noqa: BLE001
+                logger.warning("读取资产待重算标记失败：%s", asset_type.value, exc_info=True)
+                continue
+            if latest is not None and latest.needs_recompute:
+                stale.add(asset_type)
+        return stale
+
+    async def _conclusion_change_disclosure(self) -> Disclosure:
+        """结论变化告知。文案取自动态资源，缺配置直接抛（不用字面量顶上）。"""
+        prompt = await self._required_prompt(_CONCLUSION_CHANGE_PROMPT)
+        return Disclosure(kind="conclusion_change", text=prompt.content.strip())
 
     # ------------------------------------------------------------------
     # 用户可见文案：取自动态资源，代码里不再拼句子
@@ -941,42 +1303,68 @@ def _theory_refs(raw: Any) -> list[TheoryRef]:
     return refs
 
 
-def _chart_for(stage: Any, structured: dict[str, Any]) -> Optional[ChartSpec]:
-    """这一轮顺手给的那张图。
+def _renderables_for_turn(
+    from_model: Sequence[Renderable], stage: Any, structured: dict[str, Any]
+) -> list[Renderable]:
+    """这一轮要摆给用户看的可视件：主理自己点的那张，或者这一环节默认那张。
 
-    只从**实测分值**里取点：
+    **只有一种形状**（`Renderable`），前端按 `kind` 分发渲染。
+    以前这里另有一条"柱状图专用字段 `chart`"的兼容通道 —— 前端当时只认它。
+    现在前端按 kind 走，那条通道就删了：少了"同一张图有两个字段"的歧义
+    （改一处漏一处，就会出现"图没变、别处变了"这种说不清的现象）。
+
+    默认那张只从**实测分值**里取点：
       · ② 诊断 —— 画像各维的把握度（"你现在哪一块最薄"一眼能看出来）；
       · ③ 决策 —— 三套方案的匹配度（"三套差多少"比三行字清楚）。
-    取不到就返回 None：宁可没有图，也不要拿编出来的数字画一张。
+    取不到就不补：宁可没有图，也不要拿编出来的数字画一张。
     """
+    kept = list(from_model)
+    if any(item.kind == "bars_chart" for item in kept):
+        return kept
+    fallback = _default_bars(stage, structured)
+    if fallback is not None:
+        kept.append(fallback)
+    return kept
+
+
+def _default_bars(stage: Any, structured: dict[str, Any]) -> Optional[Renderable]:
+    """这一环节顺手给的那张柱状图（点全部来自库里已存的分值）。"""
     try:
         if stage is LoopStage.DECIDE:
-            plans = structured.get("plans") or []
             points = [
-                ChartPoint(
-                    label=str(plan.get("name") or f"方案{i + 1}")[:12],
-                    value=float(plan.get("match_score") or 0.0),
-                )
-                for i, plan in enumerate(plans)
+                {
+                    "label": str(plan.get("name") or f"方案{i + 1}")[:12],
+                    "value": float(plan.get("match_score") or 0.0),
+                }
+                for i, plan in enumerate(structured.get("plans") or [])
                 if isinstance(plan, dict)
             ]
             if len(points) >= 2:
-                return ChartSpec(kind="bars", title="三套方案的匹配程度", unit="分", points=points)
-        if stage is LoopStage.DIAGNOSE:
-            gaps = structured.get("gaps") or structured.get("dimensions") or []
-            points = [
-                ChartPoint(
-                    label=str(item.get("name") or item.get("dimension") or "")[:12],
-                    value=float(item.get("score") or item.get("value") or 0.0),
+                # 标题是**用户要读的**：不写"三套方案"这种内部说法（实测用户看不懂
+                # "三条路""三套方案"指的是什么），写他一看就懂的那件事。
+                return Renderable(
+                    kind="bars_chart",
+                    title="各方向和你手上的东西合不合",
+                    payload={"unit": "分", "points": points},
                 )
-                for item in gaps
+        if stage is LoopStage.DIAGNOSE:
+            points = [
+                {
+                    "label": str(item.get("name") or item.get("dimension") or "")[:12],
+                    "value": float(item.get("score") or item.get("value") or 0.0),
+                }
+                for item in (structured.get("gaps") or structured.get("dimensions") or [])
                 if isinstance(item, dict)
             ]
-            points = [p for p in points if p.label]
+            points = [point for point in points if point["label"]]
             if len(points) >= 3:
-                return ChartSpec(kind="bars", title="各维度的当前把握", unit="分", points=points[:8])
+                return Renderable(
+                    kind="bars_chart",
+                    title="这几项你现在各有多少把握",
+                    payload={"unit": "分", "points": points[:8]},
+                )
     except Exception:  # noqa: BLE001 - 画不出图不该影响这一轮回复
-        logger.warning("这一轮没能构造图表，跳过", exc_info=True)
+        logger.warning("这一轮没能构造默认可视件，跳过", exc_info=True)
     return None
 
 
@@ -1006,6 +1394,18 @@ def _intel_refs(external: Any) -> list[IntelRef]:
     return refs[:4]
 
 
+def _single_line(text: str, *, limit: int = 0) -> str:
+    """把一段原文压成一行：换行与连续空白折成单空格，超长（limit>0）截断。
+
+    回灌给模型的对话必须是短行：用户传一份简历进来，原文就是几百上千字，
+    照抄进去会把这一轮真正要看的东西挤出上下文。
+    """
+    collapsed = " ".join((text or "").split())
+    if limit and len(collapsed) > limit:
+        return collapsed[:limit] + "…"
+    return collapsed
+
+
 def _prose_of(raw_text: str) -> str:
     """从模型原文里取出"它其实在对人说"的那句话。
 
@@ -1031,13 +1431,19 @@ def _user_facing_text(
 ) -> str:
     """最短结论进对话流：结论字段 → （产出不合契约时）模型原话 → 行为引导文案。
 
-    契约里没有独立结论字段时（如 ① 采集），行为引导文案本身就是对用户说的
-    那句话；原始 JSON 属于长内容，只允许截断兜底，绝不整段给用户。
+    五个环节的契约里都有 `conclusion`，它就是"这一轮对他说的一句话结论"。
+
+    顺序不能反：`guide.text` 写的是「为什么现在问这个」（给人看清下一步的由头），
+    它**不是**结论。以前没有 conclusion 时这里落到 guide.text，用户读到的每一句
+    都是"我为什么要问你"——话都对，但没有一句是在回他。
+
+    原始 JSON 属于长内容，只允许截断兜底，绝不整段给用户。
     """
     for key in ("conclusion", "summary", "headline"):
         value = structured.get(key)
         if isinstance(value, str) and value.strip():
-            return value.strip()
+            # 结论可能被模型写成两三行；对话里它得是一行，否则气泡会散开。
+            return _single_line(value)
     if not valid:
         prose = _prose_of(raw_text)
         if prose:
@@ -1047,6 +1453,21 @@ def _user_facing_text(
         return text.strip()
     raw = (raw_text or "").strip()
     return raw[:200] + ("…" if len(raw) > 200 else "") or "本轮已按当前环节完成分析。"
+
+
+def _user_input_with_material(request: TurnRequest) -> str:
+    """模型看到的用户输入：他说的话 + 这一轮带上来的材料正文。
+
+    **只有模型输入这一条路会拼上正文**：`request.message` 才是落库、也是显示的那一句
+    （"我传了一份材料：简历.txt"）。正文进对话流正是用户抱怨过的那件事 ——
+    一份简历几百段铺在气泡里，他要读的是主理的回话，不是自己刚交上去的东西。
+    """
+    text = (request.attachment_text or "").strip()
+    if not text:
+        return request.message
+    label = request.attachment_name or "用户上传的材料"
+    head = request.message.strip() or f"我传了一份材料：{label}"
+    return f"{head}\n\n【用户上传的材料：{label}】\n{text}"
 
 
 def _now() -> datetime:

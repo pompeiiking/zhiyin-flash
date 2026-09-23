@@ -35,8 +35,8 @@ npm run build        # typecheck + 产出 dist/
 | 页面 / 区块 | 路由 | 页面文件 | 主要组件 | 后端接口 |
 | --- | --- | --- | --- | --- |
 | 门户 | `/portal` | `views/PortalView.vue` | `portal/HeroMap`、`portal/InkField`、`portal/InkButton`、`portal/MapStopNode`、`vendor/vuebits/{BlurText,VariableProximity,Magnet,MagnetLines,ClickSpark}` | `GET /app/bootstrap` |
-| 控制台 · 画布 | `/` | `views/ConsoleView.vue` | `console/{AgentRail,Bubble,PortraitBubble,TodoBubble,TalkBubble,MarketBubble,PeopleBubble,ReviewBubble,CollectBubble,CalendarBubble}`、`console/{NextAsk,CanvasMenu}`、`float/{FloatLayer,FloatCard}`、`composables/useCanvasDrag`、`lib/tiling` | `GET /app/workspace`、`POST /app/conversation/message`、`GET /app/notifications/pending` |
-| 控制台 · 覆盖层 | `/` | `views/ConsoleView.vue` | `console/{PortraitOverlay,TasksOverlay,TalkOverlay,CollectOverlay,IntelOverlay,BriefOverlay,BindOverlay,TimetableOverlay,MatchOverlay,PlansOverlay,ActionOverlay,SessionsOverlay,ReviewOverlay,CalendarOverlay}`、`console/{Overlay,EvidenceDrawer}`、`portrait/{PortraitSummary,PortraitRadar,PortraitFieldList,PortraitDetail,PortraitEmpty}`、`charts/MatchMatrix`、`charts/Timetable` | `POST /app/dimensions/{id}`、`POST /app/gaps/{id}/clarify`、`POST /app/brief/today`、`GET /app/plan/directions`、`POST /app/plan/directions/{id}/select`、`GET /app/plan/action`、`PATCH /app/plan/action/tasks`、`GET /app/calendar`、`GET /app/sessions`、`GET /app/sessions/{id}/turns`、`GET /app/track/events`、`POST /app/plan/timetable`、`POST /app/plan/todos/suggestions`、`POST /app/match/careers`、`POST /app/chsi/bind`、`GET|POST|PATCH|DELETE /app/notes`、`POST /app/academic/import`、`GET /app/theory-cards/{id}`、`GET /app/intel`、`POST /app/intel/refresh` |
+| 控制台 · 画布 | `/` | `views/ConsoleView.vue` | `console/{AgentRail,Bubble,PortraitBubble,TodoBubble,TalkBubble,MarketBubble,PeopleBubble,ReviewBubble,CollectBubble,CalendarBubble,AchievementsBubble}`、`console/{NextAsk,CanvasMenu}`、`float/{FloatLayer,FloatCard}`、`composables/useCanvasDrag`、`lib/tiling` | `GET /app/workspace`、`POST /app/conversation/message`、`GET /app/notifications/pending` |
+| 控制台 · 覆盖层 | `/` | `views/ConsoleView.vue` | `console/{PortraitOverlay,TasksOverlay,TalkOverlay,CollectOverlay,IntelOverlay,BriefOverlay,BindOverlay,TimetableOverlay,MatchOverlay,PlansOverlay,ActionOverlay,SessionsOverlay,ReviewOverlay,CalendarOverlay,AchievementsOverlay}`、`console/{Overlay,EvidenceDrawer}`、`portrait/{PortraitSummary,PortraitChart,PortraitFieldList,PortraitDetail,PortraitEmpty}`、`render/RenderableBlock`、`charts/MatchMatrix`、`charts/Timetable` | `POST /app/dimensions/{id}`、`POST /app/gaps/{id}/clarify`、`POST /app/brief/today`、`GET /app/plan/directions`、`POST /app/plan/directions/{id}/select`、`GET /app/plan/action`、`PATCH /app/plan/action/tasks`、`GET /app/calendar`、`GET /app/achievements`、`GET /app/sessions`、`GET /app/sessions/{id}/turns`、`GET /app/track/events`、`POST /app/plan/timetable`、`POST /app/plan/todos/suggestions`、`POST /app/match/careers`、`POST /app/chsi/bind`、`GET|POST|PATCH|DELETE /app/notes`、`POST /app/academic/import`、`POST /app/academic/import/file`、`POST /app/conversation/material`、`GET /app/theory-cards/{id}`、`GET /app/intel`、`POST /app/intel/refresh` |
 | 报告 | `/report` | `views/ReportView.vue` | `ai/AiFrame`、`charts/{TrendLine,ChartFrame,SketchPath}` | `GET /app/report/full-text`、`POST /app/report/summary`、`GET /app/assets/report/versions`（版本历史）、`POST /app/assets/export` |
 | 全局外壳 | 全部 | `App.vue` | `auth/{AuthLayer,AccountMenu}`、`guide/GuideDock` | `POST /app/auth/login`、`POST /app/auth/register`、`POST /app/auth/logout` |
 | 登录态与路由 | — | `router.ts` | — | `GET /app/task/enter` |
@@ -52,7 +52,8 @@ npm run build        # typecheck + 产出 dist/
 | 路由与鉴权 | 本地 `router.ts`（页面归属） + `GET /app/bootstrap`（**只取 `identity` / `task_entries` / `app_name`**；`menus` / `routes` / `copy_bundle` / `feature_flags` 等字段接口会给，一期前端还没读，属预留） | `stores/session.ts` |
 | 画像字段（key / 值 / 把握度 / 来源 / 证据） | `GET /app/workspace` 的 `profile_panel` | `PortraitBubble`、`PortraitOverlay` |
 | 采集动线（还缺什么、去哪取） | 同上，`collection_panel` | `CollectBubble`、`CollectOverlay` |
-| 课表与成绩单 | 同上，`academic_panel` | `TimetableOverlay`、`charts/Timetable` |
+| 课表与成绩单 | 同上，`academic_panel`；导入有两手：`POST /app/academic/import`（粘贴原文）与 `POST /app/academic/import/file`（上传文件，multipart，由后端识别 UTF-8 / GBK 编码） | `TimetableOverlay`、`charts/Timetable`、`BindOverlay` |
+| 对话里交的材料（简历等） | `POST /app/conversation/material`（multipart 上传，回执只有"名字 / 大小 / 字数"）；发消息时用 `material_ids` 挂上，正文只在服务端进模型输入 | `TalkOverlay` |
 | 气泡编排（哪块先出现） | 同上，`layout_panel` | `ConsoleView` |
 | 待办 | `GET|POST|PATCH|DELETE /app/notes` | `TasksOverlay`、`TodoBubble` |
 | 通知浮窗 | `GET /app/notifications/pending` | `float/FloatLayer` |
@@ -77,7 +78,7 @@ npm run build        # typecheck + 产出 dist/
 | `src/ai/` | AI 任务清单（`registry.ts` 的 key ↔ 后端端点）、SSE Provider（`httpProvider.ts`）、任务状态机（`useAiTask.ts`）、`AiFrame` 用的形状（`types.ts`） |
 | `src/stores/session.ts` | 会话状态：后端回包与工作台数据的唯一落点；组件只读它 |
 | `src/views/` | 三个页面；`src/router.ts` 是路由与登录拦截 |
-| `src/components/` | `console/` 控制台、`float/` 浮窗、`portal/` 门户、`auth/` 登录、`charts/` 图表、`ai/` 生成外壳、`guide/` 便签、`vendor/vuebits/` 引用的开源动效件 |
+| `src/components/` | `console/` 控制台、`float/` 浮窗、`portal/` 门户、`auth/` 登录、`render/` 可视件按 kind 分发、`charts/` 图表、`ai/` 生成外壳、`guide/` 便签、`vendor/vuebits/` 引用的开源动效件 |
 | `src/lib/` | 纯函数：`sketch`（手绘路径）、`tiling`（气泡布局）、`asks`（下一步编排）、`guide`（便签内容）、`identity`（首字母与角色名）、`failure`（把读取失败翻成用户能懂的一句话） |
 | `src/styles/` | `tokens.css` 设计令牌（丝网印：平涂 / 零阴影 / 发丝线）、`base.css` 基础样式与印刷零件（贴纸 / 胶带 / 折痕）、`glass.css` 玻璃的停用说明、`motion.css` 动效、`fonts.css` 自托管字体（得意黑 + MiSans） |
 | `src/data/` | **只放界面形状**（`content.ts` / `student.ts` 的刻度 / `portal.ts` 的八站坐标与曲线）。业务数据和文案一律来自后端 —— 门户的主张、按钮、八站标签都在 `data/registry/copies.json` 的 `portal.*` 里 |

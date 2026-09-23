@@ -40,8 +40,10 @@ from zhiyin_api.dto.asset import (
 )
 from zhiyin_api.dto.bootstrap import BootstrapView, TheoryCardView
 from zhiyin_api.dto.bootstrap import PortalView
+from zhiyin_api.dto.achievement import AchievementListView
 from zhiyin_api.dto.common import CoachNotificationView
 from zhiyin_api.dto.conversation import (
+    ConversationMaterialView,
     ConversationMessageView,
     ConversationTurnView,
     MessageRequest,
@@ -54,6 +56,7 @@ from zhiyin_api.dto.note import NoteAck, NoteCreateRequest, NoteDoneRequest, Not
 from zhiyin_api.dto.workspace import (
     AcademicImportAck,
     AcademicImportRequest,
+    AcademicImportUpload,
     AcademicRevokeAck,
     IntelListView,
     WorkspacePageView,
@@ -76,7 +79,7 @@ from zhiyin_business.ports.orchestrator import Orchestrator, TurnRequest
 from zhiyin_business.ports.registry import RegistryService
 from zhiyin_business.ports.workspace import WorkspaceService
 from zhiyin_kernel.enums import AssetType
-from zhiyin_kernel.errors import ResourceNotFound
+from zhiyin_kernel.errors import InvalidRequest, ResourceNotFound
 from zhiyin_kernel.registry import AgentDescriptor
 
 #: 15 维分组的展示名在动态资源里的 code（与 `copies.json` 对齐）。
@@ -306,15 +309,68 @@ class DefaultApplicationFacade(ApplicationFacade):
     async def send_message(
         self, user_id: str, body: MessageRequest
     ) -> ConversationTurnView:
+        # 材料正文在这一层取出来拼给编排器：**只有模型输入会用到它**，
+        # 落库与显示的仍是 body.message（那一句"我传了一份材料：简历.txt"）。
+        # 取不到（id 过期 / 不是他的）时按用户能懂的方式说，不把这一轮吞掉。
+        material_name, material_text = await self._load_materials(user_id, body.material_ids)
         turn = await self._orchestrator.handle_message(
             TurnRequest(
                 user_id=user_id,
                 task_id=body.task_id,
                 message=body.message,
                 client_msg_id=body.client_msg_id,
+                # 选项身份要跟着这一轮走到底：编排器据此告诉模型"用户选的是哪一个"，
+                # 而不是让模型从一句 label 里猜（见 MessageRequest 的说明）。
+                option_id=body.option_id,
+                option_value=body.option_value,
+                attachment_name=material_name,
+                attachment_text=material_text,
             )
         )
+        # 这一轮要是产出了新版资产（② 报告 / ③ 方案 / ④ 计划），
+        # 那些**以资产为依据**的模型产出就得重算：报告小结写的是上一版报告的口径、
+        # 日历里那天的安排是按上一版计划排的。不清的话，用户刚重排完计划，
+        # 点开日历看到的还是旧排法 —— 而且没有任何地方提示它是旧的。
+        #
+        # 依据是这一轮真实生成的版本列表（`asset_versions`），不是"每轮都清"：
+        # 大多数轮次只是聊天，清一次产出的代价是下一次打开真的重算一遍。
+        if turn.asset_versions:
+            await self._invalidate_user(user_id, "asset_version_changed")
         return mappers.conversation_turn_view(turn)
+
+    async def upload_material(
+        self, user_id: str, *, name: str, data: bytes
+    ) -> ConversationMaterialView:
+        """收下一份材料。读不出正文时抛 `DocumentReadError` 的原话（api 翻成 422）。
+
+        这一层不做解码、也不做存储：那两件事都在业务服务里，
+        它们共享同一条"这份材料算不算收下了"的判断。
+        """
+        memories = self._require_memories()
+        # 读不出正文时的原话（"这是 Excel，先另存为 CSV"）由业务服务翻成
+        # `InvalidRequest` 往上抛 —— 那一层才知道"读不了"该怎么对用户说。
+        material = await memories.put_material(user_id, name=name, data=data)
+        return mappers.material_view(material)
+
+    async def _load_materials(self, user_id: str, material_ids: list[str]) -> tuple[str, str]:
+        """把这一轮的材料读回来 →（材料名, 正文）。
+
+        多份材料时拼成一份正文（中间留一条分隔），并把名字用「、」连起来 ——
+        模型要的是"这段正文是哪几份东西"，不是一份结构化清单。
+        """
+        if not material_ids:
+            return "", ""
+        memories = self._require_memories()
+        names: list[str] = []
+        blocks: list[str] = []
+        for material_id in material_ids:
+            try:
+                body = await memories.material_body(user_id, material_id)
+            except LookupError as exc:
+                raise InvalidRequest(str(exc)) from exc
+            names.append(body.name or material_id)
+            blocks.append(body.text)
+        return "、".join(names), "\n\n".join(blocks)
 
     # ---------- 工作台 ----------
 
@@ -391,15 +447,27 @@ class DefaultApplicationFacade(ApplicationFacade):
 
         返回全量而不是被选中的那一套：界面上三套卡要一起重绘（一套亮、两套灭），
         只回一套的话前端还得自己推断另外两套的状态。
+
+        "换一套"记成 `decision_reselect` 而不是又一次 `decision_select`：
+        两者对复盘的意义不同 —— 前一个是"他改主意了"，后一个是"他第一次定下来"。
+        这个事件类型一直躺在枚举与停滞判定里，此前没有任何生产者。
         """
+        previous = next(
+            (plan for plan in await self._assets.list_direction_plans(user_id) if plan.selected),
+            None,
+        )
         chosen = await self._assets.select_direction_plan(user_id, option_id)
         await self._log_behavior(
             user_id,
-            BehaviorEventType.DECISION_SELECT,
+            (
+                BehaviorEventType.DECISION_RESELECT
+                if previous is not None and previous.id != chosen.id
+                else BehaviorEventType.DECISION_SELECT
+            ),
             {"plan_id": chosen.id, "role": chosen.role.value, "name": chosen.name},
         )
         # 选方案不产生新版本，但工作台那份 `plan_panel` 的文案跟着变 —— 缓存要作废
-        await self._invalidate("asset_state_changed")
+        await self._invalidate_user(user_id, "asset_state_changed")
         plans = await self._assets.list_direction_plans(user_id)
         return mappers.direction_plan_list_view(plans)
 
@@ -443,7 +511,9 @@ class DefaultApplicationFacade(ApplicationFacade):
                 BehaviorEventType.TASK_DONE,
                 {"task_id": body.task_id},
             )
-        await self._invalidate("asset_state_changed")
+        # 勾掉一件改的是**计划状态**：读缓存那份要重读，模型算过的那几段也要重算 ——
+        # 「今天怎么过」原来是按"这件事还没做完"排的，勾完再看还是那一段就说不通了。
+        await self._invalidate_user(user_id, "asset_state_changed")
         return mappers.action_plan_view(plan)
 
     async def _log_behavior(
@@ -468,6 +538,36 @@ class DefaultApplicationFacade(ApplicationFacade):
         if self._cache is None:
             return
         await self._cache.invalidate_for_event(event)
+
+    async def _invalidate_user(self, user_id: str, event: str) -> None:
+        """按事件失效这个用户的**两份缓存**：读侧那份，和模型算出来那份。
+
+        为什么要一起做：它们是两种东西 ——
+          · 读缓存（Redis，按分片）失效后，下一次读会**照原样重建**，用户看不到差别；
+          · 模型产出（`ai_task_result`，按 key 存库）失效后，下一次打开会**真的重算**，
+            用户看到的内容才会跟着新事实变。
+        只做前者，症状是"库里什么都对、界面上那段话还是旧的"：
+        日历里「这一天怎么用」还按没勾掉的任务在排，报告小结还是上一版报告的口气。
+
+        与 `_invalidate` 分开的原因只有一个：模型产出是**按用户**存的，
+        必须带上 user_id —— 全站按事件清一遍会把别人的产出也清掉。
+        """
+        await self._invalidate(event)
+        await self._ai_tasks.invalidate_for_event(user_id, event)
+
+    async def list_achievements(self, user_id: str) -> AchievementListView:
+        """完成记录：这个人做到过的那几件事。
+
+        数据是**从行为日志实时推导**的（`FunctionService.list_achievements`）——
+        不落表、也没有"发奖"这个动作：行为发生的那一刻它就已经成立了，
+        这里只是把它读出来。所以没有"领奖"、也就没有"忘了领"。
+
+        文案不在这一层：规则 code 由前端按 `badge.<code>.label` / `.how`
+        从文案包取（`/app/bootstrap` 下发），改名字不发版、也不用改接口。
+        """
+        return mappers.achievement_list_view(
+            await self._function.list_achievements(user_id)
+        )
 
     async def _report_group_labels(self) -> dict[str, str]:
         """15 维分组的展示名：分组标识 → 文案。
@@ -548,6 +648,8 @@ class DefaultApplicationFacade(ApplicationFacade):
         if spec is None or spec.channel != "frontend":
             return TrackEventAck(accepted=False, event=body.event)
         await self._function.record_track_event(user_id, body.event, body.payload)
+        # 只失效读缓存：埋点记的是"界面上发生了什么"，它不在任何一段模型产出的依据里，
+        # 顺手清产出等于让用户每翻一屏就重算一遍（花钱，也变慢）。
         await self._invalidate("note_changed")
         return TrackEventAck(accepted=True, event=body.event)
 
@@ -558,7 +660,7 @@ class DefaultApplicationFacade(ApplicationFacade):
         if self._academic is None:
             return AcademicRevokeAck(revoked=False)
         await self._academic.revoke(user_id)
-        await self._invalidate("academic_changed")
+        await self._invalidate_user(user_id, "academic_changed")
         return AcademicRevokeAck(revoked=True)
 
     async def import_academic(
@@ -579,12 +681,49 @@ class DefaultApplicationFacade(ApplicationFacade):
             term=body.term,
         )
         # 课表进了库，工作台那份缓存（含 academic_panel 与采集清单）必须立刻作废
-        await self._invalidate("academic_changed")
+        # —— 连同"按课表算出来的那一天怎么过"（模型算的，也按课表排的）
+        await self._invalidate_user(user_id, "academic_changed")
         return AcademicImportAck(
             school=result.school,
             source=result.source,
             term=result.term,
             courses=result.courses,
+            courses_scheduled=result.courses_scheduled,
+            grades=result.grades,
+            imported_at=result.imported_at,
+            notes=list(result.notes),
+            wrote_profile=list(result.wrote_profile),
+        )
+
+    async def import_academic_files(
+        self, user_id: str, body: "AcademicImportUpload"
+    ) -> "AcademicImportAck":
+        """导入课表与成绩单（用户自己传的文件）。
+
+        与文本入口走同一条业务链路，只是多一步"字节 → 文本"（在业务服务里，
+        由网关按编码识别）。回执、报错、缓存作废三件事都和文本入口完全一样 ——
+        用户用哪种方式把数据带进来，结果不该有差别。
+        """
+        if self._academic is None:
+            raise RuntimeError("导入服务未装配（Container.academic_service）")
+        result = await self._academic.import_files(
+            user_id,
+            courses_file=body.courses_file,
+            grades_file=body.grades_file,
+            courses_name=body.courses_name,
+            grades_name=body.grades_name,
+            courses_raw=body.courses_text,
+            grades_raw=body.grades_text,
+            school=body.school,
+            term=body.term,
+        )
+        await self._invalidate_user(user_id, "academic_changed")
+        return AcademicImportAck(
+            school=result.school,
+            source=result.source,
+            term=result.term,
+            courses=result.courses,
+            courses_scheduled=result.courses_scheduled,
             grades=result.grades,
             imported_at=result.imported_at,
             notes=list(result.notes),
@@ -602,7 +741,7 @@ class DefaultApplicationFacade(ApplicationFacade):
         空待办会变成采集策略里的一条噪音，而它看起来就像用户真的写过。
         """
         note = await self._require_notes().add(user_id, body.text, kind=body.kind)
-        await self._invalidate("note_changed")
+        await self._invalidate_user(user_id, "note_changed")
         return mappers.note_view(note)
 
     async def set_note_done(
@@ -612,13 +751,13 @@ class DefaultApplicationFacade(ApplicationFacade):
         note = await self._require_notes().set_done(user_id, note_id, body.done)
         if note is None:
             raise ResourceNotFound(f"没有这条内容：{note_id}")
-        await self._invalidate("note_changed")
+        await self._invalidate_user(user_id, "note_changed")
         return mappers.note_view(note)
 
     async def remove_note(self, user_id: str, note_id: str) -> NoteAck:
         """删掉一条。"""
         await self._require_notes().remove(user_id, note_id)
-        await self._invalidate("note_changed")
+        await self._invalidate_user(user_id, "note_changed")
         return NoteAck(removed=note_id)
 
     def _require_notes(self) -> UserNoteService:
@@ -626,6 +765,12 @@ class DefaultApplicationFacade(ApplicationFacade):
         if self._notes is None:
             raise RuntimeError("用户自建内容服务未装配（Container.notes）")
         return self._notes
+
+    def _require_memories(self) -> ConversationMemoryService:
+        """同上：记忆服务没装配时明确报错，不让"材料收下了"变成一句空话。"""
+        if self._memories is None:
+            raise RuntimeError("会话记忆服务未装配（Container.memories）")
+        return self._memories
 
     async def reload_dynamic_config(self) -> dict[str, Any]:
         """重新装载动态配置，并回报这一次装到了什么。"""

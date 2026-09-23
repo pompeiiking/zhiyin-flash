@@ -694,7 +694,11 @@ def test_engine_refuses_tool_run_without_user_context() -> None:
     kwargs = engine._run_context_kwargs(
         AgentRequest(agent_id="a", blackboard={"user_id": "u-1", "task_id": "t-1"})
     )
-    assert kwargs == {"user_id": "u-1", "session_id": "t-1"}
+    assert kwargs["user_id"] == "u-1"
+    assert kwargs["session_id"] == "t-1"
+    # 每次运行还带一个**回传盒子**：工具（chart.render）算出来的可视件放这儿，
+    # 跑完由引擎取回来交给上层。它的存在本身就是约定，所以这里钉住。
+    assert kwargs["dependencies"] == {"renderables": []}
 
 
 def test_extract_json_handles_fenced_output() -> None:

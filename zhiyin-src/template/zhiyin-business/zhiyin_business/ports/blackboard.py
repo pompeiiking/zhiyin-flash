@@ -172,11 +172,15 @@ class ConversationMemoryService(ABC):
         text: str,
         loop_stage: LoopStage,
         agent_id: str = "",
+        client_msg_id: str = "",
     ) -> ConversationTurn:
         """记一轮对话原文（用户/主理各算一轮）。
 
         与 `upsert`（累积摘要）分开：摘要给模型续接用，原文给"会话列表点进去看历史"
         与复盘取证用。此前只存摘要，于是用户自己说的话一个字都没有。
+
+        `client_msg_id` 是前端给的幂等键：同一条消息重发时，主理那一轮的原文
+        带着同一个键被记下来，下一次就能认出来"这条已经答过"。
         """
 
     @abstractmethod
@@ -184,6 +188,59 @@ class ConversationMemoryService(ABC):
         self, user_id: str, task_id: str, *, limit: int = 200
     ) -> list[ConversationTurn]:
         """按时间正序读一条会话的全部轮次。"""
+
+    @abstractmethod
+    async def find_reply(
+        self, user_id: str, client_msg_id: str
+    ) -> Optional[ConversationTurn]:
+        """按幂等键取回主理那一条回复；没答过返回 None。"""
+
+    @abstractmethod
+    async def put_material(
+        self, user_id: str, *, name: str, data: bytes
+    ) -> "ConversationMaterial":
+        """收下用户带上来的材料（文件字节 → 正文 → 存起来）。
+
+        与逐轮原文的分工：原文是"他说了什么"（要能在会话历史里读），
+        材料是"他交了什么"（正文只在**用到它的那一轮**进模型输入，
+        不占对话气泡、也不进历史正文 —— 一份简历几百段塞进对话流，
+        用户要读的是主理的回话，不是自己刚交上去的原文）。
+        """
+
+    @abstractmethod
+    async def material_body(
+        self, user_id: str, material_id: str
+    ) -> "ConversationMaterialBody":
+        """取回材料（名字 + 正文）—— 只有拼模型输入时用。找不到抛 `LookupError`。"""
+
+
+class ConversationMaterial(BaseModel):
+    """一次材料上收的结果（业务读模型）。
+
+    只带"它是什么"：名字、字节数、正文长度。**不带正文** ——
+    正文回给前端就等于把文件又摊在对话框里了，而这正是要避免的那件事。
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    material_id: str
+    name: str = ""
+    size: int = Field(default=0, description="上传的字节数（原文件大小）")
+    chars: int = Field(default=0, description="读出来的正文长度，给用户一个「我读到了」的把握")
+
+
+class ConversationMaterialBody(BaseModel):
+    """材料的名字与正文。
+
+    与 `ConversationMaterial` 分成两件事：那个是**给界面看的**（不含正文），
+    这个是**给模型看的**（含正文）。合成一个形状的话，迟早有人顺手把它整个
+    回给前端 —— 而"正文不该出现在对话里"正是这一版要守住的那条线。
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = ""
+    text: str = ""
 
 
 class UserNoteService(ABC):
@@ -248,6 +305,28 @@ class AcademicService(ABC):
         """
 
     @abstractmethod
+    async def import_files(
+        self,
+        user_id: str,
+        *,
+        courses_file: Optional[bytes] = None,
+        grades_file: Optional[bytes] = None,
+        courses_name: str = "",
+        grades_name: str = "",
+        courses_raw: str = "",
+        grades_raw: str = "",
+        school: str = "",
+        term: str = "",
+    ) -> "AcademicImportResult":
+        """同一个导入动作的**文件入口**：字节先解码成文本，再走 `import_` 那条路。
+
+        为什么不是让 api 层自己解码：解码（编码识别、二进制格式拒绝）与解析
+        （形态分流、报错分流）是同一件事的两段，分散在两处就会出现
+        "粘贴读得出、上传读不出"这种同一份数据两个结果的情况。
+        文件与粘贴文本同时给时，**文件优先**（那是用户明确选中的那一份）。
+        """
+
+    @abstractmethod
     async def revoke(self, user_id: str) -> None:
         """清空导入：课表成绩与画像摘要一起删掉，这条重新变回待办。"""
 
@@ -255,8 +334,8 @@ class AcademicService(ABC):
 class AssetService(ABC):
     """资产版本与影响面（R-BIZ-012）。
 
-    核心规则：画像字段更新 → 只重算受影响片段 → 版本 +1 → 写 diff。
-    禁止整篇重新生成。
+    核心规则：画像字段更新 → 命中资产标上"待重算" → 下一次进入该环节时重算并升版
+    → 写这一版真实的变化说明。禁止整篇重新生成，也禁止"没重算却升版"。
     """
 
     @abstractmethod
@@ -264,10 +343,30 @@ class AssetService(ABC):
         """列出某类资产的历史版本。"""
 
     @abstractmethod
-    async def propagate(self, user_id: str, changed_profile_keys: Sequence[str]) -> list[AssetVersion]:
+    async def get_latest_version(
+        self, user_id: str, asset_type: AssetType
+    ) -> Optional[AssetVersion]:
+        """某类资产的最新版本（含"待重算"标记）。
+
+        编排器每次进入环节前读一次它：若上一版是"画像变了、还没重算"的，
+        这一轮重算完就要如实告诉用户结论变了，不能悄悄把他手上那份换掉。
+        """
+
+    @abstractmethod
+    async def propagate(
+        self,
+        user_id: str,
+        changed_profile_keys: Sequence[str],
+        *,
+        mark_all: bool = False,
+    ) -> list[AssetVersion]:
         """影响面传播。
 
-        由 profile_field_updated 事件触发；返回本轮版本发生变化的资产列表。
+        由 profile_field_updated 事件触发；返回本轮被标记为"待重算"的资产。
+
+        `mark_all=True`（画像里出现了**新的一类**字段）时，不论依赖是否命中，
+        三本资产都标成"待重算" —— 新字段不可能出现在任何资产的依赖清单里，
+        而"多了一整类信息"这件事会让已有结论都值得重新看一遍。
         """
 
     @abstractmethod

@@ -25,7 +25,8 @@
 --------------------------------------------
 - 教务系统课表页 / 成绩页的**整页复制**（HTML）—— 正方、强智两套主流版式；
 - 从 Excel / WPS / 网页表格复制出来的**表格文本**（制表符或逗号分隔）；
-- 正方接口那种 **JSON**。
+- 正方接口那种 **JSON**，以及用户自己导出的"每门课一条记录"的 JSON 数组；
+- 上面任意一种装在**文件里**传上来（.txt / .csv / .html / .json，编码我们认）。
 """
 
 from __future__ import annotations
@@ -153,6 +154,18 @@ class AcademicImportGateway(ABC):
     @abstractmethod
     def parse_grades(self, raw: str) -> GradeImport:
         """读成绩单。读不出来抛 `AcademicImportError`。"""
+
+    @abstractmethod
+    def read_text(self, data: bytes, *, filename: str = "") -> str:
+        """把用户**传上来的文件**读成文本（编码识别在这一层，别让调用方各自解一遍）。
+
+        为什么算这一层的职责：解析器要的是文本，而用户手上常常是一个文件。
+        "文件 → 文本"里藏着编码（GBK / 带 BOM 的 UTF-8）与二进制格式（Excel）两件
+        必须处理、且处理方式必须一致的事。放在 api 或业务层，就会出现
+        "粘贴能读、上传读不出"这种同一份数据的两种结果。
+
+        读不了时抛 `AcademicImportError`，消息里要写明用户能做的事。
+        """
 
     @abstractmethod
     def describe(self) -> dict[str, Any]:

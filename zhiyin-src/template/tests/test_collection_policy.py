@@ -265,3 +265,101 @@ def test_turning_academic_on_does_not_promote_it_over_a_users_own_words() -> Non
         available_sources=("chsi", "conversation", "academic"),
     )
     assert plan.steps[0].key == "expected_graduation"
+
+
+def test_academic_is_a_next_source_once_it_is_the_only_gap_left() -> None:
+    """只剩课表/成绩没补时，下一步**就是**教务系统。
+
+    这一条是被真实反馈逼出来的：`next_source()` 原来只遍历学信网与对话，
+    而 `by_source` 是照装配实况算的。于是"其他都齐了、只差课表和成绩"的账号
+    得到 `next_source = None` —— 前端主 CTA 写着"没有可自动补的项了"，
+    同一屏里课表那两行却还挂着"去导入"。判断与入口自相矛盾，两处都不报错。
+    """
+    everything_else = (
+        "major",
+        "degree_level",
+        "expected_graduation",
+        "school",
+        "enrollment_status",
+        "duration",
+        "study_mode",
+        "enrolled_at",
+        "values",
+        "interest",
+        "experience",
+        "skills",
+    )
+    plan = plan_collection(
+        _profile(*everything_else),
+        stage="sprint",
+        available_sources=("chsi", "conversation", "academic"),
+    )
+
+    assert plan.by_source == {"academic": 2}
+    assert plan.next_source() is CollectionSource.ACADEMIC
+
+
+def test_next_source_keeps_the_one_action_that_fills_most_fields_first() -> None:
+    """候选顺序是刻意的：学信网一次核验拿全，排在最前；其次是问一句；导入排最后。"""
+    plan = plan_collection(
+        None,
+        stage="sprint",
+        available_sources=("chsi", "conversation", "academic"),
+    )
+    assert plan.next_source() is CollectionSource.CHSI
+
+    only_conversation_and_courses = (
+        "major",
+        "degree_level",
+        "expected_graduation",
+        "school",
+        "enrollment_status",
+        "duration",
+        "study_mode",
+        "enrolled_at",
+        "scores",
+    )
+    plan = plan_collection(
+        _profile(*only_conversation_and_courses),
+        stage="sprint",
+        available_sources=("chsi", "conversation", "academic"),
+    )
+    assert plan.next_source() is CollectionSource.CONVERSATION
+
+
+# ---------------------------------------------------------------- 问哪一句
+
+
+def test_every_conversation_gap_carries_the_question_to_ask() -> None:
+    """"问一句"这一类缺口，每条都要带着**自己的**那个问题。
+
+    没有它，清单上四条缺口就只能共用一个泛泛的入口（"说说你自己"）——
+    用户点下去不知道自己在补哪一条，答完也不知道补上了什么。
+    """
+    plan = plan_collection(None, stage="explore")
+    asked = {step.key: step.ask for step in plan.steps if step.source is CollectionSource.CONVERSATION}
+
+    assert asked, "空画像下必须有要问的问题"
+    assert all(asked.values()), f"每条 conversation 缺口都要有问题：{asked}"
+    # 问题要一句话答得上来，所以不能是空话、也不能长得像一段需求说明
+    assert all(len(question) <= 60 for question in asked.values())
+    assert len(set(asked.values())) == len(asked), "四条缺口的问题不能是同一句"
+
+
+def test_fields_we_already_have_are_not_asked_again() -> None:
+    """已经拿到的字段不再挂"去回答"：重复问一遍是消耗，也是最容易被当成坏了的行为。"""
+    plan = plan_collection(_profile("values", "interest"), stage="explore")
+
+    done = next(step for step in plan.steps if step.key == "values")
+    assert done.got is True
+    assert done.ask == ""
+
+
+def test_chsi_rows_never_carry_a_question() -> None:
+    """学信网那几条的动作是"去核验"，不是"回答一句" —— 问题字段只属于对话源。"""
+    plan = plan_collection(None, stage="sprint")
+    assert all(
+        step.ask == ""
+        for step in plan.steps
+        if step.source is not CollectionSource.CONVERSATION
+    )

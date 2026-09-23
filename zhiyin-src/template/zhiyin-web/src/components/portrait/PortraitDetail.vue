@@ -39,8 +39,6 @@ const emit = defineEmits<{
   (e: 'pick-trend', index: number): void
 }>()
 
-const name = computed(() => props.field.label || props.field.key)
-
 /** 把握度的三档：薄 / 中 / 稳 —— 与采集口径里的 0.6 / 0.85 对齐 */
 const tier = computed(() =>
   props.field.confidence < 0.6 ? 'low' : props.field.confidence < 0.85 ? 'mid' : 'high',
@@ -52,7 +50,6 @@ const TIER_TEXT: Record<string, string> = { low: '还很薄', mid: '大概如此
   <section class="detail" :class="`tier-${tier}`">
     <header class="head">
       <div class="head__l">
-        <h3 class="head__name">{{ name }}</h3>
         <span class="pill">{{ TIER_TEXT[tier] }}</span>
         <p class="meta">{{ sourceLabel }} · 更新于 {{ stamp(field.updatedAt) }}</p>
       </div>
@@ -149,24 +146,15 @@ const TIER_TEXT: Record<string, string> = { low: '还很薄', mid: '大概如此
   border-bottom: 1px solid var(--line-1);
 }
 .head__l {
-  display: grid;
-  grid-template-columns: auto auto;
-  justify-content: start;
+  display: flex;
   align-items: center;
-  gap: 4px 10px;
+  gap: var(--s3);
   min-width: 0;
-}
-.head__name {
-  grid-area: 1 / 1;
-  font-family: var(--font-editorial);
-  font-size: 24px; font-weight: 600; letter-spacing: -0.015em;
-  color: var(--pt-ink, var(--ink-1));
 }
 
 /* 档位胶囊：颜色 + 文字都说同一件事，不靠颜色单独传达 */
 .pill {
-  grid-area: 1 / 2;
-  justify-self: start;
+  flex: 0 0 auto;
   padding: 2px 9px; border-radius: var(--r-pill);
   font-size: var(--t-xs); font-weight: 500;
   color: var(--pt-accent, var(--accent));
@@ -176,7 +164,14 @@ const TIER_TEXT: Record<string, string> = { low: '还很薄', mid: '大概如此
 .tier-mid .pill { color: var(--mk-orange); background: rgba(164, 82, 47, 0.09); border-color: rgba(164, 82, 47, 0.26); }
 .tier-low .pill { color: var(--mk-pink); background: rgba(140, 59, 82, 0.09); border-color: rgba(140, 59, 82, 0.26); }
 
-.meta { grid-area: 2 / 1 / 3 / 3; font-size: var(--t-xs); color: var(--pt-faint, var(--ink-3)); }
+/*
+ * 这一行**不再重复字段名**。
+ *
+ * 名字与把握度已经写在浮层的抬头条上（那是"你在哪一条"），这里再写一遍，
+ * 两行同名的字会挨在一起，读起来像屏幕上多了个标题。
+ * 这一层只补抬头条没有的那两件事：这一条**算不算稳**，以及它**从哪来**。
+ */
+.meta { font-size: var(--t-sm); color: var(--pt-faint, var(--ink-3)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .gauge { display: grid; gap: 6px; justify-items: end; min-width: 132px; }
 .gauge__v {

@@ -67,6 +67,29 @@ class LocalFileStore(ObjectStoreGateway):
         """统一对象键：{user_id}/{asset_type}/v{version}.{ext}"""
         return f"{user_id}/{asset_type}/v{version}.{ext.lstrip('.')}"
 
+    def build_named_key(self, user_id: str, scope: str, name: str, ext: str) -> str:
+        """带名字的对象键：{user_id}/{scope}/{name}.{ext}
+
+        `name` 会经过 `_safe_component` 清洗：它来自用户（文件名、附件 id 都可能带
+        斜杠或 `..`），直接拼进键就给了"用文件名写到别的目录"的机会。
+        `_resolve` 会再挡一次路径穿越，两道都要有 —— 一道是"键本身干净"，
+        另一道是"落盘时不越界"。
+        """
+        return (
+            f"{self._safe_component(user_id)}/{self._safe_component(scope)}"
+            f"/{self._safe_component(name)}.{self._safe_component(ext.lstrip('.'))}"
+        )
+
+    @staticmethod
+    def _safe_component(part: str) -> str:
+        """把一段键名清成"只能是一段"：去掉路径分隔与上级目录记号。
+
+        不做"报错拒绝"而做"清洗"：调用方传进来的可能是用户文件名（`简历/2024.pdf`），
+        拒绝会让上传失败，而清洗得到的是一个合法且可预期的键。
+        """
+        cleaned = str(part or "").replace("\\", "/").replace("/", "_").replace("..", "_")
+        return cleaned.strip() or "_"
+
     # ---------- 内部 ----------
 
     def _resolve(self, key: str) -> Path:

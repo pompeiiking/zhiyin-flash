@@ -46,6 +46,7 @@ from zhiyin_api.dto.common import CoachNotificationView
 from zhiyin_api.dto.conversation import (
     ConversationMessageView,
     ConversationTurnView,
+    ConversationMaterialView,
     MessageRequest,
     SessionListView,
     TaskEnterRequest,
@@ -57,6 +58,7 @@ from zhiyin_api.dto.note import NoteAck, NoteCreateRequest, NoteDoneRequest, Not
 from zhiyin_api.dto.workspace import (
     AcademicImportAck,
     AcademicImportRequest,
+    AcademicImportUpload,
     AcademicRevokeAck,
 )
 
@@ -124,6 +126,16 @@ class ApplicationFacade(ABC):
         self, user_id: str, body: MessageRequest
     ) -> ConversationTurnView:
         """处理一轮消息，返回最短结论 + 告知 + 引导 + 管线卡。"""
+
+    @abstractmethod
+    async def upload_material(
+        self, user_id: str, *, name: str, data: bytes
+    ) -> ConversationMaterialView:
+        """收下用户在对话里交的一份材料（抽正文 → 存起来）。
+
+        回执**不带正文**：正文只进模型输入，不进对话气泡 —— 用户抱怨的正是
+        "传个文件，内容被摊在对话框里"。
+        """
 
     # ---------- 工作台 ----------
 
@@ -231,6 +243,16 @@ class ApplicationFacade(ABC):
         self, user_id: str, body: "AcademicImportRequest"
     ) -> "AcademicImportAck":
         """导入课表与成绩单（学生自己贴原文）。"""
+
+    @abstractmethod
+    async def import_academic_files(
+        self, user_id: str, body: "AcademicImportUpload"
+    ) -> "AcademicImportAck":
+        """导入课表与成绩单（学生自己传文件）。
+
+        与上面那条是**同一个动作的两种入口**：读出来什么、写进哪几条画像摘要，
+        两条路必须一致 —— 一致性由业务层保证（都落到 `import_`）。
+        """
 
     @abstractmethod
     async def list_notes(self, user_id: str) -> list["NoteView"]:

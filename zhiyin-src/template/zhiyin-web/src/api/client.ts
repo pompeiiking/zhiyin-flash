@@ -45,6 +45,9 @@ export type AcademicImportAck = Schema['AcademicImportAck']
 export type TheoryRef = Schema['TheoryRefView']
 export type ProfileField = Schema['ProfileFieldView']
 export type ProfileGap = Schema['ProfileGapView']
+/** 对话里摆出来的一块可视件（图 / 时间线 / 对比表…）—— 前端按 `kind` 分发渲染 */
+export type RenderableView = Schema['RenderableView']
+export type AchievementListView = Schema['AchievementListView']
 
 export class BackendUnavailableError extends Error {}
 export class UnauthorizedError extends Error {}
@@ -78,6 +81,16 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   } catch (cause) {
     throw new BackendUnavailableError(String(cause))
   }
+  return unwrap<T>(res)
+}
+
+/**
+ * 信封解析：JSON 与上传两条路共用。
+ *
+ * 抽出来不是为了少写几行 —— 上传之后如果各写一份判定，就会出现"某一条路上
+ * 1004 没被认成未登录"这种只在一半场景里发作的偏差。
+ */
+async function unwrap<T>(res: Response): Promise<T> {
   if (res.status >= 500) throw new BackendUnavailableError(`HTTP ${res.status}`)
   const body = (await res.json().catch(() => null)) as Envelope<T> | null
   if (!body) throw new BackendUnavailableError('empty body')
@@ -85,6 +98,26 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   if (body.code === CODE_UNAUTHORIZED) throw new UnauthorizedError(body.message)
   if (body.code !== CODE_OK) throw new Error(body.message || `code=${body.code}`)
   return body.data as T
+}
+
+/**
+ * 带文件的上传（multipart/form-data）。
+ *
+ * 与 `api()` 分的唯一一件事是**不设 Content-Type**：multipart 的 boundary 必须由浏览器
+ * 自己写，手写一个 `application/json` 会让后端连文件都收不到（那是"传了但读不出来"
+ * 最容易踩的一脚）。其余（令牌、信封、错误分类）与 `api()` 完全一致。
+ */
+async function upload<T>(path: string, form: FormData): Promise<T> {
+  let res: Response
+  try {
+    const headers: Record<string, string> = { Accept: 'application/json' }
+    const token = authToken()
+    if (token) headers.Authorization = `Bearer ${token}`
+    res = await fetch(`/api/v1${path}`, { method: 'POST', headers, body: form })
+  } catch (cause) {
+    throw new BackendUnavailableError(String(cause))
+  }
+  return unwrap<T>(res)
 }
 
 /* ---- 会话与对话 ---- */
@@ -143,11 +176,43 @@ export function listTrackEvents(limit = 50) {
   return api<TrackEvent[]>(`/app/track/events?limit=${limit}`)
 }
 
-export function sendMessage(taskId: string, message: string) {
+/**
+ * 发一轮话。
+ *
+ * `option` 是"这一轮点的是哪个选项"（后端上一轮 `guide.options` 里那一条）。
+ * 带上它，后端才分得清"用户明确选了这一条"和"用户随口说了这几个字"——
+ * 只发 label 的话，同一个问题可能被再问一遍（见 stores/session.ts 的 chatOptions）。
+ */
+export function sendMessage(
+  taskId: string,
+  message: string,
+  option?: { option_id?: string; value?: unknown },
+  materialIds: string[] = [],
+) {
   return api<TurnView>('/app/conversation/message', {
     method: 'POST',
-    body: JSON.stringify({ task_id: taskId, message, client_msg_id: `c${Date.now()}` }),
+    body: JSON.stringify({
+      task_id: taskId,
+      message,
+      client_msg_id: `c${Date.now()}`,
+      option_id: option?.option_id ?? null,
+      option_value: option?.value ?? null,
+      material_ids: materialIds,
+    }),
   })
+}
+
+/**
+ * 交一份材料（上传文件，不在浏览器里读成文本）。
+ *
+ * 回执里**没有正文**：正文留在服务端，只在用到它的那一轮进模型输入。
+ * 之前是把文件读成一大段文本直接发成一条消息 —— 对话框里当场铺开几百行，
+ * 用户要读的是主理的回话，不是自己刚交上去的原文。
+ */
+export function uploadMaterial(file: File) {
+  const form = new FormData()
+  form.append('file', file, file.name)
+  return upload<Schema['ConversationMaterialView']>('/app/conversation/material', form)
 }
 
 /* ---- 埋点（体验型事件，channel=frontend；事件码见 data/registry/track_events.json） ---- */
@@ -355,6 +420,22 @@ export function getCalendarNodes() {
   return api<CalendarNode[]>('/app/calendar')
 }
 
+/* ---- 完成记录 ---- */
+
+/**
+ * 完成记录（内部叫"成就"）。
+ *
+ * 它读的是**行为日志的推导结果**：做到过哪几件事、第一次是什么时候做的。
+ * 没有"领奖"这个动作，也没有进度百分比 —— 解锁条件就是"做过一次某件事"，
+ * 拆成刻度只会是编出来的数字。
+ *
+ * 名字与"怎么拿到"不在这里：规则 code 由界面按 `badge.<code>.label` / `.how`
+ * 从文案包取（`/app/bootstrap` 已下发），运营改名字不发版。
+ */
+export function getAchievements() {
+  return api<AchievementListView>('/app/achievements')
+}
+
 /* ---- 资产版本与导出 ---- */
 
 /**
@@ -435,4 +516,19 @@ export function importAcademic(body: {
     method: 'POST',
     body: JSON.stringify(body),
   })
+}
+
+/**
+ * 导入课表与成绩单（**文件的入口**）。
+ *
+ * 为什么文件要走上传、不在浏览器里读成文本再提交：
+ *
+ *   · **编码**。教务系统导出的 CSV / TXT 有一半是 GBK，浏览器按 UTF-8 读会得到乱码，
+ *     而后端拿到乱码只能说"读不出这是课表"——用户的文件其实完全正确；
+ *   · **看起来的样子**。在页面上把文件内容铺进一个文本框，用户看到的是"我选的文件
+ *     被拆开摆出来了"，而那正是他不想看到的东西：他只想交给系统一个文件；
+ *   · 上传之后"读不出来"的原因在后端只有一处（解码 + 解析），不会前后端各说各的。
+ */
+export function importAcademicFiles(form: FormData) {
+  return upload<AcademicImportAck>('/app/academic/import/file', form)
 }

@@ -106,9 +106,5 @@ class WorkspaceService(ABC):
         """按 ①-⑤ 聚合活资产，装配工作台视图。"""
 
     @abstractmethod
-    async def list_sessions_summary(self, user_id: str) -> list[StagePanel]:
-        """列出该用户各任务会话的环节进度，用于左栏会话列表与工作台分层。"""
-
-    @abstractmethod
     async def list_sessions(self, user_id: str) -> list[TaskSession]:
         """列出该用户的任务会话（读侧转手，供左栏会话列表）。"""

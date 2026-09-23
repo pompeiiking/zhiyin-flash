@@ -263,19 +263,6 @@ class DefaultWorkspaceService(WorkspaceService):
             _log.exception("读取用户自建内容失败：采集策略按没有信号处理")
             return []
 
-    async def list_sessions_summary(self, user_id: str) -> list[StagePanel]:
-        memories = await self._memories.list_by_user(user_id)
-        titles = self._stage_titles()
-        return [
-            StagePanel(
-                stage=memory.loop_stage,
-                title=titles.get(memory.loop_stage.value, ""),
-                evaluation=memory.summary[:80],
-                updated_at=memory.last_active_at,
-            )
-            for memory in memories
-        ]
-
     async def list_sessions(self, user_id: str) -> list[TaskSession]:
         if self._sessions is None:
             return []

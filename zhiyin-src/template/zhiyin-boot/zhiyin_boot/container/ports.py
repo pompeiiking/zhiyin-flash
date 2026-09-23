@@ -20,6 +20,9 @@ GATEWAY_PORTS: tuple[str, ...] = (
     "vector",
     "cache",
     "object_store",
+    # 文档正文抽取：把用户带上来的文件（材料 / 导出）读成文本。
+    # 编码识别与二进制格式拒绝都在这里；第二期接 PDF/Word/OCR 解析服务时换的是它。
+    "documents",
     "event_bus",
     "scheduler",
     "notifier",

@@ -30,7 +30,8 @@ function run() {
   if (!ask) return
   const target = ask.target
   if (target.to === 'chat') {
-    session.askChat(target.prompt, target.options.map((o) => (typeof o === 'string' ? o : o.label)))
+    // 选项成组带过去（含 option_id / value）：点下去之后后端才知道选的是哪一个
+    session.askChat(target.prompt, target.options)
   } else if (target.to === 'tasks') {
     session.openOverlay('tasks')
   } else {

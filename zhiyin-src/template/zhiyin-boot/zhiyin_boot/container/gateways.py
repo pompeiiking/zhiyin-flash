@@ -188,6 +188,12 @@ def build_gateways(
 
     academic: Any = ManualAcademicImporter()
 
+    # 文档正文抽取：用户带上来的文件 → 文本（编码识别 + 二进制格式拒绝）。
+    # 它不联网，也不是"替用户去取数据"——就是把字节读成字。
+    from zhiyin_infrastructure.textfile import LocalTextExtractor
+
+    documents: Any = LocalTextExtractor()
+
     gateways: dict[str, Any] = {
         "llm": llm,
         "embedding": embedding,
@@ -196,6 +202,7 @@ def build_gateways(
         "vector": vector,
         "cache": cache,
         "object_store": LocalFileStore(settings.local_object_dir),
+        "documents": documents,
         "event_bus": event_bus,
         # 调度器必须能投递事件，否则主动事件（停滞检测）永远不触发。显式注入。
         "scheduler": scheduler,

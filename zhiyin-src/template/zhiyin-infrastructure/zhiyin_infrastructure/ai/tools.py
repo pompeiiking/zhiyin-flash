@@ -16,7 +16,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Callable, Literal
+from typing import Any, Callable, Literal, Sequence
 
 from agno.run import RunContext
 
@@ -37,8 +37,113 @@ KNOWN_TOOL_NAMES: frozenset[str] = frozenset(
         "web.search",
         "profile.read",
         "behavior.recent",
+        "plan.read",
+        "chart.render",
     }
 )
+
+#: 本轮可视件的**回传盒子**在 `run_context.dependencies` 里的键名。
+#: 与编排层 `agno_engine.CHART_BOX_KEY` 是同一个约定，但两边各写一遍 ——
+#: 依赖守卫不许编排层 import 基础设施层的实现，而这个键名是它们之间的约定。
+CHART_BOX_KEY = "renderables"
+
+#: 能画的图**只有这几种**，每一种的点都由服务端自己从库里读出来。
+#:
+#: 这是"防止假数据"的关键：工具的参数只有 `kind`（一个枚举），**没有任何位置**
+#: 能让模型传数值进来。它决定"画哪一类"，数字由服务端读真实数据算出来。
+#: 想加一种图，就在 `_chart_points` 里加一个分支，并在下面登记它的说明。
+_CHART_KINDS: dict[str, str] = {
+    "profile_confidence": "他现在每一项情况的把握度（来自画像里每条的真实把握度）",
+    "direction_match": "已经存下来的几套方向各自的匹配度（来自方案资产的真实分值）",
+    "plan_progress": "行动计划每个阶段做完了多少（来自已存计划里的勾选状态）",
+}
+
+_DEFAULT_CHART_TITLES: dict[str, str] = {
+    "profile_confidence": "这几项你现在各有多少把握",
+    "direction_match": "各方向和你手上的东西合不合",
+    "plan_progress": "每个阶段做完了多少",
+}
+_CHART_UNITS: dict[str, str] = {
+    "profile_confidence": "%",
+    "direction_match": "分",
+    "plan_progress": "%",
+}
+
+
+async def _chart_points(
+    kind: str,
+    run_context: RunContext,
+    profile_reader: Callable[..., Any] | None,
+    plan_reader: Callable[..., Any] | None,
+) -> list[dict[str, Any]] | None:
+    """按类别从**库里**读出点位。读不到就返回 None（调用方负责如实说画不出来）。
+
+    三种图各自读一份真实数据，全部来自服务端：
+      · 画像把握度 ← 画像里每条字段自带的 confidence；
+      · 方向匹配度 ← 已落库的方案资产（match_score）；
+      · 计划进度   ← 已落库的行动计划里每个阶段的勾选状态。
+    **没有一个数字来自模型的自由发挥**，这是这张图能被信任的全部理由。
+    """
+    user_id = run_context.user_id or ""
+    if kind == "profile_confidence":
+        if profile_reader is None:
+            return None
+        data = await _read(profile_reader, user_id)
+        fields = list(getattr(data, "fields", []) or []) if not isinstance(data, dict) else list(
+            data.get("fields", []) or []
+        )
+        points = []
+        for item in fields:
+            label = getattr(item, "label", "") or (
+                item.get("label") if isinstance(item, dict) else ""
+            )
+            key = getattr(item, "key", "") or (item.get("key") if isinstance(item, dict) else "")
+            confidence = getattr(item, "confidence", None)
+            if confidence is None and isinstance(item, dict):
+                confidence = item.get("confidence")
+            if confidence is None:
+                continue
+            points.append(
+                {
+                    "label": str(label or key)[:12],
+                    "value": round(float(confidence) * 100),
+                }
+            )
+        return points or None
+    if plan_reader is None:
+        return None
+    data = await _read(plan_reader, user_id)
+    if not isinstance(data, dict):
+        return None
+    if kind == "direction_match":
+        directions = list(data.get("directions") or [])
+        points = []
+        for plan in directions:
+            name = getattr(plan, "name", "") or (
+                plan.get("name") if isinstance(plan, dict) else ""
+            )
+            score = getattr(plan, "match_score", None)
+            if score is None and isinstance(plan, dict):
+                score = plan.get("match_score")
+            if score is None:
+                continue
+            points.append({"label": str(name)[:12], "value": round(float(score) * 100)})
+        return points or None
+    action = data.get("plan")
+    phases = list(getattr(action, "phases", []) or []) if action is not None else []
+    points = []
+    for phase in phases:
+        tasks = list(getattr(phase, "tasks", []) or [])
+        if not tasks:
+            continue
+        done = sum(1 for task in tasks if getattr(task, "done", False))
+        points.append(
+            {
+                "label": str(getattr(phase, "name", "") or "阶段")[:12],
+                "value": round(done * 100 / len(tasks)),
+            }
+        )
+    return points or None
 
 
 @dataclass
@@ -51,6 +156,29 @@ class ToolSpec:
     handler: Callable[..., Any] | None = None
     # MCP server 连接信息（source="mcp" 时使用；连接器的落地在接入时补）
     mcp_server: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class ToolModule:
+    """**产品自己做好的一个功能模块**：一份后端能力 + 前端一整套渲染。
+
+    一个模块要交的是"模型能调的那几个工具"，而模块自己产出的可视件（图 / 时间线 /
+    对比矩阵…）要按三件事落地：
+
+    1. 后端取数：模块自己的逻辑（读库、走数据源都行，但**只能是只读**）；
+    2. 注册可视件：`zhiyin_business.policies.renderers.register_renderer` —— 给它
+       kind 名与校验函数，服务端就认这件东西，并且由它把关数据形状；
+    3. 前端组件：按 kind 分发（前端拿到的就是 `{kind, title, payload}`）。
+
+    模块**不决定谁能用它**：挂在哪个智能体上仍写在 `agents.json` 的白名单里。
+    这样"能力是谁做的"与"这个角色该有什么能力"两件事分开，各自可审。
+
+    工具名请带模块前缀（`timetable.heatmap` 这种），避免与内置能力重名 ——
+    重名会在装配时报错，而不是悄悄顶掉一个再让你去查为什么行为变了。
+    """
+
+    name: str
+    tools: Sequence[ToolSpec]
 
 
 class ToolRegistry:
@@ -131,6 +259,8 @@ def build_tool_catalog(
     web_search: Any = None,
     profile_reader: Callable[[str], Any] | None = None,
     behavior_reader: Callable[[str, int], Any] | None = None,
+    plan_reader: Callable[[str], Any] | None = None,
+    modules: Sequence[ToolModule] = (),
 ) -> dict[str, ToolSpec]:
     """按已装配的能力组装工具目录。没装配的能力不注册（缺了会被白名单校验拦下）。
 
@@ -138,8 +268,22 @@ def build_tool_catalog(
     有副作用的动作（核验学籍、抓课表成绩、写日历）必须走业务侧的完整链路
     （核验 → 解析 → 写画像 → 回执），不能做成一个模型随手可调的函数 ——
     模型看不到那条链路的副作用边界，而写画像的代价是不可逆的。
+
+    `modules` 是**产品自己做好的功能模块**（后端取数 + 前端一整套渲染 = 一个可视件）。
+    模块把自己的工具交进来，装配层只管挂上；哪个角色能用它，仍然写在
+    `agents.json` 的白名单里（模块不自己决定谁能用）。见 `ToolModule` 的说明。
     """
     catalog: dict[str, ToolSpec] = {}
+
+    # 产品模块先挂（内置工具之后挂，同名时内置优先 —— 模块不该悄悄顶掉基础能力）。
+    for module in modules:
+        for spec in module.tools:
+            if spec.name in KNOWN_TOOL_NAMES:
+                raise ValueError(
+                    f"模块 {module.name} 想注册的工具名 {spec.name} 与内置工具重名。"
+                    "模块的工具名要能看出是哪一家的（加前缀），否则两边会互相顶掉。"
+                )
+            catalog[spec.name] = spec
 
     if web_search is not None:
 
@@ -273,9 +417,83 @@ def build_tool_catalog(
             handler=behavior_recent,
         )
 
+    if plan_reader is not None:
+
+        async def plan_read(run_context: RunContext) -> str:
+            """读当前用户的行动计划与关键节点：分几个阶段、有哪些任务、哪些做完了、什么时候截止。
+
+            排计划的人要靠它知道"上一版排了什么、他做到哪了"，才不会重复排、也不会
+            把已经勾掉的事再安排一遍；陪你推进的人靠它判断"停在哪一步"。
+            """
+            data = await _read(plan_reader, run_context.user_id)
+            return _describe_plan(data)
+
+        catalog["plan.read"] = ToolSpec(
+            name="plan.read",
+            description="读当前用户的行动计划、任务完成情况与关键节点截止时间",
+            handler=plan_read,
+        )
+
+    if profile_reader is not None or plan_reader is not None:
+
+        async def chart_render(
+            run_context: RunContext, kind: str, title: str = ""
+        ) -> str:
+            """给他画一张图，挂在这一轮的回复上。
+
+            **数字不是你填的**：你只挑"画哪一类"，点位由系统从库里读真实数据算出来。
+            所以你不用、也不能在回复里报这些数字 —— 图就在他眼前。
+            画完用一句话告诉他这张图在说什么就够了。
+
+            Args:
+                kind: 只能取这几个之一 —— profile_confidence（他各项情况的把握度）、
+                    direction_match（几套方向各自的匹配度）、plan_progress（各阶段做完了多少）
+                title: 图上方给他看的一句话（不填就用默认标题）
+            """
+            wanted = (kind or "").strip()
+            if wanted not in _CHART_KINDS:
+                return (
+                    f"没有「{kind}」这一类图。能画的只有："
+                    + "；".join(f"{name}（{desc}）" for name, desc in _CHART_KINDS.items())
+                )
+            points = await _chart_points(wanted, run_context, profile_reader, plan_reader)
+            if points is None:
+                return f"这一类图现在画不出来：{_CHART_KINDS[wanted]}还缺数据。别硬画，也别编数字。"
+            if len(points) < 2:
+                return "只有一项，画成图看不出什么，直接用话说给他听更清楚。"
+            spec = {
+                "kind": "bars_chart",
+                "title": (title or "").strip()[:30] or _DEFAULT_CHART_TITLES[wanted],
+                "payload": {"unit": _CHART_UNITS[wanted], "points": points},
+            }
+            # 放进这一次运行的**回传盒子**：跑完由引擎取走，交给编排器校验后挂到消息上。
+            # 盒子不在（比如某个调用方没接）也不报错 —— 可视件是加分项。
+            dependencies = getattr(run_context, "dependencies", None)
+            if isinstance(dependencies, dict):
+                box = dependencies.setdefault(CHART_BOX_KEY, [])
+                if isinstance(box, list):
+                    box.append(spec)
+            listed = "、".join(f"{item['label']} {item['value']:g}{_CHART_UNITS[wanted]}" for item in points)
+            return f"图已经挂上了（{spec['title']}）：{listed}。用一句话跟他讲这张图在说什么。"
+
+        catalog["chart.render"] = ToolSpec(
+            name="chart.render",
+            description=(
+                "给他画一张图挂在这一轮的回复上。只能挑图的类别"
+                "（" + "、".join(_CHART_KINDS) + "），数字由系统读真实数据生成"
+            ),
+            handler=chart_render,
+        )
+
     # 自检：注册进来的名字必须在 KNOWN_TOOL_NAMES 里。
     # 少了它，那份名单会慢慢变成一份过期文档 —— 而守卫会照着它放行。
-    unlisted = sorted(set(catalog) - KNOWN_TOOL_NAMES)
+    #
+    # **模块带来的工具不查这份名单**：名字是模块自己的（`timetable.heatmap` 这种），
+    # 它先由 `ToolModule` 声明、再在装配时进目录，最后按 `agents.json` 的白名单决定
+    # 谁能用 —— 那是另一条校验路径。硬塞进内置名单反而会让"哪个是内置能力、
+    # 哪个是产品模块"分不清。
+    module_names = {spec.name for module in modules for spec in module.tools}
+    unlisted = sorted(set(catalog) - KNOWN_TOOL_NAMES - module_names)
     if unlisted:
         raise ValueError(
             f"工具目录注册了未登记的工具名：{unlisted}。"
@@ -319,6 +537,37 @@ def _describe_profile(data: Any) -> str:
             key = getattr(gap, "key", "") if not isinstance(gap, dict) else gap.get("key", "")
             reason = getattr(gap, "reason", "") if not isinstance(gap, dict) else gap.get("reason", "")
             lines.append(f"- {key}：{reason}")
+    return "\n".join(lines)
+
+
+def _describe_plan(data: Any) -> str:
+    """行动计划 + 关键节点 → 给模型看的几行字。没有就如实说没有。"""
+    if isinstance(data, str):
+        return data
+    if not isinstance(data, dict):
+        return "还没读到计划内容。"
+    plan = data.get("plan")
+    nodes = list(data.get("nodes") or [])
+    lines: list[str] = []
+    phases = list(getattr(plan, "phases", []) or []) if plan is not None else []
+    if phases:
+        lines.append("现在这一版计划：")
+        for phase in phases:
+            name = getattr(phase, "name", "") or ""
+            window = getattr(phase, "date_range", "") or ""
+            lines.append(f"- 阶段 {name}（{window}）")
+            for task in getattr(phase, "tasks", []) or []:
+                mark = "已做" if getattr(task, "done", False) else "没做"
+                text = getattr(task, "text", "") or ""
+                lines.append(f"  · [{mark}] {text}")
+    else:
+        lines.append("还没有行动计划 —— 这一轮如果要给任务，就是第一版。")
+    if nodes:
+        lines.append("关键节点：")
+        for node in nodes:
+            title = getattr(node, "title", "") or (node.get("title") if isinstance(node, dict) else "")
+            due = getattr(node, "due_at", None) if not isinstance(node, dict) else node.get("due_at")
+            lines.append(f"- {title}（截止：{due or '未写'}）")
     return "\n".join(lines)
 
 

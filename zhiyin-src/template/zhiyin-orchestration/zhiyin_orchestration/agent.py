@@ -59,6 +59,16 @@ class AgentResult(BaseModel):
     valid: bool = Field(default=False, description="是否通过产出契约校验")
     errors: list[str] = Field(default_factory=list)
     degraded: bool = Field(default=False)
+    renderables: list[dict[str, Any]] = Field(
+        default_factory=list,
+        description=(
+            "这一轮智能体**主动要求**摆出来的可视件（它调了某个工具，例如 chart.render）。"
+            "这里是**数据**不是契约：每一件的 payload 都由工具从库里读出来，"
+            "模型碰不到数值 —— 它只能挑「看哪一类」。"
+            "上层按 kind 逐个校验（见 policies/renderers.py），不合的丢掉，"
+            "绝不把编的数字摆到用户眼前。"
+        ),
+    )
 
 
 class AgentEngine(ABC):

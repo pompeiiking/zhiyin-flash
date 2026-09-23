@@ -111,6 +111,12 @@
             "title": "Courses",
             "type": "integer"
           },
+          "courses_scheduled": {
+            "default": 0,
+            "description": "读出了上课时间的课数。`courses` 是「进了库」，它是「排进了课表」——界面必须分别说，否则用户看到「导入完成」却查不到课。",
+            "title": "Courses Scheduled",
+            "type": "integer"
+          },
           "grades": {
             "default": 0,
             "title": "Grades",
@@ -253,6 +259,65 @@
           "revoked"
         ],
         "title": "AcademicRevokeAck",
+        "type": "object"
+      },
+      "AchievementListView": {
+        "additionalProperties": false,
+        "description": "整屏完成的记录：全部规则 + 其中拿到几枚。",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AchievementView"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "default": 0,
+            "title": "Total",
+            "type": "integer"
+          },
+          "unlocked": {
+            "default": 0,
+            "title": "Unlocked",
+            "type": "integer"
+          }
+        },
+        "title": "AchievementListView",
+        "type": "object"
+      },
+      "AchievementView": {
+        "additionalProperties": false,
+        "description": "一枚完成记录。\n\n只有三样东西：它是哪一枚、拿到没有、什么时候拿到的。\n**没有进度条、没有百分比** —— 这类记录的解锁条件是\"做过一次某件事\"，\n拆成进度就是编出来的刻度（\"认领差距 60%\"没有含义）。",
+        "properties": {
+          "key": {
+            "description": "规则 code；文案由前端按 `badge.<key>` 从文案包取",
+            "title": "Key",
+            "type": "string"
+          },
+          "unlocked": {
+            "default": false,
+            "title": "Unlocked",
+            "type": "boolean"
+          },
+          "unlocked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "第一次做到那件事的时间（未解锁为 null）",
+            "title": "Unlocked At"
+          }
+        },
+        "required": [
+          "key"
+        ],
+        "title": "AchievementView",
         "type": "object"
       },
       "ActionPhaseView": {
@@ -523,6 +588,37 @@
         "title": "ApiResponse[AcademicRevokeAck]",
         "type": "object"
       },
+      "ApiResponse_AchievementListView_": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode",
+            "default": 0
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AchievementListView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "default": "ok",
+            "title": "Message",
+            "type": "string"
+          },
+          "trace_id": {
+            "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "title": "ApiResponse[AchievementListView]",
+        "type": "object"
+      },
       "ApiResponse_ActionPlanView_": {
         "additionalProperties": false,
         "properties": {
@@ -583,6 +679,37 @@
           }
         },
         "title": "ApiResponse[BootstrapView]",
+        "type": "object"
+      },
+      "ApiResponse_ConversationMaterialView_": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode",
+            "default": 0
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConversationMaterialView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "default": "ok",
+            "title": "Message",
+            "type": "string"
+          },
+          "trace_id": {
+            "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "title": "ApiResponse[ConversationMaterialView]",
         "type": "object"
       },
       "ApiResponse_ConversationTurnView_": {
@@ -1306,6 +1433,12 @@
             ],
             "title": "Diff From Previous"
           },
+          "needs_recompute": {
+            "default": false,
+            "description": "这一版是「画像变过、还没重算」的旧版本。影响面传播只打这个标记、不升版，下一次进入该环节真的重算时才 +1 —— 界面据此可以如实说「这版是旧的」",
+            "title": "Needs Recompute",
+            "type": "boolean"
+          },
           "version": {
             "title": "Version",
             "type": "integer"
@@ -1443,6 +1576,74 @@
         "title": "BehaviorGuideView",
         "type": "object"
       },
+      "Body_import_academic_files_api_v1_app_academic_import_file_post": {
+        "properties": {
+          "courses_file": {
+            "anyOf": [
+              {
+                "contentMediaType": "application/octet-stream",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Courses File"
+          },
+          "courses_text": {
+            "default": "",
+            "maxLength": 200000,
+            "title": "Courses Text",
+            "type": "string"
+          },
+          "grades_file": {
+            "anyOf": [
+              {
+                "contentMediaType": "application/octet-stream",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grades File"
+          },
+          "grades_text": {
+            "default": "",
+            "maxLength": 200000,
+            "title": "Grades Text",
+            "type": "string"
+          },
+          "school": {
+            "default": "",
+            "maxLength": 120,
+            "title": "School",
+            "type": "string"
+          },
+          "term": {
+            "default": "",
+            "maxLength": 40,
+            "title": "Term",
+            "type": "string"
+          }
+        },
+        "title": "Body_import_academic_files_api_v1_app_academic_import_file_post",
+        "type": "object"
+      },
+      "Body_upload_material_api_v1_app_conversation_material_post": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_material_api_v1_app_conversation_material_post",
+        "type": "object"
+      },
       "BootstrapView": {
         "additionalProperties": false,
         "description": "启动装配视图。",
@@ -1575,57 +1776,6 @@
         "title": "CalendarNodeView",
         "type": "object"
       },
-      "ChartPointView": {
-        "additionalProperties": false,
-        "description": "图上的一个点。",
-        "properties": {
-          "label": {
-            "title": "Label",
-            "type": "string"
-          },
-          "value": {
-            "title": "Value",
-            "type": "number"
-          }
-        },
-        "required": [
-          "label",
-          "value"
-        ],
-        "title": "ChartPointView",
-        "type": "object"
-      },
-      "ChartView": {
-        "additionalProperties": false,
-        "description": "主理在对话里给的那张图。\n\n值来自服务端**实测数据**（画像各维把握、方案匹配度…），不是模型写的数字 ——\n图上的每个点都能追回它来自哪条记录。",
-        "properties": {
-          "kind": {
-            "const": "bars",
-            "default": "bars",
-            "title": "Kind",
-            "type": "string"
-          },
-          "points": {
-            "items": {
-              "$ref": "#/components/schemas/ChartPointView"
-            },
-            "title": "Points",
-            "type": "array"
-          },
-          "title": {
-            "default": "",
-            "title": "Title",
-            "type": "string"
-          },
-          "unit": {
-            "default": "",
-            "title": "Unit",
-            "type": "string"
-          }
-        },
-        "title": "ChartView",
-        "type": "object"
-      },
       "CoachNotificationView": {
         "description": "教练主动介入的通知（前端浮窗轮询消费）。\n\n形状由两个读侧实现共同决定：`InMemoryNotificationRepository`（本地消息表）与\n`PostgresNotificationRepository`（`orc_notification`）。两边都至少有\nid / title / body / channel / occurred_at，本地那份还多带 user_id 这类调试字段。\n\n因此这里用 `extra=\"ignore\"` 而不是 `forbid`：**多出来的字段不该让这个接口报 500**，\n但 `id` / `title` 缺了前端就没法渲染，仍需强制。\n\n此前这个接口的返回类型是裸 `list`，前端只能猜字段（它猜的是 `by`——\n后端从来没有这个字段），于是每条通知署名永远为空。现在逐字段声明。",
         "properties": {
@@ -1696,6 +1846,12 @@
         "additionalProperties": false,
         "description": "采集清单里的一条。",
         "properties": {
+          "ask": {
+            "default": "",
+            "description": "问用户的那一句（只有 conversation 源、且还没拿到时有）；界面点「去回答」就把它带进对话，不为空表示这一条有可直接执行的动作",
+            "title": "Ask",
+            "type": "string"
+          },
           "available": {
             "default": true,
             "description": "这个源头现在能不能用",
@@ -1784,6 +1940,38 @@
         "title": "CollectionPanelView",
         "type": "object"
       },
+      "ConversationMaterialView": {
+        "additionalProperties": false,
+        "description": "一次材料上收的回执（文件传上来的结果）。\n\n**不含正文**：正文回给前端就等于把文件又摊在对话框里了。\n前端拿到的是\"它是什么\"（名字 / 原始大小 / 读到多少字），够它画一枚材料卡。",
+        "properties": {
+          "chars": {
+            "default": 0,
+            "description": "读出来的正文字数",
+            "title": "Chars",
+            "type": "integer"
+          },
+          "material_id": {
+            "title": "Material Id",
+            "type": "string"
+          },
+          "name": {
+            "default": "",
+            "title": "Name",
+            "type": "string"
+          },
+          "size": {
+            "default": 0,
+            "description": "原文件字节数",
+            "title": "Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "material_id"
+        ],
+        "title": "ConversationMaterialView",
+        "type": "object"
+      },
       "ConversationMessageView": {
         "additionalProperties": false,
         "description": "对话气泡。",
@@ -1810,17 +1998,6 @@
             ],
             "title": "Agent Name"
           },
-          "chart": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ChartView"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "这一轮顺手给的图；没有就是 null"
-          },
           "created_at": {
             "anyOf": [
               {
@@ -1839,6 +2016,14 @@
               "$ref": "#/components/schemas/IntelRefView"
             },
             "title": "Intel Refs",
+            "type": "array"
+          },
+          "renderables": {
+            "description": "这一轮要摆给用户看的可视件：主理自己调工具产出的，或这一环节默认补的那张。前端按 kind 选组件渲染，数值由服务端填",
+            "items": {
+              "$ref": "#/components/schemas/RenderableView"
+            },
+            "title": "Renderables",
             "type": "array"
           },
           "role": {
@@ -2541,7 +2726,7 @@
       },
       "MessageRequest": {
         "additionalProperties": false,
-        "description": "一轮用户输入。支持会话续接（R-API-003）。",
+        "description": "一轮用户输入。支持会话续接（R-API-003）。\n\n`option_id` / `option_value` 是\"这一轮点的是哪个选项\"。\n\n为什么不能只发选项的**显示文字**：界面上那几个按钮是后端上一轮给的\n`guide.options`，它们有稳定的身份（`option_id`）与机器可读的取值（`value`）。\n只把 label 当一句话发回来，这一轮就退化成了自由文本 ——\n编排放器分不清\"用户明确选了「我现在还在念书」\"和\"用户随口说了这几个字\"，\n于是可能把同一个问题再问一遍。用户看到的是：点了选项，问题原样又回来了。\n这两个字段都是可选的：手打的那一轮本来就只有一个 message。",
         "properties": {
           "client_msg_id": {
             "anyOf": [
@@ -2555,9 +2740,34 @@
             "description": "前端幂等键",
             "title": "Client Msg Id"
           },
+          "material_ids": {
+            "description": "这一轮一起交上去的材料（`POST /app/conversation/material` 的返回 id）。材料正文不进 `message`：它只在服务端拼进这一轮的模型输入 —— 把一份简历几百段塞进对话气泡，用户要读的是主理的回话，不是自己交的原文",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 5,
+            "title": "Material Ids",
+            "type": "array"
+          },
           "message": {
             "title": "Message",
             "type": "string"
+          },
+          "option_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "这一轮点了哪个选项（guide.options[].option_id）",
+            "title": "Option Id"
+          },
+          "option_value": {
+            "description": "该选项的机器可读取值（guide.options[].value）；没有就是 None",
+            "title": "Option Value"
           },
           "task_id": {
             "title": "Task Id",
@@ -2973,6 +3183,39 @@
         ],
         "title": "ProfileSource",
         "type": "string"
+      },
+      "RenderableView": {
+        "additionalProperties": false,
+        "description": "对话里的一块**可视件**：图 / 时间线 / 对比矩阵……\n\n前端按 `kind` 选组件画（缺组件时应当如实跳过，不要把 payload 直接摊给用户）。\n服务端只放**注册过并通过校验**的类型（注册表在\n`zhiyin_business/policies/renderers.py`）：`kind` 没注册过、`payload` 形状不对，\n在编排器那边就已经丢掉了，不会走到这里。",
+        "properties": {
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "title": "Payload",
+            "type": "object"
+          },
+          "source_refs": {
+            "description": "这一件用到的外部来源，可点回原页面",
+            "items": {
+              "$ref": "#/components/schemas/IntelRefView"
+            },
+            "title": "Source Refs",
+            "type": "array"
+          },
+          "title": {
+            "default": "",
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "RenderableView",
+        "type": "object"
       },
       "ReportDimensionItemView": {
         "additionalProperties": false,
@@ -3847,6 +4090,69 @@
         ]
       }
     },
+    "/api/v1/app/academic/import/file": {
+      "post": {
+        "description": "导入课表与成绩单（**上传文件**那一版：multipart/form-data）。\n\n为什么和上面那条并存，而不是合成一条：粘贴与上传是两种真实动作，\n表单上也是两个不同的入口。合成一条的话，每次都要把\"这次有没有文件\"编码进\n同一种请求体里，读的人得先解码一遍才知道这条路在做什么。两条路共用同一条业务\n链路（`import_files` → `import_`），所以\"同一份数据读出来必须一样\"这件事\n由业务层保证，不靠接口形状。\n\n文件在这一层只做一件事：**限大小**。编码识别与二进制格式拒绝都在网关里\n（见 `AcademicImportGateway.read_text`）—— 那一层才知道\"读不出来\"该怎么说。",
+        "operationId": "import_academic_files_api_v1_app_academic_import_file_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_import_academic_files_api_v1_app_academic_import_file_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_AcademicImportAck_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Import Academic Files",
+        "tags": [
+          "workspace"
+        ]
+      }
+    },
+    "/api/v1/app/achievements": {
+      "get": {
+        "description": "完成记录：这个人做到过的那几件事（界面上叫「完成记录」，不叫成就）。\n\n要登录：它读的是**你自己的**行为日志，没有别人能看的版本。\n返回的是全部规则 + 其中拿到几枚（没拿到的也返回，界面上要能说\"还差哪几件\"）。",
+        "operationId": "list_achievements_api_v1_app_achievements_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_AchievementListView_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Achievements",
+        "tags": [
+          "workspace"
+        ]
+      }
+    },
     "/api/v1/app/assets/export": {
       "post": {
         "description": "导出资产。第一期仅预留入口，available 恒 False。",
@@ -4140,6 +4446,48 @@
         "summary": "Reload Config",
         "tags": [
           "config"
+        ]
+      }
+    },
+    "/api/v1/app/conversation/material": {
+      "post": {
+        "description": "交一份材料（multipart 上传）。\n\n为什么材料要**上传**而不是在浏览器里读成文本再塞进消息：\n\n· 编码（教务/办公软件导出的 GBK 文本）与二进制格式都由服务端统一处理，\n  浏览器那一侧不做第二份解码实现；\n· 正文不进对话气泡 —— 回执只有\"它是什么\"，正文留在服务端、只在用到它的\n  那一轮进模型输入。\n\n读不出来的原因（Excel / 空文件）由文档抽取重载成一句用户能照做的话，\n这一层只负责限大小。",
+        "operationId": "upload_material_api_v1_app_conversation_material_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_material_api_v1_app_conversation_material_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_ConversationMaterialView_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Upload Material",
+        "tags": [
+          "conversation"
         ]
       }
     },

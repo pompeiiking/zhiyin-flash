@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:  # pragma: no cover
     from zhiyin_boot.container import Container
@@ -89,6 +89,8 @@ def build_orchestration(container: "Container") -> None:
             web_search=container.web_search,
             profile_reader=_lazy_profile_reader(container),
             behavior_reader=_lazy_behavior_reader(container),
+            plan_reader=_lazy_plan_reader(container),
+            modules=_product_modules(),
         )
         for spec in catalog.values():
             registry_tools.register(spec)
@@ -133,6 +135,51 @@ def _lazy_behavior_reader(container: "Container"):
     return read
 
 
+def _lazy_plan_reader(container: "Container"):
+    """读计划与关键节点的回调（`plan.read` 工具用）。
+
+    两份数据来自两个服务（行动计划在资产服务、关键节点在功能块服务），
+    在这里合成一份：**工具层不该让模型自己拼两处读** —— 它只要"他手上的计划长什么样"。
+    任一服务没装配时如实说没有，而不是抛错：缺能力不该让这一轮对话崩掉。
+    """
+
+    async def read(user_id: str) -> dict:
+        plan = None
+        nodes: list[Any] = []
+        directions: list[Any] = []
+        if container.asset_service is not None:
+            plan = await container.asset_service.get_action_plan(user_id)
+            # 已落库的几套方向方案也一并给（规划师与画图都用得上：
+            # "他选的是哪一条、几条各差多少"是真实分值，不是模型算的）。
+            directions = await container.asset_service.list_direction_plans(user_id)
+        if container.function_service is not None:
+            nodes = await container.function_service.list_calendar_nodes(user_id)
+        return {"plan": plan, "nodes": nodes, "directions": directions}
+
+    return read
+
+
+def _product_modules() -> tuple[Any, ...]:
+    """**产品自己做好的功能模块**在这里登记。
+
+    一个模块 = 后端取数 + 前端一整套渲染，对外表现为"模型能调的一个工具"。
+    要加一个模块，三件事（缺一件都会在测试或启动时暴露）：
+
+      1. 写模块类，交出一个 `ToolModule(name=..., tools=[ToolSpec(...)])`
+         （工具名带模块前缀，别与内置能力重名）；
+      2. 在 `zhiyin_business.policies.renderers` 里注册它的可视件 kind
+         （kind 名 + 校验函数）—— 服务端只认注册过的 kind，这是"防止假数据"的门；
+      3. 前端按那个 kind 写组件。
+
+    然后把它加进下面这个元组，并把工具名写进 `data/registry/agents.json`
+    里能用的角色白名单 —— **模块不自己决定谁能用**，两件事分开各自可审。
+
+    现在还没有外部模块：这一层是把"以后要接的那个套件"先立成明确的落点，
+    免得它被塞进某个服务的构造函数里。
+    """
+    return ()
+
+
 def build_services(container: "Container") -> None:
     """构造业务层服务。
 
@@ -172,8 +219,13 @@ def build_services(container: "Container") -> None:
         )
     if container.memories is not None:
         # 逐轮原文与累积摘要一起交给记忆服务：摘要给模型续接，原文给会话历史。
+        # 文档抽取与对象存储也给它：**用户带上来的材料**归这里收
+        # （正文抽出来存对象存储，对话里只留一句"我传了一份材料：xxx"）。
         container.memory_service = DefaultConversationMemoryService(
-            container.memories, container.turns
+            container.memories,
+            container.turns,
+            container.documents,
+            container.object_store,
         )
     if container.notes is not None:
         container.note_service = DefaultUserNoteService(container.notes)

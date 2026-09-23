@@ -143,6 +143,60 @@ function intelOpen(id: string) {
 }
 
 /*
+ * **一次只说一条。**
+ *
+ * 三个来源会同时往里塞：交接播报（最多留 3 条）、外部情报（每次轮询冒一条）、
+ * 加上右上消息叠自己的四片 —— 一次拉取就"跳五个"。
+ * 交接与情报本来就是"顺口说一句"的东西，不是待办清单：
+ * 一条说完再说下一条，还剩几条用一行计数交代清楚。
+ */
+const queued = computed(() => [...interjections.value, ...intelFloats.value])
+const shown = computed(() => queued.value[0] ?? null)
+const waiting = computed(() => Math.max(0, queued.value.length - 1))
+
+function isIntel(item: unknown): item is Notice {
+  return (item as Notice | null)?.tone === 'intel'
+}
+
+/** 收起当前这条，让下一条顶上来（点"还有 N 条"就是走这里）。 */
+function advance() {
+  const head = shown.value
+  if (!head) return
+  if (isIntel(head)) session.dismissFloat(head.id)
+  else interjections.value = interjections.value.filter((i) => i.id !== head.id)
+}
+
+/*
+ * 播报上那三个动作：看这条、去看这批、知道了。
+ *
+ * 为什么都要先判一次空：这条卡片淡出时（transition 那几百毫秒）
+ * **节点还在屏幕上**，而 `shown` 已经是 null 了 —— 这时候点下去，
+ * 老写法 `shown.id` 会直接抛 `Cannot read properties of null (reading 'id')`。
+ * 实测是核验脚本连点"知道了"撞上的（整支浏览器 e2e 因此报了一条页面级 JS 报错），
+ * 真人手快也一样会撞上：看到卡片在消失、又点了一下。
+ * 拿不到就当没点 —— 那一条本来就是已经被收走的那条。
+ */
+function openHead() {
+  const item = shown.value
+  if (!item || isIntel(item)) return
+  session.openDrawer(item.who, item.what, [
+    { source: '为什么由它接手', detail: item.why, confidence: 0.9, at: '刚刚' },
+  ])
+}
+
+function intelHead() {
+  const item = shown.value
+  if (!item || !isIntel(item)) return
+  intelOpen(String(item.id))
+}
+
+function dismissHead() {
+  const item = shown.value
+  if (!item) return
+  session.dismissFloat(String(item.id))
+}
+
+/*
  * 情报轮询 —— 从画布那块「外部情报」搬过来的职责。
  *
  * 画布上不再摆一块情报卡（它归队到这里了），但"每 45 秒自己看一次公开渠道"
@@ -266,33 +320,44 @@ onMounted(() => {
 
     <!-- 自动介入播报 + 外部情报：同一套实时体系，数据一进来就出现，到点自己走 -->
     <transition-group ref="pops" name="pop" tag="div" class="pops">
-      <button
-        v-for="p in interjections"
-        :key="p.id"
-        class="pop"
-        type="button"
-        @click="session.openDrawer(p.who, p.what, [{ source: '为什么由它接手', detail: p.why, confidence: 0.9, at: '刚刚' }])"
-      >
-        <span class="pop__who">{{ p.who }}</span>
-        <span class="pop__what">{{ p.what }}</span>
-        <span class="pop__why">{{ p.why }}</span>
-      </button>
+      <!-- 一次只有一条：交接播报与外部情报共用这一个位置（谁先来谁先说） -->
+      <template v-if="shown">
+        <button
+          v-if="!isIntel(shown)"
+          :key="shown.id"
+          class="pop"
+          type="button"
+          @click="openHead"
+        >
+          <span class="pop__who">{{ shown.who }}</span>
+          <span class="pop__what">{{ shown.what }}</span>
+          <span class="pop__why">{{ shown.why }}</span>
+        </button>
 
-      <!-- 外部情报：带动作的一张卡，话不说半句 -->
-      <div v-for="f in intelFloats" :key="f.id" class="pop pop--intel">
-        <span class="pop__who">{{ f.kicker }}<i class="pop__live" aria-hidden="true" /></span>
-        <span class="pop__what">{{ f.title }}</span>
-        <span class="pop__why">{{ f.body }}</span>
-        <div class="pop__acts">
-          <button
-            v-if="f.action"
-            class="pop__act pop__act--go"
-            type="button"
-            @click="intelOpen(f.id)"
-          >{{ f.action.label }}</button>
-          <button class="pop__act" type="button" @click="session.dismissFloat(f.id)">知道了</button>
+        <!-- 外部情报：带动作的一张卡，话不说半句 -->
+        <div v-else :key="shown.id" class="pop pop--intel">
+          <span class="pop__who">{{ shown.kicker }}<i class="pop__live" aria-hidden="true" /></span>
+          <span class="pop__what">{{ shown.title }}</span>
+          <span class="pop__why">{{ shown.body }}</span>
+          <div class="pop__acts">
+            <button
+              v-if="shown.action"
+              class="pop__act pop__act--go"
+              type="button"
+              @click="intelHead"
+            >{{ shown.action.label }}</button>
+            <button class="pop__act" type="button" @click="dismissHead">知道了</button>
+          </div>
         </div>
-      </div>
+
+        <!-- 还剩几条：点一下收起这条、看下一条 -->
+        <button
+          v-if="waiting"
+          class="pop__rest label"
+          type="button"
+          @click="advance()"
+        >还有 {{ waiting }} 条 · 看下一条</button>
+      </template>
     </transition-group>
   </div>
 </template>
@@ -433,6 +498,20 @@ onMounted(() => {
 }
 .pop__act:hover { color: var(--ink-1); border-color: var(--line-4); }
 .pop__act--go { border-color: var(--mk-blue); color: var(--mk-blue); font-weight: 600; }
+/*
+ * "还有 N 条 · 看下一条"：一次只说一条之后，这一行是**唯一的入口**，
+ * 所以它得看得出来能点，又不能在卡片里抢戏 —— 用一条安静的说明。
+ */
+.pop__rest {
+  justify-self: start;
+  margin-top: 2px;
+  padding: 0;
+  border: 0; background: none;
+  color: var(--ink-3);
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+.pop__rest:hover { color: var(--ink-1); }
 .pop__act--go:hover { background: var(--mk-blue-soft); }
 
 .fold-enter-active { transition: opacity 200ms var(--mo-out), transform 240ms var(--mo-out); }

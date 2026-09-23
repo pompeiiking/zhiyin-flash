@@ -1,0 +1,74 @@
+# 开发叠加层：把源码挂进容器，改代码只要重启，不必每次重建镜像。
+#
+# 用法（**不带这个文件时，行为与部署完全一致**，这是刻意的：
+# 默认 `docker compose up -d` 跑的必须是镜像里那份代码，不能悄悄换成工作区）：
+#
+#     docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+#
+# 为什么必须同时设 PYTHONPATH
+# --------------------------
+# 镜像里是 `pip install .`（**非可编辑**安装）：六个包被拷进了 site-packages。
+# 只挂 `/app` 的话，Python import 的仍是那一份拷贝 —— 改了源码一点效果都没有，
+# 而且不报错，看起来就像"改了没生效"的玄学。
+# `PYTHONPATH` 在 sys.path 里排在 site-packages **之前**，挂进来的源码因此优先生效。
+# 这七个路径与 pyproject 的 `[tool.setuptools.package-dir]` 一一对应。
+#
+# 挂载点必须保持仓库的层级（`/work/zhiyin-src/template`），**不能挂成 `/app`**：
+# `zhiyin_boot/settings.py` 按 `parents[2]` / `parents[1]` 从自身位置回推
+# "模板目录"与"仓库根"，挂浅一层它就会去算 `/` 的父目录，起来直接
+# `IndexError: 1`（实测踩过）。所以这里把模板挂到 `/work/zhiyin-src/template`，
+# 并把工作目录也设在那里 —— 相对路径（data/registry、data/knowledge）一并落在挂载里。
+#
+# 挂载范围是 `zhiyin-src/template` 整个目录，因为动态资源也在这里
+# （`data/registry/*.json`、`data/knowledge/`）—— 改提示词、改文案同样不必重建，
+# 重启一次即可；要让库里的那份跟着变，再跑一次 `--resync-registry`。
+#
+# 前端不在这条路上：`zhiyin-flash-web` 是 nginx 托管的**静态构建产物**，
+# 挂源码进去不会重新构建。改前端用 `cd zhiyin-src/template/zhiyin-web && npm run dev`
+# （与容器同一个 5173 端口，所以先 `docker compose stop web`），或重建 web 镜像。
+#
+# 与部署的差别（用这个文件时你要知道）：
+#   · `--reload` 开着，改 .py 会自动重启进程；改成挂载目录里的文件即可生效；
+#   · 容器读的就是你工作区那份代码，**未提交的改动也会被跑**（这正是它快的原因）。
+#
+# `--reload-dir` 必须一个个列出来，不能交给默认值：默认监听**整个工作目录**，
+# 而这个挂载里带着 Windows 的 `.venv` 与 `build/` —— 实测 5875 个 .py 文件，
+# 遍历一遍要 20 秒（StatReload 是轮询 mtime，本仓没装 watchfiles），
+# 表现就是"改了代码却像没生效"。只列七个包目录后：218 个文件、0.65 秒一轮。
+
+services:
+  zhiyin-flash:
+    working_dir: /work/zhiyin-src/template
+    volumes:
+      # 迁移文件那条挂载要跟着写一遍：override 里写 volumes 会与基础文件合并，
+      # 但把两条都列出来，读的人一眼能看全这个容器挂了什么。
+      - ./deploy:/migration:ro
+      - ./zhiyin-src/template:/work/zhiyin-src/template
+    environment:
+      PYTHONPATH: >-
+        /work/zhiyin-src/template/zhiyin-kernel:/work/zhiyin-src/template/zhiyin-api:/work/zhiyin-src/template/zhiyin-business:/work/zhiyin-src/template/zhiyin-orchestration:/work/zhiyin-src/template/zhiyin-data-sdk:/work/zhiyin-src/template/zhiyin-infrastructure:/work/zhiyin-src/template/zhiyin-boot
+    command:
+      [
+        "python",
+        "-m",
+        "zhiyin_boot",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000",
+        "--reload",
+        "--reload-dir",
+        "/work/zhiyin-src/template/zhiyin-kernel",
+        "--reload-dir",
+        "/work/zhiyin-src/template/zhiyin-api",
+        "--reload-dir",
+        "/work/zhiyin-src/template/zhiyin-business",
+        "--reload-dir",
+        "/work/zhiyin-src/template/zhiyin-orchestration",
+        "--reload-dir",
+        "/work/zhiyin-src/template/zhiyin-data-sdk",
+        "--reload-dir",
+        "/work/zhiyin-src/template/zhiyin-infrastructure",
+        "--reload-dir",
+        "/work/zhiyin-src/template/zhiyin-boot",
+      ]

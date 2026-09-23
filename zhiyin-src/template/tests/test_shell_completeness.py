@@ -269,6 +269,7 @@ def test_wired_skeleton_is_reported_as_skeleton() -> None:
         vector=None,
         cache=None,
         object_store=None,
+        documents=None,
         event_bus=None,
         scheduler=None,
         notifier=None,
@@ -518,11 +519,9 @@ def test_orchestration_prompts_and_disclosure_reasons_are_closed() -> None:
     required = {
         "core.system",
         "guide.closing",
-        "router.intent",
-        "router.stage",
-        "router.lead",
         "router.clarify",
         "disclosure.lead_change",
+        "disclosure.conclusion_change",
         "flow.proactive",
     }
     missing = sorted(required - codes)

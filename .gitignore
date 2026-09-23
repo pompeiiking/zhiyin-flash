@@ -32,6 +32,21 @@ coverage.xml
 data/objects/
 data/cache/
 data/logs/
+# 上面三条是**相对 .gitignore 所在目录**的锚定写法，管不到模板目录里那份 ——
+# 开发态用 `docker-compose.dev.yml` 把 `zhiyin-src/template` 挂进容器之后，
+# 用户传的材料就直接落在工作区里（实测：跑完一轮端到端，`data/objects/` 里
+# 多出一个上传文件，而 git 不认它是忽略项）。这里按实际路径补一条。
+zhiyin-src/template/data/objects/
+zhiyin-src/template/data/cache/
+zhiyin-src/template/data/logs/
+
+# ---- 端到端核验的**运行产物**：结果 JSON 与截图 ----
+# 它们是"某一次跑出来的东西"（时间戳、当次的账号、十几兆截图），
+# 不是源码：提交进去只会让每次核验都产生一大坨 diff，而且下次跑就把上一次覆盖了。
+# 脚本本身（`tests/e2e/*.py`）要提交 —— 别人靠它复现。
+zhiyin-src/template/tests/e2e/e2e_full.json
+zhiyin-src/template/tests/e2e/loop_verify.json
+zhiyin-src/template/tests/e2e/shots/
 *.log
 *.sqlite3
 *.db

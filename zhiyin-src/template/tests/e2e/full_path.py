@@ -49,6 +49,21 @@ ANSWERS = [
 results: list[dict[str, Any]] = []
 
 
+def _copy(code: str) -> str:
+    """按 code 取一条用户可见文案 —— 与界面读的是**同一份**动态资源。
+
+    脚本里写死文案的代价实测过一次：门户的 CTA 在 `copies.json` 里改成了「开始用」，
+    脚本还在找带箭头的「开始用 →」，于是整支端到端在第一个按钮上就超时 ——
+    看起来像"按钮点不动"，其实是测试自己抄了一份过期文案。
+    """
+    path = Path(__file__).resolve().parents[2] / "data" / "registry" / "copies.json"
+    items = json.loads(path.read_text(encoding="utf-8"))["items"]
+    return next((item["text"] for item in items if item["code"] == code), "")
+
+
+PORTAL_CTA = _copy("portal.cta")
+
+
 def check(name: str, ok: bool, detail: str = "") -> bool:
     results.append({"check": name, "ok": bool(ok), "detail": str(detail)[:400]})
     print(("  [PASS] " if ok else "  [FAIL] ") + name + (f" — {detail}" if detail else ""))
@@ -95,14 +110,41 @@ def wait_overlay(page: Page, label: str = "", timeout: int = 8000) -> str:
     return node.get_attribute("aria-label") or ""
 
 
+def _overlay_labels(page: Page) -> list[str]:
+    """当前所有浮层的标题，**一次取完**。
+
+    逐个 `nth(i).get_attribute()` 会等元素出现：浮层在遍历中途关掉时，
+    那一次调用会一直等到超时（实测把整支核验卡死 30 秒）。
+    """
+    return page.eval_on_selector_all(
+        '.layer[role="dialog"]',
+        "els => els.map(e => e.getAttribute('aria-label') || '')",
+    )
+
+
 def close_overlay(page: Page) -> None:
     """关掉当前浮层，并**确认它真的关了**（否则后面的点击全被它挡住）。
 
-    关闭动作按用户真实能用的两条路走：先按 Esc（浮层自己支持的收起方式），
-    再点浮层**外面的空白**。注意不能点遮罩的中心 —— 那里被浮层本体压着，
-    点下去是浮层接的（自动化里表现为"遮罩点不动"，这坑踩过一次）。
+    关闭动作按用户真实能用的三条路依次走：
+      1. 浮层自带的关闭按钮（最可靠 —— 有些浮层不吃 Esc）；
+      2. Esc；
+      3. 点浮层**外面的空白**。注意不能点遮罩的中心 —— 那里被浮层本体压着，
+         点下去是浮层接的（自动化里表现为"遮罩点不动"，这坑踩过一次）。
     """
     for _ in range(3):
+        if not page.locator('.layer[role="dialog"]').count():
+            return
+        top = page.locator('.layer[role="dialog"]').last
+        for selector in ("button[aria-label*='关闭']", ".close", "[class*='close']"):
+            button = top.locator(selector).first
+            if not button.count():
+                continue
+            try:
+                button.click(timeout=1500)
+                page.wait_for_timeout(400)
+                break
+            except Exception:
+                continue
         if not page.locator('.layer[role="dialog"]').count():
             return
         page.keyboard.press("Escape")
@@ -117,6 +159,17 @@ def open_block(page: Page, block: str, label: str = "", cta: str = "") -> str:
 
     真实交互里"点开一块"有三种落点：整块可点（interactive）、块里那个 CTA
     （"看我的任务 →"）、或者只点得到标题栏。所以这里依次试，谁先开出浮层算谁。
+
+    **必须验证"开出来的是新的一层"**：对话浮层常常一直挂着，而"等任意一个
+    `.layer[role=dialog]` 出现"在那种状态下**立刻为真** —— 于是每一次点击都
+    报告成功，实际看到的还是对话层（实测：连续三条用例报出同一个标题
+    「和主理聊聊」，却去找别的浮层里的东西，全红）。所以这里记下点击前已有的
+    标题，点击后要求出现**没见过的**那一层。
+
+    落点还要避开右上角那一片**主动提示浮窗**（AgentRail 的 pop）：它固定在右上，
+    1450×960 下正好压在画布最上面那一行气泡的**中间**——按默认的中心点去点，
+    点到的是浮窗而不是气泡（实测：行动计划块的中心被 `pop__why` 盖住，
+    点左下角立刻打开）。所以先按"块内偏移点"点，再退回中心点。
     """
     close_overlay(page)  # 上一层的遮罩会把点击吃掉
     node = page.locator(f"[data-block='{block}']").first
@@ -128,26 +181,118 @@ def open_block(page: Page, block: str, label: str = "", cta: str = "") -> str:
         page.wait_for_timeout(1500)
     if not node.count():
         return ""
+    # 先把压在画布上的提示浮窗收掉（用户也是这么做的：点"知道了"）。
+    # 收不掉不致命：下面按偏移点点，同样绕开它。
+    try:
+        dismiss = page.locator(".pop__act", has_text="知道了")
+        for index in range(min(dismiss.count(), 3)):
+            dismiss.nth(index).click(timeout=1500)
+            page.wait_for_timeout(300)
+    except Exception:
+        pass
     targets = [node]
     if cta:
         targets.insert(0, node.locator(cta).first)  # 一块里可能有多个 CTA，按名指定
     else:
         targets.append(node.locator("[class*='cta']").first)
     targets.append(node.locator("button, [role='button']").first)
+    # 点击前已经在屏幕上的浮层标题：点击之后要求出现**没见过的**那一层
+    before = set(_overlay_labels(page))
     for target in targets:
         if not target.count():
             continue
-        try:
-            # force=True：右上角的浮窗叠**可能**盖住某一块的一角
-            # （那是"浮窗固定在右上"的必然代价，卡片本身可关可收）。
-            # 这一段验的是"这块能不能打开"，不是"谁压在谁上面"。
-            target.click(timeout=4000, force=True)
-        except Exception:
-            continue
-        got = wait_overlay(page, label, timeout=6000)
-        if got:
-            return got
+        for clicker in (
+            # 先按块内的偏移点（左下角内侧）点：这里不会被右上角的浮窗盖住，
+            # 而 force=True 会**照样点在中心点**上，正好落进浮窗。
+            lambda node=target: _click_inside(page, node),
+            # 再退回普通点击（含 CTA 这类小目标，它们本身就不在浮窗覆盖区）
+            lambda node=target: node.click(timeout=4000, force=True),
+            # 最后按块的中心点真点一次：有些块的左侧被邻居压着，
+            # 而中心是它自己的（浮窗那一片会先被上面的"知道了"收掉）。
+            lambda node=target: _click_center(page, node),
+        ):
+            try:
+                clicker()
+            except Exception:
+                continue
+            got = _wait_new_overlay(page, label, before, timeout=6000)
+            if got:
+                return got
     return ""
+
+
+def _wait_new_overlay(page: Page, label: str, before: set[str], timeout: int) -> str:
+    """等一个**新**浮层出现，返回它的标题（空串＝没等到）。
+
+    与 `wait_overlay` 的区别：这里排除了点击前就在屏幕上的那些层。
+    少了这一步，"对话浮层一直挂着"会让每一次点击都报告成功（见 `open_block`）。
+    """
+    deadline = time.time() + timeout / 1000
+    while time.time() < deadline:
+        for name in _overlay_labels(page):
+            if label:
+                if name == label:
+                    return name
+                continue
+            if name not in before:
+                return name
+        page.wait_for_timeout(300)
+    return ""
+
+
+def _click_inside(page: Page, target) -> None:
+    """点在目标的**左下角内侧**，而不是默认的中心点。
+
+    中心点会被固定在右上的主动提示浮窗吃掉（见 `open_block` 的说明）。
+    目标太小时退回中心点 —— 那种尺寸本来也压不住。
+
+    **落点还不能落在块里嵌着的控件上。** 气泡是"整块可点"的（根元素就是按钮），
+    而它的页脚里还有别的按钮（「下一步」「全部任务 →」「为什么这一件」…）。
+    固定偏移点左下角时，正好压在页脚那颗按钮上 —— 点下去走的是**那颗按钮**的
+    含义（实测：今日简报那块点出来的是「和主理聊聊」，于是"简报浮层能打开"红了两轮，
+    而它其实好好地开得出来）。所以先在块内挑一个"确实属于这块自己"的落点：
+    命中元素的最近 `[data-block]` 必须是它自己，且命中的不是块内嵌的控件。
+    """
+    box = target.bounding_box()
+    if not box or box["width"] < 80 or box["height"] < 40:
+        target.click(timeout=4000, force=True)
+        return
+    block_id = target.get_attribute("data-block") or ""
+    point = page.evaluate(
+        """({x, y, w, h, bid}) => {
+            const mine = bid ? document.querySelector(`[data-block="${bid}"]`) : null;
+            const candidates = [
+              [x + 40, y + h - 24],
+              [x + 40, y + 34],
+              [x + 30, y + h * 0.55],
+              [x + w - 40, y + h - 24],
+              [x + w * 0.5, y + 30],
+            ];
+            for (const [px, py] of candidates) {
+              const stack = document.elementsFromPoint(px, py);
+              const owner = stack.map(el => el.closest('[data-block]')).find(Boolean);
+              if (!owner) continue;
+              if (mine && owner !== mine) continue;  // 落在邻居块上：换一个点
+              const hit = stack[0];
+              const control = hit.closest('button, a, [role=button]');
+              // 块内的控件（「下一步」「全部任务 →」…）有自己的含义，不算"点这块"
+              if (control && control !== owner) continue;
+              return [px, py];
+            }
+            return [x + 40, y + h - 24];
+        }""",
+        {"x": box["x"], "y": box["y"], "w": box["width"], "h": box["height"], "bid": block_id},
+    )
+    page.mouse.click(point[0], point[1])
+
+
+def _click_center(page: Page, target) -> None:
+    """按元素中心真点一次（走真实 z-order，能被上层元素挡住就挡）。"""
+    box = target.bounding_box()
+    if not box:
+        target.click(timeout=4000, force=True)
+        return
+    page.mouse.click(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
 
 
 def talk_overlay(page: Page):
@@ -204,7 +349,7 @@ def login(page: Page, account: str, password: str) -> bool:
     """从门户走一遍登录（先清令牌，保证落在未登录态）。"""
     page.evaluate("localStorage.removeItem('zhiyin_token')")
     page.goto(f"{BASE}/portal", wait_until="networkidle")
-    page.get_by_role("button", name="开始用 →").click()
+    page.get_by_role("button", name=PORTAL_CTA).click()
     page.wait_for_selector('input[name="account"]', timeout=15000)
     page.fill('input[name="account"]', account)
     page.fill('input[name="password"]', password)
@@ -293,7 +438,7 @@ with sync_playwright() as p:
     # ── B. 注册 / 登录 / 退出 / 再登录 ──────────────────────────
     phase("B. 注册与登录")
     if page.locator('input[name="account"]').count() == 0:
-        page.get_by_role("button", name="开始用 →").click()
+        page.get_by_role("button", name=PORTAL_CTA).click()
         page.wait_for_timeout(800)
     page.get_by_role("button", name="还没有账号？建一个").click()
     page.fill('input[name="account"]', account)
@@ -315,7 +460,7 @@ with sync_playwright() as p:
     # 测"密码错误"必须先在未登录态：门户看到令牌会直接送你进控制台，压根不掀登录层
     page.evaluate("localStorage.removeItem('zhiyin_token')")
     page.goto(f"{BASE}/portal", wait_until="networkidle")
-    page.get_by_role("button", name="开始用 →").click()
+    page.get_by_role("button", name=PORTAL_CTA).click()
     page.wait_for_selector('input[name="account"]', timeout=10000)
     page.fill('input[name="account"]', account)
     page.fill('input[name="password"]', "wrong-password")
@@ -387,14 +532,32 @@ with sync_playwright() as p:
     check("画像已从对话里沉淀出字段", len(fields) >= 1, f"{len(fields)} 个字段 / {len(gaps)} 条缺口")
 
     close_overlay(page)
-    opened = open_block(page, "portrait")
+    # 传期望的浮层标题：画布上的块会互相叠压，点"画像"那块可能落到旁边的块上，
+    # 于是开出**别的**浮层却报成功（实测：三条用例都拿到「和主理聊聊」）。
+    # 有了期望标题，点错就不算数，脚本会换下一个落点重试。
+    opened = open_block(page, "portrait", label="你的画像")
     if opened:
-        page.wait_for_timeout(1000)
-        items = page.locator(".item")
+        page.wait_for_timeout(1200)
+        # 画像页是**分层**的：第一屏是总览（那段判断 + 「往下看」三行），
+        # 字段清单在「判断维度」/「档案信息」里。停在第一屏数行只会得到 0 ——
+        # 这一屏重做过（见 CHANGELOG 三十节），脚本原来数的还是老类名 `.row`。
+        # 所以：先看一眼有没有清单，没有就按总览里那几行进一层再数。
+        # 行本身既有 `button.row`（带 `.row__name`）也有更老的 `.item` / `.item__name`，
+        # 两套都认 —— 这是前端迭代最多的一屏，写死一套会把"换了类名"判成缺陷。
+        overlay = page.locator('.layer[aria-label="你的画像"]')
+        items = overlay.locator(".row, .item")
+        for index in range(min(overlay.locator(".mrow").count(), 3)):
+            if items.count():
+                break
+            overlay.locator(".mrow").nth(index).click()
+            page.wait_for_timeout(1000)
         check("画像浮层列出字段", items.count() >= 1, f"{opened} · {items.count()} 条")
         # 字段名必须是给人看的：字段键是模型自己起的（interest_direction 这种），
         # 界面上出现纯 ASCII 就等于把内部键摆给了用户。
-        names = [n.strip() for n in page.locator(".item__name").all_text_contents()]
+        names = [
+            n.strip()
+            for n in overlay.locator(".row__name, .item__name").all_text_contents()
+        ]
         ascii_names = [n for n in names if n and n.isascii()]
         check(
             "画像字段名是中文，没有暴露内部键",
@@ -403,7 +566,6 @@ with sync_playwright() as p:
         )
         if items.count():
             items.first.click()
-            overlay = page.locator('.layer[aria-label="你的画像"]')
             deadline = time.time() + 90
             reading = ""
             while time.time() < deadline:
@@ -498,7 +660,18 @@ with sync_playwright() as p:
     page.reload(wait_until="networkidle")
     page.wait_for_timeout(2000)
     left = page.locator("[data-block='timetable']").count()
-    check("撤销后课表块也收回去了", left == 0, f"块数={left}")
+    # 撤销之后块**可能还在**，这不是缺陷：画布的课表块有两个出现条件 ——
+    # "已绑学信网"或"采集清单里还差课表"（`showTimetable`）。撤销只清掉前者，
+    # 而"还差课表"仍然成立时，这块正是用户去补它的入口。
+    # 所以这里验的是**块里有没有真课表**，而不是块在不在。
+    timetable_text = (
+        page.locator("[data-block='timetable']").first.inner_text() if left else ""
+    )
+    check(
+        "撤销后课表块里不再有真课表（块本身按设计可留作补录入口）",
+        left == 0 or "还没有导入" in timetable_text or "导入" in timetable_text,
+        f"块数={left} · 文案={timetable_text[:60]!r}".replace("\n", " "),
+    )
 
     # ── F. 待办（写、勾、AI 建议） ──────────────────────────────
     phase("F. 待办")
@@ -733,7 +906,7 @@ with sync_playwright() as p:
         items = page.locator(".menu [role='menuitem']").all_inner_texts()
         check("画布菜单里有「我的任务会话」", False, f"菜单项：{items[:6]}")
 
-    if open_block(page, "review"):
+    if open_block(page, "review", label="上周复盘"):
         page.wait_for_timeout(1500)
         check("复盘浮层能打开", True)
         check("复盘时间线渲染", page.locator(".tl li").count() > 0 or page.locator(".hint").count() > 0,
@@ -742,6 +915,42 @@ with sync_playwright() as p:
         close_overlay(page)
     else:
         check("复盘浮层能打开", False)
+
+    # ── 完成记录：由行为日志推导的那几枚 ────────────────────────
+    #
+    # 这一屏的判据不能是"有内容就算过"：它的可信度压在**数量与时间与后端一致**上。
+    # 所以两边都比一次 —— 界面上的 x/y 必须等于 `/app/achievements` 的数，
+    # 每一条已解锁的都要有日期（日期来自那条行为的真实发生时间）。
+    achievements = data_of(page, "/app/achievements") or {}
+    expected_unlocked = achievements.get("unlocked")
+    expected_total = achievements.get("total")
+    node = page.locator("[data-block='achievements']").first
+    check("画布上有「完成记录」块", node.count() > 0, node.inner_text().replace("\n", " ")[:60] if node.count() else "")
+    opened = open_block(page, "achievements", label="完成记录")
+    if opened:
+        page.wait_for_timeout(1200)
+        rows = page.locator('.layer[aria-label="完成记录"] .rows li')
+        check(
+            "完成记录列出全部规则，数量与后端一致",
+            bool(expected_total) and rows.count() == expected_total,
+            f"界面 {rows.count()} 行 / 后端 {expected_total} 条",
+        )
+        shown_unlocked = page.locator('.layer[aria-label="完成记录"] .rows li.done').count()
+        check(
+            "已解锁的数量两边一致（不是前端自己算的）",
+            shown_unlocked == expected_unlocked,
+            f"界面 {shown_unlocked} 枚 / 后端 {expected_unlocked} 枚",
+        )
+        dates = page.locator('.layer[aria-label="完成记录"] .rows li.done .when').all_text_contents()
+        check(
+            "拿到的那几枚都写了日期（来自行为日志的真实时间）",
+            bool(dates) and all("月" in item for item in dates),
+            f"{[item.strip() for item in dates][:3]}",
+        )
+        shot(page, "22-achievements")
+        close_overlay(page)
+    else:
+        check("完成记录浮层能打开", False, "点不到那一块")
 
     # ── J. 其他 AI 面板 ─────────────────────────────────────────
     phase("K. 匹配 / 简报")
@@ -766,7 +975,7 @@ with sync_playwright() as p:
     else:
         check("匹配块在未绑定学信网时不出现（条件渲染正确）", True, "按设计隐藏")
 
-    opened = open_block(page, "greet")
+    opened = open_block(page, "greet", label="今天为什么是这两件")
     if opened:
         deadline = time.time() + 180
         got = False
@@ -781,6 +990,32 @@ with sync_playwright() as p:
         close_overlay(page)
     else:
         check("简报浮层能打开", False)
+
+    # ── 可视件：模型自己画的那张图，前端按 kind 分发渲染 ─────────
+    #
+    # 这条路径以前是"专用字段 chart"，现在只有一种东西：`renderables`（按 kind 分发）。
+    # 所以这里必须从**界面上**看一眼：模型点了工具之后，那张图是不是真的画出来了，
+    # 而且数值是给人看的写法（不是 `0.95` 这种要用户自己换算的）。
+    phase("可视件：模型自己画图 → 前端按 kind 渲染")
+    rendered = 0
+    for attempt in range(2):
+        before = send_chat(page, "能不能给我画个图，让我看看现在各项情况把握得怎么样？")
+        wait_reply(page, before, timeout_s=180)
+        page.wait_for_timeout(2000)
+        rendered = page.locator(".thread .rb__rows li").count()
+        if rendered:
+            break
+        print(f"    （第 {attempt + 1} 次问，模型这一轮没画 —— 再问一次）")
+    check("主理画的那张图在对话里渲染出来了（按 kind 分发）", rendered >= 2, f"{rendered} 行")
+    if rendered:
+        numbers = [n.strip() for n in page.locator(".thread .rb__num").all_text_contents()]
+        check(
+            "图上的数值是给人看的写法（不是 0.95 / 95.00）",
+            all(n.endswith(("%", "分")) for n in numbers) if numbers else False,
+            f"{numbers}",
+        )
+        shot(page, "15-renderable-bars")
+    close_overlay(page)
 
     # ── I. 异常与边界 ───────────────────────────────────────────
     phase("L. 异常与边界")
@@ -867,7 +1102,10 @@ summary = {
     "checks": results,
     "errors": errors[:20],
 }
-Path(__file__).resolve().parent / "e2e_full.json".write_text(
+# 括号不能省：`a / "x".write_text(...)` 会先对**字符串**取属性，报
+# `'str' object has no attribute 'write_text'` —— 结果就是跑完一轮、
+# 一份结果都没落盘。这里踩过一次。
+(Path(__file__).resolve().parent / "e2e_full.json").write_text(
     json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8"
 )
 print(f"\n===== 端到端结果：{passed}/{total} 通过 =====")

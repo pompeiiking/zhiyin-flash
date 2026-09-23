@@ -8,11 +8,17 @@
 3. 一条都读不出来时报**具体**的错（缺表头 / 只复制了表头 / 版式不认识），
    因为用户能改的正是这几种。
 
+入口有两个，走的是同一条解析链：**粘贴的文本**与**上传的文件**。
+文件那一侧先在这里解码（UTF-8 / GBK / 带 BOM 都能读，见 `textfile.py`），
+解码后的文本一模一样地进解析 —— 同一个用户，用哪种方式把数据带进来，
+读出来的结果必须相同。
+
 没有网络、没有凭据、没有任何写操作：写入是业务层的事。
 """
 
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
 from typing import Any
 
@@ -28,14 +34,15 @@ from zhiyin_infrastructure.academic.parsers import (
     detect_source,
     looks_like_html,
     looks_like_json,
+    parse_json_courses,
+    parse_json_grades,
     parse_qz_grades,
     parse_qz_schedule,
     parse_tabular_courses,
     parse_tabular_grades,
-    parse_zf_grades,
-    parse_zf_schedule,
     text_of,
 )
+from zhiyin_infrastructure.textfile import decode_text, unsupported_reason
 
 _MIN_LENGTH = 20
 
@@ -55,7 +62,8 @@ _FORMATS: tuple[ImportFormat, ...] = (
     ImportFormat(
         id="json",
         label="接口返回的 JSON",
-        howto="如果你能拿到课表/成绩接口返回的那段 JSON（正方新版就是这种），整段贴进来。",
+        howto="课表/成绩接口返回的那段 JSON（正方新版就是这种），整段贴进来；"
+        "也可以把导出的 .json 文件直接传上来。每门课一条记录的数组同样能读。",
     ),
 )
 
@@ -70,6 +78,31 @@ class ManualAcademicImporter(AcademicImportGateway):
 
     def formats(self) -> list[ImportFormat]:
         return list(_FORMATS)
+
+    # ---------------------------------------------------------------- 文件
+
+    def read_text(self, data: bytes, *, filename: str = "") -> str:
+        """把上传的文件读成文本（编码识别 + 二进制格式当场拒绝）。
+
+        两条边界：
+
+        1. 空文件与"读不了的后缀"都在这里就说清楚 —— 让它们走到解析器的话，
+           用户看到的是"读不出这是课表"，而真正的原因是他传的是一张 Excel。
+        2. 解码是**尽力而为，不抛异常**：解不出来也要给他一段文本，
+           由解析器按内容说"读不出"。半份能读的内容比一句"文件坏了"有用得多。
+        """
+        reason = unsupported_reason(filename)
+        if reason:
+            raise AcademicImportError(reason, kind=AcademicImportKind.UNRECOGNIZED, detail=filename)
+        text = decode_text(data)
+        if not text.strip():
+            label = filename or "这个文件"
+            raise AcademicImportError(
+                f"「{label}」是空的 —— 重新导出一份，或者把表格选中复制、粘贴进来。",
+                kind=AcademicImportKind.EMPTY,
+                detail=filename,
+            )
+        return text
 
     # ---------------------------------------------------------------- 课表
 
@@ -106,11 +139,16 @@ class ManualAcademicImporter(AcademicImportGateway):
         if looks_like_json(text):
             try:
                 if kind == "courses":
-                    term, courses = parse_zf_schedule(text)
+                    term, courses = parse_json_courses(text)
                     return "json", term, courses
-                return "json", "", parse_zf_grades(text)
+                return "json", "", parse_json_grades(text)
             except AcademicImportError:
-                # JSON 读不出来时不要立刻失败：先当表格再试一次（有人贴的是 JSON 数组）
+                # **合法的 JSON 读不出课**：那句错已经是最具体的一句，直接抛。
+                # 退回表格读法只会更糟 —— 它看到的是一行行 `"day": "星期二",`，
+                # 最后报"把表头（课程名称）一起复制进来"，而用户手里根本没有表格。
+                if _is_valid_json(text):
+                    raise
+                # 不是合法 JSON（只是碰巧以 `{` 开头的一段文本）：继续当表格试一次
                 pass
 
         if looks_like_html(text):
@@ -155,6 +193,15 @@ class ManualAcademicImporter(AcademicImportGateway):
             "last_import": dict(self._last),
             "mode": "manual_import",
         }
+
+
+def _is_valid_json(raw: str) -> bool:
+    """这段文本本身是不是合法 JSON —— 判断"该不该继续按表格试一遍"。"""
+    try:
+        json.loads(raw)
+    except (json.JSONDecodeError, TypeError):
+        return False
+    return True
 
 
 __all__ = ["ManualAcademicImporter"]

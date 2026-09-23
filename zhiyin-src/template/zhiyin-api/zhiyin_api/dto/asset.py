@@ -21,6 +21,13 @@ class AssetVersionView(BaseModel):
     created_at: datetime
     depends_on_profile_keys: list[str] = Field(default_factory=list)
     diff_from_previous: Optional[str] = None
+    needs_recompute: bool = Field(
+        default=False,
+        description=(
+            "这一版是「画像变过、还没重算」的旧版本。影响面传播只打这个标记、不升版，"
+            "下一次进入该环节真的重算时才 +1 —— 界面据此可以如实说「这版是旧的」"
+        ),
+    )
 
 
 class ReportTocItemView(BaseModel):
