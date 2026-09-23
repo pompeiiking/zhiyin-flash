@@ -2950,3 +2950,71 @@ tests/e2e/full_path.py             → 75/75（含 44.1 新增的可视件检查
 
 修完再跑：`full_path.py` **75/75**（此前 73/75），那两条红消掉，
 新加的可视件检查也一次通过。
+
+---
+
+## 四十五、把最新版推上仓库、切成开发态、并留一份部署件（2026-09-23）
+
+**用户要求**："把最新版推到仓库，然后重构镜像，镜像设置成开发态，并留一份部署态的压缩包。"
+
+### 45.1 推仓库
+
+工作区在你这条消息之前就是干净的：`codex/dialogue-loop-tools` 已与远端一致
+（`ef0ce34` 之后没有未提交改动）。本节只多了一条文档改动（45.4 的部署说明），
+连同它一起推。
+
+### 45.2 重构镜像：这次是"缓存命中"，而且这正是对的
+
+`docker compose build zhiyin-flash web` 只花了 2 秒 —— 两次构建之间源码没变，
+Docker 直接命中缓存。为免"看起来重建了、其实跑的是旧的"，逐条核过**镜像里的内容**：
+
+| 查什么 | 结果 |
+| --- | --- |
+| 后端镜像里有新函数 `_renderables_for_turn` | 有（2 处） |
+| 后端镜像里有 `invalidate_for_event` | 有 |
+| 后端镜像里还有没有已删的 `ChartSpec` | **0 处**（说明是清理之后的代码） |
+| 前端镜像里的构建产物 | `index-CkAP7P3n.js`，与工作区 `dist/` 一致 |
+
+### 45.3 镜像/容器切成开发态
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+```
+
+三条都在容器里核过（不是"看命令猜"）：
+
+- `Cmd` 里有 `--reload` 与七个 `--reload-dir`；
+- `Mounts` 里有 `/work/zhiyin-src/template`；
+- `import zhiyin_boot` → `/work/zhiyin-src/template/zhiyin-boot/...`（工作区那份，不是 site-packages）。
+
+**热重载实测**：改一个 `.py` 的时间戳，日志里出现
+`StatReload detected changes ... Reloading...` → 进程重启 → 2 秒内 `/healthz` recovery
+（装配无缺口）。前端仍是 nginx 托管的静态构建产物 —— 这是设计口径
+（挂源码不会重新构建），改前端要么 `npm run dev`，要么重建 web 镜像。
+
+切完跑了一遍真栈冒烟（浏览器 + 真模型）：`linkage_probe.py` **5/5**（画布计数、
+日历那一天的勾选状态都跟着动），`/` 返回 200。
+
+### 45.4 留一份部署态压缩包
+
+先把**当前库**的策略与提示词重新导了一份迁移文件（这一步不能省：
+发布件里唯一包含"运营改过的动态资源"的就是它，不重导就会发出去一份旧提示词，
+而新环境起来后一切看起来都正常）：
+
+```
+python zhiyin-src/template/scripts/migrate_db.py export \
+  --dsn postgresql://zhiyin:zhiyin@127.0.0.1:55432/zhiyin \
+  --out deploy/migration.json --include-vectors
+→ 导出 10 张表 / 283 行（含 ai_prompt_template 26 条、biz_registry_item 217 条）
+
+python deploy/package_release.py
+→ release/职引-flash-deploy-20260923-2105.zip
+  451 个文件 · 13.8 MB（另有一份同名解压目录）
+```
+
+抽查过包里与工作区**逐字节一致**（`RenderableBlock.vue` / `contracts/openapi.json` /
+`ai_tasks.py` 三个文件的 sha256 相同），并且确认包里没有 `node_modules` / `.venv`，
+也没有 `docker-compose.dev.yml` —— 发布件只有部署态一种口径。
+
+顺带把这两条命令写进了 `deploy/部署说明.md` 的第七节（含"顺序不能反"的理由与
+打包后怎么自查），免得下次又要靠回忆。
