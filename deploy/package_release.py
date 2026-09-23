@@ -226,6 +226,12 @@ def main(argv: list[str] | None = None) -> int:
         # （zip 已经写好了，却因为最后一行报错让人以为打包失败）。
         mark = "OK " if (staging / name).is_file() else "缺"
         print(f"    {mark} {name}")
+    # 交付方最容易误会的一条：全新环境第一次 up 时后端会因为"库里还没有模型密钥"
+    # 报错重启几次 —— 导入迁移后自愈。不写清楚，部署方会以为这个包是坏的。
+    print(
+        "  提醒：全新环境第一次 docker compose up 之后，zhiyin-flash 会先报错重启"
+        "（模型密钥在库里、而库还是空的）；按《部署说明》第一节导入迁移后它会自己起来。"
+    )
     return 0
 
 

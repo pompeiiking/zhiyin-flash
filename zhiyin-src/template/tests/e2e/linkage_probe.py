@@ -112,8 +112,18 @@ def walk_to_act(token: str) -> tuple[str, dict[str, Any]]:
         call(f"/app/plan/directions/{plans[0]['id']}/select", "POST", {}, token)
     say(task_id, "那就按这套来，接下来我该做什么？", token)
     action = call("/app/plan/action", token=token).get("data") or {}
-    if not action.get("has_plan"):
-        say(task_id, "给我一份行动计划，拆成今天能做完的小事。", token)
+    # 走到 ④ 有时要多说一两句（模型上一步可能还在比较方向）。
+    # 这里最多催三次，每次都换一句更像人会说的话 —— 换了环境（比如刚部署的干净库）
+    # 这一路的落点会和上次不完全一样，一次没到就判"这支探针跑不下去"太脆。
+    nudges = [
+        "给我一份行动计划，拆成今天能做完的小事。",
+        "先把这周要做的事列出来，一条一条的就行。",
+        "我就要一个能今天勾掉的任务清单。",
+    ]
+    for nudge in nudges:
+        if action.get("has_plan"):
+            break
+        say(task_id, nudge, token)
         action = call("/app/plan/action", token=token).get("data") or {}
     return task_id, action
 
