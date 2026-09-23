@@ -3288,3 +3288,31 @@ select id, created_at from biz_user_account where id ~ '^(ttl-|dbg2?-|probe|xtal
    如果这些 zip 曾经发给过别人，`.env` 里那两把（JWT / 加密密钥）也要换 ——
    换 JWT 会让所有人重新登录，换加密密钥会让"已加密的旧内容"解不开
    （本机目前 security 能力位没有实际加密内容，代价基本为零）。
+
+---
+
+## 四十九、模型密钥轮换（2026-09-23）
+
+旧 key 已停用，新 key 接进了两处 —— 都是"运行时真正读"的地方，且两处都不入库：
+
+| 落点 | 为什么是它 | 是否入库 |
+| --- | --- | --- |
+| PostgreSQL `infra_ai_provider.config.api_key`（provider=deepseek） | 运行时权威来源：`hydrate_ai_config` 启动时读它覆盖 `.env` 种子 | 库里（迁移文件会带着它，打包时被抹掉） |
+| 本机 `.env` 的 `ZHIYIN_LLM_API_KEY` | 首次开机种子：哪天库清了，靠它把配置重新种回去 | 否（`.gitignore` 里，打包时会被清空） |
+
+改完重启了后端（配置在启动时读），并**真调了一次模型**：
+
+```
+新 key 真调用：12.5 秒正常返回（回复是一句有人味的话，不是报错信封）
+```
+
+同时核对了两件事：
+
+- **旧 key 已无残留**：`.env` / `deploy/migration.json` / `.env.example` 里都没有旧值，
+  库里那行已更新为新的；`release/` 下所有 zip 与 `%TEMP%` 里的测试副本里
+  **一个模型密钥都没有**（打包时抹掉、遗留 zip 里也重写过）；
+- **新 key 只出现在那两处**（`.env` 与 `deploy/migration.json`），两者都在 `.gitignore` 里；
+  `deploy/migration.json` 已按新 key 重新导出，避免"内部搬家时搬过去一把停用的 key"。
+
+顺带说清一件事：**这个 key 不该再出现在对话或文档里**。它现在只在上面那两处
+（以及供应商后台）；以后要用，从库里读或从 `.env` 读，别再贴一遍。
