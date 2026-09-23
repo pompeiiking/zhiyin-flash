@@ -90,6 +90,18 @@ class ImpactPropagationWorker(Worker):
                 await self._assets.propagate(
                     user_id, sorted(keys), mark_all=user_id in fresh
                 )
+                # 资产生效了两件事：这一版资产标成"待重算"，**以及**由模型算过、
+                # 依据这份画像的那些产出（维度解读 / 对你的分析 / 今天怎么过…）
+                # 不能再当最新的用。
+                #
+                # 这一条此前只是写在注释里：端口注入了、映射也定义了，
+                # 但没有一处调用 —— 于是 `ai_task_result` 里那份基于旧画像的内容
+                # 会一直被当成最新（缓存跨重启、无 TTL）。用户补完画像再打开画像页，
+                # 看到的还是补之前的解读，而且没有任何提示。
+                if self._ai_tasks is not None:
+                    await self._ai_tasks.invalidate_for_event(
+                        user_id, "profile_field_updated"
+                    )
             except Exception:  # noqa: BLE001 - 单用户失败不能拖垮整批
                 # 不记去重：这批事件还没成功，绝不能让它们"看起来已处理"。
                 # 直接抛给驱动方（`zhiyin_boot.workers` 会记日志并按间隔重试）。

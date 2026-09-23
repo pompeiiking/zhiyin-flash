@@ -12,10 +12,11 @@
     ②→③     点认领选项 → 下一轮真的进决策
     ③ 决策   三套方案落地、选中落库
     ③→④     选中之后下一轮进行动
-    ④ 行动   计划落地、节点进日历、勾掉任务落库
-    ④→⑤     勾完任务下一轮进复盘
-    幂等     同一条消息重发不再跑模型
-    越权     别人的 task_id 取不到
+④ 行动   计划落地、节点进日历、勾掉任务落库
+④→⑤     勾完任务下一轮进复盘
+联动     事实一变（勾任务 / 导课表），依据它的模型产出真的重算 —— 而不是拿缓存那份
+幂等     同一条消息重发不再跑模型
+越权     别人的 task_id 取不到
 
 用法（先 `docker compose up -d`，或本机跑起 8000 端口）：
 
@@ -32,6 +33,7 @@ import time
 import urllib.error
 import urllib.request
 import uuid
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -99,6 +101,44 @@ def say(task_id: str, message: str, token: str, option_id: str = "", client_msg_
     turns = data.get("messages") or [{}]
     print(f"    {elapsed:5.1f}s [{data.get('stage', '?')}] {turns[0].get('text', result.get('message', ''))[:90]}")
     return data
+
+
+def ask_ai(path: str, token: str, body: Any = None) -> dict[str, Any]:
+    """打一次 AI 任务（SSE），把终帧里的 `result` 取回来。
+
+    只看结果信封：`meta.cached` 就是"这一段是**刚算的**还是**上一次算的**"——
+    联动那几条检查靠它，不靠肉眼读文案。
+    """
+    request = urllib.request.Request(
+        API + path,
+        method="POST",
+        data=json.dumps(body or {}).encode("utf-8"),
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {token}",
+        },
+    )
+    with urllib.request.urlopen(request, timeout=600) as response:
+        raw = response.read().decode("utf-8")
+    result: dict[str, Any] = {}
+    for block in raw.split("\n\n"):
+        line = block.strip()
+        if not line.startswith("data: "):
+            continue
+        frame = json.loads(line[len("data: "):])
+        if frame.get("result"):
+            result = frame["result"]
+    return result
+
+
+def today_advice(token: str) -> dict[str, Any]:
+    """打开"今天怎么用"这一天。
+
+    时区偏移走请求体（后端按用户那边的日界线算"那一天"，库里存的是 UTC）。
+    """
+    today = datetime.now().date().isoformat()
+    offset = int(datetime.now().astimezone().utcoffset().total_seconds() // 60)  # type: ignore[union-attr]
+    return ask_ai(f"/app/day/{today}/advice", token, {"arg": str(offset)})
 
 
 def stage_of(task_id: str, token: str) -> str:
@@ -324,6 +364,21 @@ def main() -> int:
     nodes = call("/app/calendar", token=token).get("data") or []
     check("关键节点写进了日历（规划师写、教练读）", len(nodes) >= 1, f"{len(nodes)} 条节点")
 
+    # ── 联动（一）：模型算出来的东西，会跟着事实变 ─────────────
+    phase("联动：事实一变，依据它的模型产出真的重算")
+    first = today_advice(token)
+    check(
+        "第一次打开「今天怎么用」是真算的",
+        bool(first.get("data")) and first.get("meta", {}).get("cached") is False,
+        f"cached={first.get('meta', {}).get('cached')} · {first.get('meta', {}).get('by', '')}",
+    )
+    again = today_advice(token)
+    check(
+        "同一份内容再打开一次走缓存（不是每次都烧一遍模型）",
+        again.get("meta", {}).get("cached") is True,
+        f"cached={again.get('meta', {}).get('cached')}",
+    )
+
     # ── ④→⑤：勾掉第一个任务 ──────────────────────────────────
     phase("④→⑤：勾掉一件任务之后，闭环进复盘")
     task = action.get("next_task") or {}
@@ -337,8 +392,42 @@ def main() -> int:
             for item in (phase_item.get("tasks") or [])
         ]
         check("勾掉任务落库（done=true）", any(item.get("done") for item in flat), f"已完成 {sum(1 for i in flat if i.get('done'))}/{len(flat)}")
+        after_tick = today_advice(token)
+        check(
+            "勾掉一件任务之后，「今天怎么用」重算了（不再拿旧任务排）",
+            after_tick.get("meta", {}).get("cached") is False,
+            f"cached={after_tick.get('meta', {}).get('cached')}",
+        )
     else:
         check("勾掉任务落库（done=true）", False, "没有可勾的任务")
+
+    # ── 联动（二）：另一条事实来源 —— 导进来的课表 ─────────────
+    weekday = "一二三四五六日"[datetime.now().weekday()]
+    imported = call(
+        "/app/academic/import",
+        "POST",
+        {
+            "school": "某某大学",
+            "term": "2025-2026 第一学期",
+            "courses": f"数值分析\t周三\t3-4节\t教二楼203\n"
+                       f"数据结构\t周{weekday}\t5-6节\t实验楼401",
+        },
+        token,
+    )
+    check("课表导入成功（另一条事实来源）", imported.get("code") in (None, 0), str(imported.get("message"))[:80])
+    after_import = today_advice(token)
+    check(
+        "导完课表之后，「今天怎么用」重算了（课表也是它的依据）",
+        after_import.get("meta", {}).get("cached") is False,
+        f"cached={after_import.get('meta', {}).get('cached')}",
+    )
+    settled = today_advice(token)
+    check(
+        "重算之后又回到缓存（没有把缓存改成每次都重算）",
+        settled.get("meta", {}).get("cached") is True,
+        f"cached={settled.get('meta', {}).get('cached')}",
+    )
+
     review_turn = say(task_id, "我做了一步，接下来呢", token)
     check(
         "勾掉任务之后下一轮进入 ⑤ 复盘",

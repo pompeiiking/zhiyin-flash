@@ -245,12 +245,45 @@ def _click_inside(page: Page, target) -> None:
 
     中心点会被固定在右上的主动提示浮窗吃掉（见 `open_block` 的说明）。
     目标太小时退回中心点 —— 那种尺寸本来也压不住。
+
+    **落点还不能落在块里嵌着的控件上。** 气泡是"整块可点"的（根元素就是按钮），
+    而它的页脚里还有别的按钮（「下一步」「全部任务 →」「为什么这一件」…）。
+    固定偏移点左下角时，正好压在页脚那颗按钮上 —— 点下去走的是**那颗按钮**的
+    含义（实测：今日简报那块点出来的是「和主理聊聊」，于是"简报浮层能打开"红了两轮，
+    而它其实好好地开得出来）。所以先在块内挑一个"确实属于这块自己"的落点：
+    命中元素的最近 `[data-block]` 必须是它自己，且命中的不是块内嵌的控件。
     """
     box = target.bounding_box()
     if not box or box["width"] < 80 or box["height"] < 40:
         target.click(timeout=4000, force=True)
         return
-    page.mouse.click(box["x"] + 40, box["y"] + box["height"] - 24)
+    block_id = target.get_attribute("data-block") or ""
+    point = page.evaluate(
+        """({x, y, w, h, bid}) => {
+            const mine = bid ? document.querySelector(`[data-block="${bid}"]`) : null;
+            const candidates = [
+              [x + 40, y + h - 24],
+              [x + 40, y + 34],
+              [x + 30, y + h * 0.55],
+              [x + w - 40, y + h - 24],
+              [x + w * 0.5, y + 30],
+            ];
+            for (const [px, py] of candidates) {
+              const stack = document.elementsFromPoint(px, py);
+              const owner = stack.map(el => el.closest('[data-block]')).find(Boolean);
+              if (!owner) continue;
+              if (mine && owner !== mine) continue;  // 落在邻居块上：换一个点
+              const hit = stack[0];
+              const control = hit.closest('button, a, [role=button]');
+              // 块内的控件（「下一步」「全部任务 →」…）有自己的含义，不算"点这块"
+              if (control && control !== owner) continue;
+              return [px, py];
+            }
+            return [x + 40, y + h - 24];
+        }""",
+        {"x": box["x"], "y": box["y"], "w": box["width"], "h": box["height"], "bid": block_id},
+    )
+    page.mouse.click(point[0], point[1])
 
 
 def _click_center(page: Page, target) -> None:
@@ -504,17 +537,26 @@ with sync_playwright() as p:
     # 有了期望标题，点错就不算数，脚本会换下一个落点重试。
     opened = open_block(page, "portrait", label="你的画像")
     if opened:
-        page.wait_for_timeout(1000)
-        # 画像清单的每一行现在是 `li > button.row`（带 `.row__name`），
-        # 早先是 `.item` / `.item__name`。两套都认：这份清单是前端在迭代的地方，
-        # 写死一套会让"行还在、只是换了类名"被判成缺陷。
-        items = page.locator(".row, .item")
+        page.wait_for_timeout(1200)
+        # 画像页是**分层**的：第一屏是总览（那段判断 + 「往下看」三行），
+        # 字段清单在「判断维度」/「档案信息」里。停在第一屏数行只会得到 0 ——
+        # 这一屏重做过（见 CHANGELOG 三十节），脚本原来数的还是老类名 `.row`。
+        # 所以：先看一眼有没有清单，没有就按总览里那几行进一层再数。
+        # 行本身既有 `button.row`（带 `.row__name`）也有更老的 `.item` / `.item__name`，
+        # 两套都认 —— 这是前端迭代最多的一屏，写死一套会把"换了类名"判成缺陷。
+        overlay = page.locator('.layer[aria-label="你的画像"]')
+        items = overlay.locator(".row, .item")
+        for index in range(min(overlay.locator(".mrow").count(), 3)):
+            if items.count():
+                break
+            overlay.locator(".mrow").nth(index).click()
+            page.wait_for_timeout(1000)
         check("画像浮层列出字段", items.count() >= 1, f"{opened} · {items.count()} 条")
         # 字段名必须是给人看的：字段键是模型自己起的（interest_direction 这种），
         # 界面上出现纯 ASCII 就等于把内部键摆给了用户。
         names = [
             n.strip()
-            for n in page.locator(".row__name, .item__name").all_text_contents()
+            for n in overlay.locator(".row__name, .item__name").all_text_contents()
         ]
         ascii_names = [n for n in names if n and n.isascii()]
         check(
@@ -524,7 +566,6 @@ with sync_playwright() as p:
         )
         if items.count():
             items.first.click()
-            overlay = page.locator('.layer[aria-label="你的画像"]')
             deadline = time.time() + 90
             reading = ""
             while time.time() < deadline:

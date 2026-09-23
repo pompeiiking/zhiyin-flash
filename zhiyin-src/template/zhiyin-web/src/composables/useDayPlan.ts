@@ -1,5 +1,5 @@
 import { computed, ref } from 'vue'
-import { getActionPlan, getCalendarNodes, type ActionPlan, type CalendarNode } from '@/api/client'
+import { getCalendarNodes, type CalendarNode } from '@/api/client'
 import { useSessionStore } from '@/stores/session'
 
 /*
@@ -62,29 +62,54 @@ export function isoDay(iso: string | null | undefined): string {
 export const weekdayOf = (value: Date) => (value.getDay() === 0 ? 7 : value.getDay())
 
 const nodes = ref<CalendarNode[]>([])
-const plan = ref<ActionPlan | null>(null)
 /** 日历里选中的那一天（气泡点某天 → 浮层打开的就是它） */
 const selectedDay = ref<string>(ymd(new Date()))
 let pulling: Promise<void> | null = null
+/** 上次拉到的是哪个版本的数据（见 store 的 dataVersion） */
+let pulledVersion = -1
+/** 有没有成功拉过至少一次（拉到空也要算拉过：空不等于没拉） */
+let everPulled = false
 
 export function useDayPlan() {
   const session = useSessionStore()
 
+  /*
+   * 行动计划**只有一份**：store 里那份（`session.actionPlan`）。
+   *
+   * 这里原来自己取一次 `GET /app/plan/action`，于是同一份计划在前端有两个副本：
+   * 待办卡片读 store 那份、日历读这份 —— 一次勾选要改两处，漏一处就出现
+   * "卡片上勾掉了、日历上还在"。现在两边读的是同一个对象，改一处两处同时变，
+   * 连重新取一次都不需要。
+   */
+  const plan = computed(() => session.actionPlan)
+
   /**
-   * 拉一次关键节点与行动计划。
+   * 拉关键节点 —— **按数据版本决定要不要重拉**。
    *
    * 读不到就当没有：日历上少几个点，比点开一天看到"加载失败"更像回事。
    * 失败**不缓存**（pulling 只在成功时留下结果），下一次打开还会再试一次。
+   *
+   * 版本这一条是后补的，补的是一个实测出来的症状：这张表**随画布一起挂载**，
+   * 而这里原来是"拉过一次就再也不拉" —— 于是整页会话里它冻在进来那一刻：
+   * 你聊了几轮、计划都重算过了，点开日历还是旧的任务与旧的月历点。
+   * 现在 store 每次数据落定会把 `dataVersion` +1，这里对不上版本就重拉；
+   * 传 `force=true`（动作之后）无条件重拉。
    */
-  async function ensure() {
+  async function ensure(force = false) {
     if (pulling) return pulling
+    if (!force && everPulled && pulledVersion === session.dataVersion) return
     pulling = (async () => {
-      const [n, p] = await Promise.all([
-        getCalendarNodes().catch(() => [] as CalendarNode[]),
-        getActionPlan().catch(() => null),
-      ])
-      nodes.value = n
-      plan.value = p
+      /*
+       * 拉不到就**什么都不写**：留着上一次那几个点，也不记版本 ——
+       * 抹成"这个月什么也没有"是把一次网络抖动显示成了"你没有安排"，
+       * 下一次打开（或下一次联动）还会再试一次。
+       */
+      const fresh = await getCalendarNodes().catch(() => null)
+      if (fresh) {
+        nodes.value = fresh
+        pulledVersion = session.dataVersion
+        everPulled = true
+      }
     })().finally(() => {
       pulling = null
     })

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import Bubble from '@/components/console/Bubble.vue'
 import { useDayPlan, ymd, weekdayOf } from '@/composables/useDayPlan'
 import { useSessionStore } from '@/stores/session'
@@ -32,6 +32,8 @@ const today = new Date()
 const month = ref(new Date(today.getFullYear(), today.getMonth(), 1))
 
 onMounted(() => void ensure())
+// 数据一变就重拉：这块气泡随画布常驻，计划/节点变了它得跟着变（见 store.dataVersion）
+watch(() => session.dataVersion, () => void ensure())
 
 const WEEK = ['一', '二', '三', '四', '五', '六', '日']
 /** 点读给屏幕阅读器听的解释 */

@@ -70,6 +70,12 @@ async function choose(plan: DirectionPlan) {
   busy.value = plan.id
   try {
     data.value = await selectDirectionPlan(plan.id)
+    /*
+     * 换了方案：库里的方向选择变了 —— 工作台面板、关键节点日历、还有"下一步"
+     * 都跟着它。这里是一次**重拉 + 通知**：只通知不重拉的话，那几处不会自己去问，
+     * 用户从这一屏退出去看到的还是换之前的样子。
+     */
+    void session.revalidate()
     session.openDrawer(
       `已选「${plan.name}」`,
       '这个选择随时可撤回 —— 再选另一套就是撤回',

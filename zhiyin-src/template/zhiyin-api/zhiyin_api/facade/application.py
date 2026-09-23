@@ -326,6 +326,15 @@ class DefaultApplicationFacade(ApplicationFacade):
                 attachment_text=material_text,
             )
         )
+        # 这一轮要是产出了新版资产（② 报告 / ③ 方案 / ④ 计划），
+        # 那些**以资产为依据**的模型产出就得重算：报告小结写的是上一版报告的口径、
+        # 日历里那天的安排是按上一版计划排的。不清的话，用户刚重排完计划，
+        # 点开日历看到的还是旧排法 —— 而且没有任何地方提示它是旧的。
+        #
+        # 依据是这一轮真实生成的版本列表（`asset_versions`），不是"每轮都清"：
+        # 大多数轮次只是聊天，清一次产出的代价是下一次打开真的重算一遍。
+        if turn.asset_versions:
+            await self._invalidate_user(user_id, "asset_version_changed")
         return mappers.conversation_turn_view(turn)
 
     async def upload_material(
@@ -457,7 +466,7 @@ class DefaultApplicationFacade(ApplicationFacade):
             {"plan_id": chosen.id, "role": chosen.role.value, "name": chosen.name},
         )
         # 选方案不产生新版本，但工作台那份 `plan_panel` 的文案跟着变 —— 缓存要作废
-        await self._invalidate("asset_state_changed")
+        await self._invalidate_user(user_id, "asset_state_changed")
         plans = await self._assets.list_direction_plans(user_id)
         return mappers.direction_plan_list_view(plans)
 
@@ -501,7 +510,9 @@ class DefaultApplicationFacade(ApplicationFacade):
                 BehaviorEventType.TASK_DONE,
                 {"task_id": body.task_id},
             )
-        await self._invalidate("asset_state_changed")
+        # 勾掉一件改的是**计划状态**：读缓存那份要重读，模型算过的那几段也要重算 ——
+        # 「今天怎么过」原来是按"这件事还没做完"排的，勾完再看还是那一段就说不通了。
+        await self._invalidate_user(user_id, "asset_state_changed")
         return mappers.action_plan_view(plan)
 
     async def _log_behavior(
@@ -526,6 +537,22 @@ class DefaultApplicationFacade(ApplicationFacade):
         if self._cache is None:
             return
         await self._cache.invalidate_for_event(event)
+
+    async def _invalidate_user(self, user_id: str, event: str) -> None:
+        """按事件失效这个用户的**两份缓存**：读侧那份，和模型算出来那份。
+
+        为什么要一起做：它们是两种东西 ——
+          · 读缓存（Redis，按分片）失效后，下一次读会**照原样重建**，用户看不到差别；
+          · 模型产出（`ai_task_result`，按 key 存库）失效后，下一次打开会**真的重算**，
+            用户看到的内容才会跟着新事实变。
+        只做前者，症状是"库里什么都对、界面上那段话还是旧的"：
+        日历里「这一天怎么用」还按没勾掉的任务在排，报告小结还是上一版报告的口气。
+
+        与 `_invalidate` 分开的原因只有一个：模型产出是**按用户**存的，
+        必须带上 user_id —— 全站按事件清一遍会把别人的产出也清掉。
+        """
+        await self._invalidate(event)
+        await self._ai_tasks.invalidate_for_event(user_id, event)
 
     async def _report_group_labels(self) -> dict[str, str]:
         """15 维分组的展示名：分组标识 → 文案。
@@ -606,6 +633,8 @@ class DefaultApplicationFacade(ApplicationFacade):
         if spec is None or spec.channel != "frontend":
             return TrackEventAck(accepted=False, event=body.event)
         await self._function.record_track_event(user_id, body.event, body.payload)
+        # 只失效读缓存：埋点记的是"界面上发生了什么"，它不在任何一段模型产出的依据里，
+        # 顺手清产出等于让用户每翻一屏就重算一遍（花钱，也变慢）。
         await self._invalidate("note_changed")
         return TrackEventAck(accepted=True, event=body.event)
 
@@ -616,7 +645,7 @@ class DefaultApplicationFacade(ApplicationFacade):
         if self._academic is None:
             return AcademicRevokeAck(revoked=False)
         await self._academic.revoke(user_id)
-        await self._invalidate("academic_changed")
+        await self._invalidate_user(user_id, "academic_changed")
         return AcademicRevokeAck(revoked=True)
 
     async def import_academic(
@@ -637,7 +666,8 @@ class DefaultApplicationFacade(ApplicationFacade):
             term=body.term,
         )
         # 课表进了库，工作台那份缓存（含 academic_panel 与采集清单）必须立刻作废
-        await self._invalidate("academic_changed")
+        # —— 连同"按课表算出来的那一天怎么过"（模型算的，也按课表排的）
+        await self._invalidate_user(user_id, "academic_changed")
         return AcademicImportAck(
             school=result.school,
             source=result.source,
@@ -672,7 +702,7 @@ class DefaultApplicationFacade(ApplicationFacade):
             school=body.school,
             term=body.term,
         )
-        await self._invalidate("academic_changed")
+        await self._invalidate_user(user_id, "academic_changed")
         return AcademicImportAck(
             school=result.school,
             source=result.source,
@@ -696,7 +726,7 @@ class DefaultApplicationFacade(ApplicationFacade):
         空待办会变成采集策略里的一条噪音，而它看起来就像用户真的写过。
         """
         note = await self._require_notes().add(user_id, body.text, kind=body.kind)
-        await self._invalidate("note_changed")
+        await self._invalidate_user(user_id, "note_changed")
         return mappers.note_view(note)
 
     async def set_note_done(
@@ -706,13 +736,13 @@ class DefaultApplicationFacade(ApplicationFacade):
         note = await self._require_notes().set_done(user_id, note_id, body.done)
         if note is None:
             raise ResourceNotFound(f"没有这条内容：{note_id}")
-        await self._invalidate("note_changed")
+        await self._invalidate_user(user_id, "note_changed")
         return mappers.note_view(note)
 
     async def remove_note(self, user_id: str, note_id: str) -> NoteAck:
         """删掉一条。"""
         await self._require_notes().remove(user_id, note_id)
-        await self._invalidate("note_changed")
+        await self._invalidate_user(user_id, "note_changed")
         return NoteAck(removed=note_id)
 
     def _require_notes(self) -> UserNoteService:

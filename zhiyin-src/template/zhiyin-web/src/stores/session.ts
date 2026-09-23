@@ -232,6 +232,20 @@ export const useSessionStore = defineStore('session', {
 
     /* 浮窗 */
     floats: [] as FloatItem[],
+
+    /**
+     * **数据版本号 —— 组件之间唯一的联动信号。**
+     *
+     * 为什么需要它：后端那条联动是完整的（画像一变就失效读侧缓存、资产标"待重算"、
+     * AI 任务缓存作废），但前端是**各组件各拉各的**：有的地方一轮对话后会重拉
+     * （工作台那一片），有的地方**拉过一次就再也不拉**（日历的月历点与那一天的任务，
+     * 它是随画布挂载的，等于整页会话里冻住不动）。
+     * 实测症状：你聊了几轮、计划都重算过了，点开日历还是进来那一刻的样子。
+     *
+     * 所以：任何一次"库里的数据变了"都把这个数 +1，各组件自己按它决定要不要重拉。
+     * 拉不拉、拉什么仍然由组件决定（有的贵、有的便宜），但**变没变**只有一处说了算。
+     */
+    dataVersion: 0,
     /** 已经塞过浮窗的"下一步"（按 ask id 去重：同一件事只提醒一次） */
     askFloatSeen: [] as string[],
     acceptedNotices: [] as string[],
@@ -451,6 +465,54 @@ export const useSessionStore = defineStore('session', {
   },
 
   actions: {
+    /**
+     * 库里的数据变了 → 版本号 +1。
+     *
+     * 调用点有两类，两类都必须有：
+     *   · 一轮对话结束（`loadBackend` 之后）—— 画像、缺口、资产、计划都可能刚变；
+     *   · 用户在界面上做了动作（勾任务、选方案、导入课表、收下建议…）——
+     *     那些接口各自改了一部分库，而**日历/画像/报告读的是另一份**。
+     * 漏掉哪一类，那一类数据就会"停在进来那一刻"，而且是静默的。
+     */
+    bumpData() {
+      this.dataVersion += 1
+    },
+
+    /**
+     * 动作之后：把**共享切片**重拉一遍，再叫醒所有组件。
+     *
+     * 和 `bumpData` 的区别是"谁去补数据"：
+     *   · `bumpData` 只说"变了"，谁手上有一份谁自己去补（日历、情报这类自取的）；
+     *   · `revalidate` 连**store 自己持有的那几份**（画像、采集动线、面板、计划、通知、
+     *     气泡编排）一起重拉 —— 这些是画布上大多数块读的东西，一次动作就可能
+     *     碰到其中好几份（勾掉一件任务会改面板口径与"现在这一件"；
+     *     选一套方向会改关键节点与下一步）。
+     *
+     * 为什么值得多这一趟：动作的落点常常**不在**用户看的那块界面上。
+     * 勾任务发生在计划浮层里，而"今天该做的是…"写在今日简报、点写在日历上 ——
+     * 只通知不重拉的话，那两处会停在点下去之前的样子，而且没有任何提示。
+     *
+     * 顺序是先通知再重拉：重拉要等网络，组件不该陪着等。
+     * `loadBackend` 结尾还会再通知一次（它自己拉完也得说），两次不冲突 ——
+     * 组件按版本号判断，正在拉的会 join 同一个请求。
+     */
+    async revalidate() {
+      this.bumpData()
+      await this.loadBackend()
+    },
+
+    /**
+     * 界面动作直接拿回来的最新一份行动计划 → 落到共享切片上。
+     *
+     * `PATCH /app/plan/action/tasks` 的**回包就是这一版计划本身**，比再取一次准，
+     * 也比再取一次快：待办卡片的"现在这一件"、日历上那一天的任务、计划浮层里的勾，
+     * 三处读的都是这一份，改它一处，三处同时跟上。
+     */
+    applyActionPlan(plan: ActionPlan | null) {
+      this.actionPlan = plan
+      this.bumpData()
+    },
+
     /** 挂载时拉真实工作台数据；失败静默（演示回落），成功后画像气泡换真数据 */
     async loadBackend() {
       // 没登录就别去敲这些端点：它们按登录态返回 401，
@@ -471,7 +533,14 @@ export const useSessionStore = defineStore('session', {
          * 而不是拿阶段固定文案顶上 —— 那句文案回答了"这个阶段在做什么"，
          * 回答不了"为什么是这一件"。
          */
-        this.actionPlan = await getActionPlan().catch(() => null)
+        /*
+         * 取失败（catch 成 null）**不覆盖**手上那份：一次刷新没连上，
+         * 不该把待办卡片上的"现在这一件"和日历上那一天的任务一起抹掉 ——
+         * 那是把"我没读到"显示成了"你没有计划"。
+         * 真没有计划时后端给的是 `has_plan=false` 的一份，不是 null。
+         */
+        const plan = await getActionPlan().catch(() => null)
+        if (plan) this.actionPlan = plan
         /*
          * 他写下过的东西要跟着账号回来。
          *
@@ -602,6 +671,8 @@ export const useSessionStore = defineStore('session', {
         }
         // 集群判断的"下一步"也进同一叠（初次进入时就能看到）
         this.syncAskFloat()
+        // 数据落定：告诉所有组件"库里的东西变了"（画像/缺口/资产/编排都在这一拉里）
+        this.bumpData()
       } catch (cause) {
         if (cause instanceof UnauthorizedError) {
           /*
@@ -761,6 +832,8 @@ export const useSessionStore = defineStore('session', {
         )
         this.assignTodoDue(localId, undefined)
         this.assignTodoDue(saved.id, due)
+        // 写进库了：采集动线要引用"他自己写下的"这些话，让它跟着变
+        void this.revalidate()
       } catch (cause) {
         if (cause instanceof UnauthorizedError || cause instanceof BackendUnavailableError) {
           this.todoSynced = false
@@ -785,6 +858,13 @@ export const useSessionStore = defineStore('session', {
       } catch {
         // 后端不可达：界面上的勾选状态先保留，不回滚 —— 回滚比没同步更让人费解
       }
+      /*
+       * 自建内容也是库里的一份事实，而且别处真的会读它：采集动线的优先级
+       * 要引用"他自己写下的"那些话，今日简报也一样。所以这里不是只发个通知，
+       * 而是把共享切片一起重拉（`revalidate`）—— 只通知的话，采集那块会停在
+       * 你写下这条之前的样子。
+       */
+      void this.revalidate()
     },
     async removeCustomTodo(id: string) {
       this.customTodos = this.customTodos.filter((t) => t.id !== id)
@@ -793,6 +873,7 @@ export const useSessionStore = defineStore('session', {
       } catch {
         // 同上：本地已经删掉，就不把它弹回来
       }
+      void this.revalidate()
     },
 
     /* ---- 智能体建议 ---- */

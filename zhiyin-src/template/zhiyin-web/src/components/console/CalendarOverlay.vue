@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import Overlay from '@/components/console/Overlay.vue'
 import AiFrame from '@/components/ai/AiFrame.vue'
 import CanvasMenu, { type MenuItem } from '@/components/console/CanvasMenu.vue'
@@ -49,6 +49,8 @@ const cursor = computed(() => {
 })
 
 onMounted(() => void ensure())
+// 数据一变就重拉：日历是常驻挂载的，等下一次"打开"可能一整页会话都不会发生
+watch(() => session.dataVersion, () => void ensure())
 
 const WEEK = ['一', '二', '三', '四', '五', '六', '日']
 const WEEK_FULL = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']

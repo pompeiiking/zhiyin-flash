@@ -167,6 +167,36 @@ function advance() {
 }
 
 /*
+ * 播报上那三个动作：看这条、去看这批、知道了。
+ *
+ * 为什么都要先判一次空：这条卡片淡出时（transition 那几百毫秒）
+ * **节点还在屏幕上**，而 `shown` 已经是 null 了 —— 这时候点下去，
+ * 老写法 `shown.id` 会直接抛 `Cannot read properties of null (reading 'id')`。
+ * 实测是核验脚本连点"知道了"撞上的（整支浏览器 e2e 因此报了一条页面级 JS 报错），
+ * 真人手快也一样会撞上：看到卡片在消失、又点了一下。
+ * 拿不到就当没点 —— 那一条本来就是已经被收走的那条。
+ */
+function openHead() {
+  const item = shown.value
+  if (!item || isIntel(item)) return
+  session.openDrawer(item.who, item.what, [
+    { source: '为什么由它接手', detail: item.why, confidence: 0.9, at: '刚刚' },
+  ])
+}
+
+function intelHead() {
+  const item = shown.value
+  if (!item || !isIntel(item)) return
+  intelOpen(String(item.id))
+}
+
+function dismissHead() {
+  const item = shown.value
+  if (!item) return
+  session.dismissFloat(String(item.id))
+}
+
+/*
  * 情报轮询 —— 从画布那块「外部情报」搬过来的职责。
  *
  * 画布上不再摆一块情报卡（它归队到这里了），但"每 45 秒自己看一次公开渠道"
@@ -297,7 +327,7 @@ onMounted(() => {
           :key="shown.id"
           class="pop"
           type="button"
-          @click="session.openDrawer(shown.who, shown.what, [{ source: '为什么由它接手', detail: shown.why, confidence: 0.9, at: '刚刚' }])"
+          @click="openHead"
         >
           <span class="pop__who">{{ shown.who }}</span>
           <span class="pop__what">{{ shown.what }}</span>
@@ -314,9 +344,9 @@ onMounted(() => {
               v-if="shown.action"
               class="pop__act pop__act--go"
               type="button"
-              @click="intelOpen(shown.id)"
+              @click="intelHead"
             >{{ shown.action.label }}</button>
-            <button class="pop__act" type="button" @click="session.dismissFloat(shown.id)">知道了</button>
+            <button class="pop__act" type="button" @click="dismissHead">知道了</button>
           </div>
         </div>
 

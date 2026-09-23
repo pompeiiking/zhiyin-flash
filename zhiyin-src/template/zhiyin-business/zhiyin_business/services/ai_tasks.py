@@ -84,6 +84,56 @@ _TASK_OWNER: dict[str, str] = {
     "bind.academic": "info_scout",
 }
 
+# 每条产出**依据的是哪些事实**，以及事实一变谁不能再用（任务 key → 事件码）。
+#
+# 为什么必须写下来：产出是**按 key 存的**（`ai_task_result` 表），而 key 里
+# 只有"哪一件事"，没有"依据是什么版本的" —— 依据变了而 key 没变，那份旧产出
+# 就会被当成最新的用，一直错下去（缓存跨重启，也没有 TTL）。
+# 所以每一条要在这里说清"我依赖什么"，作废按它执行。
+#
+# 事件码与读缓存用的是**同一套**（`data/registry/policy_params.json` 的 cache 一条）：
+# "发生了什么"全站只有一套说法，缓存不该各记各的。
+#
+# 刻意**不写全量作废**（任何事件都清空该用户所有产出）：每一条清掉，下次打开
+# 就是一次真实的模型调用（花钱、花时间），而绝大多数产出与这次变化无关。
+_TASK_INPUTS: dict[str, tuple[str, ...]] = {
+    # 今日简报：画像 + 最近的行动 + 他自己写下的话
+    "brief.today": (
+        "profile_field_updated",
+        "asset_state_changed",
+        "note_changed",
+    ),
+    # 维度解读：只讲一条画像字段
+    "dim": ("profile_field_updated",),
+    # 对你的分析：整份画像 + 缺口 + 他写过的话
+    "portrait.analysis": ("profile_field_updated", "note_changed"),
+    # 这一天怎么用：那天的课 + 那天到期的节点 + 手里还没做完的任务 + 画像
+    "day.advice": (
+        "profile_field_updated",
+        "academic_changed",
+        "asset_state_changed",
+        "asset_version_changed",
+    ),
+    # 缺口追问：问的就是那一条缺口（画像与缺口同源）
+    "gap": ("profile_field_updated",),
+    # 报告小结：报告正文 + 画像
+    "report.summary": ("asset_version_changed", "profile_field_updated"),
+    # 空档课表：导入的课表 + 行动计划的时段
+    "plan.timetable": (
+        "academic_changed",
+        "asset_version_changed",
+        "asset_state_changed",
+    ),
+    # 待办建议：缺口优先级 + 最近的行动 + 他写下的话
+    "plan.todos": (
+        "profile_field_updated",
+        "asset_state_changed",
+        "note_changed",
+    ),
+    # 职业匹配：画像（外网那一半每次现取，不进缓存键）
+    "match.careers": ("profile_field_updated",),
+}
+
 # 画像来源 → 给模型看的说法。模型要引用来源，但读不懂 `behavior_inference` 这种键。
 _SOURCE_TEXT: dict[str, str] = {
     "conversation": "对话",
@@ -225,6 +275,30 @@ class AiTaskService:
         if self._results is None:
             return 0
         return await self._results.delete_prefix(user_id, prefix)
+
+    async def invalidate_for_event(self, user_id: str, event: str) -> int:
+        """按"发生了什么"作废受影响的产出，返回作废条数。
+
+        映射就是 `_TASK_INPUTS`：谁依据的事实里有这一条，谁的产出就不能再当最新的用。
+        没命中任何一个前缀时**什么都不做**（返回 0）—— 这是常态，
+        比如一路只是发消息、没改任何事实。
+
+        为什么要按事件而不是"谁想清就自己清"：调用点（API 层、编排器、Worker）
+        只该知道"发生了什么"，"这一下影响到哪些产出"是这里的知识 ——
+        和读缓存的口径一致（那边把映射放在动态资源里，这边在服务内，
+        因为任务 key 本身就是代码常量）。
+        """
+        if self._results is None:
+            return 0
+        prefixes = [
+            prefix for prefix, events in _TASK_INPUTS.items() if event in events
+        ]
+        removed = 0
+        for prefix in prefixes:
+            # 一个前缀就够：仓储按 `LIKE '前缀%'` 删，无参数的键（`brief.today`）
+            # 与带参数的键（`dim.兴趣` / `day.advice.2026-09-23|480`）都被它罩住。
+            removed += await self.invalidate(user_id, prefix)
+        return removed
 
     def _collection_rules(self):
         """采集规则（动态配置快照）。为空时返回 None，由策略层退回内置表。

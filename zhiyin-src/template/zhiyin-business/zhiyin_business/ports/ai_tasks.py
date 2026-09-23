@@ -31,5 +31,19 @@ class AiTaskService(ABC):
         不是清一个内存字典。同步签名会逼着实现去阻塞事件循环。
         """
 
+    @abstractmethod
+    async def invalidate_for_event(self, user_id: str, event: str) -> int:
+        """按"发生了什么"作废受影响的产出，返回作废条数。
+
+        调用点（API 层、编排器、Worker）只报事件，**"这一下影响到哪些产出"
+        是实现里的知识**（任务 key 与它依据的事实写在一起）。
+        事件码与读缓存同一套，见 `services/ai_tasks.py` 的 `_TASK_INPUTS`。
+
+        为什么必须有这一条：读缓存的失效是**分片**的（`invalidate_for_event`），
+        而 AI 产出是**按 key 存库**的，两者不共享机制。少了它，用户补完画像、
+        勾完任务，界面上那些"由模型算出来的"内容（日历里那天的建议、
+        待办建议、报告小结）会一直停在第一次算出来的样子。
+        """
+
 
 __all__ = ["AiTaskService"]
