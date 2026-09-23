@@ -3018,3 +3018,77 @@ python deploy/package_release.py
 
 顺带把这两条命令写进了 `deploy/部署说明.md` 的第七节（含"顺序不能反"的理由与
 打包后怎么自查），免得下次又要靠回忆。
+
+---
+
+## 四十六、完成记录（成就）开口：从"实现好了但没出口"到界面上真的能用（2026-09-23）
+
+**用户要求**："开口，实际实现。"
+
+### 46.1 先说这一轮改掉的一个"假"
+
+`FunctionService.list_achievements` 原来把 `unlocked_at` 写成 `now` ——
+也就是**每次打开这一屏，都会显示"你刚刚拿到这枚"**，而事实是他可能三周前就做到了。
+这种错不报错、界面上也像那么回事，但整块记录的可信度就压在这一句话上。
+
+现在的口径：**拿到的时刻 = 那条触发行为第一次发生的时间**。做法是按规则的触发事件
+一次读行为日志（限定在那几类行为上、最多 200 条），取每条规则命中的**最早**那一次。
+几条规则共用这一份读（不是每条规则各查一次），并由 `tests/test_achievements.py` 钉住：
+"21 天前那次才是第一次开口"这件事有测试，写成 `now` 或写成最近一次都会红。
+
+同一支测试还钉住另外两条：**没做过就是没做过**（`unlocked=false`、时间为 `null`）、
+**规则里写了不存在的事件名不会让整屏打不开**（跳过那一项并记日志）。
+
+### 46.2 接口与文案的落位
+
+| 什么 | 落在哪 | 为什么 |
+| --- | --- | --- |
+| `GET /app/achievements` | `workspace_controller` | 与 `/app/calendar`、`/app/intel` 同类：读的是这个人的事实 |
+| `AchievementView` / `AchievementListView` | `api/dto/achievement.py`（新） | 它有自己的取数路径，不硬塞进工作台那几块面板 |
+| **名字与"怎么拿到"** | `data/registry/copies.json` 的 `badge.<规则 code>.label` / `.how` | 文案属产品口径：改名字不发版、也不用改接口（随 `/app/bootstrap` 下发） |
+| **解锁条件** | `data/registry/badge_rules.json`（原有 5 条规则） | "什么算一件事"是激励口径，同样可改 |
+
+文案键是**拼出来的**（`badge.${code}.label`），所以给 `test_registry_copy_consumption.py`
+补了第三条拼接规则（前两条是门户八站与画像字段名）—— 那条守卫的作用是"包里每一条文案都得有人读"，
+不认拼接规则就会把我刚接上的文案判成死条目。
+
+### 46.3 界面：一块牌子 + 一屏
+
+- 画布上新增一块「完成记录」（`AchievementsBubble`）：`3/5` + 最近拿到的那一枚 + 还差几枚；
+- 点开是完整一屏（`AchievementsOverlay`）：拿到的那几枚按时间倒序、带日期；
+  没拿到的也在列表里，写的是"还差这一件：<他能做的动作>"；
+- **不画进度条**：解锁条件是"做过一次某件事"，拆成百分比就是编出来的刻度
+  （"认领差距 60%"没有含义）。这一条写在组件注释里，免得下次有人来加。
+
+编排上它跟着新用户**先不出现**（`show_when: has_profile`）：一枚都没有的记分牌没有意义，
+有画像内容之后它才出现 —— 那时他至少已经开口过一次。
+
+一处联动是白拿的：`achievements` 与计划、画像那几份走**同一条共享切片**，
+`loadBackend` 每轮刷新、动作之后 `revalidate` 也会重拉 ——
+所以**勾掉一件任务、选中一套方案、复盘一次之后，那块牌子与浮层会一起多一枚**，
+不需要重新进页面。
+
+### 46.4 验证
+
+```
+pytest -q                        → 466 passed（新增 tests/test_achievements.py 4 条）
+ruff check .                     → All checks passed
+scripts/export_openapi.py --check → 契约快照与代码一致（本次新增 1 个端点、3 个 DTO）
+npm run gen:api / typecheck      → 通过
+full_path.py（浏览器，真模型）    → 79/79（新增 4 条：块在、行数与后端一致、
+                                    已解锁数与后端一致、拿到的那几枚都有日期）
+```
+
+后端那一层先单独验过一次（真账号）：`/app/achievements` 返回 5 条规则、
+4 枚已解锁，时间戳分别是 `12:38 / 12:40 / 12:41 / 12:42` —— 与那个账号真实做过的事一一对上，
+不是"现在"。
+
+### 46.5 前端切成开发态
+
+`docker compose stop web` + 宿主机 `npm run dev`（vite，5173，代理 `/api` → 后端 8000）：
+
+- HTML 里出现 `/@vite/client`（是开发服务器，不是构建产物）；`/api/v1/app/portal` 经代理返回 200；
+- **热更新实测**：改一个 `.vue` 的样式，vite 日志立刻打出
+  `hmr update /src/components/console/AchievementsBubble.vue`。
+
+这样前端与后端都是开发态：后端改 `.py` 自动重启（`--reload`），前端改 `.vue` 热更新。

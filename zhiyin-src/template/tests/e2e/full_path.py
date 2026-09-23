@@ -916,6 +916,42 @@ with sync_playwright() as p:
     else:
         check("复盘浮层能打开", False)
 
+    # ── 完成记录：由行为日志推导的那几枚 ────────────────────────
+    #
+    # 这一屏的判据不能是"有内容就算过"：它的可信度压在**数量与时间与后端一致**上。
+    # 所以两边都比一次 —— 界面上的 x/y 必须等于 `/app/achievements` 的数，
+    # 每一条已解锁的都要有日期（日期来自那条行为的真实发生时间）。
+    achievements = data_of(page, "/app/achievements") or {}
+    expected_unlocked = achievements.get("unlocked")
+    expected_total = achievements.get("total")
+    node = page.locator("[data-block='achievements']").first
+    check("画布上有「完成记录」块", node.count() > 0, node.inner_text().replace("\n", " ")[:60] if node.count() else "")
+    opened = open_block(page, "achievements", label="完成记录")
+    if opened:
+        page.wait_for_timeout(1200)
+        rows = page.locator('.layer[aria-label="完成记录"] .rows li')
+        check(
+            "完成记录列出全部规则，数量与后端一致",
+            bool(expected_total) and rows.count() == expected_total,
+            f"界面 {rows.count()} 行 / 后端 {expected_total} 条",
+        )
+        shown_unlocked = page.locator('.layer[aria-label="完成记录"] .rows li.done').count()
+        check(
+            "已解锁的数量两边一致（不是前端自己算的）",
+            shown_unlocked == expected_unlocked,
+            f"界面 {shown_unlocked} 枚 / 后端 {expected_unlocked} 枚",
+        )
+        dates = page.locator('.layer[aria-label="完成记录"] .rows li.done .when').all_text_contents()
+        check(
+            "拿到的那几枚都写了日期（来自行为日志的真实时间）",
+            bool(dates) and all("月" in item for item in dates),
+            f"{[item.strip() for item in dates][:3]}",
+        )
+        shot(page, "22-achievements")
+        close_overlay(page)
+    else:
+        check("完成记录浮层能打开", False, "点不到那一块")
+
     # ── J. 其他 AI 面板 ─────────────────────────────────────────
     phase("K. 匹配 / 简报")
     page.goto(f"{BASE}/", wait_until="networkidle")

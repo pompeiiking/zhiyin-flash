@@ -261,6 +261,65 @@
         "title": "AcademicRevokeAck",
         "type": "object"
       },
+      "AchievementListView": {
+        "additionalProperties": false,
+        "description": "整屏完成的记录：全部规则 + 其中拿到几枚。",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AchievementView"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "default": 0,
+            "title": "Total",
+            "type": "integer"
+          },
+          "unlocked": {
+            "default": 0,
+            "title": "Unlocked",
+            "type": "integer"
+          }
+        },
+        "title": "AchievementListView",
+        "type": "object"
+      },
+      "AchievementView": {
+        "additionalProperties": false,
+        "description": "一枚完成记录。\n\n只有三样东西：它是哪一枚、拿到没有、什么时候拿到的。\n**没有进度条、没有百分比** —— 这类记录的解锁条件是\"做过一次某件事\"，\n拆成进度就是编出来的刻度（\"认领差距 60%\"没有含义）。",
+        "properties": {
+          "key": {
+            "description": "规则 code；文案由前端按 `badge.<key>` 从文案包取",
+            "title": "Key",
+            "type": "string"
+          },
+          "unlocked": {
+            "default": false,
+            "title": "Unlocked",
+            "type": "boolean"
+          },
+          "unlocked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "第一次做到那件事的时间（未解锁为 null）",
+            "title": "Unlocked At"
+          }
+        },
+        "required": [
+          "key"
+        ],
+        "title": "AchievementView",
+        "type": "object"
+      },
       "ActionPhaseView": {
         "additionalProperties": false,
         "description": "行动阶段：一段时间的里程碑与它下面的任务。",
@@ -527,6 +586,37 @@
           }
         },
         "title": "ApiResponse[AcademicRevokeAck]",
+        "type": "object"
+      },
+      "ApiResponse_AchievementListView_": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode",
+            "default": 0
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AchievementListView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "default": "ok",
+            "title": "Message",
+            "type": "string"
+          },
+          "trace_id": {
+            "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "title": "ApiResponse[AchievementListView]",
         "type": "object"
       },
       "ApiResponse_ActionPlanView_": {
@@ -4036,6 +4126,28 @@
           }
         },
         "summary": "Import Academic Files",
+        "tags": [
+          "workspace"
+        ]
+      }
+    },
+    "/api/v1/app/achievements": {
+      "get": {
+        "description": "完成记录：这个人做到过的那几件事（界面上叫「完成记录」，不叫成就）。\n\n要登录：它读的是**你自己的**行为日志，没有别人能看的版本。\n返回的是全部规则 + 其中拿到几枚（没拿到的也返回，界面上要能说\"还差哪几件\"）。",
+        "operationId": "list_achievements_api_v1_app_achievements_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_AchievementListView_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Achievements",
         "tags": [
           "workspace"
         ]

@@ -8,6 +8,7 @@ from __future__ import annotations
 from fastapi import APIRouter, File, Form, Request, UploadFile
 
 from zhiyin_api.dto.common import ApiResponse
+from zhiyin_api.dto.achievement import AchievementListView
 from zhiyin_api.dto.workspace import (
     AcademicImportAck,
     AcademicImportRequest,
@@ -130,6 +131,18 @@ async def _optional_user(request: Request) -> str | None:
         return await get_facade().resolve_user_id(request)
     except AccessDenied:
         return None
+
+
+@router.get("/app/achievements", response_model=ApiResponse[AchievementListView])
+async def list_achievements(request: Request) -> ApiResponse[AchievementListView]:
+    """完成记录：这个人做到过的那几件事（界面上叫「完成记录」，不叫成就）。
+
+    要登录：它读的是**你自己的**行为日志，没有别人能看的版本。
+    返回的是全部规则 + 其中拿到几枚（没拿到的也返回，界面上要能说"还差哪几件"）。
+    """
+    facade = get_facade()
+    user_id = await facade.resolve_user_id(request)
+    return ApiResponse(data=await facade.list_achievements(user_id))
 
 
 @router.get("/app/intel", response_model=ApiResponse[IntelListView])

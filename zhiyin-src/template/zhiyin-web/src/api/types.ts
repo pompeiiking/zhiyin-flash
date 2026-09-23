@@ -41,6 +41,16 @@ export interface paths {
      */
     post: operations["import_academic_files_api_v1_app_academic_import_file_post"];
   };
+  "/api/v1/app/achievements": {
+    /**
+     * List Achievements
+     * @description 完成记录：这个人做到过的那几件事（界面上叫「完成记录」，不叫成就）。
+     *
+     * 要登录：它读的是**你自己的**行为日志，没有别人能看的版本。
+     * 返回的是全部规则 + 其中拿到几枚（没拿到的也返回，界面上要能说"还差哪几件"）。
+     */
+    get: operations["list_achievements_api_v1_app_achievements_get"];
+  };
   "/api/v1/app/assets/export": {
     /**
      * Export Asset
@@ -620,6 +630,49 @@ export interface components {
       revoked: boolean;
     };
     /**
+     * AchievementListView
+     * @description 整屏完成的记录：全部规则 + 其中拿到几枚。
+     */
+    AchievementListView: {
+      /** Items */
+      items?: components["schemas"]["AchievementView"][];
+      /**
+       * Total
+       * @default 0
+       */
+      total?: number;
+      /**
+       * Unlocked
+       * @default 0
+       */
+      unlocked?: number;
+    };
+    /**
+     * AchievementView
+     * @description 一枚完成记录。
+     *
+     * 只有三样东西：它是哪一枚、拿到没有、什么时候拿到的。
+     * **没有进度条、没有百分比** —— 这类记录的解锁条件是"做过一次某件事"，
+     * 拆成进度就是编出来的刻度（"认领差距 60%"没有含义）。
+     */
+    AchievementView: {
+      /**
+       * Key
+       * @description 规则 code；文案由前端按 `badge.<key>` 从文案包取
+       */
+      key: string;
+      /**
+       * Unlocked
+       * @default false
+       */
+      unlocked?: boolean;
+      /**
+       * Unlocked At
+       * @description 第一次做到那件事的时间（未解锁为 null）
+       */
+      unlocked_at?: string | null;
+    };
+    /**
      * ActionPhaseView
      * @description 行动阶段：一段时间的里程碑与它下面的任务。
      */
@@ -754,6 +807,22 @@ export interface components {
       /** @default 0 */
       code?: components["schemas"]["ErrorCode"];
       data?: components["schemas"]["AcademicRevokeAck"] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
+    /** ApiResponse[AchievementListView] */
+    ApiResponse_AchievementListView_: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      data?: components["schemas"]["AchievementListView"] | null;
       /**
        * Message
        * @default ok
@@ -2797,6 +2866,23 @@ export interface operations {
       422: {
         content: {
           "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /**
+   * List Achievements
+   * @description 完成记录：这个人做到过的那几件事（界面上叫「完成记录」，不叫成就）。
+   *
+   * 要登录：它读的是**你自己的**行为日志，没有别人能看的版本。
+   * 返回的是全部规则 + 其中拿到几枚（没拿到的也返回，界面上要能说"还差哪几件"）。
+   */
+  list_achievements_api_v1_app_achievements_get: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_AchievementListView_"];
         };
       };
     };

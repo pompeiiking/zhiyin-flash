@@ -63,6 +63,7 @@ from zhiyin_api.dto.conversation import (
     IntelRefView,
     RenderableView,
 )
+from zhiyin_api.dto.achievement import AchievementListView, AchievementView
 from zhiyin_api.dto.workspace import (
     AcademicCourseView,
     AcademicGradeView,
@@ -96,6 +97,7 @@ from zhiyin_kernel.assets import Report
 from zhiyin_kernel.assets import ActionPlan, DirectionPlan
 from zhiyin_kernel.assets import CalendarNode
 from zhiyin_kernel.assets import TrackEvent
+from zhiyin_kernel.assets import Achievement
 from zhiyin_kernel import dynamic_config
 from zhiyin_kernel.blackboard import AssetVersion, TaskSession
 from zhiyin_kernel.blackboard import ConversationTurn
@@ -873,6 +875,26 @@ def calendar_node_view(node: CalendarNode) -> CalendarNodeView:
         due_at=node.due_at,
         source=node.source,
         related_task_text=node.related_task_text,
+    )
+
+
+def achievement_list_view(items: Sequence[Achievement]) -> AchievementListView:
+    """完成记录：全部规则 + 其中拿到几枚。
+
+    只搬形状，不重算 —— "拿到了没有"与"什么时候拿到的"都由业务层从行为日志推出来
+    （见 `FunctionService.list_achievements`）。这里再算一遍等于开第二个口径。
+    """
+    return AchievementListView(
+        items=[
+            AchievementView(
+                key=item.badge_key,
+                unlocked=item.unlocked,
+                unlocked_at=item.unlocked_at,
+            )
+            for item in items
+        ],
+        unlocked=sum(1 for item in items if item.unlocked),
+        total=len(items),
     )
 
 

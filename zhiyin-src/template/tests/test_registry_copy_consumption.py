@@ -45,6 +45,14 @@ _PROFILE_LABEL_RULE = re.compile(r"profile\.field\.\$\{")
 #: 画像字段的同义词表（`profile.alias.<模型写的键>` → 规范键）同理：键来自模型，
 #: 一组一组地写出来不现实。认 `dynamic_config` 里按前缀挑词表的那条规则。
 _PROFILE_ALIAS_RULE = re.compile(r"PROFILE_ALIAS_PREFIX")
+
+#: 完成记录的名字与"怎么拿到"（`badge.<规则 code>.label` / `.how`）同样是拼出来的：
+#: 规则在 `badge_rules.json` 里（运营可加），文案在文案包里 ——
+#: 两边各自可改，键只能拼。认 `AchievementsOverlay` 里那条拼接规则本身。
+_BADGE_COPY_RULE = re.compile(r"badge\.\$\{")
+ACHIEVEMENTS_OVERLAY = (
+    TEMPLATE_ROOT / "zhiyin-web" / "src" / "components" / "console" / "AchievementsOverlay.vue"
+)
 TEMPLATE_DYNAMIC_CONFIG = (
     TEMPLATE_ROOT / "zhiyin-business" / "zhiyin_business" / "services" / "dynamic_config.py"
 )
@@ -80,6 +88,8 @@ def test_every_copy_entry_is_read_by_someone() -> None:
             continue
         if code.startswith("profile.alias.") and _alias_rule():
             continue
+        if code.startswith("badge.") and _badge_copy_rule():
+            continue
         if any(f"'{code}'" in text or f'"{code}"' in text for text in sources.values()):
             continue
         dead.append(code)
@@ -109,6 +119,20 @@ def _alias_rule() -> bool:
     assert has_rule, (
         "dynamic_config 里没有找到 `PROFILE_ALIAS_PREFIX` —— "
         "画像字段的同义词表会被判成没人读。前缀改名了就把本守卫一起改。"
+    )
+    return has_rule
+
+
+def _badge_copy_rule() -> bool:
+    """完成记录的名字有没有人在按规则读（规则改名了这条守卫要一起改）。"""
+    assert ACHIEVEMENTS_OVERLAY.is_file(), (
+        f"{ACHIEVEMENTS_OVERLAY} 不存在 —— 完成记录的文案没有消费方，"
+        "要么补上那一屏，要么把 badge.* 从文案包里删掉"
+    )
+    has_rule = bool(_BADGE_COPY_RULE.search(ACHIEVEMENTS_OVERLAY.read_text(encoding="utf-8")))
+    assert has_rule, (
+        "AchievementsOverlay 里没有找到拼接 `badge.${...}.label` 的那条规则 —— "
+        "完成记录的名字会被判成没人读。规则改名了就把本守卫一起改。"
     )
     return has_rule
 

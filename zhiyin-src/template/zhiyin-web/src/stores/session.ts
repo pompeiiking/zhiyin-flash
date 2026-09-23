@@ -20,6 +20,8 @@ import {
   markNotificationRead,
   getBootstrap,
   getActionPlan,
+  getAchievements,
+  type AchievementListView,
   listNotes,
   addNote,
   setNoteDone,
@@ -201,6 +203,8 @@ export const useSessionStore = defineStore('session', {
       | 'sessions'
       /* ⑤ 复盘：这段时间发生过什么 */
       | 'review'
+      /* 完成记录：做到过的那几件事（由行为日志推导，不落表） */
+      | 'achievements'
       /* 外部情报：从公开渠道按你的方向取回的一批事实 */
       | 'intel',
     portraitFocus: null as 'gaps' | null,
@@ -228,6 +232,18 @@ export const useSessionStore = defineStore('session', {
      * 让组件点一下再去取，按钮就少了那一下的反馈；所以跟着工作台一起取进来。
      */
     actionPlan: null as null | ActionPlan,
+    /**
+     * 完成记录（`GET /app/achievements`）。
+     *
+     * 与其余"共享切片"同一个道理放在 store：画布上那一块与浮层读的是同一份，
+     * 一次取数两处读。它跟着 `loadBackend` 一起刷新 —— 也就是说**做完一件事
+     * （勾任务、选方案、复盘）之后，那一块与浮层会一起多出一枚**，
+     * 不需要用户重新进页面。
+     *
+     * 名字与"怎么拿到"不在这里：那两句按 `badge.<key>.label` / `.how`
+     * 从 `copyBundle` 取（文案包，运营可改）。
+     */
+    achievements: null as null | AchievementListView,
     /** 从别处（对话里的引用）跳进来时，要停在**哪一条**上 */
     intelFocus: '' as string,
     /**
@@ -568,11 +584,17 @@ export const useSessionStore = defineStore('session', {
          */
         const plan = await getActionPlan().catch(() => null)
         const notices = await getPendingNotifications().catch(() => [])
+        /*
+         * 完成记录：取不到就**保留手上那份**（与计划同一条道理）——
+         * 一次刷新没连上，不该让"你已经拿到 3 枚"变成"一枚都没有"。
+         */
+        const achievements = await getAchievements().catch(() => null)
         // 期间又发起了一次更新的一拉 → 这一份作废（整份丢，不做半截写入）
         if (mySeq !== loadSeq) return
 
         this.report = report
         if (plan) this.actionPlan = plan
+        if (achievements) this.achievements = achievements
         /*
          * 他写下过的东西要跟着账号回来。
          *
@@ -940,6 +962,7 @@ export const useSessionStore = defineStore('session', {
         | 'calendar'
         | 'sessions'
         | 'review'
+        | 'achievements'
         | 'intel',
       focus: 'gaps' | null = null,
     ) {

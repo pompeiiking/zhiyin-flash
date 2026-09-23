@@ -642,6 +642,86 @@
       "note": "画像字段同义词 → 规范键：模型写左边这个键时归到右边那条，不让同一个意思在画像里占三格"
     },
     {
+      "code": "badge.first_answer.label",
+      "text": "第一次开口",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 2101,
+      "note": "完成记录：名字。前端按 `badge.<规则 code>.label` 取（规则表在 badge_rules.json，名字属于文案口径，分开两处各自可改）"
+    },
+    {
+      "code": "badge.first_answer.how",
+      "text": "认真回答过一次 —— 说清楚你现在的处境就行",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 2102,
+      "note": "完成记录：怎么拿到它。写「用户做过什么」，不写内部事件名"
+    },
+    {
+      "code": "badge.first_gap_claim.label",
+      "text": "认领一件事",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 2103,
+      "note": "完成记录：名字"
+    },
+    {
+      "code": "badge.first_gap_claim.how",
+      "text": "从「还差什么」里挑走一条，说你去做",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 2104,
+      "note": "完成记录：怎么拿到它"
+    },
+    {
+      "code": "badge.decision_made.label",
+      "text": "拿定一个方向",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 2105,
+      "note": "完成记录：名字"
+    },
+    {
+      "code": "badge.decision_made.how",
+      "text": "在几套方案里选中一套 —— 随时可以换，选了就算数",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 2106,
+      "note": "完成记录：怎么拿到它"
+    },
+    {
+      "code": "badge.first_task_done.label",
+      "text": "做完第一件",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 2107,
+      "note": "完成记录：名字"
+    },
+    {
+      "code": "badge.first_task_done.how",
+      "text": "把计划里的第一件事勾掉",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 2108,
+      "note": "完成记录：怎么拿到它"
+    },
+    {
+      "code": "badge.first_review.label",
+      "text": "回头看过一次",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 2109,
+      "note": "完成记录：名字"
+    },
+    {
+      "code": "badge.first_review.how",
+      "text": "复盘过一轮：哪件做完了、哪件卡住了",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 2110,
+      "note": "完成记录：怎么拿到它"
+    },
+    {
       "code": "profile.field.current_status",
       "text": "当前状态",
       "bundle": "zh-CN",

@@ -40,6 +40,7 @@ from zhiyin_api.dto.asset import (
 )
 from zhiyin_api.dto.bootstrap import BootstrapView, TheoryCardView
 from zhiyin_api.dto.bootstrap import PortalView
+from zhiyin_api.dto.achievement import AchievementListView
 from zhiyin_api.dto.common import CoachNotificationView
 from zhiyin_api.dto.conversation import (
     ConversationMaterialView,
@@ -553,6 +554,20 @@ class DefaultApplicationFacade(ApplicationFacade):
         """
         await self._invalidate(event)
         await self._ai_tasks.invalidate_for_event(user_id, event)
+
+    async def list_achievements(self, user_id: str) -> AchievementListView:
+        """完成记录：这个人做到过的那几件事。
+
+        数据是**从行为日志实时推导**的（`FunctionService.list_achievements`）——
+        不落表、也没有"发奖"这个动作：行为发生的那一刻它就已经成立了，
+        这里只是把它读出来。所以没有"领奖"、也就没有"忘了领"。
+
+        文案不在这一层：规则 code 由前端按 `badge.<code>.label` / `.how`
+        从文案包取（`/app/bootstrap` 下发），改名字不发版、也不用改接口。
+        """
+        return mappers.achievement_list_view(
+            await self._function.list_achievements(user_id)
+        )
 
     async def _report_group_labels(self) -> dict[str, str]:
         """15 维分组的展示名：分组标识 → 文案。

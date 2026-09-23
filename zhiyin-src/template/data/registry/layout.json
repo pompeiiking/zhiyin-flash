@@ -46,6 +46,17 @@
         "show_when": "has_profile"
       },
         {
+          "id": "achievements",
+          "label": "完成记录",
+          "hint": "做到过的那几件事",
+          "weight": 1.6,
+          "base": 78,
+          "boost": 30,
+          "boost_when": "has_action",
+          "why": "它由行为日志实时推导（不落表）：勾完一件、复盘一次就多一枚。用 show_when 挡掉新用户的第一屏 —— 一枚都没有的记分牌没有意义；有画像内容之后它才出现，那时他至少已经开口过一次。",
+          "show_when": "has_profile"
+        },
+        {
           "id": "timetable",
           "label": "本周课表",
           "hint": "课表算出来的可投入空档",

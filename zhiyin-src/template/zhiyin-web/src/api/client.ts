@@ -47,6 +47,7 @@ export type ProfileField = Schema['ProfileFieldView']
 export type ProfileGap = Schema['ProfileGapView']
 /** 对话里摆出来的一块可视件（图 / 时间线 / 对比表…）—— 前端按 `kind` 分发渲染 */
 export type RenderableView = Schema['RenderableView']
+export type AchievementListView = Schema['AchievementListView']
 
 export class BackendUnavailableError extends Error {}
 export class UnauthorizedError extends Error {}
@@ -417,6 +418,22 @@ export function setActionTaskDone(taskId: string, done = true) {
  */
 export function getCalendarNodes() {
   return api<CalendarNode[]>('/app/calendar')
+}
+
+/* ---- 完成记录 ---- */
+
+/**
+ * 完成记录（内部叫"成就"）。
+ *
+ * 它读的是**行为日志的推导结果**：做到过哪几件事、第一次是什么时候做的。
+ * 没有"领奖"这个动作，也没有进度百分比 —— 解锁条件就是"做过一次某件事"，
+ * 拆成刻度只会是编出来的数字。
+ *
+ * 名字与"怎么拿到"不在这里：规则 code 由界面按 `badge.<code>.label` / `.how`
+ * 从文案包取（`/app/bootstrap` 已下发），运营改名字不发版。
+ */
+export function getAchievements() {
+  return api<AchievementListView>('/app/achievements')
 }
 
 /* ---- 资产版本与导出 ---- */
