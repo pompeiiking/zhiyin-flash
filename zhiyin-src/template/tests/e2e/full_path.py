@@ -110,6 +110,18 @@ def wait_overlay(page: Page, label: str = "", timeout: int = 8000) -> str:
     return node.get_attribute("aria-label") or ""
 
 
+def _overlay_labels(page: Page) -> list[str]:
+    """当前所有浮层的标题，**一次取完**。
+
+    逐个 `nth(i).get_attribute()` 会等元素出现：浮层在遍历中途关掉时，
+    那一次调用会一直等到超时（实测把整支核验卡死 30 秒）。
+    """
+    return page.eval_on_selector_all(
+        '.layer[role="dialog"]',
+        "els => els.map(e => e.getAttribute('aria-label') || '')",
+    )
+
+
 def close_overlay(page: Page) -> None:
     """关掉当前浮层，并**确认它真的关了**（否则后面的点击全被它挡住）。
 
@@ -185,10 +197,7 @@ def open_block(page: Page, block: str, label: str = "", cta: str = "") -> str:
         targets.append(node.locator("[class*='cta']").first)
     targets.append(node.locator("button, [role='button']").first)
     # 点击前已经在屏幕上的浮层标题：点击之后要求出现**没见过的**那一层
-    before = {
-        page.locator('.layer[role="dialog"]').nth(i).get_attribute("aria-label") or ""
-        for i in range(page.locator('.layer[role="dialog"]').count())
-    }
+    before = set(_overlay_labels(page))
     for target in targets:
         if not target.count():
             continue
@@ -220,9 +229,7 @@ def _wait_new_overlay(page: Page, label: str, before: set[str], timeout: int) ->
     """
     deadline = time.time() + timeout / 1000
     while time.time() < deadline:
-        layers = page.locator('.layer[role="dialog"]')
-        for index in range(layers.count()):
-            name = layers.nth(index).get_attribute("aria-label") or ""
+        for name in _overlay_labels(page):
             if label:
                 if name == label:
                     return name
