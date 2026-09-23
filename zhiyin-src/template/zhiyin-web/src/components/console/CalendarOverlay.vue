@@ -24,7 +24,29 @@ const { ensure, of, markOf, selectedDay } = useDayPlan()
 const session = useSessionStore()
 
 const today = new Date()
-const cursor = ref(new Date(today.getFullYear(), today.getMonth(), 1))
+
+/** 选中的那一天（`YYYY-MM-DD` → Date）。它是这一屏**唯一**的日期真状态。 */
+const selected = computed(() => {
+  const [y, m, d] = selectedDay.value.split('-').map(Number)
+  return new Date(y, (m ?? 1) - 1, d ?? 1)
+})
+
+/**
+ * 左边那个月**不是**独立状态 —— 它由"选中的那一天"推出来。
+ *
+ * 之前是两份状态各改各的：`shift()` 只动月份游标，`回到今天` 只动选中日期。
+ * 于是切到上个月之后，左边写着「2026 年 8 月」、右边还是「9 月 23 日」，
+ * 而且"回到今天"那颗按钮根本不出现（它还认为选中的就是今天）——
+ * 用户被卡在一个自相矛盾的月份里，退不回来。
+ *
+ * 现在唯一的真状态是 `selectedDay`（它同时被日历气泡共享）：
+ * 翻月 = 把选中日挪到目标月，选某一天 = 选中日就是那一天。
+ * 左边月份、右侧事实与建议、AI 那段话永远属于同一天。
+ */
+const cursor = computed(() => {
+  const d = selected.value
+  return new Date(d.getFullYear(), d.getMonth(), 1)
+})
 
 onMounted(() => void ensure())
 
@@ -46,10 +68,6 @@ const cells = computed(() => {
   })
 })
 
-const selected = computed(() => {
-  const [y, m, d] = selectedDay.value.split('-').map(Number)
-  return new Date(y, (m ?? 1) - 1, d ?? 1)
-})
 const plan = computed(() => of(selected.value))
 const isEmpty = computed(
   () =>
@@ -69,8 +87,27 @@ const stamp = computed(
   () => `${selected.value.getMonth() + 1} 月 ${selected.value.getDate()} 日 · ${WEEK_FULL[weekdayOf(selected.value) - 1]}`,
 )
 const isToday = (date: Date) => ymd(date) === ymd(today)
-const shift = (months: number) =>
-  (cursor.value = new Date(cursor.value.getFullYear(), cursor.value.getMonth() + months, 1))
+
+/**
+ * 翻月 = **把选中的那一天挪到目标月**（同一号，越界就落在该月最后一天）。
+ *
+ * 为什么不改成"只翻月份、选中日期不动"：那样左侧月份与右侧那一天会分成两个上下文，
+ * 而右侧的事实（课、到期的事）和 AI 建议全是**按选中那一天**算的 ——
+ * 用户看着 8 月的日历、读着 9 月 23 日的课，两边都不是错的，但合起来没法用。
+ */
+function shift(months: number) {
+  const from = selected.value
+  const target = new Date(from.getFullYear(), from.getMonth() + months, 1)
+  const lastDay = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate()
+  selectedDay.value = ymd(
+    new Date(target.getFullYear(), target.getMonth(), Math.min(from.getDate(), lastDay)),
+  )
+}
+
+/** 回到今天：月份与选中日期一起回去（游标是从它推出来的，所以只要设这一个） */
+function goToday() {
+  selectedDay.value = ymd(today)
+}
 const slot = (c: { start: number; span: number }) => `第 ${c.start}-${c.start + c.span - 1} 节`
 
 /*
@@ -172,7 +209,7 @@ async function saveTodo() {
             v-if="!isToday(selected)"
             class="chip"
             type="button"
-            @click="selectedDay = ymd(today)"
+            @click="goToday"
           >
             回到今天
           </button>

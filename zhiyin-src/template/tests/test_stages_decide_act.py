@@ -45,6 +45,7 @@ def wired():
 async def _seed_plans(container) -> list:
     output = DecideOutput.model_validate(
         {
+            "conclusion": "你说想先在设计院做结构，那先把三条路摆开看。",
             "plans": [
                 {
                     "option_id": "o1",
@@ -118,6 +119,7 @@ async def test_task_can_be_ticked_and_unticked(wired) -> None:
     plan, _nodes = action_plan_from_act(
         ActOutput.model_validate(
             {
+                "conclusion": "你说这周先动作品集，那就从第一页开始。",
                 "phases": [
                     {
                         "name": "本周",
@@ -160,6 +162,7 @@ async def test_behavior_log_only_records_real_actions(wired) -> None:
     plan, _nodes = action_plan_from_act(
         ActOutput.model_validate(
             {
+                "conclusion": "你说这周先动作品集，那就从第一页开始。",
                 "phases": [
                     {
                         "name": "本周",
@@ -193,6 +196,7 @@ async def test_same_named_tasks_do_not_collide(wired) -> None:
     plan, _nodes = action_plan_from_act(
         ActOutput.model_validate(
             {
+                "conclusion": "你说先把简历改出来，那就从这一版开始。",
                 "phases": [
                     {
                         "name": "本周",

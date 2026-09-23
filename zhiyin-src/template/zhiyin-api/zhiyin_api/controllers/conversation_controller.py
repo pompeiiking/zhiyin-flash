@@ -6,11 +6,12 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, File, Request, UploadFile
 
 from zhiyin_api.dto.common import ApiResponse
 from zhiyin_api.dto.conversation import (
     ConversationMessageView,
+    ConversationMaterialView,
     ConversationTurnView,
     MessageRequest,
     SessionListView,
@@ -18,6 +19,7 @@ from zhiyin_api.dto.conversation import (
     TaskSessionView,
 )
 from zhiyin_api.facade import get_facade
+from zhiyin_kernel.errors import InvalidRequest
 
 router = APIRouter(tags=["conversation"])
 
@@ -68,3 +70,46 @@ async def send_message(
     facade = get_facade()
     user_id = await facade.resolve_user_id(request)
     return ApiResponse(data=await facade.send_message(user_id, body))
+
+
+"""一份材料的体积上限（2 MB）。
+
+对话里交的多是简历、证书、导出的表格 —— 几十 KB 到几百 KB。到 MB 量级多半是
+"另存了一整页"或传错了文件，而且它要作为模型输入的一部分，太长的东西放进去
+只会把这一轮淹掉。超了如实说，让他截取相关内容再传。
+"""
+_MAX_MATERIAL_BYTES = 2_000_000
+
+
+@router.post("/app/conversation/material", response_model=ApiResponse[ConversationMaterialView])
+async def upload_material(request: Request, file: UploadFile = File(...)) -> ApiResponse[ConversationMaterialView]:
+    """交一份材料（multipart 上传）。
+
+    为什么材料要**上传**而不是在浏览器里读成文本再塞进消息：
+
+    · 编码（教务/办公软件导出的 GBK 文本）与二进制格式都由服务端统一处理，
+      浏览器那一侧不做第二份解码实现；
+    · 正文不进对话气泡 —— 回执只有"它是什么"，正文留在服务端、只在用到它的
+      那一轮进模型输入。
+
+    读不出来的原因（Excel / 空文件）由文档抽取重载成一句用户能照做的话，
+    这一层只负责限大小。
+    """
+    facade = get_facade()
+    user_id = await facade.resolve_user_id(request)
+    data = await _read_material(file)
+    return ApiResponse(data=await facade.upload_material(user_id, name=file.filename or "", data=data))
+
+
+async def _read_material(file: UploadFile) -> bytes:
+    """读文件字节。多读一个字节用来判断"超没超"，因此超限时不会截断。"""
+    data = await file.read(_MAX_MATERIAL_BYTES + 1)
+    label = file.filename or "这个文件"
+    if len(data) > _MAX_MATERIAL_BYTES:
+        raise InvalidRequest(
+            f"「{label}」超过 2MB —— 对话里交的材料请截取相关的那一段，"
+            "或者只传这件事用得上的部分。"
+        )
+    if not data:
+        raise InvalidRequest(f"「{label}」是空的，换一份再试。")
+    return data

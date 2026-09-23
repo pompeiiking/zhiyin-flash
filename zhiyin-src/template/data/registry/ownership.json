@@ -8,6 +8,7 @@
     { "port": "vector", "owner": "数据访问负责人", "scope": "向量库" },
     { "port": "cache", "owner": "数据访问负责人", "scope": "缓存" },
     { "port": "object_store", "owner": "基础设施负责人", "scope": "对象存储" },
+    { "port": "documents", "owner": "基础设施负责人", "scope": "文档正文抽取（用户带上来的文件 → 文本：编码识别、二进制格式拒绝；第二期接 PDF/Word/OCR 解析服务）" },
     { "port": "event_bus", "owner": "基础设施负责人", "scope": "事件总线" },
     { "port": "scheduler", "owner": "基础设施负责人", "scope": "调度" },
     { "port": "notifier", "owner": "接口/前端联调负责人", "scope": "通知通道（SSE/WS/短信）" },

@@ -152,6 +152,18 @@ def test_cli_check_is_informational_without_phase(capsys) -> None:
     assert "missing" in captured.out
 
 
+def test_cli_accepts_reload_dir(capsys) -> None:
+    """`--reload-dir` 必须被 CLI 接住（可重复）。
+
+    它是 uvicorn 的参数，而我们的入口自己解析参数 —— 不显式收下就会变成
+    `unrecognized arguments`，容器起来就崩（实测：开发态第一次起飞就是这么炸的）。
+    这条只钉"参数收得下"，转发给 uvicorn 的动作在 `--reload` 分支里（跑起来才有意义）。
+    """
+    from zhiyin_boot.__main__ import main
+
+    assert main(["--check", "--reload-dir", "/a", "--reload-dir", "/b"]) == 0
+
+
 def test_port_groups_are_disjoint() -> None:
     """同一个名字不能出现在两个分组里。
 

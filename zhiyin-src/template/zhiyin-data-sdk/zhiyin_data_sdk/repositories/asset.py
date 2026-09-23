@@ -37,6 +37,18 @@ class AssetRepository(ABC):
         """保存一次新版本记录。"""
 
     @abstractmethod
+    async def mark_needs_recompute(
+        self, user_id: str, asset_type: AssetType, *, reason: str
+    ) -> Optional[AssetVersion]:
+        """把某类资产的**最新一版**标记为"待重算"。没有版本时返回 None。
+
+        为什么不升版：版本号是给用户看的"这一版是什么时候、因为什么算出来的"。
+        画像变了但正文没重算就升版，等于告诉用户"跟着改了"，而打开一看一个字没变
+        （实测就是这样：版本下拉里写着「画像补了新信息，这一版跟着更新」，
+        点进去是空页）。标记与升版分开之后，"版本 +1"只在**真的重算并校验过**时发生。
+        """
+
+    @abstractmethod
     async def list_affected_assets(
         self, user_id: str, profile_keys: Sequence[str]
     ) -> list[AssetVersion]:

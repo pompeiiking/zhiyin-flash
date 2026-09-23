@@ -6,6 +6,7 @@ import logging
 from typing import Optional
 
 from zhiyin_business.policies.routing import IntentPolicy, StagePolicy
+from zhiyin_business.policies.progress import progresses_to, stage_from_progress
 from zhiyin_business.ports.blackboard import BlackboardView
 from zhiyin_business.ports.orchestrator import (
     IntentType,
@@ -63,7 +64,18 @@ class KeywordIntentPolicy(IntentPolicy):
 class RuleStagePolicy(StagePolicy):
     """由意图映射目标环节。
 
-    映射来自动态资源（`kind=stage` 的条目）。**未命中时的行为仍在代码里**，
+    两级判定，顺序不能反：
+
+    1. **意图映射**（动态资源 `kind=stage` 的条目）：用户明确说了"我卡住了"
+       "我该选哪个"这类话时，他说的算 —— 显式意图永远优先；
+    2. **进度规则**（`policies/progress.py`）：没命中关键词时，看**资产到哪一步、
+       用户做过什么**（认领过差距 → 决策；选过方案 → 行动；勾过任务 → 复盘）。
+
+    第二条是后补的。此前只有第一条，未命中就"退回当前环节"，于是用户认领了差距、
+    选好了方案也没有任何地方把这些动作接成"可以往下走" —— 实测一个用户聊了 12 轮
+    仍停在诊断。关键词表不可能覆盖自然语言的全部说法，而**行为是可判定的**。
+
+    映射来自动态资源。**未命中时的行为仍在代码里**，
     因为那是策略而不是配置：
 
     ⚠️ 这里踩过一个代价很大的坑，值得写下来：
@@ -107,13 +119,24 @@ class RuleStagePolicy(StagePolicy):
                     "路由规则 %s 的目标环节不存在：%s（已跳过）", rule.id, rule.stage
                 )
                 continue
-            return StageDecision(stage=stage, confidence=0.85)
+            # 来源要标清楚：调用方（采集门槛）只该顶掉"没命中"的那两种情况，
+            # 不该顶掉用户明确说出来的意图。
+            return StageDecision(stage=stage, confidence=0.85, source="intent")
 
-        # 退回当前环节，让模型去答 —— 见类文档里那两句话的对比
+        # 关键词没命中 ≠ 走不动：先看真实进度能不能把他往前推一环。
+        # 只往前推（`progresses_to`），不往回拉 —— 往回走由关键词负责。
+        advanced = progresses_to(blackboard.current_stage, stage_from_progress(blackboard))
+        if advanced is not None:
+            return StageDecision(stage=advanced, confidence=0.7, source="progress")
+
+        # 没有再退回当前环节，让模型去答 —— 见类文档里那两句话的对比
         if blackboard.current_stage is not None:
-            return StageDecision(stage=blackboard.current_stage, confidence=0.5)
+            return StageDecision(
+                stage=blackboard.current_stage, confidence=0.5, source="fallback"
+            )
         return StageDecision(
             confidence=0.3,
+            source="clarify",
             need_clarify=True,
             clarify_question=await self._clarify_question(),
         )

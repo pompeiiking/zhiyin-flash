@@ -315,6 +315,9 @@ class CollectionRuleSpec(BaseModel):
 
     `why` 这一列是**给用户看的**，所以写的是"这条数据挡着哪一步判断"，
     不是"这是必填项"。用户凭什么再花一次动作，全看这一列说没说清楚。
+
+    `ask` 是"去回答"点下去之后落在输入框上方的那一句（只有 conversation 源用得到）。
+    它必须在**这一层**：问题怎么写属于采集口径，写在界面上就等于"改一句话要发一次版"。
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -323,6 +326,10 @@ class CollectionRuleSpec(BaseModel):
     label: str = Field(description="中文名，界面与回执里用它")
     source: str = Field(description="chsi / conversation / academic")
     why: str = Field(default="", description="这条数据挡着哪一步判断")
+    ask: str = Field(
+        default="",
+        description="问用户的那句（仅 conversation 源）：要求一句话答得上来",
+    )
     order: int = Field(default=0, description="同档内的先后；越小的越先")
 
 

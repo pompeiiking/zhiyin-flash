@@ -11,7 +11,10 @@ Mapper 把 None 原样透传成 `None`（前端据此决定是否渲染告知行
 
 from __future__ import annotations
 
-from typing import Any, Mapping, Optional, Sequence
+from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence
+
+if TYPE_CHECKING:  # 只用于类型标注：mapper 不 import 业务实现，只认它的读模型
+    from zhiyin_business.ports.blackboard import ConversationMaterial
 
 from zhiyin_api.dto.asset import (
     ActionPhaseView,
@@ -51,6 +54,7 @@ from zhiyin_api.dto.common import (
     TheoryRefView,
 )
 from zhiyin_api.dto.conversation import (
+    ConversationMaterialView,
     ConversationMessageView,
     ConversationTurnView,
     PipelineCardView,
@@ -59,6 +63,7 @@ from zhiyin_api.dto.conversation import (
     ChartPointView,
     ChartView,
     IntelRefView,
+    RenderableView,
 )
 from zhiyin_api.dto.workspace import (
     AcademicCourseView,
@@ -84,6 +89,7 @@ from zhiyin_business.contracts.common import (
     ChartSpec,
     Disclosure,
     IntelRef,
+    Renderable,
     TheoryRef,
 )
 from zhiyin_business.ports.function import ExportResult
@@ -379,6 +385,9 @@ def conversation_turn_view(turn: TurnResult) -> ConversationTurnView:
                 else None,
                 theory_refs=[theory_ref_view(ref) for ref in message.theory_refs],
                 chart=chart_view(message.chart),
+                renderables=[
+                    renderable_view(item) for item in getattr(message, "renderables", [])
+                ],
                 intel_refs=[intel_ref_view(ref) for ref in message.intel_refs],
                 created_at=message.created_at,
             )
@@ -579,6 +588,8 @@ def workspace_page_view(view: WorkspaceView) -> WorkspacePageView:
                 why=step.why,
                 got=step.got,
                 available=step.available,
+                # 「去回答」要问的那一句随清单一起下发：界面只渲染，不自己拼问题
+                ask=step.ask,
             )
             for step in (collection.steps if collection else ())
         ],
@@ -634,6 +645,9 @@ def asset_version_view(
         created_at=version.created_at,
         depends_on_profile_keys=version.depends_on_profile_keys,
         diff_from_previous=diff,
+        # "这一版是旧的"必须能从接口看出来：否则影响面传播打了标也没人知道，
+        # 界面上那份过期结论看起来和新鲜的一样。
+        needs_recompute=version.needs_recompute,
     )
 
 
@@ -899,6 +913,20 @@ def conversation_message_view(
     )
 
 
+def material_view(material: "ConversationMaterial") -> "ConversationMaterialView":
+    """一份材料的回执：**只搬"它是什么"，不搬正文**。
+
+    正文留在服务端（只在用到它的那一轮进模型输入）—— 这条分工写在这里，
+    是为了让"顺手把 text 也带回去"这件事看起来就像一处不该做的改动。
+    """
+    return ConversationMaterialView(
+        material_id=material.material_id,
+        name=material.name,
+        size=material.size,
+        chars=material.chars,
+    )
+
+
 def chart_view(chart: Optional[ChartSpec]) -> Optional[ChartView]:
     """对话里那张图（没有就是 None）。"""
     if chart is None or not chart.points:
@@ -908,6 +936,17 @@ def chart_view(chart: Optional[ChartSpec]) -> Optional[ChartView]:
         title=chart.title,
         unit=chart.unit,
         points=[ChartPointView(label=p.label, value=p.value) for p in chart.points],
+    )
+
+
+def renderable_view(item: Renderable) -> RenderableView:
+    """一块可视件。`payload` 原样搬运 —— 校验发生在编排器那边（kind 注册表），
+    这一层只负责把已经验过的数据摆成前端认识的样子。"""
+    return RenderableView(
+        kind=item.kind,
+        title=item.title,
+        payload=dict(item.payload),
+        source_refs=[intel_ref_view(ref) for ref in item.source_refs],
     )
 
 

@@ -209,7 +209,15 @@ async def test_acceptance_4_blackboard_is_shared_across_sessions() -> None:
 
 @pytest.mark.asyncio
 async def test_acceptance_5_profile_update_propagates_only_affected_assets() -> None:
-    """验收项 5：影响面传播。只重算受影响资产，版本 +1，未命中资产版本不变。"""
+    """验收项 5：影响面传播。只标记受影响资产；未命中资产一个字都不动。
+
+    口径在 2026-09-23 改过一次，测试跟着改：
+
+    原来是"命中就升版 + 写一句「画像补了新信息，这一版跟着更新」"，而正文并没有重算
+    （真正的重算要等下一次进入该环节）。后果是两个用户看得见的假信号 ——
+    版本下拉里多出一版点开是空白页；用户被告知"跟着改了"，打开一看没变。
+    现在传播只把那一版**标成"待重算"**，版本号留给真正重算的那一轮去 +1。
+    """
     from uuid import uuid4
 
     from zhiyin_business.contracts.common import AssetUpdateDraft
@@ -230,17 +238,38 @@ async def test_acceptance_5_profile_update_propagates_only_affected_assets() -> 
         ),
     )
 
-    # 画像只更新了 major：只有依赖它的 report 允许被重算
+    # 画像只更新了 major：只有依赖它的 report 被标记
     changed = await container.asset_service.propagate(user, ["major"])
     assert [v.asset_type for v in changed] == [AssetType.REPORT], (
-        "只允许命中依赖字段的资产进入重算"
+        "只允许命中依赖字段的资产被标记"
     )
-    assert changed[0].version == hit.version + 1, "命中的资产版本必须 +1"
+    assert changed[0].needs_recompute, "命中的资产必须标成「待重算」"
+    assert changed[0].recompute_reason, "标记要带上给用户看的原因，不能只置一个布尔"
+    assert changed[0].version == hit.version, "只标记，不升版：版本号留给真正重算的那一轮"
+
     reports = await container.asset_service.list_versions(user, AssetType.REPORT)
-    assert reports[-1].version == hit.version + 1
-    assert reports[-1].diff_from_previous, "升版必须带 diff 说明（因更新了什么）"
+    assert len(reports) == 1, "传播不得留下没有正文的空版本（点开会是空白页）"
+    assert reports[-1].needs_recompute
+
     plans = await container.asset_service.list_versions(user, AssetType.DIRECTION_PLAN)
-    assert plans[-1].version == miss.version, "未命中的资产版本不得变化"
+    assert plans[-1].version == miss.version, "未命中的资产不得变化"
+    assert not plans[-1].needs_recompute
+
+    # 真的重算（落一版新正文）之后，标记必须消失 —— 否则用户会一直被告知"这是旧的"。
+    from zhiyin_kernel.assets import Report, Swot, Verdict
+    from datetime import datetime, timezone
+
+    fresh = Report(
+        id="rpt-recomputed",
+        user_id=user,
+        version=0,
+        generated_at=datetime.now(timezone.utc),
+        verdict=Verdict(title="重算后的结论", summary="重算后的说明"),
+        swot=Swot(strength=["a", "b"], weakness=["c", "d"], opportunity=["e", "f"], risk=["g", "h"]),
+    )
+    await container.asset_service.save_report(user, fresh)
+    reports = await container.asset_service.list_versions(user, AssetType.REPORT)
+    assert not reports[-1].needs_recompute, "重算过的新版本不该还挂着「待重算」"
 
 
 @pytest.mark.asyncio

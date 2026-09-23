@@ -96,6 +96,7 @@ class FunctionService(ABC):
         topic: str = "",
         limit: int = 12,
         refresh: bool = False,
+        allow_fetch: bool = True,
     ) -> list["ExternalIntel"]:
         """去公开渠道取回外部情报。**不要求登录**。
 
@@ -111,6 +112,12 @@ class FunctionService(ABC):
 
         `refresh=False` 时允许用缓存：这条链路会打外部站点，用户每开一次界面
         就打一遍既不礼貌也没必要。
+
+        `allow_fetch=False` 时**只读缓存、不打站点**：抓不到新鲜的（或缓存过期了）
+        就返回空表。给"有它更好、没它也能答"的环节用 —— ① 采集与 ⑤ 复盘问的是
+        "你的情况""这段时间有什么用"，外部事实是锦上添花；而每轮都去爬一遍的代价
+        是实打实的（实测一轮 10 次请求、约 7 秒，全落在用户等回复的那几秒里）。
+        ② 诊断 / ③ 决策 / ④ 行动没有外部事实会自己编，那三个环节照样主动取。
         """
 
     @abstractmethod

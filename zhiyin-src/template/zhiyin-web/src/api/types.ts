@@ -25,6 +25,22 @@ export interface paths {
      */
     post: operations["import_academic_api_v1_app_academic_import_post"];
   };
+  "/api/v1/app/academic/import/file": {
+    /**
+     * Import Academic Files
+     * @description 导入课表与成绩单（**上传文件**那一版：multipart/form-data）。
+     *
+     * 为什么和上面那条并存，而不是合成一条：粘贴与上传是两种真实动作，
+     * 表单上也是两个不同的入口。合成一条的话，每次都要把"这次有没有文件"编码进
+     * 同一种请求体里，读的人得先解码一遍才知道这条路在做什么。两条路共用同一条业务
+     * 链路（`import_files` → `import_`），所以"同一份数据读出来必须一样"这件事
+     * 由业务层保证，不靠接口形状。
+     *
+     * 文件在这一层只做一件事：**限大小**。编码识别与二进制格式拒绝都在网关里
+     * （见 `AcademicImportGateway.read_text`）—— 那一层才知道"读不出来"该怎么说。
+     */
+    post: operations["import_academic_files_api_v1_app_academic_import_file_post"];
+  };
   "/api/v1/app/assets/export": {
     /**
      * Export Asset
@@ -102,6 +118,23 @@ export interface paths {
      * @description 重新装载动态配置（环节口径 / 气泡编排 / 采集规则）。
      */
     post: operations["reload_config_api_v1_app_config_reload_post"];
+  };
+  "/api/v1/app/conversation/material": {
+    /**
+     * Upload Material
+     * @description 交一份材料（multipart 上传）。
+     *
+     * 为什么材料要**上传**而不是在浏览器里读成文本再塞进消息：
+     *
+     * · 编码（教务/办公软件导出的 GBK 文本）与二进制格式都由服务端统一处理，
+     *   浏览器那一侧不做第二份解码实现；
+     * · 正文不进对话气泡 —— 回执只有"它是什么"，正文留在服务端、只在用到它的
+     *   那一轮进模型输入。
+     *
+     * 读不出来的原因（Excel / 空文件）由文档抽取重载成一句用户能照做的话，
+     * 这一层只负责限大小。
+     */
+    post: operations["upload_material_api_v1_app_conversation_material_post"];
   };
   "/api/v1/app/conversation/message": {
     /**
@@ -464,6 +497,12 @@ export interface components {
        */
       courses?: number;
       /**
+       * Courses Scheduled
+       * @description 读出了上课时间的课数。`courses` 是「进了库」，它是「排进了课表」——界面必须分别说，否则用户看到「导入完成」却查不到课。
+       * @default 0
+       */
+      courses_scheduled?: number;
+      /**
        * Grades
        * @default 0
        */
@@ -747,6 +786,22 @@ export interface components {
       /** @default 0 */
       code?: components["schemas"]["ErrorCode"];
       data?: components["schemas"]["BootstrapView"] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
+    /** ApiResponse[ConversationMaterialView] */
+    ApiResponse_ConversationMaterialView_: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      data?: components["schemas"]["ConversationMaterialView"] | null;
       /**
        * Message
        * @default ok
@@ -1126,6 +1181,12 @@ export interface components {
       depends_on_profile_keys?: string[];
       /** Diff From Previous */
       diff_from_previous?: string | null;
+      /**
+       * Needs Recompute
+       * @description 这一版是「画像变过、还没重算」的旧版本。影响面传播只打这个标记、不升版，下一次进入该环节真的重算时才 +1 —— 界面据此可以如实说「这版是旧的」
+       * @default false
+       */
+      needs_recompute?: boolean;
       /** Version */
       version: number;
     };
@@ -1185,6 +1246,38 @@ export interface components {
        * @default
        */
       text?: string;
+    };
+    /** Body_import_academic_files_api_v1_app_academic_import_file_post */
+    Body_import_academic_files_api_v1_app_academic_import_file_post: {
+      /** Courses File */
+      courses_file?: string | null;
+      /**
+       * Courses Text
+       * @default
+       */
+      courses_text?: string;
+      /** Grades File */
+      grades_file?: string | null;
+      /**
+       * Grades Text
+       * @default
+       */
+      grades_text?: string;
+      /**
+       * School
+       * @default
+       */
+      school?: string;
+      /**
+       * Term
+       * @default
+       */
+      term?: string;
+    };
+    /** Body_upload_material_api_v1_app_conversation_material_post */
+    Body_upload_material_api_v1_app_conversation_material_post: {
+      /** File */
+      file: string;
     };
     /**
      * BootstrapView
@@ -1356,6 +1449,12 @@ export interface components {
      */
     CollectionItemView: {
       /**
+       * Ask
+       * @description 问用户的那一句（只有 conversation 源、且还没拿到时有）；界面点「去回答」就把它带进对话，不为空表示这一条有可直接执行的动作
+       * @default
+       */
+      ask?: string;
+      /**
        * Available
        * @description 这个源头现在能不能用
        * @default true
@@ -1416,6 +1515,34 @@ export interface components {
       next_source?: string | null;
     };
     /**
+     * ConversationMaterialView
+     * @description 一次材料上收的回执（文件传上来的结果）。
+     *
+     * **不含正文**：正文回给前端就等于把文件又摊在对话框里了。
+     * 前端拿到的是"它是什么"（名字 / 原始大小 / 读到多少字），够它画一枚材料卡。
+     */
+    ConversationMaterialView: {
+      /**
+       * Chars
+       * @description 读出来的正文字数
+       * @default 0
+       */
+      chars?: number;
+      /** Material Id */
+      material_id: string;
+      /**
+       * Name
+       * @default
+       */
+      name?: string;
+      /**
+       * Size
+       * @description 原文件字节数
+       * @default 0
+       */
+      size?: number;
+    };
+    /**
      * ConversationMessageView
      * @description 对话气泡。
      */
@@ -1433,6 +1560,11 @@ export interface components {
        * @description 这一轮用到的外部情报来源，可点回原页面
        */
       intel_refs?: components["schemas"]["IntelRefView"][];
+      /**
+       * Renderables
+       * @description 这一轮主理自己产出的可视件（它调了工具）。前端按 kind 选组件渲染；`chart` 是其中柱状图那一种的兼容字段
+       */
+      renderables?: components["schemas"]["RenderableView"][];
       /**
        * Role
        * @enum {string}
@@ -1836,6 +1968,15 @@ export interface components {
     /**
      * MessageRequest
      * @description 一轮用户输入。支持会话续接（R-API-003）。
+     *
+     * `option_id` / `option_value` 是"这一轮点的是哪个选项"。
+     *
+     * 为什么不能只发选项的**显示文字**：界面上那几个按钮是后端上一轮给的
+     * `guide.options`，它们有稳定的身份（`option_id`）与机器可读的取值（`value`）。
+     * 只把 label 当一句话发回来，这一轮就退化成了自由文本 ——
+     * 编排放器分不清"用户明确选了「我现在还在念书」"和"用户随口说了这几个字"，
+     * 于是可能把同一个问题再问一遍。用户看到的是：点了选项，问题原样又回来了。
+     * 这两个字段都是可选的：手打的那一轮本来就只有一个 message。
      */
     MessageRequest: {
       /**
@@ -1843,8 +1984,23 @@ export interface components {
        * @description 前端幂等键
        */
       client_msg_id?: string | null;
+      /**
+       * Material Ids
+       * @description 这一轮一起交上去的材料（`POST /app/conversation/material` 的返回 id）。材料正文不进 `message`：它只在服务端拼进这一轮的模型输入 —— 把一份简历几百段塞进对话气泡，用户要读的是主理的回话，不是自己交的原文
+       */
+      material_ids?: string[];
       /** Message */
       message: string;
+      /**
+       * Option Id
+       * @description 这一轮点了哪个选项（guide.options[].option_id）
+       */
+      option_id?: string | null;
+      /**
+       * Option Value
+       * @description 该选项的机器可读取值（guide.options[].value）；没有就是 None
+       */
+      option_value?: unknown;
       /** Task Id */
       task_id: string;
     };
@@ -2120,6 +2276,33 @@ export interface components {
      * @enum {string}
      */
     ProfileSource: "resume" | "conversation" | "assessment" | "behavior_inference" | "mentor" | "record";
+    /**
+     * RenderableView
+     * @description 对话里的一块**可视件**：图 / 时间线 / 对比矩阵……
+     *
+     * 前端按 `kind` 选组件画（缺组件时应当如实跳过，不要把 payload 直接摊给用户）。
+     * 服务端只放**注册过并通过校验**的类型（注册表在
+     * `zhiyin_business/policies/renderers.py`）：`kind` 没注册过、`payload` 形状不对，
+     * 在编排器那边就已经丢掉了，不会走到这里。
+     */
+    RenderableView: {
+      /** Kind */
+      kind: string;
+      /** Payload */
+      payload?: {
+        [key: string]: unknown;
+      };
+      /**
+       * Source Refs
+       * @description 这一件用到的外部来源，可点回原页面
+       */
+      source_refs?: components["schemas"]["IntelRefView"][];
+      /**
+       * Title
+       * @default
+       */
+      title?: string;
+    };
     /**
      * ReportDimensionItemView
      * @description 15 维里的单维。**逐字段声明**而不是 `dict`：前端要按 `tag` 上色、
@@ -2624,6 +2807,40 @@ export interface operations {
     };
   };
   /**
+   * Import Academic Files
+   * @description 导入课表与成绩单（**上传文件**那一版：multipart/form-data）。
+   *
+   * 为什么和上面那条并存，而不是合成一条：粘贴与上传是两种真实动作，
+   * 表单上也是两个不同的入口。合成一条的话，每次都要把"这次有没有文件"编码进
+   * 同一种请求体里，读的人得先解码一遍才知道这条路在做什么。两条路共用同一条业务
+   * 链路（`import_files` → `import_`），所以"同一份数据读出来必须一样"这件事
+   * 由业务层保证，不靠接口形状。
+   *
+   * 文件在这一层只做一件事：**限大小**。编码识别与二进制格式拒绝都在网关里
+   * （见 `AcademicImportGateway.read_text`）—— 那一层才知道"读不出来"该怎么说。
+   */
+  import_academic_files_api_v1_app_academic_import_file_post: {
+    requestBody?: {
+      content: {
+        "multipart/form-data": components["schemas"]["Body_import_academic_files_api_v1_app_academic_import_file_post"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_AcademicImportAck_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /**
    * Export Asset
    * @description 导出资产。第一期仅预留入口，available 恒 False。
    */
@@ -2811,6 +3028,41 @@ export interface operations {
       200: {
         content: {
           "application/json": components["schemas"]["ApiResponse_dict_"];
+        };
+      };
+    };
+  };
+  /**
+   * Upload Material
+   * @description 交一份材料（multipart 上传）。
+   *
+   * 为什么材料要**上传**而不是在浏览器里读成文本再塞进消息：
+   *
+   * · 编码（教务/办公软件导出的 GBK 文本）与二进制格式都由服务端统一处理，
+   *   浏览器那一侧不做第二份解码实现；
+   * · 正文不进对话气泡 —— 回执只有"它是什么"，正文留在服务端、只在用到它的
+   *   那一轮进模型输入。
+   *
+   * 读不出来的原因（Excel / 空文件）由文档抽取重载成一句用户能照做的话，
+   * 这一层只负责限大小。
+   */
+  upload_material_api_v1_app_conversation_material_post: {
+    requestBody: {
+      content: {
+        "multipart/form-data": components["schemas"]["Body_upload_material_api_v1_app_conversation_material_post"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_ConversationMaterialView_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };

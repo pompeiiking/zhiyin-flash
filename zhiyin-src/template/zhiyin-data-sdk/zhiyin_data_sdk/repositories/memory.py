@@ -44,3 +44,13 @@ class ConversationTurnRepository(ABC):
         self, user_id: str, task_id: str, *, limit: int = 200
     ) -> list[ConversationTurn]:
         """按时间正序列出一条会话的全部轮次。"""
+
+    @abstractmethod
+    async def find_reply_by_client_msg_id(
+        self, user_id: str, client_msg_id: str
+    ) -> Optional[ConversationTurn]:
+        """按幂等键取回**主理那一条**回复；没答过就返回 None。
+
+        重复消息（双击发送、网络重试）靠它直接返回上一次的答复，
+        不再走一遍模型 —— 否则用户会白等一次、记录里也会多一条重复的往返。
+        """

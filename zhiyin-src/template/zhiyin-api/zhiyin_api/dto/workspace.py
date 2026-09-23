@@ -98,6 +98,13 @@ class CollectionItemView(BaseModel):
     why: str = Field(description="这条数据挡着哪一步判断 —— 给用户看的理由")
     got: bool = False
     available: bool = Field(default=True, description="这个源头现在能不能用")
+    ask: str = Field(
+        default="",
+        description=(
+            "问用户的那一句（只有 conversation 源、且还没拿到时有）；"
+            "界面点「去回答」就把它带进对话，不为空表示这一条有可直接执行的动作"
+        ),
+    )
 
 
 class CollectionPanelView(BaseModel):
@@ -199,10 +206,37 @@ class AcademicImportAck(BaseModel):
     source: str = ""
     term: str = ""
     courses: int = 0
+    courses_scheduled: int = Field(
+        default=0,
+        description=(
+            "读出了上课时间的课数。`courses` 是「进了库」，它是「排进了课表」——"
+            "界面必须分别说，否则用户看到「导入完成」却查不到课。"
+        ),
+    )
     grades: int = 0
     imported_at: str = ""
     notes: list[str] = Field(default_factory=list)
     wrote_profile: list[str] = Field(default_factory=list)
+
+
+class AcademicImportUpload(BaseModel):
+    """上传导入的载荷：两份文件（字节）+ 同一栏里可选的粘贴文本。
+
+    为什么字节也放在 DTO 里：它是**内部载荷**（只在 `facade` 与业务服务之间传），
+    不出现在任何路由签名里，因此不会进契约快照。用同一个形状承载"文件或文本"，
+    是为了让业务层看到的是"一次导入要读什么"，而不是八个散着的参数。
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    courses_file: Optional[bytes] = None
+    grades_file: Optional[bytes] = None
+    courses_name: str = Field(default="", description="文件名，只用于出错时点名（「xx.json」）")
+    grades_name: str = ""
+    courses_text: str = Field(default="", max_length=200_000, description="同一栏里粘贴的原文")
+    grades_text: str = Field(default="", max_length=200_000)
+    school: str = Field(default="", max_length=120)
+    term: str = Field(default="", max_length=40)
 
 
 class AcademicRevokeAck(BaseModel):

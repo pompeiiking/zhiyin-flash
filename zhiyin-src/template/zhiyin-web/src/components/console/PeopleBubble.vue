@@ -33,10 +33,32 @@ function openTimeline() {
     })),
   )
 }
+
+/**
+ * "知道" —— 交接这件事读过了。
+ *
+ * 它和右上角那颗「解决」不是同一个意思：解决是"这件事办完了"，
+ * 知道是"我看见了，别再提醒我"。所以这里除了播那段"知道了"的反馈，
+ * 还要**在状态里记一笔**（`session.ackBlock`）—— 只做视觉动画的话，
+ * 40 秒后同一张卡又飘回来，用户会以为刚才那一下没生效。
+ */
+function acknowledge() {
+  session.ackBlock('people')
+  emit('resolve')
+}
 </script>
 
 <template>
-  <Bubble size="sm" tone="plain" resolvable :tilt="-0.5" label="谁在帮你" @close="emit('close')" @resolve="emit('resolve')">
+  <Bubble
+    size="sm"
+    tone="plain"
+    resolvable
+    resolved-label="知道了 · 不再提醒"
+    :tilt="-0.5"
+    label="谁在帮你"
+    @close="emit('close')"
+    @resolve="emit('resolve')"
+  >
     <header class="head">
       <span class="label head__k">交接</span>
       <span class="label head__t">当前接手</span>
@@ -49,7 +71,7 @@ function openTimeline() {
     <div class="acts">
       <NextAsk compact />
       <button class="act act--go" type="button" @click="openTimeline">看交接</button>
-      <button class="act" type="button" @click="emit('resolve')">知道</button>
+      <button class="act act--ack" type="button" @click="acknowledge">知道</button>
     </div>
   </Bubble>
 </template>
@@ -82,7 +104,14 @@ function openTimeline() {
 .bubble.is-compact .head__t { display: none; }
 .bubble.is-compact .title { font-size: var(--t-sm); }
 .bubble.is-compact .why { -webkit-line-clamp: 1; }
-.bubble.is-compact .act:not(.act--go) { display: none; }
+/*
+ * 紧凑形态里仍保留「知道」。
+ *
+ * 收掉的是次要动作，而"知道"是**读过之后唯一能让这张卡不再回来的动作**：
+ * 收掉它，用户就只剩右上角那颗「解决」—— 那颗是"这件事办完了"，语义并不一样
+ * （实测里用户找不到"我已读过"这个出口）。真正矮到放不下时（is-tiny）才收。
+ */
+.bubble.is-compact .act:not(.act--go):not(.act--ack) { display: none; }
 
 /* 再小一档（<200px）：说明句整句收掉，只留"谁接手 + 一个动作" */
 .bubble.is-tiny .why { display: none; }

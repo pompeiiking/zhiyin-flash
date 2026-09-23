@@ -451,7 +451,14 @@ function playFlip() {
 /** 拖动引擎：抽离网格 → 其余块补位 → 松手吸附 */
 const drag = useCanvasDrag(canvas, { before: captureLayout, after: playFlip, reorder })
 
-const hidden = (id: string) => (session.hiddenBlocks[id] ?? 0) > Date.now()
+/*
+ * 一块现在该不该藏起来。两件事都算：
+ *   · `hiddenBlocks`：被关掉/解决过，过一会儿自己回来（那是刻意的，用户需要能清走挡视线的块）；
+ *   · `ackedBlocks`：已经被"知道了"认下来的，本会话**不再回来** —— 交接提醒读过一次
+ *     就不该再提醒第二次（见 store.ackBlock）。
+ */
+const hidden = (id: string) =>
+  session.ackedBlocks.includes(id) || (session.hiddenBlocks[id] ?? 0) > Date.now()
 /** 正在收缩淡出的块还要留在 DOM 里，动画播完才真的移除 */
 const visible = (id: string) => !hidden(id) || leaving.value.has(id)
 const isLeaving = (id: string) => leaving.value.has(id)
@@ -882,6 +889,11 @@ onBeforeUnmount(() => {
           采集动线：还缺什么、去哪儿取。
           它取代了原来那块固定写死"核验学籍"的气泡 ——
           那块不管你是谁都说同一句话；这块是照画像算出来的，补完自己会变。
+
+          第三档（is-tiny）必须一起给。CollectBubble 自己写了 `.bubble.is-tiny`
+          的收法（矮格位里先把"其余几条"和来源胶囊收掉），可是这里以前没传这个类 ——
+          于是它永远停在第二档：1440×900 实测这一格 194px、内容要 238px，
+          底下两行被 overflow: hidden 裁掉，用户看到的是"半句话的绿块"。
         -->
         <CollectBubble
           v-if="visible('collect')"
@@ -890,6 +902,7 @@ onBeforeUnmount(() => {
           :class="{
             leaving: isLeaving('collect'),
             'is-compact': compactIds.has('collect'),
+            'is-tiny': tinyIds.has('collect'),
             'is-next': session.nextBlockId === 'collect',
           }"
           :style="tileStyle('collect')"

@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -52,6 +52,16 @@ class StageDecision(BaseModel):
 
     stage: Optional[LoopStage] = Field(default=None, description="判定出的环节")
     confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+    source: Literal["intent", "progress", "fallback", "clarify", ""] = Field(
+        default="",
+        description=(
+            "这个结论是怎么来的：`intent`=用户这句话明确命中了意图映射（他说的算）；"
+            "`progress`=按资产与行为推出的下一步；`fallback`=都没命中，留在当前环节；"
+            "`clarify`=连环节都没有，先澄清。"
+            "**调用方要能区分这三种**：例如采集门槛只该顶掉后两种 —— "
+            "用户主动说「我迷茫、想重新过一遍自己」时把他顶去诊断，等于不听他说话。"
+        ),
+    )
     need_clarify: bool = Field(default=False, description="是否回落到澄清追问")
     clarify_question: Optional[str] = None
 
@@ -91,6 +101,23 @@ class TurnRequest(BaseModel):
     task_id: str
     message: str
     client_msg_id: Optional[str] = None
+    option_id: Optional[str] = Field(
+        default=None, description="这一轮点的是哪个选项（上一轮 guide.options 的 id）"
+    )
+    option_value: Any = Field(
+        default=None, description="该选项的机器可读取值；手打的一轮为 None"
+    )
+    attachment_name: str = Field(
+        default="",
+        description="这一轮带上来的材料名（只用于给模型交代这段正文是哪来的）",
+    )
+    attachment_text: str = Field(
+        default="",
+        description=(
+            "材料的正文。**只进模型输入**：`message` 才是落库与显示的那一句 —— "
+            "把一份简历几百段塞进对话流，用户要读的是主理的回话，不是自己刚交的东西"
+        ),
+    )
 
 
 class TurnResult(BaseModel):

@@ -48,6 +48,14 @@ class DiagnoseOutput(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    conclusion: str = Field(
+        default="",
+        description=(
+            "这一轮对他说的话：2 到 4 句，每句不超过 40 字。用人话把 verdict 那句结论说给他听，"
+            "并说清凭什么这么判断（指到他的项目、材料、时间或外面那条真实要求）——"
+            "verdict 进报告，conclusion 进对话。"
+        )
+    )
     verdict: Verdict
     swot: Swot
     dimensions: list[ReportDimensionGroup] = Field(
@@ -60,5 +68,11 @@ class DiagnoseOutput(BaseModel):
     confidence_used: float = Field(
         default=0.0, description="本次诊断所用的画像置信度；不足时应回 ① 采集"
     )
-    guide: BehaviorGuide = Field(description="下一步：引导认领至少 3 条差距")
+    guide: BehaviorGuide | None = Field(
+        default=None,
+        description=(
+            "下一步：引导认领差距。**可以不给** —— 没想好合适的选项就给 null，"
+            "系统会用你写的结论收尾"
+        ),
+    )
     disclosure: Disclosure | None = None

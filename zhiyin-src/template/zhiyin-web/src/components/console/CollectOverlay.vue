@@ -38,6 +38,9 @@ const got = computed(() => (plan.value?.items ?? []).filter((i) => i.got))
  */
 const chsiCount = computed(() => missing.value.filter((i) => i.source === 'chsi').length)
 
+/** 还要问几句 —— 数字是数出来的，不是写死的 */
+const conversationCount = computed(() => missing.value.filter((i) => i.source === 'conversation').length)
+
 /**
  * 这两个入口**只要还有缺口就摆出来** —— 它们不跟着"下一个该取谁"走。
  *
@@ -57,8 +60,26 @@ function act() {
     session.bindMode = 'academic'
     session.openOverlay('bind')
   } else if (next === 'conversation') {
-    session.askChat('说说你自己：你在意什么、喜欢做什么？一句就行。')
+    /*
+     * "去回答这几句"点下去，问的必须是**清单里最前面那条缺口**的问题，
+     * 而不是一句泛泛的"说说你自己"。泛泛那句说不了"这一条在补哪个字段"，
+     * 用户答完也不知道自己补上了什么（见 `askFor`）。
+     */
+    const first = missing.value.find((i) => i.source === 'conversation' && i.ask)
+    session.askChat(first?.ask || '说说你自己：你在意什么、喜欢做什么？一句就行。')
   }
+}
+
+/**
+ * 一条 conversation 缺口的直接动作：把**这条字段的追问**带进对话。
+ *
+ * 为什么必须逐条给：清单上"价值取向""兴趣""经历""能力自评"是四条不同的缺口，
+ * 共用一个入口时，用户点下去根本不知道自己在补哪一条 —— 而采集这一环
+ * 恰恰是"一次只问一件事"。问题本身来自后端（`CollectionStep.ask`），
+ * 界面只负责把它带过去。
+ */
+function askFor(ask: string) {
+  session.askChat(ask)
 }
 
 /** 每一条的入口：点哪条就去取哪条，不强迫用户跟着"下一步"走 */
@@ -120,6 +141,19 @@ function goSource(source: string) {
               >
                 {{ item.source === 'chsi' ? '去核验 →' : '去导入 →' }}
               </button>
+              <!--
+                "问一句"那几条也要各自带一个入口，且点开就问**这一条**：
+                一条缺口对应一个动作，用户答完能立刻看到清单少一条。
+              -->
+              <button
+                v-else-if="item.available && item.source === 'conversation' && item.ask"
+                class="label rows__go"
+                type="button"
+                :title="item.ask"
+                @click="askFor(item.ask)"
+              >
+                去回答 →
+              </button>
               <span v-if="!item.available" class="label rows__no">没有源头</span>
             </li>
           </ol>
@@ -166,7 +200,7 @@ function goSource(source: string) {
                 导入课表与成绩
               </button>
               <button v-else-if="plan.nextSource === 'conversation'" class="btn primary" type="button" @click="act">
-                去回答这几句
+                去回答{{ conversationCount ? `这 ${conversationCount} 句` : '几句' }}
               </button>
               <!--
                 另外两条路**始终**摆出来，不跟着"下一个该取谁"走。

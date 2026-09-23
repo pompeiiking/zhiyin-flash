@@ -66,6 +66,15 @@ class CollectOutput(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    conclusion: str = Field(
+        default="",
+        description=(
+            "这一轮对他说的话：2 到 4 句，每句不超过 40 字。先用一句人话接住他的意思"
+            "（顺着说、认下事实或点出矛盾都行，**不必逐字复述**），再说这一轮你看清了什么。"
+            "**不要**汇报你记了什么（「这条我记下了」），也不要写成「我为什么要问他这个」"
+            "这类场外话 —— 他读到的应该是一个人在跟他说话。"
+        )
+    )
     field_updates: list[FieldUpdate] = Field(default_factory=list)
     remaining_gaps: list[ProfileGap] = Field(default_factory=list)
     confidence_overall: float = Field(
@@ -75,5 +84,12 @@ class CollectOutput(BaseModel):
         default=False, description="是否达到目标环节所需最低置信度"
     )
     theory_refs: list[TheoryRef] = Field(default_factory=list)
-    guide: BehaviorGuide = Field(description="下一步：一次一问的追问")
+    guide: BehaviorGuide | None = Field(
+        default=None,
+        description=(
+            "下一步：一次一问的追问。**可以不给** —— 这一轮没想好下一个问题、"
+            "或者干脆先顺着他说两句，就给 null。系统会退到用你写的话收尾，"
+            "不会因为缺这个字段判整轮作废（缺字段就作废，代价是这一轮他说的话白说）"
+        ),
+    )
     disclosure: Disclosure | None = None

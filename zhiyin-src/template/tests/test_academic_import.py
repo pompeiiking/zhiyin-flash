@@ -32,11 +32,13 @@ from zhiyin_data_sdk.gateways.academic import (
     AcademicImportKind,
 )
 from zhiyin_infrastructure.academic import ManualAcademicImporter
+from zhiyin_infrastructure.textfile import decode_text, unsupported_reason
 from zhiyin_infrastructure.local.repository import InMemoryAcademicSnapshotRepository
 from zhiyin_kernel.errors import InvalidRequest
 from zhiyin_infrastructure.academic.parsers import (
     detect_source,
     parse_periods,
+    parse_json_courses,
     parse_qz_grades,
     parse_qz_schedule,
     parse_tabular_courses,
@@ -105,6 +107,35 @@ ZF_SCHEDULE_JSON = json.dumps(
             }
         ],
     },
+    ensure_ascii=False,
+)
+
+"""用户**真实传过**的一份 JSON：顶层是数组、每门课一个对象，字段名中英混着写。
+
+它此前读不出来 —— 解析器只认正方的 `kbList/kcmc`，认不出就退回表格读法，
+于是这份完全正确的文件换来一句"读不出这是课表，去课表页 Ctrl+A 全选复制"。
+这一条 fixture 就是那次失败的复现，别再让它退化。
+"""
+USER_JSON_SCHEDULE = json.dumps(
+    [
+        {
+            "day": "星期二",
+            "period": "第1-2节",
+            "time": "08:20-10:00",
+            "course_name": "计算机通信与网络_01",
+            "teacher": "张虹*",
+            "weeks": "1-13周",
+        },
+        {
+            "day": "星期三",
+            "period": "第3-4节",
+            "time": "10:10-11:50",
+            "course_name": "高等数学",
+            "teacher": "李明",
+            "weeks": "1-16周",
+            "place": "教一楼101",
+        },
+    ],
     ensure_ascii=False,
 )
 
@@ -182,6 +213,50 @@ def test_zf_json_is_read_by_field_name() -> None:
     assert course.name == "结构力学"
     assert (course.weekday, course.start_period, course.end_period) == (3, 3, 4)
     assert course.place == "土木楼302"
+
+
+def test_a_json_array_of_courses_is_read_by_field_name() -> None:
+    """用户自己导出的 JSON（顶层数组、每门课一条）要读得出来。
+
+    字段名按**同义词**认：`course_name` / `kcmc` / `课程名称` 都算课名；
+    `day` 认中文星期；`period` 认"第1-2节"。认不出的字段跳过，不猜。
+    """
+    term, courses = parse_json_courses(USER_JSON_SCHEDULE)
+    assert term == ""
+    assert [c.name for c in courses] == ["计算机通信与网络_01", "高等数学"]
+    first = courses[0]
+    assert first.weekday == 2
+    assert (first.start_period, first.end_period) == (1, 2)
+    assert first.weeks == "1-13周"
+    assert first.teacher == "张虹*"
+    assert courses[1].place == "教一楼101"
+
+
+def test_json_wrapped_in_a_container_key_is_read_too() -> None:
+    """接口回包常常把数组包在一层里（`data.list` / `kbList` / `items`）。"""
+    rows = json.loads(USER_JSON_SCHEDULE)
+    _, wrapped = parse_json_courses(json.dumps({"code": 0, "data": {"list": rows}}, ensure_ascii=False))
+    assert [c.name for c in wrapped] == ["计算机通信与网络_01", "高等数学"]
+
+
+def test_a_json_file_with_one_course_is_read_as_one_row() -> None:
+    """整份文件就是一条记录（从课表里挑了一条存下来）也要认。"""
+    single = json.loads(USER_JSON_SCHEDULE)[0]
+    _, courses = parse_json_courses(json.dumps(single, ensure_ascii=False))
+    assert [c.name for c in courses] == ["计算机通信与网络_01"]
+
+
+def test_json_that_reads_nothing_says_so_instead_of_asking_for_a_paste() -> None:
+    """合法 JSON 但读不出课：报的是"这段 JSON 里没读出课"，**不是**"去 Ctrl+A 全选复制"。
+
+    用户当时看到的就是后者 —— 他传的明明是 JSON，提示却在教他怎么复制一页课表。
+    这种"答非所问"比读不出来更让人放弃。
+    """
+    with pytest.raises(AcademicImportError) as excinfo:
+        parse_json_courses('{"code": 1, "msg": "登录已过期"}')
+    message = str(excinfo.value)
+    assert "JSON" in message
+    assert "全选复制" not in message
 
 
 # ------------------------------------------------------------------ 表格文本
@@ -281,6 +356,44 @@ def test_formats_are_listed_so_the_ui_can_explain_how_to_import() -> None:
     assert all(f.howto for f in formats), "每种形态都要写清怎么拿到它"
 
 
+# ------------------------------------------------------------------ 上传的文件
+
+
+def test_a_gbk_file_is_decoded_instead_of_turning_into_mojibake() -> None:
+    """教务系统导出的 CSV 有一半是 GBK：按 UTF-8 硬读会变成乱码，
+    而乱码不是"读不出"，它会一路走到解析器里报"读不出这是课表"。
+    """
+    data = COURSE_TABLE.encode("gbk")
+    text = decode_text(data)
+    assert text == COURSE_TABLE
+    _, courses = parse_tabular_courses(text)
+    assert courses[0].name == "高等数学"
+
+
+def test_a_utf8_bom_does_not_hide_the_header() -> None:
+    """带 BOM 的 UTF-8：不处理的话表头首字多一个看不见的字符，"课程名称"就认不出来。"""
+    importer = _importer()
+    text = importer.read_text(b"\xef\xbb\xbf" + COURSE_TABLE.encode("utf-8"), filename="课表.csv")
+    assert importer.parse_courses(text).courses[0].name == "高等数学"
+
+
+def test_binary_office_files_are_refused_with_the_next_step() -> None:
+    """Excel 是二进制，解码只能是乱码 —— 当场说清楚该换成什么。"""
+    reason = unsupported_reason("2024-2025学年第1学期课表.xlsx")
+    assert "CSV" in reason
+    importer = _importer()
+    with pytest.raises(AcademicImportError) as excinfo:
+        importer.read_text(b"PK\x03\x04\x14\x00\x00\x00", filename="课表.xlsx")
+    assert "另存为 CSV" in str(excinfo.value)
+
+
+def test_an_empty_file_says_it_is_empty() -> None:
+    importer = _importer()
+    with pytest.raises(AcademicImportError) as excinfo:
+        importer.read_text(b"", filename="课表.json")
+    assert "空" in str(excinfo.value)
+
+
 # ------------------------------------------------------------------ 落库与画像
 
 
@@ -332,6 +445,39 @@ async def test_importing_only_grades_does_not_claim_a_timetable() -> None:
     await service.import_("u1", grades_raw=GRADE_TABLE)
     assert "courses" not in profile.fields
     assert "scores" in profile.fields
+
+
+@pytest.mark.asyncio
+async def test_importing_a_file_lands_the_same_snapshot_as_pasting_it() -> None:
+    """文件入口与粘贴入口必须是**同一个结果**：同一份数据，两处读出来不一样
+    就是"换个入口结果变了"，用户无从判断哪个才对。"""
+    imported = InMemoryAcademicSnapshotRepository()
+    service = DefaultAcademicService(imported, _importer(), _Profile())
+    result = await service.import_files(
+        "u1",
+        courses_file=COURSE_TABLE.encode("gbk"),
+        courses_name="课表.csv",
+        grades_file=GRADE_TABLE.encode("utf-8"),
+        grades_name="成绩.csv",
+        school="某某大学",
+    )
+    assert (result.courses, result.grades) == (1, 1)
+    assert result.source == "table"
+
+    stored = await service.get("u1")
+    assert stored is not None
+    assert stored.courses[0].name == "高等数学"
+    assert stored.grades[0].score == "88"
+    assert stored.school == "某某大学"
+
+
+@pytest.mark.asyncio
+async def test_an_unreadable_upload_becomes_a_user_fixable_error() -> None:
+    """传了 Excel：翻成 InvalidRequest（422 + 原话），不是 500。"""
+    service = DefaultAcademicService(InMemoryAcademicSnapshotRepository(), _importer(), None)
+    with pytest.raises(InvalidRequest) as excinfo:
+        await service.import_files("u1", courses_file=b"PK\x03\x04", courses_name="课表.xlsx")
+    assert "另存为 CSV" in str(excinfo.value)
 
 
 @pytest.mark.asyncio

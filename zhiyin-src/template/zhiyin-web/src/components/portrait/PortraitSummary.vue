@@ -21,6 +21,14 @@ const props = defineProps<{
   fields: { key: string; label?: string; confidence: number; source: string }[]
   gapCount: number
   updatedAt: string | null
+  /**
+   * 这几条里，有几条是**判断**（兴趣 / 价值取向 / 经历…），其余是**档案**
+   * （学校 / 专业 / 学籍…，从学信网抄下来的事实）。
+   *
+   * 为什么要单给一个数：抬头那句"9 项已记录 · 关键维度齐了"在只有档案的画像上
+   * 是**假话** —— 学籍表填得再全，也还不认识这个人。口径见 lib/profile.ts。
+   */
+  judgmentCount?: number
 }>()
 
 const pct = computed(() => Math.round((props.coverage || 0) * 100))
@@ -102,7 +110,14 @@ const stamp = (value: string | null) =>
       </div>
       <span v-else class="bar"><i :style="{ width: `${pct}%` }" /></span>
       <p class="cov__note">
-        {{ fields.length }} 项已记录<template v-if="gapCount"> · 还差 <b>{{ gapCount }}</b> 项</template>
+        {{ fields.length }} 条记录
+        <template v-if="judgmentCount === 0"> · 都是档案，还没有你的判断</template>
+        <template v-else-if="judgmentCount">
+          · 其中 <b>{{ judgmentCount }}</b> 条是你的判断
+          <template v-if="gapCount"> · 还差 <b>{{ gapCount }}</b> 项</template>
+          <template v-else> · 关键维度齐了</template>
+        </template>
+        <template v-else-if="gapCount"> · 还差 <b>{{ gapCount }}</b> 项</template>
         <template v-else> · 关键维度齐了</template>
       </p>
     </div>

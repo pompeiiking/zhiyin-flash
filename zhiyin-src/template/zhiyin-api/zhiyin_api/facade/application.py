@@ -42,6 +42,7 @@ from zhiyin_api.dto.bootstrap import BootstrapView, TheoryCardView
 from zhiyin_api.dto.bootstrap import PortalView
 from zhiyin_api.dto.common import CoachNotificationView
 from zhiyin_api.dto.conversation import (
+    ConversationMaterialView,
     ConversationMessageView,
     ConversationTurnView,
     MessageRequest,
@@ -54,6 +55,7 @@ from zhiyin_api.dto.note import NoteAck, NoteCreateRequest, NoteDoneRequest, Not
 from zhiyin_api.dto.workspace import (
     AcademicImportAck,
     AcademicImportRequest,
+    AcademicImportUpload,
     AcademicRevokeAck,
     IntelListView,
     WorkspacePageView,
@@ -76,7 +78,7 @@ from zhiyin_business.ports.orchestrator import Orchestrator, TurnRequest
 from zhiyin_business.ports.registry import RegistryService
 from zhiyin_business.ports.workspace import WorkspaceService
 from zhiyin_kernel.enums import AssetType
-from zhiyin_kernel.errors import ResourceNotFound
+from zhiyin_kernel.errors import InvalidRequest, ResourceNotFound
 from zhiyin_kernel.registry import AgentDescriptor
 
 #: 15 维分组的展示名在动态资源里的 code（与 `copies.json` 对齐）。
@@ -306,15 +308,59 @@ class DefaultApplicationFacade(ApplicationFacade):
     async def send_message(
         self, user_id: str, body: MessageRequest
     ) -> ConversationTurnView:
+        # 材料正文在这一层取出来拼给编排器：**只有模型输入会用到它**，
+        # 落库与显示的仍是 body.message（那一句"我传了一份材料：简历.txt"）。
+        # 取不到（id 过期 / 不是他的）时按用户能懂的方式说，不把这一轮吞掉。
+        material_name, material_text = await self._load_materials(user_id, body.material_ids)
         turn = await self._orchestrator.handle_message(
             TurnRequest(
                 user_id=user_id,
                 task_id=body.task_id,
                 message=body.message,
                 client_msg_id=body.client_msg_id,
+                # 选项身份要跟着这一轮走到底：编排器据此告诉模型"用户选的是哪一个"，
+                # 而不是让模型从一句 label 里猜（见 MessageRequest 的说明）。
+                option_id=body.option_id,
+                option_value=body.option_value,
+                attachment_name=material_name,
+                attachment_text=material_text,
             )
         )
         return mappers.conversation_turn_view(turn)
+
+    async def upload_material(
+        self, user_id: str, *, name: str, data: bytes
+    ) -> ConversationMaterialView:
+        """收下一份材料。读不出正文时抛 `DocumentReadError` 的原话（api 翻成 422）。
+
+        这一层不做解码、也不做存储：那两件事都在业务服务里，
+        它们共享同一条"这份材料算不算收下了"的判断。
+        """
+        memories = self._require_memories()
+        # 读不出正文时的原话（"这是 Excel，先另存为 CSV"）由业务服务翻成
+        # `InvalidRequest` 往上抛 —— 那一层才知道"读不了"该怎么对用户说。
+        material = await memories.put_material(user_id, name=name, data=data)
+        return mappers.material_view(material)
+
+    async def _load_materials(self, user_id: str, material_ids: list[str]) -> tuple[str, str]:
+        """把这一轮的材料读回来 →（材料名, 正文）。
+
+        多份材料时拼成一份正文（中间留一条分隔），并把名字用「、」连起来 ——
+        模型要的是"这段正文是哪几份东西"，不是一份结构化清单。
+        """
+        if not material_ids:
+            return "", ""
+        memories = self._require_memories()
+        names: list[str] = []
+        blocks: list[str] = []
+        for material_id in material_ids:
+            try:
+                body = await memories.material_body(user_id, material_id)
+            except LookupError as exc:
+                raise InvalidRequest(str(exc)) from exc
+            names.append(body.name or material_id)
+            blocks.append(body.text)
+        return "、".join(names), "\n\n".join(blocks)
 
     # ---------- 工作台 ----------
 
@@ -391,11 +437,23 @@ class DefaultApplicationFacade(ApplicationFacade):
 
         返回全量而不是被选中的那一套：界面上三套卡要一起重绘（一套亮、两套灭），
         只回一套的话前端还得自己推断另外两套的状态。
+
+        "换一套"记成 `decision_reselect` 而不是又一次 `decision_select`：
+        两者对复盘的意义不同 —— 前一个是"他改主意了"，后一个是"他第一次定下来"。
+        这个事件类型一直躺在枚举与停滞判定里，此前没有任何生产者。
         """
+        previous = next(
+            (plan for plan in await self._assets.list_direction_plans(user_id) if plan.selected),
+            None,
+        )
         chosen = await self._assets.select_direction_plan(user_id, option_id)
         await self._log_behavior(
             user_id,
-            BehaviorEventType.DECISION_SELECT,
+            (
+                BehaviorEventType.DECISION_RESELECT
+                if previous is not None and previous.id != chosen.id
+                else BehaviorEventType.DECISION_SELECT
+            ),
             {"plan_id": chosen.id, "role": chosen.role.value, "name": chosen.name},
         )
         # 选方案不产生新版本，但工作台那份 `plan_panel` 的文案跟着变 —— 缓存要作废
@@ -585,6 +643,42 @@ class DefaultApplicationFacade(ApplicationFacade):
             source=result.source,
             term=result.term,
             courses=result.courses,
+            courses_scheduled=result.courses_scheduled,
+            grades=result.grades,
+            imported_at=result.imported_at,
+            notes=list(result.notes),
+            wrote_profile=list(result.wrote_profile),
+        )
+
+    async def import_academic_files(
+        self, user_id: str, body: "AcademicImportUpload"
+    ) -> "AcademicImportAck":
+        """导入课表与成绩单（用户自己传的文件）。
+
+        与文本入口走同一条业务链路，只是多一步"字节 → 文本"（在业务服务里，
+        由网关按编码识别）。回执、报错、缓存作废三件事都和文本入口完全一样 ——
+        用户用哪种方式把数据带进来，结果不该有差别。
+        """
+        if self._academic is None:
+            raise RuntimeError("导入服务未装配（Container.academic_service）")
+        result = await self._academic.import_files(
+            user_id,
+            courses_file=body.courses_file,
+            grades_file=body.grades_file,
+            courses_name=body.courses_name,
+            grades_name=body.grades_name,
+            courses_raw=body.courses_text,
+            grades_raw=body.grades_text,
+            school=body.school,
+            term=body.term,
+        )
+        await self._invalidate("academic_changed")
+        return AcademicImportAck(
+            school=result.school,
+            source=result.source,
+            term=result.term,
+            courses=result.courses,
+            courses_scheduled=result.courses_scheduled,
             grades=result.grades,
             imported_at=result.imported_at,
             notes=list(result.notes),
@@ -626,6 +720,12 @@ class DefaultApplicationFacade(ApplicationFacade):
         if self._notes is None:
             raise RuntimeError("用户自建内容服务未装配（Container.notes）")
         return self._notes
+
+    def _require_memories(self) -> ConversationMemoryService:
+        """同上：记忆服务没装配时明确报错，不让"材料收下了"变成一句空话。"""
+        if self._memories is None:
+            raise RuntimeError("会话记忆服务未装配（Container.memories）")
+        return self._memories
 
     async def reload_dynamic_config(self) -> dict[str, Any]:
         """重新装载动态配置，并回报这一次装到了什么。"""

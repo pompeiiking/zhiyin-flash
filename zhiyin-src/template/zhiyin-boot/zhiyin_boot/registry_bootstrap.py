@@ -32,14 +32,19 @@ logger = logging.getLogger(__name__)
 REQUIRED_PROMPTS: tuple[str, ...] = (
     "core.system",
     "guide.closing",
-    "router.intent",
-    "router.stage",
-    "router.lead",
     "router.clarify",
     "disclosure.lead_change",
+    "disclosure.conclusion_change",
     "flow.proactive",
 )
-"""少任何一条，对应能力就是"能跑但不对"，所以启动即拦。"""
+"""少任何一条，对应能力就是"能跑但不对"，所以启动即拦。
+
+**这里只放真有调用方的那几条。** 意图 / 环节 / 主理三条判定曾经各有一条
+`router.*` 提示词躺在这里接受门禁保护，而全仓没有一处代码调用它们 ——
+门禁在为一份没人用的配置站岗，接手的人会以为"模型判定这条链路是活的"。
+现在判定全部是规则（关键词映射 + 进度规则 + 注册表组队），三条提示词已删。
+新增提示词时同时给出调用点，再把它加进来。
+"""
 
 
 class RegistryContentError(RuntimeError):

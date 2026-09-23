@@ -90,6 +90,8 @@ onMounted(() => {
 
   if (scrim.value) {
     gsap.fromTo(scrim.value, { opacity: 0 }, { opacity: 1, duration: 0.4, ease: 'power2.out' })
+    /* 同上：遮罩也不能留在中间态，否则底下的画布一直是亮的（见下面的兜底说明） */
+    settle(scrim.value, 700, 'opacity')
   }
   if (!el) return
 
@@ -107,9 +109,10 @@ onMounted(() => {
         x: 0, y: 0, scale: 1, opacity: 1,
         duration: 0.64,
         ease: 'expo.out',
-        onComplete: () => gsap.set(el, { clearProps: 'transform,opacity' }),
+        onComplete: () => settle(el, 0, 'transform,opacity'),
       }
     )
+    settle(el, 900, 'transform,opacity')
   } else {
     // 找不到来源（例如从别的入口打开）时退化成缩放淡入
     gsap.fromTo(
@@ -118,11 +121,34 @@ onMounted(() => {
       {
         opacity: 1, scale: 1,
         duration: 0.52, ease: 'expo.out',
-        onComplete: () => gsap.set(el, { clearProps: 'transform,opacity' }),
+        onComplete: () => settle(el, 0, 'transform,opacity'),
       }
     )
+    settle(el, 800, 'transform,opacity')
   }
 })
+
+/**
+ * 到点强制落到终态 —— **打开的动画不许有"中间态"**。
+ *
+ * 这条是踩出来的。动画由 gsap 的时针（requestAnimationFrame）驱动，而时针会被
+ * 系统压住：后台标签页、省电模式、还有截屏工具把页面挂起的那一瞬。被压住的
+ * 时候，面板就停在"半透明 + 缩小一半 + 偏到气泡那一角"的样子 ——
+ * 用户看到的是**浮层的内容和底下的画布叠在一起**，两块字互相压着，
+ * 读起来像整个页面坏了（用户就是这么报的：截图里浮层是"幽灵"状态）。
+ *
+ * 所以除了 onComplete，再挂一条定时兜底：真到点了就直接写终态、
+ * 把内联的 transform/opacity 清掉。慢一点没关系，"最终一定对"不能让位给动画。
+ */
+function settle(el: HTMLElement, after: number, props: string) {
+  const done = () => {
+    if (!el.isConnected) return
+    gsap.killTweensOf(el)
+    gsap.set(el, { clearProps: props })
+  }
+  if (after <= 0) return done()
+  window.setTimeout(done, after)
+}
 
 /** 关：先收回来源气泡，再卸载 */
 function requestClose() {
@@ -136,12 +162,24 @@ function requestClose() {
     return
   }
   if (scrim.value) gsap.to(scrim.value, { opacity: 0, duration: 0.26, ease: 'power2.in' })
+  /*
+   * 关闭也要有兜底：跟打开同一个道理 —— 时针被压住时，这段 0.32 秒的收场
+   * 会永远停在第一帧，面板赖着不走、点"关闭"像没反应。
+   * 到点无论如何都卸掉它（emit 之后组件就没了）。
+   */
+  let closedOut = false
+  const finish = () => {
+    if (closedOut) return
+    closedOut = true
+    emit('close')
+  }
+  window.setTimeout(finish, 520)
   gsap.to(el, {
     ...origin,
     opacity: 0.18,
     duration: 0.32,
     ease: 'power2.in',
-    onComplete: () => emit('close'),
+    onComplete: finish,
   })
 }
 

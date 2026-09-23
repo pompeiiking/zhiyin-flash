@@ -506,6 +506,9 @@ def _full_catalog():
     async def read_behaviors(user_id: str, limit: int = 10):
         return [type("B", (), {"event_type": "task_done", "occurred_at": None})()]
 
+    async def read_plan(user_id: str):
+        return {"plan": None, "nodes": []}
+
     return build_tool_catalog(
         search=_FakeSearch(),
         external_data=_FakeExternalData(),
@@ -514,6 +517,7 @@ def _full_catalog():
         web_search=_FakeWebSearch(),
         profile_reader=read_profile,
         behavior_reader=read_behaviors,
+        plan_reader=read_plan,
     )
 
 
@@ -531,6 +535,8 @@ def test_tool_catalog_exposes_real_capabilities() -> None:
         "web.search",
         "profile.read",
         "behavior.recent",
+        "plan.read",
+        "chart.render",
     }
     for spec in catalog.values():
         assert callable(spec.handler), f"{spec.name} 没有可调用的实现"
@@ -573,6 +579,44 @@ def test_agent_tool_whitelist_matches_registered_tools() -> None:
         assert not unknown, f"智能体 {agent['id']} 的白名单里有未注册的工具：{unknown}"
 
 
+async def test_plan_read_hands_the_model_a_readable_plan() -> None:
+    """`plan.read` 真的读得出东西来，没有计划时也说得清"还没有"。
+
+    工具挂了却一调就抛，代价落在用户那一轮（模型拿到的是异常文本，只能说"我没查到"）。
+    这里直接调它的实现：有计划时给出阶段/任务/勾选状态，没有时如实说没有。
+    """
+    from types import SimpleNamespace
+
+    async def reader_with_plan(user_id: str):
+        plan = SimpleNamespace(
+            phases=[
+                SimpleNamespace(
+                    name="本周",
+                    date_range="9-22 ~ 9-28",
+                    tasks=[
+                        SimpleNamespace(text="抄 3 条岗位职责", done=True),
+                        SimpleNamespace(text="把简历改一版", done=False),
+                    ],
+                )
+            ]
+        )
+        nodes = [SimpleNamespace(title="秋招投递开始", due_at="2026-10-01")]
+        return {"plan": plan, "nodes": nodes}
+
+    async def empty_reader(user_id: str):
+        return {"plan": None, "nodes": []}
+
+    from zhiyin_infrastructure.ai.tools import build_tool_catalog
+
+    context = SimpleNamespace(user_id="u1")
+    filled = await build_tool_catalog(plan_reader=reader_with_plan)["plan.read"].handler(context)
+    assert "抄 3 条岗位职责" in filled and "[已做]" in filled
+    assert "秋招投递开始" in filled and "2026-10-01" in filled
+
+    empty = await build_tool_catalog(plan_reader=empty_reader)["plan.read"].handler(context)
+    assert "还没有行动计划" in empty
+
+
 def test_side_effecting_capabilities_are_not_tools() -> None:
     """有副作用的动作不许做成模型随手可调的工具。
 
@@ -585,3 +629,80 @@ def test_side_effecting_capabilities_are_not_tools() -> None:
         name for name in catalog if any(word in name for word in forbidden)
     )
     assert not offenders, f"这些有明显副作用的动作被做成了工具：{offenders}"
+
+
+# ---------------------------------------------------------------------------
+# 画图：数字只能来自库里，模型只挑"画哪一类"
+# ---------------------------------------------------------------------------
+
+
+def _chart_context():
+    from types import SimpleNamespace
+
+    # 回传盒子里放的是**可视件数组**（一个工具可以一次产出多件）。
+    return SimpleNamespace(user_id="u1", dependencies={"renderables": []})
+
+
+async def test_chart_render_draws_from_real_rows_not_from_the_model() -> None:
+    """`chart.render` 的点位来自服务端读出的真实数据；模型只能挑类别。
+
+    这是"防止假数据"的全部机关：工具的参数里**没有**任何位置能传数值
+    （只有 kind 与 title）。所以模型编不出一个好看的分去画给用户。
+    """
+    from zhiyin_infrastructure.ai.tools import build_tool_catalog
+
+    class _Field:
+        def __init__(self, key, label, confidence):
+            self.key, self.label, self.confidence = key, label, confidence
+
+    class _Profile:
+        fields = [_Field("major", "专业", 0.9), _Field("interest", "兴趣方向", 0.6)]
+
+    async def read_profile(user_id: str):
+        return _Profile()
+
+    catalog = build_tool_catalog(profile_reader=read_profile)
+    context = _chart_context()
+    result = await catalog["chart.render"].handler(context, kind="profile_confidence")
+
+    spec = context.dependencies["renderables"][0]
+    assert spec["kind"] == "bars_chart"
+    assert spec["payload"]["points"] == [
+        {"label": "专业", "value": 90},
+        {"label": "兴趣方向", "value": 60},
+    ]
+    assert "90%" in result  # 说给模型听的是同一批真实数字
+
+
+async def test_chart_render_refuses_an_unknown_kind() -> None:
+    """不认识的类别 → 如实说能画哪几种，**不画**。"""
+    from zhiyin_infrastructure.ai.tools import build_tool_catalog
+
+    async def read_profile(user_id: str):
+        return None
+
+    catalog = build_tool_catalog(profile_reader=read_profile)
+    context = _chart_context()
+    result = await catalog["chart.render"].handler(context, kind="我编的图")
+    assert "没有" in result and "profile_confidence" in result
+    assert context.dependencies["renderables"] == [], "不认识的类别不该产出可视件"
+
+
+async def test_chart_render_says_so_when_there_is_not_enough_data() -> None:
+    """数据不够（只有一个点）→ 明说画不出来，别硬画。"""
+    from zhiyin_infrastructure.ai.tools import build_tool_catalog
+
+    class _Field:
+        key, label, confidence = "major", "专业", 0.9
+
+    class _Profile:
+        fields = [_Field()]
+
+    async def read_profile(user_id: str):
+        return _Profile()
+
+    catalog = build_tool_catalog(profile_reader=read_profile)
+    context = _chart_context()
+    result = await catalog["chart.render"].handler(context, kind="profile_confidence")
+    assert "只有一项" in result
+    assert context.dependencies["renderables"] == []

@@ -62,6 +62,10 @@ class GapClaim(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     gap_id: str
+    label: str = Field(
+        default="",
+        description="用户认领的是哪一条（他自己点的那句话），复盘与报告里要能读回来",
+    )
     claimed_at: datetime
 
 

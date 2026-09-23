@@ -135,6 +135,18 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--port", type=int, default=8000, help="监听端口")
     parser.add_argument("--reload", action="store_true", help="开发热重载（改代码即时生效）")
     parser.add_argument(
+        "--reload-dir",
+        action="append",
+        default=[],
+        metavar="DIR",
+        help=(
+            "热重载只监听这个目录，可重复；不传就监听整个工作目录。"
+            "本仓的工作目录里带着 `.venv` 与 `build/`（实测 5875 个 .py 文件、"
+            "遍历一遍 20 秒），默认值下会出现「改了代码却像没生效」—— "
+            "开发时按包目录传几个，轮询就回到亚秒级"
+        ),
+    )
+    parser.add_argument(
         "--resync-registry",
         action="store_true",
         help=(
@@ -189,7 +201,14 @@ def main(argv: list[str] | None = None) -> int:
     # 走 `zhiyin_boot.asgi:app`；不带 --reload 时仍用已经装配好的实例，
     # 避免重复读库与重复建连接池。
     if args.reload:
-        uvicorn.run("zhiyin_boot.asgi:app", host=args.host, port=args.port, reload=True)
+        uvicorn.run(
+            "zhiyin_boot.asgi:app",
+            host=args.host,
+            port=args.port,
+            reload=True,
+            # 传空列表 uvicorn 会当成"没有目录"；不传才是"默认整个工作目录"。
+            reload_dirs=list(args.reload_dir) or None,
+        )
     else:
         uvicorn.run(app, host=args.host, port=args.port)
     return 0

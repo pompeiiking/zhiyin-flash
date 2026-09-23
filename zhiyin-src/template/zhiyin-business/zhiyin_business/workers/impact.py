@@ -62,6 +62,7 @@ class ImpactPropagationWorker(Worker):
         而它们的 event_id 已经进了去重表 —— 驱动方重试也会被过滤掉，**工作永久丢失**。
         """
         batch: dict[str, set[str]] = {}
+        fresh: set[str] = set()
         events: list[DomainEvent] = []
         while True:
             try:
@@ -77,12 +78,18 @@ class ImpactPropagationWorker(Worker):
                 self._mark_seen(event.event_id)
                 continue
             batch.setdefault(str(user_id), set()).add(str(field_key))
+            if event.payload.get("is_new"):
+                # 新出现的一类字段：它不在任何资产的依赖清单里（清单是生成时的快照），
+                # 所以不能只按"命中依赖"筛 —— 见 AssetService.propagate 的 mark_all。
+                fresh.add(str(user_id))
             events.append(event)
 
         done = 0
         for user_id, keys in batch.items():
             try:
-                await self._assets.propagate(user_id, sorted(keys))
+                await self._assets.propagate(
+                    user_id, sorted(keys), mark_all=user_id in fresh
+                )
             except Exception:  # noqa: BLE001 - 单用户失败不能拖垮整批
                 # 不记去重：这批事件还没成功，绝不能让它们"看起来已处理"。
                 # 直接抛给驱动方（`zhiyin_boot.workers` 会记日志并按间隔重试）。

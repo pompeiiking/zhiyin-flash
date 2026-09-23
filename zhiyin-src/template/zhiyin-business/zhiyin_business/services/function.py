@@ -178,6 +178,7 @@ class DefaultFunctionService(FunctionService):
         topic: str = "",
         limit: int = 12,
         refresh: bool = False,
+        allow_fetch: bool = True,
     ) -> list[ExternalIntel]:
         """去公开渠道取回外部情报。**不要求登录**。
 
@@ -195,6 +196,9 @@ class DefaultFunctionService(FunctionService):
         cached = self._intel_cache.get(cache_key)
         if not refresh and cached and cached[0] > time.monotonic():
             return cached[1]
+        if not allow_fetch:
+            # 只读缓存：没命中就不取。见 Port 上的说明（采集 / 复盘走这条）。
+            return []
 
         previous = cached[1] if cached else []
         items = await self._collect_intel(user_id, topic=topic, limit=limit)

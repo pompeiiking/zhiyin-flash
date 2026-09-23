@@ -36,6 +36,14 @@ class ActOutput(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    conclusion: str = Field(
+        default="",
+        description=(
+            "这一轮对他说的话：2 到 4 句，每句不超过 40 字。先认下他做的那个选择，"
+            "再说这一周先落到哪一件、为什么是它。**不要**写成任务清单的引言，"
+            "也不要写成「我为什么要问他这个」这类场外话。"
+        )
+    )
     phases: list[ActionPhase] = Field(default_factory=list, description="阶段里程碑与任务")
     reminders: list[NodeReminder] = Field(default_factory=list)
     calendar_used: str = Field(
@@ -46,5 +54,8 @@ class ActOutput(BaseModel):
         default=False, description="任务拆不动时为 True，应回 ② 而非硬拆"
     )
     theory_refs: list[TheoryRef] = Field(default_factory=list)
-    guide: BehaviorGuide = Field(description="下一步：让用户勾掉第一个小任务")
+    guide: BehaviorGuide | None = Field(
+        default=None,
+        description="下一步：让用户勾掉第一个小任务。没想好就给 null",
+    )
     disclosure: Disclosure | None = None

@@ -42,6 +42,10 @@ ModelFactory = Callable[[], Any]
 _CORE_PROMPT = "core.system"
 _GUIDE_PROMPT = "guide.closing"
 
+#: 回传盒子的键名。工具与引擎共用它，**在编排层与工具层各写一遍常量**是刻意的：
+#: 编排层不能 import 基础设施层的工具实现（依赖守卫），所以这串名字是两层的约定。
+CHART_BOX_KEY = "renderables"
+
 
 def _extract_json(text: str) -> Optional[dict[str, Any]]:
     """从模型文本里解析 JSON 对象：直接解析，失败则剥掉 ```json 围栏再试。"""
@@ -204,6 +208,7 @@ class AgnoAgentEngine(AgentEngine):
             model=getattr(getattr(agent, "model", None), "id", "") or "",
             valid=not errors,
             errors=errors,
+            renderables=_renderables_from_run_context(run_kwargs),
         )
 
     async def _repair_once(
@@ -431,6 +436,11 @@ class AgnoAgentEngine(AgentEngine):
             kwargs["user_id"] = user_id
         if session_id:
             kwargs["session_id"] = session_id
+        # 这一轮的**回传盒子**：工具（如 chart.render）算出来的东西放这儿，
+        # 跑完由本引擎取回来交给上层。agno 的 RunContext 有 dependencies 这个
+        # 每次运行一份的 dict，正好当这条通道 —— 不必给工具加全局状态，
+        # 也不让模型有机会往里塞东西（它只能调工具，碰不到这个 dict）。
+        kwargs["dependencies"] = {CHART_BOX_KEY: []}
         return kwargs
 
     def _compose_input(self, request: AgentRequest, bundle: dict[str, Any]) -> str:
@@ -444,6 +454,21 @@ class AgnoAgentEngine(AgentEngine):
         if body:
             parts.append(body)
         return "\n\n".join(parts)
+
+
+def _renderables_from_run_context(run_kwargs: dict[str, Any]) -> list[dict[str, Any]]:
+    """把工具写进回传盒子的可视件取回来。没有就返回空表。
+
+    盒子取不到、里面不是数组、或者根本没放东西，一律按"这一轮没有可视件"处理 ——
+    它们是锦上添花，缺了不该让一场对话失败。
+    """
+    dependencies = run_kwargs.get("dependencies")
+    if not isinstance(dependencies, dict):
+        return []
+    box = dependencies.get(CHART_BOX_KEY)
+    if not isinstance(box, list):
+        return []
+    return [item for item in box if isinstance(item, dict)]
 
 
 def _agent_key(

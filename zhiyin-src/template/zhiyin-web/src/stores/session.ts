@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { CHAT_SEED, type ChatTurn, type FloatItem, type StageId } from '@/data/content'
-import { buildAsk, type Ask, type BehaviorGuide } from '@/lib/asks'
+import { buildAsk, type Ask, type BehaviorGuide, type GuideOption } from '@/lib/asks'
 import { readFetched, readIntelText } from '@/lib/intel'
 import {
   BackendUnavailableError,
@@ -19,12 +19,14 @@ import {
   getPendingNotifications,
   markNotificationRead,
   getBootstrap,
+  getActionPlan,
   listNotes,
   addNote,
   setNoteDone,
   removeNote,
   authenticate,
   signOutRemote,
+  type ActionPlan,
   type ReportFullText,
   type ProfileField,
   type TheoryRef,
@@ -210,6 +212,14 @@ export const useSessionStore = defineStore('session', {
     intelTopic: '',
     intelBusy: false,
     intelError: '',
+    /**
+     * 行动计划的正文（`GET /app/plan/action`）。
+     *
+     * 待办卡片的"为什么这一件"必须回答"为什么是这件、不是别的"，
+     * 而那个答案只能来自**这一版计划本身**（阶段、截止、下一条）。
+     * 让组件点一下再去取，按钮就少了那一下的反馈；所以跟着工作台一起取进来。
+     */
+    actionPlan: null as null | ActionPlan,
     /** 从别处（对话里的引用）跳进来时，要停在**哪一条**上 */
     intelFocus: '' as string,
     /**
@@ -229,6 +239,15 @@ export const useSessionStore = defineStore('session', {
 
     /* 被用户关掉的主画布块：id -> 什么时候该回来 */
     hiddenBlocks: {} as Record<string, number>,
+    /**
+     * 已经"知道/读过"的块：本会话内不再飘回来。
+     *
+     * 和 `hiddenBlocks` 是两件事：关掉只是**让位**（过一会儿还回来，那是刻意的），
+     * 而"知道"是**认了这件事**——交接提醒读过一次就不该再提醒第二次。
+     * 之前这两件事共用一个行为，于是"知道"按下去等于"暂时收起"，
+     * 用户分不出它到底生效没有。
+     */
+    ackedBlocks: [] as string[],
 
     /*
      * 业务对话。
@@ -291,7 +310,27 @@ export const useSessionStore = defineStore('session', {
 
     /* 对话里"正在等用户回答的那一句" —— 从某个动作点进来时带过来的 */
     chatPrompt: '' as string,
-    chatOptions: [] as string[],
+    /**
+     * 此刻可以点的选项 —— **带着身份**，不是一串显示文字。
+     *
+     * 之前这里存的是 `string[]`（只有 label）。后果很具体：
+     * 用户点"我先把代码传上去"，发回去的只是一句文本，后端分不清
+     * "他选了上一轮那个选项"和"他随口说了这几个字"，于是同一个问题
+     * 连同同一组选项又问了一遍 —— 用户看到的是"点了没反应"。
+     * 现在原样留着 `option_id` / `value`（见 `sendChat`）。
+     */
+    chatOptions: [] as GuideOption[],
+    /**
+     * 这一轮**已经点过**的那个选项。
+     *
+     * 用途只有一个：后端没能推进时（又问了同一句、同一组选项），
+     * 界面上那一条要显示成"已答"，并给出明确的澄清 —— 不能让用户
+     * 对着一模一样的问题再点一次，那看起来就是坏了。
+     */
+    chatAnswered: null as null
+      | { question: string; optionId: string; label: string; optionLabels: string[] },
+    /** 后端没能推进这一轮时，界面上那句明白话 */
+    chatClarify: '',
     authNotice: '',
     wsPanels: null as null | {
       action: string
@@ -326,6 +365,8 @@ export const useSessionStore = defineStore('session', {
         label: string
         source: string
         why: string
+        /** 这条缺口对应的那一句追问（只有 conversation 源有）。空 = 没有可点的直接动作 */
+        ask: string
         got: boolean
         available: boolean
       }[]
@@ -424,6 +465,14 @@ export const useSessionStore = defineStore('session', {
         ])
         this.report = report
         /*
+         * 行动计划：待办卡片的"为什么这一件"要用它。
+         *
+         * 读不到就是 null（还没到 ④），界面据此说"这一件还没定下来"，
+         * 而不是拿阶段固定文案顶上 —— 那句文案回答了"这个阶段在做什么"，
+         * 回答不了"为什么是这一件"。
+         */
+        this.actionPlan = await getActionPlan().catch(() => null)
+        /*
          * 他写下过的东西要跟着账号回来。
          *
          * 读得到就用服务端那份**覆盖**本地：采集策略读的是服务端那一份，
@@ -450,7 +499,7 @@ export const useSessionStore = defineStore('session', {
         // 采集动线：缺什么、去哪取、为什么 —— 只搬形状，不重算
         const cp = ws.collection_panel
         if (cp) {
-          this.collection = {
+        this.collection = {
             missing: cp.missing ?? 0,
             bySource: cp.by_source ?? {},
             blocked: cp.blocked ?? [],
@@ -460,6 +509,7 @@ export const useSessionStore = defineStore('session', {
               label: it.label ?? it.key,
               source: it.source ?? '',
               why: it.why ?? '',
+              ask: it.ask ?? '',
               got: !!it.got,
               available: it.available !== false,
             })),
@@ -817,6 +867,19 @@ export const useSessionStore = defineStore('session', {
       const wait = BLOCK_RETURN_MS[id] ?? 45000
       this.hiddenBlocks = { ...this.hiddenBlocks, [id]: Date.now() + wait }
     },
+    /**
+     * "知道了" —— 认下这件事，本会话不再提醒。
+     *
+     * 与 `hideBlock` 的区别是语义：那个是"让位，过会儿还回来"（时间到了自己飘回），
+     * 这个是"我读过了，别再问了"。交接提醒（谁在帮你）按下"知道"就该是后者，
+     * 否则 40 秒后同一张卡又回来，用户只会以为刚才那一下没生效。
+     */
+    ackBlock(id: string) {
+      if (!this.ackedBlocks.includes(id)) this.ackedBlocks = [...this.ackedBlocks, id]
+      const next = { ...this.hiddenBlocks }
+      delete next[id]
+      this.hiddenBlocks = next
+    },
     /** 每秒扫一次：到点的块自己飘回来 */
     sweep() {
       const now = Date.now()
@@ -841,9 +904,11 @@ export const useSessionStore = defineStore('session', {
      * 这是整个"AI 指哪打哪"的落点：用户不用先找到对话入口、再想一遍该说什么，
      * 点完就已经站在问题上了。
      */
-    askChat(prompt = '', options: string[] = []) {
+    askChat(prompt = '', options: GuideOption[] = []) {
       this.chatPrompt = prompt
       this.chatOptions = options
+      this.chatAnswered = null
+      this.chatClarify = ''
       this.overlay = 'talk'
     },
 
@@ -888,7 +953,8 @@ export const useSessionStore = defineStore('session', {
       const ask = this.nextAsk
       if (!ask) return
       if (ask.target.to === 'chat') {
-        this.askChat(ask.target.prompt, ask.target.options.map((o) => o.label))
+        // 选项原样带过去（含 option_id / value），点下去之后才知道用户选的是哪一个
+        this.askChat(ask.target.prompt, ask.target.options)
         return
       }
       if (ask.target.to === 'tasks') {
@@ -996,14 +1062,54 @@ export const useSessionStore = defineStore('session', {
     clearChatPrompt() {
       this.chatPrompt = ''
       this.chatOptions = []
+      this.chatClarify = ''
     },
 
-    async sendChat(text: string) {
+    /**
+     * 发一轮话。
+     *
+     * `option` 是"这一轮点的是哪个选项"。带它的时候，**选项的身份一起发下去**
+     * （`sendMessage` 的 option_id / value），而不是只把它当一句话 ——
+     * 只发 label 的话后端认不出这是"选了上一轮的那个选项"，
+     * 于是可能把同一个问题再问一遍（见 store.chatOptions 的说明）。
+     *
+     * `materials` 是"这一轮一起交上去的材料"（已经上传完成、拿到 id 的）。
+     * 只发 id：正文在服务端，发 `text` 里就等于把文件又摊开在对话里 ——
+     * 那正是用户抱怨过的那件事。气泡上显示的是一枚材料卡。
+     */
+    async sendChat(
+      text: string,
+      option?: GuideOption,
+      materials: { material_id: string; name: string; chars: number }[] = [],
+    ) {
       const value = text.trim()
-      if (!value) return
+      // 只交材料、不写字也是完整的一轮（"这是我传的材料"本身就是一句话）
+      if (!value && !materials.length) return
+      const names = materials.map((m) => m.name).join('、')
+      // 一个字都没打时替他补一句短的：**不补正文**，补的是"我交了什么"
+      const spoken = value || `我传了一份材料：${names}`
+      // 记住"这一轮答的是哪一句、答的哪一条"：后端若原地打转，界面要靠它说清楚
+      this.chatAnswered = option
+        ? {
+            question: this.chatPrompt,
+            optionId: option.option_id ?? option.label,
+            label: option.label,
+            optionLabels: this.chatOptions.map((o) => o.label),
+          }
+        : null
       // 用户已经在答了，那句话的使命就结束了
       this.clearChatPrompt()
-      this.chatTurns = [...this.chatTurns, { id: this.chatSeq++, role: 'me', text: value }]
+      this.chatTurns = [
+        ...this.chatTurns,
+        {
+          id: this.chatSeq++,
+          role: 'me',
+          text: spoken,
+          material: materials.length
+            ? { name: names, chars: materials.reduce((sum, m) => sum + m.chars, 0) }
+            : undefined,
+        },
+      ]
       this.chatTyping = true
       try {
         // 真后端：free_chat 任务入口 → 编排器单轮骨架（判环节→选主理→产出→引导收尾）
@@ -1011,9 +1117,15 @@ export const useSessionStore = defineStore('session', {
           const session = await enterTask('free_chat')
           this.backendTaskId = session.task_id
         }
-        const turn = await sendMessage(this.backendTaskId as string, value)
-        this.applyTurn(turn)
+        const turn = await sendMessage(
+          this.backendTaskId as string,
+          spoken,
+          option,
+          materials.map((m) => m.material_id),
+        )
+        this.applyTurn(turn, option)
       } catch (cause) {
+        this.chatAnswered = null
         this.chatTyping = false
         this.chatTurns = [
           ...this.chatTurns,
@@ -1025,7 +1137,7 @@ export const useSessionStore = defineStore('session', {
     },
 
     /** 把一轮真实回包写进本地状态：对话气泡 + AgentRail 的权威状态 */
-    applyTurn(turn: TurnView) {
+    applyTurn(turn: TurnView, chosen?: GuideOption) {
       for (const message of turn.messages ?? []) {
         if (message.role !== 'agent') continue
         this.chatTurns = [
@@ -1087,8 +1199,39 @@ export const useSessionStore = defineStore('session', {
        * 再想一遍怎么答；而它其实就应该待在那儿等着被回答。
        */
       if (this.guide && (this.guide.kind === 'question' || this.guide.kind === 'options')) {
-        this.chatPrompt = this.guide.question || this.guide.text
-        this.chatOptions = (this.guide.options ?? []).map((o) => o.label)
+        const question = this.guide.question || this.guide.text
+        const options = this.guide.options ?? []
+        this.chatPrompt = question
+        this.chatOptions = options
+        /*
+         * 原地打转要说出来。
+         *
+         * 用户点了选项、回复也追加了，但回包又问回**同一句**（或同一组选项），
+         * 其中还含着刚点过的那一条 —— 这一轮系统没有往前走。
+         * 之前的界面在这种情况下静默地把一模一样的问题再摆一遍，
+         * 用户只能得出"点了没用"的结论。现在：那条选项标成已答，
+         * 并给一句能继续往下走的提示。
+         *
+         * 判据是"同一个选项又出现了"，不看措辞是否一字不差 ——
+         * 模型复述问题时经常换标点或换个说法。
+         */
+        const answered = this.chatAnswered
+        const repeated =
+          !!chosen &&
+          !!answered &&
+          options.some((o) => (o.option_id ?? o.label) === answered.optionId) &&
+          (question.trim() === answered.question.trim() ||
+            (options.length > 0 &&
+              options.length === answered.optionLabels.length &&
+              options.every((o, i) => o.label === answered.optionLabels[i])))
+        this.chatClarify = repeated && answered
+          ? `「${answered.label}」这条我收到了，但这一轮没往前走。换一条，或者直接把你的情况补一句。`
+          : ''
+      } else {
+        // 这一轮不是"等你回答"（小任务 / 提醒）：旧的选项与澄清都不能留在输入框上方
+        this.chatPrompt = ''
+        this.chatOptions = []
+        this.chatClarify = ''
       }
 
       // 集群判断出的"下一步"同时塞进浮窗叠：用户可能没在看对话，

@@ -16,6 +16,7 @@ from zhiyin_business.contracts.common import (
     GuideOption,
     GuideReminder,
     GuideTask,
+    Renderable,
     TheoryRef,
 )
 from zhiyin_business.contracts.collect import CollectOutput, FieldUpdate
@@ -58,6 +59,7 @@ __all__ = [
     "GuideOption",
     "GuideReminder",
     "GuideTask",
+    "Renderable",
     "TheoryRef",
     "CollectOutput",
     "FieldUpdate",

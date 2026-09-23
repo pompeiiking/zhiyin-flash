@@ -38,6 +38,14 @@ class DecideOutput(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    conclusion: str = Field(
+        default="",
+        description=(
+            "这一轮对他说的话：2 到 4 句，每句不超过 40 字。先把他正卡着的那个地方说出来，"
+            "再说这三条路真正的差别（具体到准备方式或代价上，不写「各有优劣」）。"
+            "**不要**写成「我为什么要问他这个」这类场外话。"
+        )
+    )
     plans: list[PlanOption] = Field(
         default_factory=list, description="主攻 / 平行 / 保底 三套"
     )
@@ -45,5 +53,8 @@ class DecideOutput(BaseModel):
         default="三叶草契合度 × 可达性", description="匹配度口径说明，必须对用户可见"
     )
     theory_refs: list[TheoryRef] = Field(default_factory=list)
-    guide: BehaviorGuide = Field(description="下一步：让用户做出可撤回的选择")
+    guide: BehaviorGuide | None = Field(
+        default=None,
+        description="下一步：让用户做出可撤回的选择。没想好合适的选项就给 null",
+    )
     disclosure: Disclosure | None = None

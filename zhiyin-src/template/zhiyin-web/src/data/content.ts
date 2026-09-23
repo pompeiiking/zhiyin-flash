@@ -96,6 +96,13 @@ export interface ChatTurn {
   id: number
   role: 'ai' | 'me'
   text: string
+  /**
+   * 这一轮交上去的材料。
+   *
+   * 只有"它是什么"（名字 + 读到多少字）——**没有正文**：正文在服务端，
+   * 只在用到它的那一轮进模型输入。把正文摊在对话里正是要避免的那件事。
+   */
+  material?: { name: string; chars: number }
   /** 真后端联调时：这句是谁说的（主理展示名 / 编排器） */
   actor?: string
   /** AI 顺手给出的可点选项 —— 对话里也一样，先给选择再要求打字 */

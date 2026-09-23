@@ -322,6 +322,30 @@
       "note": "画像字段词表 + 中文名：字段门禁只收这里的键，界面也用它显示"
     },
     {
+      "code": "profile.field.student_name",
+      "text": "姓名",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 916,
+      "note": "学信网带回来的字段（chsi_fields.json）。给中文名是必须的：这一条没有中文名时，画像页上会直接露出 `student_name` 这个英文键 —— 用户看到的是一个变量名。它只作报告归属核对，不进任何判断（口径见 collection_rules.json）。"
+    },
+    {
+      "code": "profile.field.student_no",
+      "text": "学号",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 917,
+      "note": "同上：学信网带回，只作归属核对。没有这条中文名时界面会露出 `student_no`。"
+    },
+    {
+      "code": "profile.field.department",
+      "text": "院系",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 918,
+      "note": "同上：学信网带回，用来判断专业归属。"
+    },
+    {
       "code": "profile.field.degree_level",
       "text": "层次",
       "bundle": "zh-CN",

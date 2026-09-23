@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -85,3 +86,47 @@ def test_healthz_works_without_assembly() -> None:
         response = bare.get("/healthz")
         assert response.status_code == 200
         assert response.json()["assembly"]["gateways"] == {}
+
+
+def test_academic_import_accepts_an_uploaded_json_file(client: TestClient) -> None:
+    """上传入口真的能读懂一份 JSON 文件（每门课一条记录）。
+
+    这是被真实反馈逼出来的一条：用户传的是完全正确的 JSON，界面上却被判"读不出这是课表"。
+    现在这条链路上有三个环节合起来保证它能读：multipart 收文件（本用例）、
+    按编码解码（GBK / BOM，见 test_academic_import）、按字段名读 JSON。
+    """
+    payload = json.dumps(
+        [
+            {
+                "day": "星期二",
+                "period": "第1-2节",
+                "course_name": "计算机通信与网络_01",
+                "teacher": "张虹*",
+                "weeks": "1-13周",
+            },
+            {"day": "星期三", "period": "第3-4节", "course_name": "高等数学", "weeks": "1-16周"},
+        ],
+        ensure_ascii=False,
+    ).encode("utf-8")
+
+    response = client.post(
+        f"{API_PREFIX}/app/academic/import/file",
+        files={"courses_file": ("课表.json", payload, "application/json")},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["code"] == 0
+    assert body["data"]["courses"] == 2
+    assert body["data"]["source"] == "json"
+
+
+def test_academic_import_refuses_an_excel_upload_with_a_next_step(client: TestClient) -> None:
+    """传 Excel：422 + 信封 + 一句"另存为 CSV"，不是 500、也不是"读不出这是课表"。"""
+    response = client.post(
+        f"{API_PREFIX}/app/academic/import/file",
+        files={"courses_file": ("课表.xlsx", b"PK\x03\x04\x14\x00", "application/vnd.ms-excel")},
+    )
+    assert response.status_code == 422
+    body = response.json()
+    assert body["code"] == 1001
+    assert "另存为 CSV" in body["message"]

@@ -14,6 +14,7 @@ Orchestrator 或某个 Service 的方法体里，结果是规则改一处要动�
     handoff.py        交接与"换主理必须告知"
     impact.py         画像字段 → 受影响资产（重算范围）
     intervention.py   停滞阈值 / 冷却期 / 打扰上限
+    renderers.py      可视件白名单与校验（图 / 时间线 … 的注册点）
 
 依赖方向（单向，禁止倒流）
 --------------------------

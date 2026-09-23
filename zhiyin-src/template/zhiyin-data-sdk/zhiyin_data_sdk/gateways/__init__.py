@@ -38,6 +38,7 @@ from zhiyin_data_sdk.gateways.academic import (
 )
 from zhiyin_data_sdk.gateways.feature_flag import FeatureFlagGateway
 from zhiyin_data_sdk.gateways.storage import ObjectStoreGateway, StoredObject
+from zhiyin_data_sdk.gateways.documents import DocumentReadError, DocumentTextGateway
 from zhiyin_data_sdk.gateways.messaging import (
     EventBusGateway,
     NotifyGateway,
@@ -77,6 +78,8 @@ __all__ = [
     "SearchHit",
     "ObjectStoreGateway",
     "StoredObject",
+    "DocumentReadError",
+    "DocumentTextGateway",
     "EventBusGateway",
     "NotifyGateway",
     "NotifyResult",
