@@ -82,7 +82,7 @@ async function choose(plan: DirectionPlan) {
       [
         { source: '你选的', detail: `${roleLabel(plan.role)} · ${plan.name}`, confidence: 1, at: '刚刚' },
         { source: '为什么它值得选', detail: plan.fit_reason || '这一套的契合依据还没写下来。', confidence: plan.match_score, at: '生成时' },
-        { source: '要盯着什么', detail: plan.main_risk || '这一套的主要风险还没写下来。', confidence: 0.8, at: '生成时' },
+        { source: '要盯着什么', detail: plan.main_risk || '这一套的主要风险还没写下来。', at: '生成时' },
       ],
     )
   } catch (cause) {
@@ -134,12 +134,12 @@ const pct = (v: number) => `${Math.round(Math.max(0, Math.min(1, v)) * 100)}%`
             </span>
             <h3 class="plan__name">{{ plan.name }}</h3>
             <span class="plan__score mono" :title="data?.match_score_method">
-              {{ (plan.match_score ?? 0).toFixed(2) }}
+              {{ plan.match_score == null ? '待核验' : plan.match_score.toFixed(2) }}
             </span>
           </header>
 
-          <span class="plan__bar" aria-hidden="true">
-            <i :style="{ width: pct(plan.match_score ?? 0) }" />
+          <span v-if="plan.match_score != null" class="plan__bar" aria-hidden="true">
+            <i :style="{ width: pct(plan.match_score) }" />
           </span>
 
           <p v-if="plan.target_desc" class="plan__target">{{ plan.target_desc }}</p>
@@ -188,8 +188,7 @@ const pct = (v: number) => `${Math.round(Math.max(0, Math.min(1, v)) * 100)}%`
       </div>
 
       <p class="label foot">
-        匹配度怎么算：{{ data?.match_score_method }} ——
-        分值只是把"契合"与"够得着"摆在一起，不是替你决定。
+        {{ plans.some((plan) => plan.match_score != null) ? '匹配度怎么算：' + data?.match_score_method : '当前没有可核验的匹配分数。' }}
         <button class="link" type="button" @click="openMatrix">看匹配矩阵怎么算的 →</button>
       </p>
     </template>

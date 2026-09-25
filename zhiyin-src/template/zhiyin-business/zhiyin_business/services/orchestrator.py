@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from datetime import datetime, timezone
 from typing import Any, Optional, Sequence
 from uuid import uuid4
@@ -480,6 +481,17 @@ class DefaultOrchestrator(Orchestrator):
             "task_id": request.task_id,
             "intent": intent.value,
         }
+        # 共享状态中虽有画像，模型在长上下文里仍曾说“没拿到你的画像”。
+        # 把已存字段提到本轮输入的显眼位置，避免把“缺岗位要求”误说成“没有画像”。
+        if blackboard.profile is not None and blackboard.profile.fields:
+            prompt_vars["existing_profile_facts"] = [
+                {
+                    "label": field.label or field.key,
+                    "value": field.value,
+                    "source": field.source.value,
+                }
+                for field in blackboard.profile.fields
+            ]
         # 最近几条对话必须一并给模型（自己与他各一句）。
         #
         # 少了它，模型手上只有"这一句 + 黑板快照"：它看不到上一轮自己问了什么、用户
@@ -544,6 +556,17 @@ class DefaultOrchestrator(Orchestrator):
         )
 
         structured = result.structured or {}
+        task_labels: dict[str, str] = {}
+        if stage is LoopStage.REVIEW:
+            plan = await self._assets.get_action_plan(request.user_id)
+            task_labels = {
+                task.id: task.text
+                for phase in (plan.phases if plan else [])
+                for task in phase.tasks
+                if task.id and task.text
+            }
+            if structured:
+                structured = _replace_task_ids_in_prose(structured, task_labels)
         # 产出不合法时必须**留痕**：契约没被满足，降级是怎么发生的要能查。
         # 之前这里直接往下走，于是"模型答了、但 JSON 少了字段"这件事
         # 在日志里一个字都没有，表现成"回复永远是同一句"。
@@ -590,12 +613,25 @@ class DefaultOrchestrator(Orchestrator):
         # 主理这一轮自己产出的可视件：逐个按 kind 校验（不认识的、形状不对的丢掉留日志）。
         # 模型只挑了"看哪一类"，点位是工具从库里读的 —— 校验在 `policies/renderers.py`。
         model_renderables = validate_renderables(result.renderables)
+        wants_chart = _asks_for_chart(request.message)
+        renderables = _renderables_for_turn(
+            model_renderables,
+            stage,
+            structured,
+            message=request.message,
+            profile=await self._profiles.get(request.user_id) if wants_chart else None,
+        )
+        reply_text = (
+            _chart_reply_text(renderables)
+            if wants_chart
+            else _user_facing_text(structured, guide, result.raw_text, valid=result.valid)
+        )
+        if stage is LoopStage.REVIEW:
+            reply_text = _replace_task_ids_in_prose(reply_text, task_labels)
         messages = [
             ConversationMessage(
                 role="agent",
-                text=_user_facing_text(
-                    structured, guide, result.raw_text, valid=result.valid
-                ),
+                text=reply_text,
                 agent_id=lead.lead_agent,
                 theory_refs=badge.theory_refs,
                 # 可视件与情报引用都来自**这一轮的实测数据**：可视件由服务端按 kind 填，
@@ -604,9 +640,7 @@ class DefaultOrchestrator(Orchestrator):
                 # 两种来源，同一个形状：主理自己调的（它调 `chart.render` 时，
                 # 点位是工具从库里读出来的 —— 模型只挑了"画哪一类"，碰不到数值）；
                 # 它没点，就补上这一环节默认那张（仍然是实测分值）。
-                renderables=_renderables_for_turn(
-                    model_renderables, stage, structured
-                ),
+                renderables=renderables,
                 intel_refs=_intel_refs(prompt_vars.get("external_data")),
             )
         ]
@@ -1304,7 +1338,12 @@ def _theory_refs(raw: Any) -> list[TheoryRef]:
 
 
 def _renderables_for_turn(
-    from_model: Sequence[Renderable], stage: Any, structured: dict[str, Any]
+    from_model: Sequence[Renderable],
+    stage: Any,
+    structured: dict[str, Any],
+    *,
+    message: str = "",
+    profile: Any = None,
 ) -> list[Renderable]:
     """这一轮要摆给用户看的可视件：主理自己点的那张，或者这一环节默认那张。
 
@@ -1321,10 +1360,57 @@ def _renderables_for_turn(
     kept = list(from_model)
     if any(item.kind == "bars_chart" for item in kept):
         return kept
+    if _asks_for_chart(message):
+        fields = list(getattr(profile, "fields", []) or [])
+        points = [
+            {
+                "label": str(field.label or field.key)[:12],
+                "value": field.confidence,
+            }
+            for field in fields
+            if field.confidence is not None and (field.label or field.key)
+        ]
+        if len(points) >= 2:
+            kept.extend(
+                validate_renderables(
+                    [{
+                        "kind": "bars_chart",
+                        "title": "这几项你现在各有多少把握",
+                        "payload": {"unit": "%", "points": points[:8]},
+                    }]
+                )
+            )
+            if any(item.kind == "bars_chart" for item in kept):
+                return kept
     fallback = _default_bars(stage, structured)
     if fallback is not None:
-        kept.append(fallback)
+        kept.extend(validate_renderables([fallback.model_dump(mode="json")]))
     return kept
+
+
+def _asks_for_chart(message: str) -> bool:
+    text = message.strip()
+    return any(word in text for word in (
+        "画个图", "画张图", "画一个图", "画图", "给我一张图",
+        "生成图表", "做个图表", "做张图表", "看图表", "看看图表",
+        "展示图表", "用图表", "画柱状图", "看柱状图",
+        "可视化一下", "做个可视化", "给我可视化", "看看可视化",
+    ))
+
+
+def _chart_reply_text(renderables: list[Renderable]) -> str:
+    """明确要图时用已核验图点生成回话，避免模型文字否认已存事实。"""
+    labels = list(dict.fromkeys(
+        str(point.get("label") or "").strip()
+        for chart in renderables
+        for point in (chart.payload.get("points") or [])
+        if isinstance(point, dict) and str(point.get("label") or "").strip()
+    ))
+    if not labels:
+        return "目前没有足够的可用数据生成图表；补充记录后可以再看。"
+    shown = "、".join(labels[:4])
+    suffix = f"等 {len(labels)} 项" if len(labels) > 4 else ""
+    return f"图表已生成，展示已存记录中的{shown}{suffix}。这张图只呈现这些记录，不代表职业匹配结论。"
 
 
 def _default_bars(stage: Any, structured: dict[str, Any]) -> Optional[Renderable]:
@@ -1334,10 +1420,11 @@ def _default_bars(stage: Any, structured: dict[str, Any]) -> Optional[Renderable
             points = [
                 {
                     "label": str(plan.get("name") or f"方案{i + 1}")[:12],
-                    "value": float(plan.get("match_score") or 0.0),
+                    "value": float(plan["match_score"]),
                 }
                 for i, plan in enumerate(structured.get("plans") or [])
                 if isinstance(plan, dict)
+                and isinstance(plan.get("match_score"), (int, float))
             ]
             if len(points) >= 2:
                 # 标题是**用户要读的**：不写"三套方案"这种内部说法（实测用户看不懂
@@ -1392,6 +1479,26 @@ def _intel_refs(external: Any) -> list[IntelRef]:
             )
         )
     return refs[:4]
+
+
+def _replace_task_ids_in_prose(value: Any, task_labels: dict[str, str]) -> Any:
+    """复盘正文用任务文字称呼已登记任务，保留结构中的机器 ID。"""
+    if isinstance(value, dict):
+        return {
+            key: item if key in {"id", "task_id", "option_id", "achievements_unlocked"}
+            else _replace_task_ids_in_prose(item, task_labels)
+            for key, item in value.items()
+        }
+    if isinstance(value, list):
+        return [_replace_task_ids_in_prose(item, task_labels) for item in value]
+    if not isinstance(value, str):
+        return value
+    text = value
+    for task_id, label in sorted(task_labels.items(), key=lambda pair: len(pair[0]), reverse=True):
+        pattern = rf"(?<![A-Za-z0-9_]){re.escape(task_id)}(?![A-Za-z0-9_])"
+        text = re.sub(pattern, lambda _match, label=label: f"「{label}」", text)
+    text = re.sub(r"(?<=[\u4e00-\u9fff])[ \t]+(?=「)", "", text)
+    return re.sub(r"(?<=」)[ \t]+(?=[\u4e00-\u9fff])", "", text)
 
 
 def _single_line(text: str, *, limit: int = 0) -> str:

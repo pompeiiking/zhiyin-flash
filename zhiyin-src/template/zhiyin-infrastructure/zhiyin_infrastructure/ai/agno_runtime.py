@@ -52,12 +52,17 @@ class AgnoModelRuntime:
         self.model = model
         return changed
 
-    def create_model(self, *, temperature: float | None = None) -> Any:
+    def create_model(
+        self,
+        *,
+        temperature: float | None = None,
+        timeout_s: float | None = None,
+        retries: int | None = None,
+    ) -> Any:
         """构造一个 agno 模型客户端。
 
-        `temperature` 由调用方按**这一条提示词**的参数传进来（提示词行上的 params）。
-        不传时用本运行时的默认值。这个参数必须收：引擎按提示词取温度，
-        而"调参调不动、还看不出为什么"正是工厂不收参数时会出现的症状。
+        温度、超时和重试由调用方按该提示词的 params 传入；未声明的参数
+        沿用运行时或框架默认值，避免配置表显示已设置但实际调用没有生效。
 
         返回类型保持 `Any`（编排层只依赖"能被 agno Agent 接受"这一事实），
         避免基础设施的类型反渗进编排层。
@@ -68,7 +73,9 @@ class AgnoModelRuntime:
             base_url=self.base_url,
             temperature=self.temperature if temperature is None else temperature,
             role_map=dict(self.role_map or _DEFAULT_ROLE_MAP),
-            **({"timeout": self.timeout_s} if self.timeout_s else {}),
+            **({"timeout": timeout_s if timeout_s is not None else self.timeout_s}
+               if timeout_s is not None or self.timeout_s else {}),
+            **({"retries": retries} if retries is not None else {}),
         )
 
 

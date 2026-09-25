@@ -110,7 +110,9 @@ class DirectionPlanView(BaseModel):
     role: PlanRole = Field(description="主攻 / 平行 / 保底")
     name: str
     target_desc: str = Field(default="", description="目标描述")
-    match_score: float = Field(default=0.0, description="匹配度（解释性分值，非严谨算法）")
+    match_score: float | None = Field(
+        default=None, ge=0.0, le=1.0, description="有可追溯依据时的匹配度；缺依据为 null"
+    )
     gaps: list[PlanGapView] = Field(default_factory=list)
     fit_reason: str = Field(default="", description="契合依据")
     main_risk: str = Field(default="", description="主要风险")

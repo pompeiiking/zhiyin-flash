@@ -35,7 +35,6 @@ REQUIRED_PROMPTS: tuple[str, ...] = (
     "router.clarify",
     "disclosure.lead_change",
     "disclosure.conclusion_change",
-    "flow.proactive",
 )
 """少任何一条，对应能力就是"能跑但不对"，所以启动即拦。
 

@@ -1,7 +1,7 @@
 {
   "name": "zhiyin-web",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "description": "职引 ZHIYIN · 前端（Vue 3 + Vite）",
   "scripts": {

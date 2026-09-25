@@ -99,11 +99,12 @@ const TIER_TEXT: Record<string, string> = { low: '还很薄', mid: '大概如此
                 <p class="reading__p">{{ (data as DimensionReading).reading }}</p>
 
                 <div class="reading__figs">
-                  <span>这条把握 <b>{{ (data as DimensionReading).score.toFixed(2) }}</b></span>
-                  <span v-if="(data as DimensionReading).bench">
+                  <span>这条把握 <b>{{ (data as DimensionReading).score == null ? '待核验' : (data as DimensionReading).score.toFixed(2) }}</b></span>
+                  <span v-if="(data as DimensionReading).bench != null">
                     决策线 <b>{{ (data as DimensionReading).bench.toFixed(2) }}</b>
                   </span>
                   <span
+                    v-if="(data as DimensionReading).delta != null"
                     :class="{
                       up: (data as DimensionReading).delta > 0,
                       down: (data as DimensionReading).delta < 0,

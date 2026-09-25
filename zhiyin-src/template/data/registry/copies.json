@@ -267,7 +267,7 @@
     },
     {
       "code": "notify.stall.title",
-      "text": "好久没动了，我帮你把进度接上",
+      "text": "从上次那一步接着来",
       "bundle": "zh-CN",
       "status": "enabled",
       "sort_order": 36,
@@ -275,11 +275,11 @@
     },
     {
       "code": "notify.stall.body",
-      "text": "距离你上一次关键动作已经 {days} 天。回来我们从上次停下的地方继续。",
+      "text": "计划还在这里。要不要先看一眼上次停下的那件事？",
       "bundle": "zh-CN",
       "status": "enabled",
       "sort_order": 37,
-      "note": "主动干预通知正文；{days} 由 Worker 填充"
+      "note": "主动干预通知正文；由 Worker 按停滞阈值、冷却期与配额决定是否投递"
     },
     {
       "code": "profile.field.target_direction",

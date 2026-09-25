@@ -2204,10 +2204,18 @@
             "type": "string"
           },
           "match_score": {
-            "default": 0.0,
-            "description": "匹配度（解释性分值，非严谨算法）",
-            "title": "Match Score",
-            "type": "number"
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "有可追溯依据时的匹配度；缺依据为 null",
+            "title": "Match Score"
           },
           "name": {
             "title": "Name",
@@ -4022,7 +4030,7 @@
   },
   "info": {
     "title": "职引 API",
-    "version": "1.0.0"
+    "version": "1.0.1"
   },
   "openapi": "3.1.0",
   "paths": {

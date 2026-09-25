@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 
 from playwright.sync_api import sync_playwright
@@ -13,7 +14,7 @@ from playwright.sync_api import sync_playwright
 BASE = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:5173"
 
 with sync_playwright() as p:
-    browser = p.chromium.launch()
+    browser = p.chromium.launch(channel=os.environ.get("ZHIYIN_BROWSER_CHANNEL") or None)
     page = browser.new_page(viewport={"width": 1440, "height": 900})
 
     # 一、伪造令牌（换库/过期之后的真实样子）

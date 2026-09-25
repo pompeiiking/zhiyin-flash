@@ -1689,10 +1689,9 @@ export interface components {
       main_risk?: string;
       /**
        * Match Score
-       * @description 匹配度（解释性分值，非严谨算法）
-       * @default 0
+       * @description 有可追溯依据时的匹配度；缺依据为 null
        */
-      match_score?: number;
+      match_score?: number | null;
       /** Name */
       name: string;
       /**

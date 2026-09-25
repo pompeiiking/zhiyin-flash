@@ -127,6 +127,7 @@ class PlanRole(str, Enum):
 class ReviewAttribution(str, Enum):
     """复盘归因判别结果。"""
 
+    UNKNOWN = "unknown"                    # 证据不足，暂不归因
     TASK_TOO_BIG = "task_too_big"          # 任务太大
     LOW_MOTIVATION = "low_motivation"      # 动机不足
     DIRECTION_DOUBT = "direction_doubt"    # 方向动摇

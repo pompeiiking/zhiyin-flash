@@ -319,7 +319,9 @@ class DefaultWorkspaceService(WorkspaceService):
                         selected = next(
                             (p for p in direction_plans if p.selected), direction_plans[0]
                         )
-                        evaluation = f"主攻：{selected.name}（匹配 {selected.match_score:.2f}）"
+                        evaluation = f"主攻：{selected.name}"
+                        if selected.match_score is not None:
+                            evaluation += f"（匹配 {selected.match_score:.2f}）"
                     elif asset_type == AssetType.ACTION_PLAN and action_plan is not None:
                         done = sum(
                             t.done for phase in action_plan.phases for t in phase.tasks

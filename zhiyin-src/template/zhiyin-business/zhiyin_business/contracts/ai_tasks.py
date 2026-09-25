@@ -1,12 +1,11 @@
-"""AI 任务产出契约（前端 `draft-frontend/src/ai/registry.ts` 八个任务的后端形状）。
+"""九项页面 AI 任务的产出契约（对应前端 `src/ai/registry.ts`）。
 
 口径：
 - 字段与前端 TS 接口一一对齐，**前端不拼业务语义**：这里给出的 data / citations /
   rationale 就是前端渲染的全部输入；
-- 本组模型同时是 agno `output_schema` 的落点（第六章 6.5）：接真实模型后，
-  Agent 的结构化产出直接校验到这些模型上，形状不再变；
-- 第一期数据结构、来源标注、依据绑定、缓存全是真的；内容生成走"演示生成器"
-  （结构合法、内容演示，与占位 LLM 同级），接真实数据源 / 模型时只换 service 内部。
+- 本组模型同时是 agno `output_schema` 的落点（第六章 6.5）：
+  Agent 的结构化产出校验到这些模型上，形状与前端契约一致；
+- 来源标注、依据绑定和缓存由业务服务负责；缺少真实事实时不靠演示常量补位。
 """
 
 from __future__ import annotations
@@ -64,7 +63,7 @@ class AiResultEnvelope(BaseModel):
 class BriefNext(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    id: str = Field(description="真实待办/资产条目 id，前端采纳时回传")
+    id: str = Field(description="输入中已登记的画像缺口键；无缺口时 next 必须为空")
     label: str
     why: str
 
@@ -97,9 +96,9 @@ class DimensionReading(BaseModel):
     name: str
     conclusion: str
     reading: str
-    score: float = Field(ge=0.0, le=1.0)
-    delta: float = 0.0
-    bench: float = Field(default=0.0, description="决策线 / 岗位要求基准")
+    score: float | None = Field(default=None, ge=0.0, le=1.0)
+    delta: float | None = None
+    bench: float | None = Field(default=None, description="有外部依据时的决策线 / 岗位要求基准")
     trend: list[TrendPoint] = Field(default_factory=list)
     next: str = ""
 

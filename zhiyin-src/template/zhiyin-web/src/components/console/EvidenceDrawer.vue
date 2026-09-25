@@ -68,7 +68,7 @@ const isTimeline = (item: AnyItem) => 'actor' in item && 'what' in item
             <div class="ev">
               <div class="ev__top">
                 <span class="ev__source">{{ item.source }}</span>
-                <span class="label ev__conf">把握 {{ Number(item.confidence ?? 0).toFixed(2) }}</span>
+                <span v-if="typeof item.confidence === 'number'" class="label ev__conf">把握 {{ item.confidence.toFixed(2) }}</span>
               </div>
               <p class="ev__detail">{{ item.detail }}</p>
               <span v-if="item.at" class="mono ev__at">{{ item.at }}</span>
