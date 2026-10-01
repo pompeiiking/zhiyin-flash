@@ -42,3 +42,17 @@ def test_explicit_env_wins_over_dotenv(tmp_path: Path, monkeypatch) -> None:
     settings = Settings.from_env()
 
     assert settings.llm_model == "from-real-env", "显式环境变量必须优先于 .env"
+
+
+def test_concurrency_settings_are_configurable(monkeypatch) -> None:
+    monkeypatch.setenv("ZHIYIN_POSTGRES_POOL_MIN_SIZE", "2")
+    monkeypatch.setenv("ZHIYIN_POSTGRES_POOL_MAX_SIZE", "7")
+    monkeypatch.setenv("ZHIYIN_RUN_IN_PROCESS_BACKGROUND", "0")
+    monkeypatch.setenv("ZHIYIN_WORKER_INTERVAL_S", "15")
+
+    settings = Settings.from_env()
+
+    assert settings.postgres_pool_min_size == 2
+    assert settings.postgres_pool_max_size == 7
+    assert settings.run_in_process_background is False
+    assert settings.worker_interval_s == 15.0

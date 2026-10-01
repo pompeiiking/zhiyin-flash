@@ -138,6 +138,17 @@ def build_container(settings: Optional[Settings] = None) -> Container:
     """构造完整容器：Gateways → Repositories → 编排原语 → 服务 → Worker。"""
     settings = settings or Settings.from_env()
 
+    # 所有 PostgreSQL 仓储共用同一个进程级池。必须在 AI 路由仓储等
+    # 第一个消费者装配之前确定池大小，否则它们会先用默认值建池。
+    if settings.use_postgres:
+        from zhiyin_infrastructure.postgres.database import get_database
+
+        get_database(
+            settings.postgres_dsn,
+            min_size=settings.postgres_pool_min_size,
+            max_size=settings.postgres_pool_max_size,
+        )
+
     # AI 配置的路由器在装配层构造一次，两份用途共用同一个仓储：
     #   1. 包住 LLM / Embedding 网关（按 scene 路由）；
     #   2. 启动时把库里的配置读出来，覆盖"启动种子值"。
@@ -242,15 +253,16 @@ def wire_application(container: Optional[Container] = None) -> Any:
             await load_snapshot(container.registry_service)
 
         scheduler = container.scheduler
-        start_polling = getattr(scheduler, "start_polling", None)
-        if callable(start_polling):
-            start_polling()
+        if container.settings.run_in_process_background:
+            start_polling = getattr(scheduler, "start_polling", None)
+            if callable(start_polling):
+                start_polling()
 
-        interval = container.settings.worker_interval_s
-        for worker in container.workers:
-            tasks.append(
-                asyncio.create_task(run_until_cancelled(worker, interval, stop))
-            )
+            interval = container.settings.worker_interval_s
+            for worker in container.workers:
+                tasks.append(
+                    asyncio.create_task(run_until_cancelled(worker, interval, stop))
+                )
 
         try:
             yield
@@ -261,9 +273,10 @@ def wire_application(container: Optional[Container] = None) -> Any:
             for task in tasks:
                 with contextlib.suppress(asyncio.CancelledError, Exception):
                     await task
-            stop_polling = getattr(scheduler, "stop_polling", None)
-            if callable(stop_polling):
-                await stop_polling()
+            if container.settings.run_in_process_background:
+                stop_polling = getattr(scheduler, "stop_polling", None)
+                if callable(stop_polling):
+                    await stop_polling()
             for closable in reversed(container.extra.get("closables", [])):
                 close = getattr(closable, "aclose", None) or getattr(
                     closable, "close", None

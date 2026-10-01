@@ -23,6 +23,10 @@ class PostgresDatabase:
         min_size: int = 1,
         max_size: int = 10,
     ) -> None:
+        if min_size < 1:
+            raise ValueError("PostgreSQL 连接池 min_size 必须大于等于 1")
+        if max_size < min_size:
+            raise ValueError("PostgreSQL 连接池 max_size 不能小于 min_size")
         self._dsn = dsn
         self._min_size = min_size
         self._max_size = max_size
@@ -88,12 +92,36 @@ class PostgresDatabase:
 _DATABASES: dict[str, PostgresDatabase] = {}
 
 
-def get_database(dsn: str) -> PostgresDatabase:
-    """按 DSN 复用连接池，避免同一进程重复建池。"""
+def get_database(
+    dsn: str,
+    *,
+    min_size: int | None = None,
+    max_size: int | None = None,
+) -> PostgresDatabase:
+    """按 DSN 复用连接池，避免同一进程重复建池。
+
+    装配入口第一次调用时显式传入池大小；后续仓储和网关只按 DSN
+    取回同一个对象。如果同一进程尝试用冲突参数重新配置，立即报错，
+    避免“配置写了但未生效”。
+    """
     database = _DATABASES.get(dsn)
     if database is None:
-        database = PostgresDatabase(dsn)
+        database = PostgresDatabase(
+            dsn,
+            min_size=1 if min_size is None else min_size,
+            max_size=10 if max_size is None else max_size,
+        )
         _DATABASES[dsn] = database
+    elif min_size is not None or max_size is not None:
+        requested_min = database._min_size if min_size is None else min_size
+        requested_max = database._max_size if max_size is None else max_size
+        if (requested_min, requested_max) != (
+            database._min_size,
+            database._max_size,
+        ):
+            raise RuntimeError(
+                "同一 PostgreSQL DSN 在单进程内不能使用两组连接池配置"
+            )
     return database
 
 
