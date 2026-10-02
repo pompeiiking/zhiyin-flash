@@ -30,6 +30,7 @@ def test_perf_compose_has_scalable_api_and_single_background_service() -> None:
     compose = (ROOT / "docker-compose.perf.yml").read_text(encoding="utf-8")
 
     assert "zhiyin-flash:${ZHIYIN_IMAGE_TAG:-baseline-20260930}" in compose
+    assert "zhiyin-flash-web:${ZHIYIN_WEB_IMAGE_TAG:-latest}" in compose
     assert 'ZHIYIN_RUN_IN_PROCESS_BACKGROUND: "0"' in compose
     assert "ZHIYIN_POSTGRES_POOL_MAX_SIZE" in compose
     assert 'command: ["python", "-m", "zhiyin_boot", "background"]' in compose

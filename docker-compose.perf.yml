@@ -75,7 +75,9 @@ services:
       ZHIYIN_POSTGRES_POOL_MAX_SIZE: ${ZHIYIN_BACKGROUND_POOL_MAX_SIZE:-2}
 
   web:
-    image: zhiyin-flash-web
+    # 成员 B 修改了 Nginx 配置，正式压测必须使用与后端候选版本
+    # 一起登记的不可变 web 镜像，不能悄悄沿用旧 latest。
+    image: zhiyin-flash-web:${ZHIYIN_WEB_IMAGE_TAG:-latest}
     container_name: zhiyin-flash-web
     build:
       context: ./zhiyin-src/template/zhiyin-web
