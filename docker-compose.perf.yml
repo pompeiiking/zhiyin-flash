@@ -16,6 +16,8 @@ x-zhiyin-image: &zhiyin-image
   env_file:
     - path: .env
       required: false
+  volumes:
+    - zhiyin-object-data:/app/data/objects
   restart: unless-stopped
   stop_grace_period: 30s
   depends_on:
@@ -131,6 +133,7 @@ services:
 volumes:
   zhiyin-redis-data:
   zhiyin-postgres-data:
+  zhiyin-object-data:
 
 networks:
   zhiyin-flash-net:
