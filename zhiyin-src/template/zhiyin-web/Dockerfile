@@ -6,15 +6,16 @@
 #
 # 两段构建把 node_modules 关在构建期：运行镜像里只有 dist 与 nginx。
 
-FROM node:20-alpine AS build
+FROM node:22-alpine AS build
 
 WORKDIR /app
 
 # 先只拷依赖清单：依赖没变时这一层命中缓存，改业务代码不必重装 node_modules。
-COPY package.json package-lock.json ./
+COPY zhiyin-src/template/zhiyin-web/package.json zhiyin-src/template/zhiyin-web/package-lock.json ./
 RUN npm ci
 
-COPY . .
+COPY zhiyin-src/template/zhiyin-web/ .
+COPY zhiyin-src/template/zhiyin-modules/ /zhiyin-modules/
 RUN npm run build
 
 

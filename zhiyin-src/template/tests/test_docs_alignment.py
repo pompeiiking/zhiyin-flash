@@ -21,8 +21,10 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 from pathlib import Path
+from functools import cache
 from urllib.parse import unquote
 
 import pytest
@@ -95,6 +97,8 @@ SCANNED_SKIP_DIRS = {
     # 已在 .gitignore 里）。扫它只会让"包里那份旧代码"把本仓判成违规，
     # 而且每加一条标记就要多扫一遍全仓 —— 它不是源码。
     "release",
+    # Private environment files, acceptance evidence and isolated Git checkouts.
+    ".platform",
     "_archive-wireframe-v0",
     # IDE 本地配置（.trae/ 同 .idea/ 一样只在开发者机器上，已进 .gitignore）。
     # 里面装的第三方技能文件自带"§6"这类章节引用，扫它只会误伤。
@@ -113,20 +117,23 @@ AUDIT_OUTPUT_NAMES = {
 }
 
 
+@cache
 def _text_files() -> list[Path]:
     files: list[Path] = []
-    for path in REPO_ROOT.rglob("*"):
-        if not path.is_file() or path.suffix not in SCANNED_SUFFIXES:
-            continue
-        parts = path.relative_to(REPO_ROOT).parts
-        if any(part in SCANNED_SKIP_DIRS for part in parts):
-            continue
-        if parts and parts[0] in AUDIT_OUTPUT_NAMES:
-            continue
-        if path.name == "package-lock.json":
-            continue
-        files.append(path)
+    for directory, children, names in os.walk(REPO_ROOT):
+        children[:] = [name for name in children if name not in SCANNED_SKIP_DIRS]
+        if Path(directory) == REPO_ROOT:
+            children[:] = [name for name in children if name not in AUDIT_OUTPUT_NAMES]
+        for name in names:
+            path = Path(directory) / name
+            if path.suffix in SCANNED_SUFFIXES and name != "package-lock.json" and not (Path(directory) == REPO_ROOT and name in AUDIT_OUTPUT_NAMES):
+                files.append(path)
     return sorted(files)
+
+
+@cache
+def _source_text(path: Path) -> str:
+    return path.read_text(encoding="utf-8", errors="ignore")
 
 
 def _relative_links(path: Path) -> list[str]:
@@ -216,7 +223,7 @@ def test_removed_documents_are_not_referenced(marker: str) -> None:
     for path in _text_files():
         if path.resolve() == Path(__file__).resolve():
             continue
-        text = path.read_text(encoding="utf-8", errors="ignore")
+        text = _source_text(path)
         for lineno, line in enumerate(text.splitlines(), start=1):
             if marker in line:
                 hits.append(f"{path.relative_to(REPO_ROOT)}:{lineno}: {line.strip()[:120]}")

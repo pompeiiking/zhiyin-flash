@@ -86,6 +86,7 @@ class DefaultConversationMemoryService(ConversationMemoryService):
         loop_stage: LoopStage,
         agent_id: str = "",
         client_msg_id: str = "",
+        renderables: list[dict] | None = None,
     ) -> ConversationTurn:
         turn = ConversationTurn(
             id=f"turn_{uuid4().hex[:12]}",
@@ -96,6 +97,7 @@ class DefaultConversationMemoryService(ConversationMemoryService):
             loop_stage=loop_stage,
             agent_id=agent_id,
             client_msg_id=client_msg_id,
+            renderables=renderables or [],
             created_at=datetime.now(timezone.utc),
         )
         if self._turns is None:

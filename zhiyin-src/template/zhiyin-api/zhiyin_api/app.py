@@ -30,6 +30,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from pathlib import Path
 from typing import Any, Iterable, Optional
 
@@ -211,6 +212,8 @@ def _install_error_handlers(app: FastAPI) -> None:
         report = get_runtime()
         return {
             "status": "ok" if report.healthy else "degraded",
+            "revision": os.environ.get("ZHIYIN_BUILD_REVISION", "working-tree"),
+            "environment": os.environ.get("ZHIYIN_MODULE_ENV", "local"),
             "assembly": report.to_dict(),
             # 读缓存自述：哪几片、各多长 TTL、命中/未命中/错误计数。
             # 放在装配报告旁边而不是里面 —— 报告是一次启动的快照，命中率是运行时计数。

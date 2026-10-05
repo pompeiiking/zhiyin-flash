@@ -10,6 +10,7 @@
 **/node_modules
 **/dist
 **/build
-zhiyin-src/template/zhiyin-web
+.platform
+release
 zhiyin-src/template/tests
 docs

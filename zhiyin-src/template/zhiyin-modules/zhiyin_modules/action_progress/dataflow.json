@@ -1,0 +1,30 @@
+{
+  "input": {},
+  "fixture_assertions": [
+    {
+      "fixture": "normal",
+      "path": "/data/total",
+      "equals": 2
+    },
+    {
+      "fixture": "normal",
+      "path": "/data/completed",
+      "equals": 1
+    },
+    {
+      "fixture": "empty",
+      "path": "/empty",
+      "equals": true
+    }
+  ],
+  "live_assertions": [
+    {
+      "path": "/data/total",
+      "equals": 2
+    },
+    {
+      "path": "/data/completed",
+      "equals": 1
+    }
+  ]
+}

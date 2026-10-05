@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from collections import Counter
 from datetime import datetime, timezone
 from typing import Any, Optional, Sequence
 from uuid import uuid4
@@ -557,7 +558,13 @@ class DefaultOrchestrator(Orchestrator):
         # 产出合规就**落成资产**：这一步此前完全缺失 —— 模型把 15 维诊断生成并
         # 通过契约校验之后，正文被直接丢掉，于是报告页恒空、工作台恒无版本。
         stale_before = await self._stale_asset_types(request.user_id)
-        changed_assets = await self._persist_stage_output(
+        # A module data query is read-only. Stage schemas may still require an
+        # asset-shaped response; do not turn that schema filler into a new plan
+        # that immediately invalidates the data returned by the module tool.
+        module_query = bool(result.module_attempts or result.module_results) or any(
+            item.kind.startswith("module.") for item in validate_renderables(result.renderables)
+        )
+        changed_assets = [] if module_query else await self._persist_stage_output(
             stage, request.user_id, structured, valid=result.valid
         )
         # 这一轮真的把一份"待重算"的资产重算掉了 → **必须显式告知**（结论变化），
@@ -580,20 +587,25 @@ class DefaultOrchestrator(Orchestrator):
         # **不看 `result.valid`**：采集这一环的硬指标只有一个 —— 他说的话有没有被记下来。
         # 整份产出别处不合契约（少个字段、格式歪了）不该连累这一条：字段能解析就落库，
         # 其余的问题留在日志里。`_apply_collect` 自己会挑出能解析的部分。
-        if stage is LoopStage.COLLECT:
+        if stage is LoopStage.COLLECT and not module_query:
             await self._apply_collect(request.user_id, structured)
         badge = await self._badge(
             lead.lead_agent,
             await self._known_theory_refs(structured.get("theory_refs")),
         )
-        guide = _guide(structured.get("guide"), structured)
         # 主理这一轮自己产出的可视件：逐个按 kind 校验（不认识的、形状不对的丢掉留日志）。
         # 模型只挑了"看哪一类"，点位是工具从库里读的 —— 校验在 `policies/renderers.py`。
         model_renderables = validate_renderables(result.renderables)
+        module_cards = [item for item in model_renderables if item.kind.startswith("module.")]
+        # Only actual server-side results may describe a skill query. Model
+        # stage conclusions and task guidance can claim writes that never ran.
+        guide = BehaviorGuide(kind="question", text="", question=None) if module_query else _guide(
+            structured.get("guide"), structured
+        )
         messages = [
             ConversationMessage(
                 role="agent",
-                text=_user_facing_text(
+                text=_module_query_text(module_cards, result.module_results, result.module_attempts) if module_query else _user_facing_text(
                     structured, guide, result.raw_text, valid=result.valid
                 ),
                 agent_id=lead.lead_agent,
@@ -604,7 +616,7 @@ class DefaultOrchestrator(Orchestrator):
                 # 两种来源，同一个形状：主理自己调的（它调 `chart.render` 时，
                 # 点位是工具从库里读出来的 —— 模型只挑了"画哪一类"，碰不到数值）；
                 # 它没点，就补上这一环节默认那张（仍然是实测分值）。
-                renderables=_renderables_for_turn(
+                renderables=model_renderables if module_query else _renderables_for_turn(
                     model_renderables, stage, structured
                 ),
                 intel_refs=_intel_refs(prompt_vars.get("external_data")),
@@ -680,7 +692,8 @@ class DefaultOrchestrator(Orchestrator):
             badge=await self._badge(reply.agent_id or session.lead_agent, []),
             messages=[
                 ConversationMessage(
-                    role="agent", text=reply.text, agent_id=reply.agent_id or None
+                    role="agent", text=reply.text, agent_id=reply.agent_id or None,
+                    renderables=validate_renderables(reply.renderables),
                 )
             ],
             guide=BehaviorGuide(kind="question", text="", question=None),
@@ -741,6 +754,7 @@ class DefaultOrchestrator(Orchestrator):
                     agent_id=message.agent_id or "",
                     # 主理那一轮也带上幂等键：下一次重复消息靠它认出"这条答过了"。
                     client_msg_id=request.client_msg_id or "",
+                    renderables=[item.model_dump(mode="json") for item in message.renderables],
                 )
         except Exception:  # noqa: BLE001 - 原文落库失败不该让这一轮白答
             logger.exception("对话原文落库失败：task_id=%s", request.task_id)
@@ -1424,6 +1438,34 @@ def _prose_of(raw_text: str) -> str:
     if text.startswith("```"):
         return ""
     return text[:600] + ("…" if len(text) > 600 else "")
+
+
+def _module_query_text(
+    cards: list[Renderable], results: list[dict[str, Any]], attempts: list[str]
+) -> str:
+    """Present verified read results, never a model's fabricated stage writes."""
+    parts: list[str] = []
+    card_ids = {card.kind.removeprefix("module.") for card in cards}
+    if cards:
+        parts.append("已读取「" + "、".join(card.title for card in cards) + "」，结果见下方卡片。")
+    completed = Counter(str(item.get("module_id") or "") for item in results)
+    described: set[str] = set()
+    for item in results:
+        module_id = str(item.get("module_id") or "")
+        if module_id in card_ids or module_id in described:
+            continue
+        described.add(module_id)
+        result = item.get("result")
+        data = result.get("data") if isinstance(result, dict) else None
+        summary = data.get("summary") if isinstance(data, dict) else None
+        title = str(item.get("title") or module_id or "已授权")
+        parts.append(_single_line(summary) if isinstance(summary, str) and summary.strip()
+                     else f"已完成「{title}」技能查询。")
+    if not parts:
+        return "本次技能查询未完成，请确认模块启用状态和调用权限后重试。"
+    if any(count > completed[module_id] for module_id, count in Counter(attempts).items()):
+        parts.append("本次技能查询未完成，请确认模块启用状态和调用权限后重试。")
+    return " ".join(parts)
 
 
 def _user_facing_text(

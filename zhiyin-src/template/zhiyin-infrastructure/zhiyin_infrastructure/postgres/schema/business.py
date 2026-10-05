@@ -73,6 +73,7 @@ CREATE TABLE IF NOT EXISTS biz_conversation_turn (
     loop_stage TEXT NOT NULL DEFAULT 'collect',
     agent_id TEXT NOT NULL DEFAULT '',
     client_msg_id TEXT NOT NULL DEFAULT '',
+    renderables JSONB NOT NULL DEFAULT '[]'::jsonb,
     created_at TIMESTAMPTZ NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_biz_conversation_turn_task

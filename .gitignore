@@ -79,3 +79,4 @@ Thumbs.db
 # 是**要随发布件发给部署方**的东西，但绝不该进版本库。
 deploy/migration.json
 release/
+.platform/

@@ -106,6 +106,7 @@ class UserRole(str, Enum):
     STUDENT = "student"
     MENTOR = "mentor"
     ADMIN = "admin"
+    DEVELOPER = "developer"
 
 
 class TaskStatus(str, Enum):

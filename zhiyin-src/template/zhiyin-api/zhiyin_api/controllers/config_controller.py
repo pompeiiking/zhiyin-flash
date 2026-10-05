@@ -4,8 +4,7 @@
 `zhiyin_kernel.dynamic_config`。不做"每次请求读库"，因为那样
 "刚才还好的行为突然变了"会变得无从解释（没人会想到是有人在改配置）。
 
-这是个运维动作，不是普通用户接口。当前是单机本地部署，所以只要求已登录；
-多用户之前必须先有管理员角色（`UserRole.ADMIN` 已定义，但还没有地方签发）。
+这是个运维动作，按数据库中的当前管理员身份校验。
 """
 
 from __future__ import annotations
@@ -16,6 +15,7 @@ from fastapi import APIRouter, Request
 
 from zhiyin_api.dto.common import ApiResponse
 from zhiyin_api.facade import get_facade
+from zhiyin_api.controllers.module_controller import platform, token
 
 router = APIRouter(tags=["config"])
 
@@ -24,7 +24,7 @@ router = APIRouter(tags=["config"])
 async def reload_config(request: Request) -> ApiResponse[dict[str, Any]]:
     """重新装载动态配置（环节口径 / 气泡编排 / 采集规则）。"""
     facade = get_facade()
-    await facade.resolve_user_id(request)  # 需要登录；未登录由统一错误码拦下
+    await platform(request).require(token(request), admin=True)
     return ApiResponse(data=await facade.reload_dynamic_config())
 
 

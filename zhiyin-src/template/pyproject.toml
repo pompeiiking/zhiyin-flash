@@ -21,6 +21,7 @@ dependencies = [
     "python-multipart>=0.0.9",
     "uvicorn>=0.29",
     "pydantic>=2.6",
+    "jsonschema>=4.23,<5",
     "redis>=5.0",
     "asyncpg>=0.29",
     "pgvector>=0.2",
@@ -91,6 +92,7 @@ packages = [
     "zhiyin_infrastructure.xuezhi",
     "zhiyin_boot",
     "zhiyin_boot.container",
+    "zhiyin_modules",
 ]
 
 [tool.setuptools.package-dir]
@@ -101,9 +103,14 @@ zhiyin_orchestration = "zhiyin-orchestration/zhiyin_orchestration"
 zhiyin_data_sdk = "zhiyin-data-sdk/zhiyin_data_sdk"
 zhiyin_infrastructure = "zhiyin-infrastructure/zhiyin_infrastructure"
 zhiyin_boot = "zhiyin-boot/zhiyin_boot"
+zhiyin_modules = "zhiyin-modules/zhiyin_modules"
+
+[tool.setuptools.package-data]
+zhiyin_modules = ["*/*.json", "*/*.py", "*/*.vue"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests", "zhiyin-modules"]
+addopts = "--import-mode=importlib"
 asyncio_mode = "auto"
 # 里程碑标记：e2e = 五环节主路径（tests/e2e/），M2 门禁的自动落点。
 markers = [
@@ -118,6 +125,7 @@ pythonpath = [
     "zhiyin-data-sdk",
     "zhiyin-infrastructure",
     "zhiyin-boot",
+    "zhiyin-modules",
 ]
 
 [tool.ruff]

@@ -185,6 +185,10 @@ def build_container(settings: Optional[Settings] = None) -> Container:
         llm=container.llm,
     )
     build_services(container)
+    from zhiyin_boot.module_platform import build_platform
+    build_platform(container)
+    from zhiyin_boot.developer_platform import build_developer_platform
+    build_developer_platform(container)
     build_workers(container)
 
     return container
@@ -242,12 +246,16 @@ def wire_application(container: Optional[Container] = None) -> Any:
             await load_snapshot(container.registry_service)
 
         scheduler = container.scheduler
+        import os
+        run_background = os.environ.get("ZHIYIN_RUN_BACKGROUND_WORKERS", "1") == "1"
         start_polling = getattr(scheduler, "start_polling", None)
-        if callable(start_polling):
+        if run_background and callable(start_polling):
             start_polling()
 
+        from zhiyin_boot.module_platform import initialize_platform
+        await initialize_platform(container)
         interval = container.settings.worker_interval_s
-        for worker in container.workers:
+        for worker in container.workers if run_background else []:
             tasks.append(
                 asyncio.create_task(run_until_cancelled(worker, interval, stop))
             )
@@ -262,7 +270,7 @@ def wire_application(container: Optional[Container] = None) -> Any:
                 with contextlib.suppress(asyncio.CancelledError, Exception):
                     await task
             stop_polling = getattr(scheduler, "stop_polling", None)
-            if callable(stop_polling):
+            if run_background and callable(stop_polling):
                 await stop_polling()
             for closable in reversed(container.extra.get("closables", [])):
                 close = getattr(closable, "aclose", None) or getattr(
@@ -277,13 +285,16 @@ def wire_application(container: Optional[Container] = None) -> Any:
                 except Exception:
                     logger.exception("关闭资源失败：%s", type(closable).__name__)
 
-    return create_app(
+    app = create_app(
         title=f"{container.settings.app_name} API",
         lifespan=_lifespan,
         # 前缀只有一个来源：Settings.api_prefix（默认 /api/v1）。
         # 换版本改配置即可，路由声明与前端都不用动。
         api_prefix=container.settings.api_prefix,
     )
+    app.state.module_platform = container.extra.get("module_platform")
+    app.state.developer_platform = container.extra.get("developer_platform")
+    return app
 
 
 __all__ = [

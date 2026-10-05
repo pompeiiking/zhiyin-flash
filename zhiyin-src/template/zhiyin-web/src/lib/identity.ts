@@ -11,6 +11,7 @@ const ROLE_LABEL: Record<string, string> = {
   guest: '游客',
   mentor: '导师',
   admin: '管理员',
+  developer: '开发者',
 }
 
 export function roleLabel(role: string | null | undefined): string {

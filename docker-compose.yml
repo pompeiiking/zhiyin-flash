@@ -40,8 +40,8 @@ services:
     image: zhiyin-flash-web
     container_name: zhiyin-flash-web
     build:
-      context: ./zhiyin-src/template/zhiyin-web
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: zhiyin-src/template/zhiyin-web/Dockerfile
     ports:
       # 前端站点。与 `npm run dev` 用同一个端口，避免"该开哪个地址"的歧义。
       - "5173:80"

@@ -926,6 +926,7 @@ def conversation_message_view(
         agent_id=turn.agent_id or None,
         agent_name=agent_name,
         created_at=turn.created_at,
+        renderables=[RenderableView.model_validate(item) for item in turn.renderables],
     )
 
 

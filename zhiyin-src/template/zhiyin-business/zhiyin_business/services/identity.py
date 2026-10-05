@@ -68,9 +68,11 @@ class DefaultIdentityService(IdentityService):
         from zhiyin_data_sdk.gateways.security import AuthPrincipal
         from zhiyin_kernel.enums import UserRole
 
-        token = await issue(AuthPrincipal(user_id=account, display_name=account, role=UserRole.STUDENT))
+        user = await self._users.get_by_id(account)
+        role = user.role if user else UserRole.STUDENT
+        token = await issue(AuthPrincipal(user_id=account, display_name=account, role=role))
         await self.current_user(token=token)  # 补齐本地用户记录
-        return {"token": token, "user_id": account, "role": "student"}
+        return {"token": token, "user_id": account, "role": role.value}
 
     async def register(self, account: str, password: str, nickname: str = "") -> str:
         """注册一个**新**账号。

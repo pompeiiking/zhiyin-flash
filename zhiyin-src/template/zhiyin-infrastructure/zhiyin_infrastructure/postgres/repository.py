@@ -516,8 +516,8 @@ class PostgresConversationTurnRepository(ConversationTurnRepository):
             """
             INSERT INTO biz_conversation_turn
                 (id, user_id, task_id, role, text, loop_stage, agent_id,
-                 client_msg_id, created_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                 client_msg_id, created_at, renderables)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb)
             """,
             stored.id,
             stored.user_id,
@@ -528,6 +528,7 @@ class PostgresConversationTurnRepository(ConversationTurnRepository):
             stored.agent_id,
             stored.client_msg_id,
             stored.created_at,
+            json.dumps(stored.renderables),
         )
         return stored
 
@@ -539,7 +540,7 @@ class PostgresConversationTurnRepository(ConversationTurnRepository):
         row = await self._db.fetchrow(
             """
             SELECT id, user_id, task_id, role, text, loop_stage, agent_id,
-                   client_msg_id, created_at
+                   client_msg_id, created_at, renderables
             FROM biz_conversation_turn
             WHERE user_id = $1 AND client_msg_id = $2 AND role = 'agent'
             ORDER BY created_at DESC LIMIT 1
@@ -558,6 +559,7 @@ class PostgresConversationTurnRepository(ConversationTurnRepository):
                 agent_id=row["agent_id"],
                 client_msg_id=row["client_msg_id"],
                 created_at=row["created_at"],
+                renderables=json.loads(row["renderables"]) if isinstance(row["renderables"], str) else row["renderables"],
             )
             if row
             else None
@@ -569,7 +571,7 @@ class PostgresConversationTurnRepository(ConversationTurnRepository):
         rows = await self._db.fetch(
             """
             SELECT id, user_id, task_id, role, text, loop_stage, agent_id,
-                   client_msg_id, created_at
+                   client_msg_id, created_at, renderables
             FROM biz_conversation_turn
             WHERE user_id = $1 AND task_id = $2
             ORDER BY created_at ASC
@@ -590,6 +592,7 @@ class PostgresConversationTurnRepository(ConversationTurnRepository):
                 agent_id=row["agent_id"],
                 client_msg_id=row["client_msg_id"],
                 created_at=row["created_at"],
+                renderables=json.loads(row["renderables"]) if isinstance(row["renderables"], str) else row["renderables"],
             )
             for row in rows
         ]
@@ -1149,11 +1152,14 @@ class PostgresUserRepository(UserRepository):
         return stored
 
     async def touch_last_login(self, user_id: str, at: datetime) -> None:
-        user = await self.get_by_id(user_id)
-        if user is None:
+        # A login touch must not write back a stale role while an administrator
+        # is revoking permissions. Update only the timestamp atomically.
+        updated = await self._db.fetchval(
+            "UPDATE biz_user_account SET payload=jsonb_set(payload,'{last_login_at}',$2::jsonb) WHERE id=$1 RETURNING id",
+            user_id, json.dumps(at.isoformat()),
+        )
+        if updated is None:
             raise ResourceNotFound(f"用户不存在：{user_id}")
-        user.last_login_at = at
-        await self.create(user)
 
 
 class PostgresCalendarNodeRepository(CalendarNodeRepository):

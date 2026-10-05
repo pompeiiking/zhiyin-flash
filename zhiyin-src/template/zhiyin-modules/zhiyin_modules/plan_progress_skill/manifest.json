@@ -1,0 +1,108 @@
+{
+  "id": "plan_progress_skill",
+  "name": "计划进度查询技能",
+  "version": "1.0.0",
+  "owner": "职引平台",
+  "description": "读取已保存的行动计划和任务完成状态，返回结构化进度供智能体分析；不修改计划。",
+  "api_version": "1",
+  "kind": "tool",
+  "parent_id": "action_progress",
+  "reads": [
+    "plan.read"
+  ],
+  "actions": [],
+  "tool": "plan_progress_skill.read",
+  "card": null,
+  "detail": null,
+  "conversation": null,
+  "order": 76,
+  "input_schema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "expected_total": {
+        "type": "integer",
+        "minimum": 0,
+        "description": "主控或上游模块读取的任务总数，可选；传入时校验一致性。"
+      },
+      "expected_completed": {
+        "type": "integer",
+        "minimum": 0,
+        "description": "主控或上游模块读取的已完成数，可选；传入时校验一致性。"
+      }
+    }
+  },
+  "output_schema": {
+    "$defs": {
+      "Task": {
+        "additionalProperties": false,
+        "properties": {
+          "task_id": {
+            "title": "Task Id",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "phase": {
+            "default": "",
+            "title": "Phase",
+            "type": "string"
+          },
+          "done": {
+            "title": "Done",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "task_id",
+          "text",
+          "done"
+        ],
+        "title": "Task",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "has_plan": {
+        "title": "Has Plan",
+        "type": "boolean"
+      },
+      "tasks": {
+        "items": {
+          "$ref": "#/$defs/Task"
+        },
+        "title": "Tasks",
+        "type": "array"
+      },
+      "total": {
+        "minimum": 0,
+        "title": "Total",
+        "type": "integer"
+      },
+      "completed": {
+        "minimum": 0,
+        "title": "Completed",
+        "type": "integer"
+      },
+      "summary": {
+        "default": "",
+        "title": "Summary",
+        "type": "string"
+      }
+    },
+    "required": [
+      "has_plan",
+      "total",
+      "completed"
+    ],
+    "title": "Progress",
+    "type": "object"
+  },
+  "dependencies": {
+    "action_progress": "1.0.0"
+  },
+  "dataflow": "dataflow.json"
+}

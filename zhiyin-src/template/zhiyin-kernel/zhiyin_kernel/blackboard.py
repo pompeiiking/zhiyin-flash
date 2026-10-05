@@ -139,6 +139,7 @@ class ConversationTurn(BaseModel):
     role: Literal["user", "agent"] = Field(description="谁说的")
     text: str
     loop_stage: LoopStage
+    renderables: list[dict[str, Any]] = Field(default_factory=list, description="服务端校验后的可视件快照")
     agent_id: str = Field(default="", description="role=agent 时是哪位主理")
     client_msg_id: str = Field(
         default="",

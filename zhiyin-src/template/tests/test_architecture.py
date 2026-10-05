@@ -29,6 +29,7 @@ PACKAGE_DIRS: dict[str, str] = {
     "zhiyin_data_sdk": "zhiyin-data-sdk",
     "zhiyin_infrastructure": "zhiyin-infrastructure",
     "zhiyin_boot": "zhiyin-boot",
+    "zhiyin_modules": "zhiyin-modules",
 }
 
 ALL_PACKAGES = frozenset(PACKAGE_DIRS)
@@ -37,6 +38,7 @@ ALL_PACKAGES = frozenset(PACKAGE_DIRS)
 ALLOWED_DEPENDENCIES: dict[str, frozenset[str]] = {
     # 共享内核：零依赖，只放数据形状。
     "zhiyin_kernel": frozenset({"zhiyin_kernel"}),
+    "zhiyin_modules": frozenset({"zhiyin_kernel", "zhiyin_modules"}),
     # BFF：业务 Port / Facade + 共享形状。数据访问契约一律不可见。
     # （原 business.published 发布面已删除：kernel 归位后它只是同义再导出，
     #   api 直接读 kernel 枚举与读模型即可，见 zhiyin_business/__init__.py 的说明。）

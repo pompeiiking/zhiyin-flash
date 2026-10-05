@@ -1,0 +1,5 @@
+{
+  "normal": {"achievements.read": {"unlocked": 1, "total": 2, "items": [{"key": "first_action", "label": "完成第一件事", "unlocked": true}, {"key": "first_review", "label": "完成一次复盘", "unlocked": false}]}},
+  "empty": {"achievements.read": {"unlocked": 0, "total": 0, "items": []}},
+  "error": {"error": "完成记录暂时不可用"}
+}

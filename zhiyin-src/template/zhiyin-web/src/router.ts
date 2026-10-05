@@ -14,6 +14,7 @@ export const router = createRouter({
     // 留着这条路径只为老链接还能用 —— 落到门户，浮层会自己打开。
     { path: '/login', redirect: { path: '/portal', query: { signin: '1' } } },
     { path: '/report', name: 'report', component: () => import('@/views/ReportView.vue') },
+    { path: '/developer', name: 'developer', component: () => import('@/views/DeveloperView.vue') },
   ],
   scrollBehavior: () => ({ top: 0 }),
 })

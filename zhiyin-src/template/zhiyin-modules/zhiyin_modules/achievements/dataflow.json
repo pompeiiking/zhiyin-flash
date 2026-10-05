@@ -1,0 +1,16 @@
+{
+  "input": {},
+  "fixture_assertions": [
+    {
+      "fixture": "normal",
+      "path": "/data/unlocked",
+      "equals": 1
+    },
+    {
+      "fixture": "empty",
+      "path": "/empty",
+      "equals": true
+    }
+  ],
+  "live_assertions": []
+}
