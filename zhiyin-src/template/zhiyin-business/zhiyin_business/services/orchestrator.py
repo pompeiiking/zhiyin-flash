@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import re
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Optional, Sequence
 from uuid import uuid4
@@ -48,6 +49,7 @@ from zhiyin_data_sdk.repositories import TaskSessionRepository
 from zhiyin_kernel.blackboard import AssetVersion, TaskSession
 from zhiyin_kernel.assets import GapClaim
 from zhiyin_kernel import dynamic_config
+from zhiyin_business.policies.collection import may_override_user_edit
 from zhiyin_business.policies.collection_gate import CollectionGate, evaluate_gate
 from zhiyin_kernel.errors import ResourceNotFound
 from zhiyin_kernel.enums import (
@@ -97,6 +99,24 @@ _EXTERNAL_FETCH_STAGES = frozenset(
     {LoopStage.DIAGNOSE, LoopStage.DECIDE, LoopStage.ACT}
 )
 _EXTERNAL_CACHE_ONLY_STAGES = frozenset({LoopStage.COLLECT, LoopStage.REVIEW})
+
+
+@dataclass(frozen=True)
+class CollectWriteResult:
+    """① 采集这一轮写画像留下了什么。
+
+    为什么要有个返回值，而不是只写日志：`_apply_collect` 现在有三类"没写进去"，
+    它们的原因完全不同，混在日志里查不动 ——
+    `written` 是真写进去了，`dropped_by_gate` 是键不在词表里（提示词该补同义词），
+    `blocked_by_user_edit` 是他自己更正过、推断不许盖（这是**设计如此**，不是缺陷）。
+    调用方目前只丢弃它（见 `run_turn`），用户可见的那句话走 `Disclosure`；
+    这份结果是给日志与守卫测试读的，不是用户文案。
+    """
+
+    written: tuple[str, ...] = ()
+    blocked_by_user_edit: tuple[str, ...] = ()
+    dropped_by_gate: tuple[str, ...] = ()
+
 
 class DefaultOrchestrator(Orchestrator):
     """职引业务编排器。"""
@@ -871,7 +891,9 @@ class DefaultOrchestrator(Orchestrator):
             logger.exception("环节产出落库失败：stage=%s", stage.value)
             return []
 
-    async def _apply_collect(self, user_id: str, structured: dict[str, Any]) -> None:
+    async def _apply_collect(
+        self, user_id: str, structured: dict[str, Any]
+    ) -> CollectWriteResult:
         """把 ① 采集这一轮的字段与缺口落进画像。
 
         为什么必须有这一步
@@ -887,6 +909,17 @@ class DefaultOrchestrator(Orchestrator):
             于是"画像一变就重算受影响资产"这条影响面传播也一并失效。
 
         落库失败不打断这一轮：用户的话已经答完了，错误进日志即可（与资产落库同一条口径）。
+
+        **但"用户亲手写的"那条值不许被推断覆盖**（见下方字段门禁之后的第二道判定）。
+        他在画像里点「更正」把专业改成自己要的那句，下一轮对话里模型再产出一条
+        `major` 就把他的话盖掉了 —— 他刚纠正过的东西又变回去，而界面上没有一处
+        告诉他发生了什么。挡掉之后保留的是他自己写的那条值（`user_edit`），
+        权威记录（`record`：学信网核验 / 教务导入）仍然覆盖得动 —— 它是出具方，
+        比自述更权威。他本人也随时能再「更正」一次，这条路没被堵死
+        （写 `user_edit` 的是 `DefaultProfileService.correct_field`，不经过这里）。
+
+        返回值见 `CollectWriteResult`：调用方目前不用它，用户可见的那句话走
+        `Disclosure`；被挡下的写入在这里留日志（`WARNING`），不留用户文案。
         """
         from zhiyin_business.contracts.collect import CollectOutput, FieldUpdate
 
@@ -908,15 +941,19 @@ class DefaultOrchestrator(Orchestrator):
                     continue
             if not salvaged:
                 logger.warning("① 采集产出里没有可解析的字段，本轮不写画像")
-                return
+                return CollectWriteResult()
             logger.warning(
                 "① 采集产出不合契约，仍从里面救回 %d 条字段更新", len(salvaged)
             )
             output = CollectOutput(field_updates=salvaged)
 
         allowed = self._allowed_profile_keys()
+        # 画像里现有的每一条（键 → 整条字段）：判"这一格是不是他亲手写的"要看**来源**，
+        # 而来源只长在那条旧值上。读一次，这一轮所有字段共用。
+        current = await self._current_fields(user_id)
         dropped: list[str] = []
         written: list[str] = []
+        blocked_by_user_edit: list[str] = []
         for update in output.field_updates:
             key = self._normalize_profile_key(update.key)
             # **字段门禁**：画像只有一份固定词表（动态资源的采集规则）。
@@ -925,6 +962,12 @@ class DefaultOrchestrator(Orchestrator):
             # 采集清单与报告维度又都对不上它，整份画像从此不可分析。
             if allowed and key not in allowed:
                 dropped.append(update.key)
+                continue
+            # **第二道门禁：他亲手写的那条值不许被推断覆盖**（见方法说明与
+            # `policies/collection.py::may_override_user_edit`）。判在写之前，
+            # 因为 `update_field` 是整行替换：写进去就找不回原值了。
+            if not may_override_user_edit(current.get(key), update.source):
+                blocked_by_user_edit.append(key)
                 continue
             try:
                 await self._profiles.update_field(
@@ -946,6 +989,9 @@ class DefaultOrchestrator(Orchestrator):
         # 画像更新本身也是一次**动作**：干预判定要能看见"他刚补了信息"，
         # 否则一个只补画像、不勾任务的人会被判成"好几天没动"。
         # 这条事件类型一直躺在干预白名单里，此前没有任何生产者（实测库里 0 行）。
+        #
+        # 被挡下的那几条**不算一次更新**：库里没有新值，却报一条"画像字段更新"，
+        # 会让影响面传播去重算一份没变的画像（而它的由头正是这次"更新"）。
         for key in written:
             await self._behaviors.log(
                 user_id,
@@ -953,6 +999,16 @@ class DefaultOrchestrator(Orchestrator):
                     event_type=BehaviorEventType.PROFILE_FIELD_UPDATED,
                     payload={"field_key": key, "stage": LoopStage.COLLECT.value},
                 ),
+            )
+
+        if blocked_by_user_edit:
+            # 不静默，但也不当故障：这是设计如此。日志里要说清"被挡的是什么、
+            # 原值是谁写的、他要改该走哪条路" —— 否则下一个人看到"画像没更新"，
+            # 只能从头查一遍（实测这类问题查起来很费时间）。
+            logger.warning(
+                "画像写入被「本人填写」挡下：%s —— 这些格子是他自己更正过的，"
+                "对话推断不许覆盖它；要改仍由他本人点「更正」改（POST profile/fields/{key}）",
+                sorted(set(blocked_by_user_edit)),
             )
 
         if dropped:
@@ -1002,6 +1058,30 @@ class DefaultOrchestrator(Orchestrator):
                     await self._profiles.replace_gaps(user_id, normalized)
                 except Exception:  # noqa: BLE001
                     logger.exception("画像缺口落库失败")
+
+        return CollectWriteResult(
+            written=tuple(written),
+            blocked_by_user_edit=tuple(sorted(set(blocked_by_user_edit))),
+            dropped_by_gate=tuple(sorted(set(dropped))),
+        )
+
+    async def _current_fields(self, user_id: str) -> dict[str, Any]:
+        """画像里现在已有的字段（键 → 整条），用来判"这一格是不是他亲手写的"。
+
+        为什么允许多读一次：判据（来源）只长在旧值上，不读旧值就只能盲写，
+        而 `update_field` 是整行替换 —— 盲写的代价是他自己更正过的值被盖掉。
+
+        读不到就返回空表（＝这一轮不挡）：**读旧画像失败不该让用户刚说的话
+        全部写不进去**，这与 `DefaultProfileService.update_field` 里 `is_new`
+        的降级是同一条口径（那里也把读失败当"未知"，照样写）。
+        代价是这一次可能盖掉一条本人填写的值，但那要求读路径先坏掉 ——
+        比起"他说了话画像一动不动"，这是更小、也更可查的一种失败。
+        """
+        try:
+            return {field.key: field for field in await self._profiles.get_fields(user_id)}
+        except Exception:  # noqa: BLE001
+            logger.warning("读取既有画像失败，本轮不做「本人填写」保护", exc_info=True)
+            return {}
 
     def _allowed_profile_keys(self) -> set[str]:
         """画像允许的字段键（动态资源里的画像字段词表；读不到时返回空集＝不拦）。

@@ -12,13 +12,16 @@
 画像面板却显示"覆盖 100%"，门槛还按"键在"把他放行。三处都不报错，
 用户看到的是自相矛盾的两句话。
 
-这里守四件事：
+这里守五件事：
 
 1. 对话 / 行为推断来源的权威字段**不进覆盖度**（清单、面板、门槛三处一致）；
 2. 相称的来源（`record` / `user_edit`）进覆盖度；
 3. 非权威字段（兴趣 / 目标方向这类本来就该从对话来的）口径**一个字不变**；
 4. `evaluate_gate` 的**阈值语义**没有被顺手改动 —— 用一组构造数据钉住现状
-   （floor 的边界、`>=` 的边界、overall 取所有字段均值、策略缺失时的兜底）。
+   （floor 的边界、`>=` 的边界、overall 取所有字段均值、策略缺失时的兜底）；
+5. 覆盖度的**分母按键去重**：`profile.gaps` 是模型产出的缺口清单，与画像字段
+   同键是常态（"专业有值、但来源是对话"就是同键又出现一次），
+   `len(fields) + len(gaps)` 会把一格算两次，于是这个数字跟着模型话多话少漂。
 
 第 4 条尤其重要：对齐之后"覆盖"这个数字会变小，`ready` 因此可能更难达成。
 那是一处**产品取舍**（阈值动不动由 Lead 定），守卫测试要保证它不是被代码顺手改掉的。
@@ -36,7 +39,7 @@ from pathlib import Path
 
 import pytest
 
-from zhiyin_business.policies.collection import counts_as_got, rule_source_of
+from zhiyin_business.policies.collection import counts_as_got, plan_collection, rule_source_of
 from zhiyin_business.policies.collection_gate import evaluate_gate
 from zhiyin_business.services.workspace import DefaultWorkspaceService
 from zhiyin_kernel.blackboard import Profile, ProfileField, ProfileGap
@@ -195,6 +198,102 @@ def test_empty_profiles_are_still_zero() -> None:
     rules = _registry_rules()
     assert _coverage(None, rules) == 0.0
     assert _coverage(_profile(), rules) == 0.0
+
+
+# --------------------------------------------------------------- 分母不重复计数
+
+
+def _profile_of(*fields: ProfileField, gaps: tuple[str, ...] = ()) -> Profile:
+    """按**键**造缺口：这里的用例要的正是"字段与缺口同键"，而不是 gap0/gap1。"""
+    return Profile(
+        id="p1",
+        user_id="u1",
+        updated_at=_now(),
+        fields=list(fields),
+        gaps=[
+            ProfileGap(key=key, label="", reason="还没定", suggested_next_action="问一句")
+            for key in gaps
+        ],
+    )
+
+
+def _step_got(profile: Profile, key: str, rules) -> bool:
+    """采集清单里这一条算不算拿到了（覆盖度与它必须说同一句话）。"""
+    return next(
+        step for step in plan_collection(profile, rules=rules).steps if step.key == key
+    ).got
+
+
+def test_a_key_that_is_both_a_field_and_a_gap_counts_as_one_cell() -> None:
+    """同一个键既在字段里、又在缺口里 —— 它**只占一格**。
+
+    这是最常出现的那种画像：兴趣有值（对话来源，算拿到），模型同一轮又把它列进
+    `remaining_gaps`（"这条还没落实"）。旧算法按 1/(1+1) 算成 0.5：
+    用户什么都没改，覆盖度却因为模型多报了一条缺口而掉了半格。
+    """
+    rules = _registry_rules()
+    profile = _profile_of(
+        _field("interest", ProfileSource.CONVERSATION),
+        gaps=("interest",),
+    )
+    assert _coverage(profile, rules) == 1.0
+
+
+def test_repeated_gaps_for_one_key_do_not_move_the_number() -> None:
+    """模型把同一个键报三遍，覆盖度不动 —— 它守的是"格子"，不是"缺口的条数"。
+
+    反过来（旧算法）这个数字是 1/(1+3) = 0.25：模型越啰嗦，覆盖度越低，
+    而用户看到的是"我什么都没改，覆盖度自己变了"。
+
+    同一份数据里也顺手确认"键去重"没有把**不同的**缺口合并掉：
+    兴趣拿到了、技能与经历没拿到 → 1/3。
+    """
+    rules = _registry_rules()
+    repeated = _profile_of(
+        _field("interest", ProfileSource.CONVERSATION),
+        gaps=("interest", "interest", "interest"),
+    )
+    assert _coverage(repeated, rules) == 1.0
+
+    distinct = _profile_of(
+        _field("interest", ProfileSource.CONVERSATION),
+        gaps=("skills", "experience"),
+    )
+    assert _coverage(distinct, rules) == round(1 / 3, 2)
+
+
+def test_an_already_verified_field_is_not_pushed_back_into_the_gap_count() -> None:
+    """已核验的字段 + 模型仍报的同键缺口 → 覆盖 100%，且与采集清单同一句话。
+
+    `plan_collection` 对这条字段的判定是 `got = True`（来源相称），所以清单上
+    它是"已经有了"。分母如果还按字段 + 缺口算，同一个键就会同时是
+    "已经拿到"和"还差一条"——两句话出自同一屏，用户没法判断该信哪个。
+    """
+    rules = _registry_rules()
+    profile = _profile_of(
+        _field("major", ProfileSource.RECORD),
+        gaps=("major",),
+    )
+    assert _coverage(profile, rules) == 1.0
+    assert _step_got(profile, "major", rules) is True
+
+
+def test_the_denominator_is_the_number_of_distinct_keys() -> None:
+    """分母 = 画像里有多少**个不同的键**（字段 ∪ 缺口），不是两张表的长度之和。
+
+    构造：major（已核验，算拿到）、interest（对话来源，算拿到）、
+    courses（只有对话来源 —— 教务字段，不算拿到）；缺口报 courses 与 skills。
+    不同的键 4 个（major / interest / courses / skills）→ 2/4 = 0.5。
+    旧算法 (3 条字段 + 2 条缺口) = 5 → 0.4：同一份画像被说小了一格。
+    """
+    rules = _registry_rules()
+    profile = _profile_of(
+        _field("major", ProfileSource.RECORD),
+        _field("interest", ProfileSource.CONVERSATION),
+        _field("courses", ProfileSource.CONVERSATION),
+        gaps=("courses", "skills"),
+    )
+    assert _coverage(profile, rules) == 0.5
 
 
 # --------------------------------------------------------------- 采集门槛

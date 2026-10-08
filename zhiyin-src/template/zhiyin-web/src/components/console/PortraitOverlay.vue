@@ -265,7 +265,17 @@ function correctField(key: string, value: string) {
   return session.correctProfileField(key, value)
 }
 const split = computed(() => splitProfile(fields.value))
-const pendingKeys = computed(() => new Set(gaps.value.map((g) => g.id)))
+/*
+ * 「没定」= 这一格还没落实。
+ *
+ * 但**他自己填过的**（来源 `user_edit`）不算没定：他刚用「更正」写下的值，
+ * 不该因为模型下一轮又报了一条同名缺口就重新挂上「没定」—— 那看起来就像
+ * 他刚改的东西没生效，而他确实改了、也确实存下来了（缺口清单本身的卫生是另一件事）。
+ */
+const pendingKeys = computed(() => {
+  const mine = new Set(fields.value.filter((f) => f.source === 'user_edit').map((f) => f.key))
+  return new Set(gaps.value.map((g) => g.id).filter((id) => !mine.has(id)))
+})
 
 const toItem = (field: { key: string; label?: string; confidence?: number; source: string; updated_at?: string | null; evidence?: string[]; value?: unknown }) => ({
   key: field.key,

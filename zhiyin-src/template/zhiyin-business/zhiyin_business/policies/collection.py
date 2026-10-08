@@ -425,6 +425,44 @@ def counts_as_got(
     return _counts_as_got(source, field)
 
 
+def may_override_user_edit(existing: Any, incoming_source: ProfileSource) -> bool:
+    """这次写入能不能盖掉画像里已有的那条值（"他亲手写的"优先于"系统推的"）。
+
+    失效现象
+    --------
+    用户在画像里点「更正」，把自己认可的那句话写进这一格（落库 `source =
+    user_edit`，见 `DefaultProfileService.correct_field`）。下一轮对话里，
+    ① 采集的模型又产出一条同键的 `field_updates`，这条值就被推回去了 ——
+    他刚纠正过的东西变了，而界面上没有任何一处告诉他。此后每一份报告、
+    每一个方向推荐都按那条他并没有认可的值算，他只能再改一次、再被盖一次。
+
+    所以判据是"这一格的值由谁定的"，而不是"这一轮模型说了什么"：
+
+    - 已知值是 `user_edit`（他亲手写的那一次）时，**只有 `record` 放行**。
+      `record` 是学信网核验 / 教务导入落库的来源（见 `services/ai_tasks.py`
+      与 `services/academic.py`），它是出具方本身，比自述更权威 ——
+      挡掉它会让"用户写错了一句自述"变成永久事实，而且他随时能再「更正」
+      一次改回来，这条口子不需要关。
+    - 推断类来源（`conversation` / `behavior_inference` / `assessment` /
+      `mentor` / `resume`）一律挡：它们是系统替他说、或者替他推的，
+      不是他写的那句话。
+    - 已知值不是 `user_edit`：与这次改动无关，口径一个字不变（放行）。
+
+    为什么用白名单而不是"把推断类来源列出来挡掉"：这条流水线上 `source`
+    是**模型的声明**，而契约里的枚举取值它都能写（`FieldUpdate.source` 是
+    `ProfileSource`）。黑名单只要漏掉一个取值，用户亲手写的值就被静默覆盖
+    一次 —— 那是这道守卫唯一不能出的错。反过来，白名单多挡一次只会多一条
+    日志，代价小得多。
+
+    "他后面亲口改口"这条路没有被堵死：写 `user_edit` 的是
+    `DefaultProfileService.correct_field`（`POST /app/profile/fields/{key}`），
+    它不经过这里 —— 用户永远能再改一次，改完仍然算他自己写的。
+    """
+    if _field_source(existing) is not ProfileSource.USER_EDIT:
+        return True
+    return incoming_source is ProfileSource.RECORD
+
+
 def plan_collection(
     profile: Optional[Profile],
     *,
@@ -564,6 +602,7 @@ __all__ = [
     "counts_as_got",
     "field_labels",
     "filled_by",
+    "may_override_user_edit",
     "plan_collection",
     "rule_source_of",
     "signals_from",

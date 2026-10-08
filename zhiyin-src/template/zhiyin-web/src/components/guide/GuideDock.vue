@@ -95,7 +95,8 @@ function go(tip: { kind: string; to: string }) {
  * 它不再是一个"待打开的聊天窗"，而是一张**便签** —— 纸面、轻微倾斜、没有输入框。
  */
 .dock {
-  position: fixed; left: 20px; bottom: 18px; z-index: var(--z-drawer);
+  /* 底部横条（home indicator）上不让：它是固定定位，body 的 padding 管不到 */
+  position: fixed; left: 20px; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); z-index: var(--z-drawer);
   display: flex; flex-direction: column; gap: var(--s2);
   align-items: flex-start;
   max-width: min(420px, calc(100vw - 40px));
@@ -202,7 +203,7 @@ function go(tip: { kind: string; to: string }) {
 .unfold-enter-from, .unfold-leave-to { opacity: 0; transform: translateY(8px) scale(0.99); }
 
 @media (max-width: 720px) {
-  .dock { left: 12px; right: 12px; bottom: 12px; max-width: none; }
+  .dock { left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); max-width: none; }
   .sheet { width: 100%; }
   .note__line { max-width: 22ch; }
 }

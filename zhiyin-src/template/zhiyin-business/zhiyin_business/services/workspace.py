@@ -364,25 +364,39 @@ class DefaultWorkspaceService(WorkspaceService):
 
     @staticmethod
     def _coverage(profile, rules=None) -> float:
-        """画像覆盖度：**算作拿到**的字段 /（字段 + 缺口）。
+        """画像覆盖度：**算作拿到**的字段 / 画像里**一共几格**。
 
         分子与采集清单同一口径（`policies/collection.py::counts_as_got`）：
         权威字段（专业 / 学籍这类该由学信网核验出具的）如果只由对话或行为推断
         写进来，不算拿到，也就不进分子。不共用的症状是同一屏里两句话互相打脸 ——
         画像面板"覆盖 100%"，采集清单却还挂着"还差专业"。
 
-        分母**保持**"画像里已有的格子 + 缺口"不变：那条没核验的值仍然占一格，
-        它现在的身份就是缺口（与 `plan_collection` 把它算进 missing 一致）。
+        分母**按键去重**：一个键就是画像里的一格，不论它这一轮以什么形态出现。
+        `profile.gaps` 是模型产出的缺口清单，与 `profile.fields` **同键是常态**
+        （典型就是"专业有值、但来源是对话，所以它同时是缺口"），而
+        `len(fields) + len(gaps)` 会把这一格算两次。后果不是数字难看，而是
+        **这个数字会跟着模型的话多话少漂**：同一份画像，模型这一轮多报一条
+        `major` 缺口，覆盖度就往下掉一截（1 格拿到 / 3 格 = 33%，而不是 50%），
+        用户看到的是"我什么都没改，覆盖度自己变了"。
+
+        同键同现的语义判断：**是同一格，不是两条**。字段那一条是"这一格现在装着
+        什么值"，缺口那一条是"这一格还没落实" —— 说的是同一件事的两面，
+        采信哪一面由 `counts_as_got` 决定（来源不相称时它就不进分子）。
+        所以键才是格子，字段与缺口都只是这个格子的状态描述。
 
         `rules` 是采集登记表（"哪个字段该由谁出具"写在它里面）；不传时退回
         `collection.py` 的内置表，与其它读侧同一条口径。
         """
         if profile is None:
             return 0.0
+        # 同键取**最后一条**字段：与 `plan_collection` 里的 `have` 同一取法
+        # （模型同一轮里重复报同一个键时，两处必须落在同一条值上，否则
+        # 分子按这条算、清单按那条算，又成了两句话打架）。
+        have = {field.key: field for field in profile.fields}
         got = sum(
-            1 for field in profile.fields if counts_as_got(field.key, field, rules=rules)
+            1 for field in have.values() if counts_as_got(field.key, field, rules=rules)
         )
-        total = len(profile.fields) + len(profile.gaps)
+        total = len(set(have) | {gap.key for gap in profile.gaps})
         return round(got / total, 2) if total else 0.0
 
 

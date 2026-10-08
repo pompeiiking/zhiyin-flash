@@ -234,7 +234,15 @@ onBeforeUnmount(() => {
 .layer {
   position: fixed; inset: 0; z-index: var(--z-overlay);
   display: grid; place-items: center;
-  padding: var(--s6);
+  /*
+   * 固定定位相对**视口**，所以 body 上那圈安全区内边距管不到这里 —— 这里自己让：
+   * 手机上不加的话，抽屉顶部贴着刘海、底部那颗按钮压在 home indicator 上。
+   * 桌面这四个 env() 都是 0，等于原来的 `padding: var(--s6)`。
+   */
+  padding: calc(var(--s6) + env(safe-area-inset-top, 0px))
+    calc(var(--s6) + env(safe-area-inset-right, 0px))
+    calc(var(--s6) + env(safe-area-inset-bottom, 0px))
+    calc(var(--s6) + env(safe-area-inset-left, 0px));
 }
 
 /*

@@ -101,6 +101,20 @@ input, textarea, select { touch-action: manipulation; }
 
 body {
   margin: 0;
+  /*
+   * 刘海与底部横条：`viewport-fit=cover` 之后页面会铺到这两块区域下面，
+   * 内容必须自己让开 —— 否则首屏标题被刘海切掉、底部那颗按钮压在 home indicator 上。
+   *
+   * 写在 body 上而不是各个组件上：`body` 的背景会延伸到 padding 区域，
+   * 所以纸的颜色仍然铺满整屏，只有**内容**缩进来。桌面上这四个值是 0，行为与改动前一致。
+   * `border-box` 是为了让 padding 不把 `height:100%` 撑出去（否则会多出一条滚动）。
+   *
+   * 固定定位的浮层（`.layer`）不受 body padding 影响（它们相对视口定位），
+   * 那几处单独让 —— 见 `components/console/Overlay.vue` 的 `.layer`。
+   */
+  box-sizing: border-box;
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px)
+    env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
   background: var(--n-0);
   color: var(--ink-1);
   font: var(--t-body)/var(--lh-body) var(--font-sans);

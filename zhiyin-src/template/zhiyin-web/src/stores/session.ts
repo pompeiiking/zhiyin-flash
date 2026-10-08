@@ -5,6 +5,8 @@ import { readFetched, readIntelText } from '@/lib/intel'
 import {
   BackendUnavailableError,
   UnauthorizedError,
+  NotFoundError,
+  ApiTimeoutError,
   api,
   authToken,
   clearToken,
@@ -54,6 +56,12 @@ function messageOf(cause: unknown): string {
 function chatFailure(cause: unknown): string {
   if (cause instanceof UnauthorizedError) return '登录状态过期了，重新登录后接着说。'
   if (cause instanceof BackendUnavailableError) return '暂时连不上服务，稍后再试一次。'
+  if (cause instanceof ApiTimeoutError) return '服务半天没回话，我先把这一轮放下了 —— 再说一句试试。'
+  /*
+   * 会话在后端不在了（服务重启、会话被清）。这一句要**如实**告诉他上下文可能断了：
+   * 我们会自动重开一轮，但上一轮之前说过的东西不保证还在，他可以在意。
+   */
+  if (cause instanceof NotFoundError) return '刚才那条会话在后端不在了，我已经重开一轮 —— 你再说一句。'
   console.warn('[chat] 这一轮没成功：', cause)
   return '这一轮没接上，再说一句试试。'
 }
@@ -69,6 +77,7 @@ function chatFailure(cause: unknown): string {
 function correctFailure(cause: unknown): string {
   if (cause instanceof UnauthorizedError) return '登录状态过期了，重新登录后再改这一条。'
   if (cause instanceof BackendUnavailableError) return '暂时连不上服务，这一条没存下来 —— 稍后再试一次。'
+  if (cause instanceof ApiTimeoutError) return '服务半天没回话，这一条没存下来 —— 稍后再试一次。'
   return cause instanceof Error && cause.message ? cause.message : '这一条没改成，稍后再试一次。'
 }
 
@@ -1530,6 +1539,15 @@ export const useSessionStore = defineStore('session', {
         )
         this.applyTurn(turn, option)
       } catch (cause) {
+        /*
+         * 会话在后端不在了（服务重启、会话被清）→ 把那个死 id 丢掉。
+         *
+         * 不丢的后果正是"流程卡死"里最难自己恢复的一种：之后每一轮都拿着同一个
+         * 不存在的 id 去撞，每轮都只回"这一轮没接上"，用户怎么试都出不来。
+         * 丢掉之后下一次发送会重新 `enterTask` 开一轮，代价是上下文从头开始 ——
+         * 所以那一句会**如实**告诉他会话断过（见 chatFailure）。
+         */
+        if (cause instanceof NotFoundError) this.backendTaskId = null
         this.chatAnswered = null
         this.chatTyping = false
         this.chatTurns = [

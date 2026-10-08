@@ -51,6 +51,24 @@ export type AchievementListView = Schema['AchievementListView']
 
 export class BackendUnavailableError extends Error {}
 export class UnauthorizedError extends Error {}
+/**
+ * 后端明确说"没有这条东西"（HTTP 404 / code 1002，如 `任务会话不存在`）。
+ *
+ * 单独成类，是因为它**必须能自愈**：任务会话在后端不在了（服务重启、会话被清），
+ * 界面拿到的若是笼统的 `Error`，下一次发送还会拿着同一个死 id 去撞 ——
+ * 每一轮都只回"这一轮没接上"，用户以为软件坏了、而且怎么试都出不来。
+ * 有了这一类，调用方就能把那个 id 丢掉、重新开一轮。
+ */
+export class NotFoundError extends Error {}
+/**
+ * 等太久（不是连不上）。
+ *
+ * 与 `BackendUnavailableError` 分开：那个是"请求没发出去/服务不可达"，
+ * 这个是"发出去了、一直没回音"。要紧的是**必须有人把等待解开** ——
+ * 否则 `chatTyping` 永远是 true，选项与发送键就永久禁着（issue #26 里
+ * "流程卡死"的一条）。
+ */
+export class ApiTimeoutError extends Error {}
 
 /*
  * 错误码：数字从后端 `ErrorCode` 枚举来（`api/dto/common.py`）。
@@ -59,7 +77,35 @@ export class UnauthorizedError extends Error {}
  */
 const CODE_UNAUTHORIZED: Schema['ErrorCode'] = 1004
 const CODE_DEPENDENCY_UNAVAILABLE: Schema['ErrorCode'] = 1007
+const CODE_NOT_FOUND: Schema['ErrorCode'] = 1002
 const CODE_OK: Schema['ErrorCode'] = 0
+
+/**
+ * 请求超时：默认 20 秒，聊天那一轮 90 秒。
+ *
+ * 为什么要设：`fetch` 默认**永不超时**。后端一旦不回话（进程卡住、连接半开），
+ * 界面就永远停在"正在回话"上 —— 而那期间 `chatTyping` 是 true，
+ * 选项与发送键都是禁用的：用户看到的就是"卡死"，只能刷新。
+ *
+ * 聊天给 90 秒是因为那一轮要跑编排（判环节→选主理→产出→引导收尾），
+ * 它本来就慢（issue #26 原话"AI 回复速度偏慢"）。**宁可等，也不能误杀**，
+ * 所以两者分开；其余接口 20 秒没回音基本就是出事了。
+ */
+export const API_TIMEOUT_MS = 20_000
+export const CHAT_TURN_TIMEOUT_MS = 90_000
+
+/**
+ * 给一次 `fetch` 装上超时。
+ *
+ * 用 `AbortController` 而不是 `AbortSignal.timeout`：后者在旧一点的 Safari 上没有，
+ * 而这里的收益只有一行；而且手动控制才能把"是超时中断的"和"是网络错了"分开 ——
+ * 这两件事给用户的那句话不一样。
+ */
+function withTimeout(init: RequestInit | undefined, timeoutMs: number) {
+  const ctl = new AbortController()
+  const timer = setTimeout(() => ctl.abort(), timeoutMs)
+  return { signal: ctl.signal, timer, aborted: () => ctl.signal.aborted }
+}
 
 export const authToken = () => localStorage.getItem('zhiyin_token') || ''
 export const saveToken = (t: string) => localStorage.setItem('zhiyin_token', t)
@@ -71,15 +117,25 @@ interface Envelope<T> {
   data: T | null
 }
 
-export async function api<T>(path: string, init?: RequestInit): Promise<T> {
+export async function api<T>(
+  path: string,
+  init?: RequestInit,
+  timeoutMs = API_TIMEOUT_MS,
+): Promise<T> {
   let res: Response
+  const t = withTimeout(init, timeoutMs)
   try {
     const headers: Record<string, string> = { 'Content-Type': 'application/json', Accept: 'application/json' }
     const token = authToken()
     if (token) headers.Authorization = `Bearer ${token}`
-    res = await fetch(`/api/v1${path}`, { headers, ...init })
+    res = await fetch(`/api/v1${path}`, { headers, ...init, signal: t.signal })
   } catch (cause) {
+    // 超时与"连不上"要分开：用户能做的事一样（再试），但界面上那句话不一样，
+    // 而且排查时"请求卡住了"和"服务没起"是两回事。
+    if (t.aborted()) throw new ApiTimeoutError(`超过 ${Math.round(timeoutMs / 1000)} 秒没有回音`)
     throw new BackendUnavailableError(String(cause))
+  } finally {
+    clearTimeout(t.timer)
   }
   return unwrap<T>(res)
 }
@@ -96,6 +152,7 @@ async function unwrap<T>(res: Response): Promise<T> {
   if (!body) throw new BackendUnavailableError('empty body')
   if (body.code === CODE_DEPENDENCY_UNAVAILABLE) throw new BackendUnavailableError(body.message)
   if (body.code === CODE_UNAUTHORIZED) throw new UnauthorizedError(body.message)
+  if (body.code === CODE_NOT_FOUND) throw new NotFoundError(body.message)
   if (body.code !== CODE_OK) throw new Error(body.message || `code=${body.code}`)
   return body.data as T
 }
@@ -109,13 +166,17 @@ async function unwrap<T>(res: Response): Promise<T> {
  */
 async function upload<T>(path: string, form: FormData): Promise<T> {
   let res: Response
+  const t = withTimeout(undefined, API_TIMEOUT_MS * 3)
   try {
     const headers: Record<string, string> = { Accept: 'application/json' }
     const token = authToken()
     if (token) headers.Authorization = `Bearer ${token}`
-    res = await fetch(`/api/v1${path}`, { method: 'POST', headers, body: form })
+    res = await fetch(`/api/v1${path}`, { method: 'POST', headers, body: form, signal: t.signal })
   } catch (cause) {
+    if (t.aborted()) throw new ApiTimeoutError('材料上传等太久了')
     throw new BackendUnavailableError(String(cause))
+  } finally {
+    clearTimeout(t.timer)
   }
   return unwrap<T>(res)
 }
@@ -189,17 +250,22 @@ export function sendMessage(
   option?: { option_id?: string; value?: unknown },
   materialIds: string[] = [],
 ) {
-  return api<TurnView>('/app/conversation/message', {
-    method: 'POST',
-    body: JSON.stringify({
-      task_id: taskId,
-      message,
-      client_msg_id: `c${Date.now()}`,
-      option_id: option?.option_id ?? null,
-      option_value: option?.value ?? null,
-      material_ids: materialIds,
-    }),
-  })
+  // 这一轮要走完整编排，本来就慢 —— 用聊天专属的超时，别拿 20 秒误杀它
+  return api<TurnView>(
+    '/app/conversation/message',
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        task_id: taskId,
+        message,
+        client_msg_id: `c${Date.now()}`,
+        option_id: option?.option_id ?? null,
+        option_value: option?.value ?? null,
+        material_ids: materialIds,
+      }),
+    },
+    CHAT_TURN_TIMEOUT_MS,
+  )
 }
 
 /**
