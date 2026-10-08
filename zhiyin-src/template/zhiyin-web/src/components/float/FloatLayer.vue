@@ -243,7 +243,11 @@ function onAction(kind: string, id: string) {
   top: calc(74px + var(--rail-pops-h, 0px));
   right: 22px;
   width: min(336px, 32vw);
-  max-height: calc(100vh - 140px);
+  /*
+   * 用 `dvh` 不用 `vh`：`vh` 是"地址栏收起后"的高度，手机首屏上这个浮层会比可视区高出一截
+   * （底部内容被地址栏盖住）。`dvh` 跟着可视区变，浮层才真的装得下。
+   */
+  max-height: calc(100dvh - 140px);
   z-index: var(--z-drawer);
   display: flex; flex-direction: column;
   gap: var(--s2);

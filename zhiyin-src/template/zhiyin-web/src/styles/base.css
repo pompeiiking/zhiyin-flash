@@ -47,6 +47,58 @@ code, pre, .mono, [data-long-token] { overflow-wrap: anywhere; }
 
 html, body, #app { height: 100%; }
 
+/*
+ * ── 手机上的"平台层"四项 ────────────────────────────────────────────────
+ *
+ * 用户报的是"手机端模块切换跳动、类似卡顿、像闪退"。真机量过之后，
+ * 切换模块本身**没有布局位移**（CLS = 0，壳高稳定）—— 那几条"卡/跳/闪"
+ * 来自浏览器把网页当网页的那些默认行为，不是动效：
+ *
+ *   · `-webkit-tap-highlight-color`：iOS/Android 给每个可点元素盖一层半透明灰。
+ *     实测我们的默认值是 `rgba(0,0,0,.18)` —— 这就是"闪一下"，而且它会压掉
+ *     我们自己设计的按下反馈。全局关掉，反馈交给 `:active`。
+ *   · `overscroll-behavior: none`：往下拉会触发下拉刷新、往上滑会整页回弹 ——
+ *     在一个"应用壳"里，这两个动作的观感就是"页面自己跳了"。（报告页也是这个壳的一部分，
+ *     在 SPA 里下拉刷新会重载整个应用，所以这条放在 html 上而不是只放控制台。）
+ *   · `touch-action: manipulation`：浏览器为判断"是不是双击缩放"会等 300ms 才派发 click
+ *     —— 按钮按下去到有反应之间那段延迟就是"卡"。
+ *   · `-webkit-text-size-adjust: 100%`：横屏时字被自动放大，整页高度随之变化（又一种"跳"）。
+ *
+ * 输入框的 16px 见下面的 `@media (pointer: coarse)`：iOS 聚焦到小于 16px 的输入框会
+ * **把整个页面放大**且不还原 —— 在手机上这是最剧烈的一种"跳"，而它只在聚焦时发生，
+ * 所以看起来就像"一切到某个模块就跳一下"。
+ */
+html {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  overscroll-behavior: none;
+}
+html, body { overscroll-behavior: none; }
+
+/* 控件不是正文：长按不该选中它们的文字，点下去不该等 300ms */
+button, a, [role="button"], summary, label {
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+}
+input, textarea, select { touch-action: manipulation; }
+
+/*
+ * 输入框至少 16px —— 不是审美问题，是 iOS 的缩放阈值。
+ *
+ * 判据取"粗指针**或**窄屏"：只用 `(pointer: coarse)` 会漏掉"带触控板的 iPad"
+ * （它报 `pointer: fine`，但 Safari 聚焦小字号输入框照样把整页放大），
+ * 而窄屏本来就跑的是单列布局，字号放大不影响桌面那套紧凑节奏。
+ *
+ * 这一条用 `!important`，与上面 `prefers-reduced-motion` 那个块同一个理由：
+ * 它不是样式选择，是**平台保证** —— 组件里任何一条 `.compose input { font-size: … }`
+ * （示例：对话输入框 13.5px）都会重新触发 iOS 的整页缩放，那种"跳"比字号大一档严重得多。
+ * 仓库口径是"样式覆盖不用 !important"，这里是唯一的另一类例外，别的地方不要学。
+ */
+@media (pointer: coarse), (max-width: 900px) {
+  input, textarea, select { font-size: 16px !important; }
+}
+
 body {
   margin: 0;
   background: var(--n-0);
@@ -261,10 +313,20 @@ button, input, textarea, select { font-family: inherit; font-size: var(--t-sm); 
  * 2px 才真的读成"这块能被拿起来"。按下则回落到 0 并把影收掉：
  * 抬起与落回之间要有落差，按钮才是"按得动"的。
  */
-.btn:hover {
-  border-color: var(--line-4);
-  transform: translateY(-2px);
-  box-shadow: var(--e-3), var(--inner-hi);
+/*
+ * 悬停只在**真的能悬停**的设备上生效。
+ *
+ * 触屏没有 hover，浏览器会替它"假装"一个：第一次点按套上 `:hover` 并**留在那儿**
+ * 直到点到别处 —— 于是按钮按完还举着 2px、卡片按完还浮着。用户描述成"按下去不回弹、
+ * 界面自己在跳"。`(pointer: fine)` 一起写是因为有些笔也号称能悬停。
+ * `:active` 不 gate：那是所有输入都该有的按下反馈。
+ */
+@media (hover: hover) and (pointer: fine) {
+  .btn:hover {
+    border-color: var(--line-4);
+    transform: translateY(-2px);
+    box-shadow: var(--e-3), var(--inner-hi);
+  }
 }
 .btn:active { transform: translateY(0); box-shadow: none; }
 .btn.primary {

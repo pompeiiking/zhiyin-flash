@@ -1803,8 +1803,16 @@ onBeforeUnmount(() => {
  * 这里退化为可滚动单列 —— 物理限制，不是设计取向。
  */
 @media (max-width: 900px), (max-height: 620px) {
-  /* 窄屏是文档流，不是一屏：栅格的行数交给内容决定 */
-  .console { height: auto; min-height: 100dvh; overflow: visible; grid-template-rows: none; }
+  /*
+   * 窄屏是文档流，不是一屏：栅格的行数交给内容决定。
+   *
+   * 这里用 `100svh` 而不是 `100dvh`：`dvh` 会随地址栏收放而变，手机上滚一下
+   * 页面高度就变一次 —— 控制台又是**多列网格**，高度一变整片块重新排版，
+   * 观感正是用户报的"模块切换时跳动"。`svh` 是"最矮时的那一屏"，恒定、永不溢出，
+   * 代价是地址栏收起时底部会多出一点留白；对"不许跳"来说这个代价划算。
+   * （报告页那种长文不适用这条：那里变高变矮不影响阅读位置。）
+   */
+  .console { height: auto; min-height: 100svh; overflow: visible; grid-template-rows: none; }
   .bar { flex-wrap: wrap; row-gap: var(--s2); }
   .bar__right { gap: var(--s2); }
   .stage { padding: var(--s4); }

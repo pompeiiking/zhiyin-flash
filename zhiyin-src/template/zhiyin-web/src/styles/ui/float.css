@@ -92,9 +92,12 @@ html[data-ui="float"] .btn {
   border-radius: var(--r-pill);
   box-shadow: var(--e-1);
 }
-html[data-ui="float"] .btn:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--e-2);
+/* 浮片的抬起同样只在能悬停的设备上：触屏点完不会"卡"在举着的状态 */
+@media (hover: hover) and (pointer: fine) {
+  html[data-ui="float"] .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--e-2);
+  }
 }
 /* 主按钮同样是药丸；底色与字色交给皮肤，这里只管形状 */
 html[data-ui="float"] .btn.primary {

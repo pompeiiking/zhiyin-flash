@@ -422,6 +422,10 @@ def test_axis_styles_nothing_outside_its_own_attribute(axis: str, option: str) -
     text = _COMMENT.sub(" ", _read(path))
     # 先摘掉 @keyframes 整块：它不是选择器，里面的 from / to 也不是（骨架轴的入场动画在这）。
     text = _KEYFRAMES.sub(" ", text)
+    # 再揭开 @media 外壳：悬停必须 gate 在"真的能悬停"的设备上（触屏第一次点按会套上并留住 hover），
+    # 所以合法的轴文件多了一层 `@media (hover: hover) and (pointer: fine) { … }`。
+    # 不揭开它，外壳会被当成一条"没挂轴属性"的规则 —— 而里面那条恰恰是最该被检查的。
+    text = re.sub(r"@media[^{]*\{", " ", text)
     prefix = f'html[data-{axis}="'
     offenders = [
         match.group(1).strip().splitlines()[-1].strip()[:80]
@@ -483,8 +487,15 @@ _LAYOUT_PROPS = ("position", "display", "inset", "top", "right", "bottom", "left
 
 
 def _rules(text: str) -> list[tuple[str, str]]:
-    """把样式表拆成 (选择器, 声明块)。先摘掉 @keyframes（它没有选择器）。"""
+    """把样式表拆成 (选择器, 声明块)。先摘掉 @keyframes（它没有选择器）。
+
+    再**揭开 `@media` 外壳**：`@media (hover: hover) and (pointer: fine) { … }` 里的规则
+    仍然要按同一把尺子量。这是 2026-10-08 手机端整改时补的 —— 悬停必须 gate 在
+    "真的能悬停"的设备上（触屏第一次点按会套上并留住 hover），所以轴文件里合法的
+    写法多了一层外壳；不揭开它，外壳会被当成选择器、里面那条规则反而漏检。
+    """
     text = _KEYFRAMES.sub(" ", text)
+    text = re.sub(r"@media[^{]*\{", " ", text)
     return [
         (m.group(1).strip(), m.group(2))
         for m in re.finditer(r"([^{}]+)\{([^{}]*)\}", text)
