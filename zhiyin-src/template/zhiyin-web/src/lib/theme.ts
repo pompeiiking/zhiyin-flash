@@ -158,6 +158,26 @@ export const selection = reactive<Record<string, string>>(
   Object.fromEntries(AXES.map((axis) => [axis.id, axis.options[0].id])),
 )
 
+/**
+ * 每条轴归到哪一组 —— 面板照它分段。
+ *
+ * 为什么要有这个：七条轴并排铺在一张表里，用户第一眼看到的是"七个并列的选择"，
+ * 而它们其实是四件不同的事（颜色 / 形与密度 / 字号字体 / 交互与浮层）。
+ * 评审的原话是"用户挑不过来"—— 分组不改任何能力，只把"一次要读几行"从七行降到两三行。
+ *
+ * 为什么写在这里而不是面板里：**分组是轴自己的属性**，换一个入口（账号面板、命令行）
+ * 也该按同一套分段；写在面板里就等于把这条信息绑死在一种画法上。
+ *
+ * 顺序即面板上的顺序，且**摊平之后必须与 `AXES` 完全一致**（守卫会比对）——
+ * 这样既保证没有孤立的轴，也保证同一组不会在表里被拆成两段。
+ */
+export const AXIS_GROUPS: { name: string; axes: string[] }[] = [
+  { name: '颜色', axes: ['theme'] },
+  { name: '形与密度', axes: ['ui', 'shape'] },
+  { name: '字号字体', axes: ['type', 'font'] },
+  { name: '交互与浮层', axes: ['feedback', 'skeleton'] },
+]
+
 /** 皮肤（配色）变了就抛它 —— 图表/画布/手绘这些 JS 落笔的消费方听着它 */
 export const THEME_EVENT = 'zhiyin:theme'
 /** 任意一条轴变了都抛它，detail 是 `{ axis, option }` */

@@ -864,3 +864,39 @@ def test_trigger_is_excluded_from_the_outside_click_guard() -> None:
         "LookPanel 的「点击外部就关」判定里没有排掉 `.look-trigger` —— "
         "点那三个字会变成「开了又立刻关上」"
     )
+
+
+_GROUP_ENTRY = re.compile(r"\{\s*name:\s*'([^']+)',\s*axes:\s*\[([^\]]*)\]\s*\}")
+
+
+def test_axis_groups_cover_every_axis_in_order() -> None:
+    """分组表必须**恰好覆盖每条轴一次**，且每条轴在组内的先后跟随注册表。
+
+    这条比它看起来重要：面板按它分段，一旦有轴没被收进任何一组，那一行会从外观台上
+    整条消失（用户会以为这个能力没了）；列了两次则会出现两行同一条轴 —— 两种情况
+    都不报错，只是安静地画错。
+
+    **不要求摊平后与 AXES 顺序一致**：分组本来就会重排（"形状"并进"形与密度"、
+    "字体"并进"字号字体"），那是分组的意义。要钉的是覆盖与组内次序。
+    """
+    block = _array_block(_read(THEME_TS), "AXIS_GROUPS")
+    listed = _GROUP_ENTRY.findall(block)
+    assert listed, "AXIS_GROUPS 没解析出来 —— 守卫会空跑"
+    groups = [
+        (name, [axis.strip().strip("'") for axis in axes.split(",") if axis.strip()])
+        for name, axes in listed
+    ]
+    flat = [axis for _, axes in groups for axis in axes]
+    assert sorted(flat) == sorted(_axes()), (
+        "分组表与 AXES 覆盖不上（少列或重复）：\n"
+        f"  分组表：{sorted(flat)}\n  注册表：{sorted(_axes())}"
+    )
+    assert len(set(flat)) == len(flat), f"有轴被列进多个分组：{flat}"
+    names = [name for name, _ in groups]
+    assert len(set(names)) == len(names), f"分组重名：{names}"
+    # 组内先后跟随注册表：主次由 AXES 决定，不由分组的写法决定
+    order = {axis: index for index, axis in enumerate(_axes())}
+    for name, axes in groups:
+        assert axes == sorted(axes, key=lambda axis: order[axis]), (
+            f"「{name}」组内的轴与注册表顺序不一致：{axes}"
+        )

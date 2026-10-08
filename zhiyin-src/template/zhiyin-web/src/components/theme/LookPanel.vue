@@ -25,6 +25,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import {
   AXES,
+  AXIS_GROUPS,
   applyOption,
   optionOf,
   resetLook,
@@ -40,8 +41,22 @@ const open = lookPanelOpen
 const root = ref<HTMLElement | null>(null)
 const copied = ref(false)
 
-/** 列数 = 最宽的那条轴（现在是"组件"的八档）：所有行共用它，列才对得齐 */
+/** 列数 = 最宽的那条轴（组件有六档）：所有行共用它，列才对得齐 */
 const COLS = Math.max(...AXES.map((a) => a.options.length))
+
+/**
+ * 面板上的行 = 分成四段，每段一条小标题 + 它那几条轴。
+ *
+ * 分组来自注册表（`AXIS_GROUPS`），这里只负责取轴对象 —— 少一处"分组到底怎么分"的副本。
+ */
+const groups = computed(() =>
+  AXIS_GROUPS.map((group) => ({
+    name: group.name,
+    axes: group.axes
+      .map((id) => AXES.find((a) => a.id === id))
+      .filter((a): a is Axis => !!a),
+  })).filter((group) => group.axes.length > 0),
+)
 
 const esc = useEscLayerManual(() => (open.value = false))
 // 面板一直挂着、层是开开关关：真正打开的那一刻才占住 Esc，
@@ -213,7 +228,19 @@ const FACES: Record<string, string> = {
               <col v-for="n in COLS" :key="n" />
             </colgroup>
             <tbody>
-              <tr v-for="a in AXES" :key="a.id">
+              <!--
+                分组：每段一条小标题。
+                七条轴并排铺在一张表里时，用户第一眼看到的是"七个并列的选择"，
+                而它们其实是四件不同的事 —— 分组不改任何能力，只把"一次要读几行"降下来。
+                分组本身写在注册表里（AXIS_GROUPS），这里只负责画。
+              -->
+              <template v-for="group in groups" :key="group.name">
+              <tr class="matrix__group">
+                <th class="matrix__group-k label" :colspan="COLS + 1" scope="colgroup">
+                  {{ group.name }}
+                </th>
+              </tr>
+              <tr v-for="a in group.axes" :key="a.id">
                 <th scope="row" class="rowhead">
                   <span class="rowhead__name">{{ a.name }}</span>
                   <span class="rowhead__note">{{ a.note }}</span>
@@ -271,6 +298,7 @@ const FACES: Record<string, string> = {
                 <!-- 补齐到 COLS：表格左右对齐靠的是列，不是空着不写 -->
                 <td v-for="n in COLS - a.options.length" :key="`pad${n}`" class="pad" />
               </tr>
+              </template>
             </tbody>
           </table>
         </div>
@@ -342,6 +370,18 @@ const FACES: Record<string, string> = {
   table-layout: fixed;
 }
 .matrix__c0 { width: 132px; }
+
+/*
+ * 分组小标题（颜色 / 形与密度 / 字号字体 / 交互与浮层）。
+ * 上留白大于下留白 —— 它标的是"下一段从这里开始"，不是"上一段到此为止"。
+ * 不做 sticky：面板的底是半透明的，粘住的单元格会让身后的行透出来，反而更乱。
+ */
+.matrix__group-k {
+  padding: var(--s4) var(--s2) 0 0;
+  color: var(--ink-3);
+  text-align: left;
+  font-weight: 600;
+}
 
 /* 行头：轴名 + 一句话 + 退回默认。压在上边线里，像表格的栏目 */
 .rowhead {
