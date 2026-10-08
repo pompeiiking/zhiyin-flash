@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import Bubble from '@/components/console/Bubble.vue'
+import GlyphIcon from '@/components/ui/GlyphIcon.vue'
 import { useSessionStore } from '@/stores/session'
 import { groupIntel, readFetched, readIntelText, readShares } from '@/lib/intel'
 
@@ -101,7 +102,7 @@ onMounted(() => {
         <li v-for="(group, i) in groups" :key="group.kind">
           <span class="chain__k label">{{ group.label }}</span>
           <span class="chain__n mono">{{ group.items.length }}</span>
-          <span v-if="i < groups.length - 1" class="chain__arrow" aria-hidden="true">→</span>
+          <GlyphIcon v-if="i < groups.length - 1" class="chain__arrow" name="arrow-right" :size="12" />
         </li>
       </ol>
 
@@ -152,7 +153,7 @@ onMounted(() => {
       >
         {{ session.intelBusy ? '正在取…' : '现在去取一次' }}
       </button>
-      <button v-if="items.length" class="act" type="button" @click.stop="open">看全部 →</button>
+      <button v-if="items.length" class="act" type="button" @click.stop="open">看全部 <GlyphIcon name="arrow-right" :size="13" /></button>
     </footer>
   </Bubble>
 </template>

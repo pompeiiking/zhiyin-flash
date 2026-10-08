@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import Overlay from '@/components/console/Overlay.vue'
+import GlyphIcon from '@/components/ui/GlyphIcon.vue'
 import { track } from '@/api/client'
 import {
   getDirectionPlans,
@@ -189,7 +190,7 @@ const pct = (v: number) => `${Math.round(Math.max(0, Math.min(1, v)) * 100)}%`
 
       <p class="label foot">
         {{ plans.some((plan) => plan.match_score != null) ? '匹配度怎么算：' + data?.match_score_method : '当前没有可核验的匹配分数。' }}
-        <button class="link" type="button" @click="openMatrix">看匹配矩阵怎么算的 →</button>
+        <button class="link" type="button" @click="openMatrix">看匹配矩阵怎么算的 <GlyphIcon name="arrow-right" :size="13" /></button>
       </p>
     </template>
   </Overlay>

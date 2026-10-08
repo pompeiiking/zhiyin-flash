@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import Overlay from '@/components/console/Overlay.vue'
 import AiFrame from '@/components/ai/AiFrame.vue'
 import CanvasMenu, { type MenuItem } from '@/components/console/CanvasMenu.vue'
+import GlyphIcon from '@/components/ui/GlyphIcon.vue'
 import { dayAdviceTask, type DayAdvice } from '@/ai/registry'
 import { useDayPlan, ymd, weekdayOf } from '@/composables/useDayPlan'
 import { useSessionStore } from '@/stores/session'
@@ -169,11 +170,11 @@ async function saveTodo() {
       <!-- 左：一个月 -->
       <nav class="month sheet sheet--quiet" aria-label="日历">
         <header class="month__bar">
-          <button class="step" type="button" aria-label="上个月" @click="shift(-1)">←</button>
+          <button class="step" type="button" aria-label="上个月" @click="shift(-1)"><GlyphIcon name="arrow-left" :size="14" /></button>
           <span class="month__label">
             {{ cursor.getFullYear() }} 年 {{ cursor.getMonth() + 1 }} 月
           </span>
-          <button class="step" type="button" aria-label="下个月" @click="shift(1)">→</button>
+          <button class="step" type="button" aria-label="下个月" @click="shift(1)"><GlyphIcon name="arrow-right" :size="14" /></button>
         </header>
 
         <ol class="week">

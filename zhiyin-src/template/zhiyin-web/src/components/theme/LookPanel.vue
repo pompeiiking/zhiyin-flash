@@ -34,6 +34,7 @@ import {
 } from '@/lib/theme'
 import { useEscLayerManual } from '@/composables/useEscLayer'
 import { lookPanelAnchor, lookPanelOpen } from '@/composables/useLookPanel'
+import GlyphIcon from '@/components/ui/GlyphIcon.vue'
 
 const open = lookPanelOpen
 const root = ref<HTMLElement | null>(null)
@@ -201,7 +202,7 @@ const FACES: Record<string, string> = {
             <p class="head__now">{{ recipe }}</p>
           </div>
           <p class="label head__hint">一行一条轴 · 点格子换这一条 · 身后那块界面就是实时预览</p>
-          <button class="head__x" type="button" aria-label="收起" @click="open = false">✕</button>
+          <button class="head__x" type="button" aria-label="收起" @click="open = false"><GlyphIcon name="close" :size="14" /></button>
         </header>
 
         <!-- 矩阵：列数取最宽的那条轴，所有行共用，列才对齐 -->

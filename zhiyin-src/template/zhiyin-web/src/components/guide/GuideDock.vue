@@ -21,6 +21,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useSessionStore } from '@/stores/session'
 import { buildGuide, GUIDE_NOTE, GUIDE_TITLE } from '@/lib/guide'
 import NextAsk from '@/components/console/NextAsk.vue'
+import GlyphIcon from '@/components/ui/GlyphIcon.vue'
 
 const session = useSessionStore()
 const route = useRoute()
@@ -55,10 +56,7 @@ function go(tip: { kind: string; to: string }) {
       <transition name="say" mode="out-in">
         <span :key="view.line" class="note__line">{{ view.line }}</span>
       </transition>
-      <svg class="note__caret" width="10" height="10" viewBox="0 0 12 12" aria-hidden="true">
-        <path d="M2.6 4.4 6 7.8l3.4-3.4" fill="none" stroke="currentColor" stroke-width="1.6"
-              stroke-linecap="round" stroke-linejoin="round" />
-      </svg>
+      <GlyphIcon class="note__caret" name="caret-down" :size="11" />
     </button>
 
     <transition name="unfold">
@@ -73,7 +71,7 @@ function go(tip: { kind: string; to: string }) {
               <button class="row" type="button" @click="go(tip)">
                 <span class="row__label">{{ tip.label }}</span>
                 <span class="row__note">{{ tip.note }}</span>
-                <span class="row__arrow" aria-hidden="true">→</span>
+                <GlyphIcon class="row__arrow" name="arrow-right" :size="13" />
               </button>
             </li>
           </ul>
@@ -135,10 +133,21 @@ function go(tip: { kind: string; to: string }) {
   animation: mo-breathe 2.6s var(--ease-out) infinite;
 }
 .note__k { color: var(--mk-orange); flex: 0 0 auto; }
+/*
+ * 便签那句话（收起来时唯一的一行）。
+ *
+ * 原来写的是 `white-space: nowrap` + `ellipsis` + `max-width: 34ch` —— 而 `ch` 是**拉丁数字 0**
+ * 的宽度，中文一个字约占 2ch，于是 34ch 只装得下十七八个汉字：一句话被截在"…这不…"，
+ * 用户读到的是"这个软件自己都说不清"（两轮评审都点了这条，实测在控制台被裁掉 238px）。
+ *
+ * 现在允许**两行**、按中文字宽给上限（24em ≈ 24 个汉字），于是常见那句话能整句读完；
+ * 再长的仍然收住 —— 便签长高一行的代价可以接受，长成一个段落的代价不可以。
+ */
 .note__line {
-  font-size: var(--fs-small); color: var(--ink-1);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  max-width: 34ch;
+  font-size: var(--fs-small); color: var(--ink-1); line-height: 1.55;
+  max-width: 24em;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden; overflow-wrap: anywhere;
 }
 .note__caret { color: var(--ink-3); flex: 0 0 auto; transition: transform var(--dur) var(--ease-out); }
 .note[aria-expanded="true"] .note__caret { transform: rotate(180deg); }

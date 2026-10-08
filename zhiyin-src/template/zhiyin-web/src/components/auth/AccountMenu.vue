@@ -13,6 +13,7 @@ import { useSessionStore } from '@/stores/session'
 import { useEscLayerManual } from '@/composables/useEscLayer'
 import { initialOf, roleLabel } from '@/lib/identity'
 import { authToken } from '@/api/client'
+import GlyphIcon from '@/components/ui/GlyphIcon.vue'
 
 /*
  * 这个面板只管"你是谁"：身份、回门户、退出登录。
@@ -124,7 +125,7 @@ function backToPortal() {
             <li>
               <button class="row row--go" type="button" @click="backToPortal">
                 <span>回门户看看</span>
-                <span class="mono row__tag row__tag--go">→</span>
+                <GlyphIcon class="mono row__tag row__tag--go" name="arrow-right" :size="13" />
               </button>
             </li>
           </ul>

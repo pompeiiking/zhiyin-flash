@@ -17,6 +17,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import Overlay from '@/components/console/Overlay.vue'
 import RenderableBlock from '@/components/render/RenderableBlock.vue'
+import GlyphIcon from '@/components/ui/GlyphIcon.vue'
 import { getTheoryCard, track, uploadMaterial } from '@/api/client'
 import { useSessionStore } from '@/stores/session'
 import type { GuideOption } from '@/lib/asks'
@@ -498,10 +499,10 @@ function openDisclosure() {
         -->
         <div v-if="scrollTop > 120 || !atBottom" class="jump">
           <button v-if="scrollTop > 120" class="jump__b label" type="button" @click="jump('top')">
-            回到顶部 ↑
+            回到顶部 <GlyphIcon name="arrow-up" :size="12" />
           </button>
           <button v-if="!atBottom" class="jump__b label" type="button" @click="jump('latest')">
-            回到最新消息 ↓
+            回到最新消息 <GlyphIcon name="arrow-down" :size="12" />
           </button>
         </div>
 
@@ -625,7 +626,7 @@ function openDisclosure() {
 
           <div class="tie">
             <span class="label">聊完它会接着往下做 —— 不用你回头找路。</span>
-            <button class="label tie__go" type="button" @click="goReport">看完整报告 →</button>
+            <button class="label tie__go" type="button" @click="goReport">看完整报告 <GlyphIcon name="arrow-right" :size="12" /></button>
           </div>
         </div>
       </section>

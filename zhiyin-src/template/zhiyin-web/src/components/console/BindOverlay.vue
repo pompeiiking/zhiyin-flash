@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import Overlay from '@/components/console/Overlay.vue'
 import AiFrame from '@/components/ai/AiFrame.vue'
+import GlyphIcon from '@/components/ui/GlyphIcon.vue'
 import { bindChsiTask, type BindResult } from '@/ai/registry'
 import { importAcademic, importAcademicFiles, type AcademicImportAck } from '@/api/client'
 import { useSessionStore } from '@/stores/session'
@@ -397,7 +398,7 @@ async function close() {
               href="https://my.chsi.com.cn/archive/index.jsp"
               target="_blank"
               rel="noreferrer"
-            >去学信档案申请 →</a>
+            >去学信档案申请 <GlyphIcon name="arrow-right" :size="13" /></a>
           </div>
 
           <p class="label promise">
@@ -537,7 +538,7 @@ async function close() {
                   :aria-expanded="pasteOpen.courses"
                   @click="pasteOpen.courses = !pasteOpen.courses"
                 >
-                  <span class="caret" aria-hidden="true">›</span>
+                  <GlyphIcon class="caret" name="chevron-right" :size="12" />
                   {{ coursesFile ? '改用整页复制粘贴' : '没有文件？直接粘贴原文' }}
                 </button>
                 <textarea
@@ -610,7 +611,7 @@ async function close() {
                   :aria-expanded="pasteOpen.grades"
                   @click="pasteOpen.grades = !pasteOpen.grades"
                 >
-                  <span class="caret" aria-hidden="true">›</span>
+                  <GlyphIcon class="caret" name="chevron-right" :size="12" />
                   {{ gradesFile ? '改用整页复制粘贴' : '没有文件？直接粘贴原文' }}
                 </button>
                 <textarea

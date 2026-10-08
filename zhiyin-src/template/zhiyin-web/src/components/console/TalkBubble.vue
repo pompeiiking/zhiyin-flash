@@ -16,6 +16,7 @@
 import { computed } from 'vue'
 import Bubble from '@/components/console/Bubble.vue'
 import NextAsk from '@/components/console/NextAsk.vue'
+import GlyphIcon from '@/components/ui/GlyphIcon.vue'
 import { useSessionStore } from '@/stores/session'
 
 const session = useSessionStore()
@@ -62,7 +63,7 @@ function open() {
     <footer class="foot">
       <!-- AI 在等什么，就摆在这一块上：点它直接进对话，且已经站在问题上 -->
       <NextAsk v-if="session.nextAsk" compact />
-      <span v-else class="label foot__cta">进去说一句 →</span>
+      <span v-else class="label foot__cta">进去说一句 <GlyphIcon name="arrow-right" :size="12" /></span>
     </footer>
   </Bubble>
 </template>

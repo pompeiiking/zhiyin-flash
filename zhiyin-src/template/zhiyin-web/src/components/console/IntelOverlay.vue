@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import Overlay from '@/components/console/Overlay.vue'
+import GlyphIcon from '@/components/ui/GlyphIcon.vue'
 import { useSessionStore } from '@/stores/session'
 import {
   groupIntel,
@@ -312,7 +313,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
               target="_blank"
               rel="noopener noreferrer"
             >
-              打开原页面 ↗
+              打开原页面 <GlyphIcon name="external" :size="12" />
             </a>
           </footer>
         </article>
@@ -320,7 +321,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         <!-- 翻页 + 把这一条交给 AI -->
         <footer class="pager">
           <button class="pg" type="button" :disabled="at === 0" @click="go(at - 1)">
-            ← 上一条
+            <GlyphIcon name="arrow-left" :size="13" /> 上一条
           </button>
 
           <button class="ask" type="button" @click="session.askAboutIntel(askText(current))">
@@ -328,7 +329,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
           </button>
 
           <button class="pg" type="button" :disabled="at >= total - 1" @click="go(at + 1)">
-            下一条 →
+            下一条 <GlyphIcon name="arrow-right" :size="13" />
           </button>
         </footer>
       </template>

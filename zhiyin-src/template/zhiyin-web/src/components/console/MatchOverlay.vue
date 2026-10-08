@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import Overlay from '@/components/console/Overlay.vue'
 import AiFrame from '@/components/ai/AiFrame.vue'
+import GlyphIcon from '@/components/ui/GlyphIcon.vue'
 import MatchMatrix from '@/components/charts/MatchMatrix.vue'
 import { matchTask, type MatchResult } from '@/ai/registry'
 import { useSessionStore } from '@/stores/session'
@@ -100,7 +101,8 @@ function decide(kind: 'accept' | 'dismiss') {
 
               <div class="act">
                 <button class="btn primary" type="button" :aria-pressed="decided.accepted" @click="decide('accept')">
-                  {{ decided.accepted ? '已采纳 ✓' : '采纳这条推荐' }}
+                  <template v-if="decided.accepted">已采纳 <GlyphIcon name="check" :size="13" /></template>
+                  <template v-else>采纳这条推荐</template>
                 </button>
                 <button class="btn ghost" type="button" :aria-pressed="decided.dismissed" @click="decide('dismiss')">
                   {{ decided.dismissed ? '已否决' : '不适合我' }}

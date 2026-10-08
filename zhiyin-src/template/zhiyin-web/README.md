@@ -21,6 +21,19 @@ npm run build        # typecheck + 产出 dist/
 
 开发期要指到别的后端：`ZHIYIN_API_TARGET=http://127.0.0.1:8012 npm run dev`。
 
+### 一个会骗人的坑：改完看起来"没生效"
+
+同一秒里连着改同一个文件的多处（例如批量替换），vite 的文件监听可能只捕到**中间那一版**，
+然后一直供那份转换结果：源码是新的、页面是旧的，浏览器里怎么刷新都一样，
+`?t=` 也停在旧时间戳。**症状**是"我明明改了，真机上没变"。
+
+遇到过就做其中之一（都能立刻恢复）：
+
+- 碰一下入口：改一处 `src/main.ts` 的注释（入口变了，整张模块图作废）；
+- 或者重启 `npm run dev`。
+
+排查时先在页面里 `fetch('/src/…/Xxx.vue')` 看服务端供的是哪一版 —— 别靠肉眼猜。
+
 ### 部署形态
 
 `Dockerfile` 是两段构建：Node 装依赖 + `npm run build` → nginx 托管 `dist/`。
@@ -38,7 +51,7 @@ npm run build        # typecheck + 产出 dist/
 | 控制台 · 画布 | `/` | `views/ConsoleView.vue` | `console/{AgentRail,Bubble,PortraitBubble,TodoBubble,TalkBubble,MarketBubble,PeopleBubble,ReviewBubble,CollectBubble,CalendarBubble,AchievementsBubble}`、`console/{NextAsk,CanvasMenu}`、`float/{FloatLayer,FloatCard}`、`composables/useCanvasDrag`、`lib/tiling` | `GET /app/workspace`、`POST /app/conversation/message`、`GET /app/notifications/pending` |
 | 控制台 · 覆盖层 | `/` | `views/ConsoleView.vue` | `console/{PortraitOverlay,TasksOverlay,TalkOverlay,CollectOverlay,IntelOverlay,BriefOverlay,BindOverlay,TimetableOverlay,MatchOverlay,PlansOverlay,ActionOverlay,SessionsOverlay,ReviewOverlay,CalendarOverlay,AchievementsOverlay}`、`console/{Overlay,EvidenceDrawer}`、`portrait/{PortraitSummary,PortraitChart,PortraitFieldList,PortraitDetail,PortraitEmpty}`、`render/RenderableBlock`、`charts/MatchMatrix`、`charts/Timetable` | `POST /app/dimensions/{id}`、`POST /app/gaps/{id}/clarify`、`POST /app/brief/today`、`GET /app/plan/directions`、`POST /app/plan/directions/{id}/select`、`GET /app/plan/action`、`PATCH /app/plan/action/tasks`、`GET /app/calendar`、`GET /app/achievements`、`GET /app/sessions`、`GET /app/sessions/{id}/turns`、`GET /app/track/events`、`POST /app/plan/timetable`、`POST /app/plan/todos/suggestions`、`POST /app/match/careers`、`POST /app/chsi/bind`、`GET|POST|PATCH|DELETE /app/notes`、`POST /app/academic/import`、`POST /app/academic/import/file`、`POST /app/conversation/material`、`GET /app/theory-cards/{id}`、`GET /app/intel`、`POST /app/intel/refresh` |
 | 报告 | `/report` | `views/ReportView.vue` | `ai/AiFrame`、`charts/{TrendLine,ChartFrame,SketchPath}` | `GET /app/report/full-text`、`POST /app/report/summary`、`GET /app/assets/report/versions`（版本历史）、`POST /app/assets/export` |
-| 全局外壳 | 全部 | `App.vue` | `auth/{AuthLayer,AccountMenu}`、`guide/GuideDock`、`theme/{LookPanel,LookTrigger}` | `POST /app/auth/login`、`POST /app/auth/register`、`POST /app/auth/logout` |
+| 全局外壳 | 全部 | `App.vue` | `auth/{AuthLayer,AccountMenu}`、`guide/GuideDock`、`theme/{LookPanel,LookTrigger}`、`ui/GlyphIcon` | `POST /app/auth/login`、`POST /app/auth/register`、`POST /app/auth/logout` |
 | 登录态与路由 | — | `router.ts` | — | `GET /app/task/enter` |
 
 `charts/SketchPath` 与 `lib/sketch.ts` 是**门户那张手绘地图**的底座（线、框、圆都经它落到 SVG）。

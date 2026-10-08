@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { STAGES, type FloatItem, type Notice } from '@/data/content'
 import NextAsk from '@/components/console/NextAsk.vue'
+import GlyphIcon from '@/components/ui/GlyphIcon.vue'
 import { useSessionStore } from '@/stores/session'
 
 /**
@@ -313,7 +314,7 @@ onMounted(() => {
           </li>
         </ol>
         <button class="panel__more label" type="button" @click="session.openDrawer('谁在什么时候替你做了什么', '含每次为什么换人', [])">
-          看完整交接记录 →
+          看完整交接记录 <GlyphIcon name="arrow-right" :size="12" />
         </button>
       </div>
     </transition>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import Bubble from '@/components/console/Bubble.vue'
+import GlyphIcon from '@/components/ui/GlyphIcon.vue'
 import NextAsk from '@/components/console/NextAsk.vue'
 import type { ActionTask } from '@/api/client'
 import { useSessionStore } from '@/stores/session'
@@ -310,7 +311,7 @@ const emit = defineEmits<{ (e: 'close'): void }>()
         为什么这一件
       </button>
       <button class="label foot__cta" type="button" @click="session.openOverlay('tasks')">
-        全部任务 →
+        全部任务 <GlyphIcon name="arrow-right" :size="12" />
       </button>
     </footer>
   </Bubble>

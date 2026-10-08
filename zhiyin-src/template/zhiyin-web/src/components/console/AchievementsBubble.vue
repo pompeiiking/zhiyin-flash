@@ -17,6 +17,7 @@
  */
 import { computed } from 'vue'
 import Bubble from '@/components/console/Bubble.vue'
+import GlyphIcon from '@/components/ui/GlyphIcon.vue'
 import { useSessionStore } from '@/stores/session'
 
 const session = useSessionStore()
@@ -82,7 +83,7 @@ const remaining = computed(() => Math.max(0, total.value - unlockedCount.value))
     <footer class="foot">
       <span v-if="remaining > 0" class="label foot__rest">还有 {{ remaining }} 枚没拿到</span>
       <span v-else class="label foot__rest">这一批都拿到了</span>
-      <span class="label foot__go">看全部 →</span>
+      <span class="label foot__go">看全部 <GlyphIcon name="arrow-right" :size="12" /></span>
     </footer>
   </Bubble>
 </template>

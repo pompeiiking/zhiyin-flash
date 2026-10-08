@@ -34,6 +34,7 @@ import TasksOverlay from '@/components/console/TasksOverlay.vue'
 import BriefOverlay from '@/components/console/BriefOverlay.vue'
 import AccountMenu from '@/components/auth/AccountMenu.vue'
 import LookTrigger from '@/components/theme/LookTrigger.vue'
+import GlyphIcon from '@/components/ui/GlyphIcon.vue'
 import { useSessionStore } from '@/stores/session'
 import { useCanvasDrag } from '@/composables/useCanvasDrag'
 import { shouldCompact, tileLayout, type TileInput } from '@/lib/tiling'
@@ -1003,7 +1004,7 @@ onBeforeUnmount(() => {
             三套方案来自「决策」这一步：每套带匹配度、契合依据与主要风险。
             选择可撤回 —— 再选另一套就是撤回。
           </p>
-          <span class="label bindcard__cta">看这三套怎么比 →</span>
+          <span class="label bindcard__cta">看这三套怎么比 <GlyphIcon name="arrow-right" :size="12" /></span>
         </Bubble>
 
         <!--
@@ -1036,7 +1037,7 @@ onBeforeUnmount(() => {
             计划来自「行动」这一步：阶段里程碑 + 每一条能勾掉的小任务，
             关键节点同时写进日历。
           </p>
-          <span class="label bindcard__cta">看我接下来做什么 →</span>
+          <span class="label bindcard__cta">看我接下来做什么 <GlyphIcon name="arrow-right" :size="12" /></span>
         </Bubble>
 
         <Bubble
@@ -1061,7 +1062,7 @@ onBeforeUnmount(() => {
           <p class="bindcard__d">
             课表来自你学校的教务系统（学信网没有课表）。点开按你的课表算空档；还没导入就先导一份。
           </p>
-          <span class="label bindcard__cta">看课表与空档 →</span>
+          <span class="label bindcard__cta">看课表与空档 <GlyphIcon name="arrow-right" :size="12" /></span>
         </Bubble>
 
         <!--
@@ -1123,7 +1124,7 @@ onBeforeUnmount(() => {
           <span class="label bindcard__k">诊断 · 职业顾问</span>
           <h3 class="bindcard__t">方向匹配与推荐</h3>
           <p class="bindcard__d">拿职业条目比对你的课程与成绩。点开就按你有的东西比一遍。</p>
-          <span class="label bindcard__cta">看匹配矩阵 →</span>
+          <span class="label bindcard__cta">看匹配矩阵 <GlyphIcon name="arrow-right" :size="12" /></span>
         </Bubble>
 
         <Bubble
@@ -1154,7 +1155,7 @@ onBeforeUnmount(() => {
 
           <footer class="greet__foot">
             <NextAsk compact />
-            <span class="label greet__cta">详情 →</span>
+            <span class="label greet__cta">详情 <GlyphIcon name="arrow-right" :size="12" /></span>
           </footer>
         </Bubble>
 

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import Bubble from '@/components/console/Bubble.vue'
 import NextAsk from '@/components/console/NextAsk.vue'
+import GlyphIcon from '@/components/ui/GlyphIcon.vue'
 import { PORTRAIT } from '@/data/content'
 import { computed } from 'vue'
 import { useSessionStore } from '@/stores/session'
@@ -123,7 +124,7 @@ const hueOf = (i: number) => `var(--mk-${HUES[i % HUES.length]})`
       >
         还缺 {{ P.gaps.length }} 条 · 现在补
       </button>
-      <span class="label foot__cta">看完整分析 →</span>
+      <span class="label foot__cta">看完整分析 <GlyphIcon name="arrow-right" :size="12" /></span>
     </footer>
   </Bubble>
 </template>

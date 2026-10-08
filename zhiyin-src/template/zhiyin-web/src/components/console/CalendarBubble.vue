@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import Bubble from '@/components/console/Bubble.vue'
+import GlyphIcon from '@/components/ui/GlyphIcon.vue'
 import { useDayPlan, ymd, weekdayOf } from '@/composables/useDayPlan'
 import { useSessionStore } from '@/stores/session'
 
@@ -110,7 +111,7 @@ function open(date: Date) {
 
     <footer class="foot">
       <button class="chip" type="button" @click.stop="open(today)">看今天</button>
-      <span class="label foot__cta">打开日历 →</span>
+      <span class="label foot__cta">打开日历 <GlyphIcon name="arrow-right" :size="12" /></span>
     </footer>
   </Bubble>
 </template>

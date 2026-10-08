@@ -10,6 +10,7 @@ import {
 } from '@/api/client'
 import AiFrame from '@/components/ai/AiFrame.vue'
 import LookTrigger from '@/components/theme/LookTrigger.vue'
+import GlyphIcon from '@/components/ui/GlyphIcon.vue'
 import { reportTask, type ReportSummary } from '@/ai/registry'
 import { useSessionStore } from '@/stores/session'
 import { failureText } from '@/lib/failure'
@@ -117,7 +118,9 @@ onMounted(() => {
   <div class="report">
     <header class="top">
       <div class="top__l">
-        <button class="back label" type="button" @click="router.push('/')">← 回到今天</button>
+        <button class="back label" type="button" @click="router.push('/')">
+          <GlyphIcon name="arrow-left" :size="13" /> 回到今天
+        </button>
         <span class="mono top__sep">/</span>
         <span class="label top__crumb">完整报告</span>
         <!-- 报告页是最常拿给人看的一页，外观台在这儿也得够得着 -->

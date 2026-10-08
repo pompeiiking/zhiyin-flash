@@ -11,6 +11,7 @@ import PortraitFieldList from '@/components/portrait/PortraitFieldList.vue'
 import PortraitDetail from '@/components/portrait/PortraitDetail.vue'
 import PortraitEmpty from '@/components/portrait/PortraitEmpty.vue'
 import AiFrame from '@/components/ai/AiFrame.vue'
+import GlyphIcon from '@/components/ui/GlyphIcon.vue'
 import { portraitTask, type PortraitAnalysis } from '@/ai/registry'
 
 /**
@@ -401,7 +402,7 @@ const leadEntry = computed<'dims' | 'gaps' | null>(() => {
                           : '还没有 —— 说几句就有了' }}
                       </span>
                     </span>
-                    <span class="mrow__go" aria-hidden="true">→</span>
+                    <GlyphIcon class="mrow__go" name="arrow-right" :size="13" />
                   </button>
                 </li>
                 <li>
@@ -411,7 +412,7 @@ const leadEntry = computed<'dims' | 'gaps' | null>(() => {
                       <span class="mrow__t">档案信息</span>
                       <span class="mrow__d">学校、专业、学籍：从权威记录抄下来的事实</span>
                     </span>
-                    <span class="mrow__go" aria-hidden="true">→</span>
+                    <GlyphIcon class="mrow__go" name="arrow-right" :size="13" />
                   </button>
                 </li>
                 <li>
@@ -419,14 +420,17 @@ const leadEntry = computed<'dims' | 'gaps' | null>(() => {
                     class="mrow" :class="{ 'mrow--lead': leadEntry === 'gaps' }"
                     type="button" @click="go('gaps')"
                   >
-                    <span class="mrow__badge">{{ gaps.length || '✓' }}</span>
+                    <span class="mrow__badge">
+                      <template v-if="gaps.length">{{ gaps.length }}</template>
+                      <GlyphIcon v-else name="check" :size="14" />
+                    </span>
                     <span class="mrow__body">
                       <span class="mrow__t">还差什么</span>
                       <span class="mrow__d">
                         {{ gaps.length ? '补上它，后面的判断才稳' : '关键字段都拿到了，没有缺口' }}
                       </span>
                     </span>
-                    <span class="mrow__go" aria-hidden="true">→</span>
+                    <GlyphIcon class="mrow__go" name="arrow-right" :size="13" />
                   </button>
                 </li>
                 <li>
@@ -436,7 +440,7 @@ const leadEntry = computed<'dims' | 'gaps' | null>(() => {
                       <span class="mrow__t">整份画像的判断</span>
                       <span class="mrow__d">把这一份合起来读一遍：亮点、要小心、下一步</span>
                     </span>
-                    <span class="mrow__go" aria-hidden="true">→</span>
+                    <GlyphIcon class="mrow__go" name="arrow-right" :size="13" />
                   </button>
                 </li>
               </ul>
@@ -480,16 +484,16 @@ const leadEntry = computed<'dims' | 'gaps' | null>(() => {
             <li v-for="gap in gaps" :key="gap.id">
               <button class="gap" type="button" @click="showGap(gap)">
                 <span class="gap__t">{{ gap.name || gap.id }}</span>
-                <span class="gap__go" aria-hidden="true">看怎么补 →</span>
+                <span class="gap__go" aria-hidden="true">看怎么补 <GlyphIcon name="arrow-right" :size="12" /></span>
                 <span class="gap__why">{{ gap.question }}</span>
                 <span class="gap__next">{{ gap.suggested }}</span>
               </button>
             </li>
           </ul>
           <div v-else class="done">
-            <span class="done__mark" aria-hidden="true">✓</span>
+            <GlyphIcon class="done__mark" name="check" :size="15" />
             <p class="done__t">画像里该有的都在了。</p>
-            <button class="link" type="button" @click="go('analysis')">看整份判断 →</button>
+            <button class="link" type="button" @click="go('analysis')">看整份判断 <GlyphIcon name="arrow-right" :size="13" /></button>
           </div>
         </div>
 
