@@ -11,8 +11,9 @@
  * 两句话都按规则 code 从文案包取（`badge.<key>.label` / `.how`）：
  * 规则在 `badge_rules.json`、名字在 `copies.json`，两边各自可改，都不用发版。
  */
-import { computed } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import Overlay from '@/components/console/Overlay.vue'
+import { useInkMark } from '@/composables/useInkMark'
 import { useSessionStore } from '@/stores/session'
 
 const session = useSessionStore()
@@ -43,6 +44,32 @@ function dayOf(iso: string | null | undefined): string {
   if (Number.isNaN(at.getTime())) return ''
   return `${at.getMonth() + 1} 月 ${at.getDate()} 日`
 }
+
+/*
+ * ── 手绘：拿到的那几枚，外面圈一道 ──────────────────────────────────
+ *
+ * 圈的是行首那一枚小圆点（`.mark`）—— 它才是"这一枚"本身，外面这道手绘圈
+ * 说的是"这一枚是你的"。圈整行会变成横贯整栏的一条扁椭圆；圈名字也不行：
+ * 名字是网格项，盒子会被拉到整列宽，圈出来中间全是空的。
+ *
+ * 没解锁的不圈 —— 没拿到的画上圈就是"你已经有了"，那是假话。
+ */
+const rowsEl = ref<HTMLElement | null>(null)
+
+const ink = useInkMark({
+  targets: () => Array.from(rowsEl.value?.querySelectorAll<HTMLElement>('li.done .mark') ?? []),
+  // 与门户那个手绘圈同一支笔：记号笔绿、绕两圈（同一处笔迹的写法）
+  shape: 'circle',
+  token: '--mk-green',
+  fallback: '#257040',
+  strokeWidth: 2,
+  padding: 5,
+  iterations: 2,
+  animationDuration: 720,
+})
+
+/* 这份记录是异步来的：它比浮层到得晚时，上面那几圈还没有落点，到了再补画一次 */
+watch(items, () => void nextTick(() => ink.redraw()))
 </script>
 
 <template>
@@ -59,7 +86,7 @@ function dayOf(iso: string | null | undefined): string {
 
     <p v-if="!total" class="warn">这份记录还没读出来（可能是刚才没连上）。过一会儿再打开看看。</p>
 
-    <ul v-else class="rows">
+    <ul v-else ref="rowsEl" class="rows">
       <li v-for="item in rows" :key="item.key" :class="{ done: item.unlocked }">
         <span class="mark" aria-hidden="true">
           <svg v-if="item.unlocked" viewBox="0 0 14 14">
@@ -90,7 +117,15 @@ function dayOf(iso: string | null | undefined): string {
 .lead { padding: var(--s5); font-size: var(--fs-small); color: var(--ink-2); line-height: 1.8; }
 .warn { padding: var(--s5); color: var(--warn); font-size: var(--fs-small); }
 .rows { list-style: none; margin: var(--s4) 0 0; padding: 0; display: grid; }
+/*
+ * 每一行自己当定位祖先。
+ *
+ * 手绘那一圈是 rough-notation 插在元素**旁边**的一层绝对定位 SVG，坐标系取最近的
+ * 定位祖先。不设在这里，坐标系会落到整张纸上 —— 而这张纸打开时带缩放动画，
+ * 坐标系越大落笔偏得越明显（同一行自己当坐标系时，偏差不到一个像素）。
+ */
 .rows li {
+  position: relative;
   display: grid; grid-template-columns: 22px minmax(0, 1fr) 72px;
   gap: var(--s3); align-items: center;
   padding: var(--s3) var(--s5); border-top: 1px solid var(--line-1);

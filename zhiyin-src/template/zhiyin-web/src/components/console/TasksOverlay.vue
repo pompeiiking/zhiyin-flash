@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import Overlay from '@/components/console/Overlay.vue'
 import AiFrame from '@/components/ai/AiFrame.vue'
+import { useInkMark } from '@/composables/useInkMark'
 import { todoTask, type TodoSuggestion } from '@/ai/registry'
 import { useSessionStore } from '@/stores/session'
 
@@ -81,6 +82,40 @@ const done = computed<Row[]>(() =>
     .map((t) => ({ id: t.id, title: t.label, due: '你写的', from: '你自己', detail: '' })),
 )
 
+/*
+ * ── 手绘：勾掉之后，在那一句上画一道 ────────────────────────────────
+ *
+ * 这一笔的含义完全来自它落在**哪一侧**：被划掉的东西是"不用再做了"。
+ * 所以它只画在完成的那一侧 —— 同样的线画在还没做的事上，读出来是
+ * "这条作废了"，正好是反的。
+ *
+ * 也不给整栏都描：已完成那一栏里每一条本来就有印刷体的删除线
+ * （`.task.done .task__title`），整栏都加手绘就成了两套线互相压着。
+ * 手绘留给"刚做成的那一下" —— 那是动作，不是状态。
+ */
+const struck = ref<string[]>([])
+/** id → 已完成那一栏里的任务文字节点；节点卸载时被回填 null，顺手删掉 */
+const doneTitles = new Map<string, HTMLElement>()
+
+const ink = useInkMark({
+  targets: () =>
+    struck.value.map((id) => doneTitles.get(id)).filter((el): el is HTMLElement => !!el?.isConnected),
+  shape: 'strike-through',
+  // 与门户那个手绘圈同一支笔：记号笔绿
+  token: '--mk-green',
+  fallback: '#257040',
+  strokeWidth: 2.2,
+  iterations: 1, // 一笔划掉
+  multiline: true, // 标题折行时一行一道，而不是横穿整块
+  animationDuration: 560,
+})
+
+/** v-for 里没法给"某一条"起名字，所以用函数 ref 把落点收进这张表 */
+function trackDoneTitle(id: string, el: HTMLElement | null) {
+  if (el) doneTitles.set(id, el)
+  else doneTitles.delete(id)
+}
+
 function add() {
   session.addTodo(draft.value)
   draft.value = ''
@@ -94,6 +129,16 @@ async function adopt(s: TodoSuggestion) {
 
 function complete(t: Row) {
   session.toggleCustomTodo(t.id)
+  /*
+   * 勾掉之后这一行会从中间那一栏挪到右边（store 立刻翻 done，v-for 跟着重排），
+   * 所以要等这一轮渲染落定再去拿它的节点 —— 拿早了拿到的是已经不在文档里的旧节点，
+   * 那种节点上画不出记号（见 composable）。
+   *
+   * 只往里加、不清空：一口气勾掉几条时，先画的那几道不该跟着消失 ——
+   * 一笔划掉的东西又变回没划，读出来是"我又没做完"。
+   */
+  if (!struck.value.includes(t.id)) struck.value = [...struck.value, t.id]
+  void nextTick(() => ink.redraw())
 }
 
 function openDetail(t: Row) {
@@ -205,7 +250,7 @@ function openDetail(t: Row) {
         <p v-if="!done.length" class="label col__empty">还没勾掉过什么</p>
         <ul class="list">
           <li v-for="t in done" :key="t.id" class="task done">
-            <span class="task__title">{{ t.title }}</span>
+            <span :ref="(el) => trackDoneTitle(t.id, el as HTMLElement | null)" class="task__title">{{ t.title }}</span>
             <span class="label task__from">{{ t.from }}</span>
           </li>
         </ul>
@@ -248,7 +293,14 @@ function openDetail(t: Row) {
 .add__warn { margin: 6px 0 0; color: var(--warn, var(--accent)); line-height: 1.6; }
 
 .list { list-style: none; margin: 0; padding: 0; }
-.task { border-bottom: 1px solid var(--line-1); }
+/*
+ * 每一行自己当定位祖先。
+ *
+ * 手绘那一笔是 rough-notation 插在元素**旁边**的一层绝对定位 SVG，它的坐标系是
+ * 最近的那个定位祖先。不设在这里，坐标系就落到整块纸上 —— 而这张纸打开时是带缩放
+ * 动画的，坐标系越大，落笔的位置偏得越明显（同一行自己当坐标系时，偏差不到一个像素）。
+ */
+.task { position: relative; border-bottom: 1px solid var(--line-1); }
 .task:last-child { border-bottom: 0; }
 .task.now { box-shadow: inset 2px 0 0 var(--accent); }
 .task.done { opacity: 0.55; }
