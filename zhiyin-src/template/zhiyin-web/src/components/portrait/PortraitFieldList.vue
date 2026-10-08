@@ -46,6 +46,14 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   (e: 'select', key: string): void
+  /**
+   * 挂着「没定」的那一条被点了：上报"要补哪一条"，由外层送他去补。
+   *
+   * 这一层**只上报、不写数据**：补画像在全站只有一条写路径（把这一条交给主理去问，
+   * 见 PortraitOverlay 的 `supplement`）。清单是个展示件，它自己不知道该往库里写什么，
+   * 更不该替用户写 —— 画像里每一条都必须是"有出处的事实"。
+   */
+  (e: 'supplement', key: string): void
 }>()
 
 const judging = computed(() => props.kind === 'judgment')
@@ -100,6 +108,22 @@ function move(step: number) {
 
 /** 日期只留月-日：年份对"什么时候记的"没有增量 */
 const day = (iso: string) => (iso ? iso.slice(5, 10) : '未记录')
+
+/**
+ * 点一行去哪儿（issue #26 第四条）。
+ *
+ * 挂着「没定」的那一条，点它 = **去补它**：待验证的条目此前只是一行说明，
+ * 用户读完还得自己去找入口；现在点一下就直接落到补充录入的那条路上。
+ * 已经定了的条目语义不变，仍然是"看这一条"。
+ *
+ * 为什么不是"再挂一颗小按钮"：整行本来就是一颗 `<button>`（Tab 能到，
+ * 焦点环由 base.css 的 `:focus-visible` 统一给），行内再嵌一颗按钮既不合 HTML，
+ * 也会把整行这块大点击区切成两个小块 —— 待验证这一条要的恰恰是"整行都能点"。
+ */
+function pick(item: PortraitItem) {
+  if (item.pending) emit('supplement', item.key)
+  else emit('select', item.key)
+}
 </script>
 
 <template>
@@ -165,7 +189,7 @@ const day = (iso: string) => (iso ? iso.slice(5, 10) : '未记录')
             :class="{ 'row--rec': !judging, [`row--${tier(item.confidence)}`]: judging, 'row--on': item.key === selectedKey }"
             type="button"
             :aria-current="item.key === selectedKey"
-            @click="emit('select', item.key)"
+            @click="pick(item)"
           >
             <span class="row__name">
               {{ item.label }}

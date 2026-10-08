@@ -35,6 +35,8 @@ import BriefOverlay from '@/components/console/BriefOverlay.vue'
 import AccountMenu from '@/components/auth/AccountMenu.vue'
 import LookTrigger from '@/components/theme/LookTrigger.vue'
 import GlyphIcon from '@/components/ui/GlyphIcon.vue'
+/* 块名单的来源搬到了 `lib/blocks`：画布与「全部组件」面板都要读它 */
+import { BLOCK_LABELS, BLOCK_ORDER, CORE_COUNT } from '@/lib/blocks'
 import { useSessionStore } from '@/stores/session'
 import { useCanvasDrag } from '@/composables/useCanvasDrag'
 import { shouldCompact, tileLayout, type TileInput } from '@/lib/tiling'
@@ -105,7 +107,7 @@ const TILE_WEIGHTS: Record<string, number> = {
  * 所以它们要等"课程源"到位才出现 —— 否则点开只会撞上一句
  * "先绑定学信网导入课程"，把没接上的线说成接上了。
  */
-const BLOCK_ORDER = ['talk', 'portrait', 'todo', 'collect', 'plans', 'action', 'calendar', 'timetable', 'match', 'market', 'greet', 'people', 'review']
+/** 块的默认先后与显示名都来自 `lib/blocks`（画布与「全部组件」面板共用一份） */
 
 /** 画布用的格子数：列要 12（拖动引擎按 12 列找落点），行给细一点，切分才平滑 */
 const TILE_COLS = 12
@@ -184,9 +186,10 @@ const weightOf = (id: string) => {
 }
 
 /**
- * 画布上**真的渲染出来**的块有哪些。
+ * **数据上**有没有这一块（与"用户有没有挪开它"、"是不是被核心区上限挡住"都无关）。
  *
- * 这个清单必须与模板里的 v-if 一一对应 —— 它是"分格"的唯一判据。
+ * 这个清单必须与模板里的 v-if 一一对应 —— 它是"分格"与"渲染"共用的唯一判据
+ *（渲染那一层再减去 `hidden` 与 `capsAway`，见下面的 `visible`）。
  *
  * 【为什么这件事值得单独抽出来】此前分格的口径是"后端编排策略里有的块"，
  * 渲染的口径却是"模板里写了 v-if 的块"。两者不一致时，多出来的那块会掉进
@@ -201,28 +204,47 @@ const weightOf = (id: string) => {
  * "把漏掉的那一块补进列表"。补了三次说明修的不是地方：判据不该是策略，
  * 该是**渲染**。所以现在反过来 —— 先列出渲染，再让策略决定**顺序与权重**。
  */
-const renderedIds = computed(() => {
+const presentIds = computed(() => {
   const ids: string[] = []
   const push = (id: string, on: boolean) => {
     if (on) ids.push(id)
   }
   /* 与模板顺序一致，便于对照检查 */
-  push('portrait', visible('portrait'))
-  push('talk', visible('talk'))
-  push('todo', visible('todo'))
-  push('collect', visible('collect'))
-  push('plans', inStrategy('plans') && visible('plans'))
-  push('action', inStrategy('action') && visible('action'))
+  push('portrait', true)
+  push('talk', true)
+  push('todo', true)
+  push('collect', true)
+  push('plans', inStrategy('plans'))
+  push('action', inStrategy('action'))
   push('timetable', showTimetable.value)
-  push('calendar', inStrategy('calendar') && visible('calendar'))
+  push('calendar', inStrategy('calendar'))
   push('match', session.chsiBound)
-  push('market', inStrategy('market') && visible('market'))
-  push('greet', visible('greet'))
-  push('achievements', inStrategy('achievements') && visible('achievements'))
-  push('people', visible('people'))
-  push('review', visible('review'))
+  push('market', inStrategy('market'))
+  push('greet', true)
+  push('achievements', inStrategy('achievements'))
+  push('people', true)
+  push('review', true)
   return ids
 })
+
+/**
+ * 被**核心区上限**挡在画布外面的那几块。
+ *
+ * 只在用户还没自己管过块的时候才有内容。上限必须作用在**渲染**上，
+ * 而不只是分格上 —— 否则那一块照样画出来、只是掉进 `tileStyle` 的兜底格位
+ *（右下角一块 380×146 的小格子，内容被裁、压着别人）：
+ * 真机验证时正是这个症状（一屏 9 块，第 9 块没有格位）。
+ */
+const capsAway = computed(() => {
+  const managed = session.blocksHidden.length > 0 || session.blocksOrder.length > 0
+  if (managed) return new Set<string>()
+  const shown = order.value.filter(
+    (id) => presentIds.value.includes(id) && !session.blocksHidden.includes(id),
+  )
+  return new Set(shown.slice(CORE_COUNT))
+})
+
+const renderedIds = computed(() => presentIds.value.filter((id) => visible(id)))
 
 /**
  * 分格用的清单 = **渲染出来的块**，顺序取编排（order）。
@@ -232,10 +254,36 @@ const renderedIds = computed(() => {
  */
 const visibleIds = computed(() => {
   const rendered = renderedIds.value
-  const ordered = order.value.filter((id) => rendered.includes(id))
+  /*
+   * 用户自己排过顺序就用他那份（持久），否则用策略给的。
+   * 两份都要把"渲染出来但没登记在策略里"的块接在后面 —— 那是课表那一类
+   *（有数据才出现），漏了它就没有格位、也拖不动（见 reorder 的说明）。
+   */
+  const mine = session.blocksOrder.filter((id) => rendered.includes(id))
+  const base = mine.length
+    ? [...mine, ...order.value.filter((id) => !mine.includes(id))]
+    : order.value
+  const ordered = base.filter((id) => rendered.includes(id))
   const rest = rendered.filter((id) => !ordered.includes(id))
-  return [...ordered, ...rest]
+  const all = [...ordered, ...rest]
+  /*
+   * 核心区上限：**没被用户管过**的时候，一屏只铺前 CORE_COUNT 块。
+   *
+   * 一屏十几块正是 issue #22/#25 说的"卡片过多、布局杂乱、找不到重点"。
+   * 而用户一旦自己收过或排过（blocksHidden / blocksOrder 非空），就完全以他的为准 ——
+   * 他刚摆好的布局不该被一句规则改掉。剩下的块不消失，只是收进「全部组件」。
+   */
+  const managed = session.blocksHidden.length > 0 || session.blocksOrder.length > 0
+  return managed ? all : all.slice(0, CORE_COUNT)
 })
+
+/**
+ * 有多少块**画得出来、却没在画布上**（被核心区上限收着的那些）。
+ *
+ * 挂在「全部组件」入口上的那个数字就是它：不写出来，用户会以为那块不见了 ——
+ * 而它只是收着，点开就能放回（issue #22 的验收标准里"首尾都要有答案"）。
+ */
+const offCanvas = computed(() => presentIds.value.length - visibleIds.value.length)
 
 /**
  * 这块在不在**后端编排**里。
@@ -527,15 +575,27 @@ const drag = useCanvasDrag(canvas, {
 })
 
 /*
- * 一块现在该不该藏起来。两件事都算：
+ * 一块现在该不该藏起来。三件事都算：
  *   · `hiddenBlocks`：被关掉/解决过，过一会儿自己回来（那是刻意的，用户需要能清走挡视线的块）；
  *   · `ackedBlocks`：已经被"知道了"认下来的，本会话**不再回来** —— 交接提醒读过一次
- *     就不该再提醒第二次（见 store.ackBlock）。
+ *     就不该再提醒第二次（见 store.ackBlock）；
+ *   · `blocksHidden`：用户在「全部组件」里亲手收起来的，**一直收着**（刷新、重开浏览器也在）。
  */
 const hidden = (id: string) =>
-  session.ackedBlocks.includes(id) || (session.hiddenBlocks[id] ?? 0) > Date.now()
-/** 正在收缩淡出的块还要留在 DOM 里，动画播完才真的移除 */
-const visible = (id: string) => !hidden(id) || leaving.value.has(id)
+  session.blocksHidden.includes(id) ||
+  session.ackedBlocks.includes(id) ||
+  (session.hiddenBlocks[id] ?? 0) > Date.now()
+/**
+ * 一块现在该不该出现在画布上。
+ *
+ * 三件事都算：
+ *   · `leaving`：正在收缩淡出的块还要留在 DOM 里，动画播完才真的移除；
+ *   · `hidden`：用户挪开/收起过的（见上面那个函数的三种语义）；
+ *   · `capsAway`：被核心区上限挡住的 —— 上限必须挡在**渲染**这一层，
+ *     只挡分格是挡不住的：那块照样画出来，只是掉进兜底格位。
+ */
+const visible = (id: string) =>
+  leaving.value.has(id) || (!hidden(id) && !capsAway.value.has(id))
 const isLeaving = (id: string) => leaving.value.has(id)
 
 const reduced = () =>
@@ -633,12 +693,7 @@ const menuTitle = computed(() => (menu.value?.block ? '对这块做什么' : '�
  * （画像块跳缺口、日历块开日历、待办块记一条……），通用动作垫在后面。
  * 块的策略清单来自后端 layout_panel，名字查不到时退回这份本地称呼表。
  */
-const BLOCK_LABELS: Record<string, string> = {
-  talk: '和主理聊聊', portrait: '你的画像', todo: '待办', collect: '采集动线',
-  plans: '方向方案', action: '行动计划', calendar: '日历', timetable: '本周课表',
-  match: '匹配与推荐', greet: '今日简报', people: '交接', review: '上周复盘',
-  market: '外部情报', achievements: '完成记录',
-}
+/* 块名与默认顺序来自 `lib/blocks`（画布与「全部组件」面板共用一份，见那里的注释） */
 
 const BLOCK_MENUS: Record<string, MenuItem[]> = {
   portrait: [
@@ -701,6 +756,12 @@ const menuItems = computed<MenuItem[]>(() => {
   // 空白处：列出被解决掉/还收着的块 + 整体操作
   const hiddenOnes = blockList.value.filter((b) => !visible(b.id))
   return [
+    {
+      id: 'blocks',
+      label: '全部组件…',
+      hint: `${visibleIds.value.length} 块在画布上 · ${hiddenOnes.length} 块收着`,
+      tone: 'accent' as const,
+    },
     ...hiddenOnes.map((b) => ({ id: `summon:${b.id}`, label: `叫出「${b.label}」`, hint: b.hint, tone: 'accent' as const })),
     { id: 'summon-all', label: '全部叫出来', hint: `${hiddenOnes.length} 块不在画布上`, disabled: !hiddenOnes.length },
     { id: 'reset', label: '全部重排', hint: '回到整齐的网格' },
@@ -732,6 +793,7 @@ function runMenu(id: string) {
   if (!at) return
 
   if (id.startsWith('summon:')) return summon(id.slice(7))
+  if (id === 'blocks') return session.openOverlay('blocks')
   if (id === 'summon-all') return blockList.value.forEach((b) => summon(b.id))
   if (id === 'report') return void router.push('/report')
   if (id === 'sessions') return session.openOverlay('sessions')
@@ -888,6 +950,22 @@ onBeforeUnmount(() => {
         <div class="chrome__row">
           <AccountMenu />
           <LookTrigger />
+          <!--
+            「全部组件」：块的管理入口。
+            原来管理能力都在右键菜单里（叫出某块 / 全部叫出来 / 全部重排）——
+            而**没有人会去右键空白处**，于是"我能不能把这块收起来"这个问题没有答案
+            （issue #22："用户可以隐藏、恢复和排序组件"）。
+            它和「外观台」并排：两件都是"配这套界面"的事，语气与材质同一套。
+          -->
+          <button
+            class="chrome__blocks label"
+            type="button"
+            aria-haspopup="dialog"
+            title="全部组件：收起、放回、排序"
+            @click="session.openOverlay('blocks')"
+          >
+            全部组件<span v-if="offCanvas" class="chrome__blocks-n">{{ offCanvas }}</span>
+          </button>
         </div>
       </div>
     </div>
@@ -1062,7 +1140,7 @@ onBeforeUnmount(() => {
         </Bubble>
 
         <Bubble
-          v-if="showTimetable"
+          v-if="showTimetable && visible('timetable')"
           data-block="timetable"
           class="b-timetable"
           :style="tileStyle('timetable')"
@@ -1126,7 +1204,7 @@ onBeforeUnmount(() => {
         />
 
         <Bubble
-          v-if="session.chsiBound"
+          v-if="session.chsiBound && visible('match')"
           data-block="match"
           class="b-match"
           :style="tileStyle('match')"
@@ -1337,6 +1415,28 @@ onBeforeUnmount(() => {
 .chrome--left { left: var(--s5); }
 /* 账号那颗与「外观台」并排：一个说"你是谁"，一个说"这套界面长什么样" */
 .chrome__row { display: flex; align-items: center; gap: var(--s3); }
+/*
+ * 「全部组件」入口：与「外观台」同一套材质（明写的文字按钮、悬停才出现下划线）。
+ * 后面的小数字是"还收着几块" —— 收起来的东西必须有去处，否则用户以为它没了。
+ */
+.chrome__blocks {
+  flex: 0 0 auto;
+  padding: 2px 2px;
+  color: var(--ink-3);
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 4px;
+  transition: color var(--dur-micro) var(--ease-out),
+    text-decoration-color var(--dur-micro) var(--ease-out);
+}
+.chrome__blocks:hover { color: var(--accent); text-decoration-color: currentColor; }
+.chrome__blocks-n {
+  margin-left: 4px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--fill-subtle);
+  color: var(--ink-2);
+}
 .chrome--right { right: var(--s5); }
 .chrome--right { align-items: flex-end; }
 

@@ -4,6 +4,7 @@ import { RouterView, useRoute } from 'vue-router'
 import AuthLayer from '@/components/auth/AuthLayer.vue'
 import GuideDock from '@/components/guide/GuideDock.vue'
 import TalkOverlay from '@/components/console/TalkOverlay.vue'
+import BlocksOverlay from '@/components/console/BlocksOverlay.vue'
 import LookPanel from '@/components/theme/LookPanel.vue'
 import { useSessionStore } from '@/stores/session'
 
@@ -44,6 +45,8 @@ onMounted(() => {
     而不是先退回控制台再开口。挂在控制台里，这个动作就断了。
   -->
   <TalkOverlay v-if="session.overlay === 'talk'" />
+  <!-- 全部组件：画布上放哪些块、按什么顺序（issue #22 的管理入口） -->
+  <BlocksOverlay v-if="session.overlay === 'blocks'" />
   <AuthLayer v-if="session.authOpen" />
   <!--
     外观台的面板：挂全局，因为开它的那三个「外观台」字分别在三页上

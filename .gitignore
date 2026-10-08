@@ -69,6 +69,10 @@ dist-ssr/
 # （mat_*.txt、occupied、added.json…）。实测踩到过，这里按实际路径兜住。
 pytest-of-*/
 zhiyin-src/template/pytest-of-*/
+# 有人拿 Chrome 去截图时会把它 profile 落在仓库里（component_crx_cache、Local State…）。
+# 这坑踩过一次：profile 里的扩展清单含一串大写字母，把"文档术语"守卫误伤成失败。
+.probe-chrome/
+.probe-chrome-*/
 
 # ---- 不纳入版本库的本地文档 ----
 # 下面三份是作者自己的材料（一份根目录笔记 + 两份方案/分析稿），

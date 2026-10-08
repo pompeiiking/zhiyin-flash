@@ -106,6 +106,34 @@ function loadTodoDue(): Record<string, string> {
   }
 }
 
+/**
+ * 画布上"哪些块、什么顺序"的两把钥匙（持久）。
+ *
+ * 只写本机 localStorage，与外观轴同一口径（不进账号）：这是"我这台机器上想怎么看"，
+ * 不是这个人做到了什么 —— 换台机器看到的应该是策略给的默认布局。
+ */
+const BLOCKS_HIDDEN_KEY = 'zhiyin_blocks_hidden'
+const BLOCKS_ORDER_KEY = 'zhiyin_blocks_order'
+
+/** 读一份字符串数组；坏了、被改过、隐私模式下取不到，都当空 —— 不能因此白屏 */
+function readStoredList(key: string): string[] {
+  try {
+    const raw = localStorage.getItem(key)
+    const parsed = raw ? (JSON.parse(raw) as unknown) : null
+    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === 'string') : []
+  } catch {
+    return []
+  }
+}
+
+function writeStoredList(key: string, value: string[]) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value))
+  } catch {
+    /* 配额满 / 隐私模式：记不住不影响这一屏，只是下次打开回到默认 */
+  }
+}
+
 export const useSessionStore = defineStore('session', {
   state: () => ({
     portalSeen: false,
@@ -206,7 +234,9 @@ export const useSessionStore = defineStore('session', {
       /* 完成记录：做到过的那几件事（由行为日志推导，不落表） */
       | 'achievements'
       /* 外部情报：从公开渠道按你的方向取回的一批事实 */
-      | 'intel',
+      | 'intel'
+      /* 全部组件：画布上放哪些块、按什么顺序（issue #22 要的管理入口） */
+      | 'blocks',
     portraitFocus: null as 'gaps' | null,
 
     /*
@@ -286,6 +316,21 @@ export const useSessionStore = defineStore('session', {
      * 用户分不出它到底生效没有。
      */
     ackedBlocks: [] as string[],
+
+    /*
+     * 用户**主动收起**的块，以及自己排的顺序（都持久）。
+     *
+     * 与上面两条的语义都不同：`hiddenBlocks` 是"让位，过会儿自己回来"，
+     * `ackedBlocks` 是"这件事我认了"，而这两条是用户在「全部组件」里亲手定下的 ——
+     * 收起的**不该自己回来**，刷新、重开浏览器也该还是收着的。
+     *
+     * 之所以要新加：此前只有"让位"和"解决"两种动作，用户找不到
+     * "我不想一直看见这一块"这件事（issue #22 的原话：用户可以隐藏、恢复和排序组件）。
+     * 顺带把拖动排出来的顺序也记住 —— 拖完一刷新就回原样，等于白拖。
+     */
+    blocksHidden: readStoredList(BLOCKS_HIDDEN_KEY),
+    /** 用户自己排的顺序；空数组 = 用策略给的顺序 */
+    blocksOrder: readStoredList(BLOCKS_ORDER_KEY),
 
     /*
      * 业务对话。
@@ -796,6 +841,13 @@ export const useSessionStore = defineStore('session', {
       this.backendTaskId = taskId
       this.chatTyping = false
       this.clearChatPrompt()
+      /*
+       * 换了一条会话：上一条留下的"刚点过哪一条 / 连着两回没推进"都不适用了。
+       * 不清的话，新会话里那组选项会带着旧账渲染 —— 该点的点不动（`isAnswered`），
+       * 或者整组被锁住（`chatRepeats >= 2`），看起来就是"点了没反应、卡住了"。
+       */
+      this.chatAnswered = null
+      this.chatRepeats = 0
       const seed = history.length
         ? history
         : [{ role: 'ai' as const, text: '这条会话还没有逐轮记录 —— 说一句就开始了。' }]
@@ -996,7 +1048,8 @@ export const useSessionStore = defineStore('session', {
         | 'sessions'
         | 'review'
         | 'achievements'
-        | 'intel',
+        | 'intel'
+        | 'blocks',
       focus: 'gaps' | null = null,
     ) {
       this.overlay = name
@@ -1048,6 +1101,38 @@ export const useSessionStore = defineStore('session', {
       delete next[id]
       this.hiddenBlocks = next
     },
+
+    /* ---- 全部组件：收起 / 放回 / 排序（都持久） ---- */
+    /**
+     * 收起一块（持久）。
+     *
+     * 与「先挪开」的区别必须写清楚，否则以后一定被合并成一个：
+     * `hideBlock` 是**让位**（过一会儿自己飘回来，那一刻要的是清走挡视线的块），
+     * 这个是用户在「全部组件」里说"我不想一直看见它" —— 它**不该自己回来**，
+     * 只有「放回」能让它回来。
+     */
+    hideBlockForGood(id: string) {
+      if (!this.blocksHidden.includes(id)) this.blocksHidden = [...this.blocksHidden, id]
+      writeStoredList(BLOCKS_HIDDEN_KEY, this.blocksHidden)
+    },
+    showBlock(id: string) {
+      this.blocksHidden = this.blocksHidden.filter((x) => x !== id)
+      writeStoredList(BLOCKS_HIDDEN_KEY, this.blocksHidden)
+    },
+    showAllBlocks() {
+      this.blocksHidden = []
+      writeStoredList(BLOCKS_HIDDEN_KEY, this.blocksHidden)
+    },
+    /** 记下用户排的顺序（画布读它，且优先于后端策略给的顺序） */
+    setBlocksOrder(order: string[]) {
+      this.blocksOrder = [...order]
+      writeStoredList(BLOCKS_ORDER_KEY, this.blocksOrder)
+    },
+    /** 回到策略给的顺序：清掉用户那份 */
+    resetBlocksOrder() {
+      this.blocksOrder = []
+      writeStoredList(BLOCKS_ORDER_KEY, this.blocksOrder)
+    },
     /** 每秒扫一次：到点的块自己飘回来 */
     sweep() {
       const now = Date.now()
@@ -1077,6 +1162,13 @@ export const useSessionStore = defineStore('session', {
       this.chatOptions = options
       this.chatAnswered = null
       this.chatClarify = ''
+      /*
+       * 打转计数也要归零：它记的是"**上一条问题**连着两回没往前走"。
+       * 这里是带着**另一条问题**进来的，旧账不适用 —— 不清的话 `optionsLocked`
+       * 还是真，新问题的那几个选项一渲染出来就全是禁用的：用户看着一组点不动的
+       * 按钮（提示语还在说"这已经是第二回了"），流程就卡在这儿了（issue #26 第二条）。
+       */
+      this.chatRepeats = 0
       this.overlay = 'talk'
     },
 
@@ -1265,6 +1357,16 @@ export const useSessionStore = defineStore('session', {
       const value = text.trim()
       // 只交材料、不写字也是完整的一轮（"这是我传的材料"本身就是一句话）
       if (!value && !materials.length) return
+      /*
+       * 上一轮还没回来就不许再开一轮（issue #26 第二条）。
+       *
+       * 界面上那道门在 `TalkOverlay.send()` 上（它同时负责"别把草稿清掉"），
+       * 这里是第二道：两个 `sendMessage` 叠在同一条任务会话上，回包不保证按顺序
+       * 回来，而 chatAnswered / chatPrompt / guide 都是**单槽**的 —— 后到的把先到的
+       * 覆盖掉，用户看到的是"同一句问题又回来了"，连着两回还会触发整组选项锁死。
+       * 一道门不够不是因为不信任谁，而是"同时两条在飞"这件事本身只该有一处判定。
+       */
+      if (this.chatTyping) return
       const names = materials.map((m) => m.name).join('、')
       // 一个字都没打时替他补一句短的：**不补正文**，补的是"我交了什么"
       const spoken = value || `我传了一份材料：${names}`
@@ -1410,12 +1512,28 @@ export const useSessionStore = defineStore('session', {
           : ''
         // 连着两回都不动就把选项锁掉（见 chatRepeats 的说明）
         this.chatRepeats = repeated ? this.chatRepeats + 1 : 0
+        /*
+         * 这一轮真的往前走了：把"刚点过的那一条"放下（issue #26 第二条）。
+         *
+         * `chatAnswered` 只是**当轮**的记号（"你点的这条我收到了，别再点第三次"），
+         * 但它此前只在发送失败时才清 —— 于是它一直挂在那儿，直到下一次点选项。
+         * 而选项的 id 在模型那边是**复用**的（诊断环节的提示词明确要求"option_id
+         * 原样用那条差距的 gap_id"），所以下一个问题里再出现同一个 id 时，
+         * `isAnswered` 会把它当成"已答"而禁用：用户看到一条点不动的选项；
+         * 要是那一组里多数都撞上，整组就点不动了 —— 正是"答完选项之后流程不往前走"。
+         * 放到这里清：判据与上面"打转"的判据同一处，不会误伤 issue #24 的锁定
+         * （打转时 repeated 为真，这里不动它）。
+         */
+        if (!repeated) this.chatAnswered = null
       } else {
         // 这一轮不是"等你回答"（小任务 / 提醒）：旧的选项与澄清都不能留在输入框上方
         this.chatPrompt = ''
         this.chatOptions = []
         this.chatClarify = ''
         this.chatRepeats = 0
+        // 这一轮换了动作（去做任务 / 看提醒）：上一条问题的"已答"记号也该跟着结束，
+        // 否则它会在下一次提问里把撞 id 的选项禁掉（同上）。
+        this.chatAnswered = null
       }
 
       // 集群判断出的"下一步"同时塞进浮窗叠：用户可能没在看对话，

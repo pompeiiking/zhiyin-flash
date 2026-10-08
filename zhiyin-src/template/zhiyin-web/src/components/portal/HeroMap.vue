@@ -64,6 +64,29 @@ const ERASED = ['s6', 's7']
 const svgEl = ref<SVGSVGElement | null>(null)
 const nibEl = ref<SVGCircleElement | null>(null)
 
+/*
+ * 图上的字什么时候该闭嘴。
+ *
+ * 门户把地图收进右侧那一格之后，实际缩放 k ≈ 0.37：站名是 17 用户单位，
+ * 落到屏幕上 6.3px —— 中文在这个尺寸下不是"小字"，是一撮灰点。
+ * 所以尺度小于这里时把图上整组字收掉（见 CSS 的 .ink--mini），只留墨线、圈和那道擦痕；
+ * 站名改由那句提示来说（悬停/聚焦时会把它带上）—— 图上的字没了，信息没丢。
+ *
+ * 0.7 是"站名回到 12px"那条线：中文到 12px 才算字。低于它一律收。
+ * 判据现算而不是写死：这条线本来铺满整页（k≈0.89），那种尺寸下字当然要留着；
+ * 屏幕够宽（这一格跟着长到 1000px 以上）时字自己会回来，不需要谁去手工开关。
+ */
+const TYPE_LEGIBLE = 0.7
+const mini = ref(false)
+
+function measure() {
+  const el = svgEl.value
+  if (!el) return
+  /* 缩放多少由 preserveAspectRatio 的 meet 决定：两边里更紧的那一边说了算 */
+  const box = el.getBoundingClientRect()
+  mini.value = Math.min(box.width / W, box.height / H) < TYPE_LEGIBLE
+}
+
 /* ── 不变的东西（响应式） ─────────────────────────────────────── */
 const woken = ref<string[]>([])
 const hoverId = ref<string | null>(null)
@@ -348,6 +371,18 @@ function onPaper(e: PointerEvent) {
 }
 
 /*
+ * 落笔前先问一句：这个点在图上吗。
+ *
+ * 监听挂在 window 上（纸面上任何移动都算一笔），而地图收进右栏之后，
+ * "纸面"其实只剩地图那一格 —— 左栏上方那些移动同样会转成图上的坐标，
+ * 只是那些坐标落在画布之外：笔迹写在没有东西的地方（看不见），笔尖却一直亮着。
+ * 判定用映射回来的用户坐标，正好就是 preserveAspectRatio 摆好的那张画布的边界。
+ */
+function onCanvas(p: { x: number; y: number }) {
+  return p.x >= 0 && p.x <= W && p.y >= 0 && p.y <= H
+}
+
+/*
  * 把还没干的笔墨按新旧分成四档（一档一条合并路径）。
  * 写的时候立刻算一次（rAF 被节流时也能马上看到笔迹），之后由帧循环继续推。
  */
@@ -418,13 +453,12 @@ let near: PortalStop | null = null
  * 一次字符串拼接 + 一次属性更新，画画本身由浏览器合并到帧里。
  */
 function handleMove(e: PointerEvent) {
-  if (!onPaper(e)) {
+  const p = onPaper(e) ? toPaper(e.clientX, e.clientY) : null
+  if (!p || !onCanvas(p)) {
     if (nibEl.value) nibEl.value.setAttribute('opacity', '0')
     last = null
     return
   }
-  const p = toPaper(e.clientX, e.clientY)
-  if (!p) return
   /* 笔尖直接改 DOM，不进响应式 —— 每动一下重渲染整块模板太贵 */
   const n = nibEl.value
   if (n) {
@@ -442,9 +476,9 @@ function onMove(e: PointerEvent) {
 
 function onDown(e: PointerEvent) {
   if (!onPaper(e)) return
-  pressed = true
   const p = toPaper(e.clientX, e.clientY)
-  if (!p) return
+  if (!p || !onCanvas(p)) return
+  pressed = true
   last = { x: p.x - 2, y: p.y - 2 }
   writeAt(p, true)
 }
@@ -485,7 +519,11 @@ function pick(s: PortalStop) {
   }
 }
 
-/* 监听挂在 window 上（纸上的任何移动都是一笔），但每帧只处理一次 */
+/*
+ * 监听挂在 window 上（纸上的任何移动都是一笔），但每帧只处理一次。
+ * 同一个尺寸观察者还负责两件事：CTM 缓存失效（换了尺寸，屏幕→纸的换算就变了），
+ * 以及重新判断图上的字还读不读得到（mini）。
+ */
 let ro: ResizeObserver | null = null
 onMounted(() => {
   window.addEventListener('pointermove', onMove, { passive: true })
@@ -493,7 +531,10 @@ onMounted(() => {
   window.addEventListener('pointerup', onUp, { passive: true })
   window.addEventListener('blur', onLeaveWindow)
   if (svgEl.value) {
-    ro = new ResizeObserver(() => (ctmDirty = true))
+    ro = new ResizeObserver(() => {
+      ctmDirty = true
+      measure()
+    })
     ro.observe(svgEl.value)
   }
 })
@@ -509,12 +550,19 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="ink">
+  <!--
+    一整张图完整落进它自己那一格（meet），不再铺满整张纸（slice）。
+    slice 在右侧那一栏里等于"放大到填满这一栏、再把左右各裁掉一大截"，
+    而被裁掉的正好是左边那两站（x≈146 / 392）—— 起点没了，
+    "从哪儿出发"和"擦掉的是路上中段"这两件事就都说不通了。
+    代价是图会整体小一圈（k≈0.37）：小到读不成字的那些字由 .ink--mini 收掉。
+  -->
+  <div class="ink" :class="{ 'ink--mini': mini }">
     <svg
       ref="svgEl"
       class="ink__svg"
       :viewBox="`0 0 ${W} ${H}`"
-      preserveAspectRatio="xMidYMid slice"
+      preserveAspectRatio="xMidYMid meet"
       role="img"
       aria-label="整张纸上的一条路：从左边偏下进来，一路弯到右上角。中间那一段被擦掉了，用笔写过去就会回来。"
     >
@@ -633,10 +681,15 @@ onBeforeUnmount(() => {
       <g class="crumbs" :transform="swathTransform"><SketchPath :ops="crumbs" /></g>
     </svg>
 
-    <!-- 写到哪一站，那一站说一句 -->
+    <!--
+      写到哪一站，那一站说一句。
+      mini 的时候这句里补上站名：图上的站名已经收掉了，名字不能只剩在 aria-label 里
+      （看得见的人也得读得到"你在哪儿"）。图上的字还在的时候不补 —— 那会是同一个人说两遍。
+    -->
     <transition name="tip">
       <p v-if="current" class="tip" :style="{ color: current.tone }">
         <span class="tip__at">{{ current.at }}</span>
+        <span v-if="mini" class="tip__label">{{ current.label }}</span>
         {{ current.more }}
       </p>
     </transition>
@@ -645,13 +698,27 @@ onBeforeUnmount(() => {
 
 <style scoped>
 /*
- * 墨层铺满整张纸，但**不吃指针**：只有站点自己重新打开指针事件。
- * 写字用的是 window 上的监听，所以纸上的空白处照样能写。
+ * 墨层占住它自己被分到的那一格（门户上是右栏），**不吃指针**：
+ * 只有站点自己重新打开指针事件。写字用的是 window 上的监听，
+ * 所以图上（且只有图上 —— 见 onCanvas）照样能写。
  */
 .ink { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
 .ink__svg { width: 100%; height: 100%; display: block; overflow: visible; }
 .ink :deep(.stop) { pointer-events: auto; }
 .ink :deep(.stop[data-erased]) { pointer-events: none; }
+
+/*
+ * 小样模式（脚本里的 TYPE_LEGIBLE）：图上所有"字"整组收起来。
+ *
+ * 收的不是内容，是读不成的那一层：站名、时间戳、纸上那两句批注在这个缩放下
+ * 只有 4～7px，读不出来却照样占着视觉 —— 一片细碎的灰点正是首屏原来的那种干扰。
+ * 站名仍然活着：aria-label 里有、那句提示里也有（mini 时补上）。
+ * 引线跟着一起收：圈到字的线还在、字没了，那根线就成了纸上的一根毛。
+ */
+.ink--mini :deep(.stop__at),
+.ink--mini :deep(.stop__label),
+.ink--mini :deep(.stop__leader),
+.ink--mini .notes { display: none; }
 
 .road :deep(path) {
   stroke-dasharray: 1; stroke-dashoffset: 1;
@@ -694,13 +761,23 @@ onBeforeUnmount(() => {
 .crumbs { opacity: 0; animation: pop-in 700ms var(--mo-out) 2.3s forwards; }
 
 .tip {
-  /* 底栏拿掉之后，这一句可以坐到纸的下边缘上（原来要给它让出 96px） */
-  position: absolute; right: var(--s7); bottom: var(--s5);
-  max-width: 34ch; text-align: right;
+  /*
+   * 底栏拿掉之后，这一句可以坐到这一格的下边缘上（原来要给它让出 96px）。
+   * 宽度跟着"格"算而不是写死 34ch：地图收进右栏之后，窄的那一档只有三百多像素，
+   * 写死会让这句话从左边溢出格子、被 .mapcol 的 overflow 切掉半句。
+   */
+  position: absolute; right: var(--s5); bottom: var(--s5);
+  max-width: min(34ch, calc(100% - var(--s5) * 2)); text-align: right;
   display: flex; align-items: baseline; gap: var(--s3); justify-content: flex-end;
   /* 它是一整句要说的话，不是标签：15px 起，行高放松 */
   font-size: 15px; letter-spacing: 0.01em; line-height: 1.8;
 }
+/*
+ * mini 时补在提示里的站名（图上的站名已经收掉，这里是它唯一的可见去处）。
+ * 用 --ink-1 加一档字重：它是这句话的主语（"你在哪儿"），
+ * 而整句的颜色是那一站的马克笔色 —— 主语不该跟着站点色走。
+ */
+.tip__label { font-weight: 600; color: var(--ink-1); }
 /*
  * 站点说话时左边那个时间标记（"现在""周三""08:40"）。
  * 它原来吃 .mono（等宽）：数字好看，中文落到新宋体 —— 一屏两个字体。

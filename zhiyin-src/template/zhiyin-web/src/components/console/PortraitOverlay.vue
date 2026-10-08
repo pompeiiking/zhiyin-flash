@@ -181,6 +181,48 @@ function showGap(gap: { id: string; name: string; question: string; suggested: s
   ])
 }
 
+/**
+ * 点一条【还没定】的字段：直接带他去补这一条（issue #26 第四条）。
+ *
+ * 【为什么点一下不能顺手改数据】
+ * 画像里每一条都必须是**有出处的事实**。点一下就替他把值填进去，等于把系统的猜测
+ * 混进他自己说的话里 —— 而"哪条是他说的、哪条是系统抄的"正是这个产品最要紧的一件事
+ * （口径见 lib/profile.ts）。所以这里一个字段都不写，只把人送到**既有的那条补充录入
+ * 路径**上：问题摆好，答案仍然由他说，落库仍然由主理那一轮对话完成。
+ *
+ * 【为什么是这两条既有入口，不新造一条】
+ * 采集动线对同一批缺口本来就是这么分流的（CollectOverlay 的 `goSource` / `askFor`）：
+ *   · `chsi` / `academic` 源 → 绑定向导（去核验学籍 / 去导入课表）——
+ *     这种字段只有权威记录这一个来源，问是问不出来的；
+ *   · `conversation` 源 → `session.askChat(后端给这一条的追问)` ——
+ *     talk 浮层里问题已经摆在输入框上方，用户进来就能答。
+ * 追问文本来自后端（`collection.items[].ask`），前端一个字都不编；拿不到就退回
+ * 画像缺口自己那句"为什么算缺"（口径与 lib/asks.ts 里"下一步"的取法一致：
+ * `question` 优先），连缺口都对不上时也进同一个入口 —— 这一层只保证
+ * **点了就落在一个能开口的地方**，不替用户编问题。
+ */
+function supplement(key: string) {
+  const step = session.collection?.items.find((item) => item.key === key)
+  if (step?.available) {
+    if (step.source === 'chsi') {
+      session.bindMode = 'chsi'
+      session.openOverlay('bind')
+      return
+    }
+    if (step.source === 'academic') {
+      session.bindMode = 'academic'
+      session.openOverlay('bind')
+      return
+    }
+    if (step.source === 'conversation' && step.ask) {
+      session.askChat(step.ask)
+      return
+    }
+  }
+  const gap = gaps.value.find((item) => item.id === key)
+  session.askChat(gap?.question || '')
+}
+
 /* ── 事实与判断 ──────────────────────────────────────────────────
  *
  * 切一刀的地方只有一处（lib/profile.ts），这里只负责把两堆分别摆到该摆的地方：
@@ -456,6 +498,7 @@ const leadEntry = computed<'dims' | 'gaps' | null>(() => {
           :selected-key="selectedKey"
           :gap-count="gaps.length"
           @select="openField"
+          @supplement="supplement"
         />
 
         <!-- ── 第二层：档案信息 ───────────────────────────────────── -->
@@ -470,6 +513,7 @@ const leadEntry = computed<'dims' | 'gaps' | null>(() => {
             :selected-key="selectedKey"
             :gap-count="0"
             @select="openField"
+            @supplement="supplement"
           />
         </div>
 

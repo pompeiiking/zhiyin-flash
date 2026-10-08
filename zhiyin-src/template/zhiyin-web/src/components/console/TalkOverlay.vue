@@ -117,13 +117,38 @@ watch(
  * **待发的材料跟着这一轮走**：用户传完材料再打字，那一句和材料本来就是一件事
  * （"简历在这，你看看"）。分开成两次发送，模型会先看到一份没有上下文材料、
  * 再看到一句不知道在说谁的话 —— 而用户以为自己只做了一次动作。
+ *
+ * **上一轮没回来之前，这一下不发送**（issue #26 第二条的入口）。
+ *
+ * 输入框全程可用是刻意的：等回复时用户可以接着打。但"点了选项"和"补一句"
+ * 如果都在回复回来之前发生，就是**两次发送同时在跑**：两个 `sendMessage` 落在
+ * 同一条任务会话上，回包不保证按顺序回来，而 store 里 chatAnswered / chatPrompt /
+ * guide 都是**单槽**的 —— 后到的那个把先到的覆盖掉，用户看到的是"同一句问题
+ * 又回来了"；连着两回就触发整组选项锁死（chatRepeats >= 2），页面看起来就是卡住。
+ *
+ * 这里只**不发**，不动草稿：用户打完的那句话原样留在输入框里，等这一轮回复
+ * 落地再按一次发送，一句话都不会丢（清空草稿是最不该做的，那才是真的丢输入）。
  */
 function send(text: string, option?: GuideOption) {
+  if (session.chatTyping) return
   const material = pending.value
   pending.value = null
   attachError.value = ''
   session.sendChat(text, option, material ? [material] : [])
   draft.value = ''
+}
+
+/**
+ * 回车发送 —— 但**中文输入法里那一下回车不算**。
+ *
+ * 打中文时用回车确认候选词，浏览器照样发一个 `keydown.enter`：那一下会把还没
+ * 写完的半句发出去、并把草稿清空。用户接着打完的"补充说明"于是变成第二轮 ——
+ * 与上面那条同一种病：两次发送叠在一起，流程看起来就不往前走了。
+ * `isComposing` 是浏览器给的"这一下属于输入法"的标记（老实现看 keyCode 229）。
+ */
+function onEnter(event: KeyboardEvent) {
+  if (event.isComposing) return
+  send(draft.value)
 }
 
 /** 这一轮刚点过的那一条：它要显示成"已答"，不能再让人点第三次 */
@@ -597,7 +622,7 @@ function openDisclosure() {
                     : '直接说就行，不用想好怎么问'
               "
               aria-label="对话输入"
-              @keydown.enter="send(draft)"
+              @keydown.enter="onEnter"
             >
             <button
               class="btn primary"
@@ -637,8 +662,25 @@ function openDisclosure() {
 <style scoped>
 .wrap {
   height: 100%; min-height: 0;
+  /*
+   * `flex: 1 1 auto` 与下面的行一起，是 issue #26 第一条的地基。
+   *
+   * 这一片挂在 Overlay 的 `.deck__grid` 里（定高的纵向 flex 容器，见那个文件）。
+   * 只写 `height: 100%` 时，高度靠百分比一层层算上去，链上任何一环算不出就退回
+   * `auto` —— 于是这一片跟着内容长高，里面的对话区也就永远和内容一样高（永远不会
+   * 出现滚动条，"看着不能滑"）。用 flex 直接跟父容器要高度：父项的高度是确定的，
+   * 这一片就一定有确定的高度可分给下面两行。
+   */
+  flex: 1 1 auto;
   display: grid;
   grid-template-columns: 268px minmax(0, 1fr);
+  /*
+   * 行必须显式钉成 `1fr`。默认那一条是 `auto`：**按内容的最高一件**定高，
+   * 内容比容器高时行就比容器高（对话区被撑到和整个对话一样高，于是它自己不滚，
+   * 溢出漏到 `.deck__grid` 上，滚的是整张浮层）。`1fr` 是"就分容器这么多"，
+   * 多出来的内容只能由里面那个 `overflow-y: auto` 的对话区自己滚。
+   */
+  grid-template-rows: minmax(0, 1fr);
   gap: var(--s3);
 }
 
@@ -686,12 +728,27 @@ function openDisclosure() {
 .talk {
   padding: 0;
   margin-bottom: 40px;
-  display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
+  /*
+   * 纵向 flex：上面是可滚的对话区，下面是钉在底部的输入区。
+   *
+   * 原来是 `grid-template-rows: minmax(0,1fr) auto` —— 意思一样，但那条 `auto`
+   * 行是**按内容**定高的，而它下面那块（问题 + 选项 + 输入框）在窄屏会换行变高：
+   * 选项一多，它就能把上面的 `1fr` 挤到 0。症状正是 issue #26 第一条 ——
+   * "给了选项就滑不动了，看不到历史、也看不到完整的问题"，而 AI 回复过程中
+   * 问题区消失，于是又能滑（用户报的"仅 AI 回复过程中才可滑动"就是这么来的）。
+   *
+   * flex 这边把"谁先让、让到哪"写成明账：对话区 `1 1 auto` 吃掉剩下的，
+   * 输入区 `0 0 auto` 不让（它只受自己的 `max-height` 管），见下面两条。
+   */
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   animation: sheet-in 460ms var(--ease-expo) both;
 }
 .thread {
+  /* 吃掉输入区之外的全部高度；`min-height: 0` 让它**允许**被压到比内容矮 ——
+     只有允许它矮，它才会出现滚动条（这是唯一让历史可滚的地方）。 */
+  flex: 1 1 auto;
   min-height: 0; overflow-y: auto;
   padding: var(--s5) var(--s6);
   display: flex; flex-direction: column; gap: var(--s3);
@@ -741,6 +798,21 @@ function openDisclosure() {
 }
 
 .compose {
+  /*
+   * 输入区**不让位**（`0 0 auto`），但自己有一条上限，超了就在自己里面滚。
+   *
+   * 上限是这条链上唯一一件"内容说了不算"的事，也正是 issue #26 第一条的解法：
+   * 问题一长、选项一多，这一块能长到把对话区挤成零高 —— 用户既翻不到历史，
+   * 也读不全问题（问题与选项就在这一块里）。给它 72%：对话区因此永远拿得到
+   * 四分之一以上，而这一块最坏情况是自己内部滚动，不会把内容裁掉。
+   *
+   * 为什么不让它跟着一起缩（`flex-shrink: 1`）：flex 的收缩是**按基准大小
+   * 成比例**分摊的，对话区的基准是"整段历史"（很大），于是先被压掉的会是
+   * 输入框这一块 —— 输入框被压没了比对话区矮更难用。
+   */
+  flex: 0 0 auto;
+  max-height: 72%;
+  overflow-y: auto;
   display: flex; flex-direction: column; gap: var(--s3);
   padding: var(--s4) var(--s5) var(--s5);
   border-top: 1px solid var(--line-1);
@@ -750,8 +822,11 @@ function openDisclosure() {
  * 回到顶部 / 回到最新：两枚文字按钮，靠右，贴着输入框上沿。
  * 用文字而不是图标：这里要的是"明确"（issue #19 的验收标准），
  * 而 ↑ ↓ 这两个字符在这套界面里当箭头用过，再当图标会含混。
+ *
+ * `flex: 0 0 auto`：它是一条通知，占的高度很小；不许被收缩吃掉 ——
+ * 收缩它只会让它自己溢出、把按钮压到输入区上。
  */
-.jump { display: flex; justify-content: flex-end; gap: var(--s4); padding: 0 var(--s5); }
+.jump { flex: 0 0 auto; display: flex; justify-content: flex-end; gap: var(--s4); padding: 0 var(--s5); }
 .jump__b { background: none; border: 0; padding: 2px 0; cursor: pointer; color: var(--accent); }
 .jump__b:hover { text-decoration: underline; text-decoration-thickness: 1px; }
 .prompt {
@@ -884,7 +959,34 @@ function openDisclosure() {
 .tie__go:hover { text-decoration: underline; }
 
 @media (max-width: 900px) {
-  .wrap { grid-template-columns: minmax(0, 1fr); height: auto; }
+  /*
+   * 窄屏：说明片在上、对话片在下。
+   *
+   * 这里原来写的是 `height: auto`（"这一页跟着内容长"）。但 `.wrap` 是
+   * `.deck__grid` 这个定高 flex 容器的子项，`height: auto` 会被它收缩回容器高度，
+   * 于是两行只能按内容分这点高度：说明片（谁在说、走到哪）动不动就占掉一半，
+   * 对话片只剩一两百像素 —— issue #26 第一条在 390×844 上就是这么复现的
+   * （选项一出现，对话区几乎不可见，也滚不动）。
+   *
+   * 改成显式两行：说明片最多三成（它自己 `overflow: auto`，写不下就在里面滚，
+   * 反正它是"现在是谁"的背景信息），剩下的全部给对话片；对话片内部再按
+   * `.thread` / `.compose` 那两条分。这样两种视口走的是同一条链，只有列数不同。
+   */
+  .wrap {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 34%) minmax(0, 1fr);
+    height: 100%;
+  }
+  /*
+   * 窄屏兜底：与桌面上那条"定高链"无关地再给对话区一条视口上限。
+   *
+   * 桌面那条链（`.wrap` flex → `1fr` 行 → `.talk` flex）在 390×844 上还要经过
+   * Overlay 的 `@media (max-width: 700px)`（浮层那一层改成"一页内容"、高度交回
+   * 内容）。链条一旦被那样的规则打断，对话区就会跟着内容长高、永远不出滚动条。
+   * 这条上限在链条正常时是**不起作用**的（对话区分到的高度远小于它），
+   * 只在链条断掉时把对话区重新变回"一条能滚的窗口"。
+   */
+  .thread { max-height: 64dvh; }
   .speaker { margin: 0 0 var(--s3); }
   .talk { margin-bottom: 0; }
 }
