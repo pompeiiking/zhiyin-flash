@@ -241,7 +241,16 @@ const capsAway = computed(() => {
   const shown = order.value.filter(
     (id) => presentIds.value.includes(id) && !session.blocksHidden.includes(id),
   )
-  return new Set(shown.slice(CORE_COUNT))
+  /*
+   * 上限只压**策略名单里那些常驻块**，「有数据才出现」的块一个都不挡。
+   *
+   * 为什么：后者恰恰是"这一轮真正在发生的事"（课表卡就是这一类 —— 有课表数据才出现），
+   * 而它们在顺序里排在末尾，一视同仁地切前 N 个就会把它们全切掉：
+   * 用户会看到"我的课表卡不见了"，而画布上留着的全是常驻的那几张 —— 正好反了。
+   */
+  const planned = new Set(session.layout.map((b) => b.id))
+  const capped = shown.filter((id) => planned.has(id))
+  return new Set(capped.slice(CORE_COUNT))
 })
 
 const renderedIds = computed(() => presentIds.value.filter((id) => visible(id)))
@@ -1626,7 +1635,15 @@ onBeforeUnmount(() => {
 .canvas [data-block].dragging { cursor: grabbing; }
 /* 指针按住期间关掉文字选中（拖动不再靠 preventDefault 抢焦点） */
 .canvas.arming { user-select: none; }
-.canvas [data-block].pinned { position: absolute; left: 0; top: 0; }
+/*
+ * 手上正拎着的那一块：抽离网格、跟着指针，并且**抬到所有卡片之上**。
+ *
+ * 少了 `z-index` 会怎样（用户报过："拖动的时候会藏在某些卡片下方"）：
+ * 绝对定位但 z-index 是 auto → 按 DOM 顺序绘制 → DOM 里排在它后面的卡片盖住它。
+ * 而"后面"取决于块在模板里的次序，所以症状是**有的卡片压得住、有的压不住**，
+ * 看起来像随机 —— 用户很难描述，我们很难复现。层级令牌定义见 tokens.css 的 --z-drag。
+ */
+.canvas [data-block].pinned { position: absolute; left: 0; top: 0; z-index: var(--z-drag); }
 /*
  * 松手时"落回纸面"要舒服，靠的是这条 transition。
  *

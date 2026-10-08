@@ -62,10 +62,18 @@ def test_canvas_caps_the_default_set() -> None:
     """
     console = CONSOLE.read_text(encoding="utf-8")
     assert "CORE_COUNT" in console, "核心区上限被删了（一屏又会铺满十几块）"
-    caps = console[console.index("const capsAway") :][:700]
-    assert "shown.slice(CORE_COUNT)" in caps, "上限没有作用在候选清单上"
+    caps = console[console.index("const capsAway") :][:1200]
+    assert "capped.slice(CORE_COUNT)" in caps, "上限没有作用在候选清单上"
     assert "session.blocksHidden.length > 0 || session.blocksOrder.length > 0" in caps, (
         "上限的生效条件变了：它必须在用户没自己收过/排过时才生效"
+    )
+    # 「有数据才出现」的块不参与上限 —— 它们恰是"这一轮真正在发生的事"（课表卡就是这一类），
+    # 而它们在顺序里排末尾，一视同仁地切前 N 个会把它们全切掉：用户会看到"我的课表卡不见了"。
+    assert "const planned = new Set(session.layout.map((b) => b.id))" in caps, (
+        "上限又变成对所有块一视同仁了 —— 有数据才出现的块会被切掉"
+    )
+    assert "shown.filter((id) => planned.has(id))" in caps, (
+        "上限没有只压在策略名单里的常驻块上"
     )
     visible = console[console.index("const visible = (id: string)") :][:260]
     assert "capsAway.value.has(id)" in visible, (

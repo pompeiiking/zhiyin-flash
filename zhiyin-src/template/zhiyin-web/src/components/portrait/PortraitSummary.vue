@@ -57,6 +57,11 @@ const SOURCE_LABEL: Record<string, string> = {
   record: '导入记录',
   chsi: '学信网核验',
   academic: '教务系统',
+  /*
+   * 用户自己在画像里改过的那一条（`POST /app/profile/fields/{key}`，issue #26 第三条）。
+   * 漏了它，概览的"来源图例"会把他亲手写的值算成「导入记录」—— 那是这张图最不该说错的一句话。
+   */
+  user_edit: '本人填写',
 }
 
 /** 来源分布：分类色只表达"来自哪里"，不表达好坏；图例带条数，不依赖颜色也能读 */
