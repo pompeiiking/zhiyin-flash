@@ -381,6 +381,9 @@ def build_services(container: "Container") -> None:
             academic=container.academic_service,
             behaviors=container.behavior_service,
             memories=container.memory_service,
+            # 画像的写侧：门面里唯一一条"用户自己发起"的画像写路径（手动更正）
+            # 要走它。装配一处漏接，那条接口就是 500 —— 而不是"没这个功能"。
+            profiles=container.profile_service,
             # 读缓存必须接到**读侧**：只把它交给编排器（写侧失效）的话，
             # 没有任何一次读会经过它 —— `/healthz` 的 hits/misses 会永远是 0，
             # 而"缓存装上了"看起来又是真的。装配一处漏接就是这个症状。

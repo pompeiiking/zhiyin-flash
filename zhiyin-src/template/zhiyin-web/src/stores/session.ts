@@ -5,6 +5,7 @@ import { readFetched, readIntelText } from '@/lib/intel'
 import {
   BackendUnavailableError,
   UnauthorizedError,
+  api,
   authToken,
   clearToken,
   saveToken,
@@ -55,6 +56,20 @@ function chatFailure(cause: unknown): string {
   if (cause instanceof BackendUnavailableError) return '暂时连不上服务，稍后再试一次。'
   console.warn('[chat] 这一轮没成功：', cause)
   return '这一轮没接上，再说一句试试。'
+}
+
+/**
+ * 更正画像字段失败时，给用户看的那一句。
+ *
+ * 为什么不复用 `messageOf` / `chatFailure`：这一条路上的失败**大多是他自己能改的**
+ * ——业务层（`DefaultProfileService.correct_field`）会说清是空值、超长还是没这一格，
+ * 那句话必须原样透给他（换成"操作失败"他就不知道该改哪里）。
+ * 只有连不上、登录过期这两类才换成一句行动指引。
+ */
+function correctFailure(cause: unknown): string {
+  if (cause instanceof UnauthorizedError) return '登录状态过期了，重新登录后再改这一条。'
+  if (cause instanceof BackendUnavailableError) return '暂时连不上服务，这一条没存下来 —— 稍后再试一次。'
+  return cause instanceof Error && cause.message ? cause.message : '这一条没改成，稍后再试一次。'
 }
 
 /**
@@ -616,6 +631,88 @@ export const useSessionStore = defineStore('session', {
       loadSeq += 1
       this.actionPlan = plan
       this.bumpData()
+    },
+
+    /**
+     * 更正画像里的一条（issue #26 第三条）。
+     *
+     * 【为什么这条写路径必须存在】
+     * 在此之前画像只有"系统去记"的写路径（① 采集、学信网核验、教务导入）。
+     * 用户发现记错了 —— 他说的是"计算机大类"，系统却把它当成"计算机科学与技术"
+     * 记了下来 —— 界面上只能看，一个字也改不了；他再跟对话说一遍，那句话又进了
+     * 同一台推断机，出来的还是替他挑好的具体专业。于是那条错值一直留在画像里，
+     * 后面的报告、方向推荐都按它算。
+     *
+     * 【乐观更新 + 失败回滚】
+     * 提交之后界面立刻显示新值，不等网络：这一条是他自己敲进去的，
+     * "按下了还在转圈"会让人以为没生效，然后再点一次。
+     * 服务端拒了（空值 / 超长 / 画像里没这一格）就**整份还原**成改之前的样子，
+     * 并把后端那句话交回界面 —— 值不能留在屏幕上假装已经改好了。
+     *
+     * 返回空串表示改好了；返回非空就是该说给用户听的那句话。
+     */
+    async correctProfileField(key: string, value: string): Promise<string> {
+      const text = value.trim()
+      const before = this.profile
+        ? {
+            fields: this.profile.fields,
+            gaps: this.profile.gaps,
+            dimensions: this.profile.dimensions,
+          }
+        : null
+      if (this.profile) {
+        // 这一份比任何**正在飞**的读都新（它是写的结果）：让更早发起的读回来时作废，
+        // 否则刚改完的值会被一次慢响应带回旧世界（与 applyActionPlan 同一条道理）。
+        loadSeq += 1
+        const at = new Date().toISOString()
+        this.profile = {
+          ...this.profile,
+          fields: this.profile.fields.map((field) =>
+            field.key === key
+              ? {
+                  ...field,
+                  value: text,
+                  // 来源换成"他自己写的"：界面上那一行从此说"本人填写"，
+                  // 而不是继续假装这条是系统抄来的（口径见 lib/profile.ts 的来源分类）。
+                  source: 'user_edit',
+                  confidence: 1,
+                  evidence: [],
+                  updated_at: at,
+                }
+              : field,
+          ),
+          // 缺口里的那一条同时消失：他刚亲手写下这一格，界面不该还挂着「没定」
+          // （后端 correct_field 也会把它从缺口清单里删掉）。
+          gaps: this.profile.gaps.filter((gap) => gap.id !== key),
+        }
+      }
+      try {
+        const saved = await api<ProfileField>(
+          `/app/profile/fields/${encodeURIComponent(key)}`,
+          { method: 'POST', body: JSON.stringify({ value: text }) },
+        )
+        if (this.profile) {
+          // 用服务端存下来的那一条收尾：改完那一刻看到的形状，
+          // 必须和刷新之后看到的同一条是同一次事实。
+          this.profile = {
+            ...this.profile,
+            fields: this.profile.fields.map((field) => (field.key === key ? saved : field)),
+            dimensions: this.profile.dimensions.map((dim) =>
+              dim.id === key ? { ...dim, value: saved.confidence ?? 0 } : dim,
+            ),
+          }
+        }
+        /*
+         * 画像变了，别的切片也要跟着变：采集清单的"还差几条"、覆盖度、气泡编排
+         * 读的都是这一份画像。只改上面那一处，它们会停在改之前的样子 ——
+         * 用户就会看到"专业已经改了，可它还说缺专业"。
+         */
+        void this.revalidate()
+        return ''
+      } catch (cause) {
+        if (before && this.profile) this.profile = { ...this.profile, ...before }
+        return correctFailure(cause)
+      }
     },
 
     /** 挂载时拉真实工作台数据；失败静默（演示回落），成功后画像气泡换真数据 */

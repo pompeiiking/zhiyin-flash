@@ -508,6 +508,24 @@ def intel_list_view(items: list[ExternalIntel]) -> IntelListView:
     )
 
 
+def profile_field_view(field: Any, labels: Mapping[str, str]) -> ProfileFieldView:
+    """一条画像字段 → 视图。
+
+    **展示名的两级来源只有这一处**（工作台面板与"用户更正"接口共用它）：
+    各写一遍的后果是同一个字段在"刚改完的回包"与"刷新后的面板"里可能叫两个名字
+    （一个走了字段自带的 label、另一个走规则表），用户会以为系统记了两条。
+    """
+    return ProfileFieldView(
+        key=field.key,
+        label=field.label or labels.get(field.key, ""),
+        value=field.value,
+        confidence=field.confidence,
+        source=field.source,
+        updated_at=field.updated_at,
+        evidence=list(field.evidence),
+    )
+
+
 def workspace_page_view(view: WorkspaceView) -> WorkspacePageView:
     """工作台 ①-⑤ 聚合视图。"""
     panels = {panel.stage: panel for panel in view.panels}
@@ -538,18 +556,7 @@ def workspace_page_view(view: WorkspaceView) -> WorkspacePageView:
     profile_panel = ProfilePanelView(
         coverage=view.profile_coverage,
         overall_confidence=view.profile_confidence,
-        fields=[
-            ProfileFieldView(
-                key=field.key,
-                label=field.label or labels.get(field.key, ""),
-                value=field.value,
-                confidence=field.confidence,
-                source=field.source,
-                updated_at=field.updated_at,
-                evidence=list(field.evidence),
-            )
-            for field in (profile.fields if profile else [])
-        ],
+        fields=[profile_field_view(field, labels) for field in (profile.fields if profile else [])],
         gaps=[
             ProfileGapView(
                 key=gap.key,

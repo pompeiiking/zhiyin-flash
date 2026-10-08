@@ -111,6 +111,18 @@ class ProfileService(ABC):
         """
 
     @abstractmethod
+    async def correct_field(self, user_id: str, key: str, value: object) -> ProfileField:
+        """**用户本人**更正一个画像字段（issue #26 第三条）。
+
+        与 `update_field` 的分工：那一条是"系统去记"（采集 / 导入 / 推断），
+        这一条是"他自己写"。两条落到同一处存储，但来源不同，界面上说的也是
+        两句不同的话 —— 所以这个区别要在**类型上**看得见，不能只靠调用方自觉。
+
+        实现要求：同一条键上的其他信息（中文名、它在缺口清单里的位置）要一起收尾，
+        否则值改对了，界面上还挂着"这一条没定"。
+        """
+
+    @abstractmethod
     async def overall_confidence(self, user_id: str) -> float:
         """画像整体置信度。采集环节的结束条件依据。"""
 

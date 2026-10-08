@@ -119,8 +119,10 @@ const selected = computed(() => {
 /**
  * 来源枚举 → 用户读得懂的说法。
  *
- * 六个取值由内核契约 `ProfileSource` 定死（不是自由字符串）：学信网与教务系统
+ * 这些取值由内核契约 `ProfileSource` 定死（不是自由字符串）：学信网与教务系统
  * 这类权威记录统一走 `record`，所以这里没有、也不需要有它们各自的名字。
+ * `user_edit` 是他**自己改的**那一条（issue #26 第三条）—— 与"对话"分开是有意的：
+ * 一个是"系统从你说的话里记的"，一个是"你自己写的"，他该分得清。
  * 认不出来的取值不给用户看原始码，退回一句中性说法。
  */
 const SOURCE_LABEL: Record<string, string> = {
@@ -130,6 +132,7 @@ const SOURCE_LABEL: Record<string, string> = {
   behavior_inference: '行为推断',
   mentor: '导师',
   record: '权威记录',
+  user_edit: '本人填写',
 }
 
 const sourceLabel = (source: string) => SOURCE_LABEL[source] ?? '记录'
@@ -165,6 +168,17 @@ function readValue(value: unknown): string {
   return parts.length ? parts.join('、') : '—'
 }
 
+/**
+ * 「更正」输入框的初值。
+ *
+ * 与 `readValue` 只差一处：没有值时给**空串**而不是那个占位符"——"。
+ * 占位符是给人看的，一旦当成初值填进输入框，用户不改它会把这个符号本身存进画像。
+ */
+function editableValue(value: unknown): string {
+  const text = readValue(value)
+  return text === '—' ? '' : text
+}
+
 /** 证据是后端给的字符串引用；点开看它原样是什么 */
 function showEvidence(label: string, evidence: string[]) {
   session.openDrawer(
@@ -189,6 +203,9 @@ function showGap(gap: { id: string; name: string; question: string; suggested: s
  * 混进他自己说的话里 —— 而"哪条是他说的、哪条是系统抄的"正是这个产品最要紧的一件事
  * （口径见 lib/profile.ts）。所以这里一个字段都不写，只把人送到**既有的那条补充录入
  * 路径**上：问题摆好，答案仍然由他说，落库仍然由主理那一轮对话完成。
+ *
+ * 注意与下面的 `correctField` 分开：那一条是**他自己说"记错了"**（值由他给），
+ * 这一条是**系统说"还缺这个"**（值不能由系统替他编）。两件事的写权限不一样。
  *
  * 【为什么是这两条既有入口，不新造一条】
  * 采集动线对同一批缺口本来就是这么分流的（CollectOverlay 的 `goSource` / `askFor`）：
@@ -228,6 +245,25 @@ function supplement(key: string) {
  * 切一刀的地方只有一处（lib/profile.ts），这里只负责把两堆分别摆到该摆的地方：
  * 判断 → 分析图 + 判断清单；档案 → 档案清单。混在一起是上一版最大的误区。
  */
+
+/**
+ * 更正一条（issue #26 第三条）。
+ *
+ * 上面那段说的是"点一下不许顺手改数据"；**这里恰恰相反**，要给它一条真的写路径 ——
+ * 区别在"谁说这句话"：
+ *   · `supplement` 是系统的猜测（"你还缺专业"），点一下就替用户填值，
+ *     等于把系统的猜混进他本人说的话里；
+ *   · 这一条是他**自己**敲进去的："系统记错了，正确的是这个"。
+ *     在这件事上他比任何来源都权威 —— 学信网上写的也可能是错的（院系调整、
+ *     大类招生、专业改名），而系统此前一个字都不许他改，他只能看着一条错值
+ *     被后面每一份报告引用（用户原话："无法完成修改"）。
+ *
+ * 落库走 store（`correctProfileField`：乐观更新 + 失败回滚），这里只把动作递下去，
+ * 顺带补一句"存下之后它算你自己填的"—— 来源变了这件事要说给用户听。
+ */
+function correctField(key: string, value: string) {
+  return session.correctProfileField(key, value)
+}
 const split = computed(() => splitProfile(fields.value))
 const pendingKeys = computed(() => new Set(gaps.value.map((g) => g.id)))
 
@@ -239,13 +275,15 @@ const toItem = (field: { key: string; label?: string; confidence?: number; sourc
   updatedAt: String(field.updated_at ?? ''),
   evidenceCount: (field.evidence ?? []).length,
   pending: pendingKeys.value.has(field.key),
+  // 取值读成人话：档案清单直接显示它，「更正」时也拿它当输入框的初值
+  // （判断那一堆的行里不显示值，所以这一步对它们是白拿的）。
+  value: editableValue(field.value),
 })
 
 const dimItems = computed(() => split.value.judgments.map(toItem))
 const factItems = computed(() =>
   split.value.facts.map((f) => ({
     ...toItem(f),
-    value: readValue(f.value),
     sourceLabel: sourceLabel(f.source),
   })),
 )
@@ -452,7 +490,7 @@ const leadEntry = computed<'dims' | 'gaps' | null>(() => {
                     <span class="mrow__badge">{{ factItems.length }}</span>
                     <span class="mrow__body">
                       <span class="mrow__t">档案信息</span>
-                      <span class="mrow__d">学校、专业、学籍：从权威记录抄下来的事实</span>
+                      <span class="mrow__d">学校、专业、学籍：从权威记录抄下来的，记错了能自己改</span>
                     </span>
                     <GlyphIcon class="mrow__go" name="arrow-right" :size="13" />
                   </button>
@@ -497,6 +535,7 @@ const leadEntry = computed<'dims' | 'gaps' | null>(() => {
           :items="dimItems"
           :selected-key="selectedKey"
           :gap-count="gaps.length"
+          :correct="correctField"
           @select="openField"
           @supplement="supplement"
         />
@@ -504,14 +543,17 @@ const leadEntry = computed<'dims' | 'gaps' | null>(() => {
         <!-- ── 第二层：档案信息 ───────────────────────────────────── -->
         <div v-else-if="level === 'records'" class="records">
           <p class="records__lead">
-            这些是从权威记录直接抄下来的事实，不是你自述的 —— 所以它们没有"把握度"，
-            也不需要你去核对。它们只说明"你在哪儿"，不说明你是谁。
+            这些是从权威记录（学信网 / 教务系统）抄下来的事实，不是你自述的 ——
+            所以它们没有"把握度"，也不必逐条核对：它们只说明"你在哪儿"，不说明你是谁。
+            但权威记录也会错（大类招生、院系调整、专业改名），看到不对的那一条，
+            点行尾的「更正」自己写一遍 —— 存下之后这一条算你说的，来源标成「本人填写」。
           </p>
           <PortraitFieldList
             kind="record"
             :items="factItems"
             :selected-key="selectedKey"
             :gap-count="0"
+            :correct="correctField"
             @select="openField"
             @supplement="supplement"
           />

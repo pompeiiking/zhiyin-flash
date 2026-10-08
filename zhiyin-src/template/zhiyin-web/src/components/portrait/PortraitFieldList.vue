@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 
 /**
  * 画像清单 —— 第二层。一份是**判断维度**，一份是**档案事实**。
@@ -40,6 +40,15 @@ const props = withDefaults(
     gapCount: number
     /** judgment = 判断维度；record = 档案事实 */
     kind?: 'judgment' | 'record'
+    /**
+     * 更正这一条（issue #26 第三条）。
+     *
+     * 为什么由外层把动作**当参数传进来**、而不是这一层自己去调接口：
+     * 这一层是展示件（见下面补充录入那段说明）—— 它只该知道"用户打算把这一条
+     * 改成什么"，写库、乐观更新、失败回滚都是 store 的事（`correctProfileField`）。
+     * 返回值是**要给用户看的那句话**：空串 = 存下了，非空 = 为什么没存下。
+     */
+    correct?: (key: string, value: string) => Promise<string>
   }>(),
   { kind: 'judgment' },
 )
@@ -119,11 +128,91 @@ const day = (iso: string) => (iso ? iso.slice(5, 10) : '未记录')
  * 为什么不是"再挂一颗小按钮"：整行本来就是一颗 `<button>`（Tab 能到，
  * 焦点环由 base.css 的 `:focus-visible` 统一给），行内再嵌一颗按钮既不合 HTML，
  * 也会把整行这块大点击区切成两个小块 —— 待验证这一条要的恰恰是"整行都能点"。
+ * （行尾那颗「更正」同样是**整行的兄弟节点**、不是嵌在行里的按钮，见 .row__fix。）
  */
 function pick(item: PortraitItem) {
   if (item.pending) emit('supplement', item.key)
   else emit('select', item.key)
 }
+
+/*
+ * ── 就地更正（issue #26 第三条） ────────────────────────────────────
+ *
+ * 用户的原话是"后续用户想要更正专业信息，无法完成修改"：画像里每一条都只能看。
+ * 所以这里补的是**他自己改**的那条路 —— 点「更正」，那一行当场变成输入行，
+ * 存下之后界面立刻显示新值（乐观更新在 store 里，失败会整份还原并把原因显示出来）。
+ *
+ * 【为什么不用弹窗】
+ * 改的是一个值，就该在那一行里改：再弹一层界面，用户要重新确认"我在改哪一条"，
+ * 而那一行本身就把字段名、现值、来源摆在一起。
+ *
+ * 【可访问性】
+ * 入口、提交、取消都是真 `<button>`（不给 div 挂 click），输入是真 `<input>`：
+ * Tab 能依次到达，焦点环由 base.css 的 `:focus-visible` 统一给（见 styles/base.css）；
+ * `aria-label` 说清改的是哪一条；`enterkeyhint="done"` 让手机键盘显示"完成"；
+ * Enter 提交、Esc 取消（`.stop` 把按键留在这一行里，不然 ↑↓ 会被清单的
+ * 上下切换抢走、Esc 会被浮层的"退一层"抢走）。
+ */
+/**
+ * 与后端 `DefaultProfileService.MAX_FIELD_VALUE_CHARS` 对齐（40）。
+ *
+ * 这里只用来说给用户听（输入框旁边那个计数），**不做静默截断**：
+ * 截断会让他以为自己写的后半句被记住了。超长由后端如实拒，
+ * 理由照原样显示在输入框下面。
+ */
+const MAX_CHARS = 40
+
+const editingKey = ref<string | null>(null)
+const draft = ref('')
+const saving = ref(false)
+const error = ref('')
+/** 正在改的那一条的输入框（一次只有一个，打开后自动聚焦） */
+const editInput = ref<HTMLInputElement | HTMLInputElement[] | null>(null)
+
+const overLimit = computed(() => draft.value.trim().length > MAX_CHARS)
+
+function startEdit(item: PortraitItem) {
+  editingKey.value = item.key
+  // 现值能读成一句人话就带上（档案那几条都有）；没有就从空开始写。
+  // 多值字段（成绩单那种）在行里本来就是"、"连起来的一句话，改它等于用
+  // 他自己的话重写这一格 —— 这正是"更正"要做的事。
+  draft.value = item.value ?? ''
+  error.value = ''
+}
+
+function cancelEdit() {
+  editingKey.value = null
+  error.value = ''
+}
+
+async function submitEdit(item: PortraitItem) {
+  if (saving.value || !props.correct) return
+  saving.value = true
+  error.value = ''
+  const message = await props.correct(item.key, draft.value)
+  saving.value = false
+  if (message) {
+    // 失败：store 已经把值还原了，输入框留着他改（原因显示在下面）
+    error.value = message
+    return
+  }
+  editingKey.value = null
+}
+
+/** 打开编辑器就把光标放进去，并全选现值。
+ *
+ * 全选是有意的：会点「更正」的人多半是要把这一格**整句换掉**
+ * （"计算机大类" 换成 "软件工程"），点完直接用键盘重打就行 ——
+ * 先按一下退格、或者用鼠标先拖选一遍，是多余的一步。
+ * 想改中间几个字的人按一下方向键就取消了选择，不损失什么。
+ */
+watch(editingKey, async (key) => {
+  if (!key) return
+  await nextTick()
+  const el = Array.isArray(editInput.value) ? editInput.value[0] : editInput.value
+  el?.focus()
+  el?.select()
+})
 </script>
 
 <template>
@@ -174,6 +263,9 @@ function pick(item: PortraitItem) {
         <span v-if="judging" />
         <span>{{ judging ? '依据 / 更新' : '来源 / 更新' }}</span>
         <span />
+        <!-- 更正那一列的列头留空：它会占一列宽（行里的按钮浮在它上面），
+             这里不写字，否则这张表会多出一个"更正 / 更正 / 更正…"的标题列 -->
+        <span />
       </div>
 
       <ul
@@ -184,41 +276,107 @@ function pick(item: PortraitItem) {
         @keydown.up.prevent="move(-1)"
       >
         <li v-for="item in shown" :key="item.key">
-          <button
-            class="row"
-            :class="{ 'row--rec': !judging, [`row--${tier(item.confidence)}`]: judging, 'row--on': item.key === selectedKey }"
-            type="button"
-            :aria-current="item.key === selectedKey"
-            @click="pick(item)"
-          >
-            <span class="row__name">
-              {{ item.label }}
-              <span v-if="item.pending" class="tag" title="这条还没定">没定</span>
+          <!--
+            正在改的那一条：整行换成输入行（就地改，不弹第二层界面）。
+            只有它换成输入行，其余行原样 —— 用户一眼就知道在改哪一条。
+          -->
+          <div v-if="editingKey === item.key" class="edit" :data-key="item.key">
+            <span class="edit__who">更正「{{ item.label }}」</span>
+            <input
+              ref="editInput"
+              v-model="draft"
+              class="edit__in"
+              type="text"
+              autocomplete="off"
+              spellcheck="false"
+              enterkeyhint="done"
+              data-action="profile-field-input"
+              :data-key="item.key"
+              :aria-label="`更正「${item.label}」的值`"
+              aria-describedby="profile-edit-note"
+              @keydown.stop
+              @keydown.enter.prevent="submitEdit(item)"
+              @keydown.esc.prevent="cancelEdit"
+            />
+            <span class="edit__count" :class="{ 'edit__count--over': overLimit }" aria-hidden="true">
+              {{ draft.trim().length }}/{{ MAX_CHARS }}
             </span>
+            <button
+              class="edit__save"
+              type="button"
+              data-action="profile-field-save"
+              :data-key="item.key"
+              :disabled="saving"
+              @click="submitEdit(item)"
+            >
+              {{ saving ? '正在存…' : '存下这条' }}
+            </button>
+            <button
+              class="edit__cancel"
+              type="button"
+              data-action="profile-field-cancel"
+              @click="cancelEdit"
+            >
+              取消
+            </button>
+            <p v-if="error" id="profile-edit-note" class="edit__err" role="alert">{{ error }}</p>
+            <p v-else id="profile-edit-note" class="edit__why">
+              存下之后这一条算你自己填的，不再挂在"还差什么"里 —— 画像按新值重算。
+            </p>
+          </div>
 
-            <template v-if="judging">
-              <span class="row__num">{{ item.confidence.toFixed(2) }}</span>
-              <span class="row__track" aria-hidden="true">
-                <i :style="{ width: `${Math.max(6, Math.round(item.confidence * 100))}%` }" />
+          <template v-else>
+            <button
+              class="row"
+              :class="{ 'row--rec': !judging, [`row--${tier(item.confidence)}`]: judging, 'row--on': item.key === selectedKey }"
+              type="button"
+              :aria-current="item.key === selectedKey"
+              @click="pick(item)"
+            >
+              <span class="row__name">
+                {{ item.label }}
+                <span v-if="item.pending" class="tag" title="这条还没定">没定</span>
               </span>
-              <span class="row__meta">{{ item.evidenceCount }} 条依据 · {{ day(item.updatedAt) }}</span>
-            </template>
 
-            <!-- 档案：给的是**内容本身**，不是一根恒等于 1.00 的条 -->
-            <template v-else>
-              <span class="row__value">{{ item.value || '—' }}</span>
-              <span class="row__meta">
-                {{ item.sourceLabel || '权威记录' }} · {{ day(item.updatedAt) }}
+              <template v-if="judging">
+                <span class="row__num">{{ item.confidence.toFixed(2) }}</span>
+                <span class="row__track" aria-hidden="true">
+                  <i :style="{ width: `${Math.max(6, Math.round(item.confidence * 100))}%` }" />
+                </span>
+                <span class="row__meta">{{ item.evidenceCount }} 条依据 · {{ day(item.updatedAt) }}</span>
+              </template>
+
+              <!-- 档案：给的是**内容本身**，不是一根恒等于 1.00 的条 -->
+              <template v-else>
+                <span class="row__value">{{ item.value || '—' }}</span>
+                <span class="row__meta">
+                  {{ item.sourceLabel || '权威记录' }} · {{ day(item.updatedAt) }}
+                </span>
+              </template>
+
+              <span class="row__go" aria-hidden="true">
+                <svg width="12" height="12" viewBox="0 0 12 12">
+                  <path d="M4.4 2.4 8 6l-3.6 3.6" fill="none" stroke="currentColor" stroke-width="1.6"
+                        stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
               </span>
-            </template>
+              <!-- 这一格留给旁边那颗「更正」：它必须浮在整行按钮**上面**，
+                   而不是嵌进去（按钮里不能再放按钮）。列宽也对齐，见 .cols -->
+              <span class="row__fixslot" aria-hidden="true" />
+            </button>
 
-            <span class="row__go" aria-hidden="true">
-              <svg width="12" height="12" viewBox="0 0 12 12">
-                <path d="M4.4 2.4 8 6l-3.6 3.6" fill="none" stroke="currentColor" stroke-width="1.6"
-                      stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-            </span>
-          </button>
+            <button
+              v-if="correct"
+              class="row__fix"
+              type="button"
+              data-action="profile-field-correct"
+              :data-key="item.key"
+              :aria-label="`更正「${item.label}」`"
+              @click="startEdit(item)"
+            >
+              更正
+            </button>
+          </template>
         </li>
       </ul>
     </template>
@@ -226,7 +384,10 @@ function pick(item: PortraitItem) {
 </template>
 
 <style scoped>
-.list { display: flex; flex-direction: column; gap: var(--s3); min-height: 0; }
+.list { display: flex; flex-direction: column; gap: var(--s3); min-height: 0;
+  /* 行尾「更正」那一列的宽度：列头、行、缺口那一列共用它，三者才对得齐 */
+  --fix-w: 62px;
+}
 
 /* ── 工具条 ─────────────────────────────────────────────────────── */
 .tools { display: grid; grid-template-columns: minmax(0, 280px) auto; gap: var(--s2); }
@@ -284,19 +445,20 @@ function pick(item: PortraitItem) {
 
 /* ── 表 ─────────────────────────────────────────────────────────── */
 /*
- * 判断：字段 · 把握值 · 把握条 · 依据与时间 · 箭头
- * 档案：字段 · 内容（可变宽）· 来源与时间 · 箭头
+ * 判断：字段 · 把握值 · 把握条 · 依据与时间 · 箭头 · 更正
+ * 档案：字段 · 内容（可变宽）· 来源与时间 · 箭头 · 更正
  * 列头与行共用同一套模板 —— 对不齐的话，它就不是一张表。
+ * 最后一列 `--fix-w` 是行尾那颗「更正」的位置（它绝对定位浮在这一列上）。
  */
 .cols,
 .row {
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) 52px minmax(96px, 1fr) 150px 16px;
+  grid-template-columns: minmax(0, 1.1fr) 52px minmax(96px, 1fr) 150px 16px var(--fix-w);
   align-items: center; gap: var(--s4);
 }
 .cols--rec,
 .row--rec {
-  grid-template-columns: minmax(0, 200px) minmax(0, 1fr) 170px 16px;
+  grid-template-columns: minmax(0, 200px) minmax(0, 1fr) 170px 16px var(--fix-w);
 }
 .cols {
   padding: 0 14px 6px;
@@ -320,7 +482,7 @@ function pick(item: PortraitItem) {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: none; }
 }
-.rows li { animation: pt-row-in 420ms var(--ease-expo) both; }
+.rows li { animation: pt-row-in 420ms var(--ease-expo) both; position: relative; }
 .rows li:nth-child(2) { animation-delay: 40ms; }
 .rows li:nth-child(3) { animation-delay: 80ms; }
 .rows li:nth-child(4) { animation-delay: 120ms; }
@@ -392,10 +554,99 @@ function pick(item: PortraitItem) {
 
 .empty { font-size: var(--t-sm); color: var(--pt-muted, var(--ink-3)); line-height: 1.7; padding: var(--s2) 0; }
 
+/* ── 就地更正 ───────────────────────────────────────────────────── */
+
+/*
+ * 行尾那颗「更正」。
+ *
+ * 它**不能**嵌在整行按钮里（按钮里放按钮不是合法 HTML，Tab 也会乱），
+ * 所以它是整行的兄弟节点，绝对定位浮在行的最后一列上：
+ * 位置由 `--fix-w` 与行的右内边距决定，视觉上就在那一格里。
+ * 平时低调（它就是一行字），hover / 聚焦时才亮起来 —— 一屏十几行，
+ * 每行都挂一颗实心按钮会把"这一行在说什么"淹掉。
+ */
+.row__fix {
+  position: absolute; right: 14px; top: 50%;
+  transform: translateY(-50%);
+  width: var(--fix-w);
+  height: 26px; border-radius: var(--r-pill);
+  border: 1px solid transparent;
+  font-size: var(--t-xs); font-weight: 500;
+  color: var(--pt-faint, var(--ink-3));
+  transition: color 160ms var(--ease-out), border-color 160ms var(--ease-out),
+              background 160ms var(--ease-out);
+}
+.row__fix:hover,
+.row__fix:focus-visible {
+  color: var(--pt-accent, var(--accent));
+  border-color: var(--pt-line, var(--line-2));
+  background: var(--pt-surface, var(--c-paper));
+}
+
+/* 输入行：一整行（含列头行的高度），让人一眼看出"改的是这一条" */
+.edit {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto;
+  align-items: center; gap: var(--s2) var(--s3);
+  padding: 9px 14px;
+  border: 1px solid var(--pt-accent, var(--accent));
+  border-radius: var(--pt-r-sm, 8px);
+  background: var(--pt-surface, var(--c-paper));
+  box-shadow: var(--e-1), var(--inner-hi);
+}
+.edit__who {
+  font-size: var(--t-sm); font-weight: 600;
+  color: var(--pt-ink, var(--ink-1)); white-space: nowrap;
+}
+.edit__in {
+  height: 30px; min-width: 0; padding: 0 10px;
+  border: 1px solid var(--pt-line, var(--line-2));
+  border-radius: 6px;
+  background: var(--pt-well, var(--c-sand-1));
+  font-size: var(--t-sm); color: var(--pt-ink, var(--ink-1));
+}
+.edit__in:focus-within,
+.edit__in:focus { background: var(--pt-surface, var(--c-paper)); }
+.edit__count {
+  font-size: var(--t-xs); color: var(--pt-faint, var(--ink-3));
+  font-variant-numeric: tabular-nums;
+}
+/* 超长只是**说给他听**（后端会如实拒并说明上限），不静默截断 */
+.edit__count--over { color: var(--pt-warn, var(--warn)); }
+
+.edit__save {
+  height: 28px; padding: 0 14px; border-radius: var(--r-pill);
+  background: var(--pt-accent, var(--accent)); color: var(--accent-ink);
+  font-size: var(--t-xs); font-weight: 600;
+  transition: background 160ms var(--ease-out), transform 160ms var(--ease-out);
+}
+.edit__save:hover:not(:disabled) { background: var(--pt-accent-deep, var(--accent-deep)); transform: translateY(-1px); }
+.edit__save:disabled { opacity: 0.6; cursor: default; }
+.edit__cancel {
+  height: 28px; padding: 0 10px; border-radius: var(--r-pill);
+  font-size: var(--t-xs); font-weight: 500; color: var(--pt-muted, var(--ink-2));
+  border: 1px solid var(--pt-line, var(--line-2));
+}
+.edit__cancel:hover { color: var(--pt-ink, var(--ink-1)); border-color: var(--pt-line-strong, var(--line-3)); }
+
+.edit__why,
+.edit__err {
+  grid-column: 1 / -1;
+  font-size: var(--t-xs); line-height: 1.65;
+}
+.edit__why { color: var(--pt-faint, var(--ink-3)); }
+/* 没改成的那句话：说清**为什么**（空值 / 超长 / 画像里没这一格），他照着改就行 */
+.edit__err { color: var(--pt-warn, var(--warn)); }
+
 @media (max-width: 900px) {
   .cols { display: none; }
   .row, .row--rec { grid-template-columns: minmax(0, 1fr) auto; gap: 6px var(--s3); }
-  .row__track, .row__meta, .row__go { grid-column: 1 / -1; }
+  .row__track, .row__meta, .row__go, .row__fixslot { grid-column: 1 / -1; }
   .row__go { display: none; }
+  /* 窄屏：更正浮在行的右上角（列头已隐藏，不必再对齐某一列） */
+  .row__fix { top: 6px; transform: none; }
+  .edit { grid-template-columns: minmax(0, 1fr) auto auto; }
+  .edit__who { grid-column: 1 / -1; }
+  .edit__count { display: none; }
 }
 </style>

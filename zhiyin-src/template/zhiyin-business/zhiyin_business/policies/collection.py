@@ -230,6 +230,21 @@ def _rules_from(specs: Sequence[Any]) -> tuple[tuple[str, str, CollectionSource,
     return tuple(table)
 
 
+def field_labels(rules: Optional[Sequence[Any]] = None) -> dict[str, str]:
+    """登记表里的画像字段：**键 → 中文名**（`collection_rules.json`）。
+
+    给"用户手动更正画像"做门禁用：只有登记过的键才允许写进画像。
+    为什么用这张表而不是随口收下：画像里出现一个没有中文名、采集清单与报告维度
+    也都不认识的键，界面上就是一格没人读得懂的东西（实测出现过
+    `interest_direction` / `course_selection_pattern` 这类自由发挥的键）。
+
+    `rules` 读不到时退回内置兜底表 —— 与 `plan_collection` 同一条口径，
+    否则"配置没装载"会变成"用户改什么都被拒"。
+    """
+    table = _rules_from(rules) if rules else _RULES
+    return {key: label for key, label, _source, _why, _ask in table}
+
+
 _SNIPPET_PAD = 6
 
 
@@ -435,6 +450,7 @@ __all__ = [
     "CollectionSource",
     "CollectionStep",
     "UserSignal",
+    "field_labels",
     "filled_by",
     "plan_collection",
     "signals_from",

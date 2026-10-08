@@ -59,6 +59,8 @@ from zhiyin_api.dto.workspace import (
     AcademicImportUpload,
     AcademicRevokeAck,
     IntelListView,
+    ProfileFieldUpdateRequest,
+    ProfileFieldView,
     WorkspacePageView,
 )
 from zhiyin_api.dto import mappers
@@ -68,6 +70,7 @@ from collections.abc import AsyncIterator
 from zhiyin_business.ports.blackboard import AcademicService, AssetService
 from zhiyin_business.ports.blackboard import BehaviorService
 from zhiyin_business.ports.blackboard import ConversationMemoryService
+from zhiyin_business.ports.blackboard import ProfileService
 from zhiyin_business.ports.cache import ReadCacheService, cache_key
 from zhiyin_business.contracts.common import BehaviorEventDraft
 from zhiyin_kernel.enums import BehaviorEventType
@@ -110,6 +113,7 @@ class DefaultApplicationFacade(ApplicationFacade):
         behaviors: Optional[BehaviorService] = None,
         memories: Optional[ConversationMemoryService] = None,
         read_cache: Optional[ReadCacheService] = None,
+        profiles: Optional[ProfileService] = None,
     ) -> None:
         """构造依赖由 boot 注入。
 
@@ -141,6 +145,9 @@ class DefaultApplicationFacade(ApplicationFacade):
         self._memories = memories
         # 读缓存：可缺省 —— 缺省时 facade 直接读库（缓存不该是必需依赖）。
         self._cache = read_cache
+        # 画像的写侧：用户手动更正那一条要走它。**不能**经工作台服务代写 ——
+        # 那个服务的契约是读侧（"本类不写任何状态、不发任何事件"）。
+        self._profiles = profiles
 
     # ---------- 身份 ----------
 
@@ -782,6 +789,27 @@ class DefaultApplicationFacade(ApplicationFacade):
         if self._memories is None:
             raise RuntimeError("会话记忆服务未装配（Container.memories）")
         return self._memories
+
+    # ---------- 画像：他自己改的那一条 ----------
+
+    async def update_profile_field(
+        self, user_id: str, key: str, body: ProfileFieldUpdateRequest
+    ) -> ProfileFieldView:
+        """用户手动更正一条画像字段（issue #26 第三条）。
+
+        为什么必须立刻失效缓存，而不是等影响面 Worker：读缓存里那份工作台快照
+        带着 20 秒 TTL，而用户改完会**马上刷新**看结果 —— 不失效的话，
+        他会看到自己刚改的值又变回旧的，然后认为"改了没用"（这正是这个 issue
+        一开始的症状）。模型产出（维度解读 / 对你的分析）同样基于旧值，
+        一起作废，下一次打开才会按新值重算。
+        """
+        if self._profiles is None:
+            raise RuntimeError("画像服务未装配（Container.profile_service）")
+        field = await self._profiles.correct_field(user_id, key, body.value)
+        await self._invalidate_user(user_id, "profile_field_updated")
+        # 单条回包与工作台面板走**同一个** mapper：改完那一刻看到的这条，
+        # 必须和刷新之后看到的那条是同一个形状、同一个名字。
+        return mappers.profile_field_view(field, labels={})
 
     async def reload_dynamic_config(self) -> dict[str, Any]:
         """重新装载动态配置，并回报这一次装到了什么。"""
