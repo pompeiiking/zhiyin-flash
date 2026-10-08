@@ -1,0 +1,7 @@
+# Copy this file to .env.keys on the deployment host and chmod it to 600.
+# Never commit real provider keys.
+DEEPSEEK_API_KEY_1=
+DEEPSEEK_API_KEY_2=
+DEEPSEEK_API_KEY_3=
+DEEPSEEK_API_KEY_4=
+

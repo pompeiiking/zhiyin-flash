@@ -54,3 +54,61 @@ def test_nginx_keeps_sse_and_records_actual_upstream() -> None:
     assert "proxy_buffering off" in nginx
     assert "proxy_next_upstream_tries 2" in nginx
     assert "non_idempotent;" not in nginx
+
+
+def test_litellm_overlay_is_internal_and_required_by_backends() -> None:
+    compose = (ROOT / "docker-compose.litellm.yml").read_text(encoding="utf-8")
+
+    assert "ghcr.io/berriai/litellm:v1.98.0" in compose
+    assert "./deploy/litellm/.env.keys" in compose
+    assert "./deploy/litellm/config.yaml:/app/config.yaml:ro" in compose
+    assert "./deploy/litellm/validate-and-start.sh:/app/validate-and-start.sh:ro" in compose
+    assert "./deploy/litellm/verify_load_balancing.py:/app/verify_load_balancing.py:ro" in compose
+    assert "ZHIYIN_LLM_API_KEY must contain the internal LiteLLM key" in compose
+    assert "http://127.0.0.1:4000/health/readiness" in compose
+    assert "ports:" not in compose
+    assert 'expose:\n      - "4000"' in compose
+    assert compose.count("condition: service_healthy") == 2
+
+
+def test_litellm_config_has_four_key_deployments_and_no_secret() -> None:
+    config = (ROOT / "deploy" / "litellm" / "config.yaml").read_text(
+        encoding="utf-8"
+    )
+
+    assert config.count("model_name: deepseek-flash") == 4
+    assert config.count("model: openai/deepseek-flash") == 4
+    assert config.count("api_base: https://api.deepseek.com") == 4
+    for index in range(1, 5):
+        assert f"id: deepseek-key-{index}" in config
+        assert f"api_key: os.environ/DEEPSEEK_API_KEY_{index}" in config
+    assert "routing_strategy: least-busy" in config
+    assert "num_retries: 0" in config
+    assert "turn_off_message_logging: true" in config
+    assert "master_key: os.environ/LITELLM_MASTER_KEY" in config
+    assert "sk-" not in config
+
+
+def test_litellm_startup_guard_requires_distinct_secrets() -> None:
+    guard = (ROOT / "deploy" / "litellm" / "validate-and-start.sh").read_text(
+        encoding="utf-8"
+    )
+
+    for index in range(1, 5):
+        assert f"DEEPSEEK_API_KEY_{index}" in guard
+    assert "values must be distinct" in guard
+    assert "LITELLM_MASTER_KEY must start with sk-" in guard
+    assert 'exec litellm "$@"' in guard
+
+
+def test_litellm_verifier_checks_all_four_deployments_without_provider_keys() -> None:
+    verifier = (
+        ROOT / "deploy" / "litellm" / "verify_load_balancing.py"
+    ).read_text(encoding="utf-8")
+
+    assert "REQUEST_COUNT = 20" in verifier
+    assert "CONCURRENCY = 8" in verifier
+    assert 'os.getenv("LITELLM_MASTER_KEY"' in verifier
+    assert "x-litellm-model-id" in verifier
+    assert "len(deployments) != 4" in verifier
+    assert "DEEPSEEK_API_KEY_" not in verifier
