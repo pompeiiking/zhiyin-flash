@@ -33,6 +33,7 @@ from enum import Enum
 from typing import Any, Optional, Sequence
 
 from zhiyin_kernel.blackboard import Profile
+from zhiyin_kernel.enums import ProfileSource
 
 
 class CollectionSource(str, Enum):
@@ -318,6 +319,72 @@ def _compose_why(signal: UserSignal, rule_why: str) -> str:
     return f"因为你写了「{said}」：{signal.why or rule_why}"
 
 
+"""登记来源属于"权威记录类"的字段：它们的值必须由**相称的来源**写进来才算拿到。
+
+为什么必须区分来源
+------------------
+`major` 这类字段在 `collection_rules.json` 上登记的源头是 `chsi`（学信网核验）。
+"拿到了没"如果只看键在不在画像里，用户在对话里随口说的那句"计算机大类"就会被算成
+已经拿到 —— 学信网核验从此不再被要求、界面上也不再提示，一句对话就此长得像一条
+权威记录。这正是 #26 里"系统直接默认认定"的结构性原因：问题不在提示词怎么写，
+而在这道判定把**值在不在**当成了**值由谁出具**。
+"""
+_AUTHORITATIVE_SOURCES: frozenset[CollectionSource] = frozenset(
+    {CollectionSource.CHSI, CollectionSource.ACADEMIC}
+)
+
+"""对权威字段来说，落库的 `source` 取到什么才算相称。只有两类：
+
+- `record`（客观档案）：学信网在线验证与教务系统导出的原始记录落库时写的都是它
+  （见 `services/ai_tasks.py` 的核验写入与 `services/academic.py` 的导入摘要），
+  它就是这个字段登记的权威来源本身；
+- `user_edit`（本人填写）：用户一字一句告诉系统的值就是拿到了 —— 把他亲手更正过的那条
+  又判成"没拿到"，他会一直看到"还差这一条"，上一轮补的手动更正等于白做。
+
+`conversation` / `behavior_inference` 这类推断来源**不在其中**：它们对权威字段不算拿到。
+值仍然可以留在画像里做参考（不清、不覆盖），但这条字段要继续出现在缺口里，
+对应的采集动作（学信网核验 / 教务导入）也要保持"该做"的状态。
+
+`resume` / `assessment` / `mentor` 同样不算：它们都是**转述或推断**，不是出具方本身，
+"相称"问的是这条值由谁签发，不是它听起来多正式。
+"""
+_AUTHORITY_MATCHING_SOURCES: frozenset[ProfileSource] = frozenset(
+    {ProfileSource.RECORD, ProfileSource.USER_EDIT}
+)
+
+
+def _field_source(field: Any) -> Optional[ProfileSource]:
+    """读一个画像字段的来源。
+
+    读不出来（缺失、或是认不出的字符串）返回 `None`，按"不相称"处理：
+    来源是一份**声明**，读不懂的声明不能替这条值撑起权威性。
+    内存装配里它是枚举、库里回来的是字符串，两种都要认。
+    """
+    raw = getattr(field, "source", None)
+    if isinstance(raw, ProfileSource):
+        return raw
+    try:
+        return ProfileSource(str(raw))
+    except ValueError:
+        return None
+
+
+def _counts_as_got(rule_source: CollectionSource, field: Any) -> bool:
+    """这一条算不算"已经拿到了"。
+
+    登记来源不是权威类的字段（`chsi` / `academic` 之外的，例如 `conversation` 的兴趣、
+    目标方向）口径**完全不变**：键在画像里就算拿到。顺手把它们也收紧会把正常动线卡死 ——
+    这类字段本来就该从对话来，问对了就是拿到了。
+
+    权威字段（学信网核验 / 教务导入）才看来源。
+    """
+    if field is None:
+        return False
+    if rule_source not in _AUTHORITATIVE_SOURCES:
+        return True
+    return _field_source(field) in _AUTHORITY_MATCHING_SOURCES
+
+
 def plan_collection(
     profile: Optional[Profile],
     *,
@@ -349,7 +416,9 @@ def plan_collection(
     不跟着代码里的一句注释走。
     """
     table = _rules_from(rules) if rules else _RULES
-    have = {field.key for field in (profile.fields if profile else [])}
+    # 画像里现存的字段按**整条**留下（键 → 字段），不是一个只有键的集合：
+    # 判"拿到了没"要看来源，而来源只在这条字段本身上（见 `_counts_as_got`）。
+    have = {field.key: field for field in (profile.fields if profile else [])}
     first = _STAGE_FIRST.get((stage or "").lower(), ())
     usable = (
         frozenset(str(item) for item in available_sources)
@@ -365,7 +434,9 @@ def plan_collection(
     missing = 0
 
     for key, label, source, why, ask in table:
-        got = key in have
+        # 判据是"这条值由谁出具"，不是"这个键出现过没有" ——
+        # 只对话里提过一句的权威字段，仍然该去做学信网核验（见 `_counts_as_got`）。
+        got = _counts_as_got(source, have.get(key))
         available = source.value in usable
         signal = heard_by_key.get(key)
         if signal is not None:
