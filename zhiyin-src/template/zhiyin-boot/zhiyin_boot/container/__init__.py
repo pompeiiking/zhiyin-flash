@@ -254,6 +254,11 @@ def wire_application(container: Optional[Container] = None) -> Any:
 
         scheduler = container.scheduler
         if container.settings.run_in_process_background:
+            event_bus = container.event_bus
+            start_event_polling = getattr(event_bus, "start_polling", None)
+            if callable(start_event_polling):
+                start_event_polling()
+
             start_polling = getattr(scheduler, "start_polling", None)
             if callable(start_polling):
                 start_polling()
@@ -277,6 +282,9 @@ def wire_application(container: Optional[Container] = None) -> Any:
                 stop_polling = getattr(scheduler, "stop_polling", None)
                 if callable(stop_polling):
                     await stop_polling()
+                stop_event_polling = getattr(container.event_bus, "stop_polling", None)
+                if callable(stop_event_polling):
+                    await stop_event_polling()
             for closable in reversed(container.extra.get("closables", [])):
                 close = getattr(closable, "aclose", None) or getattr(
                     closable, "close", None

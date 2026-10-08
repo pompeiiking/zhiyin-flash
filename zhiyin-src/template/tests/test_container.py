@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -12,6 +14,7 @@ from zhiyin_boot import (
     describe_assembly,
     wire_application,
 )
+from zhiyin_boot.workers import run_background_container
 from zhiyin_api.runtime import WIRED
 
 
@@ -129,6 +132,9 @@ def test_api_lifespan_can_disable_scheduler_and_background_workers(
         async def stop_polling(self) -> None:
             self.stopped += 1
 
+    class EventBusSpy(SchedulerSpy):
+        pass
+
     class WorkerSpy:
         name = "spy"
         calls = 0
@@ -139,14 +145,90 @@ def test_api_lifespan_can_disable_scheduler_and_background_workers(
 
     settings.run_in_process_background = False
     container = build_container(settings)
+    event_bus = EventBusSpy()
     scheduler = SchedulerSpy()
     worker = WorkerSpy()
+    container.event_bus = event_bus
     container.scheduler = scheduler
     container.workers = [worker]
 
     with TestClient(wire_application(container)) as client:
         assert client.get("/healthz").status_code == 200
 
+    assert event_bus.started == 0
+    assert event_bus.stopped == 0
     assert scheduler.started == 0
     assert scheduler.stopped == 0
     assert worker.calls == 0
+
+
+def test_api_lifespan_starts_outbox_polling_in_single_instance_mode(
+    settings: Settings,
+) -> None:
+    """单实例模式由 API lifespan 启停 outbox 消费者。"""
+
+    class PollerSpy:
+        def __init__(self) -> None:
+            self.started = 0
+            self.stopped = 0
+
+        def start_polling(self) -> None:
+            self.started += 1
+
+        async def stop_polling(self) -> None:
+            self.stopped += 1
+
+    settings.run_in_process_background = True
+    container = build_container(settings)
+    event_bus = PollerSpy()
+    scheduler = PollerSpy()
+    container.event_bus = event_bus
+    container.scheduler = scheduler
+    container.workers = []
+
+    with TestClient(wire_application(container)) as client:
+        assert client.get("/healthz").status_code == 200
+        assert event_bus.started == 1
+        assert scheduler.started == 1
+
+    assert event_bus.stopped == 1
+    assert scheduler.stopped == 1
+
+
+async def test_background_container_starts_and_stops_outbox_polling(
+    settings: Settings,
+) -> None:
+    """多副本模式由独立后台进程启停 outbox 消费者。"""
+
+    class PollerSpy:
+        def __init__(self) -> None:
+            self.started = 0
+            self.stopped = 0
+            self.running = asyncio.Event()
+
+        def start_polling(self) -> None:
+            self.started += 1
+            self.running.set()
+
+        async def stop_polling(self) -> None:
+            self.stopped += 1
+
+    container = build_container(settings)
+    event_bus = PollerSpy()
+    scheduler = PollerSpy()
+    container.event_bus = event_bus
+    container.scheduler = scheduler
+    container.registry_service = None
+    container.workers = []
+
+    task = asyncio.create_task(run_background_container(container))
+    await event_bus.running.wait()
+    assert event_bus.started == 1
+    assert scheduler.started == 1
+
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+    assert event_bus.stopped == 1
+    assert scheduler.stopped == 1

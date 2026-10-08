@@ -105,6 +105,11 @@ async def run_background_container(container) -> None:  # noqa: ANN001
             # asyncio.run 取消主任务，下面的 finally 照样清理。
             pass
 
+    event_bus = container.event_bus
+    start_event_polling = getattr(event_bus, "start_polling", None)
+    if callable(start_event_polling):
+        start_event_polling()
+
     scheduler = container.scheduler
     start_polling = getattr(scheduler, "start_polling", None)
     if callable(start_polling):
@@ -140,6 +145,10 @@ async def run_background_container(container) -> None:  # noqa: ANN001
         stop_polling = getattr(scheduler, "stop_polling", None)
         if callable(stop_polling):
             await stop_polling()
+
+        stop_event_polling = getattr(event_bus, "stop_polling", None)
+        if callable(stop_event_polling):
+            await stop_event_polling()
 
         for closable in reversed(container.extra.get("closables", [])):
             close = getattr(closable, "aclose", None) or getattr(closable, "close", None)
