@@ -650,6 +650,12 @@ class DefaultApplicationFacade(ApplicationFacade):
         # 时间线是**给用户读的**：标题取登记表里的人话名字，绝不把事件码当标题写出去。
         # 漏登记 label 的新事件会退到一句中性话（守卫 test_track_event_labels 会先拦住它），
         # 而不是把 review_warning_show 摆到用户面前（issue 证据截图 1）。
+        #
+        # 只有**发生过的事**才落时间线：`timeline=false` 的是使用痕迹（进了工作台、
+        # 开口聊了一句、展开了一次依据）—— 它们是埋点，不是这个人的生活。
+        # 全落进去的后果实测过：一次验证跑完，复盘里就是 50 条一模一样的"一条操作记录"。
+        if not spec.timeline:
+            return TrackEventAck(accepted=True, event=body.event)
         await self._function.record_track_event(
             user_id, body.event, body.payload, title=spec.label or "一条操作记录"
         )

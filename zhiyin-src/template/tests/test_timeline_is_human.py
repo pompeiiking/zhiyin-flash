@@ -115,3 +115,43 @@ def test_charts_coming_from_the_model_are_validated_too() -> None:
     assert _renderables_for_turn([tampered], LoopStage.DECIDE, {}) == [], (
         "越界的图表点必须被拦下（不能因为是模型给的就直接交给用户）"
     )
+
+
+APPLICATION = TEMPLATE_ROOT / "zhiyin-api" / "zhiyin_api" / "facade" / "application.py"
+REVIEW_OVERLAY = TEMPLATE_ROOT / "zhiyin-web" / "src" / "components" / "console" / "ReviewOverlay.vue"
+
+
+def test_every_frontend_event_says_whether_it_belongs_on_the_timeline() -> None:
+    """登记表必须显式表态：这条事件算不算「发生过的事」。
+
+    留一个默认值是很危险的 —— 新加一条"进了某一屏"的埋点，它会悄悄混进复盘，
+    而复盘里每多一条使用痕迹，用户读到"我做过什么"的可信度就少一分。
+    实测过的后果：一次核验跑完，复盘里积了 50 行一模一样的文本。
+    """
+    items = _registry_items()
+    missing = [
+        item["code"]
+        for item in items
+        if item.get("channel") == "frontend" and "timeline" not in item
+    ]
+    assert not missing, (
+        "这些前端埋点事件没有写明 timeline（true=发生过的事，false=只是使用痕迹）：\n  "
+        + "\n  ".join(missing)
+    )
+    marked_false = [item["code"] for item in items if item.get("timeline") is False]
+    assert marked_false, "一条 false 都没有：说明这张表还没真的分类过"
+
+
+def test_usage_telemetry_never_reaches_the_review_timeline() -> None:
+    """`timeline=false` 的不落时间线（应用层是唯一拿得到登记表的地方）。"""
+    source = APPLICATION.read_text(encoding="utf-8")
+    assert "if not spec.timeline:" in source, (
+        "应用层没有按 timeline 过滤：使用痕迹会一路落进复盘时间线"
+    )
+
+
+def test_review_timeline_collapses_identical_records() -> None:
+    """同一条记录合并成一行、次数写在后面（50 行同一个文本就是"在刷屏"）。"""
+    source = REVIEW_OVERLAY.read_text(encoding="utf-8")
+    assert "const rows = computed" in source, "复盘时间线没有做合并"
+    assert "row.n > 1" in source and "次" in source, "合并之后要把次数写出来 —— 不隐藏事实"
