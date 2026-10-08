@@ -52,3 +52,28 @@ def test_jump_buttons_exist_and_respect_reduced_motion() -> None:
     talk = TALK.read_text(encoding="utf-8")
     assert "回到顶部" in talk and "回到最新消息" in talk
     assert "prefers-reduced-motion: reduce" in talk
+
+
+CONSOLE = WEB / "views" / "ConsoleView.vue"
+
+
+def test_canvas_reorder_uses_what_is_on_screen() -> None:
+    """换位要以**画布上真实的顺序**为基准，不能只看后端策略那份名单。
+
+    症状是用户报的"这张卡换不了位置，也挪不走"：课表那种块由数据决定出不出现，
+    `layout.json` 里没有它，于是它只存在于屏幕、不在名单里 ——
+    `reorder` 用名单找位置会拿到 -1、返回 false，拖了等于没拖
+    （真机复现：位移 -430px 跟手正常，松手后格位一字不变）。
+    """
+    source = CONSOLE.read_text(encoding="utf-8")
+    reorder = source[source.index("function reorder") :][:900]
+    assert "[...visibleIds.value]" in reorder, "换位基准退回成了 order（没登记的块会再拖不动一次)"
+    assert "order.value = list" in reorder, "换位结果没写回顺序"
+
+
+def test_canvas_order_merges_instead_of_replacing() -> None:
+    """后端策略到达时是**合并**，不是覆盖 —— 覆盖会把没登记的块踢出名单。"""
+    source = CONSOLE.read_text(encoding="utf-8")
+    watch_block = source[source.index("watch(\n  () => session.layout") :][:700]
+    assert "const extra = order.value.filter" in watch_block, "策略到达时把顺序整体覆盖了"
+    assert "[...planned, ...extra]" in watch_block, "合并的写法变了"

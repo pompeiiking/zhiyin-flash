@@ -137,11 +137,21 @@ const order = ref([...BLOCK_ORDER])
  *
  * 前端这份 BLOCK_ORDER 只剩一个用途：策略还没到的时候别让画布空着。
  * 拖动仍然能临时改顺序（那是用户的手动操作），刷新后回到策略给的顺序。
+ *
+ * 但**渲染出来、却没登记在策略里**的块必须留在名单里：「课表」就是这种 ——
+ * 它出不出现由数据决定（`showTimetable`），`layout.json` 里没有它，
+ * 于是被 `visibleIds` 追加到画布末尾。名单一旦被策略整体覆盖，它就从名单里掉出去，
+ * 而 `reorder()` 是按名单找位置的 → 那张卡从此**既拖不动、也当不了落点**
+ *（用户报过："这张卡换不了位置，也挪不走"）。
+ * 所以这里是**合并**，不是覆盖：策略给的顺序在前，名单里多出来的块接在后面。
  */
 watch(
   () => session.layout.map((b) => b.id).join(','),
   (ids: string) => {
-    if (ids) order.value = ids.split(',')
+    if (!ids) return
+    const planned = ids.split(',')
+    const extra = order.value.filter((id) => !planned.includes(id))
+    order.value = [...planned, ...extra]
   },
   { immediate: true }
 )
@@ -246,7 +256,18 @@ const inStrategy = (id: string) =>
  * 顺序没变就不会有下一次渲染，等下去只会把卡片永远留在"拎在手上"的状态。
  */
 function reorder(from: string, to: string) {
-  const list = [...order.value]
+  /*
+   * 基准取**画布上真实的顺序**（`visibleIds`），不是那份"后端策略名单"。
+   *
+   * 两者差在"渲染出来但没登记在策略里的块"：`order` 只等于策略给的名单，
+   * 而课表那种块由数据决定出不出现（`showTimetable`），策略里没有它 ——
+   * 用 `order` 找位置它会拿到 -1，松手时返回 false，**拖了等于没拖**
+   *（用户报过"这张卡换不了位置，也挪不走"；真机复现：位移 -430px 跟手正常，格位一字不变）。
+   *
+   * 上面那个 watch 已经用"合并"保证名单通常包含它们；这里再以屏幕为准，
+   * 是为了让这条不变式**不依赖别处的保证** —— 将来任何"有数据才出现"的块不会再踩一次。
+   */
+  const list = [...visibleIds.value]
   const i = list.indexOf(from)
   const j = list.indexOf(to)
   if (i < 0 || j < 0 || i === j) return false
