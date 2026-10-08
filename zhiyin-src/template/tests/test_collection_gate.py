@@ -17,12 +17,23 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from zhiyin_business.policies.collection_gate import evaluate_gate
+from zhiyin_kernel.enums import ProfileSource
 
 
 @dataclass
 class _Field:
+    """画像字段的最小替身。
+
+    `source` 默认「客观档案」：本文件四条用例问的是**阈值**（覆盖够不够、
+    把握够不够），所以让字段来源都相称，别把来源那一维混进来。
+    生产里 `ProfileField.source` 是必填的，替身补上它才是同一形状。
+    来源相称那一维的守卫在 `tests/test_source_authority_coverage.py`，
+    两边各钉一件事，互不干扰。
+    """
+
     key: str
     confidence: float
+    source: str = ProfileSource.RECORD.value
 
 
 POLICY = {

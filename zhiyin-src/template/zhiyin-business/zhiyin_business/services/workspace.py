@@ -23,7 +23,7 @@ from zhiyin_business.ports.workspace import (
     WorkspaceService,
     WorkspaceView,
 )
-from zhiyin_business.policies.collection import plan_collection
+from zhiyin_business.policies.collection import counts_as_got, plan_collection
 from zhiyin_business.policies.layout import evaluate, state_of
 from zhiyin_business.ports.registry import RegistryService
 from zhiyin_data_sdk.repositories import TaskSessionRepository
@@ -190,7 +190,7 @@ class DefaultWorkspaceService(WorkspaceService):
             track_events=[],
             panels=panels,
             dependencies=dependencies,
-            profile_coverage=self._coverage(profile),
+            profile_coverage=self._coverage(profile, self._collection_rules()),
             profile_confidence=await self._profiles.overall_confidence(user_id),
             # 画像字段的展示名：和采集清单同一份来源（动态资源的采集规则表）。
             # 界面上摆 `major` 这种内部键给用户看，等于把实现细节漏到产品里。
@@ -363,12 +363,27 @@ class DefaultWorkspaceService(WorkspaceService):
         return edges
 
     @staticmethod
-    def _coverage(profile) -> float:
-        """P0 口径：已填字段 /（已填字段 + 缺口）。动态 key_fields 阈值待接。"""
+    def _coverage(profile, rules=None) -> float:
+        """画像覆盖度：**算作拿到**的字段 /（字段 + 缺口）。
+
+        分子与采集清单同一口径（`policies/collection.py::counts_as_got`）：
+        权威字段（专业 / 学籍这类该由学信网核验出具的）如果只由对话或行为推断
+        写进来，不算拿到，也就不进分子。不共用的症状是同一屏里两句话互相打脸 ——
+        画像面板"覆盖 100%"，采集清单却还挂着"还差专业"。
+
+        分母**保持**"画像里已有的格子 + 缺口"不变：那条没核验的值仍然占一格，
+        它现在的身份就是缺口（与 `plan_collection` 把它算进 missing 一致）。
+
+        `rules` 是采集登记表（"哪个字段该由谁出具"写在它里面）；不传时退回
+        `collection.py` 的内置表，与其它读侧同一条口径。
+        """
         if profile is None:
             return 0.0
+        got = sum(
+            1 for field in profile.fields if counts_as_got(field.key, field, rules=rules)
+        )
         total = len(profile.fields) + len(profile.gaps)
-        return round(len(profile.fields) / total, 2) if total else 0.0
+        return round(got / total, 2) if total else 0.0
 
 
 __all__ = ["DefaultWorkspaceService"]

@@ -942,6 +942,28 @@ onBeforeUnmount(() => {
   document.removeEventListener('pointerdown', onDocPointerDown, true)
   document.removeEventListener('keydown', onDocKeyDown, true)
 })
+
+/*
+ * 把画布的真实状态上报给 store：「全部组件」面板据此说真话。
+ *
+ * 面板自己推不出来 —— 有些块出不出现取决于有没有数据（课表要等课表到位、
+ * 匹配要等学籍绑定），那个条件只有这里知道。不上报的后果很具体：
+ * 面板把一块还没数据的块标成「摆着」，用户点完「放回」发现画面什么都没变。
+ *
+ * 报两个集合，因为它们的差集才是"收着"与"还没有"的分界：
+ * `renderedIds`（真的渲染了）与 `presentIds`（数据上存在）。
+ *
+ * 【为什么这段必须放在 setup 的**最末尾**】`watch` 在创建时会先跑一次 getter
+ * 来建立依赖（不只是 `immediate` 才会），于是 `presentIds` 会立刻求值 ——
+ * 而它依赖 `inStrategy`、`showTimetable` 这些后面才用 `const` 声明的东西。
+ * 放在它们前面会抛 "Cannot access '…' before initialization"，**整个控制台白屏**。
+ * 这一条是真机验证时踩出来的，不是风格问题：白屏在类型检查里看不出来。
+ */
+function publishCanvasTruth() {
+  session.setCanvasBlocks([...renderedIds.value], [...presentIds.value])
+}
+watch([renderedIds, presentIds], publishCanvasTruth)
+onMounted(publishCanvasTruth)
 </script>
 
 <template>

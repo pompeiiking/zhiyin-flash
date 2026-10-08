@@ -385,6 +385,46 @@ def _counts_as_got(rule_source: CollectionSource, field: Any) -> bool:
     return _field_source(field) in _AUTHORITY_MATCHING_SOURCES
 
 
+def rule_source_of(
+    key: str, rules: Optional[Sequence[Any]] = None
+) -> Optional[CollectionSource]:
+    """这个画像字段在采集登记表里登记的来源；没登记、或来源认不出时返回 `None`。
+
+    "这条值该由谁出具"写在登记表上（`collection_rules.json`），不在字段自己身上。
+    所以别的读侧（画像覆盖度、采集门槛）只拿着一个键来问这里，而不是各自
+    再存一份"哪些字段是权威的" —— 抄一份就一定会跟登记表漂开。
+    """
+    table = _rules_from(rules) if rules else _RULES
+    for rule_key, _label, source, _why, _ask in table:
+        if rule_key == key:
+            return source
+    return None
+
+
+def counts_as_got(
+    key: str, field: Any, *, rules: Optional[Sequence[Any]] = None
+) -> bool:
+    """画像里**这个键的这条值**算不算"已经拿到了"。
+
+    这是"拿到了没"的**唯一实现**，三处读它：采集清单（`plan_collection`）、
+    画像覆盖度（`services/workspace.py::_coverage`）、采集门槛
+    （`policies/collection_gate.py::evaluate_gate`）。
+    为什么必须共用：这三处各写一份的结果真实出现过 —— 采集清单说"还差专业"，
+    同一屏的画像面板却显示"覆盖 100%"，用户看到的是两句话互相打脸，
+    而两处都不报错。
+
+    没登记的键（模型自由生成的字段、以及后续新增但还没进登记表的字段）
+    没有"相称来源"可谈：键在画像里就算拿到 —— 与收紧前完全一致，
+    不能因为这里认不出它就把新字段一律算成缺口。
+    """
+    if field is None:
+        return False
+    source = rule_source_of(key, rules)
+    if source is None:
+        return True
+    return _counts_as_got(source, field)
+
+
 def plan_collection(
     profile: Optional[Profile],
     *,
@@ -521,8 +561,10 @@ __all__ = [
     "CollectionSource",
     "CollectionStep",
     "UserSignal",
+    "counts_as_got",
     "field_labels",
     "filled_by",
     "plan_collection",
+    "rule_source_of",
     "signals_from",
 ]

@@ -120,3 +120,41 @@ def test_the_management_entry_reaches_every_block() -> None:
     assert "全部组件" in console, "入口没有可见的文字（只在右键菜单里等于没有）"
     panel = PANEL.read_text(encoding="utf-8")
     assert "hideBlockForGood" in panel and "showBlock" in panel and "setBlocksOrder" in panel
+
+
+def test_panel_reads_the_canvas_report_instead_of_guessing() -> None:
+    """面板的状态必须来自**画布上报的事实**，不能自己按顺序猜。
+
+    猜的后果真机见过：它把一块还没数据的块（没绑学信网时的「匹配与推荐」）标成「摆着」，
+    用户点「放回」发现画面什么都没变 —— 面板说的和看得见的事对不上。
+    现在三种状态都来自画布：摆着（`canvasBlocks`）/ 收着（数据上存在，`canvasPresent`）/
+    还没有（两个都没有 —— 它自己的数据没到）。
+    """
+    panel = PANEL.read_text(encoding="utf-8")
+    assert "session.canvasBlocks.includes(id)" in panel, "面板没读画布上报的'真的渲染了哪些'"
+    assert "session.canvasPresent.includes(id)" in panel, "面板没读画布上报的'数据上存在哪些'"
+    assert "type RowState = 'showing' | 'stored' | 'waiting'" in panel, "三种状态被改了"
+    # 「还没有」不给「放回」：那是空动作，而空动作正是这个面板最让人不信的地方
+    assert "v-if=\"stateOf(id) === 'stored'\"" in panel, "「放回」不再限定在'收着'的行上"
+    console = CONSOLE.read_text(encoding="utf-8")
+    assert "session.setCanvasBlocks([...renderedIds.value], [...presentIds.value])" in console, (
+        "画布没有把两个集合上报给 store"
+    )
+
+
+def test_canvas_report_is_declared_after_its_dependencies() -> None:
+    """上报那段必须在 `inStrategy` / `showTimetable` **之后**声明。
+
+    `watch` 创建时会先跑一次 getter 来建立依赖（不只是 `immediate` 才会），
+    于是 `presentIds` 会立刻求值 —— 而它依赖后面才用 `const` 声明的那两样东西。
+    放在前面就抛 "Cannot access '…' before initialization"，**整个控制台白屏**。
+
+    这一条真机踩过，而且**类型检查完全看不出来**（变量确实存在，只是那时还没初始化），
+    所以只能这样钉住它。
+    """
+    console = CONSOLE.read_text(encoding="utf-8")
+    publish = console.index("function publishCanvasTruth")
+    for dep in ("const inStrategy", "const showTimetable"):
+        assert console.index(dep) < publish, (
+            f"画布上报那段被挪到了 `{dep}` 前面：真机上会整屏白屏（类型检查看不出来）"
+        )

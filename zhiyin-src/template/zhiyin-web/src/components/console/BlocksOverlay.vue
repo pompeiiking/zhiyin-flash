@@ -18,7 +18,7 @@
 import { computed } from 'vue'
 import Overlay from '@/components/console/Overlay.vue'
 import GlyphIcon from '@/components/ui/GlyphIcon.vue'
-import { BLOCK_LABELS, BLOCK_ORDER, CORE_COUNT } from '@/lib/blocks'
+import { BLOCK_LABELS, BLOCK_ORDER } from '@/lib/blocks'
 import { useSessionStore } from '@/stores/session'
 
 const session = useSessionStore()
@@ -45,27 +45,28 @@ const hintOf = (id: string) => session.layout.find((b) => b.id === id)?.hint ?? 
 const isHidden = (id: string) => session.blocksHidden.includes(id)
 
 /**
- * 画布现在是不是"用户自己管着"。
+ * 面板说的每一句话，都以**画布上报的事实**为准（`session.canvasBlocks` / `canvasPresent`）。
  *
- * 这决定了核心区上限还在不在（口径与画布完全一致，见 ConsoleView 的 `capsAway`）——
- * 两边各判一次是有意的：面板要说的那句话必须与画布真实的样子对上，
- * 而"以谁为准"的规则只有一条，写在两处时就必须一模一样。
- */
-const managed = computed(() => session.blocksHidden.length > 0 || session.blocksOrder.length > 0)
-
-/** 按画布现在的规则，哪些块真的在画布上 */
-const drawn = computed(() =>
-  managed.value ? [...allIds.value] : allIds.value.slice(0, CORE_COUNT),
-)
-
-/**
- * 表头报的数字是"收着几块"，**不报"画布上现在几块"**。
+ * 面板曾经自己推：按"顺序前 N 个"猜哪些块在画布上。猜错的后果很具体 ——
+ * 它把一块还没数据的块（没绑学信网时的「匹配与推荐」就是）标成「摆着」，
+ * 用户点「放回」发现画面什么都没变：面板说的和看得见的事对不上。
  *
- * 面板报不出后者：有些块还取决于**有没有数据**（课表要等课表到位、匹配要等学籍绑定），
- * 那个条件只有画布知道。报不准的数字比不报更糟 —— 用户会拿着它去核对画布，然后发现对不上。
+ * 现在只有三种状态，全部来自画布：
+ *   · showing —— 此刻真的在画布上；
+ *   · stored  —— 数据上存在、只是没摆出来（用户收的，或被核心区上限挡着）→ 可以「放回」；
+ *   · waiting —— 它**自己的数据还没到**（课表等课表到位、匹配等学籍绑定）→
+ *     此时"放回"是个空动作，所以不给这个按钮，只说明为什么还看不到它。
  */
-const offCanvas = computed(() => allIds.value.filter((id) => isOff(id)).length)
-const isOff = (id: string) => isHidden(id) || !drawn.value.includes(id)
+type RowState = 'showing' | 'stored' | 'waiting'
+
+const stateOf = (id: string): RowState => {
+  if (isHidden(id)) return 'stored'
+  if (session.canvasBlocks.includes(id)) return 'showing'
+  return session.canvasPresent.includes(id) ? 'stored' : 'waiting'
+}
+const isOff = (id: string) => stateOf(id) !== 'showing'
+const offCanvas = computed(() => allIds.value.filter((id) => stateOf(id) === 'stored').length)
+const waiting = computed(() => allIds.value.filter((id) => stateOf(id) === 'waiting').length)
 
 /**
  * 放回一块。
@@ -76,7 +77,7 @@ const isOff = (id: string) => isHidden(id) || !drawn.value.includes(id)
  * 核心区上限随之让位，这块就真的回来了。
  */
 function restore(id: string) {
-  const before = managed.value
+  const before = session.blocksHidden.length > 0 || session.blocksOrder.length > 0
   session.showBlock(id)
   if (!before) session.setBlocksOrder([...allIds.value])
 }
@@ -102,7 +103,14 @@ function move(id: string, delta: number) {
 <template>
   <Overlay
     title="全部组件"
-    :subtitle="offCanvas ? `${offCanvas} 块收着 · 共 ${allIds.length} 块` : `全部 ${allIds.length} 块都摆在外面`"
+    :subtitle="
+      [
+        offCanvas ? `${offCanvas} 块收着` : `全部 ${allIds.length} 块都摆在外面`,
+        waiting ? `${waiting} 块还没有数据` : '',
+      ]
+        .filter(Boolean)
+        .join(' · ')
+    "
     from="blocks"
     @close="session.closeOverlay()"
   >
@@ -119,9 +127,13 @@ function move(id: string, delta: number) {
           <span v-if="hintOf(id)" class="label rows__hint">{{ hintOf(id) }}</span>
         </span>
 
-        <!-- 状态：一眼看出它摆不摆在外面（收着 = 用户收的，或者被核心区上限挡在外面） -->
+        <!--
+          状态三种，都来自画布上报的事实。
+          「还没有」这一类**不给动作**：它自己的数据没到，按「放回」也不会出现 —— 那是空动作，
+          而空动作正是这个面板此前最让人不信的地方。
+        -->
         <span class="label rows__state" :class="{ 'is-off': isOff(id) }">
-          {{ isOff(id) ? '收着' : '摆着' }}
+          {{ stateOf(id) === 'showing' ? '摆着' : stateOf(id) === 'stored' ? '收着' : '还没有' }}
         </span>
 
         <span class="rows__acts">
@@ -146,16 +158,23 @@ function move(id: string, delta: number) {
             <GlyphIcon name="arrow-down" :size="12" />
           </button>
           <button
-            v-if="isOff(id)"
+            v-if="stateOf(id) === 'stored'"
             class="act act--main"
             type="button"
             @click="restore(id)"
           >
             放回
           </button>
-          <button v-else class="act" type="button" @click="session.hideBlockForGood(id)">
+          <button
+            v-else-if="stateOf(id) === 'showing'"
+            class="act"
+            type="button"
+            @click="session.hideBlockForGood(id)"
+          >
             收起
           </button>
+          <!-- 还没有：不给按钮，那句话在行尾说明它为什么还不出现 -->
+          <span v-else class="label rows__wait">等它的数据</span>
         </span>
       </li>
     </ul>
@@ -206,6 +225,8 @@ function move(id: string, delta: number) {
 .rows__hint { color: var(--ink-3); }
 .rows__state { color: var(--ink-3); }
 .rows__state.is-off { color: var(--mk-orange); }
+/* 「还没有」不是"被收起来了"，用中性的说明语气，别和"收着"共用同一个警示色 */
+.rows__wait { color: var(--ink-3); }
 .rows__acts { display: flex; align-items: center; gap: 6px; }
 
 .act {

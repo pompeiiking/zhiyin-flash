@@ -348,6 +348,22 @@ export const useSessionStore = defineStore('session', {
     blocksOrder: readStoredList(BLOCKS_ORDER_KEY),
 
     /*
+     * 画布**此刻真的渲染出来了**哪些块，以及**数据上存不存在**这些块 ——
+     * 都由 ConsoleView 每次算完写进来。
+     *
+     * 为什么让画布上报、而不是让面板自己推：有些块出不出现取决于**有没有数据**
+     *（课表要等课表到位、匹配要等学籍绑定），那个条件只有画布知道。
+     * 面板此前只能按"顺序前 N 个"猜，于是会把一块还没数据的块标成「摆着」——
+     * 用户点了「放回」，画面上什么都没变：面板说的和看得见的事对不上。
+     *
+     * 两个集合的差别正是"收着"与"还没有"的差别：
+     *   · 在 `canvasPresent` 里、却不在 `canvasBlocks` 里 → 是**收着**（用户收的或核心区上限），点放回能回来；
+     *   · 两个都不在 → **还没有**（它自己的数据没到），此时"放回"是个空动作，面板就不该给这个按钮。
+     */
+    canvasBlocks: [] as string[],
+    canvasPresent: [] as string[],
+
+    /*
      * 业务对话。
      *
      * 它是画布上的一块（和画像、待办并列），不是角落里一个聊天窗 ——
@@ -1229,6 +1245,16 @@ export const useSessionStore = defineStore('session', {
     resetBlocksOrder() {
       this.blocksOrder = []
       writeStoredList(BLOCKS_ORDER_KEY, this.blocksOrder)
+    },
+    /**
+     * 画布上报"这一帧真的渲染了哪些块、以及数据上存在哪些块"（面板据此说真话）。
+     *
+     * 只是转发，不做任何加工：判定渲染是画布的事，面板不该再推一遍 ——
+     * 那正是"面板说摆着、画面却没有"的来源。
+     */
+    setCanvasBlocks(rendered: string[], present: string[]) {
+      this.canvasBlocks = rendered
+      this.canvasPresent = present
     },
     /** 每秒扫一次：到点的块自己飘回来 */
     sweep() {

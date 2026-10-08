@@ -244,7 +244,11 @@ class DefaultOrchestrator(Orchestrator):
         """
         fields = await self._profiles.get_fields(user_id)
         policy = await self._registry.get_collection_policy()
-        gate = evaluate_gate(fields, policy)
+        # 采集登记表要和"来源相称"那一维一起交进去：权威字段（学信网 / 教务导入）
+        # 由对话写进来时不算覆盖。不交表就只能按模块内置兜底表判，
+        # 而"哪个字段该由谁出具"以库为准（与 workspace / ai_tasks 同一份读法）。
+        rules = list(dynamic_config.snapshot().collection_rules) or None
+        gate = evaluate_gate(fields, policy, rules=rules)
         logger.info("采集门槛：%s", gate.line)
         return gate
 
