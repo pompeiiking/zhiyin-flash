@@ -211,7 +211,7 @@ async function submit() {
   padding: var(--s3) var(--s3);
   border: 1px solid var(--warn);
   border-radius: var(--r-sm);
-  background: rgba(183, 77, 26, 0.06);
+  background: color-mix(in srgb, var(--warn) 6%, transparent);
   font-size: var(--fs-small); color: var(--warn);
 }
 .err__dot { width: 6px; height: 6px; border-radius: 50%; background: var(--warn); flex: 0 0 auto; align-self: center; }

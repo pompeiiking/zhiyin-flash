@@ -361,7 +361,7 @@ async function saveTodo() {
   transition: background var(--mo-fast) var(--mo-out), color var(--mo-fast) var(--mo-out);
 }
 .day:hover { background: var(--fill-hover); color: var(--ink-1); }
-.day.dim { color: var(--ink-4); }
+.day.dim { color: var(--ink-3); }
 .day.today .day__num { text-decoration: underline; text-underline-offset: 3px; }
 .day.on { background: var(--ink-1); color: var(--n-0); }
 .day.on .day__dot.class,
@@ -443,7 +443,7 @@ async function saveTodo() {
   display: flex; align-items: baseline; gap: var(--s3);
   padding: var(--s3) var(--s4);
   border-left: 3px solid var(--warn);
-  background: rgba(194, 90, 18, 0.06);
+  background: color-mix(in srgb, var(--warn) 6%, transparent);
   border-radius: 0 var(--r-sm) var(--r-sm) 0;
   font-size: var(--fs-small); color: var(--ink-1);
 }

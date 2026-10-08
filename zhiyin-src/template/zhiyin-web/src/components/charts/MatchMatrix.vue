@@ -31,7 +31,12 @@ const grid = computed(() =>
   ),
 )
 /** 缺口决定"这格有多空"：够 = 实心格；差一点 = 半格；差很多 = 虚线空心 */
-const fillOf = (gap: number) => (gap < 0.05 ? 'rgba(15,122,88,0.18)' : gap < 0.15 ? 'rgba(15,122,88,0.10)' : 'none')
+const fillOf = (gap: number) =>
+  gap < 0.05
+    ? 'color-mix(in srgb, var(--accent) 18%, transparent)'
+    : gap < 0.15
+      ? 'color-mix(in srgb, var(--accent) 10%, transparent)'
+      : 'none'
 const strokeOf = (gap: number) => (gap < 0.05 ? 'var(--mk-green)' : gap < 0.15 ? 'var(--mk-green)' : gap < 0.35 ? 'var(--mk-orange)' : 'var(--warn)')
 const dashOf = (gap: number) => (gap >= 0.15 ? '4 4' : 'none')
 </script>

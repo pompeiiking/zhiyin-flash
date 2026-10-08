@@ -369,6 +369,25 @@ export const useSessionStore = defineStore('session', {
       | { question: string; optionId: string; label: string; optionLabels: string[] },
     /** 后端没能推进这一轮时，界面上那句明白话 */
     chatClarify: '',
+    /**
+     * 同一轮**连着**原地打转了几次。
+     *
+     * 一次可以当"模型复述了一遍"，两次以上就不能再让用户对着同一组选项点了 ——
+     * issue #24 的现象就是"点了还在原地"：`opt--used` 只是视觉标记，
+     * 按钮实际只受 `chatTyping` 控制，于是同一个选项能被点第三次、第四次。
+     * 这个计数到 2 就把整组选项锁掉，并把话说明白（换成打字，或者换一条）。
+     */
+    chatRepeats: 0,
+    /**
+     * 对话滚动位置（离开浮层时的那一眼）。
+     *
+     * 浮层是挂载式的，关掉就销毁 —— `scrollTop` 只活在那个 DOM 节点上，
+     * 再打开就回到顶部（issue #19）。位置放在 store 里，因为它要活过组件。
+     * `chatScrollTurns` 记的是"存的时候对话有几轮"：中间又来了新消息就不该回原位，
+     * 应该直接去最新 —— 否则用户会以为自己漏看了一段。
+     */
+    chatScroll: 0,
+    chatScrollTurns: 0,
     authNotice: '',
     wsPanels: null as null | {
       action: string
@@ -436,6 +455,20 @@ export const useSessionStore = defineStore('session', {
   }),
 
   getters: {
+    /**
+     * 有没有待办（计划里的任务、或自己写的那几条，任一非空）。
+     *
+     * 判据**不能是** `wsPanels.action`（工作台那句阶段评价）：它有内容时可能一条任务都没有，
+     * 为空时计划里却明明排着任务（后端 degraded 就是这样）。画布的块权重与待办块的
+     * 渲染条件必须同源 —— 否则有待办的块会被当成空块，分到更小的格位、更容易掉进
+     * 紧凑形态（issue #21 的连带问题：内容修好了，块还是被当空的）。
+     */
+    hasTodos(state): boolean {
+      const inPlan = (state.actionPlan?.phases ?? []).some(
+        (phase) => (phase.tasks ?? []).length > 0,
+      )
+      return inPlan || state.customTodos.length > 0
+    },
     /**
      * 外部情报按什么方向去取。
      *
@@ -1201,6 +1234,18 @@ export const useSessionStore = defineStore('session', {
     },
 
     /**
+     * 记住对话滚到哪儿了（滚动时与浮层关闭前各存一次）。
+     *
+     * 存的是"像素"而不是"第几条消息"：浮层的行高会随可视件、材料卡、长句变化，
+     * 用消息序号还原会差出一屏；而"上次看到的位置"本来就是一眼像素的事。
+     * 代价是视口宽度变化后不再精确 —— 所以打开时会先判断有没有新消息（见 chatScrollTurns）。
+     */
+    rememberChatScroll(top: number) {
+      this.chatScroll = Number.isFinite(top) ? Math.max(0, top) : 0
+      this.chatScrollTurns = this.chatTurns.length
+    },
+
+    /**
      * 发一轮话。
      *
      * `option` 是"这一轮点的是哪个选项"。带它的时候，**选项的身份一起发下去**
@@ -1363,11 +1408,14 @@ export const useSessionStore = defineStore('session', {
         this.chatClarify = repeated && answered
           ? `「${answered.label}」这条我收到了，但这一轮没往前走。换一条，或者直接把你的情况补一句。`
           : ''
+        // 连着两回都不动就把选项锁掉（见 chatRepeats 的说明）
+        this.chatRepeats = repeated ? this.chatRepeats + 1 : 0
       } else {
         // 这一轮不是"等你回答"（小任务 / 提醒）：旧的选项与澄清都不能留在输入框上方
         this.chatPrompt = ''
         this.chatOptions = []
         this.chatClarify = ''
+        this.chatRepeats = 0
       }
 
       // 集群判断出的"下一步"同时塞进浮窗叠：用户可能没在看对话，

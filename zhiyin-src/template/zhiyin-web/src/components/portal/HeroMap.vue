@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import SketchPath from '@/components/charts/SketchPath.vue'
 import MapStopNode from '@/components/portal/MapStopNode.vue'
-import { sCircle, sLine, sPath, sPolyline, sRect } from '@/lib/sketch'
+import { sCircle, sLine, sPath, sPolyline, sRect, sketchTick } from '@/lib/sketch'
 import { MAP_PATH, mergeStops, type PortalStop, type StopCopy } from '@/data/portal'
 
 /*
@@ -88,170 +88,203 @@ const wokenStops = computed(() => stops.value.filter((s) => woken.value.includes
 const active = computed(() => hoverId.value ?? writtenId.value)
 const current = computed(() => stops.value.find((s) => s.id === active.value) ?? null)
 
-/* ── 那条线：三遍画出来 ─────────────────────────────────────────── */
-const roadHalo = sPath(MAP_PATH, {
-  seed: 2002, stroke: 'rgba(22,19,30,0.055)', strokeWidth: 14, roughness: 1.8, disableMultiStroke: true,
+/*
+ * 这一组手绘形状整块算在一个 computed 里，而不是 setup 顶层的 const。
+ *
+ * 原因：rough 的抖动幅度由 `lib/sketch.ts` 的模块级系数决定，而那个系数是
+ * 「线条：手绘 ↔ 精确」这条轴在**运行时**改的（改完 theme.ts 会 bumpSketch()）。
+ * 写死在顶层的 const 只在组件建立时算一次 —— 换了轴要刷新才看得见；
+ * 这里的 `void sketchTick.value` 把它接到那个版本号上，一次 bump 就整页重画。
+ */
+const ops = computed(() => {
+  void sketchTick.value
+
+  /* ── 那条线：三遍画出来 ─────────────────────────────────────────── */
+  const roadHalo = sPath(MAP_PATH, {
+    seed: 2002, stroke: 'var(--sketch-halo)', strokeWidth: 14, roughness: 1.8, disableMultiStroke: true,
+  })
+  const road = sPath(MAP_PATH, { seed: 2001, stroke: 'var(--ink-1)', strokeWidth: 3.4, roughness: 1.15 })
+  const roadAgain = sPath(MAP_PATH, { seed: 2099, stroke: 'var(--ink-1)', strokeWidth: 1.9, roughness: 2.1, bowing: 2.2 })
+  /** 底下那条虚线：同一条路平移出去一点，就是"走过之后留下的足迹" */
+  const roadDash = sPath(MAP_PATH, { seed: 2033, stroke: 'var(--ink-1)', strokeWidth: 1.5, roughness: 2.4, disableMultiStroke: true })
+
+  /** 沿线下缘的一排刻度（长短不一，像手画的里程） */
+  const ticks = [
+    ...sLine(141.6, 835.8, 145.0, 846.2, { seed: 2610, stroke: 'var(--line-3)', strokeWidth: 1.6 }),
+    ...sLine(301.7, 786.7, 305.4, 797.0, { seed: 2611, stroke: 'var(--line-3)', strokeWidth: 1.6 }),
+    ...sLine(472.2, 672.5, 476.9, 682.4, { seed: 2612, stroke: 'var(--line-3)', strokeWidth: 1.6 }),
+    ...sLine(631.0, 596.9, 633.2, 607.7, { seed: 2613, stroke: 'var(--line-3)', strokeWidth: 1.6 }),
+    ...sLine(769.2, 575.0, 767.4, 585.8, { seed: 2614, stroke: 'var(--line-3)', strokeWidth: 1.6 }),
+    ...sLine(932.4, 574.4, 937.7, 584.1, { seed: 2615, stroke: 'var(--line-3)', strokeWidth: 1.6 }),
+    ...sLine(1093.2, 451.9, 1100.1, 460.5, { seed: 2616, stroke: 'var(--line-3)', strokeWidth: 1.6 }),
+    ...sLine(1253.5, 323.7, 1261.0, 331.7, { seed: 2617, stroke: 'var(--line-3)', strokeWidth: 1.6 }),
+  ]
+
+  /** 三枚很轻的箭头，安在最长的那几段空白上 */
+  const arrows = [
+    ...sPolyline([[328.2, 777.0], [336.6, 767.6], [324.2, 765.8]], { seed: 2620, stroke: 'var(--ink-3)', strokeWidth: 1.8 }),
+    ...sPolyline([[617.3, 602.7], [626.9, 594.6], [614.9, 590.9]], { seed: 2621, stroke: 'var(--ink-3)', strokeWidth: 1.8 }),
+    ...sPolyline([[899.4, 552.2], [906.2, 541.6], [893.6, 541.6]], { seed: 2622, stroke: 'var(--ink-3)', strokeWidth: 1.8 }),
+  ].flat()
+
+  /*
+   * 擦痕里原来还有三道很宽很淡的"橡皮拖痕"（想表现擦过的感觉）。
+   * 实际读出来就是三道莫名其妙的浅色粗线，去掉 —— 一个人用手擦过纸，
+   * 纸上是不会留下三道等距宽线的。
+   */
+  const crumbs = [
+    ...sPath('M -240 -140 C -230 -146, -218 -142, -222 -134', { seed: 2411, stroke: 'var(--sketch-ink)', strokeWidth: 1.8 }),
+    ...sPath('M 120 145 C 130 139, 142 143, 138 151', { seed: 2412, stroke: 'var(--sketch-ink-2)', strokeWidth: 1.7 }),
+    ...sPath('M 300 -142 C 310 -148, 322 -144, 318 -136', { seed: 2413, stroke: 'var(--sketch-ink-3)', strokeWidth: 1.6 }),
+  ]
+
+  /* ── 挂在线上、散在纸上的东西 ───────────────────────────────────── */
+  const card = [
+    ...sRect(505, 554, 190, 104, { seed: 2140, stroke: 'var(--mk-green)', strokeWidth: 2.4, fill: 'var(--n-1)' }),
+    ...sLine(527, 596, 660, 596, { seed: 2141, stroke: 'var(--ink-2)', strokeWidth: 2 }),
+    ...sLine(527, 622, 618, 622, { seed: 2142, stroke: 'var(--line-3)', strokeWidth: 1.6 }),
+    ...sPath('M 640 616 L 652 628 L 672 600', { seed: 2143, stroke: 'var(--mk-green)', strokeWidth: 3 }),
+  ]
+  const bubble = [
+    ...sPath(
+      'M 155 232 C 155 222, 163 216, 175 216 L 255 216 C 267 216, 275 222, 275 232 ' +
+        'L 275 292 C 275 302, 267 308, 255 308 L 195 308 L 172 328 L 177 308 L 175 308 ' +
+        'C 163 308, 155 302, 155 292 Z',
+      { seed: 2160, stroke: 'var(--mk-teal)', strokeWidth: 2.2, fill: 'var(--n-1)' },
+    ),
+    ...sLine(173, 240, 255, 240, { seed: 2161, stroke: 'var(--mk-teal)', strokeWidth: 1.6 }),
+    ...sLine(173, 260, 228, 260, { seed: 2162, stroke: 'var(--mk-teal)', strokeWidth: 1.6 }),
+  ]
+  const timetable = [
+    ...sRect(515, 438, 110, 64, { seed: 2101, stroke: 'var(--mk-blue)', strokeWidth: 2 }),
+    ...sLine(515, 466, 625, 466, { seed: 2102, stroke: 'var(--mk-blue)', strokeWidth: 1.4 }),
+    ...sLine(552, 438, 552, 502, { seed: 2103, stroke: 'var(--mk-blue)', strokeWidth: 1.4 }),
+    ...sLine(589, 438, 589, 502, { seed: 2104, stroke: 'var(--mk-blue)', strokeWidth: 1.4 }),
+  ]
+  const review = [
+    ...sPolyline([[130, 196], [204, 142], [262, 172], [332, 86], [404, 120]], { seed: 2130, stroke: 'var(--mk-pink)', strokeWidth: 2.8 }),
+    ...sCircle(404, 120, 5, { seed: 2131, stroke: 'none', fill: 'var(--mk-pink)' }),
+  ]
+  const flag = [
+    ...sLine(250, 640, 250, 716, { seed: 2110, stroke: 'var(--mk-orange)', strokeWidth: 2.4 }),
+    ...sPath('M 252 642 L 326 658 L 252 682 Z', { seed: 2111, stroke: 'var(--mk-orange)', strokeWidth: 2, fill: 'var(--mk-orange-soft)' }),
+  ]
+  const doc = [
+    ...sPath('M 120 430 L 178 430 L 206 458 L 206 534 L 120 534 Z', { seed: 2150, stroke: 'var(--mk-orange)', strokeWidth: 2.2, fill: 'var(--n-1)' }),
+    ...sLine(178, 430, 178, 458, { seed: 2151, stroke: 'var(--mk-orange)', strokeWidth: 1.8 }),
+    ...sLine(178, 458, 206, 458, { seed: 2152, stroke: 'var(--mk-orange)', strokeWidth: 1.8 }),
+    ...sLine(134, 476, 186, 476, { seed: 2153, stroke: 'var(--ink-2)', strokeWidth: 1.5 }),
+    ...sLine(134, 494, 172, 494, { seed: 2154, stroke: 'var(--line-3)', strokeWidth: 1.4 }),
+    ...sPath('M 134 512 L 142 520 L 160 500', { seed: 2155, stroke: 'var(--mk-green)', strokeWidth: 2.6 }),
+  ]
+  const portfolio = [
+    ...sRect(620, 264, 86, 104, { seed: 2120, stroke: 'var(--mk-purple)', strokeWidth: 2 }),
+    ...sRect(630, 254, 86, 104, { seed: 2121, stroke: 'var(--mk-purple)', strokeWidth: 2 }),
+    ...sRect(640, 244, 86, 104, { seed: 2122, stroke: 'var(--mk-purple)', strokeWidth: 2, fill: 'var(--n-1)' }),
+    ...sLine(656, 274, 708, 274, { seed: 2123, stroke: 'var(--mk-purple)', strokeWidth: 1.6 }),
+    ...sLine(656, 294, 692, 294, { seed: 2124, stroke: 'var(--mk-purple)', strokeWidth: 1.6 }),
+  ]
+  const branch = [
+    ...sPath('M 516 322 L 556 300', { seed: 2170, stroke: 'var(--mk-orange)', strokeWidth: 2.4 }),
+    ...sPath('M 556 300 L 598 278', { seed: 2171, stroke: 'var(--mk-orange)', strokeWidth: 2.4 }),
+    ...sPath('M 556 300 L 602 328', { seed: 2172, stroke: 'var(--sketch-ink-4)', strokeWidth: 2, disableMultiStroke: true }),
+    ...sCircle(556, 300, 4.5, { seed: 2173, stroke: 'none', fill: 'var(--mk-orange)' }),
+  ]
+  /*
+   * 收藏：一枚书签。上一版这里是三根柱子（岗位对比），
+   * 它是整页唯一一个图表形状，和手绘语言不搭 —— 换成书签，
+   * 也正好对上旁边那句话"你收藏过，材料一直没交"。
+   */
+  const bookmark = [
+    ...sPath('M -19 -32 L 19 -32 L 19 32 L 0 17 L -19 32 Z', {
+      seed: 2189, stroke: 'var(--mk-orange)', strokeWidth: 2.2, fill: 'var(--mk-orange-soft)',
+    }),
+  ]
+  /** 近两周的节奏：14 个格子，亮着的 5 格是有动作的那几天（左下角那一块） */
+  const week = Array.from({ length: 14 }, (_, i) =>
+    sRect(-106 + (i % 7) * 30, -26 + Math.floor(i / 7) * 30, 22, 22, {
+      seed: 2500 + i,
+      stroke: [1, 4, 5, 9, 12].includes(i) ? 'var(--mk-green)' : 'var(--ink-4)',
+      strokeWidth: 1.7,
+      fill: [1, 4, 5, 9, 12].includes(i) ? 'var(--mk-green-soft)' : 'none',
+    }),
+  ).flat()
+  /** 已迈出第一步：一枚实心标记，把左下角压住（那一块原来全是浅色线条，看着空） */
+  const stamp = [
+    ...sCircle(0, 0, 26, { seed: 2194, stroke: 'var(--mk-green)', strokeWidth: 2, fill: 'var(--mk-green)' }),
+    ...sPath('M -12 2 L -3 11 L 13 -9', { seed: 2194, stroke: 'var(--n-0)', strokeWidth: 4 }),
+  ]
+  /** 材料清单：三条，勾了两条（也在下半页，给左下那条边配重） */
+  const checklist = [
+    ...sRect(-72, -22, 14, 14, { seed: 2180, stroke: 'var(--mk-green)', strokeWidth: 1.7 }),
+    ...sPath('M -69 -15 L -65 -11 L -59 -20', { seed: 2181, stroke: 'var(--mk-green)', strokeWidth: 2.2 }),
+    ...sLine(-46, -15, 44, -15, { seed: 2182, stroke: 'var(--ink-2)', strokeWidth: 1.5 }),
+    ...sRect(-72, -2, 14, 14, { seed: 2183, stroke: 'var(--mk-green)', strokeWidth: 1.7 }),
+    ...sPath('M -69 5 L -65 9 L -59 0', { seed: 2184, stroke: 'var(--mk-green)', strokeWidth: 2.2 }),
+    ...sLine(-46, 5, 22, 5, { seed: 2185, stroke: 'var(--ink-2)', strokeWidth: 1.5 }),
+    ...sRect(-72, 18, 14, 14, { seed: 2186, stroke: 'var(--line-3)', strokeWidth: 1.7 }),
+    ...sLine(-46, 25, -6, 25, { seed: 2187, stroke: 'var(--line-3)', strokeWidth: 1.4 }),
+  ]
+  /** 今天：一张小日历，日子被圈住（左下角那一簇里的"重物"） */
+  const today = [
+    ...sRect(-40, -34, 80, 68, { seed: 2195, stroke: 'var(--mk-purple)', strokeWidth: 2, fill: 'var(--n-1)' }),
+    ...sLine(-40, -14, 40, -14, { seed: 2196, stroke: 'var(--mk-purple)', strokeWidth: 1.5 }),
+    ...sCircle(-8, 10, 15, { seed: 2197, stroke: 'var(--mk-green)', strokeWidth: 2.4 }),
+    ...sLine(-18, 8, 2, 8, { seed: 2198, stroke: 'var(--ink-3)', strokeWidth: 1.5 }),
+    ...sLine(-18, 20, -6, 20, { seed: 2199, stroke: 'var(--ink-3)', strokeWidth: 1.5 }),
+  ]
+  const specks = [
+    sCircle(248, 172, 8, { seed: 2201, stroke: 'var(--mk-teal)', strokeWidth: 1.8 }),
+    sCircle(760, 118, 7, { seed: 2202, stroke: 'var(--mk-yellow)', strokeWidth: 1.8 }),
+    sCircle(1080, 780, 6, { seed: 2203, stroke: 'var(--mk-purple)', strokeWidth: 1.8 }),
+    sCircle(1428, 620, 6, { seed: 2204, stroke: 'var(--mk-teal)', strokeWidth: 1.8 }),
+    sCircle(30, 140, 6, { seed: 2205, stroke: 'var(--mk-blue)', strokeWidth: 1.8 }),
+    sCircle(980, 884, 6, { seed: 2206, stroke: 'var(--mk-pink)', strokeWidth: 1.8 }),
+    sLine(640, 300, 690, 282, { seed: 2207, stroke: 'var(--mk-blue)', strokeWidth: 1.8 }),
+    sLine(700, 880, 750, 862, { seed: 2208, stroke: 'var(--mk-orange)', strokeWidth: 1.8 }),
+    sPolyline([[1250, 520], [1275, 502], [1300, 520]], { seed: 2209, stroke: 'var(--mk-yellow)', strokeWidth: 1.8 }),
+    sPolyline([[860, 884], [884, 868], [908, 884]], { seed: 2210, stroke: 'var(--mk-teal)', strokeWidth: 1.8 }),
+  ].flat()
+
+  return {
+    roadHalo, road, roadAgain, roadDash, ticks, arrows, crumbs,
+    card, bubble, timetable, review, flag, doc, portfolio, branch, bookmark,
+    week, stamp, checklist, today, specks,
+  }
 })
-const road = sPath(MAP_PATH, { seed: 2001, stroke: 'var(--ink-1)', strokeWidth: 3.4, roughness: 1.15 })
-const roadAgain = sPath(MAP_PATH, { seed: 2099, stroke: 'var(--ink-1)', strokeWidth: 1.9, roughness: 2.1, bowing: 2.2 })
-/** 底下那条虚线：同一条路平移出去一点，就是"走过之后留下的足迹" */
-const roadDash = sPath(MAP_PATH, { seed: 2033, stroke: 'var(--ink-1)', strokeWidth: 1.5, roughness: 2.4, disableMultiStroke: true })
 
-/** 沿线下缘的一排刻度（长短不一，像手画的里程） */
-const ticks = [
-  ...sLine(141.6, 835.8, 145.0, 846.2, { seed: 2610, stroke: 'var(--line-3)', strokeWidth: 1.6 }),
-  ...sLine(301.7, 786.7, 305.4, 797.0, { seed: 2611, stroke: 'var(--line-3)', strokeWidth: 1.6 }),
-  ...sLine(472.2, 672.5, 476.9, 682.4, { seed: 2612, stroke: 'var(--line-3)', strokeWidth: 1.6 }),
-  ...sLine(631.0, 596.9, 633.2, 607.7, { seed: 2613, stroke: 'var(--line-3)', strokeWidth: 1.6 }),
-  ...sLine(769.2, 575.0, 767.4, 585.8, { seed: 2614, stroke: 'var(--line-3)', strokeWidth: 1.6 }),
-  ...sLine(932.4, 574.4, 937.7, 584.1, { seed: 2615, stroke: 'var(--line-3)', strokeWidth: 1.6 }),
-  ...sLine(1093.2, 451.9, 1100.1, 460.5, { seed: 2616, stroke: 'var(--line-3)', strokeWidth: 1.6 }),
-  ...sLine(1253.5, 323.7, 1261.0, 331.7, { seed: 2617, stroke: 'var(--line-3)', strokeWidth: 1.6 }),
-]
-
-/** 三枚很轻的箭头，安在最长的那几段空白上 */
-const arrows = [
-  ...sPolyline([[328.2, 777.0], [336.6, 767.6], [324.2, 765.8]], { seed: 2620, stroke: 'var(--ink-3)', strokeWidth: 1.8 }),
-  ...sPolyline([[617.3, 602.7], [626.9, 594.6], [614.9, 590.9]], { seed: 2621, stroke: 'var(--ink-3)', strokeWidth: 1.8 }),
-  ...sPolyline([[899.4, 552.2], [906.2, 541.6], [893.6, 541.6]], { seed: 2622, stroke: 'var(--ink-3)', strokeWidth: 1.8 }),
-].flat()
+const roadHalo = computed(() => ops.value.roadHalo)
+const road = computed(() => ops.value.road)
+const roadAgain = computed(() => ops.value.roadAgain)
+const roadDash = computed(() => ops.value.roadDash)
+const ticks = computed(() => ops.value.ticks)
+const arrows = computed(() => ops.value.arrows)
+const crumbs = computed(() => ops.value.crumbs)
+const specks = computed(() => ops.value.specks)
 
 /*
- * 擦痕里原来还有三道很宽很淡的"橡皮拖痕"（想表现擦过的感觉）。
- * 实际读出来就是三道莫名其妙的浅色粗线，去掉 —— 一个人用手擦过纸，
- * 纸上是不会留下三道等距宽线的。
+ * 上面这一组代理只为模板里那几个"整块引一次"的地方服务（`<SketchPath :ops="road">`）。
+ * 其余那些（card / bubble / stamp…）不在这里再暴露一次 —— 它们是 doodles 里的一项一项，
+ * 由下面的 `doodles` 直接读 `ops.value.*`；多一层代理就是一层没人读的死代码。
  */
-const crumbs = [
-  ...sPath('M -240 -140 C -230 -146, -218 -142, -222 -134', { seed: 2411, stroke: 'rgba(120,105,80,0.3)', strokeWidth: 1.8 }),
-  ...sPath('M 120 145 C 130 139, 142 143, 138 151', { seed: 2412, stroke: 'rgba(120,105,80,0.26)', strokeWidth: 1.7 }),
-  ...sPath('M 300 -142 C 310 -148, 322 -144, 318 -136', { seed: 2413, stroke: 'rgba(120,105,80,0.22)', strokeWidth: 1.6 }),
-]
-
-/* ── 挂在线上、散在纸上的东西 ───────────────────────────────────── */
-const card = [
-  ...sRect(505, 554, 190, 104, { seed: 2140, stroke: 'var(--mk-green)', strokeWidth: 2.4, fill: 'var(--n-1)' }),
-  ...sLine(527, 596, 660, 596, { seed: 2141, stroke: 'var(--ink-2)', strokeWidth: 2 }),
-  ...sLine(527, 622, 618, 622, { seed: 2142, stroke: 'var(--line-3)', strokeWidth: 1.6 }),
-  ...sPath('M 640 616 L 652 628 L 672 600', { seed: 2143, stroke: 'var(--mk-green)', strokeWidth: 3 }),
-]
-const bubble = [
-  ...sPath(
-    'M 155 232 C 155 222, 163 216, 175 216 L 255 216 C 267 216, 275 222, 275 232 ' +
-      'L 275 292 C 275 302, 267 308, 255 308 L 195 308 L 172 328 L 177 308 L 175 308 ' +
-      'C 163 308, 155 302, 155 292 Z',
-    { seed: 2160, stroke: 'var(--mk-teal)', strokeWidth: 2.2, fill: 'var(--n-1)' },
-  ),
-  ...sLine(173, 240, 255, 240, { seed: 2161, stroke: 'var(--mk-teal)', strokeWidth: 1.6 }),
-  ...sLine(173, 260, 228, 260, { seed: 2162, stroke: 'var(--mk-teal)', strokeWidth: 1.6 }),
-]
-const timetable = [
-  ...sRect(515, 438, 110, 64, { seed: 2101, stroke: 'var(--mk-blue)', strokeWidth: 2 }),
-  ...sLine(515, 466, 625, 466, { seed: 2102, stroke: 'var(--mk-blue)', strokeWidth: 1.4 }),
-  ...sLine(552, 438, 552, 502, { seed: 2103, stroke: 'var(--mk-blue)', strokeWidth: 1.4 }),
-  ...sLine(589, 438, 589, 502, { seed: 2104, stroke: 'var(--mk-blue)', strokeWidth: 1.4 }),
-]
-const review = [
-  ...sPolyline([[130, 196], [204, 142], [262, 172], [332, 86], [404, 120]], { seed: 2130, stroke: 'var(--mk-pink)', strokeWidth: 2.8 }),
-  ...sCircle(404, 120, 5, { seed: 2131, stroke: 'none', fill: 'var(--mk-pink)' }),
-]
-const flag = [
-  ...sLine(250, 640, 250, 716, { seed: 2110, stroke: 'var(--mk-orange)', strokeWidth: 2.4 }),
-  ...sPath('M 252 642 L 326 658 L 252 682 Z', { seed: 2111, stroke: 'var(--mk-orange)', strokeWidth: 2, fill: 'var(--mk-orange-soft)' }),
-]
-const doc = [
-  ...sPath('M 120 430 L 178 430 L 206 458 L 206 534 L 120 534 Z', { seed: 2150, stroke: 'var(--mk-orange)', strokeWidth: 2.2, fill: 'var(--n-1)' }),
-  ...sLine(178, 430, 178, 458, { seed: 2151, stroke: 'var(--mk-orange)', strokeWidth: 1.8 }),
-  ...sLine(178, 458, 206, 458, { seed: 2152, stroke: 'var(--mk-orange)', strokeWidth: 1.8 }),
-  ...sLine(134, 476, 186, 476, { seed: 2153, stroke: 'var(--ink-2)', strokeWidth: 1.5 }),
-  ...sLine(134, 494, 172, 494, { seed: 2154, stroke: 'var(--line-3)', strokeWidth: 1.4 }),
-  ...sPath('M 134 512 L 142 520 L 160 500', { seed: 2155, stroke: 'var(--mk-green)', strokeWidth: 2.6 }),
-]
-const portfolio = [
-  ...sRect(620, 264, 86, 104, { seed: 2120, stroke: 'var(--mk-purple)', strokeWidth: 2 }),
-  ...sRect(630, 254, 86, 104, { seed: 2121, stroke: 'var(--mk-purple)', strokeWidth: 2 }),
-  ...sRect(640, 244, 86, 104, { seed: 2122, stroke: 'var(--mk-purple)', strokeWidth: 2, fill: 'var(--n-1)' }),
-  ...sLine(656, 274, 708, 274, { seed: 2123, stroke: 'var(--mk-purple)', strokeWidth: 1.6 }),
-  ...sLine(656, 294, 692, 294, { seed: 2124, stroke: 'var(--mk-purple)', strokeWidth: 1.6 }),
-]
-const branch = [
-  ...sPath('M 516 322 L 556 300', { seed: 2170, stroke: 'var(--mk-orange)', strokeWidth: 2.4 }),
-  ...sPath('M 556 300 L 598 278', { seed: 2171, stroke: 'var(--mk-orange)', strokeWidth: 2.4 }),
-  ...sPath('M 556 300 L 602 328', { seed: 2172, stroke: 'rgba(120,105,80,0.45)', strokeWidth: 2, disableMultiStroke: true }),
-  ...sCircle(556, 300, 4.5, { seed: 2173, stroke: 'none', fill: 'var(--mk-orange)' }),
-]
-/*
- * 收藏：一枚书签。上一版这里是三根柱子（岗位对比），
- * 它是整页唯一一个图表形状，和手绘语言不搭 —— 换成书签，
- * 也正好对上旁边那句话"你收藏过，材料一直没交"。
- */
-const bookmark = [
-  ...sPath('M -19 -32 L 19 -32 L 19 32 L 0 17 L -19 32 Z', {
-    seed: 2189, stroke: 'var(--mk-orange)', strokeWidth: 2.2, fill: 'var(--mk-orange-soft)',
-  }),
-]
-/** 近两周的节奏：14 个格子，亮着的 5 格是有动作的那几天（左下角那一块） */
-const week = Array.from({ length: 14 }, (_, i) =>
-  sRect(-106 + (i % 7) * 30, -26 + Math.floor(i / 7) * 30, 22, 22, {
-    seed: 2500 + i,
-    stroke: [1, 4, 5, 9, 12].includes(i) ? 'var(--mk-green)' : 'var(--ink-4)',
-    strokeWidth: 1.7,
-    fill: [1, 4, 5, 9, 12].includes(i) ? 'var(--mk-green-soft)' : 'none',
-  }),
-).flat()
-/** 已迈出第一步：一枚实心标记，把左下角压住（那一块原来全是浅色线条，看着空） */
-const stamp = [
-  ...sCircle(0, 0, 26, { seed: 2194, stroke: 'var(--mk-green)', strokeWidth: 2, fill: 'var(--mk-green)' }),
-  ...sPath('M -12 2 L -3 11 L 13 -9', { seed: 2194, stroke: 'var(--n-0)', strokeWidth: 4 }),
-]
-/** 材料清单：三条，勾了两条（也在下半页，给左下那条边配重） */
-const checklist = [
-  ...sRect(-72, -22, 14, 14, { seed: 2180, stroke: 'var(--mk-green)', strokeWidth: 1.7 }),
-  ...sPath('M -69 -15 L -65 -11 L -59 -20', { seed: 2181, stroke: 'var(--mk-green)', strokeWidth: 2.2 }),
-  ...sLine(-46, -15, 44, -15, { seed: 2182, stroke: 'var(--ink-2)', strokeWidth: 1.5 }),
-  ...sRect(-72, -2, 14, 14, { seed: 2183, stroke: 'var(--mk-green)', strokeWidth: 1.7 }),
-  ...sPath('M -69 5 L -65 9 L -59 0', { seed: 2184, stroke: 'var(--mk-green)', strokeWidth: 2.2 }),
-  ...sLine(-46, 5, 22, 5, { seed: 2185, stroke: 'var(--ink-2)', strokeWidth: 1.5 }),
-  ...sRect(-72, 18, 14, 14, { seed: 2186, stroke: 'var(--line-3)', strokeWidth: 1.7 }),
-  ...sLine(-46, 25, -6, 25, { seed: 2187, stroke: 'var(--line-3)', strokeWidth: 1.4 }),
-]
-/** 今天：一张小日历，日子被圈住（左下角那一簇里的"重物"） */
-const today = [
-  ...sRect(-40, -34, 80, 68, { seed: 2195, stroke: 'var(--mk-purple)', strokeWidth: 2, fill: 'var(--n-1)' }),
-  ...sLine(-40, -14, 40, -14, { seed: 2196, stroke: 'var(--mk-purple)', strokeWidth: 1.5 }),
-  ...sCircle(-8, 10, 15, { seed: 2197, stroke: 'var(--mk-green)', strokeWidth: 2.4 }),
-  ...sLine(-18, 8, 2, 8, { seed: 2198, stroke: 'var(--ink-3)', strokeWidth: 1.5 }),
-  ...sLine(-18, 20, -6, 20, { seed: 2199, stroke: 'var(--ink-3)', strokeWidth: 1.5 }),
-]
-const specks = [
-  sCircle(248, 172, 8, { seed: 2201, stroke: 'var(--mk-teal)', strokeWidth: 1.8 }),
-  sCircle(760, 118, 7, { seed: 2202, stroke: 'var(--mk-yellow)', strokeWidth: 1.8 }),
-  sCircle(1080, 780, 6, { seed: 2203, stroke: 'var(--mk-purple)', strokeWidth: 1.8 }),
-  sCircle(1428, 620, 6, { seed: 2204, stroke: 'var(--mk-teal)', strokeWidth: 1.8 }),
-  sCircle(30, 140, 6, { seed: 2205, stroke: 'var(--mk-blue)', strokeWidth: 1.8 }),
-  sCircle(980, 884, 6, { seed: 2206, stroke: 'var(--mk-pink)', strokeWidth: 1.8 }),
-  sLine(640, 300, 690, 282, { seed: 2207, stroke: 'var(--mk-blue)', strokeWidth: 1.8 }),
-  sLine(700, 880, 750, 862, { seed: 2208, stroke: 'var(--mk-orange)', strokeWidth: 1.8 }),
-  sPolyline([[1250, 520], [1275, 502], [1300, 520]], { seed: 2209, stroke: 'var(--mk-yellow)', strokeWidth: 1.8 }),
-  sPolyline([[860, 884], [884, 868], [908, 884]], { seed: 2210, stroke: 'var(--mk-teal)', strokeWidth: 1.8 }),
-].flat()
 
 const doodles = computed(() => [
   /* 上方那一片：复盘折线、一次对话、岗位对比、作品集 —— 原来这里只有空白 */
-  { key: 'review', ops: review, at: 0.42, cx: 266, cy: 150, tx: 740, ty: 170, rot: -6, scale: 0.8 },
-  { key: 'bubble', ops: bubble, at: 0.48, cx: 215, cy: 262, tx: 1000, ty: 150, rot: -8, scale: 1 },
-  { key: 'bookmark', ops: bookmark, at: 0.54, cx: 0, cy: 0, tx: 1180, ty: 132, rot: 4, scale: 1 },
-  { key: 'portfolio', ops: portfolio, at: 0.6, cx: 673, cy: 304, tx: 1420, ty: 380, rot: -5, scale: 1 },
+  { key: 'review', ops: ops.value.review, at: 0.42, cx: 266, cy: 150, tx: 740, ty: 170, rot: -6, scale: 0.8 },
+  { key: 'bubble', ops: ops.value.bubble, at: 0.48, cx: 215, cy: 262, tx: 1000, ty: 150, rot: -8, scale: 1 },
+  { key: 'bookmark', ops: ops.value.bookmark, at: 0.54, cx: 0, cy: 0, tx: 1180, ty: 132, rot: 4, scale: 1 },
+  { key: 'portfolio', ops: ops.value.portfolio, at: 0.6, cx: 673, cy: 304, tx: 1420, ty: 380, rot: -5, scale: 1 },
   /* 左下角：起点那一站的旁边，插上截止旗 */
-  { key: 'week', ops: week, at: 0.6, cx: 0, cy: 0, tx: 156, ty: 706, rot: -2, scale: 1.05 },
-  { key: 'today', ops: today, at: 0.63, cx: 0, cy: 0, tx: 310, ty: 706, rot: 3, scale: 1 },
-  { key: 'flag', ops: flag, at: 0.66, cx: 288, cy: 678, tx: 200, ty: 800, rot: -3, scale: 1.1 },
-  { key: 'stamp', ops: stamp, at: 0.7, cx: 0, cy: 0, tx: 360, ty: 848, rot: -6, scale: 1 },
-  { key: 'checklist', ops: checklist, at: 0.72, cx: 0, cy: 0, tx: 620, ty: 770, rot: 2, scale: 1 },
-  { key: 'doc', ops: doc, at: 0.75, cx: 163, cy: 482, tx: 470, ty: 838, rot: 6, scale: 1 },
+  { key: 'week', ops: ops.value.week, at: 0.6, cx: 0, cy: 0, tx: 156, ty: 706, rot: -2, scale: 1.05 },
+  { key: 'today', ops: ops.value.today, at: 0.63, cx: 0, cy: 0, tx: 310, ty: 706, rot: 3, scale: 1 },
+  { key: 'flag', ops: ops.value.flag, at: 0.66, cx: 288, cy: 678, tx: 200, ty: 800, rot: -3, scale: 1.1 },
+  { key: 'stamp', ops: ops.value.stamp, at: 0.7, cx: 0, cy: 0, tx: 360, ty: 848, rot: -6, scale: 1 },
+  { key: 'checklist', ops: ops.value.checklist, at: 0.72, cx: 0, cy: 0, tx: 620, ty: 770, rot: 2, scale: 1 },
+  { key: 'doc', ops: ops.value.doc, at: 0.75, cx: 163, cy: 482, tx: 470, ty: 838, rot: 6, scale: 1 },
   /* 擦痕里：写过去才会出现的两件 */
-  { key: 'card', ops: card, at: 0.82, cx: 600, cy: 606, tx: 783, ty: 703, rot: -16, scale: 1 },
-  { key: 'timetable', ops: timetable, at: 0.88, cx: 570, cy: 470, tx: 1196, ty: 588, rot: 5, scale: 1 },
-  { key: 'branch', ops: branch, at: 0.94, cx: 558, cy: 310, tx: 960, ty: 720, rot: -4, scale: 1 },
+  { key: 'card', ops: ops.value.card, at: 0.82, cx: 600, cy: 606, tx: 783, ty: 703, rot: -16, scale: 1 },
+  { key: 'timetable', ops: ops.value.timetable, at: 0.88, cx: 570, cy: 470, tx: 1196, ty: 588, rot: 5, scale: 1 },
+  { key: 'branch', ops: ops.value.branch, at: 0.94, cx: 558, cy: 310, tx: 960, ty: 720, rot: -4, scale: 1 },
 ])
 
 const still = () =>

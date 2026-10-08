@@ -1,0 +1,29 @@
+/*
+ * 字体 · 衬线（serif）—— 标题与数字走衬线。
+ *
+ * 【这一档给什么场合】
+ *
+ * 报告页是要拿去给人讲、甚至打印的。衬线的标题读起来像"一份文件"而不是"一块界面"，
+ * 数字用衬线也更像排版过的资料。所以这一档只改标题与大字排版，正文仍是 MiSans ——
+ * 中文正文全换衬线在小字号上笔画会糊，那是拿可读性换风格。
+ *
+ * 【为什么中文衬线不能写一个具体字体名】
+ *
+ * 中文衬线字体（思源宋体等）动辄十几 MB，为一个可选档下载它，是拿所有人的首屏换一个开关。
+ * 所以中文走**系统字体栈** `--font-cjk-serif`（Windows 宋体 / macOS Songti SC /
+ * Linux 思源宋体），拉丁与数字走包里已有的 Fraunces —— 拉丁衬线只有几十 KB，
+ * 且它的字面与中文宋体排在一起不会打架（都是"有脚的、收笔的"）。
+ */
+html[data-font="serif"] {
+  --font-display: "Fraunces", var(--font-cjk-serif);
+  --font-editorial: "Fraunces", var(--font-cjk-serif);
+}
+
+/*
+ * 衬线的字面比手写字紧，别再加负字距（会挤在一起）；字重压回 600，
+ * 因为 Fraunces 的 600 已经比站酷快乐体粗一档。
+ */
+html[data-font="serif"] :is(h1, h2, h3) {
+  letter-spacing: 0;
+  font-weight: 600;
+}

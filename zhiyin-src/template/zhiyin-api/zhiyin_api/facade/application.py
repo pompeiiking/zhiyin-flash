@@ -647,7 +647,12 @@ class DefaultApplicationFacade(ApplicationFacade):
         spec = events.get(body.event)
         if spec is None or spec.channel != "frontend":
             return TrackEventAck(accepted=False, event=body.event)
-        await self._function.record_track_event(user_id, body.event, body.payload)
+        # 时间线是**给用户读的**：标题取登记表里的人话名字，绝不把事件码当标题写出去。
+        # 漏登记 label 的新事件会退到一句中性话（守卫 test_track_event_labels 会先拦住它），
+        # 而不是把 review_warning_show 摆到用户面前（issue 证据截图 1）。
+        await self._function.record_track_event(
+            user_id, body.event, body.payload, title=spec.label or "一条操作记录"
+        )
         # 只失效读缓存：埋点记的是"界面上发生了什么"，它不在任何一段模型产出的依据里，
         # 顺手清产出等于让用户每翻一屏就重算一遍（花钱，也变慢）。
         await self._invalidate("note_changed")

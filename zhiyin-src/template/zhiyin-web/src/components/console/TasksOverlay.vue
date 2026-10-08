@@ -9,7 +9,7 @@ import { useSessionStore } from '@/stores/session'
  * 待办 —— 三栏，但重点是**两个来源分得清**。
  *
  * 左：智能体建议（每条都写着"为什么、从哪来、建议放哪段时间"），可采纳、可直接否掉
- * 中：今天与待办（含你自己写进去的），顶部一条输入框随手加
+ * 中：今天与待办（行动计划的 + 你自己写进去的），顶部一条输入框随手加
  * 右：已完成
  *
  * 为什么不做成一个混在一起的清单：混在一起，用户就分不清"这是我该做的"还是"AI 让我做的"。
@@ -36,13 +36,45 @@ interface Row {
   due: string
   from: string
   detail: string
+  /**
+   * 这一条来自行动计划（而不是自建）。
+   *
+   * 勾选要回写**整版计划**（task_id 换一代就 404），那条写路径只有 ActionOverlay 一份，
+   * 所以这里的计划任务只做展示与跳转，不复制一份勾选逻辑出来。
+   */
+  plan?: boolean
 }
 
-const today = computed<Row[]>(() =>
+/*
+ * 行动计划的待办也要进这一栏。
+ *
+ * 这一栏原来只列自建待办：一个有行动计划、一条自建都没写的账号，从主界面
+ * 点「全部任务 →」进来看到的是一张空清单 —— 而主界面上明明写着"现在这一件"。
+ * 来源仍然写在每一行上（"行动计划" / "你自己"），
+ * "我该做的"与"AI 让我做的"照样分得清，这正是这一屏分两栏的理由。
+ */
+const planRows = computed<Row[]>(() =>
+  (session.actionPlan?.phases ?? [])
+    .flatMap((p) => p.tasks ?? [])
+    .filter((t) => !t.done)
+    .map((t) => ({
+      id: `plan:${t.task_id}`,
+      title: t.text,
+      due: t.due_date ? `截止 ${t.due_date.slice(0, 10)}` : '计划没写截止',
+      from: '行动计划',
+      detail: `行动计划${t.phase ? `「${t.phase}」阶段` : ''}排的一条任务。`,
+      plan: true,
+    })),
+)
+
+const myRows = computed<Row[]>(() =>
   session.customTodos
     .filter((t) => !t.done)
     .map((t) => ({ id: t.id, title: t.label, due: '你写的', from: '你自己', detail: '' })),
 )
+
+/** 计划排的排前面 —— 与主界面"现在这一件"的取法一致 */
+const today = computed<Row[]>(() => [...planRows.value, ...myRows.value])
 const done = computed<Row[]>(() =>
   session.customTodos
     .filter((t) => t.done)
@@ -74,7 +106,7 @@ function openDetail(t: Row) {
 <template>
   <Overlay
     title="待办"
-    subtitle="左边是智能体建议 · 中间是你自己的清单 · 两边分得清"
+    subtitle="左边是智能体建议 · 中间是计划与你自己的清单 · 两边分得清"
     from="todo"
     @close="session.closeOverlay()"
   >
@@ -109,7 +141,7 @@ function openDetail(t: Row) {
         </AiFrame>
       </section>
 
-      <!-- 二、今天与待办（含自建） -->
+      <!-- 二、今天与待办（计划排的 + 自建） -->
       <section class="col sheet">
         <header class="col__head">
           <span class="col__pip" style="background: var(--mk-green)" aria-hidden="true" />
@@ -140,14 +172,26 @@ function openDetail(t: Row) {
               <span class="label task__from">{{ t.from }}</span>
             </button>
             <div v-if="open === t.id" class="task__detail">
-              <p class="dim">{{ 'detail' in t && t.detail ? t.detail : '这一条是你自己加进来的。' }}</p>
+              <p class="dim">{{ t.detail || '这一条是你自己加进来的。' }}</p>
               <div class="task__actions">
-                <button class="btn primary" type="button" @click="complete(t)">勾掉</button>
-                <button class="btn ghost" type="button" @click="openDetail(t as never)">看依据</button>
+                <!-- 计划任务：勾选要改整版计划，这里只把人送到那个唯一能改它的地方 -->
+                <button
+                  v-if="t.plan"
+                  class="btn primary"
+                  type="button"
+                  @click="session.openOverlay('action')"
+                >
+                  去行动计划里勾
+                </button>
+                <template v-else>
+                  <button class="btn primary" type="button" @click="complete(t)">勾掉</button>
+                  <button class="btn ghost" type="button" @click="openDetail(t)">看依据</button>
+                </template>
               </div>
             </div>
           </li>
 
+          <li v-if="!today.length" class="label col__empty">现在还没有要做的事</li>
         </ul>
       </section>
 

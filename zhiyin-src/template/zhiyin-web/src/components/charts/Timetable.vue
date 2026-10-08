@@ -109,5 +109,5 @@ const gaps = computed(() => {
 .crs { cursor: var(--cursor-dot); outline: none; }
 .crs .nm { font-family: var(--font-sans); font-size: 10px; font-weight: 600; fill: var(--ink-1); pointer-events: none; }
 .crs .mt { font-family: var(--font-sans); font-size: 9px; fill: var(--ink-3); pointer-events: none; }
-.crs:focus-visible { filter: drop-shadow(0 0 0.35rem rgba(15, 122, 88, 0.5)); }
+.crs:focus-visible { filter: drop-shadow(0 0 0.35rem color-mix(in srgb, var(--accent) 50%, transparent)); }
 </style>

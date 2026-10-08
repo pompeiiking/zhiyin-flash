@@ -143,11 +143,15 @@ class FunctionService(ABC):
 
     @abstractmethod
     async def record_track_event(
-        self, user_id: str, event: str, payload: dict
+        self, user_id: str, event: str, payload: dict, *, title: str = ""
     ) -> None:
         """记录一条前端上报的体验型事件（经 RegistryService 校验后调用）。
 
         归属判断（事件是否属于 frontend 通道）在 Facade 完成，本方法只落库。
+
+        `title` 是**界面上给用户看的名字**（登记表里的 label）。这条时间线是给用户读的：
+        把事件码或 payload 直接写进去，用户看到的是 `review_warning_show` 和一个
+        Python 字典的 repr（issue 证据截图 1）。
         """
 
     @abstractmethod

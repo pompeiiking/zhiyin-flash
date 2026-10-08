@@ -49,7 +49,8 @@ const dotOps = computed(() =>
       seed: 40 + i,
       stroke: 'var(--mk-green)',
       strokeWidth: 2,
-      fill: active.value === i ? 'var(--mk-green)' : '#ffffff',
+      /* 未选中的点用纸色填（原来是写死的 #ffffff）：暗色皮肤上白点会跳出来 */
+      fill: active.value === i ? 'var(--mk-green)' : 'var(--c-paper)',
     }),
   ),
 )

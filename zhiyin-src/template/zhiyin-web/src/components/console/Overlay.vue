@@ -246,7 +246,7 @@ onBeforeUnmount(() => {
  */
 .layer__scrim {
   position: absolute; inset: 0;
-  background: rgba(18, 17, 14, 0.44);
+  background: var(--scrim);
 }
 
 /*

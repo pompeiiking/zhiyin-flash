@@ -40,12 +40,21 @@ const latest = computed(() => {
 })
 
 const remaining = computed(() => Math.max(0, total.value - unlockedCount.value))
+
+/*
+ * 关于 `tone`：这一块用 `raised`（实底 --c-paper），不是 `plain`。
+ *
+ * issue #23：`plain` 对应 `--glass-1`（半透明的玻璃），于是画布上其他卡片会透过
+ * "完成记录"显示出来，用户分不清这一块的边界在哪；而它是一份**记录**，
+ * 该有一张自己的纸。其余块继续用玻璃：这一处换成实底是因为它的内容是列表与计数，
+ * 不是"浮在桌面上的一层提示"。
+ */
 </script>
 
 <template>
   <Bubble
     size="sm"
-    tone="plain"
+    tone="raised"
     interactive
     :tilt="0.6"
     label="完成记录"

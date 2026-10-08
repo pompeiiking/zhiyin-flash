@@ -1357,7 +1357,7 @@ def _renderables_for_turn(
       · ③ 决策 —— 三套方案的匹配度（"三套差多少"比三行字清楚）。
     取不到就不补：宁可没有图，也不要拿编出来的数字画一张。
     """
-    kept = list(from_model)
+    kept = validate_renderables([item.model_dump(mode="json") for item in from_model])
     if any(item.kind == "bars_chart" for item in kept):
         return kept
     if _asks_for_chart(message):
@@ -1414,7 +1414,14 @@ def _chart_reply_text(renderables: list[Renderable]) -> str:
 
 
 def _default_bars(stage: Any, structured: dict[str, Any]) -> Optional[Renderable]:
-    """这一环节顺手给的那张柱状图（点全部来自库里已存的分值）。"""
+    """这一环节顺手给的那张柱状图（点全部来自库里已存的分值）。
+
+    **超出 0–1 的分值一律不画**（调用方过 `validate_renderables`，见
+    `test_default_chart_rejects_model_score_outside_ratio_range`）：宁可没有图，
+    也不要把一个量纲不明的数字画成图 —— 前端拿到 7400 会当比值再乘 100，
+    用户读到的是"740000 分"加三根一样长的柱子（issue 证据截图 3/4/6）。
+    契约本身在 `contracts/decide.py`：`match_score: ge=0.0, le=1.0`。
+    """
     try:
         if stage is LoopStage.DECIDE:
             points = [

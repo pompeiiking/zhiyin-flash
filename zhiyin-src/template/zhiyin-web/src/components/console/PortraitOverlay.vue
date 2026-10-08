@@ -314,7 +314,7 @@ const leadEntry = computed<'dims' | 'gaps' | null>(() => {
     @close="session.closeOverlay()"
   >
     <!-- 整页的材质走这一组变量（见下面 .pt），子组件只认变量不认色值 -->
-    <div class="pt" :class="{ 'pt--blank': !allItems.length }">
+    <div class="pt surface" :class="{ 'pt--blank': !allItems.length }">
       <!-- 一条记录都没有：整页只留"为什么空着 + 现在点哪里" -->
       <PortraitEmpty v-if="!allItems.length" />
 
@@ -572,9 +572,9 @@ const leadEntry = computed<'dims' | 'gaps' | null>(() => {
   --pt-warn: var(--warn);
 
   /* 纸比玻璃方：圆角整体收一档，纸的"边"才立得住 */
-  --pt-r-sm: 8px;
-  --pt-r-md: 12px;
-  --pt-r-lg: 16px;
+  --pt-r-sm: var(--r-sm);
+  --pt-r-md: var(--r-md);
+  --pt-r-lg: var(--r-lg);
 
   /* 来源分类色：直接用外壳的马克笔（顺序对齐 PortraitSummary 的图例分配） */
   --pt-src-1: var(--mk-blue);
@@ -600,7 +600,7 @@ const leadEntry = computed<'dims' | 'gaps' | null>(() => {
   position: absolute; inset: 0 0 auto 0; height: 42%;
   border-radius: inherit;
   pointer-events: none;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.72), transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--n-1) 72%, transparent), transparent);
 }
 .pt > * { position: relative; }
 
@@ -631,7 +631,7 @@ const leadEntry = computed<'dims' | 'gaps' | null>(() => {
 .back:hover svg { transform: translateX(-2px); }
 
 .bar__t { display: grid; gap: 1px; min-width: 0; }
-.bar__crumb { color: var(--ink-4); }
+.bar__crumb { color: var(--ink-3); }
 .bar__title {
   font-family: var(--font-editorial);
   font-size: 21px; font-weight: 600; letter-spacing: -0.01em; color: var(--pt-ink);
@@ -662,7 +662,7 @@ const leadEntry = computed<'dims' | 'gaps' | null>(() => {
   border-radius: var(--pt-r-md);
   background: var(--fill-subtle);
 }
-.nofig__k { color: var(--ink-4); }
+.nofig__k { color: var(--ink-3); }
 .nofig__t {
   font-family: var(--font-editorial);
   font-size: 21px; font-weight: 600; letter-spacing: -0.01em; color: var(--pt-ink);
@@ -686,7 +686,7 @@ const leadEntry = computed<'dims' | 'gaps' | null>(() => {
 .ghost:hover { border-color: var(--pt-line-strong); color: var(--pt-ink); }
 
 .menu { display: grid; gap: var(--s2); align-content: start; }
-.menu__k { color: var(--ink-4); }
+.menu__k { color: var(--ink-3); }
 .menu ul { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s2); }
 
 /*
@@ -794,7 +794,7 @@ const leadEntry = computed<'dims' | 'gaps' | null>(() => {
   border-top: 1px solid var(--line-1);
 }
 .pa__col { display: grid; gap: 8px; align-content: start; }
-.pa__col-k { color: var(--ink-4); }
+.pa__col-k { color: var(--ink-3); }
 .pa__col ul { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s3); }
 .pa__col li { display: grid; gap: 3px; }
 .pa__lab { font-size: var(--t-sm); font-weight: 600; color: var(--pt-ink); line-height: 1.5; }

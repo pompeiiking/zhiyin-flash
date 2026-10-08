@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import VChart from 'vue-echarts'
 import { use } from 'echarts/core'
 import { BarChart, RadarChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
 import { tierOf } from '@/lib/profile'
+import { THEME_EVENT } from '@/lib/theme'
 
 /*
  * 按需注册：只装这一页真正用到的那几个模块（雷达 / 条形 / 提示框 / 直角坐标系）。
@@ -60,8 +61,14 @@ const props = defineProps<{
 const emit = defineEmits<{ (e: 'select', key: string): void }>()
 
 /*
- * 主题取值：一次性从根元素读出来。
- * 读不到就退回 tokens.css 里的同一批值（兜底是给 SSR / 单测用的，不是常态）。
+ * 主题取值：从根元素读出来，**换皮肤时重读一遍**。
+ *
+ * ECharts 画在 canvas 上，读不到 CSS 变量 —— 这些色值只能由 JS 递给它。
+ * 所以这里必须跟着皮肤走：监听 `zhiyin:theme`（lib/theme.ts 在换肤时抛），
+ * 重读一次就够 —— radarOption / barOption 都依赖 T.value，重读即重算。
+ * 只读一次的话症状很隐蔽：换皮肤后整页都变了，只有这张图还挂着上一套颜色。
+ *
+ * 兜底值是给 SSR / 单测用的（那时没有 computed style），不是常态。
  */
 function readTokens() {
   const cs = getComputedStyle(document.documentElement)
@@ -77,11 +84,22 @@ function readTokens() {
     green: v('--mk-green', '#257040'),
     orange: v('--mk-orange', '#bf5518'),
     pink: v('--mk-pink', '#c23a62'),
+    /* 面积填充：必须取已解析的颜色（canvas 不认 color-mix / var） */
+    area: v('--chart-area', 'rgba(37, 112, 64, 0.14)'),
+    areaStrong: v('--chart-area-strong', 'rgba(37, 112, 64, 0.22)'),
   }
 }
 
 const T = ref(readTokens())
-onMounted(() => (T.value = readTokens()))
+onMounted(() => {
+  T.value = readTokens()
+  document.addEventListener(THEME_EVENT, refresh)
+})
+onBeforeUnmount(() => document.removeEventListener(THEME_EVENT, refresh))
+
+function refresh() {
+  T.value = readTokens()
+}
 
 /** 三档把握对应三支马克笔：稳 = 绿、中 = 陶橙、薄 = 梅红 */
 const tierColor = (value: number) =>
@@ -114,7 +132,7 @@ const tooltipBox = () => ({
   borderColor: T.value.line2,
   borderWidth: 1,
   padding: [9, 12],
-  extraCssText: 'border-radius:10px; box-shadow:0 8px 22px rgba(43,39,33,0.14);',
+  extraCssText: 'border-radius:10px; box-shadow:var(--e-3);',
   textStyle: { color: T.value.ink1, fontSize: 12.5 },
 })
 
@@ -158,8 +176,8 @@ const radarOption = computed(() => ({
       symbolSize: 7,
       lineStyle: { width: 2, color: T.value.green },
       itemStyle: { color: T.value.green, borderColor: T.value.paper, borderWidth: 2 },
-      areaStyle: { color: 'rgba(37, 112, 64, 0.14)' },
-      emphasis: { lineStyle: { width: 3 }, areaStyle: { color: 'rgba(37, 112, 64, 0.22)' } },
+      areaStyle: { color: T.value.area },
+      emphasis: { lineStyle: { width: 3 }, areaStyle: { color: T.value.areaStrong } },
       data: [{ value: props.dims.map((d) => d.value), name: '把握' }],
     },
   ],
@@ -298,7 +316,7 @@ function onChartClick(p: { dataIndex?: number }) {
 
 .chart__bar { display: flex; align-items: flex-end; gap: var(--s3); }
 .chart__t { display: grid; gap: 2px; }
-.chart__k { color: var(--ink-4); }
+.chart__k { color: var(--ink-3); }
 .chart__hint { font-size: var(--t-xs); color: var(--pt-faint, var(--ink-3)); }
 
 /* 分段控件：全页只有这一套控件语法（和清单里的筛选片同一支） */

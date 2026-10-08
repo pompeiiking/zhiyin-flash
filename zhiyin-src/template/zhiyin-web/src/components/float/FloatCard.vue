@@ -37,7 +37,7 @@ function answer(option: string) {
 
 <template>
   <article
-    class="float"
+    class="float surface"
     :class="[`tone-${tone}`, { 'is-lifted': props.lifted, 'is-pinned': props.pinned && !props.lifted }]"
     :tabindex="0"
     :style="{ '--rot': (props.index % 2 === 0 ? -0.4 : 0.45) + 'deg' }"

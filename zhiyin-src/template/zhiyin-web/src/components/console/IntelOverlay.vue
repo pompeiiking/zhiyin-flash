@@ -501,7 +501,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 .pager::after {
   content: "左右方向键也能翻";
   width: 100%; text-align: right;
-  font-family: var(--font-sans); font-size: var(--t-xs); color: var(--ink-4);
+  font-family: var(--font-sans); font-size: var(--t-xs); color: var(--ink-3);
 }
 
 @media (max-width: 900px) {

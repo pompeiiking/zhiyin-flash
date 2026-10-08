@@ -49,7 +49,7 @@ function go(tip: { kind: string; to: string }) {
 <template>
   <div class="dock" :class="{ 'dock--open': open }">
     <!-- 收起：一行字。它会随状态改口，这是"导览在看着你"最轻的表达 -->
-    <button class="note" type="button" :aria-expanded="open" @click="open = !open">
+    <button class="note surface" type="button" :aria-expanded="open" @click="open = !open">
       <span class="note__mark" aria-hidden="true" />
       <span class="note__k label">{{ GUIDE_TITLE }}</span>
       <transition name="say" mode="out-in">

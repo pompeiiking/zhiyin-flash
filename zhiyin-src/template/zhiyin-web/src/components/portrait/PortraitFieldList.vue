@@ -278,7 +278,7 @@ const day = (iso: string) => (iso ? iso.slice(5, 10) : '未记录')
   padding: 0 14px 6px;
   border-bottom: 1px solid var(--line-1);
 }
-.cols span { font-size: var(--t-xs); color: var(--ink-4); }
+.cols span { font-size: var(--t-xs); color: var(--ink-3); }
 .cols__num { text-align: right; }
 
 .rows {
@@ -335,7 +335,7 @@ const day = (iso: string) => (iso ? iso.slice(5, 10) : '未记录')
 .tag {
   flex: 0 0 auto; padding: 1px 5px; border-radius: 5px;
   font-size: 11.5px; font-weight: 500;
-  color: var(--pt-warn, var(--warn)); background: rgba(154, 74, 30, 0.10);
+  color: var(--pt-warn, var(--warn)); background: color-mix(in srgb, var(--warn) 10%, transparent);
 }
 .row__num {
   font-size: var(--t-sm); color: var(--pt-muted, var(--ink-2));
@@ -362,7 +362,7 @@ const day = (iso: string) => (iso ? iso.slice(5, 10) : '未记录')
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
-.row__meta { font-size: var(--t-xs); color: var(--pt-faint, var(--ink-4)); }
+.row__meta { font-size: var(--t-xs); color: var(--pt-faint, var(--ink-3)); }
 .row__go { color: var(--ink-4); display: grid; place-items: center; }
 .row:hover .row__go { color: var(--pt-accent, var(--accent)); }
 

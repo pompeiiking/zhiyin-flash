@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>职引 ZHIYIN</title>
-  <meta name="theme-color" content="#fcf9f5">
+  <meta name="theme-color" content="#f4efe1">
   <!--
     字体自托管（见 src/styles/fonts.css）：
     外链 Google Fonts 一旦被网络策略拦掉，标题的艺术字就会静默回退成系统字体，
@@ -15,6 +15,31 @@
     rel="icon"
     href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23fcf9f5'/%3E%3Crect x='8.5' y='8.5' width='15' height='15' rx='4' fill='%23007a52'/%3E%3Crect x='13' y='13' width='6' height='6' rx='1.5' fill='%23fcf9f5'/%3E%3C/svg%3E"
   >
+  <!--
+    首屏外观守卫（同步，必须在这里）。
+    外观是 `<html>` 上的一组属性，而样式表要走网络 —— 等模块脚本执行再设，
+    暗色配色会先闪一整屏**已经画好样式的亮色纸**（那种闪比"没皮肤"难受得多）。
+    这里把选过的每一条轴在**第一帧之前**写到根元素上。
+
+    下面那张 AX 表就是"轴 → 默认档"：默认档不写属性（默认值就在 tokens.css 与
+    base.css 里），所以"回退"只剩一条路：删掉属性。
+    **这张表与 lib/theme.ts 的 AXES 必须一致** —— 由 tests/test_theme_contract.py 比对，
+    因为漏一条的症状只是"某条轴的首屏闪一下"，没有任何报错。
+
+    它做不到什么：样式表到达之前，浏览器给的那一屏是空白底色（任何站点都一样）。
+    这一条只消除"已经画出来又翻一遍"的那一下。读参数是为了演示与截图脚本
+    （`?theme=darkroom&ui=float&type=read`）。
+  -->
+  <script>
+    try {
+      var AX = {"theme":"sketch","ui":"card","feedback":"rise","type":"plain","shape":"box","skeleton":"center","font":"hand"}
+      var q = new URLSearchParams(location.search)
+      for (var k in AX) {
+        var v = q.get(k) || localStorage.getItem('zhiyin_' + k)
+        if (v && v !== AX[k]) document.documentElement.setAttribute('data-' + k, v)
+      }
+    } catch (e) { /* 隐私模式禁 localStorage：安静地留在默认外观 */ }
+  </script>
 </head>
 <body>
   <div id="app"></div>

@@ -9,6 +9,7 @@ import {
   type AssetVersion,
 } from '@/api/client'
 import AiFrame from '@/components/ai/AiFrame.vue'
+import LookTrigger from '@/components/theme/LookTrigger.vue'
 import { reportTask, type ReportSummary } from '@/ai/registry'
 import { useSessionStore } from '@/stores/session'
 import { failureText } from '@/lib/failure'
@@ -119,6 +120,8 @@ onMounted(() => {
         <button class="back label" type="button" @click="router.push('/')">← 回到今天</button>
         <span class="mono top__sep">/</span>
         <span class="label top__crumb">完整报告</span>
+        <!-- 报告页是最常拿给人看的一页，外观台在这儿也得够得着 -->
+        <LookTrigger />
       </div>
       <div class="top__r">
         <span class="label top__meta">
@@ -321,7 +324,7 @@ onMounted(() => {
   font-size: var(--fs-small);
 }
 .dim__tag[data-tag="优势"] { background: var(--accent-soft); color: var(--mk-green); }
-.dim__tag[data-tag="短板"] { background: rgba(194, 90, 18, 0.12); color: var(--warn); }
+.dim__tag[data-tag="短板"] { background: color-mix(in srgb, var(--warn) 12%, transparent); color: var(--warn); }
 .dim__conclusion { margin-top: var(--s3); font-size: var(--fs-body); color: var(--ink-1); line-height: 1.8; }
 .dim__ev {
   margin-top: var(--s3); width: 100%;

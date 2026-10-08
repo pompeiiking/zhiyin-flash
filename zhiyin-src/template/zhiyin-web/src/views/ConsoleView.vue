@@ -33,6 +33,7 @@ import MarketBubble from '@/components/console/MarketBubble.vue'
 import TasksOverlay from '@/components/console/TasksOverlay.vue'
 import BriefOverlay from '@/components/console/BriefOverlay.vue'
 import AccountMenu from '@/components/auth/AccountMenu.vue'
+import LookTrigger from '@/components/theme/LookTrigger.vue'
 import { useSessionStore } from '@/stores/session'
 import { useCanvasDrag } from '@/composables/useCanvasDrag'
 import { shouldCompact, tileLayout, type TileInput } from '@/lib/tiling'
@@ -156,12 +157,14 @@ watch(
  * 给了一个还没有内容的块。
  *
  * 所以这里只补半条：空着的时候按 1.4 收，有内容时按注册表给的 3。
- * 判据与各自块里的渲染条件同源（画像看 dimensions、待办看 action_panel）。
+ * 判据与各自块里的渲染条件同源（画像看 dimensions、待办看**待办本身**）。
  */
 const EMPTY_WEIGHT: Record<string, number> = { portrait: 1.8, todo: 2.1 }
 const isEmptyBlock = (id: string) => {
   if (id === 'portrait') return !(session.profile?.dimensions.length)
-  if (id === 'todo') return !session.wsPanels?.action
+  // 待办不再看 `wsPanels.action`（那是这一阶段的评价）：评价为空时计划里可能明明排着任务，
+  // 那样**有待办的块**会被当成空块，分到更小的格位、更容易掉进紧凑形态（issue #21 的连带问题）
+  if (id === 'todo') return !session.hasTodos
   return false
 }
 const weightOf = (id: string) => {
@@ -235,15 +238,21 @@ const visibleIds = computed(() => {
 const inStrategy = (id: string) =>
   !session.layout.length || session.layout.some((b) => b.id === id)
 
-/** 把 from 挪到 to 的位置上（其余块顺序不变，布局自己重算） */
+/**
+ * 把 from 挪到 to 的位置上（其余块顺序不变，布局自己重算）。
+ *
+ * 返回"这次到底改没改顺序"：拖动引擎要靠它决定收尾的时机 ——
+ * 顺序没变就不会有下一次渲染，等下去只会把卡片永远留在"拎在手上"的状态。
+ */
 function reorder(from: string, to: string) {
   const list = [...order.value]
   const i = list.indexOf(from)
   const j = list.indexOf(to)
-  if (i < 0 || j < 0 || i === j) return
+  if (i < 0 || j < 0 || i === j) return false
   list.splice(i, 1)
   list.splice(j, 0, from)
   order.value = list
+  return true
 }
 
 const tiles = computed<Record<string, { c: number; r: number; w: number; h: number }>>(() => {
@@ -319,9 +328,17 @@ let watchdog = 0
  * 补位动画只作用于还留在网格流里的块。
  * 被拎在手上的（.pinned）和被 CSS transition 收尾的（.settling）都不参与：
  * 前者是绝对定位，后者正在自己滑向新位置 —— 一起插值会打架。
+ *
+ * 还必须在名单外排掉**手上正拎着的那一块**。
+ * 拎起来的那一瞬，捕帧必须发生在它被抽出网格之前（否则其余块的起点是错的），
+ * 所以那一帧它身上还没有 .pinned —— 只按类名筛，它会混进 Flip 的目标里。
+ * 而 Flip 在动画结束时会对整批目标 clearProps: 'transform'：那一下会把拖动引擎
+ * 写在它身上的位移擦掉，卡片瞬间掉回画布左上角，直到下一次 pointermove 才回来
+ * （指针停住不动时它就卡在那儿）。
  */
 const flowEls = () =>
   [...(canvas.value?.querySelectorAll<HTMLElement>('.bubble:not(.pinned):not(.settling)') ?? [])]
+    .filter((el) => el !== drag.activeBlock())
 
 function captureLayout() {
   if (!canvas.value || reduced()) return
@@ -336,12 +353,28 @@ function captureLayout() {
     return
   }
   flipEls = flowEls()
-  prevIds = new Set(flipEls.map((el) => el.dataset.block ?? ''))
+  /*
+   * 入场判据是"这一轮之前画布上有没有这一块"，与谁参与补位是两件事：
+   * 手上拎着的那块不进 Flip，但它显然不是"新出现的" ——
+   * 跟着 flipEls 算的话它会被当成新块，在拖动中途被加上 .entering 播一遍入场动画。
+   */
+  prevIds = new Set(
+    [...canvas.value.querySelectorAll<HTMLElement>('[data-block]')].map((el) => el.dataset.block ?? ''),
+  )
   flipRects = new Map(flipEls.map((el) => [el, el.getBoundingClientRect()]))
   flipState = flipEls.length ? Flip.getState(flipEls) : null
 }
 
 function playFlip() {
+  /*
+   * 第一件事：把上一次松手留下的收尾做完。
+   *
+   * 换位之后的新格位是这一轮渲染才刚刚写进 DOM 的，拖动引擎自己看不到那一刻；
+   * 必须在这里（Flip 读 rect 之前、浏览器绘制之前）把那块从"拎在手上"交还给网格，
+   * 并补上"预览位置 → 新格位"的位移：交还得早了，量到的是旧格位；交还得晚了，
+   * 卡片会先跳到旧格位再滑向新格位 —— 用户报的"松开的位置和预览对不上"就是这个。
+   */
+  drag.finishDrop()
   if (!canvas.value || reduced()) return
   const state = flipState
   const movers = flipEls
@@ -454,7 +487,22 @@ function playFlip() {
 }
 
 /** 拖动引擎：抽离网格 → 其余块补位 → 松手吸附 */
-const drag = useCanvasDrag(canvas, { before: captureLayout, after: playFlip, reorder })
+const drag = useCanvasDrag(canvas, {
+  /*
+   * 除了捕帧，还要把**手上这块身上挂着的 gsap 补间**掐掉。
+   *
+   * 关掉邻居、双击重排留下的 Flip 还没跑完时，gsap 每一帧都在往同一个 transform 上写值，
+   * 而拖动引擎也在写 —— 两套位移交替落到同一个元素上就是抖，
+   * 松手那一下还会被 Flip 的 clearProps 擦掉。拖动期间这个属性只能有一个主人。
+   */
+  before: () => {
+    const held = drag.activeBlock()
+    if (held) gsap.killTweensOf(held)
+    captureLayout()
+  },
+  after: playFlip,
+  reorder,
+})
 
 /*
  * 一块现在该不该藏起来。两件事都算：
@@ -810,7 +858,16 @@ onBeforeUnmount(() => {
     -->
     <div class="chrome chrome--left" @mouseleave="onChromeLeave">
       <button class="chrome__hit" type="button" aria-label="展开账号与设置" />
-      <div class="chrome__body"><AccountMenu /></div>
+      <!--
+        账号那颗的右边跟着「外观台」三个字：外观是**配这套界面的人**才动的东西，
+        它跟"你是谁"同属左上角那一小条，不该另找地方摆。
+      -->
+      <div class="chrome__body">
+        <div class="chrome__row">
+          <AccountMenu />
+          <LookTrigger />
+        </div>
+      </div>
     </div>
     <div class="chrome chrome--right" :class="{ 'is-announcing': railAnnouncing }" @mouseleave="onChromeLeave">
       <button class="chrome__hit" type="button" aria-label="展开：谁在替你干活" />
@@ -1256,6 +1313,8 @@ onBeforeUnmount(() => {
   --chrome-hit: 22px;
 }
 .chrome--left { left: var(--s5); }
+/* 账号那颗与「外观台」并排：一个说"你是谁"，一个说"这套界面长什么样" */
+.chrome__row { display: flex; align-items: center; gap: var(--s3); }
 .chrome--right { right: var(--s5); }
 .chrome--right { align-items: flex-end; }
 
@@ -1428,7 +1487,7 @@ onBeforeUnmount(() => {
   grid-template-columns: repeat(12, minmax(0, 1fr));
   grid-template-rows: repeat(8, minmax(0, 1fr));
   grid-auto-flow: row dense;
-  gap: 12px;
+  gap: var(--canvas-gap);
   align-content: start;
 }
 
@@ -1456,13 +1515,31 @@ onBeforeUnmount(() => {
 .canvas [data-block] {
   transition: transform var(--dur-exit) var(--ease-out);
 }
+/*
+ * 拎在手上（.pinned）、以及松手后还没交还网格的那一帧（.dragging）：**关掉 transform 过渡**。
+ *
+ * 拖动是每一帧直接写内联 transform 来跟手的，而上面那条 240ms 的过渡会把每一次写入
+ * 都变成"从当前位置往新位置慢慢追"：指针走一步，卡片只走掉剩余距离的约三成
+ * （cubic-bezier(0.22, 1, 0.36, 1) 在第 16.7ms 处已走过约 29%），下一帧再从那个没追上的
+ * 地方重新开始 —— 指针一直走，它就永远追不上。稳态落后约为"每帧指针位移"的 3.5 倍：
+ * 60Hz 下 1000px/s 是 50–60px，2600px/s 的甩动能差出 150px 上下，观感就是
+ * "卡片被橡皮筋拽着"。
+ *
+ * 更糟的是它把坐标也一起污染了：松手那一刻要量"卡片现在在哪儿"，量到的是过渡中途的值，
+ * 于是补偿算错，落位时的位置和预览对不上。
+ *
+ * 交还给 .settling 时才打开过渡 —— "落回纸面"那一段手感不变（那条规则写在后面，620ms）。
+ */
+.canvas [data-block].pinned,
+.canvas [data-block].dragging {
+  transition: none;
+}
 .canvas [data-block].dragging {
   cursor: grabbing;
   /*
    * 拖起来时"抬高一层"**不用投影**：把套版线加深成墨色。
    * 一张纸被拎起来的样子，在印刷语言里就是"它被描粗了一圈边"。
    */
-  transition: transform var(--dur-exit) var(--ease-out);
   border-color: var(--ink-1) !important;
 }
 /* 拖动时给块描一圈，随时知道手上拿着的是哪一块 */
@@ -1495,9 +1572,9 @@ onBeforeUnmount(() => {
   pointer-events: none;
   opacity: 0;
   transition: opacity 180ms var(--ease-out);
-  border: 2px dashed rgba(10, 88, 66, 0.5);
+  border: 2px dashed color-mix(in srgb, var(--accent) 50%, transparent);
   border-radius: var(--r-lg);
-  background: rgba(10, 88, 66, 0.06);
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
   z-index: 1;
 }
 

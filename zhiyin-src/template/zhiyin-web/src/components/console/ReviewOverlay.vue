@@ -34,6 +34,26 @@ const TONE: Record<string, string> = {
   coach_message: '教练消息',
 }
 
+/**
+ * 时间线是**给人读的**，所以这里有一层防御：后端历史上把事件码当标题、
+ * 把 payload 的 Python 字典 repr 当说明写进了记录（`function.py` 已修，
+ * 但已经在库里的旧记录还在）。判据很朴素 —— 标题长得像事件码、说明里带花括号，
+ * 就不是给用户看的东西，退到一句中性话，而不是把它摆在用户面前。
+ * 这一层不替代后端修复：它只是让"漏网的历史数据"不变成界面上的一串英文下划线。
+ */
+const looksLikeCode = (text: string) => /^[a-z][a-z0-9_]{2,}$/.test(text)
+
+function humanTitle(event: TrackEvent): string {
+  const title = (event.title || '').trim()
+  if (!title) return '一条记录'
+  return looksLikeCode(title) ? '一条操作记录' : title
+}
+
+function humanDetail(event: TrackEvent): string {
+  const detail = (event.detail || '').trim()
+  return detail.includes('{') || detail.includes('}') ? '' : detail
+}
+
 onMounted(async () => {
   try {
     events.value = await listTrackEvents()
@@ -46,11 +66,11 @@ onMounted(async () => {
 
 function show(event: TrackEvent) {
   session.openDrawer(
-    event.title,
-    event.detail || '这一条没有更多说明',
+    humanTitle(event),
+    humanDetail(event) || '这一条只记了"那一下你做过了"，没有更多说明。',
     [
-      { source: '类型', detail: TONE[event.type] ?? event.type, confidence: 1, at: event.occurred_at?.slice(0, 16) ?? '—' },
-      { source: '时间', detail: event.due_at ? `截止 ${event.due_at.slice(0, 10)}` : (event.occurred_at?.slice(0, 16) ?? '—'), confidence: 1, at: '记录' },
+      { source: '类型', detail: TONE[event.type] ?? event.type, confidence: 1, at: at(event.occurred_at) ?? '—' },
+      { source: '时间', detail: event.due_at ? `截止 ${event.due_at.slice(0, 10)}` : (at(event.occurred_at) ?? '—'), confidence: 1, at: '记录' },
     ],
   )
 }
@@ -85,8 +105,8 @@ const at = (value?: string | null) => (value ? value.slice(0, 16).replace('T', '
         <button class="row" type="button" @click="show(event)">
           <span class="mono row__at">{{ at(event.occurred_at) }}</span>
           <span class="label row__type" :data-type="event.type">{{ TONE[event.type] ?? event.type }}</span>
-          <span class="row__title">{{ event.title }}</span>
-          <span class="row__detail">{{ event.detail }}</span>
+          <span class="row__title">{{ humanTitle(event) }}</span>
+          <span class="row__detail">{{ humanDetail(event) }}</span>
         </button>
       </li>
     </ol>

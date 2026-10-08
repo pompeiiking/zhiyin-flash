@@ -14,6 +14,14 @@ import { useEscLayerManual } from '@/composables/useEscLayer'
 import { initialOf, roleLabel } from '@/lib/identity'
 import { authToken } from '@/api/client'
 
+/*
+ * 这个面板只管"你是谁"：身份、回门户、退出登录。
+ *
+ * 2026-10-08 把换外观的两行小片（配色 / 组件）与「打开外观台」那一行从这里移除了：
+ * 外观台已经有一处明确的入口 —— 左上角账号那颗**右边**的「外观台」三个字，
+ * 就在这个面板的隔壁。同一个动作放两处，用户要猜"这两处是不是一回事"，
+ * 而其中一处还会随这个面板一起开合，状态更难对齐。一个动作一处入口。
+ */
 const session = useSessionStore()
 const router = useRouter()
 
@@ -55,8 +63,12 @@ function onPointerDown(e: PointerEvent) {
   if (root.value && !root.value.contains(e.target as Node)) open.value = false
 }
 
-onMounted(() => document.addEventListener('pointerdown', onPointerDown))
-onBeforeUnmount(() => document.removeEventListener('pointerdown', onPointerDown))
+onMounted(() => {
+  document.addEventListener('pointerdown', onPointerDown)
+})
+onBeforeUnmount(() => {
+  document.removeEventListener('pointerdown', onPointerDown)
+})
 
 function signOut() {
   open.value = false
@@ -214,7 +226,7 @@ function backToPortal() {
               color var(--dur-micro) var(--ease-out),
               background var(--dur-micro) var(--ease-out);
 }
-.quit:hover { border-color: var(--warn); color: var(--warn); background: rgba(183, 77, 26, 0.05); }
+.quit:hover { border-color: var(--warn); color: var(--warn); background: color-mix(in srgb, var(--warn) 5%, transparent); }
 
 .drop-enter-active { transition: opacity 180ms var(--ease-out), transform 240ms var(--ease-expo); }
 .drop-leave-active { transition: opacity 130ms var(--ease-in), transform 130ms var(--ease-in); }

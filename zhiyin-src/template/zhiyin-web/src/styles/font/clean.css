@@ -1,0 +1,25 @@
+/*
+ * 字体 · 精修黑体（clean）—— 标题改用正文字体。
+ *
+ * 【这一档解决什么】
+ *
+ * 默认那套的手写味来自一件事：**标题是另一支笔写的**（站酷快乐体 vs 正文 MiSans）。
+ * 这让界面像"草稿台上写满了字"；但同一套界面在"要发给别人看"的场合会显得不够稳。
+ * 精修档只做一件事：把这支笔收掉 —— 标题改回正文字体，字距略收，其余一律不动。
+ *
+ * 【为什么只改 --font-display / --font-editorial】
+ *
+ * `--font-display` 是全站 h1–h4 的唯一出口（base.css），`--font-editorial` 是大字排版
+ * （`.editorial` / `.serif`）的出口。改这两个令牌就够把"另一支笔"换掉，
+ * 而 body 的字（MiSans）本来就是正文字体，不必再写一遍 —— 写两处就是两份真相。
+ */
+html[data-font="clean"] {
+  --font-display: var(--font-sans);
+  --font-editorial: var(--font-sans);
+}
+
+/*
+ * 字距收一点：手写字的字面本身就松，换成正文字体后同样的字号会显散。
+ * 只收三层标题，不动正文 —— 正文的字距一动，长文的可读性就跟着变。
+ */
+html[data-font="clean"] :is(h1, h2, h3) { letter-spacing: -0.012em; }

@@ -11,10 +11,12 @@ import VariableProximity from '@/components/vendor/vuebits/VariableProximity.vue
 import InkField from '@/components/portal/InkField.vue'
 import InkButton from '@/components/portal/InkButton.vue'
 import HeroMap from '@/components/portal/HeroMap.vue'
+import LookTrigger from '@/components/theme/LookTrigger.vue'
 import { authToken, getPortal, type PortalContent } from '@/api/client'
 import { CIRCLED, type StopCopy } from '@/data/portal'
 import { useSessionStore } from '@/stores/session'
 import { failureText } from '@/lib/failure'
+import { THEME_EVENT } from '@/lib/theme'
 
 /*
  * 门户 —— 一页，一屏，不滚动。
@@ -128,14 +130,29 @@ let ring: RoughAnnotation | null = null
 const reduced = () =>
   typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
+/*
+ * 颜色从令牌读出来（给已解析的值）。
+ *
+ * 这两个消费方都**不吃 CSS 变量**：ClickSpark 把它塞进 canvas 的 strokeStyle，
+ * rough-notation 用它生成 SVG。所以令牌要由 JS 取一次再递进去；
+ * 而"换皮肤"这件事必须让它们重取 —— 见下面的 THEME_EVENT。
+ */
+function token(name: string, fallback: string) {
+  const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+  return value || fallback
+}
+
+/** 墨点颜色 = 记号笔绿，与那个手绘圈同一支笔（原来是写死的 #0a5842，上一版的绿） */
+const sparkColor = ref(token('--mk-green', '#257040'))
+
 function drawRing() {
   const el = claimEl.value?.querySelector<HTMLElement>('.bt__seg--mark')
   if (!el) return
   ring?.remove()
   ring = annotate(el, {
     type: 'circle',
-    /* rough-notation 把颜色写进 SVG 属性，属性里不吃 CSS 变量，所以给字面值（= --mk-green） */
-    color: '#0a5842',
+    /* 圈线跟着皮肤走：默认是记号笔绿，暗色皮肤上是提亮过的那支 */
+    color: token('--mk-green', '#257040'),
     strokeWidth: 2.4,
     padding: 9,
     iterations: 2,
@@ -144,6 +161,15 @@ function drawRing() {
   })
   ring.show()
 }
+
+/** 换皮肤：重取颜色，圈线按新色重画一次（rough-notation 不认 --var，只能重画） */
+function onTheme() {
+  sparkColor.value = token('--mk-green', '#257040')
+  if (!loading.value && !loadError.value) drawRing()
+}
+
+onMounted(() => document.addEventListener(THEME_EVENT, onTheme))
+onBeforeUnmount(() => document.removeEventListener(THEME_EVENT, onTheme))
 
 onMounted(() => requestAnimationFrame(() => (reveal.value = true)))
 
@@ -181,7 +207,7 @@ onBeforeUnmount(() => {
   -->
   <ClickSpark
     class="sparkwrap"
-    spark-color="#0a5842"
+    :spark-color="sparkColor"
     :spark-size="11"
     :spark-radius="26"
     :spark-count="9"
@@ -199,6 +225,12 @@ onBeforeUnmount(() => {
 
       <!-- 主舞台：文字列坐在轴上，轴从它下面的空白带穿过去 -->
       <main class="stage">
+        <!--
+          外观台：门户是访客看到的第一屏，也是"换一套给他看"最常发生的一屏，
+          所以这里也得有一个入口。它落在右上角（面板从右边下来），一个字、不加框 ——
+          门户是给人看主张的地方，入口越安静越好。
+        -->
+        <div class="look-mount"><LookTrigger anchor="right" /></div>
         <div class="say">
           <!--
             主标题：手绘字（站酷快乐体，只取「职引」两个字的子集）。
@@ -356,8 +388,10 @@ onBeforeUnmount(() => {
   position: relative; z-index: 2; min-height: 0;
   /* 文字列靠左坐；纸的右边整片留给那条轴和挂在轴上的东西 */
   display: flex; align-items: center;
-  align-items: center;
 }
+/* 外观台入口：右上角一个字，绝对定位，不参与这一屏的排版 */
+.look-mount { position: absolute; top: 0; right: 0; z-index: 3; }
+@media (max-width: 720px) { .look-mount { position: static; margin-left: auto; } }
 /*
  * 文字列：占纸的左侧约 40%，整体居中，三段之间留大间距。
  * 它坐在墨层的轴**上面** —— 轴从这一列下方的空白带穿过去，不压字。

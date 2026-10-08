@@ -1,3 +1,4 @@
+import { ref } from 'vue'
 import rough from 'roughjs'
 
 /*
@@ -11,6 +12,44 @@ import rough from 'roughjs'
  */
 
 const gen = rough.generator()
+
+/*
+ * 手绘系数 —— 全站手绘只有这一个总闸。
+ *
+ * `roughness` 本来是每个调用点各写各的（那是每张图自己的笔触性格，**不要动**），
+ * 这里是在它外面再乘一层：**所有** op 的 roughness 都乘这个系数
+ * （sLine / sRect / sCircle / sPath → sPolyline 最终也落到 sLine）。
+ * 所以一次 setRoughnessScale() 就能把全站手绘从"手抖"变成"工程线"。
+ *
+ * 谁改它：`lib/theme.ts` 的「线条：手绘 ↔ 精确」轴 —— 切完 data-draw 之后
+ * 读回 `--sketch-rough`（默认档没有文件、读不到，就是 1），再调这里。
+ * 改完一定要 bumpSketch()，否则算在 setup 顶层的 ops 不会重算。
+ */
+let roughScale = 1
+
+/** 设定手绘系数：非有限值或负数一律落回 1（与"认不出的档落回默认档"同一口径） */
+export function setRoughnessScale(scale: number) {
+  roughScale = Number.isFinite(scale) && scale >= 0 ? scale : 1
+}
+
+/** 当前系数，供调试/断言用 */
+export function roughnessScale(): number {
+  return roughScale
+}
+
+/*
+ * 手绘系数的变化版本号。
+ *
+ * 有些组件的形状是**算一次就定住**的（原先是 setup 顶层的 `const road = sPath(...)`），
+ * 系数变了它们不会自己重算。那些组件把这一组 ops 包进 computed 并 `void sketchTick.value`，
+ * 再由这里 bump 一下 —— 当场生效，不用刷新。
+ */
+export const sketchTick = ref(0)
+
+/** 系数变了就 bump 一次；顶层算 ops 的组件会跟着重算 */
+export function bumpSketch() {
+  sketchTick.value++
+}
 
 export interface SketchOpts {
   seed?: number
@@ -63,7 +102,7 @@ const seedOf = (n: number, extra = 0) => Math.abs(Math.round(n * 31 + extra * 7 
 
 export function sLine(x1: number, y1: number, x2: number, y2: number, o: SketchOpts = {}): SketchOp[] {
   const drawable = gen.line(x1, y1, x2, y2, {
-    roughness: o.roughness ?? DEFAULTS.roughness,
+    roughness: (o.roughness ?? DEFAULTS.roughness) * roughScale,
     bowing: o.bowing ?? DEFAULTS.bowing,
     stroke: o.stroke ?? DEFAULTS.stroke,
     strokeWidth: o.strokeWidth ?? DEFAULTS.strokeWidth,
@@ -75,7 +114,7 @@ export function sLine(x1: number, y1: number, x2: number, y2: number, o: SketchO
 
 export function sRect(x: number, y: number, w: number, h: number, o: SketchOpts = {}): SketchOp[] {
   const drawable = gen.rectangle(x, y, w, h, {
-    roughness: o.roughness ?? 1,
+    roughness: (o.roughness ?? 1) * roughScale,
     bowing: o.bowing ?? 1.6,
     stroke: o.stroke ?? DEFAULTS.stroke,
     fill: o.fill,
@@ -90,7 +129,7 @@ export function sRect(x: number, y: number, w: number, h: number, o: SketchOpts 
 
 export function sCircle(cx: number, cy: number, r: number, o: SketchOpts = {}): SketchOp[] {
   const drawable = gen.circle(cx, cy, r * 2, {
-    roughness: o.roughness ?? 1.1,
+    roughness: (o.roughness ?? 1.1) * roughScale,
     stroke: o.stroke ?? DEFAULTS.stroke,
     fill: o.fill,
     fillStyle: o.fillStyle ?? 'solid',
@@ -104,7 +143,7 @@ export function sCircle(cx: number, cy: number, r: number, o: SketchOpts = {}): 
 
 export function sPath(d: string, o: SketchOpts = {}): SketchOp[] {
   const drawable = gen.path(d, {
-    roughness: o.roughness ?? 1.1,
+    roughness: (o.roughness ?? 1.1) * roughScale,
     stroke: o.stroke ?? DEFAULTS.stroke,
     fill: o.fill,
     fillStyle: o.fillStyle ?? 'solid',

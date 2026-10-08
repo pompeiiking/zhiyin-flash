@@ -1,0 +1,120 @@
+/*
+ * 骨架 · 右侧抽屉（drawer）—— 覆盖层从右边推进来，占满整条高度。
+ *
+ * 【这一层是什么】
+ *
+ * 外观已经拆成几条互不相干的轴：
+ *   data-theme    —— 皮肤：颜色、材质、字体、光标、质感（见 styles/themes/）；
+ *   data-ui       —— 组件风格：形状、描边、影、控件形态、密度（见 styles/ui/）；
+ *   data-type     —— 排版：字面的大小与疏密；
+ *   data-skeleton —— 骨架：**覆盖层怎么打开**（就是这个文件）。
+ *
+ * 前几条轴管的是"它长什么样"，这条轴只回答一个问题：**打开的时候，这一层从哪儿来。**
+ * 所以这里**一个自定义属性都不声明**（纯规则）：形状与颜色都已经有人负责了，
+ * 骨架只改舞台的摆法、面板的四条边与入场的那一下。写死一个宽度、一个圆角，
+ * 别处（或者以后新增的皮肤）就会跟这条轴打架。
+ *
+ * 【默认档】
+ *
+ * 默认骨架 `center`（居中弹出）**没有文件** —— 就是 Overlay.vue 里今天的样子：
+ * 舞台居中、面板限宽限高、色带贴在左侧。这一档才是"从旁边推过来"。
+ *
+ * 【这套要解决的问题】
+ *
+ * 居中弹出适合"停下来看一眼就走"的东西。但一次诊断、一份报告、方向方案这类内容，
+ * 用户要在里面**读一阵子、翻几屏**，居中弹窗就有两个毛病：
+ *   · 上下两头留白，眼睛每次换行都要跨过一片空；
+ *   · 弹窗宽度写死在中间，长内容的滚动条被夹在画面正中。
+ * 抽屉把面板推到右边、拉到通高：左边空出来的那一条不是浪费，它是"底下那页还开着"的
+ * 记号 —— 你随时可以退回去，而不是被一个居中的盒子按在原地。
+ *
+ * 【特异性】
+ *
+ * Overlay.vue 的样式是组件作用域的，选择器带着 [data-v-…]，`.deck[data-v-x]` 是 (0,2,0)；
+ * 这里的 `html[data-skeleton="drawer"] .deck` 是 (0,2,1)，压得住 —— 所以这些规则真的生效，
+ * 不需要 !important。
+ */
+
+/*
+ * 舞台：不留边（面板要贴到屏幕边上），但**保持 place-items: center**。
+ *
+ * 【这一行是 2026-10-08 修掉的一个真 bug，值得写清楚】
+ *
+ * 原来写的是 `place-items: stretch end` + `padding: 0`：它把 `.layer` 里的**每一个**
+ * 子元素都拉成通高、推到右边 —— 不只是 `.deck`。而覆盖层有两类壳：
+ *   · 共用壳（`.deck`，Overlay.vue）：改它是对的；
+ *   · 自带壳的（画像卷宗 `.pt` 那一类）：它按 ~1180px 的内容设计，被拉到右边、
+ *     又被 520px 的抽屉宽度压着，于是内容横向溢出、右缘被切掉 —— 就是用户看到的"乱了"。
+ * 现在只留 `padding: 0`（贴边），居中对齐交给默认值；`.deck` 自己再用
+ * `justify-self` / `align-self` 贴到右边并拉通高。**别的壳一根手指都不碰。**
+ */
+html[data-skeleton="drawer"] .layer {
+  padding: 0;
+}
+
+/*
+ * 面板：通高、限宽、去圆角，靠右侧对齐。
+ *
+ * 【2026-10-08 第二次修：它原来"看着像贴上去的"】
+ *
+ * 第一版只改了宽度与对齐，结果截图里这一层读起来是"一张透明纸压在界面上"：
+ * `.deck` 本身没有底（只有里面的 `.deck__bar` 是 `.sheet`），于是**页面从面板中间透出来**，
+ * 卡片像是浮在一片没有材质的空气里；贴边的一侧又是绝对直角，与屏幕边缘分不开。
+ * 现在把它当成**一整块真的抽屉板**：
+ *   · 自己给底（--c-paper）与一条细边，右侧不封口（它是贴着屏幕那一边）；
+ *   · 只在靠里的两个角给圆角 —— 贴着屏幕那侧仍然直角，看起来才是"卡在边上"；
+ *   · 左侧一道大而柔的影，把面板与它后面的页面分开（这是"抽屉"与"贴纸"的区别）；
+ *   · 内边距补回一档，字不再贴着面板边缘。
+ * 开页签跟着从"一张独立的小卡"变成"面板自己的页头"：底色与影都撤掉，只留顶上那条色带。
+ */
+html[data-skeleton="drawer"] .deck {
+  width: min(900px, 100%);
+  height: 100%;
+  max-height: none;
+  background: var(--c-paper);
+  border: var(--bw) solid var(--line-2);
+  border-right: 0;
+  border-radius: var(--r-lg) 0 0 var(--r-lg);
+  box-shadow: -18px 0 48px rgba(0, 0, 0, 0.16), var(--inner-hi);
+  padding: var(--s4) var(--s5) var(--s5);
+  gap: var(--s3);
+  justify-self: end;
+  align-self: stretch;
+}
+/* 中等档维持它在居中时的体量（760px）：它的内容本来就是照这个宽度排的 */
+html[data-skeleton="drawer"] .deck--mid,
+html[data-skeleton="drawer"] .deck--tall {
+  width: min(760px, 100%);
+  max-height: none;
+}
+
+/*
+ * 开页签：色带从左边挪到顶上，倾角摆平，并且**不再自己当一张卡**。
+ * 左侧那条 6px 色带是给"居中的一叠纸"当地标的：纸是横的，标签就贴在侧边。
+ * 抽屉是竖的、通高的，左边那条就成了面板的边 —— 挪到顶上，它才还是"标签"。
+ * 底色/影/圆角全部撤掉，否则面板里会再套一张纸（两层纸 = 两块边界 = 看着脏）。
+ */
+html[data-skeleton="drawer"] .deck__bar {
+  background: transparent;
+  box-shadow: none;
+  border: 0;
+  border-top: 6px solid var(--deck-ink, var(--accent));
+  border-radius: 0;
+  transform: none;
+  padding-inline: 0;
+}
+
+/*
+ * 入场：右进左出。
+ * 位移只有 28px —— 面板本来就占了整条高度，走多了会从屏幕外飞进来，
+ * 那是"转场"不是"打开"；小位移读起来是"它从右边滑出来、停在边上"。
+ * 关键帧带 look- 前缀，不复用 base.css 的 sheet-in（那是从下方浮起的一页纸，
+ * 方向不对，且名字是通用的，改它会波及所有薄片）。
+ */
+@keyframes look-drawer-in {
+  from { opacity: 0; transform: translateX(28px); }
+  to { opacity: 1; transform: none; }
+}
+html[data-skeleton="drawer"] .deck__bar {
+  animation: look-drawer-in 420ms var(--ease-expo) both;
+}

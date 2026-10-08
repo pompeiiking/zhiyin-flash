@@ -190,6 +190,13 @@ class TrackEventSpec(BaseModel):
         description="frontend=前端上报；backend=后端派生，不接收入站上报"
     )
     note: str = Field(default="", description="触发时机与口径说明")
+    label: str = Field(
+        default="",
+        description=(
+            "界面上给用户看的名字（人话）。复盘时间线直接用这一列 —— "
+            "把 code 当标题展示给用户，他读到的就是 review_warning_show（issue 证据截图 1）"
+        ),
+    )
 
 
 class BadgeRuleSpec(BaseModel):

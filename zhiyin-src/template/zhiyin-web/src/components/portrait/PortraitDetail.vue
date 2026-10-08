@@ -160,10 +160,10 @@ const TIER_TEXT: Record<string, string> = { low: '还很薄', mid: '大概如此
   font-size: var(--t-xs); font-weight: 500;
   color: var(--pt-accent, var(--accent));
   background: var(--pt-soft, var(--accent-soft));
-  border: 1px solid rgba(10, 88, 66, 0.22);
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
 }
-.tier-mid .pill { color: var(--mk-orange); background: rgba(164, 82, 47, 0.09); border-color: rgba(164, 82, 47, 0.26); }
-.tier-low .pill { color: var(--mk-pink); background: rgba(140, 59, 82, 0.09); border-color: rgba(140, 59, 82, 0.26); }
+.tier-mid .pill { color: var(--mk-orange); background: color-mix(in srgb, var(--mk-orange) 9%, transparent); border-color: color-mix(in srgb, var(--mk-orange) 26%, transparent); }
+.tier-low .pill { color: var(--mk-pink); background: color-mix(in srgb, var(--mk-pink) 9%, transparent); border-color: color-mix(in srgb, var(--mk-pink) 26%, transparent); }
 
 /*
  * 这一行**不再重复字段名**。

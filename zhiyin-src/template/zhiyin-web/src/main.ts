@@ -12,6 +12,16 @@ import { router } from './router'
 import '@fontsource/zcool-kuaile'
 import 'misans/lib/Normal/MiSansVF.min.css'
 import './styles/base.css'
+import { initLook } from './lib/theme'
+
+/*
+ * 外观要在挂载前定下来（七条轴一起定）。
+ *
+ * 首屏那段内联脚本已经按 localStorage 写好了各条轴的属性
+ * （避免暗色配色闪一屏亮色），这里补上内联脚本做不到的两件事：
+ * 认 `?<轴>=` 参数、把打印时的临时回切接上。
+ */
+initLook()
 
 /*
  * 磨砂玻璃的开关：分两次探。

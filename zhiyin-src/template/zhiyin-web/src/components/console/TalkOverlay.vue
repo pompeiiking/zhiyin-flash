@@ -13,7 +13,7 @@
  * 左窄右宽两张薄片：左边交代"现在是谁、走到哪了、为什么换人"，
  * 右边才是说话。**五个主理在这边，不在左下角那张便签上。**
  */
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import Overlay from '@/components/console/Overlay.vue'
 import RenderableBlock from '@/components/render/RenderableBlock.vue'
@@ -128,6 +128,68 @@ function send(text: string, option?: GuideOption) {
 /** 这一轮刚点过的那一条：它要显示成"已答"，不能再让人点第三次 */
 const answeredId = computed(() => session.chatAnswered?.optionId ?? '')
 const isAnswered = (opt: GuideOption) => (opt.option_id ?? opt.label) === answeredId.value
+
+/**
+ * 连着两回没往前走：整组选项锁掉，让用户改走自由文本（issue #24）。
+ *
+ * "已答"只解决"刚点过的那一条"；如果后端把**同一组**选项又摆一遍，
+ * 用户会换一条点、再换一条点，看起来永远在原地。所以第二回直接把选项全部锁住，
+ * 把路指到输入框上 —— 那里是唯一能把这一轮说清楚的地方。
+ */
+const optionsLocked = computed(() => session.chatRepeats >= 2)
+
+/*
+ * 对话滚动位置的记忆（issue #19）。
+ *
+ * 浮层关掉就销毁，`scrollTop` 随着节点一起消失，回来时对话跳回顶部，
+ * 用户得自己再翻一遍找上次读到哪儿。所以：
+ *   · 滚动时（按帧节流）与关闭前，把位置存进 store；
+ *   · 打开时，中间没有新消息就回到原位；有新消息就直接去最新 ——
+ *     新消息优先：他先该看见新的，而不是先看见旧的。
+ */
+const atBottom = ref(true)
+const scrollTop = ref(0)
+let scrollFrame = 0
+
+function measureScroll() {
+  const el = thread.value
+  if (!el) return
+  scrollTop.value = el.scrollTop
+  atBottom.value = el.scrollHeight - el.scrollTop - el.clientHeight < 48
+}
+
+function rememberScroll() {
+  const el = thread.value
+  if (!el) return
+  cancelAnimationFrame(scrollFrame)
+  scrollFrame = requestAnimationFrame(() => {
+    measureScroll()
+    session.rememberChatScroll(el.scrollTop)
+  })
+}
+
+function jump(to: 'top' | 'latest') {
+  const el = thread.value
+  if (!el) return
+  // 关掉动效的人不该被一段平滑滚动挡着（与全站的 prefers-reduced-motion 同一口径）
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  el.scrollTo({ top: to === 'top' ? 0 : el.scrollHeight, behavior: reduce ? 'auto' : 'smooth' })
+}
+
+onMounted(async () => {
+  await nextTick()
+  const el = thread.value
+  if (!el) return
+  el.scrollTop = session.chatTurns.length === session.chatScrollTurns
+    ? session.chatScroll
+    : el.scrollHeight
+  measureScroll()
+})
+
+onBeforeUnmount(() => {
+  cancelAnimationFrame(scrollFrame)
+  if (thread.value) session.rememberChatScroll(thread.value.scrollTop)
+})
 
 /**
  * 行动阶段的"这一件具体是什么"。
@@ -340,7 +402,7 @@ function openDisclosure() {
 
       <!-- 右片：说话的地方 -->
       <section class="talk sheet">
-        <div ref="thread" class="thread">
+        <div ref="thread" class="thread" @scroll="rememberScroll">
           <!--
             还没开口：不是一块白，而是三句"可以照着说、也可以改"的开场白。
             空白不是留白，是让人卡住的地方。
@@ -429,6 +491,20 @@ function openDisclosure() {
           </div>
         </div>
 
+        <!--
+          回到顶部 / 回到最新：只在真的滚开之后出现。
+          常驻会变成噪音（对话大多数时候就在底部），所以按状态出现：
+          滚离底部就出现"回到最新"，滚过一屏才出现"回到顶部"（issue #19 的验收标准）。
+        -->
+        <div v-if="scrollTop > 120 || !atBottom" class="jump">
+          <button v-if="scrollTop > 120" class="jump__b label" type="button" @click="jump('top')">
+            回到顶部 ↑
+          </button>
+          <button v-if="!atBottom" class="jump__b label" type="button" @click="jump('latest')">
+            回到最新消息 ↓
+          </button>
+        </div>
+
         <div class="compose">
           <!-- 在等用户回答的那一句：给它自己的位置，而不是塞进输入框占位符 -->
           <div v-if="session.chatPrompt" class="prompt">
@@ -441,7 +517,7 @@ function openDisclosure() {
                 class="opt"
                 :class="{ 'opt--used': isAnswered(opt) }"
                 type="button"
-                :disabled="session.chatTyping"
+                :disabled="session.chatTyping || isAnswered(opt) || optionsLocked"
                 @click="send(opt.label, opt)"
               >
                 {{ opt.label }}
@@ -451,8 +527,14 @@ function openDisclosure() {
               点了选项但这一轮没往前走时，必须**说出来**。
               不说的话，用户看到的是"一模一样的问题又回来了"，只能认为点了没用。
             -->
-            <p v-if="session.chatClarify" class="prompt__note" role="status">
-              {{ session.chatClarify }}
+            <!--
+              提示语在两种情况下都要出现：store 给了澄清（后端原地打转），
+              或者选项已经被锁住（连续两回没推进）。只挂在 chatClarify 上是不够的 ——
+              锁住而没说为什么，用户看到的是"全都点不动"，比能重复点还糟。
+            -->
+            <p v-if="session.chatClarify || optionsLocked" class="prompt__note" role="status">
+              <template v-if="session.chatClarify">{{ session.chatClarify }}</template>
+              <span v-if="optionsLocked">这已经是第二回了，上面的选项先锁住 —— 直接打字说，或者换一条。</span>
             </p>
           </div>
 
@@ -663,6 +745,14 @@ function openDisclosure() {
   border-top: 1px solid var(--line-1);
   background: var(--n-0);
 }
+/*
+ * 回到顶部 / 回到最新：两枚文字按钮，靠右，贴着输入框上沿。
+ * 用文字而不是图标：这里要的是"明确"（issue #19 的验收标准），
+ * 而 ↑ ↓ 这两个字符在这套界面里当箭头用过，再当图标会含混。
+ */
+.jump { display: flex; justify-content: flex-end; gap: var(--s4); padding: 0 var(--s5); }
+.jump__b { background: none; border: 0; padding: 2px 0; cursor: pointer; color: var(--accent); }
+.jump__b:hover { text-decoration: underline; text-decoration-thickness: 1px; }
 .prompt {
   display: flex; flex-direction: column; gap: 5px;
   padding: var(--s3) var(--s4);
@@ -673,7 +763,14 @@ function openDisclosure() {
 .prompt__k { color: var(--accent); }
 .prompt__q { font-size: var(--fs-small); color: var(--ink-1); line-height: 1.65; max-width: 62ch; }
 .prompt__opts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+/*
+ * 快速回答：一行放不下就换行，按钮不许把长选项压成半句话（issue #18）。
+ * 容器本来就是 flex-wrap，这里补的是**按钮自己**：允许收缩、允许里面换行。
+ */
 .prompt__opts .opt {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
   padding: 5px 12px; border-radius: var(--r-pill);
   border: 1px solid var(--accent); background: var(--n-1);
   font-size: var(--t-xs); color: var(--accent);
@@ -779,7 +876,7 @@ function openDisclosure() {
 }
 .ref:hover { border-color: var(--line-3); }
 .ref__kind { color: var(--mk-orange); }
-.ref__t { font-size: var(--fs-small); color: var(--ink-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ref__t { font-size: var(--fs-small); color: var(--ink-1); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
 .ref__src { color: var(--ink-faint); }
 .tie .label { color: var(--ink-3); }
 .tie__go { color: var(--accent); }

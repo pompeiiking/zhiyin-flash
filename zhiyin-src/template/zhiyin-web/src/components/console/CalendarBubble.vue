@@ -147,7 +147,7 @@ function open(date: Date) {
   transition: background var(--mo-fast) var(--mo-out), color var(--mo-fast) var(--mo-out);
 }
 .day:hover { background: var(--fill-hover); color: var(--ink-1); }
-.day.dim { color: var(--ink-4); }
+.day.dim { color: var(--ink-3); }
 .day.week { color: var(--ink-3); }
 /* 今天：实心底。一周里"今天"是唯一一个会自己变的参照点，值得占住 */
 .day.today { background: var(--ink-1); color: var(--n-0); }

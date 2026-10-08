@@ -4,6 +4,7 @@ import { RouterView, useRoute } from 'vue-router'
 import AuthLayer from '@/components/auth/AuthLayer.vue'
 import GuideDock from '@/components/guide/GuideDock.vue'
 import TalkOverlay from '@/components/console/TalkOverlay.vue'
+import LookPanel from '@/components/theme/LookPanel.vue'
 import { useSessionStore } from '@/stores/session'
 
 /*
@@ -44,4 +45,10 @@ onMounted(() => {
   -->
   <TalkOverlay v-if="session.overlay === 'talk'" />
   <AuthLayer v-if="session.authOpen" />
+  <!--
+    外观台的面板：挂全局，因为开它的那三个「外观台」字分别在三页上
+    （控制台左上角账号右侧、报告页顶栏、门户页右上角）。
+    面板自己 Teleport 到 body —— 控制台那条 chrome 会整块滑动，留在里面会被裁掉。
+  -->
+  <LookPanel />
 </template>

@@ -47,7 +47,7 @@ const emit = defineEmits<{ (e: 'close'): void; (e: 'resolve'): void }>()
   -->
   <component
     :is="props.interactive ? 'button' : 'section'"
-    class="bubble"
+    class="bubble surface"
     :class="[
       `s-${props.size}`,
       `t-${props.tone}`,
@@ -181,11 +181,11 @@ const emit = defineEmits<{ (e: 'close'): void; (e: 'resolve'): void }>()
   animation: next-breath 2.4s var(--ease-out) infinite;
 }
 @keyframes next-breath {
-  0%, 100% { box-shadow: var(--e-3), 0 0 0 0 rgba(15, 23, 42, 0.22); }
-  50%      { box-shadow: var(--e-3), 0 0 0 10px rgba(15, 23, 42, 0); }
+  0%, 100% { box-shadow: var(--e-3), 0 0 0 0 color-mix(in srgb, var(--ink-1) 22%, transparent); }
+  50%      { box-shadow: var(--e-3), 0 0 0 10px transparent; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .is-next { animation: none; box-shadow: var(--e-3), 0 0 0 6px rgba(15, 23, 42, 0.16); }
+  .is-next { animation: none; box-shadow: var(--e-3), 0 0 0 6px color-mix(in srgb, var(--ink-1) 16%, transparent); }
 }
 
 /* 关闭键：安静地待着，需要时才明显 */
@@ -269,8 +269,8 @@ const emit = defineEmits<{ (e: 'close'): void; (e: 'resolve'): void }>()
   align-content: center;
   pointer-events: none;
   color: var(--mk-green);
-  background: rgba(15, 122, 88, 0.1);
-  box-shadow: inset 0 0 0 2px rgba(15, 122, 88, 0.34);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 34%, transparent);
   animation: mo-pop var(--mo-fast) var(--mo-out) both;
 }
 .veil__check {
