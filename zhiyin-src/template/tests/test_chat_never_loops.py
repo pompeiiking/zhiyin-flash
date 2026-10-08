@@ -66,9 +66,16 @@ def test_canvas_reorder_uses_what_is_on_screen() -> None:
     （真机复现：位移 -430px 跟手正常，松手后格位一字不变）。
     """
     source = CONSOLE.read_text(encoding="utf-8")
-    reorder = source[source.index("function reorder") :][:900]
+    reorder = source[source.index("function reorder") :][:1600]
     assert "[...visibleIds.value]" in reorder, "换位基准退回成了 order（没登记的块会再拖不动一次)"
     assert "order.value = list" in reorder, "换位结果没写回顺序"
+    # 还必须写到**用户那份持久顺序**上：`visibleIds` 优先读 `blocksOrder`，
+    # 只写 `order` 等于写进一份没人看的草稿 —— 拖动会变成空操作。
+    # 症状（用户报过）：在「全部组件」里收着再放回之后，所有拖动都不生效。
+    # 真机 A/B：同一精确落点、同一状态，去掉这一句 → 格位一字不变；留着 → 真的换位。
+    assert "session.setBlocksOrder(list)" in reorder, (
+        "换位没有落到 blocksOrder 上：收/放回写过它之后，拖动会变成空操作"
+    )
 
 
 def test_canvas_order_merges_instead_of_replacing() -> None:

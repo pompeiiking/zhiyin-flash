@@ -331,6 +331,19 @@ function reorder(from: string, to: string) {
   list.splice(i, 1)
   list.splice(j, 0, from)
   order.value = list
+  /*
+   * 同一份顺序还要**落到用户那份持久顺序**上 —— 少这一句，拖动会变成空操作。
+   *
+   * 因为渲染顺序有两个可能的来源：`blocksOrder`（用户在「全部组件」里收/放回、上下挪时会写它）
+   * 与 `order`（策略给的 + 拖动改的）。`visibleIds` 优先读前者，
+   * 而只写后者等于写进了一份没人看的草稿：**拖完界面上什么都不会变**
+   *（用户报过："组件在管理那里收着再放回，就不能拖动换卡片位置了" ——
+   * 收起/放回会写 `blocksOrder`，于是那之后所有拖动都不生效）。
+   *
+   * 顺带两件事：拖出来的顺序被记住了（刷新后还在），而且"拖过"就等于用户接管，
+   * 核心区上限随之让位 —— 与他刚摆好的布局不该被一句规则改掉是同一条口径。
+   */
+  session.setBlocksOrder(list)
   return true
 }
 
