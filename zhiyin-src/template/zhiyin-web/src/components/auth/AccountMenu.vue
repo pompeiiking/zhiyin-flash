@@ -122,6 +122,9 @@ function backToPortal() {
         <div class="group">
           <span class="label group__k">这一台机器上</span>
           <ul class="rows">
+            <li v-if="session.identity?.role === 'admin' || session.identity?.role === 'developer'">
+              <RouterLink to="/developer" class="row" @click="open = false">模块开发工作台 →</RouterLink>
+            </li>
             <li>
               <button class="row row--go" type="button" @click="backToPortal">
                 <span>回门户看看</span>

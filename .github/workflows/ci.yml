@@ -41,6 +41,8 @@ jobs:
         run: python -m pytest -q
       - name: 静态检查
         run: python -m ruff check .
+      - name: 模块接入声明检查
+        run: python scripts/module_cli.py check
       - name: 接口契约快照与代码一致（contracts/openapi.json）
         run: python scripts/export_openapi.py --check
       - name: 里程碑门禁 M1（框架可验证，本期退出条件）
@@ -57,7 +59,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: npm
           cache-dependency-path: zhiyin-src/template/zhiyin-web/package-lock.json
       - name: 安装依赖
@@ -74,3 +76,53 @@ jobs:
         # 注意：本步断言的是"仓库里已提交的生成物与快照一致"，因此在本地未提交时会必然红，
         # 它的执行场合是 CI（干净工作区）。
         run: npm run check:api
+
+  module-dataflow:
+    name: 模块数据流（真实 PostgreSQL / Redis）
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: zhiyin
+          POSTGRES_PASSWORD: ci-isolated-database
+          POSTGRES_DB: zhiyin
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U zhiyin -d zhiyin"
+          --health-interval 3s --health-timeout 3s --health-retries 30
+      redis:
+        image: redis:7-alpine
+        ports: ["56379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 3s --health-timeout 3s --health-retries 30
+    defaults:
+      run:
+        working-directory: zhiyin-src/template
+    env:
+      ZHIYIN_USE_POSTGRES: "1"
+      ZHIYIN_POSTGRES_DSN: postgresql://zhiyin:ci-isolated-database@127.0.0.1:5432/zhiyin
+      ZHIYIN_USE_REDIS: "1"
+      ZHIYIN_REDIS_URL: redis://127.0.0.1:56379/0
+      ZHIYIN_MODULE_ENV: integration
+      ZHIYIN_DATAFLOW_ISOLATED: "1"
+      ZHIYIN_RUN_BACKGROUND_WORKERS: "0"
+      ZHIYIN_AUTH_JWT_SECRET: ci-isolated-auth-secret-not-for-production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -e ".[dev]"
+      - name: 平台强制数据链路与业务操作回读
+        run: python scripts/module_dataflow_acceptance.py --output module-dataflow-report.json
+      - name: 保存数据流证据
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: module-dataflow-report
+          path: zhiyin-src/template/module-dataflow-report.json
+          if-no-files-found: warn

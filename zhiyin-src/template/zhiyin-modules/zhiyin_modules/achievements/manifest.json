@@ -1,0 +1,91 @@
+{
+  "id": "achievements",
+  "name": "完成记录",
+  "version": "1.0.0",
+  "owner": "职引平台",
+  "description": "由真实行为记录推导的完成记录，复用现有成就业务。",
+  "kind": "application",
+  "api_version": "1",
+  "reads": [
+    "achievements.read"
+  ],
+  "actions": [],
+  "card": "Card.vue",
+  "detail": "Detail.vue",
+  "weight": 1.6,
+  "order": 78,
+  "input_schema": {
+    "type": "object",
+    "additionalProperties": false
+  },
+  "output_schema": {
+    "$defs": {
+      "ModuleAchievementView": {
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "description": "规则 code；文案由前端按 `badge.<key>` 从文案包取",
+            "title": "Key",
+            "type": "string"
+          },
+          "unlocked": {
+            "default": false,
+            "title": "Unlocked",
+            "type": "boolean"
+          },
+          "unlocked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "第一次做到那件事的时间（未解锁为 null）",
+            "title": "Unlocked At"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label"
+        ],
+        "title": "ModuleAchievementView",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "items": {
+        "items": {
+          "$ref": "#/$defs/ModuleAchievementView"
+        },
+        "title": "Items",
+        "type": "array"
+      },
+      "unlocked": {
+        "default": 0,
+        "title": "Unlocked",
+        "type": "integer"
+      },
+      "total": {
+        "default": 0,
+        "title": "Total",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "items"
+    ],
+    "title": "ModuleAchievementListView",
+    "type": "object"
+  },
+  "dependencies": {},
+  "dataflow": "dataflow.json"
+}

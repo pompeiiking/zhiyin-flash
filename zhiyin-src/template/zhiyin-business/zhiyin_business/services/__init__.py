@@ -14,6 +14,11 @@
 
 | 服务 | 文件 | 类 | 依赖 | 优先级 | 状态 |
 | --- | --- | --- | --- | --- | --- |
+| 模块平台 | `modules.py` | `ModulePlatform` | ModuleRepository、Identity、授权读写接口 | P0 | 已交付 |
+| 模块契约校验 | `module_contracts.py` | `validate_contract` / `validate_bindings` | JSON Schema、模块输入输出契约 | P0 | 已交付 |
+| 模块数据流 | `module_flows.py` | `ModuleFlowService` | ModuleFlowRepository、ModulePlatform、授权业务操作 | P0 | 已交付 |
+| 开发项目与版本协作 | `developer.py` | `DeveloperPlatform` | DeveloperRepository、Identity、模块模板提供器 | P0 | 已交付 |
+| 模块上传包检查 | `module_packages.py` | `inspect_package` | ZIP 内容检查、ModuleManifest、源码依赖守卫 | P0 | 已交付 |
 | Orchestrator | `orchestrator.py` | `DefaultOrchestrator` | 黑板四件套 + `policies/` + AgentEngine | P0 | 已交付 |
 | Profile 服务 | `profile.py` | `DefaultProfileService` | ProfileRepository、EventBus | P0 | 已交付 |
 | Behavior 服务 | `behavior.py` | `DefaultBehaviorService` | BehaviorRepository、EventBus | P0 | 已交付 |

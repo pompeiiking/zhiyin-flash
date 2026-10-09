@@ -1,6 +1,6 @@
 # 职引 · 前端（zhiyin-web）
 
-Vue 3 + TypeScript + Vite。三条路由，全是**真实数据驱动**：门户、控制台、报告。
+Vue 3 + TypeScript + Vite。四条路由，全是**真实数据驱动**：门户、控制台、报告、开发者平台。
 
 产品与业务口径以 [docs/职引-完整设计文档.md](../../../docs/职引-完整设计文档.md) 为准，
 本文件只讲前端自己的事：怎么跑、东西放哪、数据从哪来。
@@ -47,11 +47,12 @@ npm run build        # typecheck + 产出 dist/
 
 | 页面 / 区块 | 路由 | 页面文件 | 主要组件 | 后端接口 |
 | --- | --- | --- | --- | --- |
+| 模块开发工作台 | `/developer` | `views/DeveloperView.vue` | — | 模块清单、检查、预览、授权、发布记录 |
 | 门户 | `/portal` | `views/PortalView.vue` | `portal/HeroMap`、`portal/InkField`、`portal/InkButton`、`portal/MapStopNode`、`vendor/vuebits/{BlurText,VariableProximity,Magnet,MagnetLines,ClickSpark}` | `GET /app/bootstrap` |
 | 控制台 · 画布 | `/` | `views/ConsoleView.vue` | `console/{AgentRail,Bubble,PortraitBubble,TodoBubble,TalkBubble,MarketBubble,PeopleBubble,ReviewBubble,CollectBubble,CalendarBubble,AchievementsBubble}`、`console/{NextAsk,CanvasMenu}`、`float/{FloatLayer,FloatCard}`、`composables/useCanvasDrag`、`lib/tiling` | `GET /app/workspace`、`POST /app/conversation/message`、`GET /app/notifications/pending` |
 | 控制台 · 覆盖层 | `/` | `views/ConsoleView.vue` | `console/{PortraitOverlay,TasksOverlay,TalkOverlay,CollectOverlay,IntelOverlay,BriefOverlay,BindOverlay,TimetableOverlay,MatchOverlay,PlansOverlay,ActionOverlay,SessionsOverlay,ReviewOverlay,CalendarOverlay,AchievementsOverlay,BlocksOverlay}`、`console/{Overlay,EvidenceDrawer}`、`portrait/{PortraitSummary,PortraitChart,PortraitFieldList,PortraitDetail,PortraitEmpty}`、`render/RenderableBlock`、`charts/MatchMatrix`、`charts/Timetable` | `POST /app/dimensions/{id}`、`POST /app/gaps/{id}/clarify`、`POST /app/profile/fields/{key}`、`POST /app/brief/today`、`GET /app/plan/directions`、`POST /app/plan/directions/{id}/select`、`GET /app/plan/action`、`PATCH /app/plan/action/tasks`、`GET /app/calendar`、`GET /app/achievements`、`GET /app/sessions`、`GET /app/sessions/{id}/turns`、`GET /app/track/events`、`POST /app/plan/timetable`、`POST /app/plan/todos/suggestions`、`POST /app/match/careers`、`POST /app/chsi/bind`、`GET|POST|PATCH|DELETE /app/notes`、`POST /app/academic/import`、`POST /app/academic/import/file`、`POST /app/conversation/material`、`GET /app/theory-cards/{id}`、`GET /app/intel`、`POST /app/intel/refresh` |
 | 报告 | `/report` | `views/ReportView.vue` | `ai/AiFrame`、`charts/{TrendLine,ChartFrame,SketchPath}` | `GET /app/report/full-text`、`POST /app/report/summary`、`GET /app/assets/report/versions`（版本历史）、`POST /app/assets/export` |
-| 全局外壳 | 全部 | `App.vue` | `auth/{AuthLayer,AccountMenu}`、`guide/GuideDock`、`theme/{LookPanel,LookTrigger}`、`ui/GlyphIcon` | `POST /app/auth/login`、`POST /app/auth/register`、`POST /app/auth/logout` |
+| 全局外壳 | 全部 | `App.vue` | `auth/{AuthLayer,AccountMenu}`、`guide/GuideDock`、`theme/{LookPanel,LookTrigger}`、`ui/GlyphIcon`、`VersionNotice` | `POST /app/auth/login`、`POST /app/auth/register`、`POST /app/auth/logout`；读取 `/version.json` 后提示在新标签页更新，保留当前输入 |
 | 登录态与路由 | — | `router.ts` | — | `GET /app/task/enter` |
 
 `charts/SketchPath` 与 `lib/sketch.ts` 是**门户那张手绘地图**的底座（线、框、圆都经它落到 SVG）。
@@ -59,6 +60,11 @@ npm run build        # typecheck + 产出 dist/
 它们画的是数据，笔触会干扰读图。
 
 ## 三、数据从哪来（前端不自造数据）
+
+模块宿主位于 `src/modules/`：ModuleHost 负责读取与操作，ModuleContent 负责组件错误边界，
+ModuleRenderable 负责对话展示，registry 在构建时发现模块组件，client 使用生成接口类型。
+这些组件与模块自带组件复用于用户界面和开发预览。完成记录的首页入口已改用模块宿主；
+旧 AchievementsBubble 保留作历史参考，原详情覆盖层仍供其他入口使用。
 
 | 数据 | 来源 | 落在哪 |
 | --- | --- | --- |
@@ -90,7 +96,8 @@ npm run build        # typecheck + 产出 dist/
 | `src/api/types.ts` | **生成物**：`npm run gen:api` 按 `contracts/openapi.json` 生成。不要手改；`npm run check:api` 在 CI 里比对 |
 | `src/ai/` | AI 任务清单（`registry.ts` 的 key ↔ 后端端点）、SSE Provider（`httpProvider.ts`）、任务状态机（`useAiTask.ts`）、`AiFrame` 用的形状（`types.ts`） |
 | `src/stores/session.ts` | 会话状态：后端回包与工作台数据的唯一落点；组件只读它 |
-| `src/views/` | 三个页面；`src/router.ts` 是路由与登录拦截 |
+| `src/views/` | 四个页面；`src/router.ts` 是路由与登录拦截 |
+| `src/developer/` | 开发引导、项目版本与 ZIP 上传、自动验收结果、数据编排；客户端使用生成 DTO。工作台开放上传与发布，测试环境直接管理已安装模块、编排与预览 |
 | `src/components/` | `console/` 控制台、`float/` 浮窗、`portal/` 门户、`auth/` 登录、`render/` 可视件按 kind 分发、`charts/` 图表、`ai/` 生成外壳、`guide/` 便签、`vendor/vuebits/` 引用的开源动效件 |
 | `src/lib/` | 纯函数：`sketch`（手绘路径）、`tiling`（气泡布局）、`asks`（下一步编排）、`guide`（便签内容）、`identity`（首字母与角色名）、`failure`（把读取失败翻成用户能懂的一句话）、`theme`（皮肤注册表与换肤） |
 | `src/styles/` | `tokens.css` 设计令牌（三层：原始值 → 语义别名 → 具体物件；组件只认令牌）、`themes/` 配色（每套一个文件：覆盖令牌 + 自己世界里的少量零件规则）、`ui/` 组件风格（每套一个文件：只覆盖形状令牌 + 零件形状规则，不许碰颜色）、`base.css` 基础样式与通用零件（`surface` / `sheet` / `btn` / `chip`）、`glass.css` 磨砂的开关与实底、`motion.css` 动效、`fonts.css` 自托管字体（站酷快乐体 + MiSans） |

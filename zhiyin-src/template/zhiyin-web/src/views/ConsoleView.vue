@@ -10,7 +10,8 @@ import CalendarOverlay from '@/components/console/CalendarOverlay.vue'
 import TodoBubble from '@/components/console/TodoBubble.vue'
 import PeopleBubble from '@/components/console/PeopleBubble.vue'
 import ReviewBubble from '@/components/console/ReviewBubble.vue'
-import AchievementsBubble from '@/components/console/AchievementsBubble.vue'
+import ModuleHost from '@/modules/ModuleHost.vue'
+import { listModules, type ModuleView } from '@/modules/client'
 import AgentRail from '@/components/console/AgentRail.vue'
 import NextAsk from '@/components/console/NextAsk.vue'
 import BindOverlay from '@/components/console/BindOverlay.vue'
@@ -60,6 +61,21 @@ gsap.registerPlugin(Flip)
  */
 const router = useRouter()
 const session = useSessionStore()
+const extensionModules = ref<ModuleView[]>([])
+const moduleError = ref('')
+let modulePoll: ReturnType<typeof setInterval>
+let modulesActive = true
+async function refreshModules() {
+  try {
+    const items = await listModules()
+    if (!modulesActive) return
+    extensionModules.value = items.filter(item => item.effective_enabled && item.manifest.kind !== 'tool' && item.manifest.card)
+    for (const item of extensionModules.value) if (!order.value.includes(item.manifest.id)) order.value.push(item.manifest.id)
+    moduleError.value = ''
+  } catch { if (modulesActive) { moduleError.value = '附加功能暂时无法读取，请稍后刷新。'; extensionModules.value = [] } }
+}
+onMounted(() => { void refreshModules(); modulePoll = setInterval(refreshModules, 15000); window.addEventListener('focus', refreshModules) })
+onBeforeUnmount(() => { modulesActive = false; clearInterval(modulePoll); window.removeEventListener('focus', refreshModules) })
 
 /**
  * 顶栏那个人是谁 —— 必须来自登录态（/app/bootstrap 的 identity）。
@@ -181,7 +197,7 @@ const isEmptyBlock = (id: string) => {
   return false
 }
 const weightOf = (id: string) => {
-  const base = session.layout.find((b) => b.id === id)?.weight ?? TILE_WEIGHTS[id] ?? 1
+  const base = extensionModules.value.find(m => m.manifest.id === id)?.manifest.weight ?? session.layout.find((b) => b.id === id)?.weight ?? TILE_WEIGHTS[id] ?? 1
   return isEmptyBlock(id) ? (EMPTY_WEIGHT[id] ?? base) : base
 }
 
@@ -222,6 +238,13 @@ const presentIds = computed(() => {
   push('market', inStrategy('market'))
   push('greet', true)
   push('achievements', inStrategy('achievements'))
+  /*
+   * 扩展模块（tao 分支带来的开发者模块平台）：这里只回答"数据上有没有这一块"，
+   * 它的可见性由模块自己的 manifest 决定。**不在这里写 `visible(...)`**：
+   * 这一层（presentIds）的口径就是"数据上存在"，`visible` 由 `renderedIds` 再筛一次 ——
+   * 写在这里会让"收着"的块变成"还没有"，面板就会对用户说错话。
+   */
+  for (const module of extensionModules.value) push(module.manifest.id, true)
   push('people', true)
   push('review', true)
   return ids
@@ -1338,20 +1361,13 @@ onMounted(publishCanvasTruth)
           @close="closeBlock('review')"
         />
 
-        <AchievementsBubble
-          v-if="inStrategy('achievements') && visible('achievements')"
-          data-block="achievements"
-          class="b-achievements"
-          :class="{
-            leaving: isLeaving('achievements'),
-            'is-compact': compactIds.has('achievements'),
-            'is-tiny': tinyIds.has('achievements'),
-          }"
-          :style="tileStyle('achievements')"
-          :data-span="tileSpan('achievements')"
-          @close="closeBlock('achievements')"
-        />
+        <template v-for="module in extensionModules" :key="module.manifest.id">
+          <ModuleHost v-if="visible(module.manifest.id)" :module="module"
+            :data-block="module.manifest.id" :style="tileStyle(module.manifest.id)"
+            :data-span="tileSpan(module.manifest.id)" @close="closeBlock(module.manifest.id)" />
+        </template>
       </div>
+      <p v-if="moduleError" role="status">{{ moduleError }}</p>
     </main>
 
     <!-- 消息与提问：直接盖在内容上，半透明，随时可以关 -->

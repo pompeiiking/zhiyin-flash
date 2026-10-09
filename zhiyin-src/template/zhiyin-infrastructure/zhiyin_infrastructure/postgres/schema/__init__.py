@@ -12,6 +12,9 @@ from zhiyin_infrastructure.postgres.schema.infrastructure import (
     DDL as INFRASTRUCTURE_DDL,
 )
 from zhiyin_infrastructure.postgres.schema.migrations import MIGRATION_SQL
+from zhiyin_infrastructure.postgres.schema.modules import DDL as MODULE_DDL
+from zhiyin_infrastructure.postgres.schema.developer import DDL as DEVELOPER_DDL
+from zhiyin_infrastructure.postgres.schema.module_flows import DDL as MODULE_FLOWS_DDL
 from zhiyin_infrastructure.postgres.schema.orchestration import (
     DDL as ORCHESTRATION_DDL,
 )
@@ -27,6 +30,9 @@ SCHEMA_SQL = "\n".join(
         BUSINESS_DDL,
         ORCHESTRATION_DDL,
         VECTOR_DDL,
+        MODULE_DDL,
+        DEVELOPER_DDL,
+        MODULE_FLOWS_DDL,
         MIGRATION_SQL,
     ]
 )

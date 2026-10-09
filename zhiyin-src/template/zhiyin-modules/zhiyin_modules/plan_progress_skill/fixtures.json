@@ -1,0 +1,5 @@
+{
+  "normal": {"plan.read": {"has_plan": true, "phases": [{"name": "本周", "tasks": [{"task_id": "本周:整理项目经历", "text": "整理项目经历", "done": true}, {"task_id": "本周:练习自我介绍", "text": "练习自我介绍", "done": false}]}]}},
+  "empty": {"plan.read": {"has_plan": false, "phases": []}},
+  "error": {"error": "计划读取失败：请稍后重试"}
+}

@@ -185,6 +185,7 @@ class ConversationMemoryService(ABC):
         loop_stage: LoopStage,
         agent_id: str = "",
         client_msg_id: str = "",
+        renderables: list[dict] | None = None,
     ) -> ConversationTurn:
         """记一轮对话原文（用户/主理各算一轮）。
 

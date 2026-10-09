@@ -1,0 +1,72 @@
+# Always run with --project-directory <repository root> and an explicit project name.
+services:
+  api:
+    image: zhiyin-platform-api:${PLATFORM_REVISION:-workbench}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BUILD_REVISION: ${PLATFORM_REVISION:-working-tree}
+    environment:
+      ZHIYIN_ENV: docker
+      ZHIYIN_MODULE_ENV: ${PLATFORM_ENV:-workbench}
+      ZHIYIN_EXECUTOR_TOKEN: ${ZHIYIN_EXECUTOR_TOKEN:-}
+      ZHIYIN_USE_POSTGRES: '1'
+      ZHIYIN_POSTGRES_DSN: postgresql://zhiyin:${PLATFORM_DB_PASSWORD:?Set PLATFORM_DB_PASSWORD}@postgres:5432/zhiyin
+      ZHIYIN_USE_REDIS: '1'
+      ZHIYIN_REDIS_URL: redis://redis:6379/0
+      ZHIYIN_AUTH_JWT_SECRET: ${ZHIYIN_AUTH_JWT_SECRET:?Set ZHIYIN_AUTH_JWT_SECRET}
+      ZHIYIN_USE_REMOTE_LLM: '1'
+      ZHIYIN_LLM_API_KEY: ${DASHSCOPE_API_KEY:?Set DASHSCOPE_API_KEY}
+      ZHIYIN_LLM_BASE_URL: ${DASHSCOPE_BASE_URL:-https://dashscope.aliyuncs.com/compatible-mode/v1}
+      ZHIYIN_LLM_MODEL: qwen-flash
+      ZHIYIN_USE_REMOTE_EMBEDDING: '1'
+      ZHIYIN_EMBEDDING_PROVIDER: dashscope_embed
+      ZHIYIN_EMBEDDING_API_KEY: ${DASHSCOPE_API_KEY}
+      ZHIYIN_EMBEDDING_BASE_URL: ${DASHSCOPE_BASE_URL:-https://dashscope.aliyuncs.com/compatible-mode/v1}
+      ZHIYIN_EMBEDDING_MODEL: text-embedding-v4
+    ports:
+      - '127.0.0.1:${PLATFORM_API_PORT:-8014}:8000'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+  web:
+    image: zhiyin-platform-web:${PLATFORM_REVISION:-workbench}
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.platform-web
+      args:
+        BUILD_REVISION: ${PLATFORM_REVISION:-working-tree}
+    ports:
+      - '127.0.0.1:${PLATFORM_WEB_PORT:-5174}:80'
+    depends_on: [api]
+    restart: unless-stopped
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: zhiyin
+      POSTGRES_PASSWORD: ${PLATFORM_DB_PASSWORD}
+      POSTGRES_DB: zhiyin
+    volumes: [database:/var/lib/postgresql/data]
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U zhiyin -d zhiyin']
+      interval: 3s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+  redis:
+    image: redis:7-alpine
+    command: ['redis-server', '--appendonly', 'yes']
+    volumes: [cache:/data]
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 3s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+volumes:
+  database:
+  cache:

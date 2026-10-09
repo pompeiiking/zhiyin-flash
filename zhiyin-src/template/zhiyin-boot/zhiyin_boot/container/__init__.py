@@ -197,6 +197,10 @@ def build_container(settings: Optional[Settings] = None) -> Container:
         llm=container.llm,
     )
     build_services(container)
+    from zhiyin_boot.module_platform import build_platform
+    build_platform(container)
+    from zhiyin_boot.developer_platform import build_developer_platform
+    build_developer_platform(container)
     build_workers(container)
 
     return container
@@ -270,6 +274,13 @@ def wire_application(container: Optional[Container] = None) -> Any:
                     asyncio.create_task(run_until_cancelled(worker, interval, stop))
                 )
 
+        # 开发者模块平台（tao 分支带来的那一步，不能丢：它注册模块与路由）。
+        # 与上面的后台 worker 开关**无关** —— 它不启轮询，所以放在 if 外面；
+        # 否则在关掉后台 worker 的部署上，整个平台模块都不会初始化。
+        from zhiyin_boot.module_platform import initialize_platform
+
+        await initialize_platform(container)
+
         try:
             yield
         finally:
@@ -299,13 +310,16 @@ def wire_application(container: Optional[Container] = None) -> Any:
                 except Exception:
                     logger.exception("关闭资源失败：%s", type(closable).__name__)
 
-    return create_app(
+    app = create_app(
         title=f"{container.settings.app_name} API",
         lifespan=_lifespan,
         # 前缀只有一个来源：Settings.api_prefix（默认 /api/v1）。
         # 换版本改配置即可，路由声明与前端都不用动。
         api_prefix=container.settings.api_prefix,
     )
+    app.state.module_platform = container.extra.get("module_platform")
+    app.state.developer_platform = container.extra.get("developer_platform")
+    return app
 
 
 __all__ = [

@@ -44,6 +44,9 @@ MIGRATION_SQL = "\n".join(
         "ADD COLUMN IF NOT EXISTS client_msg_id TEXT NOT NULL DEFAULT '';",
         "CREATE INDEX IF NOT EXISTS idx_biz_conversation_turn_client_msg "
         "ON biz_conversation_turn (user_id, client_msg_id);",
+        # 2026-09-24 —— 模块对话卡片需要随历史和幂等重放一起恢复。
+        "ALTER TABLE biz_conversation_turn "
+        "ADD COLUMN IF NOT EXISTS renderables JSONB NOT NULL DEFAULT '[]'::jsonb;",
     ]
 )
 

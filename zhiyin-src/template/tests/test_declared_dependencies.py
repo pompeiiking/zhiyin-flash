@@ -71,6 +71,9 @@ def _runtime_imports() -> dict[str, list[str]]:
     """各代码包里出现的第三方顶层模块名 → 出现位置（用于报错时定位）。"""
     found: dict[str, list[str]] = {}
     for path in sorted(TEMPLATE_ROOT.glob("zhiyin-*/**/*.py")):
+        # Colocated module tests are developer tooling, never runtime imports.
+        if path.name.startswith("test_") or path.name == "conftest.py":
+            continue
         if any(part in SKIPPED_PARTS for part in path.relative_to(TEMPLATE_ROOT).parts):
             continue
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))

@@ -1,0 +1,91 @@
+{
+  "id": "action_progress",
+  "name": "行动计划进度",
+  "version": "1.0.0",
+  "owner": "职引平台",
+  "description": "查看行动计划，完成今天的一件事；与原有计划使用同一份数据。",
+  "kind": "hybrid",
+  "api_version": "1",
+  "reads": [
+    "plan.read"
+  ],
+  "actions": [
+    "plan.task.set_done"
+  ],
+  "tool": "action_progress.read",
+  "card": "Card.vue",
+  "detail": "Detail.vue",
+  "conversation": "Card.vue",
+  "weight": 2.4,
+  "order": 75,
+  "input_schema": {
+    "type": "object",
+    "additionalProperties": false
+  },
+  "output_schema": {
+    "$defs": {
+      "Task": {
+        "additionalProperties": false,
+        "properties": {
+          "task_id": {
+            "title": "Task Id",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "phase": {
+            "default": "",
+            "title": "Phase",
+            "type": "string"
+          },
+          "done": {
+            "title": "Done",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "task_id",
+          "text",
+          "done"
+        ],
+        "title": "Task",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "has_plan": {
+        "title": "Has Plan",
+        "type": "boolean"
+      },
+      "tasks": {
+        "items": {
+          "$ref": "#/$defs/Task"
+        },
+        "title": "Tasks",
+        "type": "array"
+      },
+      "total": {
+        "minimum": 0,
+        "title": "Total",
+        "type": "integer"
+      },
+      "completed": {
+        "minimum": 0,
+        "title": "Completed",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "has_plan",
+      "total",
+      "completed"
+    ],
+    "title": "Progress",
+    "type": "object"
+  },
+  "dependencies": {},
+  "dataflow": "dataflow.json"
+}

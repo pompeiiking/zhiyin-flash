@@ -73,6 +73,9 @@ CONFIG_TABLES: tuple[str, ...] = (
     "biz_registry_item",
     "ai_prompt_template",
     "ai_routing_rule",
+    "biz_module_policy",
+    "biz_module_workflow",
+    "biz_module_workflow_version",
 )
 
 #: `--include-users` 时一并迁移：用户进度与资产
@@ -103,6 +106,14 @@ VECTOR_TABLES: tuple[str, ...] = (
 
 #: **刻意不迁**的表与理由
 SKIPPED: dict[str, str] = {
+    "biz_developer_project": "开发工作台的成员和信任策略仅随工作台整库备份迁移，不注入业务环境",
+    "biz_developer_version": "包含不可变ZIP源码、基线及验收租约，仅随工作台整库备份保留，不能跨环境重放",
+    "biz_developer_worker": "执行器心跳属于当前宿主机，新环境重新注册",
+    "biz_module_workflow_run": "幂等运行回执及合成调试结果属于原环境，随整库备份保留，不跨环境重放",
+    "biz_module_runtime_revision": "当前运行构建属于目标环境，由发布执行器核对路由后初始化，不能复制来源环境的版本指针",
+    "biz_module_release": "发布队列与租约属于原环境，搬迁不能重新执行旧任务；保留原库备份用于审计",
+    "biz_module_check": "检查记录属于特定源码构建，新环境重新检查；保留原库备份用于审计",
+    "biz_module_audit": "权限审计属于原环境操作者，保留原库备份，不作为新环境运行配置导入",
     "infra_auth_session": "登录令牌是短期凭据：换环境后重新登录即可，搬过去只会带走一串可能已失效的会话",
     "orc_event_outbox": "编排运行态：出站箱里的待投递事件属于旧环境的一次性中间状态",
     "orc_schedule_job": "编排运行态：到点任务由新环境的调度器按当前时间重新排",

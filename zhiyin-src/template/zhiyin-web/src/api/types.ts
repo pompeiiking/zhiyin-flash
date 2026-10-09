@@ -209,6 +209,22 @@ export interface paths {
      */
     post: operations["match_careers_api_v1_app_match_careers_post"];
   };
+  "/api/v1/app/modules": {
+    /** User Modules */
+    get: operations["user_modules_api_v1_app_modules_get"];
+  };
+  "/api/v1/app/modules/{module_id}/actions": {
+    /** Module Action */
+    post: operations["module_action_api_v1_app_modules__module_id__actions_post"];
+  };
+  "/api/v1/app/modules/{module_id}/data": {
+    /** Module Data */
+    get: operations["module_data_api_v1_app_modules__module_id__data_get"];
+  };
+  "/api/v1/app/modules/{module_id}/invoke": {
+    /** Invoke Module */
+    post: operations["invoke_module_api_v1_app_modules__module_id__invoke_post"];
+  };
   "/api/v1/app/notes": {
     /**
      * List Notes
@@ -400,6 +416,10 @@ export interface paths {
      */
     get: operations["list_track_events_api_v1_app_track_events_get"];
   };
+  "/api/v1/app/workflows/{workflow_id}/run": {
+    /** Run Workflow */
+    post: operations["run_workflow_api_v1_app_workflows__workflow_id__run_post"];
+  };
   "/api/v1/app/workspace": {
     /**
      * Get Workspace
@@ -408,6 +428,150 @@ export interface paths {
      * 进入工作台属于持久化行为，游客在此处被登录拦截。
      */
     get: operations["get_workspace_api_v1_app_workspace_get"];
+  };
+  "/api/v1/developer/capabilities": {
+    /** Module Capabilities */
+    get: operations["module_capabilities_api_v1_developer_capabilities_get"];
+  };
+  "/api/v1/developer/checks": {
+    /** Module Checks */
+    get: operations["module_checks_api_v1_developer_checks_get"];
+    /** Check Modules */
+    post: operations["check_modules_api_v1_developer_checks_post"];
+  };
+  "/api/v1/developer/context": {
+    /** Developer Context */
+    get: operations["developer_context_api_v1_developer_context_get"];
+  };
+  "/api/v1/developer/executor/claim": {
+    /** Claim Release */
+    post: operations["claim_release_api_v1_developer_executor_claim_post"];
+  };
+  "/api/v1/developer/executor/configuration": {
+    /** Executor Configuration */
+    get: operations["executor_configuration_api_v1_developer_executor_configuration_get"];
+  };
+  "/api/v1/developer/executor/{job_id}": {
+    /** Update Release */
+    post: operations["update_release_api_v1_developer_executor__job_id__post"];
+  };
+  "/api/v1/developer/executor/{job_id}/authorization": {
+    /** Release Authorization */
+    get: operations["release_authorization_api_v1_developer_executor__job_id__authorization_get"];
+  };
+  "/api/v1/developer/modules": {
+    /** Developer Modules */
+    get: operations["developer_modules_api_v1_developer_modules_get"];
+  };
+  "/api/v1/developer/modules/{module_id}/policy": {
+    /** Module Policy */
+    put: operations["module_policy_api_v1_developer_modules__module_id__policy_put"];
+  };
+  "/api/v1/developer/modules/{module_id}/preview": {
+    /** Preview Module */
+    post: operations["preview_module_api_v1_developer_modules__module_id__preview_post"];
+  };
+  "/api/v1/developer/platform-status": {
+    /** Platform Status */
+    get: operations["platform_status_api_v1_developer_platform_status_get"];
+  };
+  "/api/v1/developer/projects": {
+    /** Projects */
+    get: operations["projects_api_v1_developer_projects_get"];
+    /** Create Project */
+    post: operations["create_project_api_v1_developer_projects_post"];
+  };
+  "/api/v1/developer/projects/{project_id}": {
+    /** Update Project */
+    put: operations["update_project_api_v1_developer_projects__project_id__put"];
+  };
+  "/api/v1/developer/projects/{project_id}/versions": {
+    /** Versions */
+    get: operations["versions_api_v1_developer_projects__project_id__versions_get"];
+    /** Upload Version */
+    post: operations["upload_version_api_v1_developer_projects__project_id__versions_post"];
+  };
+  "/api/v1/developer/releases": {
+    /** Release Jobs */
+    get: operations["release_jobs_api_v1_developer_releases_get"];
+    /** Request Release */
+    post: operations["request_release_api_v1_developer_releases_post"];
+  };
+  "/api/v1/developer/releases/{job_id}/approve": {
+    /** Approve Release */
+    post: operations["approve_release_api_v1_developer_releases__job_id__approve_post"];
+  };
+  "/api/v1/developer/source-worker/claim": {
+    /** Claim */
+    post: operations["claim_api_v1_developer_source_worker_claim_post"];
+  };
+  "/api/v1/developer/source-worker/heartbeat": {
+    /** Heartbeat */
+    post: operations["heartbeat_api_v1_developer_source_worker_heartbeat_post"];
+  };
+  "/api/v1/developer/source-worker/ready": {
+    /** Ready */
+    get: operations["ready_api_v1_developer_source_worker_ready_get"];
+  };
+  "/api/v1/developer/source-worker/versions/{version_id}": {
+    /** Worker Version */
+    get: operations["worker_version_api_v1_developer_source_worker_versions__version_id__get"];
+    /** Worker Update */
+    post: operations["worker_update_api_v1_developer_source_worker_versions__version_id__post"];
+  };
+  "/api/v1/developer/source-worker/versions/{version_id}/package": {
+    /** Worker Package */
+    get: operations["worker_package_api_v1_developer_source_worker_versions__version_id__package_get"];
+  };
+  "/api/v1/developer/source-worker/versions/{version_id}/release": {
+    /** Worker Release */
+    post: operations["worker_release_api_v1_developer_source_worker_versions__version_id__release_post"];
+  };
+  "/api/v1/developer/source-worker/versions/{version_id}/retry": {
+    /** Worker Retry */
+    post: operations["worker_retry_api_v1_developer_source_worker_versions__version_id__retry_post"];
+  };
+  "/api/v1/developer/templates": {
+    /** Template */
+    get: operations["template_api_v1_developer_templates_get"];
+  };
+  "/api/v1/developer/versions/{version_id}": {
+    /** Version */
+    get: operations["version_api_v1_developer_versions__version_id__get"];
+  };
+  "/api/v1/developer/versions/{version_id}/package": {
+    /** Package */
+    get: operations["package_api_v1_developer_versions__version_id__package_get"];
+  };
+  "/api/v1/developer/versions/{version_id}/release": {
+    /** Release */
+    post: operations["release_api_v1_developer_versions__version_id__release_post"];
+  };
+  "/api/v1/developer/versions/{version_id}/retry": {
+    /** Retry */
+    post: operations["retry_api_v1_developer_versions__version_id__retry_post"];
+  };
+  "/api/v1/developer/workflows": {
+    /** Module Workflows */
+    get: operations["module_workflows_api_v1_developer_workflows_get"];
+    /** Save Workflow */
+    post: operations["save_workflow_api_v1_developer_workflows_post"];
+  };
+  "/api/v1/developer/workflows/{workflow_id}/publish": {
+    /** Publish Workflow */
+    post: operations["publish_workflow_api_v1_developer_workflows__workflow_id__publish_post"];
+  };
+  "/api/v1/developer/workflows/{workflow_id}/run": {
+    /** Preview Workflow */
+    post: operations["preview_workflow_api_v1_developer_workflows__workflow_id__run_post"];
+  };
+  "/api/v1/developer/workflows/{workflow_id}/runs": {
+    /** Workflow Runs */
+    get: operations["workflow_runs_api_v1_developer_workflows__workflow_id__runs_get"];
+  };
+  "/api/v1/developer/workflows/{workflow_id}/unpublish": {
+    /** Unpublish Workflow */
+    post: operations["unpublish_workflow_api_v1_developer_workflows__workflow_id__unpublish_post"];
   };
   "/healthz": {
     /** 装配健康检查 */
@@ -908,6 +1072,54 @@ export interface components {
        */
       trace_id?: string;
     };
+    /** ApiResponse[DeveloperPlatformStatus] */
+    ApiResponse_DeveloperPlatformStatus_: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      data?: components["schemas"]["DeveloperPlatformStatus"] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
+    /** ApiResponse[DeveloperProjectView] */
+    ApiResponse_DeveloperProjectView_: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      data?: components["schemas"]["DeveloperProjectView"] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
+    /** ApiResponse[DeveloperVersionView] */
+    ApiResponse_DeveloperVersionView_: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      data?: components["schemas"]["DeveloperVersionView"] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
     /** ApiResponse[DirectionPlanListView] */
     ApiResponse_DirectionPlanListView_: {
       /** @default 0 */
@@ -972,6 +1184,86 @@ export interface components {
        */
       trace_id?: string;
     };
+    /** ApiResponse[ModuleDeveloperContext] */
+    ApiResponse_ModuleDeveloperContext_: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      data?: components["schemas"]["ModuleDeveloperContext"] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
+    /** ApiResponse[ModuleFlowRun] */
+    ApiResponse_ModuleFlowRun_: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      data?: components["schemas"]["ModuleFlowRun"] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
+    /** ApiResponse[ModuleFlowView] */
+    ApiResponse_ModuleFlowView_: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      data?: components["schemas"]["ModuleFlowView"] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
+    /** ApiResponse[ModulePolicy] */
+    ApiResponse_ModulePolicy_: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      data?: components["schemas"]["ModulePolicy"] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
+    /** ApiResponse[ModuleResult] */
+    ApiResponse_ModuleResult_: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      data?: components["schemas"]["ModuleResult"] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
     /** ApiResponse[NoteAck] */
     ApiResponse_NoteAck_: {
       /** @default 0 */
@@ -1025,6 +1317,22 @@ export interface components {
       /** @default 0 */
       code?: components["schemas"]["ErrorCode"];
       data?: components["schemas"]["ProfileFieldView"] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
+    /** ApiResponse[ReleaseJob] */
+    ApiResponse_ReleaseJob_: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      data?: components["schemas"]["ReleaseJob"] | null;
       /**
        * Message
        * @default ok
@@ -1105,6 +1413,41 @@ export interface components {
       /** @default 0 */
       code?: components["schemas"]["ErrorCode"];
       data?: components["schemas"]["TrackEventAck"] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
+    /** ApiResponse[Union[ReleaseJob, NoneType]] */
+    ApiResponse_Union_ReleaseJob__NoneType__: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      data?: components["schemas"]["ReleaseJob"] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
+    /** ApiResponse[Union[dict, NoneType]] */
+    ApiResponse_Union_dict__NoneType__: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      /** Data */
+      data?: {
+        [key: string]: unknown;
+      } | null;
       /**
        * Message
        * @default ok
@@ -1219,6 +1562,108 @@ export interface components {
        */
       trace_id?: string;
     };
+    /** ApiResponse[list[DeveloperProjectView]] */
+    ApiResponse_list_DeveloperProjectView__: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      /** Data */
+      data?: components["schemas"]["DeveloperProjectView"][] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
+    /** ApiResponse[list[DeveloperVersionView]] */
+    ApiResponse_list_DeveloperVersionView__: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      /** Data */
+      data?: components["schemas"]["DeveloperVersionView"][] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
+    /** ApiResponse[list[ModuleCapability]] */
+    ApiResponse_list_ModuleCapability__: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      /** Data */
+      data?: components["schemas"]["ModuleCapability"][] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
+    /** ApiResponse[list[ModuleFlowRun]] */
+    ApiResponse_list_ModuleFlowRun__: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      /** Data */
+      data?: components["schemas"]["ModuleFlowRun"][] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
+    /** ApiResponse[list[ModuleFlowView]] */
+    ApiResponse_list_ModuleFlowView__: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      /** Data */
+      data?: components["schemas"]["ModuleFlowView"][] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
+    /** ApiResponse[list[ModuleView]] */
+    ApiResponse_list_ModuleView__: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      /** Data */
+      data?: components["schemas"]["ModuleView"][] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
     /** ApiResponse[list[NoteView]] */
     ApiResponse_list_NoteView__: {
       /** @default 0 */
@@ -1236,12 +1681,48 @@ export interface components {
        */
       trace_id?: string;
     };
+    /** ApiResponse[list[ReleaseJob]] */
+    ApiResponse_list_ReleaseJob__: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      /** Data */
+      data?: components["schemas"]["ReleaseJob"][] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
     /** ApiResponse[list[TrackEventView]] */
     ApiResponse_list_TrackEventView__: {
       /** @default 0 */
       code?: components["schemas"]["ErrorCode"];
       /** Data */
       data?: components["schemas"]["TrackEventView"][] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
+    /** ApiResponse[list[dict]] */
+    ApiResponse_list_dict__: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      /** Data */
+      data?: {
+          [key: string]: unknown;
+        }[] | null;
       /**
        * Message
        * @default ok
@@ -1672,6 +2153,183 @@ export interface components {
       /** Via Profile Keys */
       via_profile_keys?: string[];
     };
+    /** DeveloperPlatformStatus */
+    DeveloperPlatformStatus: {
+      /**
+       * Base Commit
+       * @default
+       */
+      base_commit?: string;
+      /** Environment */
+      environment?: {
+        [key: string]: unknown;
+      };
+      /**
+       * Pending Versions
+       * @default 0
+       */
+      pending_versions?: number;
+      /** Worker */
+      worker?: {
+        [key: string]: unknown;
+      };
+    };
+    /** DeveloperProjectCreate */
+    DeveloperProjectCreate: {
+      /**
+       * Description
+       * @default
+       */
+      description?: string;
+      /** Id */
+      id: string;
+      /** Name */
+      name: string;
+    };
+    /** DeveloperProjectUpdate */
+    DeveloperProjectUpdate: {
+      /**
+       * Auto Deploy
+       * @default false
+       */
+      auto_deploy?: boolean;
+      /**
+       * Description
+       * @default
+       */
+      description?: string;
+      /** Members */
+      members?: string[];
+      /** Name */
+      name: string;
+      /** Revision */
+      revision: number;
+      /**
+       * Trusted
+       * @default false
+       */
+      trusted?: boolean;
+    };
+    /** DeveloperProjectView */
+    DeveloperProjectView: {
+      /** Auto Deploy */
+      auto_deploy: boolean;
+      /** Created At */
+      created_at: string;
+      /** Description */
+      description: string;
+      /** Id */
+      id: string;
+      /** Members */
+      members: string[];
+      /** Name */
+      name: string;
+      /** Owner */
+      owner: string;
+      /** Revision */
+      revision: number;
+      /** Trusted */
+      trusted: boolean;
+    };
+    /** DeveloperUpload */
+    DeveloperUpload: {
+      /** Base Commit */
+      base_commit: string;
+      /** Base Version Id */
+      base_version_id?: string | null;
+      /**
+       * Channel
+       * @default main
+       */
+      channel?: string;
+      /** Package Base64 */
+      package_base64: string;
+      /** Request Id */
+      request_id: string;
+    };
+    /** DeveloperVersionView */
+    DeveloperVersionView: {
+      /** Actor */
+      actor: string;
+      /** Base Commit */
+      base_commit: string;
+      /** Base Version Id */
+      base_version_id: string | null;
+      /**
+       * Candidate Commit
+       * @default
+       */
+      candidate_commit?: string;
+      /** Channel */
+      channel: string;
+      /** Created At */
+      created_at: string;
+      /** Digest */
+      digest: string;
+      /** Events */
+      events?: {
+          [key: string]: unknown;
+        }[];
+      /** Id */
+      id: string;
+      manifest: components["schemas"]["ModuleManifest"];
+      /** Project Id */
+      project_id: string;
+      /**
+       * Release Job Id
+       * @default
+       */
+      release_job_id?: string;
+      /** Report */
+      report?: {
+        [key: string]: unknown;
+      };
+      /** Stage */
+      stage: string;
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: "queued" | "running" | "passed" | "failed";
+      /** Version */
+      version: string;
+    };
+    /** DeveloperWorkerHeartbeat */
+    DeveloperWorkerHeartbeat: {
+      /** Base Commit */
+      base_commit: string;
+      /**
+       * Environment Revision
+       * @default
+       */
+      environment_revision?: string;
+      /**
+       * Rules Version
+       * @default 2
+       */
+      rules_version?: string;
+      /** Worker Id */
+      worker_id: string;
+    };
+    /** DeveloperWorkerUpdate */
+    DeveloperWorkerUpdate: {
+      /** Candidate Commit */
+      candidate_commit?: string | null;
+      /** Event */
+      event?: {
+        [key: string]: unknown;
+      } | null;
+      /** Lease */
+      lease: string;
+      /** Report */
+      report?: {
+        [key: string]: unknown;
+      };
+      /** Stage */
+      stage?: string | null;
+      /** Status */
+      status?: ("passed" | "failed") | null;
+    };
     /**
      * DirectionPlanListView
      * @description 三套方案 + "现在选的是哪一套"。
@@ -1768,6 +2426,23 @@ export interface components {
      * @enum {integer}
      */
     ErrorCode: 0 | 1001 | 1002 | 1003 | 1004 | 1005 | 1006 | 1007 | 1999;
+    /** ExecutorUpdate */
+    ExecutorUpdate: {
+      /** Event */
+      event?: {
+        [key: string]: unknown;
+      } | null;
+      /** Lease */
+      lease: string;
+      /** Result */
+      result?: {
+        [key: string]: unknown;
+      };
+      /** Stage */
+      stage?: string | null;
+      /** Status */
+      status?: ("succeeded" | "failed" | "rolled_back") | null;
+    };
     /**
      * ExportRequest
      * @description 导出请求。
@@ -2058,6 +2733,348 @@ export interface components {
       option_value?: unknown;
       /** Task Id */
       task_id: string;
+    };
+    /** ModuleAction */
+    ModuleAction: {
+      /** Action */
+      action: string;
+      /** Expected Version */
+      expected_version?: string | null;
+      /** Payload */
+      payload?: {
+        [key: string]: unknown;
+      };
+    };
+    /** ModuleAgentView */
+    ModuleAgentView: {
+      /** Id */
+      id: string;
+      /** Name */
+      name: string;
+    };
+    /** ModuleCapability */
+    ModuleCapability: {
+      /** Description */
+      description: string;
+      /** Id */
+      id: string;
+      /** Input Schema */
+      input_schema: {
+        [key: string]: unknown;
+      };
+      /**
+       * Operation
+       * @enum {string}
+       */
+      operation: "read" | "action";
+      /** Output Schema */
+      output_schema: {
+        [key: string]: unknown;
+      };
+      /**
+       * User Scoped
+       * @default true
+       */
+      user_scoped?: boolean;
+    };
+    /** ModuleDeveloperContext */
+    ModuleDeveloperContext: {
+      /** Agents */
+      agents: components["schemas"]["ModuleAgentView"][];
+      /** Environment */
+      environment: string;
+      /** Live Preview */
+      live_preview: boolean;
+      /** Revision */
+      revision: string;
+      /** Role */
+      role: string;
+      /** User Id */
+      user_id: string;
+    };
+    /** ModuleFlowDefinition */
+    ModuleFlowDefinition: {
+      /** Input Schema */
+      input_schema?: {
+        [key: string]: unknown;
+      };
+      /** Nodes */
+      nodes: components["schemas"]["ModuleFlowNode"][];
+    };
+    /** ModuleFlowDraft */
+    ModuleFlowDraft: {
+      /**
+       * Expected Revision
+       * @default 0
+       */
+      expected_revision?: number;
+      /** Id */
+      id: string;
+      /** Input Schema */
+      input_schema?: {
+        [key: string]: unknown;
+      };
+      /** Name */
+      name: string;
+      /** Nodes */
+      nodes: components["schemas"]["ModuleFlowNode"][];
+    };
+    /** ModuleFlowNode */
+    ModuleFlowNode: {
+      /** Action */
+      action?: string | null;
+      /** Bindings */
+      bindings?: {
+        [key: string]: string;
+      };
+      /** Id */
+      id: string;
+      /** Input */
+      input?: {
+        [key: string]: unknown;
+      };
+      /** Module Id */
+      module_id: string;
+      /** Module Version */
+      module_version?: string | null;
+      /**
+       * Operation
+       * @default read
+       * @enum {string}
+       */
+      operation?: "read" | "action";
+    };
+    /** ModuleFlowPublish */
+    ModuleFlowPublish: {
+      /** Expected Revision */
+      expected_revision: number;
+    };
+    /** ModuleFlowRun */
+    ModuleFlowRun: {
+      /**
+       * Action Committed
+       * @default false
+       */
+      action_committed?: boolean;
+      /**
+       * Error
+       * @default
+       */
+      error?: string;
+      /** Id */
+      id: string;
+      /**
+       * Mode
+       * @enum {string}
+       */
+      mode: "fixture" | "live";
+      /** Outputs */
+      outputs?: {
+        [key: string]: components["schemas"]["ModuleResult"];
+      };
+      /** Revision */
+      revision: number;
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: "running" | "succeeded" | "failed";
+      /** Trace */
+      trace?: {
+          [key: string]: unknown;
+        }[];
+      /** Workflow Id */
+      workflow_id: string;
+    };
+    /** ModuleFlowRunRequest */
+    ModuleFlowRunRequest: {
+      /**
+       * Confirm Actions
+       * @default false
+       */
+      confirm_actions?: boolean;
+      /** Expected Revision */
+      expected_revision?: number | null;
+      /** Input */
+      input?: {
+        [key: string]: unknown;
+      };
+      /**
+       * Mode
+       * @default fixture
+       * @enum {string}
+       */
+      mode?: "fixture" | "live";
+      /** Request Id */
+      request_id: string;
+    };
+    /** ModuleFlowView */
+    ModuleFlowView: {
+      definition: components["schemas"]["ModuleFlowDefinition"];
+      /** Id */
+      id: string;
+      /** Name */
+      name: string;
+      /** Owner */
+      owner: string;
+      /** Published Revision */
+      published_revision?: number | null;
+      /** Revision */
+      revision: number;
+      /**
+       * Updated At
+       * @default
+       */
+      updated_at?: string;
+    };
+    /** ModuleInvoke */
+    ModuleInvoke: {
+      /** Expected Version */
+      expected_version?: string | null;
+      /** Input */
+      input?: {
+        [key: string]: unknown;
+      };
+      /** Request Id */
+      request_id?: string | null;
+    };
+    /** ModuleManifest */
+    ModuleManifest: {
+      /** Actions */
+      actions?: string[];
+      /**
+       * Api Version
+       * @default 1
+       * @constant
+       */
+      api_version?: "1";
+      /** Card */
+      card?: "Card.vue" | null;
+      /** Conversation */
+      conversation?: ("Card.vue" | "Detail.vue") | null;
+      /** Dataflow */
+      dataflow?: "dataflow.json" | null;
+      /** Dependencies */
+      dependencies?: {
+        [key: string]: string;
+      };
+      /** Description */
+      description: string;
+      /** Detail */
+      detail?: "Detail.vue" | null;
+      /** Id */
+      id: string;
+      /** Input Schema */
+      input_schema?: {
+        [key: string]: unknown;
+      };
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind?: "application" | "tool" | "hybrid";
+      /** Name */
+      name: string;
+      /**
+       * Order
+       * @default 90
+       */
+      order?: number;
+      /** Output Schema */
+      output_schema?: {
+        [key: string]: unknown;
+      };
+      /** Owner */
+      owner: string;
+      /** Parent Id */
+      parent_id?: string | null;
+      /** Reads */
+      reads?: string[];
+      /** Tool */
+      tool?: string | null;
+      /** Version */
+      version: string;
+      /**
+       * Weight
+       * @default 2
+       */
+      weight?: number;
+    };
+    /** ModulePolicy */
+    ModulePolicy: {
+      /** Actions */
+      actions?: string[];
+      /** Agents */
+      agents?: string[];
+      /**
+       * Enabled
+       * @default false
+       */
+      enabled?: boolean;
+      /** Reads */
+      reads?: string[];
+      /**
+       * Revision
+       * @default 0
+       */
+      revision?: number;
+    };
+    /** ModulePreview */
+    ModulePreview: {
+      /** Expected Version */
+      expected_version?: string | null;
+      /**
+       * Fixture
+       * @default normal
+       * @enum {string}
+       */
+      fixture?: "normal" | "empty" | "error";
+      /** Input */
+      input?: {
+        [key: string]: unknown;
+      };
+      /**
+       * Mode
+       * @default fixture
+       * @enum {string}
+       */
+      mode?: "fixture" | "live";
+      /** Request Id */
+      request_id?: string | null;
+    };
+    /** ModuleResult */
+    ModuleResult: {
+      /** Data */
+      data?: {
+        [key: string]: unknown;
+      };
+      /**
+       * Empty
+       * @default false
+       */
+      empty?: boolean;
+      /**
+       * Module Version
+       * @default
+       */
+      module_version?: string;
+      /** Sources */
+      sources?: string[];
+      /** Trace */
+      trace?: {
+          [key: string]: unknown;
+        }[];
+    };
+    /** ModuleView */
+    ModuleView: {
+      /** Blocked By */
+      blocked_by?: string[];
+      /** Effective Enabled */
+      effective_enabled: boolean;
+      manifest: components["schemas"]["ModuleManifest"];
+      policy: components["schemas"]["ModulePolicy"];
+      /** Source Revision */
+      source_revision: string;
     };
     /**
      * NoteAck
@@ -2351,6 +3368,57 @@ export interface components {
      * @enum {string}
      */
     ProfileSource: "resume" | "conversation" | "assessment" | "behavior_inference" | "mentor" | "record" | "user_edit";
+    /** ReleaseJob */
+    ReleaseJob: {
+      /** Actor */
+      actor: string;
+      /** Commit */
+      commit: string;
+      /**
+       * Created At
+       * @default
+       */
+      created_at?: string;
+      /** Events */
+      events?: {
+          [key: string]: unknown;
+        }[];
+      /** Id */
+      id: string;
+      /** Kind */
+      kind: string;
+      /**
+       * Lease
+       * @default
+       */
+      lease?: string;
+      /** Request Id */
+      request_id: string;
+      /** Result */
+      result?: {
+        [key: string]: unknown;
+      };
+      /**
+       * Stage
+       * @default
+       */
+      stage?: string;
+      /** Status */
+      status: string;
+    };
+    /** ReleaseRequest */
+    ReleaseRequest: {
+      /** Commit */
+      commit: string;
+      /**
+       * Kind
+       * @default deploy
+       * @enum {string}
+       */
+      kind?: "deploy" | "rollback" | "check";
+      /** Request Id */
+      request_id: string;
+    };
     /**
      * RenderableView
      * @description 对话里的一块**可视件**：图 / 时间线 / 对比矩阵……
@@ -3337,6 +4405,104 @@ export interface operations {
       };
     };
   };
+  /** User Modules */
+  user_modules_api_v1_app_modules_get: {
+    parameters: {
+      query?: {
+        surface?: "application" | "conversation";
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_list_ModuleView__"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Module Action */
+  module_action_api_v1_app_modules__module_id__actions_post: {
+    parameters: {
+      path: {
+        module_id: string;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ModuleAction"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_ModuleResult_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Module Data */
+  module_data_api_v1_app_modules__module_id__data_get: {
+    parameters: {
+      path: {
+        module_id: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_ModuleResult_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Invoke Module */
+  invoke_module_api_v1_app_modules__module_id__invoke_post: {
+    parameters: {
+      path: {
+        module_id: string;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ModuleInvoke"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_ModuleResult_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   /**
    * List Notes
    * @description 他写下的全部内容（新写的在前）。
@@ -3849,6 +5015,33 @@ export interface operations {
       };
     };
   };
+  /** Run Workflow */
+  run_workflow_api_v1_app_workflows__workflow_id__run_post: {
+    parameters: {
+      path: {
+        workflow_id: string;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ModuleFlowRunRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_ModuleFlowRun_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   /**
    * Get Workspace
    * @description 工作台聚合视图：画像 / 报告 / 方案 / 计划 / 跟踪 + 功能块。
@@ -3861,6 +5054,763 @@ export interface operations {
       200: {
         content: {
           "application/json": components["schemas"]["ApiResponse_WorkspacePageView_"];
+        };
+      };
+    };
+  };
+  /** Module Capabilities */
+  module_capabilities_api_v1_developer_capabilities_get: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_list_ModuleCapability__"];
+        };
+      };
+    };
+  };
+  /** Module Checks */
+  module_checks_api_v1_developer_checks_get: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_list_dict__"];
+        };
+      };
+    };
+  };
+  /** Check Modules */
+  check_modules_api_v1_developer_checks_post: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_dict_"];
+        };
+      };
+    };
+  };
+  /** Developer Context */
+  developer_context_api_v1_developer_context_get: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_ModuleDeveloperContext_"];
+        };
+      };
+    };
+  };
+  /** Claim Release */
+  claim_release_api_v1_developer_executor_claim_post: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_Union_ReleaseJob__NoneType__"];
+        };
+      };
+    };
+  };
+  /** Executor Configuration */
+  executor_configuration_api_v1_developer_executor_configuration_get: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_dict_"];
+        };
+      };
+    };
+  };
+  /** Update Release */
+  update_release_api_v1_developer_executor__job_id__post: {
+    parameters: {
+      path: {
+        job_id: string;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ExecutorUpdate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_ReleaseJob_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Release Authorization */
+  release_authorization_api_v1_developer_executor__job_id__authorization_get: {
+    parameters: {
+      path: {
+        job_id: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_dict_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Developer Modules */
+  developer_modules_api_v1_developer_modules_get: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_list_ModuleView__"];
+        };
+      };
+    };
+  };
+  /** Module Policy */
+  module_policy_api_v1_developer_modules__module_id__policy_put: {
+    parameters: {
+      path: {
+        module_id: string;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ModulePolicy"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_ModulePolicy_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Preview Module */
+  preview_module_api_v1_developer_modules__module_id__preview_post: {
+    parameters: {
+      path: {
+        module_id: string;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ModulePreview"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_ModuleResult_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Platform Status */
+  platform_status_api_v1_developer_platform_status_get: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_DeveloperPlatformStatus_"];
+        };
+      };
+    };
+  };
+  /** Projects */
+  projects_api_v1_developer_projects_get: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_list_DeveloperProjectView__"];
+        };
+      };
+    };
+  };
+  /** Create Project */
+  create_project_api_v1_developer_projects_post: {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["DeveloperProjectCreate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_DeveloperProjectView_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Update Project */
+  update_project_api_v1_developer_projects__project_id__put: {
+    parameters: {
+      path: {
+        project_id: string;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["DeveloperProjectUpdate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_DeveloperProjectView_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Versions */
+  versions_api_v1_developer_projects__project_id__versions_get: {
+    parameters: {
+      path: {
+        project_id: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_list_DeveloperVersionView__"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Upload Version */
+  upload_version_api_v1_developer_projects__project_id__versions_post: {
+    parameters: {
+      path: {
+        project_id: string;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["DeveloperUpload"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_DeveloperVersionView_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Release Jobs */
+  release_jobs_api_v1_developer_releases_get: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_list_ReleaseJob__"];
+        };
+      };
+    };
+  };
+  /** Request Release */
+  request_release_api_v1_developer_releases_post: {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ReleaseRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_ReleaseJob_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Approve Release */
+  approve_release_api_v1_developer_releases__job_id__approve_post: {
+    parameters: {
+      path: {
+        job_id: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_ReleaseJob_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Claim */
+  claim_api_v1_developer_source_worker_claim_post: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_Union_dict__NoneType__"];
+        };
+      };
+    };
+  };
+  /** Heartbeat */
+  heartbeat_api_v1_developer_source_worker_heartbeat_post: {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["DeveloperWorkerHeartbeat"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_dict_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Ready */
+  ready_api_v1_developer_source_worker_ready_get: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_list_DeveloperVersionView__"];
+        };
+      };
+    };
+  };
+  /** Worker Version */
+  worker_version_api_v1_developer_source_worker_versions__version_id__get: {
+    parameters: {
+      path: {
+        version_id: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_DeveloperVersionView_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Worker Update */
+  worker_update_api_v1_developer_source_worker_versions__version_id__post: {
+    parameters: {
+      path: {
+        version_id: string;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["DeveloperWorkerUpdate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_DeveloperVersionView_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Worker Package */
+  worker_package_api_v1_developer_source_worker_versions__version_id__package_get: {
+    parameters: {
+      path: {
+        version_id: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: never;
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Worker Release */
+  worker_release_api_v1_developer_source_worker_versions__version_id__release_post: {
+    parameters: {
+      path: {
+        version_id: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_ReleaseJob_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Worker Retry */
+  worker_retry_api_v1_developer_source_worker_versions__version_id__retry_post: {
+    parameters: {
+      path: {
+        version_id: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_DeveloperVersionView_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Template */
+  template_api_v1_developer_templates_get: {
+    parameters: {
+      query: {
+        kind?: "application" | "tool" | "hybrid";
+        module_id: string;
+        name: string;
+        owner: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: never;
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Version */
+  version_api_v1_developer_versions__version_id__get: {
+    parameters: {
+      path: {
+        version_id: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_DeveloperVersionView_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Package */
+  package_api_v1_developer_versions__version_id__package_get: {
+    parameters: {
+      path: {
+        version_id: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: never;
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Release */
+  release_api_v1_developer_versions__version_id__release_post: {
+    parameters: {
+      path: {
+        version_id: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_ReleaseJob_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Retry */
+  retry_api_v1_developer_versions__version_id__retry_post: {
+    parameters: {
+      path: {
+        version_id: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_DeveloperVersionView_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Module Workflows */
+  module_workflows_api_v1_developer_workflows_get: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_list_ModuleFlowView__"];
+        };
+      };
+    };
+  };
+  /** Save Workflow */
+  save_workflow_api_v1_developer_workflows_post: {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ModuleFlowDraft"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_ModuleFlowView_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Publish Workflow */
+  publish_workflow_api_v1_developer_workflows__workflow_id__publish_post: {
+    parameters: {
+      path: {
+        workflow_id: string;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ModuleFlowPublish"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_ModuleFlowView_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Preview Workflow */
+  preview_workflow_api_v1_developer_workflows__workflow_id__run_post: {
+    parameters: {
+      path: {
+        workflow_id: string;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ModuleFlowRunRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_ModuleFlowRun_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Workflow Runs */
+  workflow_runs_api_v1_developer_workflows__workflow_id__runs_get: {
+    parameters: {
+      path: {
+        workflow_id: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_list_ModuleFlowRun__"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Unpublish Workflow */
+  unpublish_workflow_api_v1_developer_workflows__workflow_id__unpublish_post: {
+    parameters: {
+      path: {
+        workflow_id: string;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ModuleFlowPublish"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_ModuleFlowView_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };

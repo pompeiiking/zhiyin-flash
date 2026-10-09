@@ -115,6 +115,7 @@ class AgnoAgentEngine(AgentEngine):
         # 工具目录：工具名 → 可调用对象（由装配层从基础设施的工具注册表建好注入）。
         # 引擎只认识名字，不认识实现 —— 它不 import 基础设施层。
         self._tools = dict(tools or {})
+        self.module_tool_names = None
         self._raise_on_violation = raise_on_violation
         # 缓存键含角色、环节、任务、工具开关及提示词/角色配置指纹；
         # 动态资源更新后下一轮会构建新 Agent，不继续使用旧指令。
@@ -160,6 +161,17 @@ class AgnoAgentEngine(AgentEngine):
         run_kwargs = self._run_context_kwargs(request)
         try:
             input_text = self._compose_input(request, bundle)
+            module_calls = request.use_tools and self.module_tool_names is not None and bool(
+                await self.module_tool_names(request.agent_id)
+            )
+            output_schema = request.output_schema or None
+            if module_calls and output_schema:
+                # The configured Qwen JSON-object mode suppresses function calls
+                # in this stage workflow. Keep function calling enabled, ask for
+                # the same JSON contract in text, then use the existing strict
+                # validator and repair path below before accepting the result.
+                input_text += "\n调用需要的工具后，最终回复只输出符合以下契约的 JSON 对象：\n" + json.dumps(output_schema, ensure_ascii=False)
+                output_schema = None
             # 契约交给 agno 的 output_schema，而不是我们自己把 JSON Schema
             # 拼进用户消息里。差别很大：
             #   · 自己拼：schema 是"提示词的一部分"，模型可以漏字段，
@@ -168,7 +180,7 @@ class AgnoAgentEngine(AgentEngine):
             #     并按它解析与校验，产出结构与契约对不上时在**调用处**就暴露。
             output = await agent.arun(
                 input=input_text,
-                output_schema=request.output_schema or None,
+                output_schema=output_schema,
                 **run_kwargs,
             )
         except Exception as exc:  # 模型不可用不阻断核心链路（R-SDK-008）
@@ -177,6 +189,9 @@ class AgnoAgentEngine(AgentEngine):
                 valid=False,
                 degraded=True,
                 errors=[f"agno 调用失败：{exc}"],
+                renderables=_renderables_from_run_context(run_kwargs),
+                module_results=_module_results_from_run_context(run_kwargs),
+                module_attempts=_module_attempts_from_run_context(run_kwargs),
             )
 
         # agno 在模型报错时**不抛异常**：它把错误写进 content，并把 status 置为 error。
@@ -191,6 +206,9 @@ class AgnoAgentEngine(AgentEngine):
                 valid=False,
                 degraded=True,
                 errors=["模型调用失败"],
+                renderables=_renderables_from_run_context(run_kwargs),
+                module_results=_module_results_from_run_context(run_kwargs),
+                module_attempts=_module_attempts_from_run_context(run_kwargs),
             )
 
         structured = _as_mapping(output.content)
@@ -213,7 +231,7 @@ class AgnoAgentEngine(AgentEngine):
                 # 不修的话，用户看到的就是一句"我没能按格式产出"，而且**每一轮都是它**：
                 # 对话走不动，画像/报告/方案全部生成不出来。
                 repaired = await self._repair_once(
-                    agent, request, structured, raw_text, errors, input_text
+                    agent, request, structured, raw_text, errors, input_text, run_kwargs=run_kwargs
                 )
                 if repaired is not None:
                     structured, raw_text, errors = repaired
@@ -239,6 +257,8 @@ class AgnoAgentEngine(AgentEngine):
             valid=not errors,
             errors=errors,
             renderables=_renderables_from_run_context(run_kwargs),
+            module_results=_module_results_from_run_context(run_kwargs),
+            module_attempts=_module_attempts_from_run_context(run_kwargs),
         )
 
     async def _repair_once(
@@ -249,6 +269,8 @@ class AgnoAgentEngine(AgentEngine):
         raw_text: str,
         errors: list[str],
         original_input: str,
+        *,
+        run_kwargs: Optional[dict[str, Any]] = None,
     ) -> Optional[tuple[dict[str, Any], str, list[str]]]:
         """把"答了但格式不对"的产出再要一次。成功返回新产出，失败返回 None。
 
@@ -273,6 +295,7 @@ class AgnoAgentEngine(AgentEngine):
                     f"\n\n上一次的产出如下（供你改写，不要照抄格式）：\n{previous}"
                 ),
                 output_schema=request.output_schema or None,
+                **(run_kwargs or {}),
             )
         except Exception:  # noqa: BLE001 - 纠错失败就当没发生过，走原来的降级
             logger.warning("结构化产出纠错重试失败：agent=%s", request.agent_id, exc_info=True)
@@ -316,7 +339,7 @@ class AgnoAgentEngine(AgentEngine):
             agent_id, stage, prompt_code, use_tools, _bundle_fingerprint(bundle, descriptor)
         )
         cached = self._agents.get(key)
-        if cached is not None:
+        if cached is not None and self.module_tool_names is None:
             return cached
         instructions: list[str] = []
         core = bundle.get("core")
@@ -337,6 +360,15 @@ class AgnoAgentEngine(AgentEngine):
         # 生成类 AI 任务的上下文由业务层一次备齐，产出要可复现，所以不挂；
         # 而"方向匹配"必须自己去取职业要求，就显式声明要工具。
         tools = await self._tools_for(agent_id) if use_tools else []
+        if use_tools and self.module_tool_names is not None:
+            module_names = await self.module_tool_names(agent_id)
+            if module_names:
+                instructions.append(
+                    "本轮已授权数据查询模块：" + "、".join(module_names) + "。"
+                    "用户查询已保存数据或要求展示模块卡片时，必须先调用对应模块工具，"
+                    "根据工具返回的真实数据回答；不得把提示词示例当成用户数据，也不得声称展示了未调用工具的卡片。"
+                    "模块工具只读，查询进度不代表用户请求生成或替换计划。"
+                )
         agent = Agent(
             model=self._build_model(key, bundle.get("params") or {}),
             instructions=instructions or None,
@@ -445,9 +477,10 @@ class AgnoAgentEngine(AgentEngine):
         if not self._tools or self._registry is None:
             return []
         descriptor = await self._registry.get_agent(agent_id)
-        if descriptor is None or not descriptor.tools:
-            return []
-        missing = sorted(name for name in descriptor.tools if name not in self._tools)
+        names = list(descriptor.tools) if descriptor else []
+        if self.module_tool_names is not None:
+            names.extend(await self.module_tool_names(agent_id))
+        missing = sorted(name for name in names if name not in self._tools)
         if missing:
             logger.error(
                 "智能体 %s 的白名单里有未注册的工具 %s：本次跳过。"
@@ -456,7 +489,7 @@ class AgnoAgentEngine(AgentEngine):
                 agent_id,
                 missing,
             )
-        return [self._tools[name] for name in descriptor.tools if name in self._tools]
+        return [self._tools[name] for name in dict.fromkeys(names) if name in self._tools]
 
     def _run_context_kwargs(self, request: AgentRequest) -> dict[str, Any]:
         """给这次运行带上用户与会话上下文。
@@ -481,6 +514,10 @@ class AgnoAgentEngine(AgentEngine):
         # 每次运行一份的 dict，正好当这条通道 —— 不必给工具加全局状态，
         # 也不让模型有机会往里塞东西（它只能调工具，碰不到这个 dict）。
         kwargs["dependencies"] = {CHART_BOX_KEY: []}
+        if self.module_tool_names is not None:
+            kwargs["dependencies"]["module_agent_id"] = request.agent_id
+            kwargs["dependencies"]["module_results"] = []
+            kwargs["dependencies"]["module_attempts"] = []
         return kwargs
 
     def _compose_input(self, request: AgentRequest, bundle: dict[str, Any]) -> str:
@@ -510,6 +547,21 @@ def _renderables_from_run_context(run_kwargs: dict[str, Any]) -> list[dict[str, 
     if not isinstance(box, list):
         return []
     return [item for item in box if isinstance(item, dict)]
+
+
+def _module_attempts_from_run_context(run_kwargs: dict[str, Any]) -> list[str]:
+    dependencies = run_kwargs.get("dependencies")
+    box = dependencies.get("module_attempts") if isinstance(dependencies, dict) else None
+    return [item for item in box if isinstance(item, str) and item] if isinstance(box, list) else []
+
+
+def _module_results_from_run_context(run_kwargs: dict[str, Any]) -> list[dict[str, Any]]:
+    dependencies = run_kwargs.get("dependencies")
+    box = dependencies.get("module_results") if isinstance(dependencies, dict) else None
+    if not isinstance(box, list):
+        return []
+    return [item for item in box if isinstance(item, dict) and isinstance(item.get("module_id"), str)
+            and isinstance(item.get("result"), dict)]
 
 
 def _agent_key(

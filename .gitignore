@@ -105,3 +105,4 @@ Thumbs.db
 deploy/migration.json
 scripts/kev-config-backup.json
 release/
+.platform/

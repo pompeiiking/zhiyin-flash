@@ -91,6 +91,7 @@ def test_known_backfill_column_is_declared() -> None:
         r"ALTER TABLE biz_calendar_node\s+ADD COLUMN IF NOT EXISTS related_task_text",
         MIGRATION_SQL,
     ), "biz_calendar_node.related_task_text 的补丁不见了：老库会再次因为缺列起不来。"
+    assert re.search(r"ALTER TABLE biz_conversation_turn\s+ADD COLUMN IF NOT EXISTS renderables", MIGRATION_SQL), "历史模块卡片的增量列必须兼容已有数据库"
 
 
 def _migration_script():

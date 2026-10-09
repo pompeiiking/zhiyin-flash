@@ -13,6 +13,7 @@
  *     摆一块空白比不摆更坏：用户会以为"这里本来就该有东西，只是没加载出来"。
  */
 import { computed, watch } from 'vue'
+import ModuleRenderable from '@/modules/ModuleRenderable.vue'
 import type { RenderableView } from '@/api/client'
 
 const props = defineProps<{ item: RenderableView }>()
@@ -87,6 +88,7 @@ const numberText = (value: number, unit: string, ratio: boolean) =>
 </script>
 
 <template>
+  <ModuleRenderable v-if="item.kind.startsWith('module.')" :kind="item.kind" :payload="item.payload || {}" />
   <figure v-if="bars" class="rb">
     <figcaption class="label rb__k">{{ bars.title }}</figcaption>
     <ul class="rb__rows">

@@ -90,7 +90,7 @@ def build_orchestration(container: "Container") -> None:
             profile_reader=_lazy_profile_reader(container),
             behavior_reader=_lazy_behavior_reader(container),
             plan_reader=_lazy_plan_reader(container),
-            modules=_product_modules(),
+            modules=_product_modules(container),
         )
         for spec in catalog.values():
             registry_tools.register(spec)
@@ -159,7 +159,7 @@ def _lazy_plan_reader(container: "Container"):
     return read
 
 
-def _product_modules() -> tuple[Any, ...]:
+def _product_modules(container=None) -> tuple[Any, ...]:
     """**产品自己做好的功能模块**在这里登记。
 
     一个模块 = 后端取数 + 前端一整套渲染，对外表现为"模型能调的一个工具"。
@@ -177,7 +177,10 @@ def _product_modules() -> tuple[Any, ...]:
     现在还没有外部模块：这一层是把"以后要接的那个套件"先立成明确的落点，
     免得它被塞进某个服务的构造函数里。
     """
-    return ()
+    if container is None:
+        return ()
+    from zhiyin_boot.module_platform import product_tools
+    return product_tools(container)
 
 
 def build_services(container: "Container") -> None:

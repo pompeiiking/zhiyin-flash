@@ -6,6 +6,7 @@ import GuideDock from '@/components/guide/GuideDock.vue'
 import TalkOverlay from '@/components/console/TalkOverlay.vue'
 import BlocksOverlay from '@/components/console/BlocksOverlay.vue'
 import LookPanel from '@/components/theme/LookPanel.vue'
+import VersionNotice from '@/components/VersionNotice.vue'
 import { useSessionStore } from '@/stores/session'
 
 /*
@@ -38,7 +39,7 @@ onMounted(() => {
     把"这一屏能去哪"的索引摆在访客脚边，等于把内部用法摆在橱窗里。
     控制台和报告页才是它该待的地方。
   -->
-  <GuideDock v-if="route.name !== 'portal'" />
+  <GuideDock v-if="route.name !== 'portal' && route.name !== 'developer'" />
   <!--
     对话挂全局，不挂控制台：它得能在**任何一页**被叫出来 ——
     在报告页看到一条看不懂的结论，最自然的反应是"我就这一句问问"，
@@ -54,4 +55,5 @@ onMounted(() => {
     面板自己 Teleport 到 body —— 控制台那条 chrome 会整块滑动，留在里面会被裁掉。
   -->
   <LookPanel />
+  <VersionNotice />
 </template>

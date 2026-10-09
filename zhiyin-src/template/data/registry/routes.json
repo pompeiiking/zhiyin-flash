@@ -3,6 +3,7 @@
   "items": [
     { "code": "console", "path": "/", "page_code": "screen-console", "require_login": true, "status": "enabled", "sort_order": 1 },
     { "code": "portal", "path": "/portal", "page_code": "screen-portal", "require_login": false, "status": "enabled", "sort_order": 2 },
-    { "code": "report", "path": "/report", "page_code": "screen-report", "require_login": true, "status": "enabled", "sort_order": 3 }
+    { "code": "report", "path": "/report", "page_code": "screen-report", "require_login": true, "status": "enabled", "sort_order": 3 },
+    { "code": "developer", "path": "/developer", "page_code": "screen-developer", "require_login": true, "status": "enabled", "sort_order": 4 }
   ]
 }

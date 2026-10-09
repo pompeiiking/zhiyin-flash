@@ -39,6 +39,20 @@ FRONTEND_PREFIX = "/api/v1"
 # 后端有、但一期前端不消费的接口。加一条之前先问：是不是"接口做完了没人用"？
 # 会，就别加；不会（确属其他消费方），加上并写清谁在用。
 FRONTEND_EXEMPT_PATHS: dict[str, str] = {
+    "/api/v1/developer/executor/claim": "宿主机执行器领取任务，不由浏览器调用",
+    "/api/v1/developer/executor/configuration": "执行器读取发布授权配置",
+    "/api/v1/developer/executor/{}": "执行器续租及报告结果",
+    "/api/v1/developer/executor/{}/authorization": "宿主机发布执行器在切流前复核当前项目授权",
+    "/api/v1/developer/source-worker/claim": "宿主机源码验收执行器领取上传版本任务",
+    "/api/v1/developer/source-worker/heartbeat": "宿主机源码验收执行器上报存活心跳",
+    "/api/v1/developer/source-worker/ready": "宿主机源码验收执行器查询待自动发布的已验收版本",
+    "/api/v1/developer/source-worker/versions/{}": "宿主机源码验收执行器上报门禁阶段、事件及结果",
+    "/api/v1/developer/source-worker/versions/{}/package": "宿主机源码验收执行器下载待检查的不可变源码包",
+    "/api/v1/developer/source-worker/versions/{}/release": "宿主机源码验收执行器按项目策略申请自动发布",
+    "/api/v1/developer/source-worker/versions/{}/retry": "宿主机源码验收执行器重新排队需要更新基线的版本",
+    # 组件与主控通过已发布契约集成的程序化入口；当前网页尚无独立用户调用页。
+    # 开发者页面运行草稿用 /developer/workflows/{id}/run，不能冒充已发布快照的消费方。
+    "/api/v1/app/workflows/{}/run": "已发布工作流的程序化集成入口；当前网页仅提供开发者草稿调试",
     "/api/v1/app/config/reload": "运维接口：改完配置在终端喊一声重载，不由前端消费",
 }
 
@@ -143,7 +157,7 @@ def _frontend_urls() -> set[str]:
             urls.add(_normalized(FRONTEND_PREFIX + business))
         # 业务段也可能先赋给变量再传进去（登录 / 注册就是：`const path = mode === … ? '/app/auth/login' : …`）。
         # 只看"以 /app/ 开头的字符串"这一条口径：这个仓里没有别的字符串长这样。
-        for business in re.findall(r"[`'\"](/app/[^`'\"]*)[`'\"]", text):
+        for business in re.findall(r"[`'\"](/(?:app|developer)/[^`'\"]*)[`'\"]", text):
             urls.add(_normalized(FRONTEND_PREFIX + business))
         for absolute in re.findall(r"[`'\"](/api/v1/[^`'\"]*)[`'\"]", text):
             if absolute != FRONTEND_PREFIX:  # 纯前缀本身（模板串）不算一条接口

@@ -1,0 +1,286 @@
+{
+  "x-generated-by": "python deploy/module_bluegreen.py --write-compose",
+  "services": {
+    "api_blue": {
+      "image": "${PLATFORM_BLUE_API_IMAGE:-zhiyin-platform-api:uninitialized}",
+      "environment": {
+        "ZHIYIN_ENV": "docker",
+        "ZHIYIN_MODULE_ENV": "staging",
+        "ZHIYIN_EXECUTOR_TOKEN": "",
+        "ZHIYIN_RUN_BACKGROUND_WORKERS": "0",
+        "ZHIYIN_USE_POSTGRES": "1",
+        "ZHIYIN_POSTGRES_DSN": "postgresql://zhiyin:${PLATFORM_DB_PASSWORD:?Set PLATFORM_DB_PASSWORD}@postgres:5432/zhiyin",
+        "ZHIYIN_USE_REDIS": "1",
+        "ZHIYIN_REDIS_URL": "redis://redis:6379/0",
+        "ZHIYIN_AUTH_JWT_SECRET": "${ZHIYIN_AUTH_JWT_SECRET:?Set ZHIYIN_AUTH_JWT_SECRET}",
+        "ZHIYIN_USE_REMOTE_LLM": "1",
+        "ZHIYIN_LLM_API_KEY": "${DASHSCOPE_API_KEY:?Set DASHSCOPE_API_KEY}",
+        "ZHIYIN_LLM_BASE_URL": "${DASHSCOPE_BASE_URL:-https://dashscope.aliyuncs.com/compatible-mode/v1}",
+        "ZHIYIN_LLM_MODEL": "qwen-flash",
+        "ZHIYIN_USE_REMOTE_EMBEDDING": "1",
+        "ZHIYIN_EMBEDDING_PROVIDER": "dashscope_embed",
+        "ZHIYIN_EMBEDDING_API_KEY": "${DASHSCOPE_API_KEY}",
+        "ZHIYIN_EMBEDDING_BASE_URL": "${DASHSCOPE_BASE_URL:-https://dashscope.aliyuncs.com/compatible-mode/v1}",
+        "ZHIYIN_EMBEDDING_MODEL": "text-embedding-v4"
+      },
+      "ports": [
+        "127.0.0.1:${PLATFORM_BLUE_API_PORT:-8016}:8000"
+      ],
+      "networks": [
+        "shared"
+      ],
+      "restart": "unless-stopped",
+      "healthcheck": {
+        "test": [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=2).read()"
+        ],
+        "interval": "3s",
+        "timeout": "3s",
+        "retries": 40,
+        "start_period": "10s"
+      }
+    },
+    "web_blue": {
+      "image": "${PLATFORM_BLUE_WEB_IMAGE:-zhiyin-platform-web:uninitialized}",
+      "environment": {
+        "PLATFORM_SLOT_API": "api_blue"
+      },
+      "ports": [
+        "127.0.0.1:${PLATFORM_BLUE_WEB_PORT:-5176}:80"
+      ],
+      "volumes": [
+        "${PLATFORM_SLOT_NGINX_TEMPLATE:?Set template path}:/etc/nginx/templates/default.conf.template:ro"
+      ],
+      "depends_on": {
+        "api_blue": {
+          "condition": "service_healthy"
+        }
+      },
+      "networks": [
+        "shared"
+      ],
+      "restart": "unless-stopped"
+    },
+    "api_green": {
+      "image": "${PLATFORM_GREEN_API_IMAGE:-zhiyin-platform-api:uninitialized}",
+      "environment": {
+        "ZHIYIN_ENV": "docker",
+        "ZHIYIN_MODULE_ENV": "staging",
+        "ZHIYIN_EXECUTOR_TOKEN": "",
+        "ZHIYIN_RUN_BACKGROUND_WORKERS": "0",
+        "ZHIYIN_USE_POSTGRES": "1",
+        "ZHIYIN_POSTGRES_DSN": "postgresql://zhiyin:${PLATFORM_DB_PASSWORD:?Set PLATFORM_DB_PASSWORD}@postgres:5432/zhiyin",
+        "ZHIYIN_USE_REDIS": "1",
+        "ZHIYIN_REDIS_URL": "redis://redis:6379/0",
+        "ZHIYIN_AUTH_JWT_SECRET": "${ZHIYIN_AUTH_JWT_SECRET:?Set ZHIYIN_AUTH_JWT_SECRET}",
+        "ZHIYIN_USE_REMOTE_LLM": "1",
+        "ZHIYIN_LLM_API_KEY": "${DASHSCOPE_API_KEY:?Set DASHSCOPE_API_KEY}",
+        "ZHIYIN_LLM_BASE_URL": "${DASHSCOPE_BASE_URL:-https://dashscope.aliyuncs.com/compatible-mode/v1}",
+        "ZHIYIN_LLM_MODEL": "qwen-flash",
+        "ZHIYIN_USE_REMOTE_EMBEDDING": "1",
+        "ZHIYIN_EMBEDDING_PROVIDER": "dashscope_embed",
+        "ZHIYIN_EMBEDDING_API_KEY": "${DASHSCOPE_API_KEY}",
+        "ZHIYIN_EMBEDDING_BASE_URL": "${DASHSCOPE_BASE_URL:-https://dashscope.aliyuncs.com/compatible-mode/v1}",
+        "ZHIYIN_EMBEDDING_MODEL": "text-embedding-v4"
+      },
+      "ports": [
+        "127.0.0.1:${PLATFORM_GREEN_API_PORT:-8017}:8000"
+      ],
+      "networks": [
+        "shared"
+      ],
+      "restart": "unless-stopped",
+      "healthcheck": {
+        "test": [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=2).read()"
+        ],
+        "interval": "3s",
+        "timeout": "3s",
+        "retries": 40,
+        "start_period": "10s"
+      }
+    },
+    "web_green": {
+      "image": "${PLATFORM_GREEN_WEB_IMAGE:-zhiyin-platform-web:uninitialized}",
+      "environment": {
+        "PLATFORM_SLOT_API": "api_green"
+      },
+      "ports": [
+        "127.0.0.1:${PLATFORM_GREEN_WEB_PORT:-5177}:80"
+      ],
+      "volumes": [
+        "${PLATFORM_SLOT_NGINX_TEMPLATE:?Set template path}:/etc/nginx/templates/default.conf.template:ro"
+      ],
+      "depends_on": {
+        "api_green": {
+          "condition": "service_healthy"
+        }
+      },
+      "networks": [
+        "shared"
+      ],
+      "restart": "unless-stopped"
+    },
+    "background": {
+      "image": "${PLATFORM_BACKGROUND_API_IMAGE:-zhiyin-platform-api:uninitialized}",
+      "environment": {
+        "ZHIYIN_ENV": "docker",
+        "ZHIYIN_MODULE_ENV": "staging",
+        "ZHIYIN_EXECUTOR_TOKEN": "",
+        "ZHIYIN_RUN_BACKGROUND_WORKERS": "1",
+        "ZHIYIN_USE_POSTGRES": "1",
+        "ZHIYIN_POSTGRES_DSN": "postgresql://zhiyin:${PLATFORM_DB_PASSWORD:?Set PLATFORM_DB_PASSWORD}@postgres:5432/zhiyin",
+        "ZHIYIN_USE_REDIS": "1",
+        "ZHIYIN_REDIS_URL": "redis://redis:6379/0",
+        "ZHIYIN_AUTH_JWT_SECRET": "${ZHIYIN_AUTH_JWT_SECRET:?Set ZHIYIN_AUTH_JWT_SECRET}",
+        "ZHIYIN_USE_REMOTE_LLM": "1",
+        "ZHIYIN_LLM_API_KEY": "${DASHSCOPE_API_KEY:?Set DASHSCOPE_API_KEY}",
+        "ZHIYIN_LLM_BASE_URL": "${DASHSCOPE_BASE_URL:-https://dashscope.aliyuncs.com/compatible-mode/v1}",
+        "ZHIYIN_LLM_MODEL": "qwen-flash",
+        "ZHIYIN_USE_REMOTE_EMBEDDING": "1",
+        "ZHIYIN_EMBEDDING_PROVIDER": "dashscope_embed",
+        "ZHIYIN_EMBEDDING_API_KEY": "${DASHSCOPE_API_KEY}",
+        "ZHIYIN_EMBEDDING_BASE_URL": "${DASHSCOPE_BASE_URL:-https://dashscope.aliyuncs.com/compatible-mode/v1}",
+        "ZHIYIN_EMBEDDING_MODEL": "text-embedding-v4"
+      },
+      "networks": [
+        "shared"
+      ],
+      "restart": "unless-stopped",
+      "healthcheck": {
+        "test": [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=2).read()"
+        ],
+        "interval": "3s",
+        "timeout": "3s",
+        "retries": 40,
+        "start_period": "10s"
+      }
+    },
+    "gateway": {
+      "image": "nginx:1.27-alpine",
+      "ports": [
+        "127.0.0.1:5175:80",
+        "127.0.0.1:8015:8000"
+      ],
+      "volumes": [
+        "${PLATFORM_GATEWAY_CONFIG_DIR:?Set gateway path}:/etc/nginx/conf.d:ro"
+      ],
+      "networks": [
+        "shared"
+      ],
+      "restart": "unless-stopped",
+      "stop_grace_period": "190s"
+    },
+    "acceptance_postgres": {
+      "image": "pgvector/pgvector:pg16",
+      "profiles": [
+        "acceptance"
+      ],
+      "environment": {
+        "POSTGRES_USER": "zhiyin",
+        "POSTGRES_DB": "zhiyin",
+        "POSTGRES_PASSWORD": "${PLATFORM_ACCEPTANCE_DB_PASSWORD:-unused}"
+      },
+      "networks": [
+        "acceptance"
+      ],
+      "healthcheck": {
+        "test": [
+          "CMD-SHELL",
+          "pg_isready -U zhiyin -d zhiyin"
+        ],
+        "interval": "2s",
+        "timeout": "3s",
+        "retries": 40
+      }
+    },
+    "acceptance_redis": {
+      "image": "redis:7-alpine",
+      "profiles": [
+        "acceptance"
+      ],
+      "networks": [
+        "acceptance"
+      ],
+      "healthcheck": {
+        "test": [
+          "CMD",
+          "redis-cli",
+          "ping"
+        ],
+        "interval": "2s",
+        "timeout": "3s",
+        "retries": 40
+      }
+    },
+    "acceptance_api": {
+      "image": "${PLATFORM_ACCEPTANCE_API_IMAGE:-zhiyin-platform-api:uninitialized}",
+      "profiles": [
+        "acceptance"
+      ],
+      "environment": {
+        "ZHIYIN_ENV": "docker",
+        "ZHIYIN_MODULE_ENV": "candidate",
+        "ZHIYIN_EXECUTOR_TOKEN": "",
+        "ZHIYIN_RUN_BACKGROUND_WORKERS": "0",
+        "ZHIYIN_USE_POSTGRES": "1",
+        "ZHIYIN_POSTGRES_DSN": "postgresql://zhiyin:${PLATFORM_ACCEPTANCE_DB_PASSWORD:-unused}@acceptance_postgres:5432/zhiyin",
+        "ZHIYIN_USE_REDIS": "1",
+        "ZHIYIN_REDIS_URL": "redis://acceptance_redis:6379/0",
+        "ZHIYIN_AUTH_JWT_SECRET": "${PLATFORM_ACCEPTANCE_JWT_SECRET:-unused}",
+        "ZHIYIN_USE_REMOTE_LLM": "1",
+        "ZHIYIN_LLM_API_KEY": "candidate-check-only",
+        "ZHIYIN_LLM_BASE_URL": "${DASHSCOPE_BASE_URL:-https://dashscope.aliyuncs.com/compatible-mode/v1}",
+        "ZHIYIN_LLM_MODEL": "qwen-flash",
+        "ZHIYIN_USE_REMOTE_EMBEDDING": "1",
+        "ZHIYIN_EMBEDDING_PROVIDER": "dashscope_embed",
+        "ZHIYIN_EMBEDDING_API_KEY": "candidate-check-only",
+        "ZHIYIN_EMBEDDING_BASE_URL": "${DASHSCOPE_BASE_URL:-https://dashscope.aliyuncs.com/compatible-mode/v1}",
+        "ZHIYIN_EMBEDDING_MODEL": "text-embedding-v4",
+        "ZHIYIN_DATAFLOW_ISOLATED": "1"
+      },
+      "networks": [
+        "acceptance"
+      ],
+      "healthcheck": {
+        "test": [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=2).read()"
+        ],
+        "interval": "3s",
+        "timeout": "3s",
+        "retries": 40,
+        "start_period": "10s"
+      },
+      "depends_on": {
+        "acceptance_postgres": {
+          "condition": "service_healthy"
+        },
+        "acceptance_redis": {
+          "condition": "service_healthy"
+        }
+      }
+    }
+  },
+  "networks": {
+    "shared": {
+      "external": true,
+      "name": "${PLATFORM_SHARED_NETWORK:-zhiyin-module-staging_default}"
+    },
+    "acceptance": {
+      "internal": true
+    }
+  }
+}
