@@ -207,7 +207,23 @@ function move(id: string, delta: number) {
   line-height: 1.75;
 }
 
-.rows { list-style: none; margin: 0; padding: var(--s2) var(--s3); display: grid; }
+.rows {
+  list-style: none; margin: 0; padding: var(--s2) var(--s3); display: grid;
+  /*
+   * 列表自己滚 —— 这一条是用户报的"全部组件里面不能滚动"。
+   *
+   * 真机量出来的症状：窗口一矮（1440×700），14 行需要 741px、实际只分到 473px，
+   * 而 `.sheet` 的 `overflow: hidden` 把多出来的 **266px 直接裁掉**：既看不到、也滚不到，
+   * 而且外层面板壳没有溢出（它的 scrollHeight == clientHeight），所以"往上滑"什么都没发生。
+   *
+   * `min-height: 0` 不能少：flex 子项默认 `min-height: auto`，不加它这一块不肯被压到内容以下，
+   * 于是永远轮不到自己滚 —— 和 `.thread` 那次（issue #26）是同一个机制。
+   * `overflow-y: auto` 把"裁掉"换成"可滚"；底部那两颗按钮留在外面不跟着跑：
+   * 「全部放回 / 恢复默认顺序」是把东西找回来的出口，不该滚出视野。
+   */
+  overflow-y: auto;
+  min-height: 0;
+}
 .rows li {
   display: grid;
   grid-template-columns: 22px minmax(0, 1fr) 68px auto;

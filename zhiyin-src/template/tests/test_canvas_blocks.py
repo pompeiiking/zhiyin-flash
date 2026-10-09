@@ -142,19 +142,21 @@ def test_panel_reads_the_canvas_report_instead_of_guessing() -> None:
     )
 
 
-def test_canvas_report_is_declared_after_its_dependencies() -> None:
-    """上报那段必须在 `inStrategy` / `showTimetable` **之后**声明。
+def test_blocks_panel_list_scrolls_instead_of_clipping() -> None:
+    """「全部组件」的清单必须**自己滚**，不能被裁掉。
 
-    `watch` 创建时会先跑一次 getter 来建立依赖（不只是 `immediate` 才会），
-    于是 `presentIds` 会立刻求值 —— 而它依赖后面才用 `const` 声明的那两样东西。
-    放在前面就抛 "Cannot access '…' before initialization"，**整个控制台白屏**。
+    用户报过："全部组件里面不能滚动"。真机量出来的症状：窗口一矮（1440×700），
+    14 行需要 741px、只分到 473px，而 `.sheet` 的 `overflow: hidden` 把多出来的
+    **266px 直接裁掉** —— 既看不到、也滚不到；而外层面板壳没有溢出
+    （它的 scrollHeight == clientHeight），所以"往上滑"什么都不会发生。
 
-    这一条真机踩过，而且**类型检查完全看不出来**（变量确实存在，只是那时还没初始化），
-    所以只能这样钉住它。
+    `min-height: 0` 不能少：flex 子项默认 `min-height: auto`，不加它这一块不肯被压到
+    内容以下，就永远轮不到自己滚 —— 和 `.thread` 那次（issue #26）是同一个机制。
+    这一条也改不得：底部那两颗按钮是"把东西找回来"的出口，不该跟着列表滚出视野。
     """
-    console = CONSOLE.read_text(encoding="utf-8")
-    publish = console.index("function publishCanvasTruth")
-    for dep in ("const inStrategy", "const showTimetable"):
-        assert console.index(dep) < publish, (
-            f"画布上报那段被挪到了 `{dep}` 前面：真机上会整屏白屏（类型检查看不出来）"
-        )
+    panel = PANEL.read_text(encoding="utf-8")
+    rows = panel[panel.index(".rows {") :][:900]
+    assert "overflow-y: auto" in rows, "清单又变回会被裁掉了（矮屏上后面的块看不到）"
+    assert "min-height: 0" in rows, (
+        "少了 `min-height: 0`：flex 子项不会被压到内容以下，轮不到自己滚"
+    )
