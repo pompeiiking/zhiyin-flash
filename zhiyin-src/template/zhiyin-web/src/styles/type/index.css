@@ -1,0 +1,9 @@
+/*
+ * 排版性格清单。
+ *
+ * 一条轴一个目录，一套档一个文件；默认档（`plain` 常规）**没有文件** ——
+ * 它的样子就是 base.css 里今天的样子，不写属性就是它。
+ * 加一档 = 本目录加一个文件 + index.css 加一行 + lib/theme.ts 的 AXES 里加一项。
+ */
+@import "./outline.css";
+@import "./read.css";

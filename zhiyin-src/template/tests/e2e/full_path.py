@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 import time
 from pathlib import Path
@@ -262,6 +263,8 @@ def _click_inside(page: Page, target) -> None:
         """({x, y, w, h, bid}) => {
             const mine = bid ? document.querySelector(`[data-block="${bid}"]`) : null;
             const candidates = [
+              [x + w * 0.5, y + h * 0.68],
+              [x + w * 0.3, y + h * 0.68],
               [x + 40, y + h - 24],
               [x + 40, y + 34],
               [x + 30, y + h * 0.55],
@@ -269,20 +272,21 @@ def _click_inside(page: Page, target) -> None:
               [x + w * 0.5, y + 30],
             ];
             for (const [px, py] of candidates) {
-              const stack = document.elementsFromPoint(px, py);
-              const owner = stack.map(el => el.closest('[data-block]')).find(Boolean);
+              const hit = document.elementFromPoint(px, py);
+              const owner = hit?.closest('[data-block]');
               if (!owner) continue;
-              if (mine && owner !== mine) continue;  // 落在邻居块上：换一个点
-              const hit = stack[0];
+              if (mine && owner !== mine) continue;  // 浮窗或邻居挡住：换一个点
               const control = hit.closest('button, a, [role=button]');
               // 块内的控件（「下一步」「全部任务 →」…）有自己的含义，不算"点这块"
               if (control && control !== owner) continue;
               return [px, py];
             }
-            return [x + 40, y + h - 24];
+            return null;
         }""",
         {"x": box["x"], "y": box["y"], "w": box["width"], "h": box["height"], "bid": block_id},
     )
+    if point is None:
+        raise RuntimeError(f"块 {block_id} 当前没有未被浮窗遮挡的可点区域")
     page.mouse.click(point[0], point[1])
 
 
@@ -306,11 +310,11 @@ def ensure_talk(page: Page) -> bool:
 
 
 def send_chat(page: Page, text: str) -> int:
-    """发一条消息，返回发出前的 AI 回复条数（用来等新回复）。"""
+    """发一条消息，返回发出前的用户消息条数（用来定位对应回复）。"""
     if not ensure_talk(page):
         return -1
     overlay = talk_overlay(page)
-    before = overlay.locator(".thread .line.ai").count()
+    before = overlay.locator(".thread .line.me").count()
     box = overlay.locator("textarea, input[type='text']").last
     box.fill(text)
     box.press("Enter")
@@ -318,14 +322,27 @@ def send_chat(page: Page, text: str) -> int:
 
 
 def wait_reply(page: Page, before: int, timeout_s: int = 150) -> str:
-    """等一条新的 AI 回复。返回文本（超时返回空串）。"""
+    """等本轮用户消息后的正式 AI 回复，跳过欢迎词和输入中占位。"""
     overlay = talk_overlay(page)
     deadline = time.time() + timeout_s
     while time.time() < deadline:
         page.wait_for_timeout(2000)
-        lines = overlay.locator(".thread .line.ai")
-        if lines.count() > before:
-            return lines.nth(lines.count() - 1).inner_text()
+        # 初次打开时，历史欢迎词也可能晚于 send_chat 才挂载；只数 AI 行
+        # 会把它当成本轮回复。改为定位本轮新增的 user 行，再找其后的 AI 行。
+        users = overlay.locator(".thread .line.me")
+        if users.count() > before and not overlay.locator(".thread .line.ai.typing").count():
+            answer = users.last.evaluate("""el => {
+              let node = el.nextElementSibling;
+              let reply = '';
+              while (node && !node.classList.contains('me')) {
+                if (node.classList.contains('ai') && !node.classList.contains('typing'))
+                  reply = node.innerText;
+                node = node.nextElementSibling;
+              }
+              return reply;
+            }""")
+            if answer:
+                return answer
     return ""
 
 
@@ -348,7 +365,7 @@ def current_stage(page: Page) -> str:
 def login(page: Page, account: str, password: str) -> bool:
     """从门户走一遍登录（先清令牌，保证落在未登录态）。"""
     page.evaluate("localStorage.removeItem('zhiyin_token')")
-    page.goto(f"{BASE}/portal", wait_until="networkidle")
+    page.goto(f"{BASE}/portal", wait_until="domcontentloaded")
     page.get_by_role("button", name=PORTAL_CTA).click()
     page.wait_for_selector('input[name="account"]', timeout=15000)
     page.fill('input[name="account"]', account)
@@ -378,7 +395,9 @@ def logout(page: Page) -> bool:
 
 
 with sync_playwright() as p:
-    browser = p.chromium.launch(headless=True)
+    browser = p.chromium.launch(
+        headless=True, channel=os.environ.get("ZHIYIN_BROWSER_CHANNEL") or None
+    )
     context = browser.new_context(viewport={"width": 1440, "height": 960})
     page = context.new_page()
     errors: list[str] = []
@@ -398,7 +417,7 @@ with sync_playwright() as p:
 
     # ── A. 访客态 ────────────────────────────────────────────────
     phase("A. 访客态")
-    page.goto(f"{BASE}/portal", wait_until="networkidle", timeout=40000)
+    page.goto(f"{BASE}/portal", wait_until="domcontentloaded", timeout=40000)
     shot(page, "01-portal")
     check("门户渲染", page.title().startswith("职引"), page.title())
 
@@ -430,7 +449,7 @@ with sync_playwright() as p:
         f"HTTP {guest.get('status')} code={(guest.get('body') or {}).get('code')}",
     )
 
-    page.goto(f"{BASE}/report", wait_until="networkidle", timeout=40000)
+    page.goto(f"{BASE}/report", wait_until="domcontentloaded", timeout=40000)
     page.wait_for_timeout(1500)
     check("未登录直连 /report 被送去门户", page.url.rstrip("/").endswith("/portal"), page.url)
     check("并且就地掀开登录层", page.locator('input[name="account"]').count() > 0)
@@ -459,7 +478,7 @@ with sync_playwright() as p:
 
     # 测"密码错误"必须先在未登录态：门户看到令牌会直接送你进控制台，压根不掀登录层
     page.evaluate("localStorage.removeItem('zhiyin_token')")
-    page.goto(f"{BASE}/portal", wait_until="networkidle")
+    page.goto(f"{BASE}/portal", wait_until="domcontentloaded")
     page.get_by_role("button", name=PORTAL_CTA).click()
     page.wait_for_selector('input[name="account"]', timeout=10000)
     page.fill('input[name="account"]', account)
@@ -475,7 +494,7 @@ with sync_playwright() as p:
     page.wait_for_timeout(3000)
     check("用正确密码登录成功", page.locator("[data-block]").count() > 0, page.url)
 
-    page.goto(f"{BASE}/", wait_until="networkidle")
+    page.goto(f"{BASE}/", wait_until="domcontentloaded")
     page.wait_for_timeout(1500)
     check("退出登录（账号菜单里）清掉令牌", logout(page))
 
@@ -590,7 +609,7 @@ with sync_playwright() as p:
         check("采集浮层能打开", False)
 
     # ── D2. 学信网核验浮层：写着"填到下面"，下面就必须真的有得填 ────────
-    page.goto(BASE + "/", wait_until="networkidle")
+    page.goto(BASE + "/", wait_until="domcontentloaded")
     page.wait_for_timeout(1200)
     if open_block(page, "collect"):
         page.wait_for_timeout(800)
@@ -642,7 +661,7 @@ with sync_playwright() as p:
           f"{len(courses)} 门课 / {len(grades)} 条成绩")
 
     # 刷新一次：拿到课程数据之后，课表块才该出现（逐步解锁的另一半）
-    page.reload(wait_until="networkidle")
+    page.reload(wait_until="domcontentloaded")
     page.wait_for_timeout(2500)
     opened_tt = open_block(page, "timetable")
     check("导入后课表块才出现", bool(opened_tt), opened_tt or "没出现")
@@ -657,7 +676,7 @@ with sync_playwright() as p:
     ws = data_of(page, "/app/workspace") or {}
     check("撤销后课表快照被清掉", not ws.get("academic_panel"),
           f"academic={bool(ws.get('academic_panel'))}")
-    page.reload(wait_until="networkidle")
+    page.reload(wait_until="domcontentloaded")
     page.wait_for_timeout(2000)
     left = page.locator("[data-block='timetable']").count()
     # 撤销之后块**可能还在**，这不是缺陷：画布的课表块有两个出现条件 ——
@@ -721,7 +740,7 @@ with sync_playwright() as p:
     sections = rt.get("sections") or []
     items_total = sum(len(s.get("items") or []) for s in sections)
     check("报告资产已产出（后端）", bool(sections), f"version={rt.get('version')} / {items_total} 条维度")
-    page.goto(f"{BASE}/report", wait_until="networkidle", timeout=40000)
+    page.goto(f"{BASE}/report", wait_until="domcontentloaded", timeout=40000)
     page.wait_for_timeout(2000)
     shot(page, "11-report", full=True)
     if sections:
@@ -745,7 +764,7 @@ with sync_playwright() as p:
 
     # ── H. ③ 决策：推进到决策 → 三套方案 → 选一套 ────────────────
     phase("H. ③ 决策（方案资产 + 选择）")
-    page.goto(f"{BASE}/", wait_until="networkidle")
+    page.goto(f"{BASE}/", wait_until="domcontentloaded")
     page.wait_for_timeout(1200)
     ensure_talk(page)
     plans: list[dict] = []
@@ -779,12 +798,20 @@ with sync_playwright() as p:
             cards = page.locator(".plan")
             check("方案卡片数与资产一致", cards.count() == len(plans),
                   f"页面 {cards.count()} / 后端 {len(plans)}")
-            target = plans[0]["id"]
-            # 点第一张卡的「选这套」
-            page.locator(".plan").first.get_by_role("button", name="选这套").click()
+            before_selection = data_of(page, "/app/plan/directions") or {}
+            before_id = before_selection.get("selected_id")
+            # 页面可能在生成第二版方案后才刷新。用当前可见的未选卡测试改选，
+            # 不拿循环早先读到的 plans[0].id 去比较新版资产的 ID。
+            unselected = page.locator(".plan:not(.on)")
+            card = unselected.first if unselected.count() else page.locator(".plan").first
+            card.get_by_role("button", name="选这套").click()
             page.wait_for_timeout(2500)
             after = data_of(page, "/app/plan/directions") or {}
-            check("选择落到后端（selected_id 变了）", after.get("selected_id") == target,
+            selected_id = after.get("selected_id")
+            selected_plan = next((p for p in after.get("plans") or [] if p.get("id") == selected_id), None)
+            check("选择落到后端（selected_id 变了）",
+                  bool(selected_plan and selected_plan.get("selected"))
+                  and (before_id is None or selected_id != before_id),
                   f"selected_id={after.get('selected_id')}")
             check("界面上标出了当前选择", page.locator(".plan.on").count() == 1)
             shot(page, "17-plans-selected")
@@ -815,12 +842,11 @@ with sync_playwright() as p:
     page.wait_for_timeout(800)
 
     if action_plan.get("has_plan"):
-        first_task = action_plan.get("next_task") or {}
         blocks = page.evaluate(
             "() => [...document.querySelectorAll('[data-block]')].map(e => e.dataset.block)"
         )
         check("画布上出现了「行动计划」块（策略驱动）", "action" in blocks, str(blocks))
-        opened = open_block(page, "action")
+        opened = open_block(page, "action", label="行动计划")
         check("行动计划浮层能打开", bool(opened), opened)
         if opened:
             shot(page, "18-action")
@@ -831,22 +857,36 @@ with sync_playwright() as p:
                   f"{page.locator('.node').count()} 条节点")
             ticks = page.locator(".tick")
             check("任务条目可勾选", ticks.count() > 0, f"{ticks.count()} 条")
-            if ticks.count():
-                first_text = first_task.get("text") or ""
-                ticks.first.click()
+            undone = page.locator('.tick[aria-pressed="false"]')
+            if undone.count():
+                before_count = sum(
+                    1 for p in (action_plan.get("phases") or [])
+                    for task in (p.get("tasks") or []) if task.get("done")
+                )
+                label = undone.first.get_attribute("aria-label") or ""
+                task_text = label.partition("：")[2]
+                undone.first.click()
                 page.wait_for_timeout(2500)
                 after = data_of(page, "/app/plan/action") or {}
                 flat = [t for p in (after.get("phases") or []) for t in (p.get("tasks") or [])]
-                check("勾掉落到后端（done=true）", any(t.get("done") for t in flat),
+                check("勾掉落到后端（done=true）",
+                      sum(1 for t in flat if t.get("done")) == before_count + 1,
                       f"已完成 {sum(1 for t in flat if t.get('done'))} / {len(flat)}")
                 # 撤回一次，验证能反悔
-                if ticks.count():
-                    page.locator(".tick").first.click()
-                    page.wait_for_timeout(2500)
-                    back = data_of(page, "/app/plan/action") or {}
-                    flat2 = [t for p in (back.get("phases") or []) for t in (p.get("tasks") or [])]
-                    check("取消勾选也落库（可撤回）", not any(t.get("done") for t in flat2),
-                          f"done 数 {sum(1 for t in flat2 if t.get('done'))}")
+                if task_text:
+                    undo = page.get_by_role("button", name=f"取消勾选：{task_text}", exact=True)
+                    if not undo.count() and not page.locator(".layer[aria-label='行动计划']").count():
+                        open_block(page, "action", label="行动计划")
+                        undo = page.get_by_role("button", name=f"取消勾选：{task_text}", exact=True)
+                    check("刚勾的任务仍可在计划中找到并撤回", undo.count() > 0, task_text[:60])
+                    if undo.count():
+                        undo.click()
+                        page.wait_for_timeout(2500)
+                        back = data_of(page, "/app/plan/action") or {}
+                        flat2 = [t for p in (back.get("phases") or []) for t in (p.get("tasks") or [])]
+                        check("取消勾选也落库（可撤回）",
+                              sum(1 for t in flat2 if t.get("done")) == before_count,
+                              f"done 数 {sum(1 for t in flat2 if t.get('done'))}")
             shot(page, "19-action-ticked")
             close_overlay(page)
 
@@ -863,7 +903,7 @@ with sync_playwright() as p:
         check("逐轮里既有 user 也有 agent", {"user", "agent"} <= {t.get("role") for t in turns},
               str(sorted({t.get("role") for t in turns})))
 
-    page.goto(f"{BASE}/", wait_until="networkidle")
+    page.goto(f"{BASE}/", wait_until="domcontentloaded")
     page.wait_for_timeout(1000)
     # 会话浮层的入口在右键菜单里，且只在**画布空白处**右键时才列出功能块。
     # 先找一个不落在任何气泡上的点，否则拿到的是"对这块做什么"那份菜单。
@@ -954,7 +994,7 @@ with sync_playwright() as p:
 
     # ── J. 其他 AI 面板 ─────────────────────────────────────────
     phase("K. 匹配 / 简报")
-    page.goto(f"{BASE}/", wait_until="networkidle")
+    page.goto(f"{BASE}/", wait_until="domcontentloaded")
     page.wait_for_timeout(1200)
     # 匹配块是**绑定学信网之后才出现**的（`v-if="session.chsiBound"`）：
     # 没绑定时它不该在画布上 —— 这是条件渲染，不是缺陷。
@@ -998,14 +1038,27 @@ with sync_playwright() as p:
     # 而且数值是给人看的写法（不是 `0.95` 这种要用户自己换算的）。
     phase("可视件：模型自己画图 → 前端按 kind 渲染")
     rendered = 0
+    returned_kinds: list[str] = []
     for attempt in range(2):
-        before = send_chat(page, "能不能给我画个图，让我看看现在各项情况把握得怎么样？")
+        with page.expect_response(
+            lambda response: "/app/conversation/message" in response.url
+            and response.request.method == "POST",
+            timeout=180000,
+        ) as pending:
+            before = send_chat(page, "能不能给我画个图，让我看看现在各项情况把握得怎么样？")
+        payload = pending.value.json()
+        messages = (payload.get("data") or {}).get("messages") or [{}]
+        returned_kinds.extend(
+            str(item.get("kind"))
+            for item in (messages[0].get("renderables") or [])
+        )
         wait_reply(page, before, timeout_s=180)
         page.wait_for_timeout(2000)
         rendered = page.locator(".thread .rb__rows li").count()
         if rendered:
             break
-        print(f"    （第 {attempt + 1} 次问，模型这一轮没画 —— 再问一次）")
+        print(f"    （第 {attempt + 1} 次问，接口返回 {returned_kinds}，界面有 {rendered} 行）")
+    check("对话接口返回真实可视件", "bars_chart" in returned_kinds, str(returned_kinds))
     check("主理画的那张图在对话里渲染出来了（按 kind 分发）", rendered >= 2, f"{rendered} 行")
     if rendered:
         numbers = [n.strip() for n in page.locator(".thread .rb__num").all_text_contents()]
@@ -1046,14 +1099,14 @@ with sync_playwright() as p:
           f"HTTP {forged['status']} code={(forged['body'] or {}).get('code')}")
 
     close_overlay(page)
-    page.goto(f"{BASE}/report", wait_until="networkidle")
+    page.goto(f"{BASE}/report", wait_until="domcontentloaded")
     page.wait_for_timeout(2000)
     check("深链刷新 /report 数据仍在（不是空壳）",
           page.locator(".dim").count() > 0 or page.locator(".empty__head").count() > 0,
           f"维度 {page.locator('.dim').count()}")
 
     page.set_viewport_size({"width": 375, "height": 780})
-    page.goto(f"{BASE}/portal", wait_until="networkidle")
+    page.goto(f"{BASE}/portal", wait_until="domcontentloaded")
     page.wait_for_timeout(1500)
     overflow = page.evaluate(
         "document.documentElement.scrollWidth - document.documentElement.clientWidth"
@@ -1112,3 +1165,5 @@ print(f"\n===== 端到端结果：{passed}/{total} 通过 =====")
 for r in results:
     if not r["ok"]:
         print(f"  FAIL  {r['check']} — {r['detail']}")
+if passed != total:
+    raise SystemExit(1)

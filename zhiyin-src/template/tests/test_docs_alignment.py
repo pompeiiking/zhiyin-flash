@@ -9,7 +9,7 @@
 
 本文件只守五件机械可判的事：
 
-1. 唯一设计文档必须存在，且 `docs/` 下不允许再出现第二份；
+1. 唯一设计文档必须存在；`docs/` 下仅允许它和指定的测试审查记录目录；
 2. 入口 README（根 README + 前端 README）必须指向它，且相对链接必须能解析到真实文件；
 3. 已移除的文档不得再被引用（文档名 / 仓库路径 / 需求编号 / 章节号）；
 4. 入口文档里用代码片段引用的**仓库路径必须存在**；
@@ -34,6 +34,7 @@ REGISTRY_DIR = TEMPLATE_ROOT / "data" / "registry"
 
 # 唯一设计文档：全仓产品与业务口径的来源。
 DESIGN_DOC = "docs/职引-完整设计文档.md"
+AUDIT_DOC_DIR = "docs/测试与优化-袁"
 
 # 需要做"链接 / 路径引用存在性"检查的文档：本仓全部 markdown 入口。
 CURRENT_DOCS: tuple[str, ...] = (
@@ -149,19 +150,20 @@ def _relative_links(path: Path) -> list[str]:
 
 
 def test_single_design_doc_exists() -> None:
-    """`docs/` 下只能有一份 markdown：唯一设计文档。"""
+    """产品设计文档保持唯一；测试审查记录可放在指定子目录。"""
     doc = REPO_ROOT / DESIGN_DOC
     assert doc.is_file(), f"缺少唯一设计文档：{DESIGN_DOC}"
 
+    audit_dir = REPO_ROOT / AUDIT_DOC_DIR
     others = sorted(
         path.relative_to(REPO_ROOT).as_posix()
         for path in DOCS_ROOT.rglob("*")
-        if path.is_file()
+        if path.is_file() and path != doc and not path.is_relative_to(audit_dir)
     )
-    assert others == [DESIGN_DOC], (
-        "docs/ 下出现了设计文档以外的文件：\n  "
+    assert not others, (
+        "docs/ 下出现了唯一设计文档和测试审查目录以外的文件：\n  "
         + "\n  ".join(others)
-        + "\n本仓只有一份文档；新增内容请并入唯一设计文档，不要另开文件。"
+        + "\n产品与业务口径请并入唯一设计文档；测试审查记录请放入指定目录。"
     )
 
 

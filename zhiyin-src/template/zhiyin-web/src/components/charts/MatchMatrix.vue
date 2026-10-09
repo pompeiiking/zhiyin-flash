@@ -31,7 +31,12 @@ const grid = computed(() =>
   ),
 )
 /** 缺口决定"这格有多空"：够 = 实心格；差一点 = 半格；差很多 = 虚线空心 */
-const fillOf = (gap: number) => (gap < 0.05 ? 'rgba(15,122,88,0.18)' : gap < 0.15 ? 'rgba(15,122,88,0.10)' : 'none')
+const fillOf = (gap: number) =>
+  gap < 0.05
+    ? 'color-mix(in srgb, var(--accent) 18%, transparent)'
+    : gap < 0.15
+      ? 'color-mix(in srgb, var(--accent) 10%, transparent)'
+      : 'none'
 const strokeOf = (gap: number) => (gap < 0.05 ? 'var(--mk-green)' : gap < 0.15 ? 'var(--mk-green)' : gap < 0.35 ? 'var(--mk-orange)' : 'var(--warn)')
 const dashOf = (gap: number) => (gap >= 0.15 ? '4 4' : 'none')
 </script>
@@ -71,7 +76,8 @@ const dashOf = (gap: number) => (gap >= 0.15 ? '4 4' : 'none')
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0;
   transition: transform var(--mo-fast) var(--mo-out), border-color var(--mo-fast) var(--mo-out);
 }
-.mx__cell:hover { transform: translateY(-2px); }
+@media (hover: hover) and (pointer: fine) {
+.mx__cell:hover { transform: translateY(-2px); } }
 .mx__need { font-family: var(--font-sans); font-size: 13px; font-weight: 600; color: var(--ink-1); font-variant-numeric: tabular-nums; }
 .mx__have { font-family: var(--font-sans); font-size: 10px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
 .mx__have.short { color: var(--warn); font-weight: 600; }

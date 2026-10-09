@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
 import urllib.error
 import urllib.request
@@ -64,7 +65,13 @@ def main() -> int:
     ).get("task_id") or ""
     print(f"账号 {account} · 会话 {task_id}\n")
 
+    premature_charts = []
+    profile_contradictions = []
     for line in OPENING:
+        known_before = (
+            ((call("/app/workspace", token=token).get("data") or {}).get("profile_panel") or {})
+            .get("fields") or []
+        )
         data = (
             call("/app/conversation/message", "POST", {"task_id": task_id, "message": line}, token).get(
                 "data"
@@ -72,7 +79,16 @@ def main() -> int:
             or {}
         )
         print(f"【他】{line}")
-        print(f"【主理】{((data.get('messages') or [{}])[0]).get('text') or ''}")
+        reply = str(((data.get("messages") or [{}])[0]).get("text") or "")
+        print(f"【主理】{reply}")
+        if known_before and re.search(r"没拿到.{0,3}画像|没有.{0,3}画像|画像.{0,5}空白", reply):
+            profile_contradictions.append(reply)
+        if "数据可视化的大屏" in line:
+            message = (data.get("messages") or [{}])[0]
+            premature_charts = [
+                item for item in message.get("renderables") or []
+                if item.get("kind") == "bars_chart"
+            ]
         print()
 
     # 画像里现在有几项真实把握度（图上的数字必须与它逐项相等）
@@ -102,6 +118,8 @@ def main() -> int:
         (item for item in renderables if item.get("kind") == "bars_chart"), None
     )
     checks: list[tuple[str, bool, str]] = []
+    checks.append(("已有画像时不说没有画像", not profile_contradictions, str(profile_contradictions)))
+    checks.append(("项目名称不会误触发画图", not premature_charts, str(premature_charts)))
     checks.append(
         ("主理自己画了一张图（没人告诉它调哪个工具）", bool(chart), str([item.get("kind") for item in renderables]))
     )
@@ -116,7 +134,7 @@ def main() -> int:
     checks.append(("图至少有两个点", len(points) >= 2, f"{len(points)} 个点"))
     if points:
         pairs = {
-            str(point.get("label")): round(float(point.get("value")))
+            str(point.get("label")): round(float(point.get("value")) * 100)
             for point in points
         }
         checks.append(
@@ -124,6 +142,15 @@ def main() -> int:
                 "图上的值与画像里的原值逐项相等（不是编的）",
                 all(expected.get(label) == value for label, value in pairs.items()),
                 f"图={pairs} / 库={expected}",
+            )
+        )
+        reply = str(message.get("text") or "")
+        checks.append(
+            (
+                "图表回复只概述已存图点",
+                reply.startswith("图表已生成，展示已存记录中的")
+                and all(label in reply for label in list(pairs)[:4]),
+                reply,
             )
         )
     checks.append(("标题是用户看得懂的话", bool((chart or {}).get("title")), str((chart or {}).get("title"))))

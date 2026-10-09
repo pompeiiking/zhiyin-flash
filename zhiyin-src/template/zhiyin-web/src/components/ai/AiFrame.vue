@@ -99,7 +99,7 @@ defineExpose({ run: t.run, retry: t.retry, state: t.state, error: t.error })
 }
 .wait__sketch::after {
   content: ""; position: absolute; inset: 0;
-  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.85), transparent);
+  background: linear-gradient(100deg, transparent, color-mix(in srgb, var(--n-1) 85%, transparent), transparent);
   animation: mo-shimmer 1.4s var(--mo-out) infinite;
 }
 .wait__lines { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
@@ -113,7 +113,7 @@ defineExpose({ run: t.run, retry: t.retry, state: t.state, error: t.error })
   display: flex; align-items: center; justify-content: space-between; gap: var(--s4);
   padding: var(--s3) var(--s4);
   border: var(--bw) solid var(--warn); border-radius: var(--r-md);
-  background: rgba(194, 90, 18, 0.06);
+  background: color-mix(in srgb, var(--warn) 6%, transparent);
 }
 .err__text { font-size: var(--fs-small); color: var(--ink-1); }
 
@@ -132,6 +132,7 @@ defineExpose({ run: t.run, retry: t.retry, state: t.state, error: t.error })
   color: var(--ink-3);
   transition: color var(--mo-fast) var(--mo-out), border-color var(--mo-fast) var(--mo-out);
 }
-.badge:hover { color: var(--ink-1); border-color: var(--line-3); }
+@media (hover: hover) and (pointer: fine) {
+.badge:hover { color: var(--ink-1); border-color: var(--line-3); } }
 .badge__dot { width: 6px; height: 6px; border-radius: 50%; background: var(--mk-purple); }
 </style>

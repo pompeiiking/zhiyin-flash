@@ -157,15 +157,26 @@ class DefaultFunctionService(FunctionService):
     async def list_track_events(self, user_id: str) -> list[TrackEvent]:
         return await self._track_events.list_events(user_id)
 
-    async def record_track_event(self, user_id: str, event: str, payload: dict) -> None:
+    async def record_track_event(
+        self, user_id: str, event: str, payload: dict, *, title: str = ""
+    ) -> None:
+        """落一条时间线记录。
+
+        `title` 由 Facade 从登记表取（人话名字），`detail` 一律留空：
+        这条时间线回答的是"这段时间发生过什么"，而一条体验型事件的 payload 是给系统看的
+        （`{'has_review': True}`）—— 写进去只会让用户读到 Python 字典的 repr
+        （不是 JSON，连引号都是单的）。`event` 仍然参与本方法（供日志/排查），
+        但它不再是给用户看的标题。
+        """
+        logger.debug("埋点落时间线：%s（%s）", event, title or "未登记")
         await self._track_events.append_event(
             user_id,
             TrackEvent(
                 id="",  # 由 Repository 生成稳定 id（进程内计数会在重启后重复）
                 user_id=user_id,
                 type="coach_message",
-                title=event,
-                detail=str(payload) if payload else "",
+                title=title or "一条操作记录",
+                detail="",
                 occurred_at=datetime.now(timezone.utc),
             ),
         )

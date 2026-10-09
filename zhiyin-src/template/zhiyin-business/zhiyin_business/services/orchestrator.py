@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import logging
+import re
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Optional, Sequence
 from uuid import uuid4
@@ -47,6 +49,7 @@ from zhiyin_data_sdk.repositories import TaskSessionRepository
 from zhiyin_kernel.blackboard import AssetVersion, TaskSession
 from zhiyin_kernel.assets import GapClaim
 from zhiyin_kernel import dynamic_config
+from zhiyin_business.policies.collection import may_override_user_edit
 from zhiyin_business.policies.collection_gate import CollectionGate, evaluate_gate
 from zhiyin_kernel.errors import ResourceNotFound
 from zhiyin_kernel.enums import (
@@ -78,6 +81,10 @@ _LEAD_CHANGE_REASON_PROMPT = "disclosure.reason.{stage}"
 #: 结论变化告知：画像补了新信息、这一版跟着重算过时要说的那句。
 #: 它是设计里三种告知（换主理 / 换理论 / 结论变化）的第三种。
 _CONCLUSION_CHANGE_PROMPT = "disclosure.conclusion_change"
+#: 本人填写未被覆盖告知：他刚说的那句撞上他自己填过的格子、被挡下时说的那句。
+#: 挡下是**设计如此**（见 `_apply_collect`），但挡下必须说出来 —— 不说的症状是
+#: "我说了它不听"：画像一动不动、界面上一个字都没有，他只能再改一次、再被挡一次。
+_FIELD_KEPT_PROMPT = "disclosure.field_kept_by_user"
 # 外部事实：哪些环节**主动去取**，哪些环节**只用手上有的**。
 #
 # 分两档，判据是"没它会不会自己编"：
@@ -96,6 +103,24 @@ _EXTERNAL_FETCH_STAGES = frozenset(
     {LoopStage.DIAGNOSE, LoopStage.DECIDE, LoopStage.ACT}
 )
 _EXTERNAL_CACHE_ONLY_STAGES = frozenset({LoopStage.COLLECT, LoopStage.REVIEW})
+
+
+@dataclass(frozen=True)
+class CollectWriteResult:
+    """① 采集这一轮写画像留下了什么。
+
+    为什么要有个返回值，而不是只写日志：`_apply_collect` 现在有三类"没写进去"，
+    它们的原因完全不同，混在日志里查不动 ——
+    `written` 是真写进去了，`dropped_by_gate` 是键不在词表里（提示词该补同义词），
+    `blocked_by_user_edit` 是他自己更正过、推断不许盖（这是**设计如此**，不是缺陷）。
+    它已经有了消费方：`handle_message` 拿 `blocked_by_user_edit` 拼成一条 `Disclosure`
+    说给用户听（挡下是设计如此，但**不能只留在日志里**）。同一份返回值也喂日志与守卫测试。
+    """
+
+    written: tuple[str, ...] = ()
+    blocked_by_user_edit: tuple[str, ...] = ()
+    dropped_by_gate: tuple[str, ...] = ()
+
 
 class DefaultOrchestrator(Orchestrator):
     """职引业务编排器。"""
@@ -243,7 +268,11 @@ class DefaultOrchestrator(Orchestrator):
         """
         fields = await self._profiles.get_fields(user_id)
         policy = await self._registry.get_collection_policy()
-        gate = evaluate_gate(fields, policy)
+        # 采集登记表要和"来源相称"那一维一起交进去：权威字段（学信网 / 教务导入）
+        # 由对话写进来时不算覆盖。不交表就只能按模块内置兜底表判，
+        # 而"哪个字段该由谁出具"以库为准（与 workspace / ai_tasks 同一份读法）。
+        rules = list(dynamic_config.snapshot().collection_rules) or None
+        gate = evaluate_gate(fields, policy, rules=rules)
         logger.info("采集门槛：%s", gate.line)
         return gate
 
@@ -480,6 +509,17 @@ class DefaultOrchestrator(Orchestrator):
             "task_id": request.task_id,
             "intent": intent.value,
         }
+        # 共享状态中虽有画像，模型在长上下文里仍曾说“没拿到你的画像”。
+        # 把已存字段提到本轮输入的显眼位置，避免把“缺岗位要求”误说成“没有画像”。
+        if blackboard.profile is not None and blackboard.profile.fields:
+            prompt_vars["existing_profile_facts"] = [
+                {
+                    "label": field.label or field.key,
+                    "value": field.value,
+                    "source": field.source.value,
+                }
+                for field in blackboard.profile.fields
+            ]
         # 最近几条对话必须一并给模型（自己与他各一句）。
         #
         # 少了它，模型手上只有"这一句 + 黑板快照"：它看不到上一轮自己问了什么、用户
@@ -544,6 +584,17 @@ class DefaultOrchestrator(Orchestrator):
         )
 
         structured = result.structured or {}
+        task_labels: dict[str, str] = {}
+        if stage is LoopStage.REVIEW:
+            plan = await self._assets.get_action_plan(request.user_id)
+            task_labels = {
+                task.id: task.text
+                for phase in (plan.phases if plan else [])
+                for task in phase.tasks
+                if task.id and task.text
+            }
+            if structured:
+                structured = _replace_task_ids_in_prose(structured, task_labels)
         # 产出不合法时必须**留痕**：契约没被满足，降级是怎么发生的要能查。
         # 之前这里直接往下走，于是"模型答了、但 JSON 少了字段"这件事
         # 在日志里一个字都没有，表现成"回复永远是同一句"。
@@ -581,7 +632,24 @@ class DefaultOrchestrator(Orchestrator):
         # 整份产出别处不合契约（少个字段、格式歪了）不该连累这一条：字段能解析就落库，
         # 其余的问题留在日志里。`_apply_collect` 自己会挑出能解析的部分。
         if stage is LoopStage.COLLECT:
-            await self._apply_collect(request.user_id, structured)
+            write = await self._apply_collect(request.user_id, structured)
+            # `_apply_collect` 的返回值在此之前**没有任何消费方**：被挡下的写入只有日志知道，
+            # 而他看不到日志。这一格是他自己填的、推断改不动，那是设计如此；但"没写进去"
+            # 必须当面说，并且给出口（去画像点「更正」），否则他听到的就是"我说了它不听"。
+            #
+            # **没有撞上时不出现**：这一轮一个字段都没被挡下时 `blocked_by_user_edit`
+            # 是空元组，这里连文案都不取 —— 不能每轮都念一遍这句话，那样它就从"解释"
+            # 变成了背景噪音，真正被挡的那一轮反而没人会注意。
+            if write.blocked_by_user_edit:
+                kept = await self._field_kept_disclosure(write.blocked_by_user_edit)
+                if disclosure is None:
+                    disclosure = kept
+                else:
+                    # 同一轮里既换了主理（或重算了旧结论）、又挡下一次写入：两件事都得说，
+                    # 与下面「结论变化」的处理同一条口径。
+                    disclosure = disclosure.model_copy(
+                        update={"text": f"{disclosure.text.rstrip()} {kept.text.strip()}"}
+                    )
         badge = await self._badge(
             lead.lead_agent,
             await self._known_theory_refs(structured.get("theory_refs")),
@@ -590,12 +658,25 @@ class DefaultOrchestrator(Orchestrator):
         # 主理这一轮自己产出的可视件：逐个按 kind 校验（不认识的、形状不对的丢掉留日志）。
         # 模型只挑了"看哪一类"，点位是工具从库里读的 —— 校验在 `policies/renderers.py`。
         model_renderables = validate_renderables(result.renderables)
+        wants_chart = _asks_for_chart(request.message)
+        renderables = _renderables_for_turn(
+            model_renderables,
+            stage,
+            structured,
+            message=request.message,
+            profile=await self._profiles.get(request.user_id) if wants_chart else None,
+        )
+        reply_text = (
+            _chart_reply_text(renderables)
+            if wants_chart
+            else _user_facing_text(structured, guide, result.raw_text, valid=result.valid)
+        )
+        if stage is LoopStage.REVIEW:
+            reply_text = _replace_task_ids_in_prose(reply_text, task_labels)
         messages = [
             ConversationMessage(
                 role="agent",
-                text=_user_facing_text(
-                    structured, guide, result.raw_text, valid=result.valid
-                ),
+                text=reply_text,
                 agent_id=lead.lead_agent,
                 theory_refs=badge.theory_refs,
                 # 可视件与情报引用都来自**这一轮的实测数据**：可视件由服务端按 kind 填，
@@ -604,9 +685,7 @@ class DefaultOrchestrator(Orchestrator):
                 # 两种来源，同一个形状：主理自己调的（它调 `chart.render` 时，
                 # 点位是工具从库里读出来的 —— 模型只挑了"画哪一类"，碰不到数值）；
                 # 它没点，就补上这一环节默认那张（仍然是实测分值）。
-                renderables=_renderables_for_turn(
-                    model_renderables, stage, structured
-                ),
+                renderables=renderables,
                 intel_refs=_intel_refs(prompt_vars.get("external_data")),
             )
         ]
@@ -833,7 +912,9 @@ class DefaultOrchestrator(Orchestrator):
             logger.exception("环节产出落库失败：stage=%s", stage.value)
             return []
 
-    async def _apply_collect(self, user_id: str, structured: dict[str, Any]) -> None:
+    async def _apply_collect(
+        self, user_id: str, structured: dict[str, Any]
+    ) -> CollectWriteResult:
         """把 ① 采集这一轮的字段与缺口落进画像。
 
         为什么必须有这一步
@@ -849,6 +930,18 @@ class DefaultOrchestrator(Orchestrator):
             于是"画像一变就重算受影响资产"这条影响面传播也一并失效。
 
         落库失败不打断这一轮：用户的话已经答完了，错误进日志即可（与资产落库同一条口径）。
+
+        **但"用户亲手写的"那条值不许被推断覆盖**（见下方字段门禁之后的第二道判定）。
+        他在画像里点「更正」把专业改成自己要的那句，下一轮对话里模型再产出一条
+        `major` 就把他的话盖掉了 —— 他刚纠正过的东西又变回去，而界面上没有一处
+        告诉他发生了什么。挡掉之后保留的是他自己写的那条值（`user_edit`），
+        权威记录（`record`：学信网核验 / 教务导入）仍然覆盖得动 —— 它是出具方，
+        比自述更权威。他本人也随时能再「更正」一次，这条路没被堵死
+        （写 `user_edit` 的是 `DefaultProfileService.correct_field`，不经过这里）。
+
+        返回值见 `CollectWriteResult`：`blocked_by_user_edit` 由 `handle_message` 拼成
+        一条用户可见的 `Disclosure`（他刚说的那句撞上自己填过的格子时**必须当面说**，
+        并告诉他去哪儿改）。被挡下的写入同时也留一条 `WARNING` 日志，给查库的人看。
         """
         from zhiyin_business.contracts.collect import CollectOutput, FieldUpdate
 
@@ -870,15 +963,19 @@ class DefaultOrchestrator(Orchestrator):
                     continue
             if not salvaged:
                 logger.warning("① 采集产出里没有可解析的字段，本轮不写画像")
-                return
+                return CollectWriteResult()
             logger.warning(
                 "① 采集产出不合契约，仍从里面救回 %d 条字段更新", len(salvaged)
             )
             output = CollectOutput(field_updates=salvaged)
 
         allowed = self._allowed_profile_keys()
+        # 画像里现有的每一条（键 → 整条字段）：判"这一格是不是他亲手写的"要看**来源**，
+        # 而来源只长在那条旧值上。读一次，这一轮所有字段共用。
+        current = await self._current_fields(user_id)
         dropped: list[str] = []
         written: list[str] = []
+        blocked_by_user_edit: list[str] = []
         for update in output.field_updates:
             key = self._normalize_profile_key(update.key)
             # **字段门禁**：画像只有一份固定词表（动态资源的采集规则）。
@@ -887,6 +984,12 @@ class DefaultOrchestrator(Orchestrator):
             # 采集清单与报告维度又都对不上它，整份画像从此不可分析。
             if allowed and key not in allowed:
                 dropped.append(update.key)
+                continue
+            # **第二道门禁：他亲手写的那条值不许被推断覆盖**（见方法说明与
+            # `policies/collection.py::may_override_user_edit`）。判在写之前，
+            # 因为 `update_field` 是整行替换：写进去就找不回原值了。
+            if not may_override_user_edit(current.get(key), update.source):
+                blocked_by_user_edit.append(key)
                 continue
             try:
                 await self._profiles.update_field(
@@ -908,6 +1011,9 @@ class DefaultOrchestrator(Orchestrator):
         # 画像更新本身也是一次**动作**：干预判定要能看见"他刚补了信息"，
         # 否则一个只补画像、不勾任务的人会被判成"好几天没动"。
         # 这条事件类型一直躺在干预白名单里，此前没有任何生产者（实测库里 0 行）。
+        #
+        # 被挡下的那几条**不算一次更新**：库里没有新值，却报一条"画像字段更新"，
+        # 会让影响面传播去重算一份没变的画像（而它的由头正是这次"更新"）。
         for key in written:
             await self._behaviors.log(
                 user_id,
@@ -915,6 +1021,16 @@ class DefaultOrchestrator(Orchestrator):
                     event_type=BehaviorEventType.PROFILE_FIELD_UPDATED,
                     payload={"field_key": key, "stage": LoopStage.COLLECT.value},
                 ),
+            )
+
+        if blocked_by_user_edit:
+            # 不静默，但也不当故障：这是设计如此。日志里要说清"被挡的是什么、
+            # 原值是谁写的、他要改该走哪条路" —— 否则下一个人看到"画像没更新"，
+            # 只能从头查一遍（实测这类问题查起来很费时间）。
+            logger.warning(
+                "画像写入被「本人填写」挡下：%s —— 这些格子是他自己更正过的，"
+                "对话推断不许覆盖它；要改仍由他本人点「更正」改（POST profile/fields/{key}）",
+                sorted(set(blocked_by_user_edit)),
             )
 
         if dropped:
@@ -964,6 +1080,30 @@ class DefaultOrchestrator(Orchestrator):
                     await self._profiles.replace_gaps(user_id, normalized)
                 except Exception:  # noqa: BLE001
                     logger.exception("画像缺口落库失败")
+
+        return CollectWriteResult(
+            written=tuple(written),
+            blocked_by_user_edit=tuple(sorted(set(blocked_by_user_edit))),
+            dropped_by_gate=tuple(sorted(set(dropped))),
+        )
+
+    async def _current_fields(self, user_id: str) -> dict[str, Any]:
+        """画像里现在已有的字段（键 → 整条），用来判"这一格是不是他亲手写的"。
+
+        为什么允许多读一次：判据（来源）只长在旧值上，不读旧值就只能盲写，
+        而 `update_field` 是整行替换 —— 盲写的代价是他自己更正过的值被盖掉。
+
+        读不到就返回空表（＝这一轮不挡）：**读旧画像失败不该让用户刚说的话
+        全部写不进去**，这与 `DefaultProfileService.update_field` 里 `is_new`
+        的降级是同一条口径（那里也把读失败当"未知"，照样写）。
+        代价是这一次可能盖掉一条本人填写的值，但那要求读路径先坏掉 ——
+        比起"他说了话画像一动不动"，这是更小、也更可查的一种失败。
+        """
+        try:
+            return {field.key: field for field in await self._profiles.get_fields(user_id)}
+        except Exception:  # noqa: BLE001
+            logger.warning("读取既有画像失败，本轮不做「本人填写」保护", exc_info=True)
+            return {}
 
     def _allowed_profile_keys(self) -> set[str]:
         """画像允许的字段键（动态资源里的画像字段词表；读不到时返回空集＝不拦）。
@@ -1213,6 +1353,26 @@ class DefaultOrchestrator(Orchestrator):
         prompt = await self._required_prompt(_CONCLUSION_CHANGE_PROMPT)
         return Disclosure(kind="conclusion_change", text=prompt.content.strip())
 
+    async def _field_kept_disclosure(self, keys: Sequence[str]) -> Disclosure:
+        """本人填写未被覆盖告知：被挡下的是哪几格、为什么、他要改该去哪儿改。
+
+        字段名走画像词表（`_profile_vocabulary`，与界面同一份中文名），**不念英文键**：
+        `major` 对用户毫无意义，"专业"才是他在画像里看到的那个词。
+        这个词表读不到（配置没装载）时退回键本身 —— 宁可难看，也不能因为他这一格
+        没名字就整句话不说（不说的代价正是这次要修的那个现象）。
+
+        `kind` 用既有的 `conclusion_change`：对外它属于同一类"这一轮有件事你得知道"，
+        前端只渲染 `text`（见 `web/src/stores/session.ts`）。新开一个枚举取值要同时改
+        业务契约、API 视图、OpenAPI 快照与前端类型，收益只是内部标签更贴切 ——
+        这轮不做，留在这里说明为什么。
+        """
+        labels = {spec.key: spec.label for spec in self._profile_vocabulary()}
+        names = "、".join(labels.get(key, "") or key for key in keys)
+        prompt = await self._required_prompt(_FIELD_KEPT_PROMPT)
+        # 占位符对不上会在这里抛 KeyError：那是配置错，不是运行故障，不该被吞掉
+        # （与 `_lead_change_reason` 同一条口径）。
+        return Disclosure(kind="conclusion_change", text=prompt.content.format(fields=names))
+
     # ------------------------------------------------------------------
     # 用户可见文案：取自动态资源，代码里不再拼句子
     #
@@ -1304,7 +1464,12 @@ def _theory_refs(raw: Any) -> list[TheoryRef]:
 
 
 def _renderables_for_turn(
-    from_model: Sequence[Renderable], stage: Any, structured: dict[str, Any]
+    from_model: Sequence[Renderable],
+    stage: Any,
+    structured: dict[str, Any],
+    *,
+    message: str = "",
+    profile: Any = None,
 ) -> list[Renderable]:
     """这一轮要摆给用户看的可视件：主理自己点的那张，或者这一环节默认那张。
 
@@ -1318,26 +1483,81 @@ def _renderables_for_turn(
       · ③ 决策 —— 三套方案的匹配度（"三套差多少"比三行字清楚）。
     取不到就不补：宁可没有图，也不要拿编出来的数字画一张。
     """
-    kept = list(from_model)
+    kept = validate_renderables([item.model_dump(mode="json") for item in from_model])
     if any(item.kind == "bars_chart" for item in kept):
         return kept
+    if _asks_for_chart(message):
+        fields = list(getattr(profile, "fields", []) or [])
+        points = [
+            {
+                "label": str(field.label or field.key)[:12],
+                "value": field.confidence,
+            }
+            for field in fields
+            if field.confidence is not None and (field.label or field.key)
+        ]
+        if len(points) >= 2:
+            kept.extend(
+                validate_renderables(
+                    [{
+                        "kind": "bars_chart",
+                        "title": "这几项你现在各有多少把握",
+                        "payload": {"unit": "%", "points": points[:8]},
+                    }]
+                )
+            )
+            if any(item.kind == "bars_chart" for item in kept):
+                return kept
     fallback = _default_bars(stage, structured)
     if fallback is not None:
-        kept.append(fallback)
+        kept.extend(validate_renderables([fallback.model_dump(mode="json")]))
     return kept
 
 
+def _asks_for_chart(message: str) -> bool:
+    text = message.strip()
+    return any(word in text for word in (
+        "画个图", "画张图", "画一个图", "画图", "给我一张图",
+        "生成图表", "做个图表", "做张图表", "看图表", "看看图表",
+        "展示图表", "用图表", "画柱状图", "看柱状图",
+        "可视化一下", "做个可视化", "给我可视化", "看看可视化",
+    ))
+
+
+def _chart_reply_text(renderables: list[Renderable]) -> str:
+    """明确要图时用已核验图点生成回话，避免模型文字否认已存事实。"""
+    labels = list(dict.fromkeys(
+        str(point.get("label") or "").strip()
+        for chart in renderables
+        for point in (chart.payload.get("points") or [])
+        if isinstance(point, dict) and str(point.get("label") or "").strip()
+    ))
+    if not labels:
+        return "目前没有足够的可用数据生成图表；补充记录后可以再看。"
+    shown = "、".join(labels[:4])
+    suffix = f"等 {len(labels)} 项" if len(labels) > 4 else ""
+    return f"图表已生成，展示已存记录中的{shown}{suffix}。这张图只呈现这些记录，不代表职业匹配结论。"
+
+
 def _default_bars(stage: Any, structured: dict[str, Any]) -> Optional[Renderable]:
-    """这一环节顺手给的那张柱状图（点全部来自库里已存的分值）。"""
+    """这一环节顺手给的那张柱状图（点全部来自库里已存的分值）。
+
+    **超出 0–1 的分值一律不画**（调用方过 `validate_renderables`，见
+    `test_default_chart_rejects_model_score_outside_ratio_range`）：宁可没有图，
+    也不要把一个量纲不明的数字画成图 —— 前端拿到 7400 会当比值再乘 100，
+    用户读到的是"740000 分"加三根一样长的柱子（issue 证据截图 3/4/6）。
+    契约本身在 `contracts/decide.py`：`match_score: ge=0.0, le=1.0`。
+    """
     try:
         if stage is LoopStage.DECIDE:
             points = [
                 {
                     "label": str(plan.get("name") or f"方案{i + 1}")[:12],
-                    "value": float(plan.get("match_score") or 0.0),
+                    "value": float(plan["match_score"]),
                 }
                 for i, plan in enumerate(structured.get("plans") or [])
                 if isinstance(plan, dict)
+                and isinstance(plan.get("match_score"), (int, float))
             ]
             if len(points) >= 2:
                 # 标题是**用户要读的**：不写"三套方案"这种内部说法（实测用户看不懂
@@ -1392,6 +1612,26 @@ def _intel_refs(external: Any) -> list[IntelRef]:
             )
         )
     return refs[:4]
+
+
+def _replace_task_ids_in_prose(value: Any, task_labels: dict[str, str]) -> Any:
+    """复盘正文用任务文字称呼已登记任务，保留结构中的机器 ID。"""
+    if isinstance(value, dict):
+        return {
+            key: item if key in {"id", "task_id", "option_id", "achievements_unlocked"}
+            else _replace_task_ids_in_prose(item, task_labels)
+            for key, item in value.items()
+        }
+    if isinstance(value, list):
+        return [_replace_task_ids_in_prose(item, task_labels) for item in value]
+    if not isinstance(value, str):
+        return value
+    text = value
+    for task_id, label in sorted(task_labels.items(), key=lambda pair: len(pair[0]), reverse=True):
+        pattern = rf"(?<![A-Za-z0-9_]){re.escape(task_id)}(?![A-Za-z0-9_])"
+        text = re.sub(pattern, lambda _match, label=label: f"「{label}」", text)
+    text = re.sub(r"(?<=[\u4e00-\u9fff])[ \t]+(?=「)", "", text)
+    return re.sub(r"(?<=」)[ \t]+(?=[\u4e00-\u9fff])", "", text)
 
 
 def _single_line(text: str, *, limit: int = 0) -> str:

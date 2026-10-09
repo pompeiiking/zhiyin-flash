@@ -57,6 +57,31 @@ dist-ssr/
 *.local
 .vite/
 
+# ---- 本地核验工具与产物（无头 Chrome 驱动、截图、证据 JSON）----
+# 它们是"某一次跑出来的东西"：驱动脚本可以复用，但截图与 JSON 每次覆盖，
+# 十几张 1440×900 的 PNG 会把仓库撑大，而且下一次跑就把上一次盖掉。
+# 工具留在工作区给下一次用，不入库。
+.tmp-shots/
+.tmp-evidence/
+.tmp-build/
+.tmp-impeccable/
+# pytest 的临时根目录：测试里把 TEMP 指到模板目录下时，会在仓库里长出一棵树
+# （mat_*.txt、occupied、added.json…）。实测踩到过，这里按实际路径兜住。
+pytest-of-*/
+zhiyin-src/template/pytest-of-*/
+# 有人拿 Chrome 去截图时会把它 profile 落在仓库里（component_crx_cache、Local State…）。
+# 这坑踩过一次：profile 里的扩展清单含一串大写字母，把"文档术语"守卫误伤成失败。
+.probe-chrome/
+.probe-chrome-*/
+
+# ---- 不纳入版本库的本地文档 ----
+# 下面三份是作者自己的材料（一份根目录笔记 + 两份方案/分析稿），
+# 作者明确要求不进仓库。文件仍留在工作区里，只是不跟版本走 ——
+# 需要入库时把对应行删掉即可。
+信息采集与快速回答问题定位.md
+docs/测试与优化-袁/移动云杯AI-Coding参赛改造方案.md
+docs/测试与优化-袁/项目分析.md
+
 # ---- 编辑器与系统 ----
 .vscode/*
 !.vscode/extensions.json

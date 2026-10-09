@@ -106,7 +106,9 @@ class DirectionPlan(BaseModel):
     role: PlanRole
     name: str
     target_desc: str = Field(description="目标描述")
-    match_score: float = Field(description="匹配度，解释性分值，非严谨算法")
+    match_score: float | None = Field(
+        default=None, ge=0.0, le=1.0, description="有可追溯依据时的匹配度；缺依据为 null"
+    )
     match_method: str = Field(
         default="",
         description="匹配度口径（同一批方案共用一句），如「三叶草契合度 × 可达性」",

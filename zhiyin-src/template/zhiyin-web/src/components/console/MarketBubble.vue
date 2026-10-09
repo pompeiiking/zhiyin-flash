@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import Bubble from '@/components/console/Bubble.vue'
+import GlyphIcon from '@/components/ui/GlyphIcon.vue'
 import { useSessionStore } from '@/stores/session'
 import { groupIntel, readFetched, readIntelText, readShares } from '@/lib/intel'
 
@@ -101,7 +102,7 @@ onMounted(() => {
         <li v-for="(group, i) in groups" :key="group.kind">
           <span class="chain__k label">{{ group.label }}</span>
           <span class="chain__n mono">{{ group.items.length }}</span>
-          <span v-if="i < groups.length - 1" class="chain__arrow" aria-hidden="true">→</span>
+          <GlyphIcon v-if="i < groups.length - 1" class="chain__arrow" name="arrow-right" :size="12" />
         </li>
       </ol>
 
@@ -152,7 +153,7 @@ onMounted(() => {
       >
         {{ session.intelBusy ? '正在取…' : '现在去取一次' }}
       </button>
-      <button v-if="items.length" class="act" type="button" @click.stop="open">看全部 →</button>
+      <button v-if="items.length" class="act" type="button" @click.stop="open">看全部 <GlyphIcon name="arrow-right" :size="13" /></button>
     </footer>
   </Bubble>
 </template>
@@ -166,7 +167,8 @@ onMounted(() => {
   border-radius: 50%; color: var(--ink-3);
   transition: transform var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
-.head__fold:hover { color: var(--ink-1); background: var(--fill-hover); }
+@media (hover: hover) and (pointer: fine) {
+.head__fold:hover { color: var(--ink-1); background: var(--fill-hover); } }
 .head__fold[aria-expanded="false"] { transform: rotate(-90deg); }
 
 /*
@@ -217,9 +219,11 @@ onMounted(() => {
   transition: border-color var(--mo-fast) var(--mo-out), background var(--mo-fast) var(--mo-out),
               color var(--mo-fast) var(--mo-out);
 }
-.act:hover { border-color: var(--ink-1); color: var(--ink-1); }
+@media (hover: hover) and (pointer: fine) {
+.act:hover { border-color: var(--ink-1); color: var(--ink-1); } }
 .act--go { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 500; }
-.act--go:hover { background: var(--accent-deep); border-color: var(--accent-deep); color: var(--accent-ink); }
+@media (hover: hover) and (pointer: fine) {
+.act--go:hover { background: var(--accent-deep); border-color: var(--accent-deep); color: var(--accent-ink); } }
 .act:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* 矮格位：链条与占比先收，标题与入口留着 */

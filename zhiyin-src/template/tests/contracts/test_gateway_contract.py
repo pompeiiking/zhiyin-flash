@@ -127,3 +127,13 @@ async def test_object_store_contract(gateways) -> None:
 
     with pytest.raises(ValueError):
         await store.put("../escape.txt", b"x")
+
+
+async def test_object_store_write_failure_is_not_reported_as_success(tmp_path) -> None:
+    from zhiyin_infrastructure.local.object_store import LocalFileStore
+
+    occupied = tmp_path / "occupied"
+    occupied.write_text("not a directory", encoding="utf-8")
+    store = LocalFileStore(str(occupied))
+    with pytest.raises(OSError):
+        await store.put("u1/report/v1.pdf", b"content")

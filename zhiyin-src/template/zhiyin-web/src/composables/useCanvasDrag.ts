@@ -8,12 +8,19 @@ import { onBeforeUnmount, onMounted, type Ref } from 'vue'
  *
  *   拎起来  块从网格里抽出来（其余块立刻铺满它让出的空间），跟着指针走
  *   拖动中  指针底下的那块会亮起虚线浮标 —— 告诉你"松手就和它换位"
- *   松手    换位 → 布局重算 → Flip 把移动的过程补成动画
+ *   松手    换位 → 等新格位写进 DOM → 把位移补回"松手时指针在的地方" → 滑进格位
  *   原地松  它会用 CSS 过渡滑回自己的位置，什么都没发生
  *
  * 位移只用元素自己的内联 transform，且一定会被清掉：
  * 不用 gsap 做拖动与落位，因为 gsap 缓存里的 x/y 一旦被打断就会被重新写回元素上，
- * 让块"布局在家、看起来在别处"。
+ * 让块"布局在家、看起来在别处"。同理，补位动画（Flip）的目标里必须排掉手上这一块 ——
+ * 它在动画结束时会对自己那批目标 clearProps: 'transform'，那一下会把拖动写的位移一起擦掉，
+ * 卡片会突然掉回画布左上角，直到下一次 pointermove 才回来。
+ *
+ * 坐标只有一套：**画布内的布局坐标**（也就是 offsetLeft/offsetTop 那一套）。
+ * 预览位置由指针**增量**累加出来 —— 增量与坐标系无关，父级带 scale/zoom 也不会越拖越偏；
+ * 命中检测与落位补偿都读 offsetLeft/offsetTop —— 它们不受 transform 影响，
+ * 不会读到别的块落位动画中途的瞬时矩形。
  */
 
 export interface DragHooks {
@@ -21,8 +28,12 @@ export interface DragHooks {
   before: () => void
   /** 布局已改变，去做补位动画 */
   after: () => void
-  /** 松手：把 from 挪到 to 的位置上（由外层重排，布局引擎自会重算尺寸） */
-  reorder: (from: string, to: string) => void
+  /**
+   * 松手：把 from 挪到 to 的位置上（由外层重排，布局引擎自会重算尺寸）。
+   * 返回 false = 这次换位并没有改动顺序（顺序里找不到其中一块）：
+   * 那就不会有下一次渲染，调用方得当场收尾，不能等一个永远不来的更新。
+   */
+  reorder: (from: string, to: string) => boolean
 }
 
 /** 走够这么多像素才算"拖"，否则只当是一次点击 */
@@ -36,12 +47,19 @@ export function useCanvasDrag(canvas: Ref<HTMLElement | null>, hooks: DragHooks)
   let ghost: HTMLElement | null = null
   let observer: MutationObserver | null = null
 
-  /** 拎在手上时它当前的位置（相对画布左上角） */
+  /** 拎在手上时它当前的位置（相对画布左上角，与 offsetLeft/offsetTop 是同一套坐标） */
   let posX = 0
   let posY = 0
+  /**
+   * 拎起来那一刻它在**画布坐标**里的位置。
+   *
+   * 拖动中的 `posX/posY` 只是**增量**（见 lift 的注释），而收尾时要和
+   * `offsetLeft/offsetTop`（画布坐标）比较，所以那一个绝对值单独记一份。
+   */
+  let originX = 0
+  let originY = 0
 
   let rafId = 0
-  let settleTimer = 0
   let moved = false
   let suppressClick = false
   let isPinned = false
@@ -50,14 +68,29 @@ export function useCanvasDrag(canvas: Ref<HTMLElement | null>, hooks: DragHooks)
   /** 指针最新位置：pointermove 只写这两个值，落点计算留给每帧的 tick */
   let pointerX = 0
   let pointerY = 0
-  /* 拖起来时缓存一次画布矩形：拖动期间它不会变，之后每步都不用再读布局 */
-  let canvasRect: DOMRect | null = null
   /** 上一次指针位置：用来算增量 */
   let lastMoveX = 0
   let lastMoveY = 0
-  let busyUntil = 0
   /** 指针底下是哪一块 —— 松手就和它换位 */
   let targetId: string | null = null
+
+  /**
+   * 松手之后还等着交还网格的那一块。
+   *
+   * 换位的新格位要等外层（Vue）下一次渲染才写进 DOM，拖动引擎看不到那一刻；
+   * 所以先记下"松手时它看起来在哪"，等外层说"布局落定了"（finishDrop）再收尾。
+   * 提前收尾的话，滑向的是**换位之前**的旧格位 —— 等新格位一到，卡片还得再跳一次，
+   * 用户看到的就是"松开的位置和预览位置对不上"。
+   */
+  let pending: { el: HTMLElement; x: number; y: number } | null = null
+
+  /**
+   * 每个块自己的落位兜底定时器（key = 块）。
+   *
+   * 用一个全局变量会出事：连着在两块之间拖时，后一次的兜底会把前一次的定时器顶掉，
+   * 于是前一块可能永远留着 .settling —— 它从此不再进补位动画（flowEls 会把它排除）。
+   */
+  const settleTimers = new Map<HTMLElement, number>()
 
   const blockEl = () => canvas.value
 
@@ -98,17 +131,6 @@ export function useCanvasDrag(canvas: Ref<HTMLElement | null>, hooks: DragHooks)
     g.style.opacity = '1'
   }
 
-  /**
-   * **1:1 跟随** —— 拖拽时这块是"粘在指针上"的，不是"被牵着走"。
-   *
-   * 这里原来是 `pos += (target - pos) * 0.28` 的阻尼跟随，理由是"有重量感"。
-   * 那是把两件事搞混了：**跟手**是拖拽的全部意义，**重量感**该由落位动画去表达。
-   * 0.28 意味着块永远落后指针十几帧（约 170ms），手一快它就明显掉在后面 ——
-   * 用起来的感受不是"重"，是"不听话"。
-   *
-   * 循环仍然保留：pointermove 触发频率高于帧率，用它把写样式收在一帧一次，
-   * 避免同一帧里反复写 transform 引起无谓的重排。
-   */
   /*
    * 拖动的主循环：**一帧只做一次布局读**。
    *
@@ -125,8 +147,17 @@ export function useCanvasDrag(canvas: Ref<HTMLElement | null>, hooks: DragHooks)
    */
   function tick() {
     if (!active) return
-    const cr = canvasRect
-    if (cr) {
+    const cv = blockEl()
+    if (cv) {
+      /*
+       * 画布矩形每帧现读一次，不再用"拖动开始时缓存的那一份"。
+       *
+       * 指针坐标必须先换算成画布内坐标，才能和 offsetLeft/offsetTop 相比 ——
+       * 两者要么都新鲜，要么都不新鲜。缓存下来的那份只要画布挪过（窗口尺寸变了、
+       * 外层留白变了），换算就整体偏掉，表现是"卡片跟手是对的，虚线浮标却亮在隔壁"。
+       * 一帧一次和下面读 offsetLeft 是同一笔开销，不会多出一次强制同步布局。
+       */
+      const cr = cv.getBoundingClientRect()
       const over = under(pointerX, pointerY, cr)
       targetId = over?.el.dataset.block ?? null
       showGhost(over)
@@ -137,20 +168,16 @@ export function useCanvasDrag(canvas: Ref<HTMLElement | null>, hooks: DragHooks)
   /**
    * 指针现在压在谁身上。
    * 用 offsetLeft/Top 而不是 getBoundingClientRect：补位动画期间其它块带着 transform，
-   * 读到的会是动画中途的瞬时矩形。
-   */
-  /*
-   * 传入画布矩形，而不是每次自己读一遍。
-   * 拖动时这一帧已经读过一次了 —— 再读一次就是多一次强制同步布局。
+   * 读到的会是动画中途的瞬时矩形 —— 命中的是"正在往哪儿去的路上"，不是它的格位。
+   * 画布矩形由调用方传进来：这一帧已经读过一次了，再读一次就是多一次强制同步布局。
    */
   function under(
     cx: number,
     cy: number,
-    known?: DOMRect,
+    cRect: DOMRect,
   ): { el: HTMLElement; x: number; y: number; w: number; h: number } | null {
     const cv = blockEl()
     if (!cv) return null
-    const cRect = known ?? cv.getBoundingClientRect()
     const px = cx - cRect.left
     const py = cy - cRect.top
     let best: { el: HTMLElement; x: number; y: number; w: number; h: number } | null = null
@@ -189,6 +216,24 @@ export function useCanvasDrag(canvas: Ref<HTMLElement | null>, hooks: DragHooks)
     if (hit && hit !== el && el.contains(hit)) return
     if (el.classList.contains('leaving')) return
 
+    if (active) {
+      /*
+       * 到这一步说明"用户真的又在按一块要拖的块了"，但上一次拖动还没收场。
+       * 状态只有一份（active / posX / pending），被第二个指针覆盖之后，
+       * 前一块就再没有人给它收尾：它会一直挂着 .pinned（绝对定位、脱离网格），
+       * 表现是"有一块卡在画布左上角不动、还压着别的块"，而 sweep 也救不了它
+       * （sweep 正是跳过 .pinned —— 那是给"正在拖"留的）。
+       *
+       * 非主指针（多指触摸的第二根手指）直接不接。
+       */
+      if (!e.isPrimary) return
+      /* 主指针又按了一次：上一次拖动多半是没等到 pointerup 就断了，先把它交还网格 */
+      const stuck = active
+      endDrag()
+      stuck.classList.remove('pinned', 'dragging', 'settling')
+      clean(stuck)
+    }
+
     /*
      * 这里不 preventDefault：在 pointerdown 上阻止默认行为会连带阻止浏览器把焦点
      * 交给这个块，"关掉覆盖层 → 焦点回到来源块"就无从谈起。
@@ -205,16 +250,15 @@ export function useCanvasDrag(canvas: Ref<HTMLElement | null>, hooks: DragHooks)
     pointerY = e.clientY
     el.setPointerCapture?.(e.pointerId)
     blockEl()!.classList.add('arming')
-
-    const cRect = blockEl()!.getBoundingClientRect()
-    const r = el.getBoundingClientRect()
-    /* 存下来：拖动期间每步都用它，不再重复读布局（增量算法本身不再需要抓取偏移） */
-    canvasRect = cRect
-    posX = r.left - cRect.left
-    posY = r.top - cRect.top
-    /* 增量基准：从"这一刻的指针位置"开始累加 */
-    lastMoveX = e.clientX
-    lastMoveY = e.clientY
+    /*
+     * 这里**不**算预览位置、也不记增量基准：真正拎起来的那一刻（lift）才以元素当时的
+     * 实际位置为准 —— 按下与拎起来之间指针可能已经走了几像素，提前算出来的基准只会是错的。
+     *
+     * 也不去动**按下的这一块自己**上一次落位的收尾（.settling 那一程）：只是按下、还没拎起来时，
+     * 那点残局交给它自己的 transitionend / 兜底定时器收干净就好。在这里把定时器掐掉，
+     * 反而会留下一个永远摘不掉的 .settling —— 从此这块再也不会进补位动画
+     * （flowEls 会一直把它排除在外）。真正要接管它的是 lift()，那里会把这个元素名下的收尾作废。
+     */
 
     window.addEventListener('pointermove', onPointerMove)
     window.addEventListener('pointerup', onPointerUp)
@@ -224,16 +268,56 @@ export function useCanvasDrag(canvas: Ref<HTMLElement | null>, hooks: DragHooks)
   /** 走够距离，真的拎起来：冻结尺寸、抽离网格，其余块立刻铺满它让出的位置 */
   function lift(e: PointerEvent) {
     const el = active
-    if (!el) return
-    const cRect = blockEl()!.getBoundingClientRect()
-    canvasRect = cRect
+    const cv = blockEl()
+    if (!el || !cv) return
+    const cRect = cv.getBoundingClientRect()
     const r = el.getBoundingClientRect()
-    posX = r.left - cRect.left
-    posY = r.top - cRect.top
+    /*
+     * 预览位移从 **0** 起算，而不是从"这块到画布左缘的距离"起算。
+     *
+     * 原因在 `.pinned` 的定位：它是**绝对定位的网格项**，而按 CSS 规范，
+     * 绝对定位的网格项其包含块是**它自己的网格区域**，不是网格容器的 padding box。
+     * 也就是说 `left:0; top:0` 已经把它放回了原处，transform 只需要承担"指针走了多少"。
+     * 把静态偏移也算进去，它就会被算两次 —— 实测：指针走 300px，卡片走 743px（2.48 倍，
+     * 而这块到画布左缘正是 468px），越拖越离谱；这也解释了松手时"位置对不上"。
+     * 真正需要那个绝对值的只有 settle()，所以单记一份 origin，不动它的换算。
+     */
+    originX = r.left - cRect.left
+    originY = r.top - cRect.top
+    /*
+     * 已经走过的那一段要算进来（从按下点算起）：拎起来之前指针至少走了 DRAG_THRESHOLD，
+     * 快的操作里第一帧就能走十几到几十像素。从 0 起算的话，那一段会被永远吃掉 ——
+     * 卡片此后一直比指针少这么一截（实测少 25px，一步的距离）。
+     */
+    posX = e.clientX - startClientX
+    posY = e.clientY - startClientY
+    /* 增量基准：从"这一刻的指针位置"开始累加 */
     lastMoveX = e.clientX
     lastMoveY = e.clientY
 
+    /*
+     * 先捕"拎起来之前"的那一帧，再把它抽出网格 —— 顺序反了，其余块的起点就是错的
+     * （那时读到的是"已经补好位"的位置，于是松手那一下会看到它们先跳回来再补出去）。
+     *
+     * 也正因为捕帧必须发生在抽离之前，这一刻它身上还没有 .pinned：
+     * 外层要另想办法把它从补位动画的目标里排掉（见 ConsoleView 的 flowEls）。
+     */
     hooks.before()
+
+    /*
+     * 上一次落位那一程（.settling 的 CSS 过渡）如果还没走完，就地截断：
+     * 下面要给它套上 .dragging（transition: none）并自己接管 transform，
+     * 留着 .settling 会让每一次 pointermove 的写入都被那条 620ms 过渡再滤一遍。
+     *
+     * 顺手把它名下的收尾也作废（清定时器 + 抹掉登记）：那次收尾要是晚一步回来，
+     * 会对一个正在被拖着走的元素执行 clean()，把这一帧的位移擦掉。
+     */
+    el.classList.remove('settling')
+    const stale = settleTimers.get(el)
+    if (stale) {
+      window.clearTimeout(stale)
+      settleTimers.delete(el)
+    }
     el.classList.add('pinned', 'dragging')
     el.style.width = `${r.width}px`
     el.style.height = `${r.height}px`
@@ -260,8 +344,12 @@ export function useCanvasDrag(canvas: Ref<HTMLElement | null>, hooks: DragHooks)
     pointerX = e.clientX
     pointerY = e.clientY
     /*
-     * 立刻跟手：每一步都直接用最新指针位置写 transform，不经过帧循环。
-     * 画布矩形用拖起来时缓存的那一份（拖动期间不会变），所以这里没有任何布局读。
+     * **立刻跟手**：每一步都直接用最新指针位置写 transform，不经过帧循环。
+     * 这里没有任何布局读 —— 画布矩形和格位都在别的时刻读过了。
+     *
+     * 前提是 CSS 那边在 .pinned/.dragging 上关掉了 transform 过渡（ConsoleView 的样式里写着为什么）：
+     * 只要还留着过渡，这一行就不是"跟手"，而是"每一步往指针的方向追掉三成" ——
+     * 指针一直走，它就永远追不上。
      */
     /*
      * 用**增量**而不是绝对坐标。
@@ -277,6 +365,68 @@ export function useCanvasDrag(canvas: Ref<HTMLElement | null>, hooks: DragHooks)
     }
     lastMoveX = e.clientX
     lastMoveY = e.clientY
+  }
+
+  /**
+   * 收尾：把手上这块交还给网格，并从"松手时它看起来在哪"滑到它的最终格位。
+   *
+   * 三步，顺序一步都不能换：
+   *   1. 摘掉 .pinned 交还网格 —— 进了网格，它才有**最终格位**；
+   *   2. 用 offsetLeft/offsetTop 量这个格位，把差值补成"松手时指针在的地方"。
+   *      这两个属性**与 transform 无关**，量到多少就是多少。
+   *      换成 getBoundingClientRect 就含糊了：那一刻"已交出网格"这件事是不是已经算进布局、
+   *      240ms 的过渡有没有起步、起步了走到第几帧，取决于这次读有没有触发样式重算 ——
+   *      量到的可能是旧位置，也可能是过渡半路的值，补偿于是算错，
+   *      卡片根本没被按在原地，交还网格的那一下就是"松手跳一下"；
+   *   3. 量完、补偿完，才打开 .settling 的过渡并清掉位移：卡片从预览位置滑进格位。
+   *
+   * .dragging 一直留到第 3 步：它身上是 transition: none，是"量格位 + 写补偿"这两步
+   * 不被过渡插一脚的保证 —— 第 2 步那次强制布局读本身就是一次样式重算，
+   * 过渡要是这时候已经开起来，浏览器会把"补偿之前"的位置记成过渡起点。
+   */
+  function settle(el: HTMLElement, x: number, y: number) {
+    el.classList.remove('pinned')
+    clean(el)
+
+    const dx = x - el.offsetLeft
+    const dy = y - el.offsetTop
+    el.style.transform = `translate3d(${dx}px, ${dy}px, 0)`
+    // 强制提交这一帧（此时仍是 transition: none，读到的一定是我们刚写的值）
+    void el.offsetWidth
+
+    el.classList.remove('dragging')
+    el.classList.add('settling')
+    el.style.transform = ''
+
+    /*
+     * transitionend 未必来：块被关掉、标签页切走、下一个人把它藏起来，都不会有那一下。
+     * 所以两边都挂：事件到了立刻收，没到就由定时器兜底。
+     */
+    const prev = settleTimers.get(el)
+    if (prev) window.clearTimeout(prev)
+    const timer = window.setTimeout(done, SETTLE_MS + 200)
+    function done() {
+      el.removeEventListener('transitionend', done)
+      // 之后又松过一次手（或者又把它拎起来了）：这次收尾已经作废，别去动它
+      if (settleTimers.get(el) !== timer) return
+      settleTimers.delete(el)
+      window.clearTimeout(timer)
+      el.classList.remove('settling')
+      clean(el)
+    }
+    settleTimers.set(el, timer)
+    el.addEventListener('transitionend', done)
+  }
+
+  /**
+   * 换位的收尾。由外层在"新格位已经写进 DOM、动画还没开始"的那一刻调
+   * （见 ConsoleView 的 playFlip 第一行）—— 只有外层知道那一轮渲染什么时候落定。
+   */
+  function finishDrop() {
+    const p = pending
+    if (!p) return
+    pending = null
+    settle(p.el, p.x, p.y)
   }
 
   function onPointerUp(e: PointerEvent) {
@@ -297,51 +447,48 @@ export function useCanvasDrag(canvas: Ref<HTMLElement | null>, hooks: DragHooks)
 
     cancelAnimationFrame(rafId)
     showGhost(null)
-    el.classList.remove('dragging')
-    canvasRect = null
-      /* 记下"刚放下的是谁"，落位动画用它决定只给谁做回弹 */
-      droppedEl = el
-
-    // 松手那一刻它视觉上在哪儿
-    const before = el.getBoundingClientRect()
 
     /*
-     * 先回网格：摘掉"拎在手上"的状态、清掉冻结尺寸与位移。
-     * 此刻它在布局里已经回到自己的格子，但视觉上还停在指针那儿 ——
-     * 所以补一段 transform 把它"按"在原地，再交给 Flip 去动画。
+     * isPinned 先落回 false，但 DOM 上的 .pinned 先留着。
+     *
+     * 外层的补位动画靠"这块还在不在网格流里"决定谁参与 Flip，而这一轮 Vue 更新马上就要发生：
+     * 它要在这一刻把**其余块**（停在这块让出的空间里的位置）捕下来当起点。
+     * 手上这块则必须一直待在指针那儿 —— 直到新格位落定（finishDrop）才交还网格。
+     * 早交还一步，它会先跳回旧格位、再滑向新格位，就是"松手位置与预览位置对不上"。
      */
-    el.classList.remove('pinned')
-    clean(el)
-    const after = el.getBoundingClientRect()
-    const dx = before.left - after.left
-    const dy = before.top - after.top
+    isPinned = false
 
+    // 预览位置换算回**画布坐标**（settle 里要和 offsetLeft/offsetTop 比）
+    const x = originX + posX
+    const y = originY + posY
     const id = el.dataset.block ?? ''
-    if (targetId && targetId !== id) {
-      // 换位：把这块挪到目标的位置上，布局重算、其余块跟着变
-      el.style.transform = `translate3d(${dx}px, ${dy}px, 0)`
-      hooks.reorder(id, targetId)
-      busyUntil = Date.now() + 760
-    } else if (!reduced() && (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5)) {
-      // 扔在空白处：滑回自己原来的位置
-      el.style.transform = `translate3d(${dx}px, ${dy}px, 0)`
-      el.classList.add('settling')
-      requestAnimationFrame(() => {
-        el.style.transform = ''
-      })
-      window.clearTimeout(settleTimer)
-      const done = () => {
-        window.clearTimeout(settleTimer)
-        el.removeEventListener('transitionend', done)
-        el.classList.remove('settling')
-        clean(el)
-      }
-      el.addEventListener('transitionend', done)
-      settleTimer = window.setTimeout(done, SETTLE_MS + 200)
-      busyUntil = Date.now() + SETTLE_MS + 160
+    /* 记下"刚放下的是谁"，落位动画用它决定只给谁做回弹 */
+    droppedEl = el
+
+    if (targetId && targetId !== id && hooks.reorder(id, targetId)) {
+      // 换位：格位要等外层的下一次渲染，现在收尾只会滑向旧格位
+      pending = { el, x, y }
+      /*
+       * 兜底：万一那一轮更新没有发生（顺序里其实没有这一块、组件正在卸载），
+       * 不能让卡片永远停在"拎在手上"的状态 —— 下一帧按当时的格位收尾。
+       * 正常路径上 playFlip 会先一步调 finishDrop，这里就空转了。
+       */
+      requestAnimationFrame(() => finishDrop())
+    } else {
+      /*
+       * 没换位：布局不会变，当场收尾。
+       *
+       * 但其余块还停在这块让出的空间里，所以要**先捕一帧、再交还网格**，
+       * 让它们滑回原位 —— 否则松手那一下七块一起瞬移回去（"松手就跳"）。
+       *
+       * 这里不用 rAF 推迟 after()：那样中间会多画一帧"其余块已经跳回原位"的画面，
+       * 下一帧再被补位动画拽回起点，看起来是闪一下。捕帧、交还、补位要在同一帧里做完。
+       */
+      hooks.before()
+      settle(el, x, y)
+      hooks.after()
     }
 
-    isPinned = false
     active = null
     pointerId = null
     targetId = null
@@ -372,8 +519,33 @@ export function useCanvasDrag(canvas: Ref<HTMLElement | null>, hooks: DragHooks)
     requestAnimationFrame(() => hooks.after())
   }
 
+  /**
+   * 立刻结束这一次拖动：不落位、不补位，只把状态与监听清干净。
+   */
+  function endDrag() {
+    if (!active && !isPinned && !pending) return
+    window.removeEventListener('pointermove', onPointerMove)
+    window.removeEventListener('pointerup', onPointerUp)
+    window.removeEventListener('pointercancel', onPointerUp)
+    cancelAnimationFrame(rafId)
+    showGhost(null)
+    blockEl()?.classList.remove('arming')
+    pending = null
+    isPinned = false
+    active = null
+    pointerId = null
+    targetId = null
+  }
+
   /** 窗口尺寸一变，格子尺寸就全变了 —— 布局引擎会重算，这里只要清干净拖动残留 */
   function releaseAll() {
+    /*
+     * 正在拖的那一次也要一并作废。
+     * 只清样式、不清状态的话，主循环、window 上的监听、isPinned 都还留在原地，
+     * 下一次 pointermove 会继续往一个已经回到网格里的元素上写位移（"松手后块乱跑/重叠"）。
+     */
+    endDrag()
+
     let touched = false
     for (const el of blockEl()?.querySelectorAll<HTMLElement>('[data-block]') ?? []) {
       if (el.classList.contains('pinned') || el.classList.contains('settling') || el.style.transform) {
@@ -418,19 +590,19 @@ export function useCanvasDrag(canvas: Ref<HTMLElement | null>, hooks: DragHooks)
     blockEl()?.removeEventListener('dblclick', onDoubleClick)
     blockEl()?.removeEventListener('click', onClickCapture, true)
     window.removeEventListener('resize', releaseAll)
-    window.removeEventListener('pointermove', onPointerMove)
-    window.removeEventListener('pointerup', onPointerUp)
-    window.removeEventListener('pointercancel', onPointerUp)
-    cancelAnimationFrame(rafId)
-    window.clearTimeout(settleTimer)
+    endDrag()
+    for (const timer of settleTimers.values()) window.clearTimeout(timer)
+    settleTimers.clear()
     ghost?.remove()
   })
 
   /**
-   * 正在拖 / 正在落位。
-   * 补位动画（Flip）和拖动都会写同一批 transform，两套叠在一起块会停在中间态。
+   * 正在拖。
+   * 补位动画（Flip）和拖动都会写同一批 transform，两套叠在一起块会停在中间态，
+   * 所以拖动期间外层的补位动画不参与（见 ConsoleView 的 captureLayout）。
+   * 落位那一程不必算进来：收尾走的是一块自己的 CSS 过渡，它已经被排除在 Flip 目标之外。
    */
-  const isBusy = () => isPinned || Date.now() < busyUntil
+  const isBusy = () => isPinned
 
   /**
    * 收尾清扫：把"上一次拖动没走完"的残渣擦掉。
@@ -455,5 +627,14 @@ export function useCanvasDrag(canvas: Ref<HTMLElement | null>, hooks: DragHooks)
   let droppedEl: HTMLElement | null = null
   const markDropped = (el: HTMLElement | null) => (droppedEl = el)
 
-  return { releaseAll, isBusy, lastDragged: () => droppedEl, markDropped }
+  return {
+    releaseAll,
+    isBusy,
+    lastDragged: () => droppedEl,
+    markDropped,
+    /** 手上正拎着的那一块 —— 外层靠它把这块从补位动画的目标里排掉 */
+    activeBlock: () => active,
+    /** 外层在"新格位已落定"的那一刻调，见 finishDrop */
+    finishDrop,
+  }
 }

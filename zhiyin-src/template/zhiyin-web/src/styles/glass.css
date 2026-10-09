@@ -1,13 +1,22 @@
 /* 磨砂质感：集中管理，且只在 GPU 合成可用时启用（main.ts 里按帧率探测，
  * 软件渲染环境会挂 html.no-glass，跳过 backdrop-filter —— 它在软渲染下
- * 意味着"每帧全页重模糊"，是此前 21fps 的元凶）。 */
-
+ * 意味着"每帧全页重模糊"，是此前 21fps 的元凶）。
+ *
+ * 【这一份名单曾经点错了三处（2026-10-08 修）】
+ *
+ * 名单里写的是 `.float-card` / `.chat` / `.chat__bar` / `.launcher` / `.overlay`，
+ * 而模板里真实的类是 `.float` / `.layer`（前三个是早期聊天窗与旧入口留下的名字，
+ * 早就删了）。于是这几处的磨砂**一条都没生效**，而且不报错 —— 这正是
+ * "class 写在样式里、没人写在模板里"这类幽灵零件的典型症状。
+ * 现在只留真实存在的类：
+ *   · `.float`  —— 通知浮窗（换成真名后磨砂才真正生效）
+ *   · `.layer`  —— 覆盖层整屏那一层，**故意不给它 blur**：它身上已经压着一层
+ *     不透明的 --scrim，模糊被盖住看不见，而"全屏 backdrop-filter"恰恰是
+ *     这个文件存在的理由要避免的那种开销。
+ */
 html:not(.no-glass) .bubble,
-html:not(.no-glass) .float-card,
-html:not(.no-glass) .chat,
-html:not(.no-glass) .chat__bar,
-html:not(.no-glass) .launcher,
-html:not(.no-glass) .overlay {
+html:not(.no-glass) .float,
+html:not(.no-glass) .deck__bar {
   /* 只留 blur：saturate 是第二遍色彩通道运算，在奶油纸上看不出差别，去掉省一半 */
   backdrop-filter: blur(var(--glass-blur));
   -webkit-backdrop-filter: blur(var(--glass-blur));
@@ -20,10 +29,18 @@ html:not(.no-glass) .overlay {
  * 有 blur 时那点透明度没关系；一旦 blur 被关掉（低帧机器、或者拖动期间），
  * 0.82 的白就成了"纯透明面板"，字压在底下的内容上根本看不清。
  * 所以这里只改令牌：所有用 --glass-* 的表面一起变实，不用逐个组件去补。
+ *
+ * 取的是 --glass-solid-*（由皮肤给），不是写死的白 ——
+ * 否则暗色皮肤一进 no-glass 就变成一屏白斑。
+ * 交换两个令牌不会递归：--glass-solid-* 在 tokens.css / 皮肤文件里是字面量。
+ *
+ * 选择器多挂一个 `:root`（特异性 0,2,1）是为了压过皮肤文件里的
+ * `html[data-theme="…"]`（0,1,1）：两边特异性一样时谁赢要靠 @import 的先后，
+ * 那种"顺序对了才对"的规矩迟早被下一个人改坏 —— 直接写清谁优先。
  */
-html.no-glass {
-  --glass-1: rgba(255, 255, 255, 0.95);
-  --glass-2: rgba(255, 255, 255, 0.98);
+html.no-glass:root {
+  --glass-1: var(--glass-solid-1);
+  --glass-2: var(--glass-solid-2);
 }
 
 /*

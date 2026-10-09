@@ -33,6 +33,7 @@ from enum import Enum
 from typing import Any, Optional, Sequence
 
 from zhiyin_kernel.blackboard import Profile
+from zhiyin_kernel.enums import ProfileSource
 
 
 class CollectionSource(str, Enum):
@@ -230,6 +231,21 @@ def _rules_from(specs: Sequence[Any]) -> tuple[tuple[str, str, CollectionSource,
     return tuple(table)
 
 
+def field_labels(rules: Optional[Sequence[Any]] = None) -> dict[str, str]:
+    """登记表里的画像字段：**键 → 中文名**（`collection_rules.json`）。
+
+    给"用户手动更正画像"做门禁用：只有登记过的键才允许写进画像。
+    为什么用这张表而不是随口收下：画像里出现一个没有中文名、采集清单与报告维度
+    也都不认识的键，界面上就是一格没人读得懂的东西（实测出现过
+    `interest_direction` / `course_selection_pattern` 这类自由发挥的键）。
+
+    `rules` 读不到时退回内置兜底表 —— 与 `plan_collection` 同一条口径，
+    否则"配置没装载"会变成"用户改什么都被拒"。
+    """
+    table = _rules_from(rules) if rules else _RULES
+    return {key: label for key, label, _source, _why, _ask in table}
+
+
 _SNIPPET_PAD = 6
 
 
@@ -303,6 +319,150 @@ def _compose_why(signal: UserSignal, rule_why: str) -> str:
     return f"因为你写了「{said}」：{signal.why or rule_why}"
 
 
+"""登记来源属于"权威记录类"的字段：它们的值必须由**相称的来源**写进来才算拿到。
+
+为什么必须区分来源
+------------------
+`major` 这类字段在 `collection_rules.json` 上登记的源头是 `chsi`（学信网核验）。
+"拿到了没"如果只看键在不在画像里，用户在对话里随口说的那句"计算机大类"就会被算成
+已经拿到 —— 学信网核验从此不再被要求、界面上也不再提示，一句对话就此长得像一条
+权威记录。这正是 #26 里"系统直接默认认定"的结构性原因：问题不在提示词怎么写，
+而在这道判定把**值在不在**当成了**值由谁出具**。
+"""
+_AUTHORITATIVE_SOURCES: frozenset[CollectionSource] = frozenset(
+    {CollectionSource.CHSI, CollectionSource.ACADEMIC}
+)
+
+"""对权威字段来说，落库的 `source` 取到什么才算相称。只有两类：
+
+- `record`（客观档案）：学信网在线验证与教务系统导出的原始记录落库时写的都是它
+  （见 `services/ai_tasks.py` 的核验写入与 `services/academic.py` 的导入摘要），
+  它就是这个字段登记的权威来源本身；
+- `user_edit`（本人填写）：用户一字一句告诉系统的值就是拿到了 —— 把他亲手更正过的那条
+  又判成"没拿到"，他会一直看到"还差这一条"，上一轮补的手动更正等于白做。
+
+`conversation` / `behavior_inference` 这类推断来源**不在其中**：它们对权威字段不算拿到。
+值仍然可以留在画像里做参考（不清、不覆盖），但这条字段要继续出现在缺口里，
+对应的采集动作（学信网核验 / 教务导入）也要保持"该做"的状态。
+
+`resume` / `assessment` / `mentor` 同样不算：它们都是**转述或推断**，不是出具方本身，
+"相称"问的是这条值由谁签发，不是它听起来多正式。
+"""
+_AUTHORITY_MATCHING_SOURCES: frozenset[ProfileSource] = frozenset(
+    {ProfileSource.RECORD, ProfileSource.USER_EDIT}
+)
+
+
+def _field_source(field: Any) -> Optional[ProfileSource]:
+    """读一个画像字段的来源。
+
+    读不出来（缺失、或是认不出的字符串）返回 `None`，按"不相称"处理：
+    来源是一份**声明**，读不懂的声明不能替这条值撑起权威性。
+    内存装配里它是枚举、库里回来的是字符串，两种都要认。
+    """
+    raw = getattr(field, "source", None)
+    if isinstance(raw, ProfileSource):
+        return raw
+    try:
+        return ProfileSource(str(raw))
+    except ValueError:
+        return None
+
+
+def _counts_as_got(rule_source: CollectionSource, field: Any) -> bool:
+    """这一条算不算"已经拿到了"。
+
+    登记来源不是权威类的字段（`chsi` / `academic` 之外的，例如 `conversation` 的兴趣、
+    目标方向）口径**完全不变**：键在画像里就算拿到。顺手把它们也收紧会把正常动线卡死 ——
+    这类字段本来就该从对话来，问对了就是拿到了。
+
+    权威字段（学信网核验 / 教务导入）才看来源。
+    """
+    if field is None:
+        return False
+    if rule_source not in _AUTHORITATIVE_SOURCES:
+        return True
+    return _field_source(field) in _AUTHORITY_MATCHING_SOURCES
+
+
+def rule_source_of(
+    key: str, rules: Optional[Sequence[Any]] = None
+) -> Optional[CollectionSource]:
+    """这个画像字段在采集登记表里登记的来源；没登记、或来源认不出时返回 `None`。
+
+    "这条值该由谁出具"写在登记表上（`collection_rules.json`），不在字段自己身上。
+    所以别的读侧（画像覆盖度、采集门槛）只拿着一个键来问这里，而不是各自
+    再存一份"哪些字段是权威的" —— 抄一份就一定会跟登记表漂开。
+    """
+    table = _rules_from(rules) if rules else _RULES
+    for rule_key, _label, source, _why, _ask in table:
+        if rule_key == key:
+            return source
+    return None
+
+
+def counts_as_got(
+    key: str, field: Any, *, rules: Optional[Sequence[Any]] = None
+) -> bool:
+    """画像里**这个键的这条值**算不算"已经拿到了"。
+
+    这是"拿到了没"的**唯一实现**，三处读它：采集清单（`plan_collection`）、
+    画像覆盖度（`services/workspace.py::_coverage`）、采集门槛
+    （`policies/collection_gate.py::evaluate_gate`）。
+    为什么必须共用：这三处各写一份的结果真实出现过 —— 采集清单说"还差专业"，
+    同一屏的画像面板却显示"覆盖 100%"，用户看到的是两句话互相打脸，
+    而两处都不报错。
+
+    没登记的键（模型自由生成的字段、以及后续新增但还没进登记表的字段）
+    没有"相称来源"可谈：键在画像里就算拿到 —— 与收紧前完全一致，
+    不能因为这里认不出它就把新字段一律算成缺口。
+    """
+    if field is None:
+        return False
+    source = rule_source_of(key, rules)
+    if source is None:
+        return True
+    return _counts_as_got(source, field)
+
+
+def may_override_user_edit(existing: Any, incoming_source: ProfileSource) -> bool:
+    """这次写入能不能盖掉画像里已有的那条值（"他亲手写的"优先于"系统推的"）。
+
+    失效现象
+    --------
+    用户在画像里点「更正」，把自己认可的那句话写进这一格（落库 `source =
+    user_edit`，见 `DefaultProfileService.correct_field`）。下一轮对话里，
+    ① 采集的模型又产出一条同键的 `field_updates`，这条值就被推回去了 ——
+    他刚纠正过的东西变了，而界面上没有任何一处告诉他。此后每一份报告、
+    每一个方向推荐都按那条他并没有认可的值算，他只能再改一次、再被盖一次。
+
+    所以判据是"这一格的值由谁定的"，而不是"这一轮模型说了什么"：
+
+    - 已知值是 `user_edit`（他亲手写的那一次）时，**只有 `record` 放行**。
+      `record` 是学信网核验 / 教务导入落库的来源（见 `services/ai_tasks.py`
+      与 `services/academic.py`），它是出具方本身，比自述更权威 ——
+      挡掉它会让"用户写错了一句自述"变成永久事实，而且他随时能再「更正」
+      一次改回来，这条口子不需要关。
+    - 推断类来源（`conversation` / `behavior_inference` / `assessment` /
+      `mentor` / `resume`）一律挡：它们是系统替他说、或者替他推的，
+      不是他写的那句话。
+    - 已知值不是 `user_edit`：与这次改动无关，口径一个字不变（放行）。
+
+    为什么用白名单而不是"把推断类来源列出来挡掉"：这条流水线上 `source`
+    是**模型的声明**，而契约里的枚举取值它都能写（`FieldUpdate.source` 是
+    `ProfileSource`）。黑名单只要漏掉一个取值，用户亲手写的值就被静默覆盖
+    一次 —— 那是这道守卫唯一不能出的错。反过来，白名单多挡一次只会多一条
+    日志，代价小得多。
+
+    "他后面亲口改口"这条路没有被堵死：写 `user_edit` 的是
+    `DefaultProfileService.correct_field`（`POST /app/profile/fields/{key}`），
+    它不经过这里 —— 用户永远能再改一次，改完仍然算他自己写的。
+    """
+    if _field_source(existing) is not ProfileSource.USER_EDIT:
+        return True
+    return incoming_source is ProfileSource.RECORD
+
+
 def plan_collection(
     profile: Optional[Profile],
     *,
@@ -334,7 +494,9 @@ def plan_collection(
     不跟着代码里的一句注释走。
     """
     table = _rules_from(rules) if rules else _RULES
-    have = {field.key for field in (profile.fields if profile else [])}
+    # 画像里现存的字段按**整条**留下（键 → 字段），不是一个只有键的集合：
+    # 判"拿到了没"要看来源，而来源只在这条字段本身上（见 `_counts_as_got`）。
+    have = {field.key: field for field in (profile.fields if profile else [])}
     first = _STAGE_FIRST.get((stage or "").lower(), ())
     usable = (
         frozenset(str(item) for item in available_sources)
@@ -350,7 +512,9 @@ def plan_collection(
     missing = 0
 
     for key, label, source, why, ask in table:
-        got = key in have
+        # 判据是"这条值由谁出具"，不是"这个键出现过没有" ——
+        # 只对话里提过一句的权威字段，仍然该去做学信网核验（见 `_counts_as_got`）。
+        got = _counts_as_got(source, have.get(key))
         available = source.value in usable
         signal = heard_by_key.get(key)
         if signal is not None:
@@ -435,7 +599,11 @@ __all__ = [
     "CollectionSource",
     "CollectionStep",
     "UserSignal",
+    "counts_as_got",
+    "field_labels",
     "filled_by",
+    "may_override_user_edit",
     "plan_collection",
+    "rule_source_of",
     "signals_from",
 ]

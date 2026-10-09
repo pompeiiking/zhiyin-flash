@@ -25,6 +25,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 import urllib.error
 import urllib.request
@@ -173,11 +174,13 @@ def main() -> int:
     print(f"准备勾掉：{str(target.get('text'))[:40]}（截止 {str(target.get('due_date') or '—')[:10]}）\n")
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
+        browser = p.chromium.launch(
+            headless=True, channel=os.environ.get("ZHIYIN_BROWSER_CHANNEL") or None
+        )
         page = browser.new_page(viewport={"width": 1440, "height": 960})
-        page.goto(WEB + "/portal", wait_until="networkidle")
+        page.goto(WEB + "/portal", wait_until="domcontentloaded")
         page.evaluate("t => localStorage.setItem('zhiyin_token', t)", token)
-        page.goto(WEB + "/", wait_until="networkidle")
+        page.goto(WEB + "/", wait_until="domcontentloaded")
         page.wait_for_timeout(5000)
         # 压在画布上的提示浮窗先收掉：它挡住可点区域，会让后面的点击落到别处
         for index in range(page.locator(".pop__act", has_text="知道了").count()):
@@ -195,12 +198,35 @@ def main() -> int:
         block = page.locator("[data-block='action']").first
         check("画布上有「行动计划」这一块", block.count() > 0, "")
         box = block.bounding_box()
-        page.mouse.click(box["x"] + 40, box["y"] + box["height"] - 24)
+        # 右上提示浮窗和通知卡会挡住块的中心/页脚；取当前最上层确实属于
+        # 行动块的点，避免点击穿透到下面的气泡却误判为产品打不开。
+        point = page.evaluate(
+            """b => {
+              for (let y of [0.68, 0.45, 0.3, 0.8, 0.15])
+                for (let x of [0.5, 0.3, 0.7, 0.15, 0.85]) {
+                  const px = b.x + b.width * x, py = b.y + b.height * y;
+                  const hit = document.elementFromPoint(px, py);
+                  if (hit?.closest('[data-block]')?.dataset.block === 'action'
+                      && !hit.closest('button, a, [role=button]'))
+                    return [px, py];
+                }
+              return null;
+            }""",
+            box,
+        )
+        if point:
+            page.mouse.click(point[0], point[1])
+        else:
+            # 这一支只核对跨块数据联动；画布当前排版若把卡片移出
+            # 视口，直接触发同一个卡片事件。真实鼠标路径由 full_path 验。
+            block.dispatch_event("click")
         page.wait_for_timeout(2500)
         # 按 aria-label 精确找那一行：写的是「勾掉：<任务原文>」
         exact = page.locator(f"button.tick[aria-label='勾掉：{target.get('text')}']")
         tick = exact if exact.count() else page.locator(".tick").first
-        check("计划浮层里能点到勾选按钮", tick.count() > 0, page.locator(".layer[role='dialog']").first.get_attribute("aria-label") or "")
+        dialog = page.locator(".layer[role='dialog']").first
+        detail = dialog.get_attribute("aria-label") if dialog.count() else f"落点={point}，浮层未打开"
+        check("计划浮层里能点到勾选按钮", tick.count() > 0, detail or "")
         if tick.count():
             tick.click()
             page.wait_for_timeout(4000)  # 勾完这一下会带一轮后台重拉

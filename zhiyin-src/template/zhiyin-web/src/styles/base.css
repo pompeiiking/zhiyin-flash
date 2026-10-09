@@ -1,4 +1,30 @@
 @import "./tokens.css";
+/*
+ * 皮肤：一层 `html[data-theme="…"]` 的令牌覆盖，只改值不改结构。
+ * 必须排在 tokens.css 之后（同名令牌后者胜，且皮肤选择器特异性本来就更高）。
+ * 与 glass.css 里 `html.no-glass:root` 的关系不必靠顺序：那一条的特异性是 0,2,1，
+ * 明确压过皮肤 —— "关掉磨砂要变实底"这条必须赢。
+ */
+@import "./themes/index.css";
+/*
+ * 组件风格：另一条轴，管**形、密度、字**，不管颜色。
+ * 必须排在 themes 之后 —— 两条轴的选择器特异性相同（都是 0,1,1），
+ * 同特异度时由加载顺序决定谁赢，而这里要的正是：
+ * **形、影、密度与字听组件轴，色听配色轴**。反过来放，配色里的圆角就会盖住组件风格。
+ */
+@import "./ui/index.css";
+/*
+ * 再往后的四条轴：交互（反馈落在哪一层）、排版（章节/行宽/对齐）、形状（切角/齿孔）、
+ * 字体（字族与字形）。它们靠"排在后面 + 各自的属性选择器"生效；
+ * 字体轴排在最后，因为组件轴也写过 --font-*（roomy/mono 有字体性格）。
+ */
+@import "./feedback/index.css";
+@import "./type/index.css";
+@import "./shape/index.css";
+/* 骨架：覆盖层怎么打开（居中 / 抽屉 / 全幅）—— 改的是 Overlay 那个壳 */
+@import "./skeleton/index.css";
+/* 字体：这一层是唯一改 --font-* 的地方（组件轴的 roomy/mono 也动过字体，所以它排在最后） */
+@import "./font/index.css";
 @import "./motion.css";
 @import "./fonts.css";
 @import "./glass.css";
@@ -21,8 +47,74 @@ code, pre, .mono, [data-long-token] { overflow-wrap: anywhere; }
 
 html, body, #app { height: 100%; }
 
+/*
+ * ── 手机上的"平台层"四项 ────────────────────────────────────────────────
+ *
+ * 用户报的是"手机端模块切换跳动、类似卡顿、像闪退"。真机量过之后，
+ * 切换模块本身**没有布局位移**（CLS = 0，壳高稳定）—— 那几条"卡/跳/闪"
+ * 来自浏览器把网页当网页的那些默认行为，不是动效：
+ *
+ *   · `-webkit-tap-highlight-color`：iOS/Android 给每个可点元素盖一层半透明灰。
+ *     实测我们的默认值是 `rgba(0,0,0,.18)` —— 这就是"闪一下"，而且它会压掉
+ *     我们自己设计的按下反馈。全局关掉，反馈交给 `:active`。
+ *   · `overscroll-behavior: none`：往下拉会触发下拉刷新、往上滑会整页回弹 ——
+ *     在一个"应用壳"里，这两个动作的观感就是"页面自己跳了"。（报告页也是这个壳的一部分，
+ *     在 SPA 里下拉刷新会重载整个应用，所以这条放在 html 上而不是只放控制台。）
+ *   · `touch-action: manipulation`：浏览器为判断"是不是双击缩放"会等 300ms 才派发 click
+ *     —— 按钮按下去到有反应之间那段延迟就是"卡"。
+ *   · `-webkit-text-size-adjust: 100%`：横屏时字被自动放大，整页高度随之变化（又一种"跳"）。
+ *
+ * 输入框的 16px 见下面的 `@media (pointer: coarse)`：iOS 聚焦到小于 16px 的输入框会
+ * **把整个页面放大**且不还原 —— 在手机上这是最剧烈的一种"跳"，而它只在聚焦时发生，
+ * 所以看起来就像"一切到某个模块就跳一下"。
+ */
+html {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  overscroll-behavior: none;
+}
+html, body { overscroll-behavior: none; }
+
+/* 控件不是正文：长按不该选中它们的文字，点下去不该等 300ms */
+button, a, [role="button"], summary, label {
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+}
+input, textarea, select { touch-action: manipulation; }
+
+/*
+ * 输入框至少 16px —— 不是审美问题，是 iOS 的缩放阈值。
+ *
+ * 判据取"粗指针**或**窄屏"：只用 `(pointer: coarse)` 会漏掉"带触控板的 iPad"
+ * （它报 `pointer: fine`，但 Safari 聚焦小字号输入框照样把整页放大），
+ * 而窄屏本来就跑的是单列布局，字号放大不影响桌面那套紧凑节奏。
+ *
+ * 这一条用 `!important`，与上面 `prefers-reduced-motion` 那个块同一个理由：
+ * 它不是样式选择，是**平台保证** —— 组件里任何一条 `.compose input { font-size: … }`
+ * （示例：对话输入框 13.5px）都会重新触发 iOS 的整页缩放，那种"跳"比字号大一档严重得多。
+ * 仓库口径是"样式覆盖不用 !important"，这里是唯一的另一类例外，别的地方不要学。
+ */
+@media (pointer: coarse), (max-width: 900px) {
+  input, textarea, select { font-size: 16px !important; }
+}
+
 body {
   margin: 0;
+  /*
+   * 刘海与底部横条：`viewport-fit=cover` 之后页面会铺到这两块区域下面，
+   * 内容必须自己让开 —— 否则首屏标题被刘海切掉、底部那颗按钮压在 home indicator 上。
+   *
+   * 写在 body 上而不是各个组件上：`body` 的背景会延伸到 padding 区域，
+   * 所以纸的颜色仍然铺满整屏，只有**内容**缩进来。桌面上这四个值是 0，行为与改动前一致。
+   * `border-box` 是为了让 padding 不把 `height:100%` 撑出去（否则会多出一条滚动）。
+   *
+   * 固定定位的浮层（`.layer`）不受 body padding 影响（它们相对视口定位），
+   * 那几处单独让 —— 见 `components/console/Overlay.vue` 的 `.layer`。
+   */
+  box-sizing: border-box;
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px)
+    env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
   background: var(--n-0);
   color: var(--ink-1);
   font: var(--t-body)/var(--lh-body) var(--font-sans);
@@ -48,16 +140,14 @@ body {
 body::before {
   content: "";
   position: fixed; inset: 0; pointer-events: none; z-index: 0;
-  background:
-    radial-gradient(120% 70% at 50% -18%, rgba(255, 255, 255, 0.85), transparent 62%),
-    radial-gradient(140% 120% at 50% 45%, transparent 56%, rgba(23, 22, 20, 0.05) 100%);
+  background: var(--bg-veil);
 }
 body::after {
   content: "";
   position: fixed; inset: 0; pointer-events: none; z-index: 0;
-  opacity: 0.22;
+  opacity: var(--grain-opacity);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.28'/%3E%3C/svg%3E");
-  mix-blend-mode: multiply;
+  mix-blend-mode: var(--grain-blend);
 }
 #app { position: relative; z-index: 1; }
 
@@ -92,6 +182,23 @@ button, input, textarea, select { font-family: inherit; font-size: var(--t-sm); 
 ::selection { background: var(--accent); color: var(--accent-ink); }
 ::placeholder { color: var(--ink-4); }
 
+/*
+ * 浏览器自己的那一套也属于设计：光标、选区、下划线、滚动条。
+ *
+ * 底线（`.dsh/skills/impeccable/reference/craft-floor.md` 的 Verify 一节）把这一组点名为
+ * "最便宜的'这一页是被做出来的'信号"——**也最容易漏**：它们的默认值不属于任何设计系统。
+ * 选区与滚动条下面已经有了，这里补上另外两处：
+ *   · `caret-color` 指到强调色。光标是用户唯一会长时间盯着的一个小图形，
+ *     浏览器默认给它一根纯黑竖线，与这套暖纸完全不搭；
+ *   · `text-underline-offset` 给 3px。下划线紧贴字底是最"没排过版"的一处，
+ *     它在 :root 声明、全局继承，所有下划线（含"描边"那条交互轴长出来的）
+ *     都自动离字底远一点。
+ */
+:root {
+  caret-color: var(--accent);
+  text-underline-offset: 3px;
+}
+
 /* 焦点环：2px 实心 + 2px 间距，浅底深底都看得见（WCAG 2.2 AA） */
 :focus-visible {
   outline: 2px solid var(--focus-ring);
@@ -103,7 +210,8 @@ button, input, textarea, select { font-family: inherit; font-size: var(--t-sm); 
 * { scrollbar-width: thin; scrollbar-color: var(--line-3) transparent; }
 *::-webkit-scrollbar { width: 9px; height: 9px; }
 *::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 999px; border: 2px solid transparent; background-clip: content-box; }
-*::-webkit-scrollbar-thumb:hover { background: var(--line-3); background-clip: content-box; }
+@media (hover: hover) and (pointer: fine){
+*::-webkit-scrollbar-thumb:hover { background: var(--line-3); background-clip: content-box; } }
 *::-webkit-scrollbar-track { background: transparent; }
 
 /* ── 通用原子 ───────────────────────────────────────────────────── */
@@ -214,20 +322,62 @@ button, input, textarea, select { font-family: inherit; font-size: var(--t-sm); 
               transform var(--dur-micro) var(--ease-out),
               box-shadow var(--dur-micro) var(--ease-out);
 }
-.btn:hover {
-  border-color: var(--line-4);
-  transform: translateY(-1px);
-  box-shadow: var(--e-3), var(--inner-hi);
+/*
+ * 悬停：抬起 2px + 影深一档 + 描边提亮一档。
+ * 原来是 1px —— 实测下来那一下"几乎看不见"（眼睛接收到的只有影的变化），
+ * 2px 才真的读成"这块能被拿起来"。按下则回落到 0 并把影收掉：
+ * 抬起与落回之间要有落差，按钮才是"按得动"的。
+ */
+/*
+ * 悬停只在**真的能悬停**的设备上生效。
+ *
+ * 触屏没有 hover，浏览器会替它"假装"一个：第一次点按套上 `:hover` 并**留在那儿**
+ * 直到点到别处 —— 于是按钮按完还举着 2px、卡片按完还浮着。用户描述成"按下去不回弹、
+ * 界面自己在跳"。`(pointer: fine)` 一起写是因为有些笔也号称能悬停。
+ * `:active` 不 gate：那是所有输入都该有的按下反馈。
+ */
+@media (hover: hover) and (pointer: fine) {
+  .btn:hover {
+    border-color: var(--line-4);
+    transform: translateY(-2px);
+    box-shadow: var(--e-3), var(--inner-hi);
+  }
 }
-.btn:active { transform: translateY(1px); box-shadow: none; }
+.btn:active { transform: translateY(0); box-shadow: none; }
 .btn.primary {
   background: var(--accent); color: var(--accent-ink);
   border-color: var(--accent); font-weight: 600;
-  box-shadow: 0 1px 1px rgba(23, 22, 20, 0.12), 0 6px 14px -6px rgba(10, 88, 66, 0.5);
+  box-shadow: var(--accent-shadow);
 }
-.btn.primary:hover { background: var(--accent-deep); border-color: var(--accent-deep); }
+@media (hover: hover) and (pointer: fine){
+.btn.primary:hover { background: var(--accent-deep); border-color: var(--accent-deep); } }
 .btn.ghost { border-color: transparent; color: var(--ink-2); background: transparent; box-shadow: none; }
-.btn.ghost:hover { color: var(--ink-1); border-color: var(--line-2); background: var(--fill-hover); }
+@media (hover: hover) and (pointer: fine){
+.btn.ghost:hover { color: var(--ink-1); border-color: var(--line-2); background: var(--fill-hover); } }
+
+/*
+ * 禁用态：全站此前**一条都没有** —— 按钮灰不灰、能不能点，全靠调用方自觉。
+ *
+ * 底线把"状态"列为必查项（hover / disabled / loading / error / empty），
+ * polish 的 triage 也把"缺 disabled"排在第 2 位。这里补上最小而完整的一套，规矩三条：
+ *   · 降对比但别降到读不出来 —— 停在 `--ink-4` 与 `--fill-subtle`，禁用不是消失；
+ *   · 影与位移全撤 —— 禁用的东西不该还浮着（也不该对指针有反应）；
+ *   · 光标说清楚（`not-allowed`）。这一处是**允许**用系统语义光标的地方：
+ *     手绘圆环光标在这里会读成"还能点"。
+ * 用 `:is()` 而不是 `:where()`：前者带着类选择器的特异性（0,2,0），才压得住上面的 `:hover`。
+ */
+:is(.btn, .chip, .ask, .rail__bar, input, textarea, select):disabled,
+:is(.btn, .chip, .ask, .rail__bar)[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+:is(.btn, .ask):disabled {
+  background: var(--fill-subtle);
+  color: var(--ink-4);
+  border-color: var(--line-2);
+}
 
 .chip {
   display: inline-flex; align-items: center; gap: 6px;
@@ -252,7 +402,8 @@ button, input, textarea, select { font-family: inherit; font-size: var(--t-sm); 
   font-family: var(--font-sans); font-size: var(--t-xs); font-weight: 500;
   transition: color var(--dur-micro) var(--ease-out);
 }
-.disclose:hover { color: var(--accent); }
+@media (hover: hover) and (pointer: fine){
+.disclose:hover { color: var(--accent); } }
 .disclose .caret { transition: transform var(--dur-exit) var(--ease-out); }
 .disclose[aria-expanded="true"] .caret { transform: rotate(90deg); }
 

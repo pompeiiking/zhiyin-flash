@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import Bubble from '@/components/console/Bubble.vue'
+import GlyphIcon from '@/components/ui/GlyphIcon.vue'
 import { useDayPlan, ymd, weekdayOf } from '@/composables/useDayPlan'
 import { useSessionStore } from '@/stores/session'
 
@@ -110,7 +111,7 @@ function open(date: Date) {
 
     <footer class="foot">
       <button class="chip" type="button" @click.stop="open(today)">看今天</button>
-      <span class="label foot__cta">打开日历 →</span>
+      <span class="label foot__cta">打开日历 <GlyphIcon name="arrow-right" :size="12" /></span>
     </footer>
   </Bubble>
 </template>
@@ -146,8 +147,9 @@ function open(date: Date) {
   color: var(--ink-2);
   transition: background var(--mo-fast) var(--mo-out), color var(--mo-fast) var(--mo-out);
 }
-.day:hover { background: var(--fill-hover); color: var(--ink-1); }
-.day.dim { color: var(--ink-4); }
+@media (hover: hover) and (pointer: fine) {
+.day:hover { background: var(--fill-hover); color: var(--ink-1); } }
+.day.dim { color: var(--ink-3); }
 .day.week { color: var(--ink-3); }
 /* 今天：实心底。一周里"今天"是唯一一个会自己变的参照点，值得占住 */
 .day.today { background: var(--ink-1); color: var(--n-0); }
@@ -177,5 +179,6 @@ function open(date: Date) {
   margin-top: auto;
 }
 .foot__cta { color: var(--ink-3); transition: color var(--dur-fast) var(--ease-out); }
-.bubble:hover .foot__cta { color: var(--accent); }
+@media (hover: hover) and (pointer: fine) {
+.bubble:hover .foot__cta { color: var(--accent); } }
 </style>

@@ -1,0 +1,221 @@
+/*
+ * 皮肤 · 阅卷（exam）—— 把"诊断"变成一次批改。
+ *
+ * 【这套要解决的问题】
+ *
+ * 默认皮肤（草稿台）的语气是"疯艺术家在草稿纸上乱画"：暖黄纸、手写字、手绘光标。
+ * 它在门户上很迷人，但产品里有一半内容其实是**判分**：把握度、差距、短板、待验证。
+ * 这一套把那些内容放进它真正属于的那个物件里 —— **试卷与答题卡**：
+ *
+ *   纸：略灰的试卷白，不是暖黄；没有纹理，只有一道极淡的印刷横格。
+ *   字：印刷黑，标题重到 800（黑体标题），正文干净；英文与数字走等宽大写加字距，
+ *       像试卷页眉的 "NAME / CLASS / NO."。
+ *   线：硬框（1px 深墨线）代替投影 —— 试卷上的分隔从来不靠影子。
+ *   色：只有一支"阅卷红"（批改用的那种红），其余全在灰阶上；七支彩铅笔降成印刷油墨色。
+ *   形：直角。圆角、药丸、彩色投影在这里一律去掉；框就是框。
+ *
+ * 【为什么"零阴影"是这套的关键】
+ *
+ * 默认皮肤里每张卡都浮着（边框 + 三层柔和影）。那是"桌面上的纸片"的语法。
+ * 试卷的语法是**规矩**：上下有边、左右有线、格子对齐。所以这套把 --e-* 全部置空，
+ * 结构交给 --card-border 与 --line-*。这也是四套皮肤里唯一一套"完全不投影"的。
+ *
+ * 只覆盖令牌与少量世界专属规则（全部挂在 html[data-theme="exam"] 下），
+ * 默认皮肤一行都不受影响 —— 见 lib/theme.ts 的文件头。
+ */
+html[data-theme="exam"] {
+  color-scheme: light;
+
+  /* ── 表面与文字：试卷纸与印刷墨 ─────────────────────────────────── */
+  --c-plaster: #edeef0;      /* 桌面：考场那种冷灰 */
+  --c-paper: #fbfbfc;        /* 试卷白：干净、微微发冷，不是暖黄纸 */
+  --c-sand-1: #e3e5e8;       /* 内嵌凹槽 */
+  --c-ink: #16181c;          /* 正文：印刷黑（对纸面 17.2:1） */
+  --ink-2: #3d424a;          /* 9.8:1 */
+  --ink-3: #5f656e;          /* 5.7:1，说明文字的下限 */
+  --ink-4: #9aa0a8;          /* 只做装饰 */
+
+  /* 描边：印出来的线比铅笔线硬 —— 试卷上的框是"印"上去的，不是画上去的 */
+  --line-1: rgba(22, 24, 28, 0.16);
+  --line-2: rgba(22, 24, 28, 0.28);
+  --line-3: rgba(22, 24, 28, 0.46);
+  --line-4: rgba(22, 24, 28, 0.72);
+
+  --fill-subtle: rgba(22, 24, 28, 0.04);
+  --fill-hover: rgba(22, 24, 28, 0.07);
+  --fill-press: rgba(22, 24, 28, 0.12);
+
+  /* ── 强调：只有一支笔是红的 ─────────────────────────────────────── */
+  --g-10: #f7e4e2;           /* 红笔作底时的浅红（对纸面 4.85:1 的那条线靠它守住） */
+  --g-100: #bd2b24;          /* 阅卷红：对纸面 5.7:1、对浅红底 4.85:1 */
+  --g-110: #9e211b;          /* 按下更深 */
+  --g-120: #d8453c;          /* 只做图形标记 */
+  --accent-ink: #ffffff;     /* 压在红上的字：5.9:1 */
+  --accent-glow: rgba(189, 43, 36, 0.14);
+
+  /* 语义三色：印刷油墨里认识的三种 —— 赭（风险）、蓝（事实）、紫（交接） */
+  --o-80: #a8560c;
+  --b-80: #1f4fa8;
+  --p-80: #5b3e9c;
+
+  /* ── 彩铅笔七对：降成印刷油墨，深的那支仍守 ≥4.5:1 ─────────────── */
+  --mk-green: #1e6b45;   --mk-green-soft: #e7f0ea;
+  --mk-purple: #5b3e9c;  --mk-purple-soft: #ece7f8;
+  --mk-orange: #9c5a12;  --mk-orange-soft: #f8e8d6;
+  --mk-pink: #a63b57;    --mk-pink-soft: #f8e3e9;
+  --mk-blue: #1f4fa8;    --mk-blue-soft: #e6ecf8;
+  --mk-teal: #12655f;    --mk-teal-soft: #e0efee;
+  --mk-yellow: #7a6410;  --mk-yellow-soft: #f6efcf;
+
+  /* ── 材质：玻璃照旧，但实底偏试卷白 ─────────────────────────────── */
+  --glass-1: rgba(251, 251, 252, 0.86);
+  --glass-2: rgba(251, 251, 252, 0.95);
+  --glass-solid-1: rgba(251, 251, 252, 0.97);
+  --glass-solid-2: rgba(251, 251, 252, 0.99);
+
+  /*
+   * 投影：**全部置空**。
+   * 这不是省事 —— 试卷上的框不浮起来；留白与线就是它的全部结构。
+   * 需要"浮"的只有覆盖层，那些地方由 --scrim 与边框负责。
+   */
+  --e-1: 0 0 0 rgba(0, 0, 0, 0);
+  --e-2: 0 0 0 rgba(0, 0, 0, 0);
+  --e-3: 0 0 0 rgba(0, 0, 0, 0);
+  --e-4: 0 0 0 rgba(0, 0, 0, 0);
+  --inner-hi: 0 0 0 rgba(0, 0, 0, 0);
+  --accent-shadow: 0 0 0 rgba(0, 0, 0, 0);
+
+  /* ── 底料：一道极淡的印刷横格（试卷背面透出来的格线） ───────────── */
+  --bg-veil: repeating-linear-gradient(0deg, rgba(22, 24, 28, 0.035) 0 1px, transparent 1px 30px);
+  --grain-opacity: 0.06;     /* 印刷纸几乎没有颗粒 */
+  --grain-blend: multiply;
+
+  --scrim: rgba(22, 24, 28, 0.62);   /* 与默认皮肤同一口径：浮层没有底板，遮罩得把身后的页面压到不抢读（issue 截图 2） */
+
+  /* 图表：跟着那支红笔 */
+  --chart-area: rgba(189, 43, 36, 0.12);
+  --chart-area-strong: rgba(189, 43, 36, 0.20);
+
+  /* 门户地图上那几笔手绘辅线：印成淡墨线，不再是铅笔的棕灰 */
+  --sketch-halo: rgba(22, 24, 28, 0.05);
+  --sketch-ink: rgba(22, 24, 28, 0.30);
+  --sketch-ink-2: rgba(22, 24, 28, 0.26);
+  --sketch-ink-3: rgba(22, 24, 28, 0.22);
+  --sketch-ink-4: rgba(22, 24, 28, 0.45);
+
+  /* 框：比默认皮肤硬一档（1px 深墨线），圆角全部收成直角 */
+  --bw: 1px;
+  --card-border: 1px solid var(--line-3);
+  --r-xs: 0px;
+  --r-sm: 0px;
+  --r-md: 0px;
+  --r-lg: 2px;
+  --r-sketch-sm: 0px;
+  --r-sketch-md: 0px;
+  --r-sketch-lg: 2px;
+  --r-pill: 0px;             /* 连药丸片也变成方标签 —— 这套里没有"圆" */
+
+  /* 字体：全站印刷体；英文与数字另有等宽大写（见下面的世界规则） */
+  --font-display: var(--font-sans);
+  --font-hand: var(--font-sans);
+  --font-editorial: var(--font-sans);
+
+  /* 动效：批改是果断的，位移短、收得快 */
+  --mo-fast: 110ms;
+  --mo-base: 200ms;
+  --mo-enter: 320ms;
+  --mo-slow: 460ms;
+  --mo-out: cubic-bezier(0.16, 0.84, 0.24, 1);
+
+  /* 光标：交回系统（手绘光标是默认皮肤的性格，这套不需要） */
+  --cursor-arrow: default;
+  --cursor-dot: pointer;
+  --cursor-pen: crosshair;
+}
+
+/*
+ * ── 世界专属规则 ─────────────────────────────────────────────────────
+ *
+ * 令牌能给的只是"颜色、圆角、字体、影子的量"。这套皮肤的形态还有两件事必须自己说：
+ *   1. 标题要**重**（黑体标题），等宽标签要**大写 + 加字距**（试卷页眉的写法）；
+ *   2. 按钮与标签片去圆角去投影，覆盖层的薄片压一条**红头**。
+ * 全部挂在 html[data-theme="exam"] 下，默认皮肤与其它皮肤一条都碰不到。
+ */
+
+html[data-theme="exam"] h1,
+html[data-theme="exam"] h2,
+html[data-theme="exam"] h3,
+html[data-theme="exam"] h4 {
+  font-weight: 800;
+  letter-spacing: -0.015em;
+}
+
+html[data-theme="exam"] .editorial {
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+/* 中文小标签：字重提一档、给一点字距，像印刷的栏目标签 */
+html[data-theme="exam"] .label {
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+/* 等宽：试卷页眉那种大写加字距的写法（数字与英文用它，中文仍落回中文字族） */
+html[data-theme="exam"] .mono {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+}
+
+/* 按钮：方、无影、字重 600 —— 像涂卡框与"作答区"的边 */
+html[data-theme="exam"] .btn {
+  border-radius: 0;
+  box-shadow: none;
+  font-weight: 600;
+}
+html[data-theme="exam"] .btn.primary {
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* 标签片：方标签，不再是无处不在的药丸 */
+html[data-theme="exam"] .chip {
+  border-radius: 0;
+  box-shadow: none;
+  font-weight: 600;
+}
+
+/*
+ * 覆盖层（一次诊断、一份报告）顶上压一条红头 ——
+ * 这是整套皮肤"这是一份被批改过的东西"最直白的一笔。
+ * 用 border-top 而不是 ::before：后者会和组件自己画的伪元素抢位置。
+ */
+html[data-theme="exam"] .sheet {
+  border-top: 3px solid var(--accent);
+}
+
+/*
+ * 红只标判断，不标入口。
+ *
+ * 这套的名字是"一支阅卷红"：红该出现在**判断**上（风险、差距、把握度、批注），
+ * 而不是出现在每一个可以点的地方。原来的问题是主按钮、卡片里的"开始对话"也走红色，
+ * 一屏里红=可点，判断的重量就被稀释成"强调色"，用户读不出"这条是警告"。
+ * 现在入口改用印刷墨：主按钮实心墨底 + 白字（对墨 17:1），
+ * 卡片入口用墨色描边与墨色字；红色留给 chip 与判断标记。
+ */
+html[data-theme="exam"] .btn.primary {
+  background: var(--c-ink);
+  border-color: var(--c-ink);
+  color: var(--accent-ink);
+}
+@media (hover: hover) and (pointer: fine) {
+html[data-theme="exam"] .btn.primary:hover {
+  background: var(--ink-1);
+  border-color: var(--ink-1);
+}
+}
+html[data-theme="exam"] .ask {
+  border-color: var(--c-ink);
+  color: var(--c-ink);
+}

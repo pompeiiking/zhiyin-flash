@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "zhiyin"
-version = "1.0.0"
+version = "1.0.1"
 description = "职引 · 第一期工程（模块化单体：api / business / orchestration / data-sdk / infrastructure / boot）"
 # 不再声明 readme：原来指向的 `README.md`（本目录下那份工程说明）已按文档收敛删掉，
 # 留着就是一个指向不存在文件的引用（setuptools 会静默容忍，但这是"元数据在说谎"）。

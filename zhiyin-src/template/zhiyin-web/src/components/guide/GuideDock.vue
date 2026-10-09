@@ -21,6 +21,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useSessionStore } from '@/stores/session'
 import { buildGuide, GUIDE_NOTE, GUIDE_TITLE } from '@/lib/guide'
 import NextAsk from '@/components/console/NextAsk.vue'
+import GlyphIcon from '@/components/ui/GlyphIcon.vue'
 
 const session = useSessionStore()
 const route = useRoute()
@@ -49,16 +50,13 @@ function go(tip: { kind: string; to: string }) {
 <template>
   <div class="dock" :class="{ 'dock--open': open }">
     <!-- 收起：一行字。它会随状态改口，这是"导览在看着你"最轻的表达 -->
-    <button class="note" type="button" :aria-expanded="open" @click="open = !open">
+    <button class="note surface" type="button" :aria-expanded="open" @click="open = !open">
       <span class="note__mark" aria-hidden="true" />
       <span class="note__k label">{{ GUIDE_TITLE }}</span>
       <transition name="say" mode="out-in">
         <span :key="view.line" class="note__line">{{ view.line }}</span>
       </transition>
-      <svg class="note__caret" width="10" height="10" viewBox="0 0 12 12" aria-hidden="true">
-        <path d="M2.6 4.4 6 7.8l3.4-3.4" fill="none" stroke="currentColor" stroke-width="1.6"
-              stroke-linecap="round" stroke-linejoin="round" />
-      </svg>
+      <GlyphIcon class="note__caret" name="caret-down" :size="11" />
     </button>
 
     <transition name="unfold">
@@ -73,7 +71,7 @@ function go(tip: { kind: string; to: string }) {
               <button class="row" type="button" @click="go(tip)">
                 <span class="row__label">{{ tip.label }}</span>
                 <span class="row__note">{{ tip.note }}</span>
-                <span class="row__arrow" aria-hidden="true">→</span>
+                <GlyphIcon class="row__arrow" name="arrow-right" :size="13" />
               </button>
             </li>
           </ul>
@@ -97,7 +95,8 @@ function go(tip: { kind: string; to: string }) {
  * 它不再是一个"待打开的聊天窗"，而是一张**便签** —— 纸面、轻微倾斜、没有输入框。
  */
 .dock {
-  position: fixed; left: 20px; bottom: 18px; z-index: var(--z-drawer);
+  /* 底部横条（home indicator）上不让：它是固定定位，body 的 padding 管不到 */
+  position: fixed; left: 20px; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); z-index: var(--z-drawer);
   display: flex; flex-direction: column; gap: var(--s2);
   align-items: flex-start;
   max-width: min(420px, calc(100vw - 40px));
@@ -121,10 +120,12 @@ function go(tip: { kind: string; to: string }) {
               transform var(--dur) var(--ease-spring),
               box-shadow var(--dur) var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .note:hover {
   border-color: var(--accent);
   transform: rotate(0deg) translateY(-2px);
   box-shadow: var(--e-4), var(--inner-hi);
+}
 }
 .dock--open .note { border-color: var(--accent); transform: rotate(0deg); }
 
@@ -135,10 +136,21 @@ function go(tip: { kind: string; to: string }) {
   animation: mo-breathe 2.6s var(--ease-out) infinite;
 }
 .note__k { color: var(--mk-orange); flex: 0 0 auto; }
+/*
+ * 便签那句话（收起来时唯一的一行）。
+ *
+ * 原来写的是 `white-space: nowrap` + `ellipsis` + `max-width: 34ch` —— 而 `ch` 是**拉丁数字 0**
+ * 的宽度，中文一个字约占 2ch，于是 34ch 只装得下十七八个汉字：一句话被截在"…这不…"，
+ * 用户读到的是"这个软件自己都说不清"（两轮评审都点了这条，实测在控制台被裁掉 238px）。
+ *
+ * 现在允许**两行**、按中文字宽给上限（24em ≈ 24 个汉字），于是常见那句话能整句读完；
+ * 再长的仍然收住 —— 便签长高一行的代价可以接受，长成一个段落的代价不可以。
+ */
 .note__line {
-  font-size: var(--fs-small); color: var(--ink-1);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  max-width: 34ch;
+  font-size: var(--fs-small); color: var(--ink-1); line-height: 1.55;
+  max-width: 24em;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden; overflow-wrap: anywhere;
 }
 .note__caret { color: var(--ink-3); flex: 0 0 auto; transition: transform var(--dur) var(--ease-out); }
 .note[aria-expanded="true"] .note__caret { transform: rotate(180deg); }
@@ -175,11 +187,15 @@ function go(tip: { kind: string; to: string }) {
   text-align: left;
   transition: background var(--dur-micro) var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .row:hover { background: var(--fill-hover); }
+}
 .row__label { font-size: var(--fs-small); font-weight: 600; color: var(--ink-1); }
 .row__note { font-size: var(--t-xs); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .row__arrow { color: var(--ink-3); transition: transform var(--dur-micro) var(--ease-out), color var(--dur-micro) var(--ease-out); }
+@media (hover: hover) and (pointer: fine) {
 .row:hover .row__arrow { color: var(--accent); transform: translateX(2px); }
+}
 
 .next {
   display: flex; flex-direction: column; gap: 6px;
@@ -193,7 +209,7 @@ function go(tip: { kind: string; to: string }) {
 .unfold-enter-from, .unfold-leave-to { opacity: 0; transform: translateY(8px) scale(0.99); }
 
 @media (max-width: 720px) {
-  .dock { left: 12px; right: 12px; bottom: 12px; max-width: none; }
+  .dock { left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); max-width: none; }
   .sheet { width: 100%; }
   .note__line { max-width: 22ch; }
 }

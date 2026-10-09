@@ -13,7 +13,13 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 from zhiyin_business.policies.renderers import known_kinds, renderer_for, validate_renderables
+from zhiyin_business.contracts.decide import PlanOption
+from zhiyin_business.services.orchestrator import _asks_for_chart, _chart_reply_text, _renderables_for_turn
+from zhiyin_kernel.blackboard import Profile, ProfileField
+from zhiyin_kernel.enums import LoopStage
 
 
 def _bars(points, title="这几项你现在各有多少把握", unit="%"):
@@ -23,19 +29,73 @@ def _bars(points, title="这几项你现在各有多少把握", unit="%"):
 def test_a_valid_renderable_from_the_tool_passes() -> None:
     """工具按真实数据生成的可视件正常通过。"""
     kept = validate_renderables(
-        [_bars([{"label": "专业", "value": 90}, {"label": "兴趣方向", "value": 60}])]
+        [_bars([{"label": "专业", "value": 0.9}, {"label": "兴趣方向", "value": 0.6}])]
     )
     assert len(kept) == 1
     assert kept[0].kind == "bars_chart"
     assert kept[0].payload["points"] == [
-        {"label": "专业", "value": 90.0},
-        {"label": "兴趣方向", "value": 60.0},
+        {"label": "专业", "value": 0.9},
+        {"label": "兴趣方向", "value": 0.6},
     ]
 
 
 def test_one_point_is_not_a_chart() -> None:
     """只有一个点画不成图 —— 丢掉。"""
     assert validate_renderables([_bars([{"label": "专业", "value": 90}])]) == []
+
+
+def test_percent_scaled_values_are_rejected() -> None:
+    assert validate_renderables(
+        [_bars([{"label": "专业", "value": 90}, {"label": "兴趣", "value": 60}])]
+    ) == []
+
+
+def test_explicit_chart_request_uses_only_saved_profile_values() -> None:
+    profile = Profile(
+        id="p1",
+        user_id="u1",
+        updated_at=datetime.now(timezone.utc),
+        fields=[
+            ProfileField(key="major", label="专业", value="计算机", confidence=0.9, source="conversation", updated_at=datetime.now(timezone.utc)),
+            ProfileField(key="interest", label="兴趣", value="产品", confidence=0.6, source="conversation", updated_at=datetime.now(timezone.utc)),
+        ],
+    )
+    charts = _renderables_for_turn(
+        [], LoopStage.ACT, {}, message="给我画个图", profile=profile
+    )
+    assert [item.payload["points"] for item in charts] == [
+        [{"label": "专业", "value": 0.9}, {"label": "兴趣", "value": 0.6}]
+    ]
+    assert _renderables_for_turn([], LoopStage.ACT, {}, message="你好", profile=profile) == []
+    assert _renderables_for_turn([], LoopStage.ACT, {}, message="给我画个图") == []
+    assert _chart_reply_text(charts) == "图表已生成，展示已存记录中的专业、兴趣。这张图只呈现这些记录，不代表职业匹配结论。"
+    assert _chart_reply_text([]) == "目前没有足够的可用数据生成图表；补充记录后可以再看。"
+
+
+def test_default_chart_rejects_model_score_outside_ratio_range() -> None:
+    bad = {"plans": [{"name": "方向一", "match_score": 90}, {"name": "方向二", "match_score": 60}]}
+    assert _renderables_for_turn([], LoopStage.DECIDE, bad) == []
+
+
+def test_unknown_direction_scores_do_not_become_zero_bars() -> None:
+    unknown = {"plans": [{"name": "方向一", "match_score": None}, {"name": "方向二", "match_score": None}]}
+    assert _renderables_for_turn([], LoopStage.DECIDE, unknown) == []
+
+
+def test_chart_intent_does_not_match_project_description() -> None:
+    assert _asks_for_chart("能不能给我画个图，让我看看现在各项情况把握得怎么样？")
+    assert _asks_for_chart("请用图表展示这几项")
+    assert not _asks_for_chart("我做过一个数据可视化的大屏")
+    assert not _asks_for_chart("我做过一个图表项目")
+
+
+def test_direction_contract_can_represent_unknown_match_score() -> None:
+    option = PlanOption.model_validate({
+        "option_id": "p1", "role": "main", "name": "后端实习",
+        "target_desc": "先验证方向", "fit_reason": "缺岗位事实，待核实",
+        "main_risk": "需要补充岗位要求", "match_score": None,
+    })
+    assert option.match_score is None
 
 
 def test_points_without_a_name_are_dropped() -> None:

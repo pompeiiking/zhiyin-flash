@@ -167,7 +167,8 @@ const at = (value?: string | null) => (value ? value.slice(0, 16).replace('T', '
   padding: 8px var(--s2); border-radius: var(--r-sm); text-align: left;
   transition: background var(--mo-fast) var(--mo-out);
 }
-.row:hover { background: var(--fill-subtle); }
+@media (hover: hover) and (pointer: fine) {
+.row:hover { background: var(--fill-subtle); } }
 .row.on { background: var(--accent-soft); }
 .row__name { font-size: var(--fs-small); color: var(--ink-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .row__stage, .row__lead, .row__at, .row__status, .row__cur { color: var(--ink-3); }

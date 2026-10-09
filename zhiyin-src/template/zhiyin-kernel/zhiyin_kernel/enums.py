@@ -97,6 +97,13 @@ class ProfileSource(str, Enum):
     BEHAVIOR_INFERENCE = "behavior_inference"  # 行为推断
     MENTOR = "mentor"                          # 导师建议
     RECORD = "record"                          # 客观档案（学信网等权威机构出具的记录）
+    # 用户本人更正（他自己在画像里改的值）。
+    #
+    # 为什么它必须是一个**独立取值**而不是复用"对话"：这两个来源在界面上说的是
+    # 两句不同的话（"系统从你说的话里记的" / "你自己写的"）。复用 conversation
+    # 的后果是：他亲手改过的那一条看起来仍然像系统推断的，下一次再看到还是不敢信；
+    # 也再没有一处能回答"这条到底是谁定的"。
+    USER_EDIT = "user_edit"
 
 
 class UserRole(str, Enum):
@@ -127,6 +134,7 @@ class PlanRole(str, Enum):
 class ReviewAttribution(str, Enum):
     """复盘归因判别结果。"""
 
+    UNKNOWN = "unknown"                    # 证据不足，暂不归因
     TASK_TOO_BIG = "task_too_big"          # 任务太大
     LOW_MOTIVATION = "low_motivation"      # 动机不足
     DIRECTION_DOUBT = "direction_doubt"    # 方向动摇

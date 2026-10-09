@@ -13,6 +13,7 @@
  */
 import { computed } from 'vue'
 import Bubble from '@/components/console/Bubble.vue'
+import GlyphIcon from '@/components/ui/GlyphIcon.vue'
 import { useSessionStore } from '@/stores/session'
 
 const session = useSessionStore()
@@ -107,7 +108,7 @@ function open() {
     <p v-else class="why why--dim">清单还没算出来。它到之前，这里不猜你缺什么。</p>
 
     <footer class="foot">
-      <span class="label foot__cta">看完整清单 →</span>
+      <span class="label foot__cta">看完整清单 <GlyphIcon name="arrow-right" :size="12" /></span>
     </footer>
   </Bubble>
 </template>
@@ -169,5 +170,6 @@ function open() {
 
 .foot { display: flex; align-items: center; gap: var(--s3); margin-top: auto; }
 .foot__cta { color: var(--ink-3); }
-.bubble:hover .foot__cta { color: var(--accent); }
+@media (hover: hover) and (pointer: fine) {
+.bubble:hover .foot__cta { color: var(--accent); } }
 </style>

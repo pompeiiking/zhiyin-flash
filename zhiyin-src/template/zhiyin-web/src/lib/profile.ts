@@ -38,10 +38,16 @@ export const FACT_KEYS: ReadonlySet<string> = new Set([
   'scores',
 ])
 
-/** 判断维度：不是档案键，而且来源不是"导入的记录" */
+/**
+ * 判断维度：不是档案键，而且来源既不是"导入的记录"，**也不是他自己填的**。
+ *
+ * `user_edit` 与 `record` 一样算"事实"：那是他本人在画像里写的（issue #26 第三条）。
+ * 漏掉它的后果很具体：用户刚亲手更正过的专业，会被画进"判断"那一堆（雷达图的顶点），
+ * 看起来仍然像系统替他推出来的 —— 而他纠正它的全部意义就是"这条是我说的"。
+ */
 export function isJudgment(field: { key: string; source?: string }): boolean {
   if (FACT_KEYS.has(field.key)) return false
-  return field.source !== 'record'
+  return field.source !== 'record' && field.source !== 'user_edit'
 }
 
 /**

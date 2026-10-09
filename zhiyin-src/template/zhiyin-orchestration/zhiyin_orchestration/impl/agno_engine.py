@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import logging
+from hashlib import sha256
 from typing import Any, Callable, Mapping, Optional
 
 from agno.agent import Agent
@@ -24,7 +25,7 @@ from zhiyin_orchestration.impl.schema import validate_schema
 
 logger = logging.getLogger(__name__)
 
-ModelFactory = Callable[[], Any]
+ModelFactory = Callable[..., Any]
 
 
 # 提示词与收尾规范都不在本文件里了。
@@ -115,8 +116,8 @@ class AgnoAgentEngine(AgentEngine):
         # 引擎只认识名字，不认识实现 —— 它不 import 基础设施层。
         self._tools = dict(tools or {})
         self._raise_on_violation = raise_on_violation
-        # 缓存键是 `agent_id@stage`：职业顾问同时负责诊断与决策，
-        # 两条提示词不同，按 agent_id 缓存会让后一个环节拿到前一个环节的角色说明。
+        # 缓存键含角色、环节、任务、工具开关及提示词/角色配置指纹；
+        # 动态资源更新后下一轮会构建新 Agent，不继续使用旧指令。
         self._agents: dict[str, Agent] = {}
         self._model_by_key: dict[str, Any] = {}
 
@@ -135,6 +136,26 @@ class AgnoAgentEngine(AgentEngine):
             bundle,
             request.prompt_code,
             use_tools=request.use_tools,
+        )
+        contract_fingerprint = sha256(
+            json.dumps(request.output_schema or {}, ensure_ascii=False, sort_keys=True).encode("utf-8")
+        ).hexdigest()[:16]
+        safe_params = {
+            key: bundle["params"][key]
+            for key in ("temperature", "timeout_s", "retries")
+            if key in bundle.get("params", {})
+        }
+        logger.info(
+            "模型调用：agent=%s stage=%s prompt=%s prompt_fingerprint=%s "
+            "model=%s params=%s contract_fingerprint=%s trace=%s",
+            request.agent_id,
+            request.stage or "-",
+            request.prompt_code or "role",
+            _bundle_fingerprint(bundle),
+            getattr(getattr(agent, "model", None), "id", "") or "-",
+            safe_params,
+            contract_fingerprint,
+            request.trace_id or "-",
         )
         run_kwargs = self._run_context_kwargs(request)
         try:
@@ -192,7 +213,7 @@ class AgnoAgentEngine(AgentEngine):
                 # 不修的话，用户看到的就是一句"我没能按格式产出"，而且**每一轮都是它**：
                 # 对话走不动，画像/报告/方案全部生成不出来。
                 repaired = await self._repair_once(
-                    agent, request, structured, raw_text, errors
+                    agent, request, structured, raw_text, errors, input_text
                 )
                 if repaired is not None:
                     structured, raw_text, errors = repaired
@@ -201,6 +222,15 @@ class AgnoAgentEngine(AgentEngine):
                 f"智能体 {request.agent_id} 产出不符合契约",
                 detail={"errors": errors, "trace_id": request.trace_id},
             )
+        logger.info(
+            "模型结果：agent=%s stage=%s prompt=%s valid=%s errors=%s trace=%s",
+            request.agent_id,
+            request.stage or "-",
+            request.prompt_code or "role",
+            not errors,
+            len(errors),
+            request.trace_id or "-",
+        )
         return AgentResult(
             agent_id=request.agent_id,
             structured=structured,
@@ -218,6 +248,7 @@ class AgnoAgentEngine(AgentEngine):
         structured: dict[str, Any],
         raw_text: str,
         errors: list[str],
+        original_input: str,
     ) -> Optional[tuple[dict[str, Any], str, list[str]]]:
         """把"答了但格式不对"的产出再要一次。成功返回新产出，失败返回 None。
 
@@ -227,15 +258,20 @@ class AgnoAgentEngine(AgentEngine):
         schema = request.output_schema or {}
         keys = ", ".join(sorted((schema.get("properties") or {}).keys()))
         note = (
-            "上一次的产出不符合要求，问题在这里："
+            "以下是内部结构校验反馈，不是用户消息。上一次的产出不符合要求，问题在这里："
             + "；".join(str(item) for item in errors[:5])
             + f"\n请**只输出一个 JSON 对象**，且必须包含这些字段：{keys}。"
             + "不要解释、不要 Markdown 代码块、不要多余字段。"
+            + "用户可见的回复字段须继续回答原始用户问题；不得提及格式、校验、重试、"
+            + "上一次产出或 JSON。"
         )
         previous = (raw_text or json.dumps(structured, ensure_ascii=False))[:2000]
         try:
             output = await agent.arun(
-                input=f"{note}\n\n上一次的产出如下（供你改写，不要照抄格式）：\n{previous}",
+                input=(
+                    f"{note}\n\n原始用户任务与上下文：\n{original_input[:12000]}"
+                    f"\n\n上一次的产出如下（供你改写，不要照抄格式）：\n{previous}"
+                ),
                 output_schema=request.output_schema or None,
             )
         except Exception:  # noqa: BLE001 - 纠错失败就当没发生过，走原来的降级
@@ -274,7 +310,11 @@ class AgnoAgentEngine(AgentEngine):
         *,
         use_tools: bool = True,
     ) -> Agent:
-        key = _agent_key(agent_id, stage, prompt_code, use_tools)
+        descriptor = await self._registry.get_agent(agent_id) if self._registry else None
+        # 数据库中的提示词和角色配置允许热更新；旧 Agent 不能继续持有旧指令。
+        key = _agent_key(
+            agent_id, stage, prompt_code, use_tools, _bundle_fingerprint(bundle, descriptor)
+        )
         cached = self._agents.get(key)
         if cached is not None:
             return cached
@@ -285,16 +325,14 @@ class AgnoAgentEngine(AgentEngine):
         role = bundle.get("role")
         if role is not None:
             instructions.append(role.content)
-        if self._registry is not None:
-            descriptor = await self._registry.get_agent(agent_id)
-            if descriptor is not None:
-                instructions.append(
-                    f"你是「{descriptor.name}」。职责：{descriptor.role_summary or '（见团队分工）'}。"
-                )
-                if descriptor.call_scenarios:
-                    instructions.append("你被调用的场合：" + "；".join(descriptor.call_scenarios))
-                if descriptor.not_to_do:
-                    instructions.append("明确不做：" + "；".join(descriptor.not_to_do))
+        if descriptor is not None:
+            instructions.append(
+                f"你是「{descriptor.name}」。职责：{descriptor.role_summary or '（见团队分工）'}。"
+            )
+            if descriptor.call_scenarios:
+                instructions.append("你被调用的场合：" + "；".join(descriptor.call_scenarios))
+            if descriptor.not_to_do:
+                instructions.append("明确不做：" + "；".join(descriptor.not_to_do))
         # 挂不挂工具由调用方声明（`use_tools`），不是由"是不是任务"推断：
         # 生成类 AI 任务的上下文由业务层一次备齐，产出要可复现，所以不挂；
         # 而"方向匹配"必须自己去取职业要求，就显式声明要工具。
@@ -325,12 +363,14 @@ class AgnoAgentEngine(AgentEngine):
         cached = self._model_by_key.get(key)
         if cached is not None:
             return cached
-        temperature = params.get("temperature")
-        model = (
-            self._model_factory()
-            if temperature is None
-            else self._model_factory(temperature=float(temperature))
-        )
+        kwargs: dict[str, Any] = {}
+        if "temperature" in params:
+            kwargs["temperature"] = float(params["temperature"])
+        if "timeout_s" in params:
+            kwargs["timeout_s"] = float(params["timeout_s"])
+        if "retries" in params:
+            kwargs["retries"] = int(params["retries"])
+        model = self._model_factory(**kwargs)
         self._model_by_key[key] = model
         return model
 
@@ -353,15 +393,15 @@ class AgnoAgentEngine(AgentEngine):
         if self._registry is None:
             raise MissingConfigError("智能体引擎未接入动态资源，取不到任何提示词")
         core = await _required_prompt(self._registry, _CORE_PROMPT)
-        guide = await _required_prompt(self._registry, _GUIDE_PROMPT)
         if prompt_code:
             role = await _required_prompt(self._registry, prompt_code)
             return {
                 "core": core,
-                "guide": guide,
+                "guide": None,
                 "role": role,
                 "params": dict(role.params or {}),
             }
+        guide = await _required_prompt(self._registry, _GUIDE_PROMPT)
         roles = [
             item
             for item in await self._registry.list_prompts(agent_id=agent_id)
@@ -449,7 +489,8 @@ class AgnoAgentEngine(AgentEngine):
         "按给定结构输出 JSON、不要 Markdown、不要解释"这条约束在总纲里
         （`core.system` 的输出纪律），不在代码里 —— 两份必然漂移。
         """
-        parts: list[str] = [bundle["guide"].content]
+        guide = bundle.get("guide")
+        parts: list[str] = [guide.content] if guide is not None else []
         body = _render_prompt(request.prompt_vars, request.blackboard)
         if body:
             parts.append(body)
@@ -476,6 +517,7 @@ def _agent_key(
     stage: Optional[str],
     prompt_code: Optional[str] = None,
     use_tools: bool = True,
+    fingerprint: str = "",
 ) -> str:
     """缓存键：同一智能体在不同环节／不同任务上是**不同的**代理。
 
@@ -483,7 +525,19 @@ def _agent_key(
     提示词条目编进键里，后一个会拿到前一个的角色说明。
     """
     tools_mark = "tools" if use_tools else "plain"
-    return f"{agent_id}@{stage or '-'}@{prompt_code or '-'}@{tools_mark}"
+    return f"{agent_id}@{stage or '-'}@{prompt_code or '-'}@{tools_mark}@{fingerprint}"
+
+
+def _bundle_fingerprint(bundle: dict[str, Any], descriptor: Any = None) -> str:
+    """对实际注入的内容和参数取指纹，避免动态资源更新后沿用旧 Agent。"""
+    material = {
+        name: getattr(bundle.get(name), "content", "") for name in ("core", "guide", "role")
+    }
+    material["params"] = bundle.get("params") or {}
+    if descriptor is not None:
+        material["agent"] = descriptor.model_dump(mode="json")
+    encoded = json.dumps(material, ensure_ascii=False, sort_keys=True).encode("utf-8")
+    return sha256(encoded).hexdigest()[:16]
 
 
 async def _required_prompt(registry: RegistryRepository, code: str) -> Any:

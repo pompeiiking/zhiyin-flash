@@ -106,7 +106,7 @@ async def _chart_points(
             points.append(
                 {
                     "label": str(label or key)[:12],
-                    "value": round(float(confidence) * 100),
+                    "value": round(float(confidence), 4),
                 }
             )
         return points or None
@@ -127,7 +127,7 @@ async def _chart_points(
                 score = plan.get("match_score")
             if score is None:
                 continue
-            points.append({"label": str(name)[:12], "value": round(float(score) * 100)})
+            points.append({"label": str(name)[:12], "value": round(float(score), 4)})
         return points or None
     action = data.get("plan")
     phases = list(getattr(action, "phases", []) or []) if action is not None else []
@@ -140,7 +140,7 @@ async def _chart_points(
         points.append(
             {
                 "label": str(getattr(phase, "name", "") or "阶段")[:12],
-                "value": round(done * 100 / len(tasks)),
+                "value": round(done / len(tasks), 4),
             }
         )
     return points or None
@@ -473,7 +473,10 @@ def build_tool_catalog(
                 box = dependencies.setdefault(CHART_BOX_KEY, [])
                 if isinstance(box, list):
                     box.append(spec)
-            listed = "、".join(f"{item['label']} {item['value']:g}{_CHART_UNITS[wanted]}" for item in points)
+            listed = "、".join(
+                f"{item['label']} {round(item['value'] * 100)}{_CHART_UNITS[wanted]}"
+                for item in points
+            )
             return f"图已经挂上了（{spec['title']}）：{listed}。用一句话跟他讲这张图在说什么。"
 
         catalog["chart.render"] = ToolSpec(

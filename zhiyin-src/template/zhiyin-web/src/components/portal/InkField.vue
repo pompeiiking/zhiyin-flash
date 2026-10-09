@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import SketchPath from '@/components/charts/SketchPath.vue'
 import MagnetLines from '@/components/vendor/vuebits/MagnetLines.vue'
-import { sCircle, sLine, sPath, sPolyline, sRect, type SketchOp } from '@/lib/sketch'
+import { sCircle, sLine, sPath, sPolyline, sRect, sketchTick, type SketchOp } from '@/lib/sketch'
 
 /*
  * 纸面的底子 —— 它不是"一张干净的纸 + 一圈光晕"，而是**擦过一遍的纸**。
@@ -22,40 +22,55 @@ import { sCircle, sLine, sPath, sPolyline, sRect, type SketchOp } from '@/lib/sk
 const root = ref<HTMLElement | null>(null)
 
 /* ── 第一层：旧笔迹（很淡，大部分会被擦掉） ─────────────────────── */
-const GHOST: SketchOp[] = [
-  // 一段没画完的图
-  ...sRect(300, 150, 220, 150, { seed: 3001, stroke: 'currentColor', strokeWidth: 1.6 }),
-  ...sLine(300, 205, 520, 205, { seed: 3002, stroke: 'currentColor', strokeWidth: 1.2 }),
-  ...sLine(410, 150, 410, 300, { seed: 3003, stroke: 'currentColor', strokeWidth: 1.2 }),
-  // 几张草稿
-  ...sPath('M 760 120 C 800 96, 860 100, 880 140 C 900 180, 856 214, 812 206', { seed: 3004, stroke: 'currentColor', strokeWidth: 1.5 }),
-  ...sPolyline([[980, 170], [1020, 132], [1052, 188], [1092, 148]], { seed: 3005, stroke: 'currentColor', strokeWidth: 1.5 }),
-  ...sCircle(1180, 220, 34, { seed: 3006, stroke: 'currentColor', strokeWidth: 1.5 }),
-  ...sCircle(1180, 220, 12, { seed: 3007, stroke: 'currentColor', strokeWidth: 1.2 }),
-  // 下半页：一串日期与勾
-  ...sLine(180, 420, 420, 420, { seed: 3008, stroke: 'currentColor', strokeWidth: 1.4 }),
-  ...sLine(180, 470, 380, 470, { seed: 3009, stroke: 'currentColor', strokeWidth: 1.4 }),
-  ...sLine(180, 520, 440, 520, { seed: 3010, stroke: 'currentColor', strokeWidth: 1.4 }),
-  ...sPath('M 500 452 L 516 470 L 546 430', { seed: 3011, stroke: 'currentColor', strokeWidth: 1.8 }),
-  ...sPath('M 500 506 L 516 524 L 546 484', { seed: 3012, stroke: 'currentColor', strokeWidth: 1.8 }),
-  // 右下角：一个没写完的表
-  ...sRect(900, 470, 300, 170, { seed: 3013, stroke: 'currentColor', strokeWidth: 1.5 }),
-  ...sLine(900, 526, 1200, 526, { seed: 3014, stroke: 'currentColor', strokeWidth: 1.2 }),
-  ...sLine(900, 582, 1200, 582, { seed: 3015, stroke: 'currentColor', strokeWidth: 1.2 }),
-  ...sLine(1000, 470, 1000, 640, { seed: 3016, stroke: 'currentColor', strokeWidth: 1.2 }),
-  ...sCircle(220, 640, 26, { seed: 3017, stroke: 'currentColor', strokeWidth: 1.4 }),
-  ...sLine(640, 700, 860, 700, { seed: 3018, stroke: 'currentColor', strokeWidth: 1.4 }),
-]
+/*
+ * 形状算在 computed 里，而不是 setup 顶层的 const。
+ *
+ * 原因：rough 的 roughness 由 `lib/sketch.ts` 的模块级系数决定，而那个系数是
+ * 「线条：手绘 ↔ 精确」这条轴在**运行时**改的。写死在顶层的 const 只在组件建立时
+ * 算一次 —— 换了轴就得刷新才看得见。`void sketchTick.value` 把这一组接到那个
+ * 版本号上，theme.ts 每 bumpSketch() 一次，这里就重画一遍。
+ */
+const GHOST = computed<SketchOp[]>(() => {
+  void sketchTick.value
+  return [
+    // 一段没画完的图
+    ...sRect(300, 150, 220, 150, { seed: 3001, stroke: 'currentColor', strokeWidth: 1.6 }),
+    ...sLine(300, 205, 520, 205, { seed: 3002, stroke: 'currentColor', strokeWidth: 1.2 }),
+    ...sLine(410, 150, 410, 300, { seed: 3003, stroke: 'currentColor', strokeWidth: 1.2 }),
+    // 几张草稿
+    ...sPath('M 760 120 C 800 96, 860 100, 880 140 C 900 180, 856 214, 812 206', { seed: 3004, stroke: 'currentColor', strokeWidth: 1.5 }),
+    ...sPolyline([[980, 170], [1020, 132], [1052, 188], [1092, 148]], { seed: 3005, stroke: 'currentColor', strokeWidth: 1.5 }),
+    ...sCircle(1180, 220, 34, { seed: 3006, stroke: 'currentColor', strokeWidth: 1.5 }),
+    ...sCircle(1180, 220, 12, { seed: 3007, stroke: 'currentColor', strokeWidth: 1.2 }),
+    // 下半页：一串日期与勾
+    ...sLine(180, 420, 420, 420, { seed: 3008, stroke: 'currentColor', strokeWidth: 1.4 }),
+    ...sLine(180, 470, 380, 470, { seed: 3009, stroke: 'currentColor', strokeWidth: 1.4 }),
+    ...sLine(180, 520, 440, 520, { seed: 3010, stroke: 'currentColor', strokeWidth: 1.4 }),
+    ...sPath('M 500 452 L 516 470 L 546 430', { seed: 3011, stroke: 'currentColor', strokeWidth: 1.8 }),
+    ...sPath('M 500 506 L 516 524 L 546 484', { seed: 3012, stroke: 'currentColor', strokeWidth: 1.8 }),
+    // 右下角：一个没写完的表
+    ...sRect(900, 470, 300, 170, { seed: 3013, stroke: 'currentColor', strokeWidth: 1.5 }),
+    ...sLine(900, 526, 1200, 526, { seed: 3014, stroke: 'currentColor', strokeWidth: 1.2 }),
+    ...sLine(900, 582, 1200, 582, { seed: 3015, stroke: 'currentColor', strokeWidth: 1.2 }),
+    ...sLine(1000, 470, 1000, 640, { seed: 3016, stroke: 'currentColor', strokeWidth: 1.2 }),
+    ...sCircle(220, 640, 26, { seed: 3017, stroke: 'currentColor', strokeWidth: 1.4 }),
+    ...sLine(640, 700, 860, 700, { seed: 3018, stroke: 'currentColor', strokeWidth: 1.4 }),
+  ]
+})
 
 /* ── 第三层：擦不干净的残笔（露在补丁外面的那几段） ───────────────── */
-const REST: { ops: SketchOp[]; tone: string; delay: number }[] = [
-  { tone: 'var(--mk-green)', delay: 1.5, ops: [...sPath('M 520 205 C 560 196, 600 214, 648 202', { seed: 3101, stroke: 'currentColor', strokeWidth: 1.8 }), ...sLine(524, 300, 596, 288, { seed: 3102, stroke: 'currentColor', strokeWidth: 1.4 })] },
-  { tone: 'var(--mk-orange)', delay: 1.7, ops: [...sPolyline([[1096, 150], [1140, 128], [1176, 168]], { seed: 3103, stroke: 'currentColor', strokeWidth: 1.8 }), ...sCircle(1214, 176, 16, { seed: 3104, stroke: 'currentColor', strokeWidth: 1.5 })] },
-  { tone: 'var(--mk-purple)', delay: 1.9, ops: [...sLine(190, 372, 320, 360, { seed: 3105, stroke: 'currentColor', strokeWidth: 1.6 }), ...sPath('M 196 466 L 212 484 L 250 440', { seed: 3106, stroke: 'currentColor', strokeWidth: 1.7 })] },
-  { tone: 'var(--mk-blue)', delay: 2.1, ops: [...sLine(244, 636, 380, 620, { seed: 3107, stroke: 'currentColor', strokeWidth: 1.5 }), ...sCircle(430, 610, 14, { seed: 3108, stroke: 'currentColor', strokeWidth: 1.4 })] },
-  { tone: 'var(--mk-teal)', delay: 2.3, ops: [...sLine(868, 700, 1004, 686, { seed: 3109, stroke: 'currentColor', strokeWidth: 1.5 })] },
-  { tone: 'var(--mk-pink)', delay: 2.5, ops: [...sPath('M 1188 700 C 1214 676, 1246 692, 1268 664', { seed: 3110, stroke: 'currentColor', strokeWidth: 1.6 })] },
-]
+/* 同 GHOST：形状跟着手绘系数重算，否则换「线条」轴要刷新才生效 */
+const REST = computed<{ ops: SketchOp[]; tone: string; delay: number }[]>(() => {
+  void sketchTick.value
+  return [
+    { tone: 'var(--mk-green)', delay: 1.5, ops: [...sPath('M 520 205 C 560 196, 600 214, 648 202', { seed: 3101, stroke: 'currentColor', strokeWidth: 1.8 }), ...sLine(524, 300, 596, 288, { seed: 3102, stroke: 'currentColor', strokeWidth: 1.4 })] },
+    { tone: 'var(--mk-orange)', delay: 1.7, ops: [...sPolyline([[1096, 150], [1140, 128], [1176, 168]], { seed: 3103, stroke: 'currentColor', strokeWidth: 1.8 }), ...sCircle(1214, 176, 16, { seed: 3104, stroke: 'currentColor', strokeWidth: 1.5 })] },
+    { tone: 'var(--mk-purple)', delay: 1.9, ops: [...sLine(190, 372, 320, 360, { seed: 3105, stroke: 'currentColor', strokeWidth: 1.6 }), ...sPath('M 196 466 L 212 484 L 250 440', { seed: 3106, stroke: 'currentColor', strokeWidth: 1.7 })] },
+    { tone: 'var(--mk-blue)', delay: 2.1, ops: [...sLine(244, 636, 380, 620, { seed: 3107, stroke: 'currentColor', strokeWidth: 1.5 }), ...sCircle(430, 610, 14, { seed: 3108, stroke: 'currentColor', strokeWidth: 1.4 })] },
+    { tone: 'var(--mk-teal)', delay: 2.3, ops: [...sLine(868, 700, 1004, 686, { seed: 3109, stroke: 'currentColor', strokeWidth: 1.5 })] },
+    { tone: 'var(--mk-pink)', delay: 2.5, ops: [...sPath('M 1188 700 C 1214 676, 1246 692, 1268 664', { seed: 3110, stroke: 'currentColor', strokeWidth: 1.6 })] },
+  ]
+})
 
 /*
  * 这里原来还有两道"橡皮拖过的痕"（26px / 20px 宽的奶油色粗线）。

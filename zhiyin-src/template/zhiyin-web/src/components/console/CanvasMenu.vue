@@ -91,7 +91,9 @@ onMounted(() => {
   text-align: left; font-size: var(--fs-small); color: var(--ink-1);
   transition: background var(--mo-fast) var(--mo-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .item:hover:not(:disabled) { background: var(--fill-hover); }
+}
 .item:disabled { opacity: 0.4; cursor: not-allowed; }
 .item__hint { color: var(--ink-3); }
 .item--accent .item__label { color: var(--accent); font-weight: 500; }

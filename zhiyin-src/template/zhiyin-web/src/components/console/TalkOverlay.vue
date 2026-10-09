@@ -13,10 +13,11 @@
  * 左窄右宽两张薄片：左边交代"现在是谁、走到哪了、为什么换人"，
  * 右边才是说话。**五个主理在这边，不在左下角那张便签上。**
  */
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import Overlay from '@/components/console/Overlay.vue'
 import RenderableBlock from '@/components/render/RenderableBlock.vue'
+import GlyphIcon from '@/components/ui/GlyphIcon.vue'
 import { getTheoryCard, track, uploadMaterial } from '@/api/client'
 import { useSessionStore } from '@/stores/session'
 import type { GuideOption } from '@/lib/asks'
@@ -116,8 +117,20 @@ watch(
  * **待发的材料跟着这一轮走**：用户传完材料再打字，那一句和材料本来就是一件事
  * （"简历在这，你看看"）。分开成两次发送，模型会先看到一份没有上下文材料、
  * 再看到一句不知道在说谁的话 —— 而用户以为自己只做了一次动作。
+ *
+ * **上一轮没回来之前，这一下不发送**（issue #26 第二条的入口）。
+ *
+ * 输入框全程可用是刻意的：等回复时用户可以接着打。但"点了选项"和"补一句"
+ * 如果都在回复回来之前发生，就是**两次发送同时在跑**：两个 `sendMessage` 落在
+ * 同一条任务会话上，回包不保证按顺序回来，而 store 里 chatAnswered / chatPrompt /
+ * guide 都是**单槽**的 —— 后到的那个把先到的覆盖掉，用户看到的是"同一句问题
+ * 又回来了"；连着两回就触发整组选项锁死（chatRepeats >= 2），页面看起来就是卡住。
+ *
+ * 这里只**不发**，不动草稿：用户打完的那句话原样留在输入框里，等这一轮回复
+ * 落地再按一次发送，一句话都不会丢（清空草稿是最不该做的，那才是真的丢输入）。
  */
 function send(text: string, option?: GuideOption) {
+  if (session.chatTyping) return
   const material = pending.value
   pending.value = null
   attachError.value = ''
@@ -125,9 +138,84 @@ function send(text: string, option?: GuideOption) {
   draft.value = ''
 }
 
+/**
+ * 回车发送 —— 但**中文输入法里那一下回车不算**。
+ *
+ * 打中文时用回车确认候选词，浏览器照样发一个 `keydown.enter`：那一下会把还没
+ * 写完的半句发出去、并把草稿清空。用户接着打完的"补充说明"于是变成第二轮 ——
+ * 与上面那条同一种病：两次发送叠在一起，流程看起来就不往前走了。
+ * `isComposing` 是浏览器给的"这一下属于输入法"的标记（老实现看 keyCode 229）。
+ */
+function onEnter(event: KeyboardEvent) {
+  if (event.isComposing) return
+  send(draft.value)
+}
+
 /** 这一轮刚点过的那一条：它要显示成"已答"，不能再让人点第三次 */
 const answeredId = computed(() => session.chatAnswered?.optionId ?? '')
 const isAnswered = (opt: GuideOption) => (opt.option_id ?? opt.label) === answeredId.value
+
+/**
+ * 连着两回没往前走：整组选项锁掉，让用户改走自由文本（issue #24）。
+ *
+ * "已答"只解决"刚点过的那一条"；如果后端把**同一组**选项又摆一遍，
+ * 用户会换一条点、再换一条点，看起来永远在原地。所以第二回直接把选项全部锁住，
+ * 把路指到输入框上 —— 那里是唯一能把这一轮说清楚的地方。
+ */
+const optionsLocked = computed(() => session.chatRepeats >= 2)
+
+/*
+ * 对话滚动位置的记忆（issue #19）。
+ *
+ * 浮层关掉就销毁，`scrollTop` 随着节点一起消失，回来时对话跳回顶部，
+ * 用户得自己再翻一遍找上次读到哪儿。所以：
+ *   · 滚动时（按帧节流）与关闭前，把位置存进 store；
+ *   · 打开时，中间没有新消息就回到原位；有新消息就直接去最新 ——
+ *     新消息优先：他先该看见新的，而不是先看见旧的。
+ */
+const atBottom = ref(true)
+const scrollTop = ref(0)
+let scrollFrame = 0
+
+function measureScroll() {
+  const el = thread.value
+  if (!el) return
+  scrollTop.value = el.scrollTop
+  atBottom.value = el.scrollHeight - el.scrollTop - el.clientHeight < 48
+}
+
+function rememberScroll() {
+  const el = thread.value
+  if (!el) return
+  cancelAnimationFrame(scrollFrame)
+  scrollFrame = requestAnimationFrame(() => {
+    measureScroll()
+    session.rememberChatScroll(el.scrollTop)
+  })
+}
+
+function jump(to: 'top' | 'latest') {
+  const el = thread.value
+  if (!el) return
+  // 关掉动效的人不该被一段平滑滚动挡着（与全站的 prefers-reduced-motion 同一口径）
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  el.scrollTo({ top: to === 'top' ? 0 : el.scrollHeight, behavior: reduce ? 'auto' : 'smooth' })
+}
+
+onMounted(async () => {
+  await nextTick()
+  const el = thread.value
+  if (!el) return
+  el.scrollTop = session.chatTurns.length === session.chatScrollTurns
+    ? session.chatScroll
+    : el.scrollHeight
+  measureScroll()
+})
+
+onBeforeUnmount(() => {
+  cancelAnimationFrame(scrollFrame)
+  if (thread.value) session.rememberChatScroll(thread.value.scrollTop)
+})
 
 /**
  * 行动阶段的"这一件具体是什么"。
@@ -340,7 +428,7 @@ function openDisclosure() {
 
       <!-- 右片：说话的地方 -->
       <section class="talk sheet">
-        <div ref="thread" class="thread">
+        <div ref="thread" class="thread" @scroll="rememberScroll">
           <!--
             还没开口：不是一块白，而是三句"可以照着说、也可以改"的开场白。
             空白不是留白，是让人卡住的地方。
@@ -429,6 +517,20 @@ function openDisclosure() {
           </div>
         </div>
 
+        <!--
+          回到顶部 / 回到最新：只在真的滚开之后出现。
+          常驻会变成噪音（对话大多数时候就在底部），所以按状态出现：
+          滚离底部就出现"回到最新"，滚过一屏才出现"回到顶部"（issue #19 的验收标准）。
+        -->
+        <div v-if="scrollTop > 120 || !atBottom" class="jump">
+          <button v-if="scrollTop > 120" class="jump__b label" type="button" @click="jump('top')">
+            回到顶部 <GlyphIcon name="arrow-up" :size="12" />
+          </button>
+          <button v-if="!atBottom" class="jump__b label" type="button" @click="jump('latest')">
+            回到最新消息 <GlyphIcon name="arrow-down" :size="12" />
+          </button>
+        </div>
+
         <div class="compose">
           <!-- 在等用户回答的那一句：给它自己的位置，而不是塞进输入框占位符 -->
           <div v-if="session.chatPrompt" class="prompt">
@@ -441,7 +543,7 @@ function openDisclosure() {
                 class="opt"
                 :class="{ 'opt--used': isAnswered(opt) }"
                 type="button"
-                :disabled="session.chatTyping"
+                :disabled="session.chatTyping || isAnswered(opt) || optionsLocked"
                 @click="send(opt.label, opt)"
               >
                 {{ opt.label }}
@@ -451,8 +553,14 @@ function openDisclosure() {
               点了选项但这一轮没往前走时，必须**说出来**。
               不说的话，用户看到的是"一模一样的问题又回来了"，只能认为点了没用。
             -->
-            <p v-if="session.chatClarify" class="prompt__note" role="status">
-              {{ session.chatClarify }}
+            <!--
+              提示语在两种情况下都要出现：store 给了澄清（后端原地打转），
+              或者选项已经被锁住（连续两回没推进）。只挂在 chatClarify 上是不够的 ——
+              锁住而没说为什么，用户看到的是"全都点不动"，比能重复点还糟。
+            -->
+            <p v-if="session.chatClarify || optionsLocked" class="prompt__note" role="status">
+              <template v-if="session.chatClarify">{{ session.chatClarify }}</template>
+              <span v-if="optionsLocked">这已经是第二回了，上面的选项先锁住 —— 直接打字说，或者换一条。</span>
             </p>
           </div>
 
@@ -514,7 +622,7 @@ function openDisclosure() {
                     : '直接说就行，不用想好怎么问'
               "
               aria-label="对话输入"
-              @keydown.enter="send(draft)"
+              @keydown.enter="onEnter"
             >
             <button
               class="btn primary"
@@ -543,7 +651,7 @@ function openDisclosure() {
 
           <div class="tie">
             <span class="label">聊完它会接着往下做 —— 不用你回头找路。</span>
-            <button class="label tie__go" type="button" @click="goReport">看完整报告 →</button>
+            <button class="label tie__go" type="button" @click="goReport">看完整报告 <GlyphIcon name="arrow-right" :size="12" /></button>
           </div>
         </div>
       </section>
@@ -554,8 +662,25 @@ function openDisclosure() {
 <style scoped>
 .wrap {
   height: 100%; min-height: 0;
+  /*
+   * `flex: 1 1 auto` 与下面的行一起，是 issue #26 第一条的地基。
+   *
+   * 这一片挂在 Overlay 的 `.deck__grid` 里（定高的纵向 flex 容器，见那个文件）。
+   * 只写 `height: 100%` 时，高度靠百分比一层层算上去，链上任何一环算不出就退回
+   * `auto` —— 于是这一片跟着内容长高，里面的对话区也就永远和内容一样高（永远不会
+   * 出现滚动条，"看着不能滑"）。用 flex 直接跟父容器要高度：父项的高度是确定的，
+   * 这一片就一定有确定的高度可分给下面两行。
+   */
+  flex: 1 1 auto;
   display: grid;
   grid-template-columns: 268px minmax(0, 1fr);
+  /*
+   * 行必须显式钉成 `1fr`。默认那一条是 `auto`：**按内容的最高一件**定高，
+   * 内容比容器高时行就比容器高（对话区被撑到和整个对话一样高，于是它自己不滚，
+   * 溢出漏到 `.deck__grid` 上，滚的是整张浮层）。`1fr` 是"就分容器这么多"，
+   * 多出来的内容只能由里面那个 `overflow-y: auto` 的对话区自己滚。
+   */
+  grid-template-rows: minmax(0, 1fr);
   gap: var(--s3);
 }
 
@@ -572,7 +697,9 @@ function openDisclosure() {
 .speaker__say { font-size: var(--fs-small); color: var(--ink-2); line-height: 1.75; }
 /* 可点开的那一句：平时长得像正文，悬停才提示"能点" —— 它不是按钮，是一句话 */
 .speaker__say--link { width: 100%; text-align: left; }
+@media (hover: hover) and (pointer: fine) {
 .speaker__say--link:hover { color: var(--ink-1); text-decoration: underline dotted var(--accent); }
+}
 
 .stages { list-style: none; margin: var(--s2) 0 0; padding: 0; display: grid; gap: 1px; }
 .stages li {
@@ -597,18 +724,35 @@ function openDisclosure() {
   border: 1px solid var(--line-2); color: var(--mk-purple); font-size: var(--fs-small);
   transition: border-color var(--mo-fast) var(--mo-out), color var(--mo-fast) var(--mo-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .theory:hover { border-color: var(--mk-purple); color: var(--ink-1); }
+}
 
 /* 右片：说话的地方 */
 .talk {
   padding: 0;
   margin-bottom: 40px;
-  display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
+  /*
+   * 纵向 flex：上面是可滚的对话区，下面是钉在底部的输入区。
+   *
+   * 原来是 `grid-template-rows: minmax(0,1fr) auto` —— 意思一样，但那条 `auto`
+   * 行是**按内容**定高的，而它下面那块（问题 + 选项 + 输入框）在窄屏会换行变高：
+   * 选项一多，它就能把上面的 `1fr` 挤到 0。症状正是 issue #26 第一条 ——
+   * "给了选项就滑不动了，看不到历史、也看不到完整的问题"，而 AI 回复过程中
+   * 问题区消失，于是又能滑（用户报的"仅 AI 回复过程中才可滑动"就是这么来的）。
+   *
+   * flex 这边把"谁先让、让到哪"写成明账：对话区 `1 1 auto` 吃掉剩下的，
+   * 输入区 `0 0 auto` 不让（它只受自己的 `max-height` 管），见下面两条。
+   */
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   animation: sheet-in 460ms var(--ease-expo) both;
 }
 .thread {
+  /* 吃掉输入区之外的全部高度；`min-height: 0` 让它**允许**被压到比内容矮 ——
+     只有允许它矮，它才会出现滚动条（这是唯一让历史可滚的地方）。 */
+  flex: 1 1 auto;
   min-height: 0; overflow-y: auto;
   padding: var(--s5) var(--s6);
   display: flex; flex-direction: column; gap: var(--s3);
@@ -635,9 +779,11 @@ function openDisclosure() {
 }
 .starter__list li:nth-child(2) .starter__b { transform: rotate(0.6deg); }
 .starter__list li:nth-child(3) .starter__b { transform: rotate(-0.3deg); }
+@media (hover: hover) and (pointer: fine) {
 .starter__b:hover {
   border-color: var(--accent); color: var(--accent); background: var(--accent-soft);
   transform: rotate(0) translateY(-1px);
+}
 }
 .starter__d { font-size: var(--fs-small); color: var(--ink-3); line-height: 1.75; max-width: 52ch; }
 
@@ -658,10 +804,38 @@ function openDisclosure() {
 }
 
 .compose {
+  /*
+   * 输入区**不让位**（`0 0 auto`），但自己有一条上限，超了就在自己里面滚。
+   *
+   * 上限是这条链上唯一一件"内容说了不算"的事，也正是 issue #26 第一条的解法：
+   * 问题一长、选项一多，这一块能长到把对话区挤成零高 —— 用户既翻不到历史，
+   * 也读不全问题（问题与选项就在这一块里）。给它 72%：对话区因此永远拿得到
+   * 四分之一以上，而这一块最坏情况是自己内部滚动，不会把内容裁掉。
+   *
+   * 为什么不让它跟着一起缩（`flex-shrink: 1`）：flex 的收缩是**按基准大小
+   * 成比例**分摊的，对话区的基准是"整段历史"（很大），于是先被压掉的会是
+   * 输入框这一块 —— 输入框被压没了比对话区矮更难用。
+   */
+  flex: 0 0 auto;
+  max-height: 72%;
+  overflow-y: auto;
   display: flex; flex-direction: column; gap: var(--s3);
   padding: var(--s4) var(--s5) var(--s5);
   border-top: 1px solid var(--line-1);
   background: var(--n-0);
+}
+/*
+ * 回到顶部 / 回到最新：两枚文字按钮，靠右，贴着输入框上沿。
+ * 用文字而不是图标：这里要的是"明确"（issue #19 的验收标准），
+ * 而 ↑ ↓ 这两个字符在这套界面里当箭头用过，再当图标会含混。
+ *
+ * `flex: 0 0 auto`：它是一条通知，占的高度很小；不许被收缩吃掉 ——
+ * 收缩它只会让它自己溢出、把按钮压到输入区上。
+ */
+.jump { flex: 0 0 auto; display: flex; justify-content: flex-end; gap: var(--s4); padding: 0 var(--s5); }
+.jump__b { background: none; border: 0; padding: 2px 0; cursor: pointer; color: var(--accent); }
+@media (hover: hover) and (pointer: fine) {
+.jump__b:hover { text-decoration: underline; text-decoration-thickness: 1px; }
 }
 .prompt {
   display: flex; flex-direction: column; gap: 5px;
@@ -673,13 +847,22 @@ function openDisclosure() {
 .prompt__k { color: var(--accent); }
 .prompt__q { font-size: var(--fs-small); color: var(--ink-1); line-height: 1.65; max-width: 62ch; }
 .prompt__opts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+/*
+ * 快速回答：一行放不下就换行，按钮不许把长选项压成半句话（issue #18）。
+ * 容器本来就是 flex-wrap，这里补的是**按钮自己**：允许收缩、允许里面换行。
+ */
 .prompt__opts .opt {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
   padding: 5px 12px; border-radius: var(--r-pill);
   border: 1px solid var(--accent); background: var(--n-1);
   font-size: var(--t-xs); color: var(--accent);
   transition: background var(--dur-micro) var(--ease-out), color var(--dur-micro) var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .prompt__opts .opt:hover { background: var(--accent); color: var(--accent-ink); }
+}
 .prompt__opts .opt:disabled { opacity: 0.5; cursor: not-allowed; }
 /*
  * 已经点过的那一条：划掉 + 降一级 —— 它就是"这一条答过了"的样子，
@@ -710,10 +893,14 @@ function openDisclosure() {
   font-size: var(--t-xs); color: var(--ink-1);
   transition: background var(--dur-micro) var(--ease-out), color var(--dur-micro) var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .task__acts .opt:hover { background: var(--mk-green); color: var(--n-0); }
+}
 .task__acts .opt:disabled { opacity: 0.5; cursor: not-allowed; }
 .task__acts .opt--quiet { border-color: var(--line-2); color: var(--ink-2); }
+@media (hover: hover) and (pointer: fine) {
 .task__acts .opt--quiet:hover { background: var(--n-1); color: var(--ink-1); border-color: var(--line-4); }
+}
 
 .row { display: flex; gap: var(--s2); }
 .row input {
@@ -723,7 +910,9 @@ function openDisclosure() {
   font-size: var(--t-sm);
   transition: border-color var(--dur-micro) var(--ease-out), box-shadow var(--dur-micro) var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .row input:hover { border-color: var(--line-3); }
+}
 .row input:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 .row .btn { height: 42px; }
 
@@ -735,7 +924,9 @@ function openDisclosure() {
   background: var(--n-1); color: var(--ink-2);
   transition: border-color var(--dur-micro) var(--ease-out), color var(--dur-micro) var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .clip:hover { border-color: var(--line-3); color: var(--accent); }
+}
 .clip:disabled { opacity: 0.5; cursor: default; }
 .clip__input { display: none; }
 .clip__err { color: var(--warn); }
@@ -764,7 +955,9 @@ function openDisclosure() {
 .hold__name { font-size: var(--t-xs); color: var(--ink-1); overflow-wrap: anywhere; }
 .hold__meta { color: var(--ink-faint); white-space: nowrap; }
 .hold__x { margin-left: auto; color: var(--ink-3); white-space: nowrap; }
+@media (hover: hover) and (pointer: fine) {
 .hold__x:hover { color: var(--warn); text-decoration: underline; }
+}
 
 .tie { display: flex; align-items: center; justify-content: space-between; gap: var(--s4); }
 
@@ -777,16 +970,47 @@ function openDisclosure() {
   padding: 6px 10px; border-radius: var(--r-sm);
   border: var(--bw) solid var(--line-1); background: var(--n-1);
 }
+@media (hover: hover) and (pointer: fine) {
 .ref:hover { border-color: var(--line-3); }
+}
 .ref__kind { color: var(--mk-orange); }
-.ref__t { font-size: var(--fs-small); color: var(--ink-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ref__t { font-size: var(--fs-small); color: var(--ink-1); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
 .ref__src { color: var(--ink-faint); }
 .tie .label { color: var(--ink-3); }
 .tie__go { color: var(--accent); }
+@media (hover: hover) and (pointer: fine) {
 .tie__go:hover { text-decoration: underline; }
+}
 
 @media (max-width: 900px) {
-  .wrap { grid-template-columns: minmax(0, 1fr); height: auto; }
+  /*
+   * 窄屏：说明片在上、对话片在下。
+   *
+   * 这里原来写的是 `height: auto`（"这一页跟着内容长"）。但 `.wrap` 是
+   * `.deck__grid` 这个定高 flex 容器的子项，`height: auto` 会被它收缩回容器高度，
+   * 于是两行只能按内容分这点高度：说明片（谁在说、走到哪）动不动就占掉一半，
+   * 对话片只剩一两百像素 —— issue #26 第一条在 390×844 上就是这么复现的
+   * （选项一出现，对话区几乎不可见，也滚不动）。
+   *
+   * 改成显式两行：说明片最多三成（它自己 `overflow: auto`，写不下就在里面滚，
+   * 反正它是"现在是谁"的背景信息），剩下的全部给对话片；对话片内部再按
+   * `.thread` / `.compose` 那两条分。这样两种视口走的是同一条链，只有列数不同。
+   */
+  .wrap {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 34%) minmax(0, 1fr);
+    height: 100%;
+  }
+  /*
+   * 窄屏兜底：与桌面上那条"定高链"无关地再给对话区一条视口上限。
+   *
+   * 桌面那条链（`.wrap` flex → `1fr` 行 → `.talk` flex）在 390×844 上还要经过
+   * Overlay 的 `@media (max-width: 700px)`（浮层那一层改成"一页内容"、高度交回
+   * 内容）。链条一旦被那样的规则打断，对话区就会跟着内容长高、永远不出滚动条。
+   * 这条上限在链条正常时是**不起作用**的（对话区分到的高度远小于它），
+   * 只在链条断掉时把对话区重新变回"一条能滚的窗口"。
+   */
+  .thread { max-height: 64dvh; }
   .speaker { margin: 0 0 var(--s3); }
   .talk { margin-bottom: 0; }
 }

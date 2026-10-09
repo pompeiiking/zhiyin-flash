@@ -17,6 +17,7 @@
  */
 import { computed } from 'vue'
 import Bubble from '@/components/console/Bubble.vue'
+import GlyphIcon from '@/components/ui/GlyphIcon.vue'
 import { useSessionStore } from '@/stores/session'
 
 const session = useSessionStore()
@@ -40,12 +41,21 @@ const latest = computed(() => {
 })
 
 const remaining = computed(() => Math.max(0, total.value - unlockedCount.value))
+
+/*
+ * 关于 `tone`：这一块用 `raised`（实底 --c-paper），不是 `plain`。
+ *
+ * issue #23：`plain` 对应 `--glass-1`（半透明的玻璃），于是画布上其他卡片会透过
+ * "完成记录"显示出来，用户分不清这一块的边界在哪；而它是一份**记录**，
+ * 该有一张自己的纸。其余块继续用玻璃：这一处换成实底是因为它的内容是列表与计数，
+ * 不是"浮在桌面上的一层提示"。
+ */
 </script>
 
 <template>
   <Bubble
     size="sm"
-    tone="plain"
+    tone="raised"
     interactive
     :tilt="0.6"
     label="完成记录"
@@ -73,7 +83,7 @@ const remaining = computed(() => Math.max(0, total.value - unlockedCount.value))
     <footer class="foot">
       <span v-if="remaining > 0" class="label foot__rest">还有 {{ remaining }} 枚没拿到</span>
       <span v-else class="label foot__rest">这一批都拿到了</span>
-      <span class="label foot__go">看全部 →</span>
+      <span class="label foot__go">看全部 <GlyphIcon name="arrow-right" :size="12" /></span>
     </footer>
   </Bubble>
 </template>

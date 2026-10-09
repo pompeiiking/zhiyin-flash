@@ -606,6 +606,45 @@ async def test_agno_agent_engine_uses_injected_model_factory() -> None:
     assert other is not agent
     assert calls["n"] == 2
 
+    # 数据库提示词更新后，下一轮重新取到的正文必须构造新 Agent。
+    bundle["role"].content = "更新后的角色说明"
+    changed = await engine._agent_for("tester", None, bundle)
+    assert changed is not agent
+    assert "更新后的角色说明" in "\n".join(changed.instructions or [])
+    assert calls["n"] == 3
+
+
+@pytest.mark.asyncio
+async def test_page_task_does_not_receive_conversation_closing_guide() -> None:
+    """页面任务只遵循共同底线与自己的任务指令，不接受对话选项规则。"""
+    from zhiyin_kernel.registry import PromptSpec
+    from zhiyin_orchestration.impl.agno_engine import AgnoAgentEngine
+
+    class Registry:
+        async def get_prompt(self, code):
+            return {
+                "core.system": PromptSpec(code="core.system", layer="core", content="共同底线"),
+                "task.plan.todos": PromptSpec(
+                    code="task.plan.todos", layer="task", content="返回 items 数组"
+                ),
+            }.get(code)
+
+    engine = AgnoAgentEngine(model_factory=lambda: object(), registry=Registry())
+    bundle = await engine._prompt_bundle("career_advisor", None, "task.plan.todos")
+    assert bundle["guide"] is None
+    assert bundle["core"].content == "共同底线"
+
+
+def test_prompt_timeout_and_retries_reach_model_runtime() -> None:
+    """提示词声明的超时与重试应真正进入模型客户端。"""
+    from zhiyin_infrastructure.ai.agno_runtime import AgnoModelRuntime
+
+    runtime = AgnoModelRuntime(api_key="test-only", base_url="http://example.test", model="test")
+    model = runtime.create_model(temperature=0.3, timeout_s=12, retries=1)
+    assert model.temperature == 0.3
+    assert model.timeout == 12
+    assert model.retries == 1
+
 
 @pytest.mark.asyncio
 async def test_engine_attaches_only_whitelisted_tools(caplog) -> None:
@@ -708,3 +747,57 @@ def test_extract_json_handles_fenced_output() -> None:
     fenced = "```json" + chr(10) + '{"a": 1}' + chr(10) + "```"
     assert _extract_json(fenced) == {"a": 1}
     assert _extract_json("不是 JSON") is None
+
+
+async def test_schema_repair_keeps_internal_feedback_out_of_user_reply() -> None:
+    """结构修复时明确隔离内部校验信息，且修复结果仍走契约校验。"""
+    from types import SimpleNamespace
+
+    from zhiyin_orchestration.impl.agno_engine import AgnoAgentEngine
+
+    class RepairAgent:
+        prompt = ""
+
+        async def arun(self, *, input: str, output_schema: dict):
+            self.prompt = input
+            return SimpleNamespace(content={"reply": "先说说你亲手做过的部分。"})
+
+    engine = AgnoAgentEngine(model_factory=lambda: object())
+    request = AgentRequest(
+        agent_id="profile_analyst",
+        output_schema={
+            "type": "object",
+            "properties": {"reply": {"type": "string"}},
+            "required": ["reply"],
+        },
+    )
+    agent = RepairAgent()
+    repaired = await engine._repair_once(
+        agent, request, {}, "not-json", ["缺少 reply"], "用户：请帮我梳理课程项目"
+    )
+    assert repaired is not None and repaired[2] == []
+    assert repaired[0]["reply"] == "先说说你亲手做过的部分。"
+    assert "内部结构校验反馈，不是用户消息" in agent.prompt
+    assert "不得提及格式、校验、重试" in agent.prompt
+    assert "用户：请帮我梳理课程项目" in agent.prompt
+
+
+def test_review_prose_uses_task_label_without_changing_task_id() -> None:
+    from zhiyin_business.services.orchestrator import _replace_task_ids_in_prose
+
+    source = {
+        "conclusion": "你刚勾掉了 t1，下一步先看 t2。",
+        "minimal_action": {"task_id": "t2", "text": "继续做 t2"},
+        "guide": {"text": "要不要继续 t2？", "options": []},
+        "achievements_unlocked": ["t1"],
+    }
+    fixed = _replace_task_ids_in_prose(
+        source, {"t1": "整理项目文件清单", "t2": "写出实际负责的部分"}
+    )
+    assert fixed["conclusion"] == "你刚勾掉了「整理项目文件清单」，下一步先看「写出实际负责的部分」。"
+    assert fixed["minimal_action"] == {
+        "task_id": "t2", "text": "继续做「写出实际负责的部分」"
+    }
+    assert fixed["guide"]["text"] == "要不要继续「写出实际负责的部分」？"
+    assert fixed["achievements_unlocked"] == ["t1"]
+    assert source["conclusion"] == "你刚勾掉了 t1，下一步先看 t2。"

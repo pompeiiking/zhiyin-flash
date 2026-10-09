@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import Overlay from '@/components/console/Overlay.vue'
 import AiFrame from '@/components/ai/AiFrame.vue'
 import CanvasMenu, { type MenuItem } from '@/components/console/CanvasMenu.vue'
+import GlyphIcon from '@/components/ui/GlyphIcon.vue'
 import { dayAdviceTask, type DayAdvice } from '@/ai/registry'
 import { useDayPlan, ymd, weekdayOf } from '@/composables/useDayPlan'
 import { useSessionStore } from '@/stores/session'
@@ -169,11 +170,11 @@ async function saveTodo() {
       <!-- 左：一个月 -->
       <nav class="month sheet sheet--quiet" aria-label="日历">
         <header class="month__bar">
-          <button class="step" type="button" aria-label="上个月" @click="shift(-1)">←</button>
+          <button class="step" type="button" aria-label="上个月" @click="shift(-1)"><GlyphIcon name="arrow-left" :size="14" /></button>
           <span class="month__label">
             {{ cursor.getFullYear() }} 年 {{ cursor.getMonth() + 1 }} 月
           </span>
-          <button class="step" type="button" aria-label="下个月" @click="shift(1)">→</button>
+          <button class="step" type="button" aria-label="下个月" @click="shift(1)"><GlyphIcon name="arrow-right" :size="14" /></button>
         </header>
 
         <ol class="week">
@@ -343,7 +344,8 @@ async function saveTodo() {
   color: var(--ink-2);
   transition: background var(--mo-fast) var(--mo-out), color var(--mo-fast) var(--mo-out);
 }
-.step:hover { background: var(--fill-hover); color: var(--ink-1); }
+@media (hover: hover) and (pointer: fine) {
+.step:hover { background: var(--fill-hover); color: var(--ink-1); } }
 .month__foot { color: var(--ink-3); line-height: 1.6; }
 
 .week, .grid { list-style: none; margin: 0; padding: 0; }
@@ -360,8 +362,9 @@ async function saveTodo() {
   font-size: var(--fs-small); color: var(--ink-2);
   transition: background var(--mo-fast) var(--mo-out), color var(--mo-fast) var(--mo-out);
 }
-.day:hover { background: var(--fill-hover); color: var(--ink-1); }
-.day.dim { color: var(--ink-4); }
+@media (hover: hover) and (pointer: fine) {
+.day:hover { background: var(--fill-hover); color: var(--ink-1); } }
+.day.dim { color: var(--ink-3); }
 .day.today .day__num { text-decoration: underline; text-underline-offset: 3px; }
 .day.on { background: var(--ink-1); color: var(--n-0); }
 .day.on .day__dot.class,
@@ -389,7 +392,8 @@ async function saveTodo() {
   color: var(--mk-green);
   transition: border-color var(--dur-micro) var(--ease-out), background var(--dur-micro) var(--ease-out);
 }
-.my__check:hover { border-color: var(--mk-green); background: var(--mk-green-soft); }
+@media (hover: hover) and (pointer: fine) {
+.my__check:hover { border-color: var(--mk-green); background: var(--mk-green-soft); } }
 .facts li {
   display: grid; grid-template-columns: 96px minmax(0, 1fr) auto;
   gap: var(--s3); align-items: baseline;
@@ -443,7 +447,7 @@ async function saveTodo() {
   display: flex; align-items: baseline; gap: var(--s3);
   padding: var(--s3) var(--s4);
   border-left: 3px solid var(--warn);
-  background: rgba(194, 90, 18, 0.06);
+  background: color-mix(in srgb, var(--warn) 6%, transparent);
   border-radius: 0 var(--r-sm) var(--r-sm) 0;
   font-size: var(--fs-small); color: var(--ink-1);
 }

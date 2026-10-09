@@ -24,7 +24,9 @@
     {
       "code": "conv_disclosure_open",
       "channel": "frontend",
-      "note": "点开理论依据/显式告知，纯前端事件"
+      "note": "点开理论依据/显式告知，纯前端事件",
+      "label": "看了这一轮的依据",
+      "timeline": false
     },
     {
       "code": "collect_field_update",
@@ -34,12 +36,16 @@
     {
       "code": "collect_gap_show",
       "channel": "frontend",
-      "note": "展示画像缺口，纯前端事件"
+      "note": "展示画像缺口，纯前端事件",
+      "label": "看了还差哪几条",
+      "timeline": false
     },
     {
       "code": "diagnosis_view",
       "channel": "frontend",
-      "note": "查看 15 维诊断与停留时长，纯前端事件"
+      "note": "查看 15 维诊断与停留时长，纯前端事件",
+      "label": "打开了诊断",
+      "timeline": false
     },
     {
       "code": "gap_claim",
@@ -49,7 +55,9 @@
     {
       "code": "decision_compare",
       "channel": "frontend",
-      "note": "并排比较方案，纯前端事件"
+      "note": "并排比较方案，纯前端事件",
+      "label": "对比了几套方案",
+      "timeline": true
     },
     {
       "code": "decision_select",
@@ -79,7 +87,9 @@
     {
       "code": "review_warning_show",
       "channel": "frontend",
-      "note": "停滞预警展示，纯前端事件"
+      "note": "停滞预警展示，纯前端事件",
+      "label": "看到了复盘提醒",
+      "timeline": true
     },
     {
       "code": "review_warning_response",
@@ -94,7 +104,9 @@
     {
       "code": "wb_enter",
       "channel": "frontend",
-      "note": "进入智能工作台，纯前端事件"
+      "note": "进入智能工作台，纯前端事件",
+      "label": "在工作台里走了一步",
+      "timeline": false
     },
     {
       "code": "asset_export",
@@ -119,22 +131,30 @@
     {
       "code": "todo_suggestion_accept",
       "channel": "frontend",
-      "note": "采纳一条智能体待办建议（前端交互，接受与否本身是信息）"
+      "note": "采纳一条智能体待办建议（前端交互，接受与否本身是信息）",
+      "label": "采纳了一条待办建议",
+      "timeline": true
     },
     {
       "code": "todo_suggestion_dismiss",
       "channel": "frontend",
-      "note": "否决一条智能体待办建议（前端交互，连续否决要回流模型）"
+      "note": "否决一条智能体待办建议（前端交互，连续否决要回流模型）",
+      "label": "略过了一条待办建议",
+      "timeline": true
     },
     {
       "code": "task_done_click",
       "channel": "frontend",
-      "note": "前端勾掉一个任务（后端仍派生 action_task_done 作为行为日志）"
+      "note": "前端勾掉一个任务（后端仍派生 action_task_done 作为行为日志）",
+      "label": "勾掉了一件任务",
+      "timeline": true
     },
     {
       "code": "talk_open",
       "channel": "frontend",
-      "note": "前端叫出对话层（任何一处入口）—— 与 home_chat_open 不同：那条是首页入口，这条是“任何地方都能开口”这个动作本身"
+      "note": "前端叫出对话层（任何一处入口）—— 与 home_chat_open 不同：那条是首页入口，这条是“任何地方都能开口”这个动作本身",
+      "label": "和主理聊了一句",
+      "timeline": false
     }
   ]
 }

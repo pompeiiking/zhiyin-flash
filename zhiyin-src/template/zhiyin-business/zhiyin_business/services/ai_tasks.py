@@ -1,13 +1,8 @@
-"""AI 任务服务（演示生成器，P0）。
+"""九项页面 AI 任务服务。
 
-八个 AI 任务的执行端（前端 `registry.ts` 的对应物）：进度帧 → 产出（与依据绑定）→ 终帧，
-全程走 `/app/*` SSE 传输约定（设计文档第六章 6.2）。
-
-第一期口径（与占位 LLM 同级，如实标注）：
-- **数据结构、来源标注、依据绑定、缓存、幂等全是真的**；
-- 内容生成是"演示生成器"：从黑板真实画像/行为数据拼装 + 演示常量补位；
-- 接真实模型 / 数据源（学信网、学职网）时只换本类内部 produce，形状不变 ——
-  那一步就是 agno（6.5）把 `contracts/ai_tasks.py` 挂到 `output_schema` 上。
+前端触发任务后，这里组装真实画像、行为与资产上下文，调用 Agno 模型产出，
+按 `contracts/ai_tasks.py` 校验并以 SSE 下发进度及终帧。结果与依据绑定，
+缓存按输入事件失效；学信网和学业导入属于独立的数据链路，不由模型编造回执。
 """
 
 from __future__ import annotations
@@ -223,7 +218,7 @@ _SIDE_EFFECTING_HEADS: frozenset[str] = frozenset({"bind"})
 这也正好符合"报告有有效期"这件事。
 """
 class AiTaskService:
-    """八个 AI 任务的执行与缓存。"""
+    """九项页面 AI 任务的执行与缓存。"""
 
     IMPLEMENTATION_STATUS = "wired"
 

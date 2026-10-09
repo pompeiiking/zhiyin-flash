@@ -8,6 +8,7 @@
  */
 import { computed } from 'vue'
 import Overlay from '@/components/console/Overlay.vue'
+import GlyphIcon from '@/components/ui/GlyphIcon.vue'
 import { useSessionStore } from '@/stores/session'
 
 const session = useSessionStore()
@@ -139,7 +140,8 @@ function goSource(source: string) {
                 type="button"
                 @click="goSource(item.source)"
               >
-                {{ item.source === 'chsi' ? '去核验 →' : '去导入 →' }}
+                {{ item.source === 'chsi' ? '去核验' : '去导入' }}
+                <GlyphIcon name="arrow-right" :size="12" />
               </button>
               <!--
                 "问一句"那几条也要各自带一个入口，且点开就问**这一条**：
@@ -152,7 +154,7 @@ function goSource(source: string) {
                 :title="item.ask"
                 @click="askFor(item.ask)"
               >
-                去回答 →
+                去回答 <GlyphIcon name="arrow-right" :size="12" />
               </button>
               <span v-if="!item.available" class="label rows__no">没有源头</span>
             </li>
@@ -164,7 +166,7 @@ function goSource(source: string) {
             <summary class="label">已经拿到的 {{ got.length }} 条</summary>
             <ul>
               <li v-for="item in got" :key="item.key">
-                <span class="have__ok" aria-hidden="true">✓</span>
+                <GlyphIcon class="have__ok" name="check" :size="12" />
                 <span>{{ item.label }}</span>
                 <span class="label have__src">{{ SOURCE_LABEL[item.source] ?? item.source }}</span>
               </li>
@@ -289,7 +291,9 @@ function goSource(source: string) {
 .rows__why { font-size: var(--fs-small); color: var(--ink-2); line-height: 1.65; }
 .rows__no { color: var(--ink-faint); white-space: nowrap; }
 .rows__go { color: var(--accent); white-space: nowrap; }
+@media (hover: hover) and (pointer: fine) {
 .rows__go:hover { text-decoration: underline; }
+}
 .rows__done { font-size: var(--fs-small); color: var(--ink-3); }
 
 .have summary { color: var(--ink-3); cursor: pointer; }

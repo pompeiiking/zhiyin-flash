@@ -1,0 +1,10 @@
+/*
+ * 骨架清单 —— 覆盖层"怎么打开"。
+ *
+ * 默认档（`center` 居中弹出）**没有文件**：不写属性就是今天的样子。
+ * 这一层改的是 `Overlay.vue` 那个壳（`.layer` / `.deck` / `.deck__bar`）：
+ * 组件样式是作用域内的 `.deck[data-v-…]`（0,2,0），本层是 `html[data-skeleton="…"] .deck`（0,2,1），
+ * 所以能压过它 —— 不必去动组件。
+ */
+@import "./drawer.css";
+@import "./full.css";

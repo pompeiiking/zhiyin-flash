@@ -243,7 +243,11 @@ function onAction(kind: string, id: string) {
   top: calc(74px + var(--rail-pops-h, 0px));
   right: 22px;
   width: min(336px, 32vw);
-  max-height: calc(100vh - 140px);
+  /*
+   * 用 `dvh` 不用 `vh`：`vh` 是"地址栏收起后"的高度，手机首屏上这个浮层会比可视区高出一截
+   * （底部内容被地址栏盖住）。`dvh` 跟着可视区变，浮层才真的装得下。
+   */
+  max-height: calc(100dvh - 140px);
   z-index: var(--z-drawer);
   display: flex; flex-direction: column;
   gap: var(--s2);
@@ -268,7 +272,9 @@ function onAction(kind: string, id: string) {
   transition: margin 320ms var(--ease-spring), transform 320ms var(--ease-spring);
 }
 .stack > * + * { margin-top: -46px; }
-.stack > *:hover,
+@media (hover: hover) and (pointer: fine) {
+.stack > *:hover { margin-top: 6px; z-index: 3; }
+}
 .stack > *:focus-within { margin-top: 6px; z-index: 3; }
 /*
  * 抽出来那一片**下面**的书签要留出空档。
@@ -302,7 +308,9 @@ function onAction(kind: string, id: string) {
   padding: 2px 8px; border-radius: var(--r-pill);
   pointer-events: auto;
 }
+@media (hover: hover) and (pointer: fine) {
 .layer__toggle:hover { color: var(--ink); background: var(--fill-hover); }
+}
 
 /* 收起状态的那枚签：贴着右上角，写着还有几条 */
 .layer__tab {
@@ -318,7 +326,9 @@ function onAction(kind: string, id: string) {
   backdrop-filter: blur(14px) saturate(1.1);
   transition: transform var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .layer__tab:hover { transform: translateY(-2px); color: var(--ink-1); }
+}
 .layer__tabdot {
   width: 6px; height: 6px; border-radius: 50%;
   background: var(--accent);
@@ -336,7 +346,9 @@ function onAction(kind: string, id: string) {
   transition: color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
 }
 .layer__more { margin-right: auto; }
+@media (hover: hover) and (pointer: fine) {
 .layer__clear:hover, .layer__more:hover { color: var(--ink); background: var(--fill-hover); }
+}
 
 /*
  * 从**上方**掉下来，落定带回弹。

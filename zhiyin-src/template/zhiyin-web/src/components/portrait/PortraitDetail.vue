@@ -37,6 +37,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'evidence'): void
   (e: 'pick-trend', index: number): void
+  /** 这一条记错了，要自己改（外层会回到清单并把编辑器打开） */
+  (e: 'correct'): void
 }>()
 
 /** 把握度的三档：薄 / 中 / 稳 —— 与采集口径里的 0.6 / 0.85 对齐 */
@@ -61,6 +63,14 @@ const TIER_TEXT: Record<string, string> = { low: '还很薄', mid: '大概如此
         </span>
         <span class="gauge__k">把握度</span>
       </div>
+
+      <!--
+        看到"这一条"才发现记错了 —— 那就得能就地改，不必先退回去找那颗按钮。
+        编辑器只有一份（在清单里），所以这里只负责"点这一下"，外层会回到清单并把它打开。
+      -->
+      <button class="head__fix label" type="button" :aria-label="`更正「${field.label}」`" @click="emit('correct')">
+        更正
+      </button>
     </header>
 
     <div class="split">
@@ -99,11 +109,12 @@ const TIER_TEXT: Record<string, string> = { low: '还很薄', mid: '大概如此
                 <p class="reading__p">{{ (data as DimensionReading).reading }}</p>
 
                 <div class="reading__figs">
-                  <span>这条把握 <b>{{ (data as DimensionReading).score.toFixed(2) }}</b></span>
-                  <span v-if="(data as DimensionReading).bench">
+                  <span>这条把握 <b>{{ (data as DimensionReading).score == null ? '待核验' : (data as DimensionReading).score.toFixed(2) }}</b></span>
+                  <span v-if="(data as DimensionReading).bench != null">
                     决策线 <b>{{ (data as DimensionReading).bench.toFixed(2) }}</b>
                   </span>
                   <span
+                    v-if="(data as DimensionReading).delta != null"
                     :class="{
                       up: (data as DimensionReading).delta > 0,
                       down: (data as DimensionReading).delta < 0,
@@ -159,10 +170,10 @@ const TIER_TEXT: Record<string, string> = { low: '还很薄', mid: '大概如此
   font-size: var(--t-xs); font-weight: 500;
   color: var(--pt-accent, var(--accent));
   background: var(--pt-soft, var(--accent-soft));
-  border: 1px solid rgba(10, 88, 66, 0.22);
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
 }
-.tier-mid .pill { color: var(--mk-orange); background: rgba(164, 82, 47, 0.09); border-color: rgba(164, 82, 47, 0.26); }
-.tier-low .pill { color: var(--mk-pink); background: rgba(140, 59, 82, 0.09); border-color: rgba(140, 59, 82, 0.26); }
+.tier-mid .pill { color: var(--mk-orange); background: color-mix(in srgb, var(--mk-orange) 9%, transparent); border-color: color-mix(in srgb, var(--mk-orange) 26%, transparent); }
+.tier-low .pill { color: var(--mk-pink); background: color-mix(in srgb, var(--mk-pink) 9%, transparent); border-color: color-mix(in srgb, var(--mk-pink) 26%, transparent); }
 
 /*
  * 这一行**不再重复字段名**。
@@ -230,7 +241,8 @@ const TIER_TEXT: Record<string, string> = { low: '还很薄', mid: '大概如此
   display: inline-flex; align-items: center; gap: 4px;
   font-size: var(--t-xs); font-weight: 500; color: var(--pt-accent, var(--accent));
 }
-.link:hover { text-decoration: underline; }
+@media (hover: hover) and (pointer: fine) {
+.link:hover { text-decoration: underline; } }
 
 /*
  * 解读卡：换一种材质（浅绿 → 白的渐变），而不是再放一块同色的白。

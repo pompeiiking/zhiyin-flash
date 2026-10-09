@@ -1,0 +1,59 @@
+/*
+ * 形状语言 · 手绘（hand）—— 四角的圆角长短不一，像用笔框出来的。
+ *
+ * 【这一档替换掉了什么，为什么】
+ *
+ * 前几版是"票根"（上下缘打齿孔）、"折角"（右上角折起来）、"斜切"（对角两刀）。
+ * 它们都踩在同一条设计底线上（`.dsh/skills/impeccable/reference/craft-floor.md` 的 Refuse 一节）：
+ *
+ *   "**几何遮罩冒充有机形态**。用圆、多边形、径向渐变去近似一个有机形态的边缘，
+ *    是这个效果的廉价版，读起来比不做还差。"
+ *
+ * 齿孔、折角、斜切都是"拿干净的几何形硬凑纸张的动作"：纸被折、被剪、被打孔，
+ * 那些边缘是有机的、不规则的，而 polygon 与 radial-gradient 画出来的是几何形 ——
+ * 于是读起来不像纸，像"一个被切了一刀的方块"。用户三次反馈都是"太丑了"，与底线一致。
+ *
+ * 【这一档画的是纸与笔真的会发生的事】
+ *
+ * 手画的框不是一个正圆角：笔在四个角上收笔的力度不一样，半径就长短不一。
+ * 这正是 tokens.css 里那组 `--r-sketch-*` 令牌**本来想表达**、却从未真的抖过的意思
+ * （项目自己的设计注释写着"不规整：圆角每个角不一样长（手抖框）"）。
+ *
+ * 【差量必须够大，否则等于没做】
+ *
+ * 第一版用 `--r-sketch-lg / --r-sm / --r-sketch-md / --r-xs` 混（16/8/12/6），
+ * 像素审计只有 **0.20%** —— 阈值以下，用户会判定"点了没反应"（这一点已经踩过一次）。
+ * 现在两套令牌各自拉开量级：大约 1.7×(--r-lg) 与 0.5×(--r-xs) 之间摆动，
+ * 差量一眼可辨，而仍然是**跟着每套组件风格走**的（贴纸那套圆角小，手绘就收着抖；
+ * 舒展那套圆角大，手绘就抖得开）。写死像素值的话，八套组件风格会被这一个值拉平。
+ *
+ * 【第二笔：重描】
+ *
+ * 手画一个框，收笔处常会和起笔那一段重叠一下 —— 那一小段重描正是"手画的"的签名
+ * （主按钮下那道双下划线用的是同一个道理，它是这套界面里唯一一处手画的东西）。
+ * 所以卡片内侧再压一道 1px 的细线（inherit 圆角，所以它跟着手抖的角落走）。
+ */
+html[data-shape="hand"] .surface,
+html[data-shape="hand"] .sheet {
+  border-radius: calc(var(--r-lg) * 1.7) calc(var(--r-xs) * 0.4) calc(var(--r-lg) * 1.25) calc(var(--r-xs) * 0.6) /
+    calc(var(--r-xs) * 0.4) calc(var(--r-lg) * 1.5) calc(var(--r-xs) * 0.6) calc(var(--r-lg) * 1.1);
+}
+
+/* 重描：只给真正挂在画布上的三类卡片（它们的宿主本来就有定位），不碰别的零件 */
+html[data-shape="hand"] .bubble::after,
+html[data-shape="hand"] .float::after,
+html[data-shape="hand"] .pt::after {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border: 1px solid var(--line-3);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+/* 控件抖得更轻：它们只有 28–38px 高，按同样的差量抖会显得歪（是"笔尖顿一下"，不是"剪歪了"） */
+html[data-shape="hand"] .btn,
+html[data-shape="hand"] .chip {
+  border-radius: calc(var(--r-sm) * 1.5) calc(var(--r-xs) * 0.5) calc(var(--r-sm) * 1.1) calc(var(--r-xs) * 0.7) /
+    calc(var(--r-xs) * 0.5) calc(var(--r-sm) * 1.3) calc(var(--r-xs) * 0.7) calc(var(--r-sm) * 0.9);
+}

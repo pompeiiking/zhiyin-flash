@@ -522,7 +522,6 @@ def test_orchestration_prompts_and_disclosure_reasons_are_closed() -> None:
         "router.clarify",
         "disclosure.lead_change",
         "disclosure.conclusion_change",
-        "flow.proactive",
     }
     missing = sorted(required - codes)
     assert not missing, f"缺少编排必需的提示词：{missing}"

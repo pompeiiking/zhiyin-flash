@@ -91,9 +91,11 @@ function acknowledge() {
   border: 1px solid var(--line-2); font-size: var(--fs-small); color: var(--ink-2);
   transition: border-color var(--mo-fast) var(--mo-out), color var(--mo-fast) var(--mo-out);
 }
-.act:hover { border-color: var(--ink-1); color: var(--ink-1); }
+@media (hover: hover) and (pointer: fine) {
+.act:hover { border-color: var(--ink-1); color: var(--ink-1); } }
 .act--go { border-color: var(--mk-purple); color: var(--mk-purple); }
-.act--go:hover { background: var(--mk-purple-soft); color: var(--mk-purple); }
+@media (hover: hover) and (pointer: fine) {
+.act--go:hover { background: var(--mk-purple-soft); color: var(--mk-purple); } }
 
 /*
  * 紧凑形态：这一块在 1440 以下的画布上只有 190px 上下高（实测），

@@ -668,8 +668,8 @@ async def test_chart_render_draws_from_real_rows_not_from_the_model() -> None:
     spec = context.dependencies["renderables"][0]
     assert spec["kind"] == "bars_chart"
     assert spec["payload"]["points"] == [
-        {"label": "专业", "value": 90},
-        {"label": "兴趣方向", "value": 60},
+        {"label": "专业", "value": 0.9},
+        {"label": "兴趣方向", "value": 0.6},
     ]
     assert "90%" in result  # 说给模型听的是同一批真实数字
 

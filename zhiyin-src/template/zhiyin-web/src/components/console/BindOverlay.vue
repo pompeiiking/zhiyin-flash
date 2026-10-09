@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import Overlay from '@/components/console/Overlay.vue'
 import AiFrame from '@/components/ai/AiFrame.vue'
+import GlyphIcon from '@/components/ui/GlyphIcon.vue'
 import { bindChsiTask, type BindResult } from '@/ai/registry'
 import { importAcademic, importAcademicFiles, type AcademicImportAck } from '@/api/client'
 import { useSessionStore } from '@/stores/session'
@@ -397,7 +398,7 @@ async function close() {
               href="https://my.chsi.com.cn/archive/index.jsp"
               target="_blank"
               rel="noreferrer"
-            >去学信档案申请 →</a>
+            >去学信档案申请 <GlyphIcon name="arrow-right" :size="13" /></a>
           </div>
 
           <p class="label promise">
@@ -537,7 +538,7 @@ async function close() {
                   :aria-expanded="pasteOpen.courses"
                   @click="pasteOpen.courses = !pasteOpen.courses"
                 >
-                  <span class="caret" aria-hidden="true">›</span>
+                  <GlyphIcon class="caret" name="chevron-right" :size="12" />
                   {{ coursesFile ? '改用整页复制粘贴' : '没有文件？直接粘贴原文' }}
                 </button>
                 <textarea
@@ -610,7 +611,7 @@ async function close() {
                   :aria-expanded="pasteOpen.grades"
                   @click="pasteOpen.grades = !pasteOpen.grades"
                 >
-                  <span class="caret" aria-hidden="true">›</span>
+                  <GlyphIcon class="caret" name="chevron-right" :size="12" />
                   {{ gradesFile ? '改用整页复制粘贴' : '没有文件？直接粘贴原文' }}
                 </button>
                 <textarea
@@ -733,7 +734,9 @@ async function close() {
   background: var(--n-1);
   transition: border-color var(--dur-micro) var(--ease-out), background var(--dur-micro) var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .tabs__b:hover { border-color: var(--line-4); }
+}
 .tabs__b.is-on { border-color: var(--accent); background: var(--accent-soft); }
 .tabs__t { font-size: var(--fs-small); font-weight: 600; color: var(--ink-1); }
 .tabs__b.is-on .tabs__t { color: var(--accent); }
@@ -777,7 +780,9 @@ async function close() {
   letter-spacing: 0.14em;
   transition: border-color var(--dur-micro) var(--ease-out), box-shadow var(--dur-micro) var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .field input:hover { border-color: var(--line-3); }
+}
 .field input:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 .field input[aria-invalid="true"] { border-color: var(--warn); }
 .field__err { font-size: var(--fs-small); color: var(--warn); }
@@ -820,7 +825,9 @@ async function close() {
 .slot__t { font-size: var(--fs-small); font-weight: 600; color: var(--ink-1); }
 .slot__hint { color: var(--ink-faint); }
 .slot__x { margin-left: auto; color: var(--ink-3); }
+@media (hover: hover) and (pointer: fine) {
 .slot__x:hover { color: var(--warn); text-decoration: underline; }
+}
 
 /*
  * 投放口。
@@ -839,7 +846,9 @@ async function close() {
   cursor: pointer;
   transition: border-color var(--dur-micro) var(--ease-out), background var(--dur-micro) var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .drop:hover { border-color: var(--line-4); background: var(--fill-hover); }
+}
 /* 拖到这一栏上面：边框变实线（"就是这儿"），比换色更快读懂 */
 .drop.is-over { border-style: solid; border-color: var(--accent); background: var(--accent-soft); }
 .drop.is-filled { border-style: solid; border-color: var(--line-3); background: transparent; }
@@ -877,7 +886,9 @@ async function close() {
   background: var(--n-1); font-size: var(--fs-small);
   letter-spacing: normal; font-family: var(--font-sans);
 }
+@media (hover: hover) and (pointer: fine) {
 .meta__f input:hover { border-color: var(--line-3); }
+}
 .meta__f input:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 
 /* 读不出来的原话：左侧一条警示线，不铺满整块橙 —— 这是提示，不是警报屏 */
@@ -913,9 +924,13 @@ async function close() {
  * 用户会以为是自己点错了地方。
  */
 .actions .btn.primary:disabled { opacity: 0.42; box-shadow: none; transform: none; }
+@media (hover: hover) and (pointer: fine) {
 .actions .btn.primary:disabled:hover { opacity: 0.42; transform: none; }
+}
 .link { color: var(--accent); font-size: var(--fs-small); }
+@media (hover: hover) and (pointer: fine) {
 .link:hover { text-decoration: underline; }
+}
 .promise { color: var(--ink-3); line-height: 1.7; flex: 1 1 340px; max-width: 62ch; }
 
 /* ── 结果 ─────────────────────────────────────────────────────── */

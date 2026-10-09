@@ -89,11 +89,13 @@ function run() {
               transform var(--dur-micro) var(--ease-out),
               box-shadow var(--dur-micro) var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .ask:hover {
   background: var(--accent);
   color: var(--accent-ink);
   transform: translateY(-1px);
   box-shadow: var(--e-2);
+}
 }
 .ask:active { transform: translateY(1px); }
 
@@ -121,7 +123,9 @@ function run() {
   transform: rotate(-0.6deg);
   transition: opacity var(--dur-micro) var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .ask:hover .ask__cta::after { opacity: 0.9; }
+}
 
 .ask--compact { padding: 5px 11px 5px 9px; }
 .ask__arrow { flex: 0 0 auto; }

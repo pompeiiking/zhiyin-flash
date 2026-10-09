@@ -60,6 +60,8 @@ from zhiyin_api.dto.workspace import (
     AcademicImportRequest,
     AcademicImportUpload,
     AcademicRevokeAck,
+    ProfileFieldUpdateRequest,
+    ProfileFieldView,
 )
 
 
@@ -271,6 +273,17 @@ class ApplicationFacade(ABC):
     @abstractmethod
     async def remove_note(self, user_id: str, note_id: str) -> "NoteAck":
         """删掉一条。"""
+
+    @abstractmethod
+    async def update_profile_field(
+        self, user_id: str, key: str, body: "ProfileFieldUpdateRequest"
+    ) -> "ProfileFieldView":
+        """用户手动更正一条画像字段（issue #26 第三条）。
+
+        这是画像上**唯一**一条由用户自己发起的写路径。校验（键在不在登记表里、
+        值空不空、超不超过长度）全在业务层 —— 接口层不替它兜底，
+        否则别的入口（对话里说一句）就会绕开同一套口径。
+        """
 
     @abstractmethod
     async def reload_dynamic_config(self) -> dict[str, Any]:

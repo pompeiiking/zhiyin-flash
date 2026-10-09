@@ -23,7 +23,7 @@ from zhiyin_business.ports.workspace import (
     WorkspaceService,
     WorkspaceView,
 )
-from zhiyin_business.policies.collection import plan_collection
+from zhiyin_business.policies.collection import counts_as_got, plan_collection
 from zhiyin_business.policies.layout import evaluate, state_of
 from zhiyin_business.ports.registry import RegistryService
 from zhiyin_data_sdk.repositories import TaskSessionRepository
@@ -190,7 +190,7 @@ class DefaultWorkspaceService(WorkspaceService):
             track_events=[],
             panels=panels,
             dependencies=dependencies,
-            profile_coverage=self._coverage(profile),
+            profile_coverage=self._coverage(profile, self._collection_rules()),
             profile_confidence=await self._profiles.overall_confidence(user_id),
             # 画像字段的展示名：和采集清单同一份来源（动态资源的采集规则表）。
             # 界面上摆 `major` 这种内部键给用户看，等于把实现细节漏到产品里。
@@ -319,7 +319,9 @@ class DefaultWorkspaceService(WorkspaceService):
                         selected = next(
                             (p for p in direction_plans if p.selected), direction_plans[0]
                         )
-                        evaluation = f"主攻：{selected.name}（匹配 {selected.match_score:.2f}）"
+                        evaluation = f"主攻：{selected.name}"
+                        if selected.match_score is not None:
+                            evaluation += f"（匹配 {selected.match_score:.2f}）"
                     elif asset_type == AssetType.ACTION_PLAN and action_plan is not None:
                         done = sum(
                             t.done for phase in action_plan.phases for t in phase.tasks
@@ -361,12 +363,41 @@ class DefaultWorkspaceService(WorkspaceService):
         return edges
 
     @staticmethod
-    def _coverage(profile) -> float:
-        """P0 口径：已填字段 /（已填字段 + 缺口）。动态 key_fields 阈值待接。"""
+    def _coverage(profile, rules=None) -> float:
+        """画像覆盖度：**算作拿到**的字段 / 画像里**一共几格**。
+
+        分子与采集清单同一口径（`policies/collection.py::counts_as_got`）：
+        权威字段（专业 / 学籍这类该由学信网核验出具的）如果只由对话或行为推断
+        写进来，不算拿到，也就不进分子。不共用的症状是同一屏里两句话互相打脸 ——
+        画像面板"覆盖 100%"，采集清单却还挂着"还差专业"。
+
+        分母**按键去重**：一个键就是画像里的一格，不论它这一轮以什么形态出现。
+        `profile.gaps` 是模型产出的缺口清单，与 `profile.fields` **同键是常态**
+        （典型就是"专业有值、但来源是对话，所以它同时是缺口"），而
+        `len(fields) + len(gaps)` 会把这一格算两次。后果不是数字难看，而是
+        **这个数字会跟着模型的话多话少漂**：同一份画像，模型这一轮多报一条
+        `major` 缺口，覆盖度就往下掉一截（1 格拿到 / 3 格 = 33%，而不是 50%），
+        用户看到的是"我什么都没改，覆盖度自己变了"。
+
+        同键同现的语义判断：**是同一格，不是两条**。字段那一条是"这一格现在装着
+        什么值"，缺口那一条是"这一格还没落实" —— 说的是同一件事的两面，
+        采信哪一面由 `counts_as_got` 决定（来源不相称时它就不进分子）。
+        所以键才是格子，字段与缺口都只是这个格子的状态描述。
+
+        `rules` 是采集登记表（"哪个字段该由谁出具"写在它里面）；不传时退回
+        `collection.py` 的内置表，与其它读侧同一条口径。
+        """
         if profile is None:
             return 0.0
-        total = len(profile.fields) + len(profile.gaps)
-        return round(len(profile.fields) / total, 2) if total else 0.0
+        # 同键取**最后一条**字段：与 `plan_collection` 里的 `have` 同一取法
+        # （模型同一轮里重复报同一个键时，两处必须落在同一条值上，否则
+        # 分子按这条算、清单按那条算，又成了两句话打架）。
+        have = {field.key: field for field in profile.fields}
+        got = sum(
+            1 for field in have.values() if counts_as_got(field.key, field, rules=rules)
+        )
+        total = len(set(have) | {gap.key for gap in profile.gaps})
+        return round(got / total, 2) if total else 0.0
 
 
 __all__ = ["DefaultWorkspaceService"]

@@ -24,8 +24,11 @@ class PlanOption(BaseModel):
     role: PlanRole
     name: str
     target_desc: str
-    match_score: float = Field(
-        description="匹配度 = 三叶草契合度 × 可达性，解释性分值"
+    match_score: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="仅有可追溯的计算输入时填写 0–1 匹配度；依据不足时为 null",
     )
     gaps: list[str] = Field(default_factory=list, description="该方向下的差距要点")
     fit_reason: str = Field(description="契合依据")

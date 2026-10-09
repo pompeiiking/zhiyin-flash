@@ -68,7 +68,7 @@ const isTimeline = (item: AnyItem) => 'actor' in item && 'what' in item
             <div class="ev">
               <div class="ev__top">
                 <span class="ev__source">{{ item.source }}</span>
-                <span class="label ev__conf">把握 {{ Number(item.confidence ?? 0).toFixed(2) }}</span>
+                <span v-if="typeof item.confidence === 'number'" class="label ev__conf">把握 {{ item.confidence.toFixed(2) }}</span>
               </div>
               <p class="ev__detail">{{ item.detail }}</p>
               <span v-if="item.at" class="mono ev__at">{{ item.at }}</span>
@@ -132,7 +132,9 @@ const isTimeline = (item: AnyItem) => 'actor' in item && 'what' in item
   border-radius: var(--r-sm);
   transition: background var(--dur-fast) var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .ev:hover { background: var(--fill-subtle); }
+}
 .ev__top { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s3); }
 .ev__source { font-size: var(--fs-small); color: var(--accent); }
 .ev__conf { color: var(--ink-faint); }
@@ -148,7 +150,9 @@ const isTimeline = (item: AnyItem) => 'actor' in item && 'what' in item
   border-radius: var(--r-sm);
   transition: background var(--dur-fast) var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .tl:hover { background: var(--fill-subtle); }
+}
 .tl__time { grid-row: span 3; color: var(--ink-faint); }
 .tl__actor { font-size: var(--fs-small); color: var(--accent); }
 .tl__what { font-size: var(--fs-small); color: var(--ink); }

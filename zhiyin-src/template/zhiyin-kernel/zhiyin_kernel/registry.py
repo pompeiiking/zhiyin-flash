@@ -190,6 +190,23 @@ class TrackEventSpec(BaseModel):
         description="frontend=前端上报；backend=后端派生，不接收入站上报"
     )
     note: str = Field(default="", description="触发时机与口径说明")
+    label: str = Field(
+        default="",
+        description=(
+            "界面上给用户看的名字（人话）。复盘时间线直接用这一列 —— "
+            "把 code 当标题展示给用户，他读到的就是 review_warning_show（issue 证据截图 1）"
+        ),
+    )
+    timeline: bool = Field(
+        default=True,
+        description=(
+            "这条事件算不算「发生过的事」，要不要进复盘时间线。"
+            "false 的那些是**使用痕迹**（进了工作台、开口聊了一句、展开了一次依据）——"
+            "它们是埋点，不是这个人的生活；全塞进复盘就会变成一屏一模一样的记录"
+            "（实测：一次验证跑完就积出 50 条同文本的行）。"
+            "判定写在登记表里，因为它随产品一起变、不该发版。"
+        ),
+    )
 
 
 class BadgeRuleSpec(BaseModel):

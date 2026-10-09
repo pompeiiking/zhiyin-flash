@@ -11,6 +11,7 @@ import PortraitFieldList from '@/components/portrait/PortraitFieldList.vue'
 import PortraitDetail from '@/components/portrait/PortraitDetail.vue'
 import PortraitEmpty from '@/components/portrait/PortraitEmpty.vue'
 import AiFrame from '@/components/ai/AiFrame.vue'
+import GlyphIcon from '@/components/ui/GlyphIcon.vue'
 import { portraitTask, type PortraitAnalysis } from '@/ai/registry'
 
 /**
@@ -94,6 +95,28 @@ watch(
 )
 
 const selectedKey = ref<string | null>(null)
+/**
+ * 点名让清单把哪一条的编辑器打开（详情层按了「更正」）。
+ *
+ * 编辑器只有一份，在清单里 —— 详情层只负责"点这一下"，回到清单并把这一条打开，
+ * 免得出现两处写入口（校验与失败回滚迟早会不一样）。
+ */
+const editRequest = ref<string | null>(null)
+function correctFromDetail() {
+  /*
+   * 回到清单：走详情那颗「返回」的**同一条路**（`back()` 有来路栈，不会猜错层）。
+   *
+   * 两个坑都踩过：
+   *   · 不能只把 `selectedKey` 清空 —— `selected` 在它为空时会**回落到第一条**，
+   *     于是第三层照样成立，看起来像"点了没反应"；
+   *   · 也不能自己写 `go('records')` 之类 —— 这一条可能是从"判断维度"或"档案信息"
+   *     进来的，来路只有 `trail` 知道。
+   */
+  const key = selectedKey.value
+  if (!key) return
+  editRequest.value = key
+  back()
+}
 
 /**
  * 第三层要的那一条。
@@ -118,8 +141,10 @@ const selected = computed(() => {
 /**
  * 来源枚举 → 用户读得懂的说法。
  *
- * 六个取值由内核契约 `ProfileSource` 定死（不是自由字符串）：学信网与教务系统
+ * 这些取值由内核契约 `ProfileSource` 定死（不是自由字符串）：学信网与教务系统
  * 这类权威记录统一走 `record`，所以这里没有、也不需要有它们各自的名字。
+ * `user_edit` 是他**自己改的**那一条（issue #26 第三条）—— 与"对话"分开是有意的：
+ * 一个是"系统从你说的话里记的"，一个是"你自己写的"，他该分得清。
  * 认不出来的取值不给用户看原始码，退回一句中性说法。
  */
 const SOURCE_LABEL: Record<string, string> = {
@@ -129,6 +154,7 @@ const SOURCE_LABEL: Record<string, string> = {
   behavior_inference: '行为推断',
   mentor: '导师',
   record: '权威记录',
+  user_edit: '本人填写',
 }
 
 const sourceLabel = (source: string) => SOURCE_LABEL[source] ?? '记录'
@@ -164,6 +190,17 @@ function readValue(value: unknown): string {
   return parts.length ? parts.join('、') : '—'
 }
 
+/**
+ * 「更正」输入框的初值。
+ *
+ * 与 `readValue` 只差一处：没有值时给**空串**而不是那个占位符"——"。
+ * 占位符是给人看的，一旦当成初值填进输入框，用户不改它会把这个符号本身存进画像。
+ */
+function editableValue(value: unknown): string {
+  const text = readValue(value)
+  return text === '—' ? '' : text
+}
+
 /** 证据是后端给的字符串引用；点开看它原样是什么 */
 function showEvidence(label: string, evidence: string[]) {
   session.openDrawer(
@@ -180,13 +217,87 @@ function showGap(gap: { id: string; name: string; question: string; suggested: s
   ])
 }
 
+/**
+ * 点一条【还没定】的字段：直接带他去补这一条（issue #26 第四条）。
+ *
+ * 【为什么点一下不能顺手改数据】
+ * 画像里每一条都必须是**有出处的事实**。点一下就替他把值填进去，等于把系统的猜测
+ * 混进他自己说的话里 —— 而"哪条是他说的、哪条是系统抄的"正是这个产品最要紧的一件事
+ * （口径见 lib/profile.ts）。所以这里一个字段都不写，只把人送到**既有的那条补充录入
+ * 路径**上：问题摆好，答案仍然由他说，落库仍然由主理那一轮对话完成。
+ *
+ * 注意与下面的 `correctField` 分开：那一条是**他自己说"记错了"**（值由他给），
+ * 这一条是**系统说"还缺这个"**（值不能由系统替他编）。两件事的写权限不一样。
+ *
+ * 【为什么是这两条既有入口，不新造一条】
+ * 采集动线对同一批缺口本来就是这么分流的（CollectOverlay 的 `goSource` / `askFor`）：
+ *   · `chsi` / `academic` 源 → 绑定向导（去核验学籍 / 去导入课表）——
+ *     这种字段只有权威记录这一个来源，问是问不出来的；
+ *   · `conversation` 源 → `session.askChat(后端给这一条的追问)` ——
+ *     talk 浮层里问题已经摆在输入框上方，用户进来就能答。
+ * 追问文本来自后端（`collection.items[].ask`），前端一个字都不编；拿不到就退回
+ * 画像缺口自己那句"为什么算缺"（口径与 lib/asks.ts 里"下一步"的取法一致：
+ * `question` 优先），连缺口都对不上时也进同一个入口 —— 这一层只保证
+ * **点了就落在一个能开口的地方**，不替用户编问题。
+ */
+function supplement(key: string) {
+  const step = session.collection?.items.find((item) => item.key === key)
+  if (step?.available) {
+    if (step.source === 'chsi') {
+      session.bindMode = 'chsi'
+      session.openOverlay('bind')
+      return
+    }
+    if (step.source === 'academic') {
+      session.bindMode = 'academic'
+      session.openOverlay('bind')
+      return
+    }
+    if (step.source === 'conversation' && step.ask) {
+      session.askChat(step.ask)
+      return
+    }
+  }
+  const gap = gaps.value.find((item) => item.id === key)
+  session.askChat(gap?.question || '')
+}
+
 /* ── 事实与判断 ──────────────────────────────────────────────────
  *
  * 切一刀的地方只有一处（lib/profile.ts），这里只负责把两堆分别摆到该摆的地方：
  * 判断 → 分析图 + 判断清单；档案 → 档案清单。混在一起是上一版最大的误区。
  */
+
+/**
+ * 更正一条（issue #26 第三条）。
+ *
+ * 上面那段说的是"点一下不许顺手改数据"；**这里恰恰相反**，要给它一条真的写路径 ——
+ * 区别在"谁说这句话"：
+ *   · `supplement` 是系统的猜测（"你还缺专业"），点一下就替用户填值，
+ *     等于把系统的猜混进他本人说的话里；
+ *   · 这一条是他**自己**敲进去的："系统记错了，正确的是这个"。
+ *     在这件事上他比任何来源都权威 —— 学信网上写的也可能是错的（院系调整、
+ *     大类招生、专业改名），而系统此前一个字都不许他改，他只能看着一条错值
+ *     被后面每一份报告引用（用户原话："无法完成修改"）。
+ *
+ * 落库走 store（`correctProfileField`：乐观更新 + 失败回滚），这里只把动作递下去，
+ * 顺带补一句"存下之后它算你自己填的"—— 来源变了这件事要说给用户听。
+ */
+function correctField(key: string, value: string) {
+  return session.correctProfileField(key, value)
+}
 const split = computed(() => splitProfile(fields.value))
-const pendingKeys = computed(() => new Set(gaps.value.map((g) => g.id)))
+/*
+ * 「没定」= 这一格还没落实。
+ *
+ * 但**他自己填过的**（来源 `user_edit`）不算没定：他刚用「更正」写下的值，
+ * 不该因为模型下一轮又报了一条同名缺口就重新挂上「没定」—— 那看起来就像
+ * 他刚改的东西没生效，而他确实改了、也确实存下来了（缺口清单本身的卫生是另一件事）。
+ */
+const pendingKeys = computed(() => {
+  const mine = new Set(fields.value.filter((f) => f.source === 'user_edit').map((f) => f.key))
+  return new Set(gaps.value.map((g) => g.id).filter((id) => !mine.has(id)))
+})
 
 const toItem = (field: { key: string; label?: string; confidence?: number; source: string; updated_at?: string | null; evidence?: string[]; value?: unknown }) => ({
   key: field.key,
@@ -196,13 +307,15 @@ const toItem = (field: { key: string; label?: string; confidence?: number; sourc
   updatedAt: String(field.updated_at ?? ''),
   evidenceCount: (field.evidence ?? []).length,
   pending: pendingKeys.value.has(field.key),
+  // 取值读成人话：档案清单直接显示它，「更正」时也拿它当输入框的初值
+  // （判断那一堆的行里不显示值，所以这一步对它们是白拿的）。
+  value: editableValue(field.value),
 })
 
 const dimItems = computed(() => split.value.judgments.map(toItem))
 const factItems = computed(() =>
   split.value.facts.map((f) => ({
     ...toItem(f),
-    value: readValue(f.value),
     sourceLabel: sourceLabel(f.source),
   })),
 )
@@ -314,7 +427,7 @@ const leadEntry = computed<'dims' | 'gaps' | null>(() => {
     @close="session.closeOverlay()"
   >
     <!-- 整页的材质走这一组变量（见下面 .pt），子组件只认变量不认色值 -->
-    <div class="pt" :class="{ 'pt--blank': !allItems.length }">
+    <div class="pt surface" :class="{ 'pt--blank': !allItems.length }">
       <!-- 一条记录都没有：整页只留"为什么空着 + 现在点哪里" -->
       <PortraitEmpty v-if="!allItems.length" />
 
@@ -401,7 +514,7 @@ const leadEntry = computed<'dims' | 'gaps' | null>(() => {
                           : '还没有 —— 说几句就有了' }}
                       </span>
                     </span>
-                    <span class="mrow__go" aria-hidden="true">→</span>
+                    <GlyphIcon class="mrow__go" name="arrow-right" :size="13" />
                   </button>
                 </li>
                 <li>
@@ -409,9 +522,9 @@ const leadEntry = computed<'dims' | 'gaps' | null>(() => {
                     <span class="mrow__badge">{{ factItems.length }}</span>
                     <span class="mrow__body">
                       <span class="mrow__t">档案信息</span>
-                      <span class="mrow__d">学校、专业、学籍：从权威记录抄下来的事实</span>
+                      <span class="mrow__d">学校、专业、学籍：从权威记录抄下来的，记错了能自己改</span>
                     </span>
-                    <span class="mrow__go" aria-hidden="true">→</span>
+                    <GlyphIcon class="mrow__go" name="arrow-right" :size="13" />
                   </button>
                 </li>
                 <li>
@@ -419,14 +532,17 @@ const leadEntry = computed<'dims' | 'gaps' | null>(() => {
                     class="mrow" :class="{ 'mrow--lead': leadEntry === 'gaps' }"
                     type="button" @click="go('gaps')"
                   >
-                    <span class="mrow__badge">{{ gaps.length || '✓' }}</span>
+                    <span class="mrow__badge">
+                      <template v-if="gaps.length">{{ gaps.length }}</template>
+                      <GlyphIcon v-else name="check" :size="14" />
+                    </span>
                     <span class="mrow__body">
                       <span class="mrow__t">还差什么</span>
                       <span class="mrow__d">
                         {{ gaps.length ? '补上它，后面的判断才稳' : '关键字段都拿到了，没有缺口' }}
                       </span>
                     </span>
-                    <span class="mrow__go" aria-hidden="true">→</span>
+                    <GlyphIcon class="mrow__go" name="arrow-right" :size="13" />
                   </button>
                 </li>
                 <li>
@@ -436,7 +552,7 @@ const leadEntry = computed<'dims' | 'gaps' | null>(() => {
                       <span class="mrow__t">整份画像的判断</span>
                       <span class="mrow__d">把这一份合起来读一遍：亮点、要小心、下一步</span>
                     </span>
-                    <span class="mrow__go" aria-hidden="true">→</span>
+                    <GlyphIcon class="mrow__go" name="arrow-right" :size="13" />
                   </button>
                 </li>
               </ul>
@@ -450,22 +566,30 @@ const leadEntry = computed<'dims' | 'gaps' | null>(() => {
           kind="judgment"
           :items="dimItems"
           :selected-key="selectedKey"
+          :edit-key="editRequest"
           :gap-count="gaps.length"
+          :correct="correctField"
           @select="openField"
+          @supplement="supplement"
         />
 
         <!-- ── 第二层：档案信息 ───────────────────────────────────── -->
         <div v-else-if="level === 'records'" class="records">
           <p class="records__lead">
-            这些是从权威记录直接抄下来的事实，不是你自述的 —— 所以它们没有"把握度"，
-            也不需要你去核对。它们只说明"你在哪儿"，不说明你是谁。
+            这些是从权威记录（学信网 / 教务系统）抄下来的事实，不是你自述的 ——
+            所以它们没有"把握度"，也不必逐条核对：它们只说明"你在哪儿"，不说明你是谁。
+            但权威记录也会错（大类招生、院系调整、专业改名），看到不对的那一条，
+            点行尾的「更正」自己写一遍 —— 存下之后这一条算你说的，来源标成「本人填写」。
           </p>
           <PortraitFieldList
             kind="record"
             :items="factItems"
             :selected-key="selectedKey"
+          :edit-key="editRequest"
             :gap-count="0"
+            :correct="correctField"
             @select="openField"
+            @supplement="supplement"
           />
         </div>
 
@@ -480,16 +604,16 @@ const leadEntry = computed<'dims' | 'gaps' | null>(() => {
             <li v-for="gap in gaps" :key="gap.id">
               <button class="gap" type="button" @click="showGap(gap)">
                 <span class="gap__t">{{ gap.name || gap.id }}</span>
-                <span class="gap__go" aria-hidden="true">看怎么补 →</span>
+                <span class="gap__go" aria-hidden="true">看怎么补 <GlyphIcon name="arrow-right" :size="12" /></span>
                 <span class="gap__why">{{ gap.question }}</span>
                 <span class="gap__next">{{ gap.suggested }}</span>
               </button>
             </li>
           </ul>
           <div v-else class="done">
-            <span class="done__mark" aria-hidden="true">✓</span>
+            <GlyphIcon class="done__mark" name="check" :size="15" />
             <p class="done__t">画像里该有的都在了。</p>
-            <button class="link" type="button" @click="go('analysis')">看整份判断 →</button>
+            <button class="link" type="button" @click="go('analysis')">看整份判断 <GlyphIcon name="arrow-right" :size="13" /></button>
           </div>
         </div>
 
@@ -529,6 +653,7 @@ const leadEntry = computed<'dims' | 'gaps' | null>(() => {
           :task="() => dimensionTask(selected!.key) as never"
           @evidence="showEvidence(selected.label, selected.evidence)"
           @pick-trend="onTrend"
+          @correct="correctFromDetail"
         />
       </template>
     </div>
@@ -572,9 +697,9 @@ const leadEntry = computed<'dims' | 'gaps' | null>(() => {
   --pt-warn: var(--warn);
 
   /* 纸比玻璃方：圆角整体收一档，纸的"边"才立得住 */
-  --pt-r-sm: 8px;
-  --pt-r-md: 12px;
-  --pt-r-lg: 16px;
+  --pt-r-sm: var(--r-sm);
+  --pt-r-md: var(--r-md);
+  --pt-r-lg: var(--r-lg);
 
   /* 来源分类色：直接用外壳的马克笔（顺序对齐 PortraitSummary 的图例分配） */
   --pt-src-1: var(--mk-blue);
@@ -600,7 +725,7 @@ const leadEntry = computed<'dims' | 'gaps' | null>(() => {
   position: absolute; inset: 0 0 auto 0; height: 42%;
   border-radius: inherit;
   pointer-events: none;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.72), transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--n-1) 72%, transparent), transparent);
 }
 .pt > * { position: relative; }
 
@@ -626,12 +751,16 @@ const leadEntry = computed<'dims' | 'gaps' | null>(() => {
   box-shadow: var(--e-1), var(--inner-hi);
   transition: border-color 160ms var(--ease-out), color 160ms var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .back:hover { border-color: var(--pt-line-strong); color: var(--pt-ink); }
+}
 .back svg { transition: transform 160ms var(--ease-out); }
+@media (hover: hover) and (pointer: fine) {
 .back:hover svg { transform: translateX(-2px); }
+}
 
 .bar__t { display: grid; gap: 1px; min-width: 0; }
-.bar__crumb { color: var(--ink-4); }
+.bar__crumb { color: var(--ink-3); }
 .bar__title {
   font-family: var(--font-editorial);
   font-size: 21px; font-weight: 600; letter-spacing: -0.01em; color: var(--pt-ink);
@@ -662,7 +791,7 @@ const leadEntry = computed<'dims' | 'gaps' | null>(() => {
   border-radius: var(--pt-r-md);
   background: var(--fill-subtle);
 }
-.nofig__k { color: var(--ink-4); }
+.nofig__k { color: var(--ink-3); }
 .nofig__t {
   font-family: var(--font-editorial);
   font-size: 21px; font-weight: 600; letter-spacing: -0.01em; color: var(--pt-ink);
@@ -676,17 +805,21 @@ const leadEntry = computed<'dims' | 'gaps' | null>(() => {
   box-shadow: var(--e-2);
   transition: transform 160ms var(--ease-out), background 160ms var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .primary:hover { background: var(--pt-accent-deep); transform: translateY(-1px); }
+}
 .ghost {
   height: 34px; padding: 0 16px; border-radius: var(--r-pill);
   border: 1px solid var(--pt-line); background: var(--pt-surface); color: var(--pt-muted);
   font-size: var(--t-sm); font-weight: 500;
   transition: border-color 160ms var(--ease-out), color 160ms var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .ghost:hover { border-color: var(--pt-line-strong); color: var(--pt-ink); }
+}
 
 .menu { display: grid; gap: var(--s2); align-content: start; }
-.menu__k { color: var(--ink-4); }
+.menu__k { color: var(--ink-3); }
 .menu ul { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s2); }
 
 /*
@@ -708,10 +841,12 @@ const leadEntry = computed<'dims' | 'gaps' | null>(() => {
   transition: border-color 160ms var(--ease-out), box-shadow 160ms var(--ease-out),
               transform 160ms var(--ease-out), background 160ms var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .mrow:hover {
   border-color: var(--pt-line-strong);
   box-shadow: var(--e-2), var(--inner-hi);
   transform: translateY(-1px);
+}
 }
 .mrow--lead { border-color: var(--pt-accent); background: var(--pt-soft); }
 
@@ -734,7 +869,9 @@ const leadEntry = computed<'dims' | 'gaps' | null>(() => {
   color: var(--ink-4); font-size: var(--t-sm);
   transition: color 160ms var(--ease-out), transform 160ms var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .mrow:hover .mrow__go { color: var(--pt-accent); transform: translateX(2px); }
+}
 
 /* ── 第二层：档案 ────────────────────────────────────────────────── */
 .records { display: grid; gap: var(--s3); align-content: start; }
@@ -753,9 +890,11 @@ const leadEntry = computed<'dims' | 'gaps' | null>(() => {
   box-shadow: var(--e-1), var(--inner-hi);
   transition: border-color 160ms var(--ease-out), box-shadow 160ms var(--ease-out), transform 160ms var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .gap:hover {
   border-color: var(--pt-line-strong); transform: translateY(-1px);
   box-shadow: var(--e-2), var(--inner-hi);
+}
 }
 .gap__t { font-size: var(--t-body); font-weight: 600; color: var(--pt-ink); }
 .gap__go {
@@ -776,7 +915,9 @@ const leadEntry = computed<'dims' | 'gaps' | null>(() => {
   display: inline-flex; align-items: center; gap: 4px;
   font-size: var(--t-sm); font-weight: 500; color: var(--pt-accent);
 }
+@media (hover: hover) and (pointer: fine) {
 .link:hover { text-decoration: underline; }
+}
 
 /* ── 第二层：整份画像的判断 ──────────────────────────────────────── */
 .pa { display: grid; gap: var(--s3); min-width: 0; }
@@ -794,7 +935,7 @@ const leadEntry = computed<'dims' | 'gaps' | null>(() => {
   border-top: 1px solid var(--line-1);
 }
 .pa__col { display: grid; gap: 8px; align-content: start; }
-.pa__col-k { color: var(--ink-4); }
+.pa__col-k { color: var(--ink-3); }
 .pa__col ul { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s3); }
 .pa__col li { display: grid; gap: 3px; }
 .pa__lab { font-size: var(--t-sm); font-weight: 600; color: var(--pt-ink); line-height: 1.5; }

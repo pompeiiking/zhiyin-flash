@@ -186,7 +186,9 @@ async function submit() {
               box-shadow var(--dur-micro) var(--ease-out),
               background var(--dur-micro) var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .field input:hover { border-color: var(--line-3); }
+}
 /*
  * 输入框的焦点：把套版线描成强调色，再补一圈 1px 的弱点。
  * 不用光晕 —— 光晕是"浮起来"的语言，这一稿的输入框是"凹进纸里的一格"。
@@ -204,14 +206,16 @@ async function submit() {
   font-size: var(--t-xs); color: var(--ink-3);
   transition: color var(--dur-micro) var(--ease-out), background var(--dur-micro) var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .eye:hover { color: var(--ink-1); background: var(--fill-hover); }
+}
 
 .err {
   display: flex; align-items: baseline; gap: var(--s2);
   padding: var(--s3) var(--s3);
   border: 1px solid var(--warn);
   border-radius: var(--r-sm);
-  background: rgba(183, 77, 26, 0.06);
+  background: color-mix(in srgb, var(--warn) 6%, transparent);
   font-size: var(--fs-small); color: var(--warn);
 }
 .err__dot { width: 6px; height: 6px; border-radius: 50%; background: var(--warn); flex: 0 0 auto; align-self: center; }
@@ -224,7 +228,9 @@ async function submit() {
   padding-top: var(--s3); border-top: 1px solid var(--line-1);
 }
 .link { align-self: start; color: var(--accent); font-size: var(--fs-small); text-align: left; }
+@media (hover: hover) and (pointer: fine) {
 .link:hover { text-decoration: underline; }
+}
 .switch__note { color: var(--ink-faint); }
 
 @media (max-width: 760px) {

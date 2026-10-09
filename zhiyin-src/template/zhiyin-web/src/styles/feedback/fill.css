@@ -1,0 +1,207 @@
+/*
+ * 交互反馈 · 填色（fill）—— 反馈只发生在底色上，线一律不动、块一律不动。
+ *
+ * 【这一层是什么】
+ *
+ * 第三条轴（另两条见 styles/themes/ 与 styles/ui/）：只管 hover / active / focus / 选中
+ * **怎么"回话"**。这里**一个自定义属性都不声明**、一条形状与颜色也不新造，
+ * 全部引用已有令牌（--fill-hover / --fill-press / --fill-subtle / --accent* /
+ * --focus-ring / --n-* / --line-* / --e-*）。唯一的字面量是那一道 inset 黑影的
+ * `rgba(0, 0, 0, …)` —— 影的黑白是这套轴里唯一允许的实数，别的颜色一律走令牌。
+ *
+ * 【这套要解决的问题】
+ *
+ * 默认档 `rise`（抬升）用"位移 + 影子"说反馈。位移的麻烦是**它会推动周围**：
+ * 一排按钮、一列行，光标扫过去整片都在动，读的时候视线被反复打断。
+ * 这一套只用一个自由度：**底色**。
+ *   悬停：底色加深一档（--fill-hover），描边、圆角、位置全都不动；
+ *   按下：底色再深一档（--fill-press）—— 像手指按在纸上留下的那块湿印；
+ *   焦点：不打环，改成**底边一条粗线**（0 3px 0 --focus-ring），像表单里当前那一格；
+ *   选中：左侧一道 3px 竖条（inset 影），底色不变 —— 标记位置，不改变明度。
+ *
+ * 【为什么按钮的边框也要显式写一遍】
+ *
+ * 这一套说"线一律不动"，那就不只是"不改粗"，还得**把默认档会动的那条线按住**：
+ * base.css 的 `.btn:hover { border-color: var(--line-4) }` 会把描边提亮一档，
+ * 那是"描边档"的语言。所以这里显式写回 `var(--line-2)`（就是 .btn 的常驻描边色），
+ * 让悬停时唯一变化的东西只剩底色 —— 不写这一句，两套语言会混在一只按钮上。
+ *
+ * 【盖得住与盖不住的地方】（一律不用 !important）
+ *
+ * 前缀写成 `html[data-feedback="fill"]`，特异性 0,3,1：赢 base.css 的 `.btn:hover`
+ * / `.chip:hover`（0,2,0）与 `:focus-visible`（0,1,0），也赢组件 scoped 的
+ * `.row:hover[data-v-…]`（0,3,0）—— 差在最后那一位元素选择器。前缀必须是 `html[data-…]`
+ * 而不是 `.x[data-…]`，否则就掉回 0,2,0 那一档，压不住 base。
+ *
+ * **赢不过**的两处（如实记下）：
+ *   1. 覆盖层里的输入框，例如 BindOverlay 的 `.field input:focus-visible`、
+ *      TasksOverlay 的 `.add input:focus-visible`：带 scoped 属性又多一个类型/类前缀，
+ *      算下来 0,3,1，b 位 3 > 2，压过本文件的全局焦点规则 —— 那几处继续用它们自己的
+ *      "贴边细环"，这也正是输入框该有的样子，不必强行统一成底边线。
+ *   2. 组件内部"整块悬停、点亮某个角"的长链，如 `.bubble:hover .foot__cta`（scoped 后 0,4,0）：
+ *      那是块内部的高亮，归组件自己管，这一轴不越权。
+ *
+ * 另有一处**已知缺口**：PortraitFieldList 的 scoped `.row:hover { transform: translateY(-1px) }`
+ * 只在 background / box-shadow 上被本文件盖住，`transform` 本文件没声明，那一处的行仍会上抬 1px。
+ * 要修是块里加一句 `transform: none`，不在这里用 !important 硬盖。
+ */
+
+/*
+ * 【卡片也要回话 —— 2026-10-08 第二次补】
+ *
+ * 控制台上最大的悬停目标是**那九张卡片**（`.surface`：气泡、浮窗、便签、卷宗），
+ * 而不是任何控件。原来这一轴对卡片一条规则都没有，所以"悬停一张卡"看不到任何变化 ——
+ * 用户说"交互还是没看见效果"，指的就是这个。
+ * 手法用一层大 spread 的 inset 影当"垫色"：它画在背景之上、内容之下，
+ * 于是卡片里的字一点不受影响，而整块明显"被垫了一层纸"。位置与描边都不动。
+ */
+@media (hover: hover) and (pointer: fine) {
+html[data-feedback="fill"] .surface:hover,
+html[data-feedback="fill"] .sheet:hover {
+  transform: none;
+  box-shadow: inset 0 0 0 999px var(--fill-hover), var(--e-3), var(--inner-hi);
+}
+}
+
+/* 按钮：不位移；悬停只把底色加深一档，描边显式按回常驻色（见文件头说明） */
+@media (hover: hover) and (pointer: fine) {
+html[data-feedback="fill"] .btn:hover {
+  transform: none;
+  background: var(--fill-hover);
+  border-color: var(--line-2);
+  box-shadow: var(--e-2), var(--inner-hi);
+}
+}
+
+/* 按下：底色再深一档、影收掉 —— 这一下是"纸被按住"，不是"纸掉下去"（没有位移） */
+html[data-feedback="fill"] .btn:active {
+  transform: none;
+  background: var(--fill-press);
+  box-shadow: none;
+}
+
+/* 主按钮：悬停/按下都靠强调色的深浅档，位置与形状一律不动 */
+@media (hover: hover) and (pointer: fine) {
+html[data-feedback="fill"] .btn.primary:hover {
+  background: var(--accent-deep);
+  border-color: var(--accent-deep);
+}
+}
+
+/* 主按钮按下：底色留在深档，另加一道 inset 影 —— 实心块上没有边框可加深，用内影代替 */
+html[data-feedback="fill"] .btn.primary:active {
+  background: var(--accent-deep);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.18);
+}
+
+/* 标签片：悬停换底色，描边色一点不碰（"线一律不动"这条在这里兑现） */
+@media (hover: hover) and (pointer: fine) {
+html[data-feedback="fill"] .chip:hover {
+  background: var(--fill-hover);
+}
+}
+
+/*
+ * 【真控件清单 —— 2026-10-08 截图核对后补的一节】
+ *
+ * 画布上没有 `.btn`：那里的入口是 `.ask`（"开始对话"）、`.foot__cta` / `.foot__why`、
+ * `.rail__bar`、`.bubble__close` / `.bubble__done`。只写 .btn/.chip 的话，
+ * 用户在控制台切到这一档会看到"什么都没变" —— 不是规则错，是零件点错了。
+ * 这一档的反馈只有一个自由度：**底色**。所以下面全部只改 background，
+ * 描边、位置、形状一个字都不动。
+ */
+@media (hover: hover) and (pointer: fine) {
+html[data-feedback="fill"] .ask:hover,
+html[data-feedback="fill"] .rail__bar:hover,
+html[data-feedback="fill"] .bubble__close:hover,
+html[data-feedback="fill"] .bubble__done:hover {
+  transform: none;
+  /*
+   * `.ask` 的底色与内影**由组件自己按住**（`.bubble:hover .ask` 那条链是 0,4,0，
+   * 本文件 0,3,1 压不过；截图核对时 `background` 在三档里都是同一个值）。
+   * 所以"填色"这一档在这些控件上改用 filter 表达 —— 填得更实=整体压深一档，
+   * filter 没有被那条链占用，而且它不写任何颜色字面量。
+   */
+  filter: brightness(0.94);
+  border-color: var(--line-2);      /* 线按住不动（见文件头"线一律不动"） */
+}
+}
+html[data-feedback="fill"] .ask:active,
+html[data-feedback="fill"] .rail__bar:active {
+  transform: none;
+  filter: brightness(0.88);
+}
+
+/* 文字入口：悬停时连它也"填"出一块底色，而不是长线（那是描边档的语言） */
+@media (hover: hover) and (pointer: fine) {
+html[data-feedback="fill"] .foot__cta:hover,
+html[data-feedback="fill"] .foot__why:hover {
+  transform: none;
+  background: var(--fill-hover);
+  border-radius: var(--r-xs);
+  box-shadow: none;
+}
+}
+
+/*
+ * 禁用态：这一档在 hover 上加的底色全部按住。
+ * 浏览器的 `:hover` 对禁用元素照样匹配，不写这一条，禁用的按钮悬停时还会整块变深 ——
+ * 读起来就是"还能点"。选择器带 `:disabled`，特异性 (0,3,1) 与 hover 规则相同，靠排在后面取胜。
+ * 禁用态的完整定义在 base.css（降对比、撤影、not-allowed 光标）。
+ */
+html[data-feedback="fill"] :is(.btn, .chip, .ask, .rail__bar, .foot__cta, .foot__why):disabled,
+html[data-feedback="fill"] :is(.btn, .chip, .ask, .rail__bar)[aria-disabled="true"] {
+  transform: none;
+  border-color: var(--line-2);
+  color: var(--ink-4);
+  background: var(--fill-subtle);
+  box-shadow: none;
+  filter: none;
+}
+
+/*
+ * 站立态：这一档的"底色"在不悬停的时候也看得见。
+ *
+ * 同"描边"那一档的理由：外观台打开时盖住被改的界面，只在 hover 上做文章＝用户点了没感觉。
+ * 所以把差异落到常态：标签片、右侧栏、块脚入口常年垫着一层极淡的底（--fill-subtle），
+ * 悬停再深一档（--fill-hover）。底色语言在没碰它的时候就成立。
+ */
+html[data-feedback="fill"] .chip,
+html[data-feedback="fill"] .rail__bar,
+html[data-feedback="fill"] .foot__cta,
+html[data-feedback="fill"] .foot__why {
+  background: var(--fill-subtle);
+}
+html[data-feedback="fill"] :is(.foot__cta, .foot__why) {
+  border-radius: var(--r-xs);
+}
+
+/*
+ * 焦点：不打环，改成**底边一条粗线** —— 像表单里当前正在输入的那一格。
+ * 先 outline: none 把默认档的 2px 实线环撤掉，否则会变成"环 + 底线"两套记号；
+ * 0 0 0 1px var(--n-1) 是外侧一道底板色留白，让那条线不贴着别的描边，读起来是"贴地"的。
+ * 圆角收成 --r-xs，细线才不会在圆角处被切短。
+ */
+html[data-feedback="fill"] :focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 1px var(--n-1), 0 3px 0 0 var(--focus-ring);
+  border-radius: var(--r-xs);
+}
+
+/*
+ * 选中 / 进行中：**左侧竖条**，底色不动。
+ * 底色式选中（--accent-soft）会把整块提亮，一屏里几个标签一起亮就分不出主次；
+ * 一道 3px 竖条只标"是哪一条"，明度交给内容自己。
+ */
+html[data-feedback="fill"] .chip.live {
+  background: transparent;
+  box-shadow: inset 3px 0 0 var(--accent), inset 0 0 0 1px var(--line-2);
+}
+
+/* 行悬停：极淡底 + 同一道左侧竖条（标记位置，不改明度——行比标签长，底色再深就抢内容） */
+@media (hover: hover) and (pointer: fine) {
+html[data-feedback="fill"] .row:hover {
+  background: var(--fill-subtle);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+}

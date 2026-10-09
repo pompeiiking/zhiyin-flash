@@ -33,6 +33,24 @@ class ProfileFieldView(BaseModel):
     evidence: list[str] = Field(default_factory=list, description="证据来源引用")
 
 
+class ProfileFieldUpdateRequest(BaseModel):
+    """用户手动更正一条画像字段（issue #26 第三条）。
+
+    只有一个 `value`，键在路径上（`POST /app/profile/fields/{key}`）：
+    "改哪一条"不是可选的 —— 揉进请求体里，就等于允许一次请求改任意多条，
+    而界面上的入口从来只对着一条。
+
+    **为什么这里不设长度上限**：上限是业务口径（40 字，见
+    `DefaultProfileService.MAX_FIELD_VALUE_CHARS`），超长要说人话
+    （"最多 40 个字，现在有 56 个"）。交给 Pydantic 的 `max_length` 只会得到
+    一句英文的字段名错误，用户看不懂自己该改什么。
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    value: str = Field(description="用户认可的那个值（空串会被拒 —— 清空是另一件事）")
+
+
 class ProfileGapView(BaseModel):
     """画像缺口：还缺哪条、为什么算缺、建议怎么补。"""
 

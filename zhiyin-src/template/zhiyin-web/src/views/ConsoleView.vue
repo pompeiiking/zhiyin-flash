@@ -33,6 +33,10 @@ import MarketBubble from '@/components/console/MarketBubble.vue'
 import TasksOverlay from '@/components/console/TasksOverlay.vue'
 import BriefOverlay from '@/components/console/BriefOverlay.vue'
 import AccountMenu from '@/components/auth/AccountMenu.vue'
+import LookTrigger from '@/components/theme/LookTrigger.vue'
+import GlyphIcon from '@/components/ui/GlyphIcon.vue'
+/* 块名单的来源搬到了 `lib/blocks`：画布与「全部组件」面板都要读它 */
+import { BLOCK_LABELS, BLOCK_ORDER, CORE_COUNT } from '@/lib/blocks'
 import { useSessionStore } from '@/stores/session'
 import { useCanvasDrag } from '@/composables/useCanvasDrag'
 import { shouldCompact, tileLayout, type TileInput } from '@/lib/tiling'
@@ -103,7 +107,7 @@ const TILE_WEIGHTS: Record<string, number> = {
  * 所以它们要等"课程源"到位才出现 —— 否则点开只会撞上一句
  * "先绑定学信网导入课程"，把没接上的线说成接上了。
  */
-const BLOCK_ORDER = ['talk', 'portrait', 'todo', 'collect', 'plans', 'action', 'calendar', 'timetable', 'match', 'market', 'greet', 'people', 'review']
+/** 块的默认先后与显示名都来自 `lib/blocks`（画布与「全部组件」面板共用一份） */
 
 /** 画布用的格子数：列要 12（拖动引擎按 12 列找落点），行给细一点，切分才平滑 */
 const TILE_COLS = 12
@@ -135,11 +139,21 @@ const order = ref([...BLOCK_ORDER])
  *
  * 前端这份 BLOCK_ORDER 只剩一个用途：策略还没到的时候别让画布空着。
  * 拖动仍然能临时改顺序（那是用户的手动操作），刷新后回到策略给的顺序。
+ *
+ * 但**渲染出来、却没登记在策略里**的块必须留在名单里：「课表」就是这种 ——
+ * 它出不出现由数据决定（`showTimetable`），`layout.json` 里没有它，
+ * 于是被 `visibleIds` 追加到画布末尾。名单一旦被策略整体覆盖，它就从名单里掉出去，
+ * 而 `reorder()` 是按名单找位置的 → 那张卡从此**既拖不动、也当不了落点**
+ *（用户报过："这张卡换不了位置，也挪不走"）。
+ * 所以这里是**合并**，不是覆盖：策略给的顺序在前，名单里多出来的块接在后面。
  */
 watch(
   () => session.layout.map((b) => b.id).join(','),
   (ids: string) => {
-    if (ids) order.value = ids.split(',')
+    if (!ids) return
+    const planned = ids.split(',')
+    const extra = order.value.filter((id) => !planned.includes(id))
+    order.value = [...planned, ...extra]
   },
   { immediate: true }
 )
@@ -156,12 +170,14 @@ watch(
  * 给了一个还没有内容的块。
  *
  * 所以这里只补半条：空着的时候按 1.4 收，有内容时按注册表给的 3。
- * 判据与各自块里的渲染条件同源（画像看 dimensions、待办看 action_panel）。
+ * 判据与各自块里的渲染条件同源（画像看 dimensions、待办看**待办本身**）。
  */
 const EMPTY_WEIGHT: Record<string, number> = { portrait: 1.8, todo: 2.1 }
 const isEmptyBlock = (id: string) => {
   if (id === 'portrait') return !(session.profile?.dimensions.length)
-  if (id === 'todo') return !session.wsPanels?.action
+  // 待办不再看 `wsPanels.action`（那是这一阶段的评价）：评价为空时计划里可能明明排着任务，
+  // 那样**有待办的块**会被当成空块，分到更小的格位、更容易掉进紧凑形态（issue #21 的连带问题）
+  if (id === 'todo') return !session.hasTodos
   return false
 }
 const weightOf = (id: string) => {
@@ -170,9 +186,10 @@ const weightOf = (id: string) => {
 }
 
 /**
- * 画布上**真的渲染出来**的块有哪些。
+ * **数据上**有没有这一块（与"用户有没有挪开它"、"是不是被核心区上限挡住"都无关）。
  *
- * 这个清单必须与模板里的 v-if 一一对应 —— 它是"分格"的唯一判据。
+ * 这个清单必须与模板里的 v-if 一一对应 —— 它是"分格"与"渲染"共用的唯一判据
+ *（渲染那一层再减去 `hidden` 与 `capsAway`，见下面的 `visible`）。
  *
  * 【为什么这件事值得单独抽出来】此前分格的口径是"后端编排策略里有的块"，
  * 渲染的口径却是"模板里写了 v-if 的块"。两者不一致时，多出来的那块会掉进
@@ -187,28 +204,56 @@ const weightOf = (id: string) => {
  * "把漏掉的那一块补进列表"。补了三次说明修的不是地方：判据不该是策略，
  * 该是**渲染**。所以现在反过来 —— 先列出渲染，再让策略决定**顺序与权重**。
  */
-const renderedIds = computed(() => {
+const presentIds = computed(() => {
   const ids: string[] = []
   const push = (id: string, on: boolean) => {
     if (on) ids.push(id)
   }
   /* 与模板顺序一致，便于对照检查 */
-  push('portrait', visible('portrait'))
-  push('talk', visible('talk'))
-  push('todo', visible('todo'))
-  push('collect', visible('collect'))
-  push('plans', inStrategy('plans') && visible('plans'))
-  push('action', inStrategy('action') && visible('action'))
+  push('portrait', true)
+  push('talk', true)
+  push('todo', true)
+  push('collect', true)
+  push('plans', inStrategy('plans'))
+  push('action', inStrategy('action'))
   push('timetable', showTimetable.value)
-  push('calendar', inStrategy('calendar') && visible('calendar'))
+  push('calendar', inStrategy('calendar'))
   push('match', session.chsiBound)
-  push('market', inStrategy('market') && visible('market'))
-  push('greet', visible('greet'))
-  push('achievements', inStrategy('achievements') && visible('achievements'))
-  push('people', visible('people'))
-  push('review', visible('review'))
+  push('market', inStrategy('market'))
+  push('greet', true)
+  push('achievements', inStrategy('achievements'))
+  push('people', true)
+  push('review', true)
   return ids
 })
+
+/**
+ * 被**核心区上限**挡在画布外面的那几块。
+ *
+ * 只在用户还没自己管过块的时候才有内容。上限必须作用在**渲染**上，
+ * 而不只是分格上 —— 否则那一块照样画出来、只是掉进 `tileStyle` 的兜底格位
+ *（右下角一块 380×146 的小格子，内容被裁、压着别人）：
+ * 真机验证时正是这个症状（一屏 9 块，第 9 块没有格位）。
+ */
+const capsAway = computed(() => {
+  const managed = session.blocksHidden.length > 0 || session.blocksOrder.length > 0
+  if (managed) return new Set<string>()
+  const shown = order.value.filter(
+    (id) => presentIds.value.includes(id) && !session.blocksHidden.includes(id),
+  )
+  /*
+   * 上限只压**策略名单里那些常驻块**，「有数据才出现」的块一个都不挡。
+   *
+   * 为什么：后者恰恰是"这一轮真正在发生的事"（课表卡就是这一类 —— 有课表数据才出现），
+   * 而它们在顺序里排在末尾，一视同仁地切前 N 个就会把它们全切掉：
+   * 用户会看到"我的课表卡不见了"，而画布上留着的全是常驻的那几张 —— 正好反了。
+   */
+  const planned = new Set(session.layout.map((b) => b.id))
+  const capped = shown.filter((id) => planned.has(id))
+  return new Set(capped.slice(CORE_COUNT))
+})
+
+const renderedIds = computed(() => presentIds.value.filter((id) => visible(id)))
 
 /**
  * 分格用的清单 = **渲染出来的块**，顺序取编排（order）。
@@ -218,10 +263,36 @@ const renderedIds = computed(() => {
  */
 const visibleIds = computed(() => {
   const rendered = renderedIds.value
-  const ordered = order.value.filter((id) => rendered.includes(id))
+  /*
+   * 用户自己排过顺序就用他那份（持久），否则用策略给的。
+   * 两份都要把"渲染出来但没登记在策略里"的块接在后面 —— 那是课表那一类
+   *（有数据才出现），漏了它就没有格位、也拖不动（见 reorder 的说明）。
+   */
+  const mine = session.blocksOrder.filter((id) => rendered.includes(id))
+  const base = mine.length
+    ? [...mine, ...order.value.filter((id) => !mine.includes(id))]
+    : order.value
+  const ordered = base.filter((id) => rendered.includes(id))
   const rest = rendered.filter((id) => !ordered.includes(id))
-  return [...ordered, ...rest]
+  const all = [...ordered, ...rest]
+  /*
+   * 核心区上限：**没被用户管过**的时候，一屏只铺前 CORE_COUNT 块。
+   *
+   * 一屏十几块正是 issue #22/#25 说的"卡片过多、布局杂乱、找不到重点"。
+   * 而用户一旦自己收过或排过（blocksHidden / blocksOrder 非空），就完全以他的为准 ——
+   * 他刚摆好的布局不该被一句规则改掉。剩下的块不消失，只是收进「全部组件」。
+   */
+  const managed = session.blocksHidden.length > 0 || session.blocksOrder.length > 0
+  return managed ? all : all.slice(0, CORE_COUNT)
 })
+
+/**
+ * 有多少块**画得出来、却没在画布上**（被核心区上限收着的那些）。
+ *
+ * 挂在「全部组件」入口上的那个数字就是它：不写出来，用户会以为那块不见了 ——
+ * 而它只是收着，点开就能放回（issue #22 的验收标准里"首尾都要有答案"）。
+ */
+const offCanvas = computed(() => presentIds.value.length - visibleIds.value.length)
 
 /**
  * 这块在不在**后端编排**里。
@@ -235,15 +306,45 @@ const visibleIds = computed(() => {
 const inStrategy = (id: string) =>
   !session.layout.length || session.layout.some((b) => b.id === id)
 
-/** 把 from 挪到 to 的位置上（其余块顺序不变，布局自己重算） */
+/**
+ * 把 from 挪到 to 的位置上（其余块顺序不变，布局自己重算）。
+ *
+ * 返回"这次到底改没改顺序"：拖动引擎要靠它决定收尾的时机 ——
+ * 顺序没变就不会有下一次渲染，等下去只会把卡片永远留在"拎在手上"的状态。
+ */
 function reorder(from: string, to: string) {
-  const list = [...order.value]
+  /*
+   * 基准取**画布上真实的顺序**（`visibleIds`），不是那份"后端策略名单"。
+   *
+   * 两者差在"渲染出来但没登记在策略里的块"：`order` 只等于策略给的名单，
+   * 而课表那种块由数据决定出不出现（`showTimetable`），策略里没有它 ——
+   * 用 `order` 找位置它会拿到 -1，松手时返回 false，**拖了等于没拖**
+   *（用户报过"这张卡换不了位置，也挪不走"；真机复现：位移 -430px 跟手正常，格位一字不变）。
+   *
+   * 上面那个 watch 已经用"合并"保证名单通常包含它们；这里再以屏幕为准，
+   * 是为了让这条不变式**不依赖别处的保证** —— 将来任何"有数据才出现"的块不会再踩一次。
+   */
+  const list = [...visibleIds.value]
   const i = list.indexOf(from)
   const j = list.indexOf(to)
-  if (i < 0 || j < 0 || i === j) return
+  if (i < 0 || j < 0 || i === j) return false
   list.splice(i, 1)
   list.splice(j, 0, from)
   order.value = list
+  /*
+   * 同一份顺序还要**落到用户那份持久顺序**上 —— 少这一句，拖动会变成空操作。
+   *
+   * 因为渲染顺序有两个可能的来源：`blocksOrder`（用户在「全部组件」里收/放回、上下挪时会写它）
+   * 与 `order`（策略给的 + 拖动改的）。`visibleIds` 优先读前者，
+   * 而只写后者等于写进了一份没人看的草稿：**拖完界面上什么都不会变**
+   *（用户报过："组件在管理那里收着再放回，就不能拖动换卡片位置了" ——
+   * 收起/放回会写 `blocksOrder`，于是那之后所有拖动都不生效）。
+   *
+   * 顺带两件事：拖出来的顺序被记住了（刷新后还在），而且"拖过"就等于用户接管，
+   * 核心区上限随之让位 —— 与他刚摆好的布局不该被一句规则改掉是同一条口径。
+   */
+  session.setBlocksOrder(list)
+  return true
 }
 
 const tiles = computed<Record<string, { c: number; r: number; w: number; h: number }>>(() => {
@@ -319,9 +420,17 @@ let watchdog = 0
  * 补位动画只作用于还留在网格流里的块。
  * 被拎在手上的（.pinned）和被 CSS transition 收尾的（.settling）都不参与：
  * 前者是绝对定位，后者正在自己滑向新位置 —— 一起插值会打架。
+ *
+ * 还必须在名单外排掉**手上正拎着的那一块**。
+ * 拎起来的那一瞬，捕帧必须发生在它被抽出网格之前（否则其余块的起点是错的），
+ * 所以那一帧它身上还没有 .pinned —— 只按类名筛，它会混进 Flip 的目标里。
+ * 而 Flip 在动画结束时会对整批目标 clearProps: 'transform'：那一下会把拖动引擎
+ * 写在它身上的位移擦掉，卡片瞬间掉回画布左上角，直到下一次 pointermove 才回来
+ * （指针停住不动时它就卡在那儿）。
  */
 const flowEls = () =>
   [...(canvas.value?.querySelectorAll<HTMLElement>('.bubble:not(.pinned):not(.settling)') ?? [])]
+    .filter((el) => el !== drag.activeBlock())
 
 function captureLayout() {
   if (!canvas.value || reduced()) return
@@ -336,12 +445,28 @@ function captureLayout() {
     return
   }
   flipEls = flowEls()
-  prevIds = new Set(flipEls.map((el) => el.dataset.block ?? ''))
+  /*
+   * 入场判据是"这一轮之前画布上有没有这一块"，与谁参与补位是两件事：
+   * 手上拎着的那块不进 Flip，但它显然不是"新出现的" ——
+   * 跟着 flipEls 算的话它会被当成新块，在拖动中途被加上 .entering 播一遍入场动画。
+   */
+  prevIds = new Set(
+    [...canvas.value.querySelectorAll<HTMLElement>('[data-block]')].map((el) => el.dataset.block ?? ''),
+  )
   flipRects = new Map(flipEls.map((el) => [el, el.getBoundingClientRect()]))
   flipState = flipEls.length ? Flip.getState(flipEls) : null
 }
 
 function playFlip() {
+  /*
+   * 第一件事：把上一次松手留下的收尾做完。
+   *
+   * 换位之后的新格位是这一轮渲染才刚刚写进 DOM 的，拖动引擎自己看不到那一刻；
+   * 必须在这里（Flip 读 rect 之前、浏览器绘制之前）把那块从"拎在手上"交还给网格，
+   * 并补上"预览位置 → 新格位"的位移：交还得早了，量到的是旧格位；交还得晚了，
+   * 卡片会先跳到旧格位再滑向新格位 —— 用户报的"松开的位置和预览对不上"就是这个。
+   */
+  drag.finishDrop()
   if (!canvas.value || reduced()) return
   const state = flipState
   const movers = flipEls
@@ -454,18 +579,45 @@ function playFlip() {
 }
 
 /** 拖动引擎：抽离网格 → 其余块补位 → 松手吸附 */
-const drag = useCanvasDrag(canvas, { before: captureLayout, after: playFlip, reorder })
+const drag = useCanvasDrag(canvas, {
+  /*
+   * 除了捕帧，还要把**手上这块身上挂着的 gsap 补间**掐掉。
+   *
+   * 关掉邻居、双击重排留下的 Flip 还没跑完时，gsap 每一帧都在往同一个 transform 上写值，
+   * 而拖动引擎也在写 —— 两套位移交替落到同一个元素上就是抖，
+   * 松手那一下还会被 Flip 的 clearProps 擦掉。拖动期间这个属性只能有一个主人。
+   */
+  before: () => {
+    const held = drag.activeBlock()
+    if (held) gsap.killTweensOf(held)
+    captureLayout()
+  },
+  after: playFlip,
+  reorder,
+})
 
 /*
- * 一块现在该不该藏起来。两件事都算：
+ * 一块现在该不该藏起来。三件事都算：
  *   · `hiddenBlocks`：被关掉/解决过，过一会儿自己回来（那是刻意的，用户需要能清走挡视线的块）；
  *   · `ackedBlocks`：已经被"知道了"认下来的，本会话**不再回来** —— 交接提醒读过一次
- *     就不该再提醒第二次（见 store.ackBlock）。
+ *     就不该再提醒第二次（见 store.ackBlock）；
+ *   · `blocksHidden`：用户在「全部组件」里亲手收起来的，**一直收着**（刷新、重开浏览器也在）。
  */
 const hidden = (id: string) =>
-  session.ackedBlocks.includes(id) || (session.hiddenBlocks[id] ?? 0) > Date.now()
-/** 正在收缩淡出的块还要留在 DOM 里，动画播完才真的移除 */
-const visible = (id: string) => !hidden(id) || leaving.value.has(id)
+  session.blocksHidden.includes(id) ||
+  session.ackedBlocks.includes(id) ||
+  (session.hiddenBlocks[id] ?? 0) > Date.now()
+/**
+ * 一块现在该不该出现在画布上。
+ *
+ * 三件事都算：
+ *   · `leaving`：正在收缩淡出的块还要留在 DOM 里，动画播完才真的移除；
+ *   · `hidden`：用户挪开/收起过的（见上面那个函数的三种语义）；
+ *   · `capsAway`：被核心区上限挡住的 —— 上限必须挡在**渲染**这一层，
+ *     只挡分格是挡不住的：那块照样画出来，只是掉进兜底格位。
+ */
+const visible = (id: string) =>
+  leaving.value.has(id) || (!hidden(id) && !capsAway.value.has(id))
 const isLeaving = (id: string) => leaving.value.has(id)
 
 const reduced = () =>
@@ -563,12 +715,7 @@ const menuTitle = computed(() => (menu.value?.block ? '对这块做什么' : '�
  * （画像块跳缺口、日历块开日历、待办块记一条……），通用动作垫在后面。
  * 块的策略清单来自后端 layout_panel，名字查不到时退回这份本地称呼表。
  */
-const BLOCK_LABELS: Record<string, string> = {
-  talk: '和主理聊聊', portrait: '你的画像', todo: '待办', collect: '采集动线',
-  plans: '方向方案', action: '行动计划', calendar: '日历', timetable: '本周课表',
-  match: '匹配与推荐', greet: '今日简报', people: '交接', review: '上周复盘',
-  market: '外部情报', achievements: '完成记录',
-}
+/* 块名与默认顺序来自 `lib/blocks`（画布与「全部组件」面板共用一份，见那里的注释） */
 
 const BLOCK_MENUS: Record<string, MenuItem[]> = {
   portrait: [
@@ -631,6 +778,12 @@ const menuItems = computed<MenuItem[]>(() => {
   // 空白处：列出被解决掉/还收着的块 + 整体操作
   const hiddenOnes = blockList.value.filter((b) => !visible(b.id))
   return [
+    {
+      id: 'blocks',
+      label: '全部组件…',
+      hint: `${visibleIds.value.length} 块在画布上 · ${hiddenOnes.length} 块收着`,
+      tone: 'accent' as const,
+    },
     ...hiddenOnes.map((b) => ({ id: `summon:${b.id}`, label: `叫出「${b.label}」`, hint: b.hint, tone: 'accent' as const })),
     { id: 'summon-all', label: '全部叫出来', hint: `${hiddenOnes.length} 块不在画布上`, disabled: !hiddenOnes.length },
     { id: 'reset', label: '全部重排', hint: '回到整齐的网格' },
@@ -662,6 +815,7 @@ function runMenu(id: string) {
   if (!at) return
 
   if (id.startsWith('summon:')) return summon(id.slice(7))
+  if (id === 'blocks') return session.openOverlay('blocks')
   if (id === 'summon-all') return blockList.value.forEach((b) => summon(b.id))
   if (id === 'report') return void router.push('/report')
   if (id === 'sessions') return session.openOverlay('sessions')
@@ -788,6 +942,28 @@ onBeforeUnmount(() => {
   document.removeEventListener('pointerdown', onDocPointerDown, true)
   document.removeEventListener('keydown', onDocKeyDown, true)
 })
+
+/*
+ * 把画布的真实状态上报给 store：「全部组件」面板据此说真话。
+ *
+ * 面板自己推不出来 —— 有些块出不出现取决于有没有数据（课表要等课表到位、
+ * 匹配要等学籍绑定），那个条件只有这里知道。不上报的后果很具体：
+ * 面板把一块还没数据的块标成「摆着」，用户点完「放回」发现画面什么都没变。
+ *
+ * 报两个集合，因为它们的差集才是"收着"与"还没有"的分界：
+ * `renderedIds`（真的渲染了）与 `presentIds`（数据上存在）。
+ *
+ * 【为什么这段必须放在 setup 的**最末尾**】`watch` 在创建时会先跑一次 getter
+ * 来建立依赖（不只是 `immediate` 才会），于是 `presentIds` 会立刻求值 ——
+ * 而它依赖 `inStrategy`、`showTimetable` 这些后面才用 `const` 声明的东西。
+ * 放在它们前面会抛 "Cannot access '…' before initialization"，**整个控制台白屏**。
+ * 这一条是真机验证时踩出来的，不是风格问题：白屏在类型检查里看不出来。
+ */
+function publishCanvasTruth() {
+  session.setCanvasBlocks([...renderedIds.value], [...presentIds.value])
+}
+watch([renderedIds, presentIds], publishCanvasTruth)
+onMounted(publishCanvasTruth)
 </script>
 
 <template>
@@ -810,7 +986,32 @@ onBeforeUnmount(() => {
     -->
     <div class="chrome chrome--left" @mouseleave="onChromeLeave">
       <button class="chrome__hit" type="button" aria-label="展开账号与设置" />
-      <div class="chrome__body"><AccountMenu /></div>
+      <!--
+        账号那颗的右边跟着「外观台」三个字：外观是**配这套界面的人**才动的东西，
+        它跟"你是谁"同属左上角那一小条，不该另找地方摆。
+      -->
+      <div class="chrome__body">
+        <div class="chrome__row">
+          <AccountMenu />
+          <LookTrigger />
+          <!--
+            「全部组件」：块的管理入口。
+            原来管理能力都在右键菜单里（叫出某块 / 全部叫出来 / 全部重排）——
+            而**没有人会去右键空白处**，于是"我能不能把这块收起来"这个问题没有答案
+            （issue #22："用户可以隐藏、恢复和排序组件"）。
+            它和「外观台」并排：两件都是"配这套界面"的事，语气与材质同一套。
+          -->
+          <button
+            class="chrome__blocks label"
+            type="button"
+            aria-haspopup="dialog"
+            title="全部组件：收起、放回、排序"
+            @click="session.openOverlay('blocks')"
+          >
+            全部组件<span v-if="offCanvas" class="chrome__blocks-n">{{ offCanvas }}</span>
+          </button>
+        </div>
+      </div>
     </div>
     <div class="chrome chrome--right" :class="{ 'is-announcing': railAnnouncing }" @mouseleave="onChromeLeave">
       <button class="chrome__hit" type="button" aria-label="展开：谁在替你干活" />
@@ -946,7 +1147,7 @@ onBeforeUnmount(() => {
             三套方案来自「决策」这一步：每套带匹配度、契合依据与主要风险。
             选择可撤回 —— 再选另一套就是撤回。
           </p>
-          <span class="label bindcard__cta">看这三套怎么比 →</span>
+          <span class="label bindcard__cta">看这三套怎么比 <GlyphIcon name="arrow-right" :size="12" /></span>
         </Bubble>
 
         <!--
@@ -979,11 +1180,11 @@ onBeforeUnmount(() => {
             计划来自「行动」这一步：阶段里程碑 + 每一条能勾掉的小任务，
             关键节点同时写进日历。
           </p>
-          <span class="label bindcard__cta">看我接下来做什么 →</span>
+          <span class="label bindcard__cta">看我接下来做什么 <GlyphIcon name="arrow-right" :size="12" /></span>
         </Bubble>
 
         <Bubble
-          v-if="showTimetable"
+          v-if="showTimetable && visible('timetable')"
           data-block="timetable"
           class="b-timetable"
           :style="tileStyle('timetable')"
@@ -1004,7 +1205,7 @@ onBeforeUnmount(() => {
           <p class="bindcard__d">
             课表来自你学校的教务系统（学信网没有课表）。点开按你的课表算空档；还没导入就先导一份。
           </p>
-          <span class="label bindcard__cta">看课表与空档 →</span>
+          <span class="label bindcard__cta">看课表与空档 <GlyphIcon name="arrow-right" :size="12" /></span>
         </Bubble>
 
         <!--
@@ -1047,7 +1248,7 @@ onBeforeUnmount(() => {
         />
 
         <Bubble
-          v-if="session.chsiBound"
+          v-if="session.chsiBound && visible('match')"
           data-block="match"
           class="b-match"
           :style="tileStyle('match')"
@@ -1066,7 +1267,7 @@ onBeforeUnmount(() => {
           <span class="label bindcard__k">诊断 · 职业顾问</span>
           <h3 class="bindcard__t">方向匹配与推荐</h3>
           <p class="bindcard__d">拿职业条目比对你的课程与成绩。点开就按你有的东西比一遍。</p>
-          <span class="label bindcard__cta">看匹配矩阵 →</span>
+          <span class="label bindcard__cta">看匹配矩阵 <GlyphIcon name="arrow-right" :size="12" /></span>
         </Bubble>
 
         <Bubble
@@ -1097,7 +1298,7 @@ onBeforeUnmount(() => {
 
           <footer class="greet__foot">
             <NextAsk compact />
-            <span class="label greet__cta">详情 →</span>
+            <span class="label greet__cta">详情 <GlyphIcon name="arrow-right" :size="12" /></span>
           </footer>
         </Bubble>
 
@@ -1256,6 +1457,32 @@ onBeforeUnmount(() => {
   --chrome-hit: 22px;
 }
 .chrome--left { left: var(--s5); }
+/* 账号那颗与「外观台」并排：一个说"你是谁"，一个说"这套界面长什么样" */
+.chrome__row { display: flex; align-items: center; gap: var(--s3); }
+/*
+ * 「全部组件」入口：与「外观台」同一套材质（明写的文字按钮、悬停才出现下划线）。
+ * 后面的小数字是"还收着几块" —— 收起来的东西必须有去处，否则用户以为它没了。
+ */
+.chrome__blocks {
+  flex: 0 0 auto;
+  padding: 2px 2px;
+  color: var(--ink-3);
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 4px;
+  transition: color var(--dur-micro) var(--ease-out),
+    text-decoration-color var(--dur-micro) var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+.chrome__blocks:hover { color: var(--accent); text-decoration-color: currentColor; }
+}
+.chrome__blocks-n {
+  margin-left: 4px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--fill-subtle);
+  color: var(--ink-2);
+}
 .chrome--right { right: var(--s5); }
 .chrome--right { align-items: flex-end; }
 
@@ -1308,7 +1535,12 @@ onBeforeUnmount(() => {
               width var(--dur) var(--ease-spring);
 }
 .chrome--right .chrome__hit::before { left: auto; right: 11px; }
-.chrome:hover .chrome__hit::before,
+@media (hover: hover) and (pointer: fine) {
+.chrome:hover .chrome__hit::before {
+  background: var(--accent);
+  width: 44px;
+}
+}
 .chrome:focus-within .chrome__hit::before {
   background: var(--accent);
   width: 44px;
@@ -1337,7 +1569,13 @@ onBeforeUnmount(() => {
   transition: transform var(--dur-enter) var(--ease-expo),
               visibility 0s linear var(--dur-enter);
 }
-.chrome:hover .chrome__body,
+@media (hover: hover) and (pointer: fine) {
+.chrome:hover .chrome__body {
+  transform: translateY(0);
+  visibility: visible;
+  transition: transform var(--dur-enter) var(--ease-expo), visibility 0s;
+}
+}
 .chrome:focus-within .chrome__body {
   transform: translateY(0);
   visibility: visible;
@@ -1428,7 +1666,7 @@ onBeforeUnmount(() => {
   grid-template-columns: repeat(12, minmax(0, 1fr));
   grid-template-rows: repeat(8, minmax(0, 1fr));
   grid-auto-flow: row dense;
-  gap: 12px;
+  gap: var(--canvas-gap);
   align-content: start;
 }
 
@@ -1445,7 +1683,15 @@ onBeforeUnmount(() => {
 .canvas [data-block].dragging { cursor: grabbing; }
 /* 指针按住期间关掉文字选中（拖动不再靠 preventDefault 抢焦点） */
 .canvas.arming { user-select: none; }
-.canvas [data-block].pinned { position: absolute; left: 0; top: 0; }
+/*
+ * 手上正拎着的那一块：抽离网格、跟着指针，并且**抬到所有卡片之上**。
+ *
+ * 少了 `z-index` 会怎样（用户报过："拖动的时候会藏在某些卡片下方"）：
+ * 绝对定位但 z-index 是 auto → 按 DOM 顺序绘制 → DOM 里排在它后面的卡片盖住它。
+ * 而"后面"取决于块在模板里的次序，所以症状是**有的卡片压得住、有的压不住**，
+ * 看起来像随机 —— 用户很难描述，我们很难复现。层级令牌定义见 tokens.css 的 --z-drag。
+ */
+.canvas [data-block].pinned { position: absolute; left: 0; top: 0; z-index: var(--z-drag); }
 /*
  * 松手时"落回纸面"要舒服，靠的是这条 transition。
  *
@@ -1456,13 +1702,31 @@ onBeforeUnmount(() => {
 .canvas [data-block] {
   transition: transform var(--dur-exit) var(--ease-out);
 }
+/*
+ * 拎在手上（.pinned）、以及松手后还没交还网格的那一帧（.dragging）：**关掉 transform 过渡**。
+ *
+ * 拖动是每一帧直接写内联 transform 来跟手的，而上面那条 240ms 的过渡会把每一次写入
+ * 都变成"从当前位置往新位置慢慢追"：指针走一步，卡片只走掉剩余距离的约三成
+ * （cubic-bezier(0.22, 1, 0.36, 1) 在第 16.7ms 处已走过约 29%），下一帧再从那个没追上的
+ * 地方重新开始 —— 指针一直走，它就永远追不上。稳态落后约为"每帧指针位移"的 3.5 倍：
+ * 60Hz 下 1000px/s 是 50–60px，2600px/s 的甩动能差出 150px 上下，观感就是
+ * "卡片被橡皮筋拽着"。
+ *
+ * 更糟的是它把坐标也一起污染了：松手那一刻要量"卡片现在在哪儿"，量到的是过渡中途的值，
+ * 于是补偿算错，落位时的位置和预览对不上。
+ *
+ * 交还给 .settling 时才打开过渡 —— "落回纸面"那一段手感不变（那条规则写在后面，620ms）。
+ */
+.canvas [data-block].pinned,
+.canvas [data-block].dragging {
+  transition: none;
+}
 .canvas [data-block].dragging {
   cursor: grabbing;
   /*
    * 拖起来时"抬高一层"**不用投影**：把套版线加深成墨色。
    * 一张纸被拎起来的样子，在印刷语言里就是"它被描粗了一圈边"。
    */
-  transition: transform var(--dur-exit) var(--ease-out);
   border-color: var(--ink-1) !important;
 }
 /* 拖动时给块描一圈，随时知道手上拿着的是哪一块 */
@@ -1495,9 +1759,9 @@ onBeforeUnmount(() => {
   pointer-events: none;
   opacity: 0;
   transition: opacity 180ms var(--ease-out);
-  border: 2px dashed rgba(10, 88, 66, 0.5);
+  border: 2px dashed color-mix(in srgb, var(--accent) 50%, transparent);
   border-radius: var(--r-lg);
-  background: rgba(10, 88, 66, 0.06);
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
   z-index: 1;
 }
 
@@ -1592,10 +1856,14 @@ onBeforeUnmount(() => {
   transition: color var(--dur-micro) var(--ease-out),
               background var(--dur-micro) var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .greet__rhythm:hover { color: var(--ink-1); background: var(--fill-hover); }
+}
 .greet__cta { margin-left: auto; color: var(--ink-3); white-space: nowrap; }
 /* 悬停整块时，那句"会发生什么"亮起来 —— 这是"点得动"的暗示 */
-.b-greet:hover .greet__cta,
+@media (hover: hover) and (pointer: fine) {
+.b-greet:hover .greet__cta { color: var(--accent); }
+}
 .b-greet:focus-within .greet__cta { color: var(--accent); }
 
 /* 演示控件：浮在角落，不参与布局 */
@@ -1604,8 +1872,16 @@ onBeforeUnmount(() => {
  * 这里退化为可滚动单列 —— 物理限制，不是设计取向。
  */
 @media (max-width: 900px), (max-height: 620px) {
-  /* 窄屏是文档流，不是一屏：栅格的行数交给内容决定 */
-  .console { height: auto; min-height: 100dvh; overflow: visible; grid-template-rows: none; }
+  /*
+   * 窄屏是文档流，不是一屏：栅格的行数交给内容决定。
+   *
+   * 这里用 `100svh` 而不是 `100dvh`：`dvh` 会随地址栏收放而变，手机上滚一下
+   * 页面高度就变一次 —— 控制台又是**多列网格**，高度一变整片块重新排版，
+   * 观感正是用户报的"模块切换时跳动"。`svh` 是"最矮时的那一屏"，恒定、永不溢出，
+   * 代价是地址栏收起时底部会多出一点留白；对"不许跳"来说这个代价划算。
+   * （报告页那种长文不适用这条：那里变高变矮不影响阅读位置。）
+   */
+  .console { height: auto; min-height: 100svh; overflow: visible; grid-template-rows: none; }
   .bar { flex-wrap: wrap; row-gap: var(--s2); }
   .bar__right { gap: var(--s2); }
   .stage { padding: var(--s4); }

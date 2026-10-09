@@ -114,6 +114,8 @@ def _validate_bars(payload: dict[str, Any]) -> dict[str, Any]:
             value = float(point.get("value"))
         except (TypeError, ValueError) as exc:
             raise ValueError(f"{label} 的数值读不出来") from exc
+        if not 0 <= value <= 1:
+            raise ValueError(f"{label} 的数值须在 0 到 1 之间")
         checked.append({"label": label[:12], "value": value})
     if len(checked) < 2:
         raise ValueError("一个点画不成图")

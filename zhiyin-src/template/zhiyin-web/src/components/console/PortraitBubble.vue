@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import Bubble from '@/components/console/Bubble.vue'
 import NextAsk from '@/components/console/NextAsk.vue'
+import GlyphIcon from '@/components/ui/GlyphIcon.vue'
 import { PORTRAIT } from '@/data/content'
 import { computed } from 'vue'
 import { useSessionStore } from '@/stores/session'
@@ -123,7 +124,7 @@ const hueOf = (i: number) => `var(--mk-${HUES[i % HUES.length]})`
       >
         还缺 {{ P.gaps.length }} 条 · 现在补
       </button>
-      <span class="label foot__cta">看完整分析 →</span>
+      <span class="label foot__cta">看完整分析 <GlyphIcon name="arrow-right" :size="12" /></span>
     </footer>
   </Bubble>
 </template>
@@ -195,7 +196,9 @@ const hueOf = (i: number) => `var(--mk-${HUES[i % HUES.length]})`
 /* 同上：页脚要贴在气泡底部，不能跟在正文后面 */
 .foot { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); margin-top: auto; }
 .chip.risk { border-color: var(--warn); color: var(--warn); transition: background var(--dur-fast) var(--ease-out); }
-.chip.risk:hover { background: rgba(154, 74, 30, 0.1); }
+@media (hover: hover) and (pointer: fine) {
+.chip.risk:hover { background: color-mix(in srgb, var(--warn) 10%, transparent); } }
 .foot__cta { color: var(--ink-faint); transition: color var(--dur-fast) var(--ease-out); }
-.bubble:hover .foot__cta { color: var(--accent); }
+@media (hover: hover) and (pointer: fine) {
+.bubble:hover .foot__cta { color: var(--accent); } }
 </style>

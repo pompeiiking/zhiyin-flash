@@ -49,7 +49,8 @@ const dotOps = computed(() =>
       seed: 40 + i,
       stroke: 'var(--mk-green)',
       strokeWidth: 2,
-      fill: active.value === i ? 'var(--mk-green)' : '#ffffff',
+      /* 未选中的点用纸色填（原来是写死的 #ffffff）：暗色皮肤上白点会跳出来 */
+      fill: active.value === i ? 'var(--mk-green)' : 'var(--c-paper)',
     }),
   ),
 )
@@ -105,6 +106,7 @@ const current = computed(() => coords.value[active.value])
   font-size: var(--fs-small); color: var(--ink-2); text-align: left;
   transition: color var(--mo-fast) var(--mo-out);
 }
-.why:hover { color: var(--ink-1); }
+@media (hover: hover) and (pointer: fine) {
+.why:hover { color: var(--ink-1); } }
 .why__at { flex: 0 0 auto; color: var(--ink-3); }
 </style>

@@ -322,6 +322,16 @@ export interface paths {
      */
     post: operations["portrait_analysis_api_v1_app_portrait_analysis_post"];
   };
+  "/api/v1/app/profile/fields/{key}": {
+    /**
+     * Update Profile Field
+     * @description 更正一条画像字段，返回更正后的那一条。
+     *
+     * 回包给的是**服务端存下来的那一条**，不是把请求里的值原样弹回去：
+     * 界面据此做乐观更新与回滚，刷新之后看到的是同一份事实。
+     */
+    post: operations["update_profile_field_api_v1_app_profile_fields__key__post"];
+  };
   "/api/v1/app/report/full-text": {
     /**
      * Get Report Full Text
@@ -999,6 +1009,22 @@ export interface components {
       /** @default 0 */
       code?: components["schemas"]["ErrorCode"];
       data?: components["schemas"]["PortalView"] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
+    /** ApiResponse[ProfileFieldView] */
+    ApiResponse_ProfileFieldView_: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      data?: components["schemas"]["ProfileFieldView"] | null;
       /**
        * Message
        * @default ok
@@ -1689,10 +1715,9 @@ export interface components {
       main_risk?: string;
       /**
        * Match Score
-       * @description 匹配度（解释性分值，非严谨算法）
-       * @default 0
+       * @description 有可追溯依据时的匹配度；缺依据为 null
        */
-      match_score?: number;
+      match_score?: number | null;
       /** Name */
       name: string;
       /**
@@ -2208,6 +2233,26 @@ export interface components {
       trust_blocks?: components["schemas"]["TrustBlockView"][];
     };
     /**
+     * ProfileFieldUpdateRequest
+     * @description 用户手动更正一条画像字段（issue #26 第三条）。
+     *
+     * 只有一个 `value`，键在路径上（`POST /app/profile/fields/{key}`）：
+     * "改哪一条"不是可选的 —— 揉进请求体里，就等于允许一次请求改任意多条，
+     * 而界面上的入口从来只对着一条。
+     *
+     * **为什么这里不设长度上限**：上限是业务口径（40 字，见
+     * `DefaultProfileService.MAX_FIELD_VALUE_CHARS`），超长要说人话
+     * （"最多 40 个字，现在有 56 个"）。交给 Pydantic 的 `max_length` 只会得到
+     * 一句英文的字段名错误，用户看不懂自己该改什么。
+     */
+    ProfileFieldUpdateRequest: {
+      /**
+       * Value
+       * @description 用户认可的那个值（空串会被拒 —— 清空是另一件事）
+       */
+      value: string;
+    };
+    /**
      * ProfileFieldView
      * @description 画像里的一条字段（活状态的最小单位）。
      *
@@ -2305,7 +2350,7 @@ export interface components {
      * @description 画像字段来源。
      * @enum {string}
      */
-    ProfileSource: "resume" | "conversation" | "assessment" | "behavior_inference" | "mentor" | "record";
+    ProfileSource: "resume" | "conversation" | "assessment" | "behavior_inference" | "mentor" | "record" | "user_edit";
     /**
      * RenderableView
      * @description 对话里的一块**可视件**：图 / 时间线 / 对比矩阵……
@@ -3574,6 +3619,39 @@ export interface operations {
       200: {
         content: {
           "application/json": unknown;
+        };
+      };
+    };
+  };
+  /**
+   * Update Profile Field
+   * @description 更正一条画像字段，返回更正后的那一条。
+   *
+   * 回包给的是**服务端存下来的那一条**，不是把请求里的值原样弹回去：
+   * 界面据此做乐观更新与回滚，刷新之后看到的是同一份事实。
+   */
+  update_profile_field_api_v1_app_profile_fields__key__post: {
+    parameters: {
+      path: {
+        key: string;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ProfileFieldUpdateRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_ProfileFieldView_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };

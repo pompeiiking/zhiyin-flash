@@ -13,6 +13,7 @@ from zhiyin_api.controllers.ai_controller import router as ai_router
 from zhiyin_api.controllers.auth_controller import router as auth_router
 from zhiyin_api.controllers.config_controller import router as config_router
 from zhiyin_api.controllers.note_controller import router as note_router
+from zhiyin_api.controllers.profile_controller import router as profile_router
 
 # 全部路由清单：供 zhiyin-boot 统一挂载
 ROUTERS = [
@@ -25,6 +26,7 @@ ROUTERS = [
     auth_router,
     config_router,
     note_router,
+    profile_router,
 ]
 
 __all__ = [
@@ -38,4 +40,5 @@ __all__ = [
     "auth_router",
     "config_router",
     "note_router",
+    "profile_router",
 ]

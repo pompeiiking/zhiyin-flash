@@ -5,6 +5,9 @@ import { readFetched, readIntelText } from '@/lib/intel'
 import {
   BackendUnavailableError,
   UnauthorizedError,
+  NotFoundError,
+  ApiTimeoutError,
+  api,
   authToken,
   clearToken,
   saveToken,
@@ -53,8 +56,29 @@ function messageOf(cause: unknown): string {
 function chatFailure(cause: unknown): string {
   if (cause instanceof UnauthorizedError) return '登录状态过期了，重新登录后接着说。'
   if (cause instanceof BackendUnavailableError) return '暂时连不上服务，稍后再试一次。'
+  if (cause instanceof ApiTimeoutError) return '服务半天没回话，我先把这一轮放下了 —— 再说一句试试。'
+  /*
+   * 会话在后端不在了（服务重启、会话被清）。这一句要**如实**告诉他上下文可能断了：
+   * 我们会自动重开一轮，但上一轮之前说过的东西不保证还在，他可以在意。
+   */
+  if (cause instanceof NotFoundError) return '刚才那条会话在后端不在了，我已经重开一轮 —— 你再说一句。'
   console.warn('[chat] 这一轮没成功：', cause)
   return '这一轮没接上，再说一句试试。'
+}
+
+/**
+ * 更正画像字段失败时，给用户看的那一句。
+ *
+ * 为什么不复用 `messageOf` / `chatFailure`：这一条路上的失败**大多是他自己能改的**
+ * ——业务层（`DefaultProfileService.correct_field`）会说清是空值、超长还是没这一格，
+ * 那句话必须原样透给他（换成"操作失败"他就不知道该改哪里）。
+ * 只有连不上、登录过期这两类才换成一句行动指引。
+ */
+function correctFailure(cause: unknown): string {
+  if (cause instanceof UnauthorizedError) return '登录状态过期了，重新登录后再改这一条。'
+  if (cause instanceof BackendUnavailableError) return '暂时连不上服务，这一条没存下来 —— 稍后再试一次。'
+  if (cause instanceof ApiTimeoutError) return '服务半天没回话，这一条没存下来 —— 稍后再试一次。'
+  return cause instanceof Error && cause.message ? cause.message : '这一条没改成，稍后再试一次。'
 }
 
 /**
@@ -103,6 +127,34 @@ function loadTodoDue(): Record<string, string> {
     return JSON.parse(localStorage.getItem(TODO_DUE_KEY) ?? '{}') as Record<string, string>
   } catch {
     return {}
+  }
+}
+
+/**
+ * 画布上"哪些块、什么顺序"的两把钥匙（持久）。
+ *
+ * 只写本机 localStorage，与外观轴同一口径（不进账号）：这是"我这台机器上想怎么看"，
+ * 不是这个人做到了什么 —— 换台机器看到的应该是策略给的默认布局。
+ */
+const BLOCKS_HIDDEN_KEY = 'zhiyin_blocks_hidden'
+const BLOCKS_ORDER_KEY = 'zhiyin_blocks_order'
+
+/** 读一份字符串数组；坏了、被改过、隐私模式下取不到，都当空 —— 不能因此白屏 */
+function readStoredList(key: string): string[] {
+  try {
+    const raw = localStorage.getItem(key)
+    const parsed = raw ? (JSON.parse(raw) as unknown) : null
+    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === 'string') : []
+  } catch {
+    return []
+  }
+}
+
+function writeStoredList(key: string, value: string[]) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value))
+  } catch {
+    /* 配额满 / 隐私模式：记不住不影响这一屏，只是下次打开回到默认 */
   }
 }
 
@@ -206,7 +258,9 @@ export const useSessionStore = defineStore('session', {
       /* 完成记录：做到过的那几件事（由行为日志推导，不落表） */
       | 'achievements'
       /* 外部情报：从公开渠道按你的方向取回的一批事实 */
-      | 'intel',
+      | 'intel'
+      /* 全部组件：画布上放哪些块、按什么顺序（issue #22 要的管理入口） */
+      | 'blocks',
     portraitFocus: null as 'gaps' | null,
 
     /*
@@ -286,6 +340,37 @@ export const useSessionStore = defineStore('session', {
      * 用户分不出它到底生效没有。
      */
     ackedBlocks: [] as string[],
+
+    /*
+     * 用户**主动收起**的块，以及自己排的顺序（都持久）。
+     *
+     * 与上面两条的语义都不同：`hiddenBlocks` 是"让位，过会儿自己回来"，
+     * `ackedBlocks` 是"这件事我认了"，而这两条是用户在「全部组件」里亲手定下的 ——
+     * 收起的**不该自己回来**，刷新、重开浏览器也该还是收着的。
+     *
+     * 之所以要新加：此前只有"让位"和"解决"两种动作，用户找不到
+     * "我不想一直看见这一块"这件事（issue #22 的原话：用户可以隐藏、恢复和排序组件）。
+     * 顺带把拖动排出来的顺序也记住 —— 拖完一刷新就回原样，等于白拖。
+     */
+    blocksHidden: readStoredList(BLOCKS_HIDDEN_KEY),
+    /** 用户自己排的顺序；空数组 = 用策略给的顺序 */
+    blocksOrder: readStoredList(BLOCKS_ORDER_KEY),
+
+    /*
+     * 画布**此刻真的渲染出来了**哪些块，以及**数据上存不存在**这些块 ——
+     * 都由 ConsoleView 每次算完写进来。
+     *
+     * 为什么让画布上报、而不是让面板自己推：有些块出不出现取决于**有没有数据**
+     *（课表要等课表到位、匹配要等学籍绑定），那个条件只有画布知道。
+     * 面板此前只能按"顺序前 N 个"猜，于是会把一块还没数据的块标成「摆着」——
+     * 用户点了「放回」，画面上什么都没变：面板说的和看得见的事对不上。
+     *
+     * 两个集合的差别正是"收着"与"还没有"的差别：
+     *   · 在 `canvasPresent` 里、却不在 `canvasBlocks` 里 → 是**收着**（用户收的或核心区上限），点放回能回来；
+     *   · 两个都不在 → **还没有**（它自己的数据没到），此时"放回"是个空动作，面板就不该给这个按钮。
+     */
+    canvasBlocks: [] as string[],
+    canvasPresent: [] as string[],
 
     /*
      * 业务对话。
@@ -369,6 +454,25 @@ export const useSessionStore = defineStore('session', {
       | { question: string; optionId: string; label: string; optionLabels: string[] },
     /** 后端没能推进这一轮时，界面上那句明白话 */
     chatClarify: '',
+    /**
+     * 同一轮**连着**原地打转了几次。
+     *
+     * 一次可以当"模型复述了一遍"，两次以上就不能再让用户对着同一组选项点了 ——
+     * issue #24 的现象就是"点了还在原地"：`opt--used` 只是视觉标记，
+     * 按钮实际只受 `chatTyping` 控制，于是同一个选项能被点第三次、第四次。
+     * 这个计数到 2 就把整组选项锁掉，并把话说明白（换成打字，或者换一条）。
+     */
+    chatRepeats: 0,
+    /**
+     * 对话滚动位置（离开浮层时的那一眼）。
+     *
+     * 浮层是挂载式的，关掉就销毁 —— `scrollTop` 只活在那个 DOM 节点上，
+     * 再打开就回到顶部（issue #19）。位置放在 store 里，因为它要活过组件。
+     * `chatScrollTurns` 记的是"存的时候对话有几轮"：中间又来了新消息就不该回原位，
+     * 应该直接去最新 —— 否则用户会以为自己漏看了一段。
+     */
+    chatScroll: 0,
+    chatScrollTurns: 0,
     authNotice: '',
     wsPanels: null as null | {
       action: string
@@ -436,6 +540,20 @@ export const useSessionStore = defineStore('session', {
   }),
 
   getters: {
+    /**
+     * 有没有待办（计划里的任务、或自己写的那几条，任一非空）。
+     *
+     * 判据**不能是** `wsPanels.action`（工作台那句阶段评价）：它有内容时可能一条任务都没有，
+     * 为空时计划里却明明排着任务（后端 degraded 就是这样）。画布的块权重与待办块的
+     * 渲染条件必须同源 —— 否则有待办的块会被当成空块，分到更小的格位、更容易掉进
+     * 紧凑形态（issue #21 的连带问题：内容修好了，块还是被当空的）。
+     */
+    hasTodos(state): boolean {
+      const inPlan = (state.actionPlan?.phases ?? []).some(
+        (phase) => (phase.tasks ?? []).length > 0,
+      )
+      return inPlan || state.customTodos.length > 0
+    },
     /**
      * 外部情报按什么方向去取。
      *
@@ -538,6 +656,88 @@ export const useSessionStore = defineStore('session', {
       loadSeq += 1
       this.actionPlan = plan
       this.bumpData()
+    },
+
+    /**
+     * 更正画像里的一条（issue #26 第三条）。
+     *
+     * 【为什么这条写路径必须存在】
+     * 在此之前画像只有"系统去记"的写路径（① 采集、学信网核验、教务导入）。
+     * 用户发现记错了 —— 他说的是"计算机大类"，系统却把它当成"计算机科学与技术"
+     * 记了下来 —— 界面上只能看，一个字也改不了；他再跟对话说一遍，那句话又进了
+     * 同一台推断机，出来的还是替他挑好的具体专业。于是那条错值一直留在画像里，
+     * 后面的报告、方向推荐都按它算。
+     *
+     * 【乐观更新 + 失败回滚】
+     * 提交之后界面立刻显示新值，不等网络：这一条是他自己敲进去的，
+     * "按下了还在转圈"会让人以为没生效，然后再点一次。
+     * 服务端拒了（空值 / 超长 / 画像里没这一格）就**整份还原**成改之前的样子，
+     * 并把后端那句话交回界面 —— 值不能留在屏幕上假装已经改好了。
+     *
+     * 返回空串表示改好了；返回非空就是该说给用户听的那句话。
+     */
+    async correctProfileField(key: string, value: string): Promise<string> {
+      const text = value.trim()
+      const before = this.profile
+        ? {
+            fields: this.profile.fields,
+            gaps: this.profile.gaps,
+            dimensions: this.profile.dimensions,
+          }
+        : null
+      if (this.profile) {
+        // 这一份比任何**正在飞**的读都新（它是写的结果）：让更早发起的读回来时作废，
+        // 否则刚改完的值会被一次慢响应带回旧世界（与 applyActionPlan 同一条道理）。
+        loadSeq += 1
+        const at = new Date().toISOString()
+        this.profile = {
+          ...this.profile,
+          fields: this.profile.fields.map((field) =>
+            field.key === key
+              ? {
+                  ...field,
+                  value: text,
+                  // 来源换成"他自己写的"：界面上那一行从此说"本人填写"，
+                  // 而不是继续假装这条是系统抄来的（口径见 lib/profile.ts 的来源分类）。
+                  source: 'user_edit',
+                  confidence: 1,
+                  evidence: [],
+                  updated_at: at,
+                }
+              : field,
+          ),
+          // 缺口里的那一条同时消失：他刚亲手写下这一格，界面不该还挂着「没定」
+          // （后端 correct_field 也会把它从缺口清单里删掉）。
+          gaps: this.profile.gaps.filter((gap) => gap.id !== key),
+        }
+      }
+      try {
+        const saved = await api<ProfileField>(
+          `/app/profile/fields/${encodeURIComponent(key)}`,
+          { method: 'POST', body: JSON.stringify({ value: text }) },
+        )
+        if (this.profile) {
+          // 用服务端存下来的那一条收尾：改完那一刻看到的形状，
+          // 必须和刷新之后看到的同一条是同一次事实。
+          this.profile = {
+            ...this.profile,
+            fields: this.profile.fields.map((field) => (field.key === key ? saved : field)),
+            dimensions: this.profile.dimensions.map((dim) =>
+              dim.id === key ? { ...dim, value: saved.confidence ?? 0 } : dim,
+            ),
+          }
+        }
+        /*
+         * 画像变了，别的切片也要跟着变：采集清单的"还差几条"、覆盖度、气泡编排
+         * 读的都是这一份画像。只改上面那一处，它们会停在改之前的样子 ——
+         * 用户就会看到"专业已经改了，可它还说缺专业"。
+         */
+        void this.revalidate()
+        return ''
+      } catch (cause) {
+        if (before && this.profile) this.profile = { ...this.profile, ...before }
+        return correctFailure(cause)
+      }
     },
 
     /** 挂载时拉真实工作台数据；失败静默（演示回落），成功后画像气泡换真数据 */
@@ -763,6 +963,13 @@ export const useSessionStore = defineStore('session', {
       this.backendTaskId = taskId
       this.chatTyping = false
       this.clearChatPrompt()
+      /*
+       * 换了一条会话：上一条留下的"刚点过哪一条 / 连着两回没推进"都不适用了。
+       * 不清的话，新会话里那组选项会带着旧账渲染 —— 该点的点不动（`isAnswered`），
+       * 或者整组被锁住（`chatRepeats >= 2`），看起来就是"点了没反应、卡住了"。
+       */
+      this.chatAnswered = null
+      this.chatRepeats = 0
       const seed = history.length
         ? history
         : [{ role: 'ai' as const, text: '这条会话还没有逐轮记录 —— 说一句就开始了。' }]
@@ -963,7 +1170,8 @@ export const useSessionStore = defineStore('session', {
         | 'sessions'
         | 'review'
         | 'achievements'
-        | 'intel',
+        | 'intel'
+        | 'blocks',
       focus: 'gaps' | null = null,
     ) {
       this.overlay = name
@@ -1015,6 +1223,48 @@ export const useSessionStore = defineStore('session', {
       delete next[id]
       this.hiddenBlocks = next
     },
+
+    /* ---- 全部组件：收起 / 放回 / 排序（都持久） ---- */
+    /**
+     * 收起一块（持久）。
+     *
+     * 与「先挪开」的区别必须写清楚，否则以后一定被合并成一个：
+     * `hideBlock` 是**让位**（过一会儿自己飘回来，那一刻要的是清走挡视线的块），
+     * 这个是用户在「全部组件」里说"我不想一直看见它" —— 它**不该自己回来**，
+     * 只有「放回」能让它回来。
+     */
+    hideBlockForGood(id: string) {
+      if (!this.blocksHidden.includes(id)) this.blocksHidden = [...this.blocksHidden, id]
+      writeStoredList(BLOCKS_HIDDEN_KEY, this.blocksHidden)
+    },
+    showBlock(id: string) {
+      this.blocksHidden = this.blocksHidden.filter((x) => x !== id)
+      writeStoredList(BLOCKS_HIDDEN_KEY, this.blocksHidden)
+    },
+    showAllBlocks() {
+      this.blocksHidden = []
+      writeStoredList(BLOCKS_HIDDEN_KEY, this.blocksHidden)
+    },
+    /** 记下用户排的顺序（画布读它，且优先于后端策略给的顺序） */
+    setBlocksOrder(order: string[]) {
+      this.blocksOrder = [...order]
+      writeStoredList(BLOCKS_ORDER_KEY, this.blocksOrder)
+    },
+    /** 回到策略给的顺序：清掉用户那份 */
+    resetBlocksOrder() {
+      this.blocksOrder = []
+      writeStoredList(BLOCKS_ORDER_KEY, this.blocksOrder)
+    },
+    /**
+     * 画布上报"这一帧真的渲染了哪些块、以及数据上存在哪些块"（面板据此说真话）。
+     *
+     * 只是转发，不做任何加工：判定渲染是画布的事，面板不该再推一遍 ——
+     * 那正是"面板说摆着、画面却没有"的来源。
+     */
+    setCanvasBlocks(rendered: string[], present: string[]) {
+      this.canvasBlocks = rendered
+      this.canvasPresent = present
+    },
     /** 每秒扫一次：到点的块自己飘回来 */
     sweep() {
       const now = Date.now()
@@ -1044,6 +1294,13 @@ export const useSessionStore = defineStore('session', {
       this.chatOptions = options
       this.chatAnswered = null
       this.chatClarify = ''
+      /*
+       * 打转计数也要归零：它记的是"**上一条问题**连着两回没往前走"。
+       * 这里是带着**另一条问题**进来的，旧账不适用 —— 不清的话 `optionsLocked`
+       * 还是真，新问题的那几个选项一渲染出来就全是禁用的：用户看着一组点不动的
+       * 按钮（提示语还在说"这已经是第二回了"），流程就卡在这儿了（issue #26 第二条）。
+       */
+      this.chatRepeats = 0
       this.overlay = 'talk'
     },
 
@@ -1201,6 +1458,18 @@ export const useSessionStore = defineStore('session', {
     },
 
     /**
+     * 记住对话滚到哪儿了（滚动时与浮层关闭前各存一次）。
+     *
+     * 存的是"像素"而不是"第几条消息"：浮层的行高会随可视件、材料卡、长句变化，
+     * 用消息序号还原会差出一屏；而"上次看到的位置"本来就是一眼像素的事。
+     * 代价是视口宽度变化后不再精确 —— 所以打开时会先判断有没有新消息（见 chatScrollTurns）。
+     */
+    rememberChatScroll(top: number) {
+      this.chatScroll = Number.isFinite(top) ? Math.max(0, top) : 0
+      this.chatScrollTurns = this.chatTurns.length
+    },
+
+    /**
      * 发一轮话。
      *
      * `option` 是"这一轮点的是哪个选项"。带它的时候，**选项的身份一起发下去**
@@ -1220,6 +1489,16 @@ export const useSessionStore = defineStore('session', {
       const value = text.trim()
       // 只交材料、不写字也是完整的一轮（"这是我传的材料"本身就是一句话）
       if (!value && !materials.length) return
+      /*
+       * 上一轮还没回来就不许再开一轮（issue #26 第二条）。
+       *
+       * 界面上那道门在 `TalkOverlay.send()` 上（它同时负责"别把草稿清掉"），
+       * 这里是第二道：两个 `sendMessage` 叠在同一条任务会话上，回包不保证按顺序
+       * 回来，而 chatAnswered / chatPrompt / guide 都是**单槽**的 —— 后到的把先到的
+       * 覆盖掉，用户看到的是"同一句问题又回来了"，连着两回还会触发整组选项锁死。
+       * 一道门不够不是因为不信任谁，而是"同时两条在飞"这件事本身只该有一处判定。
+       */
+      if (this.chatTyping) return
       const names = materials.map((m) => m.name).join('、')
       // 一个字都没打时替他补一句短的：**不补正文**，补的是"我交了什么"
       const spoken = value || `我传了一份材料：${names}`
@@ -1260,6 +1539,15 @@ export const useSessionStore = defineStore('session', {
         )
         this.applyTurn(turn, option)
       } catch (cause) {
+        /*
+         * 会话在后端不在了（服务重启、会话被清）→ 把那个死 id 丢掉。
+         *
+         * 不丢的后果正是"流程卡死"里最难自己恢复的一种：之后每一轮都拿着同一个
+         * 不存在的 id 去撞，每轮都只回"这一轮没接上"，用户怎么试都出不来。
+         * 丢掉之后下一次发送会重新 `enterTask` 开一轮，代价是上下文从头开始 ——
+         * 所以那一句会**如实**告诉他会话断过（见 chatFailure）。
+         */
+        if (cause instanceof NotFoundError) this.backendTaskId = null
         this.chatAnswered = null
         this.chatTyping = false
         this.chatTurns = [
@@ -1363,11 +1651,30 @@ export const useSessionStore = defineStore('session', {
         this.chatClarify = repeated && answered
           ? `「${answered.label}」这条我收到了，但这一轮没往前走。换一条，或者直接把你的情况补一句。`
           : ''
+        // 连着两回都不动就把选项锁掉（见 chatRepeats 的说明）
+        this.chatRepeats = repeated ? this.chatRepeats + 1 : 0
+        /*
+         * 这一轮真的往前走了：把"刚点过的那一条"放下（issue #26 第二条）。
+         *
+         * `chatAnswered` 只是**当轮**的记号（"你点的这条我收到了，别再点第三次"），
+         * 但它此前只在发送失败时才清 —— 于是它一直挂在那儿，直到下一次点选项。
+         * 而选项的 id 在模型那边是**复用**的（诊断环节的提示词明确要求"option_id
+         * 原样用那条差距的 gap_id"），所以下一个问题里再出现同一个 id 时，
+         * `isAnswered` 会把它当成"已答"而禁用：用户看到一条点不动的选项；
+         * 要是那一组里多数都撞上，整组就点不动了 —— 正是"答完选项之后流程不往前走"。
+         * 放到这里清：判据与上面"打转"的判据同一处，不会误伤 issue #24 的锁定
+         * （打转时 repeated 为真，这里不动它）。
+         */
+        if (!repeated) this.chatAnswered = null
       } else {
         // 这一轮不是"等你回答"（小任务 / 提醒）：旧的选项与澄清都不能留在输入框上方
         this.chatPrompt = ''
         this.chatOptions = []
         this.chatClarify = ''
+        this.chatRepeats = 0
+        // 这一轮换了动作（去做任务 / 看提醒）：上一条问题的"已答"记号也该跟着结束，
+        // 否则它会在下一次提问里把撞 id 的选项禁掉（同上）。
+        this.chatAnswered = null
       }
 
       // 集群判断出的"下一步"同时塞进浮窗叠：用户可能没在看对话，

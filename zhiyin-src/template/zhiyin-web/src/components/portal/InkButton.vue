@@ -58,8 +58,12 @@ const ops = computed(() =>
 .ib__label { position: relative; font-size: var(--fs-body); font-weight: 600; letter-spacing: 0.02em; }
 
 /* 悬停：圈里进墨，字反白 —— 一笔画的按钮最自然的状态变化 */
+@media (hover: hover) and (pointer: fine) {
 .ib:hover { color: var(--accent-ink); }
+}
+@media (hover: hover) and (pointer: fine) {
 .ib:hover .ib__ring :deep(path) { fill: var(--tone); stroke-width: 2.8; }
+}
 
 /*
  * 焦点环不省：手绘的圈太细，键盘用户需要一个一眼能看见的指示。

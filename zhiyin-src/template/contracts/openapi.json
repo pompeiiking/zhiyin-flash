@@ -960,6 +960,37 @@
         "title": "ApiResponse[PortalView]",
         "type": "object"
       },
+      "ApiResponse_ProfileFieldView_": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode",
+            "default": 0
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProfileFieldView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "default": "ok",
+            "title": "Message",
+            "type": "string"
+          },
+          "trace_id": {
+            "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "title": "ApiResponse[ProfileFieldView]",
+        "type": "object"
+      },
       "ApiResponse_ReportFullTextView_": {
         "additionalProperties": false,
         "properties": {
@@ -2204,10 +2235,18 @@
             "type": "string"
           },
           "match_score": {
-            "default": 0.0,
-            "description": "匹配度（解释性分值，非严谨算法）",
-            "title": "Match Score",
-            "type": "number"
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "有可追溯依据时的匹配度；缺依据为 null",
+            "title": "Match Score"
           },
           "name": {
             "title": "Name",
@@ -3037,6 +3076,22 @@
         "title": "PortalView",
         "type": "object"
       },
+      "ProfileFieldUpdateRequest": {
+        "additionalProperties": false,
+        "description": "用户手动更正一条画像字段（issue #26 第三条）。\n\n只有一个 `value`，键在路径上（`POST /app/profile/fields/{key}`）：\n\"改哪一条\"不是可选的 —— 揉进请求体里，就等于允许一次请求改任意多条，\n而界面上的入口从来只对着一条。\n\n**为什么这里不设长度上限**：上限是业务口径（40 字，见\n`DefaultProfileService.MAX_FIELD_VALUE_CHARS`），超长要说人话\n（\"最多 40 个字，现在有 56 个\"）。交给 Pydantic 的 `max_length` 只会得到\n一句英文的字段名错误，用户看不懂自己该改什么。",
+        "properties": {
+          "value": {
+            "description": "用户认可的那个值（空串会被拒 —— 清空是另一件事）",
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "value"
+        ],
+        "title": "ProfileFieldUpdateRequest",
+        "type": "object"
+      },
       "ProfileFieldView": {
         "additionalProperties": false,
         "description": "画像里的一条字段（活状态的最小单位）。\n\n此前这里是 `dict[str, Any]`：契约只说\"有 fields\"，不说每条里有什么。\n前端要按 `confidence` 画把握度、按 `evidence` 做可溯源展示、按 `source`\n说明这条从哪来 —— 全是猜的字段名。现在逐字段声明。",
@@ -3179,7 +3234,8 @@
           "assessment",
           "behavior_inference",
           "mentor",
-          "record"
+          "record",
+          "user_edit"
         ],
         "title": "ProfileSource",
         "type": "string"
@@ -4022,7 +4078,7 @@
   },
   "info": {
     "title": "职引 API",
-    "version": "1.0.0"
+    "version": "1.0.1"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -5193,6 +5249,59 @@
         "summary": "Portrait Analysis",
         "tags": [
           "ai"
+        ]
+      }
+    },
+    "/api/v1/app/profile/fields/{key}": {
+      "post": {
+        "description": "更正一条画像字段，返回更正后的那一条。\n\n回包给的是**服务端存下来的那一条**，不是把请求里的值原样弹回去：\n界面据此做乐观更新与回滚，刷新之后看到的是同一份事实。",
+        "operationId": "update_profile_field_api_v1_app_profile_fields__key__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileFieldUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_ProfileFieldView_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Profile Field",
+        "tags": [
+          "profile"
         ]
       }
     },
