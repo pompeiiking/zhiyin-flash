@@ -125,6 +125,10 @@ class Settings:
 
     use_postgres: bool = False
     postgres_dsn: str = "postgresql://zhiyin:zhiyin@postgres:5432/zhiyin"
+    # 连接池按 Python 进程创建；多副本 / 多 Uvicorn worker 都会乘上一份。
+    # 因此必须可以在部署层收紧，避免扩容时静默耗尽 PostgreSQL 连接。
+    postgres_pool_min_size: int = 1
+    postgres_pool_max_size: int = 10
     auth_jwt_secret: str = ""
     auth_token_ttl_s: int = 86400
 
@@ -141,6 +145,10 @@ class Settings:
     #: 两者都是 OpenAI 兼容协议，差别只在默认地址与署名 ——
     #: 但"现在到底用哪个"必须能一眼看出来，不能靠 base_url 猜。
     embedding_provider: str = "doubao"
+    # ---------- 可选决策模型 ----------
+    decision_base_url: str = ""
+    decision_model: str = "kev-latest"
+    decision_timeout_s: float = 10.0
 
     # ---------- 学职平台 ----------
     xuezhi_base_url: str = "https://xz.chsi.com.cn"
@@ -165,6 +173,10 @@ class Settings:
     # Worker 轮询间隔。同进程部署时每个 Worker 按该间隔跑一轮；独立部署
     # （python -m zhiyin_boot worker <name>）时同样使用这个值。
     worker_interval_s: float = 60.0
+
+    # 单副本时保持历史行为；多副本部署将它关闭，改由独立的
+    # `python -m zhiyin_boot background` 单例进程运行调度器与全部业务 Worker。
+    run_in_process_background: bool = True
 
     # ---------- 功能开关 ----------
     # 注意：功能开关属于**动态资源**，
@@ -191,6 +203,8 @@ class Settings:
                 "ZHIYIN_POSTGRES_DSN",
                 "postgresql://zhiyin:zhiyin@postgres:5432/zhiyin",
             ),
+            postgres_pool_min_size=_env_int("ZHIYIN_POSTGRES_POOL_MIN_SIZE", 1),
+            postgres_pool_max_size=_env_int("ZHIYIN_POSTGRES_POOL_MAX_SIZE", 10),
             auth_jwt_secret=_env(
                 "ZHIYIN_AUTH_JWT_SECRET",
                 "",
@@ -214,6 +228,9 @@ class Settings:
                 "ZHIYIN_EMBEDDING_MODEL", "doubao-embedding-text-240715"
             ),
             embedding_provider=_env("ZHIYIN_EMBEDDING_PROVIDER", "doubao"),
+            decision_base_url=_env("ZHIYIN_DECISION_BASE_URL"),
+            decision_model=_env("ZHIYIN_DECISION_MODEL", "kev-latest"),
+            decision_timeout_s=_env_float("ZHIYIN_DECISION_TIMEOUT_S", 10.0),
             xuezhi_base_url=_env(
                 "ZHIYIN_XUEZHI_BASE_URL", "https://xz.chsi.com.cn"
             ),
@@ -231,5 +248,9 @@ class Settings:
             ),
             local_knowledge_dir=_resolve_local_dir(
                 _env("ZHIYIN_KNOWLEDGE_DIR", "data/knowledge")
+            ),
+            worker_interval_s=_env_float("ZHIYIN_WORKER_INTERVAL_S", 60.0),
+            run_in_process_background=_env_bool(
+                "ZHIYIN_RUN_IN_PROCESS_BACKGROUND", True
             ),
         )

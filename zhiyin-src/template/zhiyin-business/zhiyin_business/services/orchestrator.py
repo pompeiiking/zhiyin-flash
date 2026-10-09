@@ -440,9 +440,24 @@ class DefaultOrchestrator(Orchestrator):
                 return replay
 
         blackboard = await self.read_blackboard(request.user_id, request.task_id)
-        intent = await self._intent_policy.classify(
-            message=request.message, blackboard=blackboard
+        intent_decision = await self._intent_policy.classify_with_decision(
+            message=request.message,
+            blackboard=blackboard,
+            skip_model=bool(request.option_id or request.option_value is not None),
         )
+        logger.info(
+            "decision_routing intent=%s candidate=%s source=%s adopted=%s "
+            "reason=%s confidence=%s probabilities=%s latency_ms=%s",
+            intent_decision.intent.value,
+            intent_decision.candidate,
+            intent_decision.source,
+            intent_decision.adopted,
+            intent_decision.reason,
+            intent_decision.confidence,
+            intent_decision.probabilities,
+            intent_decision.latency_ms,
+        )
+        intent = intent_decision.intent
         stage_decision = await self._stage_policy.decide(
             blackboard=blackboard, intent=intent, message=request.message
         )
@@ -465,7 +480,17 @@ class DefaultOrchestrator(Orchestrator):
             # 澄清这一轮**也要落库**：它此前直接 return，既不写逐轮原文、也不记行为、
             # 也不更新会话记忆 —— 用户回头翻这条会话时，这一段是空白的，
             # 而"他说过什么、被问了什么"正好是他判断"这东西有没有在记"的依据。
-            await self._remember_turn(request, result, loop_stage=session.loop_stage)
+            await self._remember_turn(
+                request,
+                result,
+                loop_stage=session.loop_stage,
+                answer_payload={
+                    "intent": intent.value,
+                    "intent_decision": intent_decision.model_dump(
+                        mode="json", exclude_none=True
+                    ),
+                },
+            )
             return result
 
         stage = stage_decision.stage
@@ -703,6 +728,9 @@ class DefaultOrchestrator(Orchestrator):
             answer_payload={
                 "stage": stage.value,
                 "intent": intent.value,
+                "intent_decision": intent_decision.model_dump(
+                    mode="json", exclude_none=True
+                ),
                 # 点选项与手打要分得开：复盘"用户是怎么答的"时，
                 # "点了哪个选项"是行为本身的一部分，丢了就只剩一句文字。
                 **({"option_id": request.option_id} if request.option_id else {}),

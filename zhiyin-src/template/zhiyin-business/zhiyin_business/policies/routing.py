@@ -11,9 +11,27 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, Field
 
 from zhiyin_business.ports.blackboard import BlackboardView
 from zhiyin_business.ports.orchestrator import IntentType, StageDecision
+
+
+class IntentDecision(BaseModel):
+    """意图结果及其采用依据，供编排器留痕。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    intent: IntentType
+    candidate: str = ""
+    source: Literal["keyword", "kev", "fallback", "policy"] = "policy"
+    adopted: bool = False
+    reason: str = ""
+    confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+    probabilities: dict[str, float] = Field(default_factory=dict)
+    latency_ms: float | None = Field(default=None, ge=0.0)
 
 
 class IntentPolicy(ABC):
@@ -22,6 +40,23 @@ class IntentPolicy(ABC):
     @abstractmethod
     async def classify(self, *, message: str, blackboard: BlackboardView) -> IntentType:
         """识别意图。规则优先 + 关键词/模型兜底；不确定时返回 FREE_CHAT。"""
+
+    async def classify_with_decision(
+        self,
+        *,
+        message: str,
+        blackboard: BlackboardView,
+        skip_model: bool = False,
+    ) -> IntentDecision:
+        """兼容旧策略的带依据入口；组合策略可覆盖它提供完整证据。"""
+        intent = await self.classify(message=message, blackboard=blackboard)
+        return IntentDecision(
+            intent=intent,
+            candidate=intent.value,
+            source="policy",
+            adopted=True,
+            reason="legacy_policy",
+        )
 
 
 class StagePolicy(ABC):

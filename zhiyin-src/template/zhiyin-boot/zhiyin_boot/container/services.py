@@ -188,6 +188,7 @@ def build_services(container: "Container") -> None:
     `zhiyin_business/services/__init__.py` 的落位表。
     """
     from zhiyin_business.policies import (
+        DecisionRoutingPolicy,
         DependencyImpactPolicy,
         DisclosureHandoffPolicy,
         KeywordIntentPolicy,
@@ -298,6 +299,14 @@ def build_services(container: "Container") -> None:
     if container.agent_engine is not None and all(
         item is not None for item in dependencies
     ):
+        keyword_intent_policy = KeywordIntentPolicy(container.registry_service)
+        intent_policy = keyword_intent_policy
+        if container.decision is not None:
+            intent_policy = DecisionRoutingPolicy(
+                fallback=keyword_intent_policy,
+                decision_gateway=container.decision,
+                registry=container.registry_service,
+            )
         container.orchestrator = DefaultOrchestrator(
             profiles=container.profile_service,
             behaviors=container.behavior_service,
@@ -305,7 +314,7 @@ def build_services(container: "Container") -> None:
             assets=container.asset_service,
             # 词表与映射都来自动态资源，所以这两个策略需要读侧服务 ——
             # 写在代码里的关键词表等于把"用户怎么说算同一件事"冻在发版节奏上。
-            intent_policy=KeywordIntentPolicy(container.registry_service),
+            intent_policy=intent_policy,
             stage_policy=RuleStagePolicy(container.registry_service),
             lead_policy=RegistryLeadPolicy(container.registry_service),
             handoff_policy=DisclosureHandoffPolicy(),

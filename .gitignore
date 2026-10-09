@@ -103,4 +103,5 @@ Thumbs.db
 # 迁移文件里含 `infra_ai_provider.config.api_key`（模型密钥只存库，这是它的唯一副本），
 # 是**要随发布件发给部署方**的东西，但绝不该进版本库。
 deploy/migration.json
+scripts/kev-config-backup.json
 release/

@@ -1,0 +1,6 @@
+services:
+  zhiyin-flash:
+    environment:
+      ZHIYIN_DECISION_BASE_URL: http://host.docker.internal:8009
+      ZHIYIN_DECISION_MODEL: kev-latest
+      ZHIYIN_DECISION_TIMEOUT_S: "10"

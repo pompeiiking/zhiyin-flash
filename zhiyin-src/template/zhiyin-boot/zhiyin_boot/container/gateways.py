@@ -194,6 +194,16 @@ def build_gateways(
 
     documents: Any = LocalTextExtractor()
 
+    decision: Any = None
+    if settings.decision_base_url:
+        from zhiyin_infrastructure.ai.systemone import SystemOneDecisionGateway
+
+        decision = SystemOneDecisionGateway(
+            base_url=settings.decision_base_url,
+            model=settings.decision_model,
+            timeout_s=settings.decision_timeout_s,
+        )
+
     gateways: dict[str, Any] = {
         "llm": llm,
         "embedding": embedding,
@@ -203,6 +213,7 @@ def build_gateways(
         "cache": cache,
         "object_store": LocalFileStore(settings.local_object_dir),
         "documents": documents,
+        "decision": decision,
         "event_bus": event_bus,
         # 调度器必须能投递事件，否则主动事件（停滞检测）永远不触发。显式注入。
         "scheduler": scheduler,

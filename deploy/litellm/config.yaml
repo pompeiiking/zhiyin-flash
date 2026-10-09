@@ -1,0 +1,48 @@
+model_list:
+  - model_name: deepseek-flash
+    model_info:
+      id: deepseek-key-1
+    litellm_params:
+      model: openai/deepseek-flash
+      api_base: https://api.deepseek.com
+      api_key: os.environ/DEEPSEEK_API_KEY_1
+      max_retries: 0
+
+  - model_name: deepseek-flash
+    model_info:
+      id: deepseek-key-2
+    litellm_params:
+      model: openai/deepseek-flash
+      api_base: https://api.deepseek.com
+      api_key: os.environ/DEEPSEEK_API_KEY_2
+      max_retries: 0
+
+  - model_name: deepseek-flash
+    model_info:
+      id: deepseek-key-3
+    litellm_params:
+      model: openai/deepseek-flash
+      api_base: https://api.deepseek.com
+      api_key: os.environ/DEEPSEEK_API_KEY_3
+      max_retries: 0
+
+  - model_name: deepseek-flash
+    model_info:
+      id: deepseek-key-4
+    litellm_params:
+      model: openai/deepseek-flash
+      api_base: https://api.deepseek.com
+      api_key: os.environ/DEEPSEEK_API_KEY_4
+      max_retries: 0
+
+router_settings:
+  routing_strategy: least-busy
+  num_retries: 0
+
+litellm_settings:
+  turn_off_message_logging: true
+  set_verbose: false
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+

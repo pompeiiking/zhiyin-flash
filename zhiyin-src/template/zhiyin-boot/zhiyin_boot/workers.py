@@ -19,7 +19,9 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import inspect
 import logging
+import signal
 from typing import Protocol
 
 logger = logging.getLogger(__name__)
@@ -80,4 +82,93 @@ async def run_until_cancelled(
             await task
 
 
-__all__ = ["Runnable", "run_forever", "run_until_cancelled"]
+async def run_background_container(container) -> None:  # noqa: ANN001
+    """在一个独立进程中运行调度器与全部后台 Worker。
+
+    API 多副本时它们不再随每个 ASGI lifespan 重复启动，而是由
+    Compose 中固定单副本的 `zhiyin-background` 调用这个入口。
+    """
+    from zhiyin_business.services.dynamic_config import load_snapshot
+
+    if container.registry_service is not None:
+        await load_snapshot(container.registry_service)
+
+    stop = asyncio.Event()
+    loop = asyncio.get_running_loop()
+    installed_signals: list[signal.Signals] = []
+    for signum in (signal.SIGINT, signal.SIGTERM):
+        try:
+            loop.add_signal_handler(signum, stop.set)
+            installed_signals.append(signum)
+        except (NotImplementedError, RuntimeError):
+            # Windows Proactor loop 不支持 add_signal_handler；Ctrl+C 仍会由
+            # asyncio.run 取消主任务，下面的 finally 照样清理。
+            pass
+
+    event_bus = container.event_bus
+    start_event_polling = getattr(event_bus, "start_polling", None)
+    if callable(start_event_polling):
+        start_event_polling()
+
+    scheduler = container.scheduler
+    start_polling = getattr(scheduler, "start_polling", None)
+    if callable(start_polling):
+        start_polling()
+
+    tasks = [
+        asyncio.create_task(
+            run_until_cancelled(worker, container.settings.worker_interval_s, stop),
+            name=f"zhiyin-worker-{getattr(worker, 'name', type(worker).__name__)}",
+        )
+        for worker in container.workers
+    ]
+    stop_task = asyncio.create_task(stop.wait(), name="zhiyin-background-stop")
+
+    try:
+        done, _ = await asyncio.wait(
+            {stop_task, *tasks}, return_when=asyncio.FIRST_COMPLETED
+        )
+        failed = next((task for task in done if task is not stop_task), None)
+        if failed is not None:
+            await failed
+    finally:
+        stop.set()
+        stop_task.cancel()
+        for task in tasks:
+            task.cancel()
+        for task in [stop_task, *tasks]:
+            # 某个 Worker 已失败时，它的异常已在上面通过
+            # `await failed` 向外传递；清理阶段不要再抛一次而掩盖原始栈。
+            with contextlib.suppress(asyncio.CancelledError, Exception):
+                await task
+
+        stop_polling = getattr(scheduler, "stop_polling", None)
+        if callable(stop_polling):
+            await stop_polling()
+
+        stop_event_polling = getattr(event_bus, "stop_polling", None)
+        if callable(stop_event_polling):
+            await stop_event_polling()
+
+        for closable in reversed(container.extra.get("closables", [])):
+            close = getattr(closable, "aclose", None) or getattr(closable, "close", None)
+            if not callable(close):
+                continue
+            try:
+                result = close()
+                if inspect.isawaitable(result):
+                    await result
+            except Exception:
+                logger.exception("关闭后台进程资源失败：%s", type(closable).__name__)
+
+        for signum in installed_signals:
+            with contextlib.suppress(NotImplementedError, RuntimeError):
+                loop.remove_signal_handler(signum)
+
+
+__all__ = [
+    "Runnable",
+    "run_background_container",
+    "run_forever",
+    "run_until_cancelled",
+]

@@ -5,6 +5,7 @@
     { "code": "export", "enabled": false },
     { "code": "calendar", "enabled": true },
     { "code": "achievements", "enabled": true },
-    { "code": "mentor", "enabled": false }
+    { "code": "mentor", "enabled": false },
+    { "code": "decision_intent_routing", "enabled": true }
   ]
 }

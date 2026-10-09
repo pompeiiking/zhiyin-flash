@@ -12,6 +12,8 @@
 
     python -m zhiyin_boot worker impact --once   # 手动跑一轮某个 Worker
     python -m zhiyin_boot worker active_event    # 独立部署某个 Worker（常驻）
+    python -m zhiyin_boot background             # 单例运行调度器和全部 Worker
+    python -m zhiyin_boot --workers 2            # 启动 2 个 HTTP 服务进程
 
 第一期定位是"本地可启动、可演示、可调试"：读配置 → build_container →
 交给 uvicorn。任何装配缺失都在启动时暴露，不做静默降级。
@@ -31,7 +33,7 @@ from zhiyin_boot.registry_bootstrap import hydrate_registry_content
 from zhiyin_boot.report import describe_assembly, evaluate_gate, load_gates
 from zhiyin_boot.runtime_config import hydrate_runtime_config
 from zhiyin_boot.settings import Settings
-from zhiyin_boot.workers import run_forever
+from zhiyin_boot.workers import run_background_container, run_forever
 
 
 def _ensure_utf8_stdout() -> None:
@@ -120,6 +122,20 @@ def _run_worker(argv: list[str]) -> int:
     return 0
 
 
+def _run_background() -> int:
+    """独立运行调度器和全部 Worker，供多 API 副本部署使用。"""
+    settings = Settings.from_env()
+    asyncio.run(hydrate_ai_config(settings))
+    asyncio.run(hydrate_runtime_config(settings))
+    asyncio.run(hydrate_registry_content(settings))
+    container = build_container(settings)
+    try:
+        asyncio.run(run_background_container(container))
+    except KeyboardInterrupt:
+        pass
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     _ensure_utf8_stdout()
     # 启动期的几句话（读库口径 / 迁移生效 / 动态资源对账）都是 logging 发出的，
@@ -129,11 +145,19 @@ def main(argv: list[str] | None = None) -> int:
 
     if argv and argv[0] == "worker":
         return _run_worker(argv[1:])
+    if argv == ["background"]:
+        return _run_background()
 
     parser = argparse.ArgumentParser(prog="zhiyin", description="职引 · 第一期服务")
     parser.add_argument("--host", default="127.0.0.1", help="监听地址（默认仅本机）")
     parser.add_argument("--port", type=int, default=8000, help="监听端口")
     parser.add_argument("--reload", action="store_true", help="开发热重载（改代码即时生效）")
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=1,
+        help="Uvicorn HTTP 进程数（默认 1；与后台业务 Worker 无关）",
+    )
     parser.add_argument(
         "--reload-dir",
         action="append",
@@ -172,6 +196,31 @@ def main(argv: list[str] | None = None) -> int:
         help="配合 --check：只校验某个里程碑的退出条件（见 assembly_gates.json）",
     )
     args = parser.parse_args(argv)
+
+    if args.workers < 1:
+        parser.error("--workers 必须大于等于 1")
+    if args.reload and args.workers != 1:
+        parser.error("--reload 与 --workers > 1 不能同时使用")
+
+    # 多 worker 必须传 import string，由每个子进程独立读配置、建容器和连接池。
+    # 父进程不先做一次无用的装配，也避免把绑定在父进程事件循环的对象
+    # 传给子进程。
+    if args.workers > 1:
+        try:
+            import uvicorn
+        except ModuleNotFoundError:  # pragma: no cover
+            print(
+                "缺少 uvicorn，请先安装运行依赖：pip install -e .[dev]",
+                file=sys.stderr,
+            )
+            return 2
+        uvicorn.run(
+            "zhiyin_boot.asgi:app",
+            host=args.host,
+            port=args.port,
+            workers=args.workers,
+        )
+        return 0
 
     # AI 配置以库为准，而密钥可能只存在库里 ——
     # 所以"读库"必须发生在装配之前（详见 zhiyin_boot.ai_bootstrap 的说明）。
