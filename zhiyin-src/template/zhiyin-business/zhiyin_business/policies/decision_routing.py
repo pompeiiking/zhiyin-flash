@@ -70,6 +70,13 @@ class DecisionRoutingPolicy(IntentPolicy):
         blackboard: BlackboardView,
         skip_model: bool = False,
     ) -> IntentDecision:
+        # 明确选项 / 结构化动作优先于关键词与 Kev：
+        # 选项绑定的业务意图就是答案，**不再**拿它的展示文案做关键词分类。
+        # 实测（ZY-02）：选项「上线限三天，卡住就先往下走」里的"卡住"曾被关键词抢走，
+        # 行动一件都没做却直接跳进了复盘。展示文案是给用户读的，不是路由输入。
+        if skip_model:
+            return self._fallback_result("explicit_option")
+
         keyword = await self._fallback.classify_with_decision(
             message=message, blackboard=blackboard, skip_model=True
         )
@@ -77,8 +84,6 @@ class DecisionRoutingPolicy(IntentPolicy):
             return keyword
 
         text = (message or "").strip()
-        if skip_model:
-            return self._fallback_result("explicit_option")
         if not text:
             return self._fallback_result("empty_message")
 

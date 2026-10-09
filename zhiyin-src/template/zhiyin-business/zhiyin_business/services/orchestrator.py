@@ -944,6 +944,13 @@ class DefaultOrchestrator(Orchestrator):
         if not valid or not structured:
             return []
 
+        # ⑤ 复盘本身不产资产（它产的是跟踪事件），但它**可以改计划**：
+        # 复盘里说"周六删掉"，就得真的从行动计划里删掉（实测 ZY-05：
+        # 话改了、资产没改，用户第二天看到的还是旧计划）。
+        if stage is LoopStage.REVIEW:
+            await self._apply_review_plan_patch(user_id, structured)
+            return []
+
         converters = {
             LoopStage.DIAGNOSE: self._save_report,
             LoopStage.DECIDE: self._save_direction_plans,
@@ -1261,6 +1268,48 @@ class DefaultOrchestrator(Orchestrator):
             diff_from_previous=f"③ 决策产出：{len(plans)} 套方向方案",
         )
         return [version]
+
+    async def _apply_review_plan_patch(
+        self, user_id: str, structured: dict[str, Any]
+    ) -> None:
+        """把复盘给出的结构化调整真正落到行动计划上（实测 ZY-05）。
+
+        只在复盘明确给出 `plan_patch` 且确实命中时才写：
+        没给、或给了但对不上任何一条任务，就什么都不做 —— 宁可不动，
+        也不要凭空造一次"已按复盘调整"的假象。
+        落库失败只记日志：用户这一轮的话已经答完了。
+
+        仅此一处会以「⑤ 复盘校准」为差异说明升版；单纯的"做完了"不升版。
+        """
+        from zhiyin_business.contracts.review import ReviewOutput
+        from zhiyin_business.services.plan_patch import apply_plan_patch
+
+        try:
+            output = ReviewOutput.model_validate(structured)
+        except Exception:
+            logger.warning("复盘产出无法按契约解析，跳过计划调整", exc_info=True)
+            return
+        if output.plan_patch is None:
+            return
+        plan = await self._assets.get_action_plan(user_id)
+        if plan is None:
+            logger.info("复盘要求调整计划，但当前没有行动计划，未落库")
+            return
+
+        updated, summary = apply_plan_patch(plan, output.plan_patch)
+        if not summary:
+            logger.info("复盘给出的计划调整没有命中任何任务，未落库")
+            return
+        try:
+            await self._assets.save_action_plan(
+                user_id,
+                updated,
+                diff_from_previous="⑤ 复盘校准：" + "；".join(summary[:3]),
+            )
+        except Exception:
+            logger.warning("复盘的计划调整没落库", exc_info=True)
+            return
+        logger.info("复盘校准已落到计划：%s", "；".join(summary))
 
     async def _save_action_plan(
         self, user_id: str, structured: dict[str, Any]

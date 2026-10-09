@@ -84,7 +84,9 @@ watch(bars, (chart) => {
  * 再乘一次 100 会得到 740000 那种数字（issue 截图）。
  */
 const numberText = (value: number, unit: string, ratio: boolean) =>
-  ratio ? `${Math.round(value * 100)}${unit || '%'}` : `${Math.round(value)}${unit}`
+  ratio
+    ? `${Math.round(Math.min(100, Math.max(0, value * 100)))}${unit || '%'}`
+    : `${Math.round(value)}${unit}`
 </script>
 
 <template>

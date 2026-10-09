@@ -83,7 +83,7 @@ const hueOf = (i: number) => `var(--mk-${HUES[i % HUES.length]})`
     <ul v-if="P.judgments.length" class="dims" aria-hidden="true">
       <li v-for="(dim, i) in P.judgments.slice(0, 5)" :key="dim.id">
         <span class="dims__name">{{ dim.name }}</span>
-        <span class="dims__bar"><i :style="{ width: dim.value * 100 + '%', background: hueOf(i) }" /></span>
+        <span class="dims__bar"><i :style="{ width: Math.min(100, Math.max(0, dim.value * 100)) + '%', background: hueOf(i) }" /></span>
       </li>
     </ul>
 

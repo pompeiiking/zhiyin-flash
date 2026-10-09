@@ -170,6 +170,23 @@ async def test_keyword_and_explicit_option_skip_kev() -> None:
 
 
 @pytest.mark.asyncio
+async def test_explicit_option_is_not_hijacked_by_its_own_wording() -> None:
+    """明确选项的展示文案里带关键词，也不能被关键词抢走。
+
+    实测（ZY-02）原样：选项「上线限三天，卡住就先往下走」里的"卡住"被关键词命中，
+    结果行动一件都没做就跳进了复盘。展示文案是给用户读的，不是路由输入 ——
+    明确选项 / 结构化动作的意图优先于关键词与 Kev。
+    """
+    gateway = FakeGateway()
+    hijacked = await _policy(gateway, fallback=KeywordPolicy()).classify_with_decision(
+        message="上线限三天，卡住就先往下走", blackboard=_board(), skip_model=True
+    )
+    assert hijacked.reason == "explicit_option"
+    assert hijacked.intent is not IntentType.STUCK
+    assert gateway.calls == 0
+
+
+@pytest.mark.asyncio
 async def test_shadow_unclear_disabled_too_long_and_failure_fall_back() -> None:
     gateway = FakeGateway()
     shadow = await _policy(

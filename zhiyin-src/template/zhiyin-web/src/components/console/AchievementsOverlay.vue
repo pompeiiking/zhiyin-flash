@@ -107,8 +107,7 @@ watch(items, () => void nextTick(() => ink.redraw()))
     </ul>
 
     <p v-if="total" class="label foot sheet">
-      名字与说明来自文案包（`data/registry/copies.json` 里 `badge.*`），
-      解锁条件来自规则表（`badge_rules.json`）—— 两处都可以随时改，不用发版。
+      完成记录只根据你真实做过的事情生成。你可以继续完成下一件，也可以回到对话中调整计划。
     </p>
   </Overlay>
 </template>

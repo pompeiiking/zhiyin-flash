@@ -18,7 +18,7 @@ import { useRouter } from 'vue-router'
 import Overlay from '@/components/console/Overlay.vue'
 import RenderableBlock from '@/components/render/RenderableBlock.vue'
 import GlyphIcon from '@/components/ui/GlyphIcon.vue'
-import { getTheoryCard, track, uploadMaterial } from '@/api/client'
+import { getActionPlan, getTheoryCard, setActionTaskDone, track, uploadMaterial } from '@/api/client'
 import { useSessionStore } from '@/stores/session'
 import type { GuideOption } from '@/lib/asks'
 
@@ -230,6 +230,38 @@ const task = computed(() => (session.guide?.kind === 'task' ? session.guide.task
 /** 行动阶段回话的两种模板：一个"做完了"，一个"卡住了"（后者命中 stuck 意图 → 复盘环节给最小动作） */
 const TASK_DONE = '做完了，我来说说结果'
 const TASK_BLOCKED = '这件事我卡住了，帮我拆小一点'
+
+/*
+ * 「做完了」＝ 先把计划里那一件勾掉，再照常回话。
+ *
+ * 实测（ZY-03）：聊天里说"做完了"只写了一句回答，行动计划 11 条全是 done=false ——
+ * 用户明明部署完、README 写完、同学也点开过了，页面永远显示 0/11，
+ * 完成记录与复盘依据跟着是三套结论。**勾选与聊天必须是同一个完成命令。**
+ *
+ * 勾不动不拦着回话：他说出来的结果本身仍是这一轮的有效输入，
+ * 一次写失败不该把整轮对话卡住。计划还没进共享切片时先补一次读 ——
+ * 这条链路"只写不读"过一次，勾选会静默丢掉。
+ */
+async function markDone() {
+  let taskId = session.actionPlan?.next_task?.task_id ?? null
+  if (!taskId) {
+    try {
+      const plan = session.actionPlan ?? (await getActionPlan())
+      if (plan) session.applyActionPlan(plan)
+      taskId = plan?.next_task?.task_id ?? null
+    } catch {
+      /* 取不到计划就只回话 */
+    }
+  }
+  if (taskId) {
+    try {
+      session.applyActionPlan(await setActionTaskDone(taskId, true))
+    } catch (err) {
+      console.warn('[task] 勾选没落库，这一轮只回话：', err)
+    }
+  }
+  await send(TASK_DONE)
+}
 
 function openAction() {
   session.closeOverlay()
@@ -575,7 +607,7 @@ function openDisclosure() {
               做完回来说一句就行；做不动也说一声 —— 卡住不是失败，是这条任务拆得还不够小。
             </p>
             <div class="task__acts">
-              <button class="opt" type="button" :disabled="session.chatTyping" @click="send(TASK_DONE)">
+              <button class="opt" type="button" :disabled="session.chatTyping" @click="markDone">
                 做完了
               </button>
               <button class="opt" type="button" :disabled="session.chatTyping" @click="send(TASK_BLOCKED)">
