@@ -49,6 +49,14 @@ const props = withDefaults(
      * 返回值是**要给用户看的那句话**：空串 = 存下了，非空 = 为什么没存下。
      */
     correct?: (key: string, value: string) => Promise<string>
+    /**
+     * 外层点名"把这一条打开来改"。
+     *
+     * 第三层详情里的「更正」按下之后会回到这一层并把这一条打开 ——
+     * 为什么不把编辑器再做一份到详情层：那样就有**两处写入口**，
+     * 两处的校验、乐观更新与失败回滚迟早会不一样（这个仓库在别处吃过这个亏）。
+     */
+    editKey?: string | null
   }>(),
   { kind: 'judgment' },
 )
@@ -171,6 +179,27 @@ const saving = ref(false)
 const error = ref('')
 /** 正在改的那一条的输入框（一次只有一个，打开后自动聚焦） */
 const editInput = ref<HTMLInputElement | HTMLInputElement[] | null>(null)
+
+/*
+ * 外层点名要把哪一条打开（第三层详情按了「更正」之后回到这里）。
+ *
+ * `immediate` 不能少：回到清单时这一层是**重新挂载**的，而 watch 只在值**变化**时触发 ——
+ * 不带 immediate，刚挂载时那个值就是"初始值"，编辑器不会开，用户点了「更正」却什么都没发生。
+ *
+ * 【为什么这段必须写在上面那几个 ref **之后**】`immediate: true` 会在 setup 阶段立刻跑回调，
+ * 而回调最终要写 `editingKey` —— 写在它前面就抛
+ * "Cannot access 'editingKey' before initialization"，界面报错、编辑器不开。
+ * 这一条真机验证时踩过（和画布上报那处是同一个坑），类型检查看不出来。
+ */
+watch(
+  () => props.editKey,
+  (key) => {
+    if (!key) return
+    const item = props.items.find((i) => i.key === key)
+    if (item) startEdit(item)
+  },
+  { immediate: true },
+)
 
 const overLimit = computed(() => draft.value.trim().length > MAX_CHARS)
 

@@ -81,6 +81,10 @@ _LEAD_CHANGE_REASON_PROMPT = "disclosure.reason.{stage}"
 #: 结论变化告知：画像补了新信息、这一版跟着重算过时要说的那句。
 #: 它是设计里三种告知（换主理 / 换理论 / 结论变化）的第三种。
 _CONCLUSION_CHANGE_PROMPT = "disclosure.conclusion_change"
+#: 本人填写未被覆盖告知：他刚说的那句撞上他自己填过的格子、被挡下时说的那句。
+#: 挡下是**设计如此**（见 `_apply_collect`），但挡下必须说出来 —— 不说的症状是
+#: "我说了它不听"：画像一动不动、界面上一个字都没有，他只能再改一次、再被挡一次。
+_FIELD_KEPT_PROMPT = "disclosure.field_kept_by_user"
 # 外部事实：哪些环节**主动去取**，哪些环节**只用手上有的**。
 #
 # 分两档，判据是"没它会不会自己编"：
@@ -109,8 +113,8 @@ class CollectWriteResult:
     它们的原因完全不同，混在日志里查不动 ——
     `written` 是真写进去了，`dropped_by_gate` 是键不在词表里（提示词该补同义词），
     `blocked_by_user_edit` 是他自己更正过、推断不许盖（这是**设计如此**，不是缺陷）。
-    调用方目前只丢弃它（见 `run_turn`），用户可见的那句话走 `Disclosure`；
-    这份结果是给日志与守卫测试读的，不是用户文案。
+    它已经有了消费方：`handle_message` 拿 `blocked_by_user_edit` 拼成一条 `Disclosure`
+    说给用户听（挡下是设计如此，但**不能只留在日志里**）。同一份返回值也喂日志与守卫测试。
     """
 
     written: tuple[str, ...] = ()
@@ -628,7 +632,24 @@ class DefaultOrchestrator(Orchestrator):
         # 整份产出别处不合契约（少个字段、格式歪了）不该连累这一条：字段能解析就落库，
         # 其余的问题留在日志里。`_apply_collect` 自己会挑出能解析的部分。
         if stage is LoopStage.COLLECT:
-            await self._apply_collect(request.user_id, structured)
+            write = await self._apply_collect(request.user_id, structured)
+            # `_apply_collect` 的返回值在此之前**没有任何消费方**：被挡下的写入只有日志知道，
+            # 而他看不到日志。这一格是他自己填的、推断改不动，那是设计如此；但"没写进去"
+            # 必须当面说，并且给出口（去画像点「更正」），否则他听到的就是"我说了它不听"。
+            #
+            # **没有撞上时不出现**：这一轮一个字段都没被挡下时 `blocked_by_user_edit`
+            # 是空元组，这里连文案都不取 —— 不能每轮都念一遍这句话，那样它就从"解释"
+            # 变成了背景噪音，真正被挡的那一轮反而没人会注意。
+            if write.blocked_by_user_edit:
+                kept = await self._field_kept_disclosure(write.blocked_by_user_edit)
+                if disclosure is None:
+                    disclosure = kept
+                else:
+                    # 同一轮里既换了主理（或重算了旧结论）、又挡下一次写入：两件事都得说，
+                    # 与下面「结论变化」的处理同一条口径。
+                    disclosure = disclosure.model_copy(
+                        update={"text": f"{disclosure.text.rstrip()} {kept.text.strip()}"}
+                    )
         badge = await self._badge(
             lead.lead_agent,
             await self._known_theory_refs(structured.get("theory_refs")),
@@ -918,8 +939,9 @@ class DefaultOrchestrator(Orchestrator):
         比自述更权威。他本人也随时能再「更正」一次，这条路没被堵死
         （写 `user_edit` 的是 `DefaultProfileService.correct_field`，不经过这里）。
 
-        返回值见 `CollectWriteResult`：调用方目前不用它，用户可见的那句话走
-        `Disclosure`；被挡下的写入在这里留日志（`WARNING`），不留用户文案。
+        返回值见 `CollectWriteResult`：`blocked_by_user_edit` 由 `handle_message` 拼成
+        一条用户可见的 `Disclosure`（他刚说的那句撞上自己填过的格子时**必须当面说**，
+        并告诉他去哪儿改）。被挡下的写入同时也留一条 `WARNING` 日志，给查库的人看。
         """
         from zhiyin_business.contracts.collect import CollectOutput, FieldUpdate
 
@@ -1330,6 +1352,26 @@ class DefaultOrchestrator(Orchestrator):
         """结论变化告知。文案取自动态资源，缺配置直接抛（不用字面量顶上）。"""
         prompt = await self._required_prompt(_CONCLUSION_CHANGE_PROMPT)
         return Disclosure(kind="conclusion_change", text=prompt.content.strip())
+
+    async def _field_kept_disclosure(self, keys: Sequence[str]) -> Disclosure:
+        """本人填写未被覆盖告知：被挡下的是哪几格、为什么、他要改该去哪儿改。
+
+        字段名走画像词表（`_profile_vocabulary`，与界面同一份中文名），**不念英文键**：
+        `major` 对用户毫无意义，"专业"才是他在画像里看到的那个词。
+        这个词表读不到（配置没装载）时退回键本身 —— 宁可难看，也不能因为他这一格
+        没名字就整句话不说（不说的代价正是这次要修的那个现象）。
+
+        `kind` 用既有的 `conclusion_change`：对外它属于同一类"这一轮有件事你得知道"，
+        前端只渲染 `text`（见 `web/src/stores/session.ts`）。新开一个枚举取值要同时改
+        业务契约、API 视图、OpenAPI 快照与前端类型，收益只是内部标签更贴切 ——
+        这轮不做，留在这里说明为什么。
+        """
+        labels = {spec.key: spec.label for spec in self._profile_vocabulary()}
+        names = "、".join(labels.get(key, "") or key for key in keys)
+        prompt = await self._required_prompt(_FIELD_KEPT_PROMPT)
+        # 占位符对不上会在这里抛 KeyError：那是配置错，不是运行故障，不该被吞掉
+        # （与 `_lead_change_reason` 同一条口径）。
+        return Disclosure(kind="conclusion_change", text=prompt.content.format(fields=names))
 
     # ------------------------------------------------------------------
     # 用户可见文案：取自动态资源，代码里不再拼句子

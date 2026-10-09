@@ -95,6 +95,28 @@ watch(
 )
 
 const selectedKey = ref<string | null>(null)
+/**
+ * 点名让清单把哪一条的编辑器打开（详情层按了「更正」）。
+ *
+ * 编辑器只有一份，在清单里 —— 详情层只负责"点这一下"，回到清单并把这一条打开，
+ * 免得出现两处写入口（校验与失败回滚迟早会不一样）。
+ */
+const editRequest = ref<string | null>(null)
+function correctFromDetail() {
+  /*
+   * 回到清单：走详情那颗「返回」的**同一条路**（`back()` 有来路栈，不会猜错层）。
+   *
+   * 两个坑都踩过：
+   *   · 不能只把 `selectedKey` 清空 —— `selected` 在它为空时会**回落到第一条**，
+   *     于是第三层照样成立，看起来像"点了没反应"；
+   *   · 也不能自己写 `go('records')` 之类 —— 这一条可能是从"判断维度"或"档案信息"
+   *     进来的，来路只有 `trail` 知道。
+   */
+  const key = selectedKey.value
+  if (!key) return
+  editRequest.value = key
+  back()
+}
 
 /**
  * 第三层要的那一条。
@@ -544,6 +566,7 @@ const leadEntry = computed<'dims' | 'gaps' | null>(() => {
           kind="judgment"
           :items="dimItems"
           :selected-key="selectedKey"
+          :edit-key="editRequest"
           :gap-count="gaps.length"
           :correct="correctField"
           @select="openField"
@@ -562,6 +585,7 @@ const leadEntry = computed<'dims' | 'gaps' | null>(() => {
             kind="record"
             :items="factItems"
             :selected-key="selectedKey"
+          :edit-key="editRequest"
             :gap-count="0"
             :correct="correctField"
             @select="openField"
@@ -629,6 +653,7 @@ const leadEntry = computed<'dims' | 'gaps' | null>(() => {
           :task="() => dimensionTask(selected!.key) as never"
           @evidence="showEvidence(selected.label, selected.evidence)"
           @pick-trend="onTrend"
+          @correct="correctFromDetail"
         />
       </template>
     </div>

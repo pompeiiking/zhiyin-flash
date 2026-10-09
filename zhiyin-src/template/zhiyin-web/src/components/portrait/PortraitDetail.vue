@@ -37,6 +37,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'evidence'): void
   (e: 'pick-trend', index: number): void
+  /** 这一条记错了，要自己改（外层会回到清单并把编辑器打开） */
+  (e: 'correct'): void
 }>()
 
 /** 把握度的三档：薄 / 中 / 稳 —— 与采集口径里的 0.6 / 0.85 对齐 */
@@ -61,6 +63,14 @@ const TIER_TEXT: Record<string, string> = { low: '还很薄', mid: '大概如此
         </span>
         <span class="gauge__k">把握度</span>
       </div>
+
+      <!--
+        看到"这一条"才发现记错了 —— 那就得能就地改，不必先退回去找那颗按钮。
+        编辑器只有一份（在清单里），所以这里只负责"点这一下"，外层会回到清单并把它打开。
+      -->
+      <button class="head__fix label" type="button" :aria-label="`更正「${field.label}」`" @click="emit('correct')">
+        更正
+      </button>
     </header>
 
     <div class="split">
