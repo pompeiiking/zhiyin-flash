@@ -170,5 +170,6 @@ function open() {
 
 .foot { display: flex; align-items: center; gap: var(--s3); margin-top: auto; }
 .foot__cta { color: var(--ink-3); }
-.bubble:hover .foot__cta { color: var(--accent); }
+@media (hover: hover) and (pointer: fine) {
+.bubble:hover .foot__cta { color: var(--accent); } }
 </style>

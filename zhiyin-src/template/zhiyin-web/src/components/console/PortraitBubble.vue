@@ -196,7 +196,9 @@ const hueOf = (i: number) => `var(--mk-${HUES[i % HUES.length]})`
 /* 同上：页脚要贴在气泡底部，不能跟在正文后面 */
 .foot { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); margin-top: auto; }
 .chip.risk { border-color: var(--warn); color: var(--warn); transition: background var(--dur-fast) var(--ease-out); }
-.chip.risk:hover { background: color-mix(in srgb, var(--warn) 10%, transparent); }
+@media (hover: hover) and (pointer: fine) {
+.chip.risk:hover { background: color-mix(in srgb, var(--warn) 10%, transparent); } }
 .foot__cta { color: var(--ink-faint); transition: color var(--dur-fast) var(--ease-out); }
-.bubble:hover .foot__cta { color: var(--accent); }
+@media (hover: hover) and (pointer: fine) {
+.bubble:hover .foot__cta { color: var(--accent); } }
 </style>

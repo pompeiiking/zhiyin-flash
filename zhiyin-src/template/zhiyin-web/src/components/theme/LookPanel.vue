@@ -358,7 +358,9 @@ const FACES: Record<string, string> = {
   color: var(--ink-3); font-size: var(--t-sm);
   transition: color var(--dur-micro) var(--ease-out), background var(--dur-micro) var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .head__x:hover { color: var(--ink-1); background: var(--fill-hover); }
+}
 
 .scroll { overflow: auto; min-height: 0; }
 
@@ -398,7 +400,9 @@ const FACES: Record<string, string> = {
   color: var(--ink-3); font-size: var(--t-label);
   transition: color var(--dur-micro) var(--ease-out), background var(--dur-micro) var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .rowhead__reset:hover { color: var(--accent); background: var(--accent-soft); }
+}
 
 /* 格子：小图在上、名字在下，选中时整格点亮 */
 .cell {
@@ -414,7 +418,9 @@ const FACES: Record<string, string> = {
               color var(--dur-micro) var(--ease-out),
               box-shadow var(--dur-micro) var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .cell:hover { border-color: var(--line-4); background: var(--fill-hover); color: var(--ink-1); }
+}
 .cell.is-on {
   border-color: var(--accent);
   background: var(--accent-soft);

@@ -373,7 +373,8 @@ onMounted(() => {
   background: var(--n-1);
   transition: border-color var(--mo-fast) var(--mo-out);
 }
-.rail__bar:hover { border-color: var(--line-4); }
+@media (hover: hover) and (pointer: fine) {
+.rail__bar:hover { border-color: var(--line-4); } }
 
 /* 五节轨道：走过的填绿、现在这节是紫的并轻微呼吸 */
 .rail__track { display: flex; align-items: center; gap: 3px; }
@@ -438,7 +439,8 @@ onMounted(() => {
 .people li.now .people__agent { color: var(--mk-purple); font-weight: 600; }
 .people__state { text-align: right; }
 .panel__more { margin-top: var(--s2); color: var(--ink-3); transition: color var(--mo-fast) var(--mo-out); }
-.panel__more:hover { color: var(--accent); }
+@media (hover: hover) and (pointer: fine) {
+.panel__more:hover { color: var(--accent); } }
 
 /*
  * 自动介入播报 + 情报卡。
@@ -497,7 +499,8 @@ onMounted(() => {
   transition: color var(--dur-micro) var(--ease-out), border-color var(--dur-micro) var(--ease-out),
               background var(--dur-micro) var(--ease-out);
 }
-.pop__act:hover { color: var(--ink-1); border-color: var(--line-4); }
+@media (hover: hover) and (pointer: fine) {
+.pop__act:hover { color: var(--ink-1); border-color: var(--line-4); } }
 .pop__act--go { border-color: var(--mk-blue); color: var(--mk-blue); font-weight: 600; }
 /*
  * "还有 N 条 · 看下一条"：一次只说一条之后，这一行是**唯一的入口**，
@@ -512,8 +515,10 @@ onMounted(() => {
   text-decoration: underline dotted;
   text-underline-offset: 3px;
 }
-.pop__rest:hover { color: var(--ink-1); }
-.pop__act--go:hover { background: var(--mk-blue-soft); }
+@media (hover: hover) and (pointer: fine) {
+.pop__rest:hover { color: var(--ink-1); } }
+@media (hover: hover) and (pointer: fine) {
+.pop__act--go:hover { background: var(--mk-blue-soft); } }
 
 .fold-enter-active { transition: opacity 200ms var(--mo-out), transform 240ms var(--mo-out); }
 .fold-leave-active { transition: opacity 140ms var(--mo-in), transform 140ms var(--mo-in); }

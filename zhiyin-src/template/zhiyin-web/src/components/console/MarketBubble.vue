@@ -167,7 +167,8 @@ onMounted(() => {
   border-radius: 50%; color: var(--ink-3);
   transition: transform var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
-.head__fold:hover { color: var(--ink-1); background: var(--fill-hover); }
+@media (hover: hover) and (pointer: fine) {
+.head__fold:hover { color: var(--ink-1); background: var(--fill-hover); } }
 .head__fold[aria-expanded="false"] { transform: rotate(-90deg); }
 
 /*
@@ -218,9 +219,11 @@ onMounted(() => {
   transition: border-color var(--mo-fast) var(--mo-out), background var(--mo-fast) var(--mo-out),
               color var(--mo-fast) var(--mo-out);
 }
-.act:hover { border-color: var(--ink-1); color: var(--ink-1); }
+@media (hover: hover) and (pointer: fine) {
+.act:hover { border-color: var(--ink-1); color: var(--ink-1); } }
 .act--go { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 500; }
-.act--go:hover { background: var(--accent-deep); border-color: var(--accent-deep); color: var(--accent-ink); }
+@media (hover: hover) and (pointer: fine) {
+.act--go:hover { background: var(--accent-deep); border-color: var(--accent-deep); color: var(--accent-ink); } }
 .act:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* 矮格位：链条与占比先收，标题与入口留着 */

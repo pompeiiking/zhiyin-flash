@@ -40,8 +40,10 @@ const props = withDefaults(defineProps<{ anchor?: 'left' | 'right' }>(), { ancho
   transition: color var(--dur-micro) var(--ease-out),
               text-decoration-color var(--dur-micro) var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .look-trigger:hover {
   color: var(--accent);
   text-decoration-color: currentColor;
+}
 }
 </style>

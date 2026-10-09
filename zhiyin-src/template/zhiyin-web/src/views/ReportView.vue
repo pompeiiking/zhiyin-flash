@@ -267,7 +267,8 @@ onMounted(() => {
 }
 .top__l { display: flex; align-items: center; gap: var(--s3); }
 .back { color: var(--ink-2); transition: color var(--mo-fast) var(--mo-out); }
-.back:hover { color: var(--accent); }
+@media (hover: hover) and (pointer: fine) {
+.back:hover { color: var(--accent); } }
 .top__sep, .top__crumb { color: var(--ink-3); }
 .top__r { display: flex; align-items: center; gap: var(--s4); }
 .top__meta { color: var(--ink-3); }
@@ -337,7 +338,8 @@ onMounted(() => {
 }
 .dim__ev .label { color: var(--mk-green); }
 .dim__ev-text { font-size: var(--fs-small); color: var(--ink-2); }
-.dim__ev:hover .dim__ev-text { color: var(--ink-1); }
+@media (hover: hover) and (pointer: fine) {
+.dim__ev:hover .dim__ev-text { color: var(--ink-1); } }
 
 /* ── SWOT / 方法来源 ────────────────────────────────────────────── */
 .swot { display: flex; flex-direction: column; gap: var(--s4); }

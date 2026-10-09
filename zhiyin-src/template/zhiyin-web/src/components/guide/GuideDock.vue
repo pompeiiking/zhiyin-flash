@@ -120,10 +120,12 @@ function go(tip: { kind: string; to: string }) {
               transform var(--dur) var(--ease-spring),
               box-shadow var(--dur) var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .note:hover {
   border-color: var(--accent);
   transform: rotate(0deg) translateY(-2px);
   box-shadow: var(--e-4), var(--inner-hi);
+}
 }
 .dock--open .note { border-color: var(--accent); transform: rotate(0deg); }
 
@@ -185,11 +187,15 @@ function go(tip: { kind: string; to: string }) {
   text-align: left;
   transition: background var(--dur-micro) var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .row:hover { background: var(--fill-hover); }
+}
 .row__label { font-size: var(--fs-small); font-weight: 600; color: var(--ink-1); }
 .row__note { font-size: var(--t-xs); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .row__arrow { color: var(--ink-3); transition: transform var(--dur-micro) var(--ease-out), color var(--dur-micro) var(--ease-out); }
+@media (hover: hover) and (pointer: fine) {
 .row:hover .row__arrow { color: var(--accent); transform: translateX(2px); }
+}
 
 .next {
   display: flex; flex-direction: column; gap: 6px;

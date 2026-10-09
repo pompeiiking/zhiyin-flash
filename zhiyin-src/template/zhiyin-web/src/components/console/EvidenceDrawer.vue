@@ -132,7 +132,9 @@ const isTimeline = (item: AnyItem) => 'actor' in item && 'what' in item
   border-radius: var(--r-sm);
   transition: background var(--dur-fast) var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .ev:hover { background: var(--fill-subtle); }
+}
 .ev__top { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s3); }
 .ev__source { font-size: var(--fs-small); color: var(--accent); }
 .ev__conf { color: var(--ink-faint); }
@@ -148,7 +150,9 @@ const isTimeline = (item: AnyItem) => 'actor' in item && 'what' in item
   border-radius: var(--r-sm);
   transition: background var(--dur-fast) var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .tl:hover { background: var(--fill-subtle); }
+}
 .tl__time { grid-row: span 3; color: var(--ink-faint); }
 .tl__actor { font-size: var(--fs-small); color: var(--accent); }
 .tl__what { font-size: var(--fs-small); color: var(--ink); }

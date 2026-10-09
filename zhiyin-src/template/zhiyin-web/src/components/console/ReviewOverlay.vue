@@ -176,7 +176,8 @@ const rows = computed(() => {
   padding: var(--s3) var(--s2);
   transition: background var(--mo-fast) var(--mo-out);
 }
-.row:hover { background: var(--fill-subtle); }
+@media (hover: hover) and (pointer: fine) {
+.row:hover { background: var(--fill-subtle); } }
 .row__at { color: var(--ink-3); }
 .row__type { color: var(--ink-2); }
 .row__type[data-type='warning'] { color: var(--warn); }

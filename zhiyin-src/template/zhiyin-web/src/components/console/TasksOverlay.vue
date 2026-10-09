@@ -288,7 +288,8 @@ function openDetail(t: Row) {
   border: 2px solid var(--accent); color: var(--accent); font-size: 17px; line-height: 1;
   transition: background var(--mo-fast) var(--mo-out), color var(--mo-fast) var(--mo-out);
 }
-.add__go:hover:not(:disabled) { background: var(--accent); color: var(--accent-ink); }
+@media (hover: hover) and (pointer: fine) {
+.add__go:hover:not(:disabled) { background: var(--accent); color: var(--accent-ink); } }
 .add__go:disabled { opacity: 0.35; }
 .add__warn { margin: 6px 0 0; color: var(--warn, var(--accent)); line-height: 1.6; }
 
@@ -310,7 +311,8 @@ function openDetail(t: Row) {
   border-radius: var(--r-sm); text-align: left;
   transition: background var(--mo-fast) var(--mo-out);
 }
-.task__head:hover { background: var(--fill-hover); }
+@media (hover: hover) and (pointer: fine) {
+.task__head:hover { background: var(--fill-hover); } }
 .task__title { grid-column: 1 / -1; font-size: var(--fs-body); color: var(--ink-1); }
 .task.done .task__title { text-decoration: line-through; color: var(--ink-3); }
 .task__due { color: var(--ink-2); }

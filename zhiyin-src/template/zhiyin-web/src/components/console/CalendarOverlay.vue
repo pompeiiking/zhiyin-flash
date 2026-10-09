@@ -344,7 +344,8 @@ async function saveTodo() {
   color: var(--ink-2);
   transition: background var(--mo-fast) var(--mo-out), color var(--mo-fast) var(--mo-out);
 }
-.step:hover { background: var(--fill-hover); color: var(--ink-1); }
+@media (hover: hover) and (pointer: fine) {
+.step:hover { background: var(--fill-hover); color: var(--ink-1); } }
 .month__foot { color: var(--ink-3); line-height: 1.6; }
 
 .week, .grid { list-style: none; margin: 0; padding: 0; }
@@ -361,7 +362,8 @@ async function saveTodo() {
   font-size: var(--fs-small); color: var(--ink-2);
   transition: background var(--mo-fast) var(--mo-out), color var(--mo-fast) var(--mo-out);
 }
-.day:hover { background: var(--fill-hover); color: var(--ink-1); }
+@media (hover: hover) and (pointer: fine) {
+.day:hover { background: var(--fill-hover); color: var(--ink-1); } }
 .day.dim { color: var(--ink-3); }
 .day.today .day__num { text-decoration: underline; text-underline-offset: 3px; }
 .day.on { background: var(--ink-1); color: var(--n-0); }
@@ -390,7 +392,8 @@ async function saveTodo() {
   color: var(--mk-green);
   transition: border-color var(--dur-micro) var(--ease-out), background var(--dur-micro) var(--ease-out);
 }
-.my__check:hover { border-color: var(--mk-green); background: var(--mk-green-soft); }
+@media (hover: hover) and (pointer: fine) {
+.my__check:hover { border-color: var(--mk-green); background: var(--mk-green-soft); } }
 .facts li {
   display: grid; grid-template-columns: 96px minmax(0, 1fr) auto;
   gap: var(--s3); align-items: baseline;

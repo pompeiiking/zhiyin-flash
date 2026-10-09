@@ -132,6 +132,7 @@ defineExpose({ run: t.run, retry: t.retry, state: t.state, error: t.error })
   color: var(--ink-3);
   transition: color var(--mo-fast) var(--mo-out), border-color var(--mo-fast) var(--mo-out);
 }
-.badge:hover { color: var(--ink-1); border-color: var(--line-3); }
+@media (hover: hover) and (pointer: fine) {
+.badge:hover { color: var(--ink-1); border-color: var(--line-3); } }
 .badge__dot { width: 6px; height: 6px; border-radius: 50%; background: var(--mk-purple); }
 </style>

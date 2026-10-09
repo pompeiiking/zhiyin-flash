@@ -291,7 +291,9 @@ function goSource(source: string) {
 .rows__why { font-size: var(--fs-small); color: var(--ink-2); line-height: 1.65; }
 .rows__no { color: var(--ink-faint); white-space: nowrap; }
 .rows__go { color: var(--accent); white-space: nowrap; }
+@media (hover: hover) and (pointer: fine) {
 .rows__go:hover { text-decoration: underline; }
+}
 .rows__done { font-size: var(--fs-small); color: var(--ink-3); }
 
 .have summary { color: var(--ink-3); cursor: pointer; }

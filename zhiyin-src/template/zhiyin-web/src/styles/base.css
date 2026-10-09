@@ -210,7 +210,8 @@ button, input, textarea, select { font-family: inherit; font-size: var(--t-sm); 
 * { scrollbar-width: thin; scrollbar-color: var(--line-3) transparent; }
 *::-webkit-scrollbar { width: 9px; height: 9px; }
 *::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 999px; border: 2px solid transparent; background-clip: content-box; }
-*::-webkit-scrollbar-thumb:hover { background: var(--line-3); background-clip: content-box; }
+@media (hover: hover) and (pointer: fine){
+*::-webkit-scrollbar-thumb:hover { background: var(--line-3); background-clip: content-box; } }
 *::-webkit-scrollbar-track { background: transparent; }
 
 /* ── 通用原子 ───────────────────────────────────────────────────── */
@@ -348,9 +349,11 @@ button, input, textarea, select { font-family: inherit; font-size: var(--t-sm); 
   border-color: var(--accent); font-weight: 600;
   box-shadow: var(--accent-shadow);
 }
-.btn.primary:hover { background: var(--accent-deep); border-color: var(--accent-deep); }
+@media (hover: hover) and (pointer: fine){
+.btn.primary:hover { background: var(--accent-deep); border-color: var(--accent-deep); } }
 .btn.ghost { border-color: transparent; color: var(--ink-2); background: transparent; box-shadow: none; }
-.btn.ghost:hover { color: var(--ink-1); border-color: var(--line-2); background: var(--fill-hover); }
+@media (hover: hover) and (pointer: fine){
+.btn.ghost:hover { color: var(--ink-1); border-color: var(--line-2); background: var(--fill-hover); } }
 
 /*
  * 禁用态：全站此前**一条都没有** —— 按钮灰不灰、能不能点，全靠调用方自觉。
@@ -399,7 +402,8 @@ button, input, textarea, select { font-family: inherit; font-size: var(--t-sm); 
   font-family: var(--font-sans); font-size: var(--t-xs); font-weight: 500;
   transition: color var(--dur-micro) var(--ease-out);
 }
-.disclose:hover { color: var(--accent); }
+@media (hover: hover) and (pointer: fine){
+.disclose:hover { color: var(--accent); } }
 .disclose .caret { transition: transform var(--dur-exit) var(--ease-out); }
 .disclose[aria-expanded="true"] .caret { transform: rotate(90deg); }
 

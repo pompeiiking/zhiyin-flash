@@ -261,7 +261,8 @@ function showTask(task: ActionTask) {
 .tasks li.done .tasks__text { color: var(--ink-faint); text-decoration: line-through; }
 .tasks__due { color: var(--ink-3); text-align: right; }
 .tasks__why { color: var(--ink-3); }
-.tasks__why:hover { color: var(--accent); }
+@media (hover: hover) and (pointer: fine) {
+.tasks__why:hover { color: var(--accent); } }
 
 .tick {
   width: 20px; height: 20px; border-radius: 6px;
@@ -270,7 +271,8 @@ function showTask(task: ActionTask) {
   transition: border-color var(--mo-fast) var(--mo-out), color var(--mo-fast) var(--mo-out);
 }
 .tick svg { width: 12px; height: 12px; }
-.tick:hover { border-color: var(--accent); }
+@media (hover: hover) and (pointer: fine) {
+.tick:hover { border-color: var(--accent); } }
 .tasks li.done .tick { border-color: var(--mk-green); color: var(--mk-green); background: var(--accent-soft); }
 .tick:disabled { opacity: 0.5; }
 
@@ -303,7 +305,8 @@ function showTask(task: ActionTask) {
   transition: color var(--mo-fast) var(--mo-out);
 }
 .cal__list li:first-child .node { border-top: 0; }
-.node:hover .node__title { color: var(--accent); }
+@media (hover: hover) and (pointer: fine) {
+.node:hover .node__title { color: var(--accent); } }
 .node__at { color: var(--ink-3); }
 .node__title { font-size: var(--fs-small); color: var(--ink-1); }
 .node__task { grid-column: 2; color: var(--ink-3); }

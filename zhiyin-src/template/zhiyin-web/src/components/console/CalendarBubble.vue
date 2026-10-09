@@ -147,7 +147,8 @@ function open(date: Date) {
   color: var(--ink-2);
   transition: background var(--mo-fast) var(--mo-out), color var(--mo-fast) var(--mo-out);
 }
-.day:hover { background: var(--fill-hover); color: var(--ink-1); }
+@media (hover: hover) and (pointer: fine) {
+.day:hover { background: var(--fill-hover); color: var(--ink-1); } }
 .day.dim { color: var(--ink-3); }
 .day.week { color: var(--ink-3); }
 /* 今天：实心底。一周里"今天"是唯一一个会自己变的参照点，值得占住 */
@@ -178,5 +179,6 @@ function open(date: Date) {
   margin-top: auto;
 }
 .foot__cta { color: var(--ink-3); transition: color var(--dur-fast) var(--ease-out); }
-.bubble:hover .foot__cta { color: var(--accent); }
+@media (hover: hover) and (pointer: fine) {
+.bubble:hover .foot__cta { color: var(--accent); } }
 </style>

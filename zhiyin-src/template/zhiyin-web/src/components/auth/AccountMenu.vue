@@ -150,7 +150,8 @@ function backToPortal() {
   transition: border-color var(--dur-micro) var(--ease-out),
               background var(--dur-micro) var(--ease-out);
 }
-.trigger:hover { border-color: var(--line-2); background: var(--fill-hover); }
+@media (hover: hover) and (pointer: fine) {
+.trigger:hover { border-color: var(--line-2); background: var(--fill-hover); } }
 .trigger[aria-expanded="true"] { border-color: var(--line-3); background: var(--fill-hover); }
 
 .brand { display: flex; align-items: center; gap: 9px; }
@@ -213,10 +214,12 @@ function backToPortal() {
   text-align: left;
   transition: background var(--dur-micro) var(--ease-out), color var(--dur-micro) var(--ease-out);
 }
-.row--go:hover { background: var(--fill-hover); color: var(--ink); }
+@media (hover: hover) and (pointer: fine) {
+.row--go:hover { background: var(--fill-hover); color: var(--ink); } }
 .row__tag { color: var(--ink-faint); }
 .row__tag--go { color: var(--ink-3); }
-.row--go:hover .row__tag--go { color: var(--accent); }
+@media (hover: hover) and (pointer: fine) {
+.row--go:hover .row__tag--go { color: var(--accent); } }
 
 .quit {
   height: 36px; margin-top: var(--s1);
@@ -227,7 +230,8 @@ function backToPortal() {
               color var(--dur-micro) var(--ease-out),
               background var(--dur-micro) var(--ease-out);
 }
-.quit:hover { border-color: var(--warn); color: var(--warn); background: color-mix(in srgb, var(--warn) 5%, transparent); }
+@media (hover: hover) and (pointer: fine) {
+.quit:hover { border-color: var(--warn); color: var(--warn); background: color-mix(in srgb, var(--warn) 5%, transparent); } }
 
 .drop-enter-active { transition: opacity 180ms var(--ease-out), transform 240ms var(--ease-expo); }
 .drop-leave-active { transition: opacity 130ms var(--ease-in), transform 130ms var(--ease-in); }

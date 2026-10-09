@@ -209,9 +209,11 @@ html[data-theme="exam"] .btn.primary {
   border-color: var(--c-ink);
   color: var(--accent-ink);
 }
+@media (hover: hover) and (pointer: fine) {
 html[data-theme="exam"] .btn.primary:hover {
   background: var(--ink-1);
   border-color: var(--ink-1);
+}
 }
 html[data-theme="exam"] .ask {
   border-color: var(--c-ink);

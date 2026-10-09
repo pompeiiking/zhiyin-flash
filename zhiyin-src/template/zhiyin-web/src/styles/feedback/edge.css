@@ -62,24 +62,30 @@
  * 于是这一轴看起来仍然"没效果"。现在：卡片悬停时长出一圈更重的边，块一寸不动 ——
  * 这正是"反馈只发生在线上"这句话在大目标上的形态。
  */
+@media (hover: hover) and (pointer: fine) {
 html[data-feedback="edge"] .surface:hover,
 html[data-feedback="edge"] .sheet:hover {
   transform: none;
   border-color: var(--ink-1);
   box-shadow: inset 0 0 0 2px var(--ink-2), var(--e-3), var(--inner-hi);
 }
+}
 /* 块里的控件跟着一起走，整张卡是"一整块被框住"的，不是卡片框住、里面的按钮还浮着 */
+@media (hover: hover) and (pointer: fine) {
 html[data-feedback="edge"] .surface:hover .btn,
 html[data-feedback="edge"] .surface:hover .ask {
   border-color: var(--ink-2);
 }
+}
 
 /* 按钮：悬停不移位，只把描边加深 + 文字变深，再加一道内环（效果要看得见） */
+@media (hover: hover) and (pointer: fine) {
 html[data-feedback="edge"] .btn:hover {
   transform: none;
   border-color: var(--ink-2);
   color: var(--ink-1);
   box-shadow: inset 0 0 0 1px var(--ink-3), var(--e-2), var(--inner-hi);
+}
 }
 
 /*
@@ -91,6 +97,7 @@ html[data-feedback="edge"] .btn:hover {
  * 于是用户在控制台点开"交互"这条轴，看到的是"什么都没变" —— 规则没错，是点错了零件。
  * 这一节把这一档真正要覆盖的控件补齐：**一条轴的效果必须在用户看得见的地方生效**。
  */
+@media (hover: hover) and (pointer: fine) {
 html[data-feedback="edge"] .ask:hover,
 html[data-feedback="edge"] .rail__bar:hover,
 html[data-feedback="edge"] .bubble__close:hover,
@@ -101,11 +108,13 @@ html[data-feedback="edge"] .bubble__done:hover {
   background: transparent;          /* 底色不动：这一档的反馈全在"线"上 */
   box-shadow: inset 0 0 0 1.5px var(--ink-2);
 }
+}
 
 /*
  * 文字入口（`.foot__cta` / `.foot__why`）没有框可加深，它的"线"就是下划线 ——
  * 悬停时长出一条线来，仍然一个字都不动，与这一档的定义一致。
  */
+@media (hover: hover) and (pointer: fine) {
 html[data-feedback="edge"] .foot__cta:hover,
 html[data-feedback="edge"] .foot__why:hover {
   transform: none;
@@ -114,6 +123,7 @@ html[data-feedback="edge"] .foot__why:hover {
   text-decoration: underline;
   text-underline-offset: 3px;
   text-decoration-thickness: 1.5px;
+}
 }
 
 /* 按下同样不移位：深一档的描边替掉位移，松手时不会有"跳一下"的观感 */
@@ -125,9 +135,11 @@ html[data-feedback="edge"] .ask:active {
 }
 
 /* 主按钮：悬停靠"更深的强调色"说话，依然不位移（深档由皮肤给，这里只借用） */
+@media (hover: hover) and (pointer: fine) {
 html[data-feedback="edge"] .btn.primary:hover {
   border-color: var(--accent-deep);
   background: var(--accent-deep);
+}
 }
 
 /*
@@ -135,9 +147,11 @@ html[data-feedback="edge"] .btn.primary:hover {
  * 不把 1px 边框直接改成 2px —— 那会让盒子重排，整行抖 1px（正是这套要避免的）；
  * 用一层 inset 影当"第二道环"，看起来是双线，布局上什么都没发生。
  */
+@media (hover: hover) and (pointer: fine) {
 html[data-feedback="edge"] .chip:hover {
   border-color: var(--ink-2);
   box-shadow: inset 0 0 0 1px var(--line-3);
+}
 }
 
 /*
@@ -163,9 +177,11 @@ html[data-feedback="edge"] .chip.live {
 }
 
 /* 行悬停：底色同样换成一道环，且不碰 border 与 padding —— 行高不变，列表不跳 */
+@media (hover: hover) and (pointer: fine) {
 html[data-feedback="edge"] .row:hover {
   background: transparent;
   box-shadow: inset 0 0 0 1px var(--line-2);
+}
 }
 
 /*

@@ -108,7 +108,8 @@ const STEPS = [
   font-size: var(--t-sm); line-height: 1.25;
   transition: background 160ms var(--ease-out), transform 160ms var(--ease-out);
 }
-.primary:hover { background: var(--accent-deep); transform: translateY(-1px); }
+@media (hover: hover) and (pointer: fine) {
+.primary:hover { background: var(--accent-deep); transform: translateY(-1px); } }
 
 /* 次级入口：白纸上的一条墨线，不是又一块色 */
 .ghost {
@@ -120,7 +121,8 @@ const STEPS = [
   font-size: var(--t-sm); font-weight: 500; color: var(--ink-2); line-height: 1.25;
   transition: border-color 160ms var(--ease-out), color 160ms var(--ease-out);
 }
-.ghost:hover { border-color: var(--ink-1); color: var(--ink-1); }
+@media (hover: hover) and (pointer: fine) {
+.ghost:hover { border-color: var(--ink-1); color: var(--ink-1); } }
 
 /*
  * 三步：序号是**贴纸**（一小块平涂色 + 墨线），不是圆圈数字。

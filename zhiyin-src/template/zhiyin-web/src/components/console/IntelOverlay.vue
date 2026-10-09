@@ -371,7 +371,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   font-size: var(--t-sm);
   transition: border-color var(--dur-micro) var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .tools__topic input:hover { border-color: var(--line-3); }
+}
 .tools__topic input:focus-visible { outline: none; border-color: var(--accent); }
 .tools__from { margin-top: calc(var(--s2) * -1); color: var(--ink-3); }
 
@@ -389,7 +391,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   font-family: var(--font-editorial); font-size: var(--t-h4); line-height: 1.25;
   transition: border-color var(--dur-micro) var(--ease-out), background var(--dur-micro) var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .empty__starters button:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+}
 
 /* ── 类别跳转 ───────────────────────────────────────────────────── */
 .kinds { display: flex; align-items: center; gap: var(--s2); }
@@ -403,7 +407,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   color: var(--ink-2);
   transition: background var(--dur-micro) var(--ease-out), color var(--dur-micro) var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .kind:hover { background: var(--fill-hover); color: var(--ink-1); }
+}
 .kind--on { background: var(--fill-subtle); color: var(--ink-1); }
 .kind b { font-family: var(--font-sans); font-size: var(--t-xs); font-weight: 500; color: var(--ink-3); }
 .rule { flex: 1; height: 1px; background: var(--line-1); }
@@ -471,9 +477,13 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 .card__src { color: var(--ink-2); }
 .card__at { color: var(--ink-3); }
 .card__why { margin-left: auto; color: var(--ink-3); text-decoration: underline; text-underline-offset: 3px; }
+@media (hover: hover) and (pointer: fine) {
 .card__why:hover { color: var(--accent); }
+}
 .card__link { font-size: var(--fs-small); color: var(--accent); font-weight: 500; }
+@media (hover: hover) and (pointer: fine) {
 .card__link:hover { text-decoration: underline; text-underline-offset: 3px; }
+}
 
 /* ── 翻页 ───────────────────────────────────────────────────────── */
 .pager {
@@ -488,7 +498,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   background: var(--n-1); color: var(--ink-2); font-size: var(--t-sm); line-height: 1.25;
   transition: border-color var(--dur-micro) var(--ease-out), color var(--dur-micro) var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .pg:hover:not(:disabled) { border-color: var(--ink-1); color: var(--ink-1); }
+}
 .pg:disabled { opacity: 0.4; cursor: not-allowed; }
 /* 中间那颗是这一页最该被点的：把这条交给 AI */
 .ask {
@@ -498,7 +510,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   font-family: var(--font-editorial); font-size: var(--t-h4); line-height: 1.25;
   transition: background var(--dur-micro) var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .ask:hover { background: var(--accent-deep); }
+}
 .pager::after {
   content: "左右方向键也能翻";
   width: 100%; text-align: right;

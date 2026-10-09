@@ -1473,7 +1473,9 @@ onMounted(publishCanvasTruth)
   transition: color var(--dur-micro) var(--ease-out),
     text-decoration-color var(--dur-micro) var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .chrome__blocks:hover { color: var(--accent); text-decoration-color: currentColor; }
+}
 .chrome__blocks-n {
   margin-left: 4px;
   padding: 0 5px;
@@ -1533,7 +1535,12 @@ onMounted(publishCanvasTruth)
               width var(--dur) var(--ease-spring);
 }
 .chrome--right .chrome__hit::before { left: auto; right: 11px; }
-.chrome:hover .chrome__hit::before,
+@media (hover: hover) and (pointer: fine) {
+.chrome:hover .chrome__hit::before {
+  background: var(--accent);
+  width: 44px;
+}
+}
 .chrome:focus-within .chrome__hit::before {
   background: var(--accent);
   width: 44px;
@@ -1562,7 +1569,13 @@ onMounted(publishCanvasTruth)
   transition: transform var(--dur-enter) var(--ease-expo),
               visibility 0s linear var(--dur-enter);
 }
-.chrome:hover .chrome__body,
+@media (hover: hover) and (pointer: fine) {
+.chrome:hover .chrome__body {
+  transform: translateY(0);
+  visibility: visible;
+  transition: transform var(--dur-enter) var(--ease-expo), visibility 0s;
+}
+}
 .chrome:focus-within .chrome__body {
   transform: translateY(0);
   visibility: visible;
@@ -1843,10 +1856,14 @@ onMounted(publishCanvasTruth)
   transition: color var(--dur-micro) var(--ease-out),
               background var(--dur-micro) var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .greet__rhythm:hover { color: var(--ink-1); background: var(--fill-hover); }
+}
 .greet__cta { margin-left: auto; color: var(--ink-3); white-space: nowrap; }
 /* 悬停整块时，那句"会发生什么"亮起来 —— 这是"点得动"的暗示 */
-.b-greet:hover .greet__cta,
+@media (hover: hover) and (pointer: fine) {
+.b-greet:hover .greet__cta { color: var(--accent); }
+}
 .b-greet:focus-within .greet__cta { color: var(--accent); }
 
 /* 演示控件：浮在角落，不参与布局 */

@@ -72,7 +72,8 @@ onMounted(() => track('review_warning_show', { has_review: !!liveReview.value })
   background: var(--n-1);
   transition: border-color var(--mo-fast) var(--mo-out), color var(--mo-fast) var(--mo-out);
 }
-.act:hover { border-color: var(--ink-1); color: var(--ink-1); }
+@media (hover: hover) and (pointer: fine) {
+.act:hover { border-color: var(--ink-1); color: var(--ink-1); } }
 .act--go { border-color: var(--mk-green); color: var(--mk-green); }
 .act:disabled { opacity: 0.45; cursor: not-allowed; }
 

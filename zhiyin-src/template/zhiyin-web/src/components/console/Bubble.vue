@@ -157,10 +157,12 @@ const emit = defineEmits<{ (e: 'close'): void; (e: 'resolve'): void }>()
 .t-quiet { background: var(--n-0); border-style: dashed; border-color: var(--line-3); }
 
 .interactive { cursor: pointer; }
+@media (hover: hover) and (pointer: fine) {
 .interactive:hover {
   transform: translateY(-4px) scale(1.008);
   border-color: var(--ink-1);
   box-shadow: var(--e-4);
+}
 }
 .interactive:active { transform: translateY(-1px) scale(0.996); }
 
@@ -214,15 +216,21 @@ const emit = defineEmits<{ (e: 'close'): void; (e: 'resolve'): void }>()
   transition: opacity var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
   pointer-events: none;
 }
-.bubble:hover .bubble__grip,
+@media (hover: hover) and (pointer: fine) {
+.bubble:hover .bubble__grip { opacity: 1; }
+}
 .bubble:focus-within .bubble__grip { opacity: 1; }
 /* 键盘用户 Tab 进来时也要看得见，不能只靠 hover */
-.bubble:hover .bubble__close,
+@media (hover: hover) and (pointer: fine) {
+.bubble:hover .bubble__close { opacity: 1; transform: scale(1); }
+}
 .bubble:focus-within .bubble__close { opacity: 1; transform: scale(1); }
+@media (hover: hover) and (pointer: fine) {
 .bubble__close:hover {
   color: var(--ink-1);
   background: var(--fill-press);
   border-color: var(--line-3);
+}
 }
 
 /*
@@ -247,12 +255,16 @@ const emit = defineEmits<{ (e: 'close'): void; (e: 'resolve'): void }>()
               background var(--dur-fast) var(--ease-out);
 }
 .bubble__done .mono { color: inherit; }
-.bubble:hover .bubble__done,
+@media (hover: hover) and (pointer: fine) {
+.bubble:hover .bubble__done { opacity: 1; transform: translateY(0); }
+}
 .bubble:focus-within .bubble__done { opacity: 1; transform: translateY(0); }
+@media (hover: hover) and (pointer: fine) {
 .bubble__done:hover {
   color: var(--accent-ink);
   background: var(--accent);
   border-color: var(--accent);
+}
 }
 
 /*

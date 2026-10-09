@@ -131,7 +131,8 @@ function showSource(text: string, from: string) {
   text-align: left;
   transition: background var(--mo-fast) var(--mo-out);
 }
-.reason:hover { background: var(--fill-hover); }
+@media (hover: hover) and (pointer: fine) {
+.reason:hover { background: var(--fill-hover); } }
 .reason__text { font-size: var(--fs-small); line-height: 1.7; color: var(--ink-1); }
 .reason__from { color: var(--ink-3); flex: 0 0 auto; }
 
@@ -156,7 +157,8 @@ function showSource(text: string, from: string) {
   background: var(--n-1);
   transition: border-color var(--mo-fast) var(--mo-out), transform var(--mo-fast) var(--mo-out), background var(--mo-fast) var(--mo-out);
 }
-.opt:hover { border-color: var(--ink-1); transform: translateY(-1px); }
+@media (hover: hover) and (pointer: fine) {
+.opt:hover { border-color: var(--ink-1); transform: translateY(-1px); } }
 .opt[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
 .opt__label { font-size: var(--fs-body); color: var(--ink-1); }
 .opt__why { font-size: var(--fs-small); color: var(--ink-3); line-height: 1.6; }

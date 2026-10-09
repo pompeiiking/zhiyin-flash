@@ -96,8 +96,10 @@ html[data-ui="plain"] .btn {
   box-shadow: none;
   background: var(--fill-subtle);
 }
+@media (hover: hover) and (pointer: fine) {
 html[data-ui="plain"] .btn:hover {
   background: var(--fill-hover);
+}
 }
 
 /*
@@ -113,8 +115,10 @@ html[data-ui="plain"] .btn.primary {
   background: var(--accent);
 }
 /* hover 同理：`.btn:hover` 的淡底也会盖掉主按钮的强调底，暗一档写回来 */
+@media (hover: hover) and (pointer: fine) {
 html[data-ui="plain"] .btn.primary:hover {
   background: var(--accent-deep);
+}
 }
 
 /* 标签片：与按钮同一档淡底 —— 它们本来就是同一类"贴在内容旁边的小块"，不该两套长相 */

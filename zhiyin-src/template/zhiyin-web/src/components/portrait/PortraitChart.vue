@@ -332,7 +332,8 @@ function onChartClick(p: { dataIndex?: number }) {
   font-size: var(--t-xs); font-weight: 500; color: var(--pt-muted, var(--ink-2));
   transition: background 160ms var(--ease-out), color 160ms var(--ease-out), box-shadow 160ms var(--ease-out);
 }
-.seg__b:hover:not(:disabled) { color: var(--pt-ink, var(--ink-1)); }
+@media (hover: hover) and (pointer: fine) {
+.seg__b:hover:not(:disabled) { color: var(--pt-ink, var(--ink-1)); } }
 .seg__b:disabled { opacity: 0.4; cursor: not-allowed; }
 .seg__b--on {
   background: var(--pt-surface, var(--c-paper)); color: var(--pt-ink, var(--ink-1));
@@ -355,10 +356,11 @@ function onChartClick(p: { dataIndex?: number }) {
   transition: border-color 160ms var(--ease-out), color 160ms var(--ease-out),
               transform 160ms var(--ease-out), box-shadow 160ms var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .chip:hover {
   border-color: var(--pt-line-strong, var(--line-3)); color: var(--pt-ink, var(--ink-1));
   transform: translateY(-1px); box-shadow: var(--e-1);
-}
+} }
 .chip--on { border-color: var(--pt-accent, var(--accent)); color: var(--pt-ink, var(--ink-1)); }
 .chip b { font-weight: 600; color: var(--pt-faint, var(--ink-3)); font-variant-numeric: tabular-nums; }
 .chip__dot { width: 7px; height: 7px; border-radius: 2px; flex: 0 0 auto; }

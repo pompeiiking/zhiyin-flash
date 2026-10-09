@@ -210,7 +210,8 @@ function pickGap(day: number, period: number) {
 .tt-wrap__warn { color: var(--ink-3); line-height: 1.7; margin-bottom: var(--s2); }
 .tt-wrap__revoke { color: var(--ink-faint); line-height: 1.7; margin-top: var(--s3); }
 .tt-wrap__link { color: var(--ink-2); text-decoration: underline; }
-.tt-wrap__link:hover { color: var(--warn); }
+@media (hover: hover) and (pointer: fine) {
+.tt-wrap__link:hover { color: var(--warn); } }
 .tt-wrap__grid { overflow: auto; display: flex; align-items: flex-start; padding: var(--s4) var(--s5); }
 .tt-wrap__side { overflow: auto; padding: var(--s5); }
 

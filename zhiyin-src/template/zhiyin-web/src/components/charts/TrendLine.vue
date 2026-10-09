@@ -106,6 +106,7 @@ const current = computed(() => coords.value[active.value])
   font-size: var(--fs-small); color: var(--ink-2); text-align: left;
   transition: color var(--mo-fast) var(--mo-out);
 }
-.why:hover { color: var(--ink-1); }
+@media (hover: hover) and (pointer: fine) {
+.why:hover { color: var(--ink-1); } }
 .why__at { flex: 0 0 auto; color: var(--ink-3); }
 </style>

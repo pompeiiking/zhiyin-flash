@@ -231,7 +231,8 @@ const TIER_TEXT: Record<string, string> = { low: '还很薄', mid: '大概如此
   display: inline-flex; align-items: center; gap: 4px;
   font-size: var(--t-xs); font-weight: 500; color: var(--pt-accent, var(--accent));
 }
-.link:hover { text-decoration: underline; }
+@media (hover: hover) and (pointer: fine) {
+.link:hover { text-decoration: underline; } }
 
 /*
  * 解读卡：换一种材质（浅绿 → 白的渐变），而不是再放一块同色的白。

@@ -697,7 +697,9 @@ function openDisclosure() {
 .speaker__say { font-size: var(--fs-small); color: var(--ink-2); line-height: 1.75; }
 /* 可点开的那一句：平时长得像正文，悬停才提示"能点" —— 它不是按钮，是一句话 */
 .speaker__say--link { width: 100%; text-align: left; }
+@media (hover: hover) and (pointer: fine) {
 .speaker__say--link:hover { color: var(--ink-1); text-decoration: underline dotted var(--accent); }
+}
 
 .stages { list-style: none; margin: var(--s2) 0 0; padding: 0; display: grid; gap: 1px; }
 .stages li {
@@ -722,7 +724,9 @@ function openDisclosure() {
   border: 1px solid var(--line-2); color: var(--mk-purple); font-size: var(--fs-small);
   transition: border-color var(--mo-fast) var(--mo-out), color var(--mo-fast) var(--mo-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .theory:hover { border-color: var(--mk-purple); color: var(--ink-1); }
+}
 
 /* 右片：说话的地方 */
 .talk {
@@ -775,9 +779,11 @@ function openDisclosure() {
 }
 .starter__list li:nth-child(2) .starter__b { transform: rotate(0.6deg); }
 .starter__list li:nth-child(3) .starter__b { transform: rotate(-0.3deg); }
+@media (hover: hover) and (pointer: fine) {
 .starter__b:hover {
   border-color: var(--accent); color: var(--accent); background: var(--accent-soft);
   transform: rotate(0) translateY(-1px);
+}
 }
 .starter__d { font-size: var(--fs-small); color: var(--ink-3); line-height: 1.75; max-width: 52ch; }
 
@@ -828,7 +834,9 @@ function openDisclosure() {
  */
 .jump { flex: 0 0 auto; display: flex; justify-content: flex-end; gap: var(--s4); padding: 0 var(--s5); }
 .jump__b { background: none; border: 0; padding: 2px 0; cursor: pointer; color: var(--accent); }
+@media (hover: hover) and (pointer: fine) {
 .jump__b:hover { text-decoration: underline; text-decoration-thickness: 1px; }
+}
 .prompt {
   display: flex; flex-direction: column; gap: 5px;
   padding: var(--s3) var(--s4);
@@ -852,7 +860,9 @@ function openDisclosure() {
   font-size: var(--t-xs); color: var(--accent);
   transition: background var(--dur-micro) var(--ease-out), color var(--dur-micro) var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .prompt__opts .opt:hover { background: var(--accent); color: var(--accent-ink); }
+}
 .prompt__opts .opt:disabled { opacity: 0.5; cursor: not-allowed; }
 /*
  * 已经点过的那一条：划掉 + 降一级 —— 它就是"这一条答过了"的样子，
@@ -883,10 +893,14 @@ function openDisclosure() {
   font-size: var(--t-xs); color: var(--ink-1);
   transition: background var(--dur-micro) var(--ease-out), color var(--dur-micro) var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .task__acts .opt:hover { background: var(--mk-green); color: var(--n-0); }
+}
 .task__acts .opt:disabled { opacity: 0.5; cursor: not-allowed; }
 .task__acts .opt--quiet { border-color: var(--line-2); color: var(--ink-2); }
+@media (hover: hover) and (pointer: fine) {
 .task__acts .opt--quiet:hover { background: var(--n-1); color: var(--ink-1); border-color: var(--line-4); }
+}
 
 .row { display: flex; gap: var(--s2); }
 .row input {
@@ -896,7 +910,9 @@ function openDisclosure() {
   font-size: var(--t-sm);
   transition: border-color var(--dur-micro) var(--ease-out), box-shadow var(--dur-micro) var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .row input:hover { border-color: var(--line-3); }
+}
 .row input:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 .row .btn { height: 42px; }
 
@@ -908,7 +924,9 @@ function openDisclosure() {
   background: var(--n-1); color: var(--ink-2);
   transition: border-color var(--dur-micro) var(--ease-out), color var(--dur-micro) var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .clip:hover { border-color: var(--line-3); color: var(--accent); }
+}
 .clip:disabled { opacity: 0.5; cursor: default; }
 .clip__input { display: none; }
 .clip__err { color: var(--warn); }
@@ -937,7 +955,9 @@ function openDisclosure() {
 .hold__name { font-size: var(--t-xs); color: var(--ink-1); overflow-wrap: anywhere; }
 .hold__meta { color: var(--ink-faint); white-space: nowrap; }
 .hold__x { margin-left: auto; color: var(--ink-3); white-space: nowrap; }
+@media (hover: hover) and (pointer: fine) {
 .hold__x:hover { color: var(--warn); text-decoration: underline; }
+}
 
 .tie { display: flex; align-items: center; justify-content: space-between; gap: var(--s4); }
 
@@ -950,13 +970,17 @@ function openDisclosure() {
   padding: 6px 10px; border-radius: var(--r-sm);
   border: var(--bw) solid var(--line-1); background: var(--n-1);
 }
+@media (hover: hover) and (pointer: fine) {
 .ref:hover { border-color: var(--line-3); }
+}
 .ref__kind { color: var(--mk-orange); }
 .ref__t { font-size: var(--fs-small); color: var(--ink-1); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
 .ref__src { color: var(--ink-faint); }
 .tie .label { color: var(--ink-3); }
 .tie__go { color: var(--accent); }
+@media (hover: hover) and (pointer: fine) {
 .tie__go:hover { text-decoration: underline; }
+}
 
 @media (max-width: 900px) {
   /*

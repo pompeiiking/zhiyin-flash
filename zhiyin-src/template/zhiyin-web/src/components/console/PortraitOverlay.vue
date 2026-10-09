@@ -726,9 +726,13 @@ const leadEntry = computed<'dims' | 'gaps' | null>(() => {
   box-shadow: var(--e-1), var(--inner-hi);
   transition: border-color 160ms var(--ease-out), color 160ms var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .back:hover { border-color: var(--pt-line-strong); color: var(--pt-ink); }
+}
 .back svg { transition: transform 160ms var(--ease-out); }
+@media (hover: hover) and (pointer: fine) {
 .back:hover svg { transform: translateX(-2px); }
+}
 
 .bar__t { display: grid; gap: 1px; min-width: 0; }
 .bar__crumb { color: var(--ink-3); }
@@ -776,14 +780,18 @@ const leadEntry = computed<'dims' | 'gaps' | null>(() => {
   box-shadow: var(--e-2);
   transition: transform 160ms var(--ease-out), background 160ms var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .primary:hover { background: var(--pt-accent-deep); transform: translateY(-1px); }
+}
 .ghost {
   height: 34px; padding: 0 16px; border-radius: var(--r-pill);
   border: 1px solid var(--pt-line); background: var(--pt-surface); color: var(--pt-muted);
   font-size: var(--t-sm); font-weight: 500;
   transition: border-color 160ms var(--ease-out), color 160ms var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .ghost:hover { border-color: var(--pt-line-strong); color: var(--pt-ink); }
+}
 
 .menu { display: grid; gap: var(--s2); align-content: start; }
 .menu__k { color: var(--ink-3); }
@@ -808,10 +816,12 @@ const leadEntry = computed<'dims' | 'gaps' | null>(() => {
   transition: border-color 160ms var(--ease-out), box-shadow 160ms var(--ease-out),
               transform 160ms var(--ease-out), background 160ms var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .mrow:hover {
   border-color: var(--pt-line-strong);
   box-shadow: var(--e-2), var(--inner-hi);
   transform: translateY(-1px);
+}
 }
 .mrow--lead { border-color: var(--pt-accent); background: var(--pt-soft); }
 
@@ -834,7 +844,9 @@ const leadEntry = computed<'dims' | 'gaps' | null>(() => {
   color: var(--ink-4); font-size: var(--t-sm);
   transition: color 160ms var(--ease-out), transform 160ms var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .mrow:hover .mrow__go { color: var(--pt-accent); transform: translateX(2px); }
+}
 
 /* ── 第二层：档案 ────────────────────────────────────────────────── */
 .records { display: grid; gap: var(--s3); align-content: start; }
@@ -853,9 +865,11 @@ const leadEntry = computed<'dims' | 'gaps' | null>(() => {
   box-shadow: var(--e-1), var(--inner-hi);
   transition: border-color 160ms var(--ease-out), box-shadow 160ms var(--ease-out), transform 160ms var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .gap:hover {
   border-color: var(--pt-line-strong); transform: translateY(-1px);
   box-shadow: var(--e-2), var(--inner-hi);
+}
 }
 .gap__t { font-size: var(--t-body); font-weight: 600; color: var(--pt-ink); }
 .gap__go {
@@ -876,7 +890,9 @@ const leadEntry = computed<'dims' | 'gaps' | null>(() => {
   display: inline-flex; align-items: center; gap: 4px;
   font-size: var(--t-sm); font-weight: 500; color: var(--pt-accent);
 }
+@media (hover: hover) and (pointer: fine) {
 .link:hover { text-decoration: underline; }
+}
 
 /* ── 第二层：整份画像的判断 ──────────────────────────────────────── */
 .pa { display: grid; gap: var(--s3); min-width: 0; }

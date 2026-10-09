@@ -179,9 +179,12 @@ function answer(option: string) {
 .tone-coach::before { background: var(--accent); color: var(--accent); }
 .tone-handoff::before { background: var(--violet); color: var(--violet); }
 
+@media (hover: hover) and (pointer: fine) {
+
 .float:hover {
   transform: translateX(-7px) scale(1.016) rotate(0deg);
   border-color: var(--line-3);
+}
 }
 
 .float__bar { display: flex; align-items: center; gap: var(--s2); }
@@ -199,7 +202,9 @@ function answer(option: string) {
   display: grid; place-items: center; color: var(--ink-3);
   transition: color var(--dur-micro) var(--ease-out), background var(--dur-micro) var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .float__close:hover { color: var(--ink-1); background: var(--fill-press); }
+}
 
 .float__title {
   font-family: var(--font-display);
@@ -224,16 +229,20 @@ function answer(option: string) {
               background var(--dur-micro) var(--ease-out),
               transform var(--dur-micro) var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .opt:hover {
   color: var(--ink-1); border-color: var(--accent);
   background: var(--accent-soft); transform: translateY(-1px);
+}
 }
 
 .float__picked { font-size: var(--t-sm); color: var(--ink-1); }
 .float__picked .mono { margin-right: 6px; color: var(--accent); }
 .float__reply { font-size: var(--t-sm); color: var(--ink-2); }
 .float__why { color: var(--ink-3); }
+@media (hover: hover) and (pointer: fine) {
 .float__why:hover { color: var(--ink-1); }
+}
 .float__reason { font-size: var(--t-sm); color: var(--ink-3); }
 </style>
 

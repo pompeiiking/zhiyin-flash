@@ -76,7 +76,8 @@ const dashOf = (gap: number) => (gap >= 0.15 ? '4 4' : 'none')
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0;
   transition: transform var(--mo-fast) var(--mo-out), border-color var(--mo-fast) var(--mo-out);
 }
-.mx__cell:hover { transform: translateY(-2px); }
+@media (hover: hover) and (pointer: fine) {
+.mx__cell:hover { transform: translateY(-2px); } }
 .mx__need { font-family: var(--font-sans); font-size: 13px; font-weight: 600; color: var(--ink-1); font-variant-numeric: tabular-nums; }
 .mx__have { font-family: var(--font-sans); font-size: 10px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
 .mx__have.short { color: var(--warn); font-weight: 600; }

@@ -80,5 +80,6 @@ function open() {
 .said--dim { color: var(--ink-3); }
 .foot { display: flex; align-items: center; justify-content: flex-start; gap: var(--s3); margin-top: auto; }
 .foot__cta { color: var(--ink-3); }
-.bubble:hover .foot__cta { color: var(--accent); }
+@media (hover: hover) and (pointer: fine) {
+.bubble:hover .foot__cta { color: var(--accent); } }
 </style>

@@ -368,7 +368,8 @@ const emit = defineEmits<{ (e: 'close'): void }>()
               background var(--dur-fast) var(--ease-out),
               transform var(--dur-fast) var(--ease-out);
 }
-.opt:hover { color: var(--ink); border-color: var(--ink-dim); transform: translateY(-1px); }
+@media (hover: hover) and (pointer: fine) {
+.opt:hover { color: var(--ink); border-color: var(--ink-dim); transform: translateY(-1px); } }
 .opt.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
 /*
  * 页脚钉在气泡底部（margin-top: auto）。
@@ -377,10 +378,12 @@ const emit = defineEmits<{ (e: 'close'): void }>()
  */
 .foot { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); margin-top: auto; }
 .foot__why { color: var(--ink-faint); }
-.foot__why:hover { color: var(--ink); }
+@media (hover: hover) and (pointer: fine) {
+.foot__why:hover { color: var(--ink); } }
 .foot__why.is-off { opacity: 0.45; }
 .foot__cta { color: var(--ink-dim); }
-.bubble:hover .foot__cta { color: var(--accent); }
+@media (hover: hover) and (pointer: fine) {
+.bubble:hover .foot__cta { color: var(--accent); } }
 
 /*
  * 紧凑形态 —— 平铺引擎给到矮格位（实测 380×146）时的那一套排版。

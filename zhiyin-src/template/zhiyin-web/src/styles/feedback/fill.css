@@ -55,18 +55,22 @@
  * 手法用一层大 spread 的 inset 影当"垫色"：它画在背景之上、内容之下，
  * 于是卡片里的字一点不受影响，而整块明显"被垫了一层纸"。位置与描边都不动。
  */
+@media (hover: hover) and (pointer: fine) {
 html[data-feedback="fill"] .surface:hover,
 html[data-feedback="fill"] .sheet:hover {
   transform: none;
   box-shadow: inset 0 0 0 999px var(--fill-hover), var(--e-3), var(--inner-hi);
 }
+}
 
 /* 按钮：不位移；悬停只把底色加深一档，描边显式按回常驻色（见文件头说明） */
+@media (hover: hover) and (pointer: fine) {
 html[data-feedback="fill"] .btn:hover {
   transform: none;
   background: var(--fill-hover);
   border-color: var(--line-2);
   box-shadow: var(--e-2), var(--inner-hi);
+}
 }
 
 /* 按下：底色再深一档、影收掉 —— 这一下是"纸被按住"，不是"纸掉下去"（没有位移） */
@@ -77,9 +81,11 @@ html[data-feedback="fill"] .btn:active {
 }
 
 /* 主按钮：悬停/按下都靠强调色的深浅档，位置与形状一律不动 */
+@media (hover: hover) and (pointer: fine) {
 html[data-feedback="fill"] .btn.primary:hover {
   background: var(--accent-deep);
   border-color: var(--accent-deep);
+}
 }
 
 /* 主按钮按下：底色留在深档，另加一道 inset 影 —— 实心块上没有边框可加深，用内影代替 */
@@ -89,8 +95,10 @@ html[data-feedback="fill"] .btn.primary:active {
 }
 
 /* 标签片：悬停换底色，描边色一点不碰（"线一律不动"这条在这里兑现） */
+@media (hover: hover) and (pointer: fine) {
 html[data-feedback="fill"] .chip:hover {
   background: var(--fill-hover);
+}
 }
 
 /*
@@ -102,6 +110,7 @@ html[data-feedback="fill"] .chip:hover {
  * 这一档的反馈只有一个自由度：**底色**。所以下面全部只改 background，
  * 描边、位置、形状一个字都不动。
  */
+@media (hover: hover) and (pointer: fine) {
 html[data-feedback="fill"] .ask:hover,
 html[data-feedback="fill"] .rail__bar:hover,
 html[data-feedback="fill"] .bubble__close:hover,
@@ -116,6 +125,7 @@ html[data-feedback="fill"] .bubble__done:hover {
   filter: brightness(0.94);
   border-color: var(--line-2);      /* 线按住不动（见文件头"线一律不动"） */
 }
+}
 html[data-feedback="fill"] .ask:active,
 html[data-feedback="fill"] .rail__bar:active {
   transform: none;
@@ -123,12 +133,14 @@ html[data-feedback="fill"] .rail__bar:active {
 }
 
 /* 文字入口：悬停时连它也"填"出一块底色，而不是长线（那是描边档的语言） */
+@media (hover: hover) and (pointer: fine) {
 html[data-feedback="fill"] .foot__cta:hover,
 html[data-feedback="fill"] .foot__why:hover {
   transform: none;
   background: var(--fill-hover);
   border-radius: var(--r-xs);
   box-shadow: none;
+}
 }
 
 /*
@@ -187,7 +199,9 @@ html[data-feedback="fill"] .chip.live {
 }
 
 /* 行悬停：极淡底 + 同一道左侧竖条（标记位置，不改明度——行比标签长，底色再深就抢内容） */
+@media (hover: hover) and (pointer: fine) {
 html[data-feedback="fill"] .row:hover {
   background: var(--fill-subtle);
   box-shadow: inset 3px 0 0 var(--accent);
+}
 }

@@ -439,7 +439,9 @@ watch(editingKey, async (key) => {
   display: inline-flex; align-items: center; justify-content: center; gap: 5px;
   transition: background 160ms var(--ease-out), color 160ms var(--ease-out), box-shadow 160ms var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .seg__b:hover { color: var(--pt-ink, var(--ink-1)); }
+}
 .seg__b--on {
   background: var(--pt-surface, var(--c-paper)); color: var(--pt-ink, var(--ink-1));
   box-shadow: var(--e-1), var(--inner-hi);
@@ -508,7 +510,9 @@ watch(editingKey, async (key) => {
   background: transparent;
   transition: background 180ms var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .row:hover { background: var(--pt-surface, var(--c-paper)); transform: translateY(-1px); box-shadow: var(--e-1), var(--inner-hi); }
+}
 .row--on {
   background: var(--pt-surface, var(--c-paper));
   border-color: var(--pt-line, var(--line-2));
@@ -553,7 +557,9 @@ watch(editingKey, async (key) => {
 
 .row__meta { font-size: var(--t-xs); color: var(--pt-faint, var(--ink-3)); }
 .row__go { color: var(--ink-4); display: grid; place-items: center; }
+@media (hover: hover) and (pointer: fine) {
 .row:hover .row__go { color: var(--pt-accent, var(--accent)); }
+}
 
 .empty { font-size: var(--t-sm); color: var(--pt-muted, var(--ink-3)); line-height: 1.7; padding: var(--s2) 0; }
 
@@ -579,7 +585,13 @@ watch(editingKey, async (key) => {
   transition: color 160ms var(--ease-out), border-color 160ms var(--ease-out),
               background 160ms var(--ease-out);
 }
-.row__fix:hover,
+@media (hover: hover) and (pointer: fine) {
+.row__fix:hover {
+  color: var(--pt-accent, var(--accent));
+  border-color: var(--pt-line, var(--line-2));
+  background: var(--pt-surface, var(--c-paper));
+}
+}
 .row__fix:focus-visible {
   color: var(--pt-accent, var(--accent));
   border-color: var(--pt-line, var(--line-2));
@@ -623,14 +635,18 @@ watch(editingKey, async (key) => {
   font-size: var(--t-xs); font-weight: 600;
   transition: background 160ms var(--ease-out), transform 160ms var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .edit__save:hover:not(:disabled) { background: var(--pt-accent-deep, var(--accent-deep)); transform: translateY(-1px); }
+}
 .edit__save:disabled { opacity: 0.6; cursor: default; }
 .edit__cancel {
   height: 28px; padding: 0 10px; border-radius: var(--r-pill);
   font-size: var(--t-xs); font-weight: 500; color: var(--pt-muted, var(--ink-2));
   border: 1px solid var(--pt-line, var(--line-2));
 }
+@media (hover: hover) and (pointer: fine) {
 .edit__cancel:hover { color: var(--pt-ink, var(--ink-1)); border-color: var(--pt-line-strong, var(--line-3)); }
+}
 
 .edit__why,
 .edit__err {

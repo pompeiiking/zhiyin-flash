@@ -243,7 +243,9 @@ function move(id: string, delta: number) {
   font-size: var(--t-xs);
   transition: color var(--dur-micro) var(--ease-out), border-color var(--dur-micro) var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .act:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); }
+}
 .act:disabled { opacity: 0.45; cursor: not-allowed; }
 .act--main { color: var(--accent); border-color: var(--accent); }
 
