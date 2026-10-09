@@ -177,6 +177,10 @@ class Executor:
         # development repository has moved on or a branch was removed.
         self.run(["git", "-C", directory, "cat-file", "-e", revision + "^{commit}"])
         self.run(["git", "-C", directory, "config", "core.autocrlf", "false"])
+        # Windows 上 260 字符路径上限会让 checkout 直接失败（实测报
+        # `fatal: cannot create directory ... Filename too long`），而模块目录本身就很深。
+        # 放宽的是路径处理，不动内容；Linux/CI 上设不设都一样。
+        self.run(["git", "-C", directory, "config", "core.longpaths", "true"])
         self.run(["git", "-C", directory, "checkout", "--detach", revision])
         self.run(["git", "-C", directory, "checkout-index", "--force", "--all"])
         actual = self.run(["git", "-C", directory, "rev-parse", "HEAD"]).strip()

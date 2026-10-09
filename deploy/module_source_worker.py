@@ -133,6 +133,10 @@ class SourceWorker(Executor):
         directory.parent.mkdir(parents=True, exist_ok=True)
         self.run(["git", "clone", "--no-hardlinks", "--no-checkout", self.repo, directory])
         self.run(["git", "-C", directory, "config", "core.autocrlf", "false"])
+        # 与 `module_executor.checkout` 同一条：Windows 的 260 字符路径上限会让 checkout 直接失败
+        # （实测 `fatal: cannot create directory ... Filename too long`），模块目录又很深。
+        # 放宽的是路径处理，不动内容；Linux/CI 上设不设都一样。
+        self.run(["git", "-C", directory, "config", "core.longpaths", "true"])
         self.run(["git", "-C", directory, "checkout", "--detach", base])
         target = directory / module_path
         previous = json.loads((target / "manifest.json").read_text(encoding="utf-8")) if (target / "manifest.json").exists() else None

@@ -37,6 +37,16 @@ REGISTRY_DIR = TEMPLATE_ROOT / "data" / "registry"
 # 唯一设计文档：全仓产品与业务口径的来源。
 DESIGN_DOC = "docs/职引-完整设计文档.md"
 AUDIT_DOC_DIR = "docs/测试与优化-袁"
+#: docs/ 下允许存在的**非产品口径**文件。
+#:
+#: 上面那条守卫的本意是"产品与业务口径只有一份"，不是"docs 只许有一个文件"——
+#: 这两条都不属于产品口径，所以是白名单而不是把它们删掉：
+#:   · `docs/issue-assets/` —— issue 复现用的证据截图（随 issue 一起归档的素材）；
+#:   · `docs/Kev-接入与联调说明.md` —— 一个外部意图决策服务的接入说明（压测-佟 交付）。
+DOCS_ALLOWED_EXTRA: tuple[str, ...] = (
+    "docs/issue-assets/",
+    "docs/Kev-接入与联调说明.md",
+)
 
 # 需要做"链接 / 路径引用存在性"检查的文档：本仓全部 markdown 入口。
 CURRENT_DOCS: tuple[str, ...] = (
@@ -165,7 +175,10 @@ def test_single_design_doc_exists() -> None:
     others = sorted(
         path.relative_to(REPO_ROOT).as_posix()
         for path in DOCS_ROOT.rglob("*")
-        if path.is_file() and path != doc and not path.is_relative_to(audit_dir)
+        if path.is_file()
+        and path != doc
+        and not path.is_relative_to(audit_dir)
+        and not path.relative_to(REPO_ROOT).as_posix().startswith(DOCS_ALLOWED_EXTRA)
     )
     assert not others, (
         "docs/ 下出现了唯一设计文档和测试审查目录以外的文件：\n  "

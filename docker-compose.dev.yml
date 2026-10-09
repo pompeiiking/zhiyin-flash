@@ -45,8 +45,13 @@ services:
       - ./deploy:/migration:ro
       - ./zhiyin-src/template:/work/zhiyin-src/template
     environment:
+      # `zhiyin-modules` 必须在里面：合并 tao 分支之后，`module_platform` 会**无条件**
+      # import `zhiyin_modules`（开发者模块平台），少了它后端直接起不来
+      # （`ModuleNotFoundError: No module named 'zhiyin_modules'`）。
+      # 测试能过是因为 pytest 会把 `zhiyin-modules/` 挂进 sys.path；Docker 那条路靠 `pip install .`
+      # 的打包配置；只有这条显式的 PYTHONPATH 需要自己写全。
       PYTHONPATH: >-
-        /work/zhiyin-src/template/zhiyin-kernel:/work/zhiyin-src/template/zhiyin-api:/work/zhiyin-src/template/zhiyin-business:/work/zhiyin-src/template/zhiyin-orchestration:/work/zhiyin-src/template/zhiyin-data-sdk:/work/zhiyin-src/template/zhiyin-infrastructure:/work/zhiyin-src/template/zhiyin-boot
+        /work/zhiyin-src/template/zhiyin-kernel:/work/zhiyin-src/template/zhiyin-api:/work/zhiyin-src/template/zhiyin-business:/work/zhiyin-src/template/zhiyin-orchestration:/work/zhiyin-src/template/zhiyin-data-sdk:/work/zhiyin-src/template/zhiyin-infrastructure:/work/zhiyin-src/template/zhiyin-boot:/work/zhiyin-src/template/zhiyin-modules
     command:
       [
         "python",

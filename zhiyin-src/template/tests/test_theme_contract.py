@@ -162,6 +162,13 @@ _SHADOW_TINT = re.compile(
 LITERAL_EXEMPT_FILES = {
     "components/vendor/vuebits/ClickSpark.vue": "vue-bits 原件：默认值保持与上游一致，调用方（门户）显式传色",
     "components/vendor/vuebits/MagnetLines.vue": "vue-bits 原件：默认值保持与上游一致，调用方（InkField）显式传色",
+    # 开发者模块平台自带的内部页面样式（tao 分支交付）：它自成一套、不参与外观轴。
+    # 不加白名单的话，合并那天这条守卫就会红 —— 而正确的处置是"记下它是例外"，
+    # 不是把 tao 的页面配色按我们的令牌重做（那是设计决策，得走外观轴那一套）。
+    # 待办：若这个页面要面向用户，应当收敛进 tokens.css（见合并说明）。
+    "developer/developer.css": "开发者模块平台内部页面样式：自成一套，不参与外观轴；收敛进令牌是后续项",
+    "modules/ModuleHost.vue": "开发者模块宿主（tao 分支交付）：模块自带样式，同上，不参与外观轴",
+    "views/DeveloperView.vue": "开发者模块平台页面（tao 分支交付）：同上",
 }
 
 _COLOR = re.compile(r"#[0-9a-fA-F]{3,8}\b|\brgba?\([^)]*\)|\bhsla?\([^)]*\)")
