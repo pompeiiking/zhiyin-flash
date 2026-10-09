@@ -29,6 +29,28 @@ async def main(module_id=None, output=None):
     container = build_container(Settings.from_env())
     report = {"passed": False, "gates": [], "assertions": [], "modules": {}, "preview": {}, "dataflow": {}}
     originals, restoration_errors = {}, []
+    # 平台没注册时不要只丢一个 `KeyError`：那样在 CI 日志里**完全看不出为什么**，只能靠猜
+    # （这个 job 从建起来那天就一直红，吃的就是这个亏）。`build_platform` 有两道门 ——
+    # `use_postgres` 与 `facade` 成型（九个服务全非空）—— 这里把两道门和缺的那个服务一起打出来。
+    if "module_platform" not in container.extra:
+        facade_deps = (
+            "identity_service",
+            "registry_service",
+            "orchestrator",
+            "workspace_service",
+            "asset_service",
+            "function_service",
+            "ai_task_service",
+            "note_service",
+            "academic_service",
+        )
+        missing = ", ".join(name for name in facade_deps if getattr(container, name, None) is None)
+        raise RuntimeError(
+            "模块平台未注册：`build_platform` 要求 use_postgres 与 facade 同时成立 —— "
+            f"use_postgres={container.settings.use_postgres}、"
+            f"facade={'已成型' if container.facade is not None else 'None'}、"
+            f"缺失的 facade 依赖={missing or '（一个都不缺）'}"
+        )
     service = container.extra["module_platform"]
     report["revision"] = service.revision
     actor = "dataflow_acceptance"
