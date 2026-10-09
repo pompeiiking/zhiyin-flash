@@ -331,7 +331,21 @@ onBeforeUnmount(() => {
         <HeroMap class="inklayer" :copy="stopCopy" />
       </div>
 
-      <div class="look-mount"><LookTrigger anchor="right" /></div>
+      <!--
+        开发者的第二个入口。
+        账号面板里那颗（`AccountMenu`）只在角色是 developer/admin 时显示，而开发者第一屏
+        通常落在门户 —— 这里再给一个，省得他为了找"组件开发平台"去翻账号面板
+        （这个入口本来就是被问出来的：入口一直有，但找不到）。
+        访客与学生看不到它（同一个角色判据），所以不影响第一屏。
+      -->
+      <div class="look-mount">
+        <RouterLink
+          v-if="session.identity?.role === 'developer' || session.identity?.role === 'admin'"
+          to="/developer"
+          class="dev-entry label"
+        >模块开发工作台 →</RouterLink>
+        <LookTrigger anchor="right" />
+      </div>
 
     </div>
   </ClickSpark>
@@ -430,7 +444,16 @@ onBeforeUnmount(() => {
  * 窄屏不再把它改成 static：它是纸这一层的子元素，static 会让它变成一个网格项，
  * 一页纸就被拆成两行。它落在纸的右上角、字很小，压不到居中的文字列。
  */
-.look-mount { position: absolute; top: var(--s5); right: var(--s7); z-index: 3; }
+.look-mount { position: absolute; top: var(--s5); right: var(--s7); z-index: 3; display: flex; align-items: center; gap: var(--s4); }
+/*
+ * 开发者入口：只有 developer/admin 会渲染（见模板里的 v-if），所以这一行
+ * 对访客与学生完全不存在 —— 不会把"给内部人用的东西"摆到第一屏上。
+ * 悬停仍然按全站规矩 gate 到真的能悬停的设备（触屏上不留悬停色）。
+ */
+.dev-entry { color: var(--ink-2); text-decoration: none; white-space: nowrap; }
+@media (hover: hover) and (pointer: fine) {
+  .dev-entry:hover { color: var(--accent); }
+}
 /*
  * 地图那一栏。
  *
