@@ -67,6 +67,28 @@
           }
         ]
       }
+    },
+    {
+      "code": "decision_routing",
+      "status": "confirmed",
+      "note": "Kev-0.8B 意图分类试点。关键词规则优先；仅 active 且置信度与首选概率同时达标时采用。",
+      "value": {
+        "mode": "active",
+        "confidence_threshold": 0.55,
+        "probability_threshold": 0.7,
+        "max_message_chars": 6000,
+        "instructions": "Classify the user's current career-planning request.",
+        "criteria": {
+          "confused": "No clear career direction; needs exploration.",
+          "verify_direction": "Has a direction and wants to verify whether it fits.",
+          "undecided": "Choosing between multiple career directions.",
+          "how_to_act": "Has a clear goal and requests concrete next steps.",
+          "stuck": "Execution is blocked or has made no progress.",
+          "review_due": "Requests evaluation or adjustment of previous progress.",
+          "free_chat": "General conversation without a specific career-planning intent.",
+          "unclear": "Insufficient information to determine intent."
+        }
+      }
     }
   ]
 }

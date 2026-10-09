@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
-from zhiyin_business.policies.routing import IntentPolicy, StagePolicy
+from zhiyin_business.policies.routing import IntentDecision, IntentPolicy, StagePolicy
 from zhiyin_business.policies.progress import progresses_to, stage_from_progress
 from zhiyin_business.ports.blackboard import BlackboardView
 from zhiyin_business.ports.orchestrator import (
@@ -40,6 +40,17 @@ class KeywordIntentPolicy(IntentPolicy):
         self._registry = registry
 
     async def classify(self, *, message: str, blackboard: BlackboardView) -> IntentType:
+        return (
+            await self.classify_with_decision(message=message, blackboard=blackboard)
+        ).intent
+
+    async def classify_with_decision(
+        self,
+        *,
+        message: str,
+        blackboard: BlackboardView,
+        skip_model: bool = False,
+    ) -> IntentDecision:
         text = (message or "").strip()
         for rule in await self._rules("intent"):
             if not rule.match:
@@ -47,13 +58,25 @@ class KeywordIntentPolicy(IntentPolicy):
             if not any(keyword in text for keyword in rule.match):
                 continue
             try:
-                return IntentType(rule.intent)
+                intent = IntentType(rule.intent)
+                return IntentDecision(
+                    intent=intent,
+                    candidate=intent.value,
+                    source="keyword",
+                    adopted=True,
+                    reason="keyword_match",
+                )
             except ValueError:
                 # 配置里写了不存在的意图：跳过并留痕，不要让一条错配置打断整轮对话。
                 logger.warning(
                     "路由规则 %s 的目标意图不存在：%s（已跳过）", rule.id, rule.intent
                 )
-        return IntentType.FREE_CHAT
+        return IntentDecision(
+            intent=IntentType.FREE_CHAT,
+            source="fallback",
+            adopted=False,
+            reason="no_keyword_match",
+        )
 
     async def _rules(self, kind: str):
         if self._registry is None:

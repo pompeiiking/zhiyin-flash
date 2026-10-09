@@ -7,9 +7,9 @@
 东西（`docker compose build` 自己会把镜像做出来），而不是一个已经把构建结果固化的
 黑盒。
 
-发布件里**不带文档目录**（`docs/`）：部署要用的东西只有两处 —— `README.md`
-说明这套代码怎么跑，`deploy/部署说明.md` 说明怎么上线。设计文档属于研发资产，
-会随代码一起变，跟着每个部署包走只会让包越来越大、还容易与线上版本对不上。
+发布件不整目录携带 `docs/`；只有 Kev 的运维联调说明作为本次运行依赖按文件加入。
+其余设计文档属于研发资产，会随代码一起变，跟着每个部署包走只会让包越来越大、
+还容易与线上版本对不上。
 
 迁移文件的**交付口径是不含用户表**：上线包只带策略、配置与向量，
 新环境起来是一个干净的站。带 `--include-users` 的那一份只在"整机搬家"时用。
@@ -52,7 +52,7 @@ import secrets
 import shutil
 import sys
 import zipfile
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -63,7 +63,10 @@ REQUIRED_FILES: tuple[str, ...] = (
     ".env",
     "Dockerfile",
     "docker-compose.yml",
+    "docker-compose.kev.yml",
     "deploy/migration.json",
+    "scripts/kev_config.py",
+    "scripts/kev_smoke.py",
 )
 
 #: 随包一起走的内容
@@ -73,7 +76,11 @@ TOP_FILES: tuple[str, ...] = (
     ".env",
     "Dockerfile",
     "docker-compose.yml",
+    "docker-compose.kev.yml",
     "README.md",
+    "docs/Kev-接入与联调说明.md",
+    "scripts/kev_config.py",
+    "scripts/kev_smoke.py",
 )
 TOP_DIRS: tuple[str, ...] = (
     "deploy",
@@ -345,7 +352,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--out", type=Path, default=REPO_ROOT / "release", help="输出目录")
     parser.add_argument(
         "--name",
-        default="职引-flash-deploy-" + datetime.now().strftime("%Y%m%d-%H%M"),
+        default="职引-flash-deploy-"
+        + datetime.now(timezone.utc).astimezone().strftime("%Y%m%d-%H%M"),
         help="发布件目录名（zip 同名）",
     )
     args = parser.parse_args(argv)

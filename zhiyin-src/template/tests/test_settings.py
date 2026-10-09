@@ -56,3 +56,16 @@ def test_concurrency_settings_are_configurable(monkeypatch) -> None:
     assert settings.postgres_pool_max_size == 7
     assert settings.run_in_process_background is False
     assert settings.worker_interval_s == 15.0
+
+
+def test_decision_settings_come_from_environment(monkeypatch, tmp_path) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("ZHIYIN_DECISION_BASE_URL", "http://kev.local:8009")
+    monkeypatch.setenv("ZHIYIN_DECISION_MODEL", "kev-latest")
+    monkeypatch.setenv("ZHIYIN_DECISION_TIMEOUT_S", "10")
+
+    settings = Settings.from_env()
+
+    assert settings.decision_base_url == "http://kev.local:8009"
+    assert settings.decision_model == "kev-latest"
+    assert settings.decision_timeout_s == 10.0

@@ -70,6 +70,7 @@ class Container:
     external_data: Any
     chsi: Any
     academic: Any = None
+    decision: Any = None
     # ---- Repositories ----
     profiles: Optional[Any] = None
     behaviors: Optional[Any] = None

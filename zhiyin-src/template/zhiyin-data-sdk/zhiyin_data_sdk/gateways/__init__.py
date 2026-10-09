@@ -27,6 +27,14 @@ from zhiyin_data_sdk.gateways.datasource import (
     DataSourceRequest,
     DataSourceResult,
 )
+from zhiyin_data_sdk.gateways.decision import (
+    DecisionChoiceAnswer,
+    DecisionChoiceQuestion,
+    DecisionGateway,
+    DecisionGatewayError,
+    DecisionRequest,
+    DecisionResult,
+)
 from zhiyin_data_sdk.gateways.academic import (
     AcademicImportError,
     AcademicImportGateway,
@@ -67,6 +75,12 @@ __all__ = [
     "DataSourceRecord",
     "DataSourceRequest",
     "DataSourceResult",
+    "DecisionChoiceAnswer",
+    "DecisionChoiceQuestion",
+    "DecisionGateway",
+    "DecisionGatewayError",
+    "DecisionRequest",
+    "DecisionResult",
     "EmbedGateway",
     "FeatureFlagGateway",
     "KnowledgeGateway",

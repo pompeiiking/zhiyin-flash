@@ -82,6 +82,26 @@ async def test_feature_flags_come_from_dynamic_resource(settings: Settings) -> N
     assert "mentor" in flags
 
 
+@pytest.mark.asyncio
+async def test_decision_gateway_is_optional_and_closable(settings: Settings) -> None:
+    without = build_container(settings)
+    assert without.decision is None
+
+    configured = build_container(
+        Settings(
+            **{
+                **settings.__dict__,
+                "decision_base_url": "http://kev.local:8009",
+                "decision_model": "kev-latest",
+                "decision_timeout_s": 10.0,
+            }
+        )
+    )
+    assert configured.decision is not None
+    assert configured.decision in configured.extra["closables"]
+    await configured.decision.aclose()
+
+
 def test_assembly_report_marks_pending_services(settings: Settings) -> None:
     container = build_container(settings)
     report = describe_assembly(container)

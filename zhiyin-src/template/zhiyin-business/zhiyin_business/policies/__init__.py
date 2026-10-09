@@ -38,7 +38,11 @@ from zhiyin_business.policies.handoff import HandoffPolicy
 from zhiyin_business.policies.impact import ImpactPolicy
 from zhiyin_business.policies.intel_query import intel_topic
 from zhiyin_business.policies.intervention import InterventionPolicy
-from zhiyin_business.policies.routing import IntentPolicy, StagePolicy
+from zhiyin_business.policies.routing import IntentDecision, IntentPolicy, StagePolicy
+from zhiyin_business.policies.decision_routing import (
+    DecisionRoutingConfig,
+    DecisionRoutingPolicy,
+)
 from zhiyin_business.policies.teaming import LeadPolicy
 from zhiyin_business.policies.handoff_rules import DisclosureHandoffPolicy
 from zhiyin_business.policies.impact_rules import DependencyImpactPolicy
@@ -51,6 +55,9 @@ __all__ = [
     "ImpactPolicy",
     "intel_topic",
     "IntentPolicy",
+    "IntentDecision",
+    "DecisionRoutingConfig",
+    "DecisionRoutingPolicy",
     "InterventionPolicy",
     "LeadPolicy",
     "StagePolicy",

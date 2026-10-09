@@ -145,6 +145,10 @@ class Settings:
     #: 两者都是 OpenAI 兼容协议，差别只在默认地址与署名 ——
     #: 但"现在到底用哪个"必须能一眼看出来，不能靠 base_url 猜。
     embedding_provider: str = "doubao"
+    # ---------- 可选决策模型 ----------
+    decision_base_url: str = ""
+    decision_model: str = "kev-latest"
+    decision_timeout_s: float = 10.0
 
     # ---------- 学职平台 ----------
     xuezhi_base_url: str = "https://xz.chsi.com.cn"
@@ -224,6 +228,9 @@ class Settings:
                 "ZHIYIN_EMBEDDING_MODEL", "doubao-embedding-text-240715"
             ),
             embedding_provider=_env("ZHIYIN_EMBEDDING_PROVIDER", "doubao"),
+            decision_base_url=_env("ZHIYIN_DECISION_BASE_URL"),
+            decision_model=_env("ZHIYIN_DECISION_MODEL", "kev-latest"),
+            decision_timeout_s=_env_float("ZHIYIN_DECISION_TIMEOUT_S", 10.0),
             xuezhi_base_url=_env(
                 "ZHIYIN_XUEZHI_BASE_URL", "https://xz.chsi.com.cn"
             ),

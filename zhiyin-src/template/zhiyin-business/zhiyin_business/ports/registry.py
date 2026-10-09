@@ -116,6 +116,10 @@ class RegistryService(ABC):
         """
 
     @abstractmethod
+    async def get_decision_routing_policy(self) -> dict[str, Any]:
+        """Kev 意图路由参数；缺失或格式错误时返回空字典（即关闭）。"""
+
+    @abstractmethod
     async def get_agent(self, agent_id: str) -> Optional[AgentDescriptor]:
         """读取智能体描述，用于把 `agent_id` 翻成展示名。
 

@@ -105,6 +105,17 @@ class DefaultRegistryService(RegistryService):
             return {}
         return dict(params.value)
 
+    async def get_decision_routing_policy(self) -> dict:
+        """读取 Kev 意图路由参数；未定稿或形状错误时按关闭处理。"""
+        params = await self._registry.get_policy_params("decision_routing")
+        if (
+            params is None
+            or params.status != "confirmed"
+            or not isinstance(params.value, dict)
+        ):
+            return {}
+        return dict(params.value)
+
     async def get_copy_bundle(self, bundle: str = "zh-CN") -> dict[str, str]:
         return await self._registry.get_copy_bundle(bundle)
 
