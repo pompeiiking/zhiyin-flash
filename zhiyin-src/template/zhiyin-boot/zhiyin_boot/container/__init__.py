@@ -258,7 +258,16 @@ def wire_application(container: Optional[Container] = None) -> Any:
             await load_snapshot(container.registry_service)
 
         scheduler = container.scheduler
-        if container.settings.run_in_process_background:
+        # 后台 worker 的开关是"**两个都要同意**"：先看配置项，再看 tao 分支带来的
+        # `ZHIYIN_RUN_BACKGROUND_WORKERS`（CI 与部署脚本都在用它）。
+        # 合并时我一度只留了配置项 —— 那会让 CI 里那句 `=0` 静默失效：
+        # 配置项读的是 `ZHIYIN_RUN_IN_PROCESS_BACKGROUND`，跟这个变量名不是一回事。
+        import os
+
+        run_background = container.settings.run_in_process_background and (
+            os.environ.get("ZHIYIN_RUN_BACKGROUND_WORKERS", "1") == "1"
+        )
+        if run_background:
             event_bus = container.event_bus
             start_event_polling = getattr(event_bus, "start_polling", None)
             if callable(start_event_polling):
@@ -290,7 +299,7 @@ def wire_application(container: Optional[Container] = None) -> Any:
             for task in tasks:
                 with contextlib.suppress(asyncio.CancelledError, Exception):
                     await task
-            if container.settings.run_in_process_background:
+            if run_background:
                 stop_polling = getattr(scheduler, "stop_polling", None)
                 if callable(stop_polling):
                     await stop_polling()

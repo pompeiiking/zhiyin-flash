@@ -110,6 +110,12 @@ jobs:
       ZHIYIN_DATAFLOW_ISOLATED: "1"
       ZHIYIN_RUN_BACKGROUND_WORKERS: "0"
       ZHIYIN_AUTH_JWT_SECRET: ci-isolated-auth-secret-not-for-production
+      # 平台装配走的是"有真模型"那条路：没有它，按 `container/services.py` 里
+      # 「宁可明确地没有 AI」的设计，智能体引擎与编排器**不装配** → facade 建不出来
+      # → 模块平台不注册 → 这个 job 从建起来那天就跑不起来（一直是红的）。
+      # 这里给的是**占位密钥**：本 job 只跑模块数据流，一次模型调用都没有。
+      ZHIYIN_USE_REMOTE_LLM: "1"
+      ZHIYIN_LLM_API_KEY: ci-assembly-only-placeholder-not-a-real-key
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

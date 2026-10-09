@@ -1,7 +1,12 @@
 """Mandatory real-data gates for every candidate module, including disabled ones.
 
 Run only against a disposable candidate PostgreSQL/Redis environment. No model
-credentials are needed. The executor must discard that environment afterwards.
+**call** is made anywhere in this script — but the container still has to be
+*assembled*, and that path needs a configured model: without one the orchestrator
+is deliberately not built (see the "no mock" note in `container/services.py`),
+so the facade and the module platform are not registered either. CI therefore
+sets `ZHIYIN_USE_REMOTE_LLM=1` with a placeholder key. The executor must discard
+that environment afterwards.
 """
 from __future__ import annotations
 
