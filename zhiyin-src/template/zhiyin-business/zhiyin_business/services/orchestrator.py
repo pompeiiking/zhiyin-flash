@@ -641,7 +641,8 @@ class DefaultOrchestrator(Orchestrator):
             item.kind.startswith("module.") for item in validate_renderables(result.renderables)
         )
         changed_assets = [] if module_query else await self._persist_stage_output(
-            stage, request.user_id, structured, valid=result.valid
+            stage, request.user_id, structured, valid=result.valid,
+            session_id=request.task_id,
         )
         # 这一轮真的把一份"待重算"的资产重算掉了 → **必须显式告知**（结论变化），
         # 否则用户手上那份旧结论被换掉而他不知道。这是设计里三种告知中的一种，
@@ -929,6 +930,7 @@ class DefaultOrchestrator(Orchestrator):
         structured: dict[str, Any],
         *,
         valid: bool,
+        session_id: str | None = None,
     ) -> list[AssetVersion]:
         """把合规的环节产出落成资产正文，返回本轮变化的资产版本。
 
@@ -942,6 +944,14 @@ class DefaultOrchestrator(Orchestrator):
         复盘产的是跟踪事件（走 FunctionService），都不该在这里顺手造一个空资产。
         """
         if not valid or not structured:
+            return []
+
+        # ⑤ 复盘本身不产资产（它产的是跟踪事件），但它**可以改计划**：
+        # 复盘里说"周六删掉"，就得真的从行动计划里删掉（实测 ZY-05：
+        # 话改了、资产没改，用户第二天看到的还是旧计划）。
+        if stage is LoopStage.REVIEW:
+            await self._apply_review_plan_patch(user_id, structured)
+            await self._complete_round(session_id)
             return []
 
         converters = {
@@ -1261,6 +1271,65 @@ class DefaultOrchestrator(Orchestrator):
             diff_from_previous=f"③ 决策产出：{len(plans)} 套方向方案",
         )
         return [version]
+
+    async def _apply_review_plan_patch(
+        self, user_id: str, structured: dict[str, Any]
+    ) -> None:
+        """把复盘给出的结构化调整真正落到行动计划上（实测 ZY-05）。
+
+        只在复盘明确给出 `plan_patch` 且确实命中时才写：
+        没给、或给了但对不上任何一条任务，就什么都不做 —— 宁可不动，
+        也不要凭空造一次"已按复盘调整"的假象。
+        落库失败只记日志：用户这一轮的话已经答完了。
+
+        仅此一处会以「⑤ 复盘校准」为差异说明升版；单纯的"做完了"不升版。
+        """
+        from zhiyin_business.contracts.review import ReviewOutput
+        from zhiyin_business.services.plan_patch import apply_plan_patch
+
+        try:
+            output = ReviewOutput.model_validate(structured)
+        except Exception:
+            logger.warning("复盘产出无法按契约解析，跳过计划调整", exc_info=True)
+            return
+        if output.plan_patch is None:
+            return
+        plan = await self._assets.get_action_plan(user_id)
+        if plan is None:
+            logger.info("复盘要求调整计划，但当前没有行动计划，未落库")
+            return
+
+        updated, summary = apply_plan_patch(plan, output.plan_patch)
+        if not summary:
+            logger.info("复盘给出的计划调整没有命中任何任务，未落库")
+            return
+        try:
+            await self._assets.save_action_plan(
+                user_id,
+                updated,
+                diff_from_previous="⑤ 复盘校准：" + "；".join(summary[:3]),
+            )
+        except Exception:
+            logger.warning("复盘的计划调整没落库", exc_info=True)
+            return
+        logger.info("复盘校准已落到计划：%s", "；".join(summary))
+
+    async def _complete_round(self, session_id: str | None) -> None:
+        """复盘走完 → 给这一轮一个明确的结束边界（实测 ZY-12）。
+
+        原本：五阶段都走完了，页面上仍写着"⑤ 复盘校准 进行中"，系统继续生成微任务，
+        用户得自己判断什么时候可以停。
+
+        状态本来就存在（`TaskStatus.COMPLETED` 与 `update_status`），
+        缺的只是"复盘完成时把它标上"。标记的是**这一轮**的结束：
+        长期陪伴仍然有效，用户随时能开新的一段，所以页面上说的是"本轮完成"。
+        """
+        if not session_id:
+            return
+        try:
+            await self._sessions.update_status(session_id, TaskStatus.COMPLETED)
+        except Exception:
+            logger.warning("复盘完成，但会话状态没更新", exc_info=True)
 
     async def _save_action_plan(
         self, user_id: str, structured: dict[str, Any]
@@ -1665,7 +1734,7 @@ def _replace_task_ids_in_prose(value: Any, task_labels: dict[str, str]) -> Any:
     """复盘正文用任务文字称呼已登记任务，保留结构中的机器 ID。"""
     if isinstance(value, dict):
         return {
-            key: item if key in {"id", "task_id", "option_id", "achievements_unlocked"}
+            key: item if key in {"id", "task_id", "option_id", "achievements_unlocked", "plan_patch"}
             else _replace_task_ids_in_prose(item, task_labels)
             for key, item in value.items()
         }

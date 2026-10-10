@@ -19,7 +19,9 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from datetime import datetime, timezone
+from hashlib import sha1
 from typing import Any
 from uuid import uuid4
 
@@ -113,22 +115,30 @@ def action_plan_from_act(
 
     `phases` 在两侧是同一个内核类型（`ActionPhase`），直接搬。
     """
-    # 给每条任务分配稳定 id：勾选 / 取消按 id 定位，同一阶段里的同名任务不会互相顶掉。
-    phases = [
-        phase.model_copy(
-            update={
-                "tasks": [
-                    task.model_copy(update={"id": task.id or _new_id("task")})
-                    for task in phase.tasks
-                ]
-            }
-        )
-        for phase in output.phases
-    ]
+    # 给每条任务分配**稳定** id：「阶段名:任务文本」。
+    #
+    # 为什么随机 id 不行（实测 ZY-04 / ZY-03）：计划每轮都会重算，随机 id 一变，
+    # 昨天勾掉的任务今天就变成"另一条没做的任务"，完成状态无从继承，
+    # 页面于是永远显示 0/11。前端勾选也按同一个键回传
+    # （`mappers.action_plan_view` 用的就是这个口径），两边必须一致。
+    occurrences: Counter[tuple[str, str]] = Counter()
+    phases = []
+    for phase in output.phases:
+        tasks = []
+        for task in phase.tasks:
+            key = (phase.name.strip(), task.text.strip())
+            occurrence = occurrences[key]
+            occurrences[key] += 1
+            tasks.append(task.model_copy(update={
+                "id": task.id or _stable_task_id(*key, occurrence)
+            }))
+        phases.append(phase.model_copy(update={"tasks": tasks}))
     plan = ActionPlan(id=_new_id("act"), plan_id="", phases=phases)
+    # 日历节点 id 同样稳定：同一个提醒重算后落在同一个 id 上，写入即替换。
+    # 随机 id 的后果实测过（ZY-06）：单账号攒出 57 个节点，其中 24 个标题重复。
     nodes = [
         CalendarNode(
-            node_id=_new_id("cal"),
+            node_id=_stable_node_id(user_id, item.title),
             user_id=user_id,
             title=item.title,
             due_at=item.due_at,
@@ -138,6 +148,24 @@ def action_plan_from_act(
         for item in output.reminders
     ]
     return plan, nodes
+
+
+def _stable_task_id(phase_name: str, text: str, occurrence: int) -> str:
+    """任务的稳定 id。
+
+    后缀由阶段名、任务文本和同名任务的出现次数决定。
+    其他任务的插入、删除和重排不影响它；同名任务仍有各自的 id。
+    """
+    return "task_" + _digest(f"{phase_name}:{text}:{occurrence}")
+
+
+def _stable_node_id(user_id: str, title: str) -> str:
+    """日历节点的稳定 id：同一用户的同一提醒，重算后落在同一个节点上（写入即替换）。"""
+    return "cal_" + _digest(f"{(user_id or '').strip()}:{(title or '').strip()}")
+
+
+def _digest(text: str) -> str:
+    return sha1(text.encode("utf-8")).hexdigest()[:12]
 
 
 def _dedupe(values: Any) -> list[str]:

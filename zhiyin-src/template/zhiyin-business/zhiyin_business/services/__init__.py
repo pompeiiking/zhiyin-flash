@@ -28,6 +28,7 @@
 | AI 任务服务 | `ai_tasks.py` | `AiTaskService` | 画像 / 行为 / 资产 Port | P0 | 已交付 |
 | Asset 服务 | `asset.py` | `DefaultAssetService` | AssetRepository、EventBus + `policies/impact.py` | P0 | 已交付 |
 | 环节产出 → 资产正文 | `asset_content.py` | `report_from_diagnose` / `direction_plans_from_decide` / `action_plan_from_act` | 内核资产模型 | P0 | 已交付 |
+| 复盘 → 计划调整 | `plan_patch.py` | `apply_plan_patch` | 复盘产出的 `PlanPatch` + 内核资产模型 | P1 | 已交付 |
 | Workspace 服务 | `workspace.py` | `DefaultWorkspaceService` | 读侧聚合（Profile / Asset / Memory） | P1 | 已交付 |
 | Function 服务 | `function.py` | `DefaultFunctionService` | ObjectStore、日历 | P1 | 已交付 |
 | Identity 服务 | `identity.py` | `DefaultIdentityService` | AuthGateway、UserRepository | P0 | 已交付 |

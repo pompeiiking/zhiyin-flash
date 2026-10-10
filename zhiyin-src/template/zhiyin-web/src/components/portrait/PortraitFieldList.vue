@@ -373,7 +373,7 @@ watch(editingKey, async (key) => {
               <template v-if="judging">
                 <span class="row__num">{{ item.confidence.toFixed(2) }}</span>
                 <span class="row__track" aria-hidden="true">
-                  <i :style="{ width: `${Math.max(6, Math.round(item.confidence * 100))}%` }" />
+                  <i :style="{ width: `${Math.max(6, Math.min(100, Math.round(item.confidence * 100)))}%` }" />
                 </span>
                 <span class="row__meta">{{ item.evidenceCount }} 条依据 · {{ day(item.updatedAt) }}</span>
               </template>

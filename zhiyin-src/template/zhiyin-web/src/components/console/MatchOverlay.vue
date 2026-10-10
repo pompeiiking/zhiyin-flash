@@ -88,7 +88,7 @@ function decide(kind: 'accept' | 'dismiss') {
                 <li v-for="(r, i) in (data as MatchResult).ranking" :key="r.track">
                   <span class="rank__n mono">{{ i + 1 }}</span>
                   <span class="rank__name">{{ r.track }}</span>
-                  <span class="rank__bar"><i :style="{ width: `${Math.round(r.fit * 100)}%` }" /></span>
+                  <span class="rank__bar"><i :style="{ width: `${Math.round(Math.min(100, Math.max(0, r.fit * 100)))}%` }" /></span>
                   <span class="rank__fit mono">{{ r.fit.toFixed(2) }}</span>
                   <span class="rank__gap">{{ r.gap }}</span>
                 </li>

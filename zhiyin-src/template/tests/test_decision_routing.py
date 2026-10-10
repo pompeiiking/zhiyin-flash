@@ -170,6 +170,103 @@ async def test_keyword_and_explicit_option_skip_kev() -> None:
 
 
 @pytest.mark.asyncio
+async def test_explicit_option_is_not_hijacked_by_its_own_wording() -> None:
+    """明确选项的展示文案里带关键词，也不能被关键词抢走。
+
+    实测（ZY-02）原样：选项「上线限三天，卡住就先往下走」里的"卡住"被关键词命中，
+    结果行动一件都没做就跳进了复盘。展示文案是给用户读的，不是路由输入 ——
+    明确选项 / 结构化动作的意图优先于关键词与 Kev。
+    """
+    gateway = FakeGateway()
+    hijacked = await _policy(gateway, fallback=KeywordPolicy()).classify_with_decision(
+        message="上线限三天，卡住就先往下走", blackboard=_board(), skip_model=True
+    )
+    assert hijacked.reason == "explicit_option"
+    assert hijacked.intent is not IntentType.STUCK
+    assert gateway.calls == 0
+
+
+class CalibratedRegistry(FakeRegistry):
+    """按"校准后"的配置返回 —— 用来证明新旋钮真的能改变采用结果。"""
+
+    def __init__(self, **overrides) -> None:
+        super().__init__()
+        self._overrides = overrides
+
+    async def get_decision_routing_policy(self) -> dict:
+        config = await super().get_decision_routing_policy()
+        config.update(self._overrides)
+        return config
+
+
+@pytest.mark.asyncio
+async def test_per_intent_threshold_can_adopt_where_the_global_one_would_not() -> None:
+    """全局阈值挡掉的候选，给该意图一档专属阈值后可以采用（ZY-01 的机制）。"""
+    gateway = FakeGateway(choice="review_due", confidence=0.46, probability=0.53)
+
+    blocked = await _policy(
+        FakeGateway(choice="review_due", confidence=0.46, probability=0.53)
+    ).classify_with_decision(message="请复盘这两周", blackboard=_board())
+    assert blocked.adopted is False and blocked.reason == "confidence_below_threshold"
+
+    adopted = await _policy(
+        gateway,
+        registry=CalibratedRegistry(
+            confidence_thresholds={"review_due": 0.40},
+            probability_thresholds={"review_due": 0.50},
+        ),
+    ).classify_with_decision(message="请复盘这两周", blackboard=_board())
+    assert adopted.adopted is True and adopted.intent is IntentType.REVIEW_DUE
+
+
+@pytest.mark.asyncio
+async def test_stage_prior_admits_the_expected_intent_at_a_lower_bar() -> None:
+    """候选与当前环节的预期意图一致时，可用更低的门槛 —— 报告里 how_to_act 的实测值。"""
+    gateway = FakeGateway(choice="how_to_act", confidence=0.1674, probability=0.2715)
+
+    blocked = await _policy(
+        FakeGateway(choice="how_to_act", confidence=0.1674, probability=0.2715)
+    ).classify_with_decision(message="接下来两周怎么安排", blackboard=_board())
+    assert blocked.adopted is False
+
+    board = BlackboardView(user_id="u1", task_id="t1", current_stage=LoopStage.ACT)
+    adopted = await _policy(
+        gateway,
+        registry=CalibratedRegistry(
+            stage_prior={"act": "how_to_act"},
+            stage_prior_confidence=0.15,
+            stage_prior_probability=0.25,
+        ),
+    ).classify_with_decision(message="接下来两周怎么安排", blackboard=board)
+    assert adopted.adopted is True and adopted.intent is IntentType.HOW_TO_ACT
+
+
+@pytest.mark.asyncio
+async def test_top2_margin_rejects_a_close_call() -> None:
+    """两个候选贴得很近时不当成确定判断（间距默认 0，不配置就不启用）。"""
+    gateway = FakeGateway(choice="review_due", confidence=0.6, probability=0.3)
+
+    adopted_by_default = await _policy(
+        FakeGateway(choice="review_due", confidence=0.6, probability=0.3),
+        registry=CalibratedRegistry(
+            confidence_thresholds={"review_due": 0.5},
+            probability_thresholds={"review_due": 0.2},
+        ),
+    ).classify_with_decision(message="看看进展", blackboard=_board())
+    assert adopted_by_default.adopted is True
+
+    rejected = await _policy(
+        gateway,
+        registry=CalibratedRegistry(
+            confidence_thresholds={"review_due": 0.5},
+            probability_thresholds={"review_due": 0.2},
+            top2_margin=0.25,
+        ),
+    ).classify_with_decision(message="看看进展", blackboard=_board())
+    assert rejected.adopted is False and rejected.reason == "top2_margin_too_small"
+
+
+@pytest.mark.asyncio
 async def test_shadow_unclear_disabled_too_long_and_failure_fall_back() -> None:
     gateway = FakeGateway()
     shadow = await _policy(

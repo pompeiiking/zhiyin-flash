@@ -115,7 +115,7 @@ const at = (value?: string | null) => (value ? value.slice(0, 16).replace('T', '
               <span class="label row__lead">{{ item.lead_agent_name || '—' }}</span>
               <span class="mono row__at">{{ at(item.last_active_at) }}</span>
               <span class="mono row__bar" aria-hidden="true">
-                <i :style="{ width: `${Math.round((item.progress ?? 0) * 100)}%` }" />
+                <i :style="{ width: `${Math.round(Math.min(100, Math.max(0, (item.progress ?? 0) * 100)))}%` }" />
               </span>
               <span class="label row__status">{{ STATUS_LABEL[item.status ?? ''] ?? item.status }}</span>
               <span v-if="item.task_id === currentTaskId" class="label row__cur">当前</span>
