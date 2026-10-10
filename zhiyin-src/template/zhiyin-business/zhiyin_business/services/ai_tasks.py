@@ -10,7 +10,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from datetime import date, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, AsyncIterator, Optional
 
 from pydantic import BaseModel
@@ -26,6 +26,7 @@ from zhiyin_business.contracts.ai_tasks import (
     DimensionReading,
     GapClarify,
     MatchResult,
+    MatchDraft,
     ProfileLift,
     PortraitAnalysis,
     ReportSummary,
@@ -38,6 +39,9 @@ from zhiyin_business.ports.blackboard import (
     ProfileService,
 )
 from zhiyin_business.policies.collection import filled_by, plan_collection
+from zhiyin_business.policies.career_match import ground_match, METHOD
+from zhiyin_business.policies.intel_query import intel_topic
+from zhiyin_business.contracts.common import BehaviorEventDraft
 from zhiyin_data_sdk.gateways.chsi import (
     ChsiVerificationGateway,
     ChsiVerifyError,
@@ -47,8 +51,9 @@ from zhiyin_data_sdk.errors import MissingConfigError
 from zhiyin_data_sdk.repositories import AiTaskResultRepository
 from zhiyin_kernel import dynamic_config
 from zhiyin_kernel.blackboard import Profile
-from zhiyin_kernel.enums import ProfileSource
-from zhiyin_kernel.errors import ResourceNotFound
+from zhiyin_kernel.assets import ActionPlan, ActionPhase, ActionTask
+from zhiyin_kernel.enums import ProfileSource, BehaviorEventType
+from zhiyin_kernel.errors import ResourceNotFound, InvalidRequest
 from zhiyin_orchestration import AgentEngine, AgentRequest
 
 _log = logging.getLogger(__name__)
@@ -67,8 +72,8 @@ _TASK_SPECS: dict[str, tuple[str, str, type[BaseModel], bool]] = {
     "report.summary": ("career_advisor", "task.report.summary", ReportSummary, False),
     "plan.timetable": ("path_planner", "task.plan.timetable", TimetablePlan, False),
     "plan.todos": ("career_advisor", "task.plan.todos", TodoSuggestions, False),
-    # 方向匹配要自己去取职业要求，所以它是唯一挂工具的生成类任务
-    "match.careers": ("career_advisor", "task.match.careers", MatchResult, True),
+    # 方向匹配由服务先取职业原文，模型只挑选引用；服务端再核验证据。
+    "match.careers": ("career_advisor", "task.match.careers", MatchDraft, False),
     # bind.chsi / bind.academic 不在这张表里：它们是数据链路（核验 → 解析 → 写画像 → 回执），
     # 回执里的每一步都必须与真实结果逐项一致，交给模型生成只会引入不一致。
 }
@@ -125,8 +130,8 @@ _TASK_INPUTS: dict[str, tuple[str, ...]] = {
         "asset_state_changed",
         "note_changed",
     ),
-    # 职业匹配：画像（外网那一半每次现取，不进缓存键）
-    "match.careers": ("profile_field_updated",),
+    # 职业匹配：画像、课程成绩变更时作废；外部原文按 15 分钟有效期重取。
+    "match.careers": ("profile_field_updated", "academic_changed"),
 }
 
 # 画像来源 → 给模型看的说法。模型要引用来源，但读不懂 `behavior_inference` 这种键。
@@ -422,6 +427,8 @@ class AiTaskService:
         started = time.perf_counter()
         head = key.split(".")[0]
         cache_key = f"{key}.{arg}" if arg else key
+        if key == "match.careers":
+            cache_key = "match.careers.evidence-v1"
         cacheable = head not in _SIDE_EFFECTING_HEADS
 
         if cacheable:
@@ -445,7 +452,7 @@ class AiTaskService:
             return
         elapsed_ms = int((time.perf_counter() - started) * 1000)
         envelope.meta.ms = elapsed_ms
-        envelope.meta.at = ""
+        envelope.meta.at = datetime.now(timezone.utc).isoformat() if key == "match.careers" else ""
         if cacheable:
             await self._store_cached(user_id, cache_key, envelope)
         yield {"result": envelope}
@@ -492,6 +499,10 @@ class AiTaskService:
             return None
         try:
             envelope = AiResultEnvelope.model_validate(payload)
+            if cache_key == "match.careers.evidence-v1":
+                MatchResult.model_validate(envelope.data)
+                if datetime.now(timezone.utc) - datetime.fromisoformat(envelope.meta.at) > timedelta(minutes=15):
+                    return None
         except Exception:  # noqa: BLE001
             # 存坏的一条（老版本形状）不该让这个任务永久失败：当作没缓存，重算一次。
             _log.warning("AI 任务缓存形状不兼容，已忽略：key=%s", cache_key)
@@ -1122,69 +1133,87 @@ class AiTaskService:
         return envelope
 
     async def _match(self, user_id: str, profile: Optional[Profile], arg: str, *, by: str) -> AiResultEnvelope:
-        """方向匹配：拿**外部职业要求**比**他实际具备什么**。
-
-        这里原来有一份手写的需求矩阵（都是编的数），后来改成"只说明缺什么"。
-        现在两头都有真来源了：职业要求由这个任务**自己调工具**从学职平台取，
-        课程与成绩从导入的快照里读。所以它真的可以给出匹配 —— 前提是输入齐。
-
-        输入不齐时仍然不给分：硬约束写在提示词里，模型只被允许在数据上做比较。
-        """
+        # 外部事实由服务主动取回，不能依赖模型是否愿意调用工具。
+        fields = list(profile.fields) if profile else []
+        sources = []
+        if self._functions is not None:
+            try:
+                items = await self._functions.fetch_external_intel(user_id, topic=intel_topic(fields), limit=12)
+                sources = [item.model_dump(mode="json") for item in items
+                           if item.kind == "occupation" and item.text and item.source_url and item.fetched_at]
+            except Exception:
+                _log.warning("方向匹配未取得外部事实", exc_info=True)
+        evidence = {}
+        citations = [Citation(source=item["title"], detail=item["source_url"] + "\n" + item["text"],
+                              at=item["fetched_at"], origin="xuezhi", confidence=1.0)
+                     for item in sources]
+        for field in fields:
+            if (field.key not in {"skills", "experience"} or field.confidence < 0.45
+                    or field.source == ProfileSource.BEHAVIOR_INFERENCE):
+                continue
+            ref = "profile:" + field.key
+            evidence[ref] = {"text": f"{field.label or field.key}：{field.value}", "kind": "reported"}
+            citations.append(Citation(source=field.label or field.key, detail=evidence[ref]["text"],
+                                      at=field.updated_at.isoformat(), confidence=field.confidence,
+                                      origin=field.source.value))
         snapshot = None
         if self._academic_records is not None:
             try:
                 snapshot = await self._academic_records.get(user_id)
             except Exception:
-                _log.exception("读取导入的课表与成绩失败：匹配按没有成绩处理")
-                snapshot = None
-        grades = list(getattr(snapshot, "grades", []) or [])
-        courses = list(getattr(snapshot, "courses", []) or [])
+                _log.warning("方向匹配未取得课程成绩", exc_info=True)
+        for kind in ("courses", "grades"):
+            for index, record in enumerate(getattr(snapshot, kind, []) or []):
+                text = f"课程：{record.name}"
+                if kind == "grades":
+                    text += f"；成绩：{record.score}（课程成绩，不是职业能力分）"
+                evidence[f"{kind}:{index}"] = {"text": text, "kind": "studied"}
+                citations.append(Citation(source="导入的课程与成绩", detail=text, origin="academic",
+                                          at=snapshot.imported_at.isoformat(), confidence=1.0))
+        draft = MatchDraft()
+        if sources:
+            import json
 
-        citations = [
-            Citation(
-                source="职业能力要求",
-                detail="由这次匹配自己从学职平台取（见工具调用记录）",
-                confidence=1.0,
-                origin="xuezhi",
-            ),
-            Citation(
-                source="你的课程与成绩",
-                detail=(
-                    f"已导入：{len(grades)} 门成绩"
-                    if grades
-                    else "未导入：数据在教务系统，导出后导入即可"
-                ),
-                confidence=1.0,
-                origin="academic",
-            ),
-        ]
-        context = self._context(
-            ("我已经知道的", self._profile_lines(profile)),
-            (
-                "他修过的课",
-                [
-                    f"{getattr(c, 'name', '')}（{getattr(c, 'credit', '')} 学分）"
-                    for c in courses
-                ],
-            ),
-            (
-                "他的成绩",
-                [
-                    f"{getattr(g, 'name', '')}：{getattr(g, 'score', '')}"
-                    for g in grades
-                ],
-            ),
+            context = json.dumps({"职业原文": sources, "学生证据": evidence,
+                                  "已知学生情况": self._profile_lines(profile)}, ensure_ascii=False)
+            envelope = await self._generate(user_id, "match.careers", context_text=context,
+                                            citations=citations, rationale=METHOD)
+            draft = MatchDraft.model_validate(envelope.data)
+        result = ground_match(draft, sources, evidence)
+        return self._envelope(result, citations, by, METHOD)
+
+    async def accept_match(self, user_id: str, recommendation_id: str) -> ActionPlan:
+        """只采纳服务端保存的当前推荐，重复提交复用稳定任务编号。"""
+        cached = await self._load_cached(user_id, "match.careers.evidence-v1")
+        if cached is None:
+            raise InvalidRequest("这条推荐已经更新，请重新打开匹配页后再采纳。")
+        result = MatchResult.model_validate(cached.data)
+        if result.recommendation_id != recommendation_id or not result.actions:
+            raise InvalidRequest("这条推荐已经更新，请重新打开匹配页后再采纳。")
+        tasks = [ActionTask(id=f"match_{recommendation_id}_{index}", text=text)
+                 for index, text in enumerate(result.actions)]
+        profile = await self._profiles.get(user_id)
+        _, changed = await self._assets.append_action_phase(
+            user_id, ActionPhase(name="就业指导推荐", date_range="时间待安排", tasks=tasks),
+            plan_id=f"ap_match_{recommendation_id}",
+            depends_on_profile_keys=[f.key for f in profile.fields] if profile else [],
         )
-        return await self._generate(
-            user_id,
-            "match.careers",
-            context_text=context,
-            citations=citations,
-            rationale=(
-                "匹配 = 外部职业要求 × 他的实际能力。职业要求由本任务自己取；"
-                "任何一项输入缺失就不给分 —— 编出来的契合度会被当成依据用。"
-            ),
-        )
+        # 从落库结果回读，才能告诉用户这件事真的进入了计划。
+        saved = await self._assets.get_action_plan(user_id)
+        if saved is None:
+            raise InvalidRequest("这次任务没有保存成功，请稍后重新采纳。")
+        if changed and self._behaviors is not None:
+            try:
+                await self._behaviors.log(user_id, BehaviorEventDraft(
+                    event_type=BehaviorEventType.DECISION_SELECT,
+                    payload={"recommendation_id": recommendation_id,
+                             "directions": [row.track for row in result.ranking],
+                             "task_ids": [task.id for task in tasks]},
+                ))
+            except Exception:
+                _log.warning("推荐任务已保存，但采纳行为日志未写入", exc_info=True)
+        return saved
+
 
 
 """节次 → 钟点。不同学校作息不同，所以只给一个**通用**区间，用于读起来像人话。"""

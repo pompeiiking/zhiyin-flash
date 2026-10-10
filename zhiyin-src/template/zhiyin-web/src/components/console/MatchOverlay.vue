@@ -1,57 +1,45 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref } from 'vue'
 import Overlay from '@/components/console/Overlay.vue'
 import AiFrame from '@/components/ai/AiFrame.vue'
 import GlyphIcon from '@/components/ui/GlyphIcon.vue'
 import MatchMatrix from '@/components/charts/MatchMatrix.vue'
 import { matchTask, type MatchResult } from '@/ai/registry'
 import { useSessionStore } from '@/stores/session'
+import { acceptCareerMatch } from '@/api/client'
+import { isMatchAccepted, saveMatchAcceptance } from '@/lib/careerMatch'
 
-/**
- * 学职网匹配与整体推荐。
- *
- * 这一页回答的是"我该往哪走"，而且必须比用户自己想的更具体：
- *   1. **对照基准是外面的** —— 学职网的职业条目，不是我们编的标准
- *   2. **矩阵让你看见缺口在哪一格** —— 差的不是"你不行"，是某一行某一列
- *   3. **推荐要能被否决** —— 采纳/否决本身就是信息，会回流进画像
- *
- * 没有"综合来看建议你考虑……"这种话：每一句判断都由矩阵里的某几格撑起来。
- */
 const session = useSessionStore()
-
-const decided = computed(() => ({
-  accepted: session.acceptedSuggestions.includes('match-main'),
-  dismissed: session.dismissedSuggestions.includes('match-main'),
-}))
-
-/**
- * 点开一格：这一格的**两边**分别从哪来 —— 要求和现状都从这次生成的 result 里取。
- * 不再去本地那张职业表里查：那会让"图上画的"和"点开说的"变成两份数据。
- */
-function pickCell(track: string, skill: string, result: MatchResult, citations: { source: string; detail: string; confidence?: number; at?: string; origin?: string }[]) {
+const saving = ref(false)
+const error = ref('')
+const statusLabel = { reported: '有自述或经历，待核验', studied: '只有课程线索', unknown: '尚缺相关材料' }
+function pickCell(track: string, skill: string, result: MatchResult) {
   const cell = result.cells.find((c) => c.track === track && c.skill === skill)
-  const basis = citations.filter((c) => c.detail.includes(track) || c.detail.includes(skill))
-  session.openDrawer(`${track} · ${skill}`, '这一格的两边分别从哪来', [
-    { source: '外面的要求', detail: `职业库里，${track} 对「${skill}」要求 ${cell?.need ?? '—'}。`, confidence: 0.88, at: '' },
-    { source: '你的现状', detail: `从你的课程与成绩折算出来是 ${cell?.have ?? '—'}。`, confidence: 0.9, at: '' },
-    ...basis.map((c) => ({ source: c.source, detail: c.detail, confidence: c.confidence, at: c.at, origin: c.origin })),
-    { source: '差在哪', detail: `差 ${Math.max(0, (cell?.need ?? 0) - (cell?.have ?? 0)).toFixed(2)} —— 差的不是"你不行"，是这一格还缺证据或还缺训练。`, confidence: 0.86, at: '这条判断' },
+  if (!cell) return
+  session.openDrawer(`${track} · ${skill}`, result.method, [
+    { source: '职业要求原文', detail: cell.requirement, at: cell.fetched_at },
+    { source: '来源链接', detail: cell.source_url, at: cell.fetched_at },
+    ...cell.student_evidence.map((detail) => ({ source: '你的材料', detail })),
+    { source: '证据状态', detail: statusLabel[cell.status] },
   ])
 }
-
-function decide(kind: 'accept' | 'dismiss') {
-  if (kind === 'accept') {
-    session.acceptSuggestion('match-main')
-    session.openDrawer('已采纳这条推荐', '它会变成你今天的一件事', [
-      { source: '动作', detail: '「补呈现能力」已排进下周四的空档，和课表对齐。', confidence: 1, at: '刚刚' },
-      { source: '回流', detail: '你的采纳与完成情况会写回画像，下次推荐会更准。', confidence: 0.9, at: '规则' },
-    ])
-  } else {
-    session.dismissSuggestion('match-main')
-    session.openDrawer('已记下你的否决', '否决也是一条信息', [
-      { source: '动作', detail: '这条推荐暂时收起，但我会记住你否掉了它。', confidence: 1, at: '刚刚' },
-      { source: '为什么要记', detail: '如果你连续否掉同类推荐，说明我的判断模型偏了 —— 那要改的是我，不是你。', confidence: 0.86, at: '规则' },
-    ])
+async function decide(kind: 'accept' | 'dismiss', result: MatchResult) {
+  if (saving.value) return
+  error.value = ''
+  if (kind === 'dismiss') {
+    session.dismissSuggestion(result.recommendation_id)
+    return
+  }
+  saving.value = true
+  try {
+    await saveMatchAcceptance(result, acceptCareerMatch, (plan) => session.applyActionPlan(plan))
+    session.acceptSuggestion(result.recommendation_id)
+    session.openDrawer('推荐任务已保存', '可以到行动计划查看并安排时间',
+      result.actions.map((text) => ({ source: '已保存的任务', detail: text })))
+  } catch (cause) {
+    error.value = cause instanceof Error ? cause.message : '这次任务没有保存成功，请稍后重新采纳。'
+  } finally {
+    saving.value = false
   }
 }
 </script>
@@ -68,13 +56,13 @@ function decide(kind: 'accept' | 'dismiss') {
       分开写就会出现"图是空的、右边有结论"这种对不上的情况。
     -->
     <AiFrame :task="() => matchTask() as never" class="match__frame">
-      <template #default="{ data, citations }">
+      <template #default="{ data }">
         <div v-if="data" class="match">
           <div class="match__left sheet">
             <MatchMatrix
               :cells="(data as MatchResult).cells"
               :tracks="[...new Set((data as MatchResult).cells.map((c) => c.track))]"
-              @pick="(track, skill) => pickCell(track, skill, data as MatchResult, citations)"
+              @pick="(track, skill) => pickCell(track, skill, data as MatchResult)"
             />
           </div>
 
@@ -83,29 +71,38 @@ function decide(kind: 'accept' | 'dismiss') {
               <h3 class="res__head editorial">{{ (data as MatchResult).recommend.title }}</h3>
               <p class="res__body">{{ (data as MatchResult).recommend.body }}</p>
 
-              <span class="label">四条方向的匹配度</span>
+              <p class="res__body">{{ (data as MatchResult).method }}</p>
+               <span class="label">方向与证据对照</span>
               <ul class="rank">
                 <li v-for="(r, i) in (data as MatchResult).ranking" :key="r.track">
                   <span class="rank__n mono">{{ i + 1 }}</span>
                   <span class="rank__name">{{ r.track }}</span>
-                  <span class="rank__bar"><i :style="{ width: `${Math.round(Math.min(100, Math.max(0, r.fit * 100)))}%` }" /></span>
-                  <span class="rank__fit mono">{{ r.fit.toFixed(2) }}</span>
+                   <span class="rank__why">{{ r.why }}</span>
                   <span class="rank__gap">{{ r.gap }}</span>
                 </li>
               </ul>
 
-              <span class="label">这三句撑起了上面的判断</span>
+              <span class="label">职业要求原文</span>
               <ul class="because">
                 <li v-for="(b, i) in (data as MatchResult).recommend.because" :key="i">{{ b }}</li>
               </ul>
 
-              <div class="act">
-                <button class="btn primary" type="button" :aria-pressed="decided.accepted" @click="decide('accept')">
-                  <template v-if="decided.accepted">已采纳 <GlyphIcon name="check" :size="13" /></template>
-                  <template v-else>采纳这条推荐</template>
+              <ul class="because">
+                 <li v-for="cell in (data as MatchResult).cells" :key="cell.track + cell.skill">
+                   <a :href="cell.source_url" target="_blank" rel="noopener noreferrer">{{ cell.track }} · {{ cell.skill }} · 查看来源</a>
+                   <span>（抓取：{{ cell.fetched_at }}）</span>
+                 </li>
+               </ul>
+               <span class="label">采纳后加入行动计划的任务（时间待安排）</span>
+               <ul class="because"><li v-for="action in (data as MatchResult).actions" :key="action">{{ action }}</li></ul>
+               <p v-if="error" role="alert">{{ error }}</p>
+               <div class="act">
+                <button class="btn primary" type="button" :disabled="saving || isMatchAccepted(data as MatchResult, session.actionPlan)" :aria-pressed="isMatchAccepted(data as MatchResult, session.actionPlan)" @click="decide('accept', data as MatchResult)">
+                  <template v-if="isMatchAccepted(data as MatchResult, session.actionPlan)">已采纳 <GlyphIcon name="check" :size="13" /></template>
+                  <template v-else>{{ saving ? '正在保存任务' : '采纳这条推荐' }}</template>
                 </button>
-                <button class="btn ghost" type="button" :aria-pressed="decided.dismissed" @click="decide('dismiss')">
-                  {{ decided.dismissed ? '已否决' : '不适合我' }}
+                <button class="btn ghost" type="button" :disabled="saving || isMatchAccepted(data as MatchResult, session.actionPlan)" :aria-pressed="session.dismissedSuggestions.includes((data as MatchResult).recommendation_id)" @click="decide('dismiss', data as MatchResult)">
+                  {{ session.dismissedSuggestions.includes((data as MatchResult).recommendation_id) ? '已否决' : '不适合我' }}
                 </button>
               </div>
             </div>
@@ -131,7 +128,7 @@ function decide(kind: 'accept' | 'dismiss') {
 .res__body { font-size: var(--fs-small); line-height: 1.8; color: var(--ink-2); }
 
 .rank { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
-.rank li { display: grid; grid-template-columns: 18px 76px 1fr 40px auto; align-items: center; gap: var(--s2); padding: 7px var(--s2); border-radius: var(--r-sm); }
+.rank li { display: grid; grid-template-columns: 18px 100px 1fr; align-items: center; gap: var(--s2); padding: 7px var(--s2); border-radius: var(--r-sm); }
 .rank li:nth-child(odd) { background: var(--fill-subtle); }
 .rank__n { color: var(--ink-3); }
 .rank__name { font-size: var(--fs-small); color: var(--ink-1); }

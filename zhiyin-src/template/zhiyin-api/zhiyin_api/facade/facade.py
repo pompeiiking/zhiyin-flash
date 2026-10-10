@@ -198,6 +198,10 @@ class ApplicationFacade(ABC):
     # ---------- AI 任务（SSE） ----------
 
     @abstractmethod
+    async def accept_career_match(self, user_id: str, recommendation_id: str) -> ActionPlanView:
+        """采纳当前推荐，保存真实行动任务并返回计划。"""
+
+    @abstractmethod
     def run_ai_task(self, user_id: str, key: str, arg: str = "") -> AsyncIterator[dict]:
         """执行一个 AI 任务，逐帧 yield 进度 / 终帧。"""
 

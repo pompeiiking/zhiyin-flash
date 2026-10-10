@@ -460,6 +460,10 @@ export function selectDirectionPlan(optionId: string) {
 /* ---- ④ 行动：行动计划（阶段 / 任务 / 现在这一件） ---- */
 
 /** 行动计划正文。没有计划时 `has_plan=false` —— 与"有计划但任务为空"是两件事。 */
+export function acceptCareerMatch(recommendationId: string) {
+  return api<ActionPlan>(`/app/match/careers/${encodeURIComponent(recommendationId)}/accept`, { method: 'POST' })
+}
+
 export function getActionPlan() {
   return api<ActionPlan>('/app/plan/action')
 }

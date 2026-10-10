@@ -19,6 +19,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from zhiyin_kernel.assets import (
     ActionPlan,
+    ActionPhase,
     DirectionPlan,
     Report,
 )
@@ -437,6 +438,10 @@ class AssetService(ABC):
     @abstractmethod
     async def list_direction_plans(self, user_id: str) -> list[DirectionPlan]:
         """读取主攻/平行/保底方案。"""
+
+    @abstractmethod
+    async def append_action_phase(self, user_id: str, phase: ActionPhase, *, plan_id: str, depends_on_profile_keys: Sequence[str] = ()) -> tuple[ActionPlan, bool]:
+        """原子追加未存在的稳定编号任务；保留原计划，重复提交不重复添加。"""
 
     @abstractmethod
     async def get_action_plan(self, user_id: str) -> Optional[ActionPlan]:

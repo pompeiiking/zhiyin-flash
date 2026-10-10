@@ -24,6 +24,13 @@ from zhiyin_kernel.enums import AssetType
 router = APIRouter(tags=["asset"])
 
 
+@router.post("/app/match/careers/{recommendation_id}/accept", response_model=ApiResponse[ActionPlanView])
+async def accept_career_match(request: Request, recommendation_id: str) -> ApiResponse[ActionPlanView]:
+    facade = get_facade()
+    user_id = await facade.resolve_user_id(request)
+    return ApiResponse(data=await facade.accept_career_match(user_id, recommendation_id))
+
+
 @router.get(
     "/app/assets/{asset_type}/versions",
     response_model=ApiResponse[list[AssetVersionView]],

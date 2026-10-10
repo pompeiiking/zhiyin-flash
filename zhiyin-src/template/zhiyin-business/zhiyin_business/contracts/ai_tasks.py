@@ -317,15 +317,20 @@ class MatchCell(BaseModel):
 
     track: str
     skill: str
-    need: float
-    have: float
+    need: float | None = None
+    have: float | None = None
+    requirement: str = ""
+    source_url: str = ""
+    fetched_at: str = ""
+    student_evidence: list[str] = Field(default_factory=list)
+    status: Literal["reported", "studied", "unknown"] = "unknown"
 
 
 class MatchRanking(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     track: str
-    fit: float
+    fit: float | None = None
     gap: str
     why: str
 
@@ -344,6 +349,24 @@ class MatchResult(BaseModel):
     cells: list[MatchCell] = Field(default_factory=list)
     ranking: list[MatchRanking] = Field(default_factory=list)
     recommend: MatchRecommend
+    recommendation_id: str = ""
+    method: str = ""
+    actions: list[str] = Field(default_factory=list)
+
+
+class MatchEvidenceDraft(BaseModel):
+    """模型只挑选原文及证据编号，不生成能力分数。"""
+
+    model_config = ConfigDict(extra="forbid")
+    source_id: str
+    skill: str = Field(min_length=1, max_length=40)
+    requirement: str = Field(min_length=4, max_length=600)
+    student_evidence: list[str] = Field(default_factory=list, max_length=8)
+
+
+class MatchDraft(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    cells: list[MatchEvidenceDraft] = Field(default_factory=list, max_length=24)
 
 
 __all__ = [
@@ -359,6 +382,8 @@ __all__ = [
     "DimensionReading",
     "GapClarify",
     "MatchCell",
+    "MatchDraft",
+    "MatchEvidenceDraft",
     "MatchRanking",
     "MatchRecommend",
     "MatchResult",

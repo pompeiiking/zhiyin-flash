@@ -19,7 +19,10 @@
 from __future__ import annotations
 
 import codecs
+from io import BytesIO
 from pathlib import PurePosixPath
+from xml.etree import ElementTree
+from zipfile import ZipFile
 
 from zhiyin_data_sdk.gateways.documents import DocumentReadError, DocumentTextGateway
 
@@ -88,21 +91,37 @@ def unsupported_reason(filename: str) -> str:
 
 
 class LocalTextExtractor(DocumentTextGateway):
-    """默认实现：本地解码（编码识别 + 二进制格式当场拒绝）。
-
-    `IMPLEMENTATION_STATUS` 报 wired：它真的把第一版要支持的那几种形态读全了
-    （txt / csv / json / html，任意常见编码）。PDF / Word 不是"还没实现"，
-    而是**有意不收**：本地解不出正文，收下来只能给用户一段乱码。
-    第二期换成带版面解析的实现时，换的就是这个类。
-    """
+    """本地读取文本、带文字的 PDF 和 DOCX（含表格、页眉页脚）。"""
 
     IMPLEMENTATION_STATUS = "wired"
 
     def extract_text(self, data: bytes, *, filename: str = "") -> str:
-        reason = unsupported_reason(filename)
-        if reason:
-            raise DocumentReadError(reason, detail=f"suffix={filename}")
-        text = decode_text(data)
+        if len(data) > 10 * 1024 * 1024:
+            raise DocumentReadError("文件超过 10 MB，请只保留简历正文后重新上传。")
+        suffix = PurePosixPath(filename.replace("\\", "/")).suffix.lower()
+        try:
+            if suffix == ".pdf" or data.startswith(b"%PDF-"):
+                text = self._pdf(data)
+            elif suffix == ".docx":
+                text = self._docx(data)
+            elif suffix == ".doc":
+                raise DocumentReadError("请在 Word 中将这份旧版文档另存为 .docx，再上传。")
+            else:
+                reason = unsupported_reason(filename)
+                if reason:
+                    raise DocumentReadError(reason, detail=f"suffix={filename}")
+                if data.startswith((b"PK\x03\x04", b"\xd0\xcf\x11\xe0")):
+                    raise DocumentReadError("文件格式与名称不一致，请按原始格式重新导出后上传。")
+                text = decode_text(data)
+        except DocumentReadError:
+            raise
+        except Exception as exc:
+            raise DocumentReadError(
+                "这份文件未能读取，请重新导出 PDF 或 Word（.docx），也可以粘贴正文。",
+                detail=type(exc).__name__,
+            ) from exc
+        if len(text) > 150_000:
+            raise DocumentReadError("正文过长，请只保留需要分析的简历或材料后上传。")
         if not text.strip():
             label = filename or "这个文件"
             raise DocumentReadError(
@@ -111,6 +130,46 @@ class LocalTextExtractor(DocumentTextGateway):
                 detail=f"bytes={len(data)}",
             )
         return text
+
+    @staticmethod
+    def _pdf(data: bytes) -> str:
+        from pypdf import PdfReader
+
+        reader = PdfReader(BytesIO(data))
+        if reader.is_encrypted and not reader.decrypt(""):
+            raise DocumentReadError("这份 PDF 有打开密码，请导出不带密码的副本后上传。")
+        if len(reader.pages) > 50:
+            raise DocumentReadError("PDF 超过 50 页，请只保留需要分析的部分后上传。")
+        parts = [page.extract_text() or "" for page in reader.pages]
+        text = "\n".join(parts)
+        if not text.strip():
+            raise DocumentReadError("这份 PDF 没有可读取的文字，可能是扫描件；请导出带文字的 PDF 或粘贴正文。")
+        return text
+
+    @staticmethod
+    def _docx(data: bytes) -> str:
+        ns = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
+        with ZipFile(BytesIO(data)) as archive:
+            names = ["word/document.xml"] + sorted(
+                name for name in archive.namelist()
+                if name.startswith(("word/header", "word/footer")) and name.endswith(".xml")
+            )
+            if sum(archive.getinfo(name).file_size for name in names) > 20 * 1024 * 1024:
+                raise DocumentReadError("Word 正文过大，请只保留简历内容后上传。")
+            paragraphs = []
+            for name in names:
+                root = ElementTree.fromstring(archive.read(name))
+                for paragraph in root.iter(ns + "p"):
+                    parts = []
+                    for element in paragraph.iter():
+                        if element.tag == ns + "t":
+                            parts.append(element.text or "")
+                        elif element.tag == ns + "tab":
+                            parts.append("\t")
+                        elif element.tag in (ns + "br", ns + "cr"):
+                            parts.append("\n")
+                    paragraphs.append("".join(parts))
+            return "\n".join(paragraphs)
 
 
 __all__ = ["LocalTextExtractor", "decode_text", "unsupported_reason"]

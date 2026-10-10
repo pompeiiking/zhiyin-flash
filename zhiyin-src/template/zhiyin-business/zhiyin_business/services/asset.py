@@ -11,7 +11,7 @@ from zhiyin_business.events import ASSET_VERSION_CHANGED
 from zhiyin_business.policies.impact import ImpactPolicy
 from zhiyin_business.ports.blackboard import AssetService
 from zhiyin_data_sdk.repositories import AssetRepository
-from zhiyin_kernel.assets import ActionPlan, DirectionPlan, Report
+from zhiyin_kernel.assets import ActionPhase, ActionPlan, DirectionPlan, Report
 from zhiyin_kernel.blackboard import AssetVersion
 from zhiyin_kernel.enums import AssetType
 from zhiyin_orchestration import DomainEvent, EventBus
@@ -281,6 +281,18 @@ class DefaultAssetService(AssetService):
 
     async def list_direction_plans(self, user_id: str) -> list[DirectionPlan]:
         return await self._assets.list_direction_plans(user_id)
+
+    async def append_action_phase(self, user_id: str, phase: ActionPhase, *, plan_id: str,
+                                  depends_on_profile_keys: Sequence[str] = ()) -> tuple[ActionPlan, bool]:
+        plan, changed = await self._assets.append_action_phase(user_id, phase, plan_id=plan_id)
+        if changed:
+            latest = await self.get_latest_version(user_id, AssetType.ACTION_PLAN)
+            dependencies = set(depends_on_profile_keys) | set(latest.depends_on_profile_keys if latest else [])
+            await self.save_version(user_id, AssetUpdateDraft(
+                asset_type=AssetType.ACTION_PLAN, depends_on_profile_keys=sorted(dependencies),
+                diff_from_previous="采纳就业指导推荐，添加待核验任务", reason="采纳推荐",
+            ))
+        return plan, changed
 
     async def get_action_plan(self, user_id: str) -> Optional[ActionPlan]:
         return await self._assets.get_action_plan(user_id)

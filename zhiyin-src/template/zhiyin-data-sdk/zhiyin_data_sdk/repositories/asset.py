@@ -12,6 +12,7 @@ from typing import Optional, Sequence
 
 from zhiyin_kernel.assets import (
     ActionPlan,
+    ActionPhase,
     DirectionPlan,
     Report,
 )
@@ -79,6 +80,10 @@ class AssetRepository(ABC):
         """做出可撤回的选择。"""
 
     # ---------- 行动计划 ----------
+
+    @abstractmethod
+    async def append_action_phase(self, user_id: str, phase: ActionPhase, *, plan_id: str) -> tuple[ActionPlan, bool]:
+        """原子追加未存在的稳定编号任务；保留原计划，重复提交不重复添加。"""
 
     @abstractmethod
     async def get_action_plan(self, user_id: str) -> Optional[ActionPlan]:

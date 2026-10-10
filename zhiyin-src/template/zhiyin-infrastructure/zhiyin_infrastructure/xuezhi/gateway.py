@@ -52,7 +52,7 @@ class XueZhiDataSourceGateway(DataSourceGateway):
         records: list[DataSourceRecord] = []
         errors: list[str] = []
         try:
-            await self._collect(request, records)
+            await self._collect(request, records, errors)
         except Exception as exc:
             # 已经取到的证据照常返回：半份真实数据比整份空缺更有用，
             # 但必须让调用方看见"这次不完整"。
@@ -65,7 +65,7 @@ class XueZhiDataSourceGateway(DataSourceGateway):
         )
 
     async def _collect(
-        self, request: DataSourceRequest, records: list[DataSourceRecord]
+        self, request: DataSourceRequest, records: list[DataSourceRecord], errors: list[str]
     ) -> None:
         values = _context_values(request.context)
         major_terms = _terms(values, _MAJOR_KEYS)
@@ -76,9 +76,19 @@ class XueZhiDataSourceGateway(DataSourceGateway):
             job_terms = [request.query.strip()]
 
         # 平台自带的"专业 → 对口职业"映射：比拿专业名去模糊搜职业准得多。
-        linked_occupations = await self._collect_specialities(major_terms, records)
-        await self._collect_occupations(job_terms, linked_occupations, records)
-        await self._collect_cases(job_terms or major_terms, records)
+        linked_occupations = []
+        try:
+            linked_occupations = await self._collect_specialities(major_terms, records)
+        except Exception as exc:
+            errors.append(str(exc))
+        try:
+            await self._collect_occupations(job_terms, linked_occupations, records, errors)
+        except Exception as exc:
+            errors.append(str(exc))
+        try:
+            await self._collect_cases(job_terms or major_terms, records)
+        except Exception as exc:
+            errors.append(str(exc))
 
     async def _collect_specialities(
         self, terms: list[str], records: list[DataSourceRecord]
@@ -86,7 +96,9 @@ class XueZhiDataSourceGateway(DataSourceGateway):
         """按专业名取专业详情，并顺带拿到平台标注的对口职业。"""
         for term in terms[:2]:
             page = await self._client.list_specialities(name=term)
-            items = _items(page)[: self._max_specialities]
+            items = _items(page)
+            exact = [item for item in items if item.get("zymc") == term]
+            items = (exact or items)[: self._max_specialities]
             if not items:
                 continue
             linked: list[tuple[str, str]] = []
@@ -96,6 +108,8 @@ class XueZhiDataSourceGateway(DataSourceGateway):
                     continue
                 name = str(item.get("zymc") or "")
                 detail = await self._client.get_speciality_detail(spec_id)
+                if not detail:
+                    raise RuntimeError(f"专业详情没有可读内容：{name}")
                 records.append(
                     DataSourceRecord(
                         id=spec_id,
@@ -126,16 +140,22 @@ class XueZhiDataSourceGateway(DataSourceGateway):
         terms: list[str],
         linked: list[tuple[str, str]],
         records: list[DataSourceRecord],
+        errors: list[str],
     ) -> None:
-        """优先用专业对口职业；专业链条为空时才用职业名模糊检索兜底。"""
-        candidates = linked or [("", term) for term in terms]
+        """明确的职业目标优先，专业对口映射补充候选；详情失败保留其他资料。"""
+        # 明确的目标职业先查；专业映射只补充候选，不覆盖学生自己的目标。
+        candidates = [(term, "") for term in terms] + linked
         seen = {record.id for record in records}
         added = 0
         for name, occupation_id in candidates:
             if added >= self._max_occupations:
                 break
             if not occupation_id:
-                page = await self._client.search_occupations(name=name or "")
+                try:
+                    page = await self._client.search_occupations(name=name or "")
+                except Exception as exc:
+                    errors.append(str(exc))
+                    continue
                 found = _items(page)[: self._max_occupations]
                 if not found:
                     continue
@@ -143,7 +163,14 @@ class XueZhiDataSourceGateway(DataSourceGateway):
                     item_id = str(item.get("zhiyId") or "")
                     if not item_id or item_id in seen:
                         continue
-                    detail = await self._client.get_occupation_detail(item_id)
+                    try:
+                        detail = await self._client.get_occupation_detail(item_id)
+                    except Exception as exc:
+                        errors.append(str(exc))
+                        continue
+                    if not detail:
+                        errors.append(f"职业详情没有可读内容：{item.get('title') or item_id}")
+                        continue
                     seen.add(item_id)
                     records.append(
                         _occupation_record(
@@ -160,7 +187,14 @@ class XueZhiDataSourceGateway(DataSourceGateway):
                 continue
             if occupation_id in seen:
                 continue
-            detail = await self._client.get_occupation_detail(occupation_id)
+            try:
+                detail = await self._client.get_occupation_detail(occupation_id)
+            except Exception as exc:
+                errors.append(str(exc))
+                continue
+            if not detail:
+                errors.append(f"职业详情没有可读内容：{name or occupation_id}")
+                continue
             seen.add(occupation_id)
             records.append(
                 _occupation_record(

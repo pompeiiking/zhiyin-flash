@@ -28,7 +28,7 @@ class PlanOption(BaseModel):
         default=None,
         ge=0.0,
         le=1.0,
-        description="仅有可追溯的计算输入时填写 0–1 匹配度；依据不足时为 null",
+        description="当前未实现经校准的胜任度计算，一律填写 null；用契合依据与差距说明方向",
     )
     gaps: list[str] = Field(default_factory=list, description="该方向下的差距要点")
     fit_reason: str = Field(description="契合依据")
@@ -53,7 +53,7 @@ class DecideOutput(BaseModel):
         default_factory=list, description="主攻 / 平行 / 保底 三套"
     )
     match_score_method: str = Field(
-        default="三叶草契合度 × 可达性", description="匹配度口径说明，必须对用户可见"
+        default="职业要求与个人证据逐项对照；未计算胜任度", description="匹配度口径说明，必须对用户可见"
     )
     theory_refs: list[TheoryRef] = Field(default_factory=list)
     guide: BehaviorGuide | None = Field(

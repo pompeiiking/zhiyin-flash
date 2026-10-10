@@ -143,9 +143,12 @@ export interface TodoSuggestion {
 }
 
 export interface MatchResult {
-  cells: { track: string; skill: string; need: number; have: number }[]
-  ranking: { track: string; fit: number; gap: string; why: string }[]
+  cells: { track: string; skill: string; need: number | null; have: number | null; requirement: string; source_url: string; fetched_at: string; student_evidence: string[]; status: 'reported' | 'studied' | 'unknown' }[]
+  ranking: { track: string; fit: number | null; gap: string; why: string }[]
   recommend: { title: string; body: string; because: string[] }
+  recommendation_id: string
+  method: string
+  actions: string[]
 }
 
 export const AI_ENDPOINTS = {
