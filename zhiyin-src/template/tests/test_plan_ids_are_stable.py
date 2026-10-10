@@ -12,6 +12,11 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
+from datetime import datetime, timezone
+
+import pytest
+
 from zhiyin_business.contracts.act import ActOutput
 from zhiyin_business.services.asset import DefaultAssetService
 from zhiyin_business.services.asset_content import action_plan_from_act
@@ -128,3 +133,91 @@ def test_new_task_stays_open_and_removed_task_is_dropped() -> None:
 def test_without_previous_plan_nothing_changes() -> None:
     plan, _nodes = _plan()
     assert DefaultAssetService._inherit_task_state(None, plan) is plan
+
+
+@pytest.mark.parametrize("change", ["reverse", "insert", "remove"])
+def test_other_tasks_do_not_change_a_task_identity(change: str) -> None:
+    previous, _ = _plan()
+    original = previous.phases[0].tasks[1]
+    raw = deepcopy(RAW)
+    tasks = raw["phases"][0]["tasks"]
+    if change == "reverse":
+        tasks.reverse()
+    elif change == "insert":
+        tasks.insert(0, {"text": "先整理项目文件"})
+    else:
+        tasks.pop(0)
+    regenerated, _ = action_plan_from_act(ActOutput.model_validate(raw), user_id="u1")
+    same = next(t for t in regenerated.phases[0].tasks if t.text == original.text)
+    assert same.id == original.id
+
+
+@pytest.mark.parametrize("legacy_id", ["task_old_random", ""])
+def test_completed_legacy_task_survives_reordering(legacy_id: str) -> None:
+    previous, _ = _plan()
+    completed = previous.phases[0].tasks[1]
+    completed.id = legacy_id
+    completed.done = True
+    completed.done_at = datetime(2026, 10, 9, tzinfo=timezone.utc)
+    raw = deepcopy(RAW)
+    raw["phases"][0]["tasks"].reverse()
+    regenerated, _ = action_plan_from_act(ActOutput.model_validate(raw), user_id="u1")
+    merged = DefaultAssetService._inherit_task_state(previous, regenerated)
+    same = merged.phases[0].tasks[0]
+    assert same.done and same.done_at == completed.done_at
+    if legacy_id:
+        assert same.id == legacy_id
+
+
+def test_duplicate_tasks_stay_distinct_after_an_unrelated_insertion() -> None:
+    raw = deepcopy(RAW)
+    raw["phases"][0]["tasks"] = [{"text": "复盘"}, {"text": "复盘"}]
+    previous, _ = action_plan_from_act(ActOutput.model_validate(raw), user_id="u1")
+    ids = [t.id for t in previous.phases[0].tasks]
+    assert len(set(ids)) == 2
+    previous.phases[0].tasks[1].done = True
+    raw["phases"][0]["tasks"].insert(0, {"text": "整理项目"})
+    regenerated, _ = action_plan_from_act(ActOutput.model_validate(raw), user_id="u1")
+    merged = DefaultAssetService._inherit_task_state(previous, regenerated)
+    assert [t.id for t in merged.phases[0].tasks[1:]] == ids
+    assert [t.done for t in merged.phases[0].tasks] == [False, False, True]
+
+
+def test_ambiguous_legacy_duplicates_are_not_guessed() -> None:
+    raw = deepcopy(RAW)
+    raw["phases"][0]["tasks"] = [
+        {"id": "old_a", "text": "复盘", "done": True},
+        {"id": "old_b", "text": "复盘"},
+    ]
+    previous, _ = action_plan_from_act(ActOutput.model_validate(raw), user_id="u1")
+    raw["phases"][0]["tasks"] = [{"text": "复盘"}, {"text": "复盘"}]
+    regenerated, _ = action_plan_from_act(ActOutput.model_validate(raw), user_id="u1")
+    merged = DefaultAssetService._inherit_task_state(previous, regenerated)
+    assert [t.done for t in merged.phases[0].tasks] == [False, False]
+
+
+async def test_identical_regeneration_reuses_version_and_completed_state() -> None:
+    from tests.e2e.test_main_path import _container
+    from zhiyin_kernel.enums import AssetType
+
+    container = _container()
+    first, _ = _plan()
+    initial = await container.asset_service.save_action_plan("u1", first)
+    await container.asset_service.mark_action_task_done("u1", first.phases[0].tasks[1].id)
+    completed = await container.asset_service.get_action_plan("u1")
+    regenerated, _ = _plan()
+    repeated = await container.asset_service.save_action_plan("u1", regenerated)
+    assert repeated.id == initial.id and repeated.version == 1
+    stored = await container.asset_service.get_action_plan("u1")
+    assert stored == completed
+    assert len(await container.asset_service.list_versions("u1", AssetType.ACTION_PLAN)) == 1
+
+    raw = deepcopy(RAW)
+    raw["phases"][0]["date_range"] = "10-15 ~ 10-21"
+    changed, _ = action_plan_from_act(ActOutput.model_validate(raw), user_id="u1")
+    version = await container.asset_service.save_action_plan("u1", changed)
+    stored = await container.asset_service.get_action_plan("u1")
+    assert version.version == 2
+    assert stored.id == first.id
+    assert stored.phases[0].date_range == "10-15 ~ 10-21"
+    assert stored.phases[0].tasks[1].done

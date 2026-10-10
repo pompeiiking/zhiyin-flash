@@ -19,6 +19,7 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from datetime import datetime, timezone
 from hashlib import sha1
 from typing import Any
@@ -120,21 +121,18 @@ def action_plan_from_act(
     # 昨天勾掉的任务今天就变成"另一条没做的任务"，完成状态无从继承，
     # 页面于是永远显示 0/11。前端勾选也按同一个键回传
     # （`mappers.action_plan_view` 用的就是这个口径），两边必须一致。
-    phases = [
-        phase.model_copy(
-            update={
-                "tasks": [
-                    task.model_copy(
-                        update={
-                            "id": task.id or _stable_task_id(phase.name, task.text, index)
-                        }
-                    )
-                    for index, task in enumerate(phase.tasks)
-                ]
-            }
-        )
-        for phase in output.phases
-    ]
+    occurrences: Counter[tuple[str, str]] = Counter()
+    phases = []
+    for phase in output.phases:
+        tasks = []
+        for task in phase.tasks:
+            key = (phase.name.strip(), task.text.strip())
+            occurrence = occurrences[key]
+            occurrences[key] += 1
+            tasks.append(task.model_copy(update={
+                "id": task.id or _stable_task_id(*key, occurrence)
+            }))
+        phases.append(phase.model_copy(update={"tasks": tasks}))
     plan = ActionPlan(id=_new_id("act"), plan_id="", phases=phases)
     # 日历节点 id 同样稳定：同一个提醒重算后落在同一个 id 上，写入即替换。
     # 随机 id 的后果实测过（ZY-06）：单账号攒出 57 个节点，其中 24 个标题重复。
@@ -152,14 +150,13 @@ def action_plan_from_act(
     return plan, nodes
 
 
-def _stable_task_id(phase_name: str, text: str, index: int) -> str:
+def _stable_task_id(phase_name: str, text: str, occurrence: int) -> str:
     """任务的稳定 id。
 
-    形态仍是 `task_*`（既有契约与守卫要求），但后缀由「阶段名 + 任务文本 + 阶段内序号」决定：
-    同一件事重排后拿到同一个 id，完成状态才继承得上；
-    而同一阶段里的**同名任务**靠序号区分，不会互相顶掉（既有守卫盯的就是这一条）。
+    后缀由阶段名、任务文本和同名任务的出现次数决定。
+    其他任务的插入、删除和重排不影响它；同名任务仍有各自的 id。
     """
-    return "task_" + _digest(f"{(phase_name or '').strip()}:{(text or '').strip()}:{index}")
+    return "task_" + _digest(f"{phase_name}:{text}:{occurrence}")
 
 
 def _stable_node_id(user_id: str, title: str) -> str:

@@ -108,3 +108,45 @@ def test_no_patch_or_no_match_changes_nothing() -> None:
     untouched, summary2 = apply_plan_patch(plan, PlanPatch(drop_tasks=["周五看展"]))
     assert untouched is plan, "一条都没命中时不能凭空造一次'已调整'"
     assert summary2 == []
+
+
+async def test_review_conversation_keeps_patch_ids_and_persists_changes() -> None:
+    from tests.e2e.test_main_path import _container
+    from zhiyin_business.ports.orchestrator import TurnRequest
+    from zhiyin_kernel.enums import AssetType
+    from zhiyin_orchestration import AgentResult
+
+    class ReviewEngine:
+        async def invoke(self, request):
+            return AgentResult(
+                agent_id=request.agent_id,
+                valid=True,
+                structured={
+                    "conclusion": "先删掉 task_a，把 task_b 挪到下周。",
+                    "attribution": "unknown",
+                    "minimal_action": {"task_id": "small", "text": "先打开 README"},
+                    "guide": {
+                        "kind": "task", "text": "先看一眼",
+                        "task": {"task_id": "small", "text": "先打开 README"},
+                    },
+                    "plan_patch": {
+                        "drop_tasks": ["task_a"],
+                        "reschedule_tasks": {"task_b": "2026-10-17"},
+                    },
+                },
+            )
+
+    container = _container()
+    await container.asset_service.save_action_plan("u1", _plan())
+    container.orchestrator._agent_engine = ReviewEngine()
+    session = await container.orchestrator.enter_task("u1", "stuck")
+    result = await container.orchestrator.handle_message(
+        TurnRequest(user_id="u1", task_id=session.id, message="我卡住了，改一下计划")
+    )
+    stored = await container.asset_service.get_action_plan("u1")
+    assert [t.id for t in stored.phases[0].tasks] == ["task_b", "task_c"]
+    assert stored.phases[0].tasks[0].due_date.date().isoformat() == "2026-10-17"
+    assert stored.phases[0].tasks[1].done
+    assert "task_a" not in result.messages[0].text
+    assert "周六上午把旧网页部署上线" in result.messages[0].text
+    assert len(await container.asset_service.list_versions("u1", AssetType.ACTION_PLAN)) == 2

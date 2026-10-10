@@ -67,6 +67,8 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: 类型检查
         run: npm run typecheck
+      - name: 对话任务完成回归
+        run: npm run test:action-task
       - name: 构建（产物能不能出来，构建期才能发现的问题）
         run: npm run build
       - name: 前端类型与后端接口契约一致（types.ts == 契约快照的生成物）

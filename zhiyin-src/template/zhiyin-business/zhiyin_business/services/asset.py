@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import Counter, defaultdict
 from typing import Optional, Sequence
 from uuid import uuid4
 
@@ -197,6 +198,8 @@ class DefaultAssetService(AssetService):
     ) -> AssetVersion:
         previous = await self._assets.get_action_plan(user_id)
         merged = self._inherit_task_state(previous, plan)
+        if previous is not None:
+            merged = merged.model_copy(update={"id": previous.id})
         # 内容没变就不升版（实测 ZY-07：单账号攒出 18 个行动计划版本，
         # 差异说明还都是同一句「④ 行动产出：阶段与任务」）。
         # 升版是"内容重算"的单位：用户回一句"做完了"，改的是状态，不该产生新版本。
@@ -227,22 +230,40 @@ class DefaultAssetService(AssetService):
         """
         if previous is None:
             return plan
-        finished = {
+        previous_tasks = {
             task.id: task
             for phase in previous.phases
             for task in phase.tasks
-            if task.done and task.id
+            if task.id
         }
-        if not finished:
-            return plan
+        # 旧计划可能使用随机 id 或旧的位置哈希。只有两侧都唯一的同名任务
+        # 才能按文字对齐；重复任务必须按 id，避免把另一件事误标为完成。
+        previous_by_text = defaultdict(list)
+        for phase in previous.phases:
+            for task in phase.tasks:
+                previous_by_text[(phase.name.strip(), task.text.strip())].append(task)
+        new_counts = Counter(
+            (phase.name.strip(), task.text.strip())
+            for phase in plan.phases for task in phase.tasks
+        )
         phases = []
         changed = False
         for phase in plan.phases:
             tasks = []
             for task in phase.tasks:
-                old = finished.get(task.id) if task.id else None
-                if old is not None and not task.done:
-                    tasks.append(task.model_copy(update={"done": True, "done_at": old.done_at}))
+                old = previous_tasks.get(task.id) if task.id else None
+                key = (phase.name.strip(), task.text.strip())
+                candidates = previous_by_text.get(key, [])
+                if old is None and new_counts[key] == 1 and len(candidates) == 1:
+                    old = candidates[0]
+                updates = {}
+                if old is not None:
+                    if old.id and old.id != task.id:
+                        updates["id"] = old.id
+                    if old.done:
+                        updates.update(done=True, done_at=old.done_at)
+                if updates:
+                    tasks.append(task.model_copy(update=updates))
                     changed = True
                 else:
                     tasks.append(task)

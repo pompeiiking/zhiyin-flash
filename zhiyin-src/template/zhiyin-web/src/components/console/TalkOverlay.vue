@@ -20,6 +20,7 @@ import RenderableBlock from '@/components/render/RenderableBlock.vue'
 import GlyphIcon from '@/components/ui/GlyphIcon.vue'
 import { getActionPlan, getTheoryCard, setActionTaskDone, track, uploadMaterial } from '@/api/client'
 import { useSessionStore } from '@/stores/session'
+import { actionTaskForGuide } from '@/lib/actionTask'
 import type { GuideOption } from '@/lib/asks'
 
 const session = useSessionStore()
@@ -28,6 +29,7 @@ const router = useRouter()
 const draft = ref('')
 const thread = ref<HTMLElement | null>(null)
 const box = ref<HTMLInputElement | null>(null)
+const completingTask = ref(false)
 
 /*
  * 别处（情报浮层）塞过来的那一句预填。
@@ -130,7 +132,7 @@ watch(
  * 落地再按一次发送，一句话都不会丢（清空草稿是最不该做的，那才是真的丢输入）。
  */
 function send(text: string, option?: GuideOption) {
-  if (session.chatTyping) return
+  if (session.chatTyping || completingTask.value) return
   const material = pending.value
   pending.value = null
   attachError.value = ''
@@ -243,24 +245,25 @@ const TASK_BLOCKED = '这件事我卡住了，帮我拆小一点'
  * 这条链路"只写不读"过一次，勾选会静默丢掉。
  */
 async function markDone() {
-  let taskId = session.actionPlan?.next_task?.task_id ?? null
-  if (!taskId) {
-    try {
-      const plan = session.actionPlan ?? (await getActionPlan())
+  if (session.chatTyping || completingTask.value || !task.value) return
+  const displayed = { ...task.value }
+  completingTask.value = true
+  try {
+    let plan = session.actionPlan
+    if (!plan) {
+      plan = await getActionPlan()
       if (plan) session.applyActionPlan(plan)
-      taskId = plan?.next_task?.task_id ?? null
-    } catch {
-      /* 取不到计划就只回话 */
     }
-  }
-  if (taskId) {
-    try {
-      session.applyActionPlan(await setActionTaskDone(taskId, true))
-    } catch (err) {
-      console.warn('[task] 勾选没落库，这一轮只回话：', err)
+    const target = actionTaskForGuide(plan, displayed)
+    if (target && !target.done) {
+      session.applyActionPlan(await setActionTaskDone(target.task_id, true))
     }
+  } catch (err) {
+    console.warn('[task] 勾选没落库，这一轮只回话：', err)
+  } finally {
+    completingTask.value = false
   }
-  await send(TASK_DONE)
+  send(TASK_DONE)
 }
 
 function openAction() {
@@ -607,10 +610,10 @@ function openDisclosure() {
               做完回来说一句就行；做不动也说一声 —— 卡住不是失败，是这条任务拆得还不够小。
             </p>
             <div class="task__acts">
-              <button class="opt" type="button" :disabled="session.chatTyping" @click="markDone">
+              <button class="opt" type="button" :disabled="session.chatTyping || completingTask" @click="markDone">
                 做完了
               </button>
-              <button class="opt" type="button" :disabled="session.chatTyping" @click="send(TASK_BLOCKED)">
+              <button class="opt" type="button" :disabled="session.chatTyping || completingTask" @click="send(TASK_BLOCKED)">
                 做不到，拆小一点
               </button>
               <button class="opt opt--quiet" type="button" @click="openAction">去行动计划勾掉</button>

@@ -1734,7 +1734,7 @@ def _replace_task_ids_in_prose(value: Any, task_labels: dict[str, str]) -> Any:
     """复盘正文用任务文字称呼已登记任务，保留结构中的机器 ID。"""
     if isinstance(value, dict):
         return {
-            key: item if key in {"id", "task_id", "option_id", "achievements_unlocked"}
+            key: item if key in {"id", "task_id", "option_id", "achievements_unlocked", "plan_patch"}
             else _replace_task_ids_in_prose(item, task_labels)
             for key, item in value.items()
         }
