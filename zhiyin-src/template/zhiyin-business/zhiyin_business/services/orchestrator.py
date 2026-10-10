@@ -610,6 +610,12 @@ class DefaultOrchestrator(Orchestrator):
         )
 
         structured = result.structured or {}
+        if stage is LoopStage.DECIDE and isinstance(structured.get("plans"), list):
+            # 当前没有经校准的胜任度算法，不能把模型猜出的数字落成事实。
+            structured = {**structured, "plans": [
+                {**option, "match_score": None} if isinstance(option, dict) else option
+                for option in structured.get("plans", [])
+            ], "match_score_method": "职业要求与个人证据逐项对照；未计算胜任度，依据不足处需核验"}
         task_labels: dict[str, str] = {}
         if stage is LoopStage.REVIEW:
             plan = await self._assets.get_action_plan(request.user_id)

@@ -237,7 +237,7 @@ async def plan_todo_suggestions(request: Request) -> Response:
 
 @router.post("/app/match/careers")
 async def match_careers(request: Request) -> Response:
-    """学职网匹配：矩阵 + 排名 + 推荐。"""
+    """学职平台职业要求与学生材料的证据对照、方向建议和核验任务。"""
     return await _stream(request, "match.careers")
 
 

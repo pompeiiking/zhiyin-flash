@@ -205,9 +205,13 @@ export interface paths {
   "/api/v1/app/match/careers": {
     /**
      * Match Careers
-     * @description 学职网匹配：矩阵 + 排名 + 推荐。
+     * @description 学职平台职业要求与学生材料的证据对照、方向建议和核验任务。
      */
     post: operations["match_careers_api_v1_app_match_careers_post"];
+  };
+  "/api/v1/app/match/careers/{recommendation_id}/accept": {
+    /** Accept Career Match */
+    post: operations["accept_career_match_api_v1_app_match_careers__recommendation_id__accept_post"];
   };
   "/api/v1/app/modules": {
     /** User Modules */
@@ -4393,7 +4397,7 @@ export interface operations {
   };
   /**
    * Match Careers
-   * @description 学职网匹配：矩阵 + 排名 + 推荐。
+   * @description 学职平台职业要求与学生材料的证据对照、方向建议和核验任务。
    */
   match_careers_api_v1_app_match_careers_post: {
     responses: {
@@ -4401,6 +4405,28 @@ export interface operations {
       200: {
         content: {
           "application/json": unknown;
+        };
+      };
+    };
+  };
+  /** Accept Career Match */
+  accept_career_match_api_v1_app_match_careers__recommendation_id__accept_post: {
+    parameters: {
+      path: {
+        recommendation_id: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_ActionPlanView_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };

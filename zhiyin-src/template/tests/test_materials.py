@@ -21,6 +21,8 @@
 from __future__ import annotations
 
 from pathlib import Path
+from io import BytesIO
+from zipfile import ZipFile
 from typing import Any
 
 import pytest
@@ -50,6 +52,74 @@ DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 USER_ID = "u-material"
 
 RESUME = "我的简历\n技能：Python、数据分析\n项目：校园二手平台"
+
+
+def _docx_bytes():
+    output = BytesIO()
+    with ZipFile(output, "w") as archive:
+        archive.writestr("word/document.xml", '''<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>
+        <w:p><w:r><w:t>我的简历</w:t></w:r></w:p>
+        <w:tbl><w:tr><w:tc><w:p><w:r><w:t>技能：Python、数据分析</w:t></w:r></w:p></w:tc></w:tr></w:tbl>
+        <w:p><w:r><w:t>项目：校园二手平台</w:t></w:r></w:p></w:body></w:document>''')
+        archive.writestr("word/header1.xml", '<w:hdr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:r><w:t>个人资料</w:t></w:r></w:p></w:hdr>')
+    return output.getvalue()
+
+
+def _pdf_bytes(*, blank=False, encrypted=False):
+    from pypdf import PdfWriter
+    from pypdf.generic import DictionaryObject, NameObject, DecodedStreamObject
+    writer = PdfWriter()
+    page = writer.add_blank_page(width=600, height=800)
+    if not blank:
+        font = DictionaryObject({NameObject("/Type"): NameObject("/Font"),
+                                 NameObject("/Subtype"): NameObject("/Type1"),
+                                 NameObject("/BaseFont"): NameObject("/Helvetica")})
+        page[NameObject("/Resources")] = DictionaryObject({NameObject("/Font"): DictionaryObject({NameObject("/F1"): font})})
+        content = DecodedStreamObject()
+        content.set_data(b"BT /F1 12 Tf 40 750 Td (Resume: Python and SQL project) Tj ET")
+        page[NameObject("/Contents")] = content
+    if encrypted:
+        writer.encrypt("private-password")
+    output = BytesIO()
+    writer.write(output)
+    return output.getvalue()
+
+
+def test_pdf_and_word_resume_text_is_extracted_including_word_tables_and_headers():
+    extractor = LocalTextExtractor()
+    assert RESUME in extractor.extract_text(_docx_bytes(), filename="简历.DOCX")
+    assert "个人资料" in extractor.extract_text(_docx_bytes(), filename="简历.docx")
+    assert "Python and SQL" in extractor.extract_text(_pdf_bytes(), filename="简历.pdf")
+
+
+@pytest.mark.parametrize("data,name,message", [
+    (b"broken", "简历.docx", "重新导出"),
+    (b"%PDF-broken", "简历.pdf", "重新导出"),
+    (b"old-word", "简历.doc", "另存为 .docx"),
+    (b"PK\\x03\\x04", "renamed.txt", "格式与名称"),
+])
+def test_unreadable_office_files_do_not_become_resume_garbage(data, name, message):
+    if name == "renamed.txt":
+        data = b"PK\x03\x04"
+    with pytest.raises(DocumentReadError, match=message):
+        LocalTextExtractor().extract_text(data, filename=name)
+
+
+def test_scanned_or_encrypted_pdf_has_an_actionable_error():
+    with pytest.raises(DocumentReadError, match="扫描件"):
+        LocalTextExtractor().extract_text(_pdf_bytes(blank=True), filename="扫描简历.pdf")
+    with pytest.raises(DocumentReadError, match="密码"):
+        LocalTextExtractor().extract_text(_pdf_bytes(encrypted=True), filename="加密简历.pdf")
+
+
+@pytest.mark.asyncio
+async def test_word_resume_round_trips_through_material_storage_without_exposing_text(tmp_path):
+    service = _memory_service(tmp_path)
+    material = await service.put_material(USER_ID, name="简历.docx", data=_docx_bytes())
+    assert "text" not in material.model_dump()
+    assert RESUME in (await service.material_body(USER_ID, material.material_id)).text
+    with pytest.raises(LookupError):
+        await service.material_body("someone-else", material.material_id)
 
 
 # ------------------------------------------------------------------ 抽取本身
@@ -240,6 +310,23 @@ def test_upload_endpoint_returns_what_it_is_not_the_text(client: TestClient) -> 
     assert data["material_id"].startswith("mat_")
     assert "text" not in data
     assert RESUME not in response.text, "正文不许出现在回执里 —— 前端就是照着回执渲染的"
+
+
+@pytest.mark.parametrize("name,content_type,build", [
+    ("简历.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", _docx_bytes),
+    ("简历.pdf", "application/pdf", _pdf_bytes),
+])
+def test_resume_upload_endpoint_accepts_real_pdf_and_word_without_returning_body(client, name, content_type, build):
+    response = client.post("/api/v1/app/conversation/material", files={"file": (name, build(), content_type)})
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert data["name"] == name and data["chars"] > 20
+    assert "text" not in data and "Python" not in response.text
+
+
+def test_encrypted_pdf_upload_returns_a_user_fixable_error(client):
+    response = client.post("/api/v1/app/conversation/material", files={"file": ("简历.pdf", _pdf_bytes(encrypted=True), "application/pdf")})
+    assert response.status_code == 422 and "密码" in response.json()["message"]
 
 
 def test_upload_endpoint_refuses_an_excel_with_a_next_step(client: TestClient) -> None:

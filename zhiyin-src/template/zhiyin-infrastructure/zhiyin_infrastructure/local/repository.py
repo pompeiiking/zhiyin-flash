@@ -25,7 +25,7 @@ from datetime import datetime, timezone
 from typing import Any, Optional, Sequence
 from uuid import uuid4
 
-from zhiyin_kernel.assets import ActionPlan, CalendarNode, DirectionPlan, Report, TrackEvent
+from zhiyin_kernel.assets import ActionPhase, ActionPlan, CalendarNode, DirectionPlan, Report, TrackEvent
 from zhiyin_kernel.blackboard import (
     AssetVersion,
     BehaviorLog,
@@ -475,6 +475,17 @@ class InMemoryAssetRepository(AssetRepository):
             stored.id = _new_id("act")
         self._action_plans[user_id] = stored
         return _snapshot(stored)
+
+    async def append_action_phase(self, user_id: str, phase: ActionPhase, *, plan_id: str) -> tuple[ActionPlan, bool]:
+        # 无 await 的临界区：读当前计划、去重、写回是同一个内存操作。
+        current = self._action_plans.get(user_id)
+        plan = _snapshot(current) if current else ActionPlan(id=plan_id)
+        known = {task.id for item in plan.phases for task in item.tasks}
+        tasks = [task.model_copy(deep=True) for task in phase.tasks if task.id not in known]
+        if tasks:
+            plan.phases.append(phase.model_copy(update={"tasks": tasks}, deep=True))
+            self._action_plans[user_id] = _snapshot(plan)
+        return _snapshot(plan), bool(tasks)
 
     async def mark_task_done(
         self, user_id: str, task_id: str, *, done: bool = True

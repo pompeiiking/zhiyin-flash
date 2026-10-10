@@ -626,8 +626,8 @@ function openDisclosure() {
               class="clip"
               type="button"
                 :disabled="session.chatTyping"
-              aria-label="上传一份材料（txt / csv / json / html）"
-              title="上传一份材料（txt / csv / json / html；Excel 请先另存为 CSV）"
+              aria-label="上传一份材料（PDF / Word（.docx）/ txt / csv / json / html）"
+              title="上传一份材料（PDF / Word（.docx）/ txt / csv / json / html；Excel 请先另存为 CSV）"
               @click="pickFile"
             >
               <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true">
@@ -640,7 +640,7 @@ function openDisclosure() {
               ref="attach"
               class="clip__input"
               type="file"
-              accept=".txt,.md,.markdown,.csv,.tsv,.json,.html,.htm,.xml,.yml,.yaml"
+              accept=".pdf,.docx,.txt,.md,.markdown,.csv,.tsv,.json,.html,.htm,.xml,.yml,.yaml"
               @change="onFile"
             >
             <input

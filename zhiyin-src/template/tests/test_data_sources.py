@@ -528,6 +528,44 @@ class _StubXueZhiClient:
         }
 
 
+async def test_target_occupation_is_searched_by_name_before_detail_is_read():
+    class TargetClient(_StubXueZhiClient):
+        async def get_occupation_detail(self, occ_id):
+            self.calls.append(("detail", occ_id))
+            return {"zhiyname": "产品经理", "zhiydesc": "负责产品规划"}
+    client = TargetClient()
+    result = await XueZhiDataSourceGateway(client).fetch(DataSourceRequest(
+        source="xuezhi", context={"fields": [{"key": "target_direction", "value": "产品经理"}]}))
+    assert ("occupation", "产品经理") in client.calls
+    assert ("detail", "O1") in client.calls
+    assert ("detail", "产品经理") not in client.calls
+    assert next(row for row in result.records if row.kind == "occupation").text
+
+
+async def test_explicit_target_is_not_overridden_by_major_mapping():
+    class TargetClient(_StubXueZhiClient):
+        async def search_occupations(self, *, name="", start=0):
+            return {"data": {"zhiyArray": [{"zhiyId": "TARGET", "title": name}]}}
+        async def get_occupation_detail(self, occ_id):
+            return {"zhiyname": "产品经理" if occ_id == "TARGET" else "结构工程师"}
+    result = await XueZhiDataSourceGateway(TargetClient(), max_occupations=1).fetch(DataSourceRequest(
+        source="xuezhi", context={"fields": [{"key": "major", "value": "土木工程"},
+        {"key": "target_direction", "value": "产品经理"}]}))
+    occupations = [row for row in result.records if row.kind == "occupation"]
+    assert len(occupations) == 1 and occupations[0].id == "TARGET"
+
+
+async def test_empty_occupation_detail_is_marked_incomplete_and_never_emitted():
+    class EmptyClient(_StubXueZhiClient):
+        async def get_occupation_detail(self, occ_id):
+            return {}
+    result = await XueZhiDataSourceGateway(EmptyClient()).fetch(DataSourceRequest(
+        source="xuezhi", context={"fields": [{"key": "target_direction", "value": "产品经理"}]}))
+    assert result.degraded and result.errors
+    assert all(row.kind != "occupation" for row in result.records)
+    assert any(row.kind == "career_case" for row in result.records)
+
+
 async def test_xuezhi_gateway_maps_profile_context_to_records() -> None:
     """适配器把画像上下文翻成检索词，并把详情整理成统一记录形状。
 
@@ -606,4 +644,4 @@ async def test_xuezhi_gateway_keeps_partial_records_when_a_step_fails() -> None:
 
     assert result.degraded is True
     assert any("职业详情超时" in item for item in result.errors)
-    assert [record.kind for record in result.records] == ["speciality"]
+    assert [record.kind for record in result.records] == ["speciality", "career_case"]

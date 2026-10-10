@@ -28,7 +28,7 @@ from zhiyin_data_sdk.repositories import (
     TrackEventRepository,
 )
 from zhiyin_data_sdk.gateways.academic import AcademicSnapshot
-from zhiyin_kernel.assets import ActionPlan, CalendarNode, DirectionPlan, Report, TrackEvent
+from zhiyin_kernel.assets import ActionPhase, ActionPlan, CalendarNode, DirectionPlan, Report, TrackEvent
 from zhiyin_kernel.blackboard import (
     AssetVersion,
     BehaviorLog,
@@ -939,26 +939,42 @@ class PostgresAssetRepository(AssetRepository):
         if not stored.id:
             stored.id = _new_id("act")
         async with self._db.transaction() as connection:
+            await _lock(connection, f"action_plan:{user_id}")
             await self._delete_content(user_id, "action_plan", connection)
             await self._put_content(user_id, "action_plan", 0, stored, connection)
         return stored
 
-    async def mark_task_done(
-        self, user_id: str, task_id: str, *, done: bool = True
-    ) -> ActionPlan:
-        plan = await self.get_action_plan(user_id)
-        if plan is None:
-            raise ResourceNotFound(f"行动计划不存在：{user_id}")
-        for phase in plan.phases:
-            for task in phase.tasks:
-                # 优先按任务 id 定位（新数据）；老数据没有 id，回落到
-                # 「阶段名:任务文本」与"裸任务文本"两种历史口径。
-                if task_id in {task.id, f"{phase.name}:{task.text}", task.text}:
-                    task.done = done
-                    task.done_at = _now() if done else None
-                    await self.save_action_plan(user_id, plan)
-                    return plan
-        raise ResourceNotFound(f"行动任务不存在：{task_id}")
+    async def append_action_phase(self, user_id: str, phase: ActionPhase, *, plan_id: str) -> tuple[ActionPlan, bool]:
+        async with self._db.transaction() as connection:
+            await _lock(connection, f"action_plan:{user_id}")
+            row = await connection.fetchrow(
+                "SELECT payload FROM biz_asset_content WHERE user_id = $1 AND asset_type = 'action_plan' ORDER BY created_at DESC LIMIT 1", user_id)
+            plan = _load(ActionPlan, row["payload"]) if row else ActionPlan(id=plan_id)
+            known = {task.id for item in plan.phases for task in item.tasks}
+            tasks = [task.model_copy(deep=True) for task in phase.tasks if task.id not in known]
+            if tasks:
+                plan.phases.append(phase.model_copy(update={"tasks": tasks}, deep=True))
+                await self._delete_content(user_id, "action_plan", connection)
+                await self._put_content(user_id, "action_plan", 0, plan, connection)
+        return plan, bool(tasks)
+
+    async def mark_task_done(self, user_id: str, task_id: str, *, done: bool = True) -> ActionPlan:
+        async with self._db.transaction() as connection:
+            await _lock(connection, f"action_plan:{user_id}")
+            row = await connection.fetchrow(
+                "SELECT payload FROM biz_asset_content WHERE user_id = $1 AND asset_type = 'action_plan' ORDER BY created_at DESC LIMIT 1", user_id)
+            plan = _load(ActionPlan, row["payload"]) if row else None
+            if plan is None:
+                raise ResourceNotFound(f"行动计划不存在：{user_id}")
+            for phase in plan.phases:
+                for task in phase.tasks:
+                    if task_id in {task.id, f"{phase.name}:{task.text}", task.text}:
+                        task.done = done
+                        task.done_at = _now() if done else None
+                        await self._delete_content(user_id, "action_plan", connection)
+                        await self._put_content(user_id, "action_plan", 0, plan, connection)
+                        return plan
+            raise ResourceNotFound(f"行动任务不存在：{task_id}")
 
     async def _put_content(
         self,

@@ -27,6 +27,7 @@ dependencies = [
     "pgvector>=0.2",
     "PyJWT>=2.8",
     "httpx>=0.27",
+    "pypdf>=6.4,<7",
     # 真加密（AES-GCM）：`CryptoSecurity` 用它。此前安全网关是 no-op，
     # 密文其实就是明文；换成真实现就必须有这一条。
     "cryptography>=42.0",

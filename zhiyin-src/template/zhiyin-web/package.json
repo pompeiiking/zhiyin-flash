@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "typecheck": "vue-tsc --noEmit",
     "test:action-task": "node --test tests/actionTask.test.mjs",
+    "test:career-guidance": "node --test tests/careerMatch.test.mjs",
     "gen:api": "openapi-typescript ../contracts/openapi.json -o src/api/types.ts",
     "check:api": "npm run gen:api && git diff --exit-code -- src/api/types.ts"
   },

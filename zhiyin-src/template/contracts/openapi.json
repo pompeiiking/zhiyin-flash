@@ -6814,7 +6814,7 @@
     },
     "/api/v1/app/match/careers": {
       "post": {
-        "description": "学职网匹配：矩阵 + 排名 + 推荐。",
+        "description": "学职平台职业要求与学生材料的证据对照、方向建议和核验任务。",
         "operationId": "match_careers_api_v1_app_match_careers_post",
         "responses": {
           "200": {
@@ -6829,6 +6829,48 @@
         "summary": "Match Careers",
         "tags": [
           "ai"
+        ]
+      }
+    },
+    "/api/v1/app/match/careers/{recommendation_id}/accept": {
+      "post": {
+        "operationId": "accept_career_match_api_v1_app_match_careers__recommendation_id__accept_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "recommendation_id",
+            "required": true,
+            "schema": {
+              "title": "Recommendation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_ActionPlanView_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Accept Career Match",
+        "tags": [
+          "asset"
         ]
       }
     },

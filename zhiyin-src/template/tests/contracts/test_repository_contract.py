@@ -41,6 +41,28 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+async def test_action_phase_append_preserves_tasks_and_is_idempotent(repositories):
+    import asyncio
+    repo = repositories["assets"]()
+    await repo.save_action_plan("u-append", ActionPlan(id="original", phases=[
+        ActionPhase(name="已有任务", date_range="本周", tasks=[ActionTask(id="old", text="已完成", done=True)])]))
+    first = ActionPhase(name="推荐", date_range="待安排", tasks=[ActionTask(id="a", text="核验 SQL")])
+    second = ActionPhase(name="推荐", date_range="待安排", tasks=[ActionTask(id="b", text="整理项目")])
+    results = await asyncio.gather(
+        repo.append_action_phase("u-append", first, plan_id="new"),
+        repo.append_action_phase("u-append", first, plan_id="new"),
+        repo.append_action_phase("u-append", second, plan_id="new"),
+    )
+    assert sum(changed for _, changed in results) == 2
+    saved = await repo.get_action_plan("u-append")
+    assert saved.id == "original"
+    tasks = [task for phase in saved.phases for task in phase.tasks]
+    assert [task.id for task in tasks] == ["old", "a", "b"] and tasks[0].done
+    saved.phases.clear()
+    assert (await repo.get_action_plan("u-append")).phases
+    assert await repo.get_action_plan("another-user") is None
+
+
 def _field(key: str = "major", value: object = "计算机") -> ProfileField:
     return ProfileField(
         key=key,

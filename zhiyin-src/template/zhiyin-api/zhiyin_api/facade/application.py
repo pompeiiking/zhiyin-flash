@@ -615,6 +615,11 @@ class DefaultApplicationFacade(ApplicationFacade):
 
     # ---------- AI 任务（SSE） ----------
 
+    async def accept_career_match(self, user_id: str, recommendation_id: str) -> ActionPlanView:
+        plan = await self._ai_tasks.accept_match(user_id, recommendation_id)
+        await self._invalidate_user(user_id, "asset_state_changed")
+        return mappers.action_plan_view(plan)
+
     async def run_ai_task(self, user_id: str, key: str, arg: str = "") -> AsyncIterator[dict]:
         """执行一个 AI 任务，逐帧 yield 进度 / 终帧（传输约定见设计文档 6.2）。"""
         async for frame in self._ai_tasks.stream(user_id, key, arg):

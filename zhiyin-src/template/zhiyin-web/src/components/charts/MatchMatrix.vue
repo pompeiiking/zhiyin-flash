@@ -2,43 +2,17 @@
 import { computed } from 'vue'
 import type { MatchResult } from '@/ai/registry'
 
-/** 矩阵的一格：学职网要多少、你有多少 */
 type MatchCell = MatchResult['cells'][number]
-
-/**
- * 专业 ↔ 职业 匹配矩阵 —— 手绘方格。
- *
- * 行是学职网给的职业方向，列是能力项。每格两个数：要多少（学职网）、你有多少（从课程与成绩折出来）。
- * 差得越多，格子越"空"（虚线）。所以扫一眼就能看出：你在哪一行是够的，缺的是哪一格。
- * 每一格都能点开 —— 它会说清楚"这个要求从哪来、你这个分数是怎么算出来的"。
- */
 const props = defineProps<{ cells: MatchCell[]; tracks: string[] }>()
 const emit = defineEmits<{ (e: 'pick', track: string, skill: string): void }>()
-
+const labels = { reported: '有材料', studied: '课程线索', unknown: '待补材料' }
 const skills = computed(() => [...new Set(props.cells.map((c) => c.skill))])
 const COLS = computed(() => skills.value.length)
-const ROW_LABEL = 78
-const CELL = 62
-
-const grid = computed(() =>
-  props.tracks.map((track) =>
-    skills.value.map((skill) => {
-      const cell = props.cells.find((c) => c.track === track && c.skill === skill)
-      const need = cell?.need ?? 0
-      const have = cell?.have ?? 0
-      return { track, skill, need, have, gap: Math.max(0, need - have) }
-    }),
-  ),
-)
-/** 缺口决定"这格有多空"：够 = 实心格；差一点 = 半格；差很多 = 虚线空心 */
-const fillOf = (gap: number) =>
-  gap < 0.05
-    ? 'color-mix(in srgb, var(--accent) 18%, transparent)'
-    : gap < 0.15
-      ? 'color-mix(in srgb, var(--accent) 10%, transparent)'
-      : 'none'
-const strokeOf = (gap: number) => (gap < 0.05 ? 'var(--mk-green)' : gap < 0.15 ? 'var(--mk-green)' : gap < 0.35 ? 'var(--mk-orange)' : 'var(--warn)')
-const dashOf = (gap: number) => (gap >= 0.15 ? '4 4' : 'none')
+const ROW_LABEL = 100
+const CELL = 76
+const grid = computed(() => props.tracks.map((track) => skills.value.map((skill) => ({
+  track, skill, cell: props.cells.find((c) => c.track === track && c.skill === skill),
+}))))
 </script>
 
 <template>
@@ -54,15 +28,15 @@ const dashOf = (gap: number) => (gap >= 0.15 ? '4 4' : 'none')
         :key="c.skill"
         class="mx__cell"
         type="button"
-        :style="{ borderColor: strokeOf(c.gap), borderStyle: dashOf(c.gap) === 'none' ? 'solid' : 'dashed', background: fillOf(c.gap) }"
-        :aria-label="`${c.track} 的 ${c.skill}：要求 ${c.need}，你 ${c.have}`"
+        :disabled="!c.cell"
+        :aria-label="`${c.track} 的 ${c.skill}：${c.cell ? labels[c.cell.status] : '未核对'}`"
         @click="emit('pick', c.track, c.skill)"
       >
-        <span class="mx__need">{{ Math.round(c.need * 100) }}</span>
-        <span class="mx__have" :class="{ short: c.gap >= 0.15 }">{{ Math.round(c.have * 100) }}</span>
+        <span class="mx__need">{{ c.cell ? labels[c.cell.status] : '未核对' }}</span>
+        <span class="mx__have">{{ c.cell ? '点击看依据' : '—' }}</span>
       </button>
     </div>
-    <p class="mx__foot label">上：职业要求 · 下：你的现状 · 虚线＝还差这一格</p>
+    <p class="mx__foot label">有材料也需要核验；课程只代表学习线索，缺材料不代表没有能力。</p>
   </div>
 </template>
 
