@@ -1,4 +1,4 @@
-import { onUnmounted, ref, type Ref } from 'vue'
+import { onUnmounted, ref, watch, type Ref } from 'vue'
 
 /**
  * 动效小工具。
@@ -47,6 +47,7 @@ export function useCountUp(target: Ref<number>, duration = 420) {
 
   // 首次挂载也走一次（0 → 值），让"这一屏有数"这件事被注意到
   animateTo(target.value)
+  watch(target, animateTo)
   onUnmounted(() => cancelAnimationFrame(raf))
 
   return { shown, animateTo }
@@ -61,10 +62,10 @@ export function useCountUp(target: Ref<number>, duration = 420) {
  * 时长按字数算（每字约 11ms，夹在 320–900ms 之间）：
  * 短句不该拖 900ms，长段也不该一闪而过。
  */
-export function useStreaming() {
+export function useStreaming(onComplete?: (id: string, text: string) => void) {
   /** turnId → 已显示到第几个字；没有键就是"已经出完" */
   const revealed = ref<Record<string, number>>({})
-  let raf = 0
+  const frames = new Map<string, number>()
 
   function stream(id: string, text: string) {
     const total = text.length
@@ -72,6 +73,7 @@ export function useStreaming() {
       const next = { ...revealed.value }
       delete next[id]
       revealed.value = next
+      onComplete?.(id, text)
       return
     }
     const duration = Math.min(900, Math.max(320, total * 11))
@@ -82,13 +84,19 @@ export function useStreaming() {
       const next = { ...revealed.value, [id]: Math.floor(eased * total) }
       if (p >= 1) delete next[id]
       revealed.value = next
-      if (p < 1) raf = requestAnimationFrame(tick)
+      if (p < 1) frames.set(id, requestAnimationFrame(tick))
+      else {
+        frames.delete(id)
+        onComplete?.(id, text)
+      }
     }
-    cancelAnimationFrame(raf)
-    raf = requestAnimationFrame(tick)
+    const previous = frames.get(id)
+    if (previous != null) cancelAnimationFrame(previous)
+    revealed.value = { ...revealed.value, [id]: 0 }
+    frames.set(id, requestAnimationFrame(tick))
   }
 
-  onUnmounted(() => cancelAnimationFrame(raf))
+  onUnmounted(() => frames.forEach((frame) => cancelAnimationFrame(frame)))
 
   /** 模板里用它取"现在该显示多少字" */
   function textOf(id: string, full: string) {

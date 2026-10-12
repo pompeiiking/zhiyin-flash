@@ -12,7 +12,7 @@ import { JOURNEY_STEPS } from '../data/copy'
  *
  * 所以这一页做两件事：
  *   1. 四个年级各自的处境、要解决的事、任务卡、里程碑 —— 整套内容跟着换
- *   2. 一条七步操作路径，每一步配一张真实界面截图（截图由 scripts/shots.mjs 生成）
+ *   2. 一条七步操作路径，每一步配本轮实际浏览器截图
  */
 
 const active = computed(() => SCENARIOS.find((s) => s.id === demo.state.grade) ?? SCENARIOS[2])
@@ -22,49 +22,49 @@ const PATH = [
   {
     step: '门户 · 选一件你现在最想解决的事',
     view: '门户',
-    shot: 'portal.png',
+    shot: 'v2-portal.jpg',
     what: '不注册也能看：主张、成本（5 分钟 / 0 张表 / 随时停）、隐私说明都在首屏。',
-    where: '说的和做的同一处：主张下面就放任务卡组，选一张直接进对话。',
+    where: '一个明确入口：开始第一个问题。登录成功后直接进入对话。',
   },
   {
     step: '对话 · 一次只问一个问题',
     view: '对话',
-    shot: 'chat.png',
+    shot: 'v2-chat.jpg',
     what: '能用点选项就不让人打字；答不上来可以跳过。',
     where: '换主理时有交接卡：谁接手、凭什么、为什么，三件事齐全。',
   },
   {
     step: '学生档案 · 每条都能看到依据与把握程度',
     view: '学生档案',
-    shot: 'profile.png',
+    shot: 'v2-profile.jpg',
     what: '每一条都标了来源（你说的 / 学校档案 / 行为记录）与把握度。',
     where: '还差几条、去哪取、取不到为什么，全写在明面上。',
   },
   {
     step: '评估报告 · 结论带门槛解释',
     view: '评估报告',
-    shot: 'report.png',
+    shot: 'v2-report.jpg',
     what: 'L1 只给结论一句 + 把握 + 门槛解释，分值依据点开才出现。',
     where: '"差 4 分，是补起来最快的一个" —— 报告最值钱的就是这一句人话。',
   },
   {
     step: '选一个方向 · 系统不替你选',
     view: '评估报告',
-    shot: 'report-directions.png',
+    shot: 'v2-directions.jpg',
     what: '主攻 / 平行 / 保底，各带契合依据与主要风险。',
-    where: '改选零成本：只重算受影响的那几处，"还有几处跟着改"当场列出来。',
+    where: '改选后当场列出关联内容。本演示展示影响范围，尚未接入真实自动重算。',
   },
   {
     step: '计划与行动 · 今天勾掉一件',
-    view: '计划与行动',
-    shot: 'plan.png',
+    view: '任务与计划',
+    shot: 'v2-home.jpg',
     what: '每条任务三样齐全：什么 + 多久 + 为什么是现在。',
     where: '做不动可以点"改小"，当场拆到 5 分钟 —— 回退是设计好的。',
   },
   {
     step: '复盘记录 · 归因不归到人',
     view: '复盘记录',
-    shot: 'review.png',
+    shot: 'v2-review.jpg',
     what: '时间线 + 归因三选一：任务太大 / 方法不对 / 方向要重估。',
     where: '主动消息全产品只有"陪你推进的人"能发，且受三个参数约束。',
   },
@@ -147,8 +147,8 @@ function onError(shot: string) {
       <div class="section__head">
         <h2 class="t-h2">操作路径：每一步落在哪个界面</h2>
         <p class="t-note">
-          截图是这个演示工程自己的界面（在 {{ 'scripts/shots.mjs' }} 里用无头浏览器生成），
-          不是设计稿 —— 你看到的和跑起来的完全一致。
+          截图来自 2026-10-12 本轮的实际浏览器预览。门户进入对话，
+          五个主要功能可通过底部书签随时切换。
         </p>
       </div>
 
@@ -176,8 +176,8 @@ function onError(shot: string) {
             <div v-else class="pstep__ph">
               <span class="chip chip--outline">截图待生成</span>
               <p class="t-note" style="margin-top: 8px">
-                运行 <code class="code">node scripts/shots.mjs</code> 生成
-                <code class="code">public/shots/{{ p.shot }}</code>
+                本轮截图文件为 <code class="code">public/shots/{{ p.shot }}</code>，
+                可以直接进入对应页面查看。
               </p>
             </div>
             <figcaption class="pstep__cap">{{ p.view }}</figcaption>

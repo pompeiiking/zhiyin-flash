@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import AppTopBar from './components/AppTopBar.vue'
-import CommandPalette from './components/CommandPalette.vue'
+import AppTopBar from './components/WorkspaceHeader.vue'
+import WorkspaceNav from './components/WorkspaceNav.vue'
+import CommandPalette from './components/CommandMenu.vue'
 import AuthLayer from './components/AuthLayer.vue'
-import NoticeToast from './components/NoticeToast.vue'
-import InterventionModal from './components/InterventionModal.vue'
+import NoticeToast from './components/InboxSheet.vue'
+import InterventionModal from './components/CareSheet.vue'
 import { demo } from './store'
 import { skin } from './lib/theme'
 import { INTERVENTION } from './data/student'
@@ -13,9 +14,8 @@ import { INTERVENTION } from './data/student'
 /**
  * 应用壳。
  *
- * 结构（自上而下）：身份条 → 顶栏 → 旅程导航（＋次级标签）→ 内容。
- * **没有侧边栏** —— 上一版左侧那块 224px 深色区域是评审点名的问题，
- * 去掉之后内容区从 1180px 放宽到 1200px，一屏的"重块"归零。
+ * 结构：品牌与工具 → 当前工作空间 → 底部浮动书签。
+ * 门户是独立的公开布局；内页保留五个可发现的功能入口。
  */
 
 const route = useRoute()
@@ -59,7 +59,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="app" :style="{ '--progress-max': progressMax }">
+  <div class="app" :class="{ 'app--workspace': !bare, 'app--chat': route.name === 'chat' }" :style="{ '--progress-max': progressMax }">
     <template v-if="bare">
       <RouterView v-slot="{ Component }">
         <Transition name="page" mode="out-in">
@@ -81,18 +81,19 @@ onMounted(() => {
               带退场（mode="out-in"）会让每次点击多等一截，属于"为了好看拖慢高频操作"；
               这里 160ms 淡入 + 6px 上移，拿掉退场，感觉是"立刻到了"。
             -->
-            <Transition name="page" mode="out-in">
+            <Transition name="workspace-page">
               <component :is="Component" :key="route.path" />
             </Transition>
           </RouterView>
         </div>
       </main>
+      <WorkspaceNav />
     </template>
 
     <CommandPalette ref="palette" />
     <AuthLayer v-if="authOpen" @close="closeAuth" />
     <!-- 提醒是登录后的产品功能，不出现在公开门户上 -->
-    <NoticeToast v-if="demo.state.authed" />
+    <NoticeToast v-if="demo.state.authed && !bare" />
     <InterventionModal
       v-if="demo.state.interventionOpen"
       :host="INTERVENTION.host"
@@ -102,6 +103,7 @@ onMounted(() => {
       :secondary="INTERVENTION.secondary"
       :rules="INTERVENTION.rules"
       @close="demo.closeIntervention"
+      @action="demo.planChatTask('先投 1 家半导体方向的工艺岗', 5); demo.closeIntervention()"
     />
 
     <Transition name="toast">
@@ -161,6 +163,13 @@ onMounted(() => {
 }
 
 /* 路由入场：160ms ease-out，位移 6px（远小于一屏，属于"接得上"而不是"飞进来"）*/
+.workspace-page-enter-active {
+  transition: opacity 160ms var(--ease-out), transform 160ms var(--ease-out);
+}
+.workspace-page-enter-from {
+  opacity: 0;
+  transform: translateY(6px);
+}
 .page-enter-active {
   transition:
     opacity 160ms var(--ease-out),
@@ -202,6 +211,8 @@ onMounted(() => {
 
 /* 减少动效：保留淡入，去掉位移 */
 @media (prefers-reduced-motion: reduce) {
+  .workspace-page-enter-active { transition: none; }
+  .workspace-page-enter-from { transform: none; }
   .page-enter-from {
     transform: none;
   }

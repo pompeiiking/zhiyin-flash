@@ -23,37 +23,37 @@ export const router = createRouter({
     {
       path: '/home',
       name: 'home',
-      component: () => import('./views/HomeView.vue'),
+      component: () => import('./views/TodayView.vue'),
       meta: { title: '任务与计划', step: 'today' },
     },
     {
       path: '/chat',
       name: 'chat',
-      component: () => import('./views/ChatView.vue'),
+      component: () => import('./views/ConversationView.vue'),
       meta: { title: '对话', step: 'know' },
     },
     {
       path: '/profile',
       name: 'profile',
-      component: () => import('./views/ProfileView.vue'),
+      component: () => import('./views/StudentView.vue'),
       meta: { title: '学生档案', step: 'know' },
     },
     {
       path: '/report',
       name: 'report',
-      component: () => import('./views/ReportView.vue'),
+      component: () => import('./views/AssessmentView.vue'),
       meta: { title: '评估报告', step: 'report' },
     },
     {
       path: '/plan',
       name: 'plan',
-      component: () => import('./views/PlanView.vue'),
+      component: () => import('./views/RoadmapView.vue'),
       meta: { title: '计划与行动', step: 'today' },
     },
     {
       path: '/review',
       name: 'review',
-      component: () => import('./views/ReviewView.vue'),
+      component: () => import('./views/ReflectionView.vue'),
       meta: { title: '复盘记录', step: 'review' },
     },
     {

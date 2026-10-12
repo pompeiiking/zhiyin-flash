@@ -1,0 +1,12 @@
+.sites/
+.sites-runtime/
+# 本机工具配置：Impeccable 设计状态与托管项目信息，跟随个人环境，不入库
+.impeccable/
+.openai/
+node_modules/
+dist/
+.vite/
+*.local
+.env
+.env.*
+!.env.example

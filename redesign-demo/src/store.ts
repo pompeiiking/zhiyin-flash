@@ -1,7 +1,7 @@
 import { computed, reactive, readonly } from 'vue'
 import { SCENARIOS, scenarioOf } from './data/scenarios'
-import { DIRECTION_PLANS, NOTICES, PROFILE_FIELDS, TASKS_BY_GRADE } from './data/student'
-import type { Grade, Notice, TaskItem } from './data/types'
+import { CHAT_TURNS, DIRECTION_PLANS, NOTICES, PROFILE_FIELDS, TASKS_BY_GRADE } from './data/student'
+import type { ChatTurn, Grade, Notice, ReviewItem, TaskItem } from './data/types'
 
 /**
  * 演示状态。
@@ -48,11 +48,18 @@ interface State {
   toast: string | null
   /** 结算"跟着改的地方"面板是否展开 */
   rippleOpen: boolean
+  chatTurns: ChatTurn[]
+  profileEdits: Record<string, string>
+  reviewAttributions: Record<string, NonNullable<ReviewItem['attribution']>>
 }
 
 /** 每个年级一份任务清单：切年级必须连"要做的事"一起换，否则场景化就是假的 */
 function tasksFor(grade: Grade): TaskItem[] {
   return TASKS_BY_GRADE[grade].map((t) => ({ ...t }))
+}
+
+function chatFor(account: string | null): ChatTurn[] {
+  return account === 'fresh' ? [] : CHAT_TURNS.filter((t) => t.from !== 'system').map((t) => ({ ...t }))
 }
 
 /**
@@ -80,14 +87,14 @@ const state = reactive<State>({
   grade: 'junior',
   authed: storedAccount !== null,
   account: storedAccount ?? '',
-  tasks: tasksFor('junior'),
+  tasks: storedAccount === 'fresh' ? [] : tasksFor('junior'),
   lastDoneId: null,
   selectedDirectionId: null,
   previousDirectionId: null,
   reportVersion: 'v3',
   chatCollected: 0,
   openField: null,
-  noticeQueue: NOTICES.map((n) => ({ ...n })),
+  noticeQueue: storedAccount === 'fresh' ? [] : NOTICES.map((n) => ({ ...n })),
   noticeIndex: 0,
   noticeOpen: false,
   interventionOpen: false,
@@ -95,6 +102,9 @@ const state = reactive<State>({
   guidesClosed: {},
   toast: null,
   rippleOpen: false,
+  chatTurns: chatFor(storedAccount),
+  profileEdits: {},
+  reviewAttributions: {},
 })
 
 let toastTimer: ReturnType<typeof setTimeout> | null = null
@@ -145,7 +155,7 @@ export const demo = {
     profileProgress: computed(() => {
       const s = scenarioOf(state.grade)
       const total = PROFILE_FIELDS.length
-      const known = Math.min(s.known + state.chatCollected, total)
+      const known = Math.min((state.account === 'fresh' ? 0 : s.known) + state.chatCollected, total)
       return { known, gap: total - known, total }
     }),
   },
@@ -155,7 +165,7 @@ export const demo = {
   setGrade(grade: Grade, silent = false) {
     if (state.grade === grade) return
     state.grade = grade
-    state.tasks = tasksFor(grade)
+    state.tasks = state.account === 'fresh' ? [] : tasksFor(grade)
     state.lastDoneId = null
     state.chatCollected = 0
     if (!silent) toast(`已切换到${scenarioOf(grade).grade}的使用场景 —— 要做的事也换了`)
@@ -167,6 +177,19 @@ export const demo = {
    * 不弹提示，方便截图与评审打开就看他关心的那一屏。
    */
   signIn(account: string, silent = false) {
+    if (state.account !== account) {
+      state.tasks = account === 'fresh' ? [] : tasksFor(state.grade)
+      state.chatTurns = chatFor(account)
+      state.chatCollected = 0
+      state.selectedDirectionId = null
+      state.previousDirectionId = null
+      state.lastDoneId = null
+      state.profileEdits = {}
+      state.reviewAttributions = {}
+      state.noticeQueue = account === 'fresh' ? [] : NOTICES.map((n) => ({ ...n }))
+      state.noticeIndex = 0
+      state.noticeOpen = false
+    }
     state.authed = true
     state.account = account
     // 落到磁盘：演示里链接经常被刷新或在新标签页打开，登录态只存内存就会变成"链接坏了"
@@ -242,13 +265,13 @@ export const demo = {
         id: `chat-${state.grade}-${Date.now()}`,
         title,
         minutes,
-        why: '这是你在对话里答应下来的一件小事 —— 先做起来，比想清楚更管用',
+        why: '这是你决定排进今天的一件事。先完成这一小步，再看接下来怎么走。',
         bucket: 'now',
         origin: '自己写的',
         due: '今天',
       })
     }
-    toast('已排进今天 —— "现在要做的"多了一件')
+    toast(exist ? '已确认这件事在今天的任务里' : '已排进今天 —— "现在要做的"多了一件')
   },
   /** 从提醒/建议里"排进今天"：它进"现在要做的"，并带上截止 */
   planToday(id: string) {
@@ -264,8 +287,9 @@ export const demo = {
     const t = state.tasks.find((x) => x.id === id)
     if (!t) return
     t.minutes = 5
-    t.title = t.title.includes('（已改小）') ? t.title : `${t.title}（已改小）`
-    t.why = '原来那一版要 40 分钟以上 —— 拆到 5 分钟，先动起来'
+    if (t.title.includes('投 3 家')) t.title = t.title.replace('投 3 家', '先投 1 家')
+    else if (!t.title.includes('（先做一个步骤）')) t.title += '（先做一个步骤）'
+    t.why = '先完成其中一个最小步骤，约 5 分钟；其他部分留到下一次。'
     toast('已改小到 5 分钟。改小不是失败，是设计好的')
   },
 
@@ -291,6 +315,9 @@ export const demo = {
   closeRipple() {
     state.rippleOpen = false
   },
+  openRipple() {
+    state.rippleOpen = true
+  },
 
   // ---- 报告版本 ----
   setReportVersion(v: string) {
@@ -300,6 +327,17 @@ export const demo = {
   // ---- 画像字段展开 ----
   toggleField(key: string) {
     state.openField = state.openField === key ? null : key
+  },
+  updateProfileField(key: string, value: string) {
+    if (!value.trim()) return
+    state.profileEdits[key] = value.trim()
+    toast('更正已记下，可以在对话里继续补充依据')
+  },
+  addChatTurn(turn: ChatTurn) {
+    state.chatTurns.push(turn)
+  },
+  setReviewAttribution(id: string, value: NonNullable<ReviewItem['attribution']>) {
+    state.reviewAttributions[id] = value
   },
 
   // ---- 浮窗：一次只跳一条（7.4）----
@@ -319,7 +357,14 @@ export const demo = {
   },
   resolveNotice() {
     const n = state.noticeQueue[state.noticeIndex]
-    if (n) toast(`已${n.action}：写进"现在要做的"`)
+    if (n) {
+      demo.planChatTask('投递中建某院的结构岗', 10)
+      demo.dismissNotice()
+    }
+  },
+  dismissNotice() {
+    state.noticeQueue.splice(state.noticeIndex, 1)
+    state.noticeIndex = Math.min(state.noticeIndex, Math.max(0, state.noticeQueue.length - 1))
     state.noticeOpen = false
   },
 
@@ -345,7 +390,7 @@ export const demo = {
 
   // ---- 演示辅助 ----
   resetDemo() {
-    state.tasks = tasksFor(state.grade)
+    state.tasks = state.account === 'fresh' ? [] : tasksFor(state.grade)
     state.chatCollected = 0
     state.selectedDirectionId = null
     state.previousDirectionId = null
@@ -355,6 +400,11 @@ export const demo = {
     state.reportVersion = 'v3'
     state.openField = null
     state.rippleOpen = false
+    state.chatTurns = chatFor(state.account)
+    state.profileEdits = {}
+    state.reviewAttributions = {}
+    state.lastDoneId = null
+    state.noticeQueue = state.account === 'fresh' ? [] : NOTICES.map((n) => ({ ...n }))
     toast('演示数据已复位')
   },
 }

@@ -49,7 +49,7 @@ const PRIMARY = [
     hex: ['#96000e'],
     from: '河北大学官网 layout.css 的实际主红（出现 57 次）',
     url: 'https://www.hbu.edu.cn',
-    use: '只给"需要注意"的地方：门槛差距、截止日、交接卡、阻断性提醒。白底 9.12:1。顶栏最上方还有 2px 的身份条用同一支红 —— 那是"这是哪所学校"，不表示状态。',
+    use: '给需要注意的地方：截止日、门槛提示。白底 9.12:1。学生空间的品牌标记也沿用这支红。',
   },
   {
     name: '深灰 · 骨架',
@@ -146,11 +146,12 @@ const MOTION = [
 ]
 
 const TYPE = [
-  { token: '--fs-38 / 600', use: '门户主张（内页不用）' },
-  { token: '--fs-30 / 600', use: '页标题 —— 一屏只许一个' },
-  { token: '--fs-20 / 600', use: '块标题、节标题、索引栏标题' },
-  { token: '--fs-14 / 400', use: '正文、条目、卡片标题（次级标题靠字重 600 区分）' },
-  { token: '--fs-12 / 400', use: '说明、来源、时间、标签、序号' },
+  { token: '--fs-38 / 600', use: '门户主张、报告关键差距' },
+  { token: '--fs-30 / 600', use: '页标题、主要任务与报告结论' },
+  { token: '--fs-20 / 600', use: '节标题、手机端的主要标题' },
+  { token: '--fs-16 / 400', use: '学生空间正文、对话、任务条目' },
+  { token: '--fs-14 / 400', use: '次要说明、来源细节、控件文字' },
+  { token: '--fs-12 / 400', use: '短注解、时间、手机导航标签' },
 ]
 
 const SPACING = ['4', '8', '12', '16', '20', '24', '32', '40', '56', '72']
@@ -343,7 +344,7 @@ const sourceNote = computed(
 
       <!-- 排版 -->
       <section class="block">
-        <h2 class="block__title">六、排版：字号只留五档（相邻档差 ≥6px）</h2>
+        <h2 class="block__title">六、排版：六档字号，正文 16px</h2>
         <table class="table">
           <thead>
             <tr>
@@ -363,11 +364,9 @@ const sourceNote = computed(
           首屏不再有字体抖动。
         </p>
         <p class="note">
-          <strong>2026-10-11：由 12 档收敛到 5 档。</strong>原来 11–16 六档全挤在 6px 之内
-          （相邻只差 1px），一屏能数出 7–9 个字号 —— 相邻档分辨不出"这是另一层"，
-          看起来就是"大大小小、乱"。现在每档只承担一件事、<strong>相邻档差 ≥6px</strong>，
-          层级改由<strong>字重与留白</strong>表达（外部口径：NHS 仪表盘规范
-          "用不同的字重建立层级，在字号、粗细、颜色上保持一致"）。
+          <strong>2026-10-12：内页正文恢复到 16px。</strong>对话和任务条目优先保证阅读舒适，
+          次要信息用 14px，12px 只用于短注解。主要层级仍由<strong>字重、留白与位置</strong>表达，
+          不需要每加一层内容就增加一档字号。
           这条纪律由 <code>scripts/check-contrast.mjs</code> 的 <code>FONT_SIZE_USES</code> 守着：
           登记了却没人用 = 死档，会直接失败。
         </p>
@@ -440,7 +439,7 @@ const sourceNote = computed(
           </div>
 
           <div class="card card--pad">
-            <p class="t-label">状态导航：三态</p>
+            <p class="t-label">流程示意：不是操作导航</p>
             <ol class="steps" style="margin-top: 12px">
               <template v-for="(s, i) in steps" :key="s.label">
                 <li
@@ -520,12 +519,12 @@ const sourceNote = computed(
           <div class="hier__item">
             <span class="hier__no">1</span>
             <b>你现在在哪</b>
-            <p>状态导航（认识你 → 评估报告 → 选一个方向 → 今日任务 → 复盘记录）永远在顶栏下面一条。</p>
+            <p>底部浮动书签保留五个功能名称，当前页面明确高亮。顶部只放品牌、年级、外观与提醒工具。</p>
           </div>
           <div class="hier__item">
             <span class="hier__no">2</span>
             <b>现在最好先做什么</b>
-            <p>同一行右侧直接给答案 + 一个按钮，不让用户在页面里找"下一步"。</p>
+            <p>每页先给一个主要焦点：对话中的问题、今天的一件事、报告的结论。次要信息按需展开。</p>
           </div>
           <div class="hier__item">
             <span class="hier__no">3</span>

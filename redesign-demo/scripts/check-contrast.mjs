@@ -165,11 +165,12 @@ const DECORATIVE_ONLY = ['c-text-4']
  * ======================================================================== */
 
 const FONT_SIZE_USES = [
+  { tok: '16', use: '学生空间正文与对话，中文长句的阅读基准', where: 'workspace.css 的工作空间正文、对话与任务条目' },
   { tok: '12', use: '说明、注解、表头、标签、序号、行副标题（.t-note / .t-label / .chip）', where: 'base.css 的 .t-label / .t-note / .chip / .table th / .row__sub / .field__hint；各页的说明行' },
   { tok: '14', use: '正文基准（body / .t-body / .t-sm）、卡片标题、条目行、密集正文', where: 'base.css 的 body / .t-body / .t-sm / .card__title / .page__sub；各页的条目行' },
   { tok: '20', use: '块标题与节标题：.block__title / .rail-index__title / .focal .card__title / .t-h1~.t-h3 / .empty__title', where: 'base.css 的 .block__title / .rail-index__title / .focal .card__title / .t-h1 / .t-h2 / .t-h3 / .empty__title' },
   { tok: '30', use: '页标题（.page__title）—— **一屏只许一个**', where: 'base.css 的 .page__title' },
-  { tok: '38', use: '展示字号（.t-display）—— 内页不用，留给门户', where: 'base.css 的 .t-display；PortalView' },
+  { tok: '38', use: '展示字号：门户主张、报告关键差距', where: 'base.css 的 .t-display；PortalView；workspace.css 的 .ws-report-score' },
 ]
 
 /** 抓出界面源文件里实际用到的字号令牌 */
@@ -334,6 +335,6 @@ if (failed || unregistered.length || misuse.length || fsUnregistered.length || f
 console.log(`✓ ${themes.length} 套皮肤组合的必过项全部 ≥ ${MIN}:1${skipped ? `（另有 ${skipped} 项为非 hex，已跳过）` : ''}。`)
 console.log(`✓ 令牌用途登记：${TEXT_TOKENS.length} 条承载文字、全部有 must:true 条目；`)
 console.log(`  ${DECORATIVE_ONLY.map((t) => `--${t}`).join('、')} 未被当作文字色（白名单 ${DECORATIVE_ALLOWED.length} 条）。`)
-console.log(`✓ 字号令牌登记：${fsRegistered.length} 档全部登记、全部在界面上真的用到（2026-10-11 由 12 档收敛到 ${fsRegistered.length} 档）。`)
+console.log(`✓ 字号令牌登记：${fsRegistered.length} 档全部登记、全部在界面上真的用到（2026-10-12：内页正文恢复 16px）。`)
 console.log('  提示：主色是**河大校徽蓝** --blue-500（#154494），对白底 9.18:1，')
 console.log('        所以它既能画图形也能承载文字，不需要再降一档。')
