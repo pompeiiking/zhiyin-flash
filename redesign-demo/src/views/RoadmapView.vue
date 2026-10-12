@@ -5,6 +5,7 @@ import { CALENDAR_MARKS } from '../data/student'
 import PageHeading from '../components/PageHeading.vue'
 import TaskList from '../components/TaskList.vue'
 import UiIcon from '../components/UiIcon.vue'
+import { backendDemo } from '../lib/backend-demo'
 const scenario = computed(() => demo.use.scenario.value)
 const tab = ref('milestones')
 const tabs = [{ key: 'milestones', label: '阶段里程碑' }, { key: 'week', label: '本周任务' }, { key: 'calendar', label: '关键日历' }, { key: 'sources', label: '任务来源' }]
@@ -19,9 +20,10 @@ const books = computed(() => ['计划拆下来的', '建议的', '自己写的',
 </script>
 <template>
   <div class="ws-page">
-    <PageHeading title="计划与行动" :description="scenario.grade + '这一年，先把重要的事放进合适的时间。'"><RouterLink class="btn btn--primary" to="/home">看看今天这一件<UiIcon name="arrow" :size="16" /></RouterLink></PageHeading>
-    <nav class="ws-subnav" aria-label="任务与计划视图"><RouterLink to="/home">今日任务</RouterLink><RouterLink to="/plan" aria-current="page">计划与行动</RouterLink></nav>
-    <div class="ws-two-columns">
+    <PageHeading title="行动计划" :description="scenario.grade + '这一年，把重要的事放进合适的时间。'"><RouterLink class="btn btn--primary" to="/home">看看今天这一件<UiIcon name="arrow" :size="16" /></RouterLink></PageHeading>
+    <nav class="ws-subnav" aria-label="行动计划视图"><RouterLink to="/home">今日行动</RouterLink><RouterLink to="/plan" aria-current="page">阶段计划</RouterLink><RouterLink to="/schedule">关键日历</RouterLink></nav>
+    <section v-if="!backendDemo.state.planAvailable" class="ws-paper"><div class="ws-empty"><h2 class="ws-section-title">阶段计划还没有形成</h2><p>先在对话里确定方向与下一步，计划才有依据。</p><RouterLink class="btn btn--primary" to="/chat">继续咨询</RouterLink><div><button class="ws-text-button" @click="backendDemo.loadPlanSample()">查看阶段计划示例</button></div></div></section>
+    <div v-else class="ws-two-columns">
       <section class="ws-paper">
         <div class="ws-tabs" aria-label="计划内容"><button v-for="t in tabs" :key="t.key" :aria-pressed="tab === t.key" @click="tab = t.key">{{ t.label }}</button></div>
         <section v-if="tab === 'milestones'" class="ws-section"><div class="ws-section-head"><h2>{{ scenario.focus }}</h2></div><div class="ws-milestones"><article v-for="m in scenario.milestones" :key="m.id" class="ws-milestone"><div class="ws-milestone__head"><div><h3>{{ m.title }}</h3><p>{{ m.window }}</p></div><strong>{{ Math.round(m.progress * 100) }}%</strong></div><div class="ws-progress"><span :style="{ '--value': m.progress }" /></div><p>{{ m.note }}</p></article></div></section>

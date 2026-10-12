@@ -2,7 +2,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { demo } from '../store'
-import { META_LINKS, NAV_SECTIONS } from '../lib/nav'
+import { WORKSPACE_ITEMS, WORKSPACE_TOOLS } from '../lib/workspace-nav'
 import { skin } from '../lib/theme'
 import { SCENARIOS } from '../data/scenarios'
 import InfoSheet from './InfoSheet.vue'
@@ -14,8 +14,7 @@ const cursor = ref(0)
 const field = ref<HTMLInputElement | null>(null)
 const router = useRouter()
 const commands = computed<Item[]>(() => [
-  ...NAV_SECTIONS.flatMap((s) => [{ label: s.label, hint: '打开页面', run: () => { router.push(s.to) } }, ...s.subs.map((sub) => ({ label: sub.label, hint: s.label, run: () => { router.push(sub.to) } }))]),
-  ...META_LINKS.map((m) => ({ label: m.label, hint: m.hint, run: () => { router.push(m.to) } })),
+  ...[...WORKSPACE_ITEMS, ...WORKSPACE_TOOLS].map((s) => ({ label: s.label, hint: s.hint, run: () => { router.push(s.to) } })),
   ...SCENARIOS.map((s) => ({ label: '使用场景：' + s.grade, hint: s.focus, run: () => demo.setGrade(s.id) })),
   { label: '主题：浅色', hint: '外观设置', run: () => skin.setTheme('light') },
   { label: '主题：深色', hint: '外观设置', run: () => skin.setTheme('dark') },

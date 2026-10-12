@@ -5,6 +5,10 @@ import { INTERVENTION, REVIEW_ITEMS } from '../data/student'
 import type { ReviewItem } from '../data/types'
 import PageHeading from '../components/PageHeading.vue'
 import UiIcon from '../components/UiIcon.vue'
+import AchievementsSection from '../components/AchievementsSection.vue'
+import { useRoute } from 'vue-router'
+const route = useRoute()
+const achievementView = computed(() => route.query.view === 'achievements')
 const items = computed<ReviewItem[]>(() => [
   ...demo.use.done.value.filter((t) => t.doneAt === '刚刚').map((t) => ({ id: 'done-' + t.id, when: '刚刚', what: t.title, result: 'done' as const })),
   ...(demo.state.account === 'fresh' ? [] : REVIEW_ITEMS),
@@ -23,7 +27,10 @@ function nextStep() {
 </script>
 <template>
   <div class="ws-page">
-    <PageHeading title="复盘记录" :description="demo.use.scenario.value.grade + ' · ' + demo.use.scenario.value.reviewFocus"><RouterLink class="btn" to="/home">回到今日任务<UiIcon name="arrow" :size="16" /></RouterLink></PageHeading>
+    <PageHeading title="复盘与记录" :description="achievementView ? '只记录做过的事，不把停顿归到人身上。' : demo.use.scenario.value.grade + ' · ' + demo.use.scenario.value.reviewFocus"><RouterLink class="btn" to="/home">回到今日行动<UiIcon name="arrow" :size="16" /></RouterLink></PageHeading>
+    <nav class="desk-section-nav" aria-label="复盘视图"><RouterLink to="/review" :aria-current="!achievementView ? 'page' : undefined">推进与复盘</RouterLink><RouterLink to="/review?view=achievements" :aria-current="achievementView ? 'page' : undefined">完成记录</RouterLink></nav>
+    <AchievementsSection v-if="achievementView" />
+    <template v-else>
     <div class="ws-review-summary"><span><strong>{{ completed.length }}</strong>件已完成</span><span><strong>{{ partial.length }}</strong>件推进了一半</span><span><strong>{{ items.filter((r) => r.result === 'missed').length }}</strong>件需要一起想想</span></div>
     <div class="ws-two-columns">
       <section class="ws-paper">
@@ -35,5 +42,6 @@ function nextStep() {
     <section class="ws-paper ws-section"><div class="ws-section-head"><div><h2>这一轮发生了什么</h2><p>只记录事实与时间，完成状态可以在今日任务里恢复。</p></div></div><ol v-if="items.length" class="ws-timeline"><li v-for="r in items" :key="r.id"><time>{{ r.when }}</time><div class="ws-timeline__content">{{ r.what }}<small v-if="demo.state.reviewAttributions[r.id] ?? r.attribution">归到：{{ demo.state.reviewAttributions[r.id] ?? r.attribution }}</small></div><span class="ws-timeline__state">{{ labels[r.result] }}</span></li></ol><p v-else class="ws-muted">完成一件事，就会留下第一条记录。</p></section>
     <div v-if="!demo.state.guidesClosed.review" class="ws-guide"><UiIcon name="info" :size="18" /><p>先看你推进了什么，再决定下一步怎样更好做。选择一个原因，会得到对应的行动建议。</p><button @click="demo.closeGuide('review')">收起</button></div>
     <p class="ws-demo-note">历史复盘为预置示例；当前演示里刚完成的任务会加入记录。</p>
+    </template>
   </div>
 </template>

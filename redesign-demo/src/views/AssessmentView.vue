@@ -10,6 +10,7 @@ import RadarChart from '../components/charts/RadarChart.vue'
 import MeterRow from '../components/charts/MeterRow.vue'
 import QuadrantChart from '../components/charts/QuadrantChart.vue'
 import TrendLine from '../components/charts/TrendLine.vue'
+import { backendDemo } from '../lib/backend-demo'
 const route = useRoute()
 const router = useRouter()
 const view = ref('summary')
@@ -17,14 +18,13 @@ const printing = ref(false)
 const version = computed(() => REPORT_VERSIONS.find((v) => v.id === demo.state.reportVersion) ?? REPORT_VERSIONS[0])
 const selected = computed(() => demo.use.selectedDirection.value)
 const previous = computed(() => demo.use.previousDirection.value)
-const progress = computed(() => demo.use.profileProgress.value)
-watch(() => route.query.focus, (focus) => { view.value = focus === 'choose' ? 'directions' : focus === 'versions' ? 'versions' : 'summary' }, { immediate: true })
+const available = computed(() => view.value === 'directions' ? backendDemo.state.directionsAvailable : backendDemo.state.reportAvailable)
+watch(() => [route.path, route.query.focus], () => { view.value = route.path === '/directions' || route.query.focus === 'choose' ? 'directions' : route.query.focus === 'versions' ? 'versions' : 'summary' }, { immediate: true })
 function changeView(next: string) {
   const query = { ...route.query }
-  if (next === 'directions') query.focus = 'choose'
-  else if (next === 'versions') query.focus = 'versions'
+  if (next === 'versions') query.focus = 'versions'
   else delete query.focus
-  router.replace({ path: '/report', query })
+  router.replace({ path: next === 'directions' ? '/directions' : '/report', query })
 }
 const quadrants = DIRECTION_PLANS.map((d, i) => ({ id: d.id, label: d.title, role: d.role, x: [72, 84, 40][i], y: [58, 44, 76][i] }))
 const trend = REPORT_VERSIONS.slice().reverse().map((v) => ({ label: v.label.replace('（当前）', ''), value: v.fit }))
@@ -36,13 +36,13 @@ onUnmounted(() => { window.removeEventListener('beforeprint', beforePrint); wind
 </script>
 <template>
   <div class="ws-page">
-    <PageHeading title="评估报告" description="先看结论，再看依据。方向的选择，始终在你手上。">
+    <PageHeading :title="view === 'directions' ? '方向方案' : '诊断报告'" :description="view === 'directions' ? '把依据、差距和代价放在一起，选哪条由你决定。' : '先看结论，再看依据。每一版都能找到来由。'">
       <label class="ws-version-select"><span class="sr-only">报告版本</span><select :value="demo.state.reportVersion" @change="demo.setReportVersion(($event.target as HTMLSelectElement).value)"><option v-for="v in REPORT_VERSIONS" :key="v.id" :value="v.id">{{ v.label }}</option></select></label>
       <button class="btn" @click="printReport">打印 / 存成 PDF</button>
     </PageHeading>
     <nav class="ws-subnav" aria-label="报告内容"><RouterLink to="/report" :aria-current="view === 'summary' ? 'page' : undefined" @click.prevent="changeView('summary')">结论与差距</RouterLink><RouterLink to="/report?focus=choose" :aria-current="view === 'directions' ? 'page' : undefined" @click.prevent="changeView('directions')">方向对比</RouterLink><RouterLink to="/report?focus=versions" :aria-current="view === 'versions' ? 'page' : undefined" @click.prevent="changeView('versions')">版本与变化</RouterLink></nav>
-    <template v-if="demo.state.account === 'fresh' && progress.known < 4">
-      <section class="ws-paper"><div class="ws-empty"><h2 class="ws-section-title">先了解你，报告才有依据</h2><p>聊几个问题之后，再来看看方向与差距。不会把预置结论当成你的报告。</p><RouterLink class="btn btn--primary" to="/chat">继续对话</RouterLink></div></section>
+    <template v-if="!available">
+      <section class="ws-paper"><div class="ws-empty"><h2 class="ws-section-title">{{ view === 'directions' ? '方向方案还没有形成' : '报告还没有生成' }}</h2><p>先在对话里把关键依据聊清楚，再回来看看。不会把预置结论当成你的报告。</p><RouterLink class="btn btn--primary" to="/chat">继续咨询</RouterLink><div><button class="ws-text-button" @click="backendDemo.loadAssessmentSample()">查看{{ view === 'directions' ? '方向' : '报告' }}示例</button></div></div></section>
     </template>
     <template v-else>
       <section v-if="view === 'summary' || printing">

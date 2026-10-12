@@ -5,7 +5,6 @@ import PageHeading from '../components/PageHeading.vue'
 import TaskList from '../components/TaskList.vue'
 import UiIcon from '../components/UiIcon.vue'
 import InfoSheet from '../components/InfoSheet.vue'
-const scenario = computed(() => demo.use.scenario.value)
 const progress = computed(() => demo.use.profileProgress.value)
 const smallest = computed(() => demo.use.smallestNow.value)
 const group = ref('now')
@@ -28,8 +27,8 @@ function add() {
 </script>
 <template>
   <div class="ws-page">
-    <PageHeading title="任务与计划" :description="scenario.grade + ' · ' + scenario.focus"><button class="btn" @click="addOpen = true"><UiIcon name="plus" :size="16" />记一件事</button></PageHeading>
-    <nav class="ws-subnav" aria-label="任务与计划视图"><RouterLink to="/home" aria-current="page">今日任务</RouterLink><RouterLink to="/plan">计划与行动</RouterLink></nav>
+    <PageHeading title="行动计划" description="先做今天这一件，再看这一阶段要走到哪里。"><RouterLink class="btn" to="/notes"><UiIcon name="plus" :size="16" />写下自己的待办</RouterLink></PageHeading>
+    <nav class="ws-subnav" aria-label="行动计划视图"><RouterLink to="/home" aria-current="page">今日行动</RouterLink><RouterLink to="/plan">阶段计划</RouterLink><RouterLink to="/schedule">关键日历</RouterLink></nav>
     <section v-if="smallest" class="ws-paper ws-feature">
       <div><div class="ws-feature__caption"><UiIcon name="action" :size="18" /><span>今天先做这一件</span><span>{{ smallest.origin }}</span></div><h2>{{ smallest.title }}</h2><p>{{ smallest.why }}</p></div>
       <div class="ws-feature__action"><p>约 {{ smallest.minutes }} 分钟</p><button class="btn btn--primary" @click="demo.completeTask(smallest.id)">做完了<UiIcon name="check" :size="18" /></button><button v-if="smallest.minutes > 5" class="ws-text-button" @click="demo.shrinkTask(smallest.id)">有点大，拆成 5 分钟</button></div>

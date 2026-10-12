@@ -1,5 +1,7 @@
 # 职引 · 当前学生空间设计系统
 
+2026-10-12 桌面版更新：常驻结构改为左侧桌面导航，可切换移动底栏，覆盖下文旧的“五个底部入口”描述。咨询置顶，其余按了解与选择、安排与推进、资料与记录分组。新增学校资料、课表、笔记、资讯、工具和完成记录。正文16px，图标统一Phosphor Vue；层次来自留白、浅背景与白色工作表面，没有新增照片。内页直接切换，避免旧页面与新页面叠加。边界见 [BACKEND-ALIGNMENT.md](BACKEND-ALIGNMENT.md)，验证见 [desktop-v3/QA.md](design-review/desktop-v3/QA.md)。
+
 本文记录本轮已实现的界面。产品约束来自 [PRODUCT.md](PRODUCT.md)，设计方向来自 [DESIGN-BRIEF.md](DESIGN-BRIEF.md)；代码中的令牌、布局与交互是具体取值的依据。浏览器检查结果另见 [design-review/QA.md](design-review/QA.md)，本文不代替验证记录。
 
 ## 结构与阅读顺序

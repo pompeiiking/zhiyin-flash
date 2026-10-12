@@ -15,10 +15,11 @@ const filters = [
   { key: 'school', label: '学校档案', sources: ['学信网', '教务系统', '学校'] },
   { key: 'talk', label: '你说过的', sources: ['对话'] },
   { key: 'behavior', label: '行为记录', sources: ['行为记录'] },
+  { key: 'user', label: '本人填写', sources: ['本人填写'] },
 ]
 const visible = computed(() => {
   const f = filters.find((item) => item.key === filter.value)!
-  return filter.value === 'all' ? known.value : known.value.filter((item) => f.sources.includes(item.source))
+  return filter.value === 'all' ? known.value : known.value.filter((item) => f.sources.includes(fieldSource(item)))
 })
 const correction = ref<ProfileField | null>(null)
 const value = ref('')
@@ -31,13 +32,16 @@ function edit(f: ProfileField) {
 }
 function save() {
   if (!value.value.trim()) { correctionError.value = '请写下更正后的信息。'; return }
+  if (value.value.trim().length > 40) { correctionError.value = '最多 40 个字，请把这条信息写得简短一点。'; return }
   if (correction.value) demo.updateProfileField(correction.value.key, value.value)
   correction.value = null
 }
+function fieldSource(f: ProfileField) { return demo.state.profileEdits[f.key] ? '本人填写' : f.source }
 </script>
 <template>
   <div class="ws-page">
-    <PageHeading title="学生档案" description="你说过的、学校提供的、你做过的事，都有各自的出处。"><RouterLink class="btn btn--primary" to="/chat">{{ progress.gap ? '继续聊，补充了解' : '聊聊新的变化' }}<UiIcon name="arrow" :size="16" /></RouterLink></PageHeading>
+    <PageHeading title="个人画像" description="已经了解的情况、还缺的依据，都放在这里。"><RouterLink class="btn btn--primary" to="/chat">{{ progress.gap ? '继续聊，补充了解' : '聊聊新的变化' }}<UiIcon name="arrow" :size="16" /></RouterLink></PageHeading>
+    <nav class="desk-section-nav" aria-label="个人画像视图"><RouterLink to="/profile" aria-current="page">已有信息与缺口</RouterLink><RouterLink to="/academic">学籍与资料</RouterLink></nav>
     <div class="ws-two-columns">
       <section class="ws-paper">
         <div class="ws-profile-head"><div><h2>{{ STUDENT.name }}</h2><p>{{ demo.state.profileEdits.school ?? STUDENT.school }} · {{ demo.state.profileEdits.grade ?? demo.use.scenario.value.grade }}</p></div><div class="ws-profile-progress"><strong>{{ progress.known }} / {{ progress.total }} 条</strong><p>{{ progress.gap ? '还有 ' + progress.gap + ' 条会在后面聊到' : '这份示例的了解已补齐' }}</p></div></div>
@@ -45,7 +49,7 @@ function save() {
         <section class="ws-section">
           <div class="ws-section-head"><h2>已经了解到的</h2><span class="ws-muted">点开一条，看看出处</span></div>
           <div class="ws-tabs" aria-label="档案信息来源"><button v-for="f in filters" :key="f.key" :aria-pressed="filter === f.key" @click="filter = f.key">{{ f.label }}</button></div>
-          <div v-if="visible.length" class="ws-evidence"><details v-for="f in visible" :key="f.key" class="ws-evidence__row"><summary><span class="ws-evidence__label">{{ f.label }}</span><span class="ws-evidence__value">{{ fieldValue(f) }}</span><UiIcon name="chevron" :size="18" /></summary><div class="ws-evidence__explain"><p>来源：{{ f.source }}<span v-if="demo.state.profileEdits[f.key]"> · 你刚刚更正过</span></p><p>把握：{{ f.confidence.label }}</p><p>记于：{{ f.noted }}</p><button class="ws-text-button" @click="edit(f)">这条需要更正<UiIcon name="arrow" :size="14" /></button></div></details></div>
+          <div v-if="visible.length" class="ws-evidence"><details v-for="f in visible" :key="f.key" class="ws-evidence__row"><summary><span class="ws-evidence__label">{{ f.label }}</span><span class="ws-evidence__value">{{ fieldValue(f) }}</span><UiIcon name="chevron" :size="18" /></summary><div class="ws-evidence__explain"><p>来源：{{ fieldSource(f) }}<span v-if="demo.state.profileEdits[f.key]"> · 你刚刚更正过</span></p><p>把握：{{ demo.state.profileEdits[f.key] ? '本人确认' : f.confidence.label }}</p><p>记于：{{ f.noted }}</p><button class="ws-text-button" @click="edit(f)">这条需要更正<UiIcon name="arrow" :size="14" /></button></div></details></div>
           <div v-else class="ws-empty"><h3>{{ known.length ? '这一类还没有记录' : '还不太了解你' }}</h3><p>先聊几个容易回答的问题，信息会逐条出现在这里。</p><RouterLink class="ws-text-link" to="/chat">开始第一个问题<UiIcon name="arrow" :size="16" /></RouterLink></div>
         </section>
       </section>

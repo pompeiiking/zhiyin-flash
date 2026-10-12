@@ -1,7 +1,9 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+const env = loadEnv(mode, '.', 'ZHIYIN_')
+return {
   plugins: [vue()],
   resolve: {
     alias: {
@@ -18,9 +20,11 @@ export default defineConfig({
      * 而现象是"有时候打得开有时候打不开"，极难查。宁可起不来（报错看得见）。
      */
     strictPort: true,
+    proxy: { '/api': { target: env.ZHIYIN_API_TARGET || 'http://127.0.0.1:8000', changeOrigin: true } },
   },
   preview: {
     host: '127.0.0.1',
     port: 5273,
   },
+}
 })

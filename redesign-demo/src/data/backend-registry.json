@@ -1,0 +1,227 @@
+{
+  "taskEntries": [
+    {
+      "code": "confused",
+      "label": "还不太清楚自己适合什么",
+      "target_stage": "collect",
+      "lead_agent": "profile_analyst",
+      "sort_order": 1
+    },
+    {
+      "code": "verify_direction",
+      "label": "想验证某方向行不行",
+      "target_stage": "diagnose",
+      "lead_agent": "career_advisor",
+      "sort_order": 2
+    },
+    {
+      "code": "undecided",
+      "label": "几个方向拿不准",
+      "target_stage": "decide",
+      "lead_agent": "career_advisor",
+      "sort_order": 3
+    },
+    {
+      "code": "how_to_act",
+      "label": "定了方向不知道怎么动",
+      "target_stage": "act",
+      "lead_agent": "path_planner",
+      "sort_order": 4
+    },
+    {
+      "code": "stuck",
+      "label": "执行卡住了 / 没进展",
+      "target_stage": "review",
+      "lead_agent": "companion_coach",
+      "sort_order": 5
+    },
+    {
+      "code": "review_due",
+      "label": "好久没管了 / 该复盘了",
+      "target_stage": "review",
+      "lead_agent": "companion_coach",
+      "sort_order": 6
+    },
+    {
+      "code": "free_chat",
+      "label": "直接开聊",
+      "target_stage": null,
+      "lead_agent": null,
+      "sort_order": 7
+    }
+  ],
+  "theoryCards": [
+    {
+      "id": "parsons_self",
+      "name": "帕森斯 · 了解自我",
+      "school": "特质因素论",
+      "summary": "职业选择的第一步是先把自己看清楚：能力、兴趣、价值观。",
+      "product_usage": "① 采集建模的字段来源：围绕这三类追问，而不是问用户喜欢什么工作。"
+    },
+    {
+      "id": "holland_riasec",
+      "name": "霍兰德 · 自我代码（RIASEC）",
+      "school": "类型学",
+      "summary": "把兴趣归纳成六种类型，用三个字母表示你的兴趣组合。",
+      "product_usage": "① 采集与 ② 诊断的兴趣维度，产出解读为用户可理解的语言。"
+    },
+    {
+      "id": "ability_trinity",
+      "name": "能力三核",
+      "school": "能力结构",
+      "summary": "把能力拆成知识、技能、才干三层，区分可训练与难替代的部分。",
+      "product_usage": "② 诊断里判断差距是「补得到」还是「要换方向」。"
+    },
+    {
+      "id": "super_life_stage",
+      "name": "舒伯 · 阶段与角色",
+      "school": "生涯发展论",
+      "summary": "人在不同阶段承担不同角色，任务重心会变。",
+      "product_usage": "轴 A 阶段推断，用于决定开场方式与追问重点。"
+    },
+    {
+      "id": "career_anchor",
+      "name": "职业锚 · 价值取向",
+      "school": "施恩",
+      "summary": "真正让你不肯放弃的那件事，就是职业锚。",
+      "product_usage": "③ 决策中解释「为什么两个方向条件差不多，你却更想要某一个」。"
+    },
+    {
+      "id": "parsons_match",
+      "name": "帕森斯 · 匹配",
+      "school": "特质因素论",
+      "summary": "把「你的特质」与「职业要求」放在一起比对。",
+      "product_usage": "② 诊断的基本对齐框架。"
+    },
+    {
+      "id": "clover",
+      "name": "三叶草模型",
+      "school": "生涯咨询",
+      "summary": "兴趣、能力、价值三者重叠处才是最舒服的方向。",
+      "product_usage": "③ 决策里匹配度的解释口径（三叶草契合度 × 可达性）。"
+    },
+    {
+      "id": "casve",
+      "name": "CASVE 循环",
+      "school": "认知信息加工（CIP）",
+      "summary": "沟通—分析—综合—评估—执行，五步走完才算一次决策。",
+      "product_usage": "③ 决策的推进节奏，保证不跳过评估直接执行。"
+    },
+    {
+      "id": "decision_balance",
+      "name": "决策平衡单",
+      "school": "决策工具",
+      "summary": "把每个选项在各维度上的得失摆出来，让取舍显性化。",
+      "product_usage": "③ 输出主攻/平行/保底三套方案的结构依据。"
+    },
+    {
+      "id": "vroom",
+      "name": "弗鲁姆期望理论",
+      "school": "动机理论",
+      "summary": "动机＝期望 × 工具性 × 效价，三者任一为零动机就为零。",
+      "product_usage": "③④ 之间解释「明明选了却不行动」的动机缺口。"
+    },
+    {
+      "id": "cd_development",
+      "name": "发展状态（CD）",
+      "school": "生涯发展论",
+      "summary": "决策不是一次性事件，而是一段会反复的状态。",
+      "product_usage": "② 诊断中判断用户处于探索期、结晶期还是已定型。"
+    },
+    {
+      "id": "smart",
+      "name": "SMART 目标",
+      "school": "目标管理",
+      "summary": "目标要具体、可衡量、可达成、有相关性、有时限。",
+      "product_usage": "④ 行动阶段每个任务必须写清截止日期。"
+    },
+    {
+      "id": "if_then",
+      "name": "执行意图（if-then）",
+      "school": "自我调节",
+      "summary": "把「我要做 X」改成「如果到 Y 场景，我就做 X」。",
+      "product_usage": "④ 把大任务拆成可勾掉的小动作，降低启动阻力。"
+    },
+    {
+      "id": "planned_happenstance",
+      "name": "克朗波兹 · 计划性偶发",
+      "school": "生涯混沌论",
+      "summary": "意外机会不是噪声，可以被有准备的人利用。",
+      "product_usage": "④⑤ 中把「突发变化」作为计划重拆的输入，而不是判定用户失败。"
+    },
+    {
+      "id": "bandura_self_efficacy",
+      "name": "班杜拉 · 自我效能",
+      "school": "社会认知论",
+      "summary": "「我能做到」的信念来自过去的成功经验与替代经验。",
+      "product_usage": "⑤ 复盘基调与成就体系的依据：靠小成功积累，而不是靠鼓励话术。"
+    },
+    {
+      "id": "super_development",
+      "name": "舒伯 · 发展观",
+      "school": "生涯发展论",
+      "summary": "生涯是持续发展的过程，某一阶段的落后不等于整体失败。",
+      "product_usage": "⑤ 复盘归因时避免把停滞直接归因为「你不行」。"
+    }
+  ],
+  "badgeRules": [
+    {
+      "code": "first_answer",
+      "trigger_events": [
+        "answer"
+      ],
+      "sort_order": 1,
+      "note": "第一次认真回答：门槛最低的一枚，作用是让用户知道「记录下来了」"
+    },
+    {
+      "code": "first_gap_claim",
+      "trigger_events": [
+        "gap_claim"
+      ],
+      "sort_order": 2,
+      "note": "第一次认领差距：这是诊断走向动作的那一步，值得单独给一枚"
+    },
+    {
+      "code": "decision_made",
+      "trigger_events": [
+        "decision_select"
+      ],
+      "sort_order": 3,
+      "note": "第一次做出可撤回的选择"
+    },
+    {
+      "code": "first_task_done",
+      "trigger_events": [
+        "task_done"
+      ],
+      "sort_order": 4,
+      "note": "第一次勾掉任务：从「想清楚」到「做了」的分界"
+    },
+    {
+      "code": "first_review",
+      "trigger_events": [
+        "review"
+      ],
+      "sort_order": 5,
+      "note": "第一次复盘"
+    }
+  ],
+  "modules": [
+    {
+      "id": "action_progress",
+      "name": "行动计划进度",
+      "description": "查看行动计划，完成今天的一件事；与原有计划使用同一份数据。",
+      "kind": "hybrid",
+      "actions": [
+        "plan.task.set_done"
+      ]
+    },
+    {
+      "id": "achievements",
+      "name": "完成记录",
+      "description": "由真实行为记录推导的完成记录，复用现有成就业务。",
+      "kind": "application",
+      "actions": []
+    }
+  ]
+}

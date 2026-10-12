@@ -10,6 +10,9 @@ import InterventionModal from './components/CareSheet.vue'
 import { demo } from './store'
 import { skin } from './lib/theme'
 import { INTERVENTION } from './data/student'
+import DesktopSidebar from './components/DesktopSidebar.vue'
+import { useNavigationLayout } from './lib/layout'
+import { backendDemo } from './lib/backend-demo'
 
 /**
  * 应用壳。
@@ -23,6 +26,14 @@ const router = useRouter()
 const palette = ref<InstanceType<typeof CommandPalette> | null>(null)
 
 const bare = computed(() => route.meta.public === true)
+const layout = useNavigationLayout()
+const desktop = computed(() => layout.mode.value === 'desktop' && !layout.compact.value)
+function newChat() {
+  if (demo.state.chatBusy) return
+  backendDemo.newSession()
+  demo.startChatSession([], backendDemo.state.currentSessionId)
+  router.push('/chat')
+}
 /**
  * 顶部进度条的宽度：**跟内容列对齐**，不是一个全页固定值。
  * 原来写死 920px 居中，而对话页中栏只有 760px（且当时左右栏 232/272 不对称，
@@ -59,7 +70,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="app" :class="{ 'app--workspace': !bare, 'app--chat': route.name === 'chat' }" :style="{ '--progress-max': progressMax }">
+  <div class="app" :class="{ 'app--workspace': !bare, 'app--desktop': !bare && desktop, 'app--chat': route.name === 'chat' }" :style="{ '--progress-max': progressMax }">
     <template v-if="bare">
       <RouterView v-slot="{ Component }">
         <Transition name="page" mode="out-in">
@@ -69,6 +80,7 @@ onMounted(() => {
     </template>
 
     <template v-else>
+      <DesktopSidebar v-if="desktop" @search="palette?.show()" @new-chat="newChat" />
       <AppTopBar @open-palette="palette?.show()" />
       <main class="app__main">
         <!-- 氛围层：与门户同一套语言（一片很淡的品牌色光 + 颗粒），但强度低得多 -->
@@ -76,18 +88,11 @@ onMounted(() => {
 
         <div class="app__content">
           <RouterView v-slot="{ Component }">
-            <!--
-              路由切换：只做入场，不做退场。
-              带退场（mode="out-in"）会让每次点击多等一截，属于"为了好看拖慢高频操作"；
-              这里 160ms 淡入 + 6px 上移，拿掉退场，感觉是"立刻到了"。
-            -->
-            <Transition name="workspace-page">
-              <component :is="Component" :key="route.path" />
-            </Transition>
+            <component :is="Component" :key="route.path" />
           </RouterView>
         </div>
       </main>
-      <WorkspaceNav />
+      <WorkspaceNav v-if="!desktop" />
     </template>
 
     <CommandPalette ref="palette" />

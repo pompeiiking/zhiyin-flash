@@ -131,6 +131,8 @@ export interface ChatTurn {
   handoff?: { to: string; why: string; basedOn: string }
   /** 证据/来源，点开可见 */
   citations?: string[]
+  materials?: { id: string; name: string }[]
+  optionRefs?: { option_id: string; label: string; value: unknown }[]
 }
 
 /** 一次只跳一条的浮窗（7.4） */

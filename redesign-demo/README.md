@@ -2,7 +2,7 @@
 
 独立的 Vue 3 + TypeScript + Vite 前端工程，演示大学生从对话、了解自己到方向选择、行动与复盘的使用过程。原工程与管理员端不在本次范围内。
 
-门户采用左右布局的试稿：左侧品牌主张与入口，右侧可切换对话、依据和行动示例。顶栏提供「新版 / 原版」切换，方便演示比较。保留已有配色；点击入口或完成登录后均进入对话。学生空间顶端放身份与工具，底部始终显示「对话、任务与计划、学生档案、评估报告、复盘记录」五个入口，各功能可以独立进入。
+门户保留版本对比与配色，进入后均为对话。新增桌面侧栏，咨询置顶，其余按「了解与选择、安排与推进、资料与记录」分组；顶部可切换移动导航。新增学校资料、课表、笔记、资讯、工具和完成记录。功能边界见 [BACKEND-ALIGNMENT.md](BACKEND-ALIGNMENT.md)。
 
 ## 运行
 
@@ -11,16 +11,16 @@
 ```powershell
 cd D:\zhiyin-flash\redesign-demo
 npm.cmd ci
-npm.cmd run dev -- --port 5274
+npm.cmd run dev -- --port 5275
 ```
 
-打开 [本次预览](http://127.0.0.1:5274/)。`vite.config.ts` 默认端口仍为 `5273`，并启用 `strictPort`；本次明确使用 `5274`，因为 `5273` 属于另一个 checkout。
+打开 [本次预览](http://127.0.0.1:5275/)。默认端口5273，本次使用5275，因为5273和5274来自另一份checkout。
 
 ## 常用地址
 
 Sites 站点配置在 .openai/hosting.json；本轮按用户要求设为公有。发布源码副本在本地忽略的 .sites/frontend，与原项目 Git 分支分开，由 Sites 的 source helper 同步。站点地址：https://zhiyin-frontend-demo-v2.peppy-sugar-7626.chatgpt.site
 
-地址使用 hash 路由，以下路径接在 `http://127.0.0.1:5274/` 后面。
+地址使用 hash 路由，以下路径接在 `http://127.0.0.1:5275/` 后面。新增 /directions、/academic、/schedule、/notes、/intel、/tools。?as= 只在未登录时初始化账号，切换账号请先退出。
 
 | 路径 | 当前内容 |
 | --- | --- |

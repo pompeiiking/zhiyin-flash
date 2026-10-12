@@ -2,6 +2,7 @@ import { computed, reactive, readonly } from 'vue'
 import { SCENARIOS, scenarioOf } from './data/scenarios'
 import { CHAT_TURNS, DIRECTION_PLANS, NOTICES, PROFILE_FIELDS, TASKS_BY_GRADE } from './data/student'
 import type { ChatTurn, Grade, Notice, ReviewItem, TaskItem } from './data/types'
+import { backendDemo } from './lib/backend-demo'
 
 /**
  * 演示状态。
@@ -51,6 +52,8 @@ interface State {
   chatTurns: ChatTurn[]
   profileEdits: Record<string, string>
   reviewAttributions: Record<string, NonNullable<ReviewItem['attribution']>>
+  currentSessionId: string
+  chatBusy: boolean
 }
 
 /** 每个年级一份任务清单：切年级必须连"要做的事"一起换，否则场景化就是假的 */
@@ -105,6 +108,8 @@ const state = reactive<State>({
   chatTurns: chatFor(storedAccount),
   profileEdits: {},
   reviewAttributions: {},
+  currentSessionId: backendDemo.state.currentSessionId,
+  chatBusy: false,
 })
 
 let toastTimer: ReturnType<typeof setTimeout> | null = null
@@ -186,6 +191,8 @@ export const demo = {
       state.lastDoneId = null
       state.profileEdits = {}
       state.reviewAttributions = {}
+      backendDemo.reset(account)
+      state.currentSessionId = backendDemo.state.currentSessionId
       state.noticeQueue = account === 'fresh' ? [] : NOTICES.map((n) => ({ ...n }))
       state.noticeIndex = 0
       state.noticeOpen = false
@@ -221,6 +228,7 @@ export const demo = {
   completeTask(id: string) {
     const t = state.tasks.find((x) => x.id === id)
     if (!t || t.bucket === 'done') return
+    backendDemo.recordEvent('task_done')
     t.bucket = 'done'
     t.doneAt = '刚刚'
     state.lastDoneId = id
@@ -296,6 +304,7 @@ export const demo = {
   // ---- 方向：选择是用户的，撤回是产品的（第 7 幕）----
   chooseDirection(id: string) {
     if (state.selectedDirectionId === id) return
+    backendDemo.recordEvent('decision_select')
     state.previousDirectionId = state.selectedDirectionId
     state.selectedDirectionId = id
     state.rippleOpen = true
@@ -330,13 +339,23 @@ export const demo = {
   },
   updateProfileField(key: string, value: string) {
     if (!value.trim()) return
+    if (value.trim().length > 40) { toast('这条信息最多 40 个字，请简短说明。'); return }
     state.profileEdits[key] = value.trim()
     toast('更正已记下，可以在对话里继续补充依据')
   },
   addChatTurn(turn: ChatTurn) {
+    if (turn.from === 'me' && turn.text !== '跳过这个问题') backendDemo.recordEvent('answer')
     state.chatTurns.push(turn)
   },
+  startChatSession(turns: ChatTurn[], id: string) {
+    if (state.chatBusy) return
+    backendDemo.saveTurns(state.currentSessionId, state.chatTurns)
+    state.chatTurns = turns
+    state.currentSessionId = id
+  },
+  setChatBusy(busy: boolean) { state.chatBusy = busy },
   setReviewAttribution(id: string, value: NonNullable<ReviewItem['attribution']>) {
+    backendDemo.recordEvent('review')
     state.reviewAttributions[id] = value
   },
 
@@ -390,6 +409,8 @@ export const demo = {
 
   // ---- 演示辅助 ----
   resetDemo() {
+    backendDemo.reset(state.account)
+    state.currentSessionId = backendDemo.state.currentSessionId
     state.tasks = state.account === 'fresh' ? [] : tasksFor(state.grade)
     state.chatCollected = 0
     state.selectedDirectionId = null
