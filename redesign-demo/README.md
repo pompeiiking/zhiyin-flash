@@ -1,5 +1,9 @@
 # 职引 · 学生空间演示
 
+对话页已修订：去掉右侧常驻画像与路线图，按用户消息、顾问回答、依据、交接和行动建议分层。实际参考及取舍见 [chat-hierarchy/REFERENCES.md](design-review/chat-hierarchy/REFERENCES.md)。访问 `http://127.0.0.1:5276/#/chat` 查看当前版本。
+
+2026-10-12 三页面视觉试改：咨询、今日行动、方向方案新增路径图形、职业示意图、成果概览与完成反馈，导航同步调整分组。本地预览端口为 5276，运行命令为 `npm.cmd run dev -- --port 5276`。最新截图与验证记录位于 [journey-pilot/QA.md](design-review/journey-pilot/QA.md)；下文 V5 记录保留作为此前基线。
+
 独立的 Vue 3 + TypeScript + Vite 前端工程，演示学生通过咨询了解个人情况、比较职业方向、安排任务与复盘。本次 V5 仅修改 `redesign-demo`，后端、原前端与管理员端不在范围内。
 
 门户保留品牌主张、蓝红灰配色与原版对比，登录成功和已登录入口均进入咨询。V5 延伸完整学生空间：内嵌主画布、页内视图、方向对照、任务概览、咨询依据与复制反馈、响应式补充面板、空态及来源层次。正文保持 16px，新增图形为本地 SVG，未增加 npm 依赖。资源取舍见 [RESOURCE-SELECTION.md](design-review/RESOURCE-SELECTION.md)，内容判断见 [CONTENT-AUDIT.md](design-review/CONTENT-AUDIT.md)，接口边界见 [BACKEND-ALIGNMENT.md](BACKEND-ALIGNMENT.md)。

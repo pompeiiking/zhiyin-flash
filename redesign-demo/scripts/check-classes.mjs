@@ -32,7 +32,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const SRC = resolve(__dirname, '..', 'src')
 
 /** 全局样式表：这里的类名是全站共用的零件与版面 */
-const GLOBAL_FILES = ['styles/base.css', 'styles/workspace.css', 'styles/experience.css']
+const GLOBAL_FILES = ['styles/base.css', 'styles/workspace.css', 'styles/experience.css', 'styles/journey.css', 'styles/dialogue.css']
 
 /**
  * 会"漏进去"的属性 —— 只有这些出现在全局规则里才真的会毁掉一个组件。
