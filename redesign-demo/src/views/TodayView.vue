@@ -28,20 +28,28 @@ function add() {
 }
 </script>
 <template>
-  <div class="ws-page">
-    <PageHeading title="行动计划" description="管理当前任务，查看执行状态与阶段计划。"><RouterLink class="btn" to="/notes"><UiIcon name="plus" :size="16" />添加个人待办</RouterLink></PageHeading>
+  <div class="ws-page journey-page">
+    <PageHeading title="今日行动" description="从一件具体的小事开始，让想好的方向往前走。"><RouterLink class="btn" to="/notes"><UiIcon name="plus" :size="16" />添加个人待办</RouterLink></PageHeading>
     <nav class="ws-subnav" aria-label="行动计划视图"><RouterLink to="/home" aria-current="page">今日行动</RouterLink><RouterLink to="/plan">阶段计划</RouterLink></nav>
-    <section v-if="smallest" class="ws-paper ws-feature">
-      <div><div class="ws-feature__caption"><UiIcon name="action" :size="18" /><span>建议优先任务</span><span>{{ taskOriginLabel(smallest.origin) }}</span></div><h2>{{ smallest.title }}</h2><p>{{ smallest.why }}</p></div>
-      <div class="ws-feature__action"><p>约 {{ smallest.minutes }} 分钟</p><button class="btn btn--primary" @click="demo.completeTask(smallest.id)">标记完成<UiIcon name="check" :size="18" /></button><button v-if="smallest.minutes > 5" class="ws-text-button" @click="demo.shrinkTask(smallest.id)">拆分为 5 分钟任务</button></div>
+    <section v-if="lastDone" :key="lastDone.id" class="journey-complete" role="status">
+      <span class="journey-complete__mark"><UiIcon name="check" :size="24" /></span>
+      <div><h2>又完成了一步</h2><p>{{ lastDone.title }}</p></div>
+      <button class="ws-text-button" @click="demo.reopenTask(lastDone.id)">恢复任务</button>
+    </section>
+    <section v-if="smallest" class="journey-focus">
+      <div class="journey-focus__copy">
+        <h2>{{ smallest.title }}</h2><p>{{ smallest.why }}</p>
+        <div class="journey-focus__meta"><span><UiIcon name="review" :size="17" />约 {{ smallest.minutes }} 分钟</span><span><UiIcon name="action" :size="17" />{{ taskOriginLabel(smallest.origin) }}</span><span v-if="smallest.due"><UiIcon name="calendar" :size="17" />{{ smallest.due }}</span></div>
+        <div class="journey-focus__actions"><button class="btn btn--primary" @click="demo.completeTask(smallest.id)">标记完成<UiIcon name="check" :size="18" /></button><button v-if="smallest.minutes > 5" class="ws-text-button" @click="demo.shrinkTask(smallest.id)">先拆成 5 分钟</button><RouterLink v-else class="ws-text-link" to="/chat">需要调整，和顾问聊聊<UiIcon name="arrow" :size="16" /></RouterLink></div>
+      </div>
     </section>
     <section v-else class="ws-paper"><div class="ws-empty"><h2 class="ws-section-title">{{ demo.use.done.value.length ? '当前任务已完成' : '暂无行动任务' }}</h2><p>完成咨询并明确方向后，可生成行动任务。</p><RouterLink class="btn btn--primary" to="/chat">开始咨询</RouterLink></div></section>
-    <div class="ws-two-columns ws-section">
-      <section class="ws-paper">
+    <div class="journey-action-grid">
+      <section class="ws-paper journey-task-list">
         <div class="ws-section-head"><h2>任务列表</h2><span class="ws-muted">按状态查看</span></div>
         <PanelTabs v-model="group" label="任务分组" :items="groups.map(g => ({ key: g.key, label: g.label, count: g.items.length }))"><TaskList :items="active.items" :mode="group" /></PanelTabs>
       </section>
-      <aside class="ws-aside">
+      <aside class="journey-action-aside">
         <TaskOverview />
         <section><h2>最近完成</h2><p v-if="lastDone" role="status">「{{ lastDone.title }}」已记入完成记录。你可以在任务分组中查看或恢复。</p><p v-else>完成任务后，将在此显示最近的执行记录。</p><RouterLink class="ws-text-link" to="/review">查看复盘记录<UiIcon name="arrow" :size="16" /></RouterLink></section>
         <section><p>执行遇到困难时，可通过咨询调整任务或方案。</p><RouterLink class="ws-text-link" to="/chat">回到对话<UiIcon name="arrow" :size="16" /></RouterLink></section>

@@ -13,7 +13,6 @@ import type { GuideOptionView, MessageRequest } from '../api/backend-types'
 import { navigation } from '../lib/layout'
 import { consultantLabel } from '../lib/consultant'
 import EvidenceList from '../components/EvidenceList.vue'
-import WorkspaceMotif from '../components/WorkspaceMotif.vue'
 const route = useRoute()
 const turns = computed(() => demo.state.chatTurns)
 const draft = ref('')
@@ -39,6 +38,7 @@ const known = computed(() => PROFILE_FIELDS.slice(0, progress.value.known))
 const planned = computed(() => [...demo.use.now.value, ...demo.use.waiting.value])
 const handoffs = computed(() => turns.value.filter((t) => t.handoff).map((t) => t.handoff!))
 const host = computed(() => [...turns.value].reverse().find((t) => t.from === 'host' && t.speaker)?.speaker ?? '了解你情况的人')
+const taskAdded = (title: string) => demo.state.tasks.some(task => task.title === title)
 const topicLabels: Record<string, { title: string; description: string; icon: string }> = { confused: { title: '兴趣与能力', description: '了解个人特点与适合的领域', icon: 'profile' }, undecided: { title: '方向选择', description: '比较备选方向与决策依据', icon: 'directions' }, how_to_act: { title: '行动规划', description: '将目标转化为具体行动', icon: 'action' }, stuck: { title: '执行调整', description: '分析执行障碍并调整方案', icon: 'review' } }
 const starters = registry.taskEntries.filter(t => topicLabels[t.code]).map(t => ({ ...t, ...topicLabels[t.code] }))
 const copyStatus = ref('')
@@ -161,40 +161,43 @@ onUnmounted(() => {
 })
 </script>
 <template>
-  <section class="ws-conversation" aria-label="对话空间">
+  <section class="ws-conversation dialogue-page" aria-label="对话空间">
     <header class="ws-chat-head">
       <div><h1>咨询对话</h1><p>{{ consultantLabel(host) }} · 围绕当前问题开展咨询</p></div>
-      <div class="ws-chat-head__tools"><button v-if="navigation.compact.value || navigation.mode.value === 'mobile'" :disabled="thinking" @click="newSession">新对话</button><button v-if="navigation.compact.value || navigation.mode.value === 'mobile'" :disabled="thinking" @click="panel = 'sessions'">历史会话</button><button @click="panel = 'outcomes'">咨询成果</button><button @click="panel = 'profile'">个人画像 {{ progress.known }}/{{ progress.total }}</button></div>
+      <div class="ws-chat-head__tools"><button v-if="navigation.compact.value || navigation.mode.value === 'mobile'" :disabled="thinking" @click="newSession">新对话</button><button v-if="navigation.compact.value || navigation.mode.value === 'mobile'" :disabled="thinking" @click="panel = 'sessions'">历史会话</button><button @click="panel = 'outcomes'"><UiIcon name="report" :size="16" />咨询成果</button><button @click="panel = 'profile'"><UiIcon name="profile" :size="16" />个人画像</button></div>
     </header>
-    <div class="exp-conversation-body"><div ref="flow" class="ws-chat-flow" tabindex="0" role="log" aria-live="off" aria-label="对话记录" @scroll="followScroll">
+    <div class="exp-conversation-body"><div ref="flow" class="ws-chat-flow" tabindex="0" role="log" aria-live="off" aria-label="对话记录" @scroll="followScroll"><div class="dialogue-thread">
       <div v-if="!turns.length" class="ws-chat-welcome">
-        <div class="exp-intro"><div><span class="exp-eyebrow">生涯规划与就业指导</span><h2>选择咨询主题</h2><p>选择主题或输入问题，也可补充材料与个人信息。</p></div><WorkspaceMotif /></div>
+        <div class="exp-intro"><div><h2>从你正在想的事聊起</h2><p>方向还没想清楚也没关系。选一句最像你的，或者直接说说现在的困惑。</p></div></div>
         <div class="ws-chat-prompts"><button v-for="topic in starters" :key="topic.code" @click="send(topic.label)"><UiIcon :name="topic.icon" :size="22" /><span><strong>{{ topic.title }}</strong><small>{{ topic.description }}</small></span><UiIcon name="arrow" :size="16" /></button></div>
       </div>
       <template v-for="(t, i) in turns" :key="t.id">
-        <article v-if="t.handoff" class="ws-handoff">
-          <p class="ws-handoff__title">顾问交接 · <strong>{{ consultantLabel(t.handoff.to) }}</strong></p>
-          <details class="ws-turn__details"><summary>交接说明</summary><dl><dt>接手顾问</dt><dd>{{ consultantLabel(t.handoff.to) }}</dd><dt>交接原因</dt><dd>{{ t.handoff.why }}</dd><dt>支持依据</dt><dd>{{ t.handoff.basedOn }}</dd></dl></details>
+        <article v-if="t.handoff" class="dialogue-handoff" aria-label="顾问交接">
+          <details><summary><UiIcon name="review" :size="16" /><strong>{{ consultantLabel(t.handoff.to) }}接手</strong><span>查看原因</span><UiIcon name="chevron" :size="14" /></summary><dl><dt>为什么交接</dt><dd>{{ t.handoff.why }}</dd><dt>支持依据</dt><dd>{{ t.handoff.basedOn }}</dd></dl></details>
         </article>
-        <article v-else class="ws-turn" :class="'ws-turn--' + t.from">
-          <p v-if="t.from === 'host' && (i === 0 || turns[i - 1]?.from !== 'host' || turns[i - 1]?.speaker !== t.speaker)" class="ws-turn__speaker"><UiIcon name="chat" :size="18" />{{ consultantLabel(t.speaker) }}</p>
-          <p>{{ t.from === 'host' ? textOf(t.id, t.text) : t.text }}</p>
+        <article v-else class="dialogue-message" :class="'dialogue-message--' + t.from" :aria-label="t.from === 'me' ? '你的消息' : consultantLabel(t.speaker) + '的回复'">
+          <header class="dialogue-message__speaker"><span v-if="t.from === 'host'" class="dialogue-message__avatar"><UiIcon name="chat" :size="18" /></span><strong>{{ t.from === 'me' ? '你' : t.from === 'system' ? '系统提示' : consultantLabel(t.speaker) }}</strong></header>
+          <div class="dialogue-message__body"><p v-for="(paragraph, paragraphIndex) in (t.from === 'host' ? textOf(t.id, t.text) : t.text).split(/\n\s*\n/)" :key="paragraphIndex">{{ paragraph }}</p></div>
           <div v-if="t.materials?.length" class="desk-attachments"><span v-for="m in t.materials" :key="m.id" class="desk-attachment"><UiIcon name="attachment" :size="16" />{{ m.name }} · 演示附件</span></div>
-          <div v-if="t.from === 'host'" class="exp-message-tools"><EvidenceList v-if="t.citations?.length" :items="t.citations" /><button class="exp-copy" :aria-label="copiedId === t.id ? copyStatus : '复制顾问回复'" :title="copiedId === t.id ? copyStatus : '复制顾问回复'" :disabled="isStreaming(t.id)" @click="copyReply(t.id, t.text)"><UiIcon name="copy" :size="14" />{{ copiedId === t.id ? copyLabel : '复制' }}</button></div>
-          <div v-if="t.task" class="ws-chat-task"><p>{{ t.task.title }}</p><div class="ws-chat-task__action"><span>约 {{ t.task.minutes }} 分钟</span><button class="btn btn--primary btn--sm" @click="demo.planChatTask(t.task.title, t.task.minutes)">加入行动计划</button></div></div>
-          <div v-if="t.options?.length && i === turns.length - 1 && !isStreaming(t.id)" class="ws-chat-options">
-            <template v-for="option in t.options" :key="option"><RouterLink v-if="option === '比较方向方案' || option === '查看诊断报告'" class="btn" :to="option === '比较方向方案' ? '/directions' : '/report'">{{ option }}</RouterLink><button v-else :disabled="thinking" @click="send(option, t.optionRefs?.find(item => item.label === option))">{{ option }}</button></template>
+          <section v-if="t.task" class="dialogue-action" aria-label="行动建议">
+            <div class="dialogue-action__head"><UiIcon name="action" :size="18" /><h2>建议下一步</h2><span>约 {{ t.task.minutes }} 分钟</span></div>
+            <p class="dialogue-action__title">{{ t.task.title }}</p>
+            <div class="dialogue-action__footer"><RouterLink v-if="taskAdded(t.task.title)" class="btn" to="/home"><UiIcon name="check" :size="17" />已加入 · 查看行动</RouterLink><button v-else class="btn btn--primary" @click="demo.planChatTask(t.task.title, t.task.minutes)">加入行动计划<UiIcon name="arrow" :size="17" /></button></div>
+          </section>
+          <div v-if="t.options?.length && i === turns.length - 1 && !isStreaming(t.id)" class="dialogue-options" aria-label="回复选项">
+            <p>你可以这样继续</p><div class="ws-chat-options"><template v-for="option in t.options" :key="option"><RouterLink v-if="option === '比较方向方案' || option === '查看诊断报告'" class="btn" :to="option === '比较方向方案' ? '/directions' : '/report'">{{ option }}</RouterLink><button v-else :disabled="thinking" @click="send(option, t.optionRefs?.find(item => item.label === option))">{{ option }}</button></template></div>
           </div>
+          <footer v-if="t.from === 'host'" class="exp-message-tools dialogue-message__tools"><EvidenceList v-if="t.citations?.length" :items="t.citations" /><button class="exp-copy" :aria-label="copiedId === t.id ? copyStatus : '复制顾问回复'" :title="copiedId === t.id ? copyStatus : '复制顾问回复'" :disabled="isStreaming(t.id)" @click="copyReply(t.id, t.text)"><UiIcon name="copy" :size="14" />{{ copiedId === t.id ? copyLabel : '复制' }}</button></footer>
         </article>
       </template>
       <p v-if="thinking" class="ws-chat-status" role="status">正在分析咨询内容…</p>
-    </div>
+    </div></div>
     <button v-if="turns.length && !followTail" class="exp-latest" @click="goToLatest"><UiIcon name="down" :size="16" />回到最新消息</button></div>
     <p class="sr-only" role="status" aria-live="polite" aria-atomic="true">{{ announcement }} {{ copyStatus }}</p>
     <div class="ws-composer">
       <div v-if="attached.length" class="desk-attachments"><span v-for="m in attached" :key="m.id" class="desk-attachment"><UiIcon name="attachment" :size="16" />{{ m.name }}<button :aria-label="'移除附件：' + m.name" @click="attached = attached.filter(item => item.id !== m.id)"><UiIcon name="close" :size="14" /></button></span></div>
       <p v-if="attachmentError" class="ws-field-error" role="alert">{{ attachmentError }}</p>
-      <form @submit.prevent="send()"><button type="button" class="ws-icon-button desk-attachment-control" aria-label="添加材料" :disabled="thinking" @click="attachmentInput?.click()"><UiIcon name="attachment" :size="20" /></button><input ref="attachmentInput" type="file" class="sr-only" tabindex="-1" accept=".txt,.csv,.json,.md,.pdf,.docx" @change="attach" /><textarea ref="input" v-model="draft" rows="1" aria-label="咨询内容" placeholder="输入咨询内容…" :disabled="thinking" @input="grow" @keydown="keydown" /><button class="btn btn--primary" :disabled="!draft.trim() || thinking" type="submit">{{ thinking ? '处理中' : '发送' }}</button></form>
+      <form @submit.prevent="send()"><button type="button" class="ws-icon-button desk-attachment-control" aria-label="添加材料" :disabled="thinking" @click="attachmentInput?.click()"><UiIcon name="attachment" :size="20" /></button><input ref="attachmentInput" type="file" class="sr-only" tabindex="-1" accept=".txt,.csv,.json,.md,.pdf,.docx" @change="attach" /><textarea ref="input" v-model="draft" rows="1" aria-label="咨询内容" placeholder="说说你现在最想解决的事…" :disabled="thinking" @input="grow" @keydown="keydown" /><button class="btn btn--primary" :disabled="!draft.trim() || thinking" type="submit">{{ thinking ? '处理中' : '发送' }}</button></form>
       <p class="ws-composer__note"><span>演示对话 · 附件只记录名称，不上传</span><span>Enter 发送 · Shift + Enter 换行</span></p>
     </div>
     <InfoSheet inspector :open="panel !== null" :title="panel === 'profile' ? '个人画像' : panel === 'sessions' ? '历史对话' : '咨询成果'" @close="panel = null">

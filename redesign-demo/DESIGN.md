@@ -90,6 +90,24 @@ components:
 
 # Design System: 职引 · V5 学生空间
 
+## 2026-10-12 · 三页面视觉试改
+
+### 对话页修订：消息层次
+
+对话页现以 `src/styles/dialogue.css` 与 `dialogue-page` 为准。去掉常驻右侧画像和路线图，画像、成果与历史仍按需打开。单列阅读区上限 800px，用户消息右对齐浅蓝底，顾问回复使用左侧角色标识，依据与复制归入回复底部。交接为独立的可展开系统分隔；任务则单独表达建议、具体行动、时长与加入按钮。
+
+本轮实际参考 [Ant Design X Bubble](https://x.ant.design/components/bubble/)、[AI Elements Message](https://elements.ai-sdk.dev/components/message)、[Sources](https://elements.ai-sdk.dev/components/sources)、[Plan](https://elements.ai-sdk.dev/components/plan) 及 [Ant Design Proximity](https://ant.design/docs/spec/proximity/)。取舍与访问边界见 `design-review/chat-hierarchy/REFERENCES.md`。以下三页面说明保留为第一轮记录，不再代表当前对话页。
+
+同步移除方向页的设备示意图与今日行动的路线图，删除相应组件和闲置样式。现行页面以任务状态、支持依据、风险和逐项对照表达内容。
+
+本轮先在咨询、今日行动和方向方案上验证路径图形与更明确的内容层次。新增样式位于 `src/styles/journey.css`，通过页面类限定作用范围，沿用蓝红灰语义颜色与系统字体。今日行动与方向方案页标题采用既有 38px 档，手机回到 30px；咨询保持 30px，正文仍为 16px。
+
+`JourneyMap` 是目标、当前行动与复盘关系的概念图，不代表实际环节完成状态。`CareerDiagram` 是半导体、电池与材料检测的几何示意图，不代表企业、设备规格或职业评分。咨询概览的画像计数与行动建议直接取现有演示状态；手机隐藏侧栏概览，原画像和成果面板入口保留。
+
+导航调整为咨询、画像与诊断、方向选择、行动与安排、复盘与成长；岗位资讯归入方向，个人待办保留独立入口。移动快捷入口为对话、行动、画像、方向及更多，报告可从画像与诊断目录独立访问。
+
+路径线首次绘制为 800ms，完成反馈为 240ms，选择反馈为 180ms；减少动效偏好关闭新增动画。预览与验证记录见 `design-review/journey-pilot/QA.md`。本轮保持本地演示边界，不代表正式后端接入。
+
 ## Overview
 
 本文件记录 2026-10-12 已实现的 V5，是版本控制中的设计系统主依据；`.impeccable/design.json` 为本地补充记录。V5 是既有操作界面的代码延伸，沿用蓝红灰配色与系统字体，没有新的品牌世界或获批视觉稿。产品约束见 [PRODUCT.md](PRODUCT.md)，本轮范围见 [DESIGN-BRIEF.md](DESIGN-BRIEF.md)。
@@ -199,3 +217,7 @@ frontmatter 记录默认浅色、蓝主、plain 样式的常用值；运行以 `
 项目仍为本地 UI 演示，正式 API、模型、文件解析、学校/学信网核验与实时岗位未接入，方向未真实自动重算。Impeccable CLI/detector 未安装，Stitch 无生成结果，Taste 仅局部参考。本轮未发布 Sites。
 
 [后端实质核对](design-review/BACKEND-AUDIT-V5.md) 结论为主要页面能力有对应，但仍存在字段、返回结果与业务行为差异，不能认定完整对齐；视觉 SHIP 与 69/50 目录检查均不替代业务接入验收。
+
+## 全站后续改造研究 · 2026-10-13
+
+[全站设计审查与组件选型](design-review/component-research/全站设计审查与组件选型.md) 覆盖 16 个路由与 60 类组件、交互细节，按用户任务重新判断布局、信息层级、排版、状态和响应式。每页记录现状、方案、参考与业务条件；[请求证据](design-review/component-research/evidence.json) 保存近期版本日期及真实访问结果。该文件是后续设计方案，尚未全部实施，不能替代当前界面验收。

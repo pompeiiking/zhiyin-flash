@@ -5,6 +5,8 @@ import './styles/tokens.css'
 import './styles/base.css'
 import './styles/workspace.css'
 import './styles/experience.css'
+import './styles/journey.css'
+import './styles/dialogue.css'
 
 const app = createApp(App)
 

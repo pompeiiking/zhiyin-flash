@@ -14,8 +14,8 @@ watch(() => [route.path, more.value], () => {
 const spaces = [
   { label: '对话', to: '/chat', icon: 'chat', paths: ['/chat'] },
   { label: '行动', to: '/home', icon: 'action', paths: ['/home', '/plan', '/schedule', '/notes'] },
-  { label: '画像', to: '/profile', icon: 'profile', paths: ['/profile', '/academic'] },
-  { label: '报告', to: '/report', icon: 'report', paths: ['/report', '/directions'] },
+  { label: '画像', to: '/profile', icon: 'profile', paths: ['/profile', '/academic', '/report'] },
+  { label: '方向', to: '/directions', icon: 'directions', paths: ['/directions', '/intel'] },
 ]
 </script>
 <template>

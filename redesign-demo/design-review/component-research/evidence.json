@@ -1,0 +1,1045 @@
+{
+  "checkedAt": "2026-10-12T16:29:46.872Z",
+  "cache": "C:\\Users\\86178\\AppData\\Local\\Temp\\zhiyin-design-research-2026-10-13",
+  "catalog": {
+    "items": 36645,
+    "registries": 91,
+    "source": "https://registry.directory/items.json",
+    "componentDatesAvailable": false
+  },
+  "versions": [
+    {
+      "name": "reka-ui",
+      "version": "2.11.0",
+      "publishedAt": "2026-10-05T06:31:12.871Z",
+      "license": "MIT",
+      "repository": {
+        "url": "git+https://github.com/unovue/reka-ui.git",
+        "type": "git"
+      },
+      "source": "https://registry.npmjs.org/reka-ui"
+    },
+    {
+      "name": "@nuxt/ui",
+      "version": "4.11.3",
+      "publishedAt": "2026-10-01T13:37:40.915Z",
+      "license": "MIT",
+      "repository": {
+        "url": "git+https://github.com/nuxt/ui.git",
+        "type": "git"
+      },
+      "source": "https://registry.npmjs.org/%40nuxt%2Fui"
+    },
+    {
+      "name": "shadcn-vue",
+      "version": "2.8.2",
+      "publishedAt": "2026-08-08T02:55:44.025Z",
+      "license": "MIT",
+      "repository": {
+        "type": "git",
+        "url": "git+https://github.com/unovue/shadcn-vue.git",
+        "directory": "packages/cli"
+      },
+      "source": "https://registry.npmjs.org/shadcn-vue"
+    },
+    {
+      "name": "primevue",
+      "version": "5.0.2",
+      "publishedAt": "2026-09-29T14:46:16.992Z",
+      "license": "SEE LICENSE IN LICENSE.md",
+      "repository": {
+        "url": "git+https://github.com/primefaces/primevue-nextchapter.git",
+        "type": "git",
+        "directory": "packages/primevue"
+      },
+      "source": "https://registry.npmjs.org/primevue"
+    },
+    {
+      "name": "@schedule-x/calendar",
+      "version": "4.9.1",
+      "publishedAt": "2026-09-29T09:59:42.874Z",
+      "license": "MIT",
+      "repository": {
+        "url": "https://github.com/schedule-x/schedule-x",
+        "type": "git",
+        "directory": "packages/calendar"
+      },
+      "source": "https://registry.npmjs.org/%40schedule-x%2Fcalendar"
+    },
+    {
+      "name": "@fullcalendar/vue3",
+      "version": "7.1.1",
+      "publishedAt": "2026-10-06T01:52:50.071Z",
+      "license": "MIT",
+      "repository": {
+        "url": "git+https://github.com/fullcalendar/fullcalendar-vue.git",
+        "type": "git",
+        "directory": "packages/vue3"
+      },
+      "source": "https://registry.npmjs.org/%40fullcalendar%2Fvue3"
+    },
+    {
+      "name": "vue-echarts",
+      "version": "8.3.2",
+      "publishedAt": "2026-10-09T08:24:08.212Z",
+      "license": "MIT",
+      "repository": {
+        "url": "git+https://github.com/ecomfe/vue-echarts.git",
+        "type": "git"
+      },
+      "source": "https://registry.npmjs.org/vue-echarts"
+    },
+    {
+      "name": "echarts",
+      "version": "6.1.0",
+      "publishedAt": "2026-05-19T17:52:11.076Z",
+      "license": "Apache-2.0",
+      "repository": {
+        "type": "git",
+        "url": "git+https://github.com/apache/echarts.git"
+      },
+      "source": "https://registry.npmjs.org/echarts"
+    },
+    {
+      "name": "motion-v",
+      "version": "2.6.0",
+      "publishedAt": "2026-10-05T14:16:13.212Z",
+      "license": "MIT",
+      "repository": {
+        "url": "git+https://github.com/motiondivision/motion-vue.git",
+        "type": "git"
+      },
+      "source": "https://registry.npmjs.org/motion-v"
+    },
+    {
+      "name": "@tanstack/vue-table",
+      "version": "9.2.8",
+      "publishedAt": "2026-10-08T21:40:56.133Z",
+      "license": "MIT",
+      "repository": {
+        "url": "https://github.com/TanStack/table.git",
+        "type": "git",
+        "directory": "packages/vue-table"
+      },
+      "source": "https://registry.npmjs.org/%40tanstack%2Fvue-table"
+    }
+  ],
+  "sources": [
+    {
+      "id": "nuxt-sidebar",
+      "url": "https://ui.nuxt.com/raw/docs/components/sidebar.md",
+      "status": 200,
+      "contentType": "text/markdown; charset=utf-8",
+      "finalUrl": "https://ui.nuxt.com/raw/docs/components/sidebar.md",
+      "title": "Sidebar",
+      "chars": 35663,
+      "valid": true,
+      "hasCodeExample": true
+    },
+    {
+      "id": "nuxt-dashboard-group",
+      "url": "https://ui.nuxt.com/raw/docs/components/dashboard-group.md",
+      "status": 200,
+      "contentType": "text/markdown; charset=utf-8",
+      "finalUrl": "https://ui.nuxt.com/raw/docs/components/dashboard-group.md",
+      "title": "DashboardGroup",
+      "chars": 2363,
+      "valid": true,
+      "hasCodeExample": true
+    },
+    {
+      "id": "nuxt-dashboard-panel",
+      "url": "https://ui.nuxt.com/raw/docs/components/dashboard-panel.md",
+      "status": 200,
+      "contentType": "text/markdown; charset=utf-8",
+      "finalUrl": "https://ui.nuxt.com/raw/docs/components/dashboard-panel.md",
+      "title": "DashboardPanel",
+      "chars": 4457,
+      "valid": true,
+      "hasCodeExample": true
+    },
+    {
+      "id": "nuxt-dashboard-navbar",
+      "url": "https://ui.nuxt.com/raw/docs/components/dashboard-navbar.md",
+      "status": 200,
+      "contentType": "text/markdown; charset=utf-8",
+      "finalUrl": "https://ui.nuxt.com/raw/docs/components/dashboard-navbar.md",
+      "title": "DashboardNavbar",
+      "chars": 5181,
+      "valid": true,
+      "hasCodeExample": true
+    },
+    {
+      "id": "nuxt-page",
+      "url": "https://ui.nuxt.com/raw/docs/components/page.md",
+      "status": 200,
+      "contentType": "text/markdown; charset=utf-8",
+      "finalUrl": "https://ui.nuxt.com/raw/docs/components/page.md",
+      "title": "Page",
+      "chars": 3867,
+      "valid": true,
+      "hasCodeExample": true
+    },
+    {
+      "id": "nuxt-page-columns",
+      "url": "https://ui.nuxt.com/raw/docs/components/page-columns.md",
+      "status": 200,
+      "contentType": "text/markdown; charset=utf-8",
+      "finalUrl": "https://ui.nuxt.com/raw/docs/components/page-columns.md",
+      "title": "PageColumns",
+      "chars": 7127,
+      "valid": true,
+      "hasCodeExample": true
+    },
+    {
+      "id": "nuxt-blog-post",
+      "url": "https://ui.nuxt.com/raw/docs/components/blog-post.md",
+      "status": 200,
+      "contentType": "text/markdown; charset=utf-8",
+      "finalUrl": "https://ui.nuxt.com/raw/docs/components/blog-post.md",
+      "title": "BlogPost",
+      "chars": 13131,
+      "valid": true,
+      "hasCodeExample": true
+    },
+    {
+      "id": "nuxt-blog-posts",
+      "url": "https://ui.nuxt.com/raw/docs/components/blog-posts.md",
+      "status": 200,
+      "contentType": "text/markdown; charset=utf-8",
+      "finalUrl": "https://ui.nuxt.com/raw/docs/components/blog-posts.md",
+      "title": "BlogPosts",
+      "chars": 4679,
+      "valid": true,
+      "hasCodeExample": true
+    },
+    {
+      "id": "nuxt-chat-message",
+      "url": "https://ui.nuxt.com/raw/docs/components/chat-message.md",
+      "status": 200,
+      "contentType": "text/markdown; charset=utf-8",
+      "finalUrl": "https://ui.nuxt.com/raw/docs/components/chat-message.md",
+      "title": "ChatMessage",
+      "chars": 16015,
+      "valid": true,
+      "hasCodeExample": true
+    },
+    {
+      "id": "nuxt-chat-messages",
+      "url": "https://ui.nuxt.com/raw/docs/components/chat-messages.md",
+      "status": 200,
+      "contentType": "text/markdown; charset=utf-8",
+      "finalUrl": "https://ui.nuxt.com/raw/docs/components/chat-messages.md",
+      "title": "ChatMessages",
+      "chars": 20629,
+      "valid": true,
+      "hasCodeExample": true
+    },
+    {
+      "id": "nuxt-chat-prompt",
+      "url": "https://ui.nuxt.com/raw/docs/components/chat-prompt.md",
+      "status": 200,
+      "contentType": "text/markdown; charset=utf-8",
+      "finalUrl": "https://ui.nuxt.com/raw/docs/components/chat-prompt.md",
+      "title": "ChatPrompt",
+      "chars": 16632,
+      "valid": true,
+      "hasCodeExample": true
+    },
+    {
+      "id": "nuxt-chat-suggestion",
+      "url": "https://ui.nuxt.com/raw/docs/components/chat-suggestion.md",
+      "status": 404,
+      "contentType": "text/markdown; charset=utf-8",
+      "finalUrl": "https://ui.nuxt.com/raw/docs/components/chat-suggestion.md",
+      "title": "404 Page Not Found",
+      "chars": 1288,
+      "valid": false,
+      "hasCodeExample": false
+    },
+    {
+      "id": "nuxt-file-upload",
+      "url": "https://ui.nuxt.com/raw/docs/components/file-upload.md",
+      "status": 200,
+      "contentType": "text/markdown; charset=utf-8",
+      "finalUrl": "https://ui.nuxt.com/raw/docs/components/file-upload.md",
+      "title": "FileUpload",
+      "chars": 28908,
+      "valid": true,
+      "hasCodeExample": true
+    },
+    {
+      "id": "nuxt-form-field",
+      "url": "https://ui.nuxt.com/raw/docs/components/form-field.md",
+      "status": 200,
+      "contentType": "text/markdown; charset=utf-8",
+      "finalUrl": "https://ui.nuxt.com/raw/docs/components/form-field.md",
+      "title": "FormField",
+      "chars": 6855,
+      "valid": true,
+      "hasCodeExample": true
+    },
+    {
+      "id": "nuxt-timeline",
+      "url": "https://ui.nuxt.com/raw/docs/components/timeline.md",
+      "status": 200,
+      "contentType": "text/markdown; charset=utf-8",
+      "finalUrl": "https://ui.nuxt.com/raw/docs/components/timeline.md",
+      "title": "Timeline",
+      "chars": 24331,
+      "valid": true,
+      "hasCodeExample": true
+    },
+    {
+      "id": "nuxt-stepper",
+      "url": "https://ui.nuxt.com/raw/docs/components/stepper.md",
+      "status": 200,
+      "contentType": "text/markdown; charset=utf-8",
+      "finalUrl": "https://ui.nuxt.com/raw/docs/components/stepper.md",
+      "title": "Stepper",
+      "chars": 17162,
+      "valid": true,
+      "hasCodeExample": true
+    },
+    {
+      "id": "nuxt-calendar",
+      "url": "https://ui.nuxt.com/raw/docs/components/calendar.md",
+      "status": 200,
+      "contentType": "text/markdown; charset=utf-8",
+      "finalUrl": "https://ui.nuxt.com/raw/docs/components/calendar.md",
+      "title": "Calendar",
+      "chars": 37118,
+      "valid": true,
+      "hasCodeExample": true
+    },
+    {
+      "id": "nuxt-command-palette",
+      "url": "https://ui.nuxt.com/raw/docs/components/command-palette.md",
+      "status": 200,
+      "contentType": "text/markdown; charset=utf-8",
+      "finalUrl": "https://ui.nuxt.com/raw/docs/components/command-palette.md",
+      "title": "CommandPalette",
+      "chars": 60960,
+      "valid": true,
+      "hasCodeExample": true
+    },
+    {
+      "id": "nuxt-slideover",
+      "url": "https://ui.nuxt.com/raw/docs/components/slideover.md",
+      "status": 200,
+      "contentType": "text/markdown; charset=utf-8",
+      "finalUrl": "https://ui.nuxt.com/raw/docs/components/slideover.md",
+      "title": "Slideover",
+      "chars": 18178,
+      "valid": true,
+      "hasCodeExample": true
+    },
+    {
+      "id": "nuxt-empty",
+      "url": "https://ui.nuxt.com/raw/docs/components/empty.md",
+      "status": 200,
+      "contentType": "text/markdown; charset=utf-8",
+      "finalUrl": "https://ui.nuxt.com/raw/docs/components/empty.md",
+      "title": "Empty",
+      "chars": 10131,
+      "valid": true,
+      "hasCodeExample": true
+    },
+    {
+      "id": "nuxt-table",
+      "url": "https://ui.nuxt.com/raw/docs/components/table.md",
+      "status": 200,
+      "contentType": "text/markdown; charset=utf-8",
+      "finalUrl": "https://ui.nuxt.com/raw/docs/components/table.md",
+      "title": "Table",
+      "chars": 115585,
+      "valid": true,
+      "hasCodeExample": true
+    },
+    {
+      "id": "nuxt-auth-form",
+      "url": "https://ui.nuxt.com/raw/docs/components/auth-form.md",
+      "status": 200,
+      "contentType": "text/markdown; charset=utf-8",
+      "finalUrl": "https://ui.nuxt.com/raw/docs/components/auth-form.md",
+      "title": "AuthForm",
+      "chars": 15361,
+      "valid": true,
+      "hasCodeExample": true
+    },
+    {
+      "id": "nuxt-toast",
+      "url": "https://ui.nuxt.com/raw/docs/components/toast.md",
+      "status": 200,
+      "contentType": "text/markdown; charset=utf-8",
+      "finalUrl": "https://ui.nuxt.com/raw/docs/components/toast.md",
+      "title": "Toast",
+      "chars": 20717,
+      "valid": true,
+      "hasCodeExample": true
+    },
+    {
+      "id": "nuxt-navigation-menu",
+      "url": "https://ui.nuxt.com/raw/docs/components/navigation-menu.md",
+      "status": 200,
+      "contentType": "text/markdown; charset=utf-8",
+      "finalUrl": "https://ui.nuxt.com/raw/docs/components/navigation-menu.md",
+      "title": "NavigationMenu",
+      "chars": 83937,
+      "valid": true,
+      "hasCodeExample": true
+    },
+    {
+      "id": "shadcn-vue-message",
+      "url": "https://www.shadcn-vue.com/docs/components/message",
+      "status": 200,
+      "contentType": "text/html",
+      "finalUrl": "https://www.shadcn-vue.com/docs/components/message",
+      "title": "Message - shadcn&#x2F;vue",
+      "chars": 16081,
+      "valid": true,
+      "hasCodeExample": false
+    },
+    {
+      "id": "shadcn-vue-bubble",
+      "url": "https://www.shadcn-vue.com/docs/components/bubble",
+      "status": 200,
+      "contentType": "text/html",
+      "finalUrl": "https://www.shadcn-vue.com/docs/components/bubble",
+      "title": "Bubble - shadcn&#x2F;vue",
+      "chars": 23317,
+      "valid": true,
+      "hasCodeExample": true
+    },
+    {
+      "id": "shadcn-vue-message-scroller",
+      "url": "https://www.shadcn-vue.com/docs/components/message-scroller",
+      "status": 200,
+      "contentType": "text/html",
+      "finalUrl": "https://www.shadcn-vue.com/docs/components/message-scroller",
+      "title": "Message Scroller - shadcn&#x2F;vue",
+      "chars": 80875,
+      "valid": true,
+      "hasCodeExample": true
+    },
+    {
+      "id": "shadcn-vue-attachment",
+      "url": "https://www.shadcn-vue.com/docs/components/attachment",
+      "status": 200,
+      "contentType": "text/html",
+      "finalUrl": "https://www.shadcn-vue.com/docs/components/attachment",
+      "title": "Attachment - shadcn&#x2F;vue",
+      "chars": 21418,
+      "valid": true,
+      "hasCodeExample": false
+    },
+    {
+      "id": "shadcn-vue-questionnaire",
+      "url": "https://www.shadcn-vue.com/docs/components/questionnaire",
+      "status": 200,
+      "contentType": "text/html",
+      "finalUrl": "https://www.shadcn-vue.com/docs/components/questionnaire",
+      "title": "Questionnaire - shadcn&#x2F;vue",
+      "chars": 66812,
+      "valid": true,
+      "hasCodeExample": true
+    },
+    {
+      "id": "shadcn-vue-sidebar",
+      "url": "https://www.shadcn-vue.com/docs/components/sidebar",
+      "status": 200,
+      "contentType": "text/html",
+      "finalUrl": "https://www.shadcn-vue.com/docs/components/sidebar",
+      "title": "Sidebar - shadcn&#x2F;vue",
+      "chars": 19487,
+      "valid": true,
+      "hasCodeExample": false
+    },
+    {
+      "id": "shadcn-vue-item",
+      "url": "https://www.shadcn-vue.com/docs/components/item",
+      "status": 200,
+      "contentType": "text/html",
+      "finalUrl": "https://www.shadcn-vue.com/docs/components/item",
+      "title": "Item - shadcn&#x2F;vue",
+      "chars": 21637,
+      "valid": true,
+      "hasCodeExample": false
+    },
+    {
+      "id": "shadcn-vue-field",
+      "url": "https://www.shadcn-vue.com/docs/components/field",
+      "status": 200,
+      "contentType": "text/html",
+      "finalUrl": "https://www.shadcn-vue.com/docs/components/field",
+      "title": "Field - shadcn&#x2F;vue",
+      "chars": 28332,
+      "valid": true,
+      "hasCodeExample": true
+    },
+    {
+      "id": "shadcn-vue-input-group",
+      "url": "https://www.shadcn-vue.com/docs/components/input-group",
+      "status": 200,
+      "contentType": "text/html",
+      "finalUrl": "https://www.shadcn-vue.com/docs/components/input-group",
+      "title": "Input Group - shadcn&#x2F;vue",
+      "chars": 23804,
+      "valid": true,
+      "hasCodeExample": false
+    },
+    {
+      "id": "shadcn-vue-empty",
+      "url": "https://www.shadcn-vue.com/docs/components/empty",
+      "status": 200,
+      "contentType": "text/html",
+      "finalUrl": "https://www.shadcn-vue.com/docs/components/empty",
+      "title": "Empty - shadcn&#x2F;vue",
+      "chars": 11114,
+      "valid": true,
+      "hasCodeExample": false
+    },
+    {
+      "id": "shadcn-vue-data-table",
+      "url": "https://www.shadcn-vue.com/docs/components/data-table",
+      "status": 200,
+      "contentType": "text/html",
+      "finalUrl": "https://www.shadcn-vue.com/docs/components/data-table",
+      "title": "Data Table - shadcn&#x2F;vue",
+      "chars": 42213,
+      "valid": true,
+      "hasCodeExample": false
+    },
+    {
+      "id": "shadcn-vue-stepper",
+      "url": "https://www.shadcn-vue.com/docs/components/stepper",
+      "status": 200,
+      "contentType": "text/html",
+      "finalUrl": "https://www.shadcn-vue.com/docs/components/stepper",
+      "title": "Stepper - shadcn&#x2F;vue",
+      "chars": 16421,
+      "valid": true,
+      "hasCodeExample": true
+    },
+    {
+      "id": "shadcn-vue-sheet",
+      "url": "https://www.shadcn-vue.com/docs/components/sheet",
+      "status": 200,
+      "contentType": "text/html",
+      "finalUrl": "https://www.shadcn-vue.com/docs/components/sheet",
+      "title": "Sheet - shadcn&#x2F;vue",
+      "chars": 3381,
+      "valid": true,
+      "hasCodeExample": false
+    },
+    {
+      "id": "shadcn-vue-sonner",
+      "url": "https://www.shadcn-vue.com/docs/components/sonner",
+      "status": 200,
+      "contentType": "text/html",
+      "finalUrl": "https://www.shadcn-vue.com/docs/components/sonner",
+      "title": "Sonner - shadcn&#x2F;vue",
+      "chars": 5246,
+      "valid": true,
+      "hasCodeExample": false
+    },
+    {
+      "id": "shadcn-vue-calendar",
+      "url": "https://www.shadcn-vue.com/docs/components/calendar",
+      "status": 200,
+      "contentType": "text/html",
+      "finalUrl": "https://www.shadcn-vue.com/docs/components/calendar",
+      "title": "Calendar - shadcn&#x2F;vue",
+      "chars": 24268,
+      "valid": true,
+      "hasCodeExample": true
+    },
+    {
+      "id": "shadcn-vue-radio-group",
+      "url": "https://www.shadcn-vue.com/docs/components/radio-group",
+      "status": 200,
+      "contentType": "text/html",
+      "finalUrl": "https://www.shadcn-vue.com/docs/components/radio-group",
+      "title": "Radio Group - shadcn&#x2F;vue",
+      "chars": 2992,
+      "valid": true,
+      "hasCodeExample": false
+    },
+    {
+      "id": "shadcn-vue-tabs",
+      "url": "https://www.shadcn-vue.com/docs/components/tabs",
+      "status": 200,
+      "contentType": "text/html",
+      "finalUrl": "https://www.shadcn-vue.com/docs/components/tabs",
+      "title": "Tabs - shadcn&#x2F;vue",
+      "chars": 4360,
+      "valid": true,
+      "hasCodeExample": false
+    },
+    {
+      "id": "shadcn-vue-command",
+      "url": "https://www.shadcn-vue.com/docs/components/command",
+      "status": 200,
+      "contentType": "text/html",
+      "finalUrl": "https://www.shadcn-vue.com/docs/components/command",
+      "title": "Command - shadcn&#x2F;vue",
+      "chars": 4115,
+      "valid": true,
+      "hasCodeExample": false
+    },
+    {
+      "id": "shadcn-vue-skeleton",
+      "url": "https://www.shadcn-vue.com/docs/components/skeleton",
+      "status": 200,
+      "contentType": "text/html",
+      "finalUrl": "https://www.shadcn-vue.com/docs/components/skeleton",
+      "title": "Skeleton - shadcn&#x2F;vue",
+      "chars": 1885,
+      "valid": true,
+      "hasCodeExample": false
+    },
+    {
+      "id": "shadcn-vue-marker",
+      "url": "https://www.shadcn-vue.com/docs/components/marker",
+      "status": 200,
+      "contentType": "text/html",
+      "finalUrl": "https://www.shadcn-vue.com/docs/components/marker",
+      "title": "Marker - shadcn&#x2F;vue",
+      "chars": 13207,
+      "valid": true,
+      "hasCodeExample": false
+    },
+    {
+      "id": "shadcn-vue-typeset",
+      "url": "https://www.shadcn-vue.com/docs/typeset",
+      "status": 200,
+      "contentType": "text/html",
+      "finalUrl": "https://www.shadcn-vue.com/docs/typeset",
+      "title": "Typeset - shadcn&#x2F;vue",
+      "chars": 9768,
+      "valid": true,
+      "hasCodeExample": false
+    },
+    {
+      "id": "shadcn-vue-changelog",
+      "url": "https://www.shadcn-vue.com/docs/changelog",
+      "status": 200,
+      "contentType": "text/html",
+      "finalUrl": "https://www.shadcn-vue.com/docs/changelog",
+      "title": "Changelog - shadcn&#x2F;vue",
+      "chars": 88638,
+      "valid": true,
+      "hasCodeExample": true
+    },
+    {
+      "id": "reka-calendar",
+      "url": "https://reka-ui.com/docs/components/calendar.md",
+      "status": 200,
+      "contentType": "text/markdown; charset=utf-8",
+      "finalUrl": "https://reka-ui.com/docs/components/calendar.md",
+      "title": "Calendar",
+      "chars": 13190,
+      "valid": true,
+      "hasCodeExample": true
+    },
+    {
+      "id": "reka-dialog",
+      "url": "https://reka-ui.com/docs/components/dialog.md",
+      "status": 200,
+      "contentType": "text/markdown; charset=utf-8",
+      "finalUrl": "https://reka-ui.com/docs/components/dialog.md",
+      "title": "Dialog",
+      "chars": 13402,
+      "valid": true,
+      "hasCodeExample": true
+    },
+    {
+      "id": "reka-drawer",
+      "url": "https://reka-ui.com/docs/components/drawer.md",
+      "status": 200,
+      "contentType": "text/markdown; charset=utf-8",
+      "finalUrl": "https://reka-ui.com/docs/components/drawer.md",
+      "title": "Drawer",
+      "chars": 24190,
+      "valid": true,
+      "hasCodeExample": true
+    },
+    {
+      "id": "reka-combobox",
+      "url": "https://reka-ui.com/docs/components/combobox.md",
+      "status": 200,
+      "contentType": "text/markdown; charset=utf-8",
+      "finalUrl": "https://reka-ui.com/docs/components/combobox.md",
+      "title": "Combobox",
+      "chars": 31139,
+      "valid": true,
+      "hasCodeExample": true
+    },
+    {
+      "id": "reka-toast",
+      "url": "https://reka-ui.com/docs/components/toast.md",
+      "status": 200,
+      "contentType": "text/markdown; charset=utf-8",
+      "finalUrl": "https://reka-ui.com/docs/components/toast.md",
+      "title": "Toast",
+      "chars": 26508,
+      "valid": true,
+      "hasCodeExample": true
+    },
+    {
+      "id": "reka-radio-group",
+      "url": "https://reka-ui.com/docs/components/radio-group.md",
+      "status": 200,
+      "contentType": "text/markdown; charset=utf-8",
+      "finalUrl": "https://reka-ui.com/docs/components/radio-group.md",
+      "title": "RadioGroup",
+      "chars": 5074,
+      "valid": true,
+      "hasCodeExample": true
+    },
+    {
+      "id": "reka-field",
+      "url": "https://reka-ui.com/docs/components/field.md",
+      "status": 200,
+      "contentType": "text/markdown; charset=utf-8",
+      "finalUrl": "https://reka-ui.com/docs/components/field.md",
+      "title": "Field",
+      "chars": 12967,
+      "valid": true,
+      "hasCodeExample": true
+    },
+    {
+      "id": "reka-tabs",
+      "url": "https://reka-ui.com/docs/components/tabs.md",
+      "status": 200,
+      "contentType": "text/markdown; charset=utf-8",
+      "finalUrl": "https://reka-ui.com/docs/components/tabs.md",
+      "title": "Tabs",
+      "chars": 5787,
+      "valid": true,
+      "hasCodeExample": true
+    },
+    {
+      "id": "reka-progress",
+      "url": "https://reka-ui.com/docs/components/progress.md",
+      "status": 200,
+      "contentType": "text/markdown; charset=utf-8",
+      "finalUrl": "https://reka-ui.com/docs/components/progress.md",
+      "title": "Progress",
+      "chars": 2690,
+      "valid": true,
+      "hasCodeExample": true
+    },
+    {
+      "id": "reka-checkbox",
+      "url": "https://reka-ui.com/docs/components/checkbox.md",
+      "status": 200,
+      "contentType": "text/markdown; charset=utf-8",
+      "finalUrl": "https://reka-ui.com/docs/components/checkbox.md",
+      "title": "Checkbox",
+      "chars": 7272,
+      "valid": true,
+      "hasCodeExample": true
+    },
+    {
+      "id": "primevue-fileupload",
+      "url": "https://primevue.dev/fileupload/",
+      "status": 200,
+      "contentType": "text/html;charset=utf-8",
+      "finalUrl": "https://primevue.dev/fileupload/",
+      "title": "Vue File Upload Component",
+      "chars": 3494,
+      "valid": true,
+      "hasCodeExample": false
+    },
+    {
+      "id": "primevue-timeline",
+      "url": "https://primevue.dev/timeline/",
+      "status": 200,
+      "contentType": "text/html;charset=utf-8",
+      "finalUrl": "https://primevue.dev/timeline/",
+      "title": "Vue Timeline Component",
+      "chars": 4817,
+      "valid": true,
+      "hasCodeExample": false
+    },
+    {
+      "id": "primevue-datatable",
+      "url": "https://primevue.dev/datatable/",
+      "status": 200,
+      "contentType": "text/html;charset=utf-8",
+      "finalUrl": "https://primevue.dev/datatable/",
+      "title": "Vue Table Component",
+      "chars": 19476,
+      "valid": true,
+      "hasCodeExample": true
+    },
+    {
+      "id": "primevue-skeleton",
+      "url": "https://primevue.dev/skeleton/",
+      "status": 200,
+      "contentType": "text/html;charset=utf-8",
+      "finalUrl": "https://primevue.dev/skeleton/",
+      "title": "Vue Skeleton Component",
+      "chars": 3087,
+      "valid": true,
+      "hasCodeExample": false
+    },
+    {
+      "id": "fullcalendar-vue",
+      "url": "https://fullcalendar.io/docs/vue",
+      "status": 200,
+      "contentType": "text/html",
+      "finalUrl": "https://fullcalendar.io/docs/vue",
+      "title": "Vue Component - Docs | FullCalendar",
+      "chars": 8978,
+      "valid": true,
+      "hasCodeExample": false
+    },
+    {
+      "id": "schedule-x-vue",
+      "url": "https://schedule-x.dev/docs/frameworks/vue",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://schedule-x.dev/docs/frameworks/vue",
+      "title": "Vue component",
+      "chars": 6695,
+      "valid": true,
+      "hasCodeExample": false
+    },
+    {
+      "id": "motion-vue",
+      "url": "https://motion.dev/docs/vue",
+      "status": 200,
+      "contentType": "text/html",
+      "finalUrl": "https://motion.dev/docs/vue",
+      "title": "Get started with Vue animations | Motion for Vue",
+      "chars": 8433,
+      "valid": true,
+      "hasCodeExample": true
+    },
+    {
+      "id": "motion-layout",
+      "url": "https://motion.dev/docs/vue-layout-animations",
+      "status": 200,
+      "contentType": "text/html",
+      "finalUrl": "https://motion.dev/docs/vue-layout-animations",
+      "title": "Vue layout animations | FLIP &amp; shared element | Motion for Vue",
+      "chars": 12005,
+      "valid": true,
+      "hasCodeExample": true
+    },
+    {
+      "id": "ant-proximity",
+      "url": "https://ant.design/docs/spec/proximity.md",
+      "status": 200,
+      "contentType": "text/markdown; charset=utf-8",
+      "finalUrl": "https://ant.design/docs/spec/proximity.md",
+      "title": "",
+      "chars": 2111,
+      "valid": true,
+      "hasCodeExample": false
+    },
+    {
+      "id": "ant-alignment",
+      "url": "https://ant.design/docs/spec/alignment.md",
+      "valid": false,
+      "error": "TypeError: fetch failed"
+    },
+    {
+      "id": "ant-hierarchy",
+      "url": "https://ant.design/docs/spec/contrast.md",
+      "status": 200,
+      "contentType": "text/markdown; charset=utf-8",
+      "finalUrl": "https://ant.design/docs/spec/contrast.md",
+      "title": "",
+      "chars": 2905,
+      "valid": true,
+      "hasCodeExample": false
+    },
+    {
+      "id": "echarts-examples",
+      "url": "https://echarts.apache.org/examples/en/index.html",
+      "status": 200,
+      "contentType": "text/html; charset=UTF-8",
+      "finalUrl": "https://echarts.apache.org/examples/en/index.html",
+      "title": "Examples - Apache ECharts",
+      "chars": 705,
+      "valid": false,
+      "hasCodeExample": false
+    },
+    {
+      "id": "vue-echarts",
+      "url": "https://raw.githubusercontent.com/ecomfe/vue-echarts/main/README.md",
+      "status": 200,
+      "contentType": "text/plain; charset=utf-8",
+      "finalUrl": "https://raw.githubusercontent.com/ecomfe/vue-echarts/main/README.md",
+      "title": "",
+      "chars": 23914,
+      "valid": true,
+      "hasCodeExample": true
+    },
+    {
+      "id": "ai-elements-sources",
+      "url": "https://elements.ai-sdk.dev/components/sources",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://elements.ai-sdk.dev/components/sources",
+      "title": "Sources",
+      "chars": 5575,
+      "valid": true,
+      "hasCodeExample": true
+    },
+    {
+      "id": "ai-elements-plan",
+      "url": "https://elements.ai-sdk.dev/components/plan",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://elements.ai-sdk.dev/components/plan",
+      "title": "Plan",
+      "chars": 3029,
+      "valid": true,
+      "hasCodeExample": true
+    },
+    {
+      "id": "21st-newest",
+      "url": "https://21st.dev/community/components/newest",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://21st.dev/community/components/newest",
+      "title": "New community UI components | 21st",
+      "chars": 393,
+      "valid": false,
+      "hasCodeExample": false
+    },
+    {
+      "id": "21st-ai-chat",
+      "url": "https://21st.dev/community/components/s/ai-chat.md",
+      "status": 200,
+      "contentType": "text/markdown; charset=utf-8",
+      "finalUrl": "https://21st.dev/community/components/s/ai-chat.md",
+      "title": "AI Chat components",
+      "chars": 6210,
+      "valid": true,
+      "hasCodeExample": false
+    },
+    {
+      "id": "21st-sidebar",
+      "url": "https://21st.dev/community/components/s/sidebar.md",
+      "status": 200,
+      "contentType": "text/markdown; charset=utf-8",
+      "finalUrl": "https://21st.dev/community/components/s/sidebar.md",
+      "title": "Sidebar UI Examples & React Components",
+      "chars": 6269,
+      "valid": true,
+      "hasCodeExample": false
+    },
+    {
+      "id": "21st-forms",
+      "url": "https://21st.dev/community/components/s/form.md",
+      "status": 200,
+      "contentType": "text/markdown; charset=utf-8",
+      "finalUrl": "https://21st.dev/community/components/s/form.md",
+      "title": "Form components",
+      "chars": 5812,
+      "valid": true,
+      "hasCodeExample": false
+    },
+    {
+      "id": "inspira-directory",
+      "url": "https://inspira-ui.com/components",
+      "status": 404,
+      "contentType": "application/json",
+      "finalUrl": "https://inspira-ui.com/docs/components",
+      "title": "",
+      "chars": 233,
+      "valid": false,
+      "hasCodeExample": false
+    },
+    {
+      "id": "registry-prompt-input",
+      "url": "https://registry.directory/api/markdown/vercel/ai/prompt-input",
+      "status": 200,
+      "contentType": "text/markdown; charset=utf-8",
+      "finalUrl": "https://registry.directory/api/markdown/vercel/ai/prompt-input",
+      "title": "prompt-input",
+      "chars": 38374,
+      "valid": true,
+      "hasCodeExample": true,
+      "registry": "AI Elements",
+      "name": "prompt-input",
+      "description": "AI-powered prompt input component."
+    },
+    {
+      "id": "registry-sources",
+      "url": "https://registry.directory/api/markdown/vercel/ai/sources",
+      "status": 200,
+      "contentType": "text/markdown; charset=utf-8",
+      "finalUrl": "https://registry.directory/api/markdown/vercel/ai/sources",
+      "title": "sources",
+      "chars": 2324,
+      "valid": true,
+      "hasCodeExample": true,
+      "registry": "AI Elements",
+      "name": "sources",
+      "description": "AI-powered sources component."
+    },
+    {
+      "id": "registry-ai-chat-9",
+      "url": "https://registry.directory/api/markdown/keenthemes/reui/ai-chat-9",
+      "status": 404,
+      "contentType": "text/plain;charset=UTF-8",
+      "finalUrl": "https://registry.directory/api/markdown/keenthemes/reui/ai-chat-9",
+      "title": "",
+      "chars": 14,
+      "valid": false,
+      "hasCodeExample": false,
+      "registry": "ReUI",
+      "name": "ai-chat-9",
+      "description": "A standalone conversation under one minimal header: a tabbed thread switcher over pinned and recency lists, a favorite toggle and a fold for earlier turns, above replies that arrive as small documents with sections, bullets and code artifacts in markdown, yaml, json, typescript and sql, each one folding its working away behind a thought row and listing the sources its inline citations point back to, over a thread held as a tree so a regenerate or an edit adds a version on the fork rail instead of overwriting the turn."
+    },
+    {
+      "id": "registry-c-calendar-22",
+      "url": "https://registry.directory/api/markdown/keenthemes/reui/c-calendar-22",
+      "status": 200,
+      "contentType": "text/markdown; charset=utf-8",
+      "finalUrl": "https://registry.directory/api/markdown/keenthemes/reui/c-calendar-22",
+      "title": "c-calendar-22",
+      "chars": 3205,
+      "valid": true,
+      "hasCodeExample": true,
+      "registry": "ReUI",
+      "name": "c-calendar-22",
+      "description": "Calendar with event list"
+    },
+    {
+      "id": "registry-file-upload",
+      "url": "https://registry.directory/api/markdown/kokonut-labs/kokonutui/file-upload",
+      "status": 200,
+      "contentType": "text/markdown; charset=utf-8",
+      "finalUrl": "https://registry.directory/api/markdown/kokonut-labs/kokonutui/file-upload",
+      "title": "file-upload",
+      "chars": 20875,
+      "valid": true,
+      "hasCodeExample": true,
+      "registry": "kokonut/ui",
+      "name": "file-upload",
+      "description": "Drag and drop file upload with animated progress, file validation and error states. Built with React, Tailwind CSS and Motion animations."
+    },
+    {
+      "id": "registry-focus-input",
+      "url": "https://registry.directory/api/markdown/henriquegpb/microkit/focus-input",
+      "status": 200,
+      "contentType": "text/markdown; charset=utf-8",
+      "finalUrl": "https://registry.directory/api/markdown/henriquegpb/microkit/focus-input",
+      "title": "focus-input",
+      "chars": 947,
+      "valid": true,
+      "hasCodeExample": true,
+      "registry": "MicroKit",
+      "name": "focus-input",
+      "description": "An input with a clean animated focus treatment.",
+      "reviewedAs": "Verified short source-code document; initial minimum-length heuristic was too strict."
+    }
+  ]
+}
