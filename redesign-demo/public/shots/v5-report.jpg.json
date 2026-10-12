@@ -1,0 +1,16 @@
+{
+  "file": "v5-report.jpg",
+  "kind": "local-browser-screenshot",
+  "origin": "../../design-review/desktop-v5/report-desktop.jpg",
+  "source": "http://127.0.0.1:5275/#/report",
+  "capturedOn": "2026-10-12",
+  "demoData": true,
+  "generatedArtwork": false,
+  "width": 1270,
+  "height": 714,
+  "format": "JPEG",
+  "testedViewport": {
+    "width": 1280,
+    "height": 720
+  }
+}

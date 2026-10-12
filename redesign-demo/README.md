@@ -1,8 +1,8 @@
 # 职引 · 学生空间演示
 
-独立的 Vue 3 + TypeScript + Vite 前端工程，演示学生通过咨询了解个人情况、比较职业方向、安排任务与复盘。本次 V4 仅修改 `redesign-demo`，后端、原前端与管理员端不在范围内。
+独立的 Vue 3 + TypeScript + Vite 前端工程，演示学生通过咨询了解个人情况、比较职业方向、安排任务与复盘。本次 V5 仅修改 `redesign-demo`，后端、原前端与管理员端不在范围内。
 
-门户保留品牌主张、蓝红灰配色与原版对比，登录成功和已登录入口均进入咨询。V4 整理二级菜单，移除重复导航，逐页评估内容并统一书面表达，以菜单展开和任务状态反馈提供轻量动效。正文保持 16px。内容判断见 [CONTENT-AUDIT.md](design-review/CONTENT-AUDIT.md)，接口边界见 [BACKEND-ALIGNMENT.md](BACKEND-ALIGNMENT.md)。
+门户保留品牌主张、蓝红灰配色与原版对比，登录成功和已登录入口均进入咨询。V5 延伸完整学生空间：内嵌主画布、页内视图、方向对照、任务概览、咨询依据与复制反馈、响应式补充面板、空态及来源层次。正文保持 16px，新增图形为本地 SVG，未增加 npm 依赖。资源取舍见 [RESOURCE-SELECTION.md](design-review/RESOURCE-SELECTION.md)，内容判断见 [CONTENT-AUDIT.md](design-review/CONTENT-AUDIT.md)，接口边界见 [BACKEND-ALIGNMENT.md](BACKEND-ALIGNMENT.md)。
 
 ## 运行
 
@@ -16,7 +16,7 @@ npm.cmd run dev -- --port 5275
 
 ## 导航与地址
 
-桌面咨询置顶，三个单选展开的一级菜单为「生涯分析、计划管理、资讯与记录」，当前路由所属组自动展开。全部历史会话在业务菜单下方，账号唯一入口在左下角。移动底栏为「对话、行动、画像、报告、更多」；更多面板使用同一二级目录，账号仅在右上角，咨询页保留新对话与历史入口。顶部可切换布局，窄于 1000px 时使用移动导航。
+桌面咨询置顶，一级菜单「生涯分析、计划管理、资讯与记录」可同时展开；进入页面时只补充展开所属组，保留其它组。侧栏可整体收起，内容区随之扩展，顶栏按钮可重新展开并保留本次菜单状态。账号保持唯一入口：侧栏展开时在左下，收起时在顶栏右上。全部历史会话位于业务菜单下方。移动底栏为「对话、行动、画像、报告、更多」；更多面板使用同一二级目录，账号仅右上，咨询保留新对话与历史入口。顶部可切换布局，窄于 1000px 时使用移动导航。
 
 以下 hash 路径接在预览地址之后：
 
@@ -53,9 +53,11 @@ npm.cmd run dev -- --port 5275
 
 任务完成/恢复、建议采纳/拒绝、拆小、安排执行、画像更正、方向改选、复盘归因与待办操作更新当前会话。方向变化只展示影响范围，不自动重算。版本为预置快照；诊断结果和详细分值使用第 3 版示例，选旧版进入版本记录，打印当前视图。
 
-账号、外观与导航布局偏好存入 localStorage。业务修改、引导收起和草稿仅为当前页面会话状态，刷新恢复预置数据；切年级重置场景任务与采集进度。账号面板提供复位演示数据与恢复操作引导。
+账号、外观、导航布局与桌面侧栏收起偏好存入 localStorage。菜单展开集合保留在本次组件会话，不承诺刷新后恢复。业务修改、引导收起和草稿仅为当前页面会话状态，刷新恢复预置数据；切年级重置场景任务与采集进度。账号面板提供复位演示数据与恢复操作引导。
 
 `sync:backend` 生成 69 个 schema 与后端功能目录；`check:backend` 校验生成文件及 50 个学生操作的 method/path。50 项目录校验不表示 50 项 API 已接入。JSON/multipart 与 SSE transport 已提供，页面仍用本地状态，未执行真实端到端测试。
+
+实际 controller、DTO、业务服务与动态资源的核对见 [BACKEND-AUDIT-V5.md](design-review/BACKEND-AUDIT-V5.md)：主要页面能力有对应，但当前不能认定完整业务对齐。固定画像键与服务端词表、撤回后的画像摘要、消息可视件/管线/变化资产、完整 15 维报告/SWOT/来源/待重算状态，以及 AI 和动态模块仍有接入或展示差异。69/50 属于契约目录检查，视觉 SHIP 仅评价演示界面，均不能替代业务接入验收。
 
 ## 检查与设计记录
 
@@ -67,10 +69,12 @@ node scripts/check-contrast.mjs
 git diff --check
 ```
 
-当前最终构建（含类型检查）、后端目录、类名与颜色/字号门禁已通过。浏览器证据与交互边界见 [desktop-v4/QA.md](design-review/desktop-v4/QA.md)。最终 JPEG 位于 `design-review/desktop-v4/`：12 个业务桌面页及门户、4 个业务移动页、移动更多菜单、横屏对话。操作路径使用 `public/shots/v4-*.jpg`。早期截图调用的错帧已重采集并逐图确认；V3 与更早截图仅作历史参考。
+V5 构建（含类型检查）、后端目录、类名与颜色/字号门禁已通过：69 schema / 50 学生操作 method/path，必过文字对比度项在四套颜色组合下 ≥ 4.5:1，六档字号登记通过。浏览器证据与交互边界见 [desktop-v5/QA.md](design-review/desktop-v5/QA.md)。当前 33 张浏览器 JPEG 位于 `design-review/desktop-v5/`：12 个业务桌面页、6 个业务手机页、13 个基线特殊视图及 2 个追加导航视图。测试视口包括 1280×720、390×844、1440×900 宽屏、1280×600 短屏；截图像素尺寸见 [SHOT-PROVENANCE.json](design-review/desktop-v5/SHOT-PROVENANCE.json)。
 
-产品约束见 [PRODUCT.md](PRODUCT.md)，方向见 [DESIGN-BRIEF.md](DESIGN-BRIEF.md)，tracked [DESIGN.md](DESIGN.md) 是当前设计系统主依据；本地 `.impeccable/design.json` 为补充记录。Reka UI Accordion 已用于受控菜单、路由同步与键盘交互；CSS 与 Vue TransitionGroup 提供尺寸和任务动效。Motion 仅作研究，未安装。Impeccable CLI 未安装，本轮执行独立 finish review；Stitch 没有可用服务、未生成设计；Taste 仅局部审查参考，未整套套用复杂产品界面；Designeer 使用本地目录。
+操作路径使用 `public/shots/v5-{portal,chat,profile,report,directions,home,review}.jpg`，各 `.jpg.json` 记录浏览器截图来源，无 AI 生成位图。复制调用成功且按钮反馈正确，但剪贴板读回为空，未验证字节相等；减少动效仅检查源码。V4 的 [QA](design-review/desktop-v4/QA.md)、截图与指南副本保留为历史，V3 及更早图片同样不替代当前证据。
+
+产品约束见 [PRODUCT.md](PRODUCT.md)，方向见 [DESIGN-BRIEF.md](DESIGN-BRIEF.md)，tracked [DESIGN.md](DESIGN.md) 是当前设计系统主依据；本地 `.impeccable/design.json` 为补充记录。Reka UI Accordion 用于受控菜单、路由同步与键盘交互，Tabs 用于页内视图；CSS 与 Vue TransitionGroup 提供动效。Motion 仅作研究，未安装。Impeccable CLI/detector 未安装，本轮独立收尾审阅见 [FINISH-REVIEW.md](design-review/desktop-v5/FINISH-REVIEW.md)；Stitch 没有生成结果，Taste 仅局部审查参考，Designeer 使用本地目录。
 
 ## 历史发布
 
-既有 Sites 配置在 `.openai/hosting.json`，历史发布副本为本地忽略的 `.sites/frontend`。此前公开地址为 [职引前端演示 V2](https://zhiyin-frontend-demo-v2.peppy-sugar-7626.chatgpt.site)。本次 V4 未执行 Sites 发布，该地址不能作为当前 V4 在线验收地址。
+既有 Sites 配置在 `.openai/hosting.json`，历史发布副本为本地忽略的 `.sites/frontend`。此前公开地址为 [职引前端演示 V2](https://zhiyin-frontend-demo-v2.peppy-sugar-7626.chatgpt.site)。本次 V5 未执行 Sites 发布，该地址不能作为当前 V5 在线验收地址。

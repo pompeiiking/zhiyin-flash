@@ -173,7 +173,7 @@ export const demo = {
     state.tasks = state.account === 'fresh' ? [] : tasksFor(grade)
     state.lastDoneId = null
     state.chatCollected = 0
-    if (!silent) toast(`已切换到${scenarioOf(grade).grade}的使用场景 —— 要做的事也换了`)
+    if (!silent) toast(`已切换至${scenarioOf(grade).grade}场景，任务安排已同步更新。`)
   },
 
   // ---- 登录 ----
@@ -232,25 +232,25 @@ export const demo = {
     t.bucket = 'done'
     t.doneAt = '刚刚'
     state.lastDoneId = id
-    toast('记进完成记录了 —— 画像里的节奏跟着变了一条')
+    toast('任务已完成，执行记录已更新。')
   },
   reopenTask(id: string) {
     const t = state.tasks.find((x) => x.id === id)
     if (!t) return
     t.bucket = 'now'
     t.doneAt = undefined
-    toast('已放回"现在要做的"')
+    toast('任务已恢复至待执行状态。')
   },
   /** 建议可采纳可否决，否决回流也是数据（第 8 幕） */
   acceptSuggestion(id: string) {
     const t = state.tasks.find((x) => x.id === id)
     if (!t) return
     t.origin = '自己写的'
-    toast('已采纳 —— 它现在是你的事，不是建议了')
+    toast('建议已采纳并加入任务安排。')
   },
   rejectSuggestion(id: string) {
     state.tasks = state.tasks.filter((t) => t.id !== id)
-    toast('已否决。否决也会记下来，下次不再推同一条')
+    toast('建议已拒绝，当前记录已更新。')
   },
   /** 对话里那颗"排进今天"：按标题在当前年级的任务里找，找不到就新建一条 */
   /**
@@ -279,7 +279,7 @@ export const demo = {
         due: '今天',
       })
     }
-    toast(exist ? '已确认这件事在今天的任务里' : '已排进今天 —— "现在要做的"多了一件')
+    toast(exist ? '该任务已在今日安排中。' : '任务已加入今日安排。')
   },
   /** 从提醒/建议里"排进今天"：它进"现在要做的"，并带上截止 */
   planToday(id: string) {
@@ -288,7 +288,7 @@ export const demo = {
     if (t.origin === '建议的') t.origin = '自己写的'
     t.bucket = 'now'
     t.due = '今天'
-    toast('已排进今天 —— "现在要做的"多了一件')
+    toast('任务已加入今日安排。')
   },
   /** 做不动可以点"改小"：当场拆到 5 分钟（第 8 幕预案） */
   shrinkTask(id: string) {
@@ -298,7 +298,7 @@ export const demo = {
     if (t.title.includes('投 3 家')) t.title = t.title.replace('投 3 家', '先投 1 家')
     else if (!t.title.includes('（先做一个步骤）')) t.title += '（先做一个步骤）'
     t.why = '先完成其中一个最小步骤，约 5 分钟；其他部分留到下一次。'
-    toast('已改小到 5 分钟。改小不是失败，是设计好的')
+    toast('任务已拆分为约 5 分钟的执行步骤。')
   },
 
   // ---- 方向：选择是用户的，撤回是产品的（第 7 幕）----
@@ -311,8 +311,8 @@ export const demo = {
     const plan = DIRECTION_PLANS.find((d) => d.id === id)
     toast(
       state.previousDirectionId
-        ? `已改选为「${plan?.title}」—— 只重算受影响的 ${plan?.ripple ?? 0} 处，其余原样`
-        : `已选定「${plan?.title}」—— 系统不会替你做这个选择，随时可以改`,
+        ? `已改选为「${plan?.title}」。当前演示显示 ${plan?.ripple ?? 0} 处关联内容，尚未自动重算。`
+        : `已选择「${plan?.title}」，可继续查看影响范围。`,
     )
   },
   /** 直达链接用：预置一个已选方向，不弹提示（?dir=d1） */
@@ -341,7 +341,7 @@ export const demo = {
     if (!value.trim()) return
     if (value.trim().length > 40) { toast('这条信息最多 40 个字，请简短说明。'); return }
     state.profileEdits[key] = value.trim()
-    toast('更正已记下，可以在对话里继续补充依据')
+    toast('更正已保存，可通过咨询补充依据。')
   },
   addChatTurn(turn: ChatTurn) {
     if (turn.from === 'me' && turn.text !== '跳过这个问题') backendDemo.recordEvent('answer')

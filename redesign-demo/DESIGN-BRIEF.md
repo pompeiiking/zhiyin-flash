@@ -1,4 +1,10 @@
-# 学生工作空间 · V4 改版方向
+# 学生工作空间 · V5 组件与体验改进
+
+本轮在 V4 结构上延伸完整学生空间，不把需求限制为导航、布局、背景、动效四项。以 [资源站筛选记录](design-review/RESOURCE-SELECTION.md) 的阅读与操作场景为范围，保留门户配色与进入对话、后端业务边界、二级菜单、导航下方历史和唯一账号入口。
+
+V5 实现：侧栏融入底色、主区内嵌工作表面；咨询主题引导、编号依据、复制与返回最新；桌面侧面板及手机底部面板；统一可键盘切换的页内视图；方向逐项对照；任务状态概览；分别保留待办/目标草稿；空状态图形、来源层次和执行时间线。追加要求为桌面一级菜单同时展开、侧栏整体收起/展开与状态保留。图形自绘 SVG，颜色和正文沿用原令牌，动效为 180–220ms 的状态反馈。
+
+本轮为现有 Operate 界面的代码实现延伸，无审批中的视觉稿，不新增品牌世界。当前验证见 [desktop-v5/QA.md](design-review/desktop-v5/QA.md)，资源选择见 [RESOURCE-SELECTION.md](design-review/RESOURCE-SELECTION.md)，独立收尾审阅见 [FINISH-REVIEW.md](design-review/desktop-v5/FINISH-REVIEW.md)。以下合同继承 V4 的产品与视觉约束，V4 单选展开仅为历史实现。
 
 ## Direction contract
 
@@ -6,13 +12,15 @@ THESIS：让学生找到功能、读懂当前情况并采取行动。以二级�
 
 OWN-WORLD：保留门户主张与蓝红灰配色、系统中文无衬线字体和 16px 正文。白色工作表面、留白和合适列宽形成层次，统一 Phosphor 图标。灵动来自菜单、任务位置与状态反馈。
 
-STORY：门户与登录首先进入咨询，各功能独立可达。桌面咨询置顶，二级菜单分为生涯分析、计划管理、资讯与记录；历史在全部业务导航下方。账号唯一入口为桌面左下或移动右上。移动保留四个业务快捷入口和更多目录，咨询保留历史入口。
+STORY：门户与登录首先进入咨询，各功能独立可达。桌面咨询置顶，二级菜单分为生涯分析、计划管理、资讯与记录，可同时展开；路由只补充展开所属组。历史在全部业务导航下方。侧栏收起后内容区扩展，重新展开保留本次菜单状态。账号保持唯一入口：桌面展开时左下、收起时顶栏右上，移动右上。移动保留四个业务快捷入口和更多目录，咨询保留历史入口。
 
 FIRST VIEWPORT：咨询正文与输入相邻；画像先事实，学籍独立；诊断先结果和差距，版本按需查看，方向独立比较；行动以今日/阶段共享功能，日历独立；复盘显示任务分析与调整建议。解释、来源、分值和影响范围主动展开。
 
-FORM：Vue 3 本地演示工程。Reka UI Accordion 负责受控二级菜单、键盘交互与路由同步；CSS 与 Vue TransitionGroup 负责尺寸、位置和入场动效，遵循 reduced motion。沿用后端契约目录，不宣称 UI 已接入 API。
+FORM：Vue 3 本地演示工程。Reka UI Accordion 负责受控二级菜单、键盘交互与路由同步，Reka UI Tabs 负责页内视图、ARIA 关联和移动指示线；CSS 与 Vue TransitionGroup 负责位置与入场动效。V5 指示线 180ms、概览环形状态 220ms、inspector 入场 220ms，减少动效有源码规则；本轮未切换系统偏好做浏览器验证。沿用后端契约目录，不宣称 UI 已接入 API。
 
-FINISH：独立 finish review 达到 ship；最终 V4 目标截图逐图审阅，确认导航、内容、唯一账号与移动菜单。最终构建（含类型检查）、后端目录、类名与颜色/字号门禁已通过。V3 历史截图不替代本轮验证。
+FINISH：V5 独立 finish reviewer 重新逐一打开全部当前 33 张 JPEG（12 桌面业务、6 手机业务、13 基线特殊视图、2 追加导航视图），并检查多组展开、整栏显隐、偏好、焦点与唯一账号实现，视觉与导航结论 SHIP，无必要修复。审阅者未重跑浏览器、构建或官方 detector。最终构建（含类型检查）、69 schema / 50 operation 目录、类名、四套颜色组合文字对比度及六档字号检查已通过。剪贴板 API 与反馈通过但未验证字节相等，减少动效仅源码检查；真实服务仍未接入。V4 已通过的验收保留在 [desktop-v4/QA.md](design-review/desktop-v4/QA.md)，作为历史。
+
+业务核对独立于视觉验收，见 [BACKEND-AUDIT-V5.md](design-review/BACKEND-AUDIT-V5.md)。实际 controller、DTO 和业务服务核对发现主要页面能力有对应，但画像词表、撤回摘要、完整消息返回、15 维报告与待重算状态、AI 和动态模块仍有接入或展示差异。69/50 只属契约目录检查，视觉 SHIP 不等于完整业务对齐或在线接入通过。
 
 ## 内容取舍
 
@@ -23,10 +31,10 @@ FINISH：独立 finish review 达到 ship；最终 V4 目标截图逐图审阅�
 ## 研究与工具边界
 
 - [Impeccable Operate](https://github.com/pbakaus/impeccable/blob/main/.agents/skills/impeccable/reference/operate.md)：任务组织、可读性、按需解释与状态反馈；本轮独立 finish review，CLI 未安装。
-- [Reka UI Accordion](https://www.reka-ui.com/docs/components/accordion)：已采用，受控单选展开、键盘导航和内容尺寸动画。
+- [Reka UI Accordion](https://www.reka-ui.com/docs/components/accordion)：桌面使用受控多组展开、键盘导航和内容尺寸动画；V4 单选为历史实现。
 - [Motion for Vue](https://motion.dev/docs/vue)：研究参考，未安装，现有 CSS 与 TransitionGroup 满足需求。
 - [Taste Skill](https://github.com/Leonxlnx/taste-skill)：仅参考需求先行及避免同重卡片的审查方法；范围排除复杂产品 UI，未整套套用。
 - [NN/g 隐藏导航研究](https://www.nngroup.com/articles/hamburger-menus/)和 [Every Layout](https://every-layout.dev/layouts/)：功能发现与内容驱动重排的参考。
 - Designeer 使用本地目录，Navbar Gallery 用于导航研究；Stitch 未连接可用服务、没有生成设计。
 
-范围仅为 redesign-demo，后端与原前端未修改，本轮无 Sites 部署。69 schema / 50 operation 是目录校验，真实 API、AI、学籍核验和自动重算仍待接入。实际设计系统见 [DESIGN.md](DESIGN.md)，验证见 [desktop-v4/QA.md](design-review/desktop-v4/QA.md)。
+范围仅为 redesign-demo，后端与原前端未修改，本轮无 Sites 部署。69 schema / 50 operation 是目录校验，真实 API、AI、学籍核验和自动重算仍待接入。实际设计系统见 [DESIGN.md](DESIGN.md)，当前验证见 [desktop-v5/QA.md](design-review/desktop-v5/QA.md)。指南采用 `public/shots/v5-*.jpg` 浏览器截图副本及 `.jpg.json` 来源记录；自绘 SVG 与截图均不属于 AI 生成位图。

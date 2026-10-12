@@ -4,6 +4,7 @@ import { router } from './router'
 import './styles/tokens.css'
 import './styles/base.css'
 import './styles/workspace.css'
+import './styles/experience.css'
 
 const app = createApp(App)
 

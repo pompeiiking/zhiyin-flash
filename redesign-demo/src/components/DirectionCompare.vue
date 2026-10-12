@@ -1,0 +1,6 @@
+<script setup lang="ts">
+import type { DirectionPlan } from '../data/types'
+defineProps<{ items: readonly DirectionPlan[]; selectedId?: string }>()
+defineEmits<{ pick: [id: string] }>()
+</script>
+<template><div class="exp-compare-wrap"><p class="exp-compare__hint">左右滑动，对照三个方向的依据与风险。</p><div class="exp-compare" tabindex="0" aria-label="方向方案对照表，可横向滚动"><table><caption class="sr-only">三个方向的匹配依据、风险与选择</caption><thead><tr><th scope="col">比较项</th><th v-for="item in items" :key="item.id" scope="col"><small>{{ item.role }}</small>{{ item.title }}</th></tr></thead><tbody><tr><th scope="row">当前匹配判断</th><td v-for="item in items" :key="item.id">{{ item.fit.label }}</td></tr><tr><th scope="row">支持依据</th><td v-for="item in items" :key="item.id"><ul><li v-for="evidence in item.evidence" :key="evidence">{{ evidence }}</li></ul></td></tr><tr><th scope="row">主要风险</th><td v-for="item in items" :key="item.id" class="exp-compare__risk">{{ item.risk }}</td></tr><tr><th scope="row">选择方案</th><td v-for="item in items" :key="item.id"><button class="btn" :class="{ 'btn--primary': selectedId !== item.id }" :disabled="selectedId === item.id" @click="$emit('pick', item.id)">{{ selectedId === item.id ? '已选择' : '选择方向' }}</button></td></tr></tbody></table></div></div></template>

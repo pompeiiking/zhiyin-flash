@@ -61,6 +61,7 @@ export const backendDemo = {
     state.eventTimes = fresh ? {} : { answer: '2026-09-12T02:00:00Z', task_done: '2026-09-20T02:00:00Z', review: '2026-09-24T02:00:00Z' }
   },
   saveTurns(id: string, turns: readonly ChatTurn[]) {
+    if (JSON.stringify(state.histories[id]) === JSON.stringify(turns)) return
     state.histories[id] = turns.map(t => ({ ...t }))
     const session = state.sessions.find(s => s.task_id === id)
     if (session) session.last_active_at = now()

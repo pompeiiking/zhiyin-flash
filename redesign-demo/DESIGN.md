@@ -1,79 +1,201 @@
-# 职引 · V4 学生空间设计系统
+---
+name: 职引 · V5 学生空间
+description: 延续蓝红灰令牌，以清晰阅读、独立导航和状态反馈支持学生咨询与行动。
+colors:
+  primary: "#154494"
+  primary-hover: "#113a7d"
+  primary-weak: "#eff3fa"
+  attention: "#96000e"
+  text: "#1e232c"
+  text-secondary: "#4b5157"
+  text-muted: "#61666b"
+  background: "#f7f6f6"
+  surface: "#ffffff"
+  surface-secondary: "#fafafa"
+  border: "#e1e5ee"
+  border-strong: "#cfd3d6"
+  dark-background: "#151517"
+  dark-surface: "#1b1b1d"
+  dark-text: "#f9fafb"
+  dark-primary: "#6e93c9"
+  dark-attention: "#d98a92"
+typography:
+  display:
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Source Han Sans SC', 'Noto Sans CJK SC', sans-serif"
+    fontSize: "38px"
+  headline:
+    fontSize: "30px"
+    lineHeight: 1.3
+  title:
+    fontSize: "20px"
+    fontWeight: 600
+    lineHeight: 1.45
+  body:
+    fontSize: "16px"
+    fontWeight: 400
+    lineHeight: 1.7
+  control:
+    fontSize: "14px"
+    fontWeight: 500
+  label:
+    fontSize: "12px"
+rounded:
+  sm: "6px"
+  md: "8px"
+  lg: "12px"
+  inspector: "16px"
+  desktop-canvas: "20px"
+  pill: "999px"
+spacing:
+  sp-1: "4px"
+  sp-2: "8px"
+  sp-3: "12px"
+  sp-4: "16px"
+  sp-5: "20px"
+  sp-6: "24px"
+  sp-7: "32px"
+  sp-8: "40px"
+  sp-9: "56px"
+  sp-10: "72px"
+components:
+  button-primary:
+    backgroundColor: "{colors.primary}"
+    textColor: "{colors.surface}"
+    rounded: "{rounded.md}"
+    padding: "8px 18px"
+  button-primary-hover:
+    backgroundColor: "{colors.primary-hover}"
+  button-secondary:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.text}"
+    rounded: "{rounded.md}"
+    padding: "8px 18px"
+  button-ghost:
+    textColor: "{colors.text-secondary}"
+    rounded: "{rounded.md}"
+  field:
+    backgroundColor: "{colors.surface}"
+    rounded: "{rounded.md}"
+    height: "38px"
+  card:
+    backgroundColor: "{colors.surface}"
+    rounded: "{rounded.lg}"
+    padding: "32px"
+  chip-primary:
+    backgroundColor: "{colors.primary-weak}"
+    textColor: "{colors.primary}"
+    rounded: "{rounded.sm}"
+    height: "22px"
+---
 
-对应 2026-10-12 的 V4 实现，以路由、组件与令牌为依据。本文件为版本控制中的设计系统主记录；本地 `.impeccable/design.json` 仅为补充。约束见 [PRODUCT.md](PRODUCT.md)，方向见 [DESIGN-BRIEF.md](DESIGN-BRIEF.md)，内容判断见 [CONTENT-AUDIT.md](design-review/CONTENT-AUDIT.md)，当前验证见 [desktop-v4/QA.md](design-review/desktop-v4/QA.md)。
+# Design System: 职引 · V5 学生空间
 
-## 信息结构
+## Overview
 
-门户保留品牌主张、蓝红灰配色与左右构图：左侧主要入口，右侧用户主动切换咨询、方向依据和行动示例，不自动轮播。原版通过 `?portal=classic` 保留。登录成功和已登录入口均进入咨询，各功能可独立访问，不表示完成顺序。
+本文件记录 2026-10-12 已实现的 V5，是版本控制中的设计系统主依据；`.impeccable/design.json` 为本地补充记录。V5 是既有操作界面的代码延伸，沿用蓝红灰配色与系统字体，没有新的品牌世界或获批视觉稿。产品约束见 [PRODUCT.md](PRODUCT.md)，本轮范围见 [DESIGN-BRIEF.md](DESIGN-BRIEF.md)。
 
-桌面常驻结构为左侧导航与历史、顶部位置与工具、页面工作区。咨询和新建咨询置顶；Reka UI Accordion 单选可折叠，受控状态随当前路由同步所属组。全部历史会话位于业务导航下方，与导航共用滚动区域。账号仅在左下固定区，顶部不重复。
+界面以稳定工作表面、合适列宽和按需解释组织阅读。桌面导航融入背景，内嵌主画布承载内容；标题、间距、描边与少量主色表面表达主次。说明使用正常书面语言，交互反馈明确操作结果。
 
-| 一级菜单 | 二级页面 |
+**Key Characteristics:**
+
+- 延续蓝、红、中性灰，状态同时提供文字或图标。
+- 正文保持 16px，密度变化不缩放字号。
+- 二级目录与历史分区，页内视图支持键盘切换。
+- SVG 图形用于咨询引导和空态，内容区保持稳定阅读表面。
+
+## Colors
+
+frontmatter 记录默认浅色、蓝主、plain 样式的常用值；运行以 `src/styles/tokens.css` 的语义变量和主题覆盖为准。V5 的布局与组件覆盖在 `workspace.css`、`experience.css`。
+
+### Primary
+
+主蓝用于入口、选中视图、链接、依据编号与进度，浅主色表面用于局部重点。深色主题将文字蓝提亮、按钮使用亮底深字。可选红主主题替换交互主色，组件继续使用语义变量。颜色来源属于项目实测记录，不宣称已核实官方 VI。
+
+### Secondary
+
+注意红表达截止、风险和差距，已完成用中性灰。红主主题通过实心操作与浅底注意区域区分角色，不增加新色相。
+
+### Neutral
+
+暖灰底与白色工作表面分层，主文字、次要文字和来源注解分级。深色主题使用提亮表面与更强描边，不做简单反相。
+
+**The 三色规则 Rule.** 组件通过既有语义令牌表达状态，不新增绿、琥珀等状态色；状态不能只靠颜色。
+
+## Typography
+
+展示与正文共用 frontmatter 的系统中文无衬线栈，无字体下载。正文、咨询和输入内容保持 body 尺寸；工作空间行高为 body，咨询为 1.85。字重使用 400 / 500 / 600。
+
+| 层级 | 用途 |
 | --- | --- |
-| 生涯分析 | 个人画像、学籍与资料、诊断报告、方向方案 |
-| 计划管理 | 行动计划、日历与课表、待办与目标 |
-| 资讯与记录 | 岗位资讯、复盘与记录 |
+| display | 关键数字；门户主张另用 38–68px 响应式字号 |
+| headline | 页标题与主要结论 |
+| title | 节标题、品牌与手机重点标题 |
+| body | 正文、咨询、任务标题与输入 |
+| control | 说明、控件与桌面导航 |
+| label | 来源、时间、短标签与注解 |
 
-桌面辅助区有应用工具、使用指南与门户，设计规范经命令面板可达。移动底栏为对话、行动、画像、报告、更多；更多使用不透明 dialog 与同一二级目录。移动账号仅右上，咨询保留新对话与历史。顶部提供导航布局、外观和提醒。
+顾问正文最大行宽约 40em，自己的消息桌面最大宽 80%、手机最大宽 90%。plain / soft / dense 调整间距、圆角和行高，不改变正文尺寸。
 
-| 路由与组件 | 阅读顺序与边界 |
-| --- | --- |
-| /chat · ConversationView | 正文与输入区相邻；画像、成果、材料按需查看；桌面历史由侧栏承载，切会话清空独立草稿与附件 |
-| /profile · StudentView | 已知事实、来源、待补充项与更正；无重复学籍页签，新账号不显示预置姓名 |
-| /academic · AcademicView | 学籍、导入、撤回与核验示例；统计完整时间，缺失项待补充，等级成绩原样保留 |
-| /report · AssessmentView | 诊断结果、差距与行动入口；仅诊断结果/版本记录，依据与图表折叠；选旧版进入记录 |
-| /directions · AssessmentView | 三方向比较、选择与影响范围；无报告导航及版本选择，不自动重算 |
-| /home · TodayView | 今日焦点与任务状态；完成/恢复、建议、拆小及来源 |
-| /plan · RoadmapView | 同一行动计划的阶段视图；里程碑、执行任务、来源，不内置日历 |
-| /schedule · ScheduleView | 独立日历与课表；区间重叠显示课程和实际节次，空白不直接解释为空闲 |
-| /notes · NotesView | 待办与目标两类个人内容；去重、完成/恢复、删除，与方案任务区分 |
-| /intel · IntelView | 空态、来源示例与日期；模拟统计明示演示，无实时招聘承诺 |
-| /review · ReflectionView | 任务分析、调整建议与执行时间线；仅归因于任务、方法、方向 |
-| /tools · ToolsView | action_progress 与 achievements 入口，不混入管理员功能 |
+## Layout
 
-系统文案使用正常书面表达，明确状态、来源和下一步，减少评价性口语。展示标签与底层逻辑标识分离，保留原有操作逻辑。主内容用白色工作表面，辅助信息以位置、宽度和留白形成层级；来源、分值与解释主动展开。
+展开时桌面侧栏宽 228px、距边缘 16px，主区预留 252px；顶栏高 76px。侧栏可整体收起，内容区扩展；顶栏提供展开入口，重新展开保留本次菜单展开状态，收起偏好存入 localStorage。V5 主画布右侧与底部各留 16px，形成有描边的内嵌表面。常规页最大宽 1200px、左右内距 40px、底部 64px；咨询最大宽 1060px。宽度不超过 1200px 时侧栏为 208px、页面左右内距为 28px，辅助区按空间重排。常规主辅列比例为 1.6:1，辅助列至少 280px。
 
-## 字体与令牌
+窄于 1000px 自动采用移动导航，桌面可主动切换布局。移动导航模式常规页最大宽 1160px；手机左右内距 20px、底部留 132px，内容重排为单列。短于 700px 的咨询使用文档流，记录区有自身滚动范围，输入区可通过页面滚动到达。
 
-系统中文无衬线栈，无字体下载。正文/咨询/输入内容保持 16px，说明、按钮和桌面导航主要 14px，来源、时间和短标签 12px。工作空间行高 1.7，咨询 1.85；字重 400 / 500 / 600。
+门户保留蓝红灰配色与左右构图，原版通过 `?portal=classic` 对比；登录与已登录入口均进入咨询。桌面咨询置顶，生涯分析、计划管理、资讯与记录为二级目录；全部历史位于业务导航下方、共用滚动区。侧栏展开时账号仅左下，收起时转到顶栏右上，始终只有一个可见入口。手机底栏为对话、行动、画像、报告、更多；更多使用同一目录，账号仅右上。
 
-| 字号 | 用途 |
-| --- | --- |
-| 38px | 展示与关键数字 |
-| 30px | 页面标题与主要结论 |
-| 20px | 节标题、品牌与手机重点标题 |
-| 16px | 正文、咨询、任务标题与输入 |
-| 14px | 说明、控件与桌面导航 |
-| 12px | 来源、时间、短标签与注解 |
+方向对照表最小宽 760px，仅在自身容器内横向滚动；手机有左右滑动提示，首列固定。补充面板在桌面靠右、最大宽 460px、四周距边 12px；不超过 760px 时改为全宽底部面板、最高 88dvh，标题固定、正文独立滚动。
 
-门户主张使用 38–68px 响应式展示字号。plain / soft / dense 调整间距、圆角与行高，不改变正文尺寸。
+## Elevation & Depth
 
-浅色沿用主蓝 `#154494`、注意红 `#96000e`、主文字 `#1e232c`、次要文字 `#4b5157` / `#61666b`、底色 `#f7f6f6`、白色工作表面。深色沿用 `#151517` 底、`#1b1b1d` 表面、`#f9fafb` 文字，提亮蓝红文字。没有新增色相；校色说明是项目实测记录，不宣称官方 VI 已核实。状态同时有文字与勾选，不只依赖颜色。
+工作表面主要用底色、1px 描边和留白分层。选中导航与咨询输入使用轻影，返回最新入口使用中影，浮动导航和 dialog 使用较高投影；阴影由 `--e-1` / `--e-2` / `--e-3` 随主题覆盖。辅助文字不会全部包成同重卡片，页面没有持续背景运动。
 
-间距为 4 / 8 / 12 / 16 / 20 / 24 / 32 / 40 / 56 / 72px。默认控件圆角 6 / 8px，工作表面和面板 12px，头像圆形。图标统一 Phosphor Vue，没有增加照片、生成图片或无关装饰。
+## Shapes
 
-## 布局与组件
+默认控件使用 sm / md 圆角，工作表面与普通面板使用 lg。V5 主画布使用 desktop-canvas，右侧面板使用 inspector，手机仅上角圆；返回最新入口与头像使用 pill。soft / dense 沿用圆角变量调整形态，主画布与 inspector 保持布局专用圆角。
 
-桌面主区为侧栏预留 252px；侧栏宽 228px、距边缘 16px；顶栏高 76px。桌面页面最大宽 1200px、左右内距 40px，咨询最大宽 1060px。宽度不超过 1200px 时侧栏宽 208px、页面内距 28px，主辅区按空间重排。
+图标统一 Phosphor Vue。`WorkspaceMotif` 是本地编写的稀疏点阵与分支路线 SVG，使用独立 pattern ID；用于欢迎和空态。没有生成位图、第三方图片或新字体。
 
-窄于 1000px 自动采用移动导航，桌面可主动切换为移动模式。移动导航模式常规工作页最大宽 1160px，手机左右内距 20px、底部留 132px 避开浮动入口；主辅区、档案标签、图表和记录按内容重排为单列。短高度咨询改用文档流及可滚动记录。
+## Components
 
-DesktopSidebar / WorkspaceNav 共用目录，使用 aria-current 标识页面；TaskList 使用 Vue TransitionGroup；PageHeading、ws-paper、ws-aside 组织标题和内容层次；原生 details 承载依据，InfoSheet 使用原生 dialog 并支持关闭、Esc 和背景点击。CommandMenu 支持 Ctrl/Cmd + K、方向键与 Enter。
+### Buttons / Inputs
 
-主要按钮最小高 42px，小按钮 36px；键盘焦点为 2px 轮廓。Accordion 提供键盘导航；咨询支持 Enter 发送、Shift + Enter 换行和中文输入法合成状态处理。可聚焦 log 承载记录，回复完成用独立 polite 区播报；上读历史时不强制跟随逐字。空态提供动作，新账号不冒充已有成果。
+工作空间普通按钮最小高 42px、小按钮 36px；颜色、描边、圆角、禁用状态沿用令牌。键盘焦点为 2px 轮廓。咨询输入与材料、发送整合在带描边的区域，聚焦时强化主色描边；Enter 发送、Shift + Enter 换行，并处理中文输入法合成状态。材料仍为演示流程。
 
-## 动效与打印
+### Navigation / PanelTabs
 
-菜单按实际内容高度展开 200ms、收起 170ms，箭头旋转 200ms。工作页入场 180ms/5px；任务位置变化 200ms，入场 180ms/6px。控件反馈主要 160–200ms，工作空间没有路由离场等待。实现为 CSS 与 Vue TransitionGroup，Motion 未安装。
+`DesktopSidebar` / `WorkspaceNav` 共用目录，用 `aria-current` 标识路由。桌面 Reka UI Accordion 受控多组展开，路由变化只补充展开当前所属组，保留其它已展开组；V4 的单选模式为历史。整体收起使用保留组件状态的显隐切换，收起/展开后将焦点交给相应按钮，并提供 `aria-controls` / `aria-expanded`。`PanelTabs` 使用 Reka UI Tabs，提供方向键/Home/End、ARIA 关联与按需数量；允许动效时指示线以 180ms 更新。任务、阶段、资料、课表、待办与方向等页内视图共用此结构。命令面板支持 Ctrl/Cmd + K、方向键与 Enter。
 
-面板约 180ms 入场，进度约 200ms变化；本地咨询逐字限制 320–900ms。门户由用户切换并保留一次轻微入场。系统 prefers-reduced-motion 下关闭菜单、页面与任务动画及对应过渡，跳过逐字和数字滚动，其余全局过渡近乎即时。
+### Conversation / EvidenceList / InfoSheet
 
-报告、方向与版本页打印当前视图，展开对应证据并隐藏导航工具。旧版记录不冒充完整旧报告，诊断分值标明第 3 版示例。
+咨询上读历史时暂停跟随，主动“回到最新消息”后恢复；新会话或切会话清空草稿与附件。回复复制显示成功或失败反馈，逐字期间不可复制。`EvidenceList` 显示既有依据数量和可展开编号列表，不把内部演示文本冒充外部引用。
 
-## 实现与验证边界
+`InfoSheet` 使用原生 dialog；咨询画像、成果、历史采用 inspector 变体，支持关闭、Esc、背景点击与焦点恢复。普通导入和更正表单保留模态布局。inspector 入场为 220ms，减少动效规则关闭该动画。
 
-UI 使用本地状态，未调用正式 API、真实模型、文件解析、学校核验或实时岗位。69 schema / 50 operation 为目录生成与校验，不能当作在线接入量。方向选择仅展示影响范围，业务刷新恢复预置状态；账号、外观、导航偏好保存至 localStorage。
+### DirectionCompare / TaskOverview / EmptyState
 
-当前最终证据在 `design-review/desktop-v4/`，操作路径使用 `public/shots/v4-*.jpg`。早期错帧已重采集并逐图确认，V3 及更早图片保留作历史。最终构建与静态门禁已通过，独立 finish review 为 ship，详情见当前 QA。
+`DirectionCompare` 按匹配判断、支持依据、风险和选择比较三个既有方案，与概览共享方向状态；选择只展示影响范围。`TaskOverview` 从当前任务状态派生完成数/总数、待执行、等待、已完成，完成与恢复同步变化；环形图为 220ms 状态过渡，不是职业评分。
 
-参考 Impeccable craft floor/operate 与独立审阅、Taste 局部审查方法、本地 Designeer 目录及 Navbar Gallery。Impeccable 无 CLI，Stitch 无可用服务且未生成设计，Taste 未整套套用 dashboard。本轮未发布 Sites。
+`EmptyState` 给出状态解释与下一步，配合本地 SVG；待办与目标各自保留独立草稿。历史会话仅在内容变化时更新活跃日期，恢复查看不改日期。复盘时间线以点与连接线组织既有记录，资讯正文与来源分层，系统提示使用书面状态文案。
+
+### Motion / Print
+
+继承菜单展开 200ms、收起 170ms、箭头 200ms；页面入场 180ms/5px，任务移动 200ms、入场 180ms/6px，没有路由离场等待。本地咨询逐字为 320–900ms。CSS 与 Vue TransitionGroup 实现动效，无新增动画库或 npm 依赖。`prefers-reduced-motion` 下关闭相关动画与过渡，跳过逐字和数字滚动；本轮仅检查源码，未用浏览器验证系统减少动效设置。
+
+报告、方向和版本打印当前视图，展开对应证据并隐藏导航工具。旧版记录不冒充完整旧报告，详细诊断仍为第 3 版示例。
+
+## Do's and Don'ts
+
+- **Do** 延续语义颜色、系统字体与 16px 正文，使用标题、位置和间距表达主次。
+- **Do** 保持功能独立可达、导航下方历史和唯一账号入口；解释和来源按需展开。
+- **Do** 以真实当前任务状态、已有依据和演示标识表达结果，空态给出下一步。
+- **Don't** 将本地状态、69 schema / 50 operation 目录校验描述为正式 API、AI、学校核验或实时岗位接入。
+- **Don't** 将 SVG 引导图或浏览器截图标记为 AI 生成图片，或以历史截图替代当前验收证据。
+
+当前证据为 [desktop-v5/QA.md](design-review/desktop-v5/QA.md)、[操作摘要](design-review/desktop-v5/browser-checks.json)与 [独立收尾审阅](design-review/desktop-v5/FINISH-REVIEW.md)：33 张实际浏览器 JPEG，12 个桌面业务页、6 个手机业务页、13 个基线特殊视图与 2 个追加导航视图。测试视口与图像像素尺寸分别记录，实际文件尺寸见 [SHOT-PROVENANCE.json](design-review/desktop-v5/SHOT-PROVENANCE.json)。指南副本为 `public/shots/v5-{portal,chat,profile,report,directions,home,review}.jpg`，各 `.jpg.json` 记录截图来源。
+
+最终构建/类型、目录、类名、对比度和六档字号检查通过；独立 finish reviewer 重新逐一打开全部当前 33 图并检查追加导航实现，视觉与导航结论为 SHIP。审阅者未重跑浏览器、构建或 detector。剪贴板调用与反馈通过，但读回为空，未验证字节相等。V4 的 [QA](design-review/desktop-v4/QA.md)及 `v4-*.jpg` 保留为历史。
+
+项目仍为本地 UI 演示，正式 API、模型、文件解析、学校/学信网核验与实时岗位未接入，方向未真实自动重算。Impeccable CLI/detector 未安装，Stitch 无生成结果，Taste 仅局部参考。本轮未发布 Sites。
+
+[后端实质核对](design-review/BACKEND-AUDIT-V5.md) 结论为主要页面能力有对应，但仍存在字段、返回结果与业务行为差异，不能认定完整对齐；视觉 SHIP 与 69/50 目录检查均不替代业务接入验收。

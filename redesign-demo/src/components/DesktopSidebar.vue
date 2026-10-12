@@ -9,9 +9,14 @@ import UiIcon from './UiIcon.vue'
 import { backendDemo } from '../lib/backend-demo'
 const route = useRoute()
 const router = useRouter()
-defineEmits<{ search: []; newChat: []; account: [] }>()
-const openGroup = ref('')
-watch(() => route.path, () => { openGroup.value = WORKSPACE_GROUPS.find(g => g.items.some(i => i.paths.includes(route.path)))?.label ?? '' }, { immediate: true })
+defineEmits<{ search: []; newChat: []; account: []; collapse: [] }>()
+const collapseButton = ref<HTMLButtonElement | null>(null)
+defineExpose({ focusCollapse() { collapseButton.value?.focus() } })
+const openGroups = ref<string[]>([])
+watch(() => route.path, () => {
+  const group = WORKSPACE_GROUPS.find(g => g.items.some(i => i.paths.includes(route.path)))?.label
+  if (group && !openGroups.value.includes(group)) openGroups.value = [...openGroups.value, group]
+}, { immediate: true })
 const sessions = computed(() => [...backendDemo.state.sessions].sort((a, b) => (b.last_active_at ?? '').localeCompare(a.last_active_at ?? '')))
 function resumeSession(id: string) {
   if (demo.state.chatBusy) return
@@ -22,14 +27,14 @@ const userName = computed(() => demo.state.account === 'fresh' ? '新用户' : S
 function sessionDate(date?: string | null) { return date ? new Date(date).toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' }) : '' }
 </script>
 <template>
-  <aside class="desk-sidebar" aria-label="桌面导航">
-    <RouterLink class="desk-brand" to="/chat" aria-label="职引，回到对话"><span class="desk-brand__symbol" aria-hidden="true"><span /><span /><span /></span><div><strong>职引</strong><span>生涯规划与就业指导</span></div></RouterLink>
+  <aside id="student-desktop-sidebar" class="desk-sidebar" aria-label="桌面导航">
+    <div class="desk-brand-row"><RouterLink class="desk-brand" to="/chat" aria-label="职引，回到对话"><span class="desk-brand__symbol" aria-hidden="true"><span /><span /><span /></span><div><strong>职引</strong><span>生涯规划与就业指导</span></div></RouterLink><button ref="collapseButton" class="ws-icon-button desk-collapse" aria-label="收起侧栏" title="收起侧栏" aria-controls="student-desktop-sidebar" aria-expanded="true" @click="$emit('collapse')"><UiIcon name="sidebar" :size="19" /></button></div>
     <button class="desk-new-chat" :disabled="demo.state.chatBusy" @click="$emit('newChat')"><UiIcon name="plus" :size="18" /><span>新建咨询</span></button>
     <button class="desk-search" @click="$emit('search')"><UiIcon name="search" :size="16" /><span>搜索功能</span><kbd>Ctrl K</kbd></button>
     <div class="desk-scroll">
     <nav class="desk-nav" aria-label="学生空间导航">
       <RouterLink to="/chat" class="desk-link desk-link--conversation" :aria-current="route.path === '/chat' ? 'page' : undefined"><UiIcon name="chat" :size="20" /><span>咨询对话</span><span class="desk-link__dot" v-if="route.path === '/chat'" /></RouterLink>
-      <AccordionRoot v-model="openGroup" type="single" collapsible class="desk-menu">
+      <AccordionRoot v-model="openGroups" type="multiple" class="desk-menu">
         <AccordionItem v-for="group in WORKSPACE_GROUPS" :key="group.label" :value="group.label" class="desk-menu__group">
           <AccordionHeader><AccordionTrigger class="desk-menu__trigger" :class="{ 'desk-menu__trigger--active': group.items.some(i => i.paths.includes(route.path)) }"><UiIcon :name="group.icon" :size="19" /><span>{{ group.label }}</span><UiIcon class="desk-menu__chevron" name="chevron" :size="15" /></AccordionTrigger></AccordionHeader>
           <AccordionContent class="desk-menu__content"><div class="desk-menu__children"><RouterLink v-for="item in group.items" :key="item.to" :to="item.to" class="desk-link desk-link--child" :aria-current="item.paths.includes(route.path) ? 'page' : undefined"><span>{{ item.label }}</span><span v-if="item.paths.includes(route.path)" class="desk-link__dot" /></RouterLink></div></AccordionContent>

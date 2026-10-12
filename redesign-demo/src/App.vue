@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppTopBar from './components/WorkspaceHeader.vue'
 import WorkspaceNav from './components/WorkspaceNav.vue'
@@ -25,10 +25,21 @@ const route = useRoute()
 const router = useRouter()
 const palette = ref<InstanceType<typeof CommandPalette> | null>(null)
 const workspaceHeader = ref<InstanceType<typeof AppTopBar> | null>(null)
+const sidebar = ref<InstanceType<typeof DesktopSidebar> | null>(null)
 
 const bare = computed(() => route.meta.public === true)
 const layout = useNavigationLayout()
 const desktop = computed(() => layout.mode.value === 'desktop' && !layout.compact.value)
+async function collapseSidebar() {
+  layout.setSidebarCollapsed(true)
+  await nextTick()
+  workspaceHeader.value?.focusExpand()
+}
+async function expandSidebar() {
+  layout.setSidebarCollapsed(false)
+  await nextTick()
+  sidebar.value?.focusCollapse()
+}
 function newChat() {
   if (demo.state.chatBusy) return
   backendDemo.newSession()
@@ -71,7 +82,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="app" :class="{ 'app--workspace': !bare, 'app--desktop': !bare && desktop, 'app--chat': route.name === 'chat' }" :style="{ '--progress-max': progressMax }">
+  <div class="app" :class="{ 'app--workspace': !bare, 'app--desktop': !bare && desktop, 'app--sidebar-collapsed': !bare && desktop && layout.sidebarCollapsed.value, 'app--chat': route.name === 'chat' }" :style="{ '--progress-max': progressMax }">
     <template v-if="bare">
       <RouterView v-slot="{ Component }">
         <Transition name="page" mode="out-in">
@@ -81,8 +92,8 @@ onMounted(() => {
     </template>
 
     <template v-else>
-      <DesktopSidebar v-if="desktop" @search="palette?.show()" @new-chat="newChat" @account="workspaceHeader?.showAccount()" />
-      <AppTopBar ref="workspaceHeader" @open-palette="palette?.show()" />
+      <DesktopSidebar v-if="desktop" v-show="!layout.sidebarCollapsed.value" ref="sidebar" @search="palette?.show()" @new-chat="newChat" @account="workspaceHeader?.showAccount()" @collapse="collapseSidebar" />
+      <AppTopBar ref="workspaceHeader" @open-palette="palette?.show()" @expand-sidebar="expandSidebar" />
       <main class="app__main">
         <!-- 氛围层：与门户同一套语言（一片很淡的品牌色光 + 颗粒），但强度低得多 -->
         <div class="app__atmos" aria-hidden="true" />

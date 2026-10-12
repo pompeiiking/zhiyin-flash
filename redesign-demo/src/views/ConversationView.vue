@@ -12,6 +12,8 @@ import registry from '../data/backend-registry.json'
 import type { GuideOptionView, MessageRequest } from '../api/backend-types'
 import { navigation } from '../lib/layout'
 import { consultantLabel } from '../lib/consultant'
+import EvidenceList from '../components/EvidenceList.vue'
+import WorkspaceMotif from '../components/WorkspaceMotif.vue'
 const route = useRoute()
 const turns = computed(() => demo.state.chatTurns)
 const draft = ref('')
@@ -37,7 +39,17 @@ const known = computed(() => PROFILE_FIELDS.slice(0, progress.value.known))
 const planned = computed(() => [...demo.use.now.value, ...demo.use.waiting.value])
 const handoffs = computed(() => turns.value.filter((t) => t.handoff).map((t) => t.handoff!))
 const host = computed(() => [...turns.value].reverse().find((t) => t.from === 'host' && t.speaker)?.speaker ?? '了解你情况的人')
-const starters = registry.taskEntries.filter(t => ['confused', 'undecided', 'how_to_act', 'stuck'].includes(t.code)).map(t => t.label)
+const topicLabels: Record<string, { title: string; description: string; icon: string }> = { confused: { title: '兴趣与能力', description: '了解个人特点与适合的领域', icon: 'profile' }, undecided: { title: '方向选择', description: '比较备选方向与决策依据', icon: 'directions' }, how_to_act: { title: '行动规划', description: '将目标转化为具体行动', icon: 'action' }, stuck: { title: '执行调整', description: '分析执行障碍并调整方案', icon: 'review' } }
+const starters = registry.taskEntries.filter(t => topicLabels[t.code]).map(t => ({ ...t, ...topicLabels[t.code] }))
+const copyStatus = ref('')
+const copiedId = ref('')
+const copyLabel = ref('复制')
+async function copyReply(id: string, text: string) {
+  copiedId.value = id
+  try { await navigator.clipboard.writeText(text); copyStatus.value = '回复已复制。'; copyLabel.value = '已复制' }
+  catch { copyStatus.value = '未能复制，请选中正文手动复制。'; copyLabel.value = '复制失败' }
+}
+function goToLatest() { followTail.value = true; void scrollToEnd() }
 function newSession() {
   if (demo.state.chatBusy) return
   backendDemo.newSession()
@@ -74,7 +86,7 @@ function append(turn: Omit<ChatTurn, 'id'>, animate = true) {
     announcement.value = ''
     stream(complete.id, complete.text)
   }
-  void scrollToEnd()
+  if (followTail.value) void scrollToEnd()
 }
 function reply(content: string, animate = true) {
   let response: Omit<ChatTurn, 'id'>
@@ -126,7 +138,7 @@ function keydown(event: KeyboardEvent) {
   if (event.isComposing) return
   if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); send() }
 }
-watch(() => turns.value.length, scrollToEnd)
+watch(() => turns.value.length, () => { if (followTail.value) void scrollToEnd() })
 watch(() => demo.state.currentSessionId, () => {
   draft.value = ''; attached.value = []; attachmentError.value = ''; panel.value = null; announcement.value = ''
   followTail.value = true
@@ -154,12 +166,10 @@ onUnmounted(() => {
       <div><h1>咨询对话</h1><p>{{ consultantLabel(host) }} · 围绕当前问题开展咨询</p></div>
       <div class="ws-chat-head__tools"><button v-if="navigation.compact.value || navigation.mode.value === 'mobile'" :disabled="thinking" @click="newSession">新对话</button><button v-if="navigation.compact.value || navigation.mode.value === 'mobile'" :disabled="thinking" @click="panel = 'sessions'">历史会话</button><button @click="panel = 'outcomes'">咨询成果</button><button @click="panel = 'profile'">个人画像 {{ progress.known }}/{{ progress.total }}</button></div>
     </header>
-    <div ref="flow" class="ws-chat-flow" tabindex="0" role="log" aria-live="off" aria-label="对话记录" @scroll="followScroll">
+    <div class="exp-conversation-body"><div ref="flow" class="ws-chat-flow" tabindex="0" role="log" aria-live="off" aria-label="对话记录" @scroll="followScroll">
       <div v-if="!turns.length" class="ws-chat-welcome">
-        <svg class="desk-still-graphic" viewBox="0 0 120 80" aria-hidden="true"><path d="M15 56h28a13 13 0 0 0 13-13v-5a13 13 0 0 1 13-13h35" fill="none" stroke="currentColor" stroke-width="2"/><path d="M56 38h17a13 13 0 0 1 13 13v5h18" fill="none" stroke="currentColor" stroke-width="1" opacity=".3"/><circle cx="15" cy="56" r="5" fill="var(--c-surface)" stroke="currentColor"/><circle cx="105" cy="25" r="5" fill="currentColor"/><circle cx="105" cy="56" r="4" fill="var(--c-surface)" stroke="currentColor" opacity=".4"/></svg>
-        <h2>请选择咨询主题</h2>
-        <p>选择当前关注的主题，或直接输入问题。可随时补充材料与个人信息。</p>
-        <div class="ws-chat-prompts"><button v-for="s in starters" :key="s" @click="send(s)">{{ s }}</button></div>
+        <div class="exp-intro"><div><span class="exp-eyebrow">生涯规划与就业指导</span><h2>选择咨询主题</h2><p>选择主题或输入问题，也可补充材料与个人信息。</p></div><WorkspaceMotif /></div>
+        <div class="ws-chat-prompts"><button v-for="topic in starters" :key="topic.code" @click="send(topic.label)"><UiIcon :name="topic.icon" :size="22" /><span><strong>{{ topic.title }}</strong><small>{{ topic.description }}</small></span><UiIcon name="arrow" :size="16" /></button></div>
       </div>
       <template v-for="(t, i) in turns" :key="t.id">
         <article v-if="t.handoff" class="ws-handoff">
@@ -170,7 +180,7 @@ onUnmounted(() => {
           <p v-if="t.from === 'host' && (i === 0 || turns[i - 1]?.from !== 'host' || turns[i - 1]?.speaker !== t.speaker)" class="ws-turn__speaker"><UiIcon name="chat" :size="18" />{{ consultantLabel(t.speaker) }}</p>
           <p>{{ t.from === 'host' ? textOf(t.id, t.text) : t.text }}</p>
           <div v-if="t.materials?.length" class="desk-attachments"><span v-for="m in t.materials" :key="m.id" class="desk-attachment"><UiIcon name="attachment" :size="16" />{{ m.name }} · 演示附件</span></div>
-          <details v-if="t.citations?.length" class="ws-turn__details"><summary>查看这条判断的依据</summary><ul><li v-for="c in t.citations" :key="c">{{ c }}</li></ul></details>
+          <div v-if="t.from === 'host'" class="exp-message-tools"><EvidenceList v-if="t.citations?.length" :items="t.citations" /><button class="exp-copy" :aria-label="copiedId === t.id ? copyStatus : '复制顾问回复'" :title="copiedId === t.id ? copyStatus : '复制顾问回复'" :disabled="isStreaming(t.id)" @click="copyReply(t.id, t.text)"><UiIcon name="copy" :size="14" />{{ copiedId === t.id ? copyLabel : '复制' }}</button></div>
           <div v-if="t.task" class="ws-chat-task"><p>{{ t.task.title }}</p><div class="ws-chat-task__action"><span>约 {{ t.task.minutes }} 分钟</span><button class="btn btn--primary btn--sm" @click="demo.planChatTask(t.task.title, t.task.minutes)">加入行动计划</button></div></div>
           <div v-if="t.options?.length && i === turns.length - 1 && !isStreaming(t.id)" class="ws-chat-options">
             <template v-for="option in t.options" :key="option"><RouterLink v-if="option === '比较方向方案' || option === '查看诊断报告'" class="btn" :to="option === '比较方向方案' ? '/directions' : '/report'">{{ option }}</RouterLink><button v-else :disabled="thinking" @click="send(option, t.optionRefs?.find(item => item.label === option))">{{ option }}</button></template>
@@ -179,17 +189,18 @@ onUnmounted(() => {
       </template>
       <p v-if="thinking" class="ws-chat-status" role="status">正在分析咨询内容…</p>
     </div>
-    <p class="sr-only" role="status" aria-live="polite" aria-atomic="true">{{ announcement }}</p>
+    <button v-if="turns.length && !followTail" class="exp-latest" @click="goToLatest"><UiIcon name="down" :size="16" />回到最新消息</button></div>
+    <p class="sr-only" role="status" aria-live="polite" aria-atomic="true">{{ announcement }} {{ copyStatus }}</p>
     <div class="ws-composer">
       <div v-if="attached.length" class="desk-attachments"><span v-for="m in attached" :key="m.id" class="desk-attachment"><UiIcon name="attachment" :size="16" />{{ m.name }}<button :aria-label="'移除附件：' + m.name" @click="attached = attached.filter(item => item.id !== m.id)"><UiIcon name="close" :size="14" /></button></span></div>
       <p v-if="attachmentError" class="ws-field-error" role="alert">{{ attachmentError }}</p>
       <form @submit.prevent="send()"><button type="button" class="ws-icon-button desk-attachment-control" aria-label="添加材料" :disabled="thinking" @click="attachmentInput?.click()"><UiIcon name="attachment" :size="20" /></button><input ref="attachmentInput" type="file" class="sr-only" tabindex="-1" accept=".txt,.csv,.json,.md,.pdf,.docx" @change="attach" /><textarea ref="input" v-model="draft" rows="1" aria-label="咨询内容" placeholder="输入咨询内容…" :disabled="thinking" @input="grow" @keydown="keydown" /><button class="btn btn--primary" :disabled="!draft.trim() || thinking" type="submit">{{ thinking ? '处理中' : '发送' }}</button></form>
       <p class="ws-composer__note"><span>演示对话 · 附件只记录名称，不上传</span><span>Enter 发送 · Shift + Enter 换行</span></p>
     </div>
-    <InfoSheet :open="panel !== null" :title="panel === 'profile' ? '个人画像' : panel === 'sessions' ? '历史对话' : '咨询成果'" @close="panel = null">
-      <template v-if="panel === 'profile'"><p class="ws-muted">已了解 {{ progress.known }} 条，还差 {{ progress.gap }} 条。可在后面的对话里慢慢补充。</p><div class="ws-progress"><span :style="{ '--value': progress.known / progress.total }" /></div><dl class="ws-stack"><div v-for="f in known" :key="f.key"><dt class="ws-muted">{{ f.label }}</dt><dd>{{ demo.state.profileEdits[f.key] ?? (f.key === 'grade' ? demo.use.scenario.value.grade : f.value) }}</dd></div></dl><RouterLink class="ws-text-link" to="/profile">查看完整档案<UiIcon name="arrow" :size="16" /></RouterLink></template>
-      <template v-else-if="panel === 'sessions'"><p class="ws-muted">按你正在解决的事找回对话，已经说过的内容会保留。</p><button v-for="s in backendDemo.state.sessions" :key="s.task_id" class="desk-session" :aria-pressed="demo.state.currentSessionId === s.task_id" :disabled="thinking" @click="selectSession(s.task_id)"><UiIcon name="chat" /><span><strong>{{ s.task_name }}</strong><small>{{ s.stage_label }} · {{ s.status === 'completed' ? '已结束' : s.status === 'paused' ? '暂时放着' : '进行中' }}</small></span><UiIcon name="arrow" :size="16" /></button><p v-if="!backendDemo.state.sessions.length" class="ws-empty ws-muted">聊完第一段，就能在这里找回它。</p></template>
-      <template v-else><h3 class="ws-section-title">已有的下一步</h3><ul class="ws-mini-list"><li v-for="t in planned" :key="t.id">{{ t.title }} · {{ t.minutes || 0 }} 分钟</li><li v-if="!planned.length">聊到下一步时，一件具体的事会出现在这里。</li></ul><details v-if="handoffs.length" class="ws-fold"><summary>顾问交接记录<UiIcon name="chevron" /></summary><ul class="ws-mini-list"><li v-for="h in handoffs" :key="h.to + h.why"><strong>{{ consultantLabel(h.to) }}</strong><p>{{ h.why }}</p></li></ul></details><button v-if="activeTheory" class="ws-text-button" @click="theoryOpen = true">方法依据：{{ activeTheory.name }}<UiIcon name="arrow" :size="16" /></button><RouterLink class="ws-text-link" to="/home">去行动计划<UiIcon name="arrow" :size="16" /></RouterLink></template>
+    <InfoSheet inspector :open="panel !== null" :title="panel === 'profile' ? '个人画像' : panel === 'sessions' ? '历史对话' : '咨询成果'" @close="panel = null">
+      <template v-if="panel === 'profile'"><p class="ws-muted">已有 {{ progress.known }} 条信息，待补充 {{ progress.gap }} 条。可通过咨询继续完善。</p><div class="ws-progress"><span :style="{ '--value': progress.known / progress.total }" /></div><dl class="ws-stack"><div v-for="f in known" :key="f.key"><dt class="ws-muted">{{ f.label }}</dt><dd>{{ demo.state.profileEdits[f.key] ?? (f.key === 'grade' ? demo.use.scenario.value.grade : f.value) }}</dd></div></dl><RouterLink class="ws-text-link" to="/profile">查看完整档案<UiIcon name="arrow" :size="16" /></RouterLink></template>
+      <template v-else-if="panel === 'sessions'"><p class="ws-muted">按咨询主题查找历史会话，原有对话内容会保留。</p><button v-for="s in backendDemo.state.sessions" :key="s.task_id" class="desk-session" :aria-pressed="demo.state.currentSessionId === s.task_id" :disabled="thinking" @click="selectSession(s.task_id)"><UiIcon name="chat" /><span><strong>{{ s.task_name }}</strong><small>{{ s.stage_label }} · {{ s.status === 'completed' ? '已结束' : s.status === 'paused' ? '已暂停' : '进行中' }}</small></span><UiIcon name="arrow" :size="16" /></button><p v-if="!backendDemo.state.sessions.length" class="ws-empty ws-muted">暂无历史会话。创建咨询后可在此查看。</p></template>
+      <template v-else><h3 class="ws-section-title">已形成的行动建议</h3><ul class="ws-mini-list"><li v-for="t in planned" :key="t.id">{{ t.title }} · {{ t.minutes || 0 }} 分钟</li><li v-if="!planned.length">咨询形成具体行动后，将在此显示。</li></ul><details v-if="handoffs.length" class="ws-fold"><summary>顾问交接记录<UiIcon name="chevron" /></summary><ul class="ws-mini-list"><li v-for="h in handoffs" :key="h.to + h.why"><strong>{{ consultantLabel(h.to) }}</strong><p>{{ h.why }}</p></li></ul></details><button v-if="activeTheory" class="ws-text-button" @click="theoryOpen = true">方法依据：{{ activeTheory.name }}<UiIcon name="arrow" :size="16" /></button><RouterLink class="ws-text-link" to="/home">查看行动计划<UiIcon name="arrow" :size="16" /></RouterLink></template>
       <p class="ws-demo-note">{{ STUDENT.name }}的预置示例，不代表你的真实档案。</p>
     </InfoSheet>
     <InfoSheet :open="theoryOpen" :title="activeTheory?.name ?? '方法依据'" @close="theoryOpen = false"><p class="ws-muted">方法卡示例 · 来自后端的理论卡配置</p><p style="margin-top: var(--sp-4)">{{ activeTheory?.summary }}</p><h3 class="ws-section-title" style="margin-top: var(--sp-5)">应用说明</h3><p style="margin-top: var(--sp-3)">{{ activeTheory?.product_usage }}</p></InfoSheet>

@@ -4,6 +4,7 @@ import { backendDemo } from '../lib/backend-demo'
 import type { AcademicCourseView, AcademicGradeView } from '../api/backend-types'
 import PageHeading from '../components/PageHeading.vue'
 import InfoSheet from '../components/InfoSheet.vue'
+import PanelTabs from '../components/PanelTabs.vue'
 import UiIcon from '../components/UiIcon.vue'
 import { hasCourseTime, courseTimeLabel } from '../lib/academic'
 const academic = computed(() => backendDemo.state.academic)
@@ -73,14 +74,15 @@ function verify() {
       <section class="ws-paper">
         <div class="ws-section-head"><div><h2>{{ academic ? academic.school : '暂无学校资料' }}</h2><p>{{ academic ? academic.term : '导入课程与成绩，为时间安排和个人画像提供依据。' }}</p></div><UiIcon name="academic" :size="32" /></div>
         <p v-if="status" class="desk-status" role="status">{{ status }}</p>
-        <div class="ws-tabs" aria-label="学校资料视图" style="margin-top: var(--sp-5)"><button :aria-pressed="tab === 'overview'" @click="tab = 'overview'">资料概况</button><button :aria-pressed="tab === 'courses'" @click="tab = 'courses'">课程表</button><button :aria-pressed="tab === 'grades'" @click="tab = 'grades'">成绩记录</button></div>
+        <PanelTabs v-model="tab" label="学校资料视图" :items="[{key: 'overview', label: '资料概况'}, {key: 'courses', label: '课程表'}, {key: 'grades', label: '成绩记录'}]">
         <template v-if="academic">
-          <dl v-if="tab === 'overview'" class="ws-facts"><div><dt>已有课程</dt><dd>{{ academic.courses?.length ?? 0 }} 门</dd></div><div><dt>可排进课表</dt><dd>{{ scheduled }} 门</dd></div><div><dt>成绩记录</dt><dd>{{ academic.grades?.length ?? 0 }} 条</dd></div><div><dt>导入时间</dt><dd>{{ new Date(academic.imported_at ?? '').toLocaleDateString('zh-CN') }}</dd></div><div><dt>数据来源</dt><dd>自己导入的快照</dd></div><div><dt>学籍核验</dt><dd>{{ backendDemo.state.chsiChecked ? '已展示核验示例' : '待核验' }}</dd></div></dl>
+          <dl v-if="tab === 'overview'" class="ws-facts"><div><dt>已有课程</dt><dd>{{ academic.courses?.length ?? 0 }} 门</dd></div><div><dt>可排进课表</dt><dd>{{ scheduled }} 门</dd></div><div><dt>成绩记录</dt><dd>{{ academic.grades?.length ?? 0 }} 条</dd></div><div><dt>导入时间</dt><dd>{{ new Date(academic.imported_at ?? '').toLocaleDateString('zh-CN') }}</dd></div><div><dt>数据来源</dt><dd>本人导入的快照</dd></div><div><dt>学籍核验</dt><dd>{{ backendDemo.state.chsiChecked ? '已展示核验示例' : '待核验' }}</dd></div></dl>
           <div v-else-if="tab === 'courses'" class="desk-table-wrap ws-section"><table class="desk-table"><thead><tr><th>课程</th><th>上课时间</th><th>地点</th></tr></thead><tbody><tr v-for="c in academic.courses" :key="c.name + c.weekday"><td>{{ c.name }}</td><td>{{ courseTimeLabel(c) }}</td><td>{{ c.place || '未提供' }}</td></tr></tbody></table><p v-if="!academic.courses?.length" class="ws-empty ws-muted">这份快照没有课程，可继续导入。</p></div>
           <div v-else class="desk-table-wrap ws-section"><table class="desk-table"><thead><tr><th>课程</th><th>成绩</th><th>学分</th><th>学期</th></tr></thead><tbody><tr v-for="g in academic.grades" :key="g.name + g.term"><td>{{ g.name }}</td><td>{{ g.score || '未提供' }}</td><td>{{ g.credit || '—' }}</td><td>{{ g.term || '未提供' }}</td></tr></tbody></table><p v-if="!academic.grades?.length" class="ws-empty ws-muted">这份快照没有成绩，可继续导入。</p></div>
           <div class="ws-inline-actions"><RouterLink class="ws-text-link" to="/schedule">查看日历与课表<UiIcon name="arrow" :size="16" /></RouterLink><button class="ws-text-button" @click="revoke">撤回导入资料</button></div>
         </template>
         <div v-else class="ws-empty"><UiIcon name="academic" :size="42" /><h3 style="margin-top: var(--sp-4)">还没有学校资料</h3><p>支持导入课表与成绩，也可加载演示数据。</p><button class="btn" style="margin-top: var(--sp-4)" @click="backendDemo.loadAcademicSample(); status = '已加载课表与成绩的演示样例。'">加载课表示例</button></div>
+        </PanelTabs>
       </section>
       <aside class="ws-aside"><section><h2>核对学籍</h2><p>去学信网获取在线验证码，用它核对学籍信息。全程无需账号密码。</p><button class="ws-text-button" @click="verifyOpen = true; verifyError = ''"><UiIcon name="shield" :size="18" />提供在线验证码</button></section><section><h2>课程时间完整性</h2><p>课程数量与带上课时间的课程分别显示，缺少时间的记录不会被放进课表。</p></section><section><h2>撤回资料</h2><p>正式后端会同时清空课表、成绩快照与对应画像摘要。这里演示资料与日历的同步变化。</p></section></aside>
     </div>
