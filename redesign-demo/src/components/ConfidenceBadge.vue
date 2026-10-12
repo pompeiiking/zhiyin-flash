@@ -9,7 +9,7 @@ defineProps<{ value: Confidence }>()
 </script>
 
 <template>
-  <span class="confidence" :title="`把握度：${value.label}`">
+  <span class="confidence" :title="`可信度：${value.label}`">
     <span class="confidence__bars" aria-hidden="true">
       <i
         v-for="n in 3"

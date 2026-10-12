@@ -63,6 +63,7 @@ function submit() {
             v-model="password"
             class="field__input"
             type="password"
+            aria-label="密码"
             placeholder="演示环境，任意字符"
             @keyup.enter="submit"
           />
@@ -71,7 +72,7 @@ function submit() {
         </label>
 
         <div class="callout callout--plain">
-          <span>门户永远公开。只有"任务与计划"和"评估报告"需要登录 —— 而且登录是浮层，不是一道墙。</span>
+          <span>门户公开访问。当前为功能演示，正式学生数据由登录账号管理。</span>
         </div>
       </div>
 

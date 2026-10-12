@@ -25,14 +25,15 @@ const sessionsFixture = (): TaskSessionView[] => fresh ? [] : [
   { task_id: 'session-direction', task_name: '看看半导体方向是否适合我', stage: 'diagnose', stage_label: '找到差距', lead_agent_name: '帮你判断方向的人', status: 'active', progress: .4, last_active_at: '2026-10-12T01:30:00Z' },
   { task_id: 'session-first', task_name: '先了解自己的兴趣与能力', stage: 'collect', stage_label: '了解自己', lead_agent_name: '了解你情况的人', status: 'paused', progress: .2, last_active_at: '2026-10-08T02:00:00Z' },
 ]
+const notesFixture = (): NoteView[] => fresh ? [] : [
+  { id: 'note-1', kind: 'todo', text: '问学长能否看一眼我的简历', done: false, created_at: '2026-10-09T02:00:00Z' },
+  { id: 'note-2', kind: 'goal', text: '先把省内的工艺方向了解清楚', done: false, created_at: '2026-10-08T02:00:00Z' },
+]
 const state = reactive({
   currentSessionId: fresh ? 'session-new' : 'session-direction',
   sessions: sessionsFixture(),
   histories: { 'session-direction': originalTurns(), 'session-first': originalTurns().slice(0, 4) } as Record<string, ChatTurn[]>,
-  notes: (fresh ? [] : [
-    { id: 'note-1', kind: 'todo', text: '问学长能否看一眼我的简历', done: false, created_at: '2026-10-09T02:00:00Z' },
-    { id: 'note-2', kind: 'goal', text: '先把省内的工艺方向了解清楚', done: false, created_at: '2026-10-08T02:00:00Z' },
-  ]) as NoteView[],
+  notes: notesFixture(),
   academic: fresh ? null : structuredClone(academicFixture) as AcademicPanelView | null,
   materials: [] as ConversationMaterialView[],
   intel: [] as IntelItemView[],
@@ -52,7 +53,7 @@ export const backendDemo = {
     state.sessions = sessionsFixture()
     state.currentSessionId = fresh ? 'session-new' : 'session-direction'
     state.histories = { 'session-direction': originalTurns(), 'session-first': originalTurns().slice(0, 4) }
-    state.notes = []
+    state.notes = notesFixture()
     state.academic = fresh ? null : structuredClone(academicFixture)
     state.materials = []; state.intel = []; state.chsiChecked = false
     state.reportAvailable = !fresh; state.directionsAvailable = !fresh; state.planAvailable = !fresh

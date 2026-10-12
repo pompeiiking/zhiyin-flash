@@ -90,6 +90,11 @@ export const router = createRouter({
 })
 
 router.beforeEach((to) => {
+  if (to.path === '/report' && to.query.focus === 'choose') {
+    const query = { ...to.query }
+    delete query.focus
+    return { path: '/directions', query, replace: true }
+  }
   /*
    * 演示直达：地址里带 ?as=<账号> 就直接落到已登录状态。
    * 用途有两个：给评审发一条"打开就是这一屏"的链接；给截图脚本用（不用先点登录）。

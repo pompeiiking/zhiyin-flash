@@ -24,6 +24,7 @@ import { backendDemo } from './lib/backend-demo'
 const route = useRoute()
 const router = useRouter()
 const palette = ref<InstanceType<typeof CommandPalette> | null>(null)
+const workspaceHeader = ref<InstanceType<typeof AppTopBar> | null>(null)
 
 const bare = computed(() => route.meta.public === true)
 const layout = useNavigationLayout()
@@ -80,8 +81,8 @@ onMounted(() => {
     </template>
 
     <template v-else>
-      <DesktopSidebar v-if="desktop" @search="palette?.show()" @new-chat="newChat" />
-      <AppTopBar @open-palette="palette?.show()" />
+      <DesktopSidebar v-if="desktop" @search="palette?.show()" @new-chat="newChat" @account="workspaceHeader?.showAccount()" />
+      <AppTopBar ref="workspaceHeader" @open-palette="palette?.show()" />
       <main class="app__main">
         <!-- 氛围层：与门户同一套语言（一片很淡的品牌色光 + 颗粒），但强度低得多 -->
         <div class="app__atmos" aria-hidden="true" />

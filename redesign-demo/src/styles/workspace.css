@@ -1,4 +1,45 @@
 /* 学生空间共用的版式与组件。颜色只引用既有令牌，公开门户不在作用范围。 */
+.desk-scroll { min-height: 0; flex: 1; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+.desk-scroll .desk-nav { flex: none; overflow: visible; padding-bottom: 14px; }
+.desk-menu { margin-top: 8px; }
+.desk-menu__group { margin: 2px 0; }
+.desk-menu__trigger { min-height: 38px; display: flex; align-items: center; gap: 11px; width: 100%; padding: 8px 12px; border-radius: var(--r-md); font-size: var(--fs-14); line-height: 1.5; font-weight: 400; color: var(--c-text-2); text-align: left; transition: color 160ms ease, background-color 160ms ease; }
+.desk-menu__trigger:hover { background: var(--c-surface-2); color: var(--c-text); }
+.desk-menu__trigger--active { color: var(--c-primary); }
+.desk-menu__trigger > span { flex: 1; }
+.desk-menu__chevron { transition: transform 200ms ease; transform: rotate(-90deg); }
+.desk-menu__trigger[data-state='open'] .desk-menu__chevron { transform: rotate(0deg); }
+.desk-menu__content { overflow: hidden; }
+.desk-menu__children { padding: 2px 0 4px 24px; margin-left: 20px; border-left: 1px solid var(--c-border); }
+.desk-menu__children .desk-link--child { min-height: 32px; line-height: 1.5; padding: 5px 10px; margin: 2px 0; }
+.desk-history { margin: 0 4px; padding: 12px 0 8px; border-top: 1px solid var(--c-border); }
+.desk-history__head { display: flex; gap: 8px; align-items: center; padding: 0 12px 10px; font-size: var(--fs-12); color: var(--c-text-3); }
+.desk-history__head h2 { font-size: var(--fs-12); font-weight: 500; }
+.desk-history__head > span { margin-left: auto; }
+.desk-history .desk-session { display: flex; flex-direction: row; align-items: center; border-bottom: 0; gap: 8px; text-align: left; width: 100%; padding: 9px 10px; border-radius: var(--r-md); color: var(--c-text-2); font-size: var(--fs-14); line-height: 1.5; transition: background-color 160ms ease, color 160ms ease; }
+.desk-history .desk-session > span { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.desk-history .desk-session small { flex: none; margin-top: 0; font-size: var(--fs-12); color: var(--c-text-3); }
+.desk-history .desk-session:hover { background: var(--c-surface-2); }
+.desk-history .desk-session[aria-pressed='true'] { background: var(--c-primary-weak); color: var(--c-primary); }
+.desk-history .desk-session:disabled { opacity: .5; }
+.desk-history__empty { color: var(--c-text-3); font-size: var(--fs-12); line-height: 1.7; padding: 8px 12px; }
+.desk-person { width: 100%; text-align: left; }
+.ws-tabs button, .ws-attributions button, .desk-record, .ws-direction, .ws-progress > span { transition: background-color 180ms ease, color 180ms ease, border-color 180ms ease, transform 180ms ease; }
+.ws-tabs button:active, .desk-new-chat:active { transform: scale(.98); }
+@media (prefers-reduced-motion: no-preference) {
+  .desk-menu__content[data-state='open'] { animation: desk-expand 200ms ease-out; }
+  .desk-menu__content[data-state='closed'] { animation: desk-collapse 170ms ease-in; }
+  .app--workspace .ws-page, .app--workspace .ws-conversation { animation: workspace-arrive 180ms ease-out; }
+  .ws-tasks .task-list-move { transition: transform 200ms ease; }
+  .ws-tasks .task-list-enter-active { transition: opacity 180ms ease, transform 180ms ease; }
+  .ws-tasks .task-list-enter-from { opacity: 0; transform: translateY(6px); }
+}
+@keyframes desk-expand { from { height: 0; opacity: .3; } to { height: var(--reka-accordion-content-height); opacity: 1; } }
+@keyframes desk-collapse { from { height: var(--reka-accordion-content-height); opacity: 1; } to { height: 0; opacity: .3; } }
+@keyframes workspace-arrive { from { opacity: .65; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) {
+  .desk-menu__trigger, .desk-menu__chevron, .desk-session, .ws-tabs button, .ws-attributions button, .desk-record, .ws-direction, .ws-progress > span { transition: none; }
+}
 .app--workspace { background: var(--c-bg); }
 .app--desktop { padding-left: 252px; }
 .app--desktop .app__main { background: transparent; }
@@ -134,6 +175,10 @@
   .desk-group { margin-top: 16px; }
 }
 @media (min-width: 1000px) and (max-height: 800px) {
+  .app--desktop .ws-chat-welcome { padding: 0; }
+  .ws-chat-welcome .desk-still-graphic { width: 80px; height: 40px; margin-bottom: 12px; }
+  .ws-chat-welcome .ws-chat-prompts { margin-top: 20px; }
+  .ws-chat-welcome .ws-chat-prompts button { padding-top: 12px; padding-bottom: 12px; }
   .desk-sidebar { padding-top: 20px; padding-bottom: 16px; }
   .desk-brand { padding-bottom: 16px; }
   .desk-brand div > span { display: none; }

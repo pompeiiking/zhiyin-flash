@@ -1,12 +1,10 @@
 # 职引 · 学生空间演示
 
-独立的 Vue 3 + TypeScript + Vite 前端工程，演示大学生从对话、了解自己到方向选择、行动与复盘的使用过程。原工程与管理员端不在本次范围内。
+独立的 Vue 3 + TypeScript + Vite 前端工程，演示学生通过咨询了解个人情况、比较职业方向、安排任务与复盘。本次 V4 仅修改 `redesign-demo`，后端、原前端与管理员端不在范围内。
 
-门户保留版本对比与配色，进入后均为对话。新增桌面侧栏，咨询置顶，其余按「了解与选择、安排与推进、资料与记录」分组；顶部可切换移动导航。新增学校资料、课表、笔记、资讯、工具和完成记录。功能边界见 [BACKEND-ALIGNMENT.md](BACKEND-ALIGNMENT.md)。
+门户保留品牌主张、蓝红灰配色与原版对比，登录成功和已登录入口均进入咨询。V4 整理二级菜单，移除重复导航，逐页评估内容并统一书面表达，以菜单展开和任务状态反馈提供轻量动效。正文保持 16px。内容判断见 [CONTENT-AUDIT.md](design-review/CONTENT-AUDIT.md)，接口边界见 [BACKEND-ALIGNMENT.md](BACKEND-ALIGNMENT.md)。
 
 ## 运行
-
-在 PowerShell 中执行：
 
 ```powershell
 cd D:\zhiyin-flash\redesign-demo
@@ -14,52 +12,65 @@ npm.cmd ci
 npm.cmd run dev -- --port 5275
 ```
 
-打开 [本次预览](http://127.0.0.1:5275/)。默认端口5273，本次使用5275，因为5273和5274来自另一份checkout。
+打开 [本次预览](http://127.0.0.1:5275/)。默认端口为 5273；本次使用 5275，5273 / 5274 属于其他 checkout。
 
-## 常用地址
+## 导航与地址
 
-Sites 站点配置在 .openai/hosting.json；本轮按用户要求设为公有。发布源码副本在本地忽略的 .sites/frontend，与原项目 Git 分支分开，由 Sites 的 source helper 同步。站点地址：https://zhiyin-frontend-demo-v2.peppy-sugar-7626.chatgpt.site
+桌面咨询置顶，三个单选展开的一级菜单为「生涯分析、计划管理、资讯与记录」，当前路由所属组自动展开。全部历史会话在业务菜单下方，账号唯一入口在左下角。移动底栏为「对话、行动、画像、报告、更多」；更多面板使用同一二级目录，账号仅在右上角，咨询页保留新对话与历史入口。顶部可切换布局，窄于 1000px 时使用移动导航。
 
-地址使用 hash 路由，以下路径接在 `http://127.0.0.1:5275/` 后面。新增 /directions、/academic、/schedule、/notes、/intel、/tools。?as= 只在未登录时初始化账号，切换账号请先退出。
+以下 hash 路径接在预览地址之后：
 
-| 路径 | 当前内容 |
+| 路径 | 内容 |
 | --- | --- |
-| `#/` | 公开门户，进入后的第一页是对话 |
-| `#/?portal=classic` | 改版前门户，保留供对比 |
-| `#/chat?as=mid` | 已有内容的示例对话；档案与聊出的事按需展开 |
-| `#/home?as=mid` | 今日最小任务、任务分组与完成记录 |
-| `#/plan?as=mid` | 里程碑、本周任务、关键日历、任务来源 |
-| `#/profile?as=mid` | 已有事实、来源筛选、依据与更正 |
-| `#/report?as=mid` | 结论与差距、可展开的分值与依据 |
-| `#/report?as=mid&focus=choose` | 三条方向对比、选择与改选 |
-| `#/report?as=mid&focus=versions` | 预置报告版本与变化 |
-| `#/review?as=mid` | 完成记录、任务/方法/方向归因与下一步 |
-| `#/chat?as=fresh` | 空白账号，从第一个问题开始 |
-| `#/review?as=stale` | 三天未动账号的陪伴提醒示例 |
-| `#/home?as=mid&grade=freshman` | 大一场景；另可用 `sophomore`、`junior`、`senior` |
+| `#/` | 公开门户；进入后首先到咨询 |
+| `#/?portal=classic` | 改版前门户 |
+| `#/chat?as=mid` | 咨询、会话恢复、材料与成果 |
+| `#/profile?as=mid` | 个人画像、来源、更正与待补充项 |
+| `#/academic?as=mid` | 独立学籍与资料页；导入、撤回与核验示例 |
+| `#/report?as=mid` | 诊断结果、分值与依据 |
+| `#/report?as=mid&focus=versions` | 预置版本记录 |
+| `#/directions?as=mid` | 独立方向比较、选择与影响范围 |
+| `#/home?as=mid` | 行动计划的今日行动视图 |
+| `#/plan?as=mid` | 同一行动计划的阶段视图；里程碑、执行任务、来源 |
+| `#/schedule?as=mid` | 独立日历与课表 |
+| `#/notes?as=mid` | 待办与目标、去重、完成与恢复 |
+| `#/intel?as=mid` | 岗位资讯来源示例与检索 |
+| `#/review?as=mid` | 任务分析、调整建议、执行时间线与完成记录 |
+| `#/tools?as=mid` | 应用工具演示入口 |
+| `#/chat?as=fresh` | 空白账号 |
+| `#/review?as=stale` | 三天未行动账号提醒示例 |
+| `#/home?as=mid&grade=freshman` | 大一场景；另支持 sophomore / junior / senior |
 | `#/path?as=mid` | 四个年级的场景与操作路径 |
 | `#/spec` | 公开设计规范 |
 
-未登录直达内页会自动进入 `mid` 演示账号。`as` 参数只在未登录时生效；切换 `fresh` / `mid` / `stale` 前，可在右上角账号面板退出登录。`dir=d1` 可预置尚未选择的方向。外观可用 `theme=light|dark|system`、`accent=blue|red`、`style=plain|soft|dense` 指定，地址参数本身不保存为外观偏好。
+旧地址 `/report?focus=choose` 自动转向 `/directions`。报告只保留诊断结果与版本记录；方向没有重复报告页签。画像与学籍独立，阶段计划不再内置日历。
 
-## 演示边界
+未登录直达内页进入 `mid` 演示账号。`as` 仅在未登录时初始化账号，切换账号先通过账号面板退出。`dir=d1` 可预置尚未选择的方向。外观参数支持 `theme=light|dark|system`、`accent=blue|red`、`style=plain|soft|dense`，地址参数本身不保存偏好。
 
-所有学校信息、岗位依据、报告分值、历史记录、里程碑与 2026 年 10 月日历均为预置示例。对话按本地关键词返回示例回答，未接入真实模型、学校系统、核验服务或业务后端。
+## 演示与接口边界
 
-任务完成/恢复、采纳/否决建议、拆小、加入今天、档案更正、方向改选和复盘归因会改变当前页面状态。方向切换展示影响范围，不自动重算报告与计划；报告版本页切换的是预置快照，详细分值仍使用第 3 版示例。
+学校资料、报告分值、岗位统计、阶段百分比、历史时间线与 2026 年 10 月日历均为预置示例。对话返回本地示例，UI 未调用正式 API、真实模型、学校系统、学信网或实时招聘服务。
 
-仅登录账号和外观偏好写入 `localStorage`。其余演示修改保存在当前页面会话的内存中，刷新会回到预置状态；切换年级会重置该场景的任务与采集进度。右上角账号面板提供「复位演示数据」和「恢复操作引导」。
+任务完成/恢复、建议采纳/拒绝、拆小、安排执行、画像更正、方向改选、复盘归因与待办操作更新当前会话。方向变化只展示影响范围，不自动重算。版本为预置快照；诊断结果和详细分值使用第 3 版示例，选旧版进入版本记录，打印当前视图。
+
+账号、外观与导航布局偏好存入 localStorage。业务修改、引导收起和草稿仅为当前页面会话状态，刷新恢复预置数据；切年级重置场景任务与采集进度。账号面板提供复位演示数据与恢复操作引导。
+
+`sync:backend` 生成 69 个 schema 与后端功能目录；`check:backend` 校验生成文件及 50 个学生操作的 method/path。50 项目录校验不表示 50 项 API 已接入。JSON/multipart 与 SSE transport 已提供，页面仍用本地状态，未执行真实端到端测试。
 
 ## 检查与设计记录
 
 ```powershell
 npm.cmd run build
-node scripts/check-contrast.mjs
+npm.cmd run check:backend
 node scripts/check-classes.mjs
+node scripts/check-contrast.mjs
+git diff --check
 ```
 
-构建包含类型检查；对比度脚本检查已登记的颜色组合及字号令牌，类名脚本检查全局样式与组件 scoped 样式的布局类冲突。它们不能替代浏览器里的排版与交互检查。实际检查结果和剩余问题见 [视觉与交互检查记录](design-review/QA.md)。
+当前最终构建（含类型检查）、后端目录、类名与颜色/字号门禁已通过。浏览器证据与交互边界见 [desktop-v4/QA.md](design-review/desktop-v4/QA.md)。最终 JPEG 位于 `design-review/desktop-v4/`：12 个业务桌面页及门户、4 个业务移动页、移动更多菜单、横屏对话。操作路径使用 `public/shots/v4-*.jpg`。早期截图调用的错帧已重采集并逐图确认；V3 与更早截图仅作历史参考。
 
-当前浏览器截图保存在 `design-review/`：桌面为 `*-desktop.jpg`，手机包含 [对话](design-review/chat-mobile.jpg)、[今日任务](design-review/home-mobile.jpg) 和 [报告](design-review/report-mobile.jpg)，另有横屏对话。它们是实际浏览器捕获的 JPEG；操作路径页使用 `public/shots/v2-*.jpg`。`public/shots/` 中旧 PNG 是历史资产，不作为本轮改版的验收依据。
+产品约束见 [PRODUCT.md](PRODUCT.md)，方向见 [DESIGN-BRIEF.md](DESIGN-BRIEF.md)，tracked [DESIGN.md](DESIGN.md) 是当前设计系统主依据；本地 `.impeccable/design.json` 为补充记录。Reka UI Accordion 已用于受控菜单、路由同步与键盘交互；CSS 与 Vue TransitionGroup 提供尺寸和任务动效。Motion 仅作研究，未安装。Impeccable CLI 未安装，本轮执行独立 finish review；Stitch 没有可用服务、未生成设计；Taste 仅局部审查参考，未整套套用复杂产品界面；Designeer 使用本地目录。
 
-产品约束见 [PRODUCT.md](PRODUCT.md)，本轮方向见 [DESIGN-BRIEF.md](DESIGN-BRIEF.md)，实际设计系统见 [DESIGN.md](DESIGN.md) 与 [.impeccable/design.json](.impeccable/design.json)。当前六个业务页面由 `ConversationView`、`TodayView`、`StudentView`、`AssessmentView`、`RoadmapView`、`ReflectionView` 实现；版式与令牌分别在 `src/styles/workspace.css` 和 `src/styles/tokens.css`。旧业务视图与外壳组件保留作参考，当前路由和 `App.vue` 使用新组件。
+## 历史发布
+
+既有 Sites 配置在 `.openai/hosting.json`，历史发布副本为本地忽略的 `.sites/frontend`。此前公开地址为 [职引前端演示 V2](https://zhiyin-frontend-demo-v2.peppy-sugar-7626.chatgpt.site)。本次 V4 未执行 Sites 发布，该地址不能作为当前 V4 在线验收地址。
