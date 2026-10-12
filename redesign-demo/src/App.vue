@@ -1,0 +1,214 @@
+<script setup lang="ts">
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import AppTopBar from './components/AppTopBar.vue'
+import CommandPalette from './components/CommandPalette.vue'
+import AuthLayer from './components/AuthLayer.vue'
+import NoticeToast from './components/NoticeToast.vue'
+import InterventionModal from './components/InterventionModal.vue'
+import { demo } from './store'
+import { skin } from './lib/theme'
+import { INTERVENTION } from './data/student'
+
+/**
+ * 应用壳。
+ *
+ * 结构（自上而下）：身份条 → 顶栏 → 旅程导航（＋次级标签）→ 内容。
+ * **没有侧边栏** —— 上一版左侧那块 224px 深色区域是评审点名的问题，
+ * 去掉之后内容区从 1180px 放宽到 1200px，一屏的"重块"归零。
+ */
+
+const route = useRoute()
+const router = useRouter()
+const palette = ref<InstanceType<typeof CommandPalette> | null>(null)
+
+const bare = computed(() => route.meta.public === true)
+/**
+ * 顶部进度条的宽度：**跟内容列对齐**，不是一个全页固定值。
+ * 原来写死 920px 居中，而对话页中栏只有 760px（且当时左右栏 232/272 不对称，
+ * 中栏还偏右 28px），于是进度条两边凸出来、左右还不一样多。
+ */
+const progressMax = computed(() => (route.name === 'chat' ? '760px' : '920px'))
+const authOpen = computed(() => route.query.signin === '1' && !demo.state.authed)
+
+function closeAuth() {
+  if (route.query.signin) {
+    const q = { ...route.query }
+    delete q.signin
+    router.replace({ path: route.path, query: q })
+  }
+}
+
+watch(
+  () => demo.state.authed,
+  (v) => {
+    if (!v && !route.meta.public) router.replace({ path: '/', query: { signin: '1' } })
+    /*
+     * 登录成功、人还在门户上 —— 直接进第一个界面（对话）。
+     * 只认"门户 + 带 signin"这一种情况：点「稍后再说」不会把 authed 置真，不会被卷进来，
+     * 而门户本身要留着可访问（它是宣传入口，用户可能只是想回来再看一眼）。
+     */
+    if (v && route.path === '/' && route.query.signin) router.replace('/chat')
+  },
+)
+
+onMounted(() => {
+  document.documentElement.lang = 'zh-CN'
+  skin.init()
+})
+</script>
+
+<template>
+  <div class="app" :style="{ '--progress-max': progressMax }">
+    <template v-if="bare">
+      <RouterView v-slot="{ Component }">
+        <Transition name="page" mode="out-in">
+          <component :is="Component" :key="route.path" />
+        </Transition>
+      </RouterView>
+    </template>
+
+    <template v-else>
+      <AppTopBar @open-palette="palette?.show()" />
+      <main class="app__main">
+        <!-- 氛围层：与门户同一套语言（一片很淡的品牌色光 + 颗粒），但强度低得多 -->
+        <div class="app__atmos" aria-hidden="true" />
+
+        <div class="app__content">
+          <RouterView v-slot="{ Component }">
+            <!--
+              路由切换：只做入场，不做退场。
+              带退场（mode="out-in"）会让每次点击多等一截，属于"为了好看拖慢高频操作"；
+              这里 160ms 淡入 + 6px 上移，拿掉退场，感觉是"立刻到了"。
+            -->
+            <Transition name="page" mode="out-in">
+              <component :is="Component" :key="route.path" />
+            </Transition>
+          </RouterView>
+        </div>
+      </main>
+    </template>
+
+    <CommandPalette ref="palette" />
+    <AuthLayer v-if="authOpen" @close="closeAuth" />
+    <!-- 提醒是登录后的产品功能，不出现在公开门户上 -->
+    <NoticeToast v-if="demo.state.authed" />
+    <InterventionModal
+      v-if="demo.state.interventionOpen"
+      :host="INTERVENTION.host"
+      :title="INTERVENTION.title"
+      :body="INTERVENTION.body"
+      :action="INTERVENTION.action"
+      :secondary="INTERVENTION.secondary"
+      :rules="INTERVENTION.rules"
+      @close="demo.closeIntervention"
+    />
+
+    <Transition name="toast">
+      <div v-if="demo.state.toast" class="toast" role="status">
+        {{ demo.state.toast }}
+      </div>
+    </Transition>
+  </div>
+</template>
+
+<style scoped>
+.app {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.app__main {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  background: var(--c-bg);
+}
+
+/* 氛围层：一片很淡的光 + 一层颗粒。depth 到"底色有温度"为止 ——
+   内页是干活的地方，氛围再重就会干扰读表和读列表。 */
+.app__atmos {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: var(--app-glow),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  background-position: center -180px, 0 0;
+  background-repeat: no-repeat, repeat;
+  background-size: 1200px 620px, 160px 160px;
+}
+
+/* 内容必须在氛围层之上：.app__atmos 是绝对定位元素，会盖住未定位的块级内容 */
+.app__content {
+  position: relative;
+  z-index: 1;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: var(--sp-6);
+  transform: translateX(-50%);
+  z-index: var(--z-toast);
+  max-width: min(560px, calc(100vw - 48px));
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-md);
+  background: var(--c-text);
+  color: var(--c-surface);
+  font-size: var(--fs-14);
+  box-shadow: var(--e-3);
+}
+
+/* 路由入场：160ms ease-out，位移 6px（远小于一屏，属于"接得上"而不是"飞进来"）*/
+.page-enter-active {
+  transition:
+    opacity 160ms var(--ease-out),
+    transform 160ms var(--ease-out);
+}
+
+.page-enter-from {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+.page-leave-active {
+  transition: opacity 80ms ease;
+}
+
+.page-leave-to {
+  opacity: 0;
+}
+
+.toast-enter-active,
+.toast-leave-active {
+  transition:
+    opacity var(--dur-2) var(--ease-out),
+    transform var(--dur-2) var(--ease-out);
+}
+
+.toast-enter-from,
+.toast-leave-to {
+  opacity: 0;
+  transform: translate(-50%, 8px);
+}
+
+/*
+ * 换肤的过渡：**先禁过渡、再整页淡入** —— 不是给所有元素挂一条全局 transition。
+ * 挂全局 transition 会让每个元素按自己的时长各自跑，像打翻的调色盘；
+ * 而且会把之后每一次 hover 都拖成同样的慢速动画。
+ * 具体禁用与淡入的规则写在 base.css（不受 scoped 影响，也不怕 keyframes 被改名）。
+ */
+
+/* 减少动效：保留淡入，去掉位移 */
+@media (prefers-reduced-motion: reduce) {
+  .page-enter-from {
+    transform: none;
+  }
+
+  .toast-enter-from,
+  .toast-leave-to {
+    transform: translateX(-50%);
+  }
+}
+</style>

@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>自检 · 职引演示</title>
+  </head>
+  <body style="margin:0;padding:32px;font:15px/1.8 system-ui,-apple-system,sans-serif;color:#1e232c;background:#f7f6f6">
+    <h1 style="font-size:22px;margin:0 0 4px">自检页</h1>
+    <p style="margin:0 0 20px;color:#61666b">
+      这一页不依赖任何框架、任何构建产物。<strong>只要你能看到它，就说明浏览器与 dev server
+      之间的连接是好的</strong> —— 那么"白屏"就是前端应用本身的问题，而不是链接或网络。
+    </p>
+
+    <pre
+      id="out"
+      style="margin:0;padding:16px;background:#ffffff;border:1px solid #e1e5ee;border-radius:12px;white-space:pre-wrap"
+    >检查中…</pre>
+
+    <p style="margin:20px 0 8px;color:#61666b">各个页面（点开看看哪一屏能开、哪一屏不能）：</p>
+    <ul style="margin:0;padding-left:22px">
+      <li><a href="#/">门户</a></li>
+      <li><a href="#/chat">对话</a></li>
+      <li><a href="#/home">我的事</a></li>
+      <li><a href="#/profile">对你的了解</a></li>
+      <li><a href="#/report">你的报告</a></li>
+      <li><a href="#/plan">计划与行动</a></li>
+      <li><a href="#/review">回头看看</a></li>
+      <li><a href="#/spec">设计规范</a></li>
+    </ul>
+
+    <script>
+      (function () {
+        var lines = []
+        lines.push('当前地址：' + location.href)
+        lines.push('浏览器：' + navigator.userAgent)
+        lines.push(
+          '存储(localStorage)：' +
+            (function () {
+              try {
+                localStorage.setItem('__probe__', '1')
+                localStorage.removeItem('__probe__')
+                return '可用'
+              } catch (e) {
+                return '不可用（' + e.message + '）—— 隐私模式或被策略禁用'
+              }
+            })(),
+        )
+        lines.push('')
+        lines.push('模块可拉取性：')
+
+        var checks = [
+          '/src/main.ts',
+          '/src/router.ts',
+          '/src/store.ts',
+          '/src/App.vue',
+          '/src/views/PortalView.vue',
+          '/src/views/ChatView.vue',
+        ]
+        var done = 0
+
+        function render() {
+          document.getElementById('out').textContent = lines.join('\n')
+        }
+
+        checks.forEach(function (u) {
+          fetch(u, { cache: 'no-store' })
+            .then(function (r) {
+              lines.push('  ' + u + ' → HTTP ' + r.status + (r.ok ? ' ✓' : ' ✗'))
+            })
+            .catch(function (e) {
+              lines.push('  ' + u + ' → 拉取失败：' + e.message)
+            })
+            .then(function () {
+              done += 1
+              if (done === checks.length) {
+                lines.push('')
+                lines.push('（把这一整块内容发给开发即可）')
+                render()
+              }
+            })
+        })
+
+        render()
+      })()
+    </script>
+  </body>
+</html>

@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light" data-accent="blue" data-style="plain">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>职引 · 大学生生涯规划与就业指导智能支撑平台</title>
+    <meta
+      name="description"
+      content="职引 · 持续陪伴 · 专业牵引 · 行动落地 · 心想事成"
+    />
+    <script>
+      /*
+       * 防闪（FOUC）。
+       * 皮肤是在 JS 里读 localStorage 决定的，而 CSS 紧接着就要渲染 ——
+       * 如果等到 Vue 挂载再改 <html data-theme>，用户会先看到一帧浅色再跳成深色。
+       * 所以这一段必须**同步**跑在样式表之前。
+       * 逻辑与 src/lib/theme.ts 一致：theme / accent / style 三个键。
+       * （曾经还有第四个键 motion，那条轴 2026-10-11 删了 —— 见 lib/theme.ts 文件头。）
+       */
+      ;(function () {
+        try {
+          var el = document.documentElement
+          /* hash 路由：参数在 `#` 之后（#/home?theme=dark），location.search 是空的 */
+          var q = new URLSearchParams(location.search)
+          var hq = (location.hash || '').split('?')[1]
+          if (hq) new URLSearchParams(hq).forEach(function (v, k) { q.set(k, v) })
+          var saved = JSON.parse(localStorage.getItem('zhiyin-demo-skin') || '{}')
+
+          /* 优先级：?query > localStorage > 系统 > 默认档。
+             query 不落盘 —— 它只是"给别人发一条打开即某套皮肤的链接"。 */
+          var theme = q.get('theme') || saved.theme
+          var accent = q.get('accent') || saved.accent
+          var style = q.get('style') || saved.style
+
+          var mode = theme === 'light' || theme === 'dark' ? theme : null
+          if (!mode) {
+            mode = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+          }
+          el.dataset.theme = mode
+          if (accent === 'red') el.dataset.accent = 'red'
+          if (style === 'soft' || style === 'dense') el.dataset.style = style
+          el.style.colorScheme = mode
+        } catch (e) {
+          /* 拿不到就留在 HTML 上的默认值：浅色 + 蓝 + 极简 */
+        }
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <!--
+    启动看门狗：不允许出现"完全空白、连一句提示都没有"。
+    它必须排在入口模块**之前** —— 一旦 /src/main.ts 或它 import 的某个模块在求值时就抛，
+    模块体里注册的错误兜底根本没机会运行，页面就是一片白，而且什么都不说。
+    这个内联脚本一定能跑（它就在 HTML 里），所以它负责三件事：
+      1. 抓资源加载失败（入口模块拉不到 / 解析失败）—— 只有捕获阶段收得到
+      2. 抓未处理的 Promise 拒绝
+      3. 兜底：几秒后 #app 仍然是空的，就说明没挂上，把原因与 URL 写出来
+    颜色与字体在这里写死：它必须在样式表都没加载成功时也能看见。
+  -->
+  <script>
+    (function () {
+      var shown = false
+      function show(detail) {
+        if (shown) return
+        shown = true
+        var box = document.createElement('div')
+        box.setAttribute('role', 'alert')
+        box.style.cssText =
+          'position:fixed;left:0;right:0;bottom:0;z-index:99999;padding:14px 20px;' +
+          'background:#96000e;color:#ffffff;font:13px/1.6 system-ui,-apple-system,sans-serif;' +
+          'white-space:pre-wrap'
+        box.textContent =
+          '页面没能启动。多半是刚才有文件正在被改动，或者浏览器缓存了旧的模块 ——\n' +
+          '硬刷新一次即可（Windows: Ctrl+Shift+R ／ macOS: Cmd+Shift+R）。\n' +
+          '若反复出现，把这一行发给开发：' +
+          detail
+        document.body.appendChild(box)
+      }
+
+      window.addEventListener(
+        'error',
+        function (e) {
+          if (e && e.target && e.target !== window && e.target.tagName) {
+            show('资源加载失败：' + (e.target.src || e.target.href || e.target.tagName))
+          } else {
+            show('运行时错误：' + ((e && e.error && e.error.message) || (e && e.message) || '未知'))
+          }
+        },
+        true,
+      )
+
+      window.addEventListener('unhandledrejection', function (e) {
+        var r = e && e.reason
+        show('未处理的拒绝：' + ((r && r.message) || String(r)))
+      })
+
+      // 看门狗：查两次再报，避免慢启动误报
+      function check(n) {
+        var app = document.getElementById('app')
+        if (app && app.childElementCount > 0) return
+        if (n > 0) {
+          setTimeout(function () {
+            check(n - 1)
+          }, 3000)
+          return
+        }
+        show('入口模块没有挂载（/src/main.ts 可能没加载成功）。当前地址：' + location.href)
+      }
+      setTimeout(function () {
+        check(1)
+      }, 6000)
+
+      /*
+       * 标签页自报状态：看门狗一旦判定"没挂载"，就把标题改成「未挂载」开头。
+       * 这样不用开控制台也能区分两类完全不同的故障：
+       *   · 标题变成「未挂载 …」 → 应用根本没启动（模块加载/解析/求值就失败了）
+       *   · 标题正常但仍空白   → 应用启动了，是渲染出来的东西看不见
+       * 排查"白屏"时，这一条能把范围一刀切开。
+       */
+      var origShow = show
+      show = function (detail) {
+        var t = document.title
+        if (t.indexOf('未挂载') !== 0) document.title = '未挂载 · ' + t
+        origShow(detail)
+      }
+    })()
+  </script>
+
+  <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

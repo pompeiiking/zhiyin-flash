@@ -1,0 +1,1679 @@
+/* =============================================================================
+ * 职引 · 学生端重设计 · 基础层
+ * -----------------------------------------------------------------------------
+ * 这里只放三样东西：重置、排版口径、全站共用零件。
+ * 任何组件都不得写颜色字面量 —— 一律取 tokens.css 里的名字。
+ * ========================================================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+}
+
+/* 悬浮导航会盖住锚点落点：跳到某个标题时，标题会落在导航底下。
+   补一条 scroll-margin-top —— 21st.dev 讲悬浮导航那篇说"大多数站都漏了这条"。 */
+:target {
+  scroll-margin-top: 84px;
+}
+
+body {
+  margin: 0;
+  background: var(--c-bg);
+  color: var(--c-text);
+  font-family: var(--font-sans);
+  font-size: var(--fs-14);
+  /* 中文正文行高给到 1.7：汉字是满框字，上下没有西文的升降部缓冲，
+     按西文习惯的 1.5–1.6 排出来会显得挤 */
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+h4,
+p,
+figure,
+blockquote,
+dl,
+dd {
+  margin: 0;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-tight);
+  letter-spacing: -0.01em;
+}
+
+ul,
+ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+a {
+  color: var(--c-primary);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+/* 焦点：全站唯一一种，键盘可见、鼠标不打扰 */
+:focus-visible {
+  outline: var(--bw-2) solid var(--c-focus);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+::selection {
+  background: var(--c-primary-weak-2);
+  color: var(--c-text);
+}
+
+/* 滚动条：窄、无彩色 */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--gray-300) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--gray-300);
+  border-radius: var(--r-pill);
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--gray-400);
+  background-clip: content-box;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ===========================================================================
+ * 换肤的过渡
+ * ---------------------------------------------------------------------------
+ * 正确做法不是"给颜色加一条全局 transition"（那样每个元素会按自己的时长各自跑，
+ * 视觉上像打翻的调色盘，而且会把之后每次 hover 都拖慢）。
+ * 而是：切换那一瞬间**禁用一切过渡** → 换属性 → 整页 160ms 淡入。
+ *
+ * 补充一条可核实的约束：`color-scheme` 在规范里的 animation type 是 discrete（不可插值），
+ * 所以滚动条与表单控件永远是瞬变 —— 整页淡入正是为了让"一起变"看起来是一个动作。
+ * ======================================================================== */
+
+html.is-skin-switching *,
+html.is-skin-switching *::before,
+html.is-skin-switching *::after {
+  transition: none !important;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html.is-skin-fading body {
+    animation: skin-fade 160ms ease-out both;
+  }
+}
+
+@keyframes skin-fade {
+  from {
+    opacity: 0.72;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ===========================================================================
+ * 排版口径
+ * ======================================================================== */
+
+.t-display {
+  font-size: var(--fs-38);
+  font-weight: var(--fw-semibold);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.t-h1 {
+  font-size: var(--fs-20);
+  font-weight: var(--fw-semibold);
+}
+
+.t-h2 {
+  font-size: var(--fs-20);
+  font-weight: var(--fw-semibold);
+}
+
+.t-h3 {
+  font-size: var(--fs-20);
+  font-weight: var(--fw-semibold);
+}
+
+.t-body {
+  font-size: var(--fs-14);
+  line-height: 1.7;
+}
+
+.t-sm {
+  font-size: var(--fs-14);
+  line-height: var(--lh-snug);
+}
+
+.t-label {
+  font-size: var(--fs-12);
+  font-weight: var(--fw-medium);
+  color: var(--c-text-3);
+  /* 不加 letter-spacing：中文没有大小写，也不靠字距分组，
+     加字距只会把汉字拆松（这一条是照着调研里 Carbon / Geist 的口径改的） */
+}
+
+.t-note {
+  font-size: var(--fs-12);
+  color: var(--c-text-3);
+  line-height: var(--lh-snug);
+}
+
+.t-muted {
+  color: var(--c-text-2);
+}
+
+.t-dim {
+  color: var(--c-text-3);
+}
+
+.t-strong {
+  font-weight: var(--fw-semibold);
+}
+
+.t-mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.t-num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ===========================================================================
+ * 零件 · 卡片
+ * ======================================================================== */
+
+.card {
+  background: var(--card-bg);
+  border: var(--bw-1) solid var(--card-border);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+}
+
+.card--flat {
+  box-shadow: none;
+}
+
+.card--pad {
+  padding: var(--card-pad);
+}
+
+.card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-4) var(--card-pad);
+  border-bottom: var(--bw-1) solid var(--c-border);
+}
+
+/* 次块里的标题行：次块自己已经有内距，标题不再缩进第二次 */
+.rail > .side > .card__head {
+  padding: var(--sp-4) 0;
+}
+
+.card__title {
+  font-size: var(--fs-14);
+  font-weight: var(--fw-semibold);
+}
+
+.card__body {
+  padding: var(--card-pad);
+}
+
+/* ===========================================================================
+ * 一屏一个焦点
+ * ---------------------------------------------------------------------------
+ * 门户的构成是"一个大主张 + 安静的四围"，内页同理：一屏只该有一个焦点。
+ * 报告 / 计划 / 复盘这三页原来都是三四张**同等重量**的卡片，读的人不知道先看哪。
+ *   .focal —— 焦点卡：保住卡片形（它确实是这一屏的主角），靠**栏宽 + 更大留白**当主角
+ *   .quiet —— 其余卡：去掉边框、底色、圆角，改用横向发丝线分隔，退成"安静的块"
+ * 【2026-10-11】焦点卡原来靠"左侧一道 3px 主色规"表达重点，现在那道规已退役：
+ *   焦点改由栏宽（主块 8 栏）与留白承担，不再用装饰表达层级。
+ * ======================================================================== */
+/* ===========================================================================
+ * 版面 · 主栏网格（tiles）
+ * ---------------------------------------------------------------------------
+ * 评审反馈："除了对话，别的界面都是一个卡片一个卡片的直接排列"。
+ * 问题不在卡片本身，而在**主栏是一列全宽卡片**——每张一样宽、一样居中，
+ * 视线只能从上往下扫，看不出哪一块是重点，也谈不上版面。
+ *
+ * 参考（designeer 清单里的版面类）：UI Layouts 的整页版块、Tremor / Preline 的
+ * 仪表盘版块、Revone 那种营收看板 —— 它们共同的做法是
+ * **12 列网格 + 卡片按内容分量占不同宽度**（大块 7–8 列、支撑块 4–5 列）。
+ *
+ * 用法：把主栏容器从 `stack` 换成 `tiles`，再给每张卡一个 `.tile-N`。
+ * 不写 `.tile-*` 的默认占满 12 列，所以可以逐页渐进改造，不会一次全崩。
+ *
+ * 【2026-10-11 · 已被 .rail / .rail__split 取代，五个内页都不再用它】
+ * 它的问题不在于分栏，而在于**分栏是逐页试出来的、不是从规则推出来的**：
+ * HomeView 曾写 `tile-7 / tile-5 / tile-12`，而 `.tile-12` 从来不存在
+ * （只有 4/5/6/7/8），于是"看起来对、其实无效"。现在的 8/4 由 `.rail__split`
+ * 的 `grid-template-columns: 8fr 4fr` 一处给出，页面里不再各自发明档位。
+ * 这一段留着只为不打断历史记录 —— **新页面请用 `.rail`，不要再写 `.tile-N`**。
+ * ======================================================================== */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--sp-5);
+  /* 卡片高度参差时不许互相拉平 —— 拉平会把矮卡撑出一大片空白 */
+  align-items: start;
+}
+
+.tiles > * {
+  grid-column: span 12;
+  min-width: 0;
+}
+
+.tiles > .tile-4 {
+  grid-column: span 4;
+}
+
+.tiles > .tile-5 {
+  grid-column: span 5;
+}
+
+.tiles > .tile-6 {
+  grid-column: span 6;
+}
+
+.tiles > .tile-7 {
+  grid-column: span 7;
+}
+
+.tiles > .tile-8 {
+  grid-column: span 8;
+}
+
+/* 窗口窄下来就退回单列：两栏挤在一起比一列更难看。
+ * 断点 1240 而不是 1100：侧栏是固定 320px 且到 1080px 才回退，
+ * 所以 1100–1360 这段主栏只剩 ~890px，7/5 里的 5 列卡会窄到 ~250px，
+ * 标题开始断行（评审实测：`?style=dense` 下更糟）。 */
+@media (max-width: 1240px) {
+  .tiles > * {
+    grid-column: span 12 !important;
+  }
+}
+
+/* 焦点卡：**不再加那道 3px 主色左规**（2026-10-11 退役）。
+   那是"用装饰表达层级"——读者第三次看到就学会了"这只是一条惯例，不是这里最重要"。
+   现在焦点由**栏宽（主块 8 栏）+ 更大的留白（--sp-7 而不是卡片的 --sp-5）**承担，
+   字号仍走全局的 20 一档，不另开档位。
+   外部口径：GOV.UK 的分隔线是 opt-in（默认不可见）；NN/g 说加容器要克制，
+   否则"create visual clutter"。 */
+.focal {
+  padding: var(--sp-7);
+}
+
+.focal .card__title {
+  font-size: var(--fs-20);
+  letter-spacing: -0.012em;
+}
+
+.quiet {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0 0 var(--sp-5);
+  border-bottom: var(--bw-1) solid var(--c-border);
+}
+
+/* 安静的块里，卡片自带的内距也要收平 —— 否则标题与正文会各缩进一次，
+   和"齐着栏边"的安静感打架 */
+.quiet > .card__head {
+  padding: 0 0 var(--sp-3);
+  border-bottom: none;
+}
+
+.quiet > .card__body {
+  padding: 0;
+}
+
+.quiet:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.card__foot {
+  padding: var(--sp-3) var(--card-pad);
+  border-top: var(--bw-1) solid var(--c-border);
+  background: var(--c-surface-2);
+  border-radius: 0 0 var(--card-radius) var(--card-radius);
+}
+
+/* ===========================================================================
+ * 零件 · 按钮（三档，语义唯一）
+ * ======================================================================== */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  height: var(--btn-h-md);
+  padding: 0 var(--btn-pad-x);
+  border-radius: var(--btn-radius);
+  border: var(--bw-1) solid var(--c-border-strong);
+  background: var(--c-surface);
+  color: var(--c-text);
+  font-size: var(--fs-14);
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
+  transition:
+    background-color var(--dur-1) ease,
+    border-color var(--dur-1) ease,
+    color var(--dur-1) ease,
+    transform var(--dur-1) var(--ease-out);
+}
+
+/* 按下反馈：只缩到 0.98，不是"弹一下"。120ms 之内完成，用户感觉是"按实了" */
+.btn:active {
+  transform: scale(var(--btn-press));
+}
+
+/* 悬停的位移只在真有指针时发生 —— 触屏点一下会先触发一次假 hover */
+@media (hover: hover) and (pointer: fine) {
+  .btn:hover {
+    background: var(--c-surface-2);
+    border-color: var(--c-border);
+  }
+
+  .btn--primary:hover {
+    background: var(--c-primary-hover);
+    border-color: var(--c-primary-hover);
+  }
+
+  .btn--accent:hover {
+    background: var(--c-primary-hover);
+    border-color: var(--c-primary-hover);
+  }
+
+  .btn--ghost:hover {
+    background: var(--c-surface-3);
+    border-color: transparent;
+    color: var(--c-text);
+  }
+
+  .btn--danger:hover {
+    background: var(--c-attention-weak);
+    border-color: var(--c-attention);
+  }
+}
+
+.btn--primary {
+  background: var(--c-primary);
+  border-color: var(--c-primary);
+  color: var(--c-on-primary);
+}
+
+.btn--primary:active {
+  background: var(--c-primary-active);
+  border-color: var(--c-primary-active);
+}
+
+.btn--accent {
+  background: var(--c-attention);
+  border-color: var(--c-attention);
+  color: var(--c-on-attention);
+}
+
+.btn--ghost {
+  border-color: transparent;
+  background: transparent;
+  color: var(--c-text-2);
+}
+
+.btn--danger {
+  border-color: var(--c-attention);
+  color: var(--c-attention-strong);
+  background: transparent;
+}
+
+.btn--sm {
+  height: var(--btn-h-sm);
+  padding: 0 var(--sp-3);
+  font-size: var(--fs-12);
+}
+
+.btn--lg {
+  height: var(--btn-h-lg);
+  padding: 0 var(--sp-5);
+  font-size: var(--fs-14);
+}
+
+.btn--block {
+  width: 100%;
+}
+
+.btn:disabled,
+.btn[aria-disabled='true'] {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ===========================================================================
+ * 零件 · 标签 / 徽章
+ * ---------------------------------------------------------------------------
+ * 只有三种语气，对应三支主色相：蓝（进行中 / 信息）、红（需要注意）、中性（已完成）。
+ * 上一版这里有绿（成功）和琥珀（警告）两个第四、第五色相 —— 已经删掉。
+ * 状态**不靠颜色单独承担**：每个标签都带字，需要时再叠图标。
+ * ======================================================================== */
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  height: 22px;
+  padding: 0 var(--sp-2);
+  border-radius: var(--r-sm);
+  background: var(--c-surface-3);
+  color: var(--c-text-2);
+  font-size: var(--fs-12);
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
+}
+
+.chip--primary {
+  background: var(--c-primary-weak);
+  color: var(--c-primary);
+}
+
+.chip--attention {
+  background: var(--c-attention-weak);
+  color: var(--c-attention-strong);
+}
+
+.chip--done {
+  background: var(--c-done-weak);
+  color: var(--c-done);
+}
+
+.chip--outline {
+  background: transparent;
+  border: var(--bw-1) solid var(--c-border-strong);
+  color: var(--c-text-2);
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--r-pill);
+  background: currentColor;
+  flex: none;
+}
+
+/* 把握度：不用小数，用三档文字 + 点数（对齐 7.3 口径）*/
+.confidence {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-12);
+  color: var(--c-text-3);
+}
+
+.confidence__bars {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.confidence__bar {
+  width: 5px;
+  height: 10px;
+  border-radius: 1px;
+  background: var(--gray-200);
+}
+
+.confidence__bar--on {
+  background: var(--c-primary);
+}
+
+/* ===========================================================================
+ * 零件 · 表单
+ * ======================================================================== */
+
+.field {
+  display: block;
+}
+
+.field__label {
+  display: block;
+  margin-bottom: var(--sp-2);
+  font-size: var(--fs-14);
+  font-weight: var(--fw-medium);
+  color: var(--c-text-2);
+}
+
+.field__input {
+  width: 100%;
+  height: 38px;
+  padding: 0 var(--sp-3);
+  border: var(--bw-1) solid var(--field-border);
+  border-radius: var(--r-md);
+  background: var(--field-bg);
+  font-size: var(--fs-14);
+  transition: border-color var(--mo-fast) var(--mo-ease);
+}
+
+.field__input:hover {
+  border-color: var(--gray-400);
+}
+
+.field__input:focus {
+  outline: none;
+  border-color: var(--c-primary);
+  box-shadow: 0 0 0 3px var(--c-primary-weak);
+}
+
+.field__input::placeholder {
+  color: var(--field-placeholder);
+}
+
+.field__input--area {
+  height: auto;
+  min-height: 84px;
+  padding: var(--sp-3);
+  line-height: var(--lh-normal);
+  resize: vertical;
+}
+
+.field__hint {
+  margin-top: var(--sp-2);
+  font-size: var(--fs-12);
+  color: var(--c-text-3);
+}
+
+.field__error {
+  margin-top: var(--sp-2);
+  font-size: var(--fs-12);
+  color: var(--c-attention-strong);
+}
+
+/* ===========================================================================
+ * 零件 · 提示条 / 空态 / 分隔
+ * ---------------------------------------------------------------------------
+ * 四种语气：信息（蓝）、注意（红）、已完成（中性灰）、不需要动作（灰底）。
+ * 注意类一律带一道左侧竖线 —— 这样即使红被用作主色，它仍然与"实心主色"区分得开。
+ * ======================================================================== */
+
+.callout {
+  display: flex;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-md);
+  /* 同上：信息类用中性底 + 一道主色左线。主色底只留给选中与交互 */
+  border-left: 3px solid var(--c-primary);
+  background: var(--c-surface-2);
+  font-size: var(--fs-14);
+  color: var(--c-text);
+}
+
+.callout--attention {
+  border-left-color: var(--c-attention);
+  background: var(--c-attention-weak);
+}
+
+.callout--done {
+  border-left-color: var(--c-done-border);
+  background: var(--c-done-weak);
+}
+
+.callout--plain {
+  border-left-color: var(--c-border-strong);
+  background: var(--c-surface-2);
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-8) var(--sp-5);
+  text-align: center;
+}
+
+.empty__title {
+  font-size: var(--fs-20);
+  font-weight: var(--fw-semibold);
+}
+
+.empty__body {
+  /* 中文里 1ch ≈ 半个汉字宽，所以 ch 的数值在这里减半换 em：
+     宽度看上去不变，但它不再随字体档变化（ch 取的是数字"0"的宽度，
+     --font-display 一换档，同一行字样就跟着变宽变窄 —— 那才是真问题）。 */
+  max-width: 32em;
+  font-size: var(--fs-14);
+  color: var(--c-text-3);
+  line-height: var(--lh-normal);
+}
+
+.divider {
+  height: 1px;
+  background: var(--c-border);
+  border: none;
+  margin: 0;
+}
+
+/* 行式列表：全站统一一种（左边是什么、右边多久/来源） */
+.rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) 0;
+  border-bottom: var(--bw-1) solid var(--c-border);
+}
+
+.row:last-child {
+  border-bottom: none;
+}
+
+.row__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.row__title {
+  font-size: var(--fs-14);
+  font-weight: var(--fw-medium);
+  color: var(--c-text);
+}
+
+.row__sub {
+  margin-top: 2px;
+  font-size: var(--fs-12);
+  color: var(--c-text-3);
+}
+
+.row__side {
+  flex: none;
+  font-size: var(--fs-12);
+  color: var(--c-text-3);
+}
+
+/* ===========================================================================
+ * 零件 · 状态导航（明确的操作引导与状态导航 —— 评审硬要求）
+ * ======================================================================== */
+
+.steps {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.steps__item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-12);
+  color: var(--c-text-3);
+  white-space: nowrap;
+}
+
+.steps__index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--r-pill);
+  border: var(--bw-1) solid var(--step-todo);
+  font-size: var(--fs-12);
+  font-weight: var(--fw-semibold);
+  color: var(--c-text-3);
+  flex: none;
+}
+
+.steps__item--done .steps__index {
+  background: var(--step-done);
+  border-color: var(--step-done);
+  color: var(--c-on-primary);
+}
+
+.steps__item--done {
+  color: var(--c-text-2);
+}
+
+.steps__item--current {
+  color: var(--c-primary);
+  font-weight: var(--fw-semibold);
+}
+
+.steps__item--current .steps__index {
+  /* 当前步用"半填充圆"，不是实心圆：实心是"已完成"的语法，
+     而当前这一步还没完成 —— 这一条照 Carbon 的步骤条改的。
+     已走过的连线改成主色，未走过的留灰，进度才一眼看得出。 */
+  background: linear-gradient(to right, var(--c-primary) 50%, transparent 50%);
+  border-color: var(--c-primary);
+  color: var(--c-primary);
+}
+
+.steps__link {
+  width: 20px;
+  height: 1px;
+  background: var(--c-border-strong);
+  flex: none;
+}
+
+.steps__link--done {
+  background: var(--c-primary-brand);
+}
+
+/* ===========================================================================
+ * 零件 · 计量条
+ * ---------------------------------------------------------------------------
+ * 用 transform: scaleX() 而不是 width —— 宽度动画会触发布局，transform 只走合成层。
+ * 用法：<div class="meter"><div class="meter__fill" :style="{ '--meter': 0.46 }"/></div>
+ * ======================================================================== */
+
+.meter {
+  height: 6px;
+  border-radius: var(--r-pill);
+  background: var(--c-surface-3);
+  overflow: hidden;
+}
+
+.meter__fill {
+  height: 100%;
+  border-radius: var(--r-pill);
+  background: var(--c-primary);
+  transform-origin: left center;
+  transform: scaleX(var(--meter, 0));
+  transition: transform var(--dur-4) var(--ease-out);
+}
+
+.meter__fill--attention {
+  background: var(--c-attention);
+}
+
+.meter__fill--done {
+  background: var(--c-done);
+}
+
+/* ===========================================================================
+ * 零件 · 表格（只用于真实二维数据）
+ * ======================================================================== */
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-14);
+}
+
+.table th {
+  text-align: left;
+  font-weight: var(--fw-medium);
+  color: var(--c-text-3);
+  font-size: var(--fs-12);
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--c-surface-2);
+  border-bottom: var(--bw-1) solid var(--c-border);
+  white-space: nowrap;
+  /* 数据密集表：表头粘住。出处 Carbon data-table 源码
+     `.data-table--sticky-header thead { position: sticky; inset-block-start: 0 }` */
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 1;
+}
+
+.table td {
+  /* 行距跟着 --row-h（极简 40 / 柔和 48 / 紧凑 32）走 ——
+     密度只动高度与内距，字号一档不动。 */
+  padding: calc((var(--row-h) - 20px) / 2) var(--sp-3);
+  border-bottom: var(--bw-1) solid var(--c-border);
+  vertical-align: top;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.table tbody tr:hover td {
+  background: var(--c-surface-2);
+}
+
+/* ===========================================================================
+ * 工具类
+ * ======================================================================== */
+
+.stack {
+  display: flex;
+  flex-direction: column;
+}
+
+.stack-1 { gap: var(--sp-1); }
+.stack-2 { gap: var(--sp-2); }
+.stack-3 { gap: var(--sp-3); }
+.stack-4 { gap: var(--sp-4); }
+.stack-5 { gap: var(--sp-5); }
+.stack-6 { gap: var(--sp-6); }
+
+.hstack {
+  display: flex;
+  align-items: center;
+}
+
+.hstack-2 { gap: var(--sp-2); }
+.hstack-3 { gap: var(--sp-3); }
+.hstack-4 { gap: var(--sp-4); }
+
+.between {
+  justify-content: space-between;
+}
+
+.wrap {
+  flex-wrap: wrap;
+}
+
+.grow {
+  flex: 1;
+  min-width: 0;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ===========================================================================
+ * 动效零件 · 逐条入场
+ * ---------------------------------------------------------------------------
+ * 只用在"这一屏第一次出现"的列表上，间隔 40ms、上移 8px。
+ * 不进场的元素不挂它 —— 一天看几十次的东西不该每次都飞一遍。
+ * 上限 8 条：再多就只是"慢"，用户等的是内容不是动画。
+ * ======================================================================== */
+
+@keyframes enter-up {
+  from {
+    opacity: 0;
+    transform: translateY(var(--enter-y));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.stagger > * {
+  animation: enter-up var(--dur-3) var(--ease-out) both;
+}
+
+.stagger > *:nth-child(1) { animation-delay: 0ms; }
+.stagger > *:nth-child(2) { animation-delay: calc(var(--stagger) * 1); }
+.stagger > *:nth-child(3) { animation-delay: calc(var(--stagger) * 2); }
+.stagger > *:nth-child(4) { animation-delay: calc(var(--stagger) * 3); }
+.stagger > *:nth-child(5) { animation-delay: calc(var(--stagger) * 4); }
+.stagger > *:nth-child(6) { animation-delay: calc(var(--stagger) * 5); }
+.stagger > *:nth-child(7) { animation-delay: calc(var(--stagger) * 6); }
+.stagger > *:nth-child(n + 8) { animation-delay: calc(var(--stagger) * 7); }
+
+/* 状态变化时的"刚变过"高亮：让人看见哪一处动了 */
+@keyframes just-changed {
+  from {
+    background-color: var(--c-primary-weak-2);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+
+.just-changed {
+  animation: just-changed var(--dur-4) var(--ease-out) both;
+}
+
+/* 减少动效：保留淡入（帮助理解"换了一屏"），去掉所有位移 */
+@media (prefers-reduced-motion: reduce) {
+  .stagger > * {
+    animation: none;
+  }
+
+  .just-changed {
+    animation: none;
+  }
+
+  .meter__fill {
+    transition: none;
+  }
+}
+
+/* 页面容器 */
+.page {
+  max-width: var(--w-content);
+  margin: 0 auto;
+  padding: var(--sp-6) var(--sp-6) var(--sp-9);
+}
+
+.page__head {
+  margin-bottom: var(--sp-5);
+}
+
+.page__title {
+  /* 与门户对齐：门户的主张是 74px，内页标题原来只有 24px，两个面对不上。
+     内页不需要海报字号，但标题得撑得住这一屏 —— 提到 30px 并收紧字距。 */
+  font-size: var(--fs-30);
+  font-weight: var(--fw-semibold);
+  letter-spacing: -0.022em;
+}
+
+.page__sub {
+  margin-top: var(--sp-3);
+  font-size: var(--fs-14);
+  color: var(--c-text-2);
+  /* 用 em 不用 ch：中文里 1ch ≈ 半个汉字宽，ch 限宽会窄一倍。
+     **版心收到 40em（14px 下 560px ≈ 40 汉字/行）**：中文舒适区约 30–45 字/行，
+     原来 60em 会排到 **58 字/行** —— 读者会跳行，第一眼就觉得"乱"；
+     而且这句话是每页第一眼看到的那一行，代价最大。
+     （外部口径：GOV.UK 版式要求一行不超过 75 字符 ≈ 37–50 汉字。） */
+  max-width: 40em;
+  line-height: var(--lh-normal);
+}
+
+/* 侧栏那一列不再是一堆白盒子：去掉边框、底色与圆角，改用横向发丝线分隔。
+   一屏里的白盒子从 7 个降到 4 个。门户的构成是"一个焦点 + 安静的四围"，
+   内页同理：主内容可以是卡片，侧栏该是安静的说明，而不是和主内容抢"卡片感"。
+
+   【2026-10-11 · `.side-plain` 与 `.quiet` 五个内页都不再使用】
+   它们做的事现在由 `.rail` 的两个槽位直接承担：次块（`.side`）天生就是浅底、无边框，
+   明细（`.detail`）天生就是整块。所以内页不需要再套一层"把卡片变安静"的类 ——
+   那是"先画框、再擦掉"的两步，现在一步到位。留着这段只为不打断历史记录。 */
+.side-plain .card {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0 0 var(--sp-5);
+  border-bottom: var(--bw-1) solid var(--c-border);
+}
+
+.side-plain .card:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+/* 两栏：主内容 + 侧栏 —— **只给对话页用**。
+   内页一律走下面的 .rail（索引式档案页）。留着它是因为对话页那两个定高滚动列
+   （ChatView 的 232 / 760 / 272 三栏）已经验证过，不该为了统一而重排。 */
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: var(--sp-5);
+  align-items: start;
+}
+
+@media (max-width: 1080px) {
+  .split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ===========================================================================
+ * 版面 · 索引式档案页（方案 B）
+ * ---------------------------------------------------------------------------
+ * 要修的是同一件事的另一半：「除了对话，别的界面都是一个卡片一个卡片的直接排列」。
+ * 上一轮已经做了"主栏内部 12 栏、块按分量分宽"，但没有解决"一列框"——
+ * 侧栏还是第二列卡片，主栏仍是 1fr 吃掉全部宽度（1600 屏上 ~840px），
+ * 于是每块都被拉成"宽而扁的横条"，那是后台管理模板的比例。
+ *
+ * 这一版把版面拆成三层，各自只做一件事：
+ *
+ *   1. **左边一条 248px 的索引栏**。它不是"更多卡片"，是本页的分区索引：
+ *      条目文字全部取自页面里已经有的东西（分区名、来源层名、日期），不新造信息。
+ *      它和主栏之间是**一条通高发丝线**，不是第二个盒子。
+ *   2. **主栏内部再分 12 栏**。主块跨 8、次块跨 4，两块**顶边对齐**；
+ *      横长的东西（表格 / 时间线 / 明细）跨 12。
+ *   3. **只有主块带 1px 边框**。次块去边框、改浅底（--c-surface-2）——
+ *      一屏里的白框从 7 个降到 3 个左右。
+ *
+ * 节奏是三档，不是一个值（原来的病是 --sp-5 一个值走天下）：
+ *   紧 = 卡内条目 --sp-2 / --sp-3 ；中 = 块内 --sp-5 ；松 = 块与块 --sp-7 ；
+ *   页头与内容之间 --sp-8。
+ *
+ * 用法：
+ *   <div class="page">
+ *     <header class="page__head">…**在 .rail 外面**…</header>
+ *     <div class="rail">
+ *       <aside class="rail__index">…索引栏（可省）…</aside>
+ *       <GuideNote … />         引导条落在主栏那一列，占第一行
+ *       <section class="main">…</section>      主块 8 栏
+ *       <aside class="side">…</aside>          次块 4 栏，与主块顶边对齐
+ *       <section class="detail">…</section>    明细跨 12 栏
+ *     </div>
+ *   </div>
+ *
+ * **页头为什么不放进 .rail 里**：放进去它就要和索引栏抢第一行。
+ * 索引栏通常比页头高，第一行被它撑起来，后面的东西只能落在第二行 ——
+ * 页头与主块之间会空出一大片（实测 546px，第一版就是这么错的）。
+ * 页头留在 .rail 外面，索引栏从第一行开始，于是**索引栏的第一个条目
+ * 与主块的顶边齐平**；页标题与索引栏仍是同一个左起点（都从 .page 的栏边起），
+ * 两者之间只隔一个 --sp-8 的页头下距。
+ *
+ * `.main / .side / .detail` 自己承担变体样式（去边框、浅底、块间距），
+ * 页面里不必再写一遍 —— 版面口径只在这里有一份。
+ * ======================================================================== */
+
+.rail {
+  display: grid;
+  grid-template-columns: 248px minmax(0, 1fr);
+  /* 行间距 = 块与块之间的 --sp-7（松档）；列间距 = 索引栏与主栏之间的 24px */
+  gap: var(--sp-7) var(--sp-6);
+  align-items: start;
+}
+
+/* 索引栏：通高的一条竖发丝线就是它与主栏的分隔，没有第二个边框、没有底色。
+   align-self: stretch 让它长到内容行的高度 —— 索引多半比主栏矮，
+   矮一截的竖线看起来像"没画完"。
+   **行号一个字都不要写**：只给列，让它和主区自动配对进同一行。
+   写死 grid-row 会留下一个空行，明细块反而被自动排到那一行去（索引在下面、
+   明细在上面），而且引导条收起时（GuideNote 整个 v-if 掉）行号还会错位。 */
+.rail__index {
+  grid-column: 1;
+  align-self: stretch;
+  min-width: 0;
+  padding-right: var(--sp-6);
+  border-right: var(--bw-1) solid var(--c-border);
+}
+
+/* 引导条是主区里**最后**一件东西：它排在所有块之后一行，
+   与页头之间隔着一个 --sp-8（.page__head 的下距）。
+   放在这里而不是占网格的第一行，是因为它会随用户收起而整个消失 ——
+   占一行的话，"收起"会改变下面所有块的行号，索引栏的配对也跟着错。 */
+.rail > .guide {
+  grid-column: 1 / -1;
+}
+
+/* 主区：主块（8）与次块（4）并排。**这一层必须存在** ——
+   只写 `.main { grid-column: 2 }` 的话，主块与次块会被自动排进相邻两行（实测差 363px），
+   而"顶边对齐"正是这一版要守的。用一个显式的行容器把它俩绑在一起，对齐由网格保证。
+
+   它**只负责排版，不带外观**：不要给它挂 `main`，否则 .rail > .main 的白底 + 1px 边框
+   会套在它身上，里面的 8 栏块再画一圈，同一屏出现两层框（第一版就是这样，
+   量出来 .rail__split 是 rgb(255,255,255) + 1px 边框 + 12px 圆角 + 20px 内距）。
+
+   也不用 align-items: start：那一档会把行高定成"较矮的一块"，
+   高的一块反过来被压扁 —— 主块的内容盒小于内容时，浏览器会把下内距裁成 0，
+   最后一条会贴在边框上（实测：主块被压到 457px，而 4 条时间线要 336px + 内距）。 */
+.rail__split {
+  display: grid;
+  grid-template-columns: 8fr 4fr;
+  gap: var(--sp-6);
+}
+
+/* 索引栏与主区**自动配对进同一行**：起点齐平，行高由两者里高的那个决定，
+   align-self: stretch 把竖线拉满这一行。
+   **列要点名、行不要点名**：只写 grid-row 会让第一行空出来，
+   明细块被自动排到那一行去（索引在下面、明细在上面，量出来差一整行）。 */
+.rail > .main,
+.rail__split {
+  grid-column: 2;
+}
+
+/* 明细块：跨满 12 栏，一行一块，回主块的样式 */
+.rail > .detail {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+/* 明细里再并排两块时用它。块与块之间的 32px（--sp-7）明显大于块内的 12px（--sp-3），
+   于是"哪几行是一伙的"读得出来 —— 这就是三档节奏里的松档。 */
+.detail--pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-7);
+  align-items: start;
+}
+
+@media (max-width: 1080px) {
+  .detail--pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* 索引只选中了并排两块里的一块时：剩下那块别缩在左半栏，自己占满一行。 */
+.detail--pair--single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.rail__split > .main,
+.rail__split > .side,
+.rail > .main,
+.rail > .side {
+  min-width: 0;
+}
+
+/* 主块：唯一保留 1px 边框的那一档 */
+.rail__split > .main,
+.rail > .main,
+.detail--pair > .main {
+  background: var(--card-bg);
+  border: var(--bw-1) solid var(--card-border);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  padding: var(--card-pad);
+}
+
+/* 次块：去边框、改浅底。底色本来就不该再叠一圈线 */
+.rail__split > .side,
+.rail > .side {
+  background: var(--c-surface-2);
+  border-radius: var(--card-radius);
+  padding: var(--card-pad);
+}
+
+/* 明细块：跨满 12 栏，回主块的样式，但用块间距与前一块分开 */
+.rail > .detail {
+  margin-top: 0;
+}
+
+.rail > .detail + .detail {
+  margin-top: var(--sp-5);
+}
+
+/* 页码式条目：日期 / 计数靠右，不换行（折行该发生在长句上，不该发生在度量上） */
+.t-num-nowrap {
+  white-space: nowrap;
+}
+
+@media (max-width: 1080px) {
+  /* 索引栏整体折到内容上方：它变成一条横向的分区目录。
+     去掉通高竖线，改成一条横向发丝线 —— 竖着画的分隔横过来还得是分隔。 */
+  .rail {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--sp-7) 0;
+  }
+
+  .rail__index {
+    grid-column: 1;
+    grid-row: auto;
+    align-self: auto;
+    padding-right: 0;
+    padding-bottom: var(--sp-4);
+    border-right: none;
+    border-bottom: var(--bw-1) solid var(--c-border);
+  }
+
+  .rail > .main,
+  .rail > .side,
+  .rail > .detail {
+    grid-column: 1;
+  }
+
+  /* 主区退回单列：4 栏的次块在窄屏里会挤到读不了 */
+  .rail__split {
+    grid-column: 1;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--sp-6);
+  }
+
+  .rail > .guide,
+  .rail__split > .guide {
+    grid-column: 1;
+  }
+}
+
+/* 索引栏内部的目录（.rail-index / .rail-index__*，见 RailNav.vue）：
+   这里不加 padding-top，让索引栏的标题与主块的**内容线**齐平 ——
+   主块有 --card-pad 的上内距，所以索引栏标题也要落在同一条线上。
+   加一段 padding 会让它比主块低 4–25px，一眼看得出"没对齐"（实测过）。 */
+.rail-index {
+  border-top: var(--bw-1) solid var(--c-border);
+}
+
+/* 索引栏里第一块索引直接接在页头下面（页头到内容本来就有 --sp-8 的行间距） */
+.rail__index > .page__head + .rail-index {
+  margin-top: 0;
+}
+
+.rail-index__title {
+  font-size: var(--fs-20);
+  font-weight: var(--fw-semibold);
+  letter-spacing: -0.02em;
+  line-height: var(--lh-tight);
+}
+
+.rail-index__list {
+  margin-top: var(--sp-5);
+}
+
+.rail-index__group {
+  margin-top: var(--sp-4);
+  font-size: var(--fs-12);
+  font-weight: var(--fw-medium);
+  color: var(--c-text-3);
+}
+
+.rail-index__list > .rail-index__group:first-child {
+  margin-top: 0;
+}
+
+/* 同一分组内的条目之间不许画分隔线，只靠 12px 的靠近表达"它们是一伙的"
+   （Law of Proximity）；分组之间才用 20px 把它推开。 */
+.rail-index__item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  width: 100%;
+  padding: var(--sp-3) 0;
+  text-align: left;
+  font-size: var(--fs-14);
+  font-weight: var(--fw-medium);
+  color: var(--c-text-2);
+  transition: color var(--dur-1) ease;
+}
+
+.rail-index__item:hover {
+  color: var(--c-text);
+}
+
+.rail-index__item--on {
+  color: var(--c-primary);
+}
+
+.rail-index__label {
+  min-width: 0;
+}
+
+.rail-index__meta {
+  flex: none;
+  font-size: var(--fs-12);
+  font-weight: var(--fw-regular);
+  color: var(--c-text-3);
+}
+
+.rail-index__item--on .rail-index__meta {
+  color: var(--c-primary);
+}
+
+.rail-index__note {
+  margin-top: var(--sp-4);
+  font-size: var(--fs-12);
+  color: var(--c-text-3);
+  line-height: var(--lh-snug);
+}
+
+/* 块内的节标题：26px 是这一版新加的一档，正好落在 20 与 30 之间 ——
+   以前 20/24/30 三档挨太近，谁也当不了主角。**一屏只许出现一个 30px**（页标题），
+   节标题一律用 26。 */
+.block__title {
+  font-size: var(--fs-20);
+  font-weight: var(--fw-semibold);
+  letter-spacing: -0.018em;
+  line-height: var(--lh-tight);
+}
+
+/* ===========================================================================
+ * 版面 · 文章页（.article / .sec）
+ * ---------------------------------------------------------------------------
+ * 账页（.ledger）适合"一份账"：每行左边一格里写"这一行是什么"，读者在**查**。
+ * 报告与复盘读起来该是**一篇文章**：节与节，读者在**读**。
+ * 两者的差别不是审美，是读者在做的事不同 —— 所以两种语法都要有，不能一套铺满。
+ *
+ * 文章页不要左侧标签格：用**节标题**分节，而且节标题要写成**一句判断**
+ * （"这一周你动过 46% 的手"），不是名词（"概览"）。
+ * 这是"报告"与"报表"的分界：标题本身就是发现（The Pudding 的固定口径）。
+ * ======================================================================== */
+
+.article {
+  /* 【2026-10-12 修正】原来定死 `max-width: 1080px` —— 在 1600px 屏上左边空 520px，
+     客户的原话是"太空了"。文章页也要**用满横向**；需要窄行长的地方（段落）自己限宽。
+     依据：NN/g "Utilize Available Screen Space" —— 50 个网站首页平均只用 40% 屏面，
+     那是**不合格**；"screen space shouldn't be hoarded, it should be spent"。 */
+}
+
+.sec {
+  /* 上下各 32px 时，一屏装不下几节 —— 收到 20px（密度只动高度与内距，不动字号） */
+  padding: var(--sp-5) 0;
+  border-top: var(--bw-1) solid var(--c-border);
+}
+
+.sec:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.sec:last-child {
+  padding-bottom: 0;
+}
+
+/* 节标题：一句判断，不是名词。宽度收在 28em 内，长句不横贯整页。 */
+.sec__title {
+  font-size: var(--fs-20);
+  font-weight: var(--fw-semibold);
+  letter-spacing: -0.012em;
+  line-height: var(--lh-snug);
+  max-width: 28em;
+}
+
+.sec__note {
+  margin-top: var(--sp-2);
+  font-size: var(--fs-12);
+  color: var(--c-text-3);
+  max-width: 34em;
+}
+
+.sec__body {
+  margin-top: var(--sp-5);
+}
+
+/* 折起一段：原生 <details>，键盘可达、不写 JS。
+   三角用两条边框转出来 —— 不用 Unicode 字符冒充图标，也不引图标库。 */
+.fold__sum {
+  cursor: pointer;
+  font-size: var(--fs-14);
+  font-weight: var(--fw-medium);
+  color: var(--c-text-2);
+  list-style: none;
+}
+
+.fold__sum::-webkit-details-marker {
+  display: none;
+}
+
+.fold__sum::before {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: var(--sp-2);
+  border-right: var(--bw-1) solid currentColor;
+  border-bottom: var(--bw-1) solid currentColor;
+  transform: rotate(-45deg) translateY(-1px);
+  transition: transform var(--mo-fast) var(--mo-ease);
+}
+
+.fold[open] .fold__sum::before {
+  transform: rotate(45deg) translateX(-1px);
+}
+
+.fold__sum:hover {
+  color: var(--c-text);
+}
+
+.fold__body {
+  margin-top: var(--sp-4);
+}
+
+/* ===========================================================================
+ * 版面 · 账页（ledger）—— 替代「索引栏 + 格子」
+ * ---------------------------------------------------------------------------
+ * 上一版是"248px 左索引栏 + 12 栏主栏（主块 8 / 次块 4）"。它解决了第一个问题
+ * （不再是一列等宽卡片），但留下两个新问题，客户的原话是「布局不好看，不清晰」：
+ *
+ *   1. 那 248px 只用来放本页目录 —— 一页正文被挤窄约 15%，而目录本身是重复信息；
+ *   2. 每一行仍然是"几个同宽的方块"，方块之间只能靠框与间距区分 —— 模板感又回来了。
+ *      （报告页最明显：结论方块比右侧矮，下半截全是死白，那是格子逼出来的，不是内容需要的。）
+ *
+ * 账页把"目录"与"内容"合成一件事：**一页就是一张横贯的账页**。
+ * 每行左边一小格写"这一行是什么"（还带计数），右边是内容，左右共用同一条起始线。
+ *
+ *   · 版面只有一个网格，视线沿一条脊柱往下走 —— 读起来是"一份文件"，不是"一屏看板"；
+ *   · 左边那一格就是索引：索引不再另占一栏，也不再是"能点但点了没反应"的假导航；
+ *   · 行与行之间只用**留白 + 一条发丝线**：线只在"换了一件事"的地方出现，
+ *     它本身就是分组信号（GOV.UK 口径：分隔线是 opt-in，留白才是默认）。
+ *
+ * 用法：
+ *   <div class="ledger">
+ *     <section class="ledger__row">
+ *       <p class="ledger__label">现在要做的 · 3</p>
+ *       <div class="ledger__body">…</div>
+ *     </section>
+ *   </div>
+ * ======================================================================== */
+
+.ledger {
+  display: flex;
+  flex-direction: column;
+  margin-top: var(--sp-6);
+  /* 【2026-10-12 修正】原来这里写死 max-width: 1080px —— 在 1600px 屏上
+     左边留下 520px 空边距，客户的原话是"太空了"。账页是一份要**用满横向**的账：
+     左格 152px + 内容吃掉其余，不额外收窄。行长由 `.ledger__body` 里的段落自己限。 */
+}
+
+.ledger__row {
+  display: grid;
+  /* 三格：这一行是什么 / 内容 / 行尾动作。动作与内容**同一行**。 */
+  grid-template-columns: 132px minmax(0, 1fr) auto;
+  gap: var(--sp-2) var(--sp-5);
+  /* 【2026-10-12 修正】上下各 32px 时，一行只装一条信息 —— 客户说"太偏向上下滚动"。
+     收到 --sp-5（20px）：同一屏多装两到三行。 */
+  padding: var(--sp-5) 0;
+  border-top: var(--bw-1) solid var(--c-border);
+  align-items: start;
+}
+
+/* 一行里并排两栏：短信息不要各占一整行（这是"太空 + 太纵向"的主要来源） */
+.ledger__body--cols2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-6);
+}
+
+.ledger__body--cols3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-5);
+}
+
+/* 紧凑统计条：一排 3–5 个数，用满横向。
+   注意它**不是**"hero metric"（大数字 + 强调色）——数字与正文同级（20/600），
+   没有强调色、没有独立卡片，只是把"这一屏有几个什么"摊在一条线上。 */
+.tally {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3) var(--sp-7);
+}
+
+.tally__item {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.tally__n {
+  font-size: var(--fs-20);
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.tally__k {
+  font-size: var(--fs-12);
+  color: var(--c-text-3);
+}
+
+.ledger__row:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.ledger__row:last-child {
+  padding-bottom: 0;
+}
+
+/* 左格：这一行是什么。与右侧首行文字**同一条基线**（不是同一条顶边）：
+   字号差的一半补成上内距，两边的第一行才会真的齐。 */
+.ledger__label {
+  font-size: var(--fs-12);
+  font-weight: var(--fw-medium);
+  color: var(--c-text-3);
+  padding-top: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ledger__body {
+  min-width: 0;
+}
+
+/* 行尾动作：与内容同一行、靠右，与首行文字对齐 */
+.ledger__aside {
+  grid-column: 3;
+  display: flex;
+  gap: var(--sp-2);
+  align-items: center;
+  padding-top: 2px;
+}
+
+/* 内容之上的一句说明：比正文低一档，不占独立一行 */
+.ledger__hint {
+  font-size: var(--fs-12);
+  color: var(--c-text-3);
+  margin-bottom: var(--sp-4);
+}
+
+/* 账页里并排两块：只在真的需要对照时用 */
+.ledger__body--pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-7);
+}
+
+/* 账页第一行：这一屏唯一"今天要做的事"。
+   主角靠**字号 + 留白**当，不再加那道 3px 彩色竖规。 */
+.today__title {
+  font-size: var(--fs-20);
+  font-weight: var(--fw-semibold);
+  letter-spacing: -0.012em;
+  line-height: var(--lh-snug);
+  max-width: 24em;
+}
+
+.today__why {
+  margin-top: var(--sp-2);
+  font-size: var(--fs-14);
+  color: var(--c-text-2);
+  max-width: 34em;
+}
+
+.today__meta {
+  display: flex;
+  gap: var(--sp-2);
+  margin-top: var(--sp-3);
+  flex-wrap: wrap;
+}
+
+/* 账页里的分组小标题（并排块各自的开头） */
+.ledger__title {
+  font-size: var(--fs-14);
+  font-weight: var(--fw-semibold);
+}
+
+@media (max-width: 1080px) {
+  .ledger__row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--sp-2);
+    padding: var(--sp-6) 0;
+  }
+
+  .ledger__label {
+    padding-top: 0;
+  }
+
+  .ledger__aside,
+  .ledger__body--pair {
+    grid-column: 1;
+  }
+
+  .ledger__aside {
+    padding-top: 0;
+    margin-top: var(--sp-2);
+  }
+
+  .ledger__body--pair {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--sp-6);
+  }
+}
+
+/* 打印：索引栏是一条导航，纸上没有"点它"这回事；展开成单列，别让它占掉 248px。 */
+@media print {
+  .rail {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--sp-6) 0;
+  }
+
+  .rail__index {
+    grid-column: 1;
+    grid-row: auto;
+    padding-right: 0;
+    border-right: none;
+  }
+
+  .rail > .main,
+  .rail > .side,
+  .rail > .detail {
+    grid-column: 1;
+  }
+}
