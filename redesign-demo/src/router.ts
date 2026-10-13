@@ -1,6 +1,11 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import { demo } from './store'
+import { backendDemo } from './lib/backend-demo'
 import type { Grade } from './data/types'
+import { ref } from 'vue'
+import { sessionCacheAvailable } from './lib/session-cache'
+export const routeLoadError = ref(false)
+export function retryRoute() { try { sessionStorage.removeItem('zhiyin-demo-chunk-reload') } catch { /* Explicit retry still works when storage is unavailable. */ } window.location.reload() }
 
 /**
  * 路由承担"层级"，不承担"动线"。
@@ -105,6 +110,8 @@ router.beforeEach((to) => {
     demo.signIn(as, true)
   }
 
+  if(to.query.data==='service'||to.query.data==='demo') backendDemo.setDataMode(to.query.data)
+
   // 直达链接：?grade=freshman 直接落到某个年级的使用场景
   const grade = to.query.grade
   if (
@@ -146,17 +153,20 @@ router.beforeEach((to) => {
 const RELOAD_KEY = 'zhiyin-demo-chunk-reload'
 
 router.onError((_error, _to) => {
+  if (!sessionCacheAvailable.value) { routeLoadError.value = true; return }
   try {
-    if (sessionStorage.getItem(RELOAD_KEY)) return
+    if (sessionStorage.getItem(RELOAD_KEY)) { routeLoadError.value = true; return }
     sessionStorage.setItem(RELOAD_KEY, '1')
   } catch {
     // 存储不可用时不敢贸然重载，直接返回，交给 main.ts 那块提示兜底
+    routeLoadError.value = true
     return
   }
   window.location.reload()
 })
 
 router.afterEach(() => {
+  routeLoadError.value = false
   try {
     sessionStorage.removeItem(RELOAD_KEY)
   } catch {

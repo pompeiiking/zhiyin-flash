@@ -7,6 +7,7 @@ import './styles/workspace.css'
 import './styles/experience.css'
 import './styles/journey.css'
 import './styles/dialogue.css'
+import './styles/redesign.css'
 
 const app = createApp(App)
 
@@ -42,8 +43,13 @@ function showFatal(reason: unknown): void {
     'color:#ffffff',
     'font:13px/1.6 system-ui,-apple-system,sans-serif',
   ].join(';')
-  const detail = reason instanceof Error ? reason.message : String(reason ?? '未知原因')
-  box.textContent = `页面出了问题（多半是刚才有文件正在被改动）。刷新一次即可。· ${detail}`
+  console.error('[page]', reason)
+  box.textContent = '页面暂时无法显示。请重新加载后继续。'
+  const retry = document.createElement('button')
+  retry.textContent = '重新加载'
+  retry.style.cssText = 'margin-left:16px;padding:8px 12px;background:white;color:#96000e;border-radius:6px'
+  retry.onclick = () => window.location.reload()
+  box.appendChild(retry)
   document.body.appendChild(box)
 }
 

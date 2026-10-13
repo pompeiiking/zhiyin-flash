@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { demo } from '../store'
 import { AUTH_COPY } from '../data/copy'
+import InfoSheet from './InfoSheet.vue'
 
 const emit = defineEmits<{ close: [] }>()
 
@@ -29,15 +30,9 @@ function submit() {
 </script>
 
 <template>
-  <div class="layer" @click.self="emit('close')">
-    <div class="sheet" role="dialog" aria-modal="true" aria-label="登录">
-      <header class="sheet__head">
-        <div>
-          <h2 class="t-h2">{{ AUTH_COPY.title }}</h2>
+  <InfoSheet :open="true" title="登录" @close="emit('close')">
+          <h3 class="ws-section-title">{{ AUTH_COPY.title }}</h3>
           <p class="t-note" style="margin-top: 6px">{{ AUTH_COPY.body }}</p>
-        </div>
-        <button class="sheet__close" aria-label="关闭" @click="emit('close')">✕</button>
-      </header>
 
       <div class="sheet__body stack stack-4">
         <div class="field">
@@ -48,6 +43,7 @@ function submit() {
               :key="a.id"
               class="account"
               :class="{ 'account--on': account === a.id }"
+              :aria-pressed="account === a.id"
               @click="account = a.id"
             >
               <span class="account__id t-mono">{{ a.id }}</span>
@@ -80,8 +76,7 @@ function submit() {
         <button class="btn" @click="emit('close')">稍后再说</button>
         <button class="btn btn--primary" @click="submit">{{ AUTH_COPY.action }}</button>
       </footer>
-    </div>
-  </div>
+  </InfoSheet>
 </template>
 
 <style scoped>

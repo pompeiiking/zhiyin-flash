@@ -78,10 +78,10 @@ export const PROFILE_FIELDS: ProfileField[] = [
   {
     key: 'time',
     label: '每周可投入',
-    value: '6 小时（课表空档算出来的）',
-    source: '教务系统',
-    confidence: { level: 'high', label: '依据充分', bars: 3 },
-    noted: '9 月 20 日，按课表算的',
+    value: '6 小时（示例对话本人说明，待核对）',
+    source: '本人填写',
+    confidence: { level: 'mid', label: '待验证', bars: 2 },
+    noted: '9 月 20 日，示例本人说明',
   },
   {
     key: 'rank',
@@ -280,7 +280,7 @@ export const REPORT_SECTIONS: ReportSection[] = [
         confidence: { level: 'high', label: '依据充分', bars: 3 },
         score: 60,
         threshold: '建议先确定主要目标，避免有限时间分散到多个执行方案。',
-        evidence: ['按课表算出的可投入时间为 6 小时/周'],
+        evidence: ['示例对话中本人说明每周可投入 6 小时；课表空档不直接视为空闲'],
       },
     ],
   },

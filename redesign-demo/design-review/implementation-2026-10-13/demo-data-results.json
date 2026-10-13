@@ -1,0 +1,18 @@
+[
+  {
+    "id": "local-fixture-contracts-and-mutations",
+    "status": "passed"
+  },
+  {
+    "id": "rich-demo-ui-mobile-and-desktop",
+    "status": "passed"
+  },
+  {
+    "id": "fresh-account-retains-empty-states",
+    "status": "passed"
+  },
+  {
+    "id": "service-failure-is-not-replaced-by-demo",
+    "status": "passed"
+  }
+]

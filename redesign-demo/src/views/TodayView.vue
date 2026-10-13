@@ -2,16 +2,21 @@
 import { computed, ref } from 'vue'
 import { demo } from '../store'
 import PageHeading from '../components/PageHeading.vue'
+import ActionPlanNav from '../components/ActionPlanNav.vue'
+import LiveActionPlan from '../components/LiveActionPlan.vue'
+import TaskBrief from '../components/TaskBrief.vue'
+import { backendDemo } from '../lib/backend-demo'
+import AssetNotice from '../components/AssetNotice.vue'
 import TaskList from '../components/TaskList.vue'
 import UiIcon from '../components/UiIcon.vue'
 import InfoSheet from '../components/InfoSheet.vue'
 import { taskOriginLabel } from '../lib/presentation'
 import PanelTabs from '../components/PanelTabs.vue'
-import TaskOverview from '../components/TaskOverview.vue'
+
 const smallest = computed(() => demo.use.smallestNow.value)
 const group = ref('now')
 const groups = computed(() => [
-  { key: 'now', label: '待执行', items: demo.use.now.value },
+  { key: 'now', label: '其他待执行', items: demo.use.now.value.filter(t => t.id !== smallest.value?.id) },
   { key: 'waiting', label: '等待中', items: demo.use.waiting.value },
   { key: 'done', label: '已完成', items: demo.use.done.value },
 ])
@@ -29,8 +34,8 @@ function add() {
 </script>
 <template>
   <div class="ws-page journey-page">
-    <PageHeading title="今日行动" description="从一件具体的小事开始，让想好的方向往前走。"><RouterLink class="btn" to="/notes"><UiIcon name="plus" :size="16" />添加个人待办</RouterLink></PageHeading>
-    <nav class="ws-subnav" aria-label="行动计划视图"><RouterLink to="/home" aria-current="page">今日行动</RouterLink><RouterLink to="/plan">阶段计划</RouterLink></nav>
+    <PageHeading title="行动计划" description="从一件具体的小事开始，让想好的方向往前走。"><RouterLink class="btn" to="/notes"><UiIcon name="plus" :size="16" />添加个人待办</RouterLink></PageHeading>
+    <ActionPlanNav/><AssetNotice/><LiveActionPlan today/><TaskBrief/><template v-if="!backendDemo.state.liveAction">
     <section v-if="lastDone" :key="lastDone.id" class="journey-complete" role="status">
       <span class="journey-complete__mark"><UiIcon name="check" :size="24" /></span>
       <div><h2>又完成了一步</h2><p>{{ lastDone.title }}</p></div>
@@ -46,17 +51,17 @@ function add() {
     <section v-else class="ws-paper"><div class="ws-empty"><h2 class="ws-section-title">{{ demo.use.done.value.length ? '当前任务已完成' : '暂无行动任务' }}</h2><p>完成咨询并明确方向后，可生成行动任务。</p><RouterLink class="btn btn--primary" to="/chat">开始咨询</RouterLink></div></section>
     <div class="journey-action-grid">
       <section class="ws-paper journey-task-list">
-        <div class="ws-section-head"><h2>任务列表</h2><span class="ws-muted">按状态查看</span></div>
-        <PanelTabs v-model="group" label="任务分组" :items="groups.map(g => ({ key: g.key, label: g.label, count: g.items.length }))"><TaskList :items="active.items" :mode="group" /></PanelTabs>
+        <div class="ws-section-head"><h2>执行队列</h2><span class="ws-muted">按状态查看</span></div>
+        <PanelTabs v-model="group" label="任务分组" :items="groups.map(g => ({ key: g.key, label: g.label, count: g.items.length }))"><TaskList :items="active.items.filter(t => group !== 'now' || t.id !== smallest?.id)" :mode="group" /></PanelTabs>
       </section>
-      <aside class="journey-action-aside">
-        <TaskOverview />
-        <section><h2>最近完成</h2><p v-if="lastDone" role="status">「{{ lastDone.title }}」已记入完成记录。你可以在任务分组中查看或恢复。</p><p v-else>完成任务后，将在此显示最近的执行记录。</p><RouterLink class="ws-text-link" to="/review">查看复盘记录<UiIcon name="arrow" :size="16" /></RouterLink></section>
+      <aside class="journey-action-aside ws-related-block">
+
+        <section><h2>执行记录</h2><p v-if="lastDone">已完成 {{ demo.use.done.value.length }} 件任务，可在完成记录中查看。</p><p v-else>完成任务后，将在此显示最近的执行记录。</p><RouterLink class="ws-text-link" to="/review">查看复盘记录<UiIcon name="arrow" :size="16" /></RouterLink></section>
         <section><p>执行遇到困难时，可通过咨询调整任务或方案。</p><RouterLink class="ws-text-link" to="/chat">回到对话<UiIcon name="arrow" :size="16" /></RouterLink></section>
       </aside>
     </div>
     <div v-if="!demo.state.guidesClosed.home" class="ws-guide"><UiIcon name="info" :size="18" /><p>优先完成当前建议任务。其他任务可按状态查看，完成后支持恢复。</p><button @click="demo.closeGuide('home')">收起</button></div>
     <p class="ws-demo-note">任务与档案为预置示例，操作会改变当前演示中的记录。</p>
-    <InfoSheet :open="addOpen" title="记一件今天能做的事" @close="addOpen = false"><form @submit.prevent="add"><label class="ws-field">做什么<input v-model="title" maxlength="100" placeholder="例如：给学长发一条消息" /></label><label class="ws-field">大约需要多久<select v-model.number="minutes"><option :value="5">5 分钟</option><option :value="15">15 分钟</option><option :value="30">30 分钟</option><option :value="60">60 分钟</option></select></label><p v-if="error" class="ws-field-error" role="alert">{{ error }}</p><div class="ws-inline-actions"><button class="btn btn--primary" type="submit">排进今天</button><button class="ws-text-button" type="button" @click="addOpen = false">先不记</button></div></form></InfoSheet>
+    </template><InfoSheet :open="addOpen" title="记一件今天能做的事" @close="addOpen = false"><form @submit.prevent="add"><label class="ws-field">做什么<input v-model="title" maxlength="100" placeholder="例如：给学长发一条消息" /></label><label class="ws-field">大约需要多久<select v-model.number="minutes"><option :value="5">5 分钟</option><option :value="15">15 分钟</option><option :value="30">30 分钟</option><option :value="60">60 分钟</option></select></label><p v-if="error" class="ws-field-error" role="alert">{{ error }}</p><div class="ws-inline-actions"><button class="btn btn--primary" type="submit">排进今天</button><button class="ws-text-button" type="button" @click="addOpen = false">先不记</button></div></form></InfoSheet>
   </div>
 </template>

@@ -218,7 +218,7 @@ const sourceNote = computed(
       <!-- 灰阶 -->
       <section class="block">
         <h2 class="block__title">二、中性灰阶（承担 90% 的面积）</h2>
-        <table class="table">
+        <div class="spec-table-scroll"><table class="table">
           <thead>
             <tr>
               <th style="width: 120px">色值</th>
@@ -235,13 +235,13 @@ const sourceNote = computed(
               <td>{{ g.use }}</td>
             </tr>
           </tbody>
-        </table>
+        </table></div>
       </section>
 
       <!-- 对比度 -->
       <section class="block">
         <h2 class="block__title">三、对比度硬线（这是"能不能用"的判据，不是审美）</h2>
-        <table class="table">
+        <div class="spec-table-scroll"><table class="table">
           <thead>
             <tr>
               <th>组合</th>
@@ -260,7 +260,7 @@ const sourceNote = computed(
               </td>
             </tr>
           </tbody>
-        </table>
+        </table></div>
         <p class="note">
           这一版没有"不达 4.5 的例外"：主色换成河大校徽蓝 #154494 之后，它对白底 9.19:1，
           <strong>既能画图形也能承载文字</strong>。此前用的 DeepSeek 蓝 #4d6bfe 只有 4.33:1，
@@ -275,7 +275,7 @@ const sourceNote = computed(
           顶栏右侧的「皮肤」按钮，或按 <span class="t-mono">⌘K</span> 搜"皮肤"。选择记在本地，
           页面的 <span class="t-mono">&lt;html&gt;</span> 上只多出几个 <span class="t-mono">data-*</span> 属性。
         </p>
-        <table class="table" style="margin-top: 16px">
+        <div class="spec-table-scroll"><table class="table" style="margin-top: 16px">
           <thead>
             <tr>
               <th style="width: 90px">轴</th>
@@ -294,7 +294,7 @@ const sourceNote = computed(
               <td class="t-dim" style="font-size: var(--fs-12)">{{ a.note }}</td>
             </tr>
           </tbody>
-        </table>
+        </table></div>
         <p class="note">
           3 × 2 × 3 = <strong>18 种组合</strong>，全部只改值：颜色、圆角、阴影、间距、表面层级。
           <strong>凡是要改 DOM 顺序、条目数量、组件是否存在 的，都不是皮肤，是分支</strong> ——
@@ -316,7 +316,7 @@ const sourceNote = computed(
           判据是<strong>频率</strong>：一天看几十次的东西不动（导航条、按钮、列表项自身）；
           动的是"数字变了""话正在出来""这一步推进了"。所以命令面板刻意没有开合动画。
         </p>
-        <table class="table" style="margin-top: 16px">
+        <div class="spec-table-scroll"><table class="table" style="margin-top: 16px">
           <thead>
             <tr>
               <th style="width: 170px">场景</th>
@@ -331,7 +331,7 @@ const sourceNote = computed(
               <td class="t-dim" style="font-size: var(--fs-12)">{{ m.from }}</td>
             </tr>
           </tbody>
-        </table>
+        </table></div>
         <p class="note">
           曲线只有三条，都取自生产 CSS 实测：<span class="t-mono">--ease-out: cubic-bezier(0.23, 1, 0.32, 1)</span>（Linear 的
           ease-out-quint）、<span class="t-mono">--ease-in-out: cubic-bezier(0.77, 0, 0.175, 1)</span>、
@@ -345,7 +345,7 @@ const sourceNote = computed(
       <!-- 排版 -->
       <section class="block">
         <h2 class="block__title">六、排版：六档字号，正文 16px</h2>
-        <table class="table">
+        <div class="spec-table-scroll"><table class="table">
           <thead>
             <tr>
               <th style="width: 180px">令牌 / 字重</th>
@@ -358,7 +358,7 @@ const sourceNote = computed(
               <td>{{ ty.use }}</td>
             </tr>
           </tbody>
-        </table>
+        </table></div>
         <p class="note">
           字体栈只有系统无衬线 + 等宽两套：<strong>不下载任何字体</strong>。原来那个十几 MB 的手写体被移除后，
           首屏不再有字体抖动。
@@ -496,7 +496,7 @@ const sourceNote = computed(
       <!-- 不做的 -->
       <section class="block">
         <h2 class="block__title">九、明确不做的（附理由，防止下一版又加回来）</h2>
-        <table class="table">
+        <div class="spec-table-scroll"><table class="table">
           <thead>
             <tr>
               <th style="width: 34%">不做</th>
@@ -509,7 +509,7 @@ const sourceNote = computed(
               <td class="t-dim">{{ r.why }}</td>
             </tr>
           </tbody>
-        </table>
+        </table></div>
       </section>
 
       <!-- 层级 -->

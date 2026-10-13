@@ -1,0 +1,64 @@
+Vue
+Search…
+CTRL
+K
+Home
+Inbox
+4
+Customers
+Settings
+General
+Members
+Notifications
+Security
+Feedback
+Help & Support
+Benjamin Canac
+Home
+Sep 29, 2026 - Oct 13, 2026
+Daily
+CUSTOMERS
+449
++3%
+CONVERSIONS
+1468
++19%
+REVENUE
+$381,075
++16%
+ORDERS
+291
++14%
+
+REVENUE
+
+$81,723
+
+1 Oct
+3 Oct
+5 Oct
+7 Oct
+9 Oct
+11 Oct
+ID	Date	Status	Email
+Amount
+
+
+#4596	Oct 12, 10:58	Paid	james.anderson@example.com
+€958.00
+
+#4598	Oct 12, 00:58	Failed	james.anderson@example.com
+€457.00
+
+#4597	Oct 11, 10:58	Paid	mia.white@example.com
+€806.00
+
+#4600	Oct 11, 08:58	Failed	emma.davis@example.com
+€797.00
+
+#4599	Oct 11, 02:58	Failed	emma.davis@example.com
+€154.00
+Notification We use first-party cookies to enhance your experience on our website.AcceptOpt out
+We use first-party cookies to enhance your experience on our website.
+Accept
+Opt out

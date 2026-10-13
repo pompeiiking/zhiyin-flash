@@ -1,0 +1,16 @@
+<script setup lang="ts">
+import { ref } from 'vue'
+import { useAiTask } from '../lib/use-ai-task'
+import type { BindResult } from '../api/ai-types'
+import { backendClient } from '../api/backend-client'
+import { backendDemo } from '../lib/backend-demo'
+import AiStatus from './AiStatus.vue'
+import AiResultMeta from './AiResultMeta.vue'
+import { demoAi } from '../data/demo-ai'
+import type { AiResult } from '../api/ai-types'
+const mode=ref('sample'),code=ref(''),validation=ref(''),status=ref(''),task=useAiTask<BindResult>(),reading=ref(false)
+defineEmits<{ sample: [] }>()
+async function loadWorkspace(){if(reading.value)return;reading.value=true;status.value='';try{const result=await backendClient.workspace();backendDemo.setWorkspace(result);status.value='已读取核验后的个人资料。'}catch{status.value='核验结果已取得，但最新档案暂时没有读取成功。原内容仍保留，可重试读取。'}finally{reading.value=false}}
+async function verify(){validation.value='';if(mode.value==='sample'){backendDemo.verifySample();task.result.value=demoAi('chsi') as AiResult<BindResult>;status.value='已展示本地核验流程样例，没有提交验证码。';return}if(backendDemo.state.dataMode==='demo'){validation.value='个人资料核验需要先在账号设置中切换到服务数据。';return}if(!code.value.trim()){validation.value='请填写在线验证码。';return}const result=await task.run('chsi',{arg:code.value.trim()});if(result){result.data.lifted.forEach(p=>backendDemo.markProfileChange(p.dim));await loadWorkspace()}}
+</script>
+<template><div><p class="ws-muted">仅需学信网在线验证码，无需账号密码。示例核验不提交验证码；个人资料核验按你选择的方式进行。</p><fieldset class="ws-field ws-section"><legend>核验方式</legend><label class="direction-radio"><input v-model="mode" value="sample" type="radio" :disabled="task.busy.value"/>查看演示结果</label><label class="direction-radio"><input v-model="mode" value="service" type="radio" :disabled="task.busy.value"/>核验个人资料</label></fieldset><form @submit.prevent="verify"><label class="ws-field">在线验证码<input v-model="code" autocomplete="off" maxlength="80" :placeholder="mode==='sample'?'演示可填写 DEMO-2026':'输入本次申请的在线验证码'"/></label><p v-if="validation" class="ws-field-error" role="alert">{{ validation }}</p><button class="btn btn--primary" :disabled="task.busy.value||reading" type="submit">{{ mode==='sample'?'查看核验示例':task.busy.value?'正在核验…':'核验并更新资料' }}</button><a class="ws-text-link ws-section" href="https://www.chsi.com.cn/" target="_blank" rel="noopener noreferrer">去学信网获取验证码</a></form><AiStatus :busy="task.busy.value" :error="task.error.value" :progress="task.progress.value" @cancel="task.cancel" @retry="verify"/><p v-if="task.error.value&&mode==='service'" class="ws-muted">验证码已失效或过期时，请重新申请；服务不可用时可稍后重试，原资料和输入保留。</p><template v-if="task.result.value"><ol class="ws-mini-list"><li v-for="step in task.result.value.data.steps" :key="step.id"><strong>{{ step.label }}</strong><p>{{ step.detail }}</p><p class="ws-muted">{{ step.source }}<span v-if="step.got"> · {{ step.got }} 条资料</span></p></li></ol><ul class="ws-mini-list"><li v-for="p in task.result.value.data.lifted" :key="p.dim">{{ p.because }}</li></ul><AiResultMeta :result="task.result.value"/><p v-if="status" class="desk-status" role="status">{{ status }}</p><button class="btn ws-section" :disabled="reading" @click="loadWorkspace">{{ reading?'正在读取…':'读取更新后的资料' }}</button></template></div></template>

@@ -1,0 +1,64 @@
+[
+  {
+    "id": "nuxt-dashboard",
+    "url": "https://dashboard-vue-template.nuxt.dev/",
+    "status": 200,
+    "finalUrl": "https://dashboard-vue-template.nuxt.dev/",
+    "title": "Vue Dashboard Template",
+    "textChars": 815,
+    "desktop": "references/nuxt-dashboard-1280.jpg",
+    "mobile": "references/nuxt-dashboard-390.jpg",
+    "result": "read-and-captured"
+  },
+  {
+    "id": "nuxt-chat",
+    "url": "https://chat-vue-template.nuxt.dev/",
+    "status": 200,
+    "finalUrl": "https://chat-vue-template.nuxt.dev/",
+    "title": "Vue AI Chatbot Template",
+    "textChars": 0,
+    "result": "response-not-useful"
+  },
+  {
+    "id": "nuxt-calendar",
+    "url": "https://calendar-template.nuxt.dev/",
+    "status": 200,
+    "finalUrl": "https://calendar-template.nuxt.dev/month/2026-10-12",
+    "title": "Nuxt Calendar Template",
+    "textChars": 4743,
+    "desktop": "references/nuxt-calendar-1280.jpg",
+    "mobile": "references/nuxt-calendar-390.jpg",
+    "result": "read-and-captured"
+  },
+  {
+    "id": "message",
+    "url": "https://www.shadcn-vue.com/docs/components/message",
+    "status": 200,
+    "finalUrl": "https://www.shadcn-vue.com/docs/components/message",
+    "title": "Message - shadcn/vue",
+    "textChars": 10069,
+    "desktop": "references/message-1280.jpg",
+    "result": "read-and-captured"
+  },
+  {
+    "id": "fileupload",
+    "url": "https://primevue.dev/fileupload/",
+    "status": 200,
+    "finalUrl": "https://primevue.dev/fileupload/",
+    "title": "Vue File Upload Component",
+    "textChars": 14171,
+    "desktop": "references/fileupload-1280.jpg",
+    "result": "read-and-captured"
+  },
+  {
+    "id": "calendar",
+    "url": "https://fullcalendar.io/demos",
+    "status": 200,
+    "finalUrl": "https://fullcalendar.io/demos",
+    "title": "Demos | FullCalendar",
+    "textChars": 2887,
+    "desktop": "references/calendar-1280.jpg",
+    "mobile": "references/calendar-390.jpg",
+    "result": "read-and-captured"
+  }
+]

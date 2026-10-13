@@ -7,7 +7,10 @@ export class BackendError extends Error {
 }
 type Envelope<T> = { code: number; message: string; data: T; trace_id?: string }
 type Options = { params?: Record<string, string>; query?: Record<string, string | number>; body?: unknown; timeout?: number; form?: FormData }
+export { request as backendRequest }
 async function request<T>(key: keyof typeof operations, options: Options = {}): Promise<T> {
+  const { backendDemo } = await import('../lib/backend-demo')
+  if (backendDemo.state.dataMode === 'demo') { const { demoRequest } = await import('../lib/demo-service'); return await demoRequest(key,options) as T }
   const operation = operations[key]
   let path = operation.path.replace(/\{(\w+)\}/g, (_match, key: string) => {
     const value = options.params?.[key]
@@ -24,6 +27,7 @@ async function request<T>(key: keyof typeof operations, options: Options = {}): 
     const response = await fetch('/api/v1' + path, { method: operation.method, headers, signal: controller.signal, body: options.form ?? (options.body === undefined ? undefined : JSON.stringify(options.body)) })
     const result = await response.json() as Envelope<T>
     if (!response.ok || result.code !== 0) throw new BackendError(result.message || '这次请求没有接上，请稍后重试。', result.code ?? response.status, result.trace_id)
+    if(backendDemo.state.dataMode!=='service')throw new BackendError('数据来源已切换，请重新读取。',1007)
     return result.data
   } catch (error) {
     if (error instanceof BackendError) throw error

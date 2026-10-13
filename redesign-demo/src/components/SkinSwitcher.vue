@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, useId, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { skin, type Accent, type StyleId, type ThemeMode } from '../lib/theme'
+import { PopoverRoot, PopoverTrigger, PopoverPortal, PopoverContent } from 'reka-ui'
 
 /**
  * 皮肤开关。
@@ -17,6 +19,9 @@ import { skin, type Accent, type StyleId, type ThemeMode } from '../lib/theme'
  */
 
 const open = ref(false)
+const titleId = useId()
+const route = useRoute()
+watch(() => route.path, () => { open.value = false })
 
 const themeOptions: { id: ThemeMode; label: string }[] = [
   { id: 'light', label: '浅色' },
@@ -42,19 +47,16 @@ const summary = computed(() => {
   return `${t} · ${a} · ${s}`
 })
 
-function close() {
-  open.value = false
-}
 </script>
 
 <template>
+  <PopoverRoot v-model:open="open">
   <div class="skin">
+    <PopoverTrigger as-child>
     <button
       class="skin__trigger"
       :aria-expanded="open"
       aria-haspopup="dialog"
-      @click="open = !open"
-      @keydown.esc="close"
     >
       <span class="skin__dots" aria-hidden="true">
         <i class="skin__dot skin__dot--1" />
@@ -62,9 +64,11 @@ function close() {
       </span>
       皮肤
     </button>
+    </PopoverTrigger>
 
-    <Transition name="skin-pop">
-      <div v-if="open" class="skin__pop" role="dialog" aria-label="选择皮肤">
+    <PopoverPortal>
+      <PopoverContent class="skin__pop" align="end" :side-offset="8" :collision-padding="12" role="dialog" :aria-labelledby="titleId" aria-label="选择皮肤">
+        <h2 :id="titleId" class="sr-only">选择皮肤</h2>
         <header class="skin__head">
           <span class="t-label">皮肤</span>
           <span class="t-note">{{ summary }}</span>
@@ -78,6 +82,7 @@ function close() {
               :key="o.id"
               class="seg__btn"
               :class="{ 'seg__btn--on': skin.state.theme === o.id }"
+              :aria-pressed="skin.state.theme === o.id"
               @click="skin.setTheme(o.id)"
             >
               {{ o.label }}
@@ -93,6 +98,7 @@ function close() {
               :key="o.id"
               class="seg__btn"
               :class="{ 'seg__btn--on': skin.state.accent === o.id }"
+              :aria-pressed="skin.state.accent === o.id"
               @click="skin.setAccent(o.id)"
             >
               {{ o.label }}
@@ -111,6 +117,7 @@ function close() {
               :key="o.id"
               class="seg__btn"
               :class="{ 'seg__btn--on': skin.state.style === o.id }"
+              :aria-pressed="skin.state.style === o.id"
               @click="skin.setStyle(o.id)"
             >
               {{ o.label }}
@@ -129,15 +136,14 @@ function close() {
 
         <footer class="skin__foot">
           <button class="btn btn--sm btn--block" @click="skin.reset()">
-            恢复默认（跟随系统 · 蓝 · 极简 · 完整动效）
+            恢复默认外观
           </button>
           <p class="t-note">选择记在本地，下次打开还是这套；改的只是令牌，页面结构不动。</p>
         </footer>
-      </div>
-    </Transition>
-
-    <div v-if="open" class="skin__scrim" @click="close" />
+      </PopoverContent>
+    </PopoverPortal>
   </div>
+  </PopoverRoot>
 </template>
 
 <style scoped>
@@ -192,12 +198,11 @@ function close() {
   z-index: var(--z-drawer);
 }
 
-.skin__pop {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
+:global(.skin__pop) {
   z-index: calc(var(--z-drawer) + 1);
-  width: 320px;
+  width: min(320px, calc(100vw - 24px));
+  max-height: var(--reka-popover-content-available-height);
+  overflow-y: auto;
   padding: var(--sp-4);
   background: var(--c-surface);
   border: var(--bw-1) solid var(--c-border);

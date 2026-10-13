@@ -20,10 +20,10 @@ const H = 260
 const PAD = 34
 
 const zones = computed(() => [
-  { key: 'q1', label: '机会大 · 够得着', x: PAD, y: PAD },
-  { key: 'q2', label: '机会小 · 够得着', x: PAD, y: H / 2 + 6 },
-  { key: 'q3', label: '机会小 · 要够一够', x: W / 2 + 6, y: H / 2 + 6 },
-  { key: 'q4', label: '机会大 · 要够一够', x: W / 2 + 6, y: PAD },
+  { key: 'q1', label: '机会小 · 够得着', x: PAD, y: PAD },
+  { key: 'q2', label: '机会小 · 要够一够', x: PAD, y: H / 2 + 6 },
+  { key: 'q3', label: '机会大 · 要够一够', x: W / 2 + 6, y: H / 2 + 6 },
+  { key: 'q4', label: '机会大 · 够得着', x: W / 2 + 6, y: PAD },
 ])
 
 function cx(v: number) {
@@ -118,7 +118,7 @@ function cy(v: number) {
           style="font-size: var(--fs-12)"
           fill="var(--c-text-2)"
         >
-          {{ it.label }}
+          {{ it.role }}
         </text>
       </g>
     </svg>
@@ -139,6 +139,7 @@ function cy(v: number) {
   gap: var(--sp-3);
   align-items: center;
 }
+.quad svg { max-width: 100%; height: auto; }
 
 .quad__dot {
   cursor: pointer;

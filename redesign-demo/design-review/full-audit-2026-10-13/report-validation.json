@@ -1,0 +1,12 @@
+{
+  "date": "2026-10-13",
+  "scenarios": 153,
+  "baselineScenarios": 64,
+  "nonBaselineScenarios": 89,
+  "measurementRecords": 265,
+  "uniqueStateIds": 249,
+  "screenshots": 219,
+  "unfinishedInspections": [],
+  "matrixRows": 104,
+  "brokenLocalReportLinks": []
+}

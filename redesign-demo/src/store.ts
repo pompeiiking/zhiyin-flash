@@ -3,6 +3,7 @@ import { SCENARIOS, scenarioOf } from './data/scenarios'
 import { CHAT_TURNS, DIRECTION_PLANS, NOTICES, PROFILE_FIELDS, TASKS_BY_GRADE } from './data/student'
 import type { ChatTurn, Grade, Notice, ReviewItem, TaskItem } from './data/types'
 import { backendDemo } from './lib/backend-demo'
+import { rememberSession } from './lib/session-cache'
 
 /**
  * 演示状态。
@@ -51,6 +52,8 @@ interface State {
   rippleOpen: boolean
   chatTurns: ChatTurn[]
   profileEdits: Record<string, string>
+  profileEditTimes: Record<string, string>
+  reviewNotes: Record<string, string>
   reviewAttributions: Record<string, NonNullable<ReviewItem['attribution']>>
   currentSessionId: string
   chatBusy: boolean
@@ -107,11 +110,14 @@ const state = reactive<State>({
   rippleOpen: false,
   chatTurns: chatFor(storedAccount),
   profileEdits: {},
+  profileEditTimes: {},
+  reviewNotes: {},
   reviewAttributions: {},
   currentSessionId: backendDemo.state.currentSessionId,
   chatBusy: false,
 })
 
+rememberSession('workspace',state,['grade','tasks','lastDoneId','selectedDirectionId','previousDirectionId','reportVersion','chatCollected','guidesClosed','rippleOpen','chatTurns','profileEdits','profileEditTimes','reviewAttributions','reviewNotes','currentSessionId','noticeQueue','noticeIndex','interventionDismissed'])
 let toastTimer: ReturnType<typeof setTimeout> | null = null
 
 export function toast(message: string): void {
@@ -189,8 +195,8 @@ export const demo = {
       state.selectedDirectionId = null
       state.previousDirectionId = null
       state.lastDoneId = null
-      state.profileEdits = {}
-      state.reviewAttributions = {}
+      state.profileEdits = {}; state.profileEditTimes = {}
+      state.reviewAttributions = {}; state.reviewNotes = {}
       backendDemo.reset(account)
       state.currentSessionId = backendDemo.state.currentSessionId
       state.noticeQueue = account === 'fresh' ? [] : NOTICES.map((n) => ({ ...n }))
@@ -304,6 +310,7 @@ export const demo = {
   // ---- 方向：选择是用户的，撤回是产品的（第 7 幕）----
   chooseDirection(id: string) {
     if (state.selectedDirectionId === id) return
+    backendDemo.markDirectionChange()
     backendDemo.recordEvent('decision_select')
     state.previousDirectionId = state.selectedDirectionId
     state.selectedDirectionId = id
@@ -338,9 +345,11 @@ export const demo = {
     state.openField = state.openField === key ? null : key
   },
   updateProfileField(key: string, value: string) {
+    state.profileEditTimes[key] = new Date().toLocaleString('zh-CN')
     if (!value.trim()) return
     if (value.trim().length > 40) { toast('这条信息最多 40 个字，请简短说明。'); return }
     state.profileEdits[key] = value.trim()
+    backendDemo.markProfileChange(key)
     toast('更正已保存，可通过咨询补充依据。')
   },
   addChatTurn(turn: ChatTurn) {
@@ -354,6 +363,7 @@ export const demo = {
     state.currentSessionId = id
   },
   setChatBusy(busy: boolean) { state.chatBusy = busy },
+  setReviewNote(id: string, note: string) { state.reviewNotes[id] = note.trim().slice(0,500) },
   setReviewAttribution(id: string, value: NonNullable<ReviewItem['attribution']>) {
     backendDemo.recordEvent('review')
     state.reviewAttributions[id] = value
@@ -422,8 +432,8 @@ export const demo = {
     state.openField = null
     state.rippleOpen = false
     state.chatTurns = chatFor(state.account)
-    state.profileEdits = {}
-    state.reviewAttributions = {}
+    state.profileEdits = {}; state.profileEditTimes = {}
+    state.reviewAttributions = {}; state.reviewNotes = {}
     state.lastDoneId = null
     state.noticeQueue = state.account === 'fresh' ? [] : NOTICES.map((n) => ({ ...n }))
     toast('演示数据已复位')

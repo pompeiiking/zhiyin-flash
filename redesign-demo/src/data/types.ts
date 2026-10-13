@@ -20,7 +20,7 @@ export interface Confidence {
   bars: number
 }
 
-export type FieldSource = '对话' | '学信网' | '教务系统' | '学校' | '行为记录'
+export type FieldSource = '对话' | '学信网' | '教务系统' | '学校' | '行为记录' | '简历材料' | '综合分析' | '导师记录' | '本人填写'
 
 /** 「对你的了解」里的一条 —— 带来源与把握（可被盘问） */
 export interface ProfileField {
@@ -158,7 +158,7 @@ export interface ReviewItem {
   what: string
   result: 'done' | 'partial' | 'missed'
   /** 归因三选一：任务太大 / 方法不对 / 方向要重估（不归到人） */
-  attribution?: '任务太大' | '方法不对' | '方向要重估'
+  attribution?: '任务太大' | '方法不对' | '方向要重估' | '其他' | '尚不确定'
 }
 
 /** 一个年级 = 一套使用场景（评审要求：按一年级到四年级设计内容） */

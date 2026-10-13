@@ -8,7 +8,7 @@ defineProps<{ items: TaskItem[]; mode?: string }>()
 <template>
   <TransitionGroup v-if="items.length" name="task-list" tag="ul" class="ws-tasks">
     <li v-for="t in items" :key="t.id" class="ws-task" :class="{ 'ws-task--done': t.bucket === 'done' }">
-      <button v-if="t.bucket !== 'waiting'" class="ws-task__check" :aria-label="(t.bucket === 'done' ? '恢复任务：' : '完成任务：') + t.title" @click="t.bucket === 'done' ? demo.reopenTask(t.id) : demo.completeTask(t.id)">
+      <button v-if="t.bucket !== 'waiting'" class="ws-task__check" :aria-pressed="t.bucket === 'done'" :aria-label="(t.bucket === 'done' ? '恢复任务：' : '完成任务：') + t.title" @click="t.bucket === 'done' ? demo.reopenTask(t.id) : demo.completeTask(t.id)">
         <UiIcon v-if="t.bucket === 'done'" name="check" :size="16" />
       </button>
       <span v-else class="ws-task__waiting" aria-label="等待中" />

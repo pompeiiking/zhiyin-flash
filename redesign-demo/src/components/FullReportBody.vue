@@ -1,0 +1,14 @@
+<script setup lang="ts">
+import type { ReportFullTextView } from '../api/backend-types'
+import type { DeepReadonly } from 'vue'
+const props = defineProps<{ report: DeepReadonly<ReportFullTextView> }>()
+const labels: Record<string,string> = { strengths:'优势', weaknesses:'短板', opportunities:'机会', threats:'风险', strength:'优势', weakness:'短板', opportunity:'机会', threat:'风险' }
+function content(value: unknown): string {
+  if (value === null || value === undefined) return ''
+  if (Array.isArray(value)) return value.map(content).filter(Boolean).join('；')
+  if (typeof value === 'object') return Object.values(value).map(content).filter(Boolean).join('；')
+  return String(value)
+}
+function jump(id: string) { document.getElementById('full-'+props.report.report_id+'-'+id)?.scrollIntoView({ block:'start', behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth' }) }
+</script>
+<template><article class="full-report reading-prose"><p class="ws-muted">第{{ report.version }}版 · {{ new Date(report.generated_at).toLocaleString('zh-CN') }}</p><section v-if="report.verdict && content(report.verdict)" class="report-key-evidence"><h2>总体结论</h2><p>{{ content(report.verdict) }}</p></section><nav class="report-toc" aria-label="完整报告章节"><a v-for="s in report.sections" :key="s.id" :href="'#full-'+report.report_id+'-'+s.id" @click.prevent="jump(s.id)">{{ s.title }}</a></nav><section v-for="s in report.sections" :key="s.id" :id="'full-'+report.report_id+'-'+s.id" class="report-chapter"><h2>{{ s.title }}</h2><p v-if="s.method" class="ws-muted">分析方法：{{ s.method }}</p><article v-for="item in s.items" :key="item.index+'-'+item.name" class="report-dimension"><div class="ws-section-head"><h3>{{ item.name }}</h3><span class="ws-muted">{{ item.tag }}</span></div><p>{{ item.conclusion }}</p><div v-if="item.evidence" class="report-evidence"><h4>支持依据</h4><p>{{ item.evidence }}</p></div></article></section><section v-if="report.swot && Object.keys(report.swot).length" class="report-chapter"><h2>优势、短板与外部条件</h2><div class="report-swot"><section v-for="(value,key) in report.swot" :key="key"><h3>{{ labels[key] ?? '补充分析' }}</h3><p>{{ content(value) || '暂未提供' }}</p></section></div></section><section v-if="report.methodologies?.length" class="report-chapter"><h2>方法依据</h2><ul class="ws-mini-list"><li v-for="method in report.methodologies" :key="method">{{ method }}</li></ul></section><section v-if="report.sources?.length" class="report-chapter"><h2>资料来源</h2><ul class="ws-mini-list"><li v-for="source in report.sources" :key="source"><a v-if="/^https?:\/\//.test(source)" class="ws-text-link" :href="source" target="_blank" rel="noopener noreferrer">{{ source }}</a><span v-else>{{ source }}</span></li></ul></section><p v-if="!report.sections?.length" class="ws-muted">本次报告尚未返回详细分析章节。</p></article></template>

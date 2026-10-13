@@ -13,6 +13,8 @@ import { INTERVENTION } from './data/student'
 import DesktopSidebar from './components/DesktopSidebar.vue'
 import { useNavigationLayout } from './lib/layout'
 import { backendDemo } from './lib/backend-demo'
+import { routeLoadError, retryRoute } from './router'
+import { sessionCacheAvailable } from './lib/session-cache'
 
 /**
  * 应用壳。
@@ -82,8 +84,8 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="app" :class="{ 'app--workspace': !bare, 'app--desktop': !bare && desktop, 'app--sidebar-collapsed': !bare && desktop && layout.sidebarCollapsed.value, 'app--chat': route.name === 'chat' }" :style="{ '--progress-max': progressMax }">
-    <template v-if="bare">
+  <div class="app" :data-route="route.path" :class="{ 'app--workspace': !bare, 'app--desktop': !bare && desktop, 'app--sidebar-collapsed': !bare && desktop && layout.sidebarCollapsed.value, 'app--chat': route.name === 'chat' }" :style="{ '--progress-max': progressMax }">
+    <template v-if="bare && !routeLoadError">
       <RouterView v-slot="{ Component }">
         <Transition name="page" mode="out-in">
           <component :is="Component" :key="route.path" />
@@ -99,7 +101,9 @@ onMounted(() => {
         <div class="app__atmos" aria-hidden="true" />
 
         <div class="app__content">
-          <RouterView v-slot="{ Component }">
+          <p class="demo-data-label"><span>{{ backendDemo.state.dataMode==='demo'?'演示数据 · 虚构人物与本地预设结果':'服务数据 · 读取结果需后端支持' }}</span><button class="ws-text-button" @click="workspaceHeader?.showAccount()">数据设置</button></p>
+          <section v-if="routeLoadError" class="ws-page ws-route-error" role="alert"><h1>页面暂时没有加载成功</h1><p>{{ sessionCacheAvailable ? '本次演示记录和已保存的咨询草稿会在重新加载后恢复。' : '浏览器未能保存本次演示上下文，请先保留重要内容。' }}可以重新加载，或先查看其他页面。</p><div class="ws-inline-actions"><button class="btn btn--primary" @click="retryRoute">重新加载</button><RouterLink class="btn" to="/home">回到行动计划</RouterLink></div></section>
+          <RouterView v-else v-slot="{ Component }">
             <component :is="Component" :key="route.path" />
           </RouterView>
         </div>

@@ -41,7 +41,7 @@ function sessionDate(date?: string | null) { return date ? new Date(date).toLoca
         </AccordionItem>
       </AccordionRoot>
     </nav>
-    <section class="desk-history" aria-label="历史会话"><div class="desk-history__head"><h2>历史会话</h2><span>{{ backendDemo.state.sessions.length }}</span></div><button v-for="session in sessions" :key="session.task_id" class="desk-session" :aria-pressed="route.path === '/chat' && session.task_id === demo.state.currentSessionId" :disabled="demo.state.chatBusy" @click="resumeSession(session.task_id)"><span>{{ session.task_name || '未命名咨询' }}</span><small>{{ sessionDate(session.last_active_at) }}</small></button><p v-if="!sessions.length" class="desk-history__empty">创建咨询后，会话将显示在这里。</p></section>
+    <section class="desk-history" aria-label="历史会话"><div class="desk-history__head"><h2>历史会话</h2><span>{{ backendDemo.state.sessions.length }}</span></div><button v-for="session in sessions" :key="session.task_id" class="desk-session" :title="session.task_name" :aria-pressed="route.path === '/chat' && session.task_id === demo.state.currentSessionId" :disabled="demo.state.chatBusy" @click="resumeSession(session.task_id)"><span>{{ session.task_name || '未命名咨询' }}</span><small>{{ sessionDate(session.last_active_at) }}</small></button><p v-if="!sessions.length" class="desk-history__empty">创建咨询后，会话将显示在这里。</p></section>
     </div>
     <div class="desk-footer">
       <button class="desk-person" aria-label="账号与演示设置" @click="$emit('account')"><span class="desk-person__avatar">{{ userName.slice(0, 1) }}</span><span><strong>{{ userName }}</strong><small>{{ demo.state.account === 'fresh' ? '演示账号 · 待完善资料' : demo.use.scenario.value.grade + ' · ' + STUDENT.school }}</small></span><UiIcon name="chevron" :size="16" /></button>
