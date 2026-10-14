@@ -38,10 +38,10 @@ const PRIMARY = [
   {
     name: '蓝 · 主色 · 河大校徽蓝',
     token: '--blue-500 / --blue-600',
-    hex: ['#154494', '#113a7d'],
-    from: '河北大学校徽本体（从校徽矢量图渲染出的 PNG 里量得：蓝色像素 98.3% 落在同一值上）',
-    url: 'https://www.hbu.edu.cn',
-    use: '主按钮、链接、当前步骤、图表主序列。校徽蓝 #154494 对白底 9.19:1 —— 够深，所以它既是品牌色也是文字色，不再分"图形档 / 文字档"两支；悬停压深到 #113a7d。',
+    hex: ['#0058a7', '#004885'],
+    from: '河北大学官网「标识系统」页的正式资产：圆形校徽 PNG（187×188）与校名标准字 PNG（529×213），两份的非背景像素 100% 都是 #0058a7',
+    url: 'https://www.hbu.edu.cn/xxgk/bsxt.htm',
+    use: '主按钮、链接、当前步骤、图表主序列。校徽蓝 #0058a7 对白底 7.11:1 —— 够深，所以它既是品牌色也是文字色，不再分"图形档 / 文字档"两支；悬停压深到 #004885。',
   },
   {
     name: '红 · 注意色',
@@ -89,10 +89,10 @@ const CONTRAST = [
   { pair: '次要文字 #4b5157 / 页面底 #f7f6f6', value: '7.45:1', pass: true },
   { pair: '说明文字 #61666b / #ffffff', value: '5.80:1', pass: true },
   { pair: '说明文字 #61666b / 页面底 #f7f6f6', value: '5.38:1', pass: true },
-  { pair: '白字 / 主色 #154494', value: '9.18:1', pass: true },
-  { pair: '主色 #154494 / #ffffff', value: '9.18:1', pass: true },
-  { pair: '主色 #154494 / 页面底 #f7f6f6', value: '8.51:1', pass: true },
-  { pair: '主色 #154494 / 自身浅底 #eff3fa', value: '8.25:1', pass: true },
+  { pair: '白字 / 主色 #0058a7', value: '7.11:1', pass: true },
+  { pair: '主色 #0058a7 / #ffffff', value: '7.11:1', pass: true },
+  { pair: '主色 #0058a7 / 页面底 #f7f6f6', value: '6.59:1', pass: true },
+  { pair: '主色 #0058a7 / 自身浅底 #eef5fc', value: '6.47:1', pass: true },
   { pair: '注意色 #96000e / #ffffff', value: '9.12:1', pass: true },
   { pair: '注意标签 #7d000c / #fdf7f4', value: '10.54:1', pass: true },
   { pair: '已完成标签 #61666b / #ebedf2', value: '4.95:1', pass: true },
@@ -262,7 +262,7 @@ const sourceNote = computed(
           </tbody>
         </table></div>
         <p class="note">
-          这一版没有"不达 4.5 的例外"：主色换成河大校徽蓝 #154494 之后，它对白底 9.19:1，
+          这一版没有"不达 4.5 的例外"：主色换成河大校徽蓝 #0058a7 之后，它对白底 7.11:1，
           <strong>既能画图形也能承载文字</strong>。此前用的 DeepSeek 蓝 #4d6bfe 只有 4.33:1，
           所以才必须分两支（品牌原色只当图形、文字降到深蓝）—— 换成校徽蓝之后那条分叉取消了。
         </p>

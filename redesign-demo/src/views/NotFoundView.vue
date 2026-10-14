@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { NAV_SECTIONS } from '../lib/nav'
+import { WORKSPACE_GROUPS, WORKSPACE_PRIMARY, PORTAL_LINK } from '../lib/workspace-nav'
 
 /**
  * 地址不存在。
@@ -31,17 +31,21 @@ import { NAV_SECTIONS } from '../lib/nav'
     <section class="card card--pad" style="margin-top: var(--sp-5)">
       <h2 class="card__title">现在有效的地址</h2>
       <ul class="links">
-        <li v-for="s in NAV_SECTIONS" :key="s.key" class="links__item">
-          <RouterLink class="links__a" :to="s.to">{{ s.label }}</RouterLink>
-          <span class="links__hint">{{ s.subs.map((x) => x.label).join(' · ') || '—' }}</span>
-        </li>
         <li class="links__item">
-          <RouterLink class="links__a" to="/spec">设计规范</RouterLink>
-          <span class="links__hint">色板、皮肤、动效那张表</span>
+          <RouterLink class="links__a" :to="WORKSPACE_PRIMARY.to">{{ WORKSPACE_PRIMARY.label }}</RouterLink>
+          <span class="links__hint">{{ WORKSPACE_PRIMARY.hint }}</span>
         </li>
+        <template v-for="g in WORKSPACE_GROUPS" :key="g.key">
+          <li v-for="item in g.items" :key="item.key" class="links__item">
+            <RouterLink class="links__a" :to="item.to">{{ item.label }}</RouterLink>
+            <span class="links__hint">{{ g.label }} · {{ item.hint }}</span>
+          </li>
+        </template>
+        <!-- 只列**真实的学生路由**。原来这里还渲染 HELP_LINKS（/spec /tools /path），
+             等于把内部文档当成"现在有效的地址"推荐给学生；门户也不该混进这个列表。 -->
         <li class="links__item">
-          <RouterLink class="links__a" to="/path">大一到大四 · 七步操作路径</RouterLink>
-          <span class="links__hint">含界面截图</span>
+          <RouterLink class="links__a" :to="PORTAL_LINK.to">{{ PORTAL_LINK.label }}</RouterLink>
+          <span class="links__hint">{{ PORTAL_LINK.hint }}</span>
         </li>
       </ul>
     </section>

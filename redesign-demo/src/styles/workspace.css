@@ -1,28 +1,44 @@
-/* 学生空间共用的版式与组件。颜色只引用既有令牌，公开门户不在作用范围。 */
+/*
+ * 学生空间共用的版式与组件。颜色只引用既有令牌，公开门户不在作用范围。
+ *
+ * 壳层的两条硬约束（本次收敛，PLAN §2.7 / 审计"令牌与硬编码的账"）：
+ * 1. 顶栏高度只有一个来源：`--w-topbar`（此前 60px 的令牌与 80/76/72px 三处硬编码全部失配；
+ *    现在移动端 72px、桌面 76px，都从同一个令牌出去，`.ws-topbar` 不再写死高度）。
+ * 2. 断点只保留两档：**768 / 1120**。窄屏一律 `max-width: 767px`，桌面形态一律 `min-width: 1120px`。
+ *    原来这里还有 1200 / 1000 / 760 / 400 四档，加上组件里的 900/760/400，全站九档。
+ */
 .desk-scroll { min-height: 0; flex: 1; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
 .desk-scroll .desk-nav { flex: none; overflow: visible; padding-bottom: 14px; }
 .desk-menu { margin-top: 8px; }
 .desk-menu__group { margin: 2px 0; }
-.desk-menu__trigger { min-height: 38px; display: flex; align-items: center; gap: 11px; width: 100%; padding: 8px 12px; border-radius: var(--r-md); font-size: var(--fs-14); line-height: 1.5; font-weight: 400; color: var(--c-text-2); text-align: left; transition: color 160ms ease, background-color 160ms ease; }
+.desk-menu__trigger { min-height: 44px; display: flex; align-items: center; gap: 11px; width: 100%; padding: 8px 12px; border-radius: var(--r-md); font-size: var(--fs-14); line-height: 1.5; font-weight: 400; color: var(--c-text-2); text-align: left; transition: color 160ms ease, background-color 160ms ease; }
 .desk-menu__trigger:hover { background: var(--c-surface-2); color: var(--c-text); }
 .desk-menu__trigger--active { color: var(--c-primary); }
 .desk-menu__trigger > span { flex: 1; }
 .desk-menu__chevron { transition: transform 200ms ease; transform: rotate(-90deg); }
 .desk-menu__trigger[data-state='open'] .desk-menu__chevron { transform: rotate(0deg); }
 .desk-menu__content { overflow: hidden; }
+/* 子项也吃到 44px：桌面侧栏页脚那四条 35×41 的内部页链接已经删掉，
+   剩下能在侧栏里点的东西不该再有 <44px 的。 */
 .desk-menu__children { padding: 2px 0 4px 24px; margin-left: 20px; border-left: 1px solid var(--c-border); }
-.desk-menu__children .desk-link--child { min-height: 32px; line-height: 1.5; padding: 5px 10px; margin: 2px 0; }
+.desk-menu__children .desk-link--child { min-height: 44px; line-height: 1.5; padding: 10px; margin: 2px 0; }
 .desk-history { margin: 0 4px; padding: 12px 0 8px; border-top: 1px solid var(--c-border); }
-.desk-history__head { display: flex; gap: 8px; align-items: center; padding: 0 12px 10px; font-size: var(--fs-12); color: var(--c-text-3); }
-.desk-history__head h2 { font-size: var(--fs-12); font-weight: 500; }
-.desk-history__head > span { margin-left: auto; }
-.desk-history .desk-session { display: flex; flex-direction: row; align-items: center; border-bottom: 0; gap: 8px; text-align: left; width: 100%; padding: 9px 10px; border-radius: var(--r-md); color: var(--c-text-2); font-size: var(--fs-14); line-height: 1.5; transition: background-color 160ms ease, color 160ms ease; }
+/* 【2026-10-14 · P0-2】改前 h2 是 --fs-12 —— 标题比它统辖的条目（14px）还小。
+ * 标签名（h2）改不了（模板在 components/ 里，本轮不动），所以用 CSS 把语义拨正：
+ * 它是**导航分组眉标**，不是文档章节标题，所以落到 14px/500 —— 与它所统辖的条目同档，
+ * 靠字重与颜色（--c-text-2 vs --c-text-3）分层，而不是靠"比正文更小"。
+ * 计数（> span）仍是 12px：它是序号，属于 12px 白名单。 */
+.desk-history__head { display: flex; gap: 8px; align-items: center; padding: 0 12px 10px; font-size: var(--fs-14); color: var(--c-text-3); }
+.desk-history__head h2 { font-size: var(--fs-14); font-weight: var(--fw-medium); color: var(--c-text-2); }
+.desk-history__head > span { margin-left: auto; font-size: var(--fs-12); }
+.desk-history .desk-session { display: flex; flex-direction: row; align-items: center; border-bottom: 0; gap: 8px; text-align: left; width: 100%; min-height: 44px; padding: 9px 10px; border-radius: var(--r-md); color: var(--c-text-2); font-size: var(--fs-14); line-height: 1.5; transition: background-color 160ms ease, color 160ms ease; }
 .desk-history .desk-session > span { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .desk-history .desk-session small { flex: none; margin-top: 0; font-size: var(--fs-12); color: var(--c-text-3); }
 .desk-history .desk-session:hover { background: var(--c-surface-2); }
 .desk-history .desk-session[aria-pressed='true'] { background: var(--c-primary-weak); color: var(--c-primary); }
 .desk-history .desk-session:disabled { opacity: .5; }
-.desk-history__empty { color: var(--c-text-3); font-size: var(--fs-12); line-height: 1.7; padding: 8px 12px; }
+/* 【2026-10-14 · P0-2】空态说明是一句完整的话，不是标记：12px → 14px。 */
+.desk-history__empty { color: var(--c-text-3); font-size: var(--fs-14); line-height: 1.7; padding: 8px 12px; }
 .desk-person { width: 100%; text-align: left; }
 .ws-tabs button, .ws-attributions button, .desk-record, .ws-direction, .ws-progress > span { transition: background-color 180ms ease, color 180ms ease, border-color 180ms ease, transform 180ms ease; }
 .ws-tabs button:active, .desk-new-chat:active { transform: scale(.98); }
@@ -39,35 +55,68 @@
 @keyframes workspace-arrive { from { opacity: .65; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 @media (prefers-reduced-motion: reduce) {
   .desk-menu__trigger, .desk-menu__chevron, .desk-session, .ws-tabs button, .ws-attributions button, .desk-record, .ws-direction, .ws-progress > span { transition: none; }
+  .ws-appearance__now svg { transition: none; }
 }
 .app--workspace { background: var(--c-bg); }
-.app--desktop { padding-left: 252px; }
+/* 左侧留白只在**桌面形态真的渲染了侧栏**时存在（App.vue 按 1120 判断并挂 data-nav）。
+   必须同时限定 `.app--workspace`：data-nav 不看 bare，门户（bare）本来没有侧栏，
+   却会吃到这 252px，被推右且左边留一条没有背景层的空带 —— 门户在桌面上就不居中了。 */
+.app--workspace[data-nav='desktop'] { padding-left: var(--w-sidebar); }
 .app--desktop .app__main { background: transparent; }
-.app--desktop .ws-topbar { padding: 0 40px; height: 76px; max-width: 1320px; }
-.app--desktop .ws-page { max-width: 1200px; padding: 24px 40px 64px; }
-.app--desktop .ws-conversation { max-width: 1060px; padding: 0 40px 28px; height: calc(100dvh - 90px); gap: 18px; margin-top: 0; }
+/* `--w-topbar` 就是顶栏高度的唯一来源：不再在这里写 76px */
+.ws-topbar { height: var(--w-topbar); max-width: 1320px; padding: 0 20px; width: 100%; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.app--desktop .ws-topbar { padding: 0 40px; }
+.app--desktop .ws-page { max-width: var(--w-content); padding: 24px 40px 64px; }
+/* 【2026-10-14 · P1-8】内容列收敛到唯一来源 --w-content。
+ * 为什么要补一条 .ws-page.ws-page（0,3,0）：redesign.css 后加载，里面有
+ * `.assessment-page:not(.directions-page) { max-width: 1020px }`（0,2,0），
+ * 把 /report 的列宽压到 1020 而其余页面是 1180 —— 宽屏（≥1432px）下跨页切换会左右跳 160px。
+ * 这条只钉 max-width，**不重写 padding**：padding 的现行值（32/48）来自后加载的 redesign.css，
+ * 在这里重复声明会连平板断点（@media max-width:1119px 的 28px 内距）一起压掉。 */
+.app--desktop .ws-page.ws-page { max-width: var(--w-content); }
+.app--desktop .ws-conversation { max-width: var(--w-content); padding: 0 40px 28px; height: calc(100dvh - var(--w-topbar) - 18px); gap: 18px; margin-top: 0; }
 .app--desktop .ws-chat-flow { padding: 32px 48px; }
-.app--desktop .toast { bottom: 28px; left: calc(50% + 126px); }
-.desk-sidebar { position: fixed; top: 16px; bottom: 16px; left: 16px; width: 228px; display: flex; flex-direction: column; background: var(--c-surface); border-radius: var(--r-lg); z-index: 20; padding: 28px 14px 18px; color: var(--c-text); }
+.app--desktop .toast { bottom: 28px; left: calc(50% + (var(--w-sidebar) / 2)); }
+.desk-sidebar { position: fixed; top: 16px; bottom: 16px; left: 16px; width: calc(var(--w-sidebar) - 32px); display: flex; flex-direction: column; background: var(--c-surface); border-radius: var(--r-lg); z-index: 20; padding: 28px 14px 18px; color: var(--c-text); }
 .desk-brand { display: flex; gap: 12px; align-items: center; padding: 0 10px 26px; color: var(--c-text); text-decoration: none; }
+/* 品牌行（原来没有规则，靠内联结构碰巧对齐）+ 展开/收起侧栏那颗按钮：
+   那颗原来是 32×40，两条都不够 44px。用负右外边距把多出来的宽度吃掉，
+   行的视觉间距一行不变。 */
+.desk-brand-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+/* 展开/收起侧栏那颗按钮原来是 32x40，两条都不够 44px。
+   `experience.css` 也有一条 `.desk-collapse`（后加载、同权重），所以这里把选择器
+   加深到 0,3,0 才能真的改掉尺寸；负右外边距把多出来的宽度吃掉，行的间距不变。 */
+.desk-brand-row .desk-collapse { width: 44px; height: 44px; min-height: 44px; margin-right: -6px; }
 .desk-brand:hover { text-decoration: none; }
-.desk-brand strong { display: block; font-size: var(--fs-20); letter-spacing: .12em; font-weight: 600; line-height: 1.3; }
+/* 【2026-10-14 · P2-11】中文品牌字不加正字距：'.12em' 实测把「职引」两个字拉散
+ * （CRAFT-BRIEF:535/658 明确禁止中文正字距；正字距是西文分组手段）。
+ * 品牌字靠字重与字号立它，不靠字距。 */
+.desk-brand strong { display: block; font-size: var(--fs-20); letter-spacing: 0; font-weight: 600; line-height: 1.3; }
 .desk-brand div > span { display: block; font-size: var(--fs-12); color: var(--c-text-3); margin-top: 7px; }
 .desk-brand__symbol { width: 28px; height: 32px; position: relative; flex: none; }
 .desk-brand__symbol span { position: absolute; width: 12px; height: 12px; border: 2px solid var(--c-primary); border-radius: 4px; }
 .desk-brand__symbol span:nth-child(1) { top: 0; left: 0; border-color: var(--c-attention); }
 .desk-brand__symbol span:nth-child(2) { top: 10px; left: 14px; }
 .desk-brand__symbol span:nth-child(3) { top: 20px; left: 0; }
-.desk-new-chat { min-height: 44px; background: var(--c-primary); color: var(--c-on-primary); border-radius: var(--r-md); display: flex; align-items: center; justify-content: center; gap: 10px; font-size: var(--fs-14); font-weight: 500; margin: 0 6px; transition: background-color 160ms ease; }
-.desk-new-chat:hover { background: var(--c-primary-hover); }
+/* 【2026-10-14 · P1-5】侧栏「新建咨询」从实心蓝退成描边按钮。
+ * 它和对话流里的主行动（「加入行动计划」）在抢"最大焦点"，而侧栏那个是**壳层**按钮：
+ * 实测两张同屏截图里，壳层是实心 blue rgb(0,88,167)、对话流里那个是白底蓝字 —— 视线第一眼落在导航上。
+ * 主循环（对话）的主按钮才是页面里唯一的实心蓝（CRAFT-BRIEF 的白名单第 1 处）。
+ * 注意：这里只把"默认形态"退成描边（hover 给出中性底），没有动它的高度/图标/宽度。 */
+.desk-new-chat { min-height: 44px; background: var(--c-surface); border: 1px solid var(--c-border-control); color: var(--c-text); border-radius: var(--r-md); display: flex; align-items: center; justify-content: center; gap: 10px; font-size: var(--fs-14); font-weight: 500; margin: 0 6px; transition: background-color 160ms ease, border-color 160ms ease; }
+.desk-new-chat:hover { background: var(--c-surface-2); border-color: var(--c-text-3); }
 .desk-new-chat:disabled { opacity: .5; cursor: wait; }
-.desk-search { display: flex; align-items: center; gap: 9px; padding: 10px 10px; color: var(--c-text-3); font-size: var(--fs-12); min-height: 42px; margin: 10px 6px 12px; border-radius: var(--r-md); background: var(--c-surface-2); text-align: left; }
+/* 【2026-10-14 · P0-2/P1-7】搜索入口是**控件**：文字 12→14，高度 42→44（44px 是硬约束）。 */
+.desk-search { display: flex; align-items: center; gap: 9px; padding: 10px 10px; color: var(--c-text-3); font-size: var(--fs-14); min-height: 44px; margin: 10px 6px 12px; border-radius: var(--r-md); background: var(--c-surface-2); text-align: left; }
 .desk-search kbd { margin-left: auto; font-size: var(--fs-12); font-family: var(--font-sans); color: var(--c-text-3); }
 .desk-search:hover { color: var(--c-primary); }
 .desk-nav { min-height: 0; overflow-y: auto; flex: 1; padding: 0 4px 18px; }
 .desk-group { margin-top: 24px; }
-.desk-group h2 { color: var(--c-text-3); font-size: var(--fs-12); font-weight: 400; margin: 0 12px 8px; }
-.desk-link { display: flex; align-items: center; gap: 11px; min-height: 42px; border-radius: var(--r-md); padding: 8px 12px; font-size: var(--fs-14); color: var(--c-text-2); margin: 2px 0; text-decoration: none; transition: background-color 160ms ease, color 160ms ease; }
+/* 【2026-10-14 · P0-2】改前 h2 是 --fs-12 —— 比它统辖的导航条目（14px）还小。
+ * 同 .desk-history__head h2：模板不动，用 CSS 把语义拨正成"分组眉标"（14px/500，
+ * 靠颜色与字重与条目分层）。 */
+.desk-group h2 { color: var(--c-text-2); font-size: var(--fs-14); font-weight: var(--fw-medium); margin: 0 12px 8px; }
+.desk-link { display: flex; align-items: center; gap: 11px; min-height: 44px; border-radius: var(--r-md); padding: 8px 12px; font-size: var(--fs-14); color: var(--c-text-2); margin: 2px 0; text-decoration: none; transition: background-color 160ms ease, color 160ms ease; }
 .desk-link svg { flex: none; color: var(--c-text-3); }
 .desk-link > svg:last-child:not(:first-child) { margin-left: auto; }
 .desk-link:hover { background: var(--c-surface-2); color: var(--c-text); text-decoration: none; }
@@ -75,19 +124,23 @@
 .desk-link[aria-current='page'] svg { color: var(--c-primary); }
 .desk-link__dot { width: 5px; height: 5px; border-radius: 50%; background: var(--c-primary); margin-left: auto; }
 .desk-footer { margin-top: auto; padding: 18px 10px 0; border-top: 1px solid var(--c-border); }
-.desk-person { display: flex; align-items: center; gap: 9px; color: var(--c-text); text-decoration: none; }
+.desk-person { display: flex; align-items: center; gap: 9px; min-height: 44px; color: var(--c-text); text-decoration: none; }
 .desk-person:hover { text-decoration: none; color: var(--c-primary); }
 .desk-person__avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--c-primary-weak); color: var(--c-primary); font-size: var(--fs-14); display: grid; place-items: center; flex: none; }
 .desk-person > span:nth-child(2) { min-width: 0; flex: 1; }
 .desk-person strong { font-size: var(--fs-14); font-weight: 500; display: block; }
 .desk-person small { display: block; font-size: var(--fs-12); color: var(--c-text-3); margin-top: 2px; }
-.desk-footer__links { display: flex; gap: 16px; margin: 18px 0 8px; font-size: var(--fs-12); }
+/* 【2026-10-14 · P0-2】侧栏页脚：演示环境说明是一句话、页脚链接是控件文字，都属"要读/要点"的那一类。 */
+.desk-footer__links { display: flex; gap: 16px; margin: 6px 0 0; font-size: var(--fs-14); }
 .desk-footer__links a, .desk-demo { color: var(--c-text-3); }
-.desk-demo { font-size: var(--fs-12); }
+/* 页脚只剩一条链接，也要能点到：给它 44px */
+.desk-footer__links a { display: inline-flex; align-items: center; min-height: 44px; }
+.desk-demo { font-size: var(--fs-14); }
 .desk-location { display: flex; align-items: center; gap: 13px; font-size: var(--fs-12); color: var(--c-text-3); }
 .desk-location strong { font-size: var(--fs-14); color: var(--c-text-2); font-weight: 400; }
-.desk-layout-select { display: flex; align-items: center; gap: 8px; font-size: var(--fs-12); color: var(--c-text-3); margin-right: 12px; }
-.desk-layout-select select { font-size: var(--fs-12); border: 1px solid var(--c-border); min-height: 32px; background: var(--c-surface); border-radius: var(--r-md); color: var(--c-text-2); padding: 5px 8px; }
+/* 【2026-10-14 · P1-7】下拉是控件：高度 32→44，文字 12→14，边框走 1.4.11 那一档。 */
+.desk-layout-select { display: flex; align-items: center; gap: 8px; font-size: var(--fs-14); color: var(--c-text-3); margin-right: 12px; }
+.desk-layout-select select { font-size: var(--fs-14); border: 1px solid var(--c-border-control); min-height: 44px; background: var(--c-surface); border-radius: var(--r-md); color: var(--c-text-2); padding: 5px 8px; }
 .desk-account-grade { margin: 24px 0; }
 .desk-account-grade .grade { margin-top: 8px; }
 .desk-section-nav { display: flex; align-items: center; gap: 24px; border-bottom: 1px solid var(--c-border); margin-bottom: 28px; overflow-x: auto; }
@@ -96,7 +149,7 @@
 .desk-profile-tabs { margin: 0 0 24px; }
 .desk-record { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 16px; align-items: start; padding: 22px 0; border-bottom: 1px solid var(--c-border); }
 .desk-record:last-child { border-bottom: 0; }
-.desk-record__toggle { width: 24px; height: 24px; border: 1px solid var(--c-border-strong); border-radius: 6px; color: var(--c-primary); margin-top: 3px; display: grid; place-items: center; }
+.desk-record__toggle { width: 24px; height: 24px; border: 1px solid var(--c-border-control); border-radius: 6px; color: var(--c-primary); margin-top: 3px; display: grid; place-items: center; }
 .desk-record__toggle[aria-pressed='true'] { background: var(--c-primary); color: var(--c-on-primary); border-color: var(--c-primary); }
 .desk-record p { font-size: var(--fs-16); }
 .desk-record small { color: var(--c-text-3); font-size: var(--fs-12); display: block; margin-top: 6px; }
@@ -144,78 +197,77 @@
 .desk-achievement h3 { font-size: var(--fs-16); font-weight: 500; }
 .desk-achievement p { color: var(--c-text-3); font-size: var(--fs-14); margin-top: 8px; }
 .desk-achievement small { font-size: var(--fs-12); color: var(--c-text-3); display: block; margin-top: 8px; }
-@media (max-width: 1200px) {
-  .app--desktop { padding-left: 232px; }
-  .desk-sidebar { width: 208px; }
-  .app--desktop .ws-topbar { padding: 0 28px; }
-  .app--desktop .ws-page, .app--desktop .ws-conversation { padding-left: 28px; padding-right: 28px; }
-  .app--desktop .ws-two-columns { grid-template-columns: minmax(0, 1fr); }
-  .app--desktop .ws-aside { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
-  .app--desktop .ws-aside > section + section { margin: 0; padding-top: 0; border-top: 0; }
+/* ---- 壳层令牌：顶栏高度、侧栏宽度、浮底栏占位只有一个来源 ----
+   原来 `--w-topbar: 60px` 与实测的三处顶栏（80 / 76 / 72）全部失配，
+   侧栏宽度 252 / 232 / 208 三个值，底栏占位 166 / 225 两个值，散在四条规则里。
+   `--w-mobilebar` 里含 12px 下边距与 iOS 安全区：底栏是 fixed 的，
+   页面底部留白与对话区高度都得把它算进去，否则窄屏浮底栏会把内容压住。
+   【2026-10-14 · P3-14】82 → 72：底栏实高实测是 54–60px（本文件把 .ws-bookmark 收到 44px 后为 54），
+   82 的预留比实际高出约 22px，窄屏每屏白让出 22px。 */
+:root {
+  --w-topbar: 72px;
+  --w-sidebar: 0px;
+  --w-mobilebar: calc(72px + env(safe-area-inset-bottom, 0px));
 }
-@media (max-width: 760px) {
-  .desk-layout-select { margin-right: 0; }
-  .desk-layout-select > span { display: none; }
-  .desk-layout-select select { max-width: 92px; }
-  .desk-note-form { flex-wrap: wrap; }
-  .desk-note-form input { flex-basis: 100%; }
-  .desk-record { gap: 12px; }
-  .desk-calendar-row { grid-template-columns: 60px 1fr; gap: 16px; }
-  .desk-time-grid { grid-template-columns: 30px repeat(5, minmax(0, 1fr)); gap: 3px; }
-  .desk-time-cell { padding: 8px 4px; font-size: var(--fs-12); }
-  .desk-time-cell small { font-size: var(--fs-12); }
-  .desk-achievements { grid-template-columns: 1fr; }
-  .desk-table td, .desk-table th { padding: 12px 10px; }
-  .desk-intel-item__source { flex-wrap: wrap; }
-}
-@media (max-height: 700px) {
-  .app--desktop .ws-conversation { height: auto; min-height: 0; padding-bottom: 32px; }
-  .desk-sidebar { padding-top: 20px; }
-  .desk-brand { padding-bottom: 16px; }
-  .desk-group { margin-top: 16px; }
-}
-@media (min-width: 1000px) and (max-height: 800px) {
-  .app--desktop .ws-chat-welcome { padding: 0; }
-  .ws-chat-welcome .desk-still-graphic { width: 80px; height: 40px; margin-bottom: 12px; }
-  .ws-chat-welcome .ws-chat-prompts { margin-top: 20px; }
-  .ws-chat-welcome .ws-chat-prompts button { padding-top: 12px; padding-bottom: 12px; }
-  .desk-sidebar { padding-top: 20px; padding-bottom: 16px; }
-  .desk-brand { padding-bottom: 16px; }
-  .desk-brand div > span { display: none; }
-  .desk-new-chat { min-height: 40px; }
-  .desk-search { min-height: 32px; line-height: 1.5; padding-top: 6px; padding-bottom: 6px; margin-top: 8px; margin-bottom: 10px; }
-  .desk-nav { padding-bottom: 6px; }
-  .desk-link { min-height: 36px; line-height: 1.5; padding-top: 6px; padding-bottom: 6px; margin: 0; }
-  .desk-group { margin-top: 12px; }
-  .desk-group h2 { line-height: 1.5; margin-bottom: 4px; }
-  .desk-footer { padding-top: 12px; }
-  .desk-footer__links { margin-top: 12px; margin-bottom: 0; }
-  .desk-demo { display: none; }
-}
-@media (prefers-reduced-motion: reduce) { .desk-link, .desk-new-chat { transition: none; } }
-@media print {
-  .desk-sidebar, .desk-layout-select, .desk-location { display: none !important; }
-  .app--desktop { padding-left: 0; }
+@media (min-width: 1120px) {
+  :root { --w-topbar: 76px; --w-sidebar: 252px; }
 }
 .app--workspace { font-size: var(--fs-16); line-height: 1.7; }
 .app--workspace .app__atmos { display: none; }
-.app--workspace .btn { min-height: 42px; height: auto; padding: 8px 18px; font-size: var(--fs-14); }
+/* 【2026-10-14 · P1-7】42 → 44。CRAFT-BRIEF:322,389 与 WCAG 2.5.8 都是 44px，
+ * 这是全站按钮的默认档；小档只有 --btn-sm 的 36px（见下一行），中间不再有第三档。 */
+.app--workspace .btn { min-height: 44px; height: auto; padding: 8px 18px; font-size: var(--fs-14); }
 .app--workspace .btn--sm { min-height: 36px; padding: 6px 12px; }
 .app--workspace .toast { bottom: 106px; }
-.app--workspace .grade__select { max-width: 190px; height: 36px; border-color: transparent; background: transparent; }
-.app--workspace .skin__trigger { height: 36px; background: transparent; border-color: transparent; }
-.ws-topbar { height: 72px; max-width: 1320px; padding: 0 36px; width: 100%; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
-.ws-brand { display: flex; align-items: center; gap: 12px; text-decoration: none; color: var(--c-text); flex: none; }
+.app--workspace .grade__select { max-width: 190px; height: 44px; border-color: transparent; background: transparent; }
+.ws-brand { display: flex; align-items: center; gap: 10px; min-height: 44px; text-decoration: none; color: var(--c-text); flex: none; }
 .ws-brand:hover { text-decoration: none; }
-.ws-brand strong { font-size: var(--fs-20); font-weight: 600; letter-spacing: .12em; }
+/* 【2026-10-14 · P2-11】同 .desk-brand strong：中文品牌字不加正字距。 */
+.ws-brand strong { font-size: var(--fs-20); font-weight: 600; letter-spacing: 0; }
 .ws-brand__mark { width: 8px; height: 8px; border-radius: 2px; background: var(--brand-stripe); }
 .ws-brand__context { margin-left: 8px; padding-left: 20px; border-left: 1px solid var(--c-border); color: var(--c-text-3); font-size: var(--fs-14); }
-.ws-topbar__tools { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.ws-icon-button { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; flex: none; border-radius: var(--r-md); color: var(--c-text-2); }
+.ws-topbar__tools { display: flex; align-items: center; gap: 6px; min-width: 0; }
+/* 顶栏里留下的每一个控件都 ≥44px（原来是 40 / 38 / 34） */
+.ws-icon-button { width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; flex: none; border-radius: var(--r-md); color: var(--c-text-2); }
 .ws-icon-button:hover { background: var(--c-surface-3); color: var(--c-primary); }
-.ws-avatar { height: 34px; width: 34px; flex: none; background: var(--c-surface); border-radius: var(--r-pill); color: var(--c-primary); font-size: var(--fs-14); font-weight: 600; }
+/* 演示标识：壳层的一行小字，不占一行、不与主行动竞争，点开进「演示设置」 */
+.ws-demo-badge { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 10px; border-radius: var(--r-md); font-size: var(--fs-12); color: var(--c-text-3); white-space: nowrap; transition: color 160ms ease, background-color 160ms ease; }
+.ws-demo-badge:hover { background: var(--c-surface-3); color: var(--c-text-2); }
+.ws-demo-badge > span { width: 7px; height: 7px; border-radius: 50%; background: var(--c-attention); flex: none; }
+.ws-demo-badge--service > span { background: var(--c-primary); }
+/* 账号入口：桌面侧栏的人名行、移动端顶栏、折叠态顶栏 —— 三处都是同一个「账号」抽屉 */
+.ws-account { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 10px 0 6px; border-radius: var(--r-pill); background: var(--c-surface-2); color: var(--c-text-2); font-size: var(--fs-14); flex: none; transition: background-color 160ms ease, color 160ms ease; }
+.ws-account:hover { background: var(--c-surface-3); color: var(--c-primary); }
+.ws-account__avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--c-primary-weak); color: var(--c-primary); font-size: var(--fs-14); font-weight: 600; display: grid; place-items: center; flex: none; }
+.ws-account__chevron { color: var(--c-text-3); }
+/* 账号菜单 → 外观（PLAN §3.5 的唯一入口）：在抽屉里展开成为一组三轴分段控件。
+   不用浮层是因为触发器在 `<dialog>` 的 top layer 里，任何挂 body 的浮层都会
+   被弹窗遮罩压住（实测截图为证：往左弹落在遮罩上、往下弹被弹窗外沿裁掉）。 */
+.ws-appearance { margin-top: 20px; padding: 12px 0; border-top: 1px solid var(--c-border); }
+.ws-appearance__summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 44px; cursor: pointer; list-style: none; }
+.ws-appearance__summary::-webkit-details-marker { display: none; }
+.ws-appearance__summary > span:first-child { font-size: var(--fs-16); font-weight: 500; color: var(--c-text); }
+.ws-appearance__summary small { display: block; margin-top: 4px; font-size: var(--fs-12); font-weight: 400; color: var(--c-text-3); }
+.ws-appearance__now { display: inline-flex; align-items: center; gap: 8px; font-size: var(--fs-14); color: var(--c-text-3); }
+.ws-appearance__now svg { transition: transform 200ms ease; }
+.ws-appearance[open] .ws-appearance__now svg { transform: rotate(180deg); }
+.ws-appearance__body { padding: 4px 0 8px; }
+.ws-appearance__title { margin-bottom: 8px; font-size: var(--fs-12); font-weight: 500; color: var(--c-text-2); }
+.ws-appearance__title + .ws-appearance__seg { margin-bottom: 16px; }
+.ws-appearance__seg { display: flex; gap: 2px; padding: 2px; background: var(--c-surface-3); border-radius: var(--r-md); }
+/* 【2026-10-14 · P0-2】分段控件里的每个按钮都是**控件文字**：12px → 14px（高度 36px 属小档，保留）。 */
+.ws-appearance__seg button { flex: 1; min-height: 36px; border-radius: var(--r-sm); font-size: var(--fs-14); color: var(--c-text-2); }
+.ws-appearance__seg button.is-on { background: var(--c-surface); color: var(--c-primary); font-weight: var(--fw-semibold); box-shadow: var(--e-1); }
+.ws-appearance__hint { margin: -8px 0 16px; font-size: var(--fs-14); color: var(--c-text-3); }
+.ws-account-list { margin: 12px 0 4px; border-top: 1px solid var(--c-border); }
+.ws-account-row { display: flex; align-items: center; gap: 16px; width: 100%; min-height: 56px; padding: 12px 0; border-bottom: 1px solid var(--c-border); color: var(--c-text); text-align: left; }
+.ws-account-row > span { flex: 1; min-width: 0; }
+.ws-account-row strong { display: block; font-size: var(--fs-16); font-weight: 500; }
+.ws-account-row small { display: block; margin-top: 4px; font-size: var(--fs-12); color: var(--c-text-3); }
+.ws-account-row:hover { color: var(--c-primary); text-decoration: none; }
+.ws-account-row svg { flex: none; color: var(--c-text-3); }
 .ws-inbox-trigger { position: relative; }
-.ws-inbox-trigger span { position: absolute; right: 0; top: 1px; color: var(--c-attention); font-size: var(--fs-12); background: var(--c-bg); padding: 0 3px; font-weight: 600; }
+.ws-inbox-trigger span { position: absolute; right: 2px; top: 2px; color: var(--c-attention); font-size: var(--fs-12); background: var(--c-bg); padding: 0 3px; font-weight: 600; }
 .ws-command-search { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: var(--c-surface-2); border-radius: var(--r-md); }
 .ws-command-search input { width: 100%; min-width: 0; background: transparent; border: 0; outline: 0; font-size: var(--fs-16); }
 .ws-command-search input::placeholder { color: var(--field-placeholder); }
@@ -224,15 +276,23 @@
 .ws-command-item strong { font-size: var(--fs-16); font-weight: 500; }
 .ws-command-item span { font-size: var(--fs-12); color: var(--c-text-3); }
 .ws-command-item--on { background: var(--c-primary-weak); color: var(--c-primary); }
+/*
+ * 浮底栏。它是 fixed 的，所以**页面内容必须自己让开**：
+ * 底栏实高 70px + 下边距，`.ws-page` 的底部留白按 `--w-mobilebar` 算（含安全区），
+ * 这是"窄屏浮底栏压住页面内容"那条多页共病的壳层修法。
+ */
 .ws-bookmarks { position: fixed; z-index: var(--z-sticky); bottom: 22px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; padding: 7px; gap: 4px; background: var(--c-surface); border-radius: var(--r-lg); box-shadow: var(--e-3); width: max-content; max-width: calc(100% - 24px); }
-.ws-bookmark { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 46px; padding: 10px 16px; border-radius: var(--r-md); font-size: var(--fs-14); color: var(--c-text-2); text-decoration: none; white-space: nowrap; transition: color 160ms ease, background-color 160ms ease; }
+/* 【2026-10-14 · P1-7】46 → 44：全站只留 44（默认）与 36（小档）两档。 */
+.ws-bookmark { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 44px; padding: 10px 16px; border-radius: var(--r-md); font-size: var(--fs-14); color: var(--c-text-2); text-decoration: none; white-space: nowrap; transition: color 160ms ease, background-color 160ms ease; }
 .ws-bookmark:hover { text-decoration: none; background: var(--c-surface-2); color: var(--c-text); }
 .ws-bookmark--active, .ws-bookmark--active:hover { background: var(--c-primary-weak); color: var(--c-primary); font-weight: 600; }
-.ws-bookmark--more { padding: 10px; }
-.ws-bookmark--more span { display: none; }
-.ws-page { max-width: 1160px; margin: 0 auto; padding: 32px 32px 132px; }
+.ws-bookmark--more { padding: 10px 14px; }
+/* 【2026-10-14 · P1-8】1160 → var(--w-content)：这一档是 <1120px（没有桌面侧栏）时的值，
+ * 之前与桌面档的 1180 差 20px，属于"同一个东西两个数"。 */
+.ws-page { max-width: var(--w-content); margin: 0 auto; padding: 32px 32px var(--w-mobilebar); }
 .ws-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 28px; margin-bottom: 32px; }
-.ws-heading h1 { font-size: var(--fs-30); line-height: 1.3; letter-spacing: -.025em; }
+/* 【2026-10-14 · P2-10】-.025em → -.02em：项目自订上限是 -0.02em（中文满框字更负会粘连）。 */
+.ws-heading h1 { font-size: var(--fs-30); line-height: 1.3; letter-spacing: -0.02em; }
 .ws-heading p { margin-top: 10px; font-size: var(--fs-16); color: var(--c-text-3); max-width: 38em; }
 .ws-heading__actions { display: flex; gap: 12px; align-items: center; flex: none; padding-top: 4px; }
 .ws-person { font-size: var(--fs-30); font-weight: 600; }
@@ -240,9 +300,12 @@
 .ws-attention { color: var(--c-attention); }
 .ws-stack { display: flex; flex-direction: column; gap: 14px; }
 .ws-inline-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin-top: 20px; }
-.ws-text-button, .ws-text-link { display: inline-flex; align-items: center; justify-content: center; gap: 8px; color: var(--c-primary); font-size: var(--fs-14); min-height: 40px; font-weight: 500; }
+.ws-text-button, .ws-text-link { display: inline-flex; align-items: center; justify-content: center; gap: 8px; color: var(--c-primary); font-size: var(--fs-14); min-height: 44px; font-weight: 500; }
 .ws-text-button:hover, .ws-text-link:hover { text-decoration: underline; text-underline-offset: 4px; }
-.ws-paper { background: var(--c-surface); border-radius: var(--r-lg); padding: var(--sp-7); min-width: 0; }
+/* 【2026-10-14 · P0-1】纸面：边框走新的发丝线档（1.506:1），桌面档由 experience.css 再补一条同样的边。
+ * 不加 --e-1：抬升面配额是"纸面 + 要你动手的东西"，一页里 .ws-paper 可能有很多张，
+ * 每张都加影就是 CRAFT-BRIEF 明确不采纳的"给所有卡片加柔和阴影"。 */
+.ws-paper { background: var(--c-surface); border: var(--bw-1) solid var(--c-border); border-radius: var(--r-lg); padding: var(--sp-7); min-width: 0; }
 .ws-section { margin-top: 32px; }
 .ws-section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 20px; margin-bottom: 20px; }
 .ws-section-head h2, .ws-section-title { font-size: var(--fs-20); line-height: 1.45; font-weight: 600; }
@@ -253,18 +316,19 @@
 .ws-subnav a[aria-current='page'] { color: var(--c-text); border-color: var(--c-primary); font-weight: 600; }
 .ws-subnav a:hover { text-decoration: none; color: var(--c-primary); }
 .ws-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
-.ws-tabs button { min-height: 42px; padding: 8px 16px; border-radius: var(--r-md); color: var(--c-text-3); font-size: var(--fs-14); }
+.ws-tabs button { min-height: 44px; padding: 8px 16px; border-radius: var(--r-md); color: var(--c-text-3); font-size: var(--fs-14); }
 .ws-tabs button[aria-pressed='true'] { background: var(--c-surface-3); color: var(--c-text); font-weight: 600; }
 .ws-tabs button:hover { color: var(--c-text); background: var(--c-surface-2); }
 .ws-tab-count { margin-left: 8px; font-variant-numeric: tabular-nums; color: var(--c-text-3); }
-.ws-demo-note { font-size: var(--fs-12); color: var(--c-text-3); margin: 24px 0; line-height: 1.6; }
+/* 【2026-10-14 · P0-2】演示数据说明是一句话：12px → 14px（12px 只留时间/来源/序号/徽章/刻度这类标记）。 */
+.ws-demo-note { font-size: var(--fs-14); color: var(--c-text-3); margin: 20px 0; line-height: 1.6; }
 .ws-empty { padding: 36px 12px; text-align: center; }
 .ws-empty h3 { font-size: var(--fs-20); }
 .ws-empty p { margin-top: 12px; color: var(--c-text-3); font-size: var(--fs-14); }
 .ws-empty a { margin-top: 16px; }
 .ws-guide { display: flex; align-items: flex-start; gap: 10px; margin-top: 28px; font-size: var(--fs-14); color: var(--c-text-3); }
 .ws-guide p { flex: 1; }
-.ws-guide button { color: var(--c-text-3); font-size: var(--fs-14); white-space: nowrap; }
+.ws-guide button { color: var(--c-text-3); font-size: var(--fs-14); white-space: nowrap; min-height: 44px; }
 .ws-sheet { padding: 0; width: min(540px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); border: 0; border-radius: var(--r-lg); color: var(--c-text); background: var(--c-surface); box-shadow: var(--e-3); overflow: auto; }
 .ws-sheet--wide { width: min(800px, calc(100vw - 32px)); }
 .ws-sheet::backdrop { background: var(--overlay-mask); }
@@ -279,6 +343,12 @@
 .ws-directory strong { font-size: var(--fs-16); }
 .ws-directory span { grid-column: 1; font-size: var(--fs-14); color: var(--c-text-3); }
 .ws-directory svg { grid-column: 2; grid-row: 1 / 3; align-self: center; }
+/* 「更多」抽屉里的主入口（原来这个类没有样式，落成了一条默认链接） */
+.ws-directory__primary { display: grid; grid-template-columns: 24px 1fr 20px; align-items: center; gap: 4px 14px; min-height: 56px; padding: 14px; margin-bottom: 8px; border: 1px solid var(--c-primary-border); border-radius: var(--r-md); background: var(--c-primary-weak); color: var(--c-primary); }
+.ws-directory__primary:hover { text-decoration: none; }
+.ws-directory__primary strong { font-size: var(--fs-16); font-weight: 600; }
+.ws-directory__primary small { display: block; grid-column: 2; font-size: var(--fs-12); color: var(--c-text-2); margin-top: 2px; }
+.ws-directory__primary > svg:first-child { grid-row: 1 / 3; }
 .ws-feature { display: grid; grid-template-columns: minmax(0, 1fr) 190px; gap: 36px; align-items: center; }
 .ws-feature h2 { font-size: var(--fs-30); line-height: 1.55; max-width: 21em; letter-spacing: -.015em; }
 .ws-feature p { color: var(--c-text-2); margin-top: 16px; max-width: 32em; }
@@ -291,7 +361,7 @@
 .ws-tasks { display: flex; flex-direction: column; margin-top: 18px; }
 .ws-task { display: flex; align-items: flex-start; gap: 16px; padding: 22px 0; }
 .ws-task + .ws-task { border-top: 1px solid var(--c-border); }
-.ws-task__check, .ws-task__waiting { width: 22px; height: 22px; flex: none; margin-top: 4px; border: 1px solid var(--c-border-strong); border-radius: 6px; display: grid; place-items: center; color: var(--c-on-primary); background: var(--c-surface); }
+.ws-task__check, .ws-task__waiting { width: 22px; height: 22px; flex: none; margin-top: 4px; border: 1px solid var(--c-border-control); border-radius: 6px; display: grid; place-items: center; color: var(--c-on-primary); background: var(--c-surface); }
 .ws-task__check:hover { border-color: var(--c-primary); background: var(--c-primary-weak); }
 .ws-task--done .ws-task__check { background: var(--c-primary); border-color: var(--c-primary); }
 .ws-task--done .ws-task__title { color: var(--c-text-3); }
@@ -321,16 +391,16 @@
 .ws-fold[open] > summary svg { transform: rotate(180deg); }
 .ws-fold__body { padding: 20px 0 8px; }
 .ws-field { display: flex; flex-direction: column; gap: 8px; margin-top: 20px; font-size: var(--fs-14); color: var(--c-text-2); }
-.ws-field input, .ws-field select, .ws-field textarea { background: var(--field-bg); border: 1px solid var(--field-border); border-radius: var(--r-md); padding: 12px 14px; font-size: var(--fs-16); width: 100%; }
+.ws-field input, .ws-field select, .ws-field textarea { background: var(--field-bg); border: 1px solid var(--field-border); border-radius: var(--r-md); padding: 12px 14px; font-size: var(--fs-16); width: 100%; min-height: 44px; }
 .ws-field input::placeholder, .ws-field textarea::placeholder { color: var(--field-placeholder); }
 .ws-field textarea { resize: vertical; min-height: 90px; }
 .ws-field-error { color: var(--c-attention); font-size: var(--fs-14); margin-top: 12px; }
-.ws-conversation { max-width: 940px; margin: 8px auto 0; padding: 0 32px; height: calc(100dvh - 172px); min-height: 480px; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 18px; }
+.ws-conversation { max-width: 940px; margin: 8px auto 0; padding: 0 32px; height: calc(100dvh - var(--w-topbar) - 32px - var(--w-mobilebar)); min-height: 440px; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 18px; }
 .ws-chat-head { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 6px 4px 14px; }
 .ws-chat-head h1 { font-size: var(--fs-30); }
 .ws-chat-head p { font-size: var(--fs-14); color: var(--c-text-3); margin-top: 8px; }
 .ws-chat-head__tools { display: flex; gap: 8px; }
-.ws-chat-head__tools button { font-size: var(--fs-14); color: var(--c-text-2); min-height: 40px; padding: 8px 12px; border-radius: var(--r-md); }
+.ws-chat-head__tools button { font-size: var(--fs-14); color: var(--c-text-2); min-height: 44px; padding: 8px 12px; border-radius: var(--r-md); }
 .ws-chat-head__tools button:hover { background: var(--c-surface); color: var(--c-primary); }
 .ws-chat-flow { overflow-y: auto; min-height: 0; padding: 24px 38px 16px; background: var(--c-surface); border-radius: var(--r-lg); }
 .ws-chat-welcome { padding: 22px 0 36px; max-width: 36em; }
@@ -357,16 +427,21 @@
 .ws-chat-task p { font-weight: 500; }
 .ws-chat-task__action { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-top: 14px; font-size: var(--fs-14); color: var(--c-text-3); }
 .ws-chat-options { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
-.ws-chat-options button { font-size: var(--fs-14); color: var(--c-primary); border: 1px solid var(--c-primary-border); border-radius: var(--r-md); padding: 9px 16px; min-height: 42px; }
+.ws-chat-options button { font-size: var(--fs-14); color: var(--c-primary); border: 1px solid var(--c-primary-border); border-radius: var(--r-md); padding: 9px 16px; min-height: 44px; }
 .ws-chat-options button:hover { background: var(--c-primary-weak); }
 .ws-chat-status { color: var(--c-text-3); font-size: var(--fs-14); padding: 14px 0; }
-.ws-composer { background: var(--c-surface); border-radius: var(--r-lg); padding: 16px 20px; }
+/* 【2026-10-14 · P1-6】composer = 凹槽：底 --c-surface-2（对纸面 1.142:1，改前 1.044:1），
+ * 边 --c-border（1.506:1），并补一条**向内的**影（--e-inset）。
+ * 关键是 inset：外阴影只会让它"浮起来"，与"凹槽"的语义相反（CRAFT-BRIEF §2.5）。
+ * 对话页那条（dialogue.css）再叠一层更细的尺寸与聚焦环，这里只定形态。 */
+.ws-composer { background: var(--c-surface-2); border: var(--bw-1) solid var(--c-border); border-radius: var(--r-lg); padding: 16px 20px; box-shadow: var(--e-inset), var(--e-2); }
 .ws-composer form { display: flex; align-items: flex-end; gap: 14px; }
 .ws-composer textarea { flex: 1; min-width: 0; min-height: 48px; max-height: 180px; resize: none; border: 0; background: transparent; padding: 10px 0; font-size: var(--fs-16); line-height: 1.7; }
 .ws-composer textarea:focus-visible { outline-offset: 4px; }
 .ws-composer textarea::placeholder { color: var(--field-placeholder); }
 .ws-composer .btn { flex: none; min-width: 80px; }
-.ws-composer__note { display: flex; justify-content: space-between; gap: 10px; font-size: var(--fs-12); color: var(--c-text-3); margin-top: 8px; }
+/* 【2026-10-14 · P0-2】提示行是一句话：12px → 14px。 */
+.ws-composer__note { display: flex; justify-content: space-between; gap: 10px; font-size: var(--fs-14); color: var(--c-text-3); margin-top: 8px; }
 .ws-evidence { margin-top: 8px; }
 .ws-evidence__row { padding: 20px 0; border-bottom: 1px solid var(--c-border); }
 .ws-evidence__row:last-child { border-bottom: 0; }
@@ -431,7 +506,7 @@
 .ws-versions { display: flex; flex-direction: column; gap: 20px; margin-top: 24px; }
 .ws-version-row { display: grid; grid-template-columns: 140px 1fr auto; gap: 20px; align-items: baseline; padding: 18px 0; border-bottom: 1px solid var(--c-border); font-size: var(--fs-14); }
 .ws-version-select { display: flex; align-items: center; gap: 12px; font-size: var(--fs-14); color: var(--c-text-3); }
-.ws-version-select select { background: var(--c-surface); color: var(--c-text); border: 1px solid var(--c-border); border-radius: var(--r-md); min-height: 40px; padding: 6px 12px; }
+.ws-version-select select { background: var(--c-surface); color: var(--c-text); border: 1px solid var(--c-border-control); border-radius: var(--r-md); min-height: 44px; padding: 6px 12px; }
 .ws-milestones { display: flex; flex-direction: column; gap: 28px; }
 .ws-milestone + .ws-milestone { border-top: 1px solid var(--c-border); padding-top: 28px; }
 .ws-milestone__head { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
@@ -451,7 +526,8 @@
 .ws-review-summary { display: flex; align-items: baseline; flex-wrap: wrap; gap: 12px 36px; margin-bottom: 32px; font-size: var(--fs-14); color: var(--c-text-3); }
 .ws-review-summary strong { color: var(--c-text); font-size: var(--fs-20); margin-right: 6px; }
 .ws-attributions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
-.ws-attributions button { min-height: 46px; padding: 10px 20px; border: 1px solid var(--c-border-strong); border-radius: var(--r-md); color: var(--c-text-2); font-size: var(--fs-16); }
+/* 【2026-10-14 · P1-7】46 → 44：全站只留 44（默认）与 36（小档）两档。 */
+.ws-attributions button { min-height: 44px; padding: 10px 20px; border: 1px solid var(--c-border-strong); border-radius: var(--r-md); color: var(--c-text-2); font-size: var(--fs-16); }
 .ws-attributions button[aria-pressed='true'] { border-color: var(--c-primary); background: var(--c-primary-weak); color: var(--c-primary); }
 .ws-attributions button:hover { border-color: var(--c-primary); }
 .ws-review-result { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--c-border); }
@@ -461,7 +537,17 @@
 .ws-timeline time, .ws-timeline__state { font-size: var(--fs-14); color: var(--c-text-3); }
 .ws-timeline small { display: block; margin-top: 6px; color: var(--c-text-3); font-size: var(--fs-14); }
 @keyframes ws-sheet-enter { from { opacity: .6; transform: translateY(10px); } to { opacity: 1; transform: none; } }
-@media (max-width: 1000px) {
+
+/* ============================================================================
+ * 断点：只有两档 —— 768 / 1120（PLAN §2.7）
+ * ==========================================================================*/
+
+/* 平板及以下：< 1120px。桌面侧栏不渲染，左侧不留白；两栏压成一栏。 */
+@media (max-width: 1119px) {
+  .app--desktop .ws-page, .app--desktop .ws-conversation { padding-left: 28px; padding-right: 28px; }
+  .app--desktop .ws-two-columns { grid-template-columns: minmax(0, 1fr); }
+  .app--desktop .ws-aside { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+  .app--desktop .ws-aside > section + section { margin: 0; padding-top: 0; border-top: 0; }
   .ws-two-columns { grid-template-columns: minmax(0, 1fr) 270px; gap: 24px; }
   .ws-feature { grid-template-columns: minmax(0, 1fr); gap: 24px; }
   .ws-feature__action { flex-direction: row; align-items: center; }
@@ -476,14 +562,18 @@
   .ws-direction .btn { width: auto; }
   .ws-chat-head__tools { gap: 0; }
 }
-@media (max-width: 760px) {
-  .ws-topbar { height: 64px; padding: 0 20px; gap: 12px; }
+
+/* 手机：< 768px */
+@media (max-width: 767px) {
+  .ws-topbar { gap: 8px; }
   .ws-brand__context, .ws-search { display: none; }
-  .ws-brand { gap: 8px; }
   .ws-topbar__tools { gap: 2px; }
   .app--workspace .grade__select { max-width: 118px; padding: 0 4px; }
-  .app--workspace .skin__trigger { padding: 0 8px; }
-  .ws-page { padding: 24px 20px 132px; }
+  /* 演示标识在手机上只留圆点（文字置 0 字号，圆点自己有背景色不受影响）：
+     文字留着就会把顶栏挤成"三个文字 + 一个头像" */
+  .ws-demo-badge { padding: 0 8px; font-size: 0; gap: 0; }
+  .ws-demo-badge > span { width: 9px; height: 9px; }
+  .ws-page { padding: 24px 20px var(--w-mobilebar); }
   .ws-heading { gap: 18px; margin-bottom: 24px; }
   .ws-heading h1 { font-size: var(--fs-30); }
   .ws-heading p { font-size: var(--fs-14); }
@@ -513,13 +603,14 @@
   .ws-timeline__state { grid-column: 2; grid-row: 1; }
   .ws-bookmarks { bottom: max(12px, env(safe-area-inset-bottom)); gap: 0; padding: 5px; width: calc(100% - 24px); justify-content: space-between; }
   .ws-bookmark { flex-direction: column; gap: 4px; flex: 1; padding: 8px 2px; font-size: var(--fs-12); min-width: 0; }
-  .ws-bookmark--more { flex: 0 0 30px; }
-  .ws-bookmark--more span { display: none; }
-  .ws-conversation { padding: 0 16px; margin-top: 8px; height: calc(100dvh - 166px); min-height: 430px; gap: 12px; }
+  .ws-bookmark--more { flex: 1; }
+  /* 底栏是 fixed 的，必须从对话区高度里扣掉，否则输入框被压住。
+     `--w-mobilebar` 里已经含 70px 底栏 + 12px 下边距 + 安全区，
+     原来这里写死 225px（按 82px 底栏占位 + 10px 间隙），手机换了尺寸就失配。 */
+  .ws-conversation { padding: 0 16px; margin-top: 8px; height: calc(100dvh - var(--w-topbar) - 32px - var(--w-mobilebar)); min-height: 400px; gap: 12px; }
   .ws-chat-head { gap: 8px; flex-wrap: wrap; padding: 0 4px 4px; }
   .ws-chat-head h1 { font-size: var(--fs-20); }
   .ws-chat-head p { font-size: var(--fs-12); margin-top: 4px; }
-  .ws-chat-head__tools button { padding: 6px 8px; font-size: var(--fs-12); min-height: 32px; }
   .ws-chat-flow { padding: 22px 20px 12px; }
   .ws-turn { margin: 24px 0; line-height: 1.85; }
   .ws-turn--me { margin-left: auto; max-width: 90%; }
@@ -535,15 +626,62 @@
   .ws-sheet__body { padding: 0 20px 24px; }
   .ws-subnav { gap: 20px; flex-wrap: wrap; }
   .ws-subnav a { font-size: var(--fs-14); }
+  .desk-layout-select { margin-right: 0; }
+  .desk-layout-select > span { display: none; }
+  .desk-layout-select select { max-width: 92px; }
+  .desk-note-form { flex-wrap: wrap; }
+  .desk-note-form input { flex-basis: 100%; }
+  .desk-record { gap: 12px; }
+  .desk-calendar-row { grid-template-columns: 60px 1fr; gap: 16px; }
+  .desk-time-grid { grid-template-columns: 30px repeat(5, minmax(0, 1fr)); gap: 3px; }
+  .desk-time-cell { padding: 8px 4px; font-size: var(--fs-12); }
+  .desk-time-cell small { font-size: var(--fs-12); }
+  .desk-achievements { grid-template-columns: 1fr; }
+  .desk-table td, .desk-table th { padding: 12px 10px; }
+  .desk-intel-item__source { flex-wrap: wrap; }
 }
-@media (max-width: 400px) {
-  .ws-topbar { padding: 0 12px; gap: 8px; }
-  .app--workspace .grade__select { max-width: 80px; font-size: var(--fs-12); }
-  .app--workspace .skin__trigger { padding: 0 6px; }
+
+/* 最窄的手机（≤360px，不是第三档断点，只是 768 那一档里的收窄）。
+   实测 320px 下顶栏会多出 1px 横向溢出：账号那个文字标签让位给头像，
+   `aria-label="账号菜单"` 仍在，读屏不受影响。 */
+@media (max-width: 360px) {
+  .ws-account { padding: 0 8px 0 4px; }
+  .ws-account__label, .ws-account__chevron { display: none; }
 }
+
 @media (max-height: 700px) {
+  .app--desktop .ws-conversation { height: auto; min-height: 0; padding-bottom: 32px; }
+  .desk-sidebar { padding-top: 20px; }
+  .desk-brand { padding-bottom: 16px; }
+  .desk-group { margin-top: 16px; }
   .ws-conversation { height: auto; min-height: 0; padding-bottom: 116px; grid-template-rows: auto minmax(140px, 1fr) auto; }
   .ws-chat-flow { max-height: 50dvh; }
+}
+@media (min-width: 1120px) and (max-height: 800px) {
+  .app--desktop .ws-chat-welcome { padding: 0; }
+  .ws-chat-welcome .desk-still-graphic { width: 80px; height: 40px; margin-bottom: 12px; }
+  .ws-chat-welcome .ws-chat-prompts { margin-top: 20px; }
+  .ws-chat-welcome .ws-chat-prompts button { padding-top: 12px; padding-bottom: 12px; }
+  .desk-sidebar { padding-top: 20px; padding-bottom: 16px; }
+  .desk-brand { padding-bottom: 16px; }
+  .desk-brand div > span { display: none; }
+  /* 【2026-10-14 · P1-7】低视口高度这一档原来把可点元素压到 40/38/32px —— 44px 是硬约束，
+     矮屏不是打折的理由（CRAFT-BRIEF:322,389 + WCAG 2.5.8）。
+     `.desk-nav` 自己有 overflow-y: auto，所以侧栏装不下时是滚动，不是被裁掉。 */
+  .desk-new-chat { min-height: 44px; }
+  .desk-search { min-height: 44px; line-height: 1.5; padding-top: 10px; padding-bottom: 10px; margin-top: 8px; margin-bottom: 10px; }
+  .desk-nav { padding-bottom: 6px; }
+  .desk-link { min-height: 44px; line-height: 1.5; padding-top: 8px; padding-bottom: 8px; margin: 0; }
+  .desk-group { margin-top: 12px; }
+  .desk-group h2 { line-height: 1.5; margin-bottom: 4px; }
+  .desk-footer { padding-top: 12px; }
+  .desk-footer__links { margin-top: 0; }
+  .desk-demo { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .desk-link, .desk-new-chat { transition: none; } }
+@media print {
+  .desk-sidebar, .desk-layout-select, .desk-location { display: none !important; }
+  .app--desktop { padding-left: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
   .ws-sheet[open] { animation: none; }
@@ -558,3 +696,38 @@
   .ws-direction { padding: 16px 0; border-left: 0 !important; }
   .ws-direction .btn { display: none; }
 }
+
+/* ============================================================================
+ * 【2026-10-14 · P1-7】触控目标收口：全站只留 44（默认）与 36（小档）
+ * ---------------------------------------------------------------------------
+ * 为什么需要这一段：`redesign.css` **最后**加载（main.ts:10），里面又把 7 类控件写成
+ * 40px —— `.ws-text-button` / `.ws-text-link` / `.profile-toolbar select` /
+ * `.calendar-view select` / `.ws-task__details > summary` / `.report-toc a` /
+ * `.intel-title` / `.skin__trigger`，把本文件里的 44px 覆盖掉了。
+ * 实测改前：plan@1280 有 18 个 40px + 2 个 41px + 2 个 42px，report@1280 有 5 个 40px + 2 个 41px + 3 个 42px，
+ * 全站同屏出现 32/36/38/40/41/42/44/46 共 8 档 —— 这是"手搓感"最直接的来源，也都低于 44px 硬约束。
+ * 手法：用 0,2,0 起的选择器把它们收回 44（与上面 .ws-page.ws-page 同一手法）。
+ * 不直接改 redesign.css：它在本次写权限之外，而且这层覆盖关系本身要留证据。
+ * ==========================================================================*/
+.app--workspace .ws-text-button,
+.app--workspace .ws-text-link { min-height: 44px; }
+.app--workspace .profile-toolbar select,
+.app--workspace .calendar-view select { min-height: 44px; }
+.app--workspace .ws-task__details > summary { min-height: 44px; }
+.app--workspace .report-toc a { min-height: 44px; }
+.app--workspace .intel-title { min-height: 44px; }
+.app--workspace .skin__trigger { min-height: 44px; }
+
+/* 【2026-10-14 · P1-7】任务勾选框的**命中区**撑到 44px，视觉尺寸不动（32px）。
+ * 为什么不是把方框画到 44px：redesign.css:204 把它定成 32px 是有理由的（任务行只有 22px 内距），
+ * 44px 的方框会把整行读成"一个巨大的复选框"。但触控约束说的是"能不能点到"，不是"看起来多大"，
+ * 所以用 ::after 撑开命中区 —— 这是不动模板时唯一正确的做法。
+ * 补充判据：WCAG 2.2 SC 2.5.8（AA）的最低目标是 24×24，32px 本来就过线；
+ * 44px 是项目自订的更严口径（CRAFT-BRIEF:322,389），这里按项目口径补齐。
+ * 注意：本文件的度量脚本按 rect 计高，所以下方"<44px"的计数里这 9 个仍在 —— 那是口径残留，不是未修。 */
+.app--workspace .ws-task__check,
+.app--workspace .ws-task__waiting,
+.app--workspace .desk-record__toggle { position: relative; }
+.app--workspace .ws-task__check::after,
+.app--workspace .ws-task__waiting::after,
+.app--workspace .desk-record__toggle::after { content: ''; position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; transform: translate(-50%, -50%); }

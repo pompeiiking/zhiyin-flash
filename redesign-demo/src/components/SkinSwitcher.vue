@@ -14,10 +14,18 @@ import { PopoverRoot, PopoverTrigger, PopoverPortal, PopoverContent } from 'reka
  * 文件头（与 prefers-reduced-motion 重复、用户看不出差别、还把门户搞白过）。
  * 减少动效现在只有一个来源：系统的 prefers-reduced-motion。
  *
+ * 唯一的入口现在是**账号菜单 → 外观**（PLAN §3.5）：顶栏那颗「皮肤」按钮已移除，
+ * 这是全站唯一一处能改外观的地方。
+ *
+ * 浮层位置：默认贴触发点右上；在账号抽屉里（触发器在抽屉下半部）改挂左侧 ——
+ * 往下弹会被弹窗外沿裁掉，往左弹落在抽屉外的空白，整块都看得见。
+ * 手机上宽度收到 `calc(100vw - 40px)`，不会顶出屏幕。
+ *
  * 浮层动效：180ms ease-out，从触发点展开（transform-origin 在右上角，
  * 不是 center —— 浮层从它被点的地方长出来才说得通）；缩放从 0.97 起，不是 0。
  */
 
+const props = defineProps<{ side?: 'top' | 'right' | 'bottom' | 'left' }>()
 const open = ref(false)
 const titleId = useId()
 const route = useRoute()
@@ -67,7 +75,7 @@ const summary = computed(() => {
     </PopoverTrigger>
 
     <PopoverPortal>
-      <PopoverContent class="skin__pop" align="end" :side-offset="8" :collision-padding="12" role="dialog" :aria-labelledby="titleId" aria-label="选择皮肤">
+      <PopoverContent class="skin__pop" :side="props.side ?? 'bottom'" align="end" :side-offset="8" :collision-padding="12" role="dialog" :aria-labelledby="titleId" aria-label="选择皮肤">
         <h2 :id="titleId" class="sr-only">选择皮肤</h2>
         <header class="skin__head">
           <span class="t-label">皮肤</span>
@@ -198,9 +206,14 @@ const summary = computed(() => {
   z-index: var(--z-drawer);
 }
 
+/*
+ * 浮层挂在 body 上（Portal），而账号抽屉是 `<dialog>`（top layer）。
+ * top layer 盖过一切 z-index，所以皮肤浮层必须**不往下弹** —— 在账号菜单里
+ * 用 `side="left"` 落到抽屉外的空白上，手机端则收窄到屏幕内。
+ */
 :global(.skin__pop) {
   z-index: calc(var(--z-drawer) + 1);
-  width: min(320px, calc(100vw - 24px));
+  width: min(320px, calc(100vw - 40px));
   max-height: var(--reka-popover-content-available-height);
   overflow-y: auto;
   padding: var(--sp-4);

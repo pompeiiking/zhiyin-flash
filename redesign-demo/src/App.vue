@@ -21,8 +21,12 @@ import { sessionCacheAvailable } from './lib/session-cache'
  *
  * 结构：品牌与工具 → 当前工作空间 → 底部浮动书签。
  * 门户是独立的公开布局；内页保留五个可发现的功能入口。
+ *
+ * 演示状态**不再是每页一行**：那句话原来是一条 `demo-data-label` 带子
+ * （"演示数据 · 虚构人物与本地预设结果 / 数据设置"），渲染在每个页面的首屏，
+ * 白占一行还挂一颗按钮。现在它是顶栏上的一枚小标识（`.ws-demo-badge`），
+ * 点开进「演示设置」—— 壳层的事留在壳层，页面首屏交还给内容。
  */
-
 const route = useRoute()
 const router = useRouter()
 const palette = ref<InstanceType<typeof CommandPalette> | null>(null)
@@ -31,7 +35,12 @@ const sidebar = ref<InstanceType<typeof DesktopSidebar> | null>(null)
 
 const bare = computed(() => route.meta.public === true)
 const layout = useNavigationLayout()
-const desktop = computed(() => layout.mode.value === 'desktop' && !layout.compact.value)
+/**
+ * 桌面形态的阈值与 `lib/layout.ts` 里的 compact（<1000px）不同 —— 契约只允许
+ * 768 / 1120 两档（PLAN §2.7），而 `lib/layout.ts` 不在本次改动范围内，
+ * 所以壳层按 1120 判断，避免 1000–1119 这段出现"侧栏不渲染、左边却留了 252px"。
+ */
+const desktop = computed(() => layout.mode.value === 'desktop' && window.innerWidth >= 1120)
 async function collapseSidebar() {
   layout.setSidebarCollapsed(true)
   await nextTick()
@@ -84,7 +93,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="app" :data-route="route.path" :class="{ 'app--workspace': !bare, 'app--desktop': !bare && desktop, 'app--sidebar-collapsed': !bare && desktop && layout.sidebarCollapsed.value, 'app--chat': route.name === 'chat' }" :style="{ '--progress-max': progressMax }">
+  <div class="app" :data-route="route.path" :data-nav="layout.mode.value" :class="{ 'app--workspace': !bare, 'app--desktop': !bare && desktop, 'app--sidebar-collapsed': !bare && desktop && layout.sidebarCollapsed.value, 'app--chat': route.name === 'chat' }" :style="{ '--progress-max': progressMax }">
     <template v-if="bare && !routeLoadError">
       <RouterView v-slot="{ Component }">
         <Transition name="page" mode="out-in">
@@ -94,15 +103,14 @@ onMounted(() => {
     </template>
 
     <template v-else>
-      <DesktopSidebar v-if="desktop" v-show="!layout.sidebarCollapsed.value" ref="sidebar" @search="palette?.show()" @new-chat="newChat" @account="workspaceHeader?.showAccount()" @collapse="collapseSidebar" />
+      <DesktopSidebar v-if="desktop" v-show="!layout.sidebarCollapsed.value" ref="sidebar" @new-chat="newChat" @account="workspaceHeader?.showAccount()" @collapse="collapseSidebar" />
       <AppTopBar ref="workspaceHeader" @open-palette="palette?.show()" @expand-sidebar="expandSidebar" />
       <main class="app__main">
         <!-- 氛围层：与门户同一套语言（一片很淡的品牌色光 + 颗粒），但强度低得多 -->
         <div class="app__atmos" aria-hidden="true" />
 
         <div class="app__content">
-          <p class="demo-data-label"><span>{{ backendDemo.state.dataMode==='demo'?'演示数据 · 虚构人物与本地预设结果':'服务数据 · 读取结果需后端支持' }}</span><button class="ws-text-button" @click="workspaceHeader?.showAccount()">数据设置</button></p>
-          <section v-if="routeLoadError" class="ws-page ws-route-error" role="alert"><h1>页面暂时没有加载成功</h1><p>{{ sessionCacheAvailable ? '本次演示记录和已保存的咨询草稿会在重新加载后恢复。' : '浏览器未能保存本次演示上下文，请先保留重要内容。' }}可以重新加载，或先查看其他页面。</p><div class="ws-inline-actions"><button class="btn btn--primary" @click="retryRoute">重新加载</button><RouterLink class="btn" to="/home">回到行动计划</RouterLink></div></section>
+          <section v-if="routeLoadError" class="ws-page ws-route-error" role="alert"><h1>页面暂时没有加载成功</h1><p>{{ sessionCacheAvailable ? '本次演示记录和已保存的咨询草稿会在重新加载后恢复。' : '浏览器未能保存本次演示上下文，请先保留重要内容。' }}可以重新加载，或先查看其他页面。</p><div class="ws-inline-actions"><button class="btn btn--primary" @click="retryRoute">重新加载</button><RouterLink class="btn" to="/chat">去咨询对话</RouterLink></div></section>
           <RouterView v-else v-slot="{ Component }">
             <component :is="Component" :key="route.path" />
           </RouterView>
@@ -127,6 +135,11 @@ onMounted(() => {
       @action="demo.planChatTask('先投 1 家半导体方向的工艺岗', 5); demo.closeIntervention()"
     />
 
+    <!--
+      toast 在**公共层**：以前它渲染在 `app--workspace` 分支里，
+      于是 `bare`（门户）布局下整条反馈路径不存在 —— 门户上"登录成功"永远没有任何回应。
+      审计 D6 把它记成硬缺陷。现在两种布局共用同一个节点，同一次操作在哪都看得见。
+    -->
     <Transition name="toast">
       <div v-if="demo.state.toast" class="toast" role="status">
         {{ demo.state.toast }}

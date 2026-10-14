@@ -336,5 +336,5 @@ console.log(`✓ ${themes.length} 套皮肤组合的必过项全部 ≥ ${MIN}:1
 console.log(`✓ 令牌用途登记：${TEXT_TOKENS.length} 条承载文字、全部有 must:true 条目；`)
 console.log(`  ${DECORATIVE_ONLY.map((t) => `--${t}`).join('、')} 未被当作文字色（白名单 ${DECORATIVE_ALLOWED.length} 条）。`)
 console.log(`✓ 字号令牌登记：${fsRegistered.length} 档全部登记、全部在界面上真的用到（2026-10-12：内页正文恢复 16px）。`)
-console.log('  提示：主色是**河大校徽蓝** --blue-500（#154494），对白底 9.18:1，')
+console.log('  提示：主色是**河大校徽蓝** --blue-500（#0058a7，取自官网标识系统页的校徽资产），对白底 7.11:1，')
 console.log('        所以它既能画图形也能承载文字，不需要再降一档。')

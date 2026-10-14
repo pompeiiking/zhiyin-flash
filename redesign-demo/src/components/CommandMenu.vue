@@ -2,8 +2,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { demo } from '../store'
-import { WORKSPACE_ITEMS, WORKSPACE_TOOLS } from '../lib/workspace-nav'
-import { skin } from '../lib/theme'
+import { WORKSPACE_ITEMS, PORTAL_LINK } from '../lib/workspace-nav'
 import { SCENARIOS } from '../data/scenarios'
 import InfoSheet from './InfoSheet.vue'
 import UiIcon from './UiIcon.vue'
@@ -14,16 +13,11 @@ const cursor = ref(0)
 const field = ref<HTMLInputElement | null>(null)
 const router = useRouter()
 const commands = computed<Item[]>(() => [
-  ...[...WORKSPACE_ITEMS, ...WORKSPACE_TOOLS].map((s) => ({ label: s.label, hint: s.hint, run: () => { router.push(s.to) } })),
+  // 只读**唯一导航模型**（+ 门户那一颗）。内部页 /spec /path /tools 不在模型里，
+  // 所以不会像以前那样从 ⌘K 漏回学生面前 —— 直链仍然打得开。
+  // 这里不再提供「外观」命令：外观的唯一入口是账号菜单 → 外观（PLAN §3.5）。
+  ...[...WORKSPACE_ITEMS, PORTAL_LINK].map((s) => ({ label: s.label, hint: s.hint, run: () => { router.push(s.to) } })),
   ...SCENARIOS.map((s) => ({ label: '使用场景：' + s.grade, hint: s.focus, run: () => demo.setGrade(s.id) })),
-  { label: '主题：浅色', hint: '外观设置', run: () => skin.setTheme('light') },
-  { label: '主题：深色', hint: '外观设置', run: () => skin.setTheme('dark') },
-  { label: '主题：跟随系统', hint: '外观设置', run: () => skin.setTheme('system') },
-  { label: '主色：河大蓝', hint: '外观设置', run: () => skin.setAccent('blue') },
-  { label: '主色：河大红', hint: '外观设置', run: () => skin.setAccent('red') },
-  { label: '风格：极简', hint: '外观设置', run: () => skin.setStyle('plain') },
-  { label: '风格：柔和', hint: '外观设置', run: () => skin.setStyle('soft') },
-  { label: '风格：紧凑', hint: '外观设置', run: () => skin.setStyle('dense') },
   { label: '复位演示数据', hint: '恢复预置状态', run: () => demo.resetDemo() },
   { label: '恢复操作引导', hint: '重新查看各页使用提示', run: () => demo.resetGuide() },
 ])

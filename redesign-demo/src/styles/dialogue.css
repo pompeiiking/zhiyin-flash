@@ -1,83 +1,646 @@
-/* Adapted structural patterns from Ant Design X Bubble and AI Elements.
-   Reference decisions: design-review/chat-hierarchy/REFERENCES.md. */
+/* 对话页 —— "活"的第一现场。
+   口径见 design-review/v6-redesign/DESIGN-LANGUAGE.md 与 CRAFT-BRIEF.md：
+   顾问是"在场的人"（有形象、有状态），不是一段输出的文字。
+
+   本文件承载四件事：
+     1. 三层表面（页底 / 纸面 / 卡中卡）—— 对话流装进一张白纸，组件不再全是同一种白；
+     2. 回答 = 分块（结论 / 支撑 / 说明 / 行动 / 后续问题），每块形态不同；
+     3. 支撑材料 = 可切换的卡片组，切换是**空间移动**（方向 = 卡片在原列的哪一侧）；
+     4. 四种状态（加载骨架 / 错误 / 空白 / 成功）各有各的形态，不靠颜色区分。
+   分块的判定规则写在 ConversationView.vue 的注释里。
+
+   =============================================================================
+   抬升面配额（CRAFT-BRIEF §3.2 规则 3）
+   -----------------------------------------------------------------------------
+   静态内容用线，浮动与可操作内容用影。全页只有三个带影的面：
+     · 纸面 .ws-chat-flow      --e-1   （它是"工作面"，全页唯一允许 e-1 的地方）
+     · 行动卡 .dialogue-action --e-2   （浮在纸上、要你动手的一件事）
+     · 输入区 .ws-composer     --e-2   （离开页面流、与纸面分离）
+   其余一律 --bw-1 发丝线。--e-3 只给真正的浮层（sheet / popover），对话流内不用。
+
+   强调色配额（CRAFT-BRIEF §3.4，白名单 6 处）
+   -----------------------------------------------------------------------------
+   1) 唯一的实心主按钮（行动卡「加入行动计划」/ composer「发送」）
+   2) 学生气泡的底与边
+   3) 卡组当前选中项的底 + 圆点指示器
+   4) 键盘焦点环
+   5) 流式光标 .chat-caret
+   6) 数据卡里"当前值"那一根条
+   蓝色**不参与 hover**：卡片边框、卡头文字/图标、占位符、分隔线、次级按钮
+   一律中性灰。这也是本文件里大量 hover 规则从 --c-primary 退回灰色的原因。
+   ========================================================================== */
+
+/* =============================================================================
+ * 对话页 —— 头部与输入区的结构
+ * -----------------------------------------------------------------------------
+ * 头部只回答一个问题：**这是哪一次咨询**。所以它只有一行：
+ *   会话名 + 演示标识 + 4 个入口（产出与依据 2 个 / 会话操作 2 个）。
+ * 「现在是谁在跟你说话、他此刻在干什么」不在头部 —— 它在每条消息的组首
+ * （.chat-who：头像 + 名字 + 职责）与话语发生处（.chat-who__state + .chat-caret）。
+ *   · 「咨询成果」「个人画像」不是会话操作，是这次咨询的产出与依据
+ *     → 桌面走右侧 rail，窄屏走头部同一行里的两个图标入口
+ *   · 「错误态演示」是调试口子 → 只由 ?demo-error=1 触发，界面上不留按钮
+ * 输入区则是一个真正的 composer：所有可点元素 ≥44px，提示按需出现。
+ * ========================================================================== */
+
 .dialogue-page .exp-conversation-body { display: flex; min-height: 0; }
-.app--desktop .dialogue-page { max-width: 1100px; padding-top: 24px; gap: 20px; }
-.dialogue-page .ws-chat-head { max-width: 800px; width: 100%; margin: 0 auto; padding: 0 0 20px; border-bottom: 1px solid var(--c-border); }
+/* 头部（整行）/ 阅读列 / 右侧 rail：rail 走独立列，不挤压对话列，也不参与头部按钮位 */
+.dialogue-page { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.dialogue-page .ws-chat-head,
+.dialogue-page .exp-conversation-body { grid-column: 1 / -1; }
+.app--desktop .dialogue-page { max-width: var(--w-content); padding-top: 24px; gap: 16px; }
 .dialogue-page .ws-chat-head p { line-height: 1.6; }
-.dialogue-page .ws-chat-head__tools button { display: inline-flex; align-items: center; gap: 7px; color: var(--c-text-3); }
-.dialogue-page .ws-chat-head__tools button:hover { background: var(--c-surface-3); color: var(--c-primary); }
-.app--desktop .dialogue-page .ws-chat-flow,
-.dialogue-page .ws-chat-flow { padding: 16px 10px 28px; background: transparent; border-radius: 0; }
-.dialogue-thread { max-width: 800px; margin: 0 auto; width: 100%; }
-.dialogue-message { margin: 0 0 32px; font-size: var(--fs-16); line-height: 1.85; min-width: 0; }
-.dialogue-message__speaker { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; line-height: 1.5; font-size: var(--fs-14); color: var(--c-text-2); }
-.dialogue-message__speaker strong { font-weight: 500; }
-.dialogue-message__avatar { display: grid; place-items: center; width: 30px; height: 30px; color: var(--c-primary); background: var(--c-primary-weak); border-radius: var(--r-md); flex: none; }
-.dialogue-message__body { color: var(--c-text); overflow-wrap: anywhere; }
-.dialogue-message__body p { white-space: pre-wrap; }
-.dialogue-message__body p + p { margin-top: 16px; }
-.dialogue-message--host > .dialogue-message__body { padding: 0 0 0 40px; }
-.dialogue-message--host > .dialogue-message__tools,
-.dialogue-message--host > .dialogue-action,
-.dialogue-message--host > .dialogue-options { margin-left: 40px; }
-.dialogue-message--me { max-width: 76%; width: fit-content; margin-left: auto; }
-.dialogue-message--me .dialogue-message__speaker { justify-content: flex-end; font-size: var(--fs-12); color: var(--c-text-3); margin-bottom: 6px; }
-.dialogue-message--me .dialogue-message__body { padding: 14px 20px; border-radius: var(--r-lg); background: var(--c-primary-weak); }
-.dialogue-message--system { color: var(--c-text-3); font-size: var(--fs-14); }
-.dialogue-message__tools { margin-top: 12px; align-items: center; gap: 12px; }
-.dialogue-message__tools .exp-copy { margin-left: auto; }
-.dialogue-message__tools .exp-evidence { flex: 0 1 auto; }
-.dialogue-message__tools .exp-evidence > summary { border: 0; background: transparent; padding: 4px 0; gap: 7px; }
-.dialogue-message__tools .exp-evidence > summary > span { display: grid; place-items: center; min-width: 20px; height: 20px; background: var(--c-surface-3); color: var(--c-text-2); border-radius: var(--r-sm); }
-.dialogue-message__tools .exp-evidence[open] { flex-basis: 100%; }
-.dialogue-message__tools .exp-evidence[open] > summary { color: var(--c-primary); }
-.dialogue-message__tools .exp-evidence ol { background: var(--c-surface-2); margin-top: 10px; border: 1px solid var(--c-border); }
-.dialogue-message__tools .exp-copy { color: var(--c-text-3); }
-.dialogue-handoff { margin: 8px 0 28px; padding: 14px 0; border-top: 1px solid var(--c-border); border-bottom: 1px solid var(--c-border); }
-.dialogue-handoff summary { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; cursor: pointer; list-style: none; color: var(--c-text-3); font-size: var(--fs-12); min-height: 28px; }
-.dialogue-handoff summary::-webkit-details-marker { display: none; }
-.dialogue-handoff summary strong { font-weight: 500; color: var(--c-text-2); }
-.dialogue-handoff details[open] summary > svg:last-child { transform: rotate(180deg); }
-.dialogue-handoff dl { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 10px 16px; font-size: var(--fs-14); line-height: 1.7; max-width: 620px; margin: 18px auto 4px; padding: 18px; background: var(--c-surface-2); border-radius: var(--r-md); }
-.dialogue-handoff dt { color: var(--c-text-3); }
-.dialogue-action { margin-top: 22px; padding: 22px 24px; border: 1px solid var(--c-primary-border); border-radius: var(--r-lg); background: var(--c-surface); }
-.dialogue-action__head { display: flex; align-items: center; gap: 9px; color: var(--c-primary); }
-.dialogue-action__head h2 { font-size: var(--fs-14); font-weight: 500; }
-.dialogue-action__head > span { margin-left: auto; color: var(--c-text-3); font-size: var(--fs-12); }
-.dialogue-action__title { margin-top: 12px; color: var(--c-text); font-size: var(--fs-20); line-height: 1.6; font-weight: 600; }
-.dialogue-action__footer { display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px; }
-.dialogue-action__footer .btn { min-height: 42px; }
-.dialogue-options { margin-top: 22px; }
+
+/* ---- 头部：一行 ---- */
+.dialogue-page .ws-chat-head {
+  display: flex;
+  align-items: center;
+  /* 必须显式 nowrap：workspace.css 在窄屏给 .ws-chat-head 设了 flex-wrap: wrap，
+     头部一旦换行就变成两行 —— 那 44px 正是这次要从头上让出来的空间。
+     宽度不够时由会话名（flex:1 + min-width:0 + ellipsis）承担收缩，按钮永不被挤走 */
+  flex-wrap: nowrap;
+  gap: 6px;
+  max-width: 700px;
+  width: 100%;
+  margin: 0 auto;
+  min-height: 44px;
+  padding: 0 0 10px;
+  border-bottom: 1px solid var(--c-border);
+}
+/* 会话名：小字号、可截断。它只交代"这是哪一次咨询"，不与按钮争宽 */
+.ws-chat-head__session {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0 !important;
+  font-size: var(--fs-14);
+  color: var(--c-text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ws-chat-head__demo {
+  flex: none;
+  padding: 1px 8px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-pill);
+  color: var(--c-text-3);
+  font-size: var(--fs-12);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 头部四个入口：一律 44×44 起，克制到"要找才看见"（中性灰，不参与蓝色配额） */
+.dialogue-page .ws-chat-head__tools,
+.dialogue-page .ws-chat-head__flow { display: flex; align-items: center; gap: 4px; flex: none; }
+.dialogue-page .ws-chat-head__tools button,
+.dialogue-page .ws-chat-head__flow button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  color: var(--c-text-2);
+  font-size: var(--fs-14);
+}
+.dialogue-page .ws-chat-head__tools button:hover,
+.dialogue-page .ws-chat-head__flow button:hover { background: var(--c-surface-3); color: var(--c-text); }
+.dialogue-page .ws-chat-head__tools button:disabled,
+.dialogue-page .ws-chat-head__flow button:disabled { opacity: .5; }
+
+.dialogue-rail { display: none; }
+.dialogue-rail__item { display: flex; align-items: flex-start; gap: 10px; width: 100%; min-height: 44px; padding: 12px; border: 1px solid var(--c-border); border-radius: var(--r-md); background: var(--c-surface); text-align: left; color: var(--c-text-2); }
+.dialogue-rail__item + .dialogue-rail__item { margin-top: 8px; }
+/* rail 的 hover 也走灰：它是导航，不是强调；蓝只留给"当前在哪"与主按钮 */
+.dialogue-rail__item:hover { border-color: var(--c-border-strong); background: var(--c-surface-2); color: var(--c-text); }
+.dialogue-rail__item svg { flex: none; margin-top: 2px; color: var(--c-text-3); }
+.dialogue-rail__item span { min-width: 0; }
+.dialogue-rail__item strong { display: block; font-size: var(--fs-14); font-weight: 500; color: var(--c-text); }
+.dialogue-rail__item small { display: block; margin-top: 3px; font-size: var(--fs-14); color: var(--c-text-3); line-height: 1.5; }
+/* 【2026-10-14 · P0-2】rail 的说明是一句话（"这两项是这次咨询的产出与依据…"）：12px → 14px。 */
+.dialogue-rail__note { margin-top: 12px; color: var(--c-text-3); font-size: var(--fs-14); line-height: 1.7; }
+
+/* 右侧 rail 真的要**占一列**，而网格里一列一行只能放一件东西：
+   所以 rail 在场时，对话体让出第 2 列（否则两个都铺在 1 / -1 上会叠在一起）。
+   .has-rail 由组件在挂载时按导航模式打上（窄屏没有这一列）。 */
+.dialogue-page .exp-conversation-body { grid-column: 1; }
+.dialogue-page.has-rail { grid-template-columns: minmax(0, 1fr) 236px; column-gap: 20px; }
+/* 头部只占阅读列那一栏：跨列居中会让它相对纸面偏出去（700px 的头部居中在 1180px 上，
+   纸面居中在 924px 的对话列上，两者差半条 rail 的宽度） */
+.dialogue-page.has-rail .ws-chat-head { grid-column: 1; }
+.dialogue-page.has-rail .dialogue-rail { display: block; grid-column: 2; grid-row: 2; align-self: start; position: sticky; top: 8px; }
+
+/* =============================================================================
+ * L1 工作面：对话流 = 一张纸
+ * -----------------------------------------------------------------------------
+ * 页面底仍是 --c-bg（L0），纸面抬到 --c-surface（L1）并**只在这里**给 --e-1：
+ * "纸面有影、卡在纸上无影"。这一层不做，后面每一处分层都会被"整页平"吃掉。
+ * 阅读列 700px（旧 800px）：中文长行在 800px 上读到第二行会丢行首。
+ * ========================================================================== */
+.app--desktop .dialogue-page .exp-conversation-body > .ws-chat-flow,
+.dialogue-page .exp-conversation-body > .ws-chat-flow {
+  padding: 16px 18px 24px;
+  background: var(--c-surface);
+  border: var(--bw-1) solid var(--c-border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--e-1);
+}
+.dialogue-thread { max-width: 700px; margin: 0 auto; width: 100%; }
+
+/* ---- 一轮发言：头像列 + 内容列 ---- */
+/* 行距收到 --lh-normal(1.7)：1.85 在 16px 中文正文上偏松，段落之间会读成一个密度 */
+.chat-turn { display: flex; align-items: flex-start; gap: 12px; margin: 0 0 26px; font-size: var(--fs-16); line-height: var(--lh-normal); min-width: 0; animation: chat-rise 280ms var(--ease-out) both; }
+.chat-turn__avatar { flex: none; margin-top: 2px; }
+.chat-turn__avatar--gap { display: block; width: 40px; height: 40px; }
+.chat-turn__body { min-width: 0; flex: 1 1 auto; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+.chat-who { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; line-height: 1.5; font-size: var(--fs-12); color: var(--c-text-3); margin-bottom: 2px; }
+.chat-who strong { font-size: var(--fs-14); font-weight: 600; color: var(--c-text); white-space: nowrap; }
+
+/* 在场感：状态词紧跟在名字与职责后面 —— 顶端身份牌删掉之后，
+   "谁在说、什么状态"就是在这里被看见的（另一处是思考行的骨架与头像状态）。
+   它不上蓝色：蓝色配额只给白名单那 6 处，状态用字重与位置表达。 */
+.chat-who__state { position: relative; padding-left: 10px; color: var(--c-text-2); font-weight: 500; }
+.chat-who__state::before { content: ''; position: absolute; left: 0; top: 50%; width: 4px; height: 4px; margin-top: -2px; border-radius: 50%; background: var(--c-border-strong); }
+
+/* 学生的发言靠右，用浅主色底（白名单第 2 处） */
+.chat-turn--me { flex-direction: row-reverse; }
+.chat-turn--me .chat-turn__body { align-items: flex-end; }
+.chat-bubble { max-width: 100%; overflow-wrap: anywhere; }
+.chat-bubble p { white-space: pre-wrap; }
+.chat-bubble p + p { margin-top: 14px; }
+/* 学生气泡：从"平涂"改成"平涂 + 发丝线 + 顶上 1px 内高光"。
+   --c-primary-weak 与纸面 --c-surface 的明度差只有约 3%，平涂时几乎看不出形状；
+   补边与高光之后，气泡靠**边缘**被识别，而不是靠面积（Refactoring UI：用边界而非填充）。 */
+.chat-bubble--me {
+  padding: var(--sp-3) var(--sp-4);
+  border: var(--bw-1) solid var(--c-primary-border);
+  border-radius: var(--r-lg) var(--r-lg) var(--r-sm) var(--r-lg);
+  background: var(--c-primary-weak);
+  color: var(--c-text);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  max-width: 76%;
+  width: fit-content;
+}
+.chat-bubble--system { padding: var(--sp-3) var(--sp-4); border: var(--bw-1) solid var(--c-border); border-radius: var(--r-lg); background: var(--c-surface-2); color: var(--c-text-2); font-size: var(--fs-14); }
+/* 流式光标：全页唯一一处"话还在往外走"的标记（白名单第 5 处）。
+   加粗到 2.5px 并稍微拔高，是为了在 20px 的结论行里也一眼看见它 */
+.chat-caret { display: inline-block; width: 2.5px; height: 1.1em; margin-left: 4px; vertical-align: -0.18em; background: var(--c-primary); animation: chat-caret 1s steps(2, start) infinite; }
+.chat-turn--thinking { animation: none; }
+
+/* =============================================================================
+ * 回答 = 分块
+ * -----------------------------------------------------------------------------
+ * 景深靠"形、宽、字号"三层差，不靠投影：
+ *   结论 = 大字 + 字重 + 下边缘收束线（它在最前，**不用语义标签自述**）
+ *   支撑 = 一张纸中纸（可以换一张看）
+ *   说明 = 小一号、缩进 2px 左线（退到后面）
+ *   行动 = 中性边 + 唯一的实心蓝按钮 + --e-2（要你做的事，形态上不许和别的块像）
+ * 落位 = 顺序生长（--block-step 是这一块在回答里的第几步），不是同时铺开。
+ * 块间距 16px：轮间(26) > 块间(16) > 卡间(12) > 行间(8) 的严格递减是"读得下去"的物理基础。
+ * ========================================================================== */
+
+.chat-answer { display: flex; flex-direction: column; align-items: stretch; gap: var(--sp-4); width: 100%; min-width: 0; }
+.chat-answer .readable-text { overflow-wrap: anywhere; }
+.chat-answer .readable-text > * + * { margin-top: 10px; }
+
+.chat-block { min-width: 0; animation: block-grow 260ms var(--ease-out) both; animation-delay: calc(var(--block-step, 0) * 70ms); }
+@keyframes block-grow {
+  from { opacity: 0; transform: translateY(calc(var(--enter-y) * 0.75)) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+
+/* 块一 · 结论：一句话主张。
+   层级**只用排印手段**：20px / 600 / 负字距 -0.01em（中文可查觉的上限）+ 下边缘一条收束线。
+   不新增"结论"这类结构自述词 —— 用户不需要被告知"这是一条判断"，
+   他需要的是它跟正文一眼不同；下边缘那条线同时回答了"后面的支撑材料为什么跟在这儿"。
+   仍用 flex 行 + wrap（而不是列）：光标是它的第二个 flex 子项，必须落在文字尾巴上。 */
+.chat-block--lead {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  padding-bottom: var(--sp-3);
+  border-bottom: var(--bw-1) solid var(--c-border);
+  font-size: var(--fs-20);
+  line-height: var(--lh-snug);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--c-text);
+}
+.chat-block--lead .readable-text > * + * { margin-top: 8px; }
+.chat-block--lead p { white-space: pre-wrap; }
+
+/* 块三 · 说明：结论装不下的正文。左线 2px + 缩进 14px —— 两重手段已经在说"这是展开"，
+ * 所以这里**不加阴影也不加底色**（CRAFT-BRIEF §3.2 规则 2）。
+ * 【2026-10-14 · P0-2】14px → 16px：这一块是"真正用来读的那一档"（tokens.css:113 登记
+ * "16 学生空间正文/对话"），实测改前整个 /chat 只有 2 个 16px 节点 —— 长段落被压在 14px 上。
+ * 层级不靠"比正文小"（那正是"规格表感"的来源），靠左线 + 缩进 + 颜色（--c-text-2）。 */
+.chat-block--detail { padding-left: 14px; border-left: 2px solid var(--c-border); color: var(--c-text-2); font-size: var(--fs-16); line-height: var(--lh-normal); }
+.chat-block--detail p { white-space: pre-wrap; }
+/* 流式期间的过渡正文：它马上会被分块版本接管，所以只降低自身重量，不做闪烁。
+    光标跟着它走，保证"字正在出来"这件事始终停在真实的字尾。
+    这里与 --detail 同档（同一段话的两个状态，换字号会让流式结束瞬间跳一下）。 */
+.chat-block--transient { padding-left: 14px; border-left: 2px solid var(--c-border); color: var(--c-text-3); font-size: var(--fs-16); line-height: var(--lh-normal); white-space: pre-wrap; }
+
+/* 块四 · 行动（全页两个抬升面之一）
+   边与卡头退回中性：卡片不能和它自己的主按钮抢蓝。视线路径变成
+   "卡 → 标题 → 蓝按钮"一条直线，蓝色只出现一次，因此更重。 */
+.dialogue-action {
+  padding: var(--sp-5);
+  border: var(--bw-1) solid var(--c-border);
+  border-radius: var(--r-lg);
+  background: var(--c-surface);
+  box-shadow: var(--e-2);
+  width: 100%;
+}
+.dialogue-action__head { display: flex; align-items: center; gap: var(--sp-2); color: var(--c-text-2); }
+.dialogue-action__head h2 { font-size: var(--fs-14); font-weight: var(--fw-medium); }
+.dialogue-action__head > span { margin-left: auto; color: var(--c-text-3); font-size: var(--fs-12); font-variant-numeric: tabular-nums; }
+.dialogue-action__title { margin-top: var(--sp-3); color: var(--c-text); font-size: var(--fs-20); line-height: var(--lh-snug); font-weight: 600; }
+.dialogue-action__footer { display: flex; justify-content: flex-end; gap: 12px; margin-top: var(--sp-5); }
+.dialogue-action__footer .btn { min-height: 44px; }
+/* 悬停抬 1px + 阴影升一档：这张卡可以被点（只在真指针设备上） */
+@media (hover: hover) and (pointer: fine) {
+  .dialogue-action { transition: box-shadow var(--dur-2) var(--ease-out), transform var(--dur-2) var(--ease-out); }
+  .dialogue-action:hover { box-shadow: var(--e-3); transform: translateY(-1px); }
+}
+/* 成功态：边框与头部收到中性灰（完成不给颜色奖励），圆角短暂收一下再回位 */
+.dialogue-action.is-added { border-color: var(--c-border); animation: action-settle 420ms var(--ease-out) both; }
+.dialogue-action.is-added .dialogue-action__head { color: var(--c-text-2); }
+@keyframes action-settle {
+  0% { transform: scale(1); }
+  38% { transform: scale(0.994); }
+  100% { transform: scale(1); }
+}
+/* 一次性反馈：按钮底下一道主色扩散，播一次就没了 —— 它回答"刚才发生了什么" */
+.btn--done { position: relative; }
+.btn__fx { position: absolute; inset: 0; border-radius: inherit; background: var(--c-primary-weak); pointer-events: none; animation: btn-fx 420ms var(--ease-out) both; }
+@keyframes btn-fx {
+  from { opacity: 1; transform: scale(0.9); }
+  to { opacity: 0; transform: scale(1.18); }
+}
+
+/* 块五 · 后续问题 —— 次级按钮，走中性描边（蓝只给"当前在哪"和主按钮） */
 .dialogue-options > p { font-size: var(--fs-12); color: var(--c-text-3); }
 .dialogue-options .ws-chat-options { margin-top: 10px; }
-.dialogue-page .ws-composer { max-width: 800px; width: 100%; margin: 0 auto; border: 1px solid var(--c-border-strong); box-shadow: var(--e-1); border-radius: var(--r-lg); padding: 14px 18px; }
-.dialogue-page .ws-composer:focus-within { border-color: var(--c-primary); }
-.dialogue-page .exp-latest { left: 50%; }
-.dialogue-page .ws-chat-welcome { max-width: none; padding: 26px 0 24px; }
+.dialogue-page .ws-chat-options button { color: var(--c-text-2); border-color: var(--c-border); }
+.dialogue-page .ws-chat-options button:hover { background: var(--c-surface-2); border-color: var(--c-border-strong); color: var(--c-text); }
+
+/* =============================================================================
+ * 卡片组：同级支撑材料，可切换
+ * -----------------------------------------------------------------------------
+ * L2 卡中卡：支撑卡组是"局部关注区"，底比纸面暗一档（--c-surface-2）——
+ * 它不再和纸面是同一种白，卡片之间也不必靠阴影分层。
+ * 排成一条横列，切换 = 整列横向平移：
+ *   顺序在前的卡 → 从左侧进入；顺序在后的卡 → 从右侧进入。
+ * 所以"换了另一张卡"是看得见的空间事件，不是内容原地替换。
+ * 单卡时不渲染切换器（见模板），组内只剩一张自然也没有位移。
+ * ========================================================================== */
+.chat-cards { border: var(--bw-1) solid var(--c-border); border-radius: var(--r-lg); background: var(--c-surface-2); overflow: hidden; }
+.chat-cards__head { display: flex; align-items: center; gap: 10px; padding: 6px 10px; border-bottom: var(--bw-1) solid var(--c-border); background: transparent; }
+.chat-cards__eyebrow { display: inline-flex; align-items: center; gap: 6px; flex: none; font-size: var(--fs-12); color: var(--c-text-3); }
+.chat-cards__tabs { display: flex; gap: 4px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.chat-cards__tabs::-webkit-scrollbar { display: none; }
+.chat-cards__tab { display: inline-flex; align-items: center; gap: 7px; min-height: 44px; padding: 10px 12px; border-radius: var(--r-sm); color: var(--c-text-3); font-size: var(--fs-14); white-space: nowrap; }
+.chat-cards__tab:hover { color: var(--c-text); background: var(--c-surface-3); }
+/* 卡组当前选中项：白名单第 3 处（底 + 圆点指示器） */
+.chat-cards__tab.is-on { color: var(--c-primary); background: var(--c-primary-weak); font-weight: 600; }
+.chat-cards__dot { width: 6px; height: 6px; border-radius: 50%; background: var(--c-border-strong); }
+.chat-cards__tab.is-on .chat-cards__dot { background: var(--c-primary); }
+.chat-cards__pos { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; flex: none; font-size: var(--fs-12); color: var(--c-text-3); font-variant-numeric: tabular-nums; }
+.chat-cards__pos strong { color: var(--c-text); font-weight: 600; }
+.chat-cards__step { display: grid; place-items: center; width: 44px; height: 44px; border-radius: var(--r-sm); color: var(--c-text-2); }
+.chat-cards__step:hover { background: var(--c-surface-3); color: var(--c-text); }
+.chat-cards__step:focus-visible { outline: var(--bw-2) solid var(--c-focus); outline-offset: 2px; }
+
+/* 轨道：桌面是"一格里放多张、只有一张可见"（高度自动跟上当前卡）；窄屏变成横滑。
+   卡片正面回到 L1 白：数据卡的轨道是 --c-surface-2，它需要一层白才读得出明度差 */
+.chat-cards__viewport { overflow: hidden; }
+.chat-cards__track { position: relative; display: block; background: var(--c-surface); }
+.chat-card { min-width: 0; padding: var(--sp-4); background: var(--c-surface); animation: card-grow 240ms var(--ease-out) both; }
+.chat-card.is-off { display: none; }
+/* 进场方向 = 这张卡在原列的位置：前一张从左边回来，后一张从右边进来 */
+.chat-card.is-from-left { --card-enter-x: calc(var(--enter-x) - 16px); }
+.chat-card.is-from-right { --card-enter-x: calc(var(--enter-x) + 16px); }
+@keyframes card-grow {
+  from { opacity: 0; transform: translateX(var(--card-enter-x, var(--enter-x))) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+@media (min-width: 761px) {
+  .chat-cards__track { display: grid; }
+}
+
+/* ---- 依据块：编号证据 + 来源 ---- */
+.chat-evidence { display: flex; flex-direction: column; gap: 10px; }
+/* 组内只有一张卡时，CardHead 不渲染，展开控件由 EvidenceList 自己那条**可见**的摘要承担：
+   它是 details 的 summary（浏览器原生可聚焦、可回车/空格展开），min-height 44px。
+   **不再用"绝对定位 + clip"藏 summary** —— 那样虽然看不见，却仍然在 Tab 焦点序里。 */
+.chat-evidence .exp-evidence { flex: none; }
+.chat-evidence .exp-evidence > summary { min-height: 44px; padding: 6px 10px; }
+.chat-evidence .exp-evidence ol { margin-top: 0; background: transparent; padding: 0; gap: 14px; }
+.chat-evidence .exp-evidence li { font-size: var(--fs-14); }
+/* 编号是序数，不是强调：中性底。浅蓝底属于"选中/当前"，用在这里会让编号变成伪状态 */
+.chat-evidence .exp-evidence li > span { background: var(--c-surface-3); }
+.chat-evidence__rest { animation: evidence-grow 220ms var(--ease-out) both; }
+@keyframes evidence-grow {
+  from { opacity: 0; transform: translateY(calc(var(--enter-y) * 0.5)); }
+  to { opacity: 1; transform: none; }
+}
+.chat-block__more { display: inline-flex; align-items: center; gap: 7px; align-self: flex-start; min-height: 44px; padding: 10px 4px; color: var(--c-text-3); font-size: var(--fs-14); }
+.chat-block__more:hover { color: var(--c-text); }
+.chat-block__more[aria-expanded='true'] svg { transform: rotate(180deg); }
+.chat-block__more svg { flex: none; transition: transform var(--dur-2) var(--ease-out); }
+
+/* ---- 数据块：按后端 renderables 契约（kind=bars_chart）手绘 CSS 条形，不引图表库 ----
+ * 三处精度：
+ *   1) 轨高 14 → 10px + 满圆角：粗条像进度条（会变），细条像读数（已经定了）；
+ *   2) 轨道 --c-surface-2 与灰条 --chart-3 拉开明度差；当前值那一根走 --chart-1（白名单第 6 处）；
+ *   3) 值列固定 44px + tabular-nums：小数点与单位垂直对齐 —— 这是"数据"与"手绘"的分界线。
+ * **不给"不达标"的行上红**：红色在本产品专用于"需要你注意"，用在"对比"上会变成"判决"。
+ * ---------------------------------------------------------------------------------- */
+.chat-bars { display: flex; flex-direction: column; gap: 10px; }
+.chat-bars__head { display: flex; align-items: center; gap: 8px; }
+.chat-bars__head h3 { font-size: var(--fs-14); font-weight: 600; color: var(--c-text); }
+.chat-bars__demo { padding: 2px 7px; border-radius: var(--r-pill); background: var(--c-attention-weak); color: var(--c-attention); font-size: var(--fs-12); }
+/* 【2026-10-14 · P0-2】两处说明句：12px → 14px（刻度字本身保持 12px，它是白名单里的"刻度"）。 */
+.chat-bars__note { color: var(--c-text-3); font-size: var(--fs-14); line-height: 1.6; }
+/* 绘图区：横向**不加内距**，全部宽度留给三列 —— 把内距加到绘图区上，
+   窄屏（卡片内宽仅约 259px）会被挤到轨道列宽度为 0（实测）。刻度轴改用绝对定位
+   对齐到轨道列：绝对定位以 padding box 为参照，padding 为 0 时
+   left: 88+8 正好是轨道列左边、right: 44+8 正好是轨道列右边。
+   （旧版刻度按整个绘图区算百分比，与条长不是同一把尺：0 刻度画在标签列上、50 落在条外。） */
+.chat-bars__plot { position: relative; padding: 18px 0 10px; border-bottom: var(--bw-1) solid var(--c-border); }
+.chat-bars__grid { position: absolute; inset: 18px 52px 10px 96px; pointer-events: none; }
+.chat-bars__grid span { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--chart-grid); }
+/* 【2026-10-14 · P0-4】真实无障碍缺陷：刻度字原来用 --c-text-4（#a2a4a6）——
+ * 那一档在 tokens.css:204 登记的是"**只给图标/分隔符**"，却被当正文印在刻度上：
+ * 对纸面 2.50:1，对刻度线底 1.98:1（评审实测），12px 正文的 AA 线是 4.5:1。
+ * 换 --c-text-3（#61666b，对纸面 5.80:1），并给它自己的纸底 —— 这样"量到的底"与"看到的底"
+ * 是同一个（原来数字压在 1px 刻度线上，度量口径与视觉事实不一致）。 */
+.chat-bars__grid i { position: absolute; top: -15px; left: 3px; padding: 0 2px; background: var(--c-surface); font-style: normal; font-size: var(--fs-12); color: var(--c-text-3); font-variant-numeric: tabular-nums; }
+/* 行要盖在刻度线上：绝对定位的网格默认画在静态行之上，会让刻度线穿过色条 */
+.chat-bars__rows { position: relative; display: flex; flex-direction: column; gap: var(--sp-3); }
+.chat-bars__rows li { display: grid; grid-template-columns: 88px minmax(0, 1fr) 44px; align-items: center; gap: var(--sp-2); padding: var(--sp-1) 0; }
+.chat-bars__label { font-size: var(--fs-14); color: var(--c-text-2); }
+.chat-bars__rows li:hover .chat-bars__label { color: var(--c-text); }
+.chat-bars__track { position: relative; height: 10px; border-radius: var(--r-pill); background: var(--c-surface-2); overflow: hidden; }
+/* 最大值用主色（它就是这一组的结论），其余退到灰 —— 品质差异要被看见 */
+.chat-bars__fill { display: block; height: 100%; border-radius: inherit; background: var(--chart-3); transform-origin: left center; animation: bar-grow 420ms var(--ease-out) both; animation-delay: calc(var(--block-step, 0) * 60ms + 80ms); }
+.chat-bars__rows li:first-child .chat-bars__fill { background: var(--chart-1); }
+@keyframes bar-grow { from { transform: scaleX(0.03); } to { transform: scaleX(1); } }
+.chat-bars__value { text-align: right; font-size: var(--fs-14); font-weight: var(--fw-semibold); color: var(--c-text); font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* 单位降一档并变轻：让"数"是主角、"分"是注解。它不参与对齐，所以不加 tabular */
+.chat-bars__value small { margin-left: 2px; font-size: var(--fs-12); font-weight: var(--fw-regular); color: var(--c-text-3); }
+.chat-bars__foot { color: var(--c-text-3); font-size: var(--fs-14); font-variant-numeric: tabular-nums; }
+
+/* ---- 方法块 ---- */
+.chat-method { display: flex; flex-direction: column; gap: 8px; }
+.chat-method h3 { font-size: var(--fs-14); font-weight: 600; }
+.chat-method p { color: var(--c-text-2); font-size: var(--fs-14); line-height: var(--lh-normal); }
+.chat-method__source { display: flex; align-items: center; gap: 6px; color: var(--c-text-3) !important; font-size: var(--fs-12) !important; }
+
+/* =============================================================================
+ * 交接卡：默认就是展开的一张说明卡，不要用户点
+ * ========================================================================== */
+.chat-handoff { display: flex; align-items: flex-start; gap: 16px; margin: 4px 0 30px; padding: 16px 18px; border: var(--bw-1) solid var(--c-border); border-radius: var(--r-lg); background: var(--c-surface-2); animation: chat-handoff-in 320ms var(--ease-out) both; }
+.chat-handoff__flow { display: flex; align-items: center; gap: 6px; flex: none; padding-top: 2px; }
+.chat-handoff__arrow { display: grid; place-items: center; color: var(--c-text-3); }
+.chat-handoff__said { min-width: 0; }
+.chat-handoff__said strong { display: block; font-size: var(--fs-14); font-weight: 600; color: var(--c-text); }
+.chat-handoff__said p { margin-top: 4px; font-size: var(--fs-14); line-height: var(--lh-normal); color: var(--c-text-2); }
+.chat-handoff__basis { display: flex; align-items: center; gap: 5px; color: var(--c-text-3) !important; font-size: var(--fs-12) !important; }
+
+/* =============================================================================
+ * 加载态：骨架的形状就是即将出现的块（结论 → 支撑 → 说明）
+ * -----------------------------------------------------------------------------
+ * 呼吸用同一段主色条纹横移，节奏一致 —— 读起来是"一块正在生成"，
+ * 不是三个各自闪烁的灰框。
+ * ========================================================================== */
+.chat-skeleton { display: flex; flex-direction: column; gap: 10px; width: min(520px, 100%); padding: var(--sp-4); border: var(--bw-1) solid var(--c-border); border-radius: var(--r-lg); background: var(--c-surface); }
+.chat-skeleton > span { display: block; position: relative; overflow: hidden; border-radius: var(--r-sm); background: var(--c-surface-3); }
+.chat-skeleton > span::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, var(--c-primary-weak), transparent); transform: translateX(-100%); animation: skel-sweep 1.4s var(--ease-in-out) infinite; }
+.chat-skeleton__lead { height: 26px; width: 62%; }
+.chat-skeleton__line { height: 13px; width: 100%; }
+.chat-skeleton__line--short { width: 72%; }
+.chat-skeleton__cards { display: flex; gap: 8px; height: 30px; background: transparent !important; overflow: visible !important; }
+.chat-skeleton__cards::after { display: none; }
+.chat-skeleton__cards i { position: relative; overflow: hidden; width: 86px; border-radius: var(--r-sm); background: var(--c-surface-3); }
+.chat-skeleton__cards i::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, var(--c-primary-weak), transparent); transform: translateX(-100%); animation: skel-sweep 1.4s var(--ease-in-out) infinite; }
+.chat-skeleton__cards i:nth-child(2)::after { animation-delay: .12s; }
+@keyframes skel-sweep { to { transform: translateX(100%); } }
+.chat-skeleton__label { margin-top: 2px; color: var(--c-text-3); font-size: var(--fs-12); }
+
+/* =============================================================================
+ * 错误态：说清"哪一步失败了 / 你的东西还在 / 下一步点哪里"
+ * 用注意色的**左侧竖线 + 浅底**，不用发光边框 —— 全站只有这一种注意语法。
+ * ========================================================================== */
+.chat-error { display: flex; flex-direction: column; gap: 8px; width: 100%; padding: 16px 18px; border: var(--bw-1) solid var(--c-attention-border); border-left: 3px solid var(--c-attention); border-radius: var(--r-lg); background: var(--c-attention-weak); animation: block-grow 240ms var(--ease-out) both; }
+.chat-error__head { display: flex; align-items: center; gap: 8px; color: var(--c-attention); font-size: var(--fs-14); }
+.chat-error p { color: var(--c-text-2); font-size: var(--fs-14); line-height: var(--lh-normal); }
+.chat-error__actions { display: flex; gap: 10px; margin-top: 4px; }
+.chat-error__actions .btn { min-height: 44px; }
+
+/* ---- 消息工具条 ----
+   这里只留"复制"。曾经加过一行"已分块呈现 · 结论 / 支撑 / 说明"，删掉了：
+   块的形态本身已经说明了结构（结论是字、依据是编号卡、说明有左线），
+   再用文字复述一遍是脚手架漏到了界面上，不是信息。
+   悬停只把它从 --c-text-4 升到 --c-text-2：消息的形态不变，只是"这里有个动作"。 */
+.dialogue-message__tools { display: flex; margin-top: 2px; align-items: center; gap: 12px; width: 100%; }
+.dialogue-message__tools .exp-copy { margin-left: auto; color: var(--c-text-3); }
+.dialogue-page .exp-copy:hover { color: var(--c-text); background: var(--c-surface-3); }
+
+/* =============================================================================
+ * 输入区 = composer（全页两个抬升面之一）
+ * -----------------------------------------------------------------------------
+ * 五条硬约束：
+ *   1. 所有可点元素 ≥44px（添加材料 / 发送 / 停止生成 / 附件移除 / 信息）；
+ *   2. 形态是**凹槽**而不是"贴在页面上的白条"：底 --c-surface-2 比纸面暗一档，
+ *      边从 --c-border-strong 退到 --c-border（默认态不该那么重），外影 --e-2 让它离开纸面；
+ *      聚焦时边换主色 + 3px 浅蓝环 —— 页面因此有两个方向：纸面向上（消息），输入向下（你还没说的话）；
+ *   3. 常驻的 12px 提示行改成**聚焦时才出现** —— 用法在最需要它的那一刻才占位，
+ *      演示数据的说明挪到一个 44px 的信息按钮后面（信息没丢，只是不再常驻）；
+ *   4. 流式生成中给出「停止生成」：它和「发送」占同一个位置，永远不会同时出现；
+ *   5. Enter 发送 / Shift+Enter 换行 / 合成态不发送 —— 见 keydown 与 form submit。
+ * ========================================================================== */
+.dialogue-page .ws-composer {
+  position: relative;
+  max-width: 700px;
+  width: 100%;
+  margin: 0 auto;
+  padding: var(--sp-3) var(--sp-3) var(--sp-2);
+  border: var(--bw-1) solid var(--c-border);
+  border-radius: var(--r-lg);
+  background: var(--c-surface-2);
+  box-shadow: var(--e-inset), var(--e-2);
+  transition: border-color var(--dur-2) var(--ease-out), box-shadow var(--dur-2) var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  /* 悬停只把边加深一档，**不改底色**（底色一改，凹槽就没了） */
+  .dialogue-page .ws-composer:hover { border-color: var(--c-border-strong); }
+}
+.dialogue-page .ws-composer:focus-within { border-color: var(--c-primary); box-shadow: 0 0 0 3px var(--c-primary-weak-2), var(--e-2); }
+.dialogue-page .ws-composer form { display: flex; align-items: flex-end; gap: 8px; }
+/* textarea 自身永远无边框：凹槽由外层承担（两层边框会让输入区读起来像两个控件） */
+.dialogue-page .ws-composer textarea { flex: 1 1 auto; min-width: 0; min-height: 48px; max-height: 180px; padding: var(--sp-3) 44px var(--sp-2) 0; border: 0; background: transparent; font-size: var(--fs-16); line-height: var(--lh-normal); resize: none; }
+.dialogue-page .ws-composer textarea:focus-visible { outline: none; }
+.dialogue-page .ws-composer textarea::placeholder { color: var(--field-placeholder); }
+.composer-actions { display: flex; align-items: center; gap: 4px; flex: none; }
+.composer-action { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; flex: none; border-radius: var(--r-md); color: var(--c-text-3); }
+.composer-action:hover { background: var(--c-surface-3); color: var(--c-text-2); }
+.composer-action:disabled { opacity: .5; }
+/* 触控目标 ≥44px：`.app--workspace .btn` 把它压到 42px，这里按同一特异性覆盖回来
+   （dialogue.css 在 workspace.css 之后加载，所以同特异性下这条生效） */
+.dialogue-page .composer-send,
+.dialogue-page .composer-stop { min-width: 96px; min-height: 44px; }
+
+/* experience.css 里那几条 32/40px 的"小块"是通用目录页的密度口径；
+   对话页是**读长文 + 频繁点**的页面，这里按同一特异性把它抬到 44px。
+   （不改 experience.css：那是别的页面也在用的公共表。） */
+.dialogue-page .exp-copy { min-height: 44px; padding: 8px 10px; }
+.dialogue-page .exp-latest { min-height: 44px; padding: 10px 16px; }
+.dialogue-page .exp-evidence > summary { min-height: 44px; padding: 8px 12px; }
+.dialogue-page .exp-evidence__label { color: var(--c-text-2); }
+.dialogue-page .exp-evidence__count { font-variant-numeric: tabular-nums; }
+/* 展开态不给蓝色：那块浅蓝底属于"选中/当前"，展开只是"看到了更多" */
+.dialogue-page .exp-evidence[open] > summary { color: var(--c-text); border-color: var(--c-border-strong); background: var(--c-surface-3); }
+/* 消息里的附件条也是可读信息，不是"小灰字" */
+.dialogue-page .desk-attachment { padding: 9px 12px; }
+
+.composer-stop { display: inline-flex; align-items: center; justify-content: center; gap: 9px; border: var(--bw-1) solid var(--c-border-strong); color: var(--c-text-2); background: var(--c-surface); }
+.composer-stop:hover { border-color: var(--c-text-3); color: var(--c-text); }
+/* 停止标记：呼吸是"还在生成"这件事本身，不是装饰（reduced-motion 下降级为静止方块） */
+.composer-stop__mark { width: 11px; height: 11px; flex: none; border-radius: 2px; background: currentColor; animation: stop-pulse 1.3s var(--ease-in-out) infinite; }
+@keyframes stop-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .4; } }
+
+/* 附件 chip：移除按钮 44×44，名字最多两行 */
+.composer-files { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.composer-file { display: flex; align-items: center; gap: 6px; max-width: 100%; padding: 2px 2px 2px 10px; border: var(--bw-1) solid var(--c-border); border-radius: var(--r-md); background: var(--c-surface); color: var(--c-text-2); font-size: var(--fs-12); }
+.composer-file > svg { flex: none; color: var(--c-text-3); }
+.composer-file__name { min-width: 0; max-width: 15em; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.composer-file__remove { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; flex: none; border-radius: var(--r-sm); color: var(--c-text-3); }
+.composer-file__remove:hover { background: var(--c-surface-3); color: var(--c-attention); }
+
+/* 聚焦才出现的提示行；演示数据说明挂在信息按钮后面
+   【2026-10-14 · P0-2】三条都是句子（提示行 / 说明卡 / 停顿说明）：12px → 14px。 */
+.dialogue-page .ws-composer__note { display: block; margin-top: 0; font-size: var(--fs-14); color: var(--c-text-3); max-height: 0; overflow: hidden; opacity: 0; transition: max-height var(--dur-2) var(--ease-out), opacity var(--dur-1) linear; }
+.dialogue-page .ws-composer:focus-within .ws-composer__note { max-height: 18px; margin-top: 6px; opacity: 1; }
+/* 窄屏那条「.ws-composer__note span:last-child{display:none}」是为旧的双 span 结构写的：
+   现在只剩一条最短提示，窄屏也必须留着——否则手机上聚焦后提示行的高度是 0（实测）。 */
+@media (max-width: 760px) {
+  .dialogue-page .ws-composer__note span:last-child { display: inline; }
+}
+.composer-note { margin-top: 8px; padding: 9px 11px; border: var(--bw-1) solid var(--c-border); border-radius: var(--r-md); background: var(--c-surface); color: var(--c-text-3); font-size: var(--fs-14); line-height: var(--lh-normal); }
+.composer-stalled { margin-top: 8px; color: var(--c-text-3); font-size: var(--fs-14); line-height: 1.6; }
+/* 【2026-10-14 · P0-4】这一颗是**控件**（信息按钮）的图标色，不是"装饰分隔符"：
+ * 原来用 --c-text-4（登记为"只给图标/分隔符"），但它承担"这里有个可点的入口"，
+ * 按 1.4.11 属于承载功能的图形，换到 --c-text-3（对纸面 5.80:1）。 */
+.composer-info { position: absolute; top: 6px; right: 6px; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: var(--r-md); color: var(--c-text-3); }
+.composer-info:hover { background: var(--c-surface-3); color: var(--c-text-2); }
+.composer-info.is-on { color: var(--c-text); background: var(--c-surface-3); }
+
+.dialogue-page .exp-latest { left: 50%; z-index: 2; }
+.dialogue-page .ws-chat-welcome { max-width: none; padding: 16px 0 24px; }
 .dialogue-page .exp-intro > div { max-width: 38em; }
 .dialogue-page .ws-chat-welcome h2 { line-height: 1.4; }
-.dialogue-page .ws-chat-prompts { margin-top: 28px; gap: 12px; }
-.dialogue-page .ws-chat-prompts button { background: var(--c-surface); border-color: var(--c-border); padding: 18px; }
-.dialogue-page .ws-chat-prompts button:hover { background: var(--c-primary-weak); border-color: var(--c-primary-border); }
-.dialogue-page .ws-chat-status { margin-left: 40px; padding: 0 0 16px; }
+.dialogue-page .ws-chat-prompts { margin-top: 24px; gap: 12px; }
+/* 空态的四张起步卡是 L2（局部关注区），悬停走灰：它们不是"选中"，只是"要点" */
+.dialogue-page .ws-chat-prompts button { background: var(--c-surface-2); border-color: var(--c-border); padding: 18px; }
+.dialogue-page .ws-chat-prompts button:hover { background: var(--c-surface-3); border-color: var(--c-border-strong); }
+.dialogue-page .ws-chat-prompts button > svg { color: var(--c-text-3); }
+
+@keyframes chat-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes chat-caret { 50% { opacity: 0; } }
+@keyframes chat-handoff-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* =============================================================================
+ * 窄屏：一行头部 + 卡片组横滑 + 明确的当前位置
+ * -----------------------------------------------------------------------------
+ * 头部四个入口收成 44×44 图标按钮：宽度让给会话名，高度**一点都不多占**——
+ * 任何"再起一行"都会吃掉首屏 44px。名字仍在（aria-label + title），只是不占宽度。
+ * 横滑必须落在组内，不能带出整页横滚：viewport 用 clip，轨道自己滚。
+ * 触控目标仍然一律 ≥44px —— 窄屏不是打折的理由。
+ * ========================================================================== */
 @media (max-width: 760px) {
-  .dialogue-page .ws-chat-head { gap: 12px; padding-bottom: 12px; }
-  .dialogue-page .ws-chat-head__tools { gap: 4px; flex-wrap: wrap; }
-  .dialogue-page .ws-chat-head__tools button { gap: 5px; padding: 5px 8px; }
-  .dialogue-page .ws-chat-head__tools svg { width: 14px; height: 14px; }
-  .dialogue-page .ws-chat-flow { padding: 12px 2px 22px; }
-  .dialogue-message { margin-bottom: 26px; }
-  .dialogue-message--me { max-width: 88%; }
-  .dialogue-message--me .dialogue-message__body { padding: 12px 16px; }
-  .dialogue-message--host > .dialogue-message__body { padding-left: 0; }
-  .dialogue-message--host > .dialogue-message__tools,
-  .dialogue-message--host > .dialogue-action,
-  .dialogue-message--host > .dialogue-options { margin-left: 0; }
-  .dialogue-action { padding: 18px; }
-  .dialogue-action__title { font-size: var(--fs-16); }
-  .dialogue-action__footer { margin-top: 16px; }
-  .dialogue-handoff dl { grid-template-columns: minmax(0, 1fr); gap: 4px; padding: 14px; }
-  .dialogue-handoff dd + dt { margin-top: 10px; }
-  .dialogue-page .ws-composer { padding: 12px 14px; }
+  /* 首屏每一 px 都先给消息：页顶那条 8px 外边距（workspace.css 的 .ws-conversation）
+     在这里不承载任何信息，收掉 */
+  .dialogue-page.ws-conversation { margin-top: 0; }
+  .dialogue-page { gap: 6px; }
+  .dialogue-page .ws-chat-head { gap: 4px; padding-bottom: 4px; }
+  /* 【2026-10-14 · P0-2】窄屏不让"会话名"掉回 12px：它和桌面一样是 --fs-14 的控件文字，
+     宽度不够时由 flex:1 + min-width:0 + ellipsis 承担，不靠缩字号。 */
+  .ws-chat-head__session { font-size: var(--fs-14); }
+  /* 四个入口只留图标：44×4 + 演示标识 + 名字仍能同处一行（390 实测） */
+  .ws-chat-head__label { display: none; }
+  .dialogue-page .ws-chat-head__tools,
+  .dialogue-page .ws-chat-head__flow { gap: 2px; }
+  .dialogue-page .ws-chat-head__tools button,
+  .dialogue-page .ws-chat-head__flow button { padding: 0; }
+  .app--desktop .dialogue-page .exp-conversation-body > .ws-chat-flow,
+  .dialogue-page .exp-conversation-body > .ws-chat-flow { padding: 10px 12px 20px; }
+  .chat-turn { gap: 9px; margin-bottom: 22px; }
+  .chat-turn__avatar--gap { width: 34px; height: 34px; }
+  .chat-bubble--me { max-width: 88%; padding: 11px 15px; }
+  .chat-cards__viewport { overflow: clip; }
+  /* align-items: flex-start 是必须的：默认 stretch 会让短卡被最高的那张撑高，
+     横滑时卡内下方留出一大片空白（390 下实测约 200px）*/
+  .chat-cards__track { display: flex; align-items: flex-start; overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; }
+  .chat-card { flex: 0 0 100%; scroll-snap-align: start; padding: 14px; }
+  /* 桌面用的 inline 显隐在窄屏要还原：横滑的全部卡片都留在轨道上 */
+  .chat-card.is-off { display: block; }
+  .chat-card.is-from-left, .chat-card.is-from-right { animation: none; }
+  .chat-cards__eyebrow { display: none; }
+  /* 三列宽度窄屏也不打折（88 / 44 是中文四字名与"46分"的实测下限）：
+     绘图区横向内距本来就是 0，刻度轴靠绝对定位跟随轨道列，窄屏无需另设 */
+  .chat-bars__rows li { grid-template-columns: 88px minmax(0, 1fr) 44px; gap: var(--sp-2); }
+  .chat-handoff { flex-direction: column; gap: 10px; padding: 14px; }
+  .dialogue-action { padding: var(--sp-4); }
+  .dialogue-action__footer { margin-top: var(--sp-4); }
+  .dialogue-page .ws-composer { padding: 10px 10px 8px; }
+  .dialogue-page .ws-composer form { gap: 6px; }
+  /* 窄屏只留一条最短的键盘提示：发送 / 换行的差别必须留着，附件说明走信息按钮 */
+  .dialogue-page .composer-send,
+  .dialogue-page .composer-stop { min-width: 84px; padding: 0 14px; }
+  .composer-info { top: 4px; right: 4px; }
   .dialogue-page .ws-chat-prompts button { padding: 14px; }
 }
+
+/* =============================================================================
+ * 减少动效：全部降级到可用静态形态
+ * -----------------------------------------------------------------------------
+ * 注意**不能**只靠全局那条"时长压到 0.01ms"的兜底：无限循环的骨架条纹会停在
+ * 半透明的一格上，看起来像没加载出来。这里逐条改掉：
+ *   骨架 → 一条静态的中性深一档的块（形状仍在，读得出"这里会有内容"）
+ *   卡片切换 → 方向保持（靠选中指示器与 1/N 计数），去掉位移
+ *   卡片 / 区块落位 → 去掉位移与缩放，只留一次极短的透明过渡
+ *     （"换了一张卡"这件事仍要可感知：位置靠指示器，发生靠这一次不透明度变化）
+ *   新增的两条（composer 聚焦环、行动卡悬停抬升）同样降级为"状态立刻到位、没有过程"
+ * ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  .chat-turn,
+  .chat-handoff,
+  .chat-block,
+  .chat-card,
+  .chat-error,
+  .chat-evidence__rest,
+  .dialogue-action.is-added { animation: none; }
+  .chat-block,
+  .chat-card { animation: chat-swap 120ms linear both; }
+  .chat-caret { animation: none; }
+  .chat-skeleton > span::after,
+  .chat-skeleton__cards i::after { animation: none; background: none; }
+  .chat-skeleton > span,
+  .chat-skeleton__cards i { background: var(--c-surface-3); }
+  .chat-bars__fill { animation: none; }
+  .btn__fx { display: none; }
+  .chat-block__more svg { transition: none; }
+  /* 停止标记的呼吸降到静止：形状还在（一个方块 = 停止），只是不再闪 */
+  .composer-stop__mark { animation: none; }
+  .dialogue-page .ws-composer__note { transition: none; }
+  /* 新增第 10、11 条微交互的降级：聚焦环与悬停抬升直接就位 */
+  .dialogue-page .ws-composer { transition: none; }
+  .dialogue-action,
+  .dialogue-action:hover { transition: none; transform: none; }
+}
+@keyframes chat-swap { from { opacity: 0; } to { opacity: 1; } }

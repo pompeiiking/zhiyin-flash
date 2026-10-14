@@ -110,3 +110,24 @@ deploy/migration.json
 scripts/kev-config-backup.json
 release/
 .platform/
+
+# ---- 本轮重设计的取证产物（截图、探针输出、方向样张的实拍）----
+# 同上面 :60-79 的口径：**脚本入库，产物不入库**。
+# 实测这几处合起来 100MB+（_shots/ 104.8MB、_pdf_v3_pages/ 20.4MB、
+# design-review 下各方向的 shots/ 合计 24MB），一次性提交进去会让仓库体积
+# 永久不可逆 —— 而它们全部可以靠 _tools/*.mjs 重新跑出来。
+# 需要留证时把对应行删掉即可。
+_shots/
+_shots-now/
+_backup/
+_asar_out/
+_codex_research/
+_pdf_v3_pages/
+_pdf_*.py
+_pdf_*.txt
+_wtest.txt
+redesign-demo/_shots/
+# 方向样张（directions/a-workbench 等）的实拍与规格页截图：
+# index.html 与文档要入库（那是决策依据），实拍不入库。
+redesign-demo/design-review/**/shots/
+redesign-demo/design-review/**/*.png

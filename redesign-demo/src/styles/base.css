@@ -58,6 +58,23 @@ h4 {
   letter-spacing: -0.01em;
 }
 
+/* 【2026-10-14 · P2-12】<strong>/<b> 之前没有任何规则，用的是浏览器默认的 bold(700)，
+ * 而字号阶梯里只登记了 400/500/600 —— 于是同一屏里"同一种强调"出现两种黑度
+ * （实测 /profile 一页 15 个 700：30px 的 78%、12px 的 p7-meter__fact、14px 的 11 处）。
+ * 收回到 --fw-semibold，全站强调只剩一支。 */
+strong,
+b {
+  font-weight: var(--fw-semibold);
+}
+
+/* 【2026-10-14 · P0-2】<small> 的 UA 默认是 font-size: smaller，于是"12px 容器里的 <small>"
+ * 会渲染成 **10px** —— 比登记的最小档还小一档，而且完全绕过字号门禁
+ * （实测 5 路由 ×2 档共 16 个节点：StudentView 的「缺」字状态标记就是 10px）。
+ * 钉在 --fs-12：12px 是最小档，不再往下。 */
+small {
+  font-size: var(--fs-12);
+}
+
 ul,
 ol {
   margin: 0;
@@ -1021,10 +1038,12 @@ html.is-skin-switching *::after {
 
 .page__title {
   /* 与门户对齐：门户的主张是 74px，内页标题原来只有 24px，两个面对不上。
-     内页不需要海报字号，但标题得撑得住这一屏 —— 提到 30px 并收紧字距。 */
+     内页不需要海报字号，但标题得撑得住这一屏 —— 提到 30px 并收紧字距。
+     【2026-10-14 · P2-10】字距收到 -0.02em：CRAFT-BRIEF 自订的上限是 -0.02em
+     （中文满框字更负会部件粘连），这里原来是 -0.022em，超了。 */
   font-size: var(--fs-30);
   font-weight: var(--fw-semibold);
-  letter-spacing: -0.022em;
+  letter-spacing: -0.02em;
 }
 
 .page__sub {

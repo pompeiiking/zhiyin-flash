@@ -1,16 +1,34 @@
 /* V5: scene-based reading and interaction. Shared tokens keep all theme combinations. */
-.app--desktop .app__main { margin-right: 16px; margin-bottom: 16px; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 20px; }
-.desk-sidebar { background: transparent; padding-left: 10px; padding-right: 10px; }
+/* 【2026-10-14 · P0-1】壳层就是"桌面上两张纸"：
+ *   .app__main = L1 纸面（白 + 发丝线 + --e-1），.desk-sidebar = 另一张 L1 纸面，
+ *   两者之间与四周露出的就是 L0 页底（--c-bg，已压到 #e8eaef = 对纸面 1.204:1，改前 1.079:1）。
+ * 改前这一条把 app__main 画成一张铺满的白卡、却没有影，于是"纸面压页底"只剩 1px 的 1.262:1 线。
+ * 这里只补影，不动它的底色与圆角：白纸本身是对的，缺的是它离开桌面的证据。 */
+.app--desktop .app__main { margin-right: 16px; margin-bottom: 16px; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 20px; box-shadow: var(--e-1); }
+/* 【2026-10-14 · P2-9】改前这里是 `background: transparent`，而它后加载、同权重，
+ * 于是**覆盖掉** workspace.css:67 的 `background: var(--c-surface)` ——
+ * 实测侧栏内部像素 (140,600) 与栏外 (250,600) 都是 #f7f6f6：导航栏与页面底完全同色，
+ * 这既是"看不出边界"，也是规范写了却被后来文件覆盖的一处真实回归。
+ * 现在给侧栏它自己的纸面（与 app__main 同一层），边界由页底承担。 */
+.desk-sidebar { background: var(--c-surface); border: 1px solid var(--c-border); padding-left: 10px; padding-right: 10px; }
 .app--desktop.app--sidebar-collapsed { padding-left: 16px; }
 .app--desktop.app--sidebar-collapsed .toast { left: 50%; }
 .desk-brand-row { display: flex; align-items: flex-start; gap: 4px; padding-bottom: 26px; }
 .desk-brand-row .desk-brand { flex: 1; min-width: 0; padding-right: 0; padding-bottom: 0; }
-.desk-collapse { flex: none; width: 32px; min-height: 32px; color: var(--c-text-3); }
+/* 【2026-10-14 · P1-7】32 → 44：workspace.css 里有一条 0,3,0 的覆盖（.desk-brand-row .desk-collapse）
+ * 把它抬到 44 并说明过原因；这里把字面值也改成 44，
+ * 免得哪天那条覆盖被删掉、这颗按钮又静默掉到 32px。 */
+.desk-collapse { flex: none; width: 44px; min-height: 44px; color: var(--c-text-3); }
 .desk-collapse:hover { background: var(--c-surface); color: var(--c-primary); }
-.desk-search { background: var(--c-surface); border: 1px solid var(--c-border); }
+/* 【2026-10-14 · P2-9】侧栏现在是白纸面，所以搜索入口必须有"底"才读得出是输入口（12px→14px 见 workspace.css）。 */
+.desk-search { background: var(--c-surface-2); border: 1px solid var(--c-border); }
 .desk-menu__children { padding-left: 15px; }
 .desk-history { margin-top: 8px; }
-.desk-link[aria-current='page'], .desk-history .desk-session[aria-pressed='true'] { background: var(--c-surface); box-shadow: var(--e-1); }
+/* 【2026-10-14 · P2-9】删掉这一条：它给"当前项"一张白底 + --e-1。
+ * 改前侧栏是透明的（= 页底色），白底小片确实能当"当前"，但那一来**子项有影、容器没有**，层级是反的；
+ * 二来侧栏本身已经是白纸面之后，"白底"就等于隐形。
+ * 删掉即回落到 workspace.css 的默认当前态：--c-primary-weak 底 + --c-primary 字 + 500 字重
+ * （状态由颜色与字重表达，不占阴影配额）。 */
 .app--desktop .ws-page { padding-top: 32px; }
 .app--desktop .ws-conversation { padding-top: 24px; height: calc(100dvh - 96px); }
 .app--desktop .ws-paper { border: 1px solid var(--c-border); }
@@ -19,7 +37,7 @@
 .exp-tabs { min-width: 0; }
 .exp-tabs__scroll { overflow-x: auto; scrollbar-width: thin; }
 .exp-tabs__list { display: inline-flex; position: relative; gap: 8px; border-bottom: 1px solid var(--c-border); isolation: isolate; min-width: min(100%, 380px); }
-.exp-tabs__trigger { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 46px; padding: 10px 16px; white-space: nowrap; color: var(--c-text-3); font-size: var(--fs-14); }
+.exp-tabs__trigger { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 44px; padding: 10px 16px; white-space: nowrap; color: var(--c-text-3); font-size: var(--fs-14); }
 .exp-tabs__trigger[data-state='active'] { color: var(--c-primary); font-weight: 600; }
 .exp-tabs__trigger:hover { color: var(--c-primary); }
 .exp-tabs__trigger > span { padding: 0 6px; border-radius: 5px; font-size: var(--fs-12); background: var(--c-surface-3); color: var(--c-text-2); font-variant-numeric: tabular-nums; }
@@ -38,7 +56,9 @@
 .exp-intro p { font-size: var(--fs-16); line-height: 1.8; }
 .exp-motif { width: 200px; height: auto; color: var(--c-primary); flex: none; }
 .ws-chat-prompts { margin-top: 32px; gap: 12px; }
-.ws-chat-prompts button { display: flex; align-items: center; gap: 14px; padding: 18px; background: var(--c-surface-2); border-color: transparent; }
+/* 【2026-10-14 · P0-1/P1-6】空态四张起步卡是 L2：它们现在坐在白纸上，
+ * 原来 `border-color: transparent` 等于只有一层 1.044:1 的浅灰，卡片的边读不出来。 */
+.ws-chat-prompts button { display: flex; align-items: center; gap: 14px; padding: 18px; background: var(--c-surface-2); border-color: var(--c-border); }
 .ws-chat-prompts button > svg { flex: none; color: var(--c-primary); }
 .ws-chat-prompts button > span { flex: 1; min-width: 0; }
 .ws-chat-prompts strong { display: block; font-size: var(--fs-16); font-weight: 500; color: var(--c-text); }
@@ -46,13 +66,16 @@
 .ws-turn { max-width: 40em; margin: 32px 0; }
 .ws-turn--host > p:not(.ws-turn__speaker) { white-space: pre-wrap; }
 .ws-turn--me { max-width: 80%; margin-left: auto; }
-.ws-composer { border: 1px solid var(--c-border-strong); padding: 14px 18px; box-shadow: var(--e-1); }
+.ws-composer { border: 1px solid var(--c-border); padding: 14px 18px; box-shadow: var(--e-inset), var(--e-2); }
 .ws-composer:focus-within { border-color: var(--c-primary); }
 .exp-message-tools { display: flex; flex-wrap: wrap; align-items: start; gap: 8px 14px; margin-top: 12px; }
-.exp-copy { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 4px 8px; color: var(--c-text-3); font-size: var(--fs-12); border-radius: var(--r-sm); }
+/* 【2026-10-14 · P0-2/P1-7】行内小动作（复制 / 披露摘要）用**小档 36px**、
+ * 文字用 14px：它们是控件文字，不是 12px 的标记；32px 连小档都不到。
+ * 对话页里由 dialogue.css 再抬到 44px（那一页是"读长文 + 频繁点"）。 */
+.exp-copy { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 6px 8px; color: var(--c-text-3); font-size: var(--fs-14); border-radius: var(--r-sm); }
 .exp-copy:hover { color: var(--c-primary); background: var(--c-primary-weak); }
-.exp-evidence { flex: 1; min-width: 0; font-size: var(--fs-12); color: var(--c-text-3); }
-.exp-evidence > summary { display: inline-flex; align-items: center; gap: 8px; min-height: 32px; padding: 4px 9px; cursor: pointer; border: 1px solid var(--c-border); border-radius: var(--r-sm); list-style: none; }
+.exp-evidence { flex: 1; min-width: 0; font-size: var(--fs-14); color: var(--c-text-3); }
+.exp-evidence > summary { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 6px 9px; cursor: pointer; border: 1px solid var(--c-border); border-radius: var(--r-sm); list-style: none; }
 .exp-evidence > summary::-webkit-details-marker { display: none; }
 .exp-evidence > summary > span { font-variant-numeric: tabular-nums; }
 .exp-evidence[open] > summary { color: var(--c-primary); border-color: var(--c-primary-border); background: var(--c-primary-weak); }
@@ -60,7 +83,7 @@
 .exp-evidence ol { display: grid; gap: 12px; padding: 18px; margin-top: 12px; border-radius: var(--r-md); background: var(--c-surface-2); }
 .exp-evidence li { display: flex; align-items: start; gap: 10px; color: var(--c-text-2); font-size: var(--fs-14); }
 .exp-evidence li > span { display: grid; place-items: center; min-width: 22px; height: 22px; margin-top: 2px; font-size: var(--fs-12); color: var(--c-primary); background: var(--c-primary-weak); border-radius: 5px; }
-.exp-latest { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 8px 16px; border: 1px solid var(--c-border); border-radius: var(--r-pill); color: var(--c-text-2); background: var(--c-surface); box-shadow: var(--e-2); font-size: var(--fs-14); white-space: nowrap; }
+.exp-latest { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 16px; border: 1px solid var(--c-border); border-radius: var(--r-pill); color: var(--c-text-2); background: var(--c-surface); box-shadow: var(--e-2); font-size: var(--fs-14); white-space: nowrap; }
 .exp-latest:hover { border-color: var(--c-primary); color: var(--c-primary); }
 .ws-sheet--inspector { position: fixed; inset: 12px 12px 12px auto; margin: 0; width: min(460px, calc(100vw - 24px)); max-width: none; height: calc(100dvh - 24px); max-height: none; overflow: hidden; border: 1px solid var(--c-border); border-radius: 16px; }
 .ws-sheet--inspector .ws-sheet__inner { height: 100%; display: flex; flex-direction: column; }
@@ -127,7 +150,7 @@
   .ws-sheet--inspector .ws-sheet__inner { max-height: 88dvh; }
   .ws-sheet--inspector .ws-sheet__head, .ws-sheet--inspector .ws-sheet__body { padding: 20px; }
   .exp-compare th, .exp-compare td { padding: 18px; }
-  .exp-compare__hint { display: block; margin-bottom: 12px; color: var(--c-text-3); font-size: var(--fs-12); }
+  .exp-compare__hint { display: block; margin-bottom: 12px; color: var(--c-text-3); font-size: var(--fs-14); }
   .exp-compare th:first-child { width: 110px; }
   .exp-empty { padding: 20px 0 28px; }
   .exp-empty .exp-motif { width: 140px; }

@@ -16,12 +16,18 @@ import { STUDENT } from '../data/student'
  *   · 它正好用掉左右两条空白带（评审说"两侧还是有点空"）；
  *   · 不占正文的注意力 —— 它是"氛围里的承诺"，不是要你读的第一行。
  *
- * 动态背景四层（`prefers-reduced-motion` 下整层不渲染）：
- *   1. 两片品牌色光晕，34s / 46s 漂移（周期故意不同，同步的循环一眼看得出在放动画）
- *   2. 一片居中的静态光晕，把中段托起来
- *   3. 版面竖线格，**缓慢呼吸**（透明度 12s 往复）
- *   4. 一道很淡的光带，每 18s 从左到右扫过一次
- * 只动 transform 与 opacity，不触发布局与重绘；颗粒纹理刻意不动（它压在文字底下）。
+ * 背景**全部是静态图形，没有一处持续运动**（设计语言 §5 反例表 / §7.3）：
+ *   1. 两片品牌色光晕（左上 / 右下），只负责"底不空"
+ *   2. 一片居中的光晕，把中段托起来
+ *   3. 版面竖线格，静态（透明度写死 0.3）
+ *   4. 两条极淡的路线（SVG path），作为构图的一部分
+ *   5. 颗粒纹理（压在文字底下，本来就是静止的）
+ *
+ * 上一版这里是"氛围海报"：光晕 22s/30s 无限漂移、网格 12s 呼吸、一道 12s 扫光、
+ * 三个节点沿路径跑 SMIL animateMotion —— 全站最典型的"吵不是活"。
+ * 现在只保留图形、撤掉运动：门户是宣传面，静图就是它的完整形态，
+ * 动起来反而不承载任何信息（看的人答不出"这里发生了什么"）。
+ * 唯一的例外是"删掉即没有意义"的扫光带，整层删除（见交付说明）。
  */
 
 const router = useRouter()
@@ -72,11 +78,11 @@ const what = [
       <div class="bg__glow bg__glow--b" />
 
       <!--
-        路径 + 沿路径移动的节点。
-        背景里只让"光"在漂是不够的：这个产品讲的是"一步一步、有人在路上接着你"，
-        所以让几条极淡的路线自己走出来，节点沿着它们慢慢移动 —— 这是把产品语义放进背景。
-        用 SVG 的 animateMotion（不是 CSS offset-path）：路径与节点在同一个坐标系里，
-        一起随视口缩放，不会出现"线在动、点没跟上"的错位。
+        两条路线：纯粹的静态构图，不再有沿路径移动的节点。
+        上一版这里挂了三个 `<animateMotion>`（24s / 38s / 31s 无限循环），
+        是整页最贵也最没信息量的动效 —— 节点在跑，但没人知道它在跑什么。
+        现在只留两条曲线（`<use>`），它们撑住下部构图；节点连同心圆一起删掉：
+        没有运动的圆点落在线上，读起来只是一个来路不明的斑点。
       -->
       <svg class="bg__paths" viewBox="0 0 1200 700" preserveAspectRatio="xMidYMid slice">
         <defs>
@@ -92,25 +98,9 @@ const what = [
         </defs>
         <use class="bg__curve" href="#zp1" />
         <use class="bg__curve bg__curve--dim" href="#zp2" />
-        <circle class="bg__node" r="3">
-          <animateMotion dur="24s" repeatCount="indefinite" calcMode="linear">
-            <mpath href="#zp1" />
-          </animateMotion>
-        </circle>
-        <circle class="bg__node bg__node--dim" r="2.5">
-          <animateMotion dur="38s" repeatCount="indefinite" calcMode="linear" begin="-14s">
-            <mpath href="#zp1" />
-          </animateMotion>
-        </circle>
-        <circle class="bg__node bg__node--accent" r="2.5">
-          <animateMotion dur="31s" repeatCount="indefinite" calcMode="linear" begin="-6s">
-            <mpath href="#zp2" />
-          </animateMotion>
-        </circle>
       </svg>
 
       <div class="bg__grid" />
-      <div class="bg__sweep" />
       <div class="bg__grain" />
     </div>
 
@@ -215,12 +205,13 @@ const what = [
   filter: blur(60px);
 }
 
+/* 两片光晕各有位置，没有动画 —— 它们曾经 22s / 30s 交替漂移（交替的周期是"一眼看出在放动画"），
+   现在停在各自的静态位置上；构图（左上 / 右下 + 中间托底）原样保留。 */
 .bg__glow--a {
   left: -14%;
   top: -14%;
   width: 1060px;
   height: 700px;
-  animation: drift-a 22s var(--ease-in-out) infinite alternate;
 }
 
 .bg__glow--b {
@@ -229,10 +220,9 @@ const what = [
   width: 940px;
   height: 640px;
   opacity: 0.85;
-  animation: drift-b 30s var(--ease-in-out) infinite alternate;
 }
 
-/* 居中那片不漂移：前两片在左上与右下，中间一条会是纯白，视觉上就成了"上下两块空" */
+/* 居中那片本来就不漂移：前两片在左上与右下，中间一条会是纯白，视觉上就成了"上下两块空" */
 .bg__glow--c {
   left: 50%;
   top: 26%;
@@ -241,25 +231,8 @@ const what = [
   transform: translateX(-50%);
 }
 
-@keyframes drift-a {
-  from {
-    transform: translate3d(0, 0, 0);
-  }
-  to {
-    transform: translate3d(16%, 12%, 0);
-  }
-}
-
-@keyframes drift-b {
-  from {
-    transform: translate3d(0, 0, 0);
-  }
-  to {
-    transform: translate3d(-18%, -10%, 0);
-  }
-}
-
-/* 路径与节点：极淡，只做"这条路一直在走"的暗示，不抢文字 */
+/* 路径：极淡，只做"这条路一直在"的暗示，不抢文字。现在整条线是静止的。
+   沿路径跑的三个节点（.bg__node*）与它们的 animateMotion 已删除。 */
 .bg__paths {
   position: absolute;
   inset: 0;
@@ -278,22 +251,9 @@ const what = [
   opacity: 0.45;
 }
 
-.bg__node {
-  fill: var(--c-primary-brand);
-  opacity: 0.55;
-}
-
-.bg__node--dim {
-  opacity: 0.3;
-}
-
-.bg__node--accent {
-  fill: var(--brand-stripe);
-  opacity: 0.35;
-}
-
 /* 版面竖线格（思路取自 designeer 清单里 Fffuel 的 ooorganize）。
-   缓慢呼吸：透明度 12s 往复 —— 这是"背景活着"最省的一种动法，只动 opacity。 */
+   上一版这里 12s 呼吸（opacity 0.2↔0.4）—— 背景"活着"最省的一种动法，但**它仍然不传达信息**，
+   属于设计语言 §5 点名的"持续背景运动"。现在透明度固定在原区间的中值 0.3。 */
 .bg__grid {
   position: absolute;
   inset: 0;
@@ -304,47 +264,15 @@ const what = [
   );
   -webkit-mask-image: radial-gradient(ellipse 74% 68% at 50% 44%, #000 26%, transparent 100%);
   mask-image: radial-gradient(ellipse 74% 68% at 50% 44%, #000 26%, transparent 100%);
-  animation: grid-breathe 12s var(--ease-in-out) infinite alternate;
+  opacity: 0.3;
 }
 
-@keyframes grid-breathe {
-  from {
-    opacity: 0.2;
-  }
-  to {
-    opacity: 0.4;
-  }
-}
+/* 这里原本是一道 12s 从左到右的扫光带（.bg__sweep + @keyframes sweep）。
+   它的存在意义**完全依赖运动**：静止时它只是一块斜的白色蒙版，盖在文字上只会让人以为屏幕脏了，
+   所以整层删除，而不是"留在原地不动"。 */
 
-/* 一道非常淡的光带，每 18s 从左侧扫到右侧。
-   宽度是页面的 1.6 倍、起始位置在视口外，所以进出都不露头。 */
-.bg__sweep {
-  position: absolute;
-  top: -20%;
-  left: -70%;
-  width: 46%;
-  height: 140%;
-  background: linear-gradient(
-    100deg,
-    transparent 0%,
-    var(--sweep-color) 45%,
-    var(--sweep-color) 55%,
-    transparent 100%
-  );
-  animation: sweep 12s var(--ease-in-out) infinite;
-}
-
-@keyframes sweep {
-  0% {
-    transform: translate3d(0, 0, 0);
-  }
-  70%,
-  100% {
-    transform: translate3d(320%, 0, 0);
-  }
-}
-
-/* 颗粒（思路取自 Fffuel 的 nnnoise）。**刻意不动** —— 它压在文字底下，动起来字会发飘 */
+/* 颗粒（思路取自 Fffuel 的 nnnoise）。**本来就是静止的**，不属于禁令范围，原样保留：
+   它压在文字底下，动起来字会发飘。 */
 .bg__grain {
   position: absolute;
   inset: 0;
@@ -394,19 +322,17 @@ const what = [
   color: var(--c-text-3);
 }
 
-/* 横向空间不够时收起 —— 竖排挤内容比留白更糟 */
-@media (max-width: 1180px) {
-  .sides {
-    display: none;
-  }
-}
+/* 横向空间不够时收起 —— 竖排挤内容比留白更糟。断点见文件末尾（统一为 1120px）。 */
 
 /* ===========================================================================
  * 顶栏
  * ======================================================================== */
 .top {
   position: relative;
-  z-index: 2;
+  /* 3 而不是 2：`.main` 与 `.band` 都是 `z-index: 2`，DOM 里排在 `.top` 之后，
+     于是同层里后来的赢 —— 顶栏里 slot 的「演示设置」下拉（PortalView 给的 z-index:10，
+     但它在 `.top` 这个层叠上下文里）会被 `.main` 盖住，按钮点不动。抬一层即可。 */
+  z-index: 3;
   height: var(--w-topbar);
   flex: none;
   display: flex;
@@ -422,10 +348,6 @@ const what = [
   gap: var(--sp-2);
 }
 .pc-controls { display: flex; align-items: center; gap: 24px; flex: none; }
-@media (max-width: 760px) {
-  .pc-controls { gap: 10px; }
-  .pc-account-name, .top__context, .top__divider { display: none; }
-}
 
 .top__mark {
   width: 9px;
@@ -566,7 +488,7 @@ const what = [
  * ======================================================================== */
 .band {
   /* 必须有定位：.bg 是绝对定位元素，会盖在所有未定位的块级元素上面 ——
-     少了这两行，背景的路线与节点会画在通栏之上，有一个节点正好压在"一次一问"上。 */
+     少了这两行，背景的两条路线会画在通栏之上，横穿"一次一问"那一段。 */
   position: relative;
   z-index: 2;
   flex: none;
@@ -621,21 +543,20 @@ const what = [
 }
 
 /* ===========================================================================
- * 减少动效
+ * 减少动效 —— 降级到"可用形态"，不是"关掉就白一块"
+ * ---------------------------------------------------------------------------
+ * 上一版这里是 `.bg { display: none }`，理由写得挺诚实（"SMIL 没法用 CSS 停"），
+ * 但结果是：用户在系统里开了"减少动态效果"，看到的是一个**光秃秃的静态排版**——
+ * 背景层次、构图、两条路线全没了。设计语言 §7.4 明确禁止这种做法。
+ *
+ * 现在整页**本来就没有持续运动**（光晕 / 网格 / 路线 / 颗粒全是静止图形），
+ * 所以减少动效下不需要关掉任何东西：只需要把"交互与一次性"的动效停掉，静态形态原样保留。
+ * 于是 reduced-motion 与正常模式的观感一致，页面仍然是一个完整的门户。
  * ======================================================================== */
-
-/* SMIL（animateMotion）没法用 CSS 停，所以减少动效时整层不渲染 ——
-   诚实做法：装饰直接消失，而不是"看起来停了其实还在跑"。 */
-
-/* 这里曾经踩过一个坑，写下来免得有人"优化"回去：
-   如果只把装饰层的 `animation` 去掉、而保留底色 / `filter: blur(60px)` / `mask-image` / SMIL，
-   Chrome 会把**门户整页绘制成纯白** —— DOM 完好（81185 字符，与正常时逐字相同）、
-   控制台零报错、暗色主题下连页面底色都不画（全图 960000 像素全是 #ffffff）。
-   二分定位到就是那几条规则：停掉它们页面立刻恢复（4 KB → 476 KB）。
-   所以这里对 prefers-reduced-motion 的做法是**整层不渲染**，页面底色 --portal-bg 仍在。 */
 @media (prefers-reduced-motion: reduce) {
-  .bg {
-    display: none;
+  .top__login,
+  .hero__cta {
+    transition: none;
   }
 
   .hero__cta:active {
@@ -643,21 +564,40 @@ const what = [
   }
 }
 
-@media (max-width: 1000px) {
+/* ===========================================================================
+ * 断点 —— 只有 1120 / 768 两档（项目契约 §2.7）
+ * ---------------------------------------------------------------------------
+ * 上一版是 1180 / 1000 / 760 / 600 四档，其中 1000 与 600 并不承担独立职责：
+ *   · 1180（收起两侧竖排）→ 1120，与全站宽屏断点对齐
+ *   · 1000（通栏 4→2 列）→ 1120，和"收起竖排"同一时刻发生：窄了就先减列、再收竖排
+ *   · 760 / 600（窄屏顶栏收信息、通栏 1 列）→ 768，合并成一档
+ * 于是四档收敛为两档。注意：workspace.css 已经按 1120 / 768 走（min-width:1120 与 max-width:1119），
+ * 本页与之对齐；PortalProposalView.vue 还是 1100 / 760 / 360，那一份不归本次改动，见交付说明。
+ * ======================================================================== */
+@media (max-width: 1120px) {
+  .sides {
+    display: none;
+  }
+
   .band__list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--sp-5) var(--sp-4);
   }
 }
 
-@media (max-width: 600px) {
-  .band__list {
-    grid-template-columns: minmax(0, 1fr);
+@media (max-width: 768px) {
+  .pc-controls {
+    gap: 10px;
   }
 
+  .pc-account-name,
   .top__context,
   .top__divider {
     display: none;
+  }
+
+  .band__list {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 </style>

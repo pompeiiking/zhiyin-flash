@@ -2,9 +2,9 @@
 name: 职引 · V5 学生空间
 description: 延续蓝红灰令牌，以清晰阅读、独立导航和状态反馈支持学生咨询与行动。
 colors:
-  primary: "#154494"
-  primary-hover: "#113a7d"
-  primary-weak: "#eff3fa"
+  primary: "#0058a7"
+  primary-hover: "#004885"
+  primary-weak: "#eef5fc"
   attention: "#96000e"
   text: "#1e232c"
   text-secondary: "#4b5157"
@@ -17,7 +17,7 @@ colors:
   dark-background: "#151517"
   dark-surface: "#1b1b1d"
   dark-text: "#f9fafb"
-  dark-primary: "#6e93c9"
+  dark-primary: "#6fa8dc"
   dark-attention: "#d98a92"
 typography:
   display:

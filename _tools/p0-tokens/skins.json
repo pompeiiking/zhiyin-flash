@@ -1,0 +1,242 @@
+{
+ "light-blue-plain": {
+  "chat": {
+   "attrs": "light/blue/plain",
+   "colors": {
+    "paper": "#ffffff",
+    "floor": "#e8eaef",
+    "l2": "#eef0f3",
+    "border": "#ccd3de",
+    "borderStrong": "#a9b2bf",
+    "control": "#8f959e",
+    "text3": "#61666b",
+    "text": "#1e232c"
+   },
+   "ratios": {
+    "L0→L1 页底/纸面": 1.204,
+    "L2→L1 局部面/纸面": 1.142,
+    "发丝线→纸面": 1.506,
+    "强描边→纸面": 2.141,
+    "控件边→纸面": 3.017,
+    "正文→纸面": 15.766,
+    "说明字→纸面": 5.799,
+    "说明字→页底": 4.818
+   }
+  },
+  "profile": {
+   "attrs": "light/blue/plain",
+   "colors": {
+    "paper": "#ffffff",
+    "floor": "#e8eaef",
+    "l2": "#eef0f3",
+    "border": "#ccd3de",
+    "borderStrong": "#a9b2bf",
+    "control": "#8f959e",
+    "text3": "#61666b",
+    "text": "#1e232c"
+   },
+   "ratios": {
+    "L0→L1 页底/纸面": 1.204,
+    "L2→L1 局部面/纸面": 1.142,
+    "发丝线→纸面": 1.506,
+    "强描边→纸面": 2.141,
+    "控件边→纸面": 3.017,
+    "正文→纸面": 15.766,
+    "说明字→纸面": 5.799,
+    "说明字→页底": 4.818
+   }
+  }
+ },
+ "dark-blue-plain": {
+  "chat": {
+   "attrs": "dark/blue/plain",
+   "colors": {
+    "paper": "#1b1b1d",
+    "floor": "#151517",
+    "l2": "#232324",
+    "border": "#313133",
+    "borderStrong": "#444446",
+    "control": "#6f7176",
+    "text3": "#adb2b8",
+    "text": "#f9fafb"
+   },
+   "ratios": {
+    "L0→L1 页底/纸面": 1.06,
+    "L2→L1 局部面/纸面": 1.095,
+    "发丝线→纸面": 1.325,
+    "强描边→纸面": 1.77,
+    "控件边→纸面": 3.521,
+    "正文→纸面": 16.456,
+    "说明字→纸面": 8.056,
+    "说明字→页底": 8.543
+   }
+  },
+  "profile": {
+   "attrs": "dark/blue/plain",
+   "colors": {
+    "paper": "#1b1b1d",
+    "floor": "#151517",
+    "l2": "#232324",
+    "border": "#313133",
+    "borderStrong": "#444446",
+    "control": "#6f7176",
+    "text3": "#adb2b8",
+    "text": "#f9fafb"
+   },
+   "ratios": {
+    "L0→L1 页底/纸面": 1.06,
+    "L2→L1 局部面/纸面": 1.095,
+    "发丝线→纸面": 1.325,
+    "强描边→纸面": 1.77,
+    "控件边→纸面": 3.521,
+    "正文→纸面": 16.456,
+    "说明字→纸面": 8.056,
+    "说明字→页底": 8.543
+   }
+  }
+ },
+ "light-red-plain": {
+  "chat": {
+   "attrs": "light/red/plain",
+   "colors": {
+    "paper": "#ffffff",
+    "floor": "#e8eaef",
+    "l2": "#eef0f3",
+    "border": "#ccd3de",
+    "borderStrong": "#a9b2bf",
+    "control": "#8f959e",
+    "text3": "#61666b",
+    "text": "#1e232c"
+   },
+   "ratios": {
+    "L0→L1 页底/纸面": 1.204,
+    "L2→L1 局部面/纸面": 1.142,
+    "发丝线→纸面": 1.506,
+    "强描边→纸面": 2.141,
+    "控件边→纸面": 3.017,
+    "正文→纸面": 15.766,
+    "说明字→纸面": 5.799,
+    "说明字→页底": 4.818
+   }
+  },
+  "profile": {
+   "attrs": "light/red/plain",
+   "colors": {
+    "paper": "#ffffff",
+    "floor": "#e8eaef",
+    "l2": "#eef0f3",
+    "border": "#ccd3de",
+    "borderStrong": "#a9b2bf",
+    "control": "#8f959e",
+    "text3": "#61666b",
+    "text": "#1e232c"
+   },
+   "ratios": {
+    "L0→L1 页底/纸面": 1.204,
+    "L2→L1 局部面/纸面": 1.142,
+    "发丝线→纸面": 1.506,
+    "强描边→纸面": 2.141,
+    "控件边→纸面": 3.017,
+    "正文→纸面": 15.766,
+    "说明字→纸面": 5.799,
+    "说明字→页底": 4.818
+   }
+  }
+ },
+ "dark-red-soft": {
+  "chat": {
+   "attrs": "dark/red/soft",
+   "colors": {
+    "paper": "#1b1b1d",
+    "floor": "#151517",
+    "l2": "#232324",
+    "border": "#313133",
+    "borderStrong": "#444446",
+    "control": "#6f7176",
+    "text3": "#adb2b8",
+    "text": "#f9fafb"
+   },
+   "ratios": {
+    "L0→L1 页底/纸面": 1.06,
+    "L2→L1 局部面/纸面": 1.095,
+    "发丝线→纸面": 1.325,
+    "强描边→纸面": 1.77,
+    "控件边→纸面": 3.521,
+    "正文→纸面": 16.456,
+    "说明字→纸面": 8.056,
+    "说明字→页底": 8.543
+   }
+  },
+  "profile": {
+   "attrs": "dark/red/soft",
+   "colors": {
+    "paper": "#1b1b1d",
+    "floor": "#151517",
+    "l2": "#232324",
+    "border": "#313133",
+    "borderStrong": "#444446",
+    "control": "#6f7176",
+    "text3": "#adb2b8",
+    "text": "#f9fafb"
+   },
+   "ratios": {
+    "L0→L1 页底/纸面": 1.06,
+    "L2→L1 局部面/纸面": 1.095,
+    "发丝线→纸面": 1.325,
+    "强描边→纸面": 1.77,
+    "控件边→纸面": 3.521,
+    "正文→纸面": 16.456,
+    "说明字→纸面": 8.056,
+    "说明字→页底": 8.543
+   }
+  }
+ },
+ "light-blue-dense": {
+  "chat": {
+   "attrs": "light/blue/dense",
+   "colors": {
+    "paper": "#ffffff",
+    "floor": "#e8eaef",
+    "l2": "#eef0f3",
+    "border": "#ccd3de",
+    "borderStrong": "#a9b2bf",
+    "control": "#8f959e",
+    "text3": "#61666b",
+    "text": "#1e232c"
+   },
+   "ratios": {
+    "L0→L1 页底/纸面": 1.204,
+    "L2→L1 局部面/纸面": 1.142,
+    "发丝线→纸面": 1.506,
+    "强描边→纸面": 2.141,
+    "控件边→纸面": 3.017,
+    "正文→纸面": 15.766,
+    "说明字→纸面": 5.799,
+    "说明字→页底": 4.818
+   }
+  },
+  "profile": {
+   "attrs": "light/blue/dense",
+   "colors": {
+    "paper": "#ffffff",
+    "floor": "#e8eaef",
+    "l2": "#eef0f3",
+    "border": "#ccd3de",
+    "borderStrong": "#a9b2bf",
+    "control": "#8f959e",
+    "text3": "#61666b",
+    "text": "#1e232c"
+   },
+   "ratios": {
+    "L0→L1 页底/纸面": 1.204,
+    "L2→L1 局部面/纸面": 1.142,
+    "发丝线→纸面": 1.506,
+    "强描边→纸面": 2.141,
+    "控件边→纸面": 3.017,
+    "正文→纸面": 15.766,
+    "说明字→纸面": 5.799,
+    "说明字→页底": 4.818
+   }
+  }
+ }
+}

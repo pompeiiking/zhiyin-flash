@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { WORKSPACE_GROUPS } from '../lib/workspace-nav'
+import { activeGroup } from '../lib/workspace-nav'
 const route = useRoute()
-const group = computed(() => WORKSPACE_GROUPS.find(g => g.items.some(i => i.paths.includes(route.path)))?.label)
+const group = computed(() => activeGroup(route)?.label)
 defineProps<{ title: string; description: string }>()
 </script>
 <template>

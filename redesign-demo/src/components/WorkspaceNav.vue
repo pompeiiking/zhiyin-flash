@@ -3,32 +3,77 @@ import { ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import InfoSheet from './InfoSheet.vue'
 import UiIcon from './UiIcon.vue'
-import { WORKSPACE_GROUPS, WORKSPACE_TOOLS } from '../lib/workspace-nav'
+import { WORKSPACE_GROUPS, WORKSPACE_PRIMARY, MOBILE_TABS, isNavActive, activeGroup } from '../lib/workspace-nav'
 import { AccordionRoot, AccordionItem, AccordionHeader, AccordionTrigger, AccordionContent } from 'reka-ui'
+
+/**
+ * 移动端导航。
+ *
+ * 底栏四个常用去处 + 「更多」。四个 tab 各自覆盖**整组**路由，所以同一组内的
+ * 二级页面切换时 tab 保持高亮，不会掉。其余入口都在「更多」里，与桌面侧栏
+ * 读的是同一份 `workspace-nav` 模型。
+ *
+ * 「更多」里原来是"分组目录 + 主入口 + 一排内部页链接（使用指南 / 应用工具 /
+ * 设计规范 / 返回门户）"。内部页已按审计结论移出学生入口，返回门户在账号抽屉里；
+ * 这里只剩学生真正要去的地方。
+ */
 const route = useRoute()
 const more = ref(false)
-const openGroup = ref('')
-watch(() => [route.path, more.value], () => {
-  openGroup.value = WORKSPACE_GROUPS.find(g => g.items.some(i => i.paths.includes(route.path)))?.label ?? ''
-}, { immediate: true })
-const spaces = [
-  { label: '对话', to: '/chat', icon: 'chat', paths: ['/chat'] },
-  { label: '行动', to: '/home', icon: 'action', paths: ['/home', '/plan', '/schedule', '/notes'] },
-  { label: '画像', to: '/profile', icon: 'profile', paths: ['/profile', '/academic', '/report'] },
-  { label: '方向', to: '/directions', icon: 'directions', paths: ['/directions', '/intel'] },
-]
+/** 与桌面侧栏一致：分组默认全部展开，收起只是用户主动收窄列表。 */
+const openGroup = ref<string[]>(WORKSPACE_GROUPS.map((g) => g.key))
+
+watch(
+  () => [route.path, more.value],
+  () => {
+    const key = activeGroup({ path: route.path, query: route.query })?.key
+    if (key && !openGroup.value.includes(key)) openGroup.value = [...openGroup.value, key]
+  },
+  { immediate: true },
+)
 </script>
+
 <template>
   <nav class="ws-bookmarks" aria-label="学生空间导航">
-    <RouterLink v-for="s in spaces" :key="s.to" :to="s.to" class="ws-bookmark" :class="{ 'ws-bookmark--active': s.paths.includes(route.path) }" :aria-current="s.paths.includes(route.path) ? 'page' : undefined">
-      <UiIcon :name="s.icon" :size="20" /><span>{{ s.label }}</span>
+    <RouterLink
+      v-for="tab in MOBILE_TABS"
+      :key="tab.key"
+      :to="tab.to"
+      class="ws-bookmark"
+      :class="{ 'ws-bookmark--active': isNavActive(tab, route) }"
+      :aria-current="isNavActive(tab, route) ? 'page' : undefined"
+    >
+      <UiIcon :name="tab.icon" :size="20" /><span>{{ tab.short ?? tab.label }}</span>
     </RouterLink>
-    <button class="ws-bookmark ws-bookmark--more" aria-label="更多功能" @click="more = true"><UiIcon name="more" /><span>更多</span></button>
+    <button class="ws-bookmark ws-bookmark--more" type="button" aria-label="更多功能" @click="more = true">
+      <UiIcon name="more" :size="20" /><span>更多</span>
+    </button>
   </nav>
+
   <InfoSheet :open="more" title="更多功能" @close="more = false">
-    <AccordionRoot v-model="openGroup" type="single" collapsible class="desk-menu"><AccordionItem v-for="group in WORKSPACE_GROUPS" :key="group.label" :value="group.label"><AccordionHeader><AccordionTrigger class="desk-menu__trigger"><UiIcon :name="group.icon" /><span>{{ group.label }}</span><UiIcon class="desk-menu__chevron" name="chevron" :size="16" /></AccordionTrigger></AccordionHeader><AccordionContent class="desk-menu__content"><div class="desk-menu__children"><RouterLink v-for="item in group.items" :key="item.to" :to="item.to" class="desk-link desk-link--child" :aria-current="item.paths.includes(route.path) ? 'page' : undefined" @click="more = false">{{ item.label }}</RouterLink></div></AccordionContent></AccordionItem></AccordionRoot>
-    <div class="ws-directory">
-      <RouterLink v-for="item in WORKSPACE_TOOLS" :key="item.to" :to="item.to" @click="more = false"><strong>{{ item.label }}</strong><span>{{ item.hint }}</span><UiIcon name="arrow" /></RouterLink>
-    </div>
+    <RouterLink class="ws-directory__primary" :to="WORKSPACE_PRIMARY.to" @click="more = false">
+      <UiIcon :name="WORKSPACE_PRIMARY.icon" /><span><strong>{{ WORKSPACE_PRIMARY.label }}</strong><small>{{ WORKSPACE_PRIMARY.hint }}</small></span>
+      <UiIcon name="arrow" :size="16" />
+    </RouterLink>
+    <AccordionRoot v-model="openGroup" type="multiple" class="desk-menu">
+      <AccordionItem v-for="group in WORKSPACE_GROUPS" :key="group.key" :value="group.key">
+        <AccordionHeader>
+          <AccordionTrigger class="desk-menu__trigger">
+            <UiIcon :name="group.icon" /><span>{{ group.label }}</span><UiIcon class="desk-menu__chevron" name="chevron" :size="16" />
+          </AccordionTrigger>
+        </AccordionHeader>
+        <AccordionContent class="desk-menu__content">
+          <div class="desk-menu__children">
+            <RouterLink
+              v-for="item in group.items"
+              :key="item.key"
+              :to="item.to"
+              class="desk-link desk-link--child"
+              :aria-current="isNavActive(item, route) ? 'page' : undefined"
+              @click="more = false"
+            >{{ item.label }}</RouterLink>
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+    </AccordionRoot>
   </InfoSheet>
 </template>

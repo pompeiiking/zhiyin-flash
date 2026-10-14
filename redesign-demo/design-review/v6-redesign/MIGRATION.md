@@ -1,0 +1,768 @@
+# 学生端组件迁移清单（v6）
+
+生成时间：2026-10-14。**方法：只读 + grep 穷举 + 逐条核对组件 props**，不引用任何对话里的结论。
+基线：`redesign-demo`（Vue 3 + Vite）。
+
+## 0. 怎么核对这些数字
+
+本文件所有 `文件:行` 都可以用下面几条命令复现（行号为当前工作树状态）：
+
+```bash
+cd redesign-demo
+# 四种旧折叠：静态类名出现点
+grep -rn --include=*.vue -E 'class="ws-fold|class="ws-context|class="plan-stage|class="ws-task__details' src
+# 该折叠的全部 <details>（含旧折叠之外的 5 个）
+grep -rn --include=*.vue '<details' src
+# 弹层
+grep -rn --include=*.vue '<InfoSheet' src
+# 新组件是否已被使用（结论：全部 0 处）
+grep -rn --include=*.vue -E '<Foldable|<SkeletonBlock|<StatusBanner|<SourceChip|<StatTile' src
+# 空态两套实现
+grep -rn --include=*.vue -E '<EmptyState|class="ws-empty' src
+# 量纲：MeterRow 的真实调用点
+grep -rn --include=*.vue '<MeterRow' src
+```
+
+**先记一条总账（这决定了迁移的性质）**：
+
+| 组件 | 文件 | 模板调用点 |
+|---|---|---|
+| `Foldable.vue` | 已交付 | **0** |
+| `SkeletonBlock.vue` | 已交付 | **0** |
+| `StatusBanner.vue` | 已交付 | **0** |
+| `SourceChip.vue` | 已交付 | **0** |
+| `StatTile.vue` | 已交付 | **0** |
+| `InfoSheet.vue`（shape） | 已交付 | 18（但**没有一处**传 `shape`，全靠缺省 / 旧 prop） |
+| `ConfidenceBadge.vue`（统一过） | 已交付 | **6**（另有 5 处仍用旧的本地写法，见 §3.4） |
+| `charts/MeterRow.vue`（`:score→:value`） | 已交付 | **2**（都已用 `:value`，未迁移数 = 0，见 §3.1） |
+| `EmptyState.vue`（升级） | 已交付 | **2**（另有 `.ws-empty` **18** 处，见 §4.2） |
+
+**所以"迁移"目前是 0% 执行的状态**：组件先落地了，页面一条都没改。
+这不是"补几个调用点"，而是"组件库 → 17 个页面"的一次铺设。**改组件不迁移调用点 = 页面不会变好，但也不会坏**——因为新组件全部是新增，没有替换任何旧类名。真正的风险只在 §3.1 的量纲和 §5 地雷。
+
+---
+
+## 1. 折叠收敛清单
+
+### 1.1 判定依据（来自 `DESIGN-LANGUAGE.md` / `PLAN.md`）
+
+| 条目 | 原文要点 | 用在哪 |
+|---|---|---|
+| `PLAN.md:114` | "**一页最多 1 层折叠**" | 所有嵌套折叠 |
+| `PLAN.md:112-113` | "**主信息默认可见**：结论、当前任务、关键字段、当天的课与事，不折叠。折叠只留给**次要**内容（完整历史、原始证据全文、高级设置）" | 决定 `static` |
+| `DESIGN-LANGUAGE.md:102` | 反例表："**溯源做成一个折叠的『来源』** → 要用户自己点开才知道，信息还是平面的" | 所有"来源/依据"折叠 |
+| `DESIGN-LANGUAGE.md:74-77` | §4.3 "摘要 ↔ 细节 ↔ 原文是**连续缩放**，不是一个折叠框" | 报告页与画像页的证据层 |
+| `DESIGN-LANGUAGE.md:80-83` | §4.4 "状态与不确定性显形……前端现在**一律印成灰色小字**" | 状态类折叠 |
+| `DESIGN-LANGUAGE.md:86-90` | §4.5 "景深：先解决『平』……主信息立在前，支撑退到后" | 三档 variant 的选择 |
+| `Foldable.vue:12-15` | 组件自己的明路："**给主信息留一条明路：`static` 形态**……这些内容不该被折叠，迁移时用 static 表达『它始终可见』，而不是忘记加折叠" | `static` 的用法 |
+| `Foldable.vue:196-200` | `group` 是最重的一档（64px 头 + 16px 标签），"阶段/分组" | 阶段与分组 |
+
+**"该不该折叠"的三问（逐调用点用这个判）**：
+1. 收起后，用户还能不能做这一页最该做的动作？（不能 → `static`）
+2. 它是不是"结论/当前任务/关键字段/当天的课与事"之一？（是 → `static`，`PLAN.md:112`）
+3. 它是不是"完整历史 / 原始证据全文 / 高级设置"之一？（是 → 可以保留折叠，且**只能有一层**）
+
+### 1.2 数量基线
+
+**先分清两个口径**（混起来是之前几份清单互相矛盾的原因）：
+- **"行号"口径**：`grep` 命中的静态行数。一个 4 个元素的 `v-for` 仍算 1 行。
+- **"组件定义"口径**：真正要改的独立位置数。同一个组件被多个页面消费时只算 1 个定义点。
+
+| 类名 | grep 静态行 | 其中循环生成 | **独立定义点** | 展开后最坏情形 |
+|---|---|---|---|---|
+| `.ws-context` | **14** | — | **14** | 14 |
+| `.plan-stage` | **2** | 2 处 `v-for`（`RoadmapView:23` 3 阶段、`LiveActionPlan:11` N 阶段） | **2** | 3 + N |
+| `.ws-task__details` | **1** | 1 处 `v-for`（每个任务一行） | **1** | = 任务数（`/plan` 约 20） |
+| `.ws-fold` | **8** | 2 处 `v-for`（`AssessmentView:87` 维度数、`RoadmapView:24` 4 个来源） | **6** | 9 + 4 |
+| **合计** | **25** | — | **23** | — |
+
+> ⚠️ 22 = 14 + 2 + 1 + 8 = **25** 行；独立定义点 = 14 + 2 + 1 + 6 = **23**。
+> `.ws-fold` 的 8 行里有 2 行是 `v-for`，所以静态行 8 ≠ 定义点 8（定义点按"这一行就是一处代码"算仍是 8 个行位，
+> 但其中 2 个行位会生成 9 与 4 个实例）。**迁移时必须改的是 25 个行位。**
+
+逐条列出的 25 个行位：
+
+| 类名 | 行位（`文件:行`） |
+|---|---|
+| `.ws-context`（14） | `NotesView:27`、`AcademicView:109`、`ReflectionView:46`、`ScheduleView:54`、`ScheduleView:57`、`ScheduleView:59`、`RoadmapView:24`、`StudentView:1221`、`AiResultMeta:6`、`ToolsView:8`、`TaskBrief:8`、`TimetableAdvice:8`、`TodoSuggestions:8`、`CareerMatchPanel:21` |
+| `.ws-fold`（8） | `AssessmentView:87`、`AssessmentView:92`、`ConversationView:833`、`RoadmapView:24`（内层）、`CareSheet:9`、`ReflectionView:46`（内层）—— 这 6 个是静态类名行；另有 2 个是 `v-for` 同行的 `<details>`（已在上面 6 个里，`RoadmapView:24` 一行同时含外层 `ws-context` 和内层 `ws-fold`） |
+| `.plan-stage`（2） | `RoadmapView:23`、`LiveActionPlan:11` |
+| `.ws-task__details`（1） | `TaskList:18` |
+
+**"同一行含两个折叠"的例外**：`RoadmapView.vue:24` 一行里既有外层 `<details class="ws-context">` 又有内层 `<details v-for class="ws-fold">` ——
+所以它同时出现在 `.ws-context`（14）和 `.ws-fold`（8）两栏里。**它是全站最该拆的一行**（§1.3 A7）。
+
+### 1.3 逐调用点
+
+图例：`defaultOpen`/`forceOpen` 一栏写"无"= 旧代码没绑 `:open`，即**浏览器默认收起**。
+
+#### A. `.ws-context`（14 处）
+
+| # | 文件:行 | 里面装的是什么 | variant | defaultOpen / forceOpen | 该 static？ | 理由 |
+|---|---|---|---|---|---|---|
+| A1 | `NotesView.vue:27` | 已完成记录（`desk-record--done` 列表，可恢复/删除） | `section` | **`defaultOpen`** | 否 | 唯一能"看到完成时"的地方，且审计 B3 记的病灶就是"勾掉后静默消失"。`count` 传 `completed.length` |
+| A2 | `AcademicView.vue:109` | 三块：核对学籍（**提供验证码按钮**）、课程时间完整性说明、**撤回资料**（危险动作） | `section` + `actions` | **`forceOpen` 不适用；`defaultOpen: true`** | **部分 static** | 标题承诺"并核验学籍资料"，核验入口在默认收起的折叠里 = 2 次点击才能开始（路 B 结论）。核验入口与撤回危险动作**不能藏在折叠下**——建议拆成两个 `Foldable static`（核验入口）+ 一个折叠（课程时间完整性这种纯说明） |
+| A3 | `ReflectionView.vue:46` | 近期完成任务（前 4 条）+ 执行支持入口 + **内层再嵌 `.ws-fold`**（主动提醒规则） | `section` | 无 | **是（外层）** | 两层折叠直接违反 `PLAN.md:114`；外层内容（近期完成 + 执行支持）是页面主信息，应 `static`。内层（规则全文）保留为 `inline` |
+| A4 | `ScheduleView.vue:54` | 本月关键节点列表（点击跳到某天） | `section` | 无 | 否 | 是日历的**索引**，"完整历史"性质，可折叠。但 `count` 应传 `marks.length` |
+| A5 | `ScheduleView.vue:57` | 时间待补充 / 结束节次 >40 的课程 | `section` | 无 | 否 | 数据完整性告警，属"逐条核对"的次要内容。**但它是告警**，建议用 `StatusBanner tone=warning` 在折叠头上一行摘要，而不是完全藏起来（见 §4.3） |
+| A6 | `ScheduleView.vue:59` | 日期待补充的事项（`liveCalendar` 无 `due_at`） | `section` | 无 | 否 | 同上，`warning` |
+| A7 | `RoadmapView.vue:24` | **内层再嵌 `v-for .ws-fold`**（按任务来源分组） | `section` | 无 | **是（外层）** | 外层违反 1 层上限；且"按来源查看"是 `DESIGN-LANGUAGE.md:69-72` §4.2 点名的**多视角重组**，不是次要内容。外层改 `static`，内层 4 个"来源"折叠改 `inline` |
+| A8 | `StudentView.vue:1221` | 资料来源与核验说明（可获取的信息 7 条 + 学校资料） | `section` | 无 | **是** | 这正是 `DESIGN-LANGUAGE.md:102` 点名的"溯源做成一个折叠的来源"。画像页 A 段已逐条给了来源，这一段是**整页的溯源总账**，属"我为什么该这么理解"的一层 → `static` 或 `panel`（弹层），不要折叠 |
+| A9 | `AiResultMeta.vue:6` | 依据与生成说明（rationale + citations + `by`/`at`/`cached`） | `section` | 无 | 否 | 唯一合理的折叠（"原始证据全文"）。但 **citations 的 `source`/`detail`/`at` 必须改 `SourceChip`（§3.2）**，否则折叠一打开还是灰字，等于折了两次 |
+| A10 | `ToolsView.vue:8` | 演示工具入口（`registry.modules`） | `section` | 无 | 否 | 页面本身要被降级/移出（`PLAN.md:39`），**建议不迁移**，随页面一起处置 |
+| A11 | `TaskBrief.vue:8` | "今天先做什么，为什么" + 生成按钮 + AI 结果 | `section` + `actions` | **`defaultOpen: true`** | **是（内容）/ 否（动作）** | 今天该做什么 = "当前任务"（`PLAN.md:112`）→ 内容 `static`；"生成今日简报"是动作，别让它先点开折叠才能看见。若保留折叠，按钮必须在折叠头**外面** |
+| A12 | `TimetableAdvice.vue:8` | 结合课表安排可投入时间 + 生成按钮 + AI 结果 | `section` + `actions` | 无 | 否 | 次要建议，可折叠。同样：动作按钮搬出折叠头 |
+| A13 | `TodoSuggestions.vue:8` | 查看待办建议 + 生成按钮 + 逐条采纳 | `section` + `actions` | 无 | 否 | 同上 |
+| A14 | `CareerMatchPanel.vue:21` | 已读取的资讯事实（标题按钮 + `source_name`） | `section` | 无 | 否 | 可折叠；`source_name` → `SourceChip`（§3.2） |
+
+#### B. `.plan-stage`（2 处，均为 `v-for`）
+
+| # | 文件:行 | 里面装的是什么 | variant | defaultOpen / forceOpen | 该 static？ | 理由 |
+|---|---|---|---|---|---|---|
+| B1 | `RoadmapView.vue:23` | 阶段目标：`v-for stages`，序号方块 + 标题 + `window · N/M 件任务已完成`，body 是 note + `<TaskList>` + 讨论链接 | `group` | 旧 `:open="i === 0"` → **`defaultOpen: i === 0`** | 否（第 1 阶段）/ **需确认**（第 2、3 阶段） | 阶段是"分组"，用最重的 `group`。第 1 阶段默认开是旧行为，保留。旧 `:open` 是**表达式不是布尔**，只能逐项传 `defaultOpen`，不能写 `forceOpen`。第 2、3 阶段是否也默认开：审计原话是"第二三阶段默认一屏看不到"→ 倾向 `defaultOpen: true`，但这会让 `plan-stages` 一次铺满，**需产品确认** |
+| B2 | `LiveActionPlan.vue:11` | 同上，实时计划版：`:open="!today && i === 0"` | `group` | **`defaultOpen: !today && i === 0`** | 否 | 与 B1 同一形状，必须与 B1 用同一套折叠策略（否则 /home 与 /plan 又漂移） |
+
+> `LiveActionPlan` 同时用在 `TodayView.vue:38`（`:today="true"`）与 `RoadmapView.vue:20`（无 prop）。
+> 所以这 **1 个折叠定义点会同时作用于 /home 和 /plan 两页**：`/home` 上 `!today` 为假 → 全部收起（正确的，今日页只该看下一件）；`/plan` 上第一个阶段默认开。
+
+#### C. `.ws-task__details`（1 处定义，3 处消费）
+
+| # | 文件:行 | 里面装的是什么 | variant | defaultOpen / forceOpen | 该 static？ | 理由 |
+|---|---|---|---|---|---|---|
+| C1 | `TaskList.vue:18` | 任务依据 `t.why` + 操作（采纳建议/拒绝建议/拆成 5 分钟/安排执行） | **`inline`** + `actions` | **`defaultOpen: true`** | **是** | 双重理由：①`PLAN.md:112` 说"当前任务"不折叠；②`actions` 里是**唯一能推进任务的操作**（采纳、拆小、安排），藏起来 = 用户找不到动作。`Foldable.vue:37-39` 自己写了"动作区折叠起来＝用户找不到动作" |
+
+`TaskList` 的消费点（决定 C1 的实际影响面）：`RoadmapView.vue:23`（阶段内）、`RoadmapView.vue:23`（ungrouped）、`RoadmapView.vue:24`（按来源分组的 4 组）、`TodayView.vue:55`。**所以 C1 是 4 个页面区块共用的折叠**，改动必须一次到位。
+
+#### D. `.ws-fold`（8 处静态）
+
+| # | 文件:行 | 里面装的是什么 | variant | defaultOpen / forceOpen | 该 static？ | 理由 |
+|---|---|---|---|---|---|---|
+| D1 | `AssessmentView.vue:87` | **每个维度的"查看分值与依据"**：`MeterRow`（自身/要求同刻度）+ 证据列表。`v-for REPORT_SECTIONS → v-for s.dimensions` | `section` | 旧 `:open="printing"` → **`forceOpen: printing`** | **是（至少分值与要求那两行）** | `PLAN.md:159` 与 `COVERAGE.md:157` 都点名："『自身 46 / 要求 50 同刻度 + 雷达图』被压在 4202px 长页的最后一次点击里"。`DESIGN-LANGUAGE.md:74-75` 说这是"连续缩放"不是折叠框。**这条是全清单里最该改的一条** |
+| D2 | `AssessmentView.vue:88` | 能力画像与门槛对照：`RadarChart` + `v-for THRESHOLD_COMPARE` 的 `MeterRow` 组 | `section` | **`forceOpen: printing`** | **是** | 同上；且雷达图是"信息形状"（§4.1），默认可见才有用 |
+| D3 | `AssessmentView.vue:91` | 机会与门槛示意：`QuadrantChart` + "坐标为预置示意"免责句 | `section` | **`forceOpen: printing`** | 否 | 图表坐标是字面数组（`AssessmentView.vue:72`），本身待重做；迁移期保折叠即可 |
+| D4 | `AssessmentView.vue:92` | 方向选择后的关联内容（`ripplePoints`） | `section` | 旧 `:open="demo.state.rippleOpen \|\| printing"` → **`forceOpen: printing` + `defaultOpen: demo.state.rippleOpen`** | 否 | 两个来源的开合必须都保留：`rippleOpen` 是**用户的即时反馈**（点击后自动展开），`printing` 是打印强制。`forceOpen` 只强制开不强制关（`Foldable.vue:33`），组合正确 |
+| D5 | `ConversationView.vue:833` | 顾问交接记录（`handoffs`：`consultantLabel(h.to)` + `h.why`） | `section` | **`defaultOpen: true`** | **是** | `DESIGN-LANGUAGE.md:141` 对对话页的方向写死："**交接是默认展开的说明卡**"。这条是设计语言直接给的答案，不用猜 |
+| D6 | `RoadmapView.vue:24`（内层） | 按任务来源分组的 4 个折叠（`v-for books`） | `inline` | 无 | 否 | 内层（外层 A7 改 `static` 后，这层就是全页唯一的折叠层） |
+| D7 | `CareSheet.vue:9` | "为什么是现在"（`rules` 列表） | `inline` | **`defaultOpen: true`** | **是** | `COVERAGE.md:132` 直接点名："`CareSheet` 把『为什么是现在』折叠"。而且它**下方就是两个动作按钮**（`CareSheet.vue:10`），折叠夹在正文和动作之间，用户读完正文还得点一次才看得到按钮 |
+| D8 | `ReflectionView.vue:46`（内层） | 主动提醒规则（`INTERVENTION.rules`） | `inline` | 无 | 否 | 内层；但外层 A3 改 `static` 后这里变成唯一折叠层，OK |
+
+#### E. 不在四种类名内、但属于同一件事的旧折叠（**必须一起想，否则"1 层上限"不成立**）
+
+| # | 文件:行 | 类名 | 装什么 | 建议 |
+|---|---|---|---|---|
+| E1 | `StudentView.vue:871` | `.p7-meter__how` | "这个数怎么来的"（口径说明） | `Foldable variant=inline`；这是本页第 3 个折叠层（另有 A8、行内 `openField` 展开），**必须一起收敛** |
+| E2 | `WorkspaceHeader.vue:134` | `.ws-appearance` | 外观三轴 18 组合 | `Foldable variant=section`，`defaultOpen: false`（"高级设置"，`PLAN.md:113` 明确允许折叠） |
+| E3 | `EvidenceList.vue:33` | `.exp-evidence` | 证据列表（`title` 存在时自带 summary） | `Foldable variant=inline`；`ConversationView.vue:712/714` 已在外面套了可见按钮，迁移时**二选一，别叠加**（现在就是叠的，只是被 `title=''` 绕开了） |
+| E4 | `PortalView.vue:25` | `.pv-settings` | 门户"演示设置"（新版/原版切换） | 门户页，`PLAN.md:206` 说"只做协调性精修"，**本轮不动** |
+| E5 | `StudentView.vue:970-1010` | 行内 `openField`（自实现展开） | 每条信息的"原始依据与操作" | **不是 `<details>`**，是 `v-show` + `aria-expanded` 的自实现。它是页面级的 1 层折叠，迁移时可保留（已合规），但样式必须与 `Foldable--inline` 对齐 |
+
+### 1.4 关于"旧 `<details>` 不写 `open` 属性"
+
+**前提澄清（必须写清，否则结论会被误读）**：HTML 的 `<details>` 在不写 `open` 属性时，浏览器默认是**收起**的。
+所以"默认展开行为"在这份代码里不存在——**现在 25 个折叠行位里，只有 6 个在特定条件下会展开**
+（B1/B2 的 `i===0` 表达式、D1/D2/D3/D4 的 `:open="printing"`），
+**其余 19 个在任何时候都是收起的**。
+审计里所有"要用户点开才知道"的结论，用的就是这个事实。
+
+**逐调用点结论（要不要补 `defaultOpen`）**：
+
+| 结论 | 调用点 | 理由 |
+|---|---|---|
+| **必须补 `defaultOpen: true`** | A1 `NotesView.vue:27`、A2 `AcademicView.vue:109`、A11 `TaskBrief.vue:8`、B1 `RoadmapView.vue:23`、B2 `LiveActionPlan.vue:11`、C1 `TaskList.vue:18`、D5 `ConversationView.vue:833`、D7 `CareSheet.vue:9` | 这 8 处的内容分别是"完成时/核验入口/当前任务/阶段/任务动作/交接说明/为什么是现在"。旧行为=收起，而它们**本来就不该折**；`defaultOpen` 是迁移期的过渡形态（不改结构就能让信息回到首屏），终态应是 `static`（A2/A11/C1/D5/D7）或 `defaultOpen` 保留（A1/B1/B2） |
+| **必须补 `forceOpen`（不是 `defaultOpen`）** | D1 `AssessmentView.vue:87`、D2 `:88`、D3 `:91`、D4 `:92` | 旧代码是 `:open="printing"`——**这是受控绑定，不是初始值**。若照抄成 `defaultOpen`，打印时 `printing` 从 false→true 不会再展开，**打印稿会少掉分值与图表**（`Foldable.vue:33` 明说 `forceOpen` 对应 `:open="printing"`） |
+| **`forceOpen` + `defaultOpen` 都要** | D4 `AssessmentView.vue:92` | `:open="demo.state.rippleOpen \|\| printing"` 是两个语义叠加 |
+| **不要补（保持收起）** | A3 内层、A4、A5、A6、A7 内层、A9、A10、A12、A13、A14、D6、D8、E2、E3、E4 | 都是"完整历史 / 原始证据全文 / 高级设置"（`PLAN.md:113`）或次级说明。补 `defaultOpen` 会让页面又变回"一屏全是展开的文字" |
+| **不确定** | A2 的"课程时间完整性"段 | 它是纯说明，折or不折都不违规；取决于 A2 拆成几块（见 §1.3 A2）。标"需确认" |
+
+### 1.5 迁移后每个页面的折叠数量
+
+口径：`<TaskList>` 每实例算 1（它自带 C1），列表型折叠算 1 个组件实例、`v-for` 不乘项数。
+
+| 页面 | 现在（静态调用点） | 现在（最坏情形，含 `v-for` 展开） | 迁移后（目标 ≤1 层/页） | 该删的折叠数 |
+|---|---|---|---|---|
+| `/report`（`AssessmentView`） | 4（D1–D4） | 4 | **1**（只留 D3 折线示意） | **3** |
+| `/directions`（`AssessmentView` 同文件） | 2（D1、D4 在 `directions` 分支不渲染，实际 0–2） | 2 | 0 | 0（随页面重做） |
+| `/plan`（`RoadmapView`） | 4（B1 ×1 定义 + A7 + 内层 D6 + C1 via TaskList + A7 内层 C1） | 审计记 **21**（`v-for` 展开） | **1**（只留"按来源查看"的 4 个内层 `inline`；阶段改 `static`） | **3** |
+| `/home`（`TodayView`） | 3（B2、C1 via `TaskList`、A11 via `TaskBrief`） | 3 | **1**（留 A11 折叠，C1 改 static，B2 在 `/home` 下全收起=不计可见层） | **2** |
+| `/profile`（`StudentView`） | 2（A8、E1）+ E5 行内 | 2 | **1**（留 E1"这个数怎么来的"；A8 改 static 或移入弹层） | **1** |
+| `/chat`（`ConversationView`） | 1（D5） | 1 | **0**（D5 改 `static`） | **1** |
+| `/notes`（`NotesView`） | 1（A1）+ A13 via `TodoSuggestions` | 2 | **1**（A1 保留 `defaultOpen`；A13 保留） | **0** |
+| `/schedule`（`ScheduleView`） | 4（A4、A5、A6、A12 via `TimetableAdvice`） | 4 | **1**（A4 保留；A5/A6 降为 `StatusBanner`；A12 保留） | **2** |
+| `/academic`（`AcademicView`） | 1（A2） | 1 | **0**（A2 拆成 static 核验入口 + 1 个说明折叠 → 计 1） | **0–1** |
+| `/review`（`ReflectionView`） | 2（A3 + D8） | 2 | **1**（A3 外层 static，D8 保留） | **1** |
+| `/intel`（`IntelView`） | 0 | 0 | 0 | 0 |
+| `/tools`（`ToolsView`） | 2（A10 + `ModuleCatalog` 内） | 2 | 不迁移（页面待移出，`PLAN.md:39`） | — |
+| 复用件 `AiResultMeta`（4 个 AI 面板） | 1 定义 × 4 消费 | 4 | 4（都保留，但内部 `SourceChip` 化） | 0 |
+
+**合计需要删除/改 static 的折叠：15 处**（报告 3 + 计划 3 + 今日 2 + 画像 1 + 对话 1 + 日历 2 + 复盘 1 + 学籍 0–1）。
+其中"必须改 static"的是 **9 处**：D1、D2、D5、D7、C1、A3 外层、A7 外层、A8、A11 内容。
+
+---
+
+## 2. 弹层形态清单
+
+### 2.1 现状
+
+`grep -rn '<InfoSheet' src` = **18 个调用点**，分布在 **16 个文件**。
+**没有任何一处传 `shape`**；形态全靠缺省或两个 `@deprecated` prop：
+
+| 现状形态 | 由什么决定 | 处数 |
+|---|---|---|
+| `dialog`（缺省） | 不传任何形态 prop | **13** |
+| `sheet` | `inspector` prop | **3**（`ConversationView:830`、`AdminLayer`… 实为 `ConversationView:830` 一处 + 该文件另一处无 inspector）→ 精确为 **1**：`ConversationView.vue:830` |
+| `panel` | `wide` prop | **3**：`AcademicView:112`、`IntelView:22`、`ProfileInsights:28` |
+
+> 复算：18 = 13（dialog）+ 1（`inspector`）+ 3（`wide`）+ 1（`ConversationView` 内第二处 `InfoSheet:836` 是 dialog）→ **14 + 1 + 3 = 18** ✓。
+> 即现状 **14 处是同一个居中 dialog**（`COVERAGE.md:138` 记的"12 处"是这次改造前的数字，现在 14）。
+
+`InfoSheet.vue:9-12` 给的三种形态语义：
+- `dialog` → 桌面居中窄盒；小屏**仍居中**（"确认类就该停在手指上方，底部化反而像抽屉"）
+- `sheet` → 桌面右侧抽屉；小屏**底部面板**（滑入、上圆角、贴底、安全区、可下拉关闭）
+- `panel` → 桌面居中宽盒；小屏**全屏**
+
+### 2.2 逐调用点
+
+| # | 文件:行 | 现在装什么 | 现在形态 | 建议 `shape` | 理由 | 移动端应为底部面板？ |
+|---|---|---|---|---|---|---|
+| 1 | `AuthLayer.vue:33` | 登录：账号三选 + 密码 + 提交 | dialog（缺省） | **`dialog`** | 表单/确认类；`InfoSheet.vue:10` 明确说确认类不该底部化 | 否（保持居中） |
+| 2 | `CareSheet.vue:7` | 陪伴提醒介入：正文 + "为什么是现在" + 两个动作 | dialog | **`sheet`** | 它是"提醒"——`COVERAGE.md:139` 点名的病灶就是"移动端『提醒』和『删除确认』占屏形态完全一样"。提醒是一次独立的注意事件，不是停一下的确认 | **是** |
+| 3 | `InboxSheet.vue:7` | 提醒列表（当前提醒 + "还有 N 条"） | dialog | **`sheet`** | 同上；且有"下一条"的连续浏览语义，需要稳定高度 | **是** |
+| 4 | `WorkspaceNav.vue:52` | **"更多功能"**：主入口 + 4 个分组 + 全部二级路由 | dialog | **`panel`** | 它是**导航面板**（含 Reka `AccordionRoot`），不是确认框。移动端需要全屏才能点准（`PLAN.md:41` 要求"更多"里是完整分组目录） | 是（`panel` 小屏=全屏） |
+| 5 | `WorkspaceHeader.vue:128` | 账号抽屉：身份 + 外观 + 演示设置入口 + 退出 | dialog | **`sheet`** | 组件注释（`WorkspaceHeader.vue:127`）自己叫它"账号**抽屉**"。`COVERAGE.md:139`："『抽屉』在手机上不是抽屉" | **是** |
+| 6 | `WorkspaceHeader.vue:169` | 演示设置：数据来源 / 场景 / 导航布局 / 三个复位按钮 | dialog | **`sheet`** | 长表单 + 多分段，需要高度；不是确认框 | **是** |
+| 7 | `CommandMenu.vue:45` | ⌘K 搜索与跳转（30 条平铺） | dialog | **`panel`** | 桌面期望是"命令面板"（宽、上缘定位）；小屏全屏可读。注：`COVERAGE.md:114` 同时指出它缺 `listbox`/`option` 分组，属另一笔账 | 是 |
+| 8 | `ConversationView.vue:830` | 右侧检查器：个人画像 / 历史对话 / 咨询成果 | sheet（`inspector`） | **`sheet`**（改为显式 `:shape="'sheet'"`） | 语义正确，只是靠 `@deprecated` prop 生效。**迁移时把 `inspector` 换成 `shape`，并删 prop** | **是** |
+| 9 | `ConversationView.vue:836` | 方法依据（理论卡 summary + 应用说明） | dialog | **`sheet`** | 正文较长，居中窄盒里会频繁滚动 | **是** |
+| 10 | `NotesView.vue:29` | 删除确认 | dialog | **`dialog`** | 破坏性确认，必须"停一下" | 否 |
+| 11 | `AcademicView.vue:112` | 导入课表与成绩：三个阶段 + 三种输入模式 + 大 textarea | panel（`wide`） | **`panel`**（显式 `:shape="'panel'"`） | 宽表单；小屏全屏 | 是（`panel` 小屏全屏） |
+| 12 | `AcademicView.vue:113` | 撤回导入资料确认（`btn--danger`） | dialog | **`dialog`** | 破坏性确认；与 10 同类 | 否 |
+| 13 | `AcademicView.vue:114` | 核对学籍（`AcademicVerification`：方式选择 + 验证码 + 提交） | dialog | **`panel`** | 内部含表单 + `AiStatus` + 结果列表 + 结果表，窄盒不够。**或** `sheet`（`需确认`） | 是 |
+| 14 | `ScheduleView.vue:59` | 课程详情（`dl`：时间/地点/周次/教师 + 跳转） | dialog | **`sheet`** | 从课表格/课表项点开的"某节课的侧面详情"，典型 drawer 语义。**但内容只有 4 个字段，`panel` 也可**（`需确认`） | **是** |
+| 15 | `TodayView.vue:65` | "记一件今天能做的事"表单（做什么 + 时长） | dialog | **`dialog`** | 两字段小表单 | 否 |
+| 16 | `StudentView.vue:1243` | 更正某条信息（textarea + 保存/取消） | dialog | **`dialog`** | 小表单 | 否 |
+| 17 | `ProfileInsights.vue:28` | 画像详情：`gap`（补充问题/选项）或 `dimension`（结论 + 长文 + 评分 + 趋势） | panel（`wide`） | **`sheet`** | 它是**从一行信息就地钻进去看细节**的检查器（与 8 同类），内容长且含流式 AI 结果与底部固定跳转按钮。`sheet` 的整高 + 内部滚动正合适。**这是"`wide` 语义用错"的一处**：`wide`→`panel` 会把小屏变全屏，丢掉了"从哪来"的空间关系 | **是** |
+| 18 | `IntelView.vue:22` | 资讯详情（`source_name · fetched_at` + 正文 + 原始链接） | panel（`wide`） | **`sheet`** | 与 14 同类（从列表项点开的详情）。且 `COVERAGE.md:207` 记它"点开的正文与卡片上 65 字完全相同 = 零增益点击"——**形态改了内容也得改，否则 `sheet` 只是把零增益放大到满屏** | **是** |
+
+### 2.3 汇总
+
+| 建议形态 | 处数 | 文件:行 |
+|---|---|---|
+| `dialog` | **5** | `AuthLayer:33`、`NotesView:29`、`AcademicView:113`、`TodayView:65`、`StudentView:1243` |
+| `sheet` | **9** | `CareSheet:7`、`InboxSheet:7`、`WorkspaceHeader:128`、`WorkspaceHeader:169`、`ConversationView:830`、`ConversationView:836`、`ScheduleView:59`、`ProfileInsights:28`、`IntelView:22` |
+| `panel` | **4** | `WorkspaceNav:52`、`CommandMenu:45`、`AcademicView:112`、`AcademicView:114` |
+| 需确认 | 2 | `AcademicView:114`（panel/sheet）、`ScheduleView:59`（sheet/panel） |
+
+**移动端应该变成底部面板的：13 处**（9 处 `sheet` + 4 处 `panel` 的小屏形态）。
+**只有 5 处应该保持居中 dialog**（4 个确认/危险动作 + 1 个登录）。
+
+**两个必须一起做的收尾**（否则形态改了也白改）：
+1. `InfoSheet.vue:54-58` 的 `resolvedShape` 让 `wide`/`inspector` **优先级高于 `shape`**。18 处都迁移完之后，
+   必须删掉 `wide` / `inspector` 两个 prop 与这两行（`InfoSheet.vue:31-34`），否则以后有人传了 `shape` 又被旧 prop 覆盖。
+2. `InfoSheet.vue:212` 模板里仍然渲染 `ws-sheet--wide` / `ws-sheet--inspector` 两个类名，
+   而 `experience.css:65-68,109,126-128,137` 里有一整套**全局** `.ws-sheet--inspector` 规则。
+   改 `inspector`→`shape` 之后，这两套全局规则要一起删（见 §5.3）。
+
+---
+
+## 3. 信息表达原语迁移清单
+
+### 3.1 `MeterRow`：量纲 `:score`(0–100) → `:value`(0–1)
+
+**结论：真实调用点只有 2 处，且两处都已经用 `:value` 并且已经除以 100 了。没有"没迁移"的调用点，不存在"会不会坏"的问题。**
+
+| # | 文件:行 | 写法 | 量纲 | 状态 |
+|---|---|---|---|---|
+| 1 | `AssessmentView.vue:87` | `<MeterRow v-if="d.score!=null" :label="d.label" :value="d.score/100" :requirement="d.key==='present'?0.5:undefined"/>` | `value` 0–1 ✓，`requirement` 0–1 ✓ | **已迁移** |
+| 2 | `AssessmentView.vue:88` | `<MeterRow v-for="d in THRESHOLD_COMPARE" :label="d.label" :value="d.mine/100" :requirement="d.requirement/100"/>` | 两参数都 0–1 ✓ | **已迁移** |
+
+**没有任何调用点传 `score`** —— 组件的 props 里**本来就没有 `score`**（`MeterRow.vue:116-148` 只有 `value` / `requirement` / `baseline` / `marks` / `ticks` / `format` / `label` / `height`）。
+所以"`:score` → `:value`"这条变更**对现有代码是零影响的**；两处调用点写 `:value="x/100"` 说明写它们的人已经按新 API 写了。
+
+**真正的量纲风险不在这 2 处，而在下面两处**（都是绕过 `MeterRow` 自己画的条）：
+
+| # | 文件:行 | 写法 | 风险 |
+|---|---|---|---|
+| R1 | `SpecView.vue:474-476` | `<div class="meter-row__track"><div class="meter-row__fill ..."/><div class="meter-row__req" style="left: 50%"/></div>` | **这是规格页里一个手写的假表**，类名 `.meter-row__*` 与 `MeterRow.vue` 的 `.mtr__*` **不是一套**，且**全库没有 `.meter-row__*` 的样式定义** → 三条 div 会以默认块级样式堆叠渲染（不是一条尺子）。见 §5.2 |
+| R2 | `ConversationView.vue:831` | `<div class="ws-progress"><span :style="{ '--value': progress.known / progress.total }"/></div>` | 用的是 `workspace.css:337-338` 的 `scaleX(var(--value))`；**这里是 0–1，合法**。但它是 `MeterRow` 之外的第二把尺——应换成 `MeterRow` 或 `StatTile` |
+
+另外两处"手画的进度条"（都合法，但应统一到 `MeterRow`/`StatTile`）：
+- `StudentView.vue:851-853`：`.p7-ring`（`stroke-dashoffset` 手算的 84×84 可信度环）。
+- `ConversationView.vue:729`：`.chat-bars__fill`（宽度 = `p.ratio * 100`，ratio 已 0–1）。
+
+> **顺手记一个坑**：`MeterRow.normalize01`（`MeterRow.vue:74-88`）对 `(1, 1.5]` 的值会**当成百分制除以 100**。
+> `:value="d.score/100"` 里若 `d.score` 是 0–1 的后端浮点（例如 `0.46`），会算出 `0.0046` → **渲染成读不出来的几乎空条，且只在开发态 warn**。
+> 迁移时必须确认 `data/student.ts` 的 `score` / `mine` / `requirement` 是 **0–100 整数**（`PLAN.md:181` 说演示数据是 0–100）。
+> 如果逐页切换到真实后端数据，这两处的 `/100` 就是**需要删掉的**——这是本轮最容易被"看起来对"骗过去的一处。
+
+### 3.2 `SourceChip` 应该顶掉的写法
+
+`SourceChip.vue:76-85` 的 API：`source: ProfileSource`（7 个枚举值，**必填**）+ `at?: string|null` + `size`。
+它的核心主张（`SourceChip.vue:11-13`）：来源必须**默认可见**、且读得出形态差异；`DESIGN-LANGUAGE.md:102` 明令不许把溯源做成折叠。
+**所以 `SourceChip` 只有拿到真正的 `ProfileSource` 枚举才有意义**——下面是 6 类可以顶掉的位置，按"能不能真顶"排序：
+
+**A 类：有真实来源字段，可直接顶（3 处主 + 1 处复用）**
+
+| # | 文件:行 | 现在的写法 | 怎么顶 |
+|---|---|---|---|
+| S1 | `StudentView.vue:985` | `<span class="chip chip--outline p7-source">{{ row.desc }}</span>` + `:992` `<time class="p7-row__time">{{ row.noted }}</time>` | `row` 的原始字段是 `ProfileField`，`DataView` 里有 `field.source`（`StudentView.vue:254` 就是 `SOURCE_NAMES[field.source]`，说明枚举在手上）。**`row` 只需要多带一个原始 `source` 字段**，然后 `<SourceChip :source="row.source" :at="row.iso"/>` 取代 985+992 两个 span |
+| S2 | `StudentView.vue:1012-1013` | 折叠体里的 `<dt>来源</dt><dd>{{ row.desc }}` + `<dt>记录时间</dt><dd>{{ row.noted }}` | 同一份数据被印了第二遍。改 `SourceChip` 的 `size="md"` 放这里，**且这一层不该折叠**（§1.3 A8 同因） |
+| S3 | `AiResultMeta.vue:6` | citations 的 `<strong>{{ c.source }}</strong>` + `<small v-if="c.at">{{ c.at }}</small>` | AI 结果的 citation `source` 是**自由文本**，不是 `ProfileSource` 枚举 → **不能直接喂 `SourceChip`（类型不允许，`Record<ProfileSource,…>` 会编译报错）**。需要一层映射或改 `SourceChip` 支持"字符串来源"。**标"需确认"** |
+| S4 | `ReportHistory.vue:22` | 版本头的 `<span class="ws-attention">待更新</span>` / `<span class="ws-muted">当前记录无需重算</span>` + `<time>` | 这里没有 `ProfileSource`，但有 `needs_recompute` + `created_at`。**这是 `ConfidenceBadge` + `StatTile` 的地盘，不是 `SourceChip`**（见 §3.4 / §3.3） |
+
+**B 类：灰字"来源 + 时间"，应顶但需要加映射（4 处）**
+
+| # | 文件:行 | 现在的写法 | 备注 |
+|---|---|---|---|
+| S5 | `IntelView.vue:22` | `<p class="ws-muted">{{ reading?.source_name \|\| '来源未提供' }}<span v-if="reading?.fetched_at"> · {{ …toLocaleString('zh-CN') }}</span></p>` | 资讯来源是外部媒体（`source_name` 字符串 + `source_url`）。语义上是"来源"，类型上不是 `ProfileSource`。**建议给 `SourceChip` 加一个 `label?: string` 逃生口，或新增 `ExternalSourceChip`；标"需确认"** |
+| S6 | `CareerMatchPanel.vue:18` | `<span v-if="numeric(r.fit)" class="ws-muted">契合度 {{ r.fit }}</span>` | 这是**读数的灰字化**，应给 `StatTile`（§3.3），不是 `SourceChip` |
+| S7 | `CareerMatchPanel.vue:21` | `<small>{{ f.source_name }}</small>`（资讯事实列表里） | 同 S5 |
+| S8 | `FullReportBody.vue:14` | `<p class="ws-muted">第{{ report.version }}版 · {{ new Date(report.generated_at).toLocaleString('zh-CN') }}</p>` | "版本 + 生成时间"。**这是溯源头**，最该被看见的一行；应给 `StatTile`（版本读数）或 `SourceChip` 的变体 |
+
+**C 类：完全藏起来 / 只在折叠里（2 处，违反 `DESIGN-LANGUAGE.md:102`）**
+
+| # | 文件:行 | 现状 | 处置 |
+|---|---|---|---|
+| S9 | `AiResultMeta.vue:6`（整块） | 整条溯源住在一个 `<details class="ws-context">` 里 | 折叠可以留（"原始证据全文"），但**折叠头的 summary 必须带来源摘要**（例如"依据与生成说明 · 3 条来源 · 本地演示"），不能只是一个空壳标题 |
+| S10 | `ProfileInsights.vue:29-30` | `<AiResultMeta>` 在 `InfoSheet` 内部 | 弹层里的折叠是"二级折叠"（弹层本身是一层）。建议 `AiResultMeta` 进弹层时直接 `static` |
+
+**数量汇总**：可直接顶 **2** 处（S1、S2）；需加映射/逃生口 **4** 处（S3、S5、S7、S8）；不该用 `SourceChip` 而是别的原语 **2** 处（S4、S6）；折叠头需补摘要 **1** 处（S9）；弹层内降级 **1** 处（S10）。
+**另外有一处结构性缺口的补充**：`AcademicView.vue:101` 的"数据来源"是 `<dl><dt>数据来源</dt><dd>{{ … '预置示例' / academic.source / '本人核对的本地快照' }}</dd></dl>` —— 这是**来源被印成表格的一个单元格**，值得一起顶成 `SourceChip`（枚举不明，标"需确认"）。
+
+### 3.3 `StatTile` 应该顶掉的写法
+
+`StatTile.vue:23-56` 的 API：`value`（计数）| `score`（0–1，走 `format`）| `unit` | `label` | `denominator`（自动算 `progress`）| `progress` | `state`（`recompute`/`done`/`attention`）| `trend` | `emphasis`。
+组件注释（`StatTile.vue:8-16`）直接引了审计原话，目标就是"只有分母文案、没有进度图形"的位置。
+
+| # | 文件:行 | 现在的写法（分母文案 / 灰色小字） | 该怎么给 `StatTile` |
+|---|---|---|---|
+| T1 | `RoadmapView.vue:22` | `<p>{{ pending.length }} 件待推进 · {{ demo.use.done.value.length }} 件已完成</p>` | `label="推进情况"`，`value=pending.length`，`denominator=pending.length+done.length` → 自动画进度。**这是审计点名的原型句** |
+| T2 | `RoadmapView.vue:23` | 阶段头 `<small>{{ m.window }} · {{ done }}/{{ m.tasks.length }} 件任务已完成</small>` | 每个阶段一个 `StatTile`（`value=done`，`denominator=m.tasks.length`）。**并且是"时间关系不可见"的落点**：`m.window` 应作为 `trend.label` 或独立时间轴，而不是塞进 small |
+| T3 | `LiveActionPlan.vue:11` | 同上（实时版阶段头） | 同 T2（必须与 T2 用同一形状） |
+| T4 | `ConversationView.vue:831` | `<p class="ws-muted">已有 {{ progress.known }} 条信息，待补充 {{ progress.gap }} 条。</p>` + `ws-progress` 条 | `StatTile value=known denominator=known+gap`（或 `score=known/total`），替掉"文案 + 手画条"两件套 |
+| T5 | `ConversationView.vue:833` | `<p class="ws-muted">{{ progress.known }} 项已知信息 · {{ progress.gap }} 项待补充</p>` | 同 T4（同一份数据的第三处印法） |
+| T6 | `StudentView.vue:857` | `<p class="p7-meter__value"><strong>{{ Math.round(trustShown) }}%</strong><span>整体可信度 · {{ trustOrigin }}</span></p>` | `StatTile score={trustShown/100} unit="" label="整体可信度"` + `state`。这个位置已经有环（`p7-ring`），`StatTile` 是可选统一；**标"优先低"** |
+| T7 | `StudentView.vue:869` | `<span class="p7-meter__fact--quiet">{{ coverageNote }}（{{ Math.round(tally.coverage * 100) }}%）</span>` | `StatTile score=tally.coverage label="覆盖度"`。这是"只有分母文案、没有进度图形"的典型 |
+| T8 | `TodayView.vue:59` | `<p v-if="lastDone">已完成 {{ demo.use.done.value.length }} 件任务，可在完成记录中查看。</p>` | `StatTile value=done.length label="已完成"`（有分母时给 `denominator`） |
+| T9 | `ReflectionView.vue:39` | `<div class="ws-review-summary"><span><strong>N</strong>件已完成</span>…` 三个读数 | 一行 `StatTile`（三分母：已完成/部分完成/待复盘）。它已有形状（`ws-review-summary`），统一到 `StatTile` 是为了**和其他页同一把尺** |
+| T10 | `AcademicView.vue:101` | `<dl class="ws-facts">` 六个 `<dt>/<dd>`（已有课程 N 门 / 可排进课表 N 门 / 成绩 N 条 / 导入时间 / 数据来源 / 学籍核验） | 前三个是**有分母关系的读数**（课程 ↔ 可排进课表），应 `StatTile` + `denominator`。现在它们是六个等重的表格行，**"哪几门没排进去"这个关系完全不可见** |
+| T11 | `ReportHistory.vue:22` | `<span class="ws-attention">待更新</span>` / `<span class="ws-muted">当前记录无需重算</span>` | `StatTile state="recompute"|"done"`（`StatTile.vue:88-99` 已内建这两个态的文案） |
+| T12 | `StudentView.vue:1059-1062` | `<p class="p7-recompute"><strong>{{ needsRecompute }} 条判断需要重算</strong><span>你更正了 N 条信息…</span></p>` | `StatTile state="recompute"` + `trend`。这是 `needs_recompute` 的**第 4 种印法**（见 §3.4） |
+| T13 | `CareerMatchPanel.vue:18` | `<span class="ws-muted">契合度 {{ r.fit }}</span>` | `StatTile score={r.fit} label="契合度"`（fit 量纲**需确认**：`data/student.ts` 里是 0–1 还是 0–100） |
+
+**汇总：`StatTile` 应顶掉 13 处**（其中 T2/T3 是同一组件两页、T4/T5 是同一数据两印法、T7/T12 是"分母文案"的正例）。
+
+### 3.4 `ConfidenceBadge` 统一：同一套 `confidence` 的多处不同重量
+
+`ConfidenceBadge.vue:61-72` 的 API：`confidence?: number`（0–1，后端口径）| `value?: Confidence`（旧对象 `{level,label,bars}`，兼容用）| `size` | `showValue`。
+它自己声明的职责（`ConfidenceBadge.vue:7`）："可信度的**唯一**印法"。
+
+**现在同一套"可信度/把握/是否要重算"在全站有 8 种印法，分 4 组：**
+
+**G1 · 3 格徽标（重量最重）**
+| # | 文件:行 | 写法 |
+|---|---|---|
+| G1a | `AssessmentView.vue:87` | `<ConfidenceBadge :value="d.confidence"/>`（维度头） |
+| G1b | `AssessmentView.vue:89` | `<ConfidenceBadge :value="d.fit"/>`（方向卡的匹配判断） |
+| G1c | `SpecView.vue:435-437` | 三个**硬编码**的示例：`{level:'high',label:'比较确定',bars:3}` / mid / low |
+
+> G1c 是规格页在**教别人怎么用**，它必须跟着组件一起改（否则规范页教的是旧 API）。
+
+**G2 · 本地手写的 `confidence__bars`（与 G1 同形但代码是复制品）**
+| # | 文件:行 | 写法 |
+|---|---|---|
+| G2a | `StudentView.vue:986-991` | `<span class="confidence p7-conf"><span class="confidence__bars"><i v-for="n in 3" class="confidence__bar" …/></span>{{ row.confidence.label }}</span>` |
+| G2b | `StudentView.vue:1097-1101` | 同上，判断卡版本（`p7-concl__conf`） |
+
+> 这两处的 `row.confidence` 是 **重算出来的旧形状对象**（`StudentView.vue:255`：`{ level, label, bars: Math.max(1, Math.round(conf * 3)) }`）——`conf` 本来是后端的 0–1，被转成 3 档后又用本地 CSS 印了一遍。
+> **这正是 `ConfidenceBadge` 注释里说要消掉的那种漂移**：应该有 `:confidence="field.confidence"` 直接用 0–1。
+> 附带 bug：`Math.max(1, …)` 把 `conf===0` 也抬成 1 格 → **"完全没有依据"会显示成"依据很少"**。`ConfidenceBadge.vue:26-29` 明确要求"未知必须与很低分开"。
+
+**G3 · 3px 小刻度条（第三种重量）**
+| # | 文件:行 | 写法 |
+|---|---|---|
+| G3 | `StudentView.vue:864-869` | `<i class="p7-tick p7-tick--{high\|mid\|low}"/>{{ item.title }}<b>{{ tally.firm/check/thin }}</b>`，`p7-tick` 定义在 `StudentView.vue:1300-1303`（宽 3px，高 14/9/5px） |
+
+> 这一处与 G2 在**同一页、相隔 120 行**，用两套完全不同的图形表达同一件事。
+
+**G4 · "需要重算"的文字 span（第四种重量）**
+| # | 文件:行 | 写法 |
+|---|---|---|
+| G4a | `ReportHistory.vue:22` | `<span class="ws-attention">待更新</span>` / `<span class="ws-muted">当前记录无需重算</span>` |
+| G4b | `ReportHistory.vue:22` | `<p v-if="v.needs_recompute" class="ws-attention">依据已有变化，阅读这版时请同时核对最新个人信息。</p>` |
+| G4c | `StudentView.vue:1059-1062` | `.p7-recompute`（红底 + 左红条 + 14/12px 两级字） |
+| G4d | `AssessmentView.vue:83` | `<aside class="asset-notice" role="status"><strong>{{ reportMetadata?.needs_recompute ? '这版报告待更新' : … }}</strong>` |
+| G4e | `ProfileInsights.vue:26` | `<p v-if="stale" class="asset-notice" role="status">个人信息已更正，这份分析需要重新核对…</p>` |
+
+> `ConfidenceBadge.vue:17-21` 把这三种（G1/G2/G4）写成自己的存在理由。**统一后 `needs_recompute` 也应该有唯一印法**——`StatTile state="recompute"`（§3.3 T11/T12）比 `ConfidenceBadge` 更合适，因为重算是"这一版的读数不可信"，不是"我有多确定"。
+
+**统一清单**：
+| 组 | 处数 | 目标 |
+|---|---|---|
+| G1 | 3（G1c 是示例） | 保持 `ConfidenceBadge`，`:value` → `:confidence`（G1a/G1b 已是 `:value` 旧对象；`data/types.ts` 若已改 0–1 就换，否则保留） |
+| G2 | 2 | **换成 `<ConfidenceBadge :confidence="…"/>`**，删掉 `StudentView.vue:1369-1373` 的 `:deep(.confidence__*)` 覆盖 |
+| G3 | 1 | 换成 `ConfidenceBadge size="sm"`，或明确保留为"总账刻度"并在注释里写清它与 G2 的分工（**倾向换掉**） |
+| G4 | 5 | 换成 `StatTile state="recompute"`（G4c/G4d/G4e）或 `StatusBanner tone="warning"`（G4d/G4e 是"提醒你要处理"，见 §4.3） |
+| **合计** | **11 处** | 收敛到 1 个组件 + 1 个状态瓦片 |
+
+**同时必须删的旧 CSS**：`base.css:568-590` 的 `.confidence` / `.confidence__bars` / `.confidence__bar` / `.confidence__bar--on` 一族，以及 `workspace.css:438,447` 的 `.ws-dimension .confidence` / `.ws-direction__role .confidence`。这些是 G2 形态的全局定义，G2 迁移完之后就只剩死代码。
+
+---
+
+## 4. 四态迁移清单
+
+### 4.1 `SkeletonBlock`：哪里该有而现在没有
+
+`SkeletonBlock.vue:31-49` 的 API：`variant`（`text`/`card`/`list`/`chart`/`avatar`）| `lines` | `columns` | `height` | `size` | `animated` | `overlay` | `inline`。
+`SkeletonBlock.vue:21-26` 定的规矩：**组件自己不摘内容**；刷新时用 `overlay` 盖在仍在 DOM 的内容上，不要 `v-if` 摘掉。
+
+**全站 0 个 `SkeletonBlock` 调用；唯一的骨架屏是 `ConversationView.vue:785-791` 的 `.chat-skeleton`（手写，5 个 span + label）。**
+
+**P0（"进页直接 `v-if` 摘内容"——刷新时已有内容会消失变空白再重建，`SkeletonBlock.vue:22-24` 点名的病灶）**
+
+| # | 文件:行 | 现在 | 该给什么 |
+|---|---|---|---|
+| K1 | `AcademicView.vue:100` / `:106` | `<template v-if="academic">…</template><div v-else class="ws-empty">还没有学校资料</div>` | 加载中用 `SkeletonBlock variant="list" :lines="3"`（课表/成绩是列表）；`academic` 已有但正在刷新时用 `overlay` |
+| K2 | `NotesView.vue:26` | `<ul v-if="pending.length">…</ul><EmptyState v-else …/>` | `SkeletonBlock variant="list" :lines="4"`。**注意**：`v-if="pending.length"` 也让"真的没有待办"和"还没读到"长得一样——这是"空态 vs 加载态"不分的典型 |
+| K3 | `ScheduleView.vue:55` / `:58` | `<template v-else-if="academic?.courses?.length">…</template><section v-else class="ws-empty">课表还没有放进来</section>` | `SkeletonBlock variant="chart"`（课表是网格/图块）或 `variant="list"` |
+| K4 | `IntelView.vue:22` | `<div v-if="items.length" class="intel-list">…` — 无 `v-else` 分支 | `SkeletonBlock variant="card" :columns="1" :lines`… 资讯卡是"卡片"，用 `variant="card"`；`items` 为空时才落 `EmptyState` |
+| K5 | `RoadmapView.vue:21` | `<section v-if="!backendDemo.state.planAvailable" class="ws-empty">` | 同上：`planAvailable === false` 与"正在读"现在同形 |
+| K6 | `AssessmentView.vue:83` | `<section v-if="!available" class="ws-empty">报告还没有生成</section>` + `:81` 的 `reportLoading` 只体现在按钮文案 `正在读取…` | 加载中 `SkeletonBlock variant="text" :lines="6"`（报告正文是长文） |
+| K7 | `ReportHistory.vue:22` | `<template v-if="versions">…<p v-if="!versions.length" class="ws-empty">` | `SkeletonBlock variant="list" :lines="3"` |
+| K8 | `LiveActionPlan.vue:11` | `<template v-if="plan">…` + `busy` 只改按钮文案 | `overlay` 形态最合适（任务列表已经在了，只是重新取） |
+| K9 | `ModuleCatalog.vue:18` | `<template v-if="modules">…` | `variant="list"`。**但该页按 `PLAN.md:39` 待降级 → 优先级低** |
+
+**P1（"显示静态说明句当首屏正文"——这是"没有状态"的另一种表现：用户看不出那块内容还不存在）**
+
+| # | 文件:行 | 静态说明句 |
+|---|---|---|
+| K10 | `ProfileInsights.vue:27` | `<p v-else-if="!analysis.busy.value" class="ws-muted ws-section">把已有信息放在一起看，核对优势、限制和下一步。…</p>` |
+| K11 | `TodoSuggestions.vue:12` | `<p v-else class="ws-muted ws-section">建议与自己写下的记录分开，采纳后才加入个人待办。</p>` |
+| K12 | `TimetableAdvice.vue:8` | `<p class="ws-muted ws-section">空课格不直接代表空闲。…</p>`（**这条永远显示**，即使有结果） |
+| K13 | `TaskBrief.vue:8` | `<p v-else class="ws-muted ws-section">根据已有任务、事实和时间安排生成；缺资料时先说明缺口。</p>` |
+| K14 | `LiveActionPlan.vue:11` | `<p class="ws-muted ws-section">以上按本次读取的计划与任务回包显示；不与预置任务混算。</p>`（永远显示） |
+| K15 | `ModuleCatalog.vue:18` | `<p v-else class="ws-muted ws-section">按服务返回的发布和启用状态展示…</p>` |
+| K16 | `ConversationView.vue:833` | `<li v-if="!planned.length">咨询形成具体行动后，将在此显示。</li>` |
+
+> P1 的处置不是"换成骨架屏"，而是**分成三件不同的事**：①"还没取"→ 骨架屏；②"取了但没有"→ `EmptyState`；③"这是口径说明"→ 降级为 `inline` 的说明（`SkeletonBlock inline` 或一行小字），不要占正文首屏。
+
+**P2（可用 `inline` 形态顶掉"正在读取…"的按钮文案）**
+
+现有 6 处把加载态写进按钮文字：`AcademicView.vue`（导入）、`IntelView.vue:22`（检索）、`NotesView.vue:23`（读取最新记录）、`ReportHistory.vue:22`（读取版本记录）、`ScheduleView.vue:49`（读取最新日程）、`StudentView.vue:843`（读取最新档案）、`LiveActionPlan.vue:11`（读取最新行动计划）、`ModuleCatalog.vue:18`（读取工具目录）。
+`SkeletonBlock inline` 的 `inline` prop（`SkeletonBlock.vue:47`）就是为这个场景做的：`读取中 <SkeletonBlock inline variant="text" :lines="1"/>`。
+
+**汇总：`SkeletonBlock` 需要落 **9 处 P0** + 7 处 P1 的重分类 + 8 处 P2 的可选行内用法。**
+
+### 4.2 `EmptyState`：穷举 `.ws-empty` 并给 `kind`
+
+`EmptyState.vue:50-69` 的 API：`title`、`description`（**两个都必填**）、`kind?`（9 值枚举，缺省 `'notes'`）、`headingLevel?`（缺省 3）、`actionTo`/`actionHref`/`actionLabel`、`size?`、`next?`。
+
+**`.ws-empty` 使用点 = 18 处**（`grep -rn --include=*.vue 'class="ws-empty' src`）。
+**已有 `EmptyState` 调用点 = 2 处**：`NotesView.vue:26`（`kind="notes"` ✓）、`StudentView.vue:1047`（**缺 `kind`** → 落到默认 `'notes'` = 便签图形，应该是 `'profile'` = 人像图形，`EmptyState.vue:141-144` 有 `profile` 的字形）。
+
+| # | 文件:行 | 现在是什么空态 | 该给 `kind` | 备注 |
+|---|---|---|---|---|
+| E1 | `TodayView.vue:51` | 今日行动页：`当前任务已完成` / `暂无行动任务` | **`notes`** | 任务类；两者共用一句 description，可以；`title` 用三元的写法要保留 |
+| E2 | `ScheduleView.vue:56` | 移动端课程列表：`周X没有已导入的课程` | **`schedule`** | 页内窄空态 → `size="sm"` |
+| E3 | `ScheduleView.vue:58` | 整页：`课表还没有放进来` | **`schedule`** | `headingLevel=2`（整块内容被顶掉，`EmptyState.vue:38-39` 的例外） |
+| E4 | `RoadmapView.vue:21` | 整页：`阶段计划还没有形成` | **`report`** 或新增 `plan` | ⚠️ **`EmptyStateKind` 里没有"计划"这一档**（`EmptyState.vue:10-20` 只有 chat/notes/intel/profile/report/academic/schedule/review/search-empty）。计划页的空态**只能借用** `report`（`NEXT.report` = "在上方生成第一份诊断"，文案不对）。**这是一个真实的枚举缺口，标"需确认"**：要么加 `'plan'`，要么接受 `report` 并覆盖 `title`/`description`（默认 `next` 文案会不对） |
+| E5 | `ReflectionView.vue:44` | 复盘页：`当前没有待复盘任务` / `暂无执行记录` | **`review`** | `NEXT.review` = "先记下今天发生的一件事"，与页面语义合 |
+| E6 | `CareerMatchPanel.vue:22` | 匹配结果未取得 | **`search-empty`** | 它是"取了但没有匹配结果" |
+| E7 | `ConversationView.vue:832` | 历史会话为空 | **`chat`** | 在 `InfoSheet` 内 → `size="sm"` |
+| E8 | `InboxSheet.vue:13` | 提醒为空 | **`notes`**（或新增 `notice`） | ⚠️ 第二处枚举缺口。`notes` 的 `NEXT` 是"在上方写下第一件要做的事"——**在提醒弹层里这句是错的**。标"需确认" |
+| E9 | `AcademicView.vue:102` | 课程表为空（表格下方一行） | **`academic`** | 表格内的窄空态 → `size="sm"`、`headingLevel=4` |
+| E10 | `AcademicView.vue:103` | 成绩记录为空 | **`academic`** | 同 E9 |
+| E11 | `AcademicView.vue:106` | 整页：`还没有学校资料` | **`academic`** | `headingLevel=2`；已有"加载课表示例"按钮 → 传 `actionLabel` + `@action`（`EmptyState.vue:61-62` 支持 emit `action`） |
+| E12 | `LiveDirectionCompare.vue:25` | 方向方案未取得 | **`report`**（方向是报告的兄弟资产） | ⚠️ 同 E4 的枚举缺口（没有 `direction`）。或 `search-empty`。标"需确认" |
+| E13 | `AssessmentView.vue:83` | `报告还没有生成` / `方向方案还没有形成`（同一分支两用） | **`report`** | 这个分支按 `view` 切换语义，`kind` 要跟着 `view` 走：`view==='directions' ? 'report' : 'report'`（都落 `report`，或加 `direction`） |
+| E14 | `ReportHistory.vue:22` | 尚无已保存的报告版本 | **`report`** | `size="sm"` |
+| E15 | `TaskList.vue:30` | 三种：暂无完成记录 / 暂无等待任务 / 暂无待执行任务 | **`notes`** | 有 `mode` 三态，`title` 已按 mode 三元；`EmptyState` 只接一个 `title`，可以用 `:title="…"` 传同样的表达式 |
+| E16 | `ModuleCatalog.vue:18` | 工具目录为空 | **`search-empty`**（或 `notes`） | 组件注释没给"工具"档；按"没有内容"选 `search-empty` 会变成"条件太窄"的语义，**不准**。⚠️ 第三处枚举缺口，标"需确认" |
+| E17 | `ModuleCatalog.vue:18` | 工具运行结果为空（`result.empty`） | **`search-empty`** | 这个反而合适（"这次运行没结果"） |
+| E18 | `TodoSuggestions.vue:12` | 当前没有待办建议 | **`search-empty`** 或 `notes` | "生成后没有建议" → `search-empty` 更准 |
+
+**`kind` 分布（按我的建议）**：`notes` 3（E1/E15/E18）｜`schedule` 2（E2/E3）｜`academic` 3（E9/E10/E11）｜`review` 1（E5）｜`report` 4（E4/E12/E13/E14）｜`chat` 1（E7）｜`search-empty` 3（E6/E17/E18 择一）｜`profile` 1（**`StudentView.vue:1047`，本来就是 `EmptyState` 调用点，正在修 bug**）。
+**共 18 处 `.ws-empty` + 1 处 `EmptyState` 缺 `kind`（19 处）。**
+
+**已知必须包含的那一条（确认成立）**：
+> `StudentView.vue:1047` 的 `<EmptyState v-if="!known.length" title="暂无个人信息" description="可以从一次咨询开始，也可以导入已有的学校资料。">` **没有传 `kind`** → `EmptyState.vue:68` 的缺省值是 `'notes'` → 渲染便签图形（`EmptyState.vue:93`），应该是 `'profile'` → 人像图形（`EmptyState.vue:141-144`）。
+> 这同时也会修掉 `NEXT` 文案：`notes` 给的是"在上方写下第一件要做的事"（错），`profile` 给的是"去咨询里补充这项信息" + 链接 `/chat`（对）。
+> 顺带：这处传了默认插槽（`<RouterLink class="btn" to="/chat">开始咨询</RouterLink>`，`:1048`），会顶掉 `NEXT` 的渲染（`EmptyState.vue:194-198` 的 `slot` 优先），所以**只修图形、不会改变行动位**——修 `kind` 是纯赚。
+
+**迁移时必须一起做的三件事**（否则"统一"不成立）：
+1. 删 `workspace.css:284-287` 的 `.ws-empty` 全局一族（包含 `h3` 字号规则），否刚两套标题层级继续并存（`EmptyState.vue:36-39` 说定论是"只有一档 h3"）。
+2. `EmptyState` 的 `headingLevel` 默认 3，而 `.ws-empty` 的现有调用里有 **5 处用 `h2`**（`TodayView:51`、`ScheduleView:58`、`RoadmapView:21`、`ReflectionView:44`、`AssessmentView:83`）——`EmptyState.vue:38-39` 说只有"整个页面正文都被空态顶掉"才提到 h2。这 5 处**确实是整页/整块顶掉**，迁移时显式传 `headingLevel=2`（不要靠默认值）。
+3. `EmptyState.vue:46` 自己留了一条 TODO："待 WorkspaceMotif 扩容后，应删掉下面的 canvas 分支改回 `<WorkspaceMotif :kind>`"——6 个 kind 现在走本组件内的 `canvas` 字形。**本次迁移不动**，只记录。
+
+### 4.3 `StatusBanner`：哪里该有而现在没有
+
+`StatusBanner.vue:36-72` 的 API：`tone`（`success`/`info`/`warning`/`error`）| `message`（必填）| `title?` | `dismissible?`（缺省 true）| `autoDismiss?`（`success` 缺省 4000ms）| `retryable?` / `retryLabel?` / `retrying?` | `actionLabel?` | `open?` | `size?` | `floating?`。
+它的三条规矩（`StatusBanner.vue:26-34`）：①**成功不该常驻**（`success` 4s 自动消失）；②**错误必须有动作位**；③只做出现/消失动效。
+
+**全站 0 个调用。现在的反馈形态有 5 种：`desk-status`（内联 p）、`inline-status`（AiStatus）、`asset-notice`、`journey-complete`、`p7-recompute`，外加 toast（`COVERAGE.md:108` 记它在门户布局下整条不渲染）。**
+
+**P0 · "成功反馈常驻不消失"（`StatusBanner.vue:28-29` 点名的病灶）**
+
+| # | 文件:行 | 现状 | 处置 |
+|---|---|---|---|
+| B1 | `NotesView.vue:25` | `<p v-if="status" class="desk-status" role="status">{{ status }}</p>`；`status` 由 `loadNotes`（`:14`）、`setDone`（`:15`）、`add`（`:19`）、`remove`（`:20`）四处写入，**没有任何地方清空**（只在切 tab 时 `:24` 清） | `<StatusBanner tone="success" :message="status" :open="!!status" @dismiss="status=''"/>` → 4s 自动消失。**这是"勾掉一件事得到零反馈"的反面：现在是"勾掉后有反馈，但永远挂在页上"** |
+| B2 | `ReflectionView.vue:43` | `<p v-if="noteStatus" role="status" class="desk-status">{{ noteStatus }}</p>`（保存复盘说明） | 同上 |
+| B3 | `AcademicView.vue:98` | `<p v-if="status" class="desk-status" role="status">{{ status }}</p>`（导入/核验/撤回/加载样例都写它） | 同上 |
+| B4 | `IntelView.vue:22` | `<p v-if="status" class="desk-status" role="status">{{ status }}</p>`（`已读取N条…`） | 同上 |
+| B5 | `ModuleCatalog.vue:18` | `<p v-if="status" class="desk-status" role="status">{{ status }}</p>` | 同上（页面待降级，优先级低） |
+| B6 | `AcademicVerification.vue:16` | `<p v-if="status" class="desk-status" role="status">{{ status }}</p>` | 同上（在弹层里 → `size="sm"`） |
+| B7 | `LiveDirectionCompare.vue:25` | `<p v-if="selected" class="desk-status" role="status">已确认「{{ selectedName }}」。…</p>` | **它不是"刚刚发生了什么"，而是"当前方向是什么"** → 这是**状态**不是**反馈**，应该用 `StatTile state="done"` 或一个静态标识，**不要**套 `StatusBanner`（4s 后消失会丢掉"当前方向"这个事实）。**标"不适用"** |
+| B8 | `TodayView.vue:39-43` | `<section v-if="lastDone" class="journey-complete" role="status">又完成了一步 / {{ lastDone.title }}</section>` | **保留**。这是有意设计的"完成时"落点（`DESIGN-LANGUAGE.md:35` 的"刚刚发生了什么"），比 toast 更符合"活的界面"。但可以补一个 `@dismiss` 让它能关掉（现在只能靠 `lastDoneId` 变化消失） |
+
+**P1 · "反馈埋在折叠线下 / 反馈不可见"**
+
+| # | 文件:行 | 现状 | 处置 |
+|---|---|---|---|
+| B9 | `AcademicView.vue:109` | 核验入口（"提供在线验证码"按钮）在默认收起的 `<details class="ws-context">` 里；核验结果 `status` 却写在 `:98` 的页面顶部（折叠**外面的上面**） | 折叠改 `static`（§1.3 A2）；或把反馈做成 `floating` 的 `StatusBanner` 落在触发点附近 |
+| B10 | `AiStatus.vue:6-7` | `busy` 时 `<div class="inline-status">` + `error` 时 `inline-status--error`；**成功时整块消失，什么都不说** | 保留 `AiStatus` 管"进行中/错误"（它有 `progress` 与 `cancel`，`StatusBanner` 没有），但 **error 分支换成 `StatusBanner tone="error"`**（`StatusBanner.vue:30-31` 要求错误必须有重试动作位；`AiStatus` 现在也有重试按钮，形状可以保留，语义要统一） |
+| B11 | `redesign.css:96` | 窄屏把 `.inline-status` **整条 `display:none !important`** | 这是"移动端把反馈藏掉"。`StatusBanner` 自带窄屏形态（`size="sm"` + `--floating`），迁移时**删掉这条 `display:none`**（见 §5.3） |
+| B12 | `AssessmentView.vue:83` | `<aside v-if="fullReport" class="asset-notice" role="status">` + `<AssetNotice v-if="!fullReport"/>` | `asset-notice` 讲的是 `needs_recompute`（两种文案）。→ 拆成 `StatTile state="recompute"`（状态）+ `StatusBanner tone="warning"`（"请核对新的个人信息再更新"，有动作位） |
+| B13 | `ProfileInsights.vue:26` | `<p v-if="stale" class="asset-notice" role="status">个人信息已更正，这份分析需要重新核对。可更新分析，原结果仍保留。</p>` | `StatusBanner tone="warning"` + `actionLabel="更新分析"` + `@action="analyze"`（现在只是"说了一句"，没有任何动作位） |
+
+**P2 · 缺"进行中"的反馈**
+
+| # | 文件:行 | 现状 | 处置 |
+|---|---|---|---|
+| B14 | `ConversationView.vue:785-791` | `.chat-skeleton` + `<p class="chat-skeleton__label">正在分析咨询内容…</p>` | **这是全站最好的一处四态**（有形状 + 有文字 + 有节奏）。迁移时把 `.chat-skeleton` 换成 `SkeletonBlock variant="text"` + `role="status"` 包裹，**保留那句 label**（`SkeletonBlock` 自己是 `aria-hidden`，`SkeletonBlock.vue:25-26` 要求调用方用 `aria-busy`/`role="status"` 表达加载态） |
+| B15 | `ConversationView.vue:828` | `<p v-if="stalled" class="composer-stalled" role="status">已停止生成。…</p>` | 保留；可换 `StatusBanner tone="info"` 让它可关 |
+| B16 | 6 个 AI 面板（`TaskBrief` / `TimetableAdvice` / `TodoSuggestions` / `ProfileInsights` / `CareerMatchPanel` / `DayAdvicePanel`） | 全部靠 `<AiStatus>` | `AiStatus` 内部统一到 `StatusBanner`（`busy` → `tone="info"` + 不能关；`error` → `tone="error"` + `retryable`） |
+
+**汇总：`StatusBanner` 需要落 6 处 P0（成功反馈常驻）+ 5 处 P1（埋线/被藏）+ 1 处不适用（B7）+ 2 处 P2 增强 + 1 个共用件重构（`AiStatus`，影响 6 个面板）。共 13 处直接调用 + 1 处组件内部。**
+
+---
+
+## 5. 死代码与地雷（只报告，不改）
+
+### 5.1 `base.css` 的全局 `.meter` / `.meter__fill` 一族（**已确认死代码 + 静默杀伤力**）
+
+| 文件:行 | 内容 |
+|---|---|
+| `base.css:827-832` | 注释块："零件 · 计量条 …… 用法：`<div class="meter"><div class="meter__fill" :style="{ '--meter': 0.46 }"/></div>`" |
+| `base.css:834-839` | `.meter { height:6px; border-radius:var(--r-pill); background:var(--c-surface-3); overflow:hidden }` |
+| `base.css:841-848` | `.meter__fill { …; transform-origin:left center; **transform: scaleX(var(--meter, 0))**; transition: transform … }` |
+| `base.css:850-852` | `.meter__fill--attention { background: var(--c-attention) }` |
+| `base.css:854-856` | `.meter__fill--done { background: var(--c-done) }` |
+| `base.css:1006-1008` | `@media (prefers-reduced-motion: reduce) { .meter__fill { transition: none } }` |
+
+**证据（`base.css:832` 到 `1008` 共 8 处定义，0 处使用）**：
+```bash
+grep -rn --include=*.vue -E 'class="meter|meter__fill' src   # → 只命中 SpecView.vue 的 meter-ROW（不同名）与两条注释
+```
+
+**地雷本体**：`transform: scaleX(var(--meter, 0))` 的**缺省值是 0**。任何拿到 `class="meter__fill"` 却没有同时设置 `--meter` 自定义属性的元素，都会被**静默压成 0 宽**——
+`getComputedStyle` 会如实报出 `width: 330px`，但屏幕上什么都没有。`MeterRow.vue:19-24` 把这个事故写进了自己的注释（"这正是本次实测抓到的 bug（条宽实测 0px，而 getComputedStyle 报 330px）"），`MeterRow.vue:366-367` 还为此加了第二道保险（显式 `transform: none`）。
+**这不是"没人用的死样式"那么简单，是一个名字占用 + 静默归零的陷阱**：`.meter` / `.meter__fill` 是非常容易被下一个组件随手复用的名字（`StatTile` 的 `.tile__fill`、`MeterRow` 的 `.mtr__fill` 都刻意避开了它）。
+**建议处置（本轮不做）**：整段删除；若必须保留历史，把 `scaleX(var(--meter, 0))` 的缺省值改成 `1`，让"忘记传变量"表现为"满格"而不是"消失"。
+**连带的地雷**：`lib/motion.ts:7` 把这段死零件当**活文档**引用——"只用 CSS 能做好的，就用 CSS（见 base.css 的 `.stagger` / `.just-changed` / **`.meter__fill`**）"。`.meter__fill` 已经没有使用点，这条注释会把下一个读它的人引向一个错误的范例（**它的写法本身还有点问题**：`scaleX` 会连带把 `border-radius` 和 `background` 一起缩放）。同时 `motion.ts:25` 导出的 `useCountUp` 也没人用（`grep -rn useCountUp src` → 只有定义），`StudentView.vue:357-368` 自己写了一份 `trustShown` 的 rAF 数字滚动。
+
+### 5.2 `SpecView.vue` 的 `.meter-row__*` 规则
+
+| 文件:行 | 内容 | 状态 |
+|---|---|---|
+| `SpecView.vue:474` | `<div class="meter-row__track">` | **使用中**（规格页的示例） |
+| `SpecView.vue:475` | `<div class="meter-row__fill meter-row__fill--warn" style="width: 46%" />` | **使用中** |
+| `SpecView.vue:476` | `<div class="meter-row__req" style="left: 50%" />` | **使用中** |
+| `workspace.css:425` | `.ws-diagnostic .meter-row__head { margin-bottom: 14px }` | **孤儿**：`grep -rn 'ws-diagnostic' src --include=*.vue` → **0 处** |
+| `workspace.css:426` | `.ws-diagnostic .meter-row__label { font-size: var(--fs-16) }` | **孤儿**（同上） |
+| `workspace.css:427` | `.ws-diagnostic .meter-row__legend { font-size: var(--fs-14); margin-top: 14px }` | **孤儿**（同上） |
+| `workspace.css:424` | `.ws-diagnostic { display:grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap:28px; margin-top:30px }` | **孤儿**（整条） |
+| `workspace.css:540` | `.ws-diagnostic { grid-template-columns: minmax(0,1fr); gap:24px }`（窄屏） | **孤儿** |
+
+**三重问题**：
+1. `SpecView.vue:474-476` 用的类名 `.meter-row__track` / `__fill` / `__req` / `--warn` **全库没有任何 CSS 定义**（`MeterRow.vue` 用的是 `.mtr__*`，见 `MeterRow.vue:231,242,253…`）。
+   → 规格页在**教一个不存在的组件**，而且它自己的示例是**失真的**：三个 `div` 会以默认块级样式竖向堆叠，不是一条"同刻度的尺"。
+2. `workspace.css:425-427` 的 `.ws-diagnostic .meter-row__*` 引用的父类 `.ws-diagnostic` 与三个子类**全部 0 命中**——这是**旧版 MeterRow 的残留**（旧版类名是 `.meter-row__*`，本次改造改名成 `.mtr__*` 时只改了组件、没清全局）。
+3. 规格页是 `meta.public`（`COVERAGE.md:210`：`router.ts:80` 标 public → `App.vue:88` 走 bare 分支），它**不在学生壳里**，但它在 `HELP_LINKS` 里仍然可达。
+**处置**：SpecView 的示例应换成真实的 `<MeterRow :value="0.46" :requirement="0.5"/>`；`workspace.css:424-427` 与 `:540` 一起删。
+
+### 5.3 其它引用已删除组件 / 已失效规则的死代码
+
+| # | 文件:行 | 内容 | 证据 | 风险 |
+|---|---|---|---|---|
+| X1 | `experience.css:65-68` | `.ws-sheet--inspector { position:fixed; inset:12px 12px 12px auto; … }` + `__inner` + `__head` + `__body` 四段**全局**规则 | 新 `InfoSheet.vue:270-283` 已在组件内重写了 `.ws-sheet--sheet`，但模板（`InfoSheet.vue:212`）在 `inspector` 为真时**仍会渲染 `ws-sheet--inspector` 类名**，于是这四段会与 scoped 规则**叠加** | **不是死代码，是活的撞车**。`inspector` → `shape` 迁移完成后必须删（§2.3） |
+| X2 | `experience.css:109` | `@media (prefers-reduced-motion: no-preference) { .ws-sheet--inspector[open] { animation: exp-inspector-enter 220ms … } }` | 同 X1 | `InfoSheet.vue:336-344` 另有一套 `sheet-slide-in`。**同一弹层两个入场动画** |
+| X3 | `experience.css:126-128` | `@media (max-width:…) { .ws-sheet--inspector { inset:auto 0 0; … border-radius: 16px 16px 0 0 } }` | 这是审计 D10 说的"只有 `--inspector` 一个变体有小屏底部化"。`InfoSheet.vue:350-382` 已用令牌（`--sheet-radius-mobile`、`--sheet-mobile-max-h`）重做 | 硬编码 `88dvh` / `16px` 与令牌不同源 |
+| X4 | `experience.css:137` | `@media (prefers-reduced-motion: reduce) { .ws-sheet--inspector[open] { animation: none } }` | X2 的降级 | — |
+| X5 | `workspace.css:291-298` | **旧的全局 `.ws-sheet` 一族**：`.ws-sheet { padding:0; width:min(540px,…); max-height:…; overflow:auto; … }`、`.ws-sheet--wide`、`.ws-sheet::backdrop`、`.ws-sheet[open] { animation }`、`.ws-sheet__head`、`.ws-sheet__body` | `InfoSheet.vue:257-264`（`.ws-sheet--dialog`）与 `:289-296`（`--panel`）在 scoped 里**重定义了 `width` / `max-height` / `padding` / `border` / `border-radius` / `overflow`**，但没有定义 `box-shadow`、`background`、`color`、`::backdrop` → **这些从全局漏进来**（正是 `scripts/check-classes.mjs:19-22` 描述的机制） | **活撞车**。特别是 `overflow: auto`（全局）与 `overflow: hidden`（scoped `--dialog`）：特异度相同，**顺序决定胜负** |
+| X6 | `workspace.css:578-579` | `.ws-sheet__head { padding: 20px }` / `.ws-sheet__body { padding: 0 20px 24px }`（窄屏） | 与 X5 同族 | 新组件用 `--sp-*` 令牌，两套内距并存 |
+| X7 | `workspace.css:637` | `.ws-sheet[open] { animation: none }`（reduced-motion） | 同 X5 | — |
+| X8 | `workspace.css:348-351` | `.ws-fold { margin-top:20px }` / `.ws-fold > summary {…}` / `.ws-fold[open] > summary svg` / `.ws-fold__body { padding:20px 0 8px }` | 四种折叠迁移完之后才成死代码 | **迁移完成后删**；`.ws-fold__body` 会被 Foldable 的 slot 内容误继承 |
+| X9 | `workspace.css:331-336` | `.ws-task__details` 六条 | 同上（`TaskList.vue:18` 是唯一使用点） | 同上 |
+| X10 | `workspace.css:207` | `.ws-task__details > summary { min-height:40px; align-items:center }` | 同上 | 同上 |
+| X11 | `redesign.css:11-19` | `.ws-context` 九条（含 `__body` 两栏网格、`h2/h3` 字号、`p` 行高） | 14 处使用点迁移完成后成死代码 | `.ws-context__body` 的 `grid-template-columns: repeat(2,…)` 会漏进 `Foldable` 的 slot 内容（如果 slot 里还留着这个类名） |
+| X12 | `redesign.css:186-198` | `.plan-stage` 十条（`.plan-stages`、`__index`、`__body`…） | 2 处使用点迁移后成死代码 | 同上 |
+| X13 | `redesign.css:275,323,329,337` | 四条窄屏规则里对 `.ws-context` 的引用（其中 `:329` 有一条 `.ws-context > summary > svg { display:none !important }`） | 迁移后成死代码 | `:329` 是"打印/窄屏把折叠箭头隐掉"的规则，会让 `Foldable` 的 `chevron` 消失 |
+| X14 | `base.css:568-590` | `.confidence` / `.confidence__bars` / `.confidence__bar` / `.confidence__bar--on` | `StudentView.vue:986-991, 1097-1101` 是仅有的使用点（`workspace.css:438,447` 是它的字号规则） | 迁移 §3.4 G2 之后删 |
+| X15 | `workspace.css:438,447` | `.ws-dimension .confidence { font-size: var(--fs-14) }` / `.ws-direction__role .confidence { font-size: var(--fs-12) }` | 父类选择器 0 命中（`ws-dimension` / `ws-direction__role` 全库无使用点） | 双重死代码 |
+| X16 | `redesign.css:37-38, 96` | `.inline-status` / `.inline-status--error` + **窄屏 `display:none !important`** | `AiStatus.vue:6-7` 是唯一使用点 | `:96` 的 `display:none` 让移动端**完全没有** AI 任务的进行中/错误反馈（见 §4.3 B11） |
+| X17 | `base.css:308-313` | 注释："【2026-10-11 · 已被 `.rail` / `.rail__split` 取代，五个内页都不再用它】…… 这一段留着只为不打断历史记录" | `base.css:1048, 1066` 同类注释 | 历史注释里保留了已废弃的 `.tile-N` 系列说明。**`motion.ts:7` 的问题（把死零件当活文档）在这里也有同类**：注释里的"已取代"是好的（明确标注了），但 `base.css:1105-1118` 有一大段 `.rail` 的用法文档，而 `.rail` 的使用点需要逐页确认 |
+| X18 | `base.css:271` | `.rail > .side > .card__head { … }` | `CollectRail.vue`（`check-classes.mjs:8` 里记的那个已改名/已删的组件） | 组合选择器，风险低；属"改名时的遗漏" |
+
+**关于 `scripts/check-classes.mjs` 的说明**：该门禁只能发现"全局样式表 ↔ 组件 scoped 样式"里**同名裸类**的撞车（`check-classes.mjs:71-72` 明确跳过组合选择器）。所以 X5（`.ws-sheet` 全局 vs `InfoSheet.vue` scoped）**应该**能被它抓到——但 `.ws-sheet` 在 `InfoSheet.vue` 的 scoped 里是以 `.ws-sheet--dialog` 等**不同名**出现的，`rulesByClass` 取的是类名 token（`--dialog` 版本会得到 `ws-sheet--dialog` 而不是 `ws-sheet`），所以**抓不到**。这条门禁对"BEM 修饰符式撞车"是盲的——**记录，不在本轮修**。
+
+### 5.4 `motion.ts` 里把死零件当活文档的注释
+
+| 文件:行 | 内容 | 问题 |
+|---|---|---|
+| `motion.ts:7` | "只用 CSS 能做好的，就用 CSS（见 **base.css 的 `.stagger` / `.just-changed` / `.meter__fill`**）" | `.meter__fill` 已 0 使用（§5.1），且它的 `scaleX` 写法本身有问题。**这条注释会把下一个读它的人引向一个坏范例**——而 `motion.ts` 恰好是"动效该怎么做"的入口文档。应改为引用 `MeterRow.vue` 的 `.mtr__fill`（`width` + `transition`，无副作用） |
+| `motion.ts:8-9` | "这里只放 CSS 做不到的两件事：数字滚动、逐字流式" | 与 `motion.ts:25` 的 `useCountUp` 一致，但 `useCountUp` **0 调用**（`StudentView.vue:357-368` 自己写了一份 rAF 滚动）。**两套数字滚动**，其中一套是死代码 |
+| `motion.ts:19-20` | "用途：分值、条数、百分比 —— 让『这里变了』这件事被看见" | 与 `DESIGN-LANGUAGE.md:97` 的反例表冲突："数字滚动、指示线滑动 → 好看，但不传达信息——**装饰**"。`motion.ts:7-9` 的原则是对的，但 `useCountUp` 的存在鼓励了被明令禁止的做法。**记录**（`StudentView` 的环生长有真实信息量：它表达"覆盖度在算"，属于 §2 的"进行时"，可以留；纯数字滚动不行） |
+
+---
+
+## 6. 执行顺序建议（按依赖关系 + 风险）
+
+### 6.0 总原则
+
+**没有一条迁移是真正独立的**，但有三种耦合强度：
+- **硬耦合（必须同一提交）**：改了组件 API / 删了旧类名，而调用点还在用旧写法 → 页面坏。
+- **软耦合（同一批做，否则形状漂移）**：同一形状在多个页面（阶段头在两页、`TaskList` 在四区块、AI 结果件在 6 个面板）。
+- **可独立分批**：单页面内的替换。
+
+### 阶段 0 · 先拆地雷（不改页面，1 次提交）——**风险最高，必须先做**
+
+| 序 | 动作 | 为什么必须在最前 |
+|---|---|---|
+| 0.1 | 删 `base.css:827-856` + `:1006-1008` 的 `.meter` / `.meter__fill` 一族；改 `motion.ts:7` 的注释 | 它是**静默归零**的陷阱。任何后续迁移只要有人写 `class="meter__fill"` 就会得到"看起来有、实际 0 宽"的条，而且 `getComputedStyle` 查不出来 —— 这类 bug 会伪装成"布局问题"被排查很久 |
+| 0.2 | `InfoSheet.vue` 的 `resolvedShape`（`:54-58`）与 `wide`/`inspector` prop：**先不动**，但把 `:53` 的注释改成"迁移完成后删"的 TODO | 现在动它会改掉 4 个调用点的形态（3 个 `wide` + 1 个 `inspector`）→ 硬耦合，必须跟阶段 2 一起 |
+| 0.3 | 修 `StudentView.vue:1047` 的 `EmptyState` 缺 `kind`（→ `kind="profile"`） | **一行，零风险，且是任务书明确列出的已知项**。它不依赖任何其它改动 |
+| 0.4 | 修 `StudentView.vue:255` 的 `Math.max(1, Math.round(conf * 3))` | 同上：一行。它把 `confidence === 0` 变成"依据很少"，与 `ConfidenceBadge.vue:26-29` 的口径直接冲突。**但它属于 §3.4 G2 的前置**，如果阶段 3 之前不做，G2 迁移会把这行一起删掉 —— 也可以留到 3.x。**建议放这里**，因为它是个逻辑 bug |
+
+> 0.1 与 0.3/0.4 可以并在同一个提交（互不相干），但 0.1 必须是**第一件事**。
+
+### 阶段 1 · 折叠收敛（**一个提交做完 25 个行位 + 3 个连带文件**）
+
+**为什么必须一起改**：`Foldable` 只在**同一层**才安全。逐处迁移会出现"外层已 `Foldable`、内层还是 `<details>`"或反之的中间态，而 `Foldable.vue:77-93` 的层级检测**数不到旧 `<details>`**（它只数 `.fold` 类），所以中间态的嵌套警告是静默的 —— 违反 `PLAN.md:114` 也不会有人发现。
+**并且** `Foldable.vue:118-129` 的 `fold__head` 是 `<button>` 而旧的是 `<summary>`；同一个容器里混两种，键盘 Tab 顺序会出现"按钮里套 summary"的怪顺序。
+
+| 序 | 批次 | 内容 |
+|---|---|---|
+| 1.1 | **先改 `TaskList.vue:18`** | `C1` 是 **4 个页面区块共用**（`RoadmapView:23,23,24`、`TodayView:55`）的折叠。先改它 → 影响面一次到位，且它最独立（`variant="inline"` + `defaultOpen`，不涉及嵌套） |
+| 1.2 | **同批改两个 `.plan-stage`** | `RoadmapView.vue:23` 与 `LiveActionPlan.vue:11` 是**同一个形状的两个实现**，两页（`/plan`、`/home`）共用同一个折叠策略。分开改必然漂移（审计已记"两页 H1 都写死行动计划"这类漂移） |
+| 1.3 | **同批改 3 个嵌套点**（拆层） | `ReflectionView.vue:46`（A3 外层→`static` + D8 留）、`RoadmapView.vue:24`（A7 外层→`static` + D6 留）、`StudentView.vue:871`（E1 + A8 一起，因为这页还有 E5 行内展开，三层要同时收到 1 层） |
+| 1.4 | **报告页单批**（4 处 + `printing` 语义） | `AssessmentView.vue:87/88/91/92`：D1/D2 改 `static`（或至少 `defaultOpen`），D3 保折叠，D4 保 `forceOpen + defaultOpen`。**必须验证打印稿**（`printReport()` 在 `:74` 设 `printing=true` 后调 `window.print()`）—— 这是唯一"旧行为会被悄悄改掉"的地方 |
+| 1.5 | **5 个 AI 结果件单批** | `TaskBrief:8`、`TimetableAdvice:8`、`TodoSuggestions:8`、`CareerMatchPanel:21`、`AiResultMeta:6`。它们共用 `AiResultMeta`，**且"动作按钮搬出折叠头"这个改动在这 5 处是同一件事**（现在 `TaskBrief`/`TimetableAdvice`/`TodoSuggestions` 都把生成按钮放在 `<summary>` **之后的折叠体内**，用户要点开才能生成） |
+| 1.6 | **同批**：`NotesView:27`（A1）、`ScheduleView:54/57/59`（A4/A5/A6）、`AcademicView:109`（A2）、`ConversationView:833`（D5）、`CareSheet:9`（D7） | 这几处互不相干，可以最后收尾；但**必须在本阶段内完成**，否则旧 `.ws-context` / `.ws-fold` CSS 不能删 |
+| 1.7 | **删旧 CSS**（软耦合：必须在 1.1–1.6 全部完成后） | `workspace.css:331-336, 348-351, 207, 439-440`（`.ws-fold*` / `.ws-task__details*`）、`redesign.css:11-19, 186-198, 275, 323, 329, 337`（`.ws-context*` / `.plan-stage*`）。**特别注意 `redesign.css:329`** 里有一条 `.ws-context > summary > svg { display:none !important }`，不删的话 `Foldable` 的 `chevron` 在窄屏会消失 |
+| 1.8 | **同批**：`ToolsView:8`（A10）、`PortalView:25`（E4） | 按 `PLAN.md:39`，`ToolsView` 整页待移出导航 → **它的折叠不迁**（迁了也要删）。`PortalView` 属"门户只做协调性精修"（`PLAN.md:206`）→ **不迁**。这两处要在 §1.3 的表里标记为"不迁"，否则下次核对会以为漏了 |
+
+**风险点**：1.4（打印稿）。**必须在改完后跑一次 `window.print()` 的 DOM 快照**，确认 9 个维度的分数与要求线仍然可见。
+
+### 阶段 2 · 弹层形态（**一个提交做完 18 处 + 删 2 个旧 prop**）
+
+**为什么必须一起改**：`InfoSheet.vue:54-58` 的优先级是 `inspector > wide > shape`。如果先给部分调用点加 `shape`，而 `wide`/`inspector` 还在组件里，**新增的 `shape` 会被旧 prop 覆盖**（对那 4 个同时有两者的调用点是静默失效）。
+反过来，如果先删 `wide`/`inspector` 再改调用点 → 那 4 个调用点会立刻掉回缺省 `dialog`。
+
+| 序 | 动作 | 说明 |
+|---|---|---|
+| 2.1 | 先给 **14 处缺省 dialog** 加显式 `:shape="'dialog'"` | 零行为变化（与缺省一致）→ **这一步可以单独提交，用来把"隐式"变"显式"**，让下一步的 diff 只包含真正的形态变化 |
+| 2.2 | 改 **3 处 `wide` → `shape="panel"` / `"sheet"`** | `AcademicView:112`→`panel`、`IntelView:22`→`sheet`（**形态与内容一起改**，见下）、`ProfileInsights:28`→`sheet` |
+| 2.3 | 改 **1 处 `inspector` → `shape="sheet"`** | `ConversationView:830` |
+| 2.4 | 删 `InfoSheet.vue` 的 `wide`/`inspector` prop、`resolvedShape`（`:31-34`、`:54-58`）、模板里的 `ws-sheet--wide`/`ws-sheet--inspector` 类名（`:212`） | **必须与 2.2/2.3 同一提交** |
+| 2.5 | 删 `experience.css:65-68, 109, 126-128, 137` 的全局 `.ws-sheet--inspector` 一族，以及 `workspace.css:291-298, 578-579, 637` 的旧全局 `.ws-sheet` 一族 | **与 2.4 同一提交**。注意 X5：`.ws-sheet` 的 `box-shadow` / `background` / `::backdrop` **只**在全局定义，删之前要确认这些已移进 `InfoSheet.vue` 的 scoped（现在**没有**）——否则 18 个弹层会一起失去阴影和遮罩 |
+| 2.6 | **内容一起改的两处**（不做就等于没改） | ①`IntelView:22`：`COVERAGE.md:207` 说"点开的正文与卡片上的 65 字完全相同 = 零增益点击"。形态换成底部面板后，**必须同时给弹层加内容**（完整正文 / 来源与时间 / 关联缺口），否则只是把零增益放大到满屏。②`AcademicView:114`（核对学籍）：现在弹层里是"方式选择 + 验证码 + 结果"，`AcademicVerification.vue` 内部还有 `AiStatus` 与结果列表 —— 换成 `panel` 前要确认它在全屏下的高度分配（`InfoSheet` 的 body 是唯一滚动区，见 `InfoSheet.vue:309`） |
+
+**风险点**：2.5。**必须先验证阴影/遮罩的来源**（`grep -n 'box-shadow\|::backdrop' InfoSheet.vue` → 只有 `--floating` 相关的 `:245`，主容器没有）。这是"删全局样式 = 18 个弹层同时变样"的经典陷阱。
+
+### 阶段 3 · 信息表达原语（**建议合并到"重做页面"里，不做独立迁移**）
+
+**理由**：`SourceChip` / `StatTile` / `ConfidenceBadge` 的迁移**必然要改数据来源**（§3.2 S1 要给 `row` 补原始 `source` 字段、S5 要给 `SourceChip` 加逃生口、§3.3 T13 要先确认 `fit` 的量纲）。这些是**页面级重构**，不是"把 span 换成组件"。`COVERAGE.md:292` 的建议顺序也是"补组件 → 逐页重做"。
+
+| 序 | 动作 | 可以独立分批吗 |
+|---|---|---|
+| 3.1 | `MeterRow` 量纲核对（**只验证，不改**） | 可以。**先确认 `data/student.ts` 的 `score`/`mine`/`requirement` 是 0–100**，并记下"若切实时数据则要删 `/100`"。`MeterRow.normalize01`（`MeterRow.vue:78`）对 `(1, 1.5]` 的值会当百分制除以 100 —— **0.46 喂进去会变成 0.0046**，这是隐形的 |
+| 3.2 | `ConfidenceBadge` 统一（11 处） | **两批**：①先做 `StudentView` 内的 G2+G3（4 处，同页）；②再做 `ReportHistory`/`AssessmentView`/`ProfileInsights` 的 G4（5 处，但 G4 更适合 `StatTile`/`StatusBanner`，应与阶段 4 合并）。G1c（`SpecView:435-437`）**跟 SpecView 的示例修正一起做**（§5.2），不单独 |
+| 3.3 | `SourceChip`（10 处候选） | **必须先做一个决定**：`SourceChip` 是否接受"非 `ProfileSource` 的自由文本来源"（S3/S5/S7 三处是外部媒体名）。不做这个决定，这 3 处无法迁移。**建议合并到 `/intel` 与 `/profile` 的重做** |
+| 3.4 | `StatTile`（13 处） | **三批**：①`/plan` + `/home` 的 T1/T2/T3/T8（进度与时间，与阶段 1.2 的阶段折叠同一处代码，**最好在阶段 1 就顺手做**）；②`/profile` 的 T6/T7/T12；③`/academic` T10、`/review` T9、`/report` T11、`chat` 面板 T4/T5。**分批边界 = 页面边界** |
+
+> **关于 §3.1 的一个反直觉结论**：`MeterRow` 的 `:score`→`:value` 变更**已经完成**（2/2）。所以任务书里"注意确认哪些还没迁移、会不会坏"的答案是：**不会坏，因为 0 处未迁移；真正的风险在 `SpecView.vue:474-476` 那个手写的假尺，和 `data/student.ts` 的量纲前提**。
+
+### 阶段 4 · 四态（**必须与"页面重做"同批，且 `AiStatus` 重构优先**）
+
+| 序 | 动作 | 依赖 |
+|---|---|---|
+| 4.1 | **先重构 `AiStatus.vue`** | 它是 **6 个 AI 面板共用**（`TaskBrief`、`TimetableAdvice`、`TodoSuggestions`、`ProfileInsights`、`CareerMatchPanel`、`DayAdvicePanel`、`AcademicVerification`）。把它的 `error` 分支换成 `StatusBanner tone="error" retryable`，`busy` 分支换成 `StatusBanner tone="info"`（或保留 `inline-status` 只换视觉）。**这一步同时解决 §4.3 的 B10/B16** |
+| 4.2 | **`StatusBanner` 落 6 处 P0（成功常驻）** | 6 处都在页面级 `status` ref 上（`NotesView:25`、`ReflectionView:43`、`AcademicView:98`、`IntelView:22`、`ModuleCatalog:18`、`AcademicVerification:16`）。**这 6 处可以一起改**：都是"`v-if="status"` 的 `desk-status`"→ `StatusBanner tone="success"`。改完必须删 `redesign.css:37-38,96` 的 `.inline-status` 与 `COVERAGE.md:111` 记的"`.desk-status` 两份冲突定义" |
+| 4.3 | **`SkeletonBlock` 落 P0 9 处** | **必须先做 4.2 的 `info` 分支**，否则"正在读"和"读完了"两种反馈会同时出现在一页（`StatusBanner` 的 `success` 4s 消失 + `AiStatus` 的 `inline-status`）。建议**逐页做**：`/academic`(K1) → `/notes`(K2) → `/schedule`(K3) → `/intel`(K4) → `/plan`+`/home`(K5,K8) → `/report`(K6,K7) |
+| 4.4 | **`EmptyState` 18 处 `.ws-empty`** | 可以与 4.3 同页进行（同一个 `v-if`/`v-else` 分支的两半，**分开做会导致"加载态有了、空态还是旧的"**）。**P0 是 5 处 `h2` 的 `headingLevel`**（`TodayView:51`、`ScheduleView:58`、`RoadmapView:21`、`ReflectionView:44`、`AssessmentView:83`）—— 不显式传就会从 h2 掉成 h3，**层级塌陷会被引入**，这是本次迁移最容易造成的视觉回归 |
+| 4.5 | 删 `workspace.css:284-287` 的 `.ws-empty` 全局一族 | **只能在 4.4 全部完成后**（它是 18 处的最后依赖） |
+
+**风险点**：4.4 的 `headingLevel`。以及 4.3/4.4 同页进行的要求——分批边界必须是**页面**，不是"骨架屏一批、空态一批"。
+
+### 6.1 必须一起改的清单（"改了组件不迁移调用点 = 页面坏"）
+
+| 硬耦合 | 内容 | 坏法 |
+|---|---|---|
+| **H1** | 阶段 1 的 1.1–1.6 **全部**，加上 1.7 的删 CSS | 混用 `Foldable` 与 `<details>` 时，`Foldable.vue:83` 的层级检测只数 `.fold`，**嵌套违规静默通过**；且 `fold__head` 是 `<button>`，与 `<summary>` 混排会让键盘顺序错乱 |
+| **H2** | 1.4 的四处报告页折叠 + `printing` | 把 `:open="printing"` 抄成 `defaultOpen` → **打印稿丢掉分值与雷达图**（受控变非受控） |
+| **H3** | 阶段 2 的 2.2/2.3 + 2.4（删 prop） | 先删 prop → 4 个调用点掉回 `dialog`；先加 `shape` → 被 `wide`/`inspector` 覆盖，静默失效 |
+| **H4** | 2.4 + 2.5（删全局 `.ws-sheet*`） | 单独删 2.5 → 18 个弹层失去 `box-shadow` / `background` / `::backdrop`（这三项只在全局定义） |
+| **H5** | 4.4 的 `EmptyState` 替换 + `headingLevel` 显式传值 | 5 处 h2 掉成 h3 → 页级标题层级塌陷（`COVERAGE.md:275` 记的"层级塌陷"病灶会新增一处） |
+| **H6** | 4.4 完成后才能删 `workspace.css:284-287` | 提前删 → 18 处空态全部失去内距与居中（`text-align:center`） |
+| **H7** | §3.4 G2 迁移 + 删 `base.css:568-590` + `StudentView.vue:1369-1373` | 只换组件不删 `:deep(.confidence__*)` → 旧覆盖会作用到新的 `.cf__bar` 上（若类名不同则静默无效，两套并存） |
+
+### 6.2 建议合并进"重做页面"一次做掉（不单独立项）
+
+| 页面 | 为什么别单独迁移 |
+|---|---|
+| `/report`（`AssessmentView`） | `D1`–`D4` + `T11` + `G1a/G1b` + `K6/K7` + `S8` 全在同一批 94 行密集模板里；而且 `AssessmentView.vue` 还是 `/report` 与 `/directions` 共用（`PLAN.md:50` 要求拆成两个视图）。**单独迁移折叠 = 拆视图时全部重做** |
+| `/plan` + `/home` | `RoadmapView` + `LiveActionPlan` + `TaskList` 三件互相引用，且审计记"两页 H1 都写死行动计划"（`COVERAGE.md:159`）—— 名称与结构要先定，再动折叠与读数 |
+| `/profile`（`StudentView`） | 1551 行单文件，`A8`+`E1`+`E5`+`G2`+`G3`+`T6/T7/T12`+`S1/S2` 全在里面，且都在"三段式可追溯结构"这一件事上。**逐条迁移等于把这个结构改 8 遍** |
+| `/intel`（`IntelView`） | `S5` + `C18`（`wide`→`sheet`）+ "零增益点击" + "一页三个搜索入口"（`COVERAGE.md:207`）是同一件事：资讯卡的内容模型要重做。**形态迁移必须跟内容一起**（§阶段 2 的 2.6） |
+| `/schedule`（`ScheduleView`） | `A5`/`A6` 应降为 `StatusBanner`（不是换折叠），`C14` 的形态取决于课表块的交互重做。整页在审计里是"同一页两个视图对同一天给出矛盾数据"（`COVERAGE.md:244`），早于组件迁移要修 |
+| `/academic`（`AcademicView`） | `A2` 要拆层（核验入口 = 动作，不该折叠）、`C11/C12/C13` 三个弹层、`T10` 的读数、`K1` 的骨架屏、`E9–E11` 的空态 —— 全部围绕"学籍核验的入口在默认收起的折叠里"这一个结构问题 |
+| `/spec`（`SpecView`） | 它**不在学生壳里**（`COVERAGE.md:210`），且 `PLAN.md:37` 说"移出学生导航"。它的 `.meter-row__*` 死代码与 `G1c` 示例应随页面处置（移出/重写）一起做 |
+
+### 6.3 可以独立分批的
+
+- `C1`（`TaskList.vue:18`）—— 4 区块共用，先改它收益最大、独立性最强（批次 1.1）
+- `StudentView.vue:1047` 的 `kind="profile"`（阶段 0.3）—— 一行
+- `StudentView.vue:255` 的 `confidence === 0`（阶段 0.4）—— 一行
+- `Stage 0.1` 的死代码删除 —— 与页面无关
+- `B9`（`AcademicView:109` 的反馈位置）—— 单独修"核验结果出现在折叠外面"，可以先做
+
+---
+
+## 7. 不确定的地方（不编，逐条说明不确定在哪）
+
+| # | 位置 | 不确定什么 | 需要什么信息才能定 |
+|---|---|---|---|
+| U1 | `RoadmapView.vue:23` / `LiveActionPlan.vue:11` 第 2、3 阶段 | 是否也 `defaultOpen: true` | 审计说"第二三阶段默认一屏看不到"是病灶，但全展开会让 `plan-stages` 一次铺满 3 屏。需要产品决定"阶段列表是清单还是手风琴" |
+| U2 | `EmptyState.vue:10-20` 的 `kind` 枚举 | **缺 `plan` / `direction` / `notice` / `tools` 四档**（E4 `RoadmapView:21`、E12 `LiveDirectionCompare:25`、E8 `InboxSheet:13`、E16 `ModuleCatalog:18` 都只能借用语义不符的 kind，且 `NEXT` 预设文案会不对） | 需要决定：加枚举（改组件 + 9 处 `MOTIF`/`NEXT` 表）还是接受借用 + 覆盖 `title`/`description`。**倾向加枚举**，因为 `EmptyState.vue:36-39` 的存在理由就是"迫使调用方先回答这是哪一类空" |
+| U3 | §3.2 S3/S5/S7/S8 | `SourceChip` 的 `source: ProfileSource` 是**必填且是 7 值枚举**（`SourceChip.vue:38`，`Record<ProfileSource,…>` 会编译报错）。AI 结果的 `citation.source`、资讯的 `source_name` 都是**自由文本** | 需要决定：加 `label?: string` 逃生口 / 加 `ExternalSourceChip` / 加 `raw` 变体。**不做决定，这 4 处无法迁移** |
+| U4 | `data/student.ts` 的 `d.score` / `d.mine` / `d.requirement` / `d.fit` | 是 **0–100 还是 0–1**。`AssessmentView.vue:87,88` 写了 `/100`（说明是 0–100），但 `PLAN.md:181` 说"后端分值为 0–1 浮点，演示数据用 0–100 整数"——**两种量纲会随数据来源切换** | 需要读 `data/student.ts` 与 `validate-ai.ts` 确认。**若切到 `service` 模式，`/100` 必须删**（否则 `normalize01` 会把 0.46 当百分制 → 0.0046） |
+| U5 | `CareerMatchPanel.vue:18` 的 `r.fit` | 同 U4。它现在直接印在灰字里（`契合度 {{ r.fit }}`），不知道是 46 还是 0.46 | 同上 |
+| U6 | `AcademicView.vue:114`（核对学籍） | `panel` 还是 `sheet` | 需要看 `AcademicVerification.vue` 在 1280 宽度下的实际内容高度（它有 `AiStatus` + 步骤列表 + 结果列表 + `AiResultMeta`，可能超过 `panel` 的 `--sheet-panel-max-h`） |
+| U7 | `ScheduleView.vue:59`（课程详情） | `sheet` 还是 `panel`。内容只有 4 个 `dl` 字段 + 1 个链接 | 需要产品对"课表项点开"的期待：侧面卡片（sheet）还是一屏信息（panel） |
+| U8 | `AssessmentView.vue:92` 的 `demo.state.rippleOpen` | 它是**被谁设成 true** 的（我没找到 `rippleOpen = true` 的写入点） | 需要 grep `rippleOpen` 的写入方。如果没人写，那 `:open="demo.state.rippleOpen \|\| printing"` 里的 `rippleOpen` 是死条件，迁移时可以直接丢掉 |
+| U9 | `StudentView.vue:864-869` 的 `p7-tick`（G3） | 它是"总账刻度"（14/9/5px 三条）还是 `ConfidenceBadge` 的重复实现 | 需要设计判断。我倾向"与 `ConfidenceBadge` 同义 → 换掉"，但它有"聚合"语义（`tally.firm/check/thin` 三个计数），可能该做成 `StatTile` 的一个组 |
+| U10 | `IntelView.vue:22` | 迁移成 `sheet` 之后，弹层里该放什么（现在与卡片正文完全相同） | 需要资讯内容模型的决定（完整正文从哪来？`source_url` 只有外链）。**这是"零增益点击"的真正解法所在，不是形态问题** |
+| U11 | `PortalClassicView.vue` / `PortalProposalView.vue` | 是否也在本次迁移范围 | `PLAN.md:206` 说"门户页构图与品牌基本保留，只做协调性精修"，且 `App.vue:88` 门户走 bare 分支 —— **门户不渲染 `WorkspaceHeader`/`WorkspaceNav`**，所以 §2 的 18 处弹层里没有门户的（已核）。但 `PortalView.vue:25` 有一个 `<details class="pv-settings">`（E4），我按"不迁"处理 —— **需确认门户是否共用 `Foldable`** |
+| U12 | `SpecView.vue` 的定位 | `PLAN.md:37` 说移出学生导航，`COVERAGE.md:210` 说它不在学生壳里。它的 `G1c`（`ConfidenceBadge` 示例）与 `.meter-row__*` 死例子要不要跟着改 | 取决于"移出"还是"重写"——**移出则两处都不用改，重写则必须改（否则规范页教的是不存在的组件）** |
+| U13 | `check-classes.mjs` 的盲区（§5.3 末） | `.ws-sheet` ↔ `InfoSheet.vue` 的撞车它抓不到（BEM 修饰符式命名导致 `rulesByClass` 取到的是完整类名 token） | 需要决定是否扩门禁（把 `--modifier` 拆回基类名）。**不在本轮范围**，但 X5 那类撞车会继续漏 |
+
+---
+
+## 附：本文件的覆盖率自检
+
+| 任务书要求的项 | 状态 | 数字 |
+|---|---|---|
+| 四种旧折叠的每一个调用点 | ✅ 穷举 | **25 个 grep 行位**（`.ws-context` 14、`.ws-fold` 8、`.plan-stage` 2、`.ws-task__details` 1；`RoadmapView:24` 一行含两个所以去重后 23 个独立位置） |
+| 每个调用点的 variant / defaultOpen / static 判断 | ✅ | §1.3（含"不迁"2 处 + "需确认"3 处） |
+| 旧 `<details>` 无 `open` 的默认行为 | ✅ | §1.4（**澄清：默认是收起**，不是展开；14 处默认收起） |
+| 迁移后每页折叠数量 | ✅ | §1.5 |
+| 所有 `InfoSheet` 调用点 + shape + 移动端 | ✅ 穷举 | 18 处（dialog 14 / inspector 1 / wide 3；建议 dialog 5 / sheet 9 / panel 4） |
+| `MeterRow` 每一个调用点 | ✅ 穷举 | 2 处，**都已迁移**（0 处会坏）；另记 4 处绕过 `MeterRow` 的手画条 |
+| `SourceChip` 该顶掉的位置 | ✅ | 10 处候选（可直接顶 2、需映射 4、不该用 2、折叠头补摘要 1、弹层降级 1）+ 1 处补充（`AcademicView:101`） |
+| `StatTile` 该顶掉的位置 | ✅ | 13 处 |
+| `ConfidenceBadge` 统一 | ✅ | 4 组共 11 处 |
+| `SkeletonBlock` 缺口 | ✅ | P0 9 处 + P1 7 处 + P2 8 处行内 |
+| `.ws-empty` 穷举 + kind | ✅ 穷举 | 18 处（+1 处 `EmptyState` 缺 `kind` = `StudentView:1047`） |
+| `StatusBanner` 缺口 | ✅ | 13 处直接（含 1 处明确"不适用"）+ 1 个共用件重构 |
+| 死代码与地雷 | ✅ | `base.css` `.meter` 族（8 条定义/0 使用）、`SpecView`/`workspace.css` 的 `.meter-row__*`（3 用/5 孤儿）、X1–X18 共 18 组、`motion.ts` 3 条 |
+| 执行顺序 | ✅ | 阶段 0–4 + H1–H7 硬耦合 + 7 个"合并进重做"的页面 |
+| 不确定的地方 | ✅ | 13 条（U1–U13） |

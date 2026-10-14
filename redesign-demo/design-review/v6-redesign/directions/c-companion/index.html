@@ -1,0 +1,1836 @@
+<!doctype html>
+<html lang="zh-CN" data-state="thinking">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<title>职引 · 咨询对话 · 方向 C「陪伴感」样张</title>
+<style>
+/* ============================================================================
+   方向 C「陪伴感」—— 视觉方向样张
+   主张：界面有温度、有呼吸、有材质；AI 是一个在场的伙伴，不是一段输出。
+   零外部依赖：系统字体栈 + 内联 SVG。所有交互由文末原生 JS 承担。
+   ========================================================================== */
+
+/* --- 1. 令牌：表面是"暖沙"，不是无彩色灰 ---------------------------------- */
+:root{
+  /* 四层表面。每一层都带色相（H 在 20–34），不是灰阶。 */
+  --s-0:#F3EDE4;   /* 页面底 · 暖沙 */
+  --s-1:#FCF9F5;   /* 工作面 · 暖瓷 */
+  --s-2:#F7F1E9;   /* 局部关注区 · 更暖更沉（凹槽） */
+  --s-3:#EFE6DA;   /* 交互态底 · 沙褐 */
+
+  /* 两处半透明浮层（顶栏 / 移动底栏），透出下层表面 = "表面浮在表面之上" */
+  --glass:rgba(252,249,245,.78);
+  --glass-line:rgba(122,94,66,.10);
+  --glass-blur:blur(20px) saturate(150%);
+
+  /* 文字：暖褐黑，不用纯黑也不用纯灰。
+     四档都按对比度定过（对最深的底 --s-0 实测，阈值 4.5:1）：
+     ink-1 13.4:1 / ink-2 7.2:1 / ink-3 5.5:1 / ink-4 4.9:1。
+     最浅那档已经是"温吞"和"读不出来"之间的边界，不再往下调。 */
+  --ink-1:#2C2320;
+  --ink-2:#5C4E45;
+  --ink-3:#6B5A4C;
+  --ink-4:#756456;
+
+  /* 描边：暖褐，不是中性灰 */
+  --line-1:rgba(122,94,66,.13);
+  --line-2:rgba(122,94,66,.22);
+  --line-3:rgba(122,94,66,.34);
+
+  /* 强调色：陶土（暖色相，与"陪伴"同温），出现面积极小 */
+  --accent:#B0552F;
+  --accent-hi:#C4673C;
+  --accent-ink:#8E4021;
+  --accent-weak:rgba(176,85,47,.07);
+  --accent-weak-2:rgba(176,85,47,.14);
+  --accent-line:rgba(176,85,47,.28);
+
+  /* 三种状态的"色温"：待命偏鼠尾草绿 / 思考偏薰衣草蓝 / 说话偏陶土暖 */
+  --idle-a:#8FB09A;   --idle-b:#7FA9A0;
+  --think-a:#9AA6CE;  --think-b:#8890C4;
+  --talk-a:#D68C64;   --talk-b:#C2714A;
+
+  /* 当前状态（由 [data-state] 改写，整页共用一组色温） */
+  --st-a:var(--think-a);
+  --st-b:var(--think-b);
+  --st-soft:rgba(154,166,206,.30);
+  --st-line:rgba(136,144,196,.42);
+  --st-tint:rgba(154,166,206,.13);
+
+  /* 报错 / 演示徽章（配额 ≤1%） */
+  --warn:#A8452C;
+
+  /* 字体栈：中文优先"圆润"一档，逐级回退到平台黑体 */
+  --font-ui:"Microsoft YaHei UI","PingFang SC","Hiragino Sans GB","Noto Sans CJK SC","Source Han Sans SC","Segoe UI",system-ui,sans-serif;
+  --font-title:"Microsoft YaHei UI","PingFang SC","Hiragino Sans GB","Noto Sans CJK SC","Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;
+
+  /* 字号 */
+  --fs-12:12px; --fs-13:13px; --fs-14:14px; --fs-15:15px; --fs-17:17px;
+  --fs-19:19px; --fs-22:22px; --fs-26:26px; --fs-30:30px;
+
+  /* 行高（本方向比基线更松：正文 1.78） */
+  --lh-tight:1.32; --lh-snug:1.52; --lh-body:1.78;
+
+  /* 间距（中等偏松） */
+  --s1:6px; --s2:10px; --s3:14px; --s4:18px; --s5:22px; --s6:28px; --s7:38px; --s8:56px;
+
+  /* 圆角：偏圆，是这个方向的性格之一 */
+  --r-xs:8px; --r-sm:11px; --r-md:14px; --r-lg:18px; --r-xl:24px; --r-pill:999px;
+
+  /* 阴影：暖褐着色，不用纯黑；模糊大、扩散大 = 柔 */
+  --sh-1:0 1px 2px rgba(88,63,42,.05), 0 4px 14px -6px rgba(88,63,42,.10);
+  --sh-2:0 2px 4px rgba(88,63,42,.05), 0 14px 34px -12px rgba(88,63,42,.18);
+  --sh-3:0 4px 10px -4px rgba(88,63,42,.10), 0 26px 60px -18px rgba(88,63,42,.26);
+  --sh-avatar:0 8px 20px -8px rgba(88,63,42,.32), 0 2px 6px rgba(88,63,42,.10);
+
+  /* 动效：弹簧感 + ease-out，时长 120–520ms */
+  --e-out:cubic-bezier(.22,1,.36,1);
+  --e-soft:cubic-bezier(.32,.72,0,1);
+  --e-spring:cubic-bezier(.34,1.56,.64,1);
+  --t-1:120ms; --t-2:190ms; --t-3:280ms; --t-4:440ms;
+
+  /* 结构尺寸 */
+  --nav-w:262px; --nav-w-mini:80px; --rail-w:296px; --col:706px;
+  /* 图表：行名列宽。网格线、条起点、刻度轴三者共用它，所以刻度严格对齐 */
+  --chart-x:88px;
+}
+
+/* 三种状态改写全页色温（同一个组件，三种"心情"） */
+html[data-state="idle"]{
+  --st-a:var(--idle-a); --st-b:var(--idle-b);
+  --st-soft:rgba(143,176,154,.30); --st-line:rgba(127,169,160,.42); --st-tint:rgba(143,176,154,.13);
+}
+html[data-state="thinking"]{
+  --st-a:var(--think-a); --st-b:var(--think-b);
+  --st-soft:rgba(154,166,206,.30); --st-line:rgba(136,144,196,.42); --st-tint:rgba(154,166,206,.13);
+}
+html[data-state="speaking"]{
+  --st-a:var(--talk-a); --st-b:var(--talk-b);
+  --st-soft:rgba(214,140,100,.32); --st-line:rgba(194,113,74,.44); --st-tint:rgba(214,140,100,.14);
+}
+
+/* --- 2. 基础 ---------------------------------------------------------------- */
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;
+  min-height:100vh;
+  font-family:var(--font-ui);
+  font-size:var(--fs-15);
+  line-height:var(--lh-body);
+  color:var(--ink-1);
+  background-color:var(--s-0);
+  /* 唯一的全局渐变：极克制的暖沙 → 暖瓷，只为了让底色"不是一块灰" */
+  background-image:linear-gradient(168deg,#F6F0E7 0%,#F2EBE1 44%,#F0E7DC 100%);
+  background-attachment:fixed;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+h1,h2,h3,h4,p,ul,ol,figure,blockquote{margin:0}
+ul,ol{padding:0;list-style:none}
+button,input,textarea{font:inherit;color:inherit}
+button{background:none;border:0;cursor:pointer}
+a{color:inherit;text-decoration:none}
+svg{display:block}
+[hidden]{display:none !important}
+
+/* 焦点环：全站唯一形状，暖陶土色，2px + 2px 偏移，任何底色上都看得见 */
+:focus-visible{
+  outline:2.5px solid var(--accent);
+  outline-offset:2px;
+  border-radius:var(--r-xs);
+}
+::selection{background:var(--accent-weak-2);color:var(--ink-1)}
+
+.sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+/* --- 3. 应用外壳 ------------------------------------------------------------ */
+.app{
+  display:grid;
+  grid-template-columns:var(--nav-w) minmax(0,1fr);
+  grid-template-rows:auto minmax(0,1fr);
+  grid-template-areas:"nav topbar" "nav main";
+  height:100vh;height:100dvh;
+  transition:grid-template-columns var(--t-3) var(--e-soft);
+}
+.app[data-nav="mini"]{grid-template-columns:var(--nav-w-mini) minmax(0,1fr)}
+
+/* ---- 3.1 左侧导航 ---- */
+.nav{
+  grid-area:nav;
+  display:flex;flex-direction:column;gap:var(--s4);
+  padding:var(--s5) var(--s3) var(--s4);
+  background:linear-gradient(180deg,rgba(252,249,245,.92),rgba(243,237,228,.55));
+  border-right:1px solid var(--line-1);
+  overflow:hidden auto;
+  overscroll-behavior:contain;
+}
+.nav__brand{display:flex;align-items:center;gap:11px;padding:0 var(--s2) 0 10px;min-height:36px}
+.nav__mark{
+  flex:0 0 auto;width:34px;height:34px;border-radius:12px;
+  background:linear-gradient(145deg,var(--accent-hi),var(--accent-ink));
+  box-shadow:0 4px 12px -4px rgba(142,64,33,.5),inset 0 1px 0 rgba(255,255,255,.28);
+  display:grid;place-items:center;color:#FFF6F1;font-size:15px;font-weight:700;
+  font-family:var(--font-title);letter-spacing:.02em;
+}
+.nav__name{font-family:var(--font-title);font-size:var(--fs-17);font-weight:700;color:var(--ink-1);letter-spacing:-.01em;line-height:1.2}
+.nav__sub{font-size:var(--fs-12);color:var(--ink-3);line-height:1.3}
+.nav__toggle{
+  margin-left:auto;width:32px;height:32px;border-radius:var(--r-sm);
+  display:grid;place-items:center;color:var(--ink-3);
+  transition:background var(--t-2) var(--e-out),color var(--t-2) var(--e-out),transform var(--t-1) var(--e-out);
+}
+.nav__toggle:hover{background:var(--s-3);color:var(--ink-1)}
+.nav__toggle:active{transform:scale(.92)}
+.nav__toggle svg{transition:transform var(--t-3) var(--e-soft)}
+.app[data-nav="mini"] .nav__toggle svg{transform:rotate(180deg)}
+
+.nav__group{display:flex;flex-direction:column;gap:3px}
+.nav__label{
+  padding:0 12px;margin-bottom:5px;
+  font-size:var(--fs-12);font-weight:700;letter-spacing:.08em;
+  color:var(--ink-4);
+}
+.nav__item{
+  position:relative;display:flex;align-items:center;gap:11px;
+  padding:9px 12px;border-radius:var(--r-sm);
+  color:var(--ink-2);font-size:var(--fs-14);font-weight:500;
+  transition:background var(--t-2) var(--e-out),color var(--t-2) var(--e-out),transform var(--t-1) var(--e-out);
+}
+.nav__item:hover{background:rgba(255,255,255,.72);color:var(--ink-1)}
+.nav__item:active{transform:scale(.985)}
+.nav__item svg{flex:0 0 auto;width:18px;height:18px;opacity:.82}
+.nav__item--on{
+  background:var(--s-1);color:var(--ink-1);font-weight:650;
+  box-shadow:var(--sh-1);
+}
+.nav__item--on::before{
+  content:"";position:absolute;left:-var(--s3);left:calc(var(--s3) * -1);
+  top:50%;transform:translateY(-50%);
+  width:3px;height:20px;border-radius:0 3px 3px 0;background:var(--accent);
+}
+.nav__badge{
+  margin-left:auto;min-width:20px;padding:1px 6px;border-radius:var(--r-pill);
+  background:var(--accent-weak-2);color:var(--accent-ink);
+  font-size:var(--fs-12);font-weight:700;text-align:center;
+  font-variant-numeric:tabular-nums;
+}
+.nav__foot{margin-top:auto;padding-top:var(--s3);border-top:1px solid var(--line-1)}
+.nav__me{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r-sm);width:100%;text-align:left;transition:background var(--t-2) var(--e-out)}
+.nav__me:hover{background:rgba(255,255,255,.72)}
+.nav__me-av{
+  flex:0 0 auto;width:30px;height:30px;border-radius:11px;
+  background:linear-gradient(150deg,#D9CFC0,#B9A891);
+  display:grid;place-items:center;font-size:var(--fs-12);font-weight:700;color:#4A3B2E;
+}
+.nav__me-t{font-size:var(--fs-13);font-weight:650;line-height:1.3}
+.nav__me-s{font-size:var(--fs-12);color:var(--ink-3);line-height:1.3}
+
+/* 折叠态：只留图标 */
+.app[data-nav="mini"] .nav{padding-left:14px;padding-right:14px;align-items:center}
+.app[data-nav="mini"] .nav__names,
+.app[data-nav="mini"] .nav__label,
+.app[data-nav="mini"] .nav__badge,
+.app[data-nav="mini"] .nav__me-text{display:none}
+.app[data-nav="mini"] .nav__brand{flex-direction:column;gap:8px;padding:0}
+.app[data-nav="mini"] .nav__toggle{margin:0}
+.app[data-nav="mini"] .nav__item{justify-content:center;padding:10px}
+.app[data-nav="mini"] .nav__item--on::before{left:calc(var(--s3) * -1 - 1px)}
+.app[data-nav="mini"] .nav__me{justify-content:center;padding:8px}
+.app[data-nav="mini"] .nav__group{width:100%;align-items:center}
+
+/* ---- 3.2 顶部工具条（半透明浮层之一） ---- */
+.topbar{
+  grid-area:topbar;
+  position:sticky;top:0;z-index:30;
+  display:flex;align-items:center;gap:var(--s3);
+  padding:11px var(--s5);
+  background:var(--glass);
+  -webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur);
+  border-bottom:1px solid var(--glass-line);
+}
+.topbar__burger{display:none;width:34px;height:34px;border-radius:var(--r-sm);place-items:center;color:var(--ink-2)}
+.topbar__burger:hover{background:var(--s-3)}
+.search{
+  position:relative;flex:1 1 auto;max-width:400px;
+  display:flex;align-items:center;gap:9px;
+  padding:7px 12px;border-radius:var(--r-pill);
+  background:rgba(255,255,255,.68);
+  border:1px solid var(--line-1);
+  color:var(--ink-3);font-size:var(--fs-13);
+  transition:border-color var(--t-2) var(--e-out),background var(--t-2) var(--e-out),box-shadow var(--t-2) var(--e-out);
+}
+.search:hover{background:rgba(255,255,255,.9);border-color:var(--line-2)}
+.search:focus-within{border-color:var(--accent-line);background:#fff;box-shadow:0 0 0 4px var(--accent-weak)}
+.search svg{flex:0 0 auto;width:16px;height:16px}
+.search input{
+  flex:1;min-width:0;border:0;background:none;outline:none;
+  font-size:var(--fs-13);color:var(--ink-1);
+}
+/* 焦点环由外层 .search:focus-within 一次画完，输入框自己不再画第二个 */
+.search input:focus-visible{outline:none}
+.search input::placeholder{color:var(--ink-4)}
+.search kbd{
+  flex:0 0 auto;padding:2px 6px;border-radius:6px;
+  background:var(--s-2);border:1px solid var(--line-1);
+  font-family:var(--font-ui);font-size:11px;color:var(--ink-3);letter-spacing:.02em;
+}
+.topbar__spacer{flex:1 1 auto}
+.topbar__acts{display:flex;align-items:center;gap:6px}
+.iconbtn{
+  position:relative;width:36px;height:36px;border-radius:var(--r-sm);
+  display:grid;place-items:center;color:var(--ink-2);
+  transition:background var(--t-2) var(--e-out),color var(--t-2) var(--e-out),transform var(--t-1) var(--e-out);
+}
+.iconbtn:hover{background:var(--s-3);color:var(--ink-1)}
+.iconbtn:active{transform:scale(.9)}
+.iconbtn__dot{
+  position:absolute;top:7px;right:7px;width:8px;height:8px;border-radius:50%;
+  background:var(--warn);border:2px solid var(--glass);
+}
+.topbar__me{
+  display:flex;align-items:center;gap:9px;padding:4px 10px 4px 4px;border-radius:var(--r-pill);
+  border:1px solid var(--line-1);background:rgba(255,255,255,.6);
+  transition:background var(--t-2) var(--e-out),border-color var(--t-2) var(--e-out);
+}
+.topbar__me:hover{background:#fff;border-color:var(--line-2)}
+.topbar__me-av{
+  width:28px;height:28px;border-radius:10px;
+  background:linear-gradient(150deg,#D9CFC0,#B9A891);
+  display:grid;place-items:center;font-size:11px;font-weight:700;color:#4A3B2E;
+}
+.topbar__me span{font-size:var(--fs-13);font-weight:600;color:var(--ink-2)}
+
+/* ---- 3.3 主区 ----
+   .main 只负责"滚动区 + 吸底输入区"两行；真正的滚动条在 .main__scroll 上。
+   这样输入区永远在视口底部，而正文滚动时不会被它压住（视觉重叠是上一版的毛病）。 */
+.main{
+  grid-area:main;min-width:0;min-height:0;
+  display:flex;flex-direction:column;overflow:hidden;
+}
+.main__scroll{
+  flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;
+  display:flex;flex-direction:column;
+}
+.stage{
+  flex:1 0 auto;width:100%;
+  display:grid;gap:var(--s6);
+  grid-template-columns:minmax(0,var(--col)) var(--rail-w);
+  align-items:start;
+  padding:var(--s6) var(--s6) var(--s7);
+  max-width:1320px;margin:0 auto;
+}
+.column{min-width:0;display:flex;flex-direction:column;gap:var(--s5)}
+.main__fixed{flex:0 0 auto;position:relative;z-index:20}
+
+/* --- 4. 会话头部 ------------------------------------------------------------ */
+.conv-head{display:flex;align-items:flex-start;gap:var(--s3);padding:0 2px}
+.conv-head__title{
+  font-family:var(--font-title);font-size:var(--fs-22);font-weight:700;
+  line-height:var(--lh-tight);letter-spacing:-.012em;color:var(--ink-1);
+}
+.conv-head__meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:5px;font-size:var(--fs-12);color:var(--ink-3)}
+.conv-head__acts{margin-left:auto;display:flex;gap:6px;flex:0 0 auto}
+.chipbtn{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:7px 13px;border-radius:var(--r-pill);
+  border:1px solid var(--line-2);background:rgba(255,255,255,.62);
+  font-size:var(--fs-13);font-weight:600;color:var(--ink-2);
+  transition:background var(--t-2) var(--e-out),border-color var(--t-2) var(--e-out),color var(--t-2) var(--e-out),transform var(--t-1) var(--e-out);
+}
+.chipbtn:hover{background:#fff;border-color:var(--line-3);color:var(--ink-1)}
+.chipbtn:active{transform:scale(.96)}
+.chipbtn svg{width:15px;height:15px}
+.tag{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:2px 9px;border-radius:var(--r-pill);
+  background:var(--s-2);border:1px solid var(--line-1);
+  font-size:var(--fs-12);color:var(--ink-3);
+}
+.tag--demo{background:rgba(168,69,44,.08);border-color:rgba(168,69,44,.2);color:var(--warn);font-weight:600}
+.tag--live{background:var(--st-tint);border-color:var(--st-line);color:var(--ink-2);font-weight:600}
+.tag--live i{width:6px;height:6px;border-radius:50%;background:var(--st-b);animation:breathe 2.6s var(--e-out) infinite}
+
+/* --- 5. 主理标识：头像 + 名字 + 职责 + 三态演示 ------------------------------ */
+.agent{
+  display:flex;align-items:center;gap:var(--s4);
+  padding:var(--s4) var(--s4) var(--s4) var(--s4);
+  border-radius:var(--r-xl);
+  background:
+    radial-gradient(120% 160% at 0% 0%,var(--st-tint),transparent 62%),
+    linear-gradient(180deg,rgba(255,255,255,.86),rgba(252,249,245,.68));
+  border:1px solid var(--line-1);
+  box-shadow:var(--sh-1);
+  transition:background var(--t-4) var(--e-out),border-color var(--t-4) var(--e-out);
+}
+.agent__id{min-width:0;flex:1 1 auto}
+.agent__name{
+  font-family:var(--font-title);font-size:var(--fs-19);font-weight:700;
+  line-height:1.25;letter-spacing:-.01em;
+}
+.agent__role{font-size:var(--fs-13);color:var(--ink-2);margin-top:3px;line-height:1.5}
+.agent__state{
+  display:inline-flex;align-items:center;gap:7px;margin-top:9px;
+  padding:4px 11px 4px 9px;border-radius:var(--r-pill);
+  background:var(--st-tint);border:1px solid var(--st-line);
+  font-size:var(--fs-12);font-weight:700;color:var(--ink-2);
+  transition:background var(--t-3) var(--e-out),border-color var(--t-3) var(--e-out);
+}
+.agent__state .dot{width:7px;height:7px;border-radius:50%;background:var(--st-b);animation:breathe 2.4s var(--e-out) infinite}
+.agent__hint{font-size:var(--fs-12);color:var(--ink-3);margin-top:9px}
+
+/* 三态演示按钮 */
+.states{display:flex;gap:6px;flex:0 0 auto;align-self:flex-start;flex-wrap:wrap;justify-content:flex-end}
+.statebtn{
+  padding:6px 12px;border-radius:var(--r-pill);
+  border:1px solid var(--line-1);background:rgba(255,255,255,.55);
+  font-size:var(--fs-12);font-weight:650;color:var(--ink-3);
+  transition:background var(--t-2) var(--e-out),border-color var(--t-2) var(--e-out),color var(--t-2) var(--e-out),transform var(--t-1) var(--e-spring);
+}
+.statebtn:hover{background:#fff;color:var(--ink-1)}
+.statebtn:active{transform:scale(.93)}
+.statebtn[aria-pressed="true"]{
+  background:var(--s-1);color:var(--ink-1);
+  border-color:var(--st-line);box-shadow:var(--sh-1);
+}
+
+/* ---- 5.1 头像：一只会看、会想、会说的 SVG ---- */
+.avatar{
+  --av-size:78px;
+  position:relative;flex:0 0 auto;
+  width:var(--av-size);height:var(--av-size);
+  display:grid;place-items:center;
+}
+.avatar--sm{--av-size:46px;margin-top:2px}
+.avatar--xs{--av-size:34px}
+/* 呼吸：只动这个圆晕的 transform，不撑布局、不带动周边文字重排。
+   它要罩得住思考时那圈轨道，否则"在场"的柔和光晕会被三点撑破。 */
+.avatar__halo{
+  position:absolute;left:50%;top:50%;
+  width:142%;height:142%;margin:-71% 0 0 -71%;border-radius:50%;
+  background:radial-gradient(circle at 50% 50%,var(--st-soft) 30%,transparent 70%);
+  animation:haloBreathe 4.1s var(--e-out) infinite;
+  transition:background var(--t-4) var(--e-out);
+  pointer-events:none;
+}
+.avatar__pebble{
+  position:relative;
+  width:100%;height:100%;
+  filter:drop-shadow(var(--sh-avatar));
+}
+.avatar__pebble svg{width:100%;height:100%;overflow:visible}
+.avatar [data-grad-a],[data-grad-b]{transition:stop-color var(--t-4) var(--e-out)}
+.avatar__face{transition:opacity var(--t-2) var(--e-out)}
+.avatar__eye{transform-box:fill-box;transform-origin:center;animation:blink 6.4s var(--e-out) infinite}
+.avatar__eye--r{animation-delay:90ms}
+.avatar__pupil{transition:transform var(--t-3) var(--e-out)}
+.avatar__glint{opacity:.9}
+.avatar__mouth{transform-box:fill-box;transform-origin:50% 30%;transition:transform var(--t-3) var(--e-out)}
+.avatar__ring{opacity:0;transform-box:fill-box;transform-origin:center}
+.avatar__brow{transition:opacity var(--t-3) var(--e-out)}
+.avatar__wave,.avatar__whoosh{opacity:0;transition:opacity var(--t-3) var(--e-out)}
+.avatar__wave i{transform-box:fill-box;transform-origin:center}
+.avatar__gaze{transform-box:fill-box;transform-origin:center}
+.avatar__whoosh{fill:var(--st-a)}
+.avatar__dots circle{transform-box:fill-box;transform-origin:center}
+
+/* 待命：眼睛慢慢扫视，呼吸更慢更浅 */
+html[data-state="idle"] .avatar__gaze{animation:look 7.4s var(--e-out) infinite}
+html[data-state="idle"] .avatar__halo{animation-duration:5.4s}
+html[data-state="idle"] .avatar__mouth{transform:scaleY(.9)}
+/* 思考：眼睛上抬、眉头轻压、三点思考器绕行 */
+html[data-state="thinking"] .avatar__pupil{transform:translateY(-1.2px)}
+html[data-state="thinking"] .avatar__brow{opacity:1}
+/* 六点沿轨道依次亮起，不是同时亮：念头是一件一件成形的。
+   轨道本身不转 —— 那会变成"持续的装饰运动"。 */
+html[data-state="thinking"] .avatar__whoosh{opacity:1}
+html[data-state="thinking"] .avatar__dots circle{animation:orbit 1.7s var(--e-out) infinite}
+html[data-state="thinking"] .avatar__dots circle:nth-of-type(2){animation-delay:.12s}
+html[data-state="thinking"] .avatar__dots circle:nth-of-type(3){animation-delay:.24s}
+html[data-state="thinking"] .avatar__dots:nth-of-type(2) circle{animation-delay:.36s}
+html[data-state="thinking"] .avatar__dots:nth-of-type(2) circle:nth-of-type(2){animation-delay:.48s}
+html[data-state="thinking"] .avatar__dots:nth-of-type(2) circle:nth-of-type(3){animation-delay:.6s}
+html[data-state="thinking"] .avatar__halo{animation-duration:2.9s}
+html[data-state="thinking"] .avatar__mouth{transform:scaleY(.72)}
+/* 说话：嘴型开合、声波三条、呼吸更快 */
+html[data-state="speaking"] .avatar__mouth{animation:talk .62s var(--e-out) infinite}
+html[data-state="speaking"] .avatar__wave{opacity:1}
+html[data-state="speaking"] .avatar__wave i{animation:wave .74s var(--e-out) infinite}
+html[data-state="speaking"] .avatar__wave i:nth-of-type(2){animation-delay:.11s}
+html[data-state="speaking"] .avatar__wave i:nth-of-type(3){animation-delay:.22s}
+html[data-state="speaking"] .avatar__halo{animation-duration:2.2s}
+html[data-state="speaking"] .avatar__ring{opacity:1;animation:ripple 2.2s var(--e-out) infinite}
+
+/* --- 6. 对话流 -------------------------------------------------------------- */
+.stream{display:flex;flex-direction:column;gap:var(--s6)}
+
+/* 6.1 用户消息（右对齐） */
+.turn-me{display:flex;justify-content:flex-end;padding-left:14%}
+.bubble{
+  max-width:min(100%,540px);
+  padding:14px 18px;border-radius:20px 20px 6px 20px;
+  background:linear-gradient(184deg,#FFFFFF,#FDFAF6);
+  border:1px solid var(--line-1);
+  box-shadow:var(--sh-1);
+  font-size:var(--fs-15);line-height:1.72;
+}
+.bubble__meta{
+  display:flex;align-items:center;gap:8px;justify-content:flex-end;
+  margin-top:8px;font-size:var(--fs-12);color:var(--ink-4);
+}
+
+/* 6.2 交接说明：一条"换人"的痕迹，不是弹窗 */
+.handoff{
+  display:flex;gap:var(--s3);align-items:flex-start;
+  margin:0 2px;
+  padding:var(--s3) var(--s4);
+  border-radius:var(--r-lg);
+  background:linear-gradient(120deg,var(--s-2),rgba(247,241,233,.45));
+  border:1px solid var(--line-1);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.7);
+}
+.handoff__icon{
+  flex:0 0 auto;width:32px;height:32px;border-radius:11px;
+  display:grid;place-items:center;
+  background:rgba(255,255,255,.8);border:1px solid var(--line-2);color:var(--ink-2);
+}
+.handoff__body{min-width:0;font-size:var(--fs-14);line-height:1.66}
+.handoff__body strong{font-weight:700}
+.handoff__who{
+  display:flex;align-items:center;gap:7px;flex-wrap:wrap;
+  font-size:var(--fs-13);font-weight:650;color:var(--ink-1);margin-bottom:4px;
+}
+.handoff__who svg{width:14px;height:14px;color:var(--ink-3)}
+.handoff__why{color:var(--ink-2)}
+.handoff__from{font-size:var(--fs-12);color:var(--ink-3);margin-top:5px}
+
+/* 6.3 顾问回答 */
+.turn-host{display:flex;gap:var(--s4);align-items:flex-start}
+.turn-host__body{min-width:0;flex:1 1 auto;display:flex;flex-direction:column;gap:var(--s4)}
+.who{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
+.who__name{font-family:var(--font-title);font-size:var(--fs-15);font-weight:700;letter-spacing:-.005em}
+.who__role{font-size:var(--fs-12);color:var(--ink-3)}
+.who__time{margin-left:auto;font-size:var(--fs-12);color:var(--ink-4)}
+
+/* 6.3.1 结论块 */
+.lead{
+  position:relative;
+  padding:var(--s5) var(--s5) var(--s5) 26px;
+  border-radius:var(--r-lg);
+  background:linear-gradient(180deg,rgba(255,255,255,.94),rgba(252,249,245,.78));
+  border:1px solid var(--line-1);
+  box-shadow:var(--sh-1);
+}
+.lead::before{
+  content:"";position:absolute;left:12px;top:var(--s5);bottom:var(--s5);width:3px;
+  border-radius:3px;background:linear-gradient(180deg,var(--accent-hi),var(--accent-weak-2));
+}
+.lead__label{
+  display:block;margin-bottom:9px;
+  font-size:var(--fs-12);font-weight:700;letter-spacing:.1em;color:var(--accent-ink);
+}
+.lead__text{
+  font-family:var(--font-title);font-size:var(--fs-26);font-weight:700;
+  line-height:1.42;letter-spacing:-.01em;color:var(--ink-1);
+}
+.lead__sub{margin-top:11px;font-size:var(--fs-14);color:var(--ink-2);line-height:1.7}
+
+/* --- 7. 支撑材料卡组（真的可切） -------------------------------------------- */
+.mats{display:flex;flex-direction:column;gap:var(--s3)}
+.mats__head{display:flex;align-items:center;gap:var(--s3);flex-wrap:wrap;padding-left:2px}
+.mats__label{font-size:var(--fs-12);font-weight:700;letter-spacing:.1em;color:var(--ink-3)}
+.tabs{
+  display:flex;gap:4px;padding:4px;border-radius:var(--r-pill);
+  background:var(--s-2);border:1px solid var(--line-1);
+  box-shadow:inset 0 1px 2px rgba(88,63,42,.05);
+  max-width:100%;overflow-x:auto;scrollbar-width:none;
+}
+.tabs::-webkit-scrollbar{display:none}
+.tab{
+  flex:0 0 auto;padding:7px 15px;border-radius:var(--r-pill);
+  font-size:var(--fs-13);font-weight:600;color:var(--ink-3);white-space:nowrap;
+  transition:background var(--t-2) var(--e-out),color var(--t-2) var(--e-out),transform var(--t-1) var(--e-spring),box-shadow var(--t-2) var(--e-out);
+}
+.tab:hover{color:var(--ink-1);background:rgba(255,255,255,.6)}
+.tab:active{transform:scale(.96)}
+.tab[aria-selected="true"]{
+  background:var(--s-1);color:var(--ink-1);
+  box-shadow:var(--sh-1);
+}
+.tab[aria-selected="true"]::after{
+  content:"";display:inline-block;width:5px;height:5px;border-radius:50%;
+  background:var(--accent);margin-left:7px;vertical-align:middle;
+}
+.mats__pos{
+  margin-left:auto;font-size:var(--fs-12);color:var(--ink-4);
+  font-variant-numeric:tabular-nums;
+}
+.mats__pos b{color:var(--ink-2);font-weight:700}
+
+.card{
+  border-radius:var(--r-xl);
+  background:linear-gradient(180deg,rgba(255,255,255,.96),rgba(252,249,245,.86));
+  border:1px solid var(--line-1);
+  box-shadow:var(--sh-2);
+  overflow:hidden;
+}
+.panel{display:none}
+.panel[data-active="true"]{display:block;animation:panelIn var(--t-4) var(--e-spring) both}
+.panel__inner{padding:var(--s5)}
+.panel__foot{
+  padding:var(--s3) var(--s5);border-top:1px solid var(--line-1);
+  background:rgba(247,241,233,.42);
+  font-size:var(--fs-12);line-height:1.6;color:var(--ink-3);
+  display:flex;align-items:flex-start;gap:8px;
+}
+.panel__foot svg{flex:0 0 auto;margin-top:2.5px}
+
+/* 7.1 依据卡 */
+.ev{display:flex;flex-direction:column}
+.ev__item{
+  display:flex;gap:var(--s3);padding:var(--s3) 0;
+  border-bottom:1px solid var(--line-1);
+}
+/* 首条不加上间距、末条不加分隔线——两种状态（折叠/展开）下都成立 */
+.ev>.ev__item:first-child{padding-top:0}
+.ev>.ev__item:last-child{border-bottom:0;padding-bottom:0}
+.ev__n{
+  flex:0 0 auto;width:24px;height:24px;border-radius:8px;
+  display:grid;place-items:center;
+  background:var(--s-2);border:1px solid var(--line-1);
+  font-size:var(--fs-12);font-weight:700;color:var(--ink-2);
+  font-variant-numeric:tabular-nums;
+}
+.ev__body{min-width:0}
+.ev__text{font-size:var(--fs-14);line-height:1.68;color:var(--ink-1)}
+.ev__src{
+  display:flex;align-items:center;gap:7px;flex-wrap:wrap;
+  margin-top:6px;font-size:var(--fs-12);color:var(--ink-3);
+}
+.ev__src svg{width:13px;height:13px;flex:0 0 auto}
+.ev__src b{
+  font-weight:650;color:var(--ink-2);
+  padding:1px 7px;border-radius:var(--r-pill);
+  background:var(--s-2);border:1px solid var(--line-1);
+}
+.ev__more{overflow:hidden;display:grid;grid-template-rows:0fr;transition:grid-template-rows var(--t-4) var(--e-soft)}
+.ev__more[data-open="true"]{grid-template-rows:1fr}
+.ev__more-in{min-height:0}
+/* 展开后的第一条要有一条与上面第 2 条相接的分隔线 */
+.ev__more .ev__item:first-child{border-top:1px solid var(--line-1);padding-top:var(--s3)}
+.expand{
+  display:inline-flex;align-items:center;gap:7px;
+  margin-top:var(--s3);padding:8px 14px;border-radius:var(--r-pill);
+  border:1px dashed var(--line-2);background:rgba(247,241,233,.5);
+  font-size:var(--fs-13);font-weight:650;color:var(--ink-2);
+  transition:background var(--t-2) var(--e-out),border-color var(--t-2) var(--e-out),color var(--t-2) var(--e-out),transform var(--t-1) var(--e-spring);
+}
+.expand:hover{background:#fff;border-color:var(--line-3);color:var(--ink-1)}
+.expand:active{transform:scale(.96)}
+.expand svg{width:14px;height:14px;transition:transform var(--t-3) var(--e-soft)}
+.expand[aria-expanded="true"] svg{transform:rotate(180deg)}
+
+/* 7.2 数据卡：柔和但不含糊 —— 圆角+渐变条，刻度与数值精确
+   尺子是 0–100 四点刻度，由 --chart-x 统一对齐：网格线、条起点、刻度轴三者同源。
+   数值另有自己的一列（等宽数字、右对齐、竖向对齐），三根条因此在同一把尺子上互相可比。 */
+.chart{padding:2px 0 0}
+/* 元信息行：用 inline 文本流，而不是 flex —— 这样"0–100 分"不会在顿号处被拆断 */
+.chart__unit{display:block;margin-bottom:var(--s4);font-size:var(--fs-12);color:var(--ink-3)}
+.chart__unit b{font-weight:700;color:var(--ink-1)}
+.chart__unit i{margin:0 5px;font-style:normal;color:var(--line-3)}
+.chart__rows{
+  position:relative;display:flex;flex-direction:column;gap:var(--s4);
+  --chart-col:64px;
+}
+/* 网格线 + 基线只声明一次，整段拉通 —— 每行各画一次一定会错位。
+   两处 33/67 的浅竖线是"安静"的网格，不喧哗；基线压在网格之上，收住整张表。 */
+.chart__rows::before{
+  content:"";position:absolute;
+  left:var(--chart-x);right:calc(var(--chart-col) + var(--s3));
+  top:0;bottom:0;pointer-events:none;
+  background-image:
+    linear-gradient(to right,rgba(122,94,66,.09) 0 1px,transparent 1px),
+    linear-gradient(to right,rgba(122,94,66,.09) 0 1px,transparent 1px),
+    linear-gradient(to bottom,rgba(122,94,66,.26) 0 1px,transparent 1px);
+  background-size:33.3334% 100%,66.6667% 100%,100% 1px;
+  background-repeat:no-repeat;
+  background-position:0 0,0 0,0 100%;
+}
+.row{
+  display:grid;grid-template-columns:var(--chart-x) minmax(0,1fr) var(--chart-col);
+  align-items:center;gap:var(--s3);
+}
+.row__name{font-size:var(--fs-13);font-weight:600;color:var(--ink-2);text-align:right;line-height:1.35}
+.row__track{position:relative;height:18px}
+.row__bar{
+  position:absolute;left:0;top:50%;margin-top:-6px;
+  height:12px;border-radius:0 var(--r-pill) var(--r-pill) 0;
+  background:linear-gradient(90deg,rgba(176,85,47,.32),rgba(176,85,47,.52));
+  animation:grow var(--t-4) var(--e-out) both;
+}
+.row--top .row__bar{
+  height:15px;margin-top:-7.5px;
+  background:linear-gradient(90deg,var(--accent-hi),var(--accent));
+  box-shadow:0 1px 3px rgba(142,64,33,.26);
+}
+.row__value{
+  display:block;white-space:nowrap;text-align:right;
+  font-size:var(--fs-17);font-weight:700;color:var(--ink-1);
+  font-variant-numeric:tabular-nums;letter-spacing:-.015em;line-height:1.2;
+}
+.row__value small{font-size:var(--fs-12);font-weight:400;color:var(--ink-3);margin-left:2px;letter-spacing:0}
+.row--top .row__value{color:var(--accent-ink)}
+/* 条尾那一份数值只在窄屏（没有第三列时）显示 */
+.row__track>.row__value{display:none}
+.row__cell{display:block}
+.row__badge{
+  display:block;margin-left:auto;margin-top:2px;width:fit-content;
+  padding:0 7px;border-radius:var(--r-pill);
+  background:var(--accent-weak-2);color:var(--accent-ink);
+  font-size:11px;font-weight:700;line-height:1.65;
+}
+/* 刻度轴：基线由 .chart__rows::before 画（与条严格同宽），这里只放刻度桩与数字 */
+.chart__axis{margin-top:5px;padding-left:var(--chart-x)}
+.chart__ticks{position:relative;height:22px}
+.chart__ticks i{
+  position:absolute;top:0;width:1px;height:5px;
+  background:var(--line-2);
+}
+.chart__ticks span{
+  position:absolute;top:9px;transform:translateX(-50%);
+  font-size:11px;color:var(--ink-4);font-variant-numeric:tabular-nums;
+}
+.chart__ticks span:first-child{transform:translateX(0)}
+.chart__ticks span:last-child{transform:translateX(-100%)}
+
+/* 7.3 方法卡 */
+.method__name{
+  display:flex;align-items:center;gap:9px;
+  font-family:var(--font-title);font-size:var(--fs-17);font-weight:700;letter-spacing:-.005em;
+}
+.method__name svg{width:17px;height:17px;color:var(--accent)}
+.method__sum{margin-top:9px;font-size:var(--fs-14);line-height:1.74;color:var(--ink-2)}
+.method__full{overflow:hidden;display:grid;grid-template-rows:0fr;transition:grid-template-rows var(--t-4) var(--e-soft)}
+.method__full[data-open="true"]{grid-template-rows:1fr}
+.method__full-in{min-height:0}
+.method__full p{margin-top:var(--s3);font-size:var(--fs-14);line-height:1.78;color:var(--ink-2)}
+.method__full p b{color:var(--ink-1);font-weight:700}
+
+/* --- 8. 说明段 -------------------------------------------------------------- */
+.note{
+  padding:0 var(--s2) 0 26px;position:relative;
+  font-size:var(--fs-15);line-height:1.82;color:var(--ink-2);
+}
+.note::before{
+  content:"";position:absolute;left:10px;top:8px;bottom:8px;width:2px;border-radius:2px;
+  background:linear-gradient(180deg,var(--line-2),transparent);
+}
+.note b{color:var(--ink-1);font-weight:650}
+
+/* --- 9. 行动卡（配额内两个抬升面之一） ------------------------------------- */
+.action{
+  display:flex;align-items:center;gap:var(--s4);flex-wrap:wrap;
+  padding:var(--s5);
+  border-radius:var(--r-xl);
+  background:
+    radial-gradient(110% 140% at 100% 0%,var(--accent-weak),transparent 60%),
+    linear-gradient(180deg,#FFFFFF,#FDFAF6);
+  border:1px solid var(--line-1);
+  box-shadow:var(--sh-3);
+}
+.action__body{min-width:0;flex:1 1 260px}
+.action__kicker{font-size:var(--fs-12);font-weight:700;letter-spacing:.1em;color:var(--ink-3)}
+.action__title{
+  margin-top:6px;font-family:var(--font-title);
+  font-size:var(--fs-19);font-weight:700;line-height:1.42;letter-spacing:-.008em;
+}
+.action__meta{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}
+.pill{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:4px 11px;border-radius:var(--r-pill);
+  background:var(--s-2);border:1px solid var(--line-1);
+  font-size:var(--fs-12);font-weight:600;color:var(--ink-2);
+}
+.pill svg{width:13px;height:13px}
+.pill--time{background:var(--accent-weak);border-color:var(--accent-line);color:var(--accent-ink)}
+.action__cta{display:flex;gap:8px;align-items:center;flex:0 0 auto;flex-wrap:wrap}
+.btn{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:11px 20px;border-radius:var(--r-pill);
+  font-size:var(--fs-14);font-weight:700;letter-spacing:.005em;
+  transition:transform var(--t-1) var(--e-spring),box-shadow var(--t-2) var(--e-out),background var(--t-2) var(--e-out),color var(--t-2) var(--e-out);
+}
+.btn svg{width:16px;height:16px}
+.btn--primary{
+  background:linear-gradient(180deg,var(--accent-hi),var(--accent));
+  color:#FFF7F3;
+  box-shadow:0 2px 4px rgba(142,64,33,.2),0 12px 26px -10px rgba(142,64,33,.55),inset 0 1px 0 rgba(255,255,255,.22);
+}
+.btn--primary:hover{background:linear-gradient(180deg,#CE7046,#B85C33);box-shadow:0 3px 6px rgba(142,64,33,.22),0 16px 32px -10px rgba(142,64,33,.6),inset 0 1px 0 rgba(255,255,255,.24)}
+.btn--primary:active{transform:scale(.965) translateY(1px);box-shadow:0 1px 3px rgba(142,64,33,.24),0 6px 14px -8px rgba(142,64,33,.5)}
+.btn--ghost{border:1px solid var(--line-2);background:rgba(255,255,255,.7);color:var(--ink-2)}
+.btn--ghost:hover{background:#fff;border-color:var(--line-3);color:var(--ink-1)}
+.btn--ghost:active{transform:scale(.965)}
+.btn[data-done="true"]{background:var(--s-2);color:var(--ink-2);box-shadow:none;border:1px solid var(--line-2)}
+
+/* --- 10. 后续问题 ----------------------------------------------------------- */
+.follow{padding-left:2px}
+.follow__label{font-size:var(--fs-12);font-weight:700;letter-spacing:.1em;color:var(--ink-3);margin-bottom:var(--s3)}
+.follow__list{display:flex;flex-direction:column;gap:8px}
+.followbtn{
+  display:flex;align-items:center;gap:11px;width:100%;text-align:left;
+  padding:13px 16px;border-radius:var(--r-md);
+  background:linear-gradient(180deg,rgba(255,255,255,.9),rgba(252,249,245,.6));
+  border:1px solid var(--line-1);
+  font-size:var(--fs-14);color:var(--ink-1);
+  transition:background var(--t-2) var(--e-out),border-color var(--t-2) var(--e-out),transform var(--t-2) var(--e-spring),box-shadow var(--t-2) var(--e-out);
+}
+.followbtn:hover{background:#fff;border-color:var(--accent-line);box-shadow:var(--sh-1);transform:translateX(3px)}
+.followbtn:active{transform:translateX(3px) scale(.99)}
+.followbtn__n{
+  flex:0 0 auto;width:22px;height:22px;border-radius:50%;
+  display:grid;place-items:center;background:var(--s-2);border:1px solid var(--line-1);
+  font-size:11px;font-weight:700;color:var(--ink-3);font-variant-numeric:tabular-nums;
+  transition:background var(--t-2) var(--e-out),color var(--t-2) var(--e-out),border-color var(--t-2) var(--e-out);
+}
+.followbtn:hover .followbtn__n{background:var(--accent-weak-2);border-color:var(--accent-line);color:var(--accent-ink)}
+.followbtn__arrow{margin-left:auto;color:var(--ink-4);transition:transform var(--t-2) var(--e-out),color var(--t-2) var(--e-out)}
+.followbtn:hover .followbtn__arrow{transform:translateX(2px);color:var(--accent)}
+.followbtn__arrow svg{width:15px;height:15px}
+
+/* --- 11. 输入区（配额内第二个抬升面；聚焦态是本页的演示项之一） ------------- */
+.composer{padding:var(--s4) var(--s6) var(--s5)}
+.composer__inner{max-width:1320px;margin:0 auto}
+.composer__hint{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  padding:0 4px 9px;font-size:var(--fs-12);color:var(--ink-3);
+}
+.composer__hint b{color:var(--ink-2);font-weight:650}
+.box{
+  display:flex;align-items:flex-end;gap:var(--s2);
+  padding:11px 12px;
+  border-radius:var(--r-xl);
+  background:rgba(255,255,255,.86);
+  border:1px solid var(--line-2);
+  box-shadow:var(--sh-2);
+  transition:background var(--t-2) var(--e-out),border-color var(--t-2) var(--e-out),box-shadow var(--t-3) var(--e-out),transform var(--t-3) var(--e-spring);
+}
+.box:hover{background:rgba(255,255,255,.95)}
+.box[data-focused="true"]{
+  background:#fff;
+  border-color:var(--accent-line);
+  box-shadow:0 0 0 4px var(--accent-weak),var(--sh-3);
+  transform:translateY(-2px);
+}
+.box__attach{
+  flex:0 0 auto;width:38px;height:38px;border-radius:13px;
+  display:grid;place-items:center;color:var(--ink-3);
+  border:1px solid transparent;
+  transition:background var(--t-2) var(--e-out),color var(--t-2) var(--e-out),transform var(--t-1) var(--e-spring),border-color var(--t-2) var(--e-out);
+}
+.box__attach:hover{background:var(--s-2);color:var(--ink-1);border-color:var(--line-1)}
+.box__attach:active{transform:scale(.9)}
+.box__attach svg{width:19px;height:19px}
+.box__field{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:5px;padding:6px 2px}
+.box__field textarea{
+  display:block;width:100%;border:0;background:none;outline:none;resize:none;
+  font-size:var(--fs-15);line-height:1.7;color:var(--ink-1);
+  min-height:26px;max-height:132px;
+}
+.box__field textarea::placeholder{color:var(--ink-4)}
+/* 提示行自占一行：它和 textarea 是同一列，不会跟按钮抢宽度而被挤成两行 */
+.box__foot{
+  display:block;
+  font-size:var(--fs-12);line-height:1.6;color:var(--ink-4);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.box__foot kbd{
+  display:inline-block;padding:0 5px;margin:0 1px;border-radius:5px;
+  background:var(--s-2);border:1px solid var(--line-1);
+  font-family:var(--font-ui);font-size:11px;color:var(--ink-3);
+}
+.box__send{
+  flex:0 0 auto;display:inline-flex;align-items:center;gap:8px;
+  padding:11px 18px;border-radius:var(--r-pill);
+  font-size:var(--fs-14);font-weight:700;color:#FFF7F3;
+  background:linear-gradient(180deg,var(--accent-hi),var(--accent));
+  box-shadow:0 2px 4px rgba(142,64,33,.18),0 10px 22px -10px rgba(142,64,33,.5);
+  transition:transform var(--t-1) var(--e-spring),box-shadow var(--t-2) var(--e-out),opacity var(--t-2) var(--e-out);
+}
+.box__send svg{width:16px;height:16px}
+.box__send:hover{transform:translateY(-1px);box-shadow:0 3px 6px rgba(142,64,33,.2),0 14px 28px -10px rgba(142,64,33,.58)}
+.box__send:active{transform:scale(.96) translateY(1px)}
+.box__send[aria-disabled="true"]{opacity:.45;box-shadow:none;cursor:not-allowed}
+
+/* --- 12. 右侧 rail ---------------------------------------------------------- */
+.rail{display:flex;flex-direction:column;gap:var(--s3);position:sticky;top:14px}
+.rail__title{
+  padding:0 4px 2px;font-size:var(--fs-12);font-weight:700;
+  letter-spacing:.1em;color:var(--ink-4);
+}
+.railcard{
+  display:flex;flex-direction:column;gap:3px;
+  padding:var(--s4);
+  border-radius:var(--r-lg);
+  background:linear-gradient(180deg,rgba(255,255,255,.9),rgba(252,249,245,.72));
+  border:1px solid var(--line-1);
+  box-shadow:var(--sh-1);
+  transition:transform var(--t-2) var(--e-spring),box-shadow var(--t-2) var(--e-out),border-color var(--t-2) var(--e-out),background var(--t-2) var(--e-out);
+}
+.railcard:hover{transform:translateY(-2px);box-shadow:var(--sh-2);border-color:var(--line-2);background:#fff}
+.railcard:active{transform:translateY(0) scale(.99)}
+.railcard__top{display:flex;align-items:center;gap:9px}
+.railcard__ic{
+  width:30px;height:30px;border-radius:11px;display:grid;place-items:center;
+  background:var(--s-2);border:1px solid var(--line-1);color:var(--ink-2);
+}
+.railcard__ic svg{width:16px;height:16px}
+.railcard__n{
+  margin-left:auto;font-size:var(--fs-12);font-weight:700;color:var(--ink-3);
+  font-variant-numeric:tabular-nums;
+}
+.railcard__n b{font-size:var(--fs-15);color:var(--ink-1)}
+.railcard__t{font-family:var(--font-title);font-size:var(--fs-15);font-weight:700;margin-top:9px;letter-spacing:-.005em}
+.railcard__d{font-size:var(--fs-13);line-height:1.62;color:var(--ink-2);margin-top:3px}
+.railcard__foot{display:flex;align-items:center;gap:7px;margin-top:11px;font-size:var(--fs-12);font-weight:650;color:var(--accent-ink)}
+.railcard__foot svg{width:14px;height:14px}
+.railcard__foot span{transition:transform var(--t-2) var(--e-out)}
+.railcard:hover .railcard__foot span{transform:translateX(3px)}
+.meter{display:flex;gap:3px;margin-top:11px}
+.meter i{flex:1;height:5px;border-radius:3px;background:var(--s-3)}
+.meter i.on{background:linear-gradient(90deg,var(--accent-hi),var(--accent))}
+.railnote{
+  padding:var(--s3) var(--s4);
+  border-radius:var(--r-md);
+  border:1px dashed var(--line-2);
+  background:rgba(247,241,233,.42);
+  font-size:var(--fs-12);line-height:1.64;color:var(--ink-3);
+}
+
+/* --- 13. 底部移动导航（390 出现；半透明浮层之二） --------------------------- */
+.tabbar{display:none}
+
+/* --- 14. 关键帧 ------------------------------------------------------------- */
+@keyframes haloBreathe{0%,100%{transform:scale(1);opacity:.82}50%{transform:scale(1.115);opacity:1}}
+@keyframes breathe{0%,100%{transform:scale(1);opacity:.86}50%{transform:scale(1.055);opacity:1}}
+@keyframes blink{0%,92%,100%{transform:scaleY(1)}95.5%{transform:scaleY(.1)}}
+@keyframes look{0%,100%{transform:translateX(0)}22%{transform:translateX(-1.4px)}48%{transform:translateX(1.1px)}70%{transform:translateX(0)}}
+@keyframes talk{0%,100%{transform:scaleY(.55)}45%{transform:scaleY(1.45)}}
+@keyframes wave{0%,100%{transform:scaleY(.40)}50%{transform:scaleY(1.18)}}
+@keyframes orbit{0%,100%{opacity:.28;transform:translateY(0) scale(.82)}50%{opacity:1;transform:translateY(-1.6px) scale(1.08)}}
+@keyframes ripple{0%{transform:scale(.9);opacity:.5}70%,100%{transform:scale(1.28);opacity:0}}
+@keyframes panelIn{from{opacity:0;transform:translateY(9px) scale(.988)}to{opacity:1;transform:none}}
+@keyframes grow{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+
+/* --- 15. 响应式：桌面 / 平板 / 手机 三档 ----------------------------------- */
+@media (max-width:1180px){
+  .stage{grid-template-columns:minmax(0,1fr)}
+  .rail{position:static;flex-direction:row;flex-wrap:wrap}
+  .rail>*{flex:1 1 240px}
+  .rail__title{flex:1 1 100%}
+}
+@media (max-width:1023px){
+  .app{grid-template-columns:var(--nav-w-mini) minmax(0,1fr)}
+  .nav{padding-left:14px;padding-right:14px;align-items:center}
+  .nav__names,.nav__label,.nav__badge,.nav__me-text{display:none}
+  .nav__brand{flex-direction:column;gap:8px;padding:0}
+  .nav__toggle{margin:0}
+  .nav__item{justify-content:center;padding:10px}
+  .nav__me{justify-content:center;padding:8px}
+  .nav__group{width:100%;align-items:center}
+  /* 折叠按钮在窄屏下不再有意义，交给底部导航 */
+  .nav__toggle{display:none}
+}
+@media (max-width:767px){
+  :root{--s5:18px;--s6:20px;--s7:26px;--chart-x:70px}
+  /* 固定背景在手机上会被当地址栏伸缩反复重绘，降级为随内容滚动 */
+  body{background-attachment:scroll}
+  body{font-size:var(--fs-15)}
+  .app{
+    grid-template-columns:minmax(0,1fr);
+    grid-template-areas:"topbar" "main";
+    height:auto;min-height:100vh;min-height:100dvh;
+  }
+  .nav{
+    position:fixed;inset:0 auto 0 0;z-index:60;width:min(286px,84vw);
+    transform:translateX(-102%);
+    background:linear-gradient(180deg,#FCF9F5,#F5EFE6);
+    box-shadow:var(--sh-3);
+    transition:transform var(--t-3) var(--e-soft);
+    align-items:stretch;padding:var(--s5) var(--s4);
+  }
+  .nav__names,.nav__label,.nav__badge,.nav__me-text{display:block}
+  .nav__brand{flex-direction:row;gap:11px;padding:0 8px}
+  .nav__item{justify-content:flex-start;padding:10px 12px}
+  .nav__me{justify-content:flex-start;padding:8px 10px}
+  .nav__group{width:auto;align-items:stretch}
+  .app[data-drawer="open"] .nav{transform:none}
+  .scrim{
+    position:fixed;inset:0;z-index:55;background:rgba(44,35,32,.34);
+    opacity:0;pointer-events:none;transition:opacity var(--t-3) var(--e-out);
+    -webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);
+  }
+  .app[data-drawer="open"] .scrim{opacity:1;pointer-events:auto}
+  .topbar__burger{display:grid}
+  .topbar{
+    position:fixed;top:0;left:0;right:0;z-index:40;
+    padding:10px var(--s4);gap:var(--s2);
+  }
+  .search{max-width:none}
+  .search kbd{display:none}
+  .topbar__me span{display:none}
+  .topbar__me{padding:4px}
+  .stage{padding:66px var(--s4) var(--s7);gap:var(--s5)}
+  .column{gap:var(--s5)}
+  .composer{padding:var(--s4) var(--s4) calc(var(--s5) + 62px + env(safe-area-inset-bottom))}
+  /* 手机上把键盘提示收进 sr：它本该占的那一列会把输入框挤成一条 */
+  .box__foot{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .box{align-items:center}
+  .box__field{gap:0}
+  .box__send{padding:11px 16px}
+  .avatar:not(.avatar--xs):not(.avatar--sm){--av-size:60px}
+  .lead{padding:var(--s4) var(--s4) var(--s4) 22px}
+  .lead::before{left:9px;top:var(--s4);bottom:var(--s4)}
+  .lead__text{font-size:var(--fs-22)}
+  .panel__inner{padding:var(--s4)}
+  .panel__foot{padding:var(--s3) var(--s4)}
+  .turn-me{padding-left:0}
+  .bubble{max-width:100%}
+  .turn-host{gap:var(--s3)}
+  .agent{flex-wrap:wrap;gap:var(--s3);border-radius:var(--r-lg)}
+  .agent__hint{display:none}
+  .states{width:100%;justify-content:flex-start;margin-top:2px}
+  .conv-head{flex-wrap:wrap}
+  .conv-head__acts{margin-left:0;width:100%}
+  .action{padding:var(--s4);box-shadow:var(--sh-2)}
+  .action__cta{display:flex;width:100%}
+  .action__cta .btn{flex:1 1 0;justify-content:center}
+  /* 手机上发送只留箭头：中文两个字会把输入列挤成一条 */
+  .box__send{padding:0;width:42px;height:42px;justify-content:center}
+  .box__send>span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  .row{grid-template-columns:var(--chart-x) minmax(0,1fr);gap:var(--s2)}
+  .row__track{height:20px}
+  .row__cell{display:none}
+  /* 窄屏没有第三列的位置：数值回到条尾，跟着自己的条走，仍然不重叠 */
+  .row__track>.row__value{
+    display:block;position:absolute;left:calc(var(--chart-bar) + 6px);top:50%;
+    transform:translateY(-50%);
+    font-size:var(--fs-14);text-align:left;
+  }
+  .chart__rows{--chart-col:0px}
+  .chart__rows::before{right:0}
+  .rail{flex-direction:column}
+  .rail>*{flex:1 1 auto}
+  /* 底部移动导航 */
+  .tabbar{
+    display:grid;grid-template-columns:repeat(5,1fr);
+    position:fixed;left:0;right:0;bottom:0;z-index:50;
+    padding:7px 6px calc(7px + env(safe-area-inset-bottom));
+    background:var(--glass);
+    -webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur);
+    border-top:1px solid var(--glass-line);
+  }
+  .tabbar a{
+    display:flex;flex-direction:column;align-items:center;gap:3px;
+    padding:5px 2px;border-radius:var(--r-sm);
+    font-size:11px;font-weight:600;color:var(--ink-3);
+    transition:color var(--t-2) var(--e-out),background var(--t-2) var(--e-out),transform var(--t-1) var(--e-spring);
+  }
+  .tabbar a:active{transform:scale(.92)}
+  .tabbar a svg{width:21px;height:21px}
+  .tabbar a[aria-current="page"]{color:var(--accent-ink);background:var(--accent-weak)}
+}
+@media (min-width:768px){ .scrim{display:none} }
+@media (max-width:360px){
+  :root{--chart-x:56px}
+  .row__name{font-size:var(--fs-12)}
+}
+
+/* --- 16. prefers-reduced-motion：降级到"静态但完整" ------------------------- */
+@media (prefers-reduced-motion:reduce){
+  /* 只关掉运动本身：不动画、不位移、不缩放。层级、色温、可读性一律保留。 */
+  *,*::before,*::after{
+    animation:none !important;
+    transition-duration:1ms !important;
+    transition-delay:0ms !important;
+  }
+  .avatar__halo{opacity:.9;transform:none}
+  .avatar__ring{display:none}
+  .avatar__whoosh circle,.avatar__wave i{opacity:.75 !important}
+  html[data-state="speaking"] .avatar__mouth{transform:scaleY(1.1)}
+  html[data-state="idle"] .avatar__gaze{transform:none}
+  .panel[data-active="true"]{animation:none}
+  .row__bar{animation:none;clip-path:none}
+  .followbtn:hover{transform:none}
+  .railcard:hover{transform:none}
+  .box[data-focused="true"]{transform:none}
+  .nav__toggle:active,.iconbtn:active,.chipbtn:active,.btn:active,.statebtn:active,.tab:active,.expand:active,.box__attach:active{transform:none}
+}
+</style>
+</head>
+<body>
+
+<div class="app" data-nav="full" data-drawer="closed" id="app">
+
+  <!-- ======================= 左侧导航（可折叠） ======================= -->
+  <nav class="nav" id="sidenav" aria-label="主导航">
+    <div class="nav__brand">
+      <span class="nav__mark" aria-hidden="true">职</span>
+      <span class="nav__names">
+        <span class="nav__name">职引</span>
+        <span class="nav__sub">陪你走完这一段</span>
+      </span>
+      <button class="nav__toggle" id="navToggle" type="button" aria-expanded="true" aria-controls="sidenav" title="折叠导航">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5 8 12l7 7"/></svg>
+        <span class="sr">折叠导航</span>
+      </button>
+    </div>
+
+    <div class="nav__group">
+      <p class="nav__label">对话</p>
+      <a class="nav__item nav__item--on" href="#" aria-current="page">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9.5 9.5 0 0 1-2.9-.4L4 21l1.6-4a8.2 8.2 0 0 1-.6-3.1 8.4 8.4 0 0 1 8-8.4 8.4 8.4 0 0 1 8 6Z"/></svg>
+        <span class="nav__names">咨询对话</span><span class="nav__badge">1</span>
+      </a>
+    </div>
+
+    <div class="nav__group">
+      <p class="nav__label">了解自己</p>
+      <a class="nav__item" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></svg>
+        <span class="nav__names">个人画像</span>
+      </a>
+      <a class="nav__item" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h11l3 3v13H5z"/><path d="M9 9h6M9 13h6M9 17h3"/></svg>
+        <span class="nav__names">诊断报告</span>
+      </a>
+    </div>
+
+    <div class="nav__group">
+      <p class="nav__label">做决定</p>
+      <a class="nav__item" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 18 9 8l4 6 3-4 4 8z"/></svg>
+        <span class="nav__names">方向方案</span>
+      </a>
+      <a class="nav__item" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.4 2.4 2.4 14.6 0 17"/></svg>
+        <span class="nav__names">岗位资讯</span>
+      </a>
+    </div>
+
+    <div class="nav__group">
+      <p class="nav__label">去做</p>
+      <a class="nav__item" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5 10 17.5 19 7"/></svg>
+        <span class="nav__names">今日行动</span><span class="nav__badge">3</span>
+      </a>
+      <a class="nav__item" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4v16M12 4v16M18 4v10"/></svg>
+        <span class="nav__names">阶段计划</span>
+      </a>
+      <a class="nav__item" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5.5" width="16" height="14" rx="2.5"/><path d="M4 10h16M9 3.5v4M15 3.5v4"/></svg>
+        <span class="nav__names">日历课表</span>
+      </a>
+    </div>
+
+    <div class="nav__group">
+      <p class="nav__label">回头看</p>
+      <a class="nav__item" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 7v5l3.2 2"/><path d="M4.5 12a7.5 7.5 0 1 0 2.4-5.5"/><path d="M4 5v4h4"/></svg>
+        <span class="nav__names">复盘记录</span>
+      </a>
+      <a class="nav__item" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4.5 14.4 9.7l5.6.7-4.2 3.8 1.2 5.6L12 17l-5 2.8 1.2-5.6L4 10.4l5.6-.7z"/></svg>
+        <span class="nav__names">成长记录</span>
+      </a>
+    </div>
+
+    <div class="nav__foot">
+      <button class="nav__me" type="button">
+        <span class="nav__me-av" aria-hidden="true">陈</span>
+        <span class="nav__me-text">
+          <span class="nav__me-t">陈亦然</span>
+          <span class="nav__me-s">材料科学与工程 · 大三</span>
+        </span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ======================= 顶部细工具条 ======================= -->
+  <header class="topbar">
+    <button class="topbar__burger" id="burger" type="button" aria-expanded="false" aria-controls="sidenav">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      <span class="sr">打开导航</span>
+    </button>
+
+    <div class="search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
+      <label class="sr" for="q">搜索对话、画像与资讯</label>
+      <input id="q" type="search" placeholder="搜索对话、画像与资讯">
+      <kbd>⌘K</kbd>
+    </div>
+
+    <span class="topbar__spacer"></span>
+
+    <div class="topbar__acts">
+      <button class="iconbtn" type="button" title="提醒">
+        <span class="iconbtn__dot" aria-hidden="true"></span>
+        <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 15V10a6 6 0 1 0-12 0v5l-1.5 2.5h15z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>
+        <span class="sr">提醒（有 1 条未读）</span>
+      </button>
+      <button class="topbar__me" type="button">
+        <span class="topbar__me-av" aria-hidden="true">陈</span>
+        <span>陈亦然</span>
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        <span class="sr">账号菜单</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ======================= 主区 ======================= -->
+  <main class="main" id="main">
+   <div class="main__scroll" id="mainScroll">
+    <div class="stage">
+      <div class="column">
+
+        <!-- 会话头部：会话名 + 2 个操作 -->
+        <header class="conv-head">
+          <div>
+            <h1 class="conv-head__title">材料方向怎么选：三个方向的依据与差距</h1>
+            <div class="conv-head__meta">
+              <span class="tag">今天 14:20 开始</span>
+              <span class="tag">职业分析顾问 主理</span>
+              <span class="tag tag--demo">演示数据</span>
+            </div>
+          </div>
+          <div class="conv-head__acts">
+            <button class="chipbtn" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h11l3 3v7H4z"/><path d="M9 11h5M9 14h3"/></svg>
+              总结这段咨询
+            </button>
+            <button class="chipbtn" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="m8 8 4-4 4 4"/><path d="M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3"/></svg>
+              导出记录
+            </button>
+          </div>
+        </header>
+
+        <!-- 主理标识 -->
+        <section class="agent" aria-labelledby="agentName">
+          <div class="avatar avatar--lg" data-avatar>
+            <span class="avatar__halo" aria-hidden="true"></span>
+            <span class="avatar__pebble" id="heroAvatar"></span>
+          </div>
+          <div class="agent__id">
+            <p class="agent__name" id="agentName">职业分析顾问</p>
+            <p class="agent__role">比较方向、判断差距，说明哪个方向现在站得住</p>
+            <p class="agent__state" role="status">
+              <span class="dot" aria-hidden="true"></span>
+              <span id="stateText">正在想</span>
+            </p>
+            <p class="agent__hint">演示：切一下状态，看主理怎么变</p>
+          </div>
+          <div class="states" role="group" aria-label="切换主理状态（演示）">
+            <button class="statebtn" type="button" data-presence="idle" aria-pressed="false">待命</button>
+            <button class="statebtn" type="button" data-presence="thinking" aria-pressed="true">思考</button>
+            <button class="statebtn" type="button" data-presence="speaking" aria-pressed="false">说话</button>
+          </div>
+        </section>
+
+        <div class="stream">
+
+          <!-- 用户消息（右对齐） -->
+          <article class="turn-me" aria-label="你的消息">
+            <div class="bubble">
+              <p>材料科学与工程大三，成绩中上。半导体工艺、新能源材料、材料检测这三个方向我都在看，但说不清哪个更适合我。我该先补什么？</p>
+              <p class="bubble__meta"><time datetime="2026-10-14T14:20">14:20</time><span>· 已收到</span></p>
+            </div>
+          </article>
+
+          <!-- 顾问交接说明 -->
+          <section class="handoff" aria-label="顾问交接说明">
+            <span class="handoff__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h11l-3-3"/><path d="M20 16H9l3 3"/></svg>
+            </span>
+            <div class="handoff__body">
+              <p class="handoff__who">
+                <strong>画像分析师</strong>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13"/><path d="m13 7 5 5-5 5"/></svg>
+                <strong>职业分析顾问</strong> 接手
+              </p>
+              <p class="handoff__why">原因：你已经说清专业、年级与三个在看的候选方向，画像那一步该问的都问了；接下来要回答的是"哪个站得住"，这属于方向判断，交给职业分析顾问。</p>
+              <p class="handoff__from">依据：你刚才的回答 + 已核对的画像信息（4 条来自对话、2 条待补充）</p>
+            </div>
+          </section>
+
+          <!-- 一轮完整回答 -->
+          <article class="turn-host" aria-label="职业分析顾问的回复">
+            <div class="avatar avatar--sm" data-avatar aria-hidden="true">
+              <span class="avatar__halo"></span>
+              <span class="avatar__pebble" id="turnAvatar"></span>
+            </div>
+
+            <div class="turn-host__body">
+              <p class="who">
+                <span class="who__name">职业分析顾问</span>
+                <span class="who__role">方向判断 · 依据与差距</span>
+                <time class="who__time" datetime="2026-10-14T14:21">14:21</time>
+              </p>
+
+              <!-- 1. 结论 -->
+              <section class="lead" aria-labelledby="leadLabel">
+                <span class="lead__label" id="leadLabel">结论</span>
+                <p class="lead__text">三个方向里，半导体工艺现在最站得住；你要补的是"能讲清的实践证据"，不是再修一门课。</p>
+                <p class="lead__sub">三个方向的匹配分差 18 分，最大的一条差距不在成绩，在"有没有一段能说清你做过什么"的经历。</p>
+              </section>
+
+              <!-- 2. 支撑材料卡组 -->
+              <section class="mats" aria-labelledby="matsLabel">
+                <div class="mats__head">
+                  <h2 class="mats__label" id="matsLabel">支撑材料</h2>
+                  <div class="tabs" role="tablist" aria-label="支撑材料的三种视角">
+                    <button class="tab" role="tab" id="tab-ev" type="button" aria-selected="true" aria-controls="panel-ev">支持依据</button>
+                    <button class="tab" role="tab" id="tab-data" type="button" aria-selected="false" aria-controls="panel-data" tabindex="-1">数据对比</button>
+                    <button class="tab" role="tab" id="tab-method" type="button" aria-selected="false" aria-controls="panel-method" tabindex="-1">方法依据</button>
+                  </div>
+                  <p class="mats__pos" aria-hidden="true"><b id="posNow">1</b> / 3</p>
+                </div>
+
+                <div class="card">
+                  <!-- 2.1 依据卡 -->
+                  <div class="panel" id="panel-ev" role="tabpanel" aria-labelledby="tab-ev" data-active="true" tabindex="0">
+                    <div class="panel__inner">
+                      <ol class="ev">
+                        <li class="ev__item">
+                          <span class="ev__n" aria-hidden="true">1</span>
+                          <div class="ev__body">
+                            <p class="ev__text">你的专业基础课成绩落在前 30%，其中材料成型与热处理最高；这条支持偏工艺与制造的方向。</p>
+                            <p class="ev__src"><b>课程成绩快照</b><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 8v4.2l2.6 1.6"/></svg>2026-10-09 核对 · 来源：教务系统</p>
+                          </div>
+                        </li>
+                        <li class="ev__item">
+                          <span class="ev__n" aria-hidden="true">2</span>
+                          <div class="ev__body">
+                            <p class="ev__text">你在上一轮里说"愿意待在实验台把一件事做到底"，这句话与工艺岗的日常工作方式一致。</p>
+                            <p class="ev__src"><b>本次对话</b><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 8v4.2l2.6 1.6"/></svg>2026-10-14 14:12 · 来源：你亲口提供</p>
+                          </div>
+                        </li>
+                      </ol>
+                      <!-- 前 2 条默认可见，其余 2 条折在这层后面（一页最多一层折叠） -->
+                      <div class="ev__more" id="evMore" data-open="false">
+                        <div class="ev__more-in">
+                          <ol class="ev" id="evMoreList">
+                            <li class="ev__item">
+                              <span class="ev__n" aria-hidden="true">3</span>
+                              <div class="ev__body">
+                                <p class="ev__text">三段在招岗位里，工艺方向明确写了"接受材料专业应届"，另外两个方向有 60% 要求硕士。</p>
+                                <p class="ev__src"><b>岗位信息库</b><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 8v4.2l2.6 1.6"/></svg>2026-10-11 抓取 · 来源：公开招聘页</p>
+                              </div>
+                            </li>
+                            <li class="ev__item">
+                              <span class="ev__n" aria-hidden="true">4</span>
+                              <div class="ev__body">
+                                <p class="ev__text">你目前没有任何一段可写进简历的实践经历，三个方向都缺这一项，所以它不能用来区分方向。</p>
+                                <p class="ev__src"><b>画像缺口</b><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 8v4.2l2.6 1.6"/></svg>2026-10-14 14:18 · 来源：画像核对结果</p>
+                              </div>
+                            </li>
+                          </ol>
+                        </div>
+                      </div>
+                      <button class="expand" id="evToggle" type="button" aria-expanded="false" aria-controls="evMore">
+                        <span data-label>展开其余 2 条依据</span>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                      </button>
+                    </div>
+                    <div class="panel__foot">
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 8h.01M12 11v5"/></svg>
+                      共 4 条依据 · 2 条来自你自己提供，1 条来自公开岗位页，1 条来自画像核对
+                    </div>
+                  </div>
+
+                  <!-- 2.2 数据卡 -->
+                  <div class="panel" id="panel-data" role="tabpanel" aria-labelledby="tab-data" tabindex="0">
+                    <div class="panel__inner">
+                      <div class="chart">
+                        <p class="chart__unit"><b>三个方向与你的匹配度</b><i>·</i>0–100 分<i>·</i>单位：分</p>
+                        <div class="chart__rows" id="chartRows">
+                          <div class="row row--top">
+                            <span class="row__name">半导体工艺</span>
+                            <span class="row__track">
+                              <span class="row__bar" style="width:72%"></span>
+                              <span class="row__value">72<small>分</small></span>
+                            </span>
+                            <span class="row__cell">
+                              <span class="row__value">72<small>分</small></span>
+                              <span class="row__badge">领先</span>
+                            </span>
+                          </div>
+                          <div class="row">
+                            <span class="row__name">新能源材料</span>
+                            <span class="row__track">
+                              <span class="row__bar" style="width:61%"></span>
+                              <span class="row__value">61<small>分</small></span>
+                            </span>
+                            <span class="row__cell"><span class="row__value">61<small>分</small></span></span>
+                          </div>
+                          <div class="row">
+                            <span class="row__name">材料检测</span>
+                            <span class="row__track">
+                              <span class="row__bar" style="width:54%"></span>
+                              <span class="row__value">54<small>分</small></span>
+                            </span>
+                            <span class="row__cell"><span class="row__value">54<small>分</small></span></span>
+                          </div>
+                        </div>
+                        <div class="chart__axis">
+                          <div class="chart__ticks">
+                            <i style="left:0"></i><i style="left:33.3334%"></i>
+                            <i style="left:66.6667%"></i><i style="left:100%"></i>
+                            <span style="left:0">0</span>
+                            <span style="left:33.3334%">33</span>
+                            <span style="left:66.6667%">67</span>
+                            <span style="left:100%">100</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="panel__foot">
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 8h.01M12 11v5"/></svg>
+                      分差 18 分 · 三根条同一刻度（0–100），可直接比长度 · 演示数值，不构成对你个人的测评
+                    </div>
+                  </div>
+
+                  <!-- 2.3 方法卡 -->
+                  <div class="panel" id="panel-method" role="tabpanel" aria-labelledby="tab-method" tabindex="0">
+                    <div class="panel__inner">
+                      <p class="method__name">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4.5 14.4 9.7l5.6.7-4.2 3.8 1.2 5.6L12 17l-5 2.8 1.2-5.6L4 10.4l5.6-.7z"/></svg>
+                        差距—证据对照法
+                      </p>
+                      <p class="method__sum">把"我现在有什么"和"这个方向要求什么"摆在同一张表上，只保留能被原始材料证明的差距，其余一律标成待核对。</p>
+                      <div class="method__full" id="methodFull" data-open="false">
+                        <div class="method__full-in">
+                          <p>用法分三步。<b>第一步</b>，把方向要求拆成可以核对的项目（学历、专业、实践经历、可投入时间），不能核对的先不写。<b>第二步</b>，逐项找你自己的证据：来自教务系统的、来自你亲口说的、来自公开岗位页的，各自标出来源与时间，没有来源的记为缺口。<b>第三步</b>，只对"有证据的项"计算差距，并按可补的先后排序——先补那种一两周能出结果的。</p>
+                          <p>它不回答"你适合什么"，只回答"哪条差距现在挡着你，以及凭什么这么说"。所以三个方向的分差来自同一套算法、同一批证据，不会因为换了个说法就换一个排序。置信度偏低的项会在报告里单独标出来，而不是混进总分。</p>
+                        </div>
+                      </div>
+                      <button class="expand" id="methodToggle" type="button" aria-expanded="false" aria-controls="methodFull" style="margin-top:16px">
+                        <span data-label>展开全文</span>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                      </button>
+                    </div>
+                    <div class="panel__foot">
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 8h.01M12 11v5"/></svg>
+                      职引方法卡 · 来自方法库 v2.3 · 与诊断报告使用同一套算法
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <!-- 3. 说明段 -->
+              <section class="note" aria-label="说明">
+                <p>我为什么把工艺排在前面：另外两个方向不是不好，是<b>现在看不出你比别人的优势在哪</b>——新能源材料更看重项目经历，材料检测更看重证书与上手精度，这两项你手上都还是空的。工艺方向的要求里，专业基础和动手意愿占的权重最高，而这两点你已经有了可核对的依据。所以先补一段实践经历，比再修一门课有用：它能同时抬高三个方向的分，也能让你在两周内验证自己是否真的喜欢站在实验台前。</p>
+              </section>
+
+              <!-- 4. 行动卡 -->
+              <section class="action" aria-labelledby="actionTitle">
+                <div class="action__body">
+                  <p class="action__kicker">建议的下一步</p>
+                  <p class="action__title" id="actionTitle">给上一届去半导体厂的学长发一条消息，只要问一句"你的一天大概在做什么"</p>
+                  <div class="action__meta">
+                    <span class="pill pill--time">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 8v4.2l2.6 1.6"/></svg>
+                      约 5 分钟
+                    </span>
+                    <span class="pill">今天可完成</span>
+                    <span class="pill">能同时验证三个方向</span>
+                  </div>
+                </div>
+                <div class="action__cta">
+                  <button class="btn btn--primary" id="addTask" type="button" data-done="false">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                    <span data-label>加入今日行动</span>
+                  </button>
+                  <button class="btn btn--ghost" type="button">换个更小的</button>
+                </div>
+              </section>
+
+              <!-- 5. 后续问题 -->
+              <section class="follow" aria-labelledby="followLabel">
+                <h2 class="follow__label" id="followLabel">你可能还想问</h2>
+                <ul class="follow__list">
+                  <li>
+                    <button class="followbtn" type="button">
+                      <span class="followbtn__n" aria-hidden="true">1</span>
+                      如果两周后发现自己不喜欢实验室，来得及换吗
+                      <span class="followbtn__arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"/><path d="m13 7 5 5-5 5"/></svg></span>
+                    </button>
+                  </li>
+                  <li>
+                    <button class="followbtn" type="button">
+                      <span class="followbtn__n" aria-hidden="true">2</span>
+                      新能源材料那条差距，具体差在哪个项目上
+                      <span class="followbtn__arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"/><path d="m13 7 5 5-5 5"/></svg></span>
+                    </button>
+                  </li>
+                  <li>
+                    <button class="followbtn" type="button">
+                      <span class="followbtn__n" aria-hidden="true">3</span>
+                      帮我把这三条依据整理成一页，投简历时能用
+                      <span class="followbtn__arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"/><path d="m13 7 5 5-5 5"/></svg></span>
+                    </button>
+                  </li>
+                </ul>
+              </section>
+
+            </div><!-- /turn-host__body -->
+          </article>
+
+        </div><!-- /stream -->
+      </div><!-- /column -->
+
+      <!-- 右侧 rail -->
+      <aside class="rail" aria-label="咨询成果与个人画像">
+        <p class="rail__title">这段咨询的成果</p>
+
+        <a class="railcard" href="#">
+          <span class="railcard__top">
+            <span class="railcard__ic" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 10 17.5 19 7"/></svg>
+            </span>
+            <span class="railcard__n"><b>3</b> 项</span>
+          </span>
+          <span class="railcard__t">咨询成果</span>
+          <span class="railcard__d">已形成 3 条可执行建议，其中「问学长一句话」已加入今日行动。</span>
+          <span class="railcard__foot">看全部成果 <span aria-hidden="true">→</span></span>
+        </a>
+
+        <a class="railcard" href="#">
+          <span class="railcard__top">
+            <span class="railcard__ic" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></svg>
+            </span>
+            <span class="railcard__n"><b>8</b> / 12</span>
+          </span>
+          <span class="railcard__t">个人画像</span>
+          <span class="railcard__d">8 项已知、4 项待补充。其中「实践经历」空着，它正好是三个方向共用的那条差距。</span>
+          <span class="meter" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i></span>
+          <span class="railcard__foot">去核对画像与来源 <span aria-hidden="true">→</span></span>
+        </a>
+
+        <p class="railnote">右侧两张卡只放入口。咨询中形成的建议会自动汇总到「咨询成果」，画像的缺口会同步标在诊断报告里，不用你手动搬。</p>
+      </aside>
+    </div><!-- /stage -->
+
+    <!-- 输入区：只有这一行不参与滚动，永远留在视口底部 -->
+    <div class="main__fixed">
+    <div class="composer">
+      <div class="composer__inner">
+        <p class="composer__hint">
+          <b>当前主理：</b>职业分析顾问 · 回复会承接上面三条依据
+        </p>
+        <form class="box" id="box" data-focused="false" aria-label="输入你的问题">
+          <button class="box__attach" type="button" title="添加附件">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+            <span class="sr">添加附件</span>
+          </button>
+          <div class="box__field">
+            <label class="sr" for="msg">输入你的问题</label>
+            <textarea id="msg" rows="1" placeholder="接着问下去，或者说说你更在意哪一块……"></textarea>
+            <p class="box__foot"><kbd>Enter</kbd> 发送 · <kbd>Shift</kbd>+<kbd>Enter</kbd> 换行 · 演示样张，不会真的发出</p>
+          </div>
+          <button class="box__send" id="send" type="submit" aria-disabled="true">
+            <span class="box__send-label">发送</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13"/><path d="m13 7 5 5-5 5"/></svg>
+          </button>
+        </form>
+      </div>
+    </div>
+    </div>
+   </div><!-- /main__scroll -->
+
+  </main>
+
+  <div class="scrim" id="scrim"></div>
+
+  <!-- 底部移动导航（390 出现） -->
+  <nav class="tabbar" aria-label="移动端导航">
+    <a href="#" aria-current="page">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9.5 9.5 0 0 1-2.9-.4L4 21l1.6-4a8.2 8.2 0 0 1-.6-3.1 8.4 8.4 0 0 1 8-8.4 8.4 8.4 0 0 1 8 6Z"/></svg>
+      对话
+    </a>
+    <a href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5 10 17.5 19 7"/></svg>
+      行动
+    </a>
+    <a href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></svg>
+      画像
+    </a>
+    <a href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 18 9 8l4 6 3-4 4 8z"/></svg>
+      方向
+    </a>
+    <a href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="5.5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="18.5" cy="12" r="1.4"/></svg>
+      更多
+    </a>
+  </nav>
+
+</div><!-- /app -->
+
+<script>
+(function () {
+  'use strict';
+
+  /* ---------------------------------------------------------------------------
+     主理头像：一只"鹅卵石"伙伴。
+     三态不是三张图，是同一张 SVG 上不同部件的启用 ——
+     待命（眼睛会扫视）／思考（眼睛上抬 + 三点绕行）／说话（嘴开合 + 声波）。
+     颜色由 CSS 变量 --st-a/--st-b 驱动，跟着 html[data-state] 整页换色温。
+     ------------------------------------------------------------------------ */
+  var AVATAR_SVG = function (uid) { return [
+    /* viewBox 留了余量：思考时那三点绕到身体之外，
+       被裁掉就会变成脸上两块脏东西，而不是"正在想"。 */
+    '<svg viewBox="-8 -8 116 116" role="img" aria-hidden="true" focusable="false">',
+    '  <defs>',
+    '    <radialGradient id="' + uid + '" cx="34%" cy="24%" r="92%">',
+    '      <stop data-grad-a offset="0" stop-color="var(--st-a)"/>',
+    '      <stop data-grad-b offset="1" stop-color="var(--st-b)"/>',
+    '    </radialGradient>',
+    '  </defs>',
+    /* 说话时的涟漪；待命/思考时 CSS 让它 opacity:0 */
+    '  <circle class="avatar__ring" cx="50" cy="50" r="38" fill="none" stroke="var(--st-a)" stroke-width="1.6"/>',
+    /* 思考时的轨道与六点：轨道把"念头"挂在一个明确的位置上，呼吸感够用 */
+    '  <g class="avatar__whoosh">',
+    '    <circle cx="50" cy="50" r="46" fill="none" stroke="var(--st-a)" stroke-opacity=".20" stroke-width="1.2" stroke-dasharray="2.5 6"/>',
+    '    <g class="avatar__dots">',
+    '      <circle cx="50" cy="4" r="2.4"/><circle cx="82" cy="15.2" r="2.7"/>',
+    '      <circle cx="96" cy="38" r="3"/><circle cx="96" cy="62" r="2.7"/>',
+    '      <circle cx="82" cy="84.8" r="3"/><circle cx="50" cy="96" r="2.4"/>',
+    '    </g>',
+    '    <g class="avatar__dots">',
+    '      <circle cx="18" cy="84.8" r="2.7"/><circle cx="4" cy="62" r="2.4"/>',
+    '      <circle cx="4" cy="38" r="2.7"/><circle cx="18" cy="15.2" r="3"/>',
+    '      <circle cx="32" cy="8.5" r="2.4"/><circle cx="68" cy="8.5" r="2.7"/>',
+    '    </g>',
+    '  </g>',
+    /* 主体：圆角方块（superellipse 观感），比正圆更有"实体感" */
+    '  <rect x="10" y="10" width="80" height="80" rx="27" fill="url(#' + uid + ')"/>',
+    /* 顶部高光：给它一个受光面，避免变成一块平的色块 */
+    '  <ellipse cx="38" cy="27" rx="20" ry="11" fill="#fff" opacity=".22"/>',
+    /* 眉：只在"思考"时出现，轻一点——它不该抢眼睛 */
+    '  <g class="avatar__brow" opacity="0" stroke="#2C2320" stroke-opacity=".32" stroke-width="2.2" stroke-linecap="round">',
+    '    <path d="M30 30.5 39 29.2"/><path d="M61 29.2 70 30.5"/>',
+    '  </g>',
+    /* 眼 + 瞳 + 高光 */
+    '  <g class="avatar__face">',
+    '    <g class="avatar__eye avatar__eye--l">',
+    '      <ellipse cx="37.5" cy="44" rx="6.4" ry="7" fill="#FFF7F1" opacity=".96"/>',
+    '      <g class="avatar__pupil">',
+    '        <g class="avatar__gaze">',
+    '          <circle cx="38.1" cy="45" r="3.4" fill="#2C2320"/>',
+    '          <circle class="avatar__glint" cx="36.8" cy="43.3" r="1.25" fill="#fff"/>',
+    '        </g>',
+    '      </g>',
+    '    </g>',
+    '    <g class="avatar__eye avatar__eye--r">',
+    '      <ellipse cx="62.5" cy="44" rx="6.4" ry="7" fill="#FFF7F1" opacity=".96"/>',
+    '      <g class="avatar__pupil">',
+    '        <g class="avatar__gaze">',
+    '          <circle cx="63.1" cy="45" r="3.4" fill="#2C2320"/>',
+    '          <circle class="avatar__glint" cx="61.8" cy="43.3" r="1.25" fill="#fff"/>',
+    '        </g>',
+    '      </g>',
+    '    </g>',
+    /* 嘴：说的时候用 scaleY 做开合，底形就是一条自信的弧线 */
+    '    <path class="avatar__mouth" d="M43.5 60.4q6.5 6.4 13 0" fill="none" stroke="#2C2320" stroke-opacity=".6" stroke-width="3" stroke-linecap="round"/>',
+    /* 脸颊上的两点腮红：这是"温度"最便宜也最有效的一笔 */
+    '    <ellipse cx="25" cy="62" rx="5.2" ry="3.2" fill="#B0552F" opacity=".15"/>',
+    '    <ellipse cx="75" cy="62" rx="5.2" ry="3.2" fill="#B0552F" opacity=".15"/>',
+    '  </g>',
+    /* 说话：声波（用 i 装，方便错峰） */
+    '  <foreignObject x="86" y="34" width="26" height="32" class="avatar__wave">',
+    '    <div xmlns="http://www.w3.org/1999/xhtml" style="display:flex;align-items:center;gap:3px;height:100%">',
+    '      <i style="display:block;width:2.6px;height:14px;border-radius:2px;background:var(--st-b);transform-origin:center"></i>',
+    '      <i style="display:block;width:2.6px;height:20px;border-radius:2px;background:var(--st-b);transform-origin:center"></i>',
+    '      <i style="display:block;width:2.6px;height:11px;border-radius:2px;background:var(--st-b);transform-origin:center"></i>',
+    '    </div>',
+    '  </foreignObject>',
+    '</svg>'
+  ].join(''); };
+
+  var heroMount = document.getElementById('heroAvatar');
+  var turnMount = document.getElementById('turnAvatar');
+  if (heroMount) heroMount.innerHTML = AVATAR_SVG('avBodyHero');
+  if (turnMount) turnMount.innerHTML = AVATAR_SVG('avBodyTurn');
+
+  /* ---- 状态切换（idle / thinking / speaking） ---- */
+  var STATE_TEXT = { idle: '在场，等你开口', thinking: '正在想', speaking: '正在说' };
+  var stateText = document.getElementById('stateText');
+  var stateBtns = Array.prototype.slice.call(document.querySelectorAll('[data-presence]'));
+
+  function setPresence(next) {
+    document.documentElement.setAttribute('data-state', next);
+    if (stateText) stateText.textContent = STATE_TEXT[next] || '';
+    stateBtns.forEach(function (b) {
+      b.setAttribute('aria-pressed', String(b.getAttribute('data-presence') === next));
+    });
+  }
+  stateBtns.forEach(function (b) {
+    b.addEventListener('click', function () { setPresence(b.getAttribute('data-presence')); });
+  });
+  setPresence('thinking');
+
+  /* ---- 支撑材料卡组：真的能切 ---- */
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('.tab'));
+  var panels = Array.prototype.slice.call(document.querySelectorAll('.panel'));
+  var posNow = document.getElementById('posNow');
+
+  function selectTab(i) {
+    tabs.forEach(function (t, k) {
+      var on = k === i;
+      t.setAttribute('aria-selected', String(on));
+      t.tabIndex = on ? 0 : -1;
+    });
+    panels.forEach(function (p, k) {
+      /* 切走的面板不保留 data-active，重新进入时才会重播入场 */
+      if (k === i) p.setAttribute('data-active', 'true');
+      else p.removeAttribute('data-active');
+    });
+    if (posNow) posNow.textContent = String(i + 1);
+  }
+  tabs.forEach(function (t, i) {
+    t.addEventListener('click', function () { selectTab(i); });
+    t.addEventListener('keydown', function (e) {
+      var next = null;
+      if (e.key === 'ArrowRight') next = (i + 1) % tabs.length;
+      else if (e.key === 'ArrowLeft') next = (i - 1 + tabs.length) % tabs.length;
+      else if (e.key === 'Home') next = 0;
+      else if (e.key === 'End') next = tabs.length - 1;
+      if (next === null) return;
+      e.preventDefault();
+      selectTab(next);
+      tabs[next].focus();
+    });
+  });
+  selectTab(0);
+  setChartBar();
+  window.addEventListener('resize', setChartBar, { passive: true });
+
+  /* ---- 依据：展开其余 2 条 ---- */
+  var evMore = document.getElementById('evMore');
+  var evToggle = document.getElementById('evToggle');
+  if (evToggle && evMore) {
+    evToggle.addEventListener('click', function () {
+      var open = evMore.getAttribute('data-open') === 'true';
+      evMore.setAttribute('data-open', String(!open));
+      evToggle.setAttribute('aria-expanded', String(!open));
+      var label = evToggle.querySelector('[data-label]');
+      if (label) label.textContent = open ? '展开其余 2 条依据' : '收起依据';
+    });
+  }
+
+  /* ---- 方法卡：展开全文 ---- */
+  var methodFull = document.getElementById('methodFull');
+  var methodToggle = document.getElementById('methodToggle');
+  if (methodToggle && methodFull) {
+    methodToggle.addEventListener('click', function () {
+      var open = methodFull.getAttribute('data-open') === 'true';
+      methodFull.setAttribute('data-open', String(!open));
+      methodToggle.setAttribute('aria-expanded', String(!open));
+      var label = methodToggle.querySelector('[data-label]');
+      if (label) label.textContent = open ? '展开全文' : '收起全文';
+    });
+  }
+
+  /* ---- 输入区：聚焦态 + 发送按钮可用性 ---- */
+  var box = document.getElementById('box');
+  var msg = document.getElementById('msg');
+  var send = document.getElementById('send');
+
+  function syncSend() {
+    var has = msg.value.trim().length > 0;
+    send.setAttribute('aria-disabled', String(!has));
+  }
+  msg.addEventListener('focus', function () { box.setAttribute('data-focused', 'true'); });
+  msg.addEventListener('blur', function () { box.setAttribute('data-focused', 'false'); });
+  msg.addEventListener('input', function () {
+    msg.style.height = 'auto';
+    msg.style.height = Math.min(msg.scrollHeight, 132) + 'px';
+    syncSend();
+  });
+  box.addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (send.getAttribute('aria-disabled') === 'true') return;
+    msg.value = '';
+    msg.style.height = 'auto';
+    syncSend();
+  });
+  syncSend();
+
+  /* 行动卡：加入今日行动的即时反馈 */
+  var addTask = document.getElementById('addTask');
+  if (addTask) {
+    addTask.addEventListener('click', function () {
+      var done = addTask.getAttribute('data-done') === 'true';
+      addTask.setAttribute('data-done', String(!done));
+      var label = addTask.querySelector('[data-label]');
+      if (label) label.textContent = done ? '加入今日行动' : '已加入今日行动';
+      var icon = addTask.querySelector('svg');
+      if (icon) icon.innerHTML = done
+        ? '<path d="M12 5v14M5 12h14"/>'
+        : '<path d="M5 12.5 10 17.5 19 7"/>';
+    });
+  }
+
+  /* ---- 数据卡：窄屏的数值标签要跟着自己那根条的末端走 ----
+     条长是真实数值，任何时候都不为"给数字腾地方"而改写。
+     桌面档没有这个问题（数值另有一列、竖向对齐），所以只在窄屏用到这个变量。 */
+  var chartRows = document.getElementById('chartRows');
+  function setChartBar() {
+    if (!chartRows) return;
+    var maxPct = 0;
+    Array.prototype.forEach.call(chartRows.querySelectorAll('.row__bar'), function (bar) {
+      var pct = parseFloat(bar.style.width) || 0;
+      if (pct > maxPct) maxPct = pct;
+    });
+    chartRows.style.setProperty('--chart-bar', maxPct + '%');
+  }
+
+  /* ---- 导航折叠 / 移动端抽屉 ---- */
+  var app = document.getElementById('app');
+  var navToggle = document.getElementById('navToggle');
+  var burger = document.getElementById('burger');
+  var scrim = document.getElementById('scrim');
+
+  if (navToggle) {
+    navToggle.addEventListener('click', function () {
+      var mini = app.getAttribute('data-nav') === 'mini';
+      app.setAttribute('data-nav', mini ? 'full' : 'mini');
+      navToggle.setAttribute('aria-expanded', String(mini));
+      navToggle.title = mini ? '折叠导航' : '展开导航';
+    });
+  }
+  function setDrawer(open) {
+    app.setAttribute('data-drawer', open ? 'open' : 'closed');
+    if (burger) burger.setAttribute('aria-expanded', String(open));
+    if (scrim) {
+      scrim.hidden = !open;
+      scrim.style.opacity = open ? '1' : '';
+    }
+  }
+  if (burger) burger.addEventListener('click', function () {
+    setDrawer(app.getAttribute('data-drawer') !== 'open');
+  });
+  if (scrim) scrim.addEventListener('click', function () { setDrawer(false); });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') setDrawer(false);
+  });
+})();
+</script>
+</body>
+</html>
