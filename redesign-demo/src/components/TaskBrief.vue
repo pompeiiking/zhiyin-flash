@@ -17,7 +17,6 @@ import { useAiTask } from '../lib/use-ai-task'
 import type { BriefToday } from '../api/ai-types'
 import AiStatus from './AiStatus.vue'
 import AiResultMeta from './AiResultMeta.vue'
-import EmptyState from './EmptyState.vue'
 import Foldable from './Foldable.vue'
 import SkeletonBlock from './SkeletonBlock.vue'
 import StatTile from './StatTile.vue'
@@ -64,16 +63,7 @@ function run() { void task.run('brief') }
     </template>
 
     <!-- ② 取了但没有：空态带一个真的能按的下一步 -->
-    <EmptyState
-      v-else-if="!task.busy.value"
-      kind="notes"
-      size="sm"
-      title="今天还没有生成简报"
-      description="简报按已有任务、事实和时间安排推导；资料不足时会先说明缺口，不编造安排。"
-      :next="false"
-    >
-      <button class="btn btn--primary" @click="run">生成今日简报</button>
-    </EmptyState>
+    <p v-else-if="!task.busy.value" class="ws-muted">按已有任务、事实和时间安排生成简报，资料不足时会说明缺口。</p>
   </Foldable>
 </template>
 

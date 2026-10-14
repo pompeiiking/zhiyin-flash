@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue'
 import { demo } from '../store'
 import PageHeading from '../components/PageHeading.vue'
-import ActionPlanNav from '../components/ActionPlanNav.vue'
+
 import LiveActionPlan from '../components/LiveActionPlan.vue'
 import TaskBrief from '../components/TaskBrief.vue'
 import { backendDemo } from '../lib/backend-demo'
@@ -143,7 +143,7 @@ const academicAt = computed(() => backendDemo.state.academic?.imported_at ?? nul
     <!-- 页头第 3 行（G-05）：靶子 `.pgh__meta` = 3 个事实 tag + 3 个品质标。
          这里给的是**真实字段**：今天的日期、今天可做的件数与分钟合计、这一批的完成数、
          以及画像里"每周可投入"那条（值 + 把握度 + 来源三件一起，缺一件就退回灰字）。 -->
-    <PageHeading title="行动计划" description="从一件具体的小事开始，让想好的方向往前走。">
+    <PageHeading title="今日行动" description="从一件具体的小事开始，让想好的方向往前走。">
       <template #meta>
         <span class="tag">{{ todayLabel }}</span>
         <span class="tag">今天可做 {{ nowTasks.length }} 件 · 共 {{ remainingMinutes }} 分钟</span>
@@ -152,26 +152,27 @@ const academicAt = computed(() => backendDemo.state.academic?.imported_at ?? nul
         <ConfidenceBadge v-if="timeFact" :confidence="timeFact.confidence" />
         <SourceChip v-if="timeFact" :source="timeFact.source" :at="timeFact.at" />
       </template>
-      <RouterLink class="btn" to="/notes"><UiIcon name="plus" :size="16" />添加个人待办</RouterLink>
+      <RouterLink class="btn" to="/plan"><UiIcon name="path" :size="16" />看阶段计划</RouterLink>
     </PageHeading>
-    <ActionPlanNav/><AssetNotice/><LiveActionPlan today/><TaskBrief/><template v-if="!backendDemo.state.liveAction">
+    <AssetNotice/><LiveActionPlan v-if="backendDemo.state.dataMode === 'service' || backendDemo.state.liveAction" today/><template v-if="!backendDemo.state.liveAction">
     <section v-if="lastDone" :key="lastDone.id" class="journey-complete" role="status">
       <span class="journey-complete__mark"><UiIcon name="check" :size="24" /></span>
       <div><h2>又完成了一步</h2><p>{{ lastDone.title }}</p></div>
       <button class="ws-text-button" @click="demo.reopenTask(lastDone.id)">恢复任务</button>
     </section>
-    <section v-if="smallest" class="journey-focus">
+    <div class="journey-action-grid">
+      <div class="journey-action-main">
+    <section v-if="smallest" class="c2-today-task"><header class="c2-today-task-head"><h2>今天该做的那一件</h2><span>今天 1 件</span></header><p class="c2-today-task-note">只推一件。做完之后，下一件会接上来。</p><div class="journey-focus">
       <div class="journey-focus__copy">
-        <h2>{{ smallest.title }}</h2><p>{{ smallest.why }}</p>
+        <div class="c2-today-task-sources"><SourceChip :label="taskOriginLabel(smallest.origin)" kind="citation" /><span class="tag">{{ smallest.minutes }} 分钟 · 今天</span><span class="tag">下一件</span></div><h2>{{ smallest.title }}</h2><div class="c2-today-task-why"><h3>为什么是现在</h3><p>{{ smallest.why }}</p></div><div class="c2-today-task-evidence"><RouterLink to="/report">看它对应的诊断依据 →</RouterLink><RouterLink v-if="focusMilestone" to="/plan">{{ focusMilestone.title }} →</RouterLink></div>
         <div class="journey-focus__meta"><span><UiIcon name="review" :size="17" />约 {{ smallest.minutes }} 分钟</span><span><UiIcon name="action" :size="17" />{{ taskOriginLabel(smallest.origin) }}</span><span v-if="smallest.due"><UiIcon name="calendar" :size="17" />{{ smallest.due }}</span></div>
         <div class="journey-focus__actions"><button class="btn btn--primary" @click="demo.completeTask(smallest.id)">标记完成<UiIcon name="check" :size="18" /></button><button v-if="smallest.minutes > 5" class="ws-text-button" @click="demo.shrinkTask(smallest.id)">先拆成 5 分钟</button><RouterLink v-else class="ws-text-link" to="/chat">需要调整，和顾问聊聊<UiIcon name="arrow" :size="16" /></RouterLink></div>
       </div>
-    </section>
+    </div></section>
     <!-- 空态：`.ws-empty` → EmptyState（MIGRATION §4.2 E1，kind=notes）。
          整块正文被空态顶掉，所以显式 heading-level="2"（H5：不显式传会从 h2 掉成 h3）。 -->
     <section v-else class="ws-paper"><EmptyState kind="notes" :heading-level="2" :title="demo.use.done.value.length ? '当前任务已完成' : '暂无行动任务'" description="完成咨询并明确方向后，可生成行动任务。"><RouterLink class="btn btn--primary" to="/chat">开始咨询</RouterLink></EmptyState></section>
-    <div class="journey-action-grid">
-      <div class="journey-action-main">
+
         <!-- G-08：进行时读数。靶子 `.hm-live__t`（14px/**600**）+ 紧跟其后的 560×5 分段 meter
              （c2-hbu/_src/views/home.html:123-126）。真实页原来只有 `.journey-focus__meta`
              那句 14px/400 的元数据标签，静图丢掉"走到哪了"。 -->
@@ -226,6 +227,6 @@ const academicAt = computed(() => backendDemo.state.academic?.imported_at ?? nul
     </div>
     <div v-if="!demo.state.guidesClosed.home" class="ws-guide"><UiIcon name="info" :size="18" /><p>优先完成当前建议任务。其他任务可按状态查看，完成后支持恢复。</p><button @click="demo.closeGuide('home')">收起</button></div>
     <p class="ws-demo-note">任务与档案为预置示例，操作会改变当前演示中的记录。</p>
-    </template><InfoSheet :open="addOpen" shape="dialog" title="记一件今天能做的事" @close="addOpen = false"><form @submit.prevent="add"><label class="ws-field">做什么<input v-model="title" maxlength="100" placeholder="例如：给学长发一条消息" /></label><label class="ws-field">大约需要多久<select v-model.number="minutes"><option :value="5">5 分钟</option><option :value="15">15 分钟</option><option :value="30">30 分钟</option><option :value="60">60 分钟</option></select></label><p v-if="error" class="ws-field-error" role="alert">{{ error }}</p><div class="ws-inline-actions"><button class="btn btn--primary" type="submit">排进今天</button><button class="ws-text-button" type="button" @click="addOpen = false">先不记</button></div></form></InfoSheet>
+    </template><section class="c2-plan-tools"><div><button class="btn" @click="addOpen = true"><UiIcon name="plus" :size="16" />添加个人待办</button><TaskBrief/></div><LiveActionPlan v-if="backendDemo.state.dataMode === 'demo' && !backendDemo.state.liveAction" today/></section><InfoSheet :open="addOpen" shape="dialog" title="记一件今天能做的事" @close="addOpen = false"><form @submit.prevent="add"><label class="ws-field">做什么<input v-model="title" maxlength="100" placeholder="例如：给学长发一条消息" /></label><label class="ws-field">大约需要多久<select v-model.number="minutes"><option :value="5">5 分钟</option><option :value="15">15 分钟</option><option :value="30">30 分钟</option><option :value="60">60 分钟</option></select></label><p v-if="error" class="ws-field-error" role="alert">{{ error }}</p><div class="ws-inline-actions"><button class="btn btn--primary" type="submit">排进今天</button><button class="ws-text-button" type="button" @click="addOpen = false">先不记</button></div></form></InfoSheet>
   </div>
 </template>

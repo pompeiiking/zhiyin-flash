@@ -265,6 +265,10 @@ const hours = (v: number) =>
      它是"课多的一周任务排得少"的**可核对版本**：两根横条共用一根刻度，
      课量长的与任务量长的分别是哪一周，一眼就分得出来。
      数据全部来自真实课表（节次 + weeks）与真实任务（按阶段计划的时间窗归周）。 -->
+
+<div class="sched-split">
+<div class="sched-split__main">
+ <section class="c2-profile-stats" aria-label="本周课程与任务占用"><article class="c2-profile-stat"><strong>{{ hours(thisWeek?.courseHours ?? 0) }}</strong><h2>本周课的占用</h2><p>按导入课程节次计算</p></article><article class="c2-profile-stat"><strong>{{ hours(thisWeek?.taskHours ?? 0) }}</strong><h2>任务排进去的</h2><p>任务与课量使用同一刻度</p></article></section>
 <section class="ws-section sched-cmp" aria-labelledby="sched-cmp-title">
   <div class="ws-section-head">
     <div>
@@ -292,8 +296,6 @@ const hours = (v: number) =>
   </div>
   <p class="sched-cmp__foot"><span>时间口径：<b>空课格不代表空闲</b> —— 一格空着只是那天没有排课，不等于那段时间可以用。</span><RouterLink class="ws-text-link sched-cmp__footlink" to="/academic">核对导入的课表<UiIcon name="arrow" :size="16" /></RouterLink></p>
 </section>
-<div class="sched-split">
-<div class="sched-split__main">
 <PanelTabs v-model="tab" label="日程视图" :items="[{key:'calendar',label:'关键日历'},{key:'courses',label:'一周课表'}]">
 <template v-if="tab==='calendar'"><div class="sched-refresh-shell" :aria-busy="refreshing"><div v-if="refreshing" class="sched-refresh"><SkeletonBlock variant="chart" :columns="7" /></div><p v-if="refreshing" class="sr-only" role="status">正在读取最新日程，日历内容保留。</p><header class="calendar-toolbar"><h2>{{ title }}</h2><div class="calendar-toolbar__actions"><button class="ws-icon-button" :aria-label="mode==='week'?'上一周':'上个月'" @click="move(-1)"><UiIcon name="back" /></button><button class="btn" @click="resetDate">今天</button><button class="ws-icon-button" :aria-label="mode==='week'?'下一周':'下个月'" @click="move(1)"><UiIcon name="arrow" /></button><label class="calendar-view">视图<select v-model="mode" aria-label="日历显示方式"><option value="month">月历</option><option value="week">周视图</option><option value="agenda">议程</option></select></label></div></header>
 <div v-if="mode==='week'" class="calendar-week-events" aria-label="本周事项"><button v-for="date in weekDates" :key="date.toISOString()" :aria-pressed="date.getDate()===day && date.getMonth()===month.getMonth()" @click="selectDate(date)"><strong>周{{ weekdays[(date.getDay()+6)%7] }} · {{ date.getMonth()+1 }}/{{ date.getDate() }}</strong><span v-for="label in weekItems(date)" :key="label">{{ label }}</span><small v-if="!weekItems(date).length">没有已记录的事项</small></button></div><div class="calendar-layout"><div v-if="mode==='month'" class="calendar-month"><div class="ws-calendar"><span v-for="w in weekdays" :key="w" class="ws-calendar__weekday">{{ w }}</span><span v-for="n in offset" :key="'empty'+n"/><button v-for="d in length" :key="d" class="ws-calendar__day" :class="{'ws-calendar__day--selected':day===d,'ws-calendar__day--marked':marks.some(m=>m.day===d)}" :aria-label="(month.getMonth()+1)+'月'+d+'日'" :aria-pressed="day===d" @click="day=d;advice=false"><span>{{ d }}</span><small v-for="m in marks.filter(m=>m.day===d)" :key="m.label" :title="m.label">{{ m.label }}</small><small v-if="d===today.getDate() && month.getMonth()===today.getMonth() && month.getFullYear()===today.getFullYear() && !backendDemo.state.liveAction && demo.use.now.value.length">{{ demo.use.now.value.length }} 件待执行</small></button></div></div>

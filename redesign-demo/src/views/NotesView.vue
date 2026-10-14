@@ -67,6 +67,7 @@ const attributed = computed(() => REVIEW_ITEMS.filter((r) => r.attribution))
      那是信息架构改动，留给 Lead 拍板；这一轮先把右栏做到位。 -->
 <div class="journey-action-grid">
 <div class="journey-action-main">
+ <section class="c2-profile-stats" aria-label="待办与目标概览"><article class="c2-profile-stat"><strong>{{ goalPending }}</strong><small>条</small><h2>目标在走</h2><p>你自己写下的个人目标</p></article><article class="c2-profile-stat"><strong>{{ todoPending }}</strong><small>条</small><h2>待办没做</h2><p>下一步可以动手的具体事项</p></article><article class="c2-profile-stat"><strong>{{ doneAll }}</strong><small>条</small><h2>已经完成</h2><p>完成后可恢复，也会保留记录</p></article><article class="c2-profile-stat"><strong>{{ allNotes.length }}</strong><small>条</small><h2>自己写下的</h2><p>个人记录独立保留，不与计划任务混算</p></article></section>
 <PanelTabs :model-value="tab" @update:model-value="tab=$event as 'todo'|'goal';status='';error=''" label="待办与目标视图" :items="[{key:'todo',label:'我的待办',count:backendDemo.state.notes.filter(n=>n.kind==='todo').length},{key:'goal',label:'个人目标',count:backendDemo.state.notes.filter(n=>n.kind==='goal').length}]">
 <form class="desk-note-form" @submit.prevent="add"><label class="sr-only" for="desk-note-text">{{ tab==='todo'?'写下一件事':'写下一个目标' }}</label><input id="desk-note-text" v-model="text" maxlength="200" :placeholder="tab==='todo'?'下一件想做的事…':'你想达成什么…'"/><button class="btn btn--primary" type="submit"><UiIcon name="plus" :size="16"/>添加</button></form><p v-if="error" class="ws-field-error" role="alert">{{ error }}</p>
 <!-- 成功反馈换成 StatusBanner：旧写法是 `v-if="status"` 常驻不消失（审计 D9 点名的病灶），

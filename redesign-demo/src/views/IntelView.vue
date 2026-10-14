@@ -126,6 +126,8 @@ function clearFilter(){query.value='';kind.value='all'}
 <template>
   <div class="ws-page intel-page">
     <PageHeading title="岗位资讯" description="阅读来源事实，再结合个人情况比较职业要求。"/>
+
+    <section class="c2-profile-stats" aria-label="资讯概览"><article class="c2-profile-stat"><strong>{{ backendDemo.state.intel.length }}</strong><small>条</small><h2>这一批资讯</h2><p>同一批信息可按类别与时间重组</p></article><article class="c2-profile-stat"><strong>{{ kinds.length }}</strong><small>类</small><h2>可按类别筛选</h2><p>只显示这批资讯中出现的类别</p></article><article class="c2-profile-stat"><strong>{{ items.length }}</strong><small>条</small><h2>当前筛选结果</h2><p>随关键词和类别选择更新</p></article><article class="c2-profile-stat"><strong>{{ new Set(backendDemo.state.intel.map(i=>i.source_name||i.source_url||'来源未提供')).size }}</strong><small>个</small><h2>来源标记</h2><p>每条资讯单独核对来源</p></article></section>
     <PanelTabs v-model="mode" label="资讯与匹配视图" :items="[{key:'facts',label:'资讯事实'},{key:'match',label:'职业匹配'}]">
       <template v-if="mode==='facts'">
         <form class="remote-search" @submit.prevent="load()">
@@ -219,6 +221,7 @@ function clearFilter(){query.value='';kind.value='all'}
 
     <!-- 详情：shape=sheet（桌面右侧抽屉 / 小屏底部面板）。原来的 wide 必须一起去掉，
          否则 resolvedShape 里 wide 优先级更高，shape 会被静默覆盖。 -->
+    <aside class="c2-intel-side" aria-label="资讯来源与使用"><section><h2>这一批资讯从哪里来</h2><p>{{ backendDemo.state.intelOrigin === 'sample' ? '本地虚构演示资料，供比较岗位要求与来源，不作为招聘公告引用。' : '来自本次读取的资讯结果，每条保留自己的来源与读取时间。' }}</p><p>共 {{ backendDemo.state.intel.length }} 条、{{ kinds.length }} 类。读取时间与原始发布时间分别核对。</p></section><section><h2>先读事实，再决定</h2><p>点开一条资讯，可查看全文、核验清单和同类别的其他条目。核实岗位地点、学历要求及信息有效期，再纳入自己的计划。</p><RouterLink class="ws-text-link" to="/directions">回到方向比较 →</RouterLink></section></aside>
     <InfoSheet :open="reading!==null" shape="sheet" :title="reading?.title || '资讯详情'" @close="reading=null">
       <article v-if="reading" class="intel-detail">
         <div class="intel-detail__facts">

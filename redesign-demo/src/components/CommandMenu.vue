@@ -42,7 +42,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
 defineExpose({ show })
 </script>
 <template>
-  <InfoSheet :open="open" title="搜索与跳转" @close="hide" @opened="field?.focus()">
+  <InfoSheet shape="panel" :open="open" title="搜索与跳转" @close="hide" @opened="field?.focus()">
     <label class="ws-command-search"><UiIcon name="search" /><input ref="field" v-model="query" placeholder="找页面、切年级、换外观…" aria-label="搜索命令" /></label>
     <div class="ws-command-results"><button v-for="(item, index) in results" :id="'ws-command-' + index" :key="item.label + index" class="ws-command-item" :class="{ 'ws-command-item--on': cursor === index }" @mouseenter="cursor = index" @click="run(index)"><strong>{{ item.label }}</strong><span>{{ item.hint }}</span></button><p v-if="!results.length" class="ws-muted">没有匹配的功能，换个词试试。</p></div>
     <p class="ws-muted" style="margin-top: var(--sp-4)">↑ ↓ 选择 · Enter 打开 · Esc 关闭</p>

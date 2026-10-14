@@ -58,7 +58,7 @@ const identity = computed(() => agentOf(props.agent))
 const rootStyle = computed(() => {
   const vars = agentVars(props.agent)
   return {
-    [AGENT_VAR_NAMES.hue]: vars.hue,
+    [AGENT_VAR_NAMES.hue]: identity.value.key === 'me' || identity.value.key === 'system' ? vars.hue : 'var(--c-primary)',
     [AGENT_VAR_NAMES.period]: vars.period,
     [AGENT_VAR_NAMES.shift]: vars.shift,
     width: `${props.size}px`,
@@ -103,7 +103,7 @@ const BODIES: Record<string, BodyGeometry> = {
   /** 圆：rx/w = .33 的鹅卵石 —— 不是正圆（守卫线 .34） */
   round: { x: 8, y: 8, w: 84, h: 84, rx: 27.5 },
   /** 方：rx/w = .20 —— 基准形体（职业分析顾问） */
-  square: { x: 8, y: 8, w: 84, h: 84, rx: 17 },
+  square: { x: 10, y: 10, w: 80, h: 80, rx: 27 },
   /** 竖：窄高 —— "把路排成一条线"（路径规划师） */
   shield: { x: 18, y: 8, w: 64, h: 84, rx: 20 },
   /** 宽：矮宽 —— "陪着"的那位（陪伴教练） */
@@ -151,7 +151,7 @@ const ARC_RIGHT_INNER = 'M77 17.8A42 42 0 0 1 77 82.2'
     :aria-label="identity.name"
     :title="`${identity.name} · ${identity.role}`"
   >
-    <svg class="ag-svg" viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+    <svg class="ag-svg" viewBox="-8 -8 116 116" aria-hidden="true" focusable="false">
       <defs>
         <!-- 材质层第 2 层：光从上面来。这是形体上唯一的"体积"信息，不再有镜面高光。
              两端都取自 --ag-hue：上端全透明、下端压到 .3 —— 同色相内的明暗，不引入第二支色 -->

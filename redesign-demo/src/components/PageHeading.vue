@@ -23,6 +23,7 @@ defineProps<{ title: string; description: string }>()
 <template>
   <header class="ws-heading">
     <div>
+      <p v-if="group" class="c2-page-crumb">{{ group }} <span aria-hidden="true">›</span> {{ title }}</p>
       <h1>{{ title }}</h1>
       <p><span v-if="group" class="page-context">{{ group }} · </span>{{ description }}</p>
       <!-- 第 3 行：这一页的规模 / 状态 / 品质标。样式归调用方（本页 scoped），

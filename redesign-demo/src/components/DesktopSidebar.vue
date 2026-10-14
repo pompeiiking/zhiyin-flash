@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { AccordionContent, AccordionHeader, AccordionItem, AccordionRoot, AccordionTrigger } from 'reka-ui'
-import { WORKSPACE_GROUPS, WORKSPACE_PRIMARY, PORTAL_LINK, isNavActive, activeGroup, type NavItem } from '../lib/workspace-nav'
+import { WORKSPACE_GROUPS, WORKSPACE_PRIMARY, PORTAL_LINK, isNavActive, type NavItem } from '../lib/workspace-nav'
 import { demo } from '../store'
 import { STUDENT } from '../data/student'
 import UiIcon from './UiIcon.vue'
@@ -13,17 +12,9 @@ defineEmits<{ newChat: []; account: []; collapse: [] }>()
 const collapseButton = ref<HTMLButtonElement | null>(null)
 defineExpose({ focusCollapse() { collapseButton.value?.focus() } })
 /**
- * 默认**全部展开**。
- *
- * 之前只展开当前组、其余收起 —— 用户要先点一下才知道里面有什么，导航变成猜谜。
- * 分组是稳定入口，不是渐进展开的内容；收起只作为用户主动收窄列表的选择。
+ * C2 导航是固定分组与平铺入口。各组不再套折叠目录；
+ * 整体侧栏仍能收起，历史会话继续使用已有的恢复逻辑。
  */
-const openGroups = ref<string[]>(WORKSPACE_GROUPS.map((g) => g.key))
-watch(() => route.path, () => {
-  const key = activeGroup({ path: route.path, query: route.query })?.key
-  // 路由变化只**补开**当前组，不收起用户已经打开的其它组。
-  if (key && !openGroups.value.includes(key)) openGroups.value = [...openGroups.value, key]
-}, { immediate: true })
 const sessions = computed(() => [...backendDemo.state.sessions].sort((a, b) => (b.last_active_at ?? '').localeCompare(a.last_active_at ?? '')))
 function resumeSession(id: string) {
   if (demo.state.chatBusy) return
@@ -56,16 +47,17 @@ function sessionDate(date?: string | null) { return date ? new Date(date).toLoca
 <template>
   <aside id="student-desktop-sidebar" class="desk-sidebar" aria-label="桌面导航">
     <div class="desk-brand-row"><RouterLink class="desk-brand" to="/chat" aria-label="职引，回到对话"><span class="hf-mark" aria-hidden="true">职</span><div class="hf-names"><strong>职引</strong><span>陪你走完这一段</span></div></RouterLink><button ref="collapseButton" class="ws-icon-button desk-collapse" aria-label="收起侧栏" title="收起侧栏" aria-controls="student-desktop-sidebar" aria-expanded="true" @click="$emit('collapse')"><UiIcon name="sidebar" :size="19" /></button></div>
-    <button class="desk-new-chat" :disabled="demo.state.chatBusy" @click="$emit('newChat')"><UiIcon name="plus" :size="18" /><span>新建咨询</span></button>
+
     <div class="desk-scroll">
-    <nav class="desk-nav" aria-label="学生空间导航">
+    <nav class="desk-nav" aria-label="学生空间导航"><div class="c2-chat-group-head"><h2>对话</h2><button class="c2-new-consult" aria-label="新建咨询" title="新建咨询" :disabled="demo.state.chatBusy" @click="$emit('newChat')"><UiIcon name="plus" :size="18" /></button></div>
       <RouterLink :to="WORKSPACE_PRIMARY.to" class="desk-link desk-link--conversation" :aria-current="isNavActive(WORKSPACE_PRIMARY, route) ? 'page' : undefined"><UiIcon :name="WORKSPACE_PRIMARY.icon" :size="20" /><span class="hf-label">{{ WORKSPACE_PRIMARY.label }}</span><span class="hf-tail" v-if="sessionCount || chatActive"><span v-if="sessionCount" class="hf-badge" :title="'共 ' + sessionCount + ' 段咨询'">{{ sessionCount }}</span><span v-if="chatActive" class="desk-link__dot" /></span></RouterLink>
-      <AccordionRoot v-model="openGroups" type="multiple" class="desk-menu">
-        <AccordionItem v-for="group in WORKSPACE_GROUPS" :key="group.key" :value="group.key" class="desk-menu__group">
-          <AccordionHeader><AccordionTrigger class="desk-menu__trigger" :class="{ 'desk-menu__trigger--active': group.items.some(i => isNavActive(i, route)) }"><UiIcon :name="group.icon" :size="19" /><span>{{ group.label }}</span><UiIcon class="desk-menu__chevron" name="chevron" :size="15" /></AccordionTrigger></AccordionHeader>
-          <AccordionContent class="desk-menu__content"><div class="desk-menu__children"><RouterLink v-for="item in group.items" :key="item.key" :to="item.to" class="desk-link desk-link--child" :aria-current="isNavActive(item, route) ? 'page' : undefined"><span class="hf-label">{{ item.label }}</span><span class="hf-tail" v-if="navCount(item) || isNavActive(item, route)"><span v-if="navCount(item)" class="hf-badge" :title="'今天有 ' + navCount(item) + ' 件要做'">{{ navCount(item) }}</span><span v-if="isNavActive(item, route)" class="desk-link__dot" /></span></RouterLink></div></AccordionContent>
-        </AccordionItem>
-      </AccordionRoot>
+      <section v-for="group in WORKSPACE_GROUPS" :key="group.key" class="c2-nav-group">
+        <h2>{{ group.label }}</h2>
+        <RouterLink v-for="item in group.items" :key="item.key" :to="item.to" :title="item.label" class="desk-link" :aria-current="isNavActive(item, route) ? 'page' : undefined">
+          <UiIcon :name="item.icon" :size="18" /><span class="hf-label">{{ item.label }}</span>
+          <span v-if="navCount(item)" class="hf-badge">{{ navCount(item) }}</span>
+        </RouterLink>
+      </section>
     </nav>
     <section class="desk-history" aria-label="历史会话"><div class="desk-history__head"><h2>历史会话</h2><span>{{ backendDemo.state.sessions.length }}</span></div><button v-for="session in sessions" :key="session.task_id" class="desk-session" :title="session.task_name" :aria-pressed="route.path === '/chat' && session.task_id === demo.state.currentSessionId" :disabled="demo.state.chatBusy" @click="resumeSession(session.task_id)"><span>{{ session.task_name || '未命名咨询' }}</span><small>{{ sessionDate(session.last_active_at) }}</small></button><p v-if="!sessions.length" class="desk-history__empty">创建咨询后，会话将显示在这里。</p></section>
     </div>

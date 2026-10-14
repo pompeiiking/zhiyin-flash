@@ -21,6 +21,7 @@ const items = computed<ReviewItem[]>(() => [
   ...(demo.state.account === 'fresh' ? [] : REVIEW_ITEMS),
 ])
 const completed = computed(() => items.value.filter((r) => r.result === 'done'))
+const weekDetail = ref('summary')
 const partial = computed(() => items.value.filter((r) => r.result === 'partial'))
 const missed = computed(() => items.value.find((r) => r.result === 'missed') ?? null)
 const choices = ['任务太大', '方法不对', '方向要重估', '其他', '尚不确定'] as const
@@ -153,12 +154,12 @@ const reviewAxisNote = computed(() => {
 })
 </script>
 <template>
-  <div class="ws-page">
+  <div class="ws-page review-page">
     <PageHeading title="复盘与记录" :description="achievementView ? '记录已完成的关键行动，展示阶段成果。' : demo.use.scenario.value.grade + ' · ' + demo.use.scenario.value.reviewFocus"><RouterLink class="btn" to="/home">回到今日行动<UiIcon name="arrow" :size="16" /></RouterLink></PageHeading>
     <nav class="desk-section-nav" aria-label="复盘视图"><RouterLink to="/review" :aria-current="!achievementView ? 'page' : undefined">推进与复盘</RouterLink><RouterLink to="/review?view=achievements" :aria-current="achievementView ? 'page' : undefined">完成记录</RouterLink></nav>
     <AchievementsSection v-if="achievementView" />
     <template v-else>
-    <div class="ws-stat-row review-summary"><StatTile :value="completed.length" unit="件" label="已完成" /><StatTile :value="partial.length" unit="件" label="部分完成" /><StatTile :value="items.filter((r) => r.result === 'missed').length" unit="件" label="待复盘" /></div>
+<section class="c2-review-week"><h2>这一周到底动了几次</h2><p>按下面这批记录计算：完成与部分完成都算动了手，未完成的保留当时的原因。</p><div class="c2-review-zoom" role="group" aria-label="本周复盘的阅读粒度"><button v-for="entry in [{key:'summary',label:'摘要'},{key:'detail',label:'细节'},{key:'raw',label:'原始记录'}]" :key="entry.key" :aria-pressed="weekDetail === entry.key" @click="weekDetail = entry.key">{{ entry.label }}</button></div><p v-if="weekDetail === 'summary'"><strong>{{ completed.length + partial.length }} 次动了手</strong>，这批共有 {{ items.length }} 条记录。没做完的那一件，从任务、方法或方向上核对原因。</p><p v-else-if="weekDetail === 'detail'">{{ completed.length }} 次已经完成，{{ partial.length }} 次做了一部分，{{ items.filter(r=>r.result==='missed').length }} 次还没有完成。<template v-if="missed">最近一次没有做完的是「{{ missed.what }}」，记录的原因是 {{ attributionLabel(demo.state.reviewAttributions[missed.id] ?? missed.attribution ?? '尚不确定') }}。</template></p><ul v-else><li v-for="item in items" :key="item.id"><time>{{ item.when }}</time> · {{ item.what }} · {{ labels[item.result] }}</li></ul>    <div class="ws-stat-row review-summary"><StatTile :value="completed.length" unit="件" label="已完成" /><StatTile :value="partial.length" unit="件" label="部分完成" /><StatTile :value="items.filter((r) => r.result === 'missed').length" unit="件" label="待复盘" /></div></section>
     <section class="ws-paper ws-section"><div class="ws-section-head"><div><h2>执行记录</h2><p>只记录事实与时间；同一批记录可以按时间、结果或原因重新分组。完成状态可以在今日任务里恢复。</p></div></div><PanelTabs v-model="reviewView" label="执行记录的视角" :items="REVIEW_VIEWS"><p class="review-views__note">{{ reviewAxisNote }}</p><template v-if="items.length"><section v-for="g in reviewGroups" :key="g.key" class="review-group"><h3 class="review-group__head">{{ g.title }}<span class="review-group__count">{{ g.items.length }} 条</span></h3><p v-if="g.note" class="review-group__note">{{ g.note }}</p><ol class="ws-timeline"><li v-for="r in g.items" :key="r.id"><time>{{ r.when }}</time><div class="ws-timeline__content">{{ r.what }}<small v-if="demo.state.reviewAttributions[r.id] ?? r.attribution">原因：{{ attributionLabel(demo.state.reviewAttributions[r.id] ?? r.attribution) }}</small><p v-if="demo.state.reviewNotes[r.id]" class="review-note">{{ demo.state.reviewNotes[r.id] }}</p></div><span class="ws-timeline__state">{{ labels[r.result] }}</span></li></ol></section></template><p v-else class="ws-muted">完成一件事，就会留下第一条记录。</p></PanelTabs></section>
     <div class="ws-two-columns">
       <section class="ws-paper">

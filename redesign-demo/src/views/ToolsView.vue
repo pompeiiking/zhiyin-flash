@@ -335,33 +335,7 @@ const sourceDetail = computed(() =>
     </PageHeading>
 
     <!-- ① 三态在首屏：不是图例，是"现在在哪一格" -->
-    <section class="tools-state-rail" aria-labelledby="tools-state-title">
-      <div class="ws-section-head">
-        <div>
-          <h2 id="tools-state-title">目录状态</h2>
-          <p>打开这一页会自动读一次。下面三格是这个目录的三种状态，亮着的一格是现在。</p>
-        </div>
-      </div>
-      <ol class="tools-state-list">
-        <li
-          v-for="s in RAIL"
-          :key="s.key"
-          class="tools-state"
-          :class="{ 'tools-state--on': railStage === s.key }"
-          :aria-current="railStage === s.key ? 'step' : undefined"
-        >
-          <span class="tools-state__mark" aria-hidden="true" />
-          <span class="tools-state__title">{{ s.title }}</span>
-          <span class="tools-state__body">{{ railBody(s) }}</span>
-        </li>
-      </ol>
-      <p class="tools-source">
-        <SourceChip :label="sourceLabel" kind="external" />
-        <span>目录逐条来自<strong>{{ sourceDetail }}</strong>；每条工具下面标着它自己的来源与版本。</span>
-      </p>
-    </section>
-
-    <!-- ①′ 关系显形：工具不是并列的一堆按钮，是一条链（靶子 tools.html 第一节的主张）。
+  <!-- ①′ 关系显形：工具不是并列的一堆按钮，是一条链（靶子 tools.html 第一节的主张）。
          内容全部由 TOOL_REL 推导，目录里没有的工具不会出现在这里。 -->
     <section v-if="chainHasReadBy" class="tools-chain" aria-labelledby="tools-chain-title">
       <div class="ws-section-head">
@@ -433,6 +407,33 @@ const sourceDetail = computed(() =>
 
     <!-- 运行区：目录在上面选，工具在这里跑。给它一个 h2，工具名才有一级可依
          （否则工具名会去和整页标题抢层级，见 ModuleCatalog 的 .module-catalog__title） -->
+    <details class="c2-tools-diagnostics"><summary>目录读取状态与来源</summary>    <section class="tools-state-rail" aria-labelledby="tools-state-title">
+      <div class="ws-section-head">
+        <div>
+          <h2 id="tools-state-title">目录状态</h2>
+          <p>打开这一页会自动读一次。下面三格是这个目录的三种状态，亮着的一格是现在。</p>
+        </div>
+      </div>
+      <ol class="tools-state-list">
+        <li
+          v-for="s in RAIL"
+          :key="s.key"
+          class="tools-state"
+          :class="{ 'tools-state--on': railStage === s.key }"
+          :aria-current="railStage === s.key ? 'step' : undefined"
+        >
+          <span class="tools-state__mark" aria-hidden="true" />
+          <span class="tools-state__title">{{ s.title }}</span>
+          <span class="tools-state__body">{{ railBody(s) }}</span>
+        </li>
+      </ol>
+      <p class="tools-source">
+        <SourceChip :label="sourceLabel" kind="external" />
+        <span>目录逐条来自<strong>{{ sourceDetail }}</strong>；每条工具下面标着它自己的来源与版本。</span>
+      </p>
+    </section>
+
+  </details>
     <section class="tools-runner" aria-labelledby="tools-runner-title">
       <div class="ws-section-head">
         <div>

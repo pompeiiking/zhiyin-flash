@@ -42,7 +42,7 @@ const composerNote = ref(false)
  * 用导航模式而不是纯 width 媒体查询：页面宽度与"壳层是不是窄导航"是一致的，
  * 两者用同一个判据，才不会出现"壳层已经收成窄导航、页面还留着一列 rail"的错位。
  */
-const hasRail = computed(() => navigation.mode.value === 'desktop')
+const hasRail = computed(() => navigation.mode.value === 'desktop' && navigation.width.value >= 1280)
 
 /* =============================================================================
  * 回答 = 分块，不是一段话
@@ -593,12 +593,21 @@ function attach(event: Event) {
   } catch (error) { attachmentError.value = (error as Error).message }
   ;(event.target as HTMLInputElement).value = ''
 }
+function readingRoot() {
+  const main = flow.value?.closest<HTMLElement>('.app__main')
+  return main && getComputedStyle(main).overflowY === 'auto' ? main : null
+}
+function readingPosition() { return readingRoot()?.scrollTop ?? window.scrollY }
 async function scrollToEnd() {
   await nextTick()
-  if (flow.value) flow.value.scrollTop = turns.value.length ? flow.value.scrollHeight : 0
+  const root = readingRoot()
+  const top = turns.value.length ? (root?.scrollHeight ?? document.documentElement.scrollHeight) : 0
+  if (root) root.scrollTop = top
+  else window.scrollTo({ top, behavior: 'instant' })
 }
 function followScroll() {
-  if (flow.value) followTail.value = flow.value.scrollHeight - flow.value.scrollTop - flow.value.clientHeight < 64
+  const root = readingRoot()
+  followTail.value = root ? root.scrollHeight - root.scrollTop - root.clientHeight < 100 : document.documentElement.scrollHeight - window.scrollY - window.innerHeight < 100
 }
 function append(turn: Omit<ChatTurn, 'id'>, animate = true) {
   const complete = { ...turn, id: 'turn-' + (++seq), optionRefs: turn.options?.map((label, index) => ({ option_id: 'option-' + seq + '-' + index, label, value: label })) }
@@ -686,9 +695,9 @@ function keydown(event: KeyboardEvent) {
   if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); send() }
 }
 watch(() => turns.value.length, () => { if (followTail.value) void scrollToEnd() })
-function rememberDraft() { if (demo.state.authed) backendDemo.saveDraft(demo.state.currentSessionId, draft.value, attached.value, flow.value?.scrollTop ?? null) }
+function rememberDraft() { if (demo.state.authed) backendDemo.saveDraft(demo.state.currentSessionId, draft.value, attached.value, readingPosition()) }
 watch(() => demo.state.currentSessionId, (_id, previousId) => {
-  if (demo.state.authed) backendDemo.saveDraft(previousId, draft.value, attached.value, flow.value?.scrollTop ?? null)
+  if (demo.state.authed) backendDemo.saveDraft(previousId, draft.value, attached.value, readingPosition())
   const saved = backendDemo.getDraft(demo.state.currentSessionId)
   draft.value = saved.text; attached.value = saved.materials.map(m => ({ ...m })); attachmentError.value = ''; panel.value = null; announcement.value = ''
   followTail.value = true
@@ -701,6 +710,8 @@ watch(() => {
   return last ? textOf(last.id, last.text) : ''
 }, () => { if (followTail.value) void scrollToEnd() })
 onMounted(() => {
+  window.addEventListener('scroll', followScroll, { passive: true })
+  flow.value?.closest('.app__main')?.addEventListener('scroll', followScroll, { passive: true })
   const question = typeof route.query.question === 'string' ? route.query.question : ''
   if (question && !draft.value) draft.value = question
   const topic = typeof route.query.topic === 'string' ? route.query.topic : ''
@@ -712,10 +723,12 @@ onMounted(() => {
   if (Number.isFinite(n) && n > 0) demo.noteCollected(n)
   /* 错误态只由查询参数触发（界面上没有按钮）：?demo-error=1 */
   if (route.query['demo-error'] === '1') { routeError.value = true; errorVisible.value = true }
-  if (restoredDraft.scroll !== null) void nextTick(() => { if (flow.value) { flow.value.scrollTop = restoredDraft.scroll!; followScroll() } })
+  if (restoredDraft.scroll !== null) void nextTick(() => { const root = readingRoot(); if (root) root.scrollTop = restoredDraft.scroll!; else window.scrollTo(0, restoredDraft.scroll!); followScroll() })
   else void scrollToEnd()
 })
 onUnmounted(() => {
+  window.removeEventListener('scroll', followScroll)
+  flow.value?.closest('.app__main')?.removeEventListener('scroll', followScroll)
   rememberDraft()
   if (timer) clearTimeout(timer)
   /* 停止生成之后离开页面：那条回复按"已停止"落在原地，不再补一次完整回答 */
@@ -976,7 +989,7 @@ onUnmounted(() => {
                 <section v-if="ready(t) && t.task" class="chat-block chat-block--action dialogue-action" :style="blockDelay(3)" :class="{ 'is-added': taskAdded(t.task.title) || taskAddedAt === t.task.title }" aria-label="行动建议">
                   <div class="dialogue-action__head"><UiIcon name="action" :size="18" /><h2>建议下一步</h2><span>约 {{ t.task.minutes }} 分钟</span></div>
                   <p class="dialogue-action__title">{{ t.task.title }}</p>
-                  <div class="dialogue-action__footer"><RouterLink v-if="taskAdded(t.task.title)" class="btn btn--done" to="/home"><UiIcon name="check" :size="17" />已加入 · 查看行动</RouterLink><button v-else class="btn btn--primary" @click="demo.planChatTask(t.task.title, t.task.minutes); taskAddedAt = t.task.title"><span class="btn__fx" aria-hidden="true" />加入行动计划<UiIcon name="arrow" :size="17" /></button></div>
+                  <div class="dialogue-action__footer"><RouterLink v-if="taskAdded(t.task.title)" class="btn btn--done" to="/home"><UiIcon name="check" :size="17" />已加入 · 查看行动</RouterLink><button v-else class="btn btn--primary" @click="demo.planChatTask(t.task.title, t.task.minutes); taskAddedAt = t.task.title">加入行动计划<UiIcon name="arrow" :size="17" /></button></div>
                 </section>
 
                 <!-- 块五 · 后续问题：你能怎么接下去（只在最后一条、输出结束后出现）。

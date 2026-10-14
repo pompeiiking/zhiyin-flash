@@ -777,6 +777,12 @@ function probeInPage() {
         break
       }
       if (ox === 'hidden' || ox === 'clip') {
+        // An overflowing descendant is not clipped when its overflow still lies
+        // inside this ancestor's actual viewport (e.g. an avatar in a wide main).
+        // Keep walking: a more distant ancestor can still cut the content off.
+        const pr = p.getBoundingClientRect()
+        const contentLeft = r.left - el.scrollLeft
+        if (p !== el && contentLeft >= pr.left - 1 && contentLeft + sw <= pr.right + 1) continue
         mode = 'clip'
         byAncestor = describe(p)
         break

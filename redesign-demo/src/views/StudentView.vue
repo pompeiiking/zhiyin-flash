@@ -433,9 +433,6 @@ function tweenTo(target: number, duration = 760) {
 // 这个 watch 依赖 tally，而 tally 又依赖 known（由结论侧的依赖关系算出来）——
 // 所以它必须注册在 known 之后，否则 immediate 求值时 known 还在 TDZ 里。
 
-const RING_R = 34
-const RING_C = 2 * Math.PI * RING_R
-const ringOffset = computed(() => RING_C * (1 - Math.max(0, Math.min(100, trustShown.value)) / 100))
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * 6. 组织权交还用户：三种视角，切换时是重新组织（FLIP）
@@ -917,53 +914,13 @@ const identity = computed(() => {
     />
 
     <!-- ═══ 活的度量：可信度环从 0 生长到实际值；数字旁边写清是谁算的 ═══ -->
-    <section class="p7-meter" aria-label="档案覆盖度与可信度">
-      <svg class="p7-ring" viewBox="0 0 84 84" role="img" :aria-label="`档案可信度 ${Math.round(trustShown)}%`">
-        <circle class="p7-ring__track" cx="42" cy="42" :r="RING_R" />
-        <circle class="p7-ring__fill" cx="42" cy="42" :r="RING_R" :stroke-dasharray="RING_C" :stroke-dashoffset="ringOffset" />
-      </svg>
-      <div class="p7-meter__read">
-        <div class="p7-meter__top">
-          <StatTile
-            class="p7-meter__tile"
-            :score="trustShown / 100"
-            label="整体可信度"
-            :trend="{ label: trustOrigin }"
-          />
-          <div class="p7-meter__line">
-            <h2>{{ identity.name }}</h2>
-            <p>{{ identity.line }}</p>
-          </div>
-        </div>
-        <p class="p7-meter__status" data-testid="status-line">{{ statusLine }}</p>
-        <!-- 读数瓦片：三档各是一个数 + 一根同刻度的条（原来是一根 3px 的小刻度，第三种画法）。
-             覆盖度那句口径说明放在这一排下面：它是**谁算的**，属于标注，不该把瓦片撑高。 -->
-        <div class="p7-meter__stats">
-          <StatTile
-            v-for="band in confBands"
-            :key="band.key"
-            :value="band.count"
-            :denominator="known.length"
-            :label="band.title"
-          />
-          <StatTile
-            class="p7-meter__coverage"
-            :value="known.length"
-            :denominator="tally.total"
-            label="覆盖度"
-          />
-        </div>
-        <p class="p7-meter__covnote">{{ coverageNote }}</p>
-        <!-- 口径说明是**这一格的脚注**：它解释上面那个数，不是"还有更多内容"。
-             所以用 Foldable 的 static 形态（标题是普通文字、内容永远可见），
-             而不是折叠 —— `Foldable.vue:12-15` 把 static 定为"主信息始终可见"的表达。 -->
-        <Foldable class="p7-meter__how" static variant="inline" title="这个数怎么来的">
-          <p v-if="tally.trustFromBackend">整体可信度直接取后端 <code>overall_confidence</code>，覆盖度取后端 <code>coverage</code>，本页不重算。</p>
-          <p v-else-if="live">后端这次没有给 <code>overall_confidence</code>，所以按已收到的 {{ known.length }} 条取平均（比较确定 1 / 还要核对 0.62 / 依据不足 0.3），再乘覆盖度系数 {{ Math.round(tally.coverage * 100) }}%。这是本页的自算，不是后端口径。</p>
-          <p v-else>演示数据里没有后端的 <code>overall_confidence</code> / <code>coverage</code>，所以这里是本地演示口径：已收到的 {{ known.length }} 条按结实程度取平均（比较确定 1 / 还要核对 0.62 / 依据不足 0.3），再乘覆盖度系数 {{ Math.round(tally.coverage * 100) }}%。真实档案接上后，这里直接显示后端给的数。</p>
-        </Foldable>
-      </div>
+    <section class="c2-profile-stats" aria-label="画像信息概览">
+      <article class="c2-profile-stat"><strong>{{ known.length }}</strong><small>条</small><h2>已经了解</h2><p>画像池共 {{ tally.total }} 条，已收到的信息都在这里</p></article>
+      <article class="c2-profile-stat"><strong>{{ confBands[0]?.count ?? 0 }}</strong><small>条</small><h2>依据充分</h2><p>有正式来源或多处事实印证</p></article>
+      <article class="c2-profile-stat"><strong>{{ confBands[1]?.count ?? 0 }}</strong><small>条</small><h2>还要核对</h2><p>已记录，仍需进一步确认</p></article>
+      <article class="c2-profile-stat"><strong>{{ progress.gap }}</strong><small>条</small><h2>还没聊到</h2><p>补充这些信息，判断会更完整</p></article>
     </section>
+
 
     <ProfileInsights ref="insights" />
 
@@ -1357,6 +1314,11 @@ const identity = computed(() => {
       </div>
     </Foldable>
 
+    <aside class="c2-profile-side" aria-label="画像操作与来源">
+      <section><h2>这份画像你说了算</h2><RouterLink class="btn" to="/chat">补充一条信息<UiIcon name="plus" :size="16" /></RouterLink><button class="btn" :disabled="loading" @click="loadWorkspace">{{ loading ? '正在读取…' : '重新核对档案' }}</button><p>点开一条信息，可以查看依据、修改内容。更正后会标出受影响的判断。</p></section>
+      <section><h2>这 {{ known.length }} 条从哪里来</h2><div v-for="source in SOURCE_GROUPS" :key="source.key" class="c2-source-row"><span>{{ source.label }}</span><span class="c2-source-track" role="meter" :aria-label="source.label" :aria-valuenow="known.filter(row => source.from.includes(row.desc)).length" :aria-valuemax="Math.max(1, known.length)" aria-valuemin="0"><i :style="{width: known.filter(row => source.from.includes(row.desc)).length / Math.max(1, known.length) * 100 + '%'}" /></span><b>{{ known.filter(row => source.from.includes(row.desc)).length }}</b></div></section>
+      <section><h2>{{ identity.name }}</h2><p>{{ identity.line }}</p><p>整体可信度 {{ Math.round(trustShown) }}% · 覆盖 {{ known.length }} / {{ tally.total }}</p><Foldable variant="inline" title="查看计算依据"><p>{{ trustOrigin }}。{{ statusLine }}</p><p>{{ coverageNote }}</p></Foldable></section>
+    </aside>
     <p class="ws-demo-note">{{ live ? '字段与缺口来自本次读取的档案；更正按服务回包保存，需重算标记取自后端。' : '预置人物与来源仅作演示；依赖映射、可信度折算与"需要重算"都是本地演示口径，接上服务后改用后端契约的 dependencies / coverage / overall_confidence。' }}</p>
 
     <!-- 更正是一条信息的小表单（`text` + 两个按钮），不是"从一行钻进去看细节"。

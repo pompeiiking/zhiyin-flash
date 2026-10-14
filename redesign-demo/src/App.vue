@@ -32,15 +32,15 @@ const router = useRouter()
 const palette = ref<InstanceType<typeof CommandPalette> | null>(null)
 const workspaceHeader = ref<InstanceType<typeof AppTopBar> | null>(null)
 const sidebar = ref<InstanceType<typeof DesktopSidebar> | null>(null)
+const mobileNav = ref<InstanceType<typeof WorkspaceNav> | null>(null)
 
 const bare = computed(() => route.meta.public === true)
 const layout = useNavigationLayout()
 /**
- * 桌面形态的阈值与 `lib/layout.ts` 里的 compact（<1000px）不同 —— 契约只允许
- * 768 / 1120 两档（PLAN §2.7），而 `lib/layout.ts` 不在本次改动范围内，
- * 所以壳层按 1120 判断，避免 1000–1119 这段出现"侧栏不渲染、左边却留了 252px"。
+ * C2 外壳与导航共用 layout 的响应式宽度：768 以下底栏，
+ * 768–1023 图标轨，1024 起完整侧栏。用户仍可主动选择移动布局。
  */
-const desktop = computed(() => layout.mode.value === 'desktop' && window.innerWidth >= 1120)
+const desktop = computed(() => layout.mode.value === 'desktop' && !layout.compact.value)
 async function collapseSidebar() {
   layout.setSidebarCollapsed(true)
   await nextTick()
@@ -90,6 +90,10 @@ onMounted(() => {
   document.documentElement.lang = 'zh-CN'
   skin.init()
 })
+watch(() => route.path, async () => {
+  await nextTick()
+  document.querySelector('.app__main')?.scrollTo(0, 0)
+})
 </script>
 
 <template>
@@ -104,7 +108,7 @@ onMounted(() => {
 
     <template v-else>
       <DesktopSidebar v-if="desktop" v-show="!layout.sidebarCollapsed.value" ref="sidebar" @new-chat="newChat" @account="workspaceHeader?.showAccount()" @collapse="collapseSidebar" />
-      <AppTopBar ref="workspaceHeader" @open-palette="palette?.show()" @expand-sidebar="expandSidebar" />
+      <AppTopBar ref="workspaceHeader" @open-palette="palette?.show()" @expand-sidebar="expandSidebar" @open-mobile-menu="mobileNav?.show()" />
       <main class="app__main">
         <!-- 氛围层：与门户同一套语言（一片很淡的品牌色光 + 颗粒），但强度低得多 -->
         <div class="app__atmos" aria-hidden="true" />
@@ -116,7 +120,7 @@ onMounted(() => {
           </RouterView>
         </div>
       </main>
-      <WorkspaceNav v-if="!desktop" />
+      <WorkspaceNav v-if="!desktop" ref="mobileNav" />
     </template>
 
     <CommandPalette ref="palette" />

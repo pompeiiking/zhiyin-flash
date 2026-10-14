@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue'
 import { demo } from '../store'
 import PageHeading from '../components/PageHeading.vue'
-import ActionPlanNav from '../components/ActionPlanNav.vue'
+
 import LiveActionPlan from '../components/LiveActionPlan.vue'
 import AssetNotice from '../components/AssetNotice.vue'
 import TaskList from '../components/TaskList.vue'
@@ -107,7 +107,7 @@ const timeEvidence = computed(
 )
 </script>
 <template>
-<div class="ws-page plan-page journey-page"><PageHeading title="行动计划" :description="scenario.grade + ' · ' + scenario.focus"><RouterLink class="btn btn--primary" to="/home">查看当前任务<UiIcon name="arrow" :size="16" /></RouterLink></PageHeading><ActionPlanNav/><AssetNotice/><LiveActionPlan @busy="planBusy = $event"/><template v-if="!backendDemo.state.liveAction">
+<div class="ws-page plan-page journey-page"><PageHeading title="阶段计划" :description="scenario.grade + ' · ' + scenario.focus"><RouterLink class="btn btn--primary" to="/home">查看当前任务<UiIcon name="arrow" :size="16" /></RouterLink></PageHeading><AssetNotice/><LiveActionPlan v-if="backendDemo.state.dataMode === 'service' || backendDemo.state.liveAction" @busy="planBusy = $event"/><template v-if="!backendDemo.state.liveAction">
 <!-- 空态：`.ws-empty` → EmptyState（MIGRATION §4.2 E4）。整块正文被顶掉，所以显式 heading-level="2"（H5）。 -->
 <section v-if="!backendDemo.state.planAvailable" class="plan-empty" :aria-busy="planBusy"><SkeletonBlock v-if="planBusy" variant="list" :lines="3"/><EmptyState v-else kind="report" :heading-level="2" :next="false" title="阶段计划还没有形成" description="在咨询中明确方向后，再安排阶段目标和任务。"><RouterLink class="btn btn--primary" to="/chat">继续咨询</RouterLink><button class="ws-text-button" type="button" @click="backendDemo.loadPlanSample()">查看阶段计划示例</button></EmptyState></section>
 <!-- G-02：主列 + 右栏。两列与粘性**不在这里重写**：根上的 `journey-page` 让本页加入
@@ -117,11 +117,11 @@ const timeEvidence = computed(
 <template v-else>
 <div class="journey-action-grid">
 <div class="journey-action-main">
-<section class="plan-current"><div class="plan-current__main"><h2>当前安排</h2><StatTile class="plan-current__tile" label="已完成" :value="doneCount" :denominator="totalCount" :trend="{ label: pending.length + ' 件待推进' }"/></div><RouterLink class="ws-text-link" to="/review">查看执行记录<UiIcon name="arrow" :size="16" /></RouterLink></section>
+<section class="c2-profile-stats" aria-label="阶段计划概览"><article class="c2-profile-stat"><strong>{{ Math.min(stages.length,Math.max(1,stages.findIndex(m=>stageDone(m.tasks)<m.tasks.length)+1)) }}</strong><small>/ {{ stages.length }} 步</small><h2>正在走的那一步</h2><p>从当前目标开始，再接上下一阶段</p></article><article class="c2-profile-stat"><strong>{{ doneCount }}</strong><small>/ {{ totalCount }} 条</small><h2>任务已完成</h2><p>{{ pending.length }} 件仍在推进，完成记录独立保留</p></article><article class="c2-profile-stat"><strong>{{ remainingMinutes }}</strong><small>分钟</small><h2>还要动手</h2><p>只计入待执行任务的时间</p></article><article class="c2-profile-stat"><strong>{{ waitingCount }}</strong><small>件</small><h2>正在等结果</h2><p>不与今天可执行的时间混算</p></article></section>
 <!-- 阶段：当前阶段（i===0）static＝永远可见（审计"当前阶段默认收起＝用户看不到自己该做什么"）；
      其余阶段保留可折叠、但默认展开（审计"第二三阶段默认一屏看不到"）。两者同一形状，
      LiveActionPlan 的阶段头用同一套规则，/plan 与 /home 不再漂移。 -->
-<section class="plan-stages"><h2>阶段目标</h2><Foldable v-for="(m,i) in stages" :key="m.id" variant="group" :static="i === 0" :default-open="i > 0" :title="m.title"><template #title><span class="plan-stage__title"><span class="plan-stage__mark fold-index">{{ i + 1 }}</span><span class="plan-stage__copy"><strong>{{ m.title }}</strong></span><StatTile class="plan-stage__tile" label="已完成" :value="stageDone(m.tasks)" :denominator="m.tasks.length" :trend="m.window ? { label: m.window } : null"/></span></template><p>{{ m.note }}</p><TaskList v-if="m.tasks.length" :items="m.tasks"/><p v-else class="ws-muted">此阶段尚未关联执行任务。</p><RouterLink class="ws-text-link" :to="'/chat?topic=' + encodeURIComponent(m.title)">讨论本阶段的下一步<UiIcon name="arrow" :size="16" /></RouterLink></Foldable></section><section v-if="ungrouped.length" class="ws-section"><h2 class="ws-section-title">其他待推进任务</h2><TaskList :items="ungrouped"/></section>
+<section class="plan-stages c2-plan-surface"><h2>{{ stages.length }} 步怎么接力</h2><Foldable v-for="(m,i) in stages" :key="m.id" variant="group" :static="i === 0" :default-open="i > 0" :title="m.title"><template #title><span class="plan-stage__title"><span class="plan-stage__mark" aria-hidden="true" /><span class="plan-stage__copy"><strong>{{ m.title }}</strong></span><StatTile class="plan-stage__tile" label="已完成" :value="stageDone(m.tasks)" :denominator="m.tasks.length" :trend="m.window ? { label: m.window } : null"/></span></template><p class="c2-stage-window">{{ m.window }}</p><p>{{ m.note }}</p><SegMeter v-if="m.tasks.length" :total="m.tasks.length" :lit="stageDone(m.tasks)" :label="m.title + '，已完成 ' + stageDone(m.tasks) + ' / ' + m.tasks.length" /><Foldable v-if="m.tasks.length" variant="inline" :title="'查看这一步的 ' + m.tasks.length + ' 件任务'"><TaskList :items="m.tasks"/></Foldable><p v-else class="ws-muted">此阶段尚未关联执行任务。</p><RouterLink class="ws-text-link" :to="'/chat?topic=' + encodeURIComponent(m.title)">讨论本阶段的下一步<UiIcon name="arrow" :size="16" /></RouterLink></Foldable></section><section v-if="ungrouped.length" class="ws-section"><h2 class="ws-section-title">其他待推进任务</h2><TaskList :items="ungrouped"/></section>
 <section class="plan-sources ws-section"><h2 class="ws-section-title">按任务来源查看</h2><div class="plan-sources__filter" role="group" aria-label="按任务来源筛选"><button v-for="b in originGroups" :key="b.label" type="button" class="plan-sources__chip" :aria-pressed="activeOrigin === b.label" @click="origin = b.label">{{ taskOriginLabel(b.label) }}<b>{{ b.tasks.length }}</b></button></div><TaskList v-if="shownBook?.tasks.length" :items="shownBook.tasks"/><p v-else class="ws-muted ws-section">这一类还没有任务。</p></section>
 </div>
 

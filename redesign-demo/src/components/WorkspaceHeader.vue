@@ -23,14 +23,13 @@ import { activeGroup, labelForPath, PORTAL_LINK } from '../lib/workspace-nav'
  * 390px 上顶栏一次挤着 品牌 + 搜索 40×40 + 皮肤 38×40 + 提醒 40×40 + 账号 34×34，
  * 带子上再挂一颗 56×40 的按钮，**没有一个到 44px**。现在顶栏剩下的每个控件都 ≥44px。
  */
-const emit = defineEmits<{ openPalette: []; expandSidebar: []; openAccount: [] }>()
+const emit = defineEmits<{ openPalette: []; expandSidebar: []; openAccount: []; openMobileMenu: [] }>()
 const router = useRouter()
 const route = useRoute()
 /**
- * 桌面形态与 `lib/layout.ts` 的 compact（<1000px）不是同一个阈值：
- * 契约只允许 768 / 1120 两档（PLAN §2.7），所以这里按 1120 判断。
+ * 与 App/WorkspaceNav 共用一个响应式布局来源，切换宽度时同步更新。
  */
-const desktop = computed(() => navigation.mode.value === 'desktop' && window.innerWidth >= 1120)
+const desktop = computed(() => navigation.mode.value === 'desktop' && !navigation.compact.value)
 const groupLabel = computed(() => activeGroup({ path: route.path, query: route.query })?.label ?? labelForPath(route.path, route.query) ?? '学生空间')
 /**
  * 搜索键帽按平台给，不是照着样张抄一个按不出来的键。
@@ -69,8 +68,8 @@ const themeOptions: { id: ThemeMode; label: string }[] = [
   { id: 'system', label: '跟随系统' },
 ]
 const accentOptions: { id: Accent; label: string; hint: string }[] = [
-  { id: 'blue', label: '河大蓝', hint: '蓝做主色，红只作提醒' },
-  { id: 'red', label: '河大红', hint: '校色红做主色，蓝退为信息色' },
+  { id: 'blue', label: '校徽蓝', hint: '蓝做主色，红只作提醒' },
+  { id: 'red', label: '官网红', hint: '校色红做主色，蓝退为信息色' },
 ]
 const styleOptions: { id: StyleId; label: string; hint: string }[] = [
   { id: 'plain', label: '极简', hint: '小圆角、无阴影、1px 描边' },
@@ -116,7 +115,7 @@ function clearErrorDemo() {
       <button v-if="navigation.sidebarCollapsed.value" ref="expandButton" class="ws-icon-button" aria-label="展开侧栏" title="展开侧栏" aria-controls="student-desktop-sidebar" aria-expanded="false" @click="emit('expandSidebar')"><UiIcon name="sidebar" /></button>
       <span>学生空间</span><span aria-hidden="true">/</span><strong>{{ groupLabel }}</strong>
     </div>
-    <RouterLink v-else class="ws-brand" to="/chat" aria-label="职引，回到对话"><span class="ws-brand__mark" /><strong>职引</strong></RouterLink>
+    <button v-else class="ws-icon-button c2-mobile-menu" aria-label="打开导航" @click="emit('openMobileMenu')"><UiIcon name="menu" :size="20" /></button>
     <!--
       搜索：c2 靶子的顶栏第一件东西就是这个输入框（左放大镜 + 占位文案 + 键帽）。
       它做成 **button** 而不是 input —— 因为它不自己收字：点一下打开的是**已有的命令面板**
@@ -141,14 +140,21 @@ function clearErrorDemo() {
       </button>
       <button class="ws-account" aria-label="账号菜单" @click="openAccount">
         <span class="ws-account__avatar" aria-hidden="true">{{ demo.state.account === 'fresh' ? '新' : STUDENT.name.slice(0, 1) }}</span>
-        <span class="ws-account__label hf-account__label">账号</span>
+        <span class="ws-account__label hf-account__label">{{ demo.state.account === 'fresh' ? '新用户' : STUDENT.name }}</span>
         <UiIcon class="ws-account__chevron" name="chevron" :size="15" />
       </button>
     </div>
   </header>
 
+  <nav class="c2-appearance-bar" aria-label="工作空间外观">
+    <button class="c2-directory-button" @click="emit('openPalette')"><UiIcon name="apps" :size="14" />全部页面</button>
+    <div class="c2-appearance-axis"><span>主色</span><button v-for="o in accentOptions" :key="o.id" :aria-pressed="skin.state.accent === o.id" @click="skin.setAccent(o.id)">{{ o.label }}</button></div>
+    <div class="c2-appearance-axis"><span>主题</span><button v-for="o in themeOptions" :key="o.id" :aria-pressed="skin.state.theme === o.id" @click="skin.setTheme(o.id)">{{ o.label }}</button></div>
+    <div class="c2-appearance-axis"><span>密度</span><button :aria-pressed="skin.state.style !== 'dense'" @click="skin.setStyle('plain')">常规</button><button :aria-pressed="skin.state.style === 'dense'" @click="skin.setStyle('dense')">紧凑</button></div>
+  </nav>
+
   <!-- 账号抽屉：只管账号。身份、演示标识说明、退出。 -->
-  <InfoSheet :open="accountOpen" title="账号" @close="accountOpen = false">
+  <InfoSheet shape="sheet" :open="accountOpen" title="账号" @close="accountOpen = false">
     <p class="ws-person">{{ demo.state.account === 'fresh' ? '新用户' : STUDENT.name }}</p>
     <p class="ws-muted">{{ demo.state.account === 'fresh' ? '个人资料待完善' : scenario.grade + ' · ' + STUDENT.major + ' · ' + STUDENT.school }}</p>
     <p class="ws-demo-note">这是一份示例，用来让你先看清职引能做什么。</p>
@@ -189,7 +195,7 @@ function clearErrorDemo() {
   </InfoSheet>
 
   <!-- 演示设置：独立入口，收纳所有演示开关。账号抽屉里不再有这些。 -->
-  <InfoSheet :open="demoOpen" title="演示设置" @close="demoOpen = false">
+  <InfoSheet shape="sheet" :open="demoOpen" title="演示设置" @close="demoOpen = false">
     <p class="ws-demo-note">下面这些开关只影响这台的演示数据与导航形态，不改变学生看到的功能。</p>
     <label class="ws-field">数据来源
       <select aria-label="数据来源" :value="dataMode" @change="setDataSource">

@@ -19,6 +19,7 @@ import { AccordionRoot, AccordionItem, AccordionHeader, AccordionTrigger, Accord
  */
 const route = useRoute()
 const more = ref(false)
+defineExpose({ show() { more.value = true } })
 /** 与桌面侧栏一致：分组默认全部展开，收起只是用户主动收窄列表。 */
 const openGroup = ref<string[]>(WORKSPACE_GROUPS.map((g) => g.key))
 
@@ -49,7 +50,7 @@ watch(
     </button>
   </nav>
 
-  <InfoSheet :open="more" title="更多功能" @close="more = false">
+  <InfoSheet shape="sheet" :open="more" title="更多功能" @close="more = false">
     <RouterLink class="ws-directory__primary" :to="WORKSPACE_PRIMARY.to" @click="more = false">
       <UiIcon :name="WORKSPACE_PRIMARY.icon" /><span><strong>{{ WORKSPACE_PRIMARY.label }}</strong><small>{{ WORKSPACE_PRIMARY.hint }}</small></span>
       <UiIcon name="arrow" :size="16" />
