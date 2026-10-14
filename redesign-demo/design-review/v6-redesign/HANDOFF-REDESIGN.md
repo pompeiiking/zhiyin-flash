@@ -198,7 +198,11 @@ a914bcf  feat(redesign): 选定 c2-hbu 方向、补齐组件基础设施、把�
 - `vue-tsc` **零错误**；`npm run build` 成功
 - **11 个路由 × 1280 控制台全部干净**（0 error / 0 warning）
 - 全站 `.ws-sheet--wide` / `--inspector` = **0**；`.meter__fill` = **0**
-- **`<44px`：@1280 9→5、@390 17→4**；剩余 3 类为**有意为之或非问题**：`.btn--sm` 82×36（项目自订小档 `--btn-h-sm: 36px`）、`.ws-task__check` 18×18（`::after` 命中区 44×44）、`input.sr-only` 1×1
+- **`<44px`：@1280 9→4、@390 19→4**（10 路由 × 2 档，磁盘复算）；剩余 3 类为**有意为之或非问题**：`.btn--sm` 82×36（项目自订小档 `--btn-h-sm: 36px`）、`.ws-task__check` 18×18（`::after` 命中区 44×44）、`input.sr-only` 1×1
+  > ⚠️ 订正：我先前口头报的 "9→5 / 17→4" **与实测不符**。@390 改前的 19 条里有 10 条是 `.ws-demo-badge`（25×44），已整体消失。这就是本项目的"**Lead 复量也要被复量**"。
+
+- ⚠️ **弹层调用点只迁移了 12/18**：磁盘上只有 12 处传了显式 `shape`，**6 处仍走缺省 `dialog`** —— `AuthLayer:33`、`CommandMenu:45`、`ConversationView:915`、`WorkspaceNav:52`、`WorkspaceHeader:128/169`。其中 **4 处正是原定要改成 `panel`/`sheet` 的，属未做**。
+  > ⚠️ 另一处易被误读：`InfoSheet.vue:18-25` 的注释写"全站 4 个曾经的调用点都已物理删除"——那说的是**旧 prop**（`wide`/`inspector`）被删掉，**不是**"调用点形状都迁移完了"。组件侧已完成，调用点欠 6 处。
 
 ### 5.5 逐页实测（改前 → 改后）
 | 页面 | 关键指标 |
@@ -239,7 +243,7 @@ a914bcf  feat(redesign): 选定 c2-hbu 方向、补齐组件基础设施、把�
 - **门户在桌面**：`PortalProposalView` 仍是 1100/760/360 断点，未对齐 1120/768
 
 ### 6.4 你**不该**做但可能想做的事
-- **不要删全局 `.ws-sheet`** —— 它提供 18 个弹层的 `box-shadow`/`background`/`::backdrop`，而 `InfoSheet.vue` 里**没有**。单独删会让弹层一起透明无遮罩
+- **全局 `.ws-sheet` 是"活依赖"，且应该被修掉而不只是"别删"** —— `background` / `box-shadow` / `::backdrop` **只在全局定义**（`workspace.css:420,422`），`InfoSheet.vue` 里没有。`MIGRATION.md §2.5` 说"删之前先确认已移进 scoped"，**实测没有移**。所以正确处置不是永久保留，而是：**把这些属性搬进 `InfoSheet.vue` 的 scoped，再删全局一族**。删除之前，单独删会让 18 个弹层一起透明无遮罩
 - **不要用跨文件覆盖去改别的文件**（例如 `StudentView.vue` 里写 `:deep(#app .p7-*)`）——这正是本项目"**规范被后加载文件覆盖**"这个系统性病灶的成因（出现 4 次，见 §9）
 - **不要通过改语义令牌去修"有人用错了语义"**（例如为修深色骨架黑带去调 `--c-primary-weak`）
 
