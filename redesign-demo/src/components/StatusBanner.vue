@@ -286,6 +286,22 @@ onBeforeUnmount(stopTimer)
   margin-top: var(--sp-3);
 }
 
+/* 【2026-10-14 · wave2】动作位必须 ≥44px 高。
+   病灶：`.btn` / `.ws-text-button` 的全局 min-height 是 42px / 40px 一档（DESIGN-REVIEW-V7
+   判决 7 的"控件高度无律"），实测动作按钮只有 **112×40**，低于 CRAFT-BRIEF:322,389 的 44px 硬约束；
+   这条状态条是 4+ 个页面要落的反馈位，40px 会被继续复制。
+   为什么这里用 `min-height` 而不是 `height`：状态条自己会在 message 换行、动作折行时变高，
+   动作位是**内容**不是布局骨架，写死高度会让"正在重试…"这类更长的文案被裁掉。
+   为什么不用 `::after` 撑命中区（关闭按钮用的那招）：这两个是**可见按钮**，
+   用户按的是它的边界，视觉高度本身就是判据 —— 撑命中区只会让"看起来 40px、其实 44px"
+   继续存在于代码里，下一个照抄的人还是抄到 40。 */
+.status-banner__actions .btn,
+.status-banner__actions .ws-text-button {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
 .status-banner__close {
   flex: none;
   position: relative;

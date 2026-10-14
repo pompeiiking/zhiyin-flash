@@ -467,21 +467,33 @@ html[data-accent='red'] .dialogue-page {
 /* =============================================================================
  * 加载态：骨架的形状就是即将出现的块（结论 → 支撑 → 说明）
  * -----------------------------------------------------------------------------
- * 呼吸用同一段主色条纹横移，节奏一致 —— 读起来是"一块正在生成"，
- * 不是三个各自闪烁的灰框。
+ * 【2026-10-14 · 组件迁移】原来这里是手写的 `.chat-skeleton`（5 个 span + 一段
+ * 主色条纹横移）。现在换成 `components/SkeletonBlock.vue`，本页只负责两件事：
+ *   1. **宽度**：骨架仍是 520px 上限（原来的实测口径）；
+ *   2. **刷新态（overlay）的位置**：`v-if="isCovered(t.id)"` 把骨架挂进**上一条回答的
+ *      body 里**（`inset: 0` 铺满），于是那条回答一个节点都没被摘掉，只是被盖住 ——
+ *      这正是 `SkeletonBlock.vue:19-26` 要求的用法，而"内容还在"也因此可实测。
+ * 覆盖宽度：盖层**必须铺满被盖的那一列**（`inset: 0` 的自然结果）。试过把它收到
+ * 520px（原来手写骨架的宽度），实测那条回答右缘会露出约 91px 的正文残影 ——
+ * "内容还在"于是变成了"内容露在外面"，比不盖更难看。收窄没有意义：
+ * 骨架条自己的宽度由内距决定（488px，与手写版一致），盖层宽出来的是白底。
+ * `.chat-skeleton-cover` 是那个盖层的定位上下文附加项：它必须同时满足
+ *   · 铺满被盖的 body（inset 来自组件，`.chat-turn__body` 是 relative）；
+ *   · **不盖住"谁在说"**：名字行留在盖层之上（.chat-who 那一条），
+ *     否则等待期间连顾问的名字都消失，"在场感"反而被自己的加载态吃掉；
+ *   · 盖层淡入（不是突然出现），所以覆盖那一刻读起来是"这块在刷新"。
+ * 骨架自己的扫光、逐行错相、reduced-motion 降级都在组件里，本文件不再重复一套，
+ * 免得同屏出现两种骨架节拍（SkeletonBlock.vue:26-29 点名的正是这件事）。
  * ========================================================================== */
-.chat-skeleton { display: flex; flex-direction: column; gap: 10px; width: min(520px, 100%); padding: var(--sp-4); border: var(--bw-1) solid var(--c-border); border-radius: var(--r-lg); background: var(--c-surface); }
-.chat-skeleton > span { display: block; position: relative; overflow: hidden; border-radius: var(--r-sm); background: var(--c-surface-3); }
-.chat-skeleton > span::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, var(--c-primary-weak), transparent); transform: translateX(-100%); animation: skel-sweep 1.4s var(--ease-in-out) infinite; }
-.chat-skeleton__lead { height: 26px; width: 62%; }
-.chat-skeleton__line { height: 13px; width: 100%; }
-.chat-skeleton__line--short { width: 72%; }
-.chat-skeleton__cards { display: flex; gap: 8px; height: 30px; background: transparent !important; overflow: visible !important; }
-.chat-skeleton__cards::after { display: none; }
-.chat-skeleton__cards i { position: relative; overflow: hidden; width: 86px; border-radius: var(--r-sm); background: var(--c-surface-3); }
-.chat-skeleton__cards i::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, var(--c-primary-weak), transparent); transform: translateX(-100%); animation: skel-sweep 1.4s var(--ease-in-out) infinite; }
-.chat-skeleton__cards i:nth-child(2)::after { animation-delay: .12s; }
-@keyframes skel-sweep { to { transform: translateX(100%); } }
+.chat-skeleton-block { display: flex; flex-direction: column; gap: 10px; width: min(520px, 100%); }
+.chat-skeleton-block > .sk { width: 100%; }
+/* 盖层的定位上下文：`inset: 0` 必须相对**这一条回答的 body** 解，否则会跑到
+   `.exp-conversation-body`（那是全页的 relative 祖先）上去，盖层就与它要盖的内容错位。 */
+.chat-turn__body { position: relative; }
+/* 名字行必须浮在盖层之上：盖住内容 ≠ 盖住"谁在说" */
+.chat-turn__body > .chat-who { position: relative; z-index: 2; }
+.chat-skeleton-cover { animation: sk-cover-in var(--dur-2) var(--ease-out) both; }
+@keyframes sk-cover-in { from { opacity: 0; } to { opacity: 1; } }
 .chat-skeleton__label { margin-top: 2px; color: var(--c-text-3); font-size: var(--fs-12); }
 
 /* =============================================================================
@@ -721,10 +733,11 @@ html[data-accent='red'] .dialogue-page {
   .chat-block,
   .chat-card { animation: chat-swap 120ms linear both; }
   .chat-caret { animation: none; }
-  .chat-skeleton > span::after,
-  .chat-skeleton__cards i::after { animation: none; background: none; }
-  .chat-skeleton > span,
-  .chat-skeleton__cards i { background: var(--c-surface-3); }
+  /* 骨架：原来那两条手写条纹的降级随 .chat-skeleton 一起删掉了 ——
+     SkeletonBlock 自己在组件内把扫光停成静态灰块（SkeletonBlock.vue:320-327，
+     同样是"降级到可用形态"而不是 display:none）；刷新态的盖层也不再淡入，
+     直接出现（信息一条不少，只是没有过程）。 */
+  .chat-skeleton-cover { animation: none; }
   .chat-bars__fill { animation: none; }
   .btn__fx { display: none; }
   .chat-block__more svg { transition: none; }

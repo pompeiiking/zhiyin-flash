@@ -17,6 +17,9 @@ import AgentAvatar from '../components/AgentAvatar.vue'
 import EvidenceList from '../components/EvidenceList.vue'
 import ReadableText from '../components/ReadableText.vue'
 import AssetNotice from '../components/AssetNotice.vue'
+import Foldable from '../components/Foldable.vue'
+import SkeletonBlock from '../components/SkeletonBlock.vue'
+import StatTile from '../components/StatTile.vue'
 const route = useRoute()
 const turns = computed(() => demo.state.chatTurns)
 const restoredDraft = backendDemo.getDraft(demo.state.currentSessionId)
@@ -493,6 +496,30 @@ function append(turn: Omit<ChatTurn, 'id'>, animate = true) {
   }
   if (followTail.value) void scrollToEnd()
 }
+
+/* =============================================================================
+ * 等待回复时的加载态：**骨架盖在已有内容上，而不是把内容摘掉**
+ * -----------------------------------------------------------------------------
+ * `SkeletonBlock.vue:19-26` 定的规矩："组件自己不摘内容；刷新时用 overlay 盖在
+ * 仍在 DOM 的内容上，不要用 v-if 摘掉"。本页最容易犯这个错的时刻恰好是
+ * **第二次提问之后的等待**：此时上一条完整回答已经在页面上，如果为了放骨架
+ * 而把它 v-if 掉，用户就会看到"读到一半的回答凭空消失、再重建"。
+ *
+ * 所以骨架挂在**上一条顾问回答的 body 里**（`inset: 0` 铺满它），那条回答的每个
+ * 节点都还在 DOM 里，只是暂时被盖住。三点做不到就退化成普通骨架：
+ *   · 没有任何回答可盖（首轮提问）→ 不挂 overlay；
+ *   · 失败重试路径（`?demo-error=1`）→ 不挂（那一路要的是"重试"这个动作，不是骨架）；
+ *   · 上一条就是失败记录 → 不挂（盖住一条错误信息等于把问题藏起来）。
+ * 头像与「正在分析你的问题」在 body 外面，所以盖住的只有内容，不是"人在不在"。
+ * ========================================================================== */
+/** 要盖住的那条回答：最后一条、不是失败记录、此刻也没在逐字输出（也就是已经出完了） */
+const coveredTurn = computed(() => {
+  if (!thinking.value || errorVisible.value) return null
+  const last = [...turns.value].reverse().find(t => t.from === 'host' && !t.handoff)
+  if (!last || (failureTurn.value && failureTurn.value.id === last.id)) return null
+  return last.id
+})
+function isCovered(id: string): boolean { return coveredTurn.value === id }
 function reply(content: string, animate = true) {
   let response: Omit<ChatTurn, 'id'>
   let why = '继续了解你的情况'
@@ -796,33 +823,43 @@ onUnmounted(() => {
 
               <div v-if="t.materials?.length" class="desk-attachments"><span v-for="m in t.materials" :key="m.id" class="desk-attachment"><UiIcon name="attachment" :size="16" />{{ m.name }} · 演示附件</span></div>
               <footer v-if="t.from === 'host'" class="exp-message-tools dialogue-message__tools"><button class="exp-copy" :aria-label="copiedId === t.id ? copyStatus : '复制顾问回复'" :title="copiedId === t.id ? copyStatus : '复制顾问回复'" :disabled="isLive(t.id)" @click="copyReply(t.id, t.text)"><UiIcon name="copy" :size="16" />{{ copiedId === t.id ? copyLabel : '复制' }}</button></footer>
+              <!-- 刷新态：Waiting 时用骨架盖住上一条回答（内容仍在 DOM 里，不是被摘掉）。
+                   用 t.id 当 key 是为了让每次等待都从"透明"开始播一次淡入：换 key 会重建节点，
+                   leave-transition 拿不到旧节点，于是留下的只有 enter（纯淡入，没有中间态）。 -->
+              <SkeletonBlock v-if="isCovered(t.id)" :key="'sk-' + t.id" class="chat-skeleton-cover" variant="text" :lines="3" overlay />
             </div>
           </template>
         </article>
       </template>
+      <!-- 失败态（另一条触发路径）：?demo-error=1 让本轮必然失败，可重试。界面上没有"错误态演示"按钮。
+           它是**流里的一条**，不是某条发言的一部分 —— 所以不要塞进上面那条 article 的 body，
+           否则它会跑在"复制"工具条下面，读起来像那条回答的脚注。 -->
+      <div v-if="errorVisible && !showFailure" class="chat-error" role="alert">
+        <div class="chat-error__head"><UiIcon name="info" :size="18" /><strong>这次没有生成成功</strong></div>
+        <p>{{ errorText }}你的上一条消息已保留，可以直接重试。</p>
+        <div class="chat-error__actions"><button class="btn btn--primary" type="button" @click="retry">重试这一条<UiIcon name="arrow" :size="17" /></button><button class="btn" type="button" @click="errorVisible = false">先不用了</button></div>
+      </div>
       <!-- 加载态：等待回复时是骨架，骨架的形状就是即将出现的块（结论 → 支撑 → 说明）。
            这一行现在也是「在场感」的主要落点之一：顶端身份牌删掉之后，
            "顾问正在想"必须在话语即将发生的位置被看见 —— 头像的 thinking 状态、
-           名字旁边的状态词、以及骨架本身，三件事说的是同一句话。 -->
+           名字旁边的状态词、以及骨架本身，三件事说的是同一句话。
+           骨架走 SkeletonBlock（组件自己是 aria-hidden），加载状态由这一行的 role="status" 表达。
+           首轮提问没有可盖的回答，这一份骨架就是普通形态（不 overlay）。 -->
       <div v-if="thinking" class="chat-turn chat-turn--host chat-turn--thinking" role="status">
         <!-- 状态不再写死：thinking 行与消息级头像、.chat-who__state 用的是同一个 hostState -->
         <AgentAvatar class="chat-turn__avatar" :agent="agentKeyOf(host)" :size="40" :state="hostState" />
         <div class="chat-turn__body">
           <p class="chat-who"><strong>{{ consultantLabel(host) }}</strong><span>{{ agentOf(agentKeyOf(host)).role }}</span><span class="chat-who__state">{{ presenceLabel }}</span></p>
-          <div class="chat-skeleton" aria-hidden="true">
-            <span class="chat-skeleton__lead" />
-            <span class="chat-skeleton__line" />
-            <span class="chat-skeleton__line chat-skeleton__line--short" />
-            <span class="chat-skeleton__cards"><i /><i /></span>
-          </div>
+          <!-- 首轮：没有内容可盖 → 普通骨架。已经有回答时这一份不渲染（那一条被 overlay 盖住），
+               所以任何时刻屏幕上只有一份骨架 —— 这是 overlay 方案必须守住的唯一约束。 -->
+          <template v-if="!coveredTurn">
+            <div class="chat-skeleton-block">
+              <SkeletonBlock variant="text" :lines="3" />
+              <SkeletonBlock variant="card" :columns="2" />
+            </div>
+          </template>
           <p class="chat-skeleton__label">正在分析咨询内容…（回答会分成结论、依据与行动几块，逐块落位）</p>
         </div>
-      </div>
-      <!-- 错误态（另一条触发路径）：?demo-error=1 让本轮必然失败，可重试。界面上没有"错误态演示"按钮 -->
-      <div v-if="errorVisible && !showFailure" class="chat-error" role="alert">
-        <div class="chat-error__head"><UiIcon name="info" :size="18" /><strong>这次没有生成成功</strong></div>
-        <p>{{ errorText }}你的上一条消息已保留，可以直接重试。</p>
-        <div class="chat-error__actions"><button class="btn btn--primary" type="button" @click="retry">重试这一条<UiIcon name="arrow" :size="17" /></button><button class="btn" type="button" @click="errorVisible = false">先不用了</button></div>
       </div>
     </div></div>
     <button v-if="turns.length && !followTail" class="exp-latest" @click="goToLatest"><UiIcon name="down" :size="16" />回到最新消息</button></div>
@@ -854,10 +891,25 @@ onUnmounted(() => {
       <p v-if="composerNote" id="composer-note" class="composer-note">演示对话 · 附件只记录名称，不上传；对话内容是虚构的演示数据，不代表真实档案。</p>
       <p v-if="stalled" class="composer-stalled" role="status">已停止生成。已生成的内容保留在对话里，可以继续追问或重新发送。</p>
     </div>
-    <InfoSheet inspector :open="panel !== null" :title="panel === 'profile' ? '个人画像' : panel === 'sessions' ? '历史对话' : '咨询成果'" @close="panel = null">
-      <template v-if="panel === 'profile'"><p class="ws-muted">已有 {{ progress.known }} 条信息，待补充 {{ progress.gap }} 条。可通过咨询继续完善。</p><div class="ws-progress"><span :style="{ '--value': progress.known / progress.total }" /></div><dl class="ws-stack"><div v-for="f in known" :key="f.key"><dt class="ws-muted">{{ f.label }}</dt><dd>{{ demo.state.profileEdits[f.key] ?? (f.key === 'grade' ? demo.use.scenario.value.grade : f.value) }}</dd></div></dl><RouterLink class="ws-text-link" to="/profile">查看完整档案<UiIcon name="arrow" :size="16" /></RouterLink></template>
+    <!-- shape 显式写成 sheet：`inspector` 是 @deprecated 的旧 prop，而 InfoSheet.vue:54-58 的
+         `resolvedShape` 让 `inspector` 的优先级**高于** `shape` —— 两个都传的话 shape 会被静默吃掉。
+         所以这里只留 `shape`（实测计算样式见交付说明：类名里不再有 ws-sheet--inspector）。 -->
+    <InfoSheet :shape="'sheet'" :open="panel !== null" :title="panel === 'profile' ? '个人画像' : panel === 'sessions' ? '历史对话' : '咨询成果'" @close="panel = null">
+      <template v-if="panel === 'profile'"><StatTile label="已知信息" :value="progress.known" :denominator="progress.total" unit="条" :trend="{ label: '还有 ' + progress.gap + ' 项待补充' }" /><p class="ws-muted">可通过咨询继续完善。</p><dl class="ws-stack"><div v-for="f in known" :key="f.key"><dt class="ws-muted">{{ f.label }}</dt><dd>{{ demo.state.profileEdits[f.key] ?? (f.key === 'grade' ? demo.use.scenario.value.grade : f.value) }}</dd></div></dl><RouterLink class="ws-text-link" to="/profile">查看完整档案<UiIcon name="arrow" :size="16" /></RouterLink></template>
       <template v-else-if="panel === 'sessions'"><p class="ws-muted">按咨询主题查找历史会话，原有对话内容会保留。</p><button v-for="s in backendDemo.state.sessions" :key="s.task_id" class="desk-session" :aria-pressed="demo.state.currentSessionId === s.task_id" :disabled="thinking" @click="selectSession(s.task_id)"><UiIcon name="chat" /><span><strong>{{ s.task_name }}</strong><small>{{ s.stage_label }} · {{ s.status === 'completed' ? '已结束' : s.status === 'paused' ? '已暂停' : '进行中' }}</small></span><UiIcon name="arrow" :size="16" /></button><p v-if="!backendDemo.state.sessions.length" class="ws-empty ws-muted">暂无历史会话。创建咨询后可在此查看。</p></template>
-      <template v-else><section class="ws-section"><h3>画像与相关成果</h3><p class="ws-muted">{{ progress.known }} 项已知信息 · {{ progress.gap }} 项待补充</p><nav class="ws-related"><RouterLink to="/profile" @click="panel=null">核对个人画像与来源</RouterLink><RouterLink to="/report" @click="panel=null">阅读诊断与依据</RouterLink><RouterLink to="/directions" @click="panel=null">比较方向方案</RouterLink></nav><AssetNotice/></section><h3 class="ws-section-title">已形成的行动建议</h3><ul class="ws-mini-list"><li v-for="t in planned" :key="t.id">{{ t.title }} · {{ t.minutes || 0 }} 分钟</li><li v-if="!planned.length">咨询形成具体行动后，将在此显示。</li></ul><details v-if="handoffs.length" class="ws-fold"><summary>顾问交接记录<UiIcon name="chevron" /></summary><ul class="ws-mini-list"><li v-for="h in handoffs" :key="h.to + h.why"><strong>{{ consultantLabel(h.to) }}</strong><p>{{ h.why }}</p></li></ul></details><button v-if="activeTheory" class="ws-text-button" @click="theoryOpen = true">方法依据：{{ activeTheory.name }}<UiIcon name="arrow" :size="16" /></button><RouterLink class="ws-text-link" to="/home">查看行动计划<UiIcon name="arrow" :size="16" /></RouterLink></template>
+      <template v-else>
+        <section class="ws-section"><h3>画像与相关成果</h3><StatTile label="已知信息" :value="progress.known" :denominator="progress.total" unit="条" /><nav class="ws-related"><RouterLink to="/profile" @click="panel=null">核对个人画像与来源</RouterLink><RouterLink to="/report" @click="panel=null">阅读诊断与依据</RouterLink><RouterLink to="/directions" @click="panel=null">比较方向方案</RouterLink></nav><AssetNotice/></section>
+        <!-- 卡片头已经写着「已形成的行动建议」，这块只承担内容，避免重复一个标题 -->
+        <StatTile label="已形成的行动建议" :value="planned.length" unit="条" />
+        <ul class="ws-mini-list"><li v-for="t in planned" :key="t.id">{{ t.title }} · {{ t.minutes || 0 }} 分钟</li><li v-if="!planned.length">咨询形成具体行动后，将在此显示。</li></ul>
+        <!-- 交接记录：DESIGN-LANGUAGE §8 写死"交接是默认展开的说明卡"，所以这里用 `static`
+             （不是"记得加折叠"，而是明确它始终可见）。`v-if` 只决定有没有这段记录，不是开合。
+             Foldable 的 static 头是 h3 + 面板留白，与这一栏别的小标题同档。 -->
+        <Foldable v-if="handoffs.length" static variant="inline" title="顾问交接记录" :count="handoffs.length">
+          <ul class="ws-mini-list"><li v-for="h in handoffs" :key="h.to + h.why"><strong>{{ consultantLabel(h.to) }}</strong><p>{{ h.why }}</p></li></ul>
+        </Foldable>
+        <button v-if="activeTheory" class="ws-text-button" @click="theoryOpen = true">方法依据：{{ activeTheory.name }}<UiIcon name="arrow" :size="16" /></button><RouterLink class="ws-text-link" to="/home">查看行动计划<UiIcon name="arrow" :size="16" /></RouterLink>
+      </template>
       <p class="ws-demo-note">{{ STUDENT.name }}的预置示例，不代表你的真实档案。</p>
     </InfoSheet>
     <InfoSheet :open="theoryOpen" :title="activeTheory?.name ?? '方法依据'" @close="theoryOpen = false"><p class="ws-muted">方法卡示例 · 来自后端的理论卡配置</p><p style="margin-top: var(--sp-4)">{{ activeTheory?.summary }}</p><h3 class="ws-section-title" style="margin-top: var(--sp-5)">应用说明</h3><p style="margin-top: var(--sp-3)">{{ activeTheory?.product_usage }}</p></InfoSheet>

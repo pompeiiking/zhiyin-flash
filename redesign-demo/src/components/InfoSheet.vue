@@ -15,8 +15,14 @@
  * 关闭时浏览器只把焦点丢回 body（Chrome 对 showModal 的既有行为），所以**不能依赖原生机制**，
  * 必须打开时显式记住 document.activeElement、关闭时显式还回去。
  *
- * 向后兼容：`wide` / `inspector` 两个旧 prop 保留，且优先级高于 shape —— 现有 12 处调用
- * 一个参数都不改也照常工作（不传任何形态相关 prop 时 shape 缺省 'dialog'，与旧居中形态一致）。
+ * 【2026-10-14 · wave2】`wide` / `inspector` 两个 @deprecated prop 与 `resolvedShape` 已删除。
+ * 为什么必须删（两条实测，缺一条都会让删 prop 看起来"还能用"）：
+ *   ① `wide` **静默盖过** `shape`：写 `shape="sheet" wide` 时 DOM 拿到的是 `ws-sheet--panel`，
+ *      几何实测 800×852 居中 —— 传 shape 的人以为形态改了，其实没改；
+ *   ② Vue 对 Boolean prop 的处理是「属性存在即为真」：`:wide="false"` 会渲染成 `wide="false"`
+ *      **属性**，属性存在即被当作 true → **想关也关不掉**。
+ * 全站 4 个曾经的调用点（AcademicView / IntelView / ProfileInsights / ConversationView）
+ * 都已物理删除这两个 prop；删 prop 前 grep 复核这两个 prop 的用法命中数 = 0（见交付说明）。
  */
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import UiIcon from './UiIcon.vue'
@@ -28,18 +34,12 @@ const props = withDefaults(defineProps<{
   title: string
   /** 形态：dialog 确认/表单（居中窄）、sheet 抽屉/面板（桌面右侧、小屏底部）、panel 大面板（桌面宽、小屏全屏） */
   shape?: Shape
-  /** @deprecated 旧 prop：宽版 → 等价于 shape="panel" */
-  wide?: boolean
-  /** @deprecated 旧 prop：检查器 → 等价于 shape="sheet" */
-  inspector?: boolean
   /** 是否允许向下拖拽关闭（只有 sheet / panel 在底部面板形态下生效） */
   draggable?: boolean
   /** 说明文字，挂到 aria-describedby，让读屏先听到"这个弹层是干什么的" */
   description?: string
 }>(), {
   shape: 'dialog',
-  wide: false,
-  inspector: false,
   draggable: true,
   description: '',
 })
@@ -50,12 +50,10 @@ const el = ref<HTMLDialogElement | null>(null)
 const inner = ref<HTMLElement | null>(null)
 const bodyId = `info-sheet-body-${Math.random().toString(36).slice(2, 8)}`
 
-/* 旧 prop 优先：保证 12 处不改参数时的形态与改造前一致 */
-const resolvedShape = computed<Shape>(() => {
-  if (props.inspector) return 'sheet'
-  if (props.wide) return 'panel'
-  return props.shape
-})
+/* 形态只有一个来源：`shape`。旧的 `wide` / `inspector` 与它们组成的优先级链整体删除
+   （见文件头两条实测）。删掉这一层不只是清理：它原来是一条**静默覆盖**链，
+   留着就等于给"以后有人传了 shape 又被旧 prop 盖掉"留了入口。 */
+const resolvedShape = computed<Shape>(() => props.shape)
 
 /* 是否为"小屏底部面板形态"。用 JS 判断只为手势；视觉全在 CSS 媒体查询里，
    这样窗口在 768px 边界来回拖时不会出现"JS 说底部、CSS 说右侧"的错位。 */
@@ -209,7 +207,7 @@ function onDragEnd(event: PointerEvent) {
     class="ws-sheet"
     :class="[
       `ws-sheet--${resolvedShape}`,
-      { 'ws-sheet--wide': wide, 'ws-sheet--inspector': inspector, 'is-dragging': dragging },
+      { 'is-dragging': dragging },
     ]"
     :aria-label="title"
     :aria-describedby="description ? `${bodyId}-desc` : undefined"

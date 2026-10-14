@@ -4,8 +4,17 @@ import { onUnmounted, ref, watch, type Ref } from 'vue'
  * 动效小工具。
  *
  * 两个原则写在最前面，因为它们决定了这里**没有**什么：
- *   1. 只用 CSS 能做好的，就用 CSS（见 base.css 的 .stagger / .just-changed / .meter__fill）。
+ *   1. 只用 CSS 能做好的，就用 CSS（见 base.css 的 .stagger / .just-changed，
+ *      以及 MeterRow.vue 的 .mtr__fill —— 后者用 width + transition，无副作用）。
  *      这里只放 CSS 做不到的两件事：数字滚动、逐字流式。
+ *      【2026-10-14 · wave2】这里原来引用的是 `base.css` 的 `.meter__fill`。那个零件已整段删除
+ *      （8 处定义 / 0 处使用），而且它的写法本身就是坏范例：
+ *      `transform: scaleX(var(--meter, 0))` 的**缺省值是 0** —— 任何拿到那个类名却没同时设
+ *      `--meter` 的元素会被压成 0 宽，`getComputedStyle` 仍如实报 `width: 330px`，
+ *      屏幕上什么都没有（现场证据见 `components/charts/MeterRow.vue:19-24`）。
+ *      换成 `.mtr__fill` 不只是换个名字：`width` + `transition` 不会连带缩放
+ *      `border-radius` 与 `background`，也不会在漏传变量时静默归零。
+ *      读到这段的人请注意：**不要把 `.meter__fill` 当范例加回来**。
  *   2. 一天看几十次的东西不动（导航条、按钮、列表项自身）；动的是"数字变了""话正在出来"。
  */
 

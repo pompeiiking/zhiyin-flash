@@ -93,6 +93,42 @@
  * 品牌字靠字重与字号立它，不靠字距。 */
 .desk-brand strong { display: block; font-size: var(--fs-20); letter-spacing: 0; font-weight: 600; line-height: 1.3; }
 .desk-brand div > span { display: block; font-size: var(--fs-12); color: var(--c-text-3); margin-top: 7px; }
+
+/* ===========================================================================
+ * 【2026-10-14 · 全局样式遗留 1】共享外壳里"能读的导航文字只有 12px"的逐条判定
+ * ---------------------------------------------------------------------------
+ * 判据（两条都要过才算"标注"，否则算正文）：
+ *   ① **可读性**：它是不是"用户要靠它读懂一句话/一个名字"？（是 → 正文档 14px）
+ *   ② **可操作性**：它有没有点击/跳转目标？（有 → 控件文字，按 CRAFT-BRIEF 4.1 的
+ *      「次要信息 / 控件 = 14px」）
+ * 只满足"短、常在、不用读全"的，才是标注档 12px —— tokens.css 登记 12px 的用途是
+ * 「来源 / 时间 / 序号 / 计数 / 徽章 / 刻度 / chip」，判据是可核对的：**去掉它，用户不会误解界面。**
+ *
+ * 逐条：
+ *   · `.desk-brand div > span`「生涯规划与就业指导」→ **保留 12px（标注）**。
+ *     判据②不过：它不是链接（父级 `.desk-brand` 的 link 是品牌名与图标），只是品牌行下方的一行从属说明。
+ *     判据①也偏弱：品牌名的落点是 `strong`（20px），这行是注解。另有一条硬约束——
+ *     侧栏实测内宽 224px、该文本行宽 w=106px；12px 时它折成两行（h=41px），14px 会变三行，
+ *     把 `.desk-brand` 从 73.8px 撑到 90px 以上，侧栏首屏导航要往下让位。
+ *   · `.desk-location`（顶栏「学生空间 / 咨询对话」）→ **保留 12px（标注）**。
+ *     判据②不过：两段都不是链接，是"我在哪"的一次性定向信息，读一次就不再读。
+ *     而且它是**一个复合标签**：两段 + 分隔符总宽只有 135px，靠"上方只有它一段文字"获得注意力，
+ *     不靠字号。正文档（14px）实测会把当前项 `strong` 提到 14→16px（它已经在 14px），
+ *     于是顶栏出现"面包屑比页标题更响"的层级翻转。
+ *   · `.ws-inbox-trigger span`（收件箱角标数字）→ **保留 12px（序号/计数）**。
+ *     这正是 tokens.css 12px 登记表里的"计数/徽章"，判据是"去掉它用户不会误解界面"的反面：
+ *     它存在的意义就是"有个数"，不是给人读一句话。它靠 --c-attention 红与 600 字重被看见，
+ *     不靠字号；提到 14px 会让它在 44px 图标按钮上比图标本身更重。
+ *   · `.ws-bookmark`（窄屏浮底栏的 5 个导航标签：对话/行动/画像/方向/更多）→ **改 12px → 14px（正文）**。
+ *     两条判据都过：它是 `RouterLink` / `<button>`（可操作），文字是每个页面的名字（要读懂），
+ *     而且它是**窄屏唯一的主导航**——底栏那 5 个词就是整个信息架构。
+ *     同族已经有先例：桌面侧栏 `.desk-link`（14px）、顶栏 `.ws-account`（14px），
+ *     以及本文件 `.ws-demo-badge` 之外的桌面 `.ws-bookmark`（本来就是 14px）。
+ *     也就是说改前是"同一组导航词，桌面 14px、窄屏 12px"——这不是有意分档，是漏改。
+ *     高度同时从 60.4px 收到 44px（见文件末窄屏段），底栏总高落到 54px。
+ * ======================================================================== */
+/* 骨架高光：**不改 dialogue.css**（那个文件归另一个 agent）。
+ * 这里用比 dialogue.css 更高的特异度压回正确的高光色，理由与数值见文件末「骨架高光」段。 */
 .desk-brand__symbol { width: 28px; height: 32px; position: relative; flex: none; }
 .desk-brand__symbol span { position: absolute; width: 12px; height: 12px; border: 2px solid var(--c-primary); border-radius: 4px; }
 .desk-brand__symbol span:nth-child(1) { top: 0; left: 0; border-color: var(--c-attention); }
@@ -124,7 +160,15 @@
 .desk-link[aria-current='page'] svg { color: var(--c-primary); }
 .desk-link__dot { width: 5px; height: 5px; border-radius: 50%; background: var(--c-primary); margin-left: auto; }
 .desk-footer { margin-top: auto; padding: 18px 10px 0; border-top: 1px solid var(--c-border); }
-.desk-person { display: flex; align-items: center; gap: 9px; min-height: 44px; color: var(--c-text); text-decoration: none; }
+/* 【2026-10-14 · 全局样式遗留 4】原为 min-height: 44px，实测 46.2px：
+   里面有两行文字（strong 14px + small 12px），min-height 挡不住内容把它撑高，
+   于是它比同屏别的按钮高出 2.2px —— 这正是"控件高度不齐"最小的一种形态（2px 也叫不齐）。
+   它不是按钮是有原因的：`.desk-person` 的 strong/small 都是 `display: block` 的块级内容，
+   定高会切掉第二行。所以改法是**把两行压进 44px 而不是定高**：line-height 收到 1.3/1.2。
+   这样它落在 44px 这一档，而两行文字本身不变字号、不变颜色。 */
+.desk-person { display: flex; align-items: center; gap: 9px; min-height: 44px; height: 44px; color: var(--c-text); text-decoration: none; }
+.desk-person strong { line-height: 1.3; }
+.desk-person small { line-height: 1.2; }
 .desk-person:hover { text-decoration: none; color: var(--c-primary); }
 .desk-person__avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--c-primary-weak); color: var(--c-primary); font-size: var(--fs-14); display: grid; place-items: center; flex: none; }
 .desk-person > span:nth-child(2) { min-width: 0; flex: 1; }
@@ -144,7 +188,16 @@
 .desk-account-grade { margin: 24px 0; }
 .desk-account-grade .grade { margin-top: 8px; }
 .desk-section-nav { display: flex; align-items: center; gap: 24px; border-bottom: 1px solid var(--c-border); margin-bottom: 28px; overflow-x: auto; }
-.desk-section-nav a { color: var(--c-text-3); font-size: var(--fs-14); padding: 0 0 12px; border-bottom: 2px solid transparent; white-space: nowrap; }
+/* 【2026-10-14 · wave2】`/review` 的这两个页签实测 `70×38` / `56×38` —— 是全站
+   **唯一一组既不是按钮、也不是 `.ws-subnav`** 的 <44px 命中区，所以任务书里按名称
+   点的那条（`.ws-subnav a` @390）在实测里其实是这一条。
+   为什么加在 `.desk-section-nav a` 而不是 `.ws-subnav a`：两条导航是分开的规则，
+   `/review` 这一页**根本不渲染** `.ws-subnav`（实测 `document.querySelector('.ws-subnav')` = null），
+   所以只改 `.ws-subnav` 对 `/review` 的 8→9 没有任何作用。
+   `min-height` + `align-items: center` 的写法：页签的视觉是"文字 + 下划线"，
+   用 min-height 撑开命中区、用 flex 居中让文字停在中间，下划线仍贴在容器底边，
+   页签的**视觉高度与观感不变**，只有命中区从 38 变 44。 */
+.desk-section-nav a { display: inline-flex; align-items: center; min-height: 44px; color: var(--c-text-3); font-size: var(--fs-14); padding: 0 0 12px; border-bottom: 2px solid transparent; white-space: nowrap; }
 .desk-section-nav a[aria-current='page'] { color: var(--c-text); border-color: var(--c-primary); font-weight: 500; }
 .desk-profile-tabs { margin: 0 0 24px; }
 .desk-record { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 16px; align-items: start; padding: 22px 0; border-bottom: 1px solid var(--c-border); }
@@ -212,12 +265,29 @@
 @media (min-width: 1120px) {
   :root { --w-topbar: 76px; --w-sidebar: 252px; }
 }
-.app--workspace { font-size: var(--fs-16); line-height: 1.7; }
+/* 【2026-10-14 · 全局样式遗留 3 · 病灶主体】
+ * 这一条才是把组件里所有 `line-height: var(--lh-normal)` 盖掉的那一条 ——
+ * `.app--workspace`（0,1,0）压过 base.css 的 `body`（0,0,1），而 #app 整棵树都在它里面。
+ * 实测（/profile@1280 改前）：`.p7-deps-note` 声明 `var(--lh-normal)`，computed 23.8px，
+ * 而它这一行的 `--lh-normal` 也正好是 1.7 —— 看不出问题；
+ * 全站切到紧凑档（`--lh-normal: 1.55`）后仍是 23.8px，令牌形同虚设。
+ * 改成 var() 后默认档像素不变（1.7 × 14px = 23.8px，与改前逐像素一致），
+ * 但令牌真的接管了正文行距。 */
+.app--workspace { font-size: var(--fs-16); line-height: var(--lh-normal); }
 .app--workspace .app__atmos { display: none; }
-/* 【2026-10-14 · P1-7】42 → 44。CRAFT-BRIEF:322,389 与 WCAG 2.5.8 都是 44px，
- * 这是全站按钮的默认档；小档只有 --btn-sm 的 36px（见下一行），中间不再有第三档。 */
-.app--workspace .btn { min-height: 44px; height: auto; padding: 8px 18px; font-size: var(--fs-14); }
-.app--workspace .btn--sm { min-height: 36px; padding: 6px 12px; }
+/* 【2026-10-14 · 全局样式遗留 4】控件高度真收敛到两档
+ * ---------------------------------------------------------------------------
+ * 改前这一对是 min-height：`min-height: 44px; height: auto` + `min-height: 36px`。
+ * min-height 挡不住内容把控件撑高，于是同一屏实测出 9 档（/plan@1280：32 / 37.8 / 39.9 /
+ * 41.2 / 44 / 46.2 / 48 / 73.8 / 97）。最典型的是 `.btn--sm`：
+ * 它声明 `min-height: 36px`，实测却是 **39.9px**（=.btn 的 14px 字号 × 1.85 行高 25.9px + 上下 6px 内距）
+ * 与 **37.8px**（继承 1.7 行高 23.8px + 12px）两个值 —— 同一个类，在两种父级行高下长出两个高度。
+ * 定高之后：`.btn` 一律 44px、`.btn--sm` 一律 36px，不再受祖先行高影响。
+ * 44px 是 CRAFT-BRIEF:322,389 与 WCAG 2.5.8 的触控硬约束，36px 是小档（卡片内次要动作）。
+ * 注意 `.btn` 原来那条 `height: auto` 必须一起去掉：base.css 的 `.btn` 已经是
+ * `height: var(--btn-h-md)`（34px），`height: auto` 会把它放回内容高度。 */
+.app--workspace .btn { height: 44px; min-height: 44px; padding: 8px 18px; font-size: var(--fs-14); }
+.app--workspace .btn--sm { height: 36px; min-height: 36px; padding: 6px 12px; }
 .app--workspace .toast { bottom: 106px; }
 .app--workspace .grade__select { max-width: 190px; height: 44px; border-color: transparent; background: transparent; }
 .ws-brand { display: flex; align-items: center; gap: 10px; min-height: 44px; text-decoration: none; color: var(--c-text); flex: none; }
@@ -283,7 +353,7 @@
  */
 .ws-bookmarks { position: fixed; z-index: var(--z-sticky); bottom: 22px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; padding: 7px; gap: 4px; background: var(--c-surface); border-radius: var(--r-lg); box-shadow: var(--e-3); width: max-content; max-width: calc(100% - 24px); }
 /* 【2026-10-14 · P1-7】46 → 44：全站只留 44（默认）与 36（小档）两档。 */
-.ws-bookmark { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 44px; padding: 10px 16px; border-radius: var(--r-md); font-size: var(--fs-14); color: var(--c-text-2); text-decoration: none; white-space: nowrap; transition: color 160ms ease, background-color 160ms ease; }
+.ws-bookmark { display: inline-flex; align-items: center; justify-content: center; gap: 9px; height: 44px; min-height: 44px; padding: 10px 16px; border-radius: var(--r-md); font-size: var(--fs-14); color: var(--c-text-2); text-decoration: none; white-space: nowrap; transition: color 160ms ease, background-color 160ms ease; }
 .ws-bookmark:hover { text-decoration: none; background: var(--c-surface-2); color: var(--c-text); }
 .ws-bookmark--active, .ws-bookmark--active:hover { background: var(--c-primary-weak); color: var(--c-primary); font-weight: 600; }
 .ws-bookmark--more { padding: 10px 14px; }
@@ -312,7 +382,13 @@
 .ws-section-head p { color: var(--c-text-3); font-size: var(--fs-14); margin-top: 6px; }
 .ws-two-columns { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(280px, 1fr); gap: 28px; align-items: start; }
 .ws-subnav { display: flex; align-items: center; gap: 24px; margin-bottom: 26px; }
-.ws-subnav a { padding: 0 0 12px; color: var(--c-text-3); border-bottom: 2px solid transparent; font-size: var(--fs-16); }
+/* 【2026-10-14 · 全局样式遗留 4】原为 `padding: 0 0 12px`，实测 41.2px —— 16px 行高 27.2px
+ * 加 12px 下内距凑出来的一档。它落在离 44 差 2.8px 的位置上，正是"两档之外还有小零头"的样子。
+ * 收到 44px 档：`inline-flex + align-items:center` 让标签垂直居中，
+ * 下划线（当前页指示器）仍然贴在行底 —— 只是标签不再靠 12px 下内距把它顶开。
+ * 这同时修掉一个键盘可用性问题：焦点环画在 41.2px 的盒子上，而那 12px 是空的，
+ * 环会明显包住一块空白。 */
+.ws-subnav a { display: inline-flex; align-items: center; height: 44px; padding: 0; color: var(--c-text-3); border-bottom: 2px solid transparent; font-size: var(--fs-16); }
 .ws-subnav a[aria-current='page'] { color: var(--c-text); border-color: var(--c-primary); font-weight: 600; }
 .ws-subnav a:hover { text-decoration: none; color: var(--c-primary); }
 .ws-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -322,13 +398,25 @@
 .ws-tab-count { margin-left: 8px; font-variant-numeric: tabular-nums; color: var(--c-text-3); }
 /* 【2026-10-14 · P0-2】演示数据说明是一句话：12px → 14px（12px 只留时间/来源/序号/徽章/刻度这类标记）。 */
 .ws-demo-note { font-size: var(--fs-14); color: var(--c-text-3); margin: 20px 0; line-height: 1.6; }
+/* 【2026-10-14 · wave2】`.ws-empty h3` 与 `.ws-empty a` 已删（2 条）。
+   证据：剩下两个活调用点都**没有** h3 或 a —— `LiveDirectionCompare:25` 是 `<p class="ws-empty">`
+   （纯文本空态），`TodoSuggestions:12` 是 `<p class="ws-empty">`。而 `EmptyState.vue` 用的是
+   `.exp-empty*` 一套 scoped 类名，从不落在这两条上。
+   所以这两条是"迁移完成后剩下的空壳"，删掉它们就是 H6 要的"两套标题层级不再并存"。
+   `.ws-empty` 本体与 `.ws-empty p` **必须保留**：那两个 `<p class="ws-empty">` 还在渲染，
+   删掉会当场丢掉 36px 内距与居中（H6 的坏法）。 */
 .ws-empty { padding: 36px 12px; text-align: center; }
-.ws-empty h3 { font-size: var(--fs-20); }
 .ws-empty p { margin-top: 12px; color: var(--c-text-3); font-size: var(--fs-14); }
-.ws-empty a { margin-top: 16px; }
 .ws-guide { display: flex; align-items: flex-start; gap: 10px; margin-top: 28px; font-size: var(--fs-14); color: var(--c-text-3); }
 .ws-guide p { flex: 1; }
-.ws-guide button { color: var(--c-text-3); font-size: var(--fs-14); white-space: nowrap; min-height: 44px; }
+/* 【2026-10-14 · wave2】`min-width: 44px` 与 `padding` 是补上的另一半。
+   实测：`/home` 与 `/review` 的引导条"收起"按钮只有 **28×44** —— `min-height` 早就有了，
+   漏的是宽度。这与 `.ws-demo-badge` 是同一个漏法："触控目标 ≥44px" 是两个方向的约束
+   （CRAFT-BRIEF:322,389 / WCAG 2.5.8），只满足高度等于没满足。
+   两个 `<button>收起</button>` 分别在 `TodayView:71` 与 `ReflectionView:57`（都在 views/，
+   本次不改），所以修在 CSS 上是唯一不越界又能一次覆盖两处的做法。
+   `padding-inline` 保留一点内距让文字不贴边；`justify-content: center` 让两个字居中。 */
+.ws-guide button { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; padding: 0 var(--sp-3); color: var(--c-text-3); font-size: var(--fs-14); white-space: nowrap; }
 .ws-sheet { padding: 0; width: min(540px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); border: 0; border-radius: var(--r-lg); color: var(--c-text); background: var(--c-surface); box-shadow: var(--e-3); overflow: auto; }
 .ws-sheet--wide { width: min(800px, calc(100vw - 32px)); }
 .ws-sheet::backdrop { background: var(--overlay-mask); }
@@ -369,12 +457,11 @@
 .ws-task__content { flex: 1; min-width: 0; }
 .ws-task__title { font-size: var(--fs-16); font-weight: 500; }
 .ws-task__meta { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 6px; font-size: var(--fs-14); color: var(--c-text-3); }
-.ws-task__details { margin-top: 8px; }
-.ws-task__details summary { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: var(--fs-14); color: var(--c-text-3); list-style: none; }
-.ws-task__details summary::-webkit-details-marker, .ws-fold summary::-webkit-details-marker { display: none; }
-.ws-task__details[open] summary svg { transform: rotate(180deg); }
-.ws-task__details > p { margin-top: 12px; color: var(--c-text-2); font-size: var(--fs-14); max-width: 38em; }
-.ws-task__details .ws-inline-actions { margin-top: 10px; }
+/* 【2026-10-14 · wave2】`.ws-task__details` 一族 6 条已删（原 :439-444）。
+   证据：`class="ws-task__details"` 在 src 的 .vue 里 **0 命中** —— `TaskList.vue:11` 的注释
+   写的就是"从 `<details class="ws-task__details">` 里搬出来，改成始终可见"。
+   顺带删掉 `.ws-task__details summary::-webkit-details-marker` 里与 `.ws-fold` 共用的那一半
+   （`.ws-fold` 同样 0 命中，见下方）。 */
 .ws-progress { height: 5px; background: var(--c-surface-3); border-radius: var(--r-pill); overflow: hidden; margin: 20px 0; }
 .ws-progress span { display: block; height: 100%; background: var(--c-primary); transform-origin: left; transform: scaleX(var(--value, 0)); transition: transform 200ms var(--ease-out); }
 .ws-status-line { display: flex; justify-content: space-between; align-items: baseline; gap: 20px; font-size: var(--fs-14); color: var(--c-text-3); }
@@ -386,10 +473,12 @@
 .ws-aside .ws-text-link { margin-top: 12px; }
 .ws-mini-list { display: flex; flex-direction: column; gap: 14px; margin: 20px 0; }
 .ws-mini-list li { font-size: var(--fs-14); color: var(--c-text-2); }
-.ws-fold { margin-top: 20px; }
-.ws-fold > summary { cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 16px; min-height: 44px; color: var(--c-text-2); font-size: var(--fs-14); list-style: none; }
-.ws-fold[open] > summary svg { transform: rotate(180deg); }
-.ws-fold__body { padding: 20px 0 8px; }
+/* 【2026-10-14 · wave2】`.ws-fold` 一族 4 条已删（原 :456-459）。
+   证据：`class="ws-fold"` / `class="ws-fold__body"` 在 src 的 .vue 里 **0 命中**
+   —— 四种旧折叠里的第三种已全部迁到 `Foldable.vue`（它自带的 `.fold*` 是 scoped 样式）。
+   这条特别值得记一句：`.ws-fold__body` 的 `padding: 20px 0 8px` 原本会**漏进**
+   `Foldable` 的 slot 内容（如果 slot 里还留着这个类名）—— 那是一种"看起来像新组件、
+   实际被旧全局规则改过内距"的静默污染。删掉它之后这类污染源也一起消失了。 */
 .ws-field { display: flex; flex-direction: column; gap: 8px; margin-top: 20px; font-size: var(--fs-14); color: var(--c-text-2); }
 .ws-field input, .ws-field select, .ws-field textarea { background: var(--field-bg); border: 1px solid var(--field-border); border-radius: var(--r-md); padding: 12px 14px; font-size: var(--fs-16); width: 100%; min-height: 44px; }
 .ws-field input::placeholder, .ws-field textarea::placeholder { color: var(--field-placeholder); }
@@ -467,10 +556,12 @@
 .ws-report-score strong { display: block; font-size: var(--fs-38); line-height: 1.25; color: var(--c-primary); }
 .ws-report-score small { font-size: var(--fs-16); color: var(--c-text-3); font-weight: 400; }
 .ws-report-score p { color: var(--c-text-3); font-size: var(--fs-14); }
-.ws-diagnostic { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; margin-top: 30px; }
-.ws-diagnostic .meter-row__head { margin-bottom: 14px; }
-.ws-diagnostic .meter-row__label { font-size: var(--fs-16); }
-.ws-diagnostic .meter-row__legend { font-size: var(--fs-14); margin-top: 14px; }
+/* 【2026-10-14 · wave2】`.ws-diagnostic` 一族 4 条已删（原 :537-540），窄屏那条（原 :654）也一并删。
+   证据：`ws-diagnostic` 在 src 的 .vue 里 **0 命中** —— 它是旧版 `MeterRow`（类名 `.meter-row__*`）
+   的容器，改名成 `.mtr__*` 时只改了组件、没清全局。所以这 4 条不仅父类 0 命中，
+   连它引用的三个子类（`.meter-row__head/__label/__legend`）也一起 0 命中：
+   参考 `SpecView.vue` 里那三条**同名**的 `.meter-row__*` 是它自己 scoped 里手写的假尺，
+   与全局这一族无关（那是另一笔账，任务书要求只报告、不动 views）。 */
 .ws-report-sections > details { padding: 22px 0; border-bottom: 1px solid var(--c-border); }
 .ws-report-sections > details:last-child { border-bottom: 0; }
 .ws-report-sections > details > summary { list-style: none; display: flex; justify-content: space-between; align-items: center; cursor: pointer; gap: 16px; font-size: var(--fs-20); font-weight: 500; }
@@ -481,16 +572,20 @@
 .ws-dimension__label { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; font-size: var(--fs-14); color: var(--c-text-3); }
 .ws-dimension > p { margin-top: 12px; font-size: var(--fs-16); }
 .ws-dimension__threshold { color: var(--c-text-2); font-size: var(--fs-14) !important; }
-.ws-dimension .confidence { font-size: var(--fs-14); }
-.ws-dimension .ws-fold__body { font-size: var(--fs-14); color: var(--c-text-2); }
-.ws-dimension .ws-fold__body li { margin-top: 10px; }
+/* 【2026-10-14 · wave2】三条父类选择器 0 命中，已删：
+ *   `.ws-dimension .confidence`      —— `ws-dimension` 在 .vue 里 0 命中（AssessmentView 迁到了
+ *                                        `.report-dimension`），且 `.confidence` 一族本身也成了
+ *                                        死代码（见 base.css 的同族删除）。
+ *   `.ws-dimension .ws-fold__body`   —— 同上，父类与 `.ws-fold__body` 双双 0 命中。
+ *   `.ws-direction__role .confidence` —— 同上（`.ws-direction__role` 与 `.confidence` 都 0 命中）。
+ * 这是 X15 那类"双重死代码"：父类先死，子规则跟着成为永远不可能匹配的选择器。
+ * 注意 `.ws-directions` / `.ws-direction` **不是**死代码（AssessmentView 的方向分支在用）。 */
 .ws-directions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; }
 .ws-direction { padding: 8px 28px; min-width: 0; }
 .ws-direction:first-child { padding-left: 0; }
 .ws-direction:last-child { padding-right: 0; }
 .ws-direction + .ws-direction { border-left: 1px solid var(--c-border); }
 .ws-direction__role { display: flex; align-items: center; justify-content: space-between; color: var(--c-text-3); font-size: var(--fs-14); }
-.ws-direction__role .confidence { font-size: var(--fs-12); }
 .ws-direction h2 { font-size: var(--fs-20); line-height: 1.5; margin: 20px 0; min-height: 3em; }
 .ws-direction ul { min-height: 140px; }
 .ws-direction li { font-size: var(--fs-14); color: var(--c-text-2); margin: 12px 0; }
@@ -571,7 +666,13 @@
   .app--workspace .grade__select { max-width: 118px; padding: 0 4px; }
   /* 演示标识在手机上只留圆点（文字置 0 字号，圆点自己有背景色不受影响）：
      文字留着就会把顶栏挤成"三个文字 + 一个头像" */
-  .ws-demo-badge { padding: 0 8px; font-size: 0; gap: 0; }
+  /* 【2026-10-14 · wave2】只留圆点之后它的**宽度**掉到 25px —— 实测 `25×44`，
+     是全站最后一个 <44px 命中区。`min-height: 44px` 早就有了，漏的是宽度这一边：
+     "触控目标 ≥44px" 是**两个方向**的约束（CRAFT-BRIEF:322,389 / WCAG 2.5.8），
+     只满足高度等于没满足。补 `min-width: 44px` 并把内距对称掉，
+     这样圆点仍然居中、顶栏宽度不变（`justify-content:center` 由 `.ws-demo-badge` 的
+     `inline-flex + align-items:center` 提供，水平方向靠 `min-width` 撑开）。 */
+  .ws-demo-badge { padding: 0 8px; min-width: 44px; justify-content: center; font-size: 0; gap: 0; }
   .ws-demo-badge > span { width: 9px; height: 9px; }
   .ws-page { padding: 24px 20px var(--w-mobilebar); }
   .ws-heading { gap: 18px; margin-bottom: 24px; }
@@ -602,7 +703,13 @@
   .ws-timeline__content { grid-column: 1; grid-row: 2; }
   .ws-timeline__state { grid-column: 2; grid-row: 1; }
   .ws-bookmarks { bottom: max(12px, env(safe-area-inset-bottom)); gap: 0; padding: 5px; width: calc(100% - 24px); justify-content: space-between; }
-  .ws-bookmark { flex-direction: column; gap: 4px; flex: 1; padding: 8px 2px; font-size: var(--fs-12); min-width: 0; }
+  /* 【2026-10-14 · 全局样式遗留 1】12 → 14：窄屏底栏是**唯一的主导航**，
+     而这 5 个词是页面名字（可操作 + 要读懂），按 CRAFT-BRIEF 4.1 属"控件文字"档。
+     同族的桌面 `.ws-bookmark`、侧栏 `.desk-link`、顶栏 `.ws-account` 都是 14px ——
+     改前是同一组词在桌面 14px、窄屏 12px，属于漏改而不是有意分档。
+     高度同时定高 44px（原 min-height: 44px + padding 8px 撑到 60.4px）：
+     44 = 触控档、图标 20px + gap 4px + 文字行高 20px = 44px，正好容得下，不再靠内距凑。 */
+  .ws-bookmark { flex-direction: column; gap: 4px; flex: 1; height: 44px; min-height: 44px; padding: 0 2px; font-size: var(--fs-14); min-width: 0; }
   .ws-bookmark--more { flex: 1; }
   /* 底栏是 fixed 的，必须从对话区高度里扣掉，否则输入框被压住。
      `--w-mobilebar` 里已经含 70px 底栏 + 12px 下边距 + 安全区，
@@ -731,3 +838,26 @@
 .app--workspace .ws-task__check::after,
 .app--workspace .ws-task__waiting::after,
 .app--workspace .desk-record__toggle::after { content: ''; position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; transform: translate(-50%, -50%); }
+
+/* ===========================================================================
+ * 【2026-10-14 · 全局样式遗留 5】`.chat-skeleton` 深色下的黑带 —— **已由组件迁移消解**
+ * ---------------------------------------------------------------------------
+ * 本轮开工时（12:58）病灶确实在 `dialogue.css`：那里手写的骨架拿"浅主色"当高光
+ *   `.chat-skeleton > span::after { background: linear-gradient(90deg, transparent,
+ *      var(--c-primary-weak), transparent) }`   ← `--c-primary-weak` 是**语义令牌**
+ * （浅色 #eef5fc / 深色 #1d2137），差事是"学生气泡底 / 选中底 / chip"，不是"比骨架底更亮"。
+ * 浅色下它恰好比骨架底亮一点点所以看着能用；深色下它比骨架底**更暗**，扫过去的就不是高光而是黑带 ——
+ * 改前实测（`.chat-skeleton` 第 1 条线，把 ::after 动画钉在时间轴取样）：
+ *   骨架底 --c-surface-3 = #2c2c2e（深色）/ #ebedf2（浅色）
+ *   t=0 → #2b2b2d / #ebedf2 ｜ t=700ms → #27282f / #eaecf1 ｜ t=1300ms → #1c2036 / #eff6fd
+ *   带与其底的对比：深色 **1.452:1 且更暗（极性反了）**；浅色 **1.163:1 且更亮（对）**。
+ *
+ * **但在本轮中途（13:0x）另一路 agent 把这段手写骨架换成了 `components/SkeletonBlock.vue`**，
+ * 旧类名 `.chat-skeleton > span` / `.chat-skeleton__cards i` 在库里已经 0 处 ——
+ * 所以这里**不留任何覆盖规则**：留一条指向已删类名的 CSS 只会变成下一批死代码
+ * （正是本文件其它段落正在清理的那类东西），而且会让人误以为修在这里。
+ * 新实现（`SkeletonBlock.vue:187,195`）读的正是 tokens.css 登记过的
+ * `--sk-base` 与 `--sk-sheen`（浅色白 72% / 深色白 5.5%）—— 深色下那条带是**比底亮**的。
+ * 结论：**遗留 5 的令牌接线由组件迁移完成了，本轮不需要改 tokens.css 的任何值**；
+ * 我这一轮的改动是"把这条判据与实测数字写下来"，避免下次有人照着旧结论去动 `--c-primary-weak`。
+ * ======================================================================== */

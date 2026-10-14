@@ -39,15 +39,21 @@ import { computed, nextTick, onBeforeUnmount, onUpdated, ref, watch } from 'vue'
 import { LayoutGroup, motion } from 'motion-v'
 import { demo } from '../store'
 import { COLLECT_ITEMS, DIRECTION_PLANS, PROFILE_FIELDS, REPORT_SECTIONS, STUDENT } from '../data/student'
-import type { ProfileField } from '../data/types'
+import type { FieldSource, ProfileField } from '../data/types'
 import PageHeading from '../components/PageHeading.vue'
 import UiIcon from '../components/UiIcon.vue'
 import InfoSheet from '../components/InfoSheet.vue'
 import EmptyState from '../components/EmptyState.vue'
+import Foldable from '../components/Foldable.vue'
+import SkeletonBlock from '../components/SkeletonBlock.vue'
+import SourceChip from '../components/SourceChip.vue'
+import StatTile from '../components/StatTile.vue'
+import StatusBanner from '../components/StatusBanner.vue'
+import ConfidenceBadge from '../components/ConfidenceBadge.vue'
 import ProfileInsights from '../components/ProfileInsights.vue'
 import { backendDemo } from '../lib/backend-demo'
 import { backendClient } from '../api/backend-client'
-import type { DependencyEdgeView, ProfileFieldView } from '../api/backend-types'
+import type { DependencyEdgeView, ProfileFieldView, ProfileSource } from '../api/backend-types'
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * 1. 静态口径：主题、来源分组、缺口说明、依赖映射
@@ -57,6 +63,38 @@ const SOURCE_NAMES: Record<string, ProfileField['source']> = {
   resume: '简历材料', conversation: '对话', assessment: '综合分析',
   behavior_inference: '行为记录', mentor: '导师记录', record: '学校', user_edit: '本人填写',
 }
+
+/**
+ * 演示资料的来源名 → 后端 `ProfileSource` 枚举（`backend-types.ts:335`）。
+ *
+ * 为什么要有这张表：`SourceChip` 的 `source` 是**必填的 7 值枚举**，
+ * 而演示数据里的 `ProfileField.source` 是中文的自由串（`data/types.ts:23`）。
+ * 契约模式下 `field.source` 本身就是枚举，直接传；只有演示数据需要过这张表。
+ * 表是 `Record<FieldSource, ProfileSource>` —— 演示数据加一个来源名会**编译报错**，
+ * 不会悄悄落成一个"未知来源"的灰 chip。
+ */
+const SOURCE_ENUM: Record<FieldSource, ProfileSource> = {
+  简历材料: 'resume',
+  对话: 'conversation',
+  综合分析: 'assessment',
+  行为记录: 'behavior_inference',
+  导师记录: 'mentor',
+  学校: 'record',
+  学信网: 'record',
+  教务系统: 'record',
+  本人填写: 'user_edit',
+}
+
+/**
+ * 可信度只有一把尺：0–1（后端口径）。
+ * 演示数据（`data/types.ts:15` 的 `{level,label,bars}`）没有 0–1，所以按档位取中点折算 ——
+ * 与 `ConfidenceBadge` 内部兼容旧对象的 `LEGACY_SCORE` 同值，**不新增第二套口径**。
+ *
+ * 原来这里是 `Math.max(1, Math.round(conf * 3))`：`conf === 0` 会被抬成"1 格"，
+ * 于是"完全没有依据"印成"依据很少"（`ConfidenceBadge.vue:26-29` 明确要求这两者分开）。
+ * 换成 0–1 之后 `0 / undefined` 都会落到"还没有依据"，这条 bug 自然消失。
+ */
+const LEGACY_CONF: Record<ProfileField['confidence']['level'], number> = { high: 0.9, mid: 0.6, low: 0.2 }
 
 /** 主题分组（保留原有四组口径） */
 const TOPICS: { key: string; title: string; keys: string[] }[] = [
@@ -221,6 +259,10 @@ const progress = computed(() =>
 interface FieldRow extends ProfileField {
   /** 图上看到的来源（本人更正后要换掉） */
   desc: ProfileField['source']
+  /** 后端口径的来源枚举 —— `SourceChip` 要的是它，不是 `desc` 那个中文串 */
+  src: ProfileSource
+  /** 0–1 的可信度（唯一口径）。演示数据没有 0–1，由 `LEGACY_CONF` 折算 */
+  conf: number
   /** 更早的来源（这条被本人改过时才出现） */
   prior: string
   /** YYYY-MM-DD，给 <time> 用；拿不到就是空 */
@@ -252,7 +294,11 @@ const rowsBase = computed<Omit<FieldRow, 'supports'>[]>(() => {
       return {
         key: field.key, label: field.label ?? field.key, value: human(field.value),
         source: SOURCE_NAMES[field.source] ?? '学校',
-        confidence: { level, label, bars: conf === undefined ? 0 : conf <= 0 ? 0 : Math.max(1, Math.round(conf * 3)) },
+        // 契约模式：来源本来就是枚举，直接透传；没有 0–1 时按档位折算（未知仍是未知）
+        src: field.source,
+        conf: conf === undefined ? LEGACY_CONF[level] : conf,
+        // 档位与文案仍由后端置信度决定；模板不再读它，只有 tally 的分档与筛选读
+        confidence: { level, label, bars: 0 },
         noted: at ? at.toLocaleString('zh-CN') : '未记录时间',
         desc: SOURCE_NAMES[field.source] ?? '学校',
         prior: edited && priorKey ? SOURCE_NAMES[priorKey.source] ?? '原来源' : '',
@@ -264,7 +310,16 @@ const rowsBase = computed<Omit<FieldRow, 'supports'>[]>(() => {
   }
   return PROFILE_FIELDS.slice(0, progress.value.known).map((field) => {
     const touched = !!demo.state.profileEdits[field.key]
-    return { ...field, desc: touched ? '本人填写' as const : field.source, prior: touched ? field.source : '', iso: '', evidence: [] as string[], touched }
+    return {
+      ...field,
+      desc: touched ? '本人填写' as const : field.source,
+      src: touched ? 'user_edit' as const : SOURCE_ENUM[field.source],
+      conf: LEGACY_CONF[field.confidence.level],
+      prior: touched ? field.source : '',
+      iso: '',
+      evidence: [] as string[],
+      touched,
+    }
   })
 })
 
@@ -341,6 +396,12 @@ const statusLine = computed(() => {
   parts.push(`${missing.value.length} 条待补充`)
   return parts.join(' · ')
 })
+
+/** 三档读数的**数值**（标题与口径仍来自 CONF_GROUPS，不再另写一份文案） */
+const CONF_COUNT_KEY: Record<string, 'firm' | 'check' | 'thin'> = { high: 'firm', mid: 'check', low: 'thin' }
+const confBands = computed(() =>
+  CONF_GROUPS.map((group) => ({ key: group.key, title: group.title, count: tally.value[CONF_COUNT_KEY[group.key]!] })),
+)
 
 /** 口径说明：把"这个数是谁算的、怎么算的"写在数字旁边 */
 const trustOrigin = computed(() => (tally.value.trustFromBackend ? '后端给出' : live.value ? '本地按各条可信度折算（后端未给出整体可信度）' : '本地按演示口径折算'))
@@ -520,7 +581,8 @@ interface Conclusion {
   /** 第一层：能一行扫完的判断；第二层显示完整句子 */
   brief: string
   full: string
-  confidence: { level: 'high' | 'mid' | 'low'; label: string; bars: number }
+  /** 0–1 的把握（唯一口径，`data/types.ts` 的档位在这里折算一次） */
+  conf: number
   /** 正向：它依赖 A 里的哪几条 */
   deps: LinkedField[]
   /** 这组依赖是从契约来的还是演示映射来的 */
@@ -561,7 +623,7 @@ const conclusionMap = computed<Record<string, Conclusion>>(() => {
         label: dimension.label,
         brief: briefOf(dimension.conclusion),
         full: dimension.conclusion,
-        confidence: dimension.confidence,
+        conf: LEGACY_CONF[dimension.confidence.level],
         deps: links,
         depsFromContract: deps.fromContract,
         missingKeys: links.filter((item) => !item.present).map((item) => item.key),
@@ -583,7 +645,7 @@ const conclusionMap = computed<Record<string, Conclusion>>(() => {
       label: plan.title,
       brief: briefOf(plan.evidence[0] ?? plan.risk),
       full: plan.evidence[0] ?? plan.risk,
-      confidence: plan.fit,
+      conf: LEGACY_CONF[plan.fit.level],
       deps: links,
       depsFromContract: deps.fromContract,
       missingKeys: links.filter((item) => !item.present).map((item) => item.key),
@@ -844,7 +906,15 @@ const identity = computed(() => {
       <RouterLink class="btn btn--primary" to="/chat">{{ progress.gap ? '补充信息' : '更新信息' }}<UiIcon name="arrow" :size="16" /></RouterLink>
     </PageHeading>
 
-    <p v-if="serviceError" class="ws-field-error" role="alert">{{ serviceError }}</p>
+    <StatusBanner
+      v-if="serviceError"
+      tone="error"
+      size="sm"
+      :message="serviceError"
+      retry-label="重试读取"
+      :retrying="loading"
+      @retry="loadWorkspace"
+    />
 
     <!-- ═══ 活的度量：可信度环从 0 生长到实际值；数字旁边写清是谁算的 ═══ -->
     <section class="p7-meter" aria-label="档案覆盖度与可信度">
@@ -854,26 +924,44 @@ const identity = computed(() => {
       </svg>
       <div class="p7-meter__read">
         <div class="p7-meter__top">
-          <p class="p7-meter__value"><strong>{{ Math.round(trustShown) }}%</strong><span>整体可信度 · {{ trustOrigin }}</span></p>
+          <StatTile
+            class="p7-meter__tile"
+            :score="trustShown / 100"
+            label="整体可信度"
+            :trend="{ label: trustOrigin }"
+          />
           <div class="p7-meter__line">
             <h2>{{ identity.name }}</h2>
             <p>{{ identity.line }}</p>
           </div>
         </div>
         <p class="p7-meter__status" data-testid="status-line">{{ statusLine }}</p>
-        <div class="p7-meter__facts">
-          <span v-for="item in CONF_GROUPS" :key="item.key" class="p7-meter__fact">
-            <i class="p7-tick" :class="`p7-tick--${item.key}`" />{{ item.title }}
-            <b>{{ item.key === 'high' ? tally.firm : item.key === 'mid' ? tally.check : tally.thin }}</b>
-          </span>
-          <span class="p7-meter__fact p7-meter__fact--quiet">{{ coverageNote }}（{{ Math.round(tally.coverage * 100) }}%）</span>
+        <!-- 读数瓦片：三档各是一个数 + 一根同刻度的条（原来是一根 3px 的小刻度，第三种画法）。
+             覆盖度那句口径说明放在这一排下面：它是**谁算的**，属于标注，不该把瓦片撑高。 -->
+        <div class="p7-meter__stats">
+          <StatTile
+            v-for="band in confBands"
+            :key="band.key"
+            :value="band.count"
+            :denominator="known.length"
+            :label="band.title"
+          />
+          <StatTile
+            class="p7-meter__coverage"
+            :value="known.length"
+            :denominator="tally.total"
+            label="覆盖度"
+          />
         </div>
-        <details class="p7-meter__how">
-          <summary>这个数怎么来的</summary>
+        <p class="p7-meter__covnote">{{ coverageNote }}</p>
+        <!-- 口径说明是**这一格的脚注**：它解释上面那个数，不是"还有更多内容"。
+             所以用 Foldable 的 static 形态（标题是普通文字、内容永远可见），
+             而不是折叠 —— `Foldable.vue:12-15` 把 static 定为"主信息始终可见"的表达。 -->
+        <Foldable class="p7-meter__how" static variant="inline" title="这个数怎么来的">
           <p v-if="tally.trustFromBackend">整体可信度直接取后端 <code>overall_confidence</code>，覆盖度取后端 <code>coverage</code>，本页不重算。</p>
           <p v-else-if="live">后端这次没有给 <code>overall_confidence</code>，所以按已收到的 {{ known.length }} 条取平均（比较确定 1 / 还要核对 0.62 / 依据不足 0.3），再乘覆盖度系数 {{ Math.round(tally.coverage * 100) }}%。这是本页的自算，不是后端口径。</p>
           <p v-else>演示数据里没有后端的 <code>overall_confidence</code> / <code>coverage</code>，所以这里是本地演示口径：已收到的 {{ known.length }} 条按结实程度取平均（比较确定 1 / 还要核对 0.62 / 依据不足 0.3），再乘覆盖度系数 {{ Math.round(tally.coverage * 100) }}%。真实档案接上后，这里直接显示后端给的数。</p>
-        </details>
+        </Foldable>
       </div>
     </section>
 
@@ -952,7 +1040,19 @@ const identity = computed(() => {
               <span v-if="group.hint" class="p7-group__hint">{{ group.hint }}</span>
               <span class="p7-group__count">{{ group.rows.length }} 条</span>
             </header>
-            <p v-if="!group.rows.length" class="ws-muted p7-group__none">这一类暂时没有记录。</p>
+            <!-- 空态只有这一处是真正的"没有内容"：分组筛选之后这一类没有记录。
+                 所以它用 EmptyState（`kind="search-empty"` 的语义就是"条件太窄"），
+                 而不是一句 `.ws-muted` 灰字 —— 灰字与正文长得一样，看不出"这里空了"。 -->
+            <EmptyState
+              v-if="!group.rows.length"
+              class="p7-group__empty"
+              kind="search-empty"
+              size="sm"
+              :next="false"
+              :heading-level="4"
+              title="这一类暂时没有记录"
+              description="换一个视角或清除「只看」的收窄条件，其余信息仍然在别的分组里。"
+            />
 
             <motion.ul class="p7-rows" :layout="true" :layout-dependency="0" :transition="{ duration: 0.32, ease: [0.23, 1, 0.32, 1] }">
               <motion.li
@@ -975,20 +1075,15 @@ const identity = computed(() => {
                   type="button"
                   :aria-expanded="openField === row.key"
                   :aria-controls="`p7-more-${row.key}`"
-                  :title="openField === row.key ? `收起「${row.label}」的原始依据与操作` : `展开「${row.label}」的原始依据与操作`"
+                  :title="openField === row.key ? `收起「${row.label}」的来历与操作` : `展开「${row.label}」的来历与操作`"
                   @click="toggleRow(row.key)"
                 >
                   <span class="p7-row__label">{{ row.label }}</span>
                   <span class="p7-row__main">
                     <span class="p7-row__value" :title="fieldValue(row)">{{ valueParts(row).head }}</span>
                     <span class="p7-row__meta">
-                      <span class="chip chip--outline p7-source">{{ row.desc }}</span>
-                      <span class="confidence p7-conf" :class="{ 'p7-conf--none': row.confidence.bars === 0 }" :title="`可信度：${row.confidence.label}`">
-                        <span class="confidence__bars" aria-hidden="true">
-                          <i v-for="n in 3" :key="n" class="confidence__bar" :class="[`confidence__bar--on-${row.confidence.level}`, { 'confidence__bar--on': n <= row.confidence.bars }]" />
-                        </span>
-                        {{ row.confidence.label }}
-                      </span>
+                      <SourceChip :source="row.src" :at="row.iso || null" />
+                      <ConfidenceBadge :confidence="row.conf" />
                       <time class="p7-row__time" :datetime="row.iso || undefined">{{ row.noted }}</time>
                       <span v-if="valueParts(row).hasHint" class="p7-row__hint">{{ valueParts(row).tail }}</span>
                       <span v-if="row.touched" class="p7-row__edited">本人已更正<template v-if="row.prior">（原：{{ row.prior }}）</template></span>
@@ -1001,50 +1096,67 @@ const identity = computed(() => {
                         <i class="p7-support__mark" aria-hidden="true" />{{ row.supports ? `支撑 ${row.supports} 条判断` : '还没进任何判断' }}
                       </span>
                       <span class="p7-row__cue">
-                        {{ openField === row.key ? '收起原始依据' : '原始依据与操作' }}<UiIcon name="chevron" :size="14" />
+                        {{ openField === row.key ? '收起来历' : '来历与操作' }}<UiIcon name="chevron" :size="14" />
                       </span>
                     </span>
                   </span>
                 </button>
 
-                <div v-show="openField === row.key" :id="`p7-more-${row.key}`" class="p7-row__more-body">
-                  <dl class="p7-facts">
-                    <div><dt>来源</dt><dd>{{ row.desc }}<template v-if="row.prior"> · 更正前为 {{ row.prior }}</template></dd></div>
-                    <div><dt>记录时间</dt><dd>{{ row.noted }}</dd></div>
-                  </dl>
-                  <template v-if="row.evidence.length">
-                    <p class="p7-facts__title">原始证据</p>
-                    <ul class="ws-mini-list p7-evidence">
-                      <li v-for="item in row.evidence" :key="item">{{ item }}</li>
+                <!-- 一层折叠：`Foldable variant=inline`。原来的 v-show 自实现与组件重复，
+                     现在这一页所有可折叠处都只走 Foldable（另外两处是 static / 度量口径）。
+                     来源与时间已经在这一行的 SourceChip 里，所以这里不再印第二遍。 -->
+                <Foldable
+                  class="p7-row__more"
+                  variant="inline"
+                  :model-value="openField === row.key"
+                  :title="row.desc"
+                  @update:model-value="(open: boolean) => (openField = open ? row.key : null)"
+                >
+                  <div :id="`p7-more-${row.key}`" class="p7-row__more-body">
+                    <template v-if="row.evidence.length">
+                      <p class="p7-facts__title">原始证据</p>
+                      <ul class="ws-mini-list p7-evidence">
+                        <li v-for="item in row.evidence" :key="item">{{ item }}</li>
+                      </ul>
+                    </template>
+                    <p v-else class="p7-evidence__none">这条没有附原始证据，只有来源与时间。</p>
+
+                    <!-- 关系本身在折叠内可点：跳到 B 段那条判断（≥44px 的行，不再是 24px 的 chip） -->
+                    <p class="p7-facts__title">它撑起的判断</p>
+                    <ul v-if="fieldDeps[row.key]?.length" class="p7-links">
+                      <li v-for="key in fieldDeps[row.key]" :key="key">
+                        <button class="p7-link" type="button" @click="jumpToConclusion(key)">
+                          <span class="p7-link__label">{{ conclusionMap[key]?.label ?? key }}</span>
+                          <span class="p7-link__value" :title="conclusionMap[key]?.brief">{{ conclusionMap[key]?.brief }}</span>
+                          <span class="p7-link__go">去 B 段<UiIcon name="arrow" :size="14" /></span>
+                        </button>
+                      </li>
                     </ul>
-                  </template>
-                  <p v-else class="ws-muted p7-evidence__none">这条没有附原始证据，只有来源与时间。</p>
+                    <p v-else class="p7-evidence__none">暂时还没有判断用到它。</p>
 
-                  <!-- 关系本身在折叠内可点：跳到 B 段那条判断（≥44px 的行，不再是 24px 的 chip） -->
-                  <p class="p7-facts__title">它撑起的判断</p>
-                  <ul v-if="fieldDeps[row.key]?.length" class="p7-links">
-                    <li v-for="key in fieldDeps[row.key]" :key="key">
-                      <button class="p7-link" type="button" @click="jumpToConclusion(key)">
-                        <span class="p7-link__label">{{ conclusionMap[key]?.label ?? key }}</span>
-                        <span class="p7-link__value" :title="conclusionMap[key]?.brief">{{ conclusionMap[key]?.brief }}</span>
-                        <span class="p7-link__go">去 B 段<UiIcon name="arrow" :size="14" /></span>
-                      </button>
-                    </li>
-                  </ul>
-                  <p v-else class="ws-muted p7-evidence__none">暂时还没有判断用到它。</p>
-
-                  <div class="p7-row__actions">
-                    <button class="ws-text-button" type="button" @click="insights?.inspect(row.key, row.label)">深入了解这项信息</button>
-                    <button class="ws-text-button" type="button" @click="edit(row)">更正信息<UiIcon name="arrow" :size="14" /></button>
+                    <div class="p7-row__actions">
+                      <button class="ws-text-button" type="button" @click="insights?.inspect(row.key, row.label)">深入了解这项信息</button>
+                      <button class="ws-text-button" type="button" @click="edit(row)">更正信息<UiIcon name="arrow" :size="14" /></button>
+                    </div>
                   </div>
-                </div>
+                </Foldable>
               </motion.li>
             </motion.ul>
           </motion.section>
         </motion.div>
       </LayoutGroup>
 
-      <EmptyState v-if="!known.length" kind="profile" title="暂无个人信息" description="可以从一次咨询开始，也可以导入已有的学校资料。">
+      <!-- 刷新时的加载态：骨架**盖在仍在 DOM 的内容上**（`SkeletonBlock.vue:21-26`），不摘内容 ——
+           原来只有页头按钮的文案从「读取最新档案」变成「正在读取…」，内容区在重新取数的
+           整段时间里一动不动，看不出"这次读取正在进行"。
+           骨架自己 `aria-hidden`，所以"正在读取"这句话由这里的 `role="status"` 说；
+           两者必须是兄弟节点，骨架的 `inset: 0` 才对得上 `.p7-block`（它已 position: relative）。 -->
+      <span v-if="loading" class="sr-only" role="status">正在读取最新档案，下面的内容仍然保留。</span>
+      <SkeletonBlock v-if="loading" overlay variant="list" :lines="6" />
+
+      <!-- 空态：`kind="profile"` 才画人像（缺省是 notes 的便签）。A 段整块被顶掉，
+           所以标题层级显式提到 h2 —— 与它上面那个 <h2>「A 我知道什么」齐平。 -->
+      <EmptyState v-if="!known.length" kind="profile" :heading-level="2" title="暂无个人信息" description="可以从一次咨询开始，也可以导入已有的学校资料。">
         <RouterLink class="btn" to="/chat">开始咨询</RouterLink>
       </EmptyState>
     </section>
@@ -1056,10 +1168,19 @@ const identity = computed(() => {
           <h2 id="p7-b-title"><span class="p7-block__tag">B</span>所以判断了什么</h2>
           <p>第一行是判断本身，下面写着它靠 A 的哪几条、缺哪几条（缺的标出 C 段编号）。<strong>整行可以点</strong>：展开后能读完整判断与原话，并逐条跳到 A 段那条信息或 C 段那张缺口卡。</p>
         </div>
-        <p v-if="needsRecompute" class="p7-recompute" role="status">
-          <strong>{{ needsRecompute }} 条判断需要重算</strong>
-          <span>你更正了 {{ changedFields.size }} 条信息{{ live ? '（服务标记为需重算）' : '（演示模式：本地按依赖关系模拟）' }}</span>
-        </p>
+        <!-- `needs_recompute` 在本页原来是最重的一处印法（红底 + 左红条 + 14/12px 两级字）。
+             改成 `StatTile state="recompute"`：与 MeterRow / StatTile 同一把 0–1 的尺，
+             状态与读数住在同一格（`StatTile.vue:14-16` 就是为这件事写的）。
+             之所以现在**总是**出现（不只是需要重算时）：`state="done"` 那句
+             「当前读数是最新的」也是这个字段要说的话 —— 缺了它，用户只能从"没有红条"猜。 -->
+        <StatTile
+          class="p7-recompute"
+          :value="needsRecompute"
+          unit="条"
+          label="需要重算的判断"
+          :state="needsRecompute ? 'recompute' : 'done'"
+          :trend="{ label: `你更正了 ${changedFields.size} 条信息 · ${live ? '服务标记' : '演示模式：本地按依赖关系模拟'}` }"
+        />
       </header>
 
       <p class="p7-deps-note"><strong>关系怎么来：</strong>{{ depsSourceNote }}<template v-if="depsMixed">极少数判断在契约里找不到对应的边，那几条用了演示映射，已分开标注。</template></p>
@@ -1094,12 +1215,7 @@ const identity = computed(() => {
               </span>
               <span class="p7-concl__brief">{{ item.brief }}</span>
               <span class="p7-concl__side">
-                <span class="confidence p7-concl__conf" :title="`把握：${item.confidence.label}`">
-                  <span class="confidence__bars" aria-hidden="true">
-                    <i v-for="n in 3" :key="n" class="confidence__bar" :class="[`confidence__bar--on-${item.confidence.level}`, { 'confidence__bar--on': n <= item.confidence.bars }]" />
-                  </span>
-                  {{ item.confidence.label }}
-                </span>
+                <ConfidenceBadge class="p7-concl__conf" :confidence="item.conf" />
                 <span v-if="recomputeIds.has(item.key)" class="chip chip--attention">需要重算</span>
                 <span class="p7-concl__cue">{{ openConclusion === item.key ? '收起' : '完整判断与依据' }}<UiIcon name="chevron" :size="14" /></span>
               </span>
@@ -1158,7 +1274,7 @@ const identity = computed(() => {
                 </button>
               </li>
             </ul>
-            <p v-else class="ws-muted p7-evidence__none">契约里还没有它的依赖边，所以这里没有可追的 A 段信息。</p>
+            <p v-else class="p7-evidence__none">契约里还没有它的依赖边，所以这里没有可追的 A 段信息。</p>
 
             <button v-if="item.kind === 'direction'" class="ws-text-button" type="button" @click="toggleLingerConclusion(item.key)">
               看它用到哪几条<UiIcon name="arrow" :size="14" />
@@ -1218,8 +1334,11 @@ const identity = computed(() => {
       <p v-else class="ws-muted p7-none">暂未发现缺口。已记录的信息会继续按来源与可信度核对。</p>
     </section>
 
-    <details class="ws-context">
-      <summary>资料来源与核验说明<UiIcon name="chevron" :size="16" /></summary>
+    <!-- 溯源总账。原来是 `.ws-context` 折叠 —— 正是 `DESIGN-LANGUAGE.md:102` 点名的
+         「溯源做成一个折叠的『来源』」。这里不是"还有更多内容"，是"我为什么该这么理解"，
+         所以用 Foldable 的 **static** 形态：标题照排，内容始终可见。
+         改 static 之后本页的折叠层数：度量口径(static) + 行内(1 层) + 这里(static) = **1 层**。 -->
+    <Foldable class="p7-sources" static variant="section" title="资料来源与核验说明">
       <div class="ws-context__body">
         <section>
           <h3>可获取的信息</h3>
@@ -1236,11 +1355,13 @@ const identity = computed(() => {
           <RouterLink class="ws-text-link" to="/academic">管理学籍与资料<UiIcon name="arrow" :size="16" /></RouterLink>
         </section>
       </div>
-    </details>
+    </Foldable>
 
     <p class="ws-demo-note">{{ live ? '字段与缺口来自本次读取的档案；更正按服务回包保存，需重算标记取自后端。' : '预置人物与来源仅作演示；依赖映射、可信度折算与"需要重算"都是本地演示口径，接上服务后改用后端契约的 dependencies / coverage / overall_confidence。' }}</p>
 
-    <InfoSheet :open="correction !== null" :title="'更正' + (correction?.label ?? '信息')" @close="correction = null">
+    <!-- 更正是一条信息的小表单（`text` + 两个按钮），不是"从一行钻进去看细节"。
+         所以 shape 是 dialog（缺省也是它，这里写出来是为了让形态是**显式**的）。 -->
+    <InfoSheet shape="dialog" :open="correction !== null" :title="'更正' + (correction?.label ?? '信息')" @close="correction = null">
       <form @submit.prevent="save">
         <label class="ws-field">更正内容<textarea v-model="value" maxlength="40" /></label>
         <p v-if="correctionError" class="ws-field-error" role="alert">{{ correctionError }}</p>
@@ -1295,37 +1416,46 @@ const identity = computed(() => {
 .p7-ring__fill { fill: none; stroke: var(--c-primary); stroke-width: 7; stroke-linecap: round; }
 
 .p7-meter__read { min-width: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
-.p7-meter__top { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--sp-2) var(--sp-5); }
-.p7-meter__value { display: flex; align-items: baseline; gap: var(--sp-2); }
-.p7-meter__value strong { font-size: var(--fs-30); line-height: 1; color: var(--c-primary); font-variant-numeric: tabular-nums; }
-/* P0-2 保留 12px：这句是那个 30px 数字的**计量口径标注**（谁算的、什么口径），
-   它替换的是刻度说明的位置；数字本身才是要读的那一档。 */
-.p7-meter__value span { font-size: var(--fs-12); color: var(--c-text-3); }
+.p7-meter__top { display: flex; align-items: flex-start; flex-wrap: wrap; gap: var(--sp-3) var(--sp-5); }
+/* 读数瓦片：`StatTile` 自己把「标签 / 读数 / 同刻度的条 / 脚注」按一列排好，
+   所以这里不再有 30px 的裸数字，也不再有第二套图形。 */
+.p7-meter__tile { width: min(260px, 100%); }
 .p7-meter__line { display: flex; align-items: baseline; gap: var(--sp-3); }
 .p7-meter__line h2 { font-size: var(--fs-20); line-height: var(--lh-snug); }
 .p7-meter__line p { font-size: var(--fs-14); color: var(--c-text-2); }
 .p7-meter__status { font-size: var(--fs-14); color: var(--c-text-2); }
 
-/* P0-2 保留 12px 并收紧行距：这三项是刻度图例（下面那根 p7-tick 才是主角），
-   连同它右侧的计数 b 一起算**图表刻度/计数**，属于 tokens 登记给 12px 的用途。
-   原来继承 1.7 的行距在小字上太散，收到 1.45。 */
-.p7-meter__facts { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-5); font-size: var(--fs-12); line-height: var(--lh-snug); color: var(--c-text-3); }
-.p7-meter__fact { display: inline-flex; align-items: center; gap: 6px; }
-.p7-meter__fact b { color: var(--c-text); font-variant-numeric: tabular-nums; }
-.p7-meter__fact--quiet { color: var(--c-text-3); }
+/* 三档读数 + 覆盖度：四个 `StatTile`，同一把 0–1 的尺，排成**一行**。
+   原来这里是一根 3px 的小刻度（宽 3px、高 14/9/5px）——与 A/B 段的三格徽标
+   相隔 120 行却是第三套画法，同一个量（结实程度）在这页有三种印法。
+   一行而不是网格：这一块是"度量摘要"，高度要能跟左边的环对齐，不许比正文还重。 */
+/* 四个瓦片排成一行（不是网格）：这一块是"度量摘要"，高度要能跟左边的环对齐。
+   实测这一列的可用宽是 456px：4 × 100 + 3 × 8 = 424，四个刚好一行；
+   瓦片本身 `min-width: 0`，所以"比较确定 / 依旧不足"这种四字标签会按需收窄。 */
+.p7-meter__stats { display: flex; flex-wrap: wrap; align-items: start; gap: var(--sp-2) var(--sp-2); }
+.p7-meter__stats > * { flex: 0 1 100px; min-width: 0; }
+/* P0-2 保留 12px：这句话是**计量口径标注**（谁算的、什么口径），数字在上一排。 */
+.p7-meter__covnote { margin-top: var(--sp-1); font-size: var(--fs-12); line-height: var(--lh-snug); color: var(--c-text-3); }
 
-.p7-tick { width: 3px; border-radius: 1px; display: inline-block; }
-.p7-tick--high { height: 14px; background: var(--c-primary); }
-.p7-tick--mid { height: 9px; background: var(--c-primary); opacity: 0.5; }
-.p7-tick--low { height: 5px; background: var(--c-border-strong); }
-
-.p7-meter__how summary { display: inline-flex; align-items: center; min-height: 44px; cursor: pointer; list-style: none; font-size: var(--fs-12); color: var(--c-text-3); }
-.p7-meter__how summary::-webkit-details-marker { display: none; }
-.p7-meter__how summary:hover { color: var(--c-primary); }
+/* 口径说明：Foldable 的 static 形态 = 一句眉标 + 永远可见的正文。
+   它解释上面那根读数条，属于**这一格的脚注**，所以比正文轻一档（12px），
+   但仍然默认可见 —— `DESIGN-LANGUAGE.md:102` 不许把"这是怎么来的"折起来。 */
+.p7-meter__how :deep(.fold__static-head) { font-size: var(--fs-12); font-weight: var(--fw-regular); color: var(--c-text-3); }
+.p7-meter__how :deep(.fold__body) { padding-top: var(--sp-1); }
 .p7-meter__how p { max-width: 66ch; margin-top: var(--sp-1); font-size: var(--fs-12); color: var(--c-text-3); line-height: var(--lh-normal); }
 .p7-meter__how code { font-size: var(--fs-12); background: var(--c-surface-3); padding: 1px 4px; border-radius: var(--r-sm); }
 
-.p7-block { margin-top: var(--sp-7); }
+/* 溯源总账（原来折叠、现在始终可见）：内容从"点开才看到"变成"默认读到"，
+   所以同一份信息的排布要更省纵向空间 —— 7 条已知来源在宽屏下用四列网格，
+   每条仍然是"名字 + 一句来源"，只是不再各占一整行。
+   列表在这里改成 grid（覆盖全局 `.ws-mini-list` 的 flex 单列）：只在本页生效。 */
+.p7-sources :deep(.ws-context__body ul) { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sp-2) var(--sp-5); }
+.p7-sources :deep(.ws-context__body li) { min-width: 0; }
+@media (max-width: 900px) {
+  .p7-sources :deep(.ws-context__body ul) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+.p7-block { margin-top: var(--sp-7); position: relative; }
 .p7-block__head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--sp-5); flex-wrap: wrap; margin-bottom: var(--sp-4); }
 .p7-block__head h2 { display: flex; align-items: center; gap: var(--sp-3); font-size: var(--fs-20); line-height: var(--lh-snug); }
 /* P0-2 提到 14px：这个 A/B/C 不是一个装饰方块，而是**下面整段的章节号**，
@@ -1353,7 +1483,10 @@ const identity = computed(() => {
 .p7-group__hint { font-size: var(--fs-12); color: var(--c-text-3); }
 /* P0-2 保留 12px：纯计数（「4 条」）。 */
 .p7-group__count { margin-left: auto; font-size: var(--fs-12); color: var(--c-text-3); }
-.p7-group__none { padding: var(--sp-3) 0; }
+/* 筛选后为空的组：EmptyState size="sm" 自己带内距与居中，这里只把图形收窄，
+   免得它在 4 个分组里各占一屏。 */
+.p7-group__empty :deep(.exp-motif) { width: 120px; margin-bottom: var(--sp-2); }
+.p7-group__empty { padding: var(--sp-2) 0 var(--sp-4); }
 
 /* 第二层收窄：来源与可信度共用同一排小按钮 */
 .p7-subfilter { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); margin: calc(var(--sp-2) * -1) 0 var(--sp-4); }
@@ -1394,14 +1527,8 @@ const identity = computed(() => {
 /* P0-2 收紧行距：这一排现在混了 12px（来源/时间/状态）与 14px（动作词），
    行距按 12px 那一档收紧到 1.45，让小字不再散着排，也不给上层白拿 2px。 */
 .p7-row__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--sp-3); font-size: var(--fs-12); line-height: var(--lh-snug); }
-.p7-source { background: transparent; font-size: var(--fs-12); }
-.p7-conf { color: var(--c-text-3); }
-/* 刻度的三档要一眼分出"结实程度"：满格最高、核对减半、不足只是浅底 */
-.p7-conf :deep(.confidence__bar--on) { background: var(--c-primary) !important; }
-.p7-conf :deep(.confidence__bar--on-mid) { background: var(--c-primary) !important; opacity: 0.5; }
-.p7-conf :deep(.confidence__bar--on-low) { background: var(--c-border-strong) !important; }
-/* 没有把握度数据时不摆三根空刻度：那会看起来像"已知但很低" */
-.p7-conf--none :deep(.confidence__bars) { display: none; }
+/* 来源、可信度、时间同层：三者都交给组件自己的形态（色相 / 格子 / 字形），
+   这一页不再为它们各写一套 CSS（原来 `.p7-conf :deep(.confidence__*)` 覆盖了 5 条）。 */
 .p7-row__time { color: var(--c-text-3); }
 /* P0-2 提到 14px：hint 是一句**说明**（"示例对话本人说明，待核对"），不是坐标值，
    提上来之后与同排 12px 的来源/时间形成两级，而不是"一堆一样小的字"。 */
@@ -1422,7 +1549,7 @@ const identity = computed(() => {
 .p7-support--none .p7-support__mark { background: transparent; border: 1px dashed var(--c-border-strong); }
 
 /* 展开指示：文字 + 箭头，随 aria-expanded 翻转（状态可见，不靠动画表达） */
-/* P0-2 提到 14px：它跟"靠 A 的"是同一类**动作/关系词**——"原始依据与操作"直接说明
+/* P0-2 提到 14px：它跟"靠 A 的"是同一类**动作/关系词**——"来历与操作"直接说明
    点下去会发生什么，是使用这一页的关键词；原来 12px 时它比同一行里的状态字还小，
    既是"最小的字承担最多内容"的典型，也弱化了这一页的主交互。 */
 .p7-row__cue { display: inline-flex; align-items: center; gap: 3px; margin-left: auto; color: var(--c-text-3); font-size: var(--fs-14); white-space: nowrap; }
@@ -1431,16 +1558,24 @@ const identity = computed(() => {
 .p7-row__hit[aria-expanded='true'] .p7-row__cue { color: var(--c-primary); }
 .p7-row__hit[aria-expanded='true'] .p7-row__cue svg { transform: rotate(180deg); }
 
-/* 一层折叠：原始依据 + 撑起的判断 + 动作。动作在这里才有 44px 的尺寸。 */
+/* 一层折叠：`Foldable variant=inline` 承载"展开/收起"的语义与键盘行为，
+   命中的仍然是**整行**（.p7-row__hit）。
+   折叠头在这里是结构性的：收起时它整块不参与布局（否则 12 行各多出 40px，
+   而这一页的行高是上一轮实测过的基线），展开时才作为"这一层的标题"出现。
+   这样同一行既不会有第二个 40px 的开关，也不会出现"按钮里套按钮"。 */
+.p7-row__more :deep(.fold__head) { gap: var(--sp-2); }
+.p7-row__more:not(.fold--open) :deep(.fold__head) { display: none; }
+.p7-row__more :deep(.fold__label) { font-size: var(--fs-12); }
+.p7-row__more :deep(.fold__body) { padding-top: var(--sp-1); }
+/* 展开区：原始证据 + 撑起的判断 + 动作。动作在这里才有 44px 的尺寸。 */
 .p7-row__more-body { padding: var(--sp-3) var(--sp-4) var(--sp-4); margin: 0 var(--sp-3) var(--sp-2); background: var(--c-surface-2); border-radius: var(--r-md); }
-.p7-facts { display: flex; flex-direction: column; gap: var(--sp-2); font-size: var(--fs-14); }
-.p7-facts > div { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: var(--sp-3); }
-.p7-facts dt { color: var(--c-text-3); }
-.p7-facts dd { color: var(--c-text-2); }
 /* P0-2 保留 12px：`原始证据` 这类标题是**块内眉标**（后面紧跟的 ul 才是内容）。 */
 .p7-facts__title { margin-top: var(--sp-3); font-size: var(--fs-12); color: var(--c-text-3); }
+.p7-facts__title:first-child { margin-top: 0; }
 .p7-evidence { margin: var(--sp-2) 0 0; }
-.p7-evidence__none { margin-top: var(--sp-2); }
+/* 兜底句（"这条没有附原始证据"）：它是**说明**，不是坐标值，所以走 14px 正文档，
+   不再用 `.ws-muted` 的 12px 灰字 —— 灰字与周围信息等重，读不出"这里什么都没有"。 */
+.p7-evidence__none { margin-top: var(--sp-2); font-size: var(--fs-14); color: var(--c-text-3); line-height: var(--lh-snug); }
 .p7-row__actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-4); margin-top: var(--sp-3); padding-top: var(--sp-2); border-top: 1px solid var(--c-border); }
 
 /* 折叠内的关系行 / 动作行：唯一有 44px 命中区的地方 */
@@ -1454,10 +1589,10 @@ const identity = computed(() => {
 .p7-link--missing .p7-link__dot { background: transparent; border: 1px solid var(--c-attention); }
 .p7-link--missing .p7-link__go { color: var(--c-attention-strong); }
 
-/* B 段 */
-.p7-recompute { flex: none; display: flex; flex-direction: column; gap: 2px; padding: var(--sp-3) var(--sp-4); background: var(--c-attention-weak); border-left: 2px solid var(--c-attention); border-radius: var(--r-sm); max-width: 44ch; }
-.p7-recompute strong { font-size: var(--fs-14); color: var(--c-attention-strong); }
-.p7-recompute span { font-size: var(--fs-12); color: var(--c-text-2); }
+/* B 段：`needs_recompute` 现在是 StatTile（读数 + 状态同格）。
+   这里只给它一个上限宽度，免得趋势句把页头挤成一长条；
+   红底 + 左红条那套（三处里最重的一处）已经删掉，重量由组件的 state 承担。 */
+.p7-recompute { flex: none; width: min(280px, 100%); }
 
 /* P0-2 提到 14px：这是**读下去的说明句**（依赖关系从哪来、哪些是演示映射），
    53 个字符的一句，不是坐标值。行距用 --lh-normal：它是这一段里唯一的正文型文本。 */
@@ -1499,7 +1634,7 @@ const identity = computed(() => {
 .p7-concl__side { display: inline-flex; align-items: center; gap: var(--sp-2); }
 /* P0-2 保留 12px：把握档名（"待验证 / 依据充分"）。它旁边就是三根刻度条，
    文字只是**刻度的读法**，与来源、时间同层；放大它会把"量的示意"变成一句口号。 */
-.p7-concl__conf { font-size: var(--fs-12); color: var(--c-text-3); white-space: nowrap; }
+.p7-concl__conf { white-space: nowrap; }
 /* P0-2 提到 14px：与 .p7-row__cue 同理，它是"完整判断与依据"这个**动作**的名字。 */
 .p7-concl__cue { display: inline-flex; align-items: center; gap: 4px; color: var(--c-text-3); font-size: var(--fs-14); white-space: nowrap; }
 .p7-concl__cue svg { transition: transform var(--dur-2) var(--ease-out); }
@@ -1574,6 +1709,8 @@ const identity = computed(() => {
 
 @media (max-width: 760px) {
   .p7-meter { flex-direction: column; gap: var(--sp-4); }
+  /* 窄屏两列：四个瓦片排成 2×2，不挤成一列也不溢出 */
+  .p7-meter__stats > * { flex: 1 1 calc(50% - var(--sp-4)); }
   .p7-ring { width: 72px; height: 72px; }
   .p7-meter__top { flex-direction: column; align-items: flex-start; gap: var(--sp-1); }
   .p7-modes { width: 100%; flex-direction: column; align-items: flex-start; gap: var(--sp-2); }
@@ -1584,7 +1721,6 @@ const identity = computed(() => {
      P0-2：标签行距已由基础规则的 --lh-snug 承担，这里不再重复写一遍。 */
   .p7-row__hit { display: flex; flex-direction: column; align-items: stretch; gap: 2px; }
   .p7-row__cue { margin-left: 0; }
-  .p7-facts > div { grid-template-columns: minmax(0, 1fr); gap: 0; }
 
   .p7-concl__hit { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
   .p7-concl__brief { font-size: var(--fs-16); }

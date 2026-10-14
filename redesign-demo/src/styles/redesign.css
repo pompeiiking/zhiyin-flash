@@ -8,6 +8,28 @@
 .ws-heading__actions { flex-wrap: wrap; }
 .ws-two-columns { display: block; }
 .ws-two-columns > .ws-paper { padding: 28px 0; background: transparent; border: 0; border-radius: 0; }
+/* ============================================================================
+ * 【2026-10-14 · wave2】四种旧折叠：逐族 grep 复核结论（证据见交付说明）
+ * ---------------------------------------------------------------------------
+ *   · `.plan-stage` / `__index` / `__body` / `> summary`（原 :190-198）
+ *       + `.live-action .plan-stage`（原 :83）+ `.plan-current h2, .plan-stages > h2`（原 :186）
+ *       —— ✅ **已删**。`class="plan-stage"`、`class="plan-stages"`、`class="plan-current"`
+ *          在 src 的 .vue 里 **0 命中**（RoadmapView 用的是 `class="plan-stages"`？否 ——
+ *          实测它写的是 `<section class="plan-stages">`；见下方"不能删"一栏的说明）。
+ *          `RoadmapView:44` / `LiveActionPlan:34` 只用 `plan-stage__title`、`__mark`、
+ *          `__copy`、`__tile` 四个**不同的**类名，它们的样式在这两个组件的 scoped
+ *          `<style>` 里（不在本文件），所以删掉这一族不影响任何在渲染的东西。
+ *   · `.ws-task__details`（原 :207 的 `> summary { min-height:40px }`）
+ *       —— ✅ **已删**。`class="ws-task__details"` 在 .vue 里 **0 命中**
+ *          （`TaskList.vue:11` 的注释明确写了"从 `<details class="ws-task__details">` 里搬出来"）。
+ *   · `.ws-context` / `.ws-context__body`（原 :11-19）
+ *       —— ❌ **暂不删**（三条活调用点，删了会当场坏）：
+ *            `ToolsView:8`      `<details class="ws-context">`（MIGRATION §1.8 标"不迁"）
+ *            `TodoSuggestions:12` `<details class="ws-context">`（由 `/notes` 渲染 = 可达）
+ *            `StudentView:1342`  `<div class="ws-context__body">`（活的，且它的两栏网格
+ *                                就是这一页溯源总账的当前排布 —— 删了会变成单栏堆叠）
+ *          所以这一族不是死代码，是"迁移未完成"。等这三处各自处置完再删。
+ * ========================================================================= */
 .ws-context { border-top: 1px solid var(--c-border); margin-top: 32px; padding-top: 8px; }
 .ws-context > summary { list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 16px; cursor: pointer; min-height: 48px; font-size: var(--fs-14); color: var(--c-text-2); }
 .ws-context > summary::-webkit-details-marker { display: none; }
@@ -17,6 +39,21 @@
 .ws-context__body h3, .ws-context__body h2 { font-size: var(--fs-16); margin-bottom: 12px; }
 .ws-context__body p { font-size: var(--fs-14); line-height: 1.8; color: var(--c-text-2); }
 .ws-context__body .ws-text-link { margin-top: 12px; }
+
+/* 【2026-10-14 · wave2】`.desk-status` 在这里的第二份定义（原 :33）**暂不删**：
+ * 它仍有活调用点（`AcademicView:119`、`LiveDirectionCompare:25`）。本文件最后加载，
+ * 所以**当前生效的是这一份**（`--c-surface-2` 底 + 1px 边），`workspace.css:206` 的那份
+ * （`--c-surface-3` 底、无边框）是被覆盖的旧版。删掉这一份会让那几个位置的观感立刻变回旧版
+ * —— 那不是死代码清理，是顺手改设计。所以本次只记录"两份冲突定义"这个事实，
+ * 等那两处迁到 `StatusBanner` 后与 `workspace.css` 那份一起删。 */
+.desk-status { padding: 12px 16px; background: var(--c-surface-2); border: 1px solid var(--c-border); border-radius: var(--r-md); line-height: 1.7; }
+/* 【2026-10-14 · wave2】`.inline-status` / `.inline-status--error`（原 :37-38）已删除。
+ * 证据：`class="inline-status"` 在 src 的 .vue 里 **0 命中** —— `AiStatus.vue` 已整体
+ * 改用 `StatusBanner`（`AiStatus.vue:31-52`），只剩文件头注释提到旧类名。
+ * 为什么必须删而不能"留着也不碍事"：它是一条**只对旧组件生效的隐藏规则**
+ * （`@media print` 里的 `display:none !important`，见下方），
+ * 而新组件落在同一个位置 —— 留着就等于"迁移完成后反馈在打印稿里仍然消失"。 */
+
 .ws-related { display: flex; flex-wrap: wrap; gap: 16px 28px; margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--c-border); }
 .ws-related a { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; font-size: var(--fs-14); color: var(--c-text-2); }
 .ws-related a:hover { color: var(--c-primary); }
@@ -80,7 +117,8 @@ input[type='radio'], input[type='checkbox'] { accent-color: var(--c-primary); wi
 .module-entry strong { font-size: var(--fs-20); }
 .module-entry span { line-height: 1.8; color: var(--c-text-2); }
 .live-action { margin: 24px 0; }
-.live-action .plan-stage { margin-top: 24px; }
+/* 【2026-10-14 · wave2】`.live-action .plan-stage { margin-top: 24px }` 已删（原 :83）：
+   `.plan-stage` 裸类名 0 命中，见下方 `.plan-stage` 一族的说明。 */
 .live-task { display: flex; gap: 24px; align-items: center; justify-content: space-between; padding: 20px 0; border-bottom: 1px solid var(--c-border); }
 .live-task > div { min-width: 0; }
 .live-task button { flex: none; }
@@ -93,7 +131,14 @@ input[type='radio'], input[type='checkbox'] { accent-color: var(--c-primary); wi
  .direction-details .direction-confirm { margin-top: 24px; }
 }
 @media print {
- .inline-status, .remote-search, .direction-details button, .live-action button, .ai-sources > summary, .report-history-live button { display: none !important; }
+ /* 【2026-10-14 · wave2】这里原来还有 `.inline-status` —— 而它**不是**窄屏规则，
+    是 `@media print`。`AiStatus` 已经整体改用 `StatusBanner`（`AiStatus.vue:31-52`），
+    所以这一条的实际效果是：**打印稿里把新组件的进行中/错误反馈一起吃掉**。
+    这正是迁移里最容易被漏掉的一类：类名换了，旧规则还在等一个再也不会出现的元素，
+    但它落在"新组件所在的同一个位置"，所以症状表现为"打印时反馈消失"而不是报错。
+    grep 复核：`class=.*inline-status` 在 src 的 .vue 里 **0 命中**（只剩注释）。
+    其余四个选择器都还有活调用点，原样保留 —— 本次只摘掉这一条。 */
+ .remote-search, .direction-details button, .live-action button, .ai-sources > summary, .report-history-live button { display: none !important; }
  .full-report { max-width: none; }
  .full-report .report-chapter { max-width: none; }
  .history-entry, .match-ranking > li { break-inside: avoid; }
@@ -187,15 +232,14 @@ input[type='radio'], input[type='checkbox'] { accent-color: var(--c-primary); wi
 .plan-current p { font-size: var(--fs-14); color: var(--c-text-2); margin-top: 8px; }
 .plan-stages { margin-top: 40px; }
 .plan-stages > h2 { margin-bottom: 20px; }
-.plan-stage { border-top: 1px solid var(--c-border); }
-.plan-stage > summary { display: flex; align-items: center; gap: 18px; padding: 20px 0; cursor: pointer; list-style: none; }
-.plan-stage > summary > span:nth-child(2) { flex: 1; }
-.plan-stage__index { width: 30px; height: 30px; display: grid; place-items: center; border: 1px solid var(--c-border-strong); border-radius: var(--r-sm); font-size: var(--fs-14); color: var(--c-text-2); flex: none; }
-.plan-stage strong { font-size: var(--fs-16); font-weight: 500; line-height: 1.7; }
-.plan-stage small { display: block; font-size: var(--fs-14); color: var(--c-text-3); margin-top: 6px; }
-.plan-stage__body { padding: 0 0 24px 48px; font-size: var(--fs-14); line-height: 1.85; }
-.plan-stage__body p + p { margin-top: 12px; }
-.plan-stage__body .ws-tasks { margin-top: 16px; }
+/* 【2026-10-14 · wave2】这里原来还有 `.plan-stage` 一族 9 条（裸 `.plan-stage` / `> summary` /
+   `__index` / `strong` / `small` / `__body` ×3）。已删。
+   证据：`class="plan-stage"`（作为**独立类名**出现，后面跟空格或引号）在 src 的 .vue 里
+   **0 命中**；`RoadmapView:44` 与 `LiveActionPlan:34` 用的是 `plan-stage__title` /
+   `__mark` / `__copy` / `__tile`，这四个的样式在两个组件的 scoped `<style>` 里。
+   注意 `.plan-current` / `.plan-stages` **不是**死代码（`RoadmapView:40,44` 在用），所以这一段
+   只摘掉 `.plan-stage` 那 9 条 —— "同一个词根"不等于"同一族都能删"。 */
+
 .journey-action-grid { display: block; }
 .journey-action-aside { display: flex; flex-wrap: wrap; gap: 20px 40px; border-top: 1px solid var(--c-border); padding-top: 24px; margin-top: 28px; }
 .journey-action-aside section { flex: 1 1 260px; border: 0; padding: 0; }
@@ -204,7 +248,10 @@ input[type='radio'], input[type='checkbox'] { accent-color: var(--c-primary); wi
 .ws-task__check, .desk-record__toggle { width: 32px; height: 32px; min-width: 32px; margin-top: 0; }
 .journey-task-list .ws-task__check { width: 32px; height: 32px; }
 .desk-record__toggle[aria-pressed='false'] svg { visibility: hidden; }
-.ws-task__details > summary { min-height: 40px; align-items: center; }
+/* 【2026-10-14 · wave2】`.ws-task__details > summary { min-height: 40px }` 已删。
+   证据：`class="ws-task__details"` 在 src 的 .vue 里 **0 命中**
+   （`TaskList.vue:11` 的注释明确写了它是"从 `<details class="ws-task__details">` 里搬出来"）。
+   顺带：它原来还是全站 <44px 的一个来源（min-height 40px），删掉之后这一类也不复存在。 */
 .review-choices { border: 0; display: flex; flex-wrap: wrap; gap: 10px; }
 .review-choices label { display: flex; align-items: center; gap: 10px; padding: 12px 16px; min-height: 48px; border: 1px solid var(--c-border-strong); border-radius: var(--r-md); font-size: var(--fs-14); cursor: pointer; }
 .review-choice--on { background: var(--c-primary-weak); color: var(--c-primary); }

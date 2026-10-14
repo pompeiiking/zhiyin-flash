@@ -17,6 +17,27 @@ export type EmptyStateKind =
   | 'schedule' // 日历与课表空
   | 'review' // 还没有复盘记录
   | 'search-empty' // 筛选或检索没有命中（不是"没有内容"，是"条件太窄"）
+  /* ---- 【2026-10-14 · wave2】补齐三路 agent 分别借用过的四个语义档 ----
+   * 为什么必须补：这四个场景**都只能借用语义不符的 kind**，而每个借用都留下一条注释，
+   * 说明写它的人知道不对但没办法 —— 注释不是解法，是缺口在代码里的化石：
+   *   plan      RoadmapView 的"阶段计划还没有形成"借用了 `report`
+   *             → 代价不是图形错，是 `NEXT.report` 说"在上方生成第一份诊断"，
+   *               在计划页上这句话指着一个不存在的入口（plan 页没有生成诊断的按钮）
+   *   direction LiveDirectionCompare 的"尚未取得方向方案"借用了 `report`
+   *             → 同上，方向没有"生成报告"这个动作
+   *   notice    InboxSheet 的"提醒为空"借用了 `notes`
+   *             → `NEXT.notes` 说"在上方写下第一件要做的事"，在提醒弹层里是错的
+   *   tools     ModuleCatalog 的"工具目录为空"借用了 `search-empty`
+   *             → `search-empty` 的语义是"条件太窄"，而这里是"服务没返回"，
+   *               让用户去改关键词是**指错方向**（没有可改的条件）
+   * 这四档的 `NEXT` 都指向**页内已有入口或明确的等待语义**，不造没人接的按钮
+   * （与既有 9 档同一口径，见下方 NEXT 的注释）。
+   * 既有 9 档的 kind / 图形 / NEXT 一个字都没动 —— 新增 key 不改旧值。
+   */
+  | 'plan' // 阶段计划还没有形成
+  | 'direction' // 还没有可比较/确认的方向方案
+  | 'notice' // 提醒 / 通知为空
+  | 'tools' // 服务还没有返回可用的工具目录
 
 export type EmptyStateHeadingLevel = 2 | 3 | 4
 export type EmptyStateSize = 'md' | 'sm'
@@ -84,7 +105,17 @@ const NEXT: Record<EmptyStateKind, NextStep> = {
   academic: { type: 'hint', text: '在上方导入学校资料，或手动补录这一项。' },
   schedule: { type: 'hint', text: '在上方添加一项安排，日历会按时间排开。' },
   review: { type: 'hint', text: '先记下今天发生的一件事，稍后再回来归因。' },
-  'search-empty': { type: 'hint', text: '换个关键词，或清除筛选条件后重试。' }
+  'search-empty': { type: 'hint', text: '换个关键词，或清除筛选条件后重试。' },
+  /* wave2 新增四档。每一条都刻意不写"在上方……"（前三档的毛病就是假设页面上方有个生成按钮）：
+     · plan 的任务只能从咨询里来 —— 所以给 link 而不是 hint（hint 会指向一个不存在的入口）
+     · direction 与 plan 同源（方向也是咨询形成的），但此刻**不该**给第二个 /chat 链接：
+       方向页下方已有"比较后确认"的动作区，重复的出口会把注意力从确认动作上分走
+     · notice 的出口是"下一条提醒"的语义，不是"写一件事"
+     · tools 是"服务没返回"，让用户等或重试，不能说"换个关键词"（没有可换的条件） */
+  plan: { type: 'link', label: '去咨询里定下一步', to: '/chat' },
+  direction: { type: 'hint', text: '方向会随咨询里的结论形成；形成后这里会出现可比较的方案。' },
+  notice: { type: 'hint', text: '现在没有待处理的提醒。有新提醒时会显示在这里。' },
+  tools: { type: 'hint', text: '服务还没有返回可用工具；稍后重新读取一次。' }
 }
 
 /** 图形字形：能对上 WorkspaceMotif 的三种就直接用，其余走本组件的语义字形 */
@@ -97,7 +128,12 @@ const MOTIF: Record<EmptyStateKind, EmptyStateMotif> = {
   academic: 'canvas',
   schedule: 'canvas',
   review: 'canvas',
-  'search-empty': 'canvas'
+  'search-empty': 'canvas',
+  // wave2 新增四档同样走本组件内的语义字形（WorkspaceMotif 只有 chat/notes/intel 三种）
+  plan: 'canvas',
+  direction: 'canvas',
+  notice: 'canvas',
+  tools: 'canvas'
 }
 
 const patternId = 'empty-grid-' + useId()
@@ -166,6 +202,31 @@ const actionTarget = computed<'none' | 'link' | 'href' | 'button'>(() => {
           <template v-else-if="kind === 'review'">
             <path d="M52 100v8a6 6 0 0 1-6 6H38" />
             <path d="M41.5 99.5 36 104l5.5 4.5" />
+          </template>
+          <!-- ===== wave2 新增四档。几何常量与上面几种完全一致（同一个 40×40 方框、
+               同一条路径骨架），只有框里的图形换成语义相符的一个 —— 这样四档空态
+               与既有九档在灰度下是同族的，不会读成"另一个组件的空态"。 ===== -->
+          <!-- 阶段计划：三级台阶（阶段是"一步一步来"的），不是文档也不是表 -->
+          <template v-else-if="kind === 'plan'">
+            <path d="M35 118h6v-6h6v-6h6v-6h6" />
+            <path d="M35 98v20h20" />
+          </template>
+          <!-- 方向：一个分叉的箭头（多条路里选一条），终点是一个空心点 -->
+          <template v-else-if="kind === 'direction'">
+            <path d="M35 108h8" />
+            <path d="M43 108 48 102M43 108l5 6" />
+            <circle cx="53" cy="100.5" r="2.5" />
+            <circle cx="53" cy="115.5" r="2.5" />
+          </template>
+          <!-- 提醒：一只铃（不是便签） -->
+          <template v-else-if="kind === 'notice'">
+            <path d="M39 116h12" />
+            <path d="M41 116v-8a4 4 0 0 1 8 0v8" />
+            <path d="M45 100.5v-2.5M43.5 118.5a1.7 1.7 0 0 0 3 0" />
+          </template>
+          <!-- 工具：一个扳手（可拿来用的东西），不是放大镜 -->
+          <template v-else-if="kind === 'tools'">
+            <path d="M52 100.5a3.5 3.5 0 0 1-4.6 3.3l-7.4 7.4a1.9 1.9 0 0 1-2.7-2.7l7.4-7.4a3.5 3.5 0 0 1 4.6-4.6l-2.6 2.6 2.2 2.2z" />
           </template>
           <!-- 筛选无结果：放大镜里的那道斜线才是"没有命中"，不是"什么都没有" -->
           <template v-else>

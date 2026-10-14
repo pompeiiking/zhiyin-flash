@@ -3,6 +3,28 @@
  * -----------------------------------------------------------------------------
  * 这里只放三样东西：重置、排版口径、全站共用零件。
  * 任何组件都不得写颜色字面量 —— 一律取 tokens.css 里的名字。
+ *
+ * -----------------------------------------------------------------------------
+ * 【2026-10-14 · 全局样式纪律】"规范被后加载文件盖掉"这类病灶怎么不再犯
+ * -----------------------------------------------------------------------------
+ * 病灶形状（本轮修掉两处，都在这一层）：
+ *   · `base.css` 的 body 写死 `line-height: 1.7`，于是组件里那句
+ *     `line-height: var(--lh-normal)` 永远只是"写了个 1.7 的副本"，密度皮肤（soft 1.78 / dense 1.55）
+ *     改不动正文 —— 令牌登记了却没人用。
+ *   · `base.css` 的裸标签规则 `h1..h4 { letter-spacing: -0.01em }`，把给大字定的负字距
+ *     发给了 14/16px 的节标题 —— 值没错，作用域错了。
+ * 三条判据（写下来是为了下次能机械执行，而不是靠记性）：
+ *   1. **裸元素选择器只允许"重置与继承默认"，不允许"角色参数"。**
+ *      字号、字距、行高、颜色这些"角色量"必须落在具名类上（.page__title / .t-note …），
+ *      因为裸元素规则无法表达阈值、无法按字号分层，只能一刀切。
+ *   2. **能令牌化的量一律写 var()，不写字面量。** 字面量等价于"把这个值钉死在加载顺序里"：
+ *      谁后加载谁赢，而令牌本来就是为了让所有人同意同一个值。查法：
+ *      `grep -nE 'line-height: [0-9]' src/styles` 应当只剩 tokens.css。
+ *   3. **加载顺序不是契约。** main.ts 的顺序是 tokens → base → workspace → experience →
+ *      journey → dialogue → redesign；靠"我在后面"取胜的覆盖，只要有人重排 import 就会静默失效。
+ *      要压过别人就压**特异度**（如 `.app--workspace .btn`），并在注释里写明为什么。
+ * 配套：`scripts/check-classes.mjs` 只能抓"同名裸类"撞车，对 BEM 修饰符式撞车（X5）是盲的，
+ * 所以第 1、3 条不能指望门禁兜底。
  * ========================================================================== */
 
 *,
@@ -29,9 +51,20 @@ body {
   color: var(--c-text);
   font-family: var(--font-sans);
   font-size: var(--fs-14);
-  /* 中文正文行高给到 1.7：汉字是满框字，上下没有西文的升降部缓冲，
-     按西文习惯的 1.5–1.6 排出来会显得挤 */
-  line-height: 1.7;
+  /* 【2026-10-14 · 全局样式遗留 3】原来这里是字面量 `line-height: 1.7`。
+   *
+   * 病：`--lh-normal` 是正文行距的**唯一登记处**（tokens.css:145，注释写明"中文正文用这一档"），
+   * 密度皮肤 soft/dense 覆盖的也正是它（1.78 / 1.55）。但正文行高实际由这一条字面量决定，
+   * 于是组件里写的 `line-height: var(--lh-normal)`（dialogue.css 9 处、base.css 3 处、
+   * StudentView 5 处、EmptyState/StatusBanner 各 1 处）全都没有效果 ——
+   * 它们只是各自把 1.7 又抄了一遍，而"抄出来的常量"不随令牌走。
+   * 实测（/profile@1280，改前）：`.p7-deps-note` 声明 `var(--lh-normal)`，computed 却是 23.8px，
+   * 而它这行的 `--lh-normal` 已经是 1.7 —— 看上去"对"，是因为字面量恰好同值；
+   * 把皮肤切到 dense（`--lh-normal: 1.55`）它仍然是 23.8px，病灶才露出来。
+   * 修法：这一行改用 var()。默认档（1.7）**渲染像素完全不变**，但令牌从此真的接管正文行距。
+   * 为什么不是给 `p` 补规则：`p` 本来就不该有行高，行高是继承量；补一条 `p { line-height: … }`
+   * 只会把"两个地方各写一次正文行距"变成"三个地方"，正是要消灭的那种写法。 */
+  line-height: var(--lh-normal);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
@@ -49,13 +82,62 @@ dd {
   margin: 0;
 }
 
+/* 【2026-10-14 · 全局样式遗留 2】这里原先是裸元素规则上的一条 `letter-spacing: -0.01em`。
+ *
+ * 它错在**作用域**：`h1..h4` 是标签名，不是字号档。全站最小的 h3 只有 14–16px
+ * （`.p7-block__head h3` 16px、`.ws-milestone h3` 16px、`.desk-history__head h2` 14px），
+ * 也一起吃到了负字距 —— 实测 /profile@1280 的 16px 节标题 computed 是 `-0.16px`、
+ * 14px 的"历史会话"是 `-0.14px`，违反 CRAFT-BRIEF「负字距只给 ≥20px」；
+ * 中文是满框字，16px 上再收字距会把部件推到一起（"标题看着糊"的来源之一，不是字重问题）。
+ *
+ * 所以这里**不给标签补一个更小的值**（那是把阈值从 -0.01 挪到 -0.005，判据仍然不存在），
+ * 而是把负字距交还给"按角色写、有字号依据"的那一层：base.css 里的 .page__title / .block__title /
+ * .sec__title / .rail-index__title / .tally__n / .focal .card__title / .today__title 都自带
+ * -0.01em ~ -0.02em，组件 scoped 里的（.tile__value 等）也一样 —— 它们特异度更高，本来就赢。
+ * 裸标签这一层从此**不带字距**：16px 及以下按规范必须是 0，20px 以上由各自角色决定。
+ * 这样"漏写 letter-spacing"的后果从"错的值"变成"保守的值"——两种失败模式里选可接受的那个。 */
 h1,
 h2,
 h3,
 h4 {
   font-weight: var(--fw-semibold);
   line-height: var(--lh-tight);
+  /* 规范值：中文 ≥16px 的标题不加字距（CRAFT-BRIEF 4.1 的三条硬规则第 1、2 条） */
+  letter-spacing: 0;
+}
+
+/* 走到 20px 以上的标题，把「负字距只给大字」的 **-0.01em 兜底**补回来。
+ *
+ * 为什么不直接删掉了事：删掉之后，凡是没有被具名类（.page__title / .block__title /
+ * .rail-index__title …）接管的 20px+ 标题会退回 0，那是一次没人要求的字距放开。
+ * 实测受影响的：`Foldable` 静态形态里那些**没有类名的** 20px h2（/profile 的"陈亦然""整体分析"、
+ * /plan 的"阶段任务"…）。
+ *
+ * 写法上试过"用字号属性选择器自带阈值"（[style*='…20px'] 那种），**不可行**：
+ * 这些标题的字号来自类里的 `var(--fs-20)`，`h.getAttribute('style')` 是 null（实测），
+ * 属性选择器只认内联字面量。所以这里按**容器**列出真正需要兜底的（依据：字号 20px
+ * 且没有别的规则给它字距）。判据：**兜底只列到"能被核对到的类"为止** ——
+ * 列不进来的宁可退回 0；0 是合规值，负字距是加成，别为了一成字距引入一成错误作用域。 */
+.ws-section-head h2,
+.ws-section-title,
+.p7-block__head h3,
+.p7-block__head h4 {
+  /* 依据：CRAFT-BRIEF 4.1 —— 20px 允许 -0.01em（中文负字距下限），16px 必须为 0。 */
   letter-spacing: -0.01em;
+}
+
+/* 【2026-10-14 · 全局样式遗留 2 · 收尾】上一条裸规则删掉后，实测还剩两类 16px 及以下的
+ * `h3` 在吃负字距，**都是"标签是标题、视觉是眉标"的那一类**（语义上确实该是标题，
+ * 所以不能改标签；字号上按 CRAFT-BRIEF 4.1 必须 0）：
+ *   1. `.fold__static-head` —— Foldable 静态形态的眉标行，16px（StudentView 在窄屏把它压到 12px）；
+ *   2. `.fold--section .fold__body` 里的 h2/h3 —— Foldable 把它统一到 16px（Foldable.vue:206-207）。
+ * 这两处的字号是**组件/页面**定的，所以判据（"16px 不加字距"）必须在这里显式登记，
+ * 否则下一轮读代码的人只看到一条"裸标签不带字距"，会以为它们已经合规。
+ * 用 :where() 把特异度降到 0：组件那边若要给某个眉标加正字距（CRAFT-BRIEF 允许 12px 标签 +0.06em），
+ * 仍然能盖过这一条。 */
+:where(.fold__static-head),
+:where(.fold--section .fold__body h2, .fold--section .fold__body h3) {
+  letter-spacing: 0;
 }
 
 /* 【2026-10-14 · P2-12】<strong>/<b> 之前没有任何规则，用的是浏览器默认的 bold(700)，
@@ -581,30 +663,24 @@ html.is-skin-switching *::after {
   flex: none;
 }
 
-/* 把握度：不用小数，用三档文字 + 点数（对齐 7.3 口径）*/
-.confidence {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-2);
-  font-size: var(--fs-12);
-  color: var(--c-text-3);
-}
-
-.confidence__bars {
-  display: inline-flex;
-  gap: 2px;
-}
-
-.confidence__bar {
-  width: 5px;
-  height: 10px;
-  border-radius: 1px;
-  background: var(--gray-200);
-}
-
-.confidence__bar--on {
-  background: var(--c-primary);
-}
+/* ===========================================================================
+ * 【2026-10-14 · wave2】四态里的"把握度"零件已删除。
+ *
+ * 这里原来有 4 条：`.confidence` / `.confidence__bars` / `.confidence__bar` /
+ * `.confidence__bar--on`。删除依据（MIGRATION §3.4 的 G2 迁移已完成）：
+ *   grep `class="confidence` / `confidence__bar` → .vue 里 **0 命中**；
+ *   `StudentView` 的两处本地实现（原 `:986-991` / `:1097-1101`）已换成
+ *   `<ConfidenceBadge :confidence="row.conf" />`，并且 `:1369-1373` 那段
+ *   `:deep(.confidence__*)` 覆盖也一起删了。
+ * 连带的父类规则（`workspace.css` 的 `.ws-dimension .confidence` /
+ * `.ws-direction__role .confidence`）在同一次清理里一起删 —— 那两条是 X15 记的
+ * "双重死代码"：父类先死，子规则就成了永远不可能匹配的选择器。
+ *
+ * 为什么必须删而不是留着"反正不占地方"：`.confidence` 是一个**极易被下一个组件
+ * 随手复用的名字**（它与 `ConfidenceBadge.vue` 的 `.cf__*` 表达同一件事）。
+ * 留着就会出现"新组件写 `<span class="confidence">`、拿到 12px 灰字内联 flex"
+ * 这种看起来对、实际继承了一整套旧排版的情况 —— 与 `.meter__fill` 是同一类陷阱。
+ * ========================================================================= */
 
 /* ===========================================================================
  * 零件 · 表单
@@ -842,35 +918,24 @@ html.is-skin-switching *::after {
 }
 
 /* ===========================================================================
- * 零件 · 计量条
+ * 零件 · 计量条 —— 【2026-10-14 · 已整段删除】
  * ---------------------------------------------------------------------------
- * 用 transform: scaleX() 而不是 width —— 宽度动画会触发布局，transform 只走合成层。
- * 用法：<div class="meter"><div class="meter__fill" :style="{ '--meter': 0.46 }"/></div>
+ * 这里原来有 6 条定义：`.meter` / `.meter__fill` / `.meter__fill--attention` /
+ * `.meter__fill--done`（加 reduced-motion 里 1 条，合计 8 处定义、0 处使用）。
+ *
+ * 删它的理由不是"没人用"，是**它会静默归零**：
+ *   `.meter__fill { transform: scaleX(var(--meter, 0)) }` —— 缺省值是 0。
+ *   任何拿到 `meter__fill` 这个类名却没有同时设 `--meter` 的元素，会被压成 0 宽；
+ *   而 `getComputedStyle` 会如实报 `width: 330px`，屏幕上什么都没有 ——
+ *   这类 bug 会伪装成"布局问题"被排查很久。`.meter__fill` 又是个极易被下一个组件
+ *   随手复用的名字（`StatTile` 的 `.tile__fill`、`MeterRow` 的 `.mtr__fill` 都刻意绕开了它）。
+ *   现场证据见 `components/charts/MeterRow.vue:19-24`（把这个事故写进了自己的注释）
+ *   与 `:366-367`（为此加了第二道 `transform: none` 的保险）。
+ *
+ * 现在条状读数的唯一实现是 `components/charts/MeterRow.vue` 的 `.mtr__fill`：
+ * 它用 `width` + `transition`（不给 transform 留缺省值），并且满圆角与背景不会被缩放。
+ * 若将来还要一个纯 CSS 的轻量条，照 `.mtr__fill` 写，**不要**恢复 `scaleX(var(--x, 0))`。
  * ======================================================================== */
-
-.meter {
-  height: 6px;
-  border-radius: var(--r-pill);
-  background: var(--c-surface-3);
-  overflow: hidden;
-}
-
-.meter__fill {
-  height: 100%;
-  border-radius: var(--r-pill);
-  background: var(--c-primary);
-  transform-origin: left center;
-  transform: scaleX(var(--meter, 0));
-  transition: transform var(--dur-4) var(--ease-out);
-}
-
-.meter__fill--attention {
-  background: var(--c-attention);
-}
-
-.meter__fill--done {
-  background: var(--c-done);
-}
 
 /* ===========================================================================
  * 零件 · 表格（只用于真实二维数据）
@@ -1019,10 +1084,8 @@ html.is-skin-switching *::after {
   .just-changed {
     animation: none;
   }
-
-  .meter__fill {
-    transition: none;
-  }
+  /* 原来这里还有一条 `.meter__fill { transition: none }` —— 随上面那一族一起删除
+     （2026-10-14）。reduced-motion 的可用形态不受影响：它只是少了一条指向死零件的降级。 */
 }
 
 /* 页面容器 */

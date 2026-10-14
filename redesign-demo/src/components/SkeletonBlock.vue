@@ -46,6 +46,22 @@ const props = withDefaults(
     overlay?: boolean
     /** 行内使用：跟在文字或标签后面（如"正在读取 …"），不占一整行 */
     inline?: boolean
+    /**
+     * 根元素标签。缺省 `div`（保持既有调用不变）。
+     *
+     * 【2026-10-14 · wave2】为什么需要它：`SkeletonBlock` 的根原来**写死**成 `<div>`，
+     * 而 `<div>` 放进 `<button>` 是**非法 HTML**（button 的 content model 只允许 phrasing content，
+     * 浏览器虽然会渲染，但 HTML 校验失败、无障碍树里那块内容会从按钮的可访问名里掉出来）。
+     * 后果是实测的：一个 agent 需要"按钮里显示正在读取"这个形态（MIGRATION §4.1 的 8 处 P2
+     * 行内用法就是这么写的：`读取中 <SkeletonBlock inline variant="text" :lines="1"/>`），
+     * 发现根节点非法之后**放弃了那 8 处**。
+     * 所以这不是"多个可选项"，是补上一种本来就该支持的用法：
+     *   放进 <button> / <a> / <p> / <span> 里 → `as="span"`
+     *   独立一块（默认用法）→ 不传
+     * `span` 时 `.sk` 的 `display` 要跟着从 `flex` 变 `inline-flex`，
+     * 否则一个块级流进行内上下文会让按钮的基线跳动（见 <style> 里的 `.sk--as-span`）。
+     */
+    as?: 'div' | 'span'
   }>(),
   {
     variant: 'text',
@@ -54,7 +70,8 @@ const props = withDefaults(
     size: 'md',
     animated: true,
     overlay: false,
-    inline: false
+    inline: false,
+    as: 'div'
   }
 )
 
@@ -94,9 +111,10 @@ function colHeight(index: number): string {
 </script>
 
 <template>
-  <div
+  <component
+    :is="as"
     class="sk"
-    :class="[`sk--${variant}`, `sk--${size}`, { 'sk--overlay': overlay, 'sk--inline': inline, 'sk--static': !animated }]"
+    :class="[`sk--${variant}`, `sk--${size}`, `sk--as-${as}`, { 'sk--overlay': overlay, 'sk--inline': inline, 'sk--static': !animated }]"
     :style="rootStyle"
     aria-hidden="true"
   >
@@ -141,7 +159,7 @@ function colHeight(index: number): string {
         <span v-for="n in cols" :key="n" class="sk__bar sk__avatar" />
       </span>
     </template>
-  </div>
+  </component>
 </template>
 
 <style scoped>
@@ -157,6 +175,23 @@ function colHeight(index: number): string {
   flex-direction: column;
   gap: var(--sp-3);
   min-width: 0;
+}
+
+/* `as="span"`：根的 display 必须跟着切成行内级。
+   为什么不能只换标签：`span` 默认是 inline，而 `.sk` 上写着 `display: flex`，
+   在 `<button>` 里一个 flex 块会让按钮的内容盒按块级重新布局（按钮高度、基线都会跳）。
+   `inline-flex` 才与"这是按钮里的一个小占位"这个用法相符。
+   两条都写全（base 与 inline 的组合），这样**不依赖规则顺序** —— `.sk--inline` 与
+   `.sk--as-span` 特异度相同，谁在后面谁赢，是个会随重构静默翻转的坑。 */
+.sk--as-span {
+  display: inline-flex;
+  flex-direction: column;
+  vertical-align: middle;
+}
+
+.sk--as-span.sk--inline {
+  display: inline-flex;
+  flex-direction: row;
 }
 
 .sk--inline {
