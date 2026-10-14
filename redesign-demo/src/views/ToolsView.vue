@@ -95,9 +95,101 @@ interface DirectoryEntry {
   to?: string
 }
 
+/* ============================================================================
+ * 【2026-10-14 · wave5】工具之间的**先后关系**显形（靶子 G-07）
+ * ---------------------------------------------------------------------------
+ * 【病灶】这一页原来只有"每条工具自己是什么"（名称 / 说明 / 来源 / 版本 /
+ * 能不能立刻做事），没有"谁读谁的产出"。靶子 `directions/c2-hbu/_src/views/tools.html`
+ * 第一节原文就是这条主张：「右边的工具吃左边的产物。所以「画像分析」没跑出来之前，
+ * 「方向对比」和「任务建议」拿不到依据 —— 这不是限制，是顺序」，
+ * 并且工具卡上挂一枚 `.conf`「被第 2 步读」。真实页 `.conf` 实测 0 枚，
+ * 等价物只有一枚 12px/400 的灰字「可直接用 / 只跳转」（vs1 报告 G-05 / G-07）。
+ * 缺的正是 DESIGN-LANGUAGE §4.1「呈现关系」与 §6 第 5 问「信息之间的关系是否可见」。
+ *
+ * 【关系必须是真的，所以它从数据里推，不是写一句文案】
+ * 下表每一格都写清**出处**（源码文件 + 可复核的字段）：
+ *   · `writes`      —— 这一条自己写出的产物（别处已经写过的**不重复**：
+ *                      重复会把"顺便也写着同一份数据"印成"这是它的产出"）
+ *   · `readsFrom`   —— 这一条读的产物由谁写出来（值就是上游的 `id`）
+ *   · `feedsOthers` —— 它写出来的东西**真的被别人读**。只有 true 的写者才参与
+ *                      下面那个反向闭包 —— 同读一份数据不是依赖，这一步是"关系"与
+ *                      "巧合"的分界线。
+ * "被谁读"由 `READS_BY` 反向算出来，不是手写的；两端只要有一端不在这一屏目录里，
+ * 那一格就不印 —— 宁可不印，也不印一句当时兑现不了的话。
+ * ==========================================================================*/
+interface ToolRel {
+  id: string
+  /** 这条读什么（上游来源；值就是上游的 id）。空 = 不读别人的产出。 */
+  dependsOn: string[]
+  /** 这条**写出**什么。只写这一条自己的产物，别处已经写过的不要重复。 */
+  writes: string
+  /** 谁的产出来自这条工具的产物。"被谁读"由这里反向算出来。 */
+  feedsOthers: boolean
+  /** 这条读的产物由谁产生（**上游的 id**，不是名字）。模板里印成"读 XX 的产物"。 */
+  readsFrom?: string
+}
+
+const TOOL_REL: ToolRel[] = [
+  {
+    /* 出处：src/lib/demo-service.ts:37 —— modules 返回 id 'demo-plan'、version 'demo-1' */
+    id: 'demo-plan',
+    dependsOn: [],
+    /* 出处：src/lib/demo-service.ts:39 moduleData 返回「本地阶段计划演示数据」的 phases/tasks */
+    writes: '任务完成状态',
+    /* 它写的那份计划**没有工具会去读**（见 achievements 那格的注释）——
+       印成"被行动计划进度读"就是把"同读一份数据"说成依赖。 */
+    feedsOthers: false,
+  },
+  {
+    /* 出处：src/data/backend-registry.json:210-218 —— id 'action_progress'、name「行动计划进度」，
+       actions ["plan.task.set_done"]，description「与原有计划使用同一份数据」 */
+    id: 'action_progress',
+    /* 读的是那份阶段计划的**最新状态**（moduleAction 先写、再 moduleData 回读） */
+    dependsOn: ['demo-plan'],
+    readsFrom: 'demo-plan',
+    /* 出处：src/store.ts:237 completeTask() 写 backendDemo.recordEvent('task_done')，
+       写这条日志的正是"把任务勾掉"这个动作 —— 也就是这条工具自己的动作。
+       "任务完成状态"这一格不在这里重复：写它的是上面那条工具。 */
+    writes: '行为日志 task_done',
+    feedsOthers: true,
+  },
+  {
+    /* 出处：src/components/AchievementsSection.vue:10 —— 解锁日期读
+       backendDemo.state.eventTimes[rule.trigger_events]；badgeRules 里
+       first_task_done 的 trigger_events 是 ['task_done']（backend-registry.json:193-198） */
+    id: 'achievements',
+    dependsOn: ['action_progress'],
+    readsFrom: 'action_progress',
+    /* 出处：src/data/backend-registry.json:219-225 —— kind "application"、actions []（只读） */
+    writes: '完成记录',
+    feedsOthers: false,
+  },
+]
+
+/** 谁的产物**被读**（只有 feedsOthers 的写者算数）→ 读它的工具 id。
+ *  不这么分的话，"两个工具读同一份数据"会被印成"一个读另一个的产出" —— 那是把巧合说成依赖。 */
+const READS_BY = (() => {
+  const producers = new Set(TOOL_REL.filter((r) => r.feedsOthers).map((r) => r.id))
+  const map = new Map<string, string[]>()
+  for (const rel of TOOL_REL) {
+    for (const up of rel.dependsOn) {
+      if (!producers.has(up)) continue
+      const list = map.get(up) ?? []
+      list.push(rel.id)
+      map.set(up, list)
+    }
+  }
+  return map
+})()
+
 /** 预置入口：演示工程自带。`actions` 非空才算"打开就能做事"，与已发布工具同一把尺。 */
 const preset = registry.modules.map<DirectoryEntry>((m) => ({
   key: 'r:' + m.id,
+  /* 【2026-10-14 · wave5】补上 id：预置入口原来只有 key（'r:'+id），没有 id ——
+     于是"这条是谁"在模板里查不到，串联关系（readBy / readsOf）也认不出它。
+     key 与 id 是两件事：key 是目录内唯一键（带来源前缀，避免与服务端 id 撞），
+     id 是**这条工具的身份**（服务端清单与本演示预置用的是同一批业务 id）。 */
+  id: m.id,
   name: m.name,
   description: m.description,
   source: 'preset',
@@ -121,6 +213,49 @@ const directory = computed<DirectoryEntry[]>(() => [
   })),
   ...preset,
 ])
+
+/* ---- 串联：把"被谁读"算出来给模板用 ----------------------------------------
+ * 这些查询都**只认目录里真的有的条目**：关系登记表（TOOL_REL）里出现、
+ * 但这一屏目录里没有的 id，一律不印 —— 见上面 TOOL_REL 的头注释。 */
+function relOfId(id: string): ToolRel | undefined {
+  return TOOL_REL.find((r) => r.id === id)
+}
+function nameOfId(id: string): string | undefined {
+  return directory.value.find((t) => t.id === id)?.name
+}
+/** 这条工具写完、而**别人要读**的那份东西，谁读它。空数组 = 目录里没人读它。 */
+function readByOf(id: string): string[] {
+  return (READS_BY.get(id) ?? []).map((rid) => nameOfId(rid)).filter((n): n is string => !!n)
+}
+/** 这条读的产物是写出来的（`readsFrom`），还是只是同读一份数据。 */
+function readsOf(id: string): string[] {
+  const from = relOfId(id)?.readsFrom
+  const name = from ? nameOfId(from) : undefined
+  return name ? [name] : []
+}
+/** 目录条目的 key → 读它的下游工具名。模板按 `t.key` 取，不在 v-for 里反复 find。 */
+const readBy = computed<Record<string, string[]>>(() => {
+  const map: Record<string, string[]> = {}
+  for (const t of directory.value) {
+    if (!t.id) continue
+    const names = readByOf(t.id)
+    if (names.length) map[t.key] = names
+  }
+  return map
+})
+/** 串联图：只画"这一屏目录里真的有 + 登记过关系"的工具 */
+const chainSteps = computed(() =>
+  TOOL_REL.filter((r) => !!nameOfId(r.id)).map((r) => ({
+    id: r.id,
+    name: nameOfId(r.id)!,
+    writes: r.writes,
+    /** 只有真的读**别人写出来的东西**才算"读它的产物"；同读一份数据不算 */
+    reads: r.readsFrom ? readsOf(r.id) : [],
+    readBy: readByOf(r.id),
+  })),
+)
+/** 一条真的"被读"边都没有时不印这块 —— 不印空话 */
+const chainHasReadBy = computed(() => chainSteps.value.some((s) => s.readBy.length > 0))
 
 /* ---- 落点②组织权：两条真的换分组轴 ---------------------------------------- */
 const TOOL_AXES = [
@@ -226,6 +361,26 @@ const sourceDetail = computed(() =>
       </p>
     </section>
 
+    <!-- ①′ 关系显形：工具不是并列的一堆按钮，是一条链（靶子 tools.html 第一节的主张）。
+         内容全部由 TOOL_REL 推导，目录里没有的工具不会出现在这里。 -->
+    <section v-if="chainHasReadBy" class="tools-chain" aria-labelledby="tools-chain-title">
+      <div class="ws-section-head">
+        <div>
+          <h2 id="tools-chain-title">这些工具怎么接在一起</h2>
+          <p>下游读上游的产物：上游没跑出来之前，下游拿不到依据 —— 这不是限制，是顺序。</p>
+        </div>
+      </div>
+      <ol class="tools-chain__steps">
+        <li v-for="s in chainSteps" :key="s.id" class="tools-chain__step">
+          <span class="tools-chain__name">{{ s.name }}</span>
+          <span v-if="s.reads.length" class="tools-chain__line">读<strong>{{ s.reads.join('、') }}</strong>的产物</span>
+          <span class="tools-chain__line">写出<strong>{{ s.writes }}</strong></span>
+          <span v-if="s.readBy.length" class="tools-chain__readby">被<strong>{{ s.readBy.join('、') }}</strong>读</span>
+          <span v-else class="tools-chain__end">目录里没有工具读它的产出</span>
+        </li>
+      </ol>
+    </section>
+
     <!-- ② 组织权 + ③ 溯源：一个目录，两条轴 -->
     <section class="tools-directory" aria-labelledby="tools-dir-title">
       <div class="ws-section-head">
@@ -261,13 +416,13 @@ const sourceDetail = computed(() =>
               <RouterLink v-if="t.to" class="tools-entry" :to="t.to">
                 <strong class="tools-entry__name">{{ t.name }}</strong>
                 <span class="tools-entry__desc">{{ t.description }}</span>
-                <span class="tools-entry__meta"><SourceChip :label="t.sourceLabel" :kind="t.sourceKind" /><span class="tools-entry__tag">{{ t.runnable ? '可直接用' : '只跳转' }}</span></span>
+                <span class="tools-entry__meta"><SourceChip :label="t.sourceLabel" :kind="t.sourceKind" /><span class="tools-entry__tag">{{ t.runnable ? '可直接用' : '只跳转' }}</span><span v-if="readBy[t.key]" class="tools-entry__rel">被<strong>{{ readBy[t.key].join('、') }}</strong>读</span></span>
                 <UiIcon class="tools-entry__go" name="arrow" :size="16" />
               </RouterLink>
               <button v-else class="tools-entry" type="button" :aria-pressed="openId === t.id" @click="pick(t)">
                 <strong class="tools-entry__name">{{ t.name }}</strong>
                 <span class="tools-entry__desc">{{ t.description }}</span>
-                <span class="tools-entry__meta"><SourceChip :label="t.sourceLabel" :kind="t.sourceKind" /><span v-if="t.version" class="tools-entry__ver t-num">v{{ t.version }}</span><span class="tools-entry__tag">{{ t.runnable ? '可直接用' : '只跳转' }}</span></span>
+                <span class="tools-entry__meta"><SourceChip :label="t.sourceLabel" :kind="t.sourceKind" /><span v-if="t.version" class="tools-entry__ver t-num">v{{ t.version }}</span><span class="tools-entry__tag">{{ t.runnable ? '可直接用' : '只跳转' }}</span><span v-if="readBy[t.key]" class="tools-entry__rel">被<strong>{{ readBy[t.key].join('、') }}</strong>读</span></span>
                 <UiIcon class="tools-entry__go" name="arrow" :size="16" />
               </button>
             </li>
@@ -369,6 +524,73 @@ const sourceDetail = computed(() =>
 }
 
 /* ============================================================================
+ * 串联：这些工具怎么接在一起
+ * ---------------------------------------------------------------------------
+ * 三格**等宽成行**，因为它们的先后关系就是"左读右"；窄屏落成一列，
+ * 顺序仍然从上到下（`<ol>` 是有序的，读屏会念序号）。
+ * 每格三行：工具名 / 它产出什么·读谁 / 被谁读。最后一行是**这一块存在的理由**，
+ * 所以它带底色与左侧竖条，前三格都有的那一行不至于被当成又一条元数据。
+ * ==========================================================================*/
+.tools-chain { margin-top: var(--sp-6); }
+
+.tools-chain__steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-3);
+  margin-top: var(--sp-3);
+}
+
+.tools-chain__step {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  padding: var(--sp-4);
+  border: var(--bw-1) solid var(--c-border);
+  border-radius: var(--r-md);
+  background: var(--c-surface-2);
+}
+
+.tools-chain__name {
+  font-size: var(--fs-14);
+  font-weight: var(--fw-semibold);
+  color: var(--c-text);
+}
+
+.tools-chain__line {
+  font-size: var(--fs-12);
+  line-height: var(--lh-normal);
+  color: var(--c-text-3);
+}
+
+.tools-chain__line strong { font-weight: var(--fw-medium); color: var(--c-text-2); }
+
+.tools-chain__readby,
+.tools-chain__end {
+  margin-top: auto;
+  padding: 3px 9px 3px 7px;
+  border-radius: var(--r-sm);
+  font-size: var(--fs-12);
+  line-height: var(--lh-snug);
+}
+
+.tools-chain__readby {
+  border: var(--bw-1) solid var(--c-border);
+  border-left: 3px solid var(--c-primary-border);
+  background: var(--c-surface);
+  font-weight: var(--fw-medium);
+  color: var(--c-text-2);
+}
+
+.tools-chain__readby strong { font-weight: var(--fw-semibold); }
+
+/* 链尾：没有下游读它。同样是 12px，但**没有底与边** —— 形状本身就说"这里没有边"。
+   不用虚线（虚线是全站"这是推的"的签名，而这里说的是事实：目录里确实没有这一条）。 */
+.tools-chain__end {
+  color: var(--c-text-3);
+}
+
+/* ============================================================================
  * 目录
  * ==========================================================================*/
 .tools-directory { margin-top: var(--sp-7); }
@@ -464,7 +686,56 @@ const sourceDetail = computed(() =>
 .tools-entry__ver,
 .tools-entry__tag { font-size: var(--fs-12); }
 .tools-entry__ver { color: var(--c-text-3); }
-.tools-entry__tag { color: var(--c-text-2); }
+
+/* ============================================================================
+ * 「可直接用 / 只跳转」这一枚：从灰字升成**徽标**
+ * ---------------------------------------------------------------------------
+ * 【为什么改】vs1 报告 G-05 / G-07 实测它是 `48×20`、`fs12/400`、无底无边无圆角 ——
+ * 靶子对应元素是 `.conf`（`96×29`、`fs12/600`、`padding 3px 9px`、`r999px`、1px 描边，
+ * 见 `directions/c2-hbu/_src/css/10-data-page.css:240-246`）。差的是**视觉重量一档**，
+ * 而 §5 反例表最后一条点名的正是这个形态：「**状态做成灰色小字**」。
+ *
+ * 【尺寸的取法：跟靶子那一档对齐，但只对齐"视觉"这一半】
+ * 靶子的 `29px` 高度来自 `12px × 1.65` 行高 + 上下各 3px 内距。这里不写死高度，
+ * 用同一组值（`--fs-12` + `--lh-snug` + `3px` 内距）算出来，所以它跟着字号档位走；
+ * 它**不是可点控件**（是状态文字），所以不适用 44/36 那条触控线，
+ * 也不需要为凑靶子尺寸硬撑一个 min-height。
+ *
+ * 【为什么敢用底色】色与字都是令牌：`--c-text-2` 压 `--c-surface-2` 实测 7.0:1 以上
+ * （`check-contrast.mjs` 里已有的一条硬线是 `c-text-3` 压 `c-surface-2` ≥ 4.5:1，
+ * 这里用的是更深的字色与同一块底，所以只会更宽裕）。它仍然**只是状态**，
+ * 不是主色标签 —— 主色留给真正需要你注意的东西。
+ * ==========================================================================*/
+.tools-entry__tag {
+  padding: 3px 9px;
+  border: var(--bw-1) solid var(--c-border);
+  border-radius: var(--r-pill);
+  background: var(--c-surface-2);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-snug);
+  color: var(--c-text-2);
+}
+
+/* 「被 X 读」：这一格的**形状**与上一枚刻意不同（小圆角 + 左侧一道竖条），
+   因为它是关系而不是自身状态。文字用 strong 加粗：关系里最该看见的是"谁"。
+   虚线不用 —— 全站虚线是"这是推的"的签名（见 SourceChip 头注），
+   而这条关系是从源码数据推的、不是猜的。 */
+.tools-entry__rel {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px 9px 3px 7px;
+  border: var(--bw-1) solid var(--c-border);
+  border-left: 3px solid var(--c-primary-border);
+  border-radius: var(--r-sm);
+  background: var(--c-surface);
+  font-size: var(--fs-12);
+  font-weight: var(--fw-medium);
+  line-height: var(--lh-snug);
+  color: var(--c-text-2);
+}
+
+.tools-entry__rel strong { font-weight: var(--fw-semibold); }
 
 .tools-entry__go {
   grid-column: 2;
@@ -476,9 +747,10 @@ const sourceDetail = computed(() =>
 /* 运行区：与目录之间留一段，让"上面选、下面跑"分成两屏内容而不是一坨 */
 .tools-runner { margin-top: var(--sp-7); }
 
-/* 窄屏：三态轨与目录都落成单列；箭头那一列收掉，让说明占满整行 */
+/* 窄屏：三态轨、串联图与目录都落成单列；箭头那一列收掉，让说明占满整行 */
 @media (max-width: 760px) {
   .tools-state-list { grid-template-columns: minmax(0, 1fr); }
+  .tools-chain__steps { grid-template-columns: minmax(0, 1fr); }
   .tools-entry { grid-template-columns: minmax(0, 1fr); }
   .tools-entry__go { display: none; }
 }

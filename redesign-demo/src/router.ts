@@ -82,13 +82,19 @@ export const router = createRouter({
     /*
      * 兜底：**必须放最后**。没有它时，匹配不到的地址会让 <RouterView> 什么都不渲染 ——
      * 外壳在、中间全空、控制台也不报错，用户看到的就是"页面坏了"。
-     * 标 public：一个坏地址不该再触发登录流程。
+     *
+     * 【2026-10-14 · wave5】**故意不标 `public`**（原来标了）。
+     * `meta.public` 在 App.vue 里就是 `bare`，标上它等于把 404 分到门户/规范那条
+     * **裸布局**分支 —— 全站 16 条路由里只有它没有侧栏与顶栏，也正是 vs1 报告 G-06。
+     * 去掉之后 404 走 `.app__content` 那一支，与另外 15 条路由是同一段壳层代码。
+     * 本站非公开路由对未登录访问本来就会静默落到演示账号（见下面 beforeEach 的注释），
+     * 所以"坏地址也能直接打开"这条能力一点没少。
      */
     {
       path: '/:pathMatch(.*)*',
       name: 'not-found',
       component: () => import('./views/NotFoundView.vue'),
-      meta: { public: true, title: '地址不存在' },
+      meta: { title: '地址不存在' },
     },
   ],
   scrollBehavior: () => ({ top: 0 }),
