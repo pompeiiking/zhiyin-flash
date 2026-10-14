@@ -1262,6 +1262,18 @@ const identity = computed(() => {
  *     注脚尺寸只留给信息与状态；动作全部在展开区内，用 ≥44px 的行承载。
  *   · 页面上真正的独立控件（页头按钮、视角切换、子筛选、度量口径、缺口动作）
  *     一律 min-height: 44px。
+ *
+ * 【2026-10-14 · P0-2】12px 的用途在这一页收死到"标注"。判据两条，缺一不算正文：
+ *   ① 有没有主张 —— 这句话/这个词自己**承载一条要读进去的信息**（字段名、判断、状态、
+ *      动作、说明），还是只在为别的信息当**坐标**（时间、来源、序号、计数、刻度、徽章）？
+ *   ② 换掉它信息会不会丢 —— 删掉「靠 A 的」只剩一排依赖边、删掉「待补充」标签
+ *      缺口卡照样成立 → 它是标注；删掉「专业」整行就不知道在说什么 → 它是正文。
+ *   命中"正文"的提到 14px（字段名、说明句、动作词、依赖边）；命中"标注"的留在 12px，
+ *   并在各条规则后写明理由。tokens.css 登记的 12px 用途是**来源 / 时间 / 序号 / 计数 /
+ *   徽章 / 图表刻度 / chip**，所以留下来的那些不是"没改完"，是有意的。
+ *   行距与字号反相关（CRAFT-BRIEF 4.1）：正文档 14px 一律 --lh-snug(1.45)，
+ *   16px 保持 1.55，12px 的标注行也跟着收紧到 1.45（原来继承 1.7 在小字上太散）。
+ *   中文一律不给正字距；本文件不给任何 <20px 的字号写负字距。
  * ======================================================================== */
 
 .p7 .btn,
@@ -1286,13 +1298,18 @@ const identity = computed(() => {
 .p7-meter__top { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--sp-2) var(--sp-5); }
 .p7-meter__value { display: flex; align-items: baseline; gap: var(--sp-2); }
 .p7-meter__value strong { font-size: var(--fs-30); line-height: 1; color: var(--c-primary); font-variant-numeric: tabular-nums; }
+/* P0-2 保留 12px：这句是那个 30px 数字的**计量口径标注**（谁算的、什么口径），
+   它替换的是刻度说明的位置；数字本身才是要读的那一档。 */
 .p7-meter__value span { font-size: var(--fs-12); color: var(--c-text-3); }
 .p7-meter__line { display: flex; align-items: baseline; gap: var(--sp-3); }
 .p7-meter__line h2 { font-size: var(--fs-20); line-height: var(--lh-snug); }
 .p7-meter__line p { font-size: var(--fs-14); color: var(--c-text-2); }
 .p7-meter__status { font-size: var(--fs-14); color: var(--c-text-2); }
 
-.p7-meter__facts { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-5); font-size: var(--fs-12); color: var(--c-text-3); }
+/* P0-2 保留 12px 并收紧行距：这三项是刻度图例（下面那根 p7-tick 才是主角），
+   连同它右侧的计数 b 一起算**图表刻度/计数**，属于 tokens 登记给 12px 的用途。
+   原来继承 1.7 的行距在小字上太散，收到 1.45。 */
+.p7-meter__facts { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-5); font-size: var(--fs-12); line-height: var(--lh-snug); color: var(--c-text-3); }
 .p7-meter__fact { display: inline-flex; align-items: center; gap: 6px; }
 .p7-meter__fact b { color: var(--c-text); font-variant-numeric: tabular-nums; }
 .p7-meter__fact--quiet { color: var(--c-text-3); }
@@ -1311,13 +1328,18 @@ const identity = computed(() => {
 .p7-block { margin-top: var(--sp-7); }
 .p7-block__head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--sp-5); flex-wrap: wrap; margin-bottom: var(--sp-4); }
 .p7-block__head h2 { display: flex; align-items: center; gap: var(--sp-3); font-size: var(--fs-20); line-height: var(--lh-snug); }
-.p7-block__tag { display: inline-grid; place-items: center; width: 22px; height: 22px; flex: none; border-radius: var(--r-sm); background: var(--c-primary-weak); color: var(--c-primary); font-size: var(--fs-12); font-weight: var(--fw-semibold); }
+/* P0-2 提到 14px：这个 A/B/C 不是一个装饰方块，而是**下面整段的章节号**，
+   用户是拿它跟「C 段第 3 张卡」这类指代对齐的。提到 14px 后它不再比同行的 20px 标题
+   小到像是两个系统；方块的 22px 见方足够容纳单字符。 */
+.p7-block__tag { display: inline-grid; place-items: center; width: 22px; height: 22px; flex: none; border-radius: var(--r-sm); background: var(--c-primary-weak); color: var(--c-primary); font-size: var(--fs-14); font-weight: var(--fw-semibold); }
 .p7-block__head p { font-size: var(--fs-14); color: var(--c-text-3); margin-top: 6px; max-width: 68ch; }
+/* P0-2 保留 12px：纯计数（「3 条待补充」），与行数、序号同类，是标注不是正文。 */
 .p7-block__count { font-size: var(--fs-12); color: var(--c-text-3); }
 
 /* 视角切换：这是"组织权在用户手里"的入口，做成实体控件而不是下拉 */
 .p7-modes { display: flex; align-items: center; gap: var(--sp-3); }
-.p7-modes__label { font-size: var(--fs-12); color: var(--c-text-3); }
+/* P0-2 提到 14px：它是「组织方式」这组控件的组标签（等于分组标题），不是短标签。 */
+.p7-modes__label { font-size: var(--fs-14); color: var(--c-text-3); line-height: var(--lh-snug); }
 .p7-modes__set { display: inline-flex; padding: 2px; gap: 2px; border: 1px solid var(--c-border-strong); border-radius: var(--r-md); background: var(--c-surface); }
 .p7-mode { min-height: 44px; padding: 0 var(--sp-4); border: 0; border-radius: var(--r-sm); background: transparent; color: var(--c-text-2); font-size: var(--fs-14); }
 .p7-mode:hover { color: var(--c-text); background: var(--c-surface-2); }
@@ -1327,13 +1349,16 @@ const identity = computed(() => {
 .p7-group { min-width: 0; }
 .p7-group__head { display: flex; align-items: baseline; gap: var(--sp-3); padding-bottom: var(--sp-2); border-bottom: 1px solid var(--c-border-strong); }
 .p7-group__head h3 { font-size: var(--fs-16); font-weight: var(--fw-semibold); }
+/* P0-2 保留 12px：组头下面的提示是**元数据**（"有几条没来源"），不是正文，字号只为计数一致。 */
 .p7-group__hint { font-size: var(--fs-12); color: var(--c-text-3); }
+/* P0-2 保留 12px：纯计数（「4 条」）。 */
 .p7-group__count { margin-left: auto; font-size: var(--fs-12); color: var(--c-text-3); }
 .p7-group__none { padding: var(--sp-3) 0; }
 
 /* 第二层收窄：来源与可信度共用同一排小按钮 */
 .p7-subfilter { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); margin: calc(var(--sp-2) * -1) 0 var(--sp-4); }
-.p7-subfilter > span { font-size: var(--fs-12); color: var(--c-text-3); }
+/* P0-2 提到 14px：它跟后面的 chip 是两组筛选的**组标签**，用户要照着它找"该点哪一组"。 */
+.p7-subfilter > span { font-size: var(--fs-14); color: var(--c-text-3); line-height: var(--lh-snug); }
 .p7-subfilter__note { color: var(--c-text-3); }
 .p7-subchip { min-height: 44px; padding: 0 var(--sp-3); border: 1px solid var(--c-border-strong); border-radius: var(--r-pill); background: transparent; color: var(--c-text-2); font-size: var(--fs-12); }
 .p7-subchip:hover { border-color: var(--c-primary-border); color: var(--c-primary); }
@@ -1359,10 +1384,16 @@ const identity = computed(() => {
   text-align: left;
 }
 .p7-row__hit:focus-visible { outline: 2px solid var(--c-focus); outline-offset: -2px; }
-.p7-row__label { font-size: var(--fs-12); color: var(--c-text-3); line-height: calc(var(--fs-16) * 1.55); overflow-wrap: anywhere; }
+/* P0-2 提到 14px：这是**字段名**（"专业 / 年级 / 成绩层级"）。它是这一行"在说什么"的唯一
+   线索，也是左列固定宽 78px 的那个对齐锚点；用户是拿它跨行比对的，属于要读的内容。
+   行距 1.4（--lh-snug 以下一点点）：它几乎只出现在单行，收紧这一档是为了让"12→14px"
+   不在每一行都换来一次行高增长——14×1.4=19.6px，正好抵掉旧值 16×1.55=24.8px 的标签列高。 */
+.p7-row__label { color: var(--c-text-3); font-size: var(--fs-14); line-height: 1.4; overflow-wrap: anywhere; }
 .p7-row__main { min-width: 0; display: flex; flex-direction: column; gap: 0; }
 .p7-row__value { display: block; font-size: var(--fs-16); line-height: calc(var(--fs-16) * 1.55); overflow-wrap: anywhere; }
-.p7-row__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--sp-3); font-size: var(--fs-12); }
+/* P0-2 收紧行距：这一排现在混了 12px（来源/时间/状态）与 14px（动作词），
+   行距按 12px 那一档收紧到 1.45，让小字不再散着排，也不给上层白拿 2px。 */
+.p7-row__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--sp-3); font-size: var(--fs-12); line-height: var(--lh-snug); }
 .p7-source { background: transparent; font-size: var(--fs-12); }
 .p7-conf { color: var(--c-text-3); }
 /* 刻度的三档要一眼分出"结实程度"：满格最高、核对减半、不足只是浅底 */
@@ -1372,7 +1403,9 @@ const identity = computed(() => {
 /* 没有把握度数据时不摆三根空刻度：那会看起来像"已知但很低" */
 .p7-conf--none :deep(.confidence__bars) { display: none; }
 .p7-row__time { color: var(--c-text-3); }
-.p7-row__hint { flex-basis: 100%; color: var(--c-text-3); }
+/* P0-2 提到 14px：hint 是一句**说明**（"示例对话本人说明，待核对"），不是坐标值，
+   提上来之后与同排 12px 的来源/时间形成两级，而不是"一堆一样小的字"。 */
+.p7-row__hint { flex-basis: 100%; font-size: var(--fs-14); line-height: var(--lh-snug); color: var(--c-text-3); }
 .p7-row__hint::before { content: "·"; margin-right: 6px; }
 .p7-row__edited { color: var(--c-primary); }
 
@@ -1380,6 +1413,8 @@ const identity = computed(() => {
 .p7-row--lit, .p7-row--open { background: var(--c-primary-weak); border-left-color: var(--c-primary); }
 
 /* 关系状态（不是控件）：一个点 + 一句话，展开时同时表示"这一行已经钉住" */
+/* P0-2 保留 12px：这是**机器算出来的关系值**（"支撑 3 条判断"），每个判断是几条由契约给定，
+   用户不需要读它来做决定；它与来源、时间同一层，属标注。 */
 .p7-support { display: inline-flex; align-items: center; gap: 5px; color: var(--c-text-3); font-size: var(--fs-12); white-space: nowrap; }
 .p7-support__mark { width: 6px; height: 6px; border-radius: var(--r-pill); background: var(--c-border-strong); flex: none; transition: background-color var(--dur-2) var(--ease-out), box-shadow var(--dur-2) var(--ease-out); }
 .p7-support--on { color: var(--c-primary); }
@@ -1387,7 +1422,10 @@ const identity = computed(() => {
 .p7-support--none .p7-support__mark { background: transparent; border: 1px dashed var(--c-border-strong); }
 
 /* 展开指示：文字 + 箭头，随 aria-expanded 翻转（状态可见，不靠动画表达） */
-.p7-row__cue { display: inline-flex; align-items: center; gap: 3px; margin-left: auto; color: var(--c-text-3); white-space: nowrap; }
+/* P0-2 提到 14px：它跟"靠 A 的"是同一类**动作/关系词**——"原始依据与操作"直接说明
+   点下去会发生什么，是使用这一页的关键词；原来 12px 时它比同一行里的状态字还小，
+   既是"最小的字承担最多内容"的典型，也弱化了这一页的主交互。 */
+.p7-row__cue { display: inline-flex; align-items: center; gap: 3px; margin-left: auto; color: var(--c-text-3); font-size: var(--fs-14); white-space: nowrap; }
 .p7-row__cue svg { transition: transform var(--dur-2) var(--ease-out); }
 .p7-row__hit:hover .p7-row__cue { color: var(--c-primary); }
 .p7-row__hit[aria-expanded='true'] .p7-row__cue { color: var(--c-primary); }
@@ -1399,6 +1437,7 @@ const identity = computed(() => {
 .p7-facts > div { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: var(--sp-3); }
 .p7-facts dt { color: var(--c-text-3); }
 .p7-facts dd { color: var(--c-text-2); }
+/* P0-2 保留 12px：`原始证据` 这类标题是**块内眉标**（后面紧跟的 ul 才是内容）。 */
 .p7-facts__title { margin-top: var(--sp-3); font-size: var(--fs-12); color: var(--c-text-3); }
 .p7-evidence { margin: var(--sp-2) 0 0; }
 .p7-evidence__none { margin-top: var(--sp-2); }
@@ -1420,7 +1459,9 @@ const identity = computed(() => {
 .p7-recompute strong { font-size: var(--fs-14); color: var(--c-attention-strong); }
 .p7-recompute span { font-size: var(--fs-12); color: var(--c-text-2); }
 
-.p7-deps-note { font-size: var(--fs-12); color: var(--c-text-3); margin-bottom: var(--sp-3); max-width: 84ch; line-height: var(--lh-normal); }
+/* P0-2 提到 14px：这是**读下去的说明句**（依赖关系从哪来、哪些是演示映射），
+   53 个字符的一句，不是坐标值。行距用 --lh-normal：它是这一段里唯一的正文型文本。 */
+.p7-deps-note { font-size: var(--fs-14); color: var(--c-text-3); margin-bottom: var(--sp-3); max-width: 84ch; line-height: var(--lh-normal); }
 .p7-deps-note strong { color: var(--c-text-2); font-weight: var(--fw-medium); }
 
 .p7-concls { display: flex; flex-direction: column; border-top: 1px solid var(--c-border); }
@@ -1450,11 +1491,17 @@ const identity = computed(() => {
 }
 .p7-concl__hit:focus-visible { outline: 2px solid var(--c-focus); outline-offset: -2px; }
 .p7-concl__label { display: flex; align-items: baseline; gap: var(--sp-2); flex-wrap: wrap; font-size: var(--fs-14); font-weight: var(--fw-medium); color: var(--c-text); }
-.p7-concl__kind { font-size: var(--fs-12); font-weight: var(--fw-regular); color: var(--c-text-3); }
+/* P0-2 提到 14px：类别名（"个人特征与能力"）是主标签的一部分——它说明这条判断
+   属于哪一组，用户按组读这一列；作为 14px 主标签的行内限定，不该掉到 12px。
+   行距跟着主标签走，避免同行两种行距把行高撑高。 */
+.p7-concl__kind { font-size: var(--fs-14); font-weight: var(--fw-regular); color: var(--c-text-3); line-height: var(--lh-snug); }
 .p7-concl__brief { font-size: var(--fs-16); color: var(--c-text); overflow-wrap: anywhere; }
 .p7-concl__side { display: inline-flex; align-items: center; gap: var(--sp-2); }
+/* P0-2 保留 12px：把握档名（"待验证 / 依据充分"）。它旁边就是三根刻度条，
+   文字只是**刻度的读法**，与来源、时间同层；放大它会把"量的示意"变成一句口号。 */
 .p7-concl__conf { font-size: var(--fs-12); color: var(--c-text-3); white-space: nowrap; }
-.p7-concl__cue { display: inline-flex; align-items: center; gap: 4px; color: var(--c-text-3); font-size: var(--fs-12); white-space: nowrap; }
+/* P0-2 提到 14px：与 .p7-row__cue 同理，它是"完整判断与依据"这个**动作**的名字。 */
+.p7-concl__cue { display: inline-flex; align-items: center; gap: 4px; color: var(--c-text-3); font-size: var(--fs-14); white-space: nowrap; }
 .p7-concl__cue svg { transition: transform var(--dur-2) var(--ease-out); }
 .p7-concl__hit:hover .p7-concl__cue { color: var(--c-primary); }
 .p7-concl__hit[aria-expanded='true'] .p7-concl__cue { color: var(--c-primary); }
@@ -1463,9 +1510,14 @@ const identity = computed(() => {
 /* 第二层：依赖 —— 这一页的立身之本。折叠外只**讲关系**（哪几条 / 缺哪几条 / 缺的在哪），
    可点的动作在下面展开区里的 44px 行上，所以这里没有 24px 的可点 chip。 */
 .p7-concl__deps { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-3); margin: 0 0 var(--sp-2) calc(20% + var(--sp-3)); }
+/* P0-2 保留 12px：`靠 A 的` 是依赖边那一排 chip 的**引导词**（5 个字），
+   它下面的 chip 才是内容；引导词放大只会把这一行推高。 */
 .p7-concl__deps-label { font-size: var(--fs-12); color: var(--c-text-3); }
 .p7-deps__list { display: flex; flex-wrap: wrap; gap: 6px; }
-.p7-dep { display: inline-flex; align-items: center; gap: 5px; min-height: 24px; padding: 0 var(--sp-2); border: 1px solid var(--c-border-strong); border-radius: var(--r-sm); background: var(--c-surface); color: var(--c-text-2); font-size: var(--fs-12); }
+/* P0-2 提到 14px：**依赖边本身就是这一页的立身之本**——"哪几条信息撑起了这条判断"
+   是用户来这里要看的东西，不是 chip 装饰。原来 12px 时它比旁边的 16px 判断短语小两级，
+   正是"最小的字承担最多的内容"。提到 14px 后它仍然明显服从判断短语（16px）。 */
+.p7-dep { display: inline-flex; align-items: center; gap: 5px; min-height: 24px; padding: 0 var(--sp-2); border: 1px solid var(--c-border-strong); border-radius: var(--r-sm); background: var(--c-surface); color: var(--c-text-2); font-size: var(--fs-14); }
 .p7-dep i { width: 6px; height: 6px; border-radius: var(--r-pill); background: var(--c-primary); flex: none; }
 .p7-dep small { color: var(--c-attention-strong); }
 .p7-dep__where { font-style: normal; color: var(--c-text-3); }
@@ -1497,17 +1549,21 @@ const identity = computed(() => {
   border-left: 2px solid transparent;
   transition: background-color var(--dur-2) var(--ease-out);
 }
-.p7-gap__next { display: block; margin-top: 2px; font-style: normal; color: var(--c-text-3); font-size: var(--fs-12); }
+/* P0-2 提到 14px：这是"下一步做什么"——**判断句**，用户读完要据此行动。 */
+.p7-gap__next { display: block; margin-top: 2px; font-style: normal; color: var(--c-text-3); font-size: var(--fs-14); line-height: var(--lh-snug); }
 .p7-gap--first { padding-top: var(--sp-2); }
 .p7-gap--flash { animation: p7-flash 1.4s var(--ease-out) 1; }
 .p7-gap__head { grid-column: 1 / -1; display: flex; align-items: center; gap: var(--sp-3); }
 .p7-gap__head h3 { font-size: var(--fs-16); font-weight: var(--fw-semibold); }
+/* P0-2 保留 12px：C1/C2/C3 与"待补充"是**序号与徽章**，tokens 登记给 12px 的用途。 */
 .p7-gap__index { display: inline-grid; place-items: center; min-width: 26px; height: 20px; padding: 0 4px; border-radius: var(--r-sm); background: var(--c-attention-weak); color: var(--c-attention-strong); font-size: var(--fs-12); font-variant-numeric: tabular-nums; }
 .p7-gap__why, .p7-gap__blocked, .p7-gap__where, .p7-gap__ask { min-width: 0; font-size: var(--fs-14); color: var(--c-text-2); line-height: var(--lh-normal); }
 .p7-gap__why > span, .p7-gap__blocked > span, .p7-gap__where > span, .p7-gap__ask > span { display: block; font-size: var(--fs-12); color: var(--c-text-3); margin-bottom: 2px; }
 .p7-gap__blocked { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
 .p7-gap__blocked > span { flex: 1 0 100%; }
-.p7-affect { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 var(--sp-2); border: 1px dashed var(--c-attention-border); border-radius: var(--r-sm); background: transparent; color: var(--c-text-2); font-size: var(--fs-12); }
+/* P0-2 提到 14px：它是**可点的关系入口**（跳到 B 段那条判断），带标题与跳转语义；
+   与 .p7-dep 同类，只是多了一条虚线边。 */
+.p7-affect { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 var(--sp-2); border: 1px dashed var(--c-attention-border); border-radius: var(--r-sm); background: transparent; color: var(--c-text-2); font-size: var(--fs-14); }
 .p7-affect i { width: 6px; height: 6px; border-radius: var(--r-pill); border: 1px solid var(--c-attention); flex: none; }
 .p7-affect:hover { border-color: var(--c-attention); color: var(--c-attention-strong); }
 .p7-gap__ask { border-left: 2px solid var(--c-primary-border); padding-left: var(--sp-3); }
@@ -1524,9 +1580,9 @@ const identity = computed(() => {
   .p7-modes__set { width: 100%; }
   .p7-mode { flex: 1; padding: 0 var(--sp-2); }
 
-  /* 手机：标签回到值上方；命中区仍是整行（≥44px），动作仍只在展开区内 */
+  /* 手机：标签回到值上方；命中区仍是整行（≥44px），动作仍只在展开区内。
+     P0-2：标签行距已由基础规则的 --lh-snug 承担，这里不再重复写一遍。 */
   .p7-row__hit { display: flex; flex-direction: column; align-items: stretch; gap: 2px; }
-  .p7-row__label { line-height: var(--lh-snug); }
   .p7-row__cue { margin-left: 0; }
   .p7-facts > div { grid-template-columns: minmax(0, 1fr); gap: 0; }
 

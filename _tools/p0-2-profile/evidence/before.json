@@ -1,0 +1,1845 @@
+{
+ "tag": "before",
+ "generatedAt": "2026-10-14T04:34:42.364Z",
+ "base": "http://127.0.0.1:5180/",
+ "route": "#/profile",
+ "widths": {
+  "390": {
+   "url": "http://127.0.0.1:5180/#/profile",
+   "viewport": {
+    "w": 390,
+    "h": 844
+   },
+   "docH": 6351,
+   "bodyH": 6351,
+   "textCount": 340,
+   "hist": {
+    "12": 230,
+    "14": 68,
+    "16": 34,
+    "20": 6,
+    "30": 2
+   },
+   "pct": {
+    "12": 67.65,
+    "14": 20,
+    "16": 10,
+    "20": 1.76,
+    "30": 0.59
+   },
+   "sub12": 0,
+   "bySel": {
+    "12": [
+     "li.p7-dep.p7-dep--on×27",
+     "span×16",
+     "span.p7-row__label×12",
+     "span.chip.chip--outline×12",
+     "span.confidence.p7-conf×12",
+     "time.p7-row__time×12",
+     "span.p7-support×12",
+     "span.p7-row__cue×12",
+     "span.p7-concl__kind×12",
+     "span.confidence.p7-concl__conf×12",
+     "span.p7-concl__cue×12",
+     "span.p7-concl__deps-label×12",
+     "li.p7-dep.p7-dep--missing×8",
+     "small×8",
+     "em.p7-dep__where×8",
+     "button.p7-affect×8",
+     "span.p7-group__count×5",
+     "span.p7-meter__fact×3"
+    ],
+    "14": [
+     "p×17",
+     "span.p7-concl__label×12",
+     "strong×11",
+     "a.ws-text-link×4",
+     "p.p7-gap__why×3",
+     "p.p7-gap__where×3",
+     "button.ws-text-button×3",
+     "button.btn×2",
+     "button.p7-mode×2",
+     "span.ws-account__avatar×1",
+     "span.ws-account__label×1",
+     "span.page-context×1",
+     "a.btn.btn--primary×1",
+     "p.p7-meter__status×1",
+     "p.ws-muted.ws-section×1",
+     "button.p7-mode.p7-mode--on×1",
+     "p.ws-muted.p7-group__none×1",
+     "p.p7-gap__blocked×1"
+    ],
+    "16": [
+     "span.p7-row__value×12",
+     "span.p7-concl__brief×12",
+     "h3×10"
+    ],
+    "20": [
+     "h2×5",
+     "strong×1"
+    ],
+    "30": [
+     "h1×1",
+     "strong×1"
+    ]
+   },
+   "detail12": [
+    {
+     "sel": "li.p7-dep.p7-dep--on",
+     "n": 27,
+     "inViewport": 0,
+     "samples": [
+      "兴趣倾向",
+      "做事方式",
+      "已知短板",
+      "投递现状"
+     ],
+     "chars": [
+      4,
+      4,
+      4,
+      4,
+      4,
+      4,
+      4,
+      4,
+      7,
+      4,
+      4,
+      4,
+      5,
+      6,
+      2,
+      4,
+      4,
+      2,
+      2,
+      4,
+      4,
+      6,
+      5,
+      2,
+      4,
+      4,
+      5
+     ],
+     "maxChars": 7
+    },
+    {
+     "sel": "span",
+     "n": 16,
+     "inViewport": 7,
+     "samples": [
+      "1",
+      "整体可信度 · 本地按演示口径折算",
+      "为什么重要",
+      "卡住了"
+     ],
+     "chars": [
+      1,
+      17,
+      5,
+      3,
+      3,
+      5,
+      3,
+      3,
+      5,
+      3,
+      3,
+      2,
+      2,
+      2,
+      2,
+      2
+     ],
+     "maxChars": 17
+    },
+    {
+     "sel": "span.p7-row__label",
+     "n": 12,
+     "inViewport": 0,
+     "samples": [
+      "专业",
+      "年级",
+      "成绩层级",
+      "在校获奖与处分"
+     ],
+     "chars": [
+      2,
+      2,
+      4,
+      7,
+      4,
+      4,
+      4,
+      4,
+      4,
+      5,
+      4,
+      6
+     ],
+     "maxChars": 7
+    },
+    {
+     "sel": "span.chip.chip--outline",
+     "n": 12,
+     "inViewport": 0,
+     "samples": [
+      "学信网",
+      "学信网",
+      "教务系统",
+      "学校"
+     ],
+     "chars": [
+      3,
+      3,
+      4,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      4,
+      4,
+      4
+     ],
+     "maxChars": 4
+    },
+    {
+     "sel": "span.confidence.p7-conf",
+     "n": 12,
+     "inViewport": 0,
+     "samples": [
+      "依据充分",
+      "依据充分",
+      "依据充分",
+      "依据充分"
+     ],
+     "chars": [
+      4,
+      4,
+      4,
+      4,
+      3,
+      3,
+      4,
+      4,
+      4,
+      3,
+      4,
+      4
+     ],
+     "maxChars": 4
+    },
+    {
+     "sel": "time.p7-row__time",
+     "n": 12,
+     "inViewport": 0,
+     "samples": [
+      "9 月 18 日核验",
+      "9 月 18 日核验",
+      "9 月 20 日导入",
+      "9 月 22 日，学校系统同步"
+     ],
+     "chars": [
+      10,
+      10,
+      10,
+      15,
+      14,
+      14,
+      14,
+      14,
+      17,
+      15,
+      13,
+      16
+     ],
+     "maxChars": 17
+    },
+    {
+     "sel": "span.p7-support",
+     "n": 12,
+     "inViewport": 0,
+     "samples": [
+      "支撑 3 条判断",
+      "支撑 1 条判断",
+      "支撑 4 条判断",
+      "支撑 1 条判断"
+     ],
+     "chars": [
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      8
+     ],
+     "maxChars": 8
+    },
+    {
+     "sel": "span.p7-row__cue",
+     "n": 12,
+     "inViewport": 0,
+     "samples": [
+      "原始依据与操作",
+      "原始依据与操作",
+      "原始依据与操作",
+      "原始依据与操作"
+     ],
+     "chars": [
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7
+     ],
+     "maxChars": 7
+    },
+    {
+     "sel": "span.p7-concl__kind",
+     "n": 12,
+     "inViewport": 0,
+     "samples": [
+      "个人特征与能力",
+      "个人特征与能力",
+      "个人特征与能力",
+      "职业环境分析"
+     ],
+     "chars": [
+      7,
+      7,
+      7,
+      6,
+      6,
+      6,
+      7,
+      7,
+      7,
+      4,
+      4,
+      4
+     ],
+     "maxChars": 7
+    },
+    {
+     "sel": "span.confidence.p7-concl__conf",
+     "n": 12,
+     "inViewport": 0,
+     "samples": [
+      "待验证",
+      "待验证",
+      "依据充分",
+      "待验证"
+     ],
+     "chars": [
+      3,
+      3,
+      4,
+      3,
+      4,
+      3,
+      4,
+      4,
+      4,
+      5,
+      3,
+      3
+     ],
+     "maxChars": 5
+    },
+    {
+     "sel": "span.p7-concl__cue",
+     "n": 12,
+     "inViewport": 0,
+     "samples": [
+      "完整判断与依据",
+      "完整判断与依据",
+      "完整判断与依据",
+      "完整判断与依据"
+     ],
+     "chars": [
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7
+     ],
+     "maxChars": 7
+    },
+    {
+     "sel": "span.p7-concl__deps-label",
+     "n": 12,
+     "inViewport": 0,
+     "samples": [
+      "靠 A 的",
+      "靠 A 的",
+      "靠 A 的",
+      "靠 A 的"
+     ],
+     "chars": [
+      5,
+      5,
+      5,
+      5,
+      5,
+      5,
+      5,
+      5,
+      5,
+      5,
+      5,
+      5
+     ],
+     "maxChars": 5
+    },
+    {
+     "sel": "li.p7-dep.p7-dep--missing",
+     "n": 8,
+     "inViewport": 0,
+     "samples": [
+      "internship",
+      "jobtype",
+      "internship",
+      "jobtype"
+     ],
+     "chars": [
+      10,
+      7,
+      10,
+      7,
+      10,
+      7,
+      10,
+      7
+     ],
+     "maxChars": 10
+    },
+    {
+     "sel": "small",
+     "n": 8,
+     "inViewport": 0,
+     "samples": [
+      "缺",
+      "缺",
+      "缺",
+      "缺"
+     ],
+     "chars": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "maxChars": 1
+    },
+    {
+     "sel": "em.p7-dep__where",
+     "n": 8,
+     "inViewport": 0,
+     "samples": [
+      "C1",
+      "C2",
+      "C1",
+      "C2"
+     ],
+     "chars": [
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2
+     ],
+     "maxChars": 2
+    },
+    {
+     "sel": "button.p7-affect",
+     "n": 8,
+     "inViewport": 0,
+     "samples": [
+      "呈现能力",
+      "门槛要求",
+      "竞争者情况",
+      "半导体材料工艺工程师"
+     ],
+     "chars": [
+      4,
+      4,
+      5,
+      10,
+      4,
+      4,
+      10,
+      9
+     ],
+     "maxChars": 10
+    },
+    {
+     "sel": "span.p7-group__count",
+     "n": 5,
+     "inViewport": 0,
+     "samples": [
+      "4 条",
+      "3 条",
+      "2 条",
+      "3 条"
+     ],
+     "chars": [
+      3,
+      3,
+      3,
+      3,
+      3
+     ],
+     "maxChars": 3
+    },
+    {
+     "sel": "span.p7-meter__fact",
+     "n": 3,
+     "inViewport": 3,
+     "samples": [
+      "比较确定",
+      "还要核对",
+      "依据不足"
+     ],
+     "chars": [
+      4,
+      4,
+      4
+     ],
+     "maxChars": 4
+    },
+    {
+     "sel": "b",
+     "n": 3,
+     "inViewport": 3,
+     "samples": [
+      "8",
+      "3",
+      "1"
+     ],
+     "chars": [
+      1,
+      1,
+      1
+     ],
+     "maxChars": 1
+    },
+    {
+     "sel": "p",
+     "n": 3,
+     "inViewport": 3,
+     "samples": [
+      "演示数据里没有后端的",
+      "/",
+      "，所以这里是本地演示口径：已收到的 12 条按结实程度取平均（比较确定 1 / "
+     ],
+     "chars": [
+      10,
+      1,
+      94
+     ],
+     "maxChars": 94
+    },
+    {
+     "sel": "span.p7-block__tag",
+     "n": 3,
+     "inViewport": 1,
+     "samples": [
+      "A",
+      "B",
+      "C"
+     ],
+     "chars": [
+      1,
+      1,
+      1
+     ],
+     "maxChars": 1
+    },
+    {
+     "sel": "span.p7-gap__index",
+     "n": 3,
+     "inViewport": 0,
+     "samples": [
+      "C1",
+      "C2",
+      "C3"
+     ],
+     "chars": [
+      2,
+      2,
+      2
+     ],
+     "maxChars": 2
+    },
+    {
+     "sel": "span.chip.chip--attention",
+     "n": 3,
+     "inViewport": 0,
+     "samples": [
+      "待补充",
+      "待补充",
+      "待补充"
+     ],
+     "chars": [
+      3,
+      3,
+      3
+     ],
+     "maxChars": 3
+    },
+    {
+     "sel": "em.p7-gap__next",
+     "n": 3,
+     "inViewport": 0,
+     "samples": [
+      "下一步：暑假或最近一段能沾产业线的经历，6 周就够写",
+      "下一步：先在一两个方向里各挑 3 条真实岗位看要求",
+      "下一步：先说出一个\"低于它会犹豫\"的数，不用给范围"
+     ],
+     "chars": [
+      26,
+      25,
+      25
+     ],
+     "maxChars": 26
+    },
+    {
+     "sel": "code",
+     "n": 2,
+     "inViewport": 2,
+     "samples": [
+      "overall_confidence",
+      "coverage"
+     ],
+     "chars": [
+      18,
+      8
+     ],
+     "maxChars": 18
+    },
+    {
+     "sel": "span.p7-meter__fact.p7-meter__fact--quiet",
+     "n": 1,
+     "inViewport": 1,
+     "samples": [
+      "演示口径：画像池收到 12/15 条（80%）"
+     ],
+     "chars": [
+      23
+     ],
+     "maxChars": 23
+    },
+    {
+     "sel": "summary",
+     "n": 1,
+     "inViewport": 1,
+     "samples": [
+      "这个数怎么来的"
+     ],
+     "chars": [
+      7
+     ],
+     "maxChars": 7
+    },
+    {
+     "sel": "span.p7-modes__label",
+     "n": 1,
+     "inViewport": 0,
+     "samples": [
+      "换个看法"
+     ],
+     "chars": [
+      4
+     ],
+     "maxChars": 4
+    },
+    {
+     "sel": "span.p7-row__hint",
+     "n": 1,
+     "inViewport": 0,
+     "samples": [
+      "示例对话本人说明，待核对"
+     ],
+     "chars": [
+      12
+     ],
+     "maxChars": 12
+    },
+    {
+     "sel": "p.p7-deps-note",
+     "n": 1,
+     "inViewport": 0,
+     "samples": [
+      "依赖关系取自本页的演示映射：本地演示数据里没有 dependencies，所以按"
+     ],
+     "chars": [
+      53
+     ],
+     "maxChars": 53
+    },
+    {
+     "sel": "strong",
+     "n": 1,
+     "inViewport": 0,
+     "samples": [
+      "关系怎么来："
+     ],
+     "chars": [
+      6
+     ],
+     "maxChars": 6
+    },
+    {
+     "sel": "span.p7-block__count",
+     "n": 1,
+     "inViewport": 0,
+     "samples": [
+      "3 条待补充"
+     ],
+     "chars": [
+      6
+     ],
+     "maxChars": 6
+    }
+   ],
+   "controls": {
+    "total": 57,
+    "buttonCount": 48,
+    "under44": 0,
+    "under44List": [],
+    "linkUnder44": 0,
+    "linkUnder44List": [],
+    "buttonHeights": {
+     "44": 22,
+     "48": 1,
+     "60": 1,
+     "91": 5,
+     "103": 11,
+     "119": 7,
+     "123": 1
+    },
+    "heightBySel": [
+     "103px button.p7-row__hit×11",
+     "44px button.p7-affect×8",
+     "119px button.p7-concl__hit×7",
+     "91px button.p7-concl__hit×5",
+     "44px a.ws-text-link×4",
+     "44px button.ws-text-button×3",
+     "60px a.ws-bookmark×3",
+     "44px button.btn×2",
+     "44px button.p7-mode×2",
+     "44px a.ws-brand×1",
+     "44px button.ws-icon-button×1",
+     "44px button.ws-icon-button.ws-inbox-trigger×1",
+     "44px button.ws-demo-badge×1",
+     "44px button.ws-account×1",
+     "44px a.btn.btn--primary×1",
+     "44px summary×1",
+     "44px button.p7-mode.p7-mode--on×1",
+     "123px button.p7-row__hit×1"
+    ]
+   },
+   "lsOver": [
+    "负字距用在 12px：span.p7-block__tag ls=-0.2px \"A\"",
+    "负字距用在 16px：h3 ls=-0.16px \"学习与经历\"",
+    "负字距用在 16px：h3 ls=-0.16px \"兴趣与能力\"",
+    "负字距用在 16px：h3 ls=-0.16px \"条件与期待\"",
+    "负字距用在 16px：h3 ls=-0.16px \"行动与时间\"",
+    "负字距用在 16px：h3 ls=-0.16px \"其他已记录信息\"",
+    "负字距用在 12px：span.p7-block__tag ls=-0.2px \"B\"",
+    "负字距用在 12px：span.p7-block__tag ls=-0.2px \"C\"",
+    "负字距用在 16px：h3 ls=-0.16px \"实习经历\"",
+    "负字距用在 16px：h3 ls=-0.16px \"目标岗位类型\"",
+    "负字距用在 16px：h3 ls=-0.16px \"薪资底线\"",
+    "负字距用在 16px：h3 ls=-0.16px \"可获取的信息\"",
+    "负字距用在 16px：h3 ls=-0.16px \"学校资料\""
+   ],
+   "lsPositive": [],
+   "lhByFs": {
+    "12": {
+     "1.70": {
+      "n": 215,
+      "sample": "span lh=20.4px"
+     },
+     "1.45": {
+      "n": 15,
+      "sample": "span.p7-block__tag lh=17.4px"
+     }
+    },
+    "14": {
+     "1.70": {
+      "n": 55,
+      "sample": "span.ws-account__avatar lh=23.8px"
+     },
+     "1.80": {
+      "n": 13,
+      "sample": "p lh=25.2px"
+     }
+    },
+    "16": {
+     "1.25": {
+      "n": 10,
+      "sample": "h3 lh=20px"
+     },
+     "1.55": {
+      "n": 12,
+      "sample": "span.p7-row__value lh=24.8px"
+     },
+     "1.70": {
+      "n": 12,
+      "sample": "span.p7-concl__brief lh=27.2px"
+     }
+    },
+    "20": {
+     "1.70": {
+      "n": 1,
+      "sample": "strong lh=34px"
+     },
+     "1.45": {
+      "n": 5,
+      "sample": "h2 lh=29px"
+     }
+    },
+    "30": {
+     "1.35": {
+      "n": 1,
+      "sample": "h1 lh=40.5px"
+     },
+     "1.00": {
+      "n": 1,
+      "sample": "strong lh=30px"
+     }
+    }
+   },
+   "uaDefaultHeadings": [
+    {
+     "tag": "H3",
+     "fs": 16,
+     "text": "学习与经历"
+    },
+    {
+     "tag": "H3",
+     "fs": 16,
+     "text": "兴趣与能力"
+    },
+    {
+     "tag": "H3",
+     "fs": 16,
+     "text": "条件与期待"
+    },
+    {
+     "tag": "H3",
+     "fs": 16,
+     "text": "行动与时间"
+    },
+    {
+     "tag": "H3",
+     "fs": 16,
+     "text": "其他已记录信息"
+    },
+    {
+     "tag": "H3",
+     "fs": 16,
+     "text": "实习经历"
+    },
+    {
+     "tag": "H3",
+     "fs": 16,
+     "text": "目标岗位类型"
+    },
+    {
+     "tag": "H3",
+     "fs": 16,
+     "text": "薪资底线"
+    },
+    {
+     "tag": "H3",
+     "fs": 16,
+     "text": "可获取的信息"
+    },
+    {
+     "tag": "H3",
+     "fs": 16,
+     "text": "学校资料"
+    }
+   ]
+  },
+  "1280": {
+   "url": "http://127.0.0.1:5180/#/profile",
+   "viewport": {
+    "w": 1280,
+    "h": 900
+   },
+   "docH": 4184,
+   "bodyH": 4184,
+   "textCount": 375,
+   "hist": {
+    "12": 237,
+    "14": 96,
+    "16": 34,
+    "20": 6,
+    "30": 2
+   },
+   "pct": {
+    "12": 63.2,
+    "14": 25.6,
+    "16": 9.07,
+    "20": 1.6,
+    "30": 0.53
+   },
+   "sub12": 0,
+   "bySel": {
+    "12": [
+     "li.p7-dep.p7-dep--on×27",
+     "span×15",
+     "small×15",
+     "span.p7-row__label×12",
+     "span.chip.chip--outline×12",
+     "span.confidence.p7-conf×12",
+     "time.p7-row__time×12",
+     "span.p7-support×12",
+     "span.p7-row__cue×12",
+     "span.p7-concl__kind×12",
+     "span.confidence.p7-concl__conf×12",
+     "span.p7-concl__cue×12",
+     "span.p7-concl__deps-label×12",
+     "li.p7-dep.p7-dep--missing×8",
+     "em.p7-dep__where×8",
+     "button.p7-affect×8",
+     "span.p7-group__count×5",
+     "span.p7-meter__fact×3"
+    ],
+    "14": [
+     "span×23",
+     "p×17",
+     "strong×13",
+     "span.p7-concl__label×12",
+     "a.ws-text-link×4",
+     "p.p7-gap__why×3",
+     "p.p7-gap__where×3",
+     "button.ws-text-button×3",
+     "button.btn×2",
+     "button.p7-mode×2",
+     "h2×1",
+     "span.desk-person__avatar×1",
+     "a×1",
+     "span.ws-account__avatar×1",
+     "span.ws-account__label×1",
+     "span.page-context×1",
+     "a.btn.btn--primary×1",
+     "p.p7-meter__status×1"
+    ],
+    "16": [
+     "span.p7-row__value×12",
+     "span.p7-concl__brief×12",
+     "h3×10"
+    ],
+    "20": [
+     "h2×5",
+     "strong×1"
+    ],
+    "30": [
+     "h1×1",
+     "strong×1"
+    ]
+   },
+   "detail12": [
+    {
+     "sel": "li.p7-dep.p7-dep--on",
+     "n": 27,
+     "inViewport": 0,
+     "samples": [
+      "兴趣倾向",
+      "做事方式",
+      "已知短板",
+      "投递现状"
+     ],
+     "chars": [
+      4,
+      4,
+      4,
+      4,
+      4,
+      4,
+      4,
+      4,
+      7,
+      4,
+      4,
+      4,
+      5,
+      6,
+      2,
+      4,
+      4,
+      2,
+      2,
+      4,
+      4,
+      6,
+      5,
+      2,
+      4,
+      4,
+      5
+     ],
+     "maxChars": 7
+    },
+    {
+     "sel": "span",
+     "n": 15,
+     "inViewport": 5,
+     "samples": [
+      "生涯规划与就业指导",
+      "6",
+      "学生空间",
+      "/"
+     ],
+     "chars": [
+      9,
+      1,
+      4,
+      1,
+      1,
+      17,
+      5,
+      3,
+      3,
+      5,
+      3,
+      3,
+      5,
+      3,
+      3
+     ],
+     "maxChars": 17
+    },
+    {
+     "sel": "small",
+     "n": 15,
+     "inViewport": 1,
+     "samples": [
+      "10/12",
+      "10/11",
+      "10/10",
+      "10/9"
+     ],
+     "chars": [
+      5,
+      5,
+      5,
+      4,
+      4,
+      4,
+      9,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "maxChars": 9
+    },
+    {
+     "sel": "span.p7-row__label",
+     "n": 12,
+     "inViewport": 3,
+     "samples": [
+      "专业",
+      "年级",
+      "成绩层级",
+      "在校获奖与处分"
+     ],
+     "chars": [
+      2,
+      2,
+      4,
+      7,
+      4,
+      4,
+      4,
+      4,
+      4,
+      5,
+      4,
+      6
+     ],
+     "maxChars": 7
+    },
+    {
+     "sel": "span.chip.chip--outline",
+     "n": 12,
+     "inViewport": 3,
+     "samples": [
+      "学信网",
+      "学信网",
+      "教务系统",
+      "学校"
+     ],
+     "chars": [
+      3,
+      3,
+      4,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      4,
+      4,
+      4
+     ],
+     "maxChars": 4
+    },
+    {
+     "sel": "span.confidence.p7-conf",
+     "n": 12,
+     "inViewport": 3,
+     "samples": [
+      "依据充分",
+      "依据充分",
+      "依据充分",
+      "依据充分"
+     ],
+     "chars": [
+      4,
+      4,
+      4,
+      4,
+      3,
+      3,
+      4,
+      4,
+      4,
+      3,
+      4,
+      4
+     ],
+     "maxChars": 4
+    },
+    {
+     "sel": "time.p7-row__time",
+     "n": 12,
+     "inViewport": 3,
+     "samples": [
+      "9 月 18 日核验",
+      "9 月 18 日核验",
+      "9 月 20 日导入",
+      "9 月 22 日，学校系统同步"
+     ],
+     "chars": [
+      10,
+      10,
+      10,
+      15,
+      14,
+      14,
+      14,
+      14,
+      17,
+      15,
+      13,
+      16
+     ],
+     "maxChars": 17
+    },
+    {
+     "sel": "span.p7-support",
+     "n": 12,
+     "inViewport": 3,
+     "samples": [
+      "支撑 3 条判断",
+      "支撑 1 条判断",
+      "支撑 4 条判断",
+      "支撑 1 条判断"
+     ],
+     "chars": [
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      8
+     ],
+     "maxChars": 8
+    },
+    {
+     "sel": "span.p7-row__cue",
+     "n": 12,
+     "inViewport": 3,
+     "samples": [
+      "原始依据与操作",
+      "原始依据与操作",
+      "原始依据与操作",
+      "原始依据与操作"
+     ],
+     "chars": [
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7
+     ],
+     "maxChars": 7
+    },
+    {
+     "sel": "span.p7-concl__kind",
+     "n": 12,
+     "inViewport": 0,
+     "samples": [
+      "个人特征与能力",
+      "个人特征与能力",
+      "个人特征与能力",
+      "职业环境分析"
+     ],
+     "chars": [
+      7,
+      7,
+      7,
+      6,
+      6,
+      6,
+      7,
+      7,
+      7,
+      4,
+      4,
+      4
+     ],
+     "maxChars": 7
+    },
+    {
+     "sel": "span.confidence.p7-concl__conf",
+     "n": 12,
+     "inViewport": 0,
+     "samples": [
+      "待验证",
+      "待验证",
+      "依据充分",
+      "待验证"
+     ],
+     "chars": [
+      3,
+      3,
+      4,
+      3,
+      4,
+      3,
+      4,
+      4,
+      4,
+      5,
+      3,
+      3
+     ],
+     "maxChars": 5
+    },
+    {
+     "sel": "span.p7-concl__cue",
+     "n": 12,
+     "inViewport": 0,
+     "samples": [
+      "完整判断与依据",
+      "完整判断与依据",
+      "完整判断与依据",
+      "完整判断与依据"
+     ],
+     "chars": [
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7
+     ],
+     "maxChars": 7
+    },
+    {
+     "sel": "span.p7-concl__deps-label",
+     "n": 12,
+     "inViewport": 0,
+     "samples": [
+      "靠 A 的",
+      "靠 A 的",
+      "靠 A 的",
+      "靠 A 的"
+     ],
+     "chars": [
+      5,
+      5,
+      5,
+      5,
+      5,
+      5,
+      5,
+      5,
+      5,
+      5,
+      5,
+      5
+     ],
+     "maxChars": 5
+    },
+    {
+     "sel": "li.p7-dep.p7-dep--missing",
+     "n": 8,
+     "inViewport": 0,
+     "samples": [
+      "internship",
+      "jobtype",
+      "internship",
+      "jobtype"
+     ],
+     "chars": [
+      10,
+      7,
+      10,
+      7,
+      10,
+      7,
+      10,
+      7
+     ],
+     "maxChars": 10
+    },
+    {
+     "sel": "em.p7-dep__where",
+     "n": 8,
+     "inViewport": 0,
+     "samples": [
+      "C1",
+      "C2",
+      "C1",
+      "C2"
+     ],
+     "chars": [
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2
+     ],
+     "maxChars": 2
+    },
+    {
+     "sel": "button.p7-affect",
+     "n": 8,
+     "inViewport": 0,
+     "samples": [
+      "呈现能力",
+      "门槛要求",
+      "竞争者情况",
+      "半导体材料工艺工程师"
+     ],
+     "chars": [
+      4,
+      4,
+      5,
+      10,
+      4,
+      4,
+      10,
+      9
+     ],
+     "maxChars": 10
+    },
+    {
+     "sel": "span.p7-group__count",
+     "n": 5,
+     "inViewport": 1,
+     "samples": [
+      "4 条",
+      "3 条",
+      "2 条",
+      "3 条"
+     ],
+     "chars": [
+      3,
+      3,
+      3,
+      3,
+      3
+     ],
+     "maxChars": 3
+    },
+    {
+     "sel": "span.p7-meter__fact",
+     "n": 3,
+     "inViewport": 3,
+     "samples": [
+      "比较确定",
+      "还要核对",
+      "依据不足"
+     ],
+     "chars": [
+      4,
+      4,
+      4
+     ],
+     "maxChars": 4
+    },
+    {
+     "sel": "b",
+     "n": 3,
+     "inViewport": 3,
+     "samples": [
+      "8",
+      "3",
+      "1"
+     ],
+     "chars": [
+      1,
+      1,
+      1
+     ],
+     "maxChars": 1
+    },
+    {
+     "sel": "p",
+     "n": 3,
+     "inViewport": 3,
+     "samples": [
+      "演示数据里没有后端的",
+      "/",
+      "，所以这里是本地演示口径：已收到的 12 条按结实程度取平均（比较确定 1 / "
+     ],
+     "chars": [
+      10,
+      1,
+      94
+     ],
+     "maxChars": 94
+    },
+    {
+     "sel": "span.p7-block__tag",
+     "n": 3,
+     "inViewport": 1,
+     "samples": [
+      "A",
+      "B",
+      "C"
+     ],
+     "chars": [
+      1,
+      1,
+      1
+     ],
+     "maxChars": 1
+    },
+    {
+     "sel": "span.p7-gap__index",
+     "n": 3,
+     "inViewport": 0,
+     "samples": [
+      "C1",
+      "C2",
+      "C3"
+     ],
+     "chars": [
+      2,
+      2,
+      2
+     ],
+     "maxChars": 2
+    },
+    {
+     "sel": "span.chip.chip--attention",
+     "n": 3,
+     "inViewport": 0,
+     "samples": [
+      "待补充",
+      "待补充",
+      "待补充"
+     ],
+     "chars": [
+      3,
+      3,
+      3
+     ],
+     "maxChars": 3
+    },
+    {
+     "sel": "em.p7-gap__next",
+     "n": 3,
+     "inViewport": 0,
+     "samples": [
+      "下一步：暑假或最近一段能沾产业线的经历，6 周就够写",
+      "下一步：先在一两个方向里各挑 3 条真实岗位看要求",
+      "下一步：先说出一个\"低于它会犹豫\"的数，不用给范围"
+     ],
+     "chars": [
+      26,
+      25,
+      25
+     ],
+     "maxChars": 26
+    },
+    {
+     "sel": "code",
+     "n": 2,
+     "inViewport": 2,
+     "samples": [
+      "overall_confidence",
+      "coverage"
+     ],
+     "chars": [
+      18,
+      8
+     ],
+     "maxChars": 18
+    },
+    {
+     "sel": "button.ws-demo-badge",
+     "n": 1,
+     "inViewport": 1,
+     "samples": [
+      "演示数据"
+     ],
+     "chars": [
+      4
+     ],
+     "maxChars": 4
+    },
+    {
+     "sel": "span.p7-meter__fact.p7-meter__fact--quiet",
+     "n": 1,
+     "inViewport": 1,
+     "samples": [
+      "演示口径：画像池收到 12/15 条（80%）"
+     ],
+     "chars": [
+      23
+     ],
+     "maxChars": 23
+    },
+    {
+     "sel": "summary",
+     "n": 1,
+     "inViewport": 1,
+     "samples": [
+      "这个数怎么来的"
+     ],
+     "chars": [
+      7
+     ],
+     "maxChars": 7
+    },
+    {
+     "sel": "span.p7-modes__label",
+     "n": 1,
+     "inViewport": 1,
+     "samples": [
+      "换个看法"
+     ],
+     "chars": [
+      4
+     ],
+     "maxChars": 4
+    },
+    {
+     "sel": "span.p7-row__hint",
+     "n": 1,
+     "inViewport": 0,
+     "samples": [
+      "示例对话本人说明，待核对"
+     ],
+     "chars": [
+      12
+     ],
+     "maxChars": 12
+    },
+    {
+     "sel": "p.p7-deps-note",
+     "n": 1,
+     "inViewport": 0,
+     "samples": [
+      "依赖关系取自本页的演示映射：本地演示数据里没有 dependencies，所以按"
+     ],
+     "chars": [
+      53
+     ],
+     "maxChars": 53
+    },
+    {
+     "sel": "strong",
+     "n": 1,
+     "inViewport": 0,
+     "samples": [
+      "关系怎么来："
+     ],
+     "chars": [
+      6
+     ],
+     "maxChars": 6
+    },
+    {
+     "sel": "span.p7-block__count",
+     "n": 1,
+     "inViewport": 0,
+     "samples": [
+      "3 条待补充"
+     ],
+     "chars": [
+      6
+     ],
+     "maxChars": 6
+    }
+   ],
+   "controls": {
+    "total": 78,
+    "buttonCount": 60,
+    "under44": 0,
+    "under44List": [],
+    "linkUnder44": 0,
+    "linkUnder44List": [],
+    "buttonHeights": {
+     "44": 43,
+     "46": 1,
+     "48": 1,
+     "63": 10,
+     "66": 1,
+     "73": 3,
+     "104": 1
+    },
+    "heightBySel": [
+     "44px a.desk-link.desk-link--child×10",
+     "63px button.p7-row__hit×10",
+     "44px button.p7-concl__hit×9",
+     "44px button.p7-affect×8",
+     "44px button.desk-session×6",
+     "44px a.ws-text-link×4",
+     "44px button.desk-menu__trigger×3",
+     "73px button.p7-concl__hit×3",
+     "44px button.ws-text-button×3",
+     "44px button.btn×2",
+     "44px button.p7-mode×2",
+     "74px a.desk-brand×1",
+     "44px button.ws-icon-button.desk-collapse×1",
+     "44px button.desk-new-chat×1",
+     "44px a.desk-link.desk-link--conversation×1",
+     "44px button.desk-menu__trigger.desk-menu__trigger--active×1",
+     "44px a.router-link-active.router-link-exact-active×1",
+     "46px button.desk-person×1"
+    ]
+   },
+   "lsOver": [
+    "负字距用在 14px：h2 ls=-0.14px \"历史会话\"",
+    "负字距用在 12px：span.p7-block__tag ls=-0.2px \"A\"",
+    "负字距用在 16px：h3 ls=-0.16px \"学习与经历\"",
+    "负字距用在 16px：h3 ls=-0.16px \"兴趣与能力\"",
+    "负字距用在 16px：h3 ls=-0.16px \"条件与期待\"",
+    "负字距用在 16px：h3 ls=-0.16px \"行动与时间\"",
+    "负字距用在 16px：h3 ls=-0.16px \"其他已记录信息\"",
+    "负字距用在 12px：span.p7-block__tag ls=-0.2px \"B\"",
+    "负字距用在 12px：span.p7-block__tag ls=-0.2px \"C\"",
+    "负字距用在 16px：h3 ls=-0.16px \"实习经历\"",
+    "负字距用在 16px：h3 ls=-0.16px \"目标岗位类型\"",
+    "负字距用在 16px：h3 ls=-0.16px \"薪资底线\"",
+    "负字距用在 16px：h3 ls=-0.16px \"可获取的信息\"",
+    "负字距用在 16px：h3 ls=-0.16px \"学校资料\""
+   ],
+   "lsPositive": [],
+   "lhByFs": {
+    "12": {
+     "1.70": {
+      "n": 216,
+      "sample": "span lh=20.4px"
+     },
+     "1.50": {
+      "n": 6,
+      "sample": "small lh=18px"
+     },
+     "1.45": {
+      "n": 3,
+      "sample": "span.p7-block__tag lh=17.4px"
+     },
+     "2.07": {
+      "n": 12,
+      "sample": "span.p7-row__label lh=24.8px"
+     }
+    },
+    "14": {
+     "1.70": {
+      "n": 61,
+      "sample": "span lh=23.8px"
+     },
+     "1.50": {
+      "n": 21,
+      "sample": "span lh=21px"
+     },
+     "1.25": {
+      "n": 1,
+      "sample": "h2 lh=17.5px"
+     },
+     "1.80": {
+      "n": 13,
+      "sample": "p lh=25.2px"
+     }
+    },
+    "16": {
+     "1.25": {
+      "n": 10,
+      "sample": "h3 lh=20px"
+     },
+     "1.55": {
+      "n": 12,
+      "sample": "span.p7-row__value lh=24.8px"
+     },
+     "1.70": {
+      "n": 12,
+      "sample": "span.p7-concl__brief lh=27.2px"
+     }
+    },
+    "20": {
+     "1.30": {
+      "n": 1,
+      "sample": "strong lh=26px"
+     },
+     "1.45": {
+      "n": 5,
+      "sample": "h2 lh=29px"
+     }
+    },
+    "30": {
+     "1.35": {
+      "n": 1,
+      "sample": "h1 lh=40.5px"
+     },
+     "1.00": {
+      "n": 1,
+      "sample": "strong lh=30px"
+     }
+    }
+   },
+   "uaDefaultHeadings": [
+    {
+     "tag": "H3",
+     "fs": 18.72,
+     "text": "了解自己"
+    },
+    {
+     "tag": "H3",
+     "fs": 18.72,
+     "text": "做决定"
+    },
+    {
+     "tag": "H3",
+     "fs": 18.72,
+     "text": "去做"
+    },
+    {
+     "tag": "H3",
+     "fs": 18.72,
+     "text": "回头看"
+    },
+    {
+     "tag": "H3",
+     "fs": 16,
+     "text": "学习与经历"
+    },
+    {
+     "tag": "H3",
+     "fs": 16,
+     "text": "兴趣与能力"
+    },
+    {
+     "tag": "H3",
+     "fs": 16,
+     "text": "条件与期待"
+    },
+    {
+     "tag": "H3",
+     "fs": 16,
+     "text": "行动与时间"
+    },
+    {
+     "tag": "H3",
+     "fs": 16,
+     "text": "其他已记录信息"
+    },
+    {
+     "tag": "H3",
+     "fs": 16,
+     "text": "实习经历"
+    },
+    {
+     "tag": "H3",
+     "fs": 16,
+     "text": "目标岗位类型"
+    },
+    {
+     "tag": "H3",
+     "fs": 16,
+     "text": "薪资底线"
+    },
+    {
+     "tag": "H3",
+     "fs": 16,
+     "text": "可获取的信息"
+    },
+    {
+     "tag": "H3",
+     "fs": 16,
+     "text": "学校资料"
+    }
+   ]
+  }
+ }
+}

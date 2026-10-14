@@ -33,6 +33,34 @@
 /* =============================================================================
  * 对话页 —— 头部与输入区的结构
  * -----------------------------------------------------------------------------
+ * 【2026-10-14 · P0-3】本轮新增的**局部变量**（不写进 tokens.css，理由见下）
+ * -----------------------------------------------------------------------------
+ * 顾问的卡通头像（components/AgentAvatar.vue）需要一族"结构色"，而它有三个性质
+ * 与 tokens.css 里那些按语义命名的令牌不同：
+ *   1. 它们是**图形色**：只给头像内部的形体/眼睛/识别件用，别的组件一旦复用
+ *      就会变成"又一支色相"（评审禁止的第四支）；
+ *   2. 它们必须**跟着主题与主色一起动**：--ag-ink 接到 --c-text（浅色下是近黑，
+ *      深色下自动变浅），--ag-eye 接到 --c-surface（深色下眼白不能还是一块白），
+ *      --ag-line 接到 --c-primary（所以切"河大红"时，说话的涟漪与声波跟着变红）；
+ *   3. 它们**只在这一个页面 + 这一个组件**里有意义 —— 放进 tokens.css 会让
+ *      "全站共用的一层"多出五个只有一处使用的名字。
+ * 身份色（形体的填充）不在这里：那是 lib/agents.ts 的 HUES，作为 --ag-hue 由组件内联进来。
+ * 这两层的分工是刻意的 —— **色相 = 谁是这个人**（五个主理），
+ * **主题 = 此刻是什么状态**（瞳色/眼白/说话的那几层），换主题不会把五个人变成一张脸。
+ * ========================================================================== */
+.dialogue-page {
+  --ag-ink: var(--c-text);           /* 眼白上的瞳、眉、嘴：文字色那一族 */
+  --ag-eye: var(--c-surface);        /* 眼白：纸面那一族（深色下自然变深） */
+  --ag-line: var(--c-primary);       /* 识别件 / 涟漪 / 声波：主色一族，跟随主题切换 */
+}
+/* 切到河大红时，主色驱动的那些层跟着红；形态色仍是各主理的身份色（形状 + 色相两层识别） */
+html[data-accent='red'] .dialogue-page {
+  --ag-line: var(--c-primary);
+}
+
+/* =============================================================================
+ * 对话页头部与输入区的结构
+ * -----------------------------------------------------------------------------
  * 头部只回答一个问题：**这是哪一次咨询**。所以它只有一行：
  *   会话名 + 演示标识 + 4 个入口（产出与依据 2 个 / 会话操作 2 个）。
  * 「现在是谁在跟你说话、他此刻在干什么」不在头部 —— 它在每条消息的组首
@@ -149,11 +177,35 @@
 }
 .dialogue-thread { max-width: 700px; margin: 0 auto; width: 100%; }
 
-/* ---- 一轮发言：头像列 + 内容列 ---- */
-/* 行距收到 --lh-normal(1.7)：1.85 在 16px 中文正文上偏松，段落之间会读成一个密度 */
+/* ---- 一轮发言：头像列 + 内容列 ----
+   头像列宽 = 头像边长（40px）。**宽高必须同值**：上一版组件的 viewBox 是 100×118、
+   容器只给了 width，于是 40px 的头像实际渲染成 40×47.2 —— 头像列比正文高 7px，
+   每条消息上方都多出一截空档，头像本身也被压到只剩 17.6px 宽的脸。
+   【2026-10-14 · P0-3】现在 SVG 是正方 viewBox + 内联 height，这一列才真等于头像。 */
 .chat-turn { display: flex; align-items: flex-start; gap: 12px; margin: 0 0 26px; font-size: var(--fs-16); line-height: var(--lh-normal); min-width: 0; animation: chat-rise 280ms var(--ease-out) both; }
-.chat-turn__avatar { flex: none; margin-top: 2px; }
-.chat-turn__avatar--gap { display: block; width: 40px; height: 40px; }
+.chat-turn__avatar { flex: none; width: 40px; height: 40px; margin-top: 2px; }
+
+/* 同一个人连着说几句时的第二、三句：**不重复贴头像**（重复五次会让头像退化成装饰），
+   但也不能留一个 40×40 的洞 —— 那是"占位空着"最容易被看见的地方。
+   改成一根对齐到眼睛高度的续接竖线：它说的是"还是同一个人在同一次发言里"，
+   恰好就是省略头像的理由。 */
+.chat-turn__avatar--gap {
+  display: block;
+  position: relative;
+  width: 20px;
+  height: 40px;
+  margin: 2px 0 0 -6px;
+}
+.chat-turn__avatar--gap::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  bottom: 8px;
+  left: 50%;
+  width: 1px;
+  margin-left: -0.5px;
+  background: var(--c-border);
+}
 .chat-turn__body { min-width: 0; flex: 1 1 auto; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
 .chat-who { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; line-height: 1.5; font-size: var(--fs-12); color: var(--c-text-3); margin-bottom: 2px; }
 .chat-who strong { font-size: var(--fs-14); font-weight: 600; color: var(--c-text); white-space: nowrap; }
@@ -545,6 +597,38 @@
 .dialogue-page .exp-intro > div { max-width: 38em; }
 .dialogue-page .ws-chat-welcome h2 { line-height: 1.4; }
 .dialogue-page .ws-chat-prompts { margin-top: 24px; gap: 12px; }
+
+/* =============================================================================
+ * 空态的在席者（P0-3）
+ * -----------------------------------------------------------------------------
+ * 「顾问此刻就在这儿」这一句，只能由**一张脸 + 名字 + 职责 + 状态词**一起说。
+ * 布局是"大头像 + 文字列"两栏：96px 是 c2-hbu 定的大档，390 上退到 64px
+ * （见文件末的媒体查询），否则首屏会被头像吃掉半屏。
+ *
+ * 与消息级头像同源、同组件、同状态机 —— 空态说"在线，等你开口"，
+ * 头像就得是 idle（睁着眼睛扫视），不能是 thinking。
+ * 它**不是**被删掉的那块常驻身份牌：那一块首屏过后还在，这一块随空态消失。
+ * ========================================================================== */
+.dialogue-presence {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-5);
+  padding-bottom: var(--sp-5);
+  border-bottom: var(--bw-1) solid var(--c-border);
+}
+/* 头像不许被文字列压扁：中文职责句很长，默认的 flex-shrink:1 会把它从 96 压到 ~48
+   （实测宽 48.6 / 高 64 的畸形比例）。它是这一块的锚点，先保它，文字自己去折行 */
+.dialogue-presence .ag { flex: none; }
+.dialogue-presence__intro { min-width: 0; }
+/* 名字是这一块唯一的人信息，用 16px 而不是 12px：它旁边就是 96px 的脸 */
+.dialogue-presence__who { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.dialogue-presence__who strong { font-size: var(--fs-16); font-weight: 600; color: var(--c-text); }
+.dialogue-presence__role { margin-top: var(--sp-2); max-width: 34em; color: var(--c-text-2); font-size: var(--fs-16); line-height: var(--lh-normal); }
+/* 状态词与 .chat-who__state 同一套语法（前置圆点 + 中灰），只是字大一号 */
+.dialogue-presence__state { position: relative; padding-left: 10px; color: var(--c-text-2); font-weight: 500; font-size: var(--fs-14); }
+.dialogue-presence__state::before { content: ''; position: absolute; left: 0; top: 50%; width: 4px; height: 4px; margin-top: -2px; border-radius: 50%; background: var(--c-border-strong); }
+/* 在席者与"起步主张"之间留一段呼吸：脸是第一眼，话是第二眼 */
+.dialogue-page .ws-chat-welcome .exp-intro { margin-top: var(--sp-6); }
 /* 空态的四张起步卡是 L2（局部关注区），悬停走灰：它们不是"选中"，只是"要点" */
 .dialogue-page .ws-chat-prompts button { background: var(--c-surface-2); border-color: var(--c-border); padding: 18px; }
 .dialogue-page .ws-chat-prompts button:hover { background: var(--c-surface-3); border-color: var(--c-border-strong); }
@@ -580,7 +664,10 @@
   .app--desktop .dialogue-page .exp-conversation-body > .ws-chat-flow,
   .dialogue-page .exp-conversation-body > .ws-chat-flow { padding: 10px 12px 20px; }
   .chat-turn { gap: 9px; margin-bottom: 22px; }
-  .chat-turn__avatar--gap { width: 34px; height: 34px; }
+  /* 窄屏头像列与桌面**同值**：旧版把这一档写成 34×34，而头像本身是 40px ——
+     两条消息的正文因此错开 6px。头像既然要在手机上也可读，就不能在这里缩。
+     续接线的格子宽度不在这里覆盖（它只有 20px，覆盖成 40 会把正文推左 20px） */
+  .chat-turn__avatar { width: 40px; height: 40px; }
   .chat-bubble--me { max-width: 88%; padding: 11px 15px; }
   .chat-cards__viewport { overflow: clip; }
   /* align-items: flex-start 是必须的：默认 stretch 会让短卡被最高的那张撑高，
@@ -604,6 +691,12 @@
   .dialogue-page .composer-stop { min-width: 84px; padding: 0 14px; }
   .composer-info { top: 4px; right: 4px; }
   .dialogue-page .ws-chat-prompts button { padding: 14px; }
+  /* 空态的大头像在 390 上退一档：96px 的头像 + 文字列会把首屏挤成一栏半，
+     64px 仍然读得出眼睛与嘴（c2-hbu 的窄屏档就是这一档）。
+     头像格子必须跟着改宽高 —— 组件内联的是 96px，这里按同一特异性覆盖 */
+  .dialogue-presence { gap: var(--sp-4); padding-bottom: var(--sp-4); }
+  .dialogue-presence .ag { flex: none; width: 64px !important; height: 64px !important; }
+  .dialogue-page .ws-chat-welcome .exp-intro { margin-top: var(--sp-4); }
 }
 
 /* =============================================================================

@@ -399,7 +399,13 @@ function speakerBefore(index: number): string {
   return host.value
 }
 
-/** 正在逐字输出的那条，头像进入「说话」状态；其余保持 idle。 */
+/**
+ * 正在逐字输出的那条，头像进入「说话」状态；其余保持 idle。
+ *
+ * 【2026-10-14 · P0-3】它就是 .chat-who__state 那行「正在回答」的同一个判据
+ * （都走 isLive）。两处必须同源：状态词说你正在回答、头像却还睁着眼发呆，
+ * 是比"没有头像"更容易被看见的不一致 —— 在场感就是这两件事必须同时成立。
+ */
 function isSpeaking(id: string): boolean {
   return isLive(id)
 }
@@ -624,15 +630,35 @@ onUnmounted(() => {
     </aside>
     <div class="exp-conversation-body"><div ref="flow" class="ws-chat-flow" tabindex="0" role="log" aria-live="off" aria-label="对话记录" @scroll="followScroll"><div class="dialogue-thread">
       <div v-if="!turns.length" class="ws-chat-welcome">
+        <!--
+          【2026-10-14 · P0-3】空态是整页最贵的一屏，原来只有一句标题与四张起步卡：
+          "这里有一个顾问"完全没被看见。顶端常驻身份牌删掉之后，第一屏就不该再有
+          第二块身份牌 —— 所以这里放的是**这一次咨询的在席者**（会随主理切换而换人），
+          而且用的是刚进页时的 idle 形态：睁着眼睛在等你开口。
+          它不是被删掉的那块牌的翻版：那块牌是"常驻页头"，首屏过后还在；
+          这一块是空态的一部分，消息一出现就被对话本身替代。
+        -->
+        <div class="dialogue-presence">
+          <AgentAvatar :agent="agentKeyOf(host)" :size="96" :state="hostState" />
+          <div class="dialogue-presence__intro">
+            <p class="dialogue-presence__who">
+              <strong>{{ consultantLabel(host) }}</strong>
+              <span class="dialogue-presence__state">{{ presenceLabel }}</span>
+            </p>
+            <p class="dialogue-presence__role">{{ agentOf(agentKeyOf(host)).role }}</p>
+          </div>
+        </div>
         <div class="exp-intro"><div><h2>从你正在想的事聊起</h2><p>方向还没想清楚也没关系。选一句最像你的，或者直接说说现在的困惑。</p></div></div>
         <div class="ws-chat-prompts"><button v-for="topic in starters" :key="topic.code" @click="send(topic.label)"><UiIcon :name="topic.icon" :size="22" /><span><strong>{{ topic.title }}</strong><small>{{ topic.description }}</small></span><UiIcon name="arrow" :size="16" /></button></div>
       </div>
       <template v-for="(t, i) in turns" :key="t.id">
         <section v-if="t.handoff" class="chat-handoff" aria-label="顾问交接">
           <div class="chat-handoff__flow">
-            <AgentAvatar :agent="agentKeyOf(speakerBefore(i))" :size="34" />
+            <!-- 交接卡里的两张脸也是 40px：它是同一种"人"，不该在别处缩成 34px ——
+                 一屏里同一个主理出现两种尺寸，读起来是两套头像而不是一个角色 -->
+            <AgentAvatar :agent="agentKeyOf(speakerBefore(i))" :size="40" />
             <span class="chat-handoff__arrow" aria-hidden="true"><UiIcon name="arrow" :size="15" /></span>
-            <AgentAvatar :agent="agentKeyOf(t.handoff.to)" :size="34" state="speaking" />
+            <AgentAvatar :agent="agentKeyOf(t.handoff.to)" :size="40" state="speaking" />
           </div>
           <div class="chat-handoff__said">
             <strong>{{ consultantLabel(t.handoff.to) }}接手</strong>
@@ -779,7 +805,8 @@ onUnmounted(() => {
            "顾问正在想"必须在话语即将发生的位置被看见 —— 头像的 thinking 状态、
            名字旁边的状态词、以及骨架本身，三件事说的是同一句话。 -->
       <div v-if="thinking" class="chat-turn chat-turn--host chat-turn--thinking" role="status">
-        <AgentAvatar class="chat-turn__avatar" :agent="agentKeyOf(host)" :size="40" state="thinking" />
+        <!-- 状态不再写死：thinking 行与消息级头像、.chat-who__state 用的是同一个 hostState -->
+        <AgentAvatar class="chat-turn__avatar" :agent="agentKeyOf(host)" :size="40" :state="hostState" />
         <div class="chat-turn__body">
           <p class="chat-who"><strong>{{ consultantLabel(host) }}</strong><span>{{ agentOf(agentKeyOf(host)).role }}</span><span class="chat-who__state">{{ presenceLabel }}</span></p>
           <div class="chat-skeleton" aria-hidden="true">
