@@ -183,6 +183,26 @@
 [data-view="report"] .sec--quiet .rp-note + .rp-note{margin-top:9px}
 [data-view="report"] .sec--quiet .btn{margin-top:var(--sp-4)}
 
+/* ---- 9 · 可点面积补齐：卡片内次要动作 ≥36×36（项目既有裁定 --btn-h-sm）----
+   这 3 个 <a> 都是**独立动作**，不是 WCAG 2.5.8 说的"句子内的目标"：
+     · .sec__foot a —— 分区脚注里的跳转（块级；基线 .sec__foot 是 flex，子项被块化）
+     · .crumb a     —— 面包屑"了解自己"
+     · .rp-link     —— 侧栏 .rp-ask 里"回画像看这一条 →"
+   probe.mjs 把它们标成"行内"是因为父级是 flex（flex 子项计算 display 变 block），
+   audit.mjs 的 smallCtl 会照实计入。所以按 36 抬，不按"行内"放过。
+   量到的原高：sec__foot 17.4 / crumb 24 / rp-link 24.1。
+   本视图已有的第 0 节把 .chipbtn/.lensbtn/.zoombtn/.chipf/.btn 抬到了 44；
+   .rp-it__go 基线就是 min-height:36px（98×36），已在下限之上，不动。 */
+[data-view="report"] .sec__foot a,
+[data-view="report"] .rp-link{
+  display:inline-flex;align-items:center;
+  min-height:36px;padding:0 var(--sp-2);
+}
+
+/* ---- 面包屑：.crumb a 基线 min-height:24px（10-data-page.css），低于 36 下限 ----
+   规范只在 notes.css 里定义一处（幂等，避免"同一条规范散在多处、谁后加载谁生效"），
+   那里已经带上 [data-view="report"]，本视图不需要重复。 */
+
 /* ---- 8 · 窄屏：雷达与维度表竖排，差距行不再缩进 -------------------------- */
 @media (max-width:1023px){
   .rp-radar{grid-template-columns:minmax(0,1fr);justify-items:start}

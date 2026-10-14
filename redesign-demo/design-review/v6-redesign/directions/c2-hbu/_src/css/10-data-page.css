@@ -59,10 +59,11 @@
 /* 面包屑：分组 › 页面。它回答"我在全站的什么位置"，不是装饰 */
 .crumb{display:flex;align-items:center;gap:7px;font-size:var(--fs-12);color:var(--c-text-3)}
 /* 面包屑：分组 › 页面。它回答"我在全站的什么位置"，不是装饰。
-   高度必须 ≥24px：只有文字高度（21px）时，它是全站唯一一批"看着像链接、却比手指小"的目标。
-   WCAG 2.5.8 的豁免是给"句子里的行内链接"的，面包屑是一排独立目标，不在豁免里。
-   两个作者都独立报了这处（intel 与 academic/review），所以在这里一次修掉，不在各视图里 hack。 */
-.crumb a{display:inline-flex;align-items:center;min-height:24px;padding:0 2px;color:var(--c-text-3)}
+   高度按"卡片内次要动作 ≥36"给（项目既有裁定；WCAG 2.5.8 的 24px 是底线，这里更严）。
+   ⚠ 这一条是**全站唯一出处**。曾有 5 个视图各自写一遍（24 / 36 / 44 三种高度并存），
+   正是本工程出过 4 次的"同一条规范散在多处、谁后加载谁生效"。统一收口在这里；
+   各视图 CSS 里若还留着 .crumb a 的规则，都应该删掉改成指向本文件的注释。 */
+.crumb a{display:inline-flex;align-items:center;min-height:36px;padding:0 2px;color:var(--c-text-3)}
 .crumb a:hover{color:var(--c-primary)}
 .crumb svg{width:12px;height:12px;opacity:.7}
 
@@ -110,7 +111,13 @@
   padding:var(--sp-3) var(--sp-5);border-top:1px solid var(--c-border);
   background:var(--c-surface-2);border-radius:0 0 var(--r-xl) var(--r-xl);
   font-size:var(--fs-12);line-height:var(--lh-snug);color:var(--c-text-3);
-  display:flex;align-items:center;gap:9px;flex-wrap:wrap;
+  /* align-items 必须是 stretch，不是 center：脚注里的 <a> 被抬到 36px（触控下限）之后，
+     用 center 会让"文字 + 链接"在窄一点的分区里折成两行（实测 home/notes/plan/report/
+     profile/gallery/portal 各有 1~4 处 42/87px 的脚注变成 61px 的 61px 两行）。
+     8 个视图里唯一没折的 4 个，恰好就是作者自己加了 align-items:stretch 的那 4 个
+     —— 这条应该在共享层，而不是让每个视图各写一遍。 */
+  align-items:stretch;
+  display:flex;gap:9px;flex-wrap:wrap;
 }
 .sec__foot b{font-weight:var(--fw-semibold);color:var(--c-text-2)}
 /* 分区里再分小节（一个分区只讲一件事，讲不完就再开一个） */

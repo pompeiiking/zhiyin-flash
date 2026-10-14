@@ -97,6 +97,25 @@
   padding-left:2px;min-height:16px;
 }
 
+/* ---- 可点面积补齐：卡片内次要动作 ≥36×36（项目既有裁定 --btn-h-sm）--------
+   本视图按 audit 口径有 3 处 <36，其中 2 处是脚注跳转，抬；1 处有包装层，不动。
+     · .sec__foot a —— "回门户" / "看数据授权的每一项后果 →"，原高 17.4。
+       它们是独立动作，不是 WCAG 2.5.8 的"句子内目标"，所以按 36 抬。
+       probe.mjs 把它们算成块级是因为 .sec__foot 是 flex（flex 子项被块化），
+       audit.mjs 的 smallCtl 照实计入 —— 两家口径都当它们是控件。
+     · .lg-agree__box（20×20）**不动**：它整块被 <label class="lg-agree"> 包着，
+       label 是 730×48 的可点区域（min-height:44px），点到哪一格都作用于这个
+       checkbox。把它撑到 36 只会让勾选框比文字大一圈，而命中面积一点没变 ——
+       这是"拿触控目标换观感"的反向版本。可点性由 label 负责。
+     · .lg-agree__t a（"下面那段使用说明"）是句子内的目标，WCAG 2.5.8 豁免。
+   ⚠ 必须同时给 .sec__foot 加 align-items:stretch：只加 min-height 会把链接挤到
+   第二行（量过：42.4px/1 行 → 61px/2 行，两处都折），stretch 让同行 span 一起撑到
+   36px 行高，就不折行了（量过：61px/**1** 行，页高不变）。 */
+[data-view="login"] .sec__foot{align-items:stretch}
+[data-view="login"] .sec__foot a{
+  display:inline-flex;align-items:center;min-height:36px;
+}
+
 /* ---- 窄屏 ----------------------------------------------------------------- */
 @media (max-width:767px){
   .lg-two{grid-template-columns:minmax(0,1fr)}

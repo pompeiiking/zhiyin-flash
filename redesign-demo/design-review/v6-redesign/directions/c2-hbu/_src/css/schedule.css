@@ -229,6 +229,27 @@
 .sc-post__d{margin-top:6px;font-size:var(--fs-12);line-height:1.7;color:var(--c-text-3)}
 .sc-post__d b{color:var(--c-text-2);font-weight:var(--fw-semibold)}
 
+/* ---- 可点面积补齐：卡片内次要动作 ≥36×36（项目既有裁定 --btn-h-sm）--------
+   本视图只有这一处 <36：.sec__foot a（正文区 2 处），量到的原高 17.4。
+   它是**独立动作**（"去看画像里这条是怎么记的 →" / "去看它进了哪条复盘 →"），
+   不是 WCAG 2.5.8 说的"句子内的目标"，所以按 36 抬，不按行内放过。
+   probe.mjs 把它算成块级是因为 .sec__foot 是 flex（flex 子项被块化）、audit.mjs
+   的 smallCtl 会照实计入 —— 两家口径都当它是控件。
+   ⚠ 为什么必须同时给 .sec__foot 加 align-items:stretch：
+   只加 min-height:36px（report/plan/notes 现在的写法）在这里会**把链接挤到第二行** ——
+   量过：reminders #0 42.4px/1 行 → 61px/2 行、settings 42.4 → 61/2 行、
+   tools 42.4 → 61/2 行（三个视图都能复现，不是本视图特有）。
+   加上 .sec__foot{align-items:stretch} 就不折了：链接盒仍是 36，行数回到 1，
+   页高一分不多（量过：61px/**1** 行）。stretch 只在**有链接的** .sec__foot 上
+   显形 —— 同行文字的行盒跟着变成 36px、文字在其中居中，视觉与 center 一致；
+   没有链接的 .sec__foot 不受影响（子项照旧收缩到内容高，42.4px 不变）。 */
+   原高实测：17.4 → 36。页高代价 +37（同一份构建上关掉本条再量：4626 → 4663），
+   即这两处脚注各长高 18px；**没有新增折行**（#0 原本就是 2 行、#1 仍 1 行）。 */
+[data-view="schedule"] .sec__foot{align-items:stretch}
+[data-view="schedule"] .sec__foot a{
+  display:inline-flex;align-items:center;min-height:36px;
+}
+
 /* ---- 窄屏：横排 7 天站不住，改纵向堆叠（同一批 7 天，换一种排法） ---------- */
 @media (max-width:1100px){
   .sc-week{grid-template-columns:repeat(4,minmax(0,1fr))}

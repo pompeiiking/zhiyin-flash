@@ -802,6 +802,10 @@
                 <span class="skel__l skel--box"></span>
               </div>
               <p class="state__d">加载中：骨架保持版式不跳，<b>内容同时留在文档里</b>（引擎只切可见性），所以 prefers-reduced-motion 下它是一块静态灰条，信息一点不丢。</p>
+              <span class="state__acts">
+                <button class="btn btn--ghost" type="button" data-gl-skel>跑一次加载</button>
+              </span>
+              <p class="state__d" data-gl-skel-note aria-live="polite">骨架默认<b>不动</b>：一整页一直在扫光的骨架属于"持续背景运动"，是反例表里点名的装饰。要演示它怎么动，点上面那个按钮 —— 它只跑一次。</p>
             </div>
           </div>
           <div class="gl-dont">
@@ -1069,15 +1073,16 @@
               <tr><td data-key>.pick__r</td><td data-num>44px</td><td>主要动作</td><td>过 ≥44（min-height 写在样式里）</td></tr>
               <tr><td data-key>.fold__sum</td><td data-num>44px</td><td>主要动作</td><td>过 ≥44（min-height 写在样式里）</td></tr>
               <tr><td data-key>.chipbtn</td><td data-num>40px</td><td>卡片内次要动作</td><td>过 ≥36；低于 44 是基线既有，本页照原样展示</td></tr>
-              <tr><td data-key>.chipf</td><td data-num>34px</td><td>卡片内次要动作</td><td>低于 36 —— 见下面的"待裁定"</td></tr>
-              <tr><td data-key>.lensbtn</td><td data-num>33px</td><td>控制条分段</td><td>低于 44；分段按钮的命中区靠 4px 轨道内衬补偿</td></tr>
-              <tr><td data-key>.zoombtn</td><td data-num>26px</td><td>控制条分段</td><td>低于 44 —— 本页最小的一处</td></tr>
+              <tr><td data-key>.chipf</td><td data-num>38px</td><td>卡片内次要动作</td><td>过 ≥36；低于 44 —— 见下面的"待裁定"</td></tr>
+              <tr><td data-key>.lensbtn</td><td data-num>40px</td><td>控制条分段</td><td>过 ≥36；低于 44（分段按钮的命中区另有内衬）</td></tr>
+              <tr><td data-key>.zoombtn</td><td data-num>39px</td><td>控制条分段</td><td>过 ≥36；低于 44 —— 本页最小的一处</td></tr>
             </tbody>
           </table>
         </div>
         <p class="callout callout--warn" style="margin-top:var(--sp-4)">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8.2v.1"/></svg>
-          <span><b>待裁定（不是这一页能自己改的）：</b><span class="gl-cls">.chipf</span> 34px、<span class="gl-cls">.lensbtn</span> 33px、<span class="gl-cls">.zoombtn</span> 26px 都在 44 以下。它们是共享组件的基准值（10-data-page.css 里 min-height / padding 写死的），改它会影响全站所有页面 —— 项目上同类问题（.btn--sm 82×36）的处置也是"要产品拍板"（HANDOFF §6.3）。所以这一页照原样展示，并把数字留在这里。</span>
+          <span><b>待裁定（不是这一页能自己改的）：</b><span class="gl-cls">.chipf</span> 38px、<span class="gl-cls">.lensbtn</span> 40px、<span class="gl-cls">.zoombtn</span> 39px 都<b>过了 ≥36 的下限</b>，但都在 44 以下。它们是共享组件的基准值（10-data-page.css 里 min-height / padding 写的），改它会影响全站所有页面 —— 项目上同类问题（.btn--sm 82×36）的处置也是"要产品拍板"（HANDOFF §6.3）。所以这一页照原样展示，并把数字留在这里。
+          <br><b>本表的数字是量出来的</b>：早期版本记的是上一版共享基线的值（.chipf 34 / .lensbtn 33 / .zoombtn 26），与今天的实测不符；已在收口时按实测改正 —— 这一页的全部价值就在"数字是对的"，数字一错，它教的东西也一起错。</span>
         </p>
       </div>
       <div class="sec__foot">

@@ -104,6 +104,18 @@
 .po-v{margin-top:2px;font-size:var(--fs-14);font-weight:var(--fw-medium);color:var(--c-text);line-height:var(--lh-snug)}
 .po-m{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:9px}
 
+/* ---- 可点面积：分区页脚里的跳转 -------------------------------------------
+   .sec__foot 是 flex，子项被块化，所以这个 <a> 不是 WCAG 2.5.8 的"句子内目标"，
+   audit.mjs 的 smallCtl 照实计入。量到的原高：17px。
+   按**卡片内次要动作**抬到 36（--btn-h-sm），与 report / plan / notes / home
+   四个视图对 .sec__foot a 的处置一致。抬的是控件自己的高度，不给 .sec__foot
+   加 padding（BRIEF §7）。
+   （本页 .po-tip__go 是"一条去别处的路"的独立动作，本来就是 44，不受影响。） */
+[data-view="portal"] .sec__foot > a{
+  display:inline-flex;align-items:center;
+  min-height:36px;padding:0 var(--sp-2);
+}
+
 /* ---- 窄屏 ----------------------------------------------------------------- */
 @media (max-width:767px){
   .po-open__b{font-size:var(--fs-14)}

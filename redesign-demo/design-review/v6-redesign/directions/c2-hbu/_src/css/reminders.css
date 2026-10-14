@@ -75,7 +75,9 @@
 .rm-quiet__ctl{display:flex;flex-direction:column;gap:var(--sp-3)}
 .rm-quiet__sw{display:inline-flex;align-items:center;gap:10px;min-height:44px}
 .rm-sw__i{position:absolute;left:0;top:0;width:1px;height:1px;margin:0;opacity:0;pointer-events:none}
-.rm-sw{position:relative;display:inline-flex;flex:0 0 auto;width:46px;height:26px}
+/* 开关的可点目标是那个 <label class="rm-sw__t" for>（46×26，input 缩成 1×1），
+   26 < 36 是实打实的触控缺陷 —— 与设置页同一处结构、同一处修法：抬到 36。 */
+.rm-sw{position:relative;display:inline-flex;flex:0 0 auto;width:46px;height:36px}
 .rm-sw__t{
   position:absolute;inset:0;border-radius:var(--r-pill);
   background:var(--c-surface-3);border:1px solid var(--c-border-strong);
@@ -91,7 +93,13 @@
 .rm-sw__i:checked+.rm-sw__t{background:var(--c-primary);border-color:var(--c-primary)}
 .rm-sw__i:checked+.rm-sw__t::after{transform:translateX(20px)}
 .rm-sw__i:focus-visible+.rm-sw__t{box-shadow:0 0 0 3px var(--c-focus-glow)}
-.rm-quiet__swt{font-size:var(--fs-14);font-weight:var(--fw-semibold);color:var(--c-text);cursor:pointer}
+/* 免打扰开关的文字标签本身就是可点目标（<label>），70×24 太矮 —— 抬到 36。
+   注意它外面那层 .rm-quiet__sw 虽然 min-height:44px，但那是 span、不可点，
+   真正被点的就是这一行文字（探针量到的就是它）。 */
+.rm-quiet__swt{
+  display:inline-flex;align-items:center;min-height:36px;
+  font-size:var(--fs-14);font-weight:var(--fw-semibold);color:var(--c-text);cursor:pointer;
+}
 .rm-quiet__times{display:flex;flex-wrap:wrap;gap:var(--sp-2) var(--sp-3);align-items:center}
 .rm-time{display:inline-flex;align-items:center;gap:7px}
 .rm-time__k{font-size:var(--fs-12);font-weight:var(--fw-semibold);color:var(--c-text-3)}
@@ -144,6 +152,22 @@
 .rm-quiet__ex[data-off="true"]{background:var(--c-surface-2);border-style:dashed;box-shadow:none}
 .rm-quiet__ex[data-off="true"] .rm-quiet__l{opacity:.55}
 .rm-note{margin-top:var(--sp-4)}
+
+/* ---- 可点面积补齐：卡片内次要动作 ≥36×36（项目既有裁定 --btn-h-sm）--------
+   本视图只有这一处 <36：.sec__foot a（"通知开关在账号设置里 →"），原高 17.4。
+   它是独立动作，不是 WCAG 2.5.8 的"句子内目标"，所以按 36 抬。
+   probe.mjs 把它算成块级是因为 .sec__foot 是 flex（flex 子项被块化），
+   audit.mjs 的 smallCtl 照实计入 —— 两家口径都当它是控件。
+   ⚠ 必须同时给 .sec__foot 加 align-items:stretch：只加 min-height 会把链接挤到
+   第二行（量过：42.4px/1 行 → 61px/2 行），stretch 让同行 span 一起撑到 36px 行高，
+   就不折行了（量过：61px/**1** 行，页高 2614 → 2632 不变多）。
+   其余可点元素量下来都在下限之上，不动：
+     .rm-act 42.1 / .chipbtn 40.1 / .lensbtn 40.1 / .rm-time__i 40 / .rm-day 40
+     （.rm-day 窄屏已经是 44×44，见下面的媒体查询）。 */
+[data-view="reminders"] .sec__foot{align-items:stretch}
+[data-view="reminders"] .sec__foot a{
+  display:inline-flex;align-items:center;min-height:36px;
+}
 
 /* ---- 窄屏 ----------------------------------------------------------------- */
 @media (max-width:900px){

@@ -16,12 +16,8 @@
 [data-view="achievements"] .lensbtn{min-height:44px}
 [data-view="achievements"] .zoombtn{min-height:44px}
 [data-view="achievements"] .chipbtn{min-height:44px}
-[data-view="achievements"] .crumb a{
-  display:inline-flex;align-items:center;min-height:44px;
-  /* 面包屑的两个文字链接只有 36 / 48 宽 —— 加上 4px 水平内边距，
-     两个字的那一个也到 44，探针的 <44px 计数才是 0 */
-  padding:0 4px;margin:0 -4px;
-}
+/* .crumb a 的 44px 兜底已删除：面包屑规范统一收口到 10-data-page.css（36px = 项目自订的
+   "卡片内次要动作"下限）。这里留 44 会让全站面包屑出现 36/44 两种高度。 */
 
 /* ---- 记录卡的头：标记 / 名称与说明 / 状态 ---------------------------------- */
 .ach__hd{display:flex;align-items:flex-start;gap:var(--sp-3)}

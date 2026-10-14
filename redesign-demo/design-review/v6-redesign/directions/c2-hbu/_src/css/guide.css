@@ -5,8 +5,9 @@
  *   · 四步走    → .tl（先后关系）+ .callout--quiet（做完你会看到）
  *   · 常见问题  → 原生 <details class="fold">（一句话在上，展开是整段回答）
  *   · 词表      → .zoom（一句话 ↔ 加一层 ↔ 预设原始结果）
- * 本文件只做三件事：把 .fold__sum 与 .zoombtn 抬到 44px 触控高、给词条加一个
- * 左列词名、把"去哪个页面"的出口按钮排成一行。其余一律用共享组件。
+ * 本文件只做四件事：把 .fold__sum 与 .zoombtn 抬到 44px 触控高、给词条加一个
+ * 左列词名、把"去哪个页面"的出口按钮排成一行、把折叠体里的跳转抬到 36px。
+ * 其余一律用共享组件。
  * 全部选择器带 .gd- 前缀，或限定在 [data-view="guide"] 之内。
  * ========================================================================== */
 
@@ -32,8 +33,17 @@
 }
 [data-view="guide"] .fold__body p{font-size:var(--fs-14);line-height:var(--lh-normal);color:var(--c-text-2)}
 [data-view="guide"] .fold__body b{font-weight:var(--fw-semibold);color:var(--c-text)}
+/* ---- 折叠体里的跳转：一句话的下面那条路 ----------------------------------
+   原高 24px（= --fs-14 × --lh-normal）。父级 .gd-links 是 flex，子项被块化，
+   所以它不是 WCAG 2.5.8 的"句子内目标"，audit.mjs 的 smallCtl 照实计入。
+   按**卡片内次要动作**抬到 36（--btn-h-sm），与 report / plan / notes / home
+   里 .sec__foot a / .rp-link 的处置同一档。 */
 .gd-links{display:flex;flex-wrap:wrap;gap:var(--sp-4)}
-.gd-links a{font-size:var(--fs-14);font-weight:var(--fw-semibold)}
+.gd-links a{
+  display:inline-flex;align-items:center;
+  min-height:36px;padding:0 var(--sp-2);
+  font-size:var(--fs-14);font-weight:var(--fw-semibold);
+}
 
 /* ---- 词表：左列是词，右列是三层粒度 -------------------------------------
    .zoom 的 zoombar 自带 flex-wrap，这里把词名钉在最左边、按钮跟在后面；

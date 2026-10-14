@@ -26,11 +26,16 @@ const { chromium } = require(path.join(
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DIR = path.resolve(HERE, '..');
 /* --file：指向某个预览文件（并行施工时各量各的）
-   node _tools/probe.mjs --file _shots/preview-report.html --views */
+   node _tools/probe.mjs --file _shots/preview-report.html --views
+   --url：改成量一个 http 地址（例如 _tools/serve.mjs 起的那份），用来确认
+   "服务出去的那一份也能跑"，而不是只确认返回了 200 */
 const iFile = process.argv.indexOf('--file');
-const FILE_URL = pathToFileURL(
-  iFile >= 0 ? path.resolve(DIR, process.argv[iFile + 1]) : path.join(DIR, 'index.html')
-).href;
+const iUrl = process.argv.indexOf('--url');
+const FILE_URL = iUrl >= 0
+  ? process.argv[iUrl + 1]
+  : pathToFileURL(
+    iFile >= 0 ? path.resolve(DIR, process.argv[iFile + 1]) : path.join(DIR, 'index.html')
+  ).href;
 
 function arg(name, dflt) {
   const i = process.argv.indexOf('--' + name);
@@ -104,7 +109,7 @@ if (arg('tap', false) === true) {
        后面几个会匹配整个文档 —— 第一版就是这么把外壳和对话页的元素算进每个视图的。 */
     const root = document.querySelector('.main > .main__scroll[data-active="true"]');
     if (!root) return [];
-    const sel = 'a[href], button, input, textarea, select, summary, [tabindex]:not([tabindex="-1"]), label';
+    const sel = 'a[href], button, input, textarea, select, summary, label[for], [tabindex]:not([tabindex="-1"])';
     const out = [];
     root.querySelectorAll(sel).forEach((el) => {
       const r = el.getBoundingClientRect();

@@ -191,6 +191,22 @@
 .tl-sug__r .tl-flags{margin-top:2px}
 .tl-sug__b{min-height:44px}
 
+/* ---- 可点面积补齐：卡片内次要动作 ≥36×36（项目既有裁定 --btn-h-sm）--------
+   本视图只有这一处 <36：.sec__foot a（"打开学籍与资料 →"），原高 17.4。
+   它是独立动作，不是 WCAG 2.5.8 的"句子内目标"，所以按 36 抬。
+   probe.mjs 把它算成块级是因为 .sec__foot 是 flex（flex 子项被块化），
+   audit.mjs 的 smallCtl 照实计入 —— 两家口径都当它是控件。
+   ⚠ 必须同时给 .sec__foot 加 align-items:stretch：只加 min-height 会把链接挤到
+   第二行（量过：42.4px/1 行 → 61px/2 行），stretch 让同行 span 一起撑到 36px 行高，
+   就不折行了（量过：61px/**1** 行）。
+   其余可点元素量下来都在下限之上，不动：
+     .chipbtn 40.1（含 <a class="chipbtn">）/ .zoombtn 38.6 / .btn。
+   这一页刻意克制：只抬这一处已有动作的可点盒，没有新增任何动作。 */
+[data-view="tools"] .sec__foot{align-items:stretch}
+[data-view="tools"] .sec__foot a{
+  display:inline-flex;align-items:center;min-height:36px;
+}
+
 /* ---- 窄屏：读什么/给你什么 改成两行，工具卡去掉内边距 -------------------- */
 @media (max-width:767px){
   .tl-grid{grid-template-columns:minmax(0,1fr)}

@@ -48,14 +48,14 @@
 .hm-link__k{font-size:var(--fs-12);font-weight:var(--fw-bold);letter-spacing:.06em;color:var(--c-text-3)}
 .hm-link__rows{display:flex;flex-direction:column;gap:6px}
 .hm-link__r{
-  display:flex;flex-wrap:wrap;align-items:baseline;gap:8px;
+  display:flex;flex-wrap:wrap;align-items:center;gap:8px;
   padding:9px var(--sp-3);
   border-radius:var(--r-md);
   background:var(--c-surface-solid);border:1px solid var(--c-border);
   font-size:var(--fs-14);
 }
 .hm-link__t{font-weight:var(--fw-semibold);color:var(--c-text)}
-.hm-link__b{color:var(--c-text-3);font-size:var(--fs-12)}
+.hm-link__b{color:var(--c-text-3);font-size:var(--fs-12);line-height:var(--lh-snug)}
 .hm-link__r a{margin-left:auto;font-size:var(--fs-12);white-space:nowrap}
 
 .hm-card__ft{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:2px}
@@ -151,6 +151,22 @@
 /* 筛选 chip：基线 34px、视角按钮基线 38px，本视图都抬到 44（主要动作 ≥44×44）。 */
 [data-view="home"] .chipf{min-height:44px;padding:8px 14px}
 [data-view="home"] .lensbtn{min-height:44px;padding:10px 15px}
+
+/* ---- 可点面积补齐：卡片内次要动作 ≥36×36（项目既有裁定 --btn-h-sm）--------
+   这 6 个 <a> 都是**独立动作**，不是 WCAG 2.5.8 说的"句子内的目标"：
+     · .sec__foot a        —— 分区脚注里的跳转（块级；基线 .sec__foot 是 flex，子项被块化）
+     · .hm-link__r a       —— "它连着哪条差距"每一行右侧的跳转
+     · .hm-i__m a          —— .lens 条目里"复盘里那一条 / 看它挂在哪"
+   probe.mjs 把它们标成"行内"是因为它们的父级是 flex（flex 子项计算 display 变 block），
+   audit.mjs 的 smallCtl 会照实计入。所以按 36 抬，不按"行内"放过。
+   量到的原高：sec__foot 17.4 / hm-link__r 20.6 / hm-i__m 20.6。
+   用 inline-flex + min-height（宽度自适应、不写死宽），不引入横向溢出。 */
+[data-view="home"] .sec__foot a,
+[data-view="home"] .hm-link__r a,
+[data-view="home"] .hm-i__m a{
+  display:inline-flex;align-items:center;
+  min-height:36px;padding:0 var(--sp-2);
+}
 
 @media (max-width:767px){
   .hm-card__t{font-size:var(--fs-16)}

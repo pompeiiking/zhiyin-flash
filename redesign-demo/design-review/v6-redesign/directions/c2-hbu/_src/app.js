@@ -222,8 +222,15 @@
     });
     if (posNow) posNow.textContent = String(i + 1);
   }
+  /* 支撑材料卡组的标签切换。
+     注意 panelsReady() 这一句：`.panel[data-active="true"]` 挂着入场动画
+     （@keyframes panelIn：opacity 0→1 + 位移 9px + 缩 0.988），而 selectTab(0) 是**初始化**。
+     不在首屏播、只在用户真的切标签时播 —— 这一区分就是 DESIGN-LANGUAGE 反例表的第一行：
+     "页面淡入 + 位移 5px → 界面还是那张画，只换了进场方式 = 装饰"。
+     所以初始化路径**不打标**，用户触发的两条路径（点击 / 键盘）打标。 */
+  function panelsReady() { document.documentElement.setAttribute('data-panels-ready', 'true'); }
   tabs.forEach(function (t, i) {
-    t.addEventListener('click', function () { selectTab(i); });
+    t.addEventListener('click', function () { panelsReady(); selectTab(i); });
     t.addEventListener('keydown', function (e) {
       var next = null;
       if (e.key === 'ArrowRight') next = (i + 1) % tabs.length;
@@ -232,6 +239,7 @@
       else if (e.key === 'End') next = tabs.length - 1;
       if (next === null) return;
       e.preventDefault();
+      panelsReady();
       selectTab(next);
       tabs[next].focus();
     });
@@ -596,17 +604,20 @@
       if (box.getAttribute('data-lens-init') === 'true') return;
       box.setAttribute('data-lens-init', 'true');
 
-      var items = Array.prototype.slice.call(box.querySelectorAll('.lens__item'));
       var btns = Array.prototype.slice.call(box.querySelectorAll('[data-lens-set]'));
       var hint = box.querySelector('[data-lens-hint]');
       var host = box.querySelector('.lens__items') || box;
-      if (!items.length || !btns.length) return;
+      if (!btns.length) return;
 
-      /* 过滤器与视角重组的配合：被筛掉的条目（[hidden]）不参与分组，也不计入组内条数 ——
-         否则"筛到只剩 2 条"时组头还写着 12 条，数字就成了假的。
-         视图侧改完筛选后触发一次 `c2:relens`（或用 C2.relens(view)）即可重组。 */
+      /* ⚠ 条目**每次分组时现查**，不在初始化时快照。
+         为什么：有的视图先用静态标记写几条占位，随后由自己的 JS 注入其余条目
+         （schedule 就是：标记里只有 1 条，schedule.js 注入另外 7 张天卡后才调 C2.lens）。
+         第一版在初始化时把 `.lens__item` 存进数组，于是引擎永远只认那 1 条 ——
+         四个视角全归 1 组、moved=0、提示退化成"归成 1 组"，而**页面上看起来有 4 个视角按钮、
+         也标着 .lens**，任何"有没有 .lens"的检查都会放过它。这是独立审计抓出来的（S1）。 */
       function live() {
-        return items.filter(function (el) { return !el.hasAttribute('hidden'); });
+        return Array.prototype.slice.call(box.querySelectorAll('.lens__item'))
+          .filter(function (el) { return !el.hasAttribute('hidden'); });
       }
 
       function set(lens) {

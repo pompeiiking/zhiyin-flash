@@ -73,6 +73,23 @@
 .pl-side__cmp{margin-top:var(--sp-3);--cmp-x:76px}
 .pl-side__n{margin-top:var(--sp-3);font-size:var(--fs-12);line-height:var(--lh-snug);color:var(--c-text-3)}
 
+/* ---- 可点面积补齐：卡片内次要动作 ≥36×36（项目既有裁定 --btn-h-sm）--------
+   这 3 个 <a> 都是**独立动作**，不是 WCAG 2.5.8 说的"句子内的目标"：
+     · .sec__foot a —— 分区脚注里的跳转（正文区 2 处 + 侧栏 1 处，都在 .sec__foot 里）
+   probe.mjs 把它们标成"行内"是因为父级是 flex（flex 子项计算 display 变 block），
+   audit.mjs 的 smallCtl 会照实计入。所以按 36 抬，不按"行内"放过。
+   量到的原高：17.4。
+   本视图 .chipf 已是 38.1、.lensbtn 已是 40.1（基线 34 / 40 + 内容行高），
+   都 ≥36，不在本次改动范围内。 */
+[data-view="plan"] .sec__foot a{
+  display:inline-flex;align-items:center;
+  min-height:36px;padding:0 var(--sp-2);
+}
+
+/* ---- 面包屑：.crumb a 基线 min-height:24px（10-data-page.css），低于 36 下限 ----
+   规范只在 notes.css 里定义一处（幂等，避免"同一条规范散在多处、谁后加载谁生效"），
+   那里已经带上 [data-view="plan"]，本视图不需要重复。 */
+
 @media (max-width:767px){
   .pl-bar{flex-wrap:wrap}
   .pl-bar .meter{max-width:none;width:100%}

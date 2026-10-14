@@ -59,7 +59,7 @@
             <tbody>
               <tr>
                 <td data-key>字号档位</td>
-                <td>页面里所有 font-size 是否只落在 12 / 14 / 16 / 20 / 30 上</td>
+                <td>页面里所有 font-size 是否只落在 12 / 14 / 16 / 20 / 30 上（唯一例外：侧栏品牌字「职」15px，见 §② 的说明）</td>
                 <td><span class="sp-ref">c2.css L97</span></td>
               </tr>
               <tr>
@@ -265,6 +265,7 @@
       </div>
       <div class="sec__foot">
         <p>判定规则：<b>不许出现第 6 档</b>。10px 在本项目被明确禁止；需要更小的字时，正确做法是删字，不是缩字号。</p>
+        <p style="margin-top:6px">已声明的例外只有一处：侧栏品牌字「职」（<code class="sp-code">.nav__mark</code>）是 <b>15px</b>。<b>logo 字形不是界面文字</b> —— 34×34 的方块里 15px 才撑得住，14px 显小、16px 顶格。它在 <code class="sp-code">_tools/c2.css:535</code>，属已批准基线，本轮不动它。<span class="sp-ref">audit.mjs 已把这一值列入例外</span></p>
       </div>
     </section>
 
@@ -573,7 +574,7 @@
             </thead>
             <tbody>
               <tr><td data-key>.btn / .btn--ghost</td><td>基线 c2.css L1152</td><td data-num>padding 11px 20px</td><td>主要动作档，实测过 44</td></tr>
-              <tr><td data-key>.chipbtn</td><td>基线 c2.css L729</td><td data-num>padding 7px 13px</td><td>页头轻动作，本样张按 44 兜底</td></tr>
+              <tr><td data-key>.chipbtn</td><td>基线 c2.css L729（只有 padding，无 min-height）</td><td data-num>实测 40px</td><td><b>差 4px</b>：与 .lensbtn / .zoombtn 同一处置 —— 数字留在这里交产品拍板，不单独覆盖共享值</td></tr>
               <tr><td data-key>.lensbtn</td><td>数据页层 L132</td><td data-num>min-height 40px</td><td><b>差 4px</b>，共享组件基准；改它影响全站，要产品拍板</td></tr>
               <tr><td data-key>.zoombtn</td><td>数据页层 L178</td><td data-num>min-height 36px</td><td><b>差 8px</b>，同上</td></tr>
               <tr><td data-key>.pick__r</td><td>数据页层 L343</td><td data-num>min-height 44px</td><td>达标，勾选行是主要动作档</td></tr>

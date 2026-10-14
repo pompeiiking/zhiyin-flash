@@ -79,6 +79,30 @@
 [data-view="notes"] .chipf{min-height:44px;padding:8px 14px}
 [data-view="notes"] .lensbtn{min-height:44px;padding:10px 15px}
 
+/* ---- 可点面积补齐：卡片内次要动作 ≥36×36（项目既有裁定 --btn-h-sm）--------
+   这 6 个 <a> 都是**独立动作**，不是 WCAG 2.5.8 说的"句子内的目标"：
+     · .sec__foot a      —— 分区脚注里的跳转（块级；基线 .sec__foot 是 flex，子项被块化）
+     · .pick__meta a     —— 条目标签行里的"去岗位资讯看示例 / 看复盘里怎么用的 / 去阶段计划看第 1 步"
+   probe.mjs 把它们标成"行内"是因为父级是 flex（flex 子项计算 display 变 block），
+   audit.mjs 的 smallCtl 会照实计入。所以按 36 抬，不按"行内"放过。
+   量到的原高：sec__foot 17.4 / pick__meta 27.5。
+   为什么抬到 36 不会破坏 .pick__meta 那一行的排版：它本来就是
+   `display:flex;align-items:center`（10-data-page.css L374），抬高的锚点作为
+   flex 子项跟着整行居中，与它并排的 .src / .nt-tie 同高对齐，不产生基线错位。
+   36px 确实比原来的 27.5px 高，但 .pick__r 本来就是 min-height:44px 的行、
+   .pick__meta 有 margin-top:6px，两行文字仍然放得下（实测 notes 总高未折行）。 */
+[data-view="notes"] .sec__foot a,
+[data-view="notes"] .pick__meta a{
+  display:inline-flex;align-items:center;
+  min-height:36px;padding:0 var(--sp-2);
+}
+
+/* ---- 面包屑：规范已收口到共享层 ----------------------------------------------
+   原先这里写过一条带 4 个 [data-view] 的选择器（home/notes/plan/report）。
+   现在 `.crumb a{min-height:36px}` 定义在 `10-data-page.css` 里，是**全站唯一出处**
+   —— 5 个视图各写一遍会让同一件事有三种高度（24/36/44），正是本工程出过 4 次的
+   那种"同一条规范散在多处、谁后加载谁生效"。这里不再重复定义。 */
+
 @media (max-width:767px){
   .nt-goal .pick__title{font-size:var(--fs-14)}
   .nt-goal .pick__r,.nt-todo .pick__r{padding:10px}

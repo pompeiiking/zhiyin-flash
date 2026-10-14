@@ -118,6 +118,24 @@
   .tabbar button[aria-expanded="true"]{color:var(--c-primary);background:var(--c-primary-weak)}
 }
 
+/* ---- 0.4b 行内强调标签的字重归位 ------------------------------------------
+   浏览器 UA 样式里 <b>/<strong> 是 `font-weight: bolder`，**相对父级**计算：
+   父级 700 时它算出 **900** —— 而本项目的字重只有 400/500/600/700 四档。
+   实测：chat 与 settings 的计算字重表里出现了 900（其余 19 个视图没有，
+   因为只有这两处把 <b> 放进了 700 的容器里）。
+   归位到 --fw-bold（700）：视觉上在雅黑里本来也分不出来，但档位表要干净。 */
+b,strong{font-weight:var(--fw-bold)}
+
+/* ---- 0.4c 首屏不播入场动画 ------------------------------------------------
+   `.panel[data-active="true"]{animation:panelIn …}` 在**初始化**时也会播一次
+   （selectTab(0) 给第一个面板加上 data-active）。那正是反例表第一行点名的
+   "页面淡入 + 位移 = 装饰"：界面还是那张画，只换了进场方式。
+   用户切标签时播则是有意义的反馈（"这里换了一批材料"），所以只挡初始化那一次：
+   app.js 在用户点击/键盘切换前才打 data-panels-ready。
+   animation:none 不影响静止态 —— panelIn 的终态就是基态（opacity 1、无位移），
+   所以静态截屏逐像素不变，只是不再有那 440ms 的进场。 */
+html:not([data-panels-ready="true"]) [data-view="chat"] .panel[data-active="true"]{animation:none}
+
 /* ---- 0.5 目录面板在窄屏：几乎整屏 ---------------------------------------- */
 @media (max-width:767px){
   .idx{padding:var(--sp-3)}

@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- build-stamp: views=21 css=e70c0b52c1a5 base=df02afcb8a53 chat=564f04a6c79e -->
+<!-- build-stamp: views=21 css=db066fea280a base=df02afcb8a53 chat=564f04a6c79e -->
 <html lang="zh-CN" data-theme="light" data-accent="blue" data-style="normal" data-theme-mode="light" data-state="thinking">
 <head>
 <meta charset="utf-8">
@@ -1624,6 +1624,24 @@ html[data-state="speaking"] .avatar__ring{opacity:1;animation:ripple 2.2s var(--
   .tabbar button[aria-expanded="true"]{color:var(--c-primary);background:var(--c-primary-weak)}
 }
 
+/* ---- 0.4b 行内强调标签的字重归位 ------------------------------------------
+   浏览器 UA 样式里 <b>/<strong> 是 `font-weight: bolder`，**相对父级**计算：
+   父级 700 时它算出 **900** —— 而本项目的字重只有 400/500/600/700 四档。
+   实测：chat 与 settings 的计算字重表里出现了 900（其余 19 个视图没有，
+   因为只有这两处把 <b> 放进了 700 的容器里）。
+   归位到 --fw-bold（700）：视觉上在雅黑里本来也分不出来，但档位表要干净。 */
+b,strong{font-weight:var(--fw-bold)}
+
+/* ---- 0.4c 首屏不播入场动画 ------------------------------------------------
+   `.panel[data-active="true"]{animation:panelIn …}` 在**初始化**时也会播一次
+   （selectTab(0) 给第一个面板加上 data-active）。那正是反例表第一行点名的
+   "页面淡入 + 位移 = 装饰"：界面还是那张画，只换了进场方式。
+   用户切标签时播则是有意义的反馈（"这里换了一批材料"），所以只挡初始化那一次：
+   app.js 在用户点击/键盘切换前才打 data-panels-ready。
+   animation:none 不影响静止态 —— panelIn 的终态就是基态（opacity 1、无位移），
+   所以静态截屏逐像素不变，只是不再有那 440ms 的进场。 */
+html:not([data-panels-ready="true"]) [data-view="chat"] .panel[data-active="true"]{animation:none}
+
 /* ---- 0.5 目录面板在窄屏：几乎整屏 ---------------------------------------- */
 @media (max-width:767px){
   .idx{padding:var(--sp-3)}
@@ -1699,10 +1717,11 @@ html[data-state="speaking"] .avatar__ring{opacity:1;animation:ripple 2.2s var(--
 /* 面包屑：分组 › 页面。它回答"我在全站的什么位置"，不是装饰 */
 .crumb{display:flex;align-items:center;gap:7px;font-size:var(--fs-12);color:var(--c-text-3)}
 /* 面包屑：分组 › 页面。它回答"我在全站的什么位置"，不是装饰。
-   高度必须 ≥24px：只有文字高度（21px）时，它是全站唯一一批"看着像链接、却比手指小"的目标。
-   WCAG 2.5.8 的豁免是给"句子里的行内链接"的，面包屑是一排独立目标，不在豁免里。
-   两个作者都独立报了这处（intel 与 academic/review），所以在这里一次修掉，不在各视图里 hack。 */
-.crumb a{display:inline-flex;align-items:center;min-height:24px;padding:0 2px;color:var(--c-text-3)}
+   高度按"卡片内次要动作 ≥36"给（项目既有裁定；WCAG 2.5.8 的 24px 是底线，这里更严）。
+   ⚠ 这一条是**全站唯一出处**。曾有 5 个视图各自写一遍（24 / 36 / 44 三种高度并存），
+   正是本工程出过 4 次的"同一条规范散在多处、谁后加载谁生效"。统一收口在这里；
+   各视图 CSS 里若还留着 .crumb a 的规则，都应该删掉改成指向本文件的注释。 */
+.crumb a{display:inline-flex;align-items:center;min-height:36px;padding:0 2px;color:var(--c-text-3)}
 .crumb a:hover{color:var(--c-primary)}
 .crumb svg{width:12px;height:12px;opacity:.7}
 
@@ -1750,7 +1769,13 @@ html[data-state="speaking"] .avatar__ring{opacity:1;animation:ripple 2.2s var(--
   padding:var(--sp-3) var(--sp-5);border-top:1px solid var(--c-border);
   background:var(--c-surface-2);border-radius:0 0 var(--r-xl) var(--r-xl);
   font-size:var(--fs-12);line-height:var(--lh-snug);color:var(--c-text-3);
-  display:flex;align-items:center;gap:9px;flex-wrap:wrap;
+  /* align-items 必须是 stretch，不是 center：脚注里的 <a> 被抬到 36px（触控下限）之后，
+     用 center 会让"文字 + 链接"在窄一点的分区里折成两行（实测 home/notes/plan/report/
+     profile/gallery/portal 各有 1~4 处 42/87px 的脚注变成 61px 的 61px 两行）。
+     8 个视图里唯一没折的 4 个，恰好就是作者自己加了 align-items:stretch 的那 4 个
+     —— 这条应该在共享层，而不是让每个视图各写一遍。 */
+  align-items:stretch;
+  display:flex;gap:9px;flex-wrap:wrap;
 }
 .sec__foot b{font-weight:var(--fw-semibold);color:var(--c-text-2)}
 /* 分区里再分小节（一个分区只讲一件事，讲不完就再开一个） */
@@ -2440,12 +2465,8 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
 [data-view="achievements"] .lensbtn{min-height:44px}
 [data-view="achievements"] .zoombtn{min-height:44px}
 [data-view="achievements"] .chipbtn{min-height:44px}
-[data-view="achievements"] .crumb a{
-  display:inline-flex;align-items:center;min-height:44px;
-  /* 面包屑的两个文字链接只有 36 / 48 宽 —— 加上 4px 水平内边距，
-     两个字的那一个也到 44，探针的 <44px 计数才是 0 */
-  padding:0 4px;margin:0 -4px;
-}
+/* .crumb a 的 44px 兜底已删除：面包屑规范统一收口到 10-data-page.css（36px = 项目自订的
+   "卡片内次要动作"下限）。这里留 44 会让全站面包屑出现 36/44 两种高度。 */
 
 /* ---- 记录卡的头：标记 / 名称与说明 / 状态 ---------------------------------- */
 .ach__hd{display:flex;align-items:flex-start;gap:var(--sp-3)}
@@ -2550,6 +2571,42 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
   [data-view="achievements"] .pick__t{flex:1 1 100%}
   [data-view="achievements"] .pick__tail{flex:1 1 100%;white-space:normal;padding-left:31px}
   [data-view="achievements"] .pick__tail .conf{white-space:normal}
+}
+
+/* =============================================================================
+ * 对话页（chat）· 视图私有样式 —— **只补可点面积，不改基线口径**
+ * -----------------------------------------------------------------------------
+ * 为什么这个文件这么短：chat 与 _tools/c2.css 是需求方**已批准的基线样板**，
+ * c2.css 一个字都不能动（BRIEF §9）。但基线里有 4 个控件低于本项目自己的下限：
+ *
+ *   元素                    基线出处（c2.css）        实测  下限  目标
+ *   .statebtn ×3            L780 padding:6px 12px     34.6  ——   36
+ *   .box__field textarea    L1246 min-height:26px     27.2  ——   44
+ *
+ * 所以这里不是"重做设计"，是**基线口径之外的补齐**：只把可点盒子抬到下限，
+ * 颜色 / 字号 / 间距 / 圆角 / 结构一处都不动，全部走 [data-view="chat"] 限定，
+ * 绝不重定义 c2.css 的裸类（否则会全局覆盖，正是本工程出过 4 次的事故）。
+ *
+ * 判定依据：这两类元素都不是 WCAG 2.5.8 说的"句子内的目标"——
+ *   · .statebtn 是三个并列的状态切换按钮（主体在场三态）；
+ *   · textarea 是这一页的主要输入动作（BRIEF §7 把它们归为控件，不是正文链接）。
+ * ========================================================================== */
+
+/* ---- 1 · 三态按钮：基线 34.6px → 36px（卡片内次要动作下限 --btn-h-sm）------
+   只加 min-height 与纵向居中，保留基线原来的 padding / 边框 / 圆角 / 字号，
+   所以宽度不变（50px），只有高度多 1.4px，不会把 .states 那一排挤折行。 */
+[data-view="chat"] .statebtn{
+  display:inline-flex;align-items:center;
+  min-height:36px;
+}
+
+/* ---- 2 · 输入区：基线 min-height:26px → 44px（主要动作 ≥44×44）------------
+   这是这一页的主要动作：真人要在里面打字并回车发送。基线 26px 是"一行草稿纸"
+   的高度，手机上点它很容易点空。抬到 44 只是把起手高度变成一行半，
+   输入变长时 app.js 仍是往上长（到 max-height:132px 为止），行为不变。
+   保留基线原来的 padding:2px（不横向加宽），所以右侧按钮排布不动。 */
+[data-view="chat"] .box__field textarea{
+  min-height:44px;
 }
 
 /* =============================================================================
@@ -2862,6 +2919,43 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
 .gl-cell--none{color:var(--c-text-3);background:transparent}
 
 /* =============================================================================
+ * 3.1 · 可点面积：分区页脚里的跳转
+ * -----------------------------------------------------------------------------
+ * .sec__foot 是 flex，它的 <a> 子项被块化，所以这不是 WCAG 2.5.8 说的
+ * "句子内的目标"，audit.mjs 的 smallCtl 会照实计入。量到的原高：17px（4 处）。
+ * 按**卡片内次要动作**这一档抬到 36（项目既有裁定 --btn-h-sm），与 report /
+ * plan / notes / home 四个视图对同一个选择器的处置一致（它们也量到 17.4px）。
+ *
+ * ⚠ 本页的 .chipbtn / .chipf / .lensbtn / .zoombtn **故意不抬**：下面「可点面积实测」
+ *   那张表的四行、以及表下的 .callout--warn，就是拿这几个共享组件的基线值当测量
+ *   对象写的（"不是本页改的，本页照原样展示"）。在这一页把它们改成 44，表里的
+ *   数字会和页面自己的结论当场打架。这一条留给 Lead 拍板，不自己改。
+ *
+ * 抬的是控件自己的高度，不是给 .sec__foot 加 padding（BRIEF §7 最后两行）。
+ * ========================================================================== */
+[data-view="gallery"] .sec__foot > a{
+  display:inline-flex;align-items:center;
+  min-height:36px;padding:0 var(--sp-2);
+}
+
+/* =============================================================================
+ * 3.2 · 骨架样张默认不动
+ * -----------------------------------------------------------------------------
+ * 独立审计抓到：这一页的骨架屏 4 条 `.skel__l` 以 skelSweep **无限**跑下去，
+ * 也就是说"加载态样张"永远停在加载中 —— 而"持续背景运动"正是 DESIGN-LANGUAGE
+ * §5 反例表里点名的那一类。共享层给 .skel 的是"真的在加载"时的表现，
+ * 这里作为**样张**要的是"它长什么样"，不是一页一直在扫光。
+ * 所以：默认停（静态灰条，形状与版式照样看得出来），点「跑一次加载」才播一次。
+ * 动效因此从"装饰"变回"回答这里发生了什么"。
+ * ========================================================================== */
+[data-view="gallery"] .skel__l{animation:none}
+[data-view="gallery"] .skel[data-gl-run="running"] .skel__l{animation:skelSweep 1.5s var(--ease-in-out) infinite}
+/* 降低动效偏好下即使点了也只跑一次（不无限），与共享层口径一致 */
+@media (prefers-reduced-motion:reduce){
+  [data-view="gallery"] .skel[data-gl-run="running"] .skel__l{animation:none}
+}
+
+/* =============================================================================
  * 4 · 窄屏
  * ========================================================================== */
 @media (max-width:767px){
@@ -2884,8 +2978,9 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
  *   · 四步走    → .tl（先后关系）+ .callout--quiet（做完你会看到）
  *   · 常见问题  → 原生 <details class="fold">（一句话在上，展开是整段回答）
  *   · 词表      → .zoom（一句话 ↔ 加一层 ↔ 预设原始结果）
- * 本文件只做三件事：把 .fold__sum 与 .zoombtn 抬到 44px 触控高、给词条加一个
- * 左列词名、把"去哪个页面"的出口按钮排成一行。其余一律用共享组件。
+ * 本文件只做四件事：把 .fold__sum 与 .zoombtn 抬到 44px 触控高、给词条加一个
+ * 左列词名、把"去哪个页面"的出口按钮排成一行、把折叠体里的跳转抬到 36px。
+ * 其余一律用共享组件。
  * 全部选择器带 .gd- 前缀，或限定在 [data-view="guide"] 之内。
  * ========================================================================== */
 
@@ -2911,8 +3006,17 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
 }
 [data-view="guide"] .fold__body p{font-size:var(--fs-14);line-height:var(--lh-normal);color:var(--c-text-2)}
 [data-view="guide"] .fold__body b{font-weight:var(--fw-semibold);color:var(--c-text)}
+/* ---- 折叠体里的跳转：一句话的下面那条路 ----------------------------------
+   原高 24px（= --fs-14 × --lh-normal）。父级 .gd-links 是 flex，子项被块化，
+   所以它不是 WCAG 2.5.8 的"句子内目标"，audit.mjs 的 smallCtl 照实计入。
+   按**卡片内次要动作**抬到 36（--btn-h-sm），与 report / plan / notes / home
+   里 .sec__foot a / .rp-link 的处置同一档。 */
 .gd-links{display:flex;flex-wrap:wrap;gap:var(--sp-4)}
-.gd-links a{font-size:var(--fs-14);font-weight:var(--fw-semibold)}
+.gd-links a{
+  display:inline-flex;align-items:center;
+  min-height:36px;padding:0 var(--sp-2);
+  font-size:var(--fs-14);font-weight:var(--fw-semibold);
+}
 
 /* ---- 词表：左列是词，右列是三层粒度 -------------------------------------
    .zoom 的 zoombar 自带 flex-wrap，这里把词名钉在最左边、按钮跟在后面；
@@ -2991,14 +3095,14 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
 .hm-link__k{font-size:var(--fs-12);font-weight:var(--fw-bold);letter-spacing:.06em;color:var(--c-text-3)}
 .hm-link__rows{display:flex;flex-direction:column;gap:6px}
 .hm-link__r{
-  display:flex;flex-wrap:wrap;align-items:baseline;gap:8px;
+  display:flex;flex-wrap:wrap;align-items:center;gap:8px;
   padding:9px var(--sp-3);
   border-radius:var(--r-md);
   background:var(--c-surface-solid);border:1px solid var(--c-border);
   font-size:var(--fs-14);
 }
 .hm-link__t{font-weight:var(--fw-semibold);color:var(--c-text)}
-.hm-link__b{color:var(--c-text-3);font-size:var(--fs-12)}
+.hm-link__b{color:var(--c-text-3);font-size:var(--fs-12);line-height:var(--lh-snug)}
 .hm-link__r a{margin-left:auto;font-size:var(--fs-12);white-space:nowrap}
 
 .hm-card__ft{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:2px}
@@ -3094,6 +3198,22 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
 /* 筛选 chip：基线 34px、视角按钮基线 38px，本视图都抬到 44（主要动作 ≥44×44）。 */
 [data-view="home"] .chipf{min-height:44px;padding:8px 14px}
 [data-view="home"] .lensbtn{min-height:44px;padding:10px 15px}
+
+/* ---- 可点面积补齐：卡片内次要动作 ≥36×36（项目既有裁定 --btn-h-sm）--------
+   这 6 个 <a> 都是**独立动作**，不是 WCAG 2.5.8 说的"句子内的目标"：
+     · .sec__foot a        —— 分区脚注里的跳转（块级；基线 .sec__foot 是 flex，子项被块化）
+     · .hm-link__r a       —— "它连着哪条差距"每一行右侧的跳转
+     · .hm-i__m a          —— .lens 条目里"复盘里那一条 / 看它挂在哪"
+   probe.mjs 把它们标成"行内"是因为它们的父级是 flex（flex 子项计算 display 变 block），
+   audit.mjs 的 smallCtl 会照实计入。所以按 36 抬，不按"行内"放过。
+   量到的原高：sec__foot 17.4 / hm-link__r 20.6 / hm-i__m 20.6。
+   用 inline-flex + min-height（宽度自适应、不写死宽），不引入横向溢出。 */
+[data-view="home"] .sec__foot a,
+[data-view="home"] .hm-link__r a,
+[data-view="home"] .hm-i__m a{
+  display:inline-flex;align-items:center;
+  min-height:36px;padding:0 var(--sp-2);
+}
 
 @media (max-width:767px){
   .hm-card__t{font-size:var(--fs-16)}
@@ -3480,6 +3600,25 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
   padding-left:2px;min-height:16px;
 }
 
+/* ---- 可点面积补齐：卡片内次要动作 ≥36×36（项目既有裁定 --btn-h-sm）--------
+   本视图按 audit 口径有 3 处 <36，其中 2 处是脚注跳转，抬；1 处有包装层，不动。
+     · .sec__foot a —— "回门户" / "看数据授权的每一项后果 →"，原高 17.4。
+       它们是独立动作，不是 WCAG 2.5.8 的"句子内目标"，所以按 36 抬。
+       probe.mjs 把它们算成块级是因为 .sec__foot 是 flex（flex 子项被块化），
+       audit.mjs 的 smallCtl 照实计入 —— 两家口径都当它们是控件。
+     · .lg-agree__box（20×20）**不动**：它整块被 <label class="lg-agree"> 包着，
+       label 是 730×48 的可点区域（min-height:44px），点到哪一格都作用于这个
+       checkbox。把它撑到 36 只会让勾选框比文字大一圈，而命中面积一点没变 ——
+       这是"拿触控目标换观感"的反向版本。可点性由 label 负责。
+     · .lg-agree__t a（"下面那段使用说明"）是句子内的目标，WCAG 2.5.8 豁免。
+   ⚠ 必须同时给 .sec__foot 加 align-items:stretch：只加 min-height 会把链接挤到
+   第二行（量过：42.4px/1 行 → 61px/2 行，两处都折），stretch 让同行 span 一起撑到
+   36px 行高，就不折行了（量过：61px/**1** 行，页高不变）。 */
+[data-view="login"] .sec__foot{align-items:stretch}
+[data-view="login"] .sec__foot a{
+  display:inline-flex;align-items:center;min-height:36px;
+}
+
 /* ---- 窄屏 ----------------------------------------------------------------- */
 @media (max-width:767px){
   .lg-two{grid-template-columns:minmax(0,1fr)}
@@ -3568,6 +3707,30 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
 /* 筛选 chip / 视角按钮：基线 34px / 38px，本视图抬到 44。 */
 [data-view="notes"] .chipf{min-height:44px;padding:8px 14px}
 [data-view="notes"] .lensbtn{min-height:44px;padding:10px 15px}
+
+/* ---- 可点面积补齐：卡片内次要动作 ≥36×36（项目既有裁定 --btn-h-sm）--------
+   这 6 个 <a> 都是**独立动作**，不是 WCAG 2.5.8 说的"句子内的目标"：
+     · .sec__foot a      —— 分区脚注里的跳转（块级；基线 .sec__foot 是 flex，子项被块化）
+     · .pick__meta a     —— 条目标签行里的"去岗位资讯看示例 / 看复盘里怎么用的 / 去阶段计划看第 1 步"
+   probe.mjs 把它们标成"行内"是因为父级是 flex（flex 子项计算 display 变 block），
+   audit.mjs 的 smallCtl 会照实计入。所以按 36 抬，不按"行内"放过。
+   量到的原高：sec__foot 17.4 / pick__meta 27.5。
+   为什么抬到 36 不会破坏 .pick__meta 那一行的排版：它本来就是
+   `display:flex;align-items:center`（10-data-page.css L374），抬高的锚点作为
+   flex 子项跟着整行居中，与它并排的 .src / .nt-tie 同高对齐，不产生基线错位。
+   36px 确实比原来的 27.5px 高，但 .pick__r 本来就是 min-height:44px 的行、
+   .pick__meta 有 margin-top:6px，两行文字仍然放得下（实测 notes 总高未折行）。 */
+[data-view="notes"] .sec__foot a,
+[data-view="notes"] .pick__meta a{
+  display:inline-flex;align-items:center;
+  min-height:36px;padding:0 var(--sp-2);
+}
+
+/* ---- 面包屑：规范已收口到共享层 ----------------------------------------------
+   原先这里写过一条带 4 个 [data-view] 的选择器（home/notes/plan/report）。
+   现在 `.crumb a{min-height:36px}` 定义在 `10-data-page.css` 里，是**全站唯一出处**
+   —— 5 个视图各写一遍会让同一件事有三种高度（24/36/44），正是本工程出过 4 次的
+   那种"同一条规范散在多处、谁后加载谁生效"。这里不再重复定义。 */
 
 @media (max-width:767px){
   .nt-goal .pick__title{font-size:var(--fs-14)}
@@ -3790,6 +3953,23 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
 .pl-side__cmp{margin-top:var(--sp-3);--cmp-x:76px}
 .pl-side__n{margin-top:var(--sp-3);font-size:var(--fs-12);line-height:var(--lh-snug);color:var(--c-text-3)}
 
+/* ---- 可点面积补齐：卡片内次要动作 ≥36×36（项目既有裁定 --btn-h-sm）--------
+   这 3 个 <a> 都是**独立动作**，不是 WCAG 2.5.8 说的"句子内的目标"：
+     · .sec__foot a —— 分区脚注里的跳转（正文区 2 处 + 侧栏 1 处，都在 .sec__foot 里）
+   probe.mjs 把它们标成"行内"是因为父级是 flex（flex 子项计算 display 变 block），
+   audit.mjs 的 smallCtl 会照实计入。所以按 36 抬，不按"行内"放过。
+   量到的原高：17.4。
+   本视图 .chipf 已是 38.1、.lensbtn 已是 40.1（基线 34 / 40 + 内容行高），
+   都 ≥36，不在本次改动范围内。 */
+[data-view="plan"] .sec__foot a{
+  display:inline-flex;align-items:center;
+  min-height:36px;padding:0 var(--sp-2);
+}
+
+/* ---- 面包屑：.crumb a 基线 min-height:24px（10-data-page.css），低于 36 下限 ----
+   规范只在 notes.css 里定义一处（幂等，避免"同一条规范散在多处、谁后加载谁生效"），
+   那里已经带上 [data-view="plan"]，本视图不需要重复。 */
+
 @media (max-width:767px){
   .pl-bar{flex-wrap:wrap}
   .pl-bar .meter{max-width:none;width:100%}
@@ -3902,6 +4082,18 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
 .po-v{margin-top:2px;font-size:var(--fs-14);font-weight:var(--fw-medium);color:var(--c-text);line-height:var(--lh-snug)}
 .po-m{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:9px}
 
+/* ---- 可点面积：分区页脚里的跳转 -------------------------------------------
+   .sec__foot 是 flex，子项被块化，所以这个 <a> 不是 WCAG 2.5.8 的"句子内目标"，
+   audit.mjs 的 smallCtl 照实计入。量到的原高：17px。
+   按**卡片内次要动作**抬到 36（--btn-h-sm），与 report / plan / notes / home
+   四个视图对 .sec__foot a 的处置一致。抬的是控件自己的高度，不给 .sec__foot
+   加 padding（BRIEF §7）。
+   （本页 .po-tip__go 是"一条去别处的路"的独立动作，本来就是 44，不受影响。） */
+[data-view="portal"] .sec__foot > a{
+  display:inline-flex;align-items:center;
+  min-height:36px;padding:0 var(--sp-2);
+}
+
 /* ---- 窄屏 ----------------------------------------------------------------- */
 @media (max-width:767px){
   .po-open__b{font-size:var(--fs-14)}
@@ -3993,6 +4185,17 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
 }
 .pf-hint b{color:var(--c-text-2);font-weight:var(--fw-semibold)}
 
+/* ---- 可点面积：分区页脚里的跳转 ------------------------------------------
+   .sec__foot 是 flex，子项被块化，所以这个 <a> 不是 WCAG 2.5.8 的"句子内目标"
+   （probe.mjs 会把它标成"行内"，audit.mjs 的 smallCtl 却照实计入）。
+   量到的原高：17px。按**卡片内次要动作**抬到 36（--btn-h-sm），与 report /
+   plan / notes / home 四个视图对 .sec__foot a 的处置一致。
+   抬的是控件自己的高度，不给 .sec__foot 加 padding（BRIEF §7）。 */
+[data-view="profile"] .sec__foot > a{
+  display:inline-flex;align-items:center;
+  min-height:36px;padding:0 var(--sp-2);
+}
+
 /* ---- 窄屏：判断卡的依赖 chip 与侧栏排布 ---------------------------------- */
 @media (max-width:767px){
   .pf-conc__t{font-size:var(--fs-14)}
@@ -4077,7 +4280,9 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
 .rm-quiet__ctl{display:flex;flex-direction:column;gap:var(--sp-3)}
 .rm-quiet__sw{display:inline-flex;align-items:center;gap:10px;min-height:44px}
 .rm-sw__i{position:absolute;left:0;top:0;width:1px;height:1px;margin:0;opacity:0;pointer-events:none}
-.rm-sw{position:relative;display:inline-flex;flex:0 0 auto;width:46px;height:26px}
+/* 开关的可点目标是那个 <label class="rm-sw__t" for>（46×26，input 缩成 1×1），
+   26 < 36 是实打实的触控缺陷 —— 与设置页同一处结构、同一处修法：抬到 36。 */
+.rm-sw{position:relative;display:inline-flex;flex:0 0 auto;width:46px;height:36px}
 .rm-sw__t{
   position:absolute;inset:0;border-radius:var(--r-pill);
   background:var(--c-surface-3);border:1px solid var(--c-border-strong);
@@ -4093,7 +4298,13 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
 .rm-sw__i:checked+.rm-sw__t{background:var(--c-primary);border-color:var(--c-primary)}
 .rm-sw__i:checked+.rm-sw__t::after{transform:translateX(20px)}
 .rm-sw__i:focus-visible+.rm-sw__t{box-shadow:0 0 0 3px var(--c-focus-glow)}
-.rm-quiet__swt{font-size:var(--fs-14);font-weight:var(--fw-semibold);color:var(--c-text);cursor:pointer}
+/* 免打扰开关的文字标签本身就是可点目标（<label>），70×24 太矮 —— 抬到 36。
+   注意它外面那层 .rm-quiet__sw 虽然 min-height:44px，但那是 span、不可点，
+   真正被点的就是这一行文字（探针量到的就是它）。 */
+.rm-quiet__swt{
+  display:inline-flex;align-items:center;min-height:36px;
+  font-size:var(--fs-14);font-weight:var(--fw-semibold);color:var(--c-text);cursor:pointer;
+}
 .rm-quiet__times{display:flex;flex-wrap:wrap;gap:var(--sp-2) var(--sp-3);align-items:center}
 .rm-time{display:inline-flex;align-items:center;gap:7px}
 .rm-time__k{font-size:var(--fs-12);font-weight:var(--fw-semibold);color:var(--c-text-3)}
@@ -4146,6 +4357,22 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
 .rm-quiet__ex[data-off="true"]{background:var(--c-surface-2);border-style:dashed;box-shadow:none}
 .rm-quiet__ex[data-off="true"] .rm-quiet__l{opacity:.55}
 .rm-note{margin-top:var(--sp-4)}
+
+/* ---- 可点面积补齐：卡片内次要动作 ≥36×36（项目既有裁定 --btn-h-sm）--------
+   本视图只有这一处 <36：.sec__foot a（"通知开关在账号设置里 →"），原高 17.4。
+   它是独立动作，不是 WCAG 2.5.8 的"句子内目标"，所以按 36 抬。
+   probe.mjs 把它算成块级是因为 .sec__foot 是 flex（flex 子项被块化），
+   audit.mjs 的 smallCtl 照实计入 —— 两家口径都当它是控件。
+   ⚠ 必须同时给 .sec__foot 加 align-items:stretch：只加 min-height 会把链接挤到
+   第二行（量过：42.4px/1 行 → 61px/2 行），stretch 让同行 span 一起撑到 36px 行高，
+   就不折行了（量过：61px/**1** 行，页高 2614 → 2632 不变多）。
+   其余可点元素量下来都在下限之上，不动：
+     .rm-act 42.1 / .chipbtn 40.1 / .lensbtn 40.1 / .rm-time__i 40 / .rm-day 40
+     （.rm-day 窄屏已经是 44×44，见下面的媒体查询）。 */
+[data-view="reminders"] .sec__foot{align-items:stretch}
+[data-view="reminders"] .sec__foot a{
+  display:inline-flex;align-items:center;min-height:36px;
+}
 
 /* ---- 窄屏 ----------------------------------------------------------------- */
 @media (max-width:900px){
@@ -4342,6 +4569,26 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
 .rp-link:hover{text-decoration:underline}
 [data-view="report"] .sec--quiet .rp-note + .rp-note{margin-top:9px}
 [data-view="report"] .sec--quiet .btn{margin-top:var(--sp-4)}
+
+/* ---- 9 · 可点面积补齐：卡片内次要动作 ≥36×36（项目既有裁定 --btn-h-sm）----
+   这 3 个 <a> 都是**独立动作**，不是 WCAG 2.5.8 说的"句子内的目标"：
+     · .sec__foot a —— 分区脚注里的跳转（块级；基线 .sec__foot 是 flex，子项被块化）
+     · .crumb a     —— 面包屑"了解自己"
+     · .rp-link     —— 侧栏 .rp-ask 里"回画像看这一条 →"
+   probe.mjs 把它们标成"行内"是因为父级是 flex（flex 子项计算 display 变 block），
+   audit.mjs 的 smallCtl 会照实计入。所以按 36 抬，不按"行内"放过。
+   量到的原高：sec__foot 17.4 / crumb 24 / rp-link 24.1。
+   本视图已有的第 0 节把 .chipbtn/.lensbtn/.zoombtn/.chipf/.btn 抬到了 44；
+   .rp-it__go 基线就是 min-height:36px（98×36），已在下限之上，不动。 */
+[data-view="report"] .sec__foot a,
+[data-view="report"] .rp-link{
+  display:inline-flex;align-items:center;
+  min-height:36px;padding:0 var(--sp-2);
+}
+
+/* ---- 面包屑：.crumb a 基线 min-height:24px（10-data-page.css），低于 36 下限 ----
+   规范只在 notes.css 里定义一处（幂等，避免"同一条规范散在多处、谁后加载谁生效"），
+   那里已经带上 [data-view="report"]，本视图不需要重复。 */
 
 /* ---- 8 · 窄屏：雷达与维度表竖排，差距行不再缩进 -------------------------- */
 @media (max-width:1023px){
@@ -4800,6 +5047,27 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
 .sc-post__d{margin-top:6px;font-size:var(--fs-12);line-height:1.7;color:var(--c-text-3)}
 .sc-post__d b{color:var(--c-text-2);font-weight:var(--fw-semibold)}
 
+/* ---- 可点面积补齐：卡片内次要动作 ≥36×36（项目既有裁定 --btn-h-sm）--------
+   本视图只有这一处 <36：.sec__foot a（正文区 2 处），量到的原高 17.4。
+   它是**独立动作**（"去看画像里这条是怎么记的 →" / "去看它进了哪条复盘 →"），
+   不是 WCAG 2.5.8 说的"句子内的目标"，所以按 36 抬，不按行内放过。
+   probe.mjs 把它算成块级是因为 .sec__foot 是 flex（flex 子项被块化）、audit.mjs
+   的 smallCtl 会照实计入 —— 两家口径都当它是控件。
+   ⚠ 为什么必须同时给 .sec__foot 加 align-items:stretch：
+   只加 min-height:36px（report/plan/notes 现在的写法）在这里会**把链接挤到第二行** ——
+   量过：reminders #0 42.4px/1 行 → 61px/2 行、settings 42.4 → 61/2 行、
+   tools 42.4 → 61/2 行（三个视图都能复现，不是本视图特有）。
+   加上 .sec__foot{align-items:stretch} 就不折了：链接盒仍是 36，行数回到 1，
+   页高一分不多（量过：61px/**1** 行）。stretch 只在**有链接的** .sec__foot 上
+   显形 —— 同行文字的行盒跟着变成 36px、文字在其中居中，视觉与 center 一致；
+   没有链接的 .sec__foot 不受影响（子项照旧收缩到内容高，42.4px 不变）。 */
+   原高实测：17.4 → 36。页高代价 +37（同一份构建上关掉本条再量：4626 → 4663），
+   即这两处脚注各长高 18px；**没有新增折行**（#0 原本就是 2 行、#1 仍 1 行）。 */
+[data-view="schedule"] .sec__foot{align-items:stretch}
+[data-view="schedule"] .sec__foot a{
+  display:inline-flex;align-items:center;min-height:36px;
+}
+
 /* ---- 窄屏：横排 7 天站不住，改纵向堆叠（同一批 7 天，换一种排法） ---------- */
 @media (max-width:1100px){
   .sc-week{grid-template-columns:repeat(4,minmax(0,1fr))}
@@ -4882,6 +5150,15 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
 .st-sw__i:checked+.st-sw__t::after{transform:translateX(20px)}
 .st-sw__i:focus-visible+.st-sw__t{box-shadow:0 0 0 3px var(--c-focus-glow)}
 
+/* 拨动开关的**可点目标就是那个 label**（结构是
+   `<span class="st-sw"><input class="st-sw__i" id><label class="st-sw__t" for></label></span>`，
+   input 缩成 1×1 压在下面），所以 46×26 就是实打实的触控缺陷。
+   第一版我试着"只抬命中区、轨道保持 26"（给 .st-sw 加高、把 .st-sw__t 上下各收 5px），
+   结果把 label 的量到高度又压回 26 —— 因为**那个 label 同时就是轨道本身**，
+   盒高就是它的大小，没有第二层可以承载视觉。所以这里直接抬到 36：
+   轨道变高一档，形状仍是对的，实测与门禁也不再打架。 */
+[data-view="settings"] .st-sw{height:36px}
+
 /* ---- 数据授权：一块一条因果链 -------------------------------------------- */
 .st-auth{display:flex;flex-direction:column;gap:var(--sp-3)}
 .st-auth--off{background:var(--c-surface-2);border-style:dashed;box-shadow:none}
@@ -4960,6 +5237,23 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
 .st-danger__b{border:1px solid var(--c-attention-border);background:var(--c-attention-weak);color:var(--c-attention)}
 .st-danger__b:hover{background:var(--c-attention);color:var(--gray-0)}
 
+/* ---- 可点面积补齐：卡片内次要动作 ≥36×36（项目既有裁定 --btn-h-sm）--------
+   本视图只有这一处 <36：.sec__foot a（"去看导入后的成绩与课表 →"），原高 17.4。
+   它是独立动作，不是 WCAG 2.5.8 的"句子内目标"，所以按 36 抬。
+   probe.mjs 把它算成块级是因为 .sec__foot 是 flex（flex 子项被块化），
+   audit.mjs 的 smallCtl 照实计入 —— 两家口径都当它是控件。
+   ⚠ 必须同时给 .sec__foot 加 align-items:stretch：只加 min-height 会把链接挤到
+   第二行（量过：42.4px/1 行 → 61px/2 行），stretch 让同行 span 一起撑到 36px 行高，
+   就不折行了（量过：61px/**1** 行）。
+   其余可点元素量下来都在下限之上，不动：
+     .st-sm 42.1 / .lensbtn 40.1 / .st-input 40 / .st-impact__c（纯展示，非控件）。
+   .st-note a（"免打扰时段在提醒页设"）是**句子内的目标**：它在 <p> 正文里、
+   计算 display:inline，probe 与 audit 两家都按 WCAG 2.5.8 豁免，保持原样。 */
+[data-view="settings"] .sec__foot{align-items:stretch}
+[data-view="settings"] .sec__foot a{
+  display:inline-flex;align-items:center;min-height:36px;
+}
+
 /* ---- 窄屏 ----------------------------------------------------------------- */
 @media (max-width:767px){
   .st-row{grid-template-columns:minmax(0,1fr);gap:8px;align-items:start}
@@ -4988,11 +5282,10 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
  * 字号只用 12 / 14 / 16 / 20 / 30；字重只用 400 / 500 / 600 / 700。
  * ========================================================================== */
 
-/* ---- 可点面积：crumb a 基线只有 21px 高（10-data-page.css L60–63），按门禁抬到 44 ----
-   .btn 基线 padding 11px 20px（c2.css L1152）本来就在 44 以上，不需要兜底。 */
-[data-view="spec"] .crumb a{
-  display:inline-flex;align-items:center;min-height:44px;
-}
+/* ---- 可点面积：crumb a 的兜底已删除 ------------------------------------------
+   面包屑规范统一收口到 `10-data-page.css`（`min-height:36px`，项目自订的
+   "卡片内次要动作"下限）。各视图不再各写一遍，避免同一条规范散在多处。
+   `.btn` 基线 padding 11px 20px 本来就在 44 以上，不需要兜底。 */
 
 /* ---- 行内代码与出处标记：它们是"可以回源文件核对"的锚点 -------------------- */
 .sp-code{
@@ -5404,6 +5697,22 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
 .tl-sug__w{font-size:var(--fs-12);line-height:var(--lh-snug);color:var(--c-text-3)}
 .tl-sug__r .tl-flags{margin-top:2px}
 .tl-sug__b{min-height:44px}
+
+/* ---- 可点面积补齐：卡片内次要动作 ≥36×36（项目既有裁定 --btn-h-sm）--------
+   本视图只有这一处 <36：.sec__foot a（"打开学籍与资料 →"），原高 17.4。
+   它是独立动作，不是 WCAG 2.5.8 的"句子内目标"，所以按 36 抬。
+   probe.mjs 把它算成块级是因为 .sec__foot 是 flex（flex 子项被块化），
+   audit.mjs 的 smallCtl 照实计入 —— 两家口径都当它是控件。
+   ⚠ 必须同时给 .sec__foot 加 align-items:stretch：只加 min-height 会把链接挤到
+   第二行（量过：42.4px/1 行 → 61px/2 行），stretch 让同行 span 一起撑到 36px 行高，
+   就不折行了（量过：61px/**1** 行）。
+   其余可点元素量下来都在下限之上，不动：
+     .chipbtn 40.1（含 <a class="chipbtn">）/ .zoombtn 38.6 / .btn。
+   这一页刻意克制：只抬这一处已有动作的可点盒，没有新增任何动作。 */
+[data-view="tools"] .sec__foot{align-items:stretch}
+[data-view="tools"] .sec__foot a{
+  display:inline-flex;align-items:center;min-height:36px;
+}
 
 /* ---- 窄屏：读什么/给你什么 改成两行，工具卡去掉内边距 -------------------- */
 @media (max-width:767px){
@@ -8433,6 +8742,10 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
                 <span class="skel__l skel--box"></span>
               </div>
               <p class="state__d">加载中：骨架保持版式不跳，<b>内容同时留在文档里</b>（引擎只切可见性），所以 prefers-reduced-motion 下它是一块静态灰条，信息一点不丢。</p>
+              <span class="state__acts">
+                <button class="btn btn--ghost" type="button" data-gl-skel>跑一次加载</button>
+              </span>
+              <p class="state__d" data-gl-skel-note aria-live="polite">骨架默认<b>不动</b>：一整页一直在扫光的骨架属于"持续背景运动"，是反例表里点名的装饰。要演示它怎么动，点上面那个按钮 —— 它只跑一次。</p>
             </div>
           </div>
           <div class="gl-dont">
@@ -8700,15 +9013,16 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
               <tr><td data-key>.pick__r</td><td data-num>44px</td><td>主要动作</td><td>过 ≥44（min-height 写在样式里）</td></tr>
               <tr><td data-key>.fold__sum</td><td data-num>44px</td><td>主要动作</td><td>过 ≥44（min-height 写在样式里）</td></tr>
               <tr><td data-key>.chipbtn</td><td data-num>40px</td><td>卡片内次要动作</td><td>过 ≥36；低于 44 是基线既有，本页照原样展示</td></tr>
-              <tr><td data-key>.chipf</td><td data-num>34px</td><td>卡片内次要动作</td><td>低于 36 —— 见下面的"待裁定"</td></tr>
-              <tr><td data-key>.lensbtn</td><td data-num>33px</td><td>控制条分段</td><td>低于 44；分段按钮的命中区靠 4px 轨道内衬补偿</td></tr>
-              <tr><td data-key>.zoombtn</td><td data-num>26px</td><td>控制条分段</td><td>低于 44 —— 本页最小的一处</td></tr>
+              <tr><td data-key>.chipf</td><td data-num>38px</td><td>卡片内次要动作</td><td>过 ≥36；低于 44 —— 见下面的"待裁定"</td></tr>
+              <tr><td data-key>.lensbtn</td><td data-num>40px</td><td>控制条分段</td><td>过 ≥36；低于 44（分段按钮的命中区另有内衬）</td></tr>
+              <tr><td data-key>.zoombtn</td><td data-num>39px</td><td>控制条分段</td><td>过 ≥36；低于 44 —— 本页最小的一处</td></tr>
             </tbody>
           </table>
         </div>
         <p class="callout callout--warn" style="margin-top:var(--sp-4)">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8.2v.1"/></svg>
-          <span><b>待裁定（不是这一页能自己改的）：</b><span class="gl-cls">.chipf</span> 34px、<span class="gl-cls">.lensbtn</span> 33px、<span class="gl-cls">.zoombtn</span> 26px 都在 44 以下。它们是共享组件的基准值（10-data-page.css 里 min-height / padding 写死的），改它会影响全站所有页面 —— 项目上同类问题（.btn--sm 82×36）的处置也是"要产品拍板"（HANDOFF §6.3）。所以这一页照原样展示，并把数字留在这里。</span>
+          <span><b>待裁定（不是这一页能自己改的）：</b><span class="gl-cls">.chipf</span> 38px、<span class="gl-cls">.lensbtn</span> 40px、<span class="gl-cls">.zoombtn</span> 39px 都<b>过了 ≥36 的下限</b>，但都在 44 以下。它们是共享组件的基准值（10-data-page.css 里 min-height / padding 写的），改它会影响全站所有页面 —— 项目上同类问题（.btn--sm 82×36）的处置也是"要产品拍板"（HANDOFF §6.3）。所以这一页照原样展示，并把数字留在这里。
+          <br><b>本表的数字是量出来的</b>：早期版本记的是上一版共享基线的值（.chipf 34 / .lensbtn 33 / .zoombtn 26），与今天的实测不符；已在收口时按实测改正 —— 这一页的全部价值就在"数字是对的"，数字一错，它教的东西也一起错。</span>
         </p>
       </div>
       <div class="sec__foot">
@@ -14647,7 +14961,7 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
             <tbody>
               <tr>
                 <td data-key>字号档位</td>
-                <td>页面里所有 font-size 是否只落在 12 / 14 / 16 / 20 / 30 上</td>
+                <td>页面里所有 font-size 是否只落在 12 / 14 / 16 / 20 / 30 上（唯一例外：侧栏品牌字「职」15px，见 §② 的说明）</td>
                 <td><span class="sp-ref">c2.css L97</span></td>
               </tr>
               <tr>
@@ -14853,6 +15167,7 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
       </div>
       <div class="sec__foot">
         <p>判定规则：<b>不许出现第 6 档</b>。10px 在本项目被明确禁止；需要更小的字时，正确做法是删字，不是缩字号。</p>
+        <p style="margin-top:6px">已声明的例外只有一处：侧栏品牌字「职」（<code class="sp-code">.nav__mark</code>）是 <b>15px</b>。<b>logo 字形不是界面文字</b> —— 34×34 的方块里 15px 才撑得住，14px 显小、16px 顶格。它在 <code class="sp-code">_tools/c2.css:535</code>，属已批准基线，本轮不动它。<span class="sp-ref">audit.mjs 已把这一值列入例外</span></p>
       </div>
     </section>
 
@@ -15161,7 +15476,7 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
             </thead>
             <tbody>
               <tr><td data-key>.btn / .btn--ghost</td><td>基线 c2.css L1152</td><td data-num>padding 11px 20px</td><td>主要动作档，实测过 44</td></tr>
-              <tr><td data-key>.chipbtn</td><td>基线 c2.css L729</td><td data-num>padding 7px 13px</td><td>页头轻动作，本样张按 44 兜底</td></tr>
+              <tr><td data-key>.chipbtn</td><td>基线 c2.css L729（只有 padding，无 min-height）</td><td data-num>实测 40px</td><td><b>差 4px</b>：与 .lensbtn / .zoombtn 同一处置 —— 数字留在这里交产品拍板，不单独覆盖共享值</td></tr>
               <tr><td data-key>.lensbtn</td><td>数据页层 L132</td><td data-num>min-height 40px</td><td><b>差 4px</b>，共享组件基准；改它影响全站，要产品拍板</td></tr>
               <tr><td data-key>.zoombtn</td><td>数据页层 L178</td><td data-num>min-height 36px</td><td><b>差 8px</b>，同上</td></tr>
               <tr><td data-key>.pick__r</td><td>数据页层 L343</td><td data-num>min-height 44px</td><td>达标，勾选行是主要动作档</td></tr>
@@ -16064,8 +16379,15 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
     });
     if (posNow) posNow.textContent = String(i + 1);
   }
+  /* 支撑材料卡组的标签切换。
+     注意 panelsReady() 这一句：`.panel[data-active="true"]` 挂着入场动画
+     （@keyframes panelIn：opacity 0→1 + 位移 9px + 缩 0.988），而 selectTab(0) 是**初始化**。
+     不在首屏播、只在用户真的切标签时播 —— 这一区分就是 DESIGN-LANGUAGE 反例表的第一行：
+     "页面淡入 + 位移 5px → 界面还是那张画，只换了进场方式 = 装饰"。
+     所以初始化路径**不打标**，用户触发的两条路径（点击 / 键盘）打标。 */
+  function panelsReady() { document.documentElement.setAttribute('data-panels-ready', 'true'); }
   tabs.forEach(function (t, i) {
-    t.addEventListener('click', function () { selectTab(i); });
+    t.addEventListener('click', function () { panelsReady(); selectTab(i); });
     t.addEventListener('keydown', function (e) {
       var next = null;
       if (e.key === 'ArrowRight') next = (i + 1) % tabs.length;
@@ -16074,6 +16396,7 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
       else if (e.key === 'End') next = tabs.length - 1;
       if (next === null) return;
       e.preventDefault();
+      panelsReady();
       selectTab(next);
       tabs[next].focus();
     });
@@ -16438,17 +16761,20 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
       if (box.getAttribute('data-lens-init') === 'true') return;
       box.setAttribute('data-lens-init', 'true');
 
-      var items = Array.prototype.slice.call(box.querySelectorAll('.lens__item'));
       var btns = Array.prototype.slice.call(box.querySelectorAll('[data-lens-set]'));
       var hint = box.querySelector('[data-lens-hint]');
       var host = box.querySelector('.lens__items') || box;
-      if (!items.length || !btns.length) return;
+      if (!btns.length) return;
 
-      /* 过滤器与视角重组的配合：被筛掉的条目（[hidden]）不参与分组，也不计入组内条数 ——
-         否则"筛到只剩 2 条"时组头还写着 12 条，数字就成了假的。
-         视图侧改完筛选后触发一次 `c2:relens`（或用 C2.relens(view)）即可重组。 */
+      /* ⚠ 条目**每次分组时现查**，不在初始化时快照。
+         为什么：有的视图先用静态标记写几条占位，随后由自己的 JS 注入其余条目
+         （schedule 就是：标记里只有 1 条，schedule.js 注入另外 7 张天卡后才调 C2.lens）。
+         第一版在初始化时把 `.lens__item` 存进数组，于是引擎永远只认那 1 条 ——
+         四个视角全归 1 组、moved=0、提示退化成"归成 1 组"，而**页面上看起来有 4 个视角按钮、
+         也标着 .lens**，任何"有没有 .lens"的检查都会放过它。这是独立审计抓出来的（S1）。 */
       function live() {
-        return items.filter(function (el) { return !el.hasAttribute('hidden'); });
+        return Array.prototype.slice.call(box.querySelectorAll('.lens__item'))
+          .filter(function (el) { return !el.hasAttribute('hidden'); });
       }
 
       function set(lens) {
@@ -17183,6 +17509,82 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
     render();
     if (initDone) return;
     initDone = true;
+  });
+})();
+
+/* ---- _src/js/gallery.js ---- */
+/* =============================================================================
+ * 通用组件与状态 · 视图行为
+ * -----------------------------------------------------------------------------
+ * 为什么这一页必须有 JS：它是**状态与反馈的示范页**，而独立审计抓到
+ *   · 3 个带 data-gl-toast 的按钮点了**零反馈**（.toast 0→0）
+ *   · 骨架样张以 skelSweep 无限跑，"加载态"永远加载不完
+ *   · "已加入今日行动"是个死按钮，旁边那行 aria-live 的说明永远不变
+ * 也就是说：HANDOFF §4.2 认定的病（"成功反馈静默"）**正好复发在这一页**，
+ * 而这一页的职责恰恰是教别人别犯这个病。示范页自己不合格，比普通页不合格更糟。
+ *
+ * 三个动作，都只做"让状态真的会变"这一件事：
+ *   1. [data-gl-toast]        → C2.toast（把按钮上写好的那句话真的说出来）
+ *   2. .btn[data-done]        → 切换 data-done，并更新旁边那行 aria-live 的说明
+ *   3. [data-gl-skel]         → 骨架跑一次（1.8s）再停下
+ * ========================================================================== */
+(function () {
+  'use strict';
+
+  C2.onView('gallery', function () {
+    var view = document.querySelector('[data-view="gallery"]');
+    if (!view) return;
+
+    /* ---- 1. 会说话的按钮 ----------------------------------------------------
+       文案就写在按钮的 data-gl-toast 上（作者已经写好了，只是没人读它）。
+       "重试 / 自己传" 这类是错误态里的动作，用 warn 档；其余用默认档。 */
+    Array.prototype.forEach.call(view.querySelectorAll('[data-gl-toast]'), function (b) {
+      b.addEventListener('click', function () {
+        var text = b.getAttribute('data-gl-toast') || b.textContent.trim();
+        var isError = /重试|没取到|传/.test(text);
+        C2.toast(text, isError ? 'warn' : undefined);
+      });
+    });
+
+    /* ---- 2. 「已加入今日行动」要能撤销，并同步那行说明 ---------------------
+       上一轮病历里有一条正相反：勾掉一件事得到零反馈。所以这里不是 disabled，
+       而是 data-done 的双向切换（页面自己的 §1.4 也这么写着）。 */
+    var doneBtn = view.querySelector('.btn[data-done]');
+    var live = view.querySelector('[data-gl-addline]');
+    if (doneBtn) {
+      doneBtn.addEventListener('click', function () {
+        var done = doneBtn.getAttribute('data-done') === 'true';
+        doneBtn.setAttribute('data-done', String(!done));
+        doneBtn.textContent = done ? '加入今日行动' : '已加入今日行动';
+        if (live) {
+          live.textContent = done
+            ? '现在是"加入今日行动"：实心主色只出现这一次。'
+            : '已加入：按钮回到中性（完成不给颜色奖励），并且可以再点一次撤销 —— 状态变化有落点，而不是变成死按钮。';
+        }
+        C2.toast(done ? '已加入今日行动（再点一次可撤销）' : '已撤销：它不再是今日行动里的一条');
+      });
+    }
+
+    /* ---- 3. 骨架样张：点一次跑一次 ----------------------------------------- */
+    var skelBtn = view.querySelector('[data-gl-skel]');
+    var skel = view.querySelector('.skel');
+    var skelNote = view.querySelector('[data-gl-skel-note]');
+    if (skelBtn && skel) {
+      var timer = null;
+      skelBtn.addEventListener('click', function () {
+        skel.setAttribute('data-gl-run', 'running');
+        skelBtn.setAttribute('aria-disabled', 'true');
+        if (skelNote) skelNote.textContent = '正在跑一次加载：骨架扫光。跑完就停下 —— 它不会一直动。';
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(function () {
+          skel.removeAttribute('data-gl-run');
+          skelBtn.removeAttribute('aria-disabled');
+          if (skelNote) {
+            skelNote.innerHTML = '这次加载跑完了。骨架默认<b>不动</b>：一整页一直在扫光的骨架属于"持续背景运动"，是反例表里点名的装饰。';
+          }
+        }, 1800);
+      });
+    }
   });
 })();
 

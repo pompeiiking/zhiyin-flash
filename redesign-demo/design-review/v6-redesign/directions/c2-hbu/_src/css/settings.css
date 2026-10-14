@@ -64,6 +64,15 @@
 .st-sw__i:checked+.st-sw__t::after{transform:translateX(20px)}
 .st-sw__i:focus-visible+.st-sw__t{box-shadow:0 0 0 3px var(--c-focus-glow)}
 
+/* 拨动开关的**可点目标就是那个 label**（结构是
+   `<span class="st-sw"><input class="st-sw__i" id><label class="st-sw__t" for></label></span>`，
+   input 缩成 1×1 压在下面），所以 46×26 就是实打实的触控缺陷。
+   第一版我试着"只抬命中区、轨道保持 26"（给 .st-sw 加高、把 .st-sw__t 上下各收 5px），
+   结果把 label 的量到高度又压回 26 —— 因为**那个 label 同时就是轨道本身**，
+   盒高就是它的大小，没有第二层可以承载视觉。所以这里直接抬到 36：
+   轨道变高一档，形状仍是对的，实测与门禁也不再打架。 */
+[data-view="settings"] .st-sw{height:36px}
+
 /* ---- 数据授权：一块一条因果链 -------------------------------------------- */
 .st-auth{display:flex;flex-direction:column;gap:var(--sp-3)}
 .st-auth--off{background:var(--c-surface-2);border-style:dashed;box-shadow:none}
@@ -141,6 +150,23 @@
 /* 注销按钮：本页唯一的红（"需要你注意"），但它是次要动作，所以用描边而不是实心 */
 .st-danger__b{border:1px solid var(--c-attention-border);background:var(--c-attention-weak);color:var(--c-attention)}
 .st-danger__b:hover{background:var(--c-attention);color:var(--gray-0)}
+
+/* ---- 可点面积补齐：卡片内次要动作 ≥36×36（项目既有裁定 --btn-h-sm）--------
+   本视图只有这一处 <36：.sec__foot a（"去看导入后的成绩与课表 →"），原高 17.4。
+   它是独立动作，不是 WCAG 2.5.8 的"句子内目标"，所以按 36 抬。
+   probe.mjs 把它算成块级是因为 .sec__foot 是 flex（flex 子项被块化），
+   audit.mjs 的 smallCtl 照实计入 —— 两家口径都当它是控件。
+   ⚠ 必须同时给 .sec__foot 加 align-items:stretch：只加 min-height 会把链接挤到
+   第二行（量过：42.4px/1 行 → 61px/2 行），stretch 让同行 span 一起撑到 36px 行高，
+   就不折行了（量过：61px/**1** 行）。
+   其余可点元素量下来都在下限之上，不动：
+     .st-sm 42.1 / .lensbtn 40.1 / .st-input 40 / .st-impact__c（纯展示，非控件）。
+   .st-note a（"免打扰时段在提醒页设"）是**句子内的目标**：它在 <p> 正文里、
+   计算 display:inline，probe 与 audit 两家都按 WCAG 2.5.8 豁免，保持原样。 */
+[data-view="settings"] .sec__foot{align-items:stretch}
+[data-view="settings"] .sec__foot a{
+  display:inline-flex;align-items:center;min-height:36px;
+}
 
 /* ---- 窄屏 ----------------------------------------------------------------- */
 @media (max-width:767px){
