@@ -39,5 +39,9 @@ async function switchPortal(original: boolean) {
 .pv-switcher__buttons button[aria-pressed='true'] { background: var(--c-primary-weak); color: var(--c-primary); font-weight: 600; }
 .pv-switcher__buttons button:hover { color: var(--c-primary); }
 @media (max-width: 920px) { .pv-switcher__label { display: none; } }
-@media (max-width: 760px) { .pv-switcher__buttons button { padding: 6px 10px; min-height: 34px; font-size: var(--fs-12); } }
+/* 【2026-10-14 · wave3】窄屏档原来写 min-height: 34px —— 实测 390 档是 44×34，
+   低于可点区域下限 36（卡片内次要控件档）。只把这一处尺寸抬到 36，内距与字号不动：
+   门户的视觉风格是需求方硬约束（"门户页最好不变"），所以这里不重做这套切换器，
+   只修触控目标这一个实测不达标的值。 */
+@media (max-width: 760px) { .pv-switcher__buttons button { padding: 6px 10px; min-height: 36px; font-size: var(--fs-12); } }
 </style>

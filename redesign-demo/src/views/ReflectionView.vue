@@ -9,6 +9,7 @@ import AchievementsSection from '../components/AchievementsSection.vue'
 import { useRoute } from 'vue-router'
 import { attributionLabel } from '../lib/presentation'
 import { consultantLabel } from '../lib/consultant'
+import PanelTabs from '../components/PanelTabs.vue'
 import Foldable from '../components/Foldable.vue'
 import EmptyState from '../components/EmptyState.vue'
 import StatTile from '../components/StatTile.vue'
@@ -33,6 +34,79 @@ function nextStep() {
   if (!missed.value || !['任务太大','方法不对'].includes(choice.value)) return
   demo.planChatTask((choice.value === '任务太大' ? '拆小一步：' : '核对方法：') + missed.value.what, choice.value === '任务太大' ? 5 : 15)
 }
+
+/* ============================================================================
+ * 落点②组织权 —— 复盘记录的三条轴
+ * ---------------------------------------------------------------------------
+ * 【病灶】这一页原来只有一条固定顺序的 `<ol class="ws-timeline">`：信息组织得清楚，
+ * 但用户**改不了组织方式**。门禁实测 `orgKinds {tabs:0, pressed:0, selects:0}`。
+ *
+ * 【判据】三条轴都是真的换分组：条目被搬进别的组，分组头的条数跟着变。
+ * 同一批记录的实测分布（演示数据 4 条：r1 完成 / r2 暂未完成·任务太大 /
+ * r3 部分完成·方法不对 / r4 完成）：
+ *   按时间看  1 组 · 全部记录 4 条（r1 r2 r3 r4，时间顺序）
+ *   按结果看  ⇢ 已完成 2（r1 r4）/ 部分完成 1（r3）/ 暂未完成 1（r2）
+ *   按原因看  ⇢ 任务负担过高 1（r2）/ 执行方法需调整 1（r3）/ 还没选原因 2（r1 r4）
+ * 关键证据不是"组数变了"，而是**相邻关系变了**：r1 与 r4 在时间线上被 r2、r3 隔开，
+ * 在按结果看里变成同组相邻；而 r2、r3 在按原因看里各自单独成组。
+ * 空组不渲染（六档归因里四档为空），组数因此也随数据变。
+ *
+ * 控件用 PanelTabs（reka-ui）：role=tablist / role=tab / aria-selected / 方向键内建，
+ * 44px 触控高度由全局 .exp-tabs__trigger 保证。
+ * ==========================================================================*/
+const REVIEW_VIEWS = [
+  { key: 'time', label: '按时间看' },
+  { key: 'result', label: '按结果看' },
+  { key: 'reason', label: '按原因看' },
+]
+/* 与 AssessmentView 同理：PanelTabs 的 v-model 走 string，不写联合类型 */
+const reviewView = ref('time')
+
+/** 每条记录**当下**的归因：页面上改过的（reviewAttributions）优先于预置值 */
+function reasonOf(id: string): string {
+  return demo.state.reviewAttributions[id] ?? items.value.find((r) => r.id === id)?.attribution ?? ''
+}
+
+const RESULT_BUCKETS = [
+  { key: 'done', title: '已完成', note: '这些已经发生，可以作为下一次的参照。' },
+  { key: 'partial', title: '部分完成', note: '做了一部分 —— 记录里写着卡在哪一步。' },
+  { key: 'missed', title: '暂未完成', note: '没做完的记录。原因可以在左栏选定。' },
+]
+
+/** 原因轴：前五档与左栏归因选项逐字同序，最后是"还没选原因"。 */
+const REASON_BUCKETS = [
+  { key: '任务太大', title: '任务负担过高', note: null },
+  { key: '方法不对', title: '执行方法需调整', note: null },
+  { key: '方向要重估', title: '方向需重新评估', note: null },
+  { key: '其他', title: '其他原因', note: null },
+  { key: '尚不确定', title: '还没弄清楚', note: null },
+  { key: '', title: '还没选原因', note: '这些记录还没有归因；选定原因之后，它会移到对应的组里。' },
+]
+
+interface ReviewGroup { key: string; title: string; note: string | null; items: ReviewItem[] }
+
+const reviewGroups = computed<ReviewGroup[]>(() => {
+  const all = items.value
+  if (reviewView.value === 'result') {
+    return RESULT_BUCKETS
+      .map((b) => ({ key: b.key, title: b.title, note: b.note, items: all.filter((r) => r.result === b.key) }))
+      .filter((g) => g.items.length > 0)
+  }
+  if (reviewView.value === 'reason') {
+    return REASON_BUCKETS
+      .map((b) => ({ key: b.key || 'none', title: b.title, note: b.note, items: all.filter((r) => reasonOf(r.id) === b.key) }))
+      .filter((g) => g.items.length > 0)
+  }
+  return [{ key: 'all', title: '全部记录', note: null, items: all }]
+})
+
+const reviewAxisNote = computed(() => {
+  const n = items.value.length
+  const groups = reviewGroups.value.length
+  if (reviewView.value === 'result') return `按完成结果重新分组：${groups} 组 · 共 ${n} 条；条目从时间线上搬进对应的组。`
+  if (reviewView.value === 'reason') return `按你选的原因重新分组：${groups} 组 · 共 ${n} 条；还没归因的单独成组。`
+  return `按发生时间从近到远排：共 ${n} 条。切换到「按结果看」或「按原因看」，同一批记录会被重新分组。`
+})
 </script>
 <template>
   <div class="ws-page">
@@ -41,7 +115,7 @@ function nextStep() {
     <AchievementsSection v-if="achievementView" />
     <template v-else>
     <div class="ws-stat-row review-summary"><StatTile :value="completed.length" unit="件" label="已完成" /><StatTile :value="partial.length" unit="件" label="部分完成" /><StatTile :value="items.filter((r) => r.result === 'missed').length" unit="件" label="待复盘" /></div>
-    <section class="ws-paper ws-section"><div class="ws-section-head"><div><h2>执行时间线</h2><p>只记录事实与时间，完成状态可以在今日任务里恢复。</p></div></div><ol v-if="items.length" class="ws-timeline"><li v-for="r in items" :key="r.id"><time>{{ r.when }}</time><div class="ws-timeline__content">{{ r.what }}<small v-if="demo.state.reviewAttributions[r.id] ?? r.attribution">原因：{{ attributionLabel(demo.state.reviewAttributions[r.id] ?? r.attribution) }}</small><p v-if="demo.state.reviewNotes[r.id]" class="review-note">{{ demo.state.reviewNotes[r.id] }}</p></div><span class="ws-timeline__state">{{ labels[r.result] }}</span></li></ol><p v-else class="ws-muted">完成一件事，就会留下第一条记录。</p></section>
+    <section class="ws-paper ws-section"><div class="ws-section-head"><div><h2>执行记录</h2><p>只记录事实与时间；同一批记录可以按时间、结果或原因重新分组。完成状态可以在今日任务里恢复。</p></div></div><PanelTabs v-model="reviewView" label="执行记录的视角" :items="REVIEW_VIEWS"><p class="review-views__note">{{ reviewAxisNote }}</p><template v-if="items.length"><section v-for="g in reviewGroups" :key="g.key" class="review-group"><h3 class="review-group__head">{{ g.title }}<span class="review-group__count">{{ g.items.length }} 条</span></h3><p v-if="g.note" class="review-group__note">{{ g.note }}</p><ol class="ws-timeline"><li v-for="r in g.items" :key="r.id"><time>{{ r.when }}</time><div class="ws-timeline__content">{{ r.what }}<small v-if="demo.state.reviewAttributions[r.id] ?? r.attribution">原因：{{ attributionLabel(demo.state.reviewAttributions[r.id] ?? r.attribution) }}</small><p v-if="demo.state.reviewNotes[r.id]" class="review-note">{{ demo.state.reviewNotes[r.id] }}</p></div><span class="ws-timeline__state">{{ labels[r.result] }}</span></li></ol></section></template><p v-else class="ws-muted">完成一件事，就会留下第一条记录。</p></PanelTabs></section>
     <div class="ws-two-columns">
       <section class="ws-paper">
         <template v-if="missed"><h2 class="ws-section-title">未完成任务分析</h2><p style="margin-top: var(--sp-4)">待复盘任务：「{{ missed.what }}」。</p><p class="ws-muted" style="margin-top: var(--sp-2)">请选择影响执行的主要原因，查看调整建议。</p><fieldset class="ws-attributions review-choices"><legend class="sr-only">复盘归因</legend><label v-for="a in choices" :key="a" :class="{'review-choice--on': choice === a}"><input type="radio" name="review-reason" :checked="choice === a" @change="demo.setReviewAttribution(missed.id, a)" />{{ attributionLabel(a) }}</label></fieldset><form class="ws-section" @submit.prevent="saveNote"><label class="ws-field">补充实际情况<textarea v-model="reviewNote" maxlength="500" rows="3" placeholder="发生了什么、试过什么，或者还不确定的原因…"/></label><button class="btn" type="submit">保存复盘说明</button></form><StatusBanner v-if="noteStatus" tone="success" class="ws-section" :message="noteStatus" @dismiss="noteStatus = ''" /><p v-if="!choice" class="ws-muted ws-section">还没有确认原因。也可以先和顾问讨论，再决定怎样调整。</p><div v-if="choice" class="ws-review-result" aria-live="polite"><p>{{ explanation }}</p><div class="ws-inline-actions"><RouterLink v-if="choice === '方向要重估'" class="btn btn--primary" to="/directions">重新比较方向<UiIcon name="arrow" :size="16" /></RouterLink><button v-else-if="choice==='任务太大'||choice==='方法不对'" class="btn btn--primary" @click="nextStep">添加调整任务<UiIcon name="arrow" :size="16" /></button><RouterLink class="ws-text-link" :to="'/chat?question='+encodeURIComponent('我想复盘：'+missed.what+'。'+reviewNote)">咨询调整方案</RouterLink></div></div></template>
@@ -70,4 +144,47 @@ function nextStep() {
 .review-side__recent .ws-mini-list, .review-side__support p { margin-top: var(--sp-3); }
 .review-side__support p { color: var(--c-text-2); font-size: var(--fs-14); line-height: 1.8; }
 .review-side__support .ws-text-button { margin-top: var(--sp-3); }
+
+/* ============================================================================
+ * 落点②组织权 · 复盘记录的"看角"
+ * ---------------------------------------------------------------------------
+ * 分组头带条数：换轴时条目被搬动、条数跟着变 —— 这是"真的重组"唯一可核对的证据。
+ * 三条轴共用一处渲染（按时间看是"1 组"，不是另一套模板），所以三种视角下
+ * 每一条记录的 DOM 形状完全一致，只有**它落在哪个组**变了。
+ * ==========================================================================*/
+.review-views__note {
+  margin-bottom: var(--sp-4);
+  font-size: var(--fs-14);
+  line-height: var(--lh-normal);
+  color: var(--c-text-3);
+}
+
+.review-group + .review-group { margin-top: var(--sp-5); }
+
+.review-group__head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  font-size: var(--fs-16);
+  font-weight: var(--fw-semibold);
+}
+
+.review-group__count {
+  padding: 0 var(--sp-2);
+  border: var(--bw-1) solid var(--c-border);
+  border-radius: var(--r-pill);
+  font-size: var(--fs-12);
+  font-weight: var(--fw-regular);
+  font-variant-numeric: tabular-nums;
+  color: var(--c-text-3);
+}
+
+.review-group__note {
+  margin-top: var(--sp-2);
+  font-size: var(--fs-12);
+  line-height: var(--lh-normal);
+  color: var(--c-text-3);
+}
+
+.review-group .ws-timeline { margin-top: var(--sp-1); }
 </style>

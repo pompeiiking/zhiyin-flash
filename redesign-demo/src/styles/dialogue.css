@@ -609,6 +609,10 @@ html[data-accent='red'] .dialogue-page {
 .dialogue-options .ws-chat-options { margin-top: 10px; }
 .dialogue-page .ws-chat-options button { color: var(--c-text-2); border-color: var(--c-border); }
 .dialogue-page .ws-chat-options button:hover { background: var(--c-surface-2); border-color: var(--c-border-strong); color: var(--c-text); }
+/* 空态里的开场问题用的是**同一个块**（.dialogue-options），所以这里只补一条间距 ——
+   不另立一套"空态专用"的问题样式，否则两处迟早会长歪。
+   它排在四张起步卡下面：卡是"从哪一类事聊起"，这一块是"直接问这一句"。 */
+.dialogue-page .ws-chat-welcome > .dialogue-options { margin-top: var(--sp-5); }
 
 /* =============================================================================
  * 卡片组：同级支撑材料，可切换

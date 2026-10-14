@@ -219,6 +219,45 @@ const profileOn = computed(() => Math.max(0, Math.min(profileTotal.value, profil
 const taskAddedAt = ref('')
 const topicLabels: Record<string, { title: string; description: string; icon: string }> = { confused: { title: '兴趣与能力', description: '了解个人特点与适合的领域', icon: 'profile' }, undecided: { title: '方向选择', description: '比较备选方向与决策依据', icon: 'directions' }, how_to_act: { title: '行动规划', description: '将目标转化为具体行动', icon: 'action' }, stuck: { title: '执行调整', description: '分析执行障碍并调整方案', icon: 'review' } }
 const starters = registry.taskEntries.filter(t => topicLabels[t.code]).map(t => ({ ...t, ...topicLabels[t.code] }))
+
+/* =============================================================================
+ * 后续问题 —— 「过程可见」五问的第四问（DESIGN-LANGUAGE §3）
+ * -----------------------------------------------------------------------------
+ * 【为什么这一块必须存在，而且必须在两个状态下都存在】
+ * 前四问里，主体在场、交接说明、结论块讲的都是"顾问在做什么"；只有这一问
+ * 讲的是"**你**接下来能做什么"。少了它，对话页就退回单列文字流：用户读完一条
+ * 回答，眼前只剩一个空白输入框 —— 有话想说的人会打字，没有话想说的人就走了。
+ *
+ * 【两个来源，一个出口】
+ *   · 首选后端随这条回答投递的 options（turn.options + optionRefs）：
+ *     点它会带上 option_id 一起走 send()，后端能记账；
+ *   · 这一轮没投 options 时（例如预置的旗舰回答 c7）用下面三句兜底。
+ *     它们不是占位文案：每一句都落在 reply() 一个真实存在的回答分支上
+ *     （能力差距 / 方向比较 / 行动起步），点下去必然有下文。
+ *
+ * 【空态用的是同一个块、同一条链路】
+ * 空态那三句是**开场问题**，不是"后续问题"：从学生自己的处境开口
+ * （"我不知道自己适合什么"就是产品里最真实的第一句），而不是
+ * "你可以问我……"这种把选择权又推回给用户的空话。
+ * 形态与发送链路和回答之后的后续问题完全一致：同一个 .dialogue-options，
+ * 同一个 send()。区别只在文案与出现时机，不另造一套。
+ * ========================================================================== */
+const OPENING_QUESTIONS = [
+  '我不知道自己适合什么',
+  '半导体方向和新能源方向，我该选哪个',
+  '知道该做什么，但一直没有开始',
+]
+const FOLLOW_UP_FALLBACK = [
+  '我离目标岗位的门槛还差多少',
+  '这几个方向我拿不准该选哪个',
+  '把下一步拆成 5 分钟能做完的事',
+]
+/** 这条回答后面能点的接法。后端给了就用后端的（它们带着 option_id），没给才兜底。 */
+function followUpsOf(turn: ChatTurn): string[] {
+  const own = turn.options ?? []
+  return own.length ? [...own] : FOLLOW_UP_FALLBACK
+}
+
 const copyStatus = ref('')
 const copiedId = ref('')
 const copyLabel = ref('复制')
@@ -786,10 +825,20 @@ onUnmounted(() => {
         <!--
           空态：页头那块在场卡（.dialogue-presence）已经在上面常驻了，
           所以这里**不再放第二张身份牌** —— 一屏两块"我是谁"就是同一件事说两遍。
-          这里只留"从哪句话开始"：一句引导 + 四张起步卡。
+          这里只留"从哪句话开始"：一句引导 + 四张起步卡（从哪一类事聊起）
+          + 三句开场问题（直接点一句就发出去，见下面的 .dialogue-options）。
         -->
-        <div class="exp-intro"><div><h2>从你正在想的事聊起</h2><p>方向还没想清楚也没关系。选一句最像你的，或者直接说说现在的困惑。</p></div></div>
+        <div class="exp-intro"><div><h2>从你正在想的事聊起</h2><p>方向还没想清楚也没关系。先选一类最像你的，也可以直接问下面这一句。</p></div></div>
         <div class="ws-chat-prompts"><button v-for="topic in starters" :key="topic.code" @click="send(topic.label)"><UiIcon :name="topic.icon" :size="22" /><span><strong>{{ topic.title }}</strong><small>{{ topic.description }}</small></span><UiIcon name="arrow" :size="16" /></button></div>
+        <!--
+          开场问题：**点一句就发出去**，不是把话填进输入框让用户再按一次发送。
+          与"回答之后的后续问题"共用 .dialogue-options / .ws-chat-options
+          （所以密度、触控目标 44px、悬停都同一套），区别只有文案与出现时机。
+        -->
+        <div class="dialogue-options" aria-label="开场问题">
+          <p>也可以直接问这一句</p>
+          <div class="ws-chat-options"><button v-for="q in OPENING_QUESTIONS" :key="q" type="button" @click="send(q)">{{ q }}</button></div>
+        </div>
       </div>
       <template v-for="(t, i) in turns" :key="t.id">
         <section v-if="t.handoff" class="chat-handoff" aria-label="顾问交接">
@@ -930,9 +979,11 @@ onUnmounted(() => {
                   <div class="dialogue-action__footer"><RouterLink v-if="taskAdded(t.task.title)" class="btn btn--done" to="/home"><UiIcon name="check" :size="17" />已加入 · 查看行动</RouterLink><button v-else class="btn btn--primary" @click="demo.planChatTask(t.task.title, t.task.minutes); taskAddedAt = t.task.title"><span class="btn__fx" aria-hidden="true" />加入行动计划<UiIcon name="arrow" :size="17" /></button></div>
                 </section>
 
-                <!-- 块五 · 后续问题：你能怎么接下去（只在最后一条、输出结束后出现） -->
-                <div v-if="ready(t) && blocksFor(t).options.length && i === turns.length - 1" class="chat-block chat-block--follow dialogue-options" :style="blockDelay(4)" aria-label="回复选项">
-                  <p>你可以这样继续</p><div class="ws-chat-options"><template v-for="option in blocksFor(t).options" :key="option"><RouterLink v-if="option === '比较方向方案' || option === '查看诊断报告'" class="btn" :to="option === '比较方向方案' ? '/directions' : '/report'">{{ option }}</RouterLink><button v-else :disabled="thinking" @click="send(option, blocksFor(t).optionRefs.find(item => item.label === option))">{{ option }}</button></template></div>
+                <!-- 块五 · 后续问题：你能怎么接下去（只在最后一条、输出结束后出现）。
+                     条数不再是"有没有 options"的条件 —— 没有 options 时走兜底三句，
+                     所以**每一条回答结束处都有一组可点的问题**（见 script 里的 followUpsOf）。 -->
+                <div v-if="ready(t) && i === turns.length - 1" class="chat-block chat-block--follow dialogue-options" :style="blockDelay(4)" aria-label="后续问题">
+                  <p>你可以这样继续</p><div class="ws-chat-options"><template v-for="option in followUpsOf(t)" :key="option"><RouterLink v-if="option === '比较方向方案' || option === '查看诊断报告'" class="btn" :to="option === '比较方向方案' ? '/directions' : '/report'">{{ option }}</RouterLink><button v-else type="button" :disabled="thinking" @click="send(option, blocksFor(t).optionRefs.find(item => item.label === option))">{{ option }}</button></template></div>
                 </div>
               </div>
 

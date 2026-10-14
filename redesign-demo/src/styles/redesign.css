@@ -245,8 +245,21 @@ input[type='radio'], input[type='checkbox'] { accent-color: var(--c-primary); wi
 .journey-action-aside section { flex: 1 1 260px; border: 0; padding: 0; }
 .journey-action-aside section + section { border: 0; margin: 0; padding: 0; }
 .journey-focus { margin: 24px 0 32px; }
-.ws-task__check, .desk-record__toggle { width: 32px; height: 32px; min-width: 32px; margin-top: 0; }
-.journey-task-list .ws-task__check { width: 32px; height: 32px; }
+/* 【2026-10-14 · wave3】32 → 36：这是本文件里唯一的"桌面档"例外。
+   两处依据，缺一不可：
+   1) `scripts/check-design.mjs` 按 **rect** 计触控目标，实测这三类控件是 32×32
+      （/home 2 个、/plan 6 个 `button.ws-task__check`，/notes 8 个
+      `button.desk-record__toggle`），低于"卡片内次要控件 ≥36"的硬线。
+      workspace.css:838 那套 `::after` 把**命中区**撑到 44 —— 那是真的能点到，
+      但量出来的盒子仍是 32，尺子和界面说的是两件事。这里把盒子本身抬到 36，
+      于是"量到的"与"点得到的"一致（44 的 ::after 仍在，命中区不缩水，反而多一层保险）。
+   2) 760px 断点（本文件 :371 那两行）本来就把它们定成 36 ——
+      桌面档的 32 是这一族里的孤例，不是另一套口径。改完两档同值。
+   为什么不写 44：44 的方框配 16px 图标会把整行读成"一个巨大的复选框"，
+   而任务行左边还有一个 22px 的 `.ws-task__waiting` 虚线槽（本文件不动它），
+   44 会把两者的左缘错开 22px。36 在满足硬线的同时把这条错位控制在 14px。 */
+.ws-task__check, .desk-record__toggle { width: 36px; height: 36px; min-width: 36px; margin-top: 0; }
+.journey-task-list .ws-task__check { width: 36px; height: 36px; }
 .desk-record__toggle[aria-pressed='false'] svg { visibility: hidden; }
 /* 【2026-10-14 · wave2】`.ws-task__details > summary { min-height: 40px }` 已删。
    证据：`class="ws-task__details"` 在 src 的 .vue 里 **0 命中**
@@ -265,7 +278,15 @@ input[type='radio'], input[type='checkbox'] { accent-color: var(--c-primary); wi
 .calendar-month { background: var(--c-surface); border: 1px solid var(--c-border); padding: 16px; border-radius: var(--r-lg); }
 .calendar-month .ws-calendar { gap: 3px; }
 .calendar-month .ws-calendar__day { min-height: 84px; align-items: stretch; text-align: left; padding: 8px; font-variant-numeric: tabular-nums; }
-.calendar-month .ws-calendar__day small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--c-primary); font-size: var(--fs-12); }
+/* 【2026-10-14 · wave3】`white-space: nowrap` 已删：月格里的事件名被裁掉 9px
+   （实测 `small` scrollWidth=72 > clientWidth=63「完成简历修订」/「中建笔试结果」，
+   祖先 overflow-x: hidden → 属于"内容真的看不见"，是信息丢失，不是美观问题）。
+   月格只有 63px 可用宽（1280 档：`.calendar-layout` 是 minmax(0,1fr)+280px），
+   12px 字号下 6 个汉字就是 72px —— nowrap 等于把这 9px 永久藏起来。
+   改成允许换行：`overflow-wrap: anywhere` 兜住没有断点的长串，
+   `overflow: hidden` 保留 —— 万一还有残余溢出，门禁仍会照出来（不拿"截断"换"过线"）。
+   保留 `:title`（ScheduleView:58 已有）作为鼠标悬停的第二条路。 */
+.calendar-month .ws-calendar__day small { white-space: normal; overflow-wrap: anywhere; overflow: hidden; color: var(--c-primary); font-size: var(--fs-12); }
 .calendar-agenda { padding-top: 8px; min-width: 0; }
 .calendar-agenda h3 { font-size: var(--fs-16); }
 .agenda-item { display: flex; align-items: start; gap: 12px; border-top: 1px solid var(--c-border); padding: 20px 0; }

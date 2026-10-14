@@ -115,6 +115,8 @@ const PAGE_KIND = {
   '/chat': 'dialogue', // 对话页：不按落点判，判"过程可见"
 }
 const REQUIRED_HITS = { data: 3, dialogue: 0, doc: 2, entry: 2, tool: 2, state: 2 }
+/* ⚠ doc（文档页）不按上面的数字判：它走"必中项" —— ①结构 + ③溯源两条都要有，
+   ②④不参与计分。见 judgeRoute 里那段注释（Lead 采纳 /path 作者的建议，是收紧不是放宽）。 */
 const KIND_OF = (path) => PAGE_KIND[path] || 'data'
 const KIND_LABEL = { data: '数据页', dialogue: '对话页', doc: '文档页', entry: '入口页', tool: '工具页', state: '状态页' }
 
@@ -158,6 +160,7 @@ const ANIM_ALLOWED = {
   'just-changed': '状态刚变过的高亮（回答"哪里动了"，§6 第 3 问）',
   'p7-flash': '画像页定位到某条时的短暂高亮（用户点进来看才发生）',
   'action-settle': '任务加入计划后的落定反馈（§6 第 4 问：即时且连锁的反馈）',
+  'btn-fx': '加入行动计划后按钮上的扩散反馈（用户点下去才发生；§6 第 4 问的即时反馈）',
   'sheet-rise': 'inspector 面板入场（用户点开才发生）',
   'sheet-slide-in': 'inspector 侧滑入场（用户点开才发生）',
   'sheet-slide-up': '手机底部面板上滑（用户点开才发生）',
@@ -187,12 +190,50 @@ const BANNED_SOURCE = [
   [/\bsetInterval\s*\(/, 'setInterval（定时轮播 / 定时刷新的常见实现，要看它驱动什么）'],
 ]
 
+/* ===========================================================================
+ * 三·五、已声明例外（逐条登记，**不是**阈值放宽）
+ * ---------------------------------------------------------------------------
+ * 有的"实测超档"不是缺陷，而是**需求方的硬约束**造成的既定事实：
+ * 门户页被要求"最好不变"，它的主标题字号因此必须原样留着。
+ * 这类情况不可以用"这条规则不查了""这页豁免"的方式处理 —— 那等于把尺子改短，
+ * 之后同一页新冒出来的违规会一起被放过。
+ *
+ * 所以例外**只在三个条件同时命中时生效**：路由 + 实测携带该值的元素链 + 数值。
+ * 三个字段里任何一个对不上（元素改了名、字号改了值、换了路由），例外立刻失效，
+ * 原来的告警原样回来。匹配用的 `selector` 是 probeInPage 实测回传的元素链
+ * （形如 `div.pf-intro > h1 > span`，不带 nth-of-type），可以直接贴进浏览器复核。
+ *
+ * 命中例外的项**不会静默消失**：它在报告里以一行【已声明例外】列出
+ * （见 judgeRoute 的字号档位一栏），读报告的人仍然看得到"这一页多了一档"。
+ * ======================================================================== */
+const DECLARED_EXCEPTIONS = [
+  {
+    route: '#/',
+    // 实测携带 63px 的叶子节点链（h1 自己有子节点、不进字号统计，所以记到里面的 span）。
+    // 对应的源样式是 PortalProposalView.vue:63 的 `.pf-intro h1`。
+    selector: 'div.pf-intro > h1 > span',
+    size: 63,
+    why:
+      '门户主标题：`.pf-intro h1 { font-size: clamp(38px, 4.9vw, 68px) }`，1280 档实测 63px，' +
+      '超出登记档位（12/14/16/20/30/38）。它是门户**既有**的设计，不是本次改版新造的层级；' +
+      '需求方硬约束是"门户页最好不变"，Lead 已裁定：门户 h1 不判违规、也不改。' +
+      '接受这一条例外的代价是**门户首屏比其他页多一档字号**（实测全部：12/14/16/20/63），' +
+      '登记在此以便复核 —— 若哪天门户可以改版，第一条就该删掉它。',
+  },
+]
+
+/** 登记档位（与 DESIGN.md frontmatter / tokens.css 的 --fs-* 一致）；例外条目里的 size 也按它判"超没超"。 */
+const REGISTERED_SIZES = [12, 14, 16, 20, 30, 38]
+
 /**
  * 数字滚动的专用判定 —— 这一类**不能**用词表匹配，两个方向都会错：
- *   · 正例：`src/lib/motion.ts` 的 `useCountUp` 是货真价实的数字滚动实现（0 → 值，首挂也跑）；
+ *   · 正例（曾经）：`src/lib/motion.ts` 里有个 `useCountUp`（0 → 值，首挂也跑）。
+ *     它已被删除（本轮清掉的死代码 —— 定义 1 处、调用 0 处，而且数字滚动本身是反例表点名的装饰）。
+ *     这一行保留成"曾经的正例"，是因为**判定的形状**要看懂：它当时就是靠这里被抓出来的。
  *   · 反例：`src/views/SpecView.vue` 里"数字滚动"四个字出现在**规范页的场景表**里，
  *     那是文档在描述口径，不是实现了数字滚动。
  * 所以判据是"**定义了有没有人用**"，而不是"有没有出现这个词"。
+ * 现在全仓库应当都是 0 处/0 处 —— 如果哪天又冒出"定义了没人用"，那就是有人在往回加装饰。
  */
 function countUpAudit(files) {
   const decl = []
@@ -487,6 +528,15 @@ function probeInPage() {
     {
       key: 'trace',
       label: '③溯源',
+      /* ⚠ 这里要认得**不同的词汇**，不能只认一种写法。
+         2026-10-14 收紧 doc 档之后，/spec 被判"缺 ③" —— 但它是**用表格列**表达的：
+         `SpecView.vue:324` 有 `<th>来源 / 取舍</th>`，一条规范一行、来源写在对应列里。
+         那是同一件事的另一种形态，不该因为类名不同就判它没做（样张那轮也吃过一次：
+         那边的 spec 用 `.sp-ref` 指回 c2.css 行号，同样被漏认）。
+         所以补上"表头写着来源/出处/依据"这一形态。
+         代价说清：这一条是启发式 —— 光加一个表头、列里空着也能骗过它。
+         可接受的理由：门禁的价值在"逼每页回答这个问题"，骗它需要主动伪造结构；
+         真要做到不可骗，得逐行比对引用的行号是否真的存在，那是产品级工具的事。 */
       sel: '.src, .exp-evidence, .fold, .mtr, time, [class*="evidence"], [class*="source"]',
     },
     {
@@ -525,6 +575,34 @@ function probeInPage() {
       }
       if (c > 0 && !sel) sel = `${s}（${describe(root.querySelector(s))}）`
       count += c
+    }
+    /* ③溯源还有一种形态：**表格列**。2026-10-14 收紧 doc 档后 /spec 被判"缺 ③"，
+       但它是用 `<th>来源 / 取舍</th>` 表达的（SpecView.vue:324）——一条规范一行、
+       来源写在对应列里。那是同一件事的另一种写法，不该因为类名不同就判它没做
+       （样张那轮也吃过一次：那边用 `.sp-ref` 指回 c2.css 行号，同样被漏认）。
+       判定不只看表头文案，还要求**那一列真的有内容**（≥2 行有非空单元格）——
+       否则"加一个表头、列里空着"就能骗过门禁，那是把尺子改短，不是认形态。 */
+    if (p.key === 'trace') {
+      const headerHits = []
+      Array.from(root.querySelectorAll('th')).forEach((th) => {
+        if (!/来源|出处|依据/.test((th.textContent || '').trim())) return
+        const row = th.parentElement
+        const table = th.closest('table')
+        if (!row || !table) return
+        const idx = Array.from(row.children).indexOf(th)
+        if (idx < 0) return
+        let filled = 0
+        Array.from(table.querySelectorAll('tbody tr, tr')).forEach((tr) => {
+          if (tr === row) return
+          const cell = tr.children[idx]
+          if (cell && (cell.textContent || '').trim().length > 1) filled++
+        })
+        if (filled >= 2) headerHits.push(describe(th))
+      })
+      if (headerHits.length) {
+        count += headerHits.length
+        if (!sel) sel = `表头「来源/出处/依据」且该列有内容的表格列（${headerHits[0]}）`
+      }
     }
     landing[p.key] = { label: p.label, count, first: sel, hit: count > 0 }
   }
@@ -573,6 +651,28 @@ function probeInPage() {
    * ====================================================================== */
   const sizes = {}
   const weights = {}
+  /**
+   * 字号 → **携带它的元素**（每档最多记 3 个）。
+   *
+   * 为什么非记不可：字号告警（"出现登记档位之外的字号 63"）如果不带上"是谁带着它"，
+   * DECLARED_EXCEPTIONS 就只能写成"某条路由豁免"—— 那等于把整页放行，
+   * 之后同一页新出现的超档字号会一起被放过。带上元素链之后，例外可以窄到
+   * `路由 + 元素链 + 数值`三项同时命中，元素一改名例外就失效。
+   *
+   * 元素链（chain）与 describe() 分开给：chain 不带 `:nth-of-type()`，
+   * 是可以直接抄进例外条目、也可以直接贴进浏览器复核的那一种写法
+   * （`div.pf-intro > h1 > span`）。取到 root 为止，最多 3 段。
+   */
+  const sizeCarriers = {}
+  const chainOf = (el) => {
+    const parts = []
+    for (let n = el, i = 0; n && n !== root && i < 3; n = n.parentElement, i++) {
+      const cls = (typeof n.className === 'string' ? n.className : '')
+        .trim().split(/\s+/).filter((c) => c && !/^data-v-/.test(c))[0]
+      parts.unshift(n.tagName.toLowerCase() + (cls ? '.' + cls : ''))
+    }
+    return parts.join(' > ')
+  }
   root.querySelectorAll('*').forEach((el) => {
     if (el.children.length) return
     const t = (el.textContent || '').trim()
@@ -584,6 +684,10 @@ function probeInPage() {
     const fs = Math.round(parseFloat(cs.fontSize))
     sizes[fs] = (sizes[fs] || 0) + 1
     weights[cs.fontWeight] = (weights[cs.fontWeight] || 0) + 1
+    const list = sizeCarriers[fs] || (sizeCarriers[fs] = [])
+    if (list.length < 3) {
+      list.push({ chain: chainOf(el), sel: describe(el), text: t.replace(/\s+/g, ' ').slice(0, 20) })
+    }
   })
 
   /* =========================================================================
@@ -657,7 +761,7 @@ function probeInPage() {
     hasExit: !!root.querySelector('a[href="#/"], a[href="/"], a.btn'),
   }
 
-  return { root: describe(root), touch, running, landing, landingHits, dialogue, statePage, sizes, weights, overflow }
+  return { root: describe(root), touch, running, landing, landingHits, dialogue, statePage, sizes, weights, sizeCarriers, overflow }
 }
 
 /**
@@ -1183,6 +1287,22 @@ function judgeRoute(r, m, settle) {
           `它们是"现在有效的地址"那一列，是这一页**唯一的实际功能**。`
       )
     }
+  } else if (kind === 'doc' && (!m.landing.structure.hit || !m.landing.trace.hit)) {
+    /* 文档页的门槛是**必中项**，不是"任意 2 个"。
+       理由（由 /path 的作者提出、Lead 采纳）：文档页没有"属于这位用户的数据"，
+       ② 组织权对它不成立（换分组轴要么打散一条有顺序的叙述，要么只是排序 —— 而排序不是重组）；
+       ④ 状态/不确定性也没有对应物。它最该守的是 ③ **每条说法能回到出处**。
+       原来的"任意 2 个"会让一个只有 ①+④ 的文档页蒙混过关，反而放过了 ③。
+       这处改动是**收紧**（不是放宽）：①结构显形 + ③溯源，两条都必须有。 */
+    fail(
+      route,
+      '四个落点',
+      `文档页必中项未达成（①结构=${m.landing.structure.hit ? '有' : '无'} ③溯源=${m.landing.trace.hit ? '有' : '无'}）`,
+      `文档页只要求这两条，且两条都要有；实测命中 ${m.landingHits} 个落点`,
+      '文档页的 ② 组织权与 ④ 状态不参与计分（没有用户数据、没有不确定性）；' +
+        '要补的是 ①结构显形与 ③溯源 —— 每条说法写清从哪来',
+      { landing: m.landing }
+    )
   } else if (m.landingHits < need) {
     fail(
       route,
@@ -1197,15 +1317,16 @@ function judgeRoute(r, m, settle) {
 
   /**
    * 落点的**测量口径**必须写在报告里，否则读的人不知道这个数字是什么状态下量的。
-   * 这一条对本工程的 `/tools` 尤其重要：它首屏只渲染"读取工具目录"按钮，
-   * 目录、空态、状态条都是点下去之后才有 —— 所以 0/2 里有一部分是"还没取数"。
-   * 门禁不做点击（那会把"测量"变成"操作"，且脚本要注入动作才知道点什么），
-   * 所以这里如实标注，并把"是否需要点一下才显形"留给作者判断。
+   * 【2026-10-14 更新 · 这一条现在多半不再触发】
+   * `/tools` 已经改成挂载即自动读一次，目录、状态轨、空态首屏就在（不再需要点一下）。
+   * 保留这段是因为**别的页面仍可能有"点一下才显形"的部分**：门禁不做点击
+   * （那会把"测量"变成"操作"，且脚本要注入动作才知道点什么），所以如实标注，
+   * 把"是否需要点一下"留给作者判断。
    */
   if (kind === 'doc' || kind === 'tool' || kind === 'entry') {
     notes.push(
       `${route}（${KIND_LABEL[kind]}）：落点是在**加载完成、未做任何点击**的状态下量的；` +
-        `本类型页有一部分内容要点一下才出现（例如 /tools 的目录与状态条），报告只反映首屏。`
+        `若本页有内容要点一下才出现，报告只反映首屏。`
     )
   }
 
@@ -1219,9 +1340,30 @@ function judgeRoute(r, m, settle) {
       { sizes: m.sizes }
     )
   }
-  const fsOut = row.sizes.filter((s) => ![12, 14, 16, 20, 30, 38].includes(s))
-  if (fsOut.length) {
-    warn(route, '字号档位', `出现登记档位之外的字号 ${fsOut.join('/')}`, `实测全部：${row.sizes.join('/')}`, '登记档位见 DESIGN.md frontmatter 与 tokens.css 的 --fs-*', { sizes: fsOut })
+  const fsOut = row.sizes.filter((s) => !REGISTERED_SIZES.includes(s))
+  /**
+   * 超档字号分两堆：**已被登记的例外**与真的没登记的。
+   * 例外匹配必须是"路由 + 元素链 + 数值"三项同时命中（见 DECLARED_EXCEPTIONS 的头注释）——
+   * 只按路由放行会让同一页新冒出来的超档字号一起被放过。
+   */
+  const fsDeclared = []
+  const fsUndeclared = []
+  for (const s of fsOut) {
+    const carriers = (m.sizeCarriers && m.sizeCarriers[s]) || []
+    const hit = DECLARED_EXCEPTIONS.find(
+      (e) => e.route === route && e.size === s && carriers.some((c) => c.chain === e.selector)
+    )
+    if (hit) fsDeclared.push({ size: s, ex: hit, carriers })
+    else fsUndeclared.push(s)
+  }
+  if (fsUndeclared.length) {
+    warn(route, '字号档位', `出现登记档位之外的字号 ${fsUndeclared.join('/')}`, `实测全部：${row.sizes.join('/')}`, '登记档位见 DESIGN.md frontmatter 与 tokens.css 的 --fs-*', { sizes: fsUndeclared })
+  }
+  for (const d of fsDeclared) {
+    // 例外**不静默**：照旧出现在报告里，只是从"待人工判断"挪到"已声明例外"，并带上为什么。
+    notes.push(
+      `【已声明例外】${route}：字号 ${d.size}px（${d.ex.selector}）—— ${d.ex.why}`
+    )
   }
   const fwOut = row.weights.filter((w) => !['400', '500', '600', '700'].includes(w))
   if (fwOut.length) {
@@ -1370,6 +1512,8 @@ async function main() {
       dialogue: m.dialogue,
       sizes: m.sizes,
       weights: m.weights,
+      // 每一档字号是谁带着的：例外登记要能逐条复核到元素链（见 DECLARED_EXCEPTIONS）
+      sizeCarriers: m.sizeCarriers,
     })
     row.findingsAdded = findings.length - before
     // 落点一栏：对话页与状态页**不按落点判**（判据见 judgeRoute），

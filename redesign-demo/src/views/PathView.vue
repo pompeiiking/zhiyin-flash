@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { demo } from '../store'
 import { SCENARIOS } from '../data/scenarios'
 import { JOURNEY_STEPS } from '../data/copy'
+import SourceChip from '../components/SourceChip.vue'
 
 /**
  * 大一到大四：场景化设计。
@@ -73,6 +74,14 @@ const PATH = [
 /** 截图缺失时不要裂图：退回一个说明块 */
 const broken = ref<Record<string, boolean>>({})
 
+/**
+ * 七张截图的**拍摄日**（落点③溯源）。
+ * 为什么是一个常量而不是逐条写：这一批就是同一天截的（见下方路径区标题下的那句话），
+ * 逐条写七个一样的日期只会制造"它们可能不一样"的错觉。将来分批补截时，
+ * 这里要改成按 step 记录 —— 那一天图注自然会跟着变。
+ */
+const SHOT_AT = '2026-10-13'
+
 function onError(shot: string) {
   broken.value = { ...broken.value, [shot]: true }
 }
@@ -87,6 +96,32 @@ function onError(shot: string) {
         报告重点与复盘关注点整套跟着换；下面这张路径图说明每一步落在哪个界面上。
       </p>
     </header>
+
+    <!-- =====================================================================
+         落点③溯源 —— 文档页的每类说法都要能回到它的出处
+         ---------------------------------------------------------------------
+         这一页的"出处"不是用户数据，而是三样可以当场核对的东西：评审原话、
+         预置示例文件、真实截图。三者性质不同（引用 / 外部文本 / 转录），
+         所以用 SourceChip 的三支不同**形态**（不靠颜色）分开 —— 灰度打印下也要分得清。
+         ② 组织权在这一页不适用，理由见交付说明（不硬塞一个假的分组控件）。
+         ===================================================================== -->
+    <section class="path-prov" aria-labelledby="path-prov-title">
+      <h2 id="path-prov-title" class="t-h2">这一页的每条说法从哪来</h2>
+      <ul class="path-prov__list">
+        <li>
+          <SourceChip label="评审要求原文" kind="citation" />
+          <span>四个年级的内容按评审原话组织：「按一年级到四年级的不同使用场景设计内容，每个操作步骤配对应界面截图，直观展示产品使用路径」。</span>
+        </li>
+        <li>
+          <SourceChip label="预置演示文案" kind="external" />
+          <span>处境、要解决的事、任务卡与里程碑来自预置示例文件 <code class="code">src/data/scenarios.ts</code>，不是任何一位学生的真实数据。</span>
+        </li>
+        <li>
+          <SourceChip label="实际浏览器预览" kind="transcript" :at="'2026-10-13'" />
+          <span>下面七张截图是 2026-10-13 在本地跑起来之后截的，文件在 <code class="code">public/shots/</code>；每一步的图注写了它属于哪一步。</span>
+        </li>
+      </ul>
+    </section>
 
     <!-- 年级选择 -->
     <div class="grades">
@@ -180,7 +215,7 @@ function onError(shot: string) {
                 可以直接进入对应页面查看。
               </p>
             </div>
-            <figcaption class="pstep__cap">{{ p.view }}</figcaption>
+            <figcaption class="pstep__cap">{{ p.view }} · <time :datetime="SHOT_AT">{{ SHOT_AT }} 截图</time></figcaption>
           </figure>
         </li>
       </ol>
@@ -189,6 +224,44 @@ function onError(shot: string) {
 </template>
 
 <style scoped>
+/* ============================================================================
+ * 落点③溯源 · "这一页的每条说法从哪来"
+ * ---------------------------------------------------------------------------
+ * 徽标占第一列、它解释的那句话占第二列：三行徽标的左边缘严格对齐，
+ * 扫读时"看来源"是一条竖线，不用在行里找。
+ * 列宽用 max-content 而不是固定值 —— 三枚徽标的宽度不同（「评审要求原文」最长），
+ * 写死一个宽度会在窄屏把它裁掉。
+ * ==========================================================================*/
+.path-prov { margin-top: var(--sp-6); }
+
+.path-prov__list {
+  display: grid;
+  gap: var(--sp-3);
+  margin-top: var(--sp-3);
+}
+
+.path-prov__list li {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--sp-3);
+  font-size: var(--fs-14);
+  line-height: var(--lh-normal);
+  color: var(--c-text-2);
+}
+
+@media (max-width: 640px) {
+  .path-prov__list li {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--sp-1);
+  }
+}
+
+/* 图注里的拍摄日：与"界面落在哪一页"同一行，但比它安静一档 */
+.pstep__cap time {
+  color: var(--c-text-3);
+}
+
 .grades {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

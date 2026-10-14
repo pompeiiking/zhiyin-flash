@@ -74,7 +74,22 @@ import { WORKSPACE_GROUPS, WORKSPACE_PRIMARY, PORTAL_LINK } from '../lib/workspa
   border-bottom: none;
 }
 
+/* 【2026-10-14 · wave3】这一列链接是 404 页**唯一的功能**，原来只有 24px 高
+   （实测 `a.links__a` 13 个，56–70×24）—— 手指点不准。
+   为什么不是"把字号放大"：字号档位只有 12/14/16/20/30，这一列是列表项不是标题，
+   14px 是对的；缺的是**可点区**，所以抬的是盒子（display:block + 上下 padding + min-height），
+   文字本身的视觉重量一点没变。
+   为什么 min-height 写成 36 而不是走 --sp-*：36/44 是触控目标的硬线（DESIGN-LANGUAGE
+   卡片内次要 ≥36），不是间距阶梯 —— 挂到 --sp-* 上会跟着密度轴缩水，把一条无障碍下限
+   变成可调值。workspace.css:200 的 `min-height: 44px` 是同一类写法。
+   为什么不用 flex:1 撑满整行：`.links__item` 是 `space-between` 的两列，
+   右列是 12px 的说明文字，左列拿到 flex:1 后窄屏上会被右列挤到换行。 */
 .links__a {
+  display: block;
+  /* 硬线写成字面量、内距走令牌：密度轴改 --sp-2 时外观跟着变，
+     但 min-height 兜住 36 这条无障碍下限，不会跟着缩。 */
+  min-height: 36px;
+  padding: var(--sp-2) 0;
   font-size: var(--fs-14);
   color: var(--c-primary);
 }
