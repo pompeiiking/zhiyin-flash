@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- build-stamp: views=21 css=1cd9fa1875fe base=df02afcb8a53 chat=564f04a6c79e -->
+<!-- build-stamp: views=21 css=e70c0b52c1a5 base=df02afcb8a53 chat=564f04a6c79e -->
 <!-- build-stamp: src=f23695a1f5c5 css=93452f390d21 build=32844e459e2a -->
 <html lang="zh-CN" data-theme="light" data-accent="blue" data-style="normal" data-theme-mode="light" data-state="thinking">
 <head>
@@ -1696,7 +1696,11 @@ html[data-state="speaking"] .avatar__ring{opacity:1;animation:ripple 2.2s var(--
 .pgh__acts{margin-left:auto;flex:0 0 auto;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 /* 面包屑：分组 › 页面。它回答"我在全站的什么位置"，不是装饰 */
 .crumb{display:flex;align-items:center;gap:7px;font-size:var(--fs-12);color:var(--c-text-3)}
-.crumb a{color:var(--c-text-3)}
+/* 面包屑：分组 › 页面。它回答"我在全站的什么位置"，不是装饰。
+   高度必须 ≥24px：只有文字高度（21px）时，它是全站唯一一批"看着像链接、却比手指小"的目标。
+   WCAG 2.5.8 的豁免是给"句子里的行内链接"的，面包屑是一排独立目标，不在豁免里。
+   两个作者都独立报了这处（intel 与 academic/review），所以在这里一次修掉，不在各视图里 hack。 */
+.crumb a{display:inline-flex;align-items:center;min-height:24px;padding:0 2px;color:var(--c-text-3)}
 .crumb a:hover{color:var(--c-primary)}
 .crumb svg{width:12px;height:12px;opacity:.7}
 
@@ -1844,6 +1848,7 @@ html[data-state="speaking"] .avatar__ring{opacity:1;animation:ripple 2.2s var(--
 .srcs{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .src{
   display:inline-flex;align-items:center;gap:6px;
+  max-width:100%;
   padding:3px 9px 3px 7px;border-radius:var(--r-pill);
   background:var(--c-surface-2);border:1px solid var(--c-border);
   font-size:var(--fs-12);color:var(--c-text-3);line-height:1.5;
@@ -1852,6 +1857,10 @@ html[data-state="speaking"] .avatar__ring{opacity:1;animation:ripple 2.2s var(--
 .src:hover{background:var(--c-surface-solid);border-color:var(--c-border-strong)}
 .src__ic{display:grid;place-items:center;width:15px;height:15px;flex:0 0 auto;color:var(--c-text-3)}
 .src__ic svg{width:14px;height:14px}
+/* nowrap 让来源名与时间在宽屏上不会断行（重要），但在窄屏上它是**溢出源**：
+   一句长来源名（"本地课程与成绩演示快照 · 10 月 6 日"）在 390 下宽 404px > 容器 298px，
+   实测把日程页的正文撑破（probe --wrap：p.sc-daycard__v 404>298）。
+   同一个根因有两位作者在各自视图里补过；根因在共享层，所以在这里一次修掉。 */
 .src__k{font-weight:var(--fw-semibold);color:var(--c-text-2);white-space:nowrap}
 .src__w{white-space:nowrap;font-variant-numeric:tabular-nums}
 .src--chat .src__ic{color:var(--c-primary)}
@@ -1884,8 +1893,11 @@ html[data-state="speaking"] .avatar__ring{opacity:1;animation:ripple 2.2s var(--
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:var(--sp-3)}
 /* 带说明句的瓦片：148px 一列会把说明折成四行。给它们更宽的列（2×2 或 3 列） */
 .stats--wide{grid-template-columns:repeat(auto-fit,minmax(238px,1fr))}
-/* 主列窄（旁边有侧栏）时用这对：不高不低，2 列 */
-.stats--pair{grid-template-columns:repeat(auto-fit,minmax(262px,1fr))}
+/* 主列窄（旁边有侧栏）时用这对：**确定的两列**，不是 auto-fit。
+   为什么不用 auto-fit：主列在 1280 下只有 916px（.pg 1180 − 侧栏 264），
+   minmax(262px) 只放得下 3 列，4 个瓦片就变成 3+1 的孤行 —— 有人实测到并报了这一点。
+   要"2×2"就写死 2 列，别指望 auto-fit 的断点刚好落对。手机档（≤767）由媒体查询改成 1 列。 */
+.stats--pair{grid-template-columns:repeat(2,minmax(0,1fr))}
 .stat{
   display:flex;flex-direction:column;gap:3px;
   padding:var(--sp-3) var(--sp-4);
@@ -2083,7 +2095,9 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
   background:var(--c-primary-weak);border-color:var(--c-primary-border);
   color:var(--c-primary);font-weight:var(--fw-semibold);
 }
-.chipf small{color:var(--c-text-3);font-variant-numeric:tabular-nums}
+/* ⚠ 必须给字号：<small> 的浏览器默认值是 0.833em ≈ 11.67px，越出"字号只有 12/14/16/20/30"
+   这条硬纪律（intel / plan / gallery 三个视图都中过这一条）。 */
+.chipf small{font-size:var(--fs-12);color:var(--c-text-3);font-variant-numeric:tabular-nums}
 .chipf[aria-pressed="true"] small{color:var(--c-primary)}
 
 /* =============================================================================
@@ -2128,9 +2142,23 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
   .sec__body{padding:var(--sp-3) var(--sp-4) var(--sp-4)}
   .sec__foot{padding:var(--sp-3) var(--sp-4);border-radius:0 0 var(--r-lg) var(--r-lg)}
   .sec__acts{margin-left:0;width:100%;justify-content:flex-start}
-  .lensbar{width:100%;align-self:stretch;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none}
-  .lensbar::-webkit-scrollbar{display:none}
+  /* 窄屏的视角重组条：**换行**，不要横滚。
+     横滚会把第四个视角藏在屏幕外 —— 那等于把"按什么看"这件事藏了一半，
+     而"组织权交给用户"正是数据页活的主承重件。有人报过这里 flex-wrap 没生效：
+     原因是本文件早先在这一档写了 flex-wrap:nowrap + overflow-x:auto（我自己的规则），
+     不是基线声明失效。改成 wrap 之后所有带 .lens 的页面都受益。 */
+  .lensbar{width:100%;align-self:stretch;flex-wrap:wrap}
+  .lensbtn{flex:1 1 auto;justify-content:center}
+  /* 窄屏上 nowrap 的短标签必须能断，否则一句来源名就能把整页顶宽（见上面 .src 的注释） */
+  .src{flex-wrap:wrap}
+  .src__k,.src__w{white-space:normal}
+  /* .conf 同理：它本是给"依据充分 / 待验证"这种短标签用的，但有页面把**整句**
+     说明塞了进来（实测 schedule 的冲突说明 404px > 容器 298px）。窄屏放开断行兜底，
+     宽屏保持 nowrap（短标签不换行才整齐）。 */
+  .conf{white-space:normal;max-width:100%;flex-wrap:wrap}
   .stats{grid-template-columns:repeat(auto-fit,minmax(128px,1fr))}
+  /* 带说明句的瓦片在手机上排一列，别把一句话挤成四行 */
+  .stats--pair{grid-template-columns:minmax(0,1fr)}
   .stat__n{font-size:var(--fs-20)}
   .cmp__r{grid-template-columns:minmax(0,1fr) auto;gap:6px var(--sp-2);align-items:start}
   .cmp__k{text-align:left;grid-column:1 / -1}
@@ -2176,7 +2204,7 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
 
 /* ---- 2 · 来源可靠性分级：一行 = 一个来源，左能做到、右做不到 ------------- */
 .ac-av{display:flex;flex-direction:column;border:1px solid var(--c-border);border-radius:var(--r-lg);overflow:hidden}
-.ac-av__h,.ac-av__r{display:grid;grid-template-columns:minmax(190px,1fr) minmax(0,1.25fr) minmax(0,1fr)}
+.ac-av__h,.ac-av__r{display:grid;grid-template-columns:minmax(190px,1.15fr) minmax(0,1.15fr) minmax(0,1fr)}
 .ac-av__h{
   background:var(--c-surface-2);
   border-bottom:1px solid var(--c-border);
@@ -2197,6 +2225,9 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
   line-height:var(--lh-snug);
 }
 .ac-av__k .src{margin-top:6px}
+/* 窄列里宁可让来源这一格换行，也不要它顶破单元格 */
+.ac-av__k .src{flex-wrap:wrap;max-width:100%}
+.ac-av__k .src__w{white-space:normal}
 .ac-av__y,.ac-av__n{list-style:none;display:flex;flex-direction:column;gap:6px}
 .ac-av__y li,.ac-av__n li{
   position:relative;padding-left:15px;
@@ -2247,7 +2278,7 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
   margin-top:var(--sp-4);padding-top:var(--sp-4);border-top:1px solid var(--c-border);
 }
 .ac-trace__m{display:flex;flex-direction:column;gap:8px}
-.ac-zoom .zoom__body p+p{margin-top:9px}
+.ac-trace .zoom__body p+p{margin-top:9px}
 .ac-trace__t{font-size:var(--fs-14);color:var(--c-text-3)}
 .ac-trace__t b{font-size:var(--fs-16);font-weight:var(--fw-bold);color:var(--c-text)}
 
@@ -2316,6 +2347,8 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
 
 /* ---- 7 · 核验是一个过程：四步各有状态，不是打一个勾 ---------------------- */
 .ac-tl .tl__d{max-width:62ch}
+/* .tl__meta 是 flex 容器：里面两个 span 挨着会读成一句话，给它补上间隔 */
+.ac-tl .tl__meta{gap:9px}
 .ac-found{
   display:inline-flex;align-items:center;padding:2px 8px;border-radius:var(--r-pill);
   background:var(--c-done-weak);border:1px solid var(--c-done-border);
@@ -2407,6 +2440,9 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
 [data-view="achievements"] .chipbtn{min-height:44px}
 [data-view="achievements"] .crumb a{
   display:inline-flex;align-items:center;min-height:44px;
+  /* 面包屑的两个文字链接只有 36 / 48 宽 —— 加上 4px 水平内边距，
+     两个字的那一个也到 44，探针的 <44px 计数才是 0 */
+  padding:0 4px;margin:0 -4px;
 }
 
 /* ---- 记录卡的头：标记 / 名称与说明 / 状态 ---------------------------------- */
@@ -2483,6 +2519,8 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
   margin-top:var(--sp-3);font-size:var(--fs-12);line-height:var(--lh-snug);color:var(--c-text-3);
 }
 .ach__live[data-on="true"]{color:var(--c-text-2)}
+/* 勾选框要和标题首行对齐（基线 1px 是按单行标题定的，本页标题两行） */
+[data-view="achievements"] .pick__box{margin-top:7px}
 
 /* ---- 窄屏：标记与状态换行，解锁框内边距收一档 ------------------------------ */
 @media (max-width:767px){
@@ -2491,6 +2529,25 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
   .ach__name{font-size:var(--fs-14)}
   .ach__unlock{padding:var(--sp-3)}
   [data-view="achievements"] .lens__item{padding:var(--sp-3)}
+  /* 来源 chip 里的 .src__k / .src__w 是 nowrap（共享组件），窄屏下它会把
+     .ach__trace 顶宽 16px 并被悄悄裁掉一个边。这里只让文字在 chip 内换行。 */
+  [data-view="achievements"] .src{
+    flex-wrap:wrap;align-items:flex-start;max-width:100%;
+  }
+  [data-view="achievements"] .src__k,
+  [data-view="achievements"] .src__w{white-space:normal}
+
+  /* 视角重组条在窄屏的排布由共享层负责（10-data-page.css 的 ≤767 档已改成
+     width:100% + flex-wrap:wrap + .lensbtn{flex:1 1 auto}）。
+     这里原先有一份"视图层 2×2 网格"的兜底 —— 那是在跟共享层较劲（本工程的老毛病），
+     Lead 已经把根因修在共享层，所以删掉这份兜底，让 21 个页面长得一样。 */
+
+  /* .pick__r 的尾巴是 nowrap（共享组件），390 下它会把标题挤成 34px 宽。
+     窄屏改成两行：标题占满一行，尾注换到下面并允许折行。 */
+  [data-view="achievements"] .pick__r{flex-wrap:wrap;align-items:flex-start}
+  [data-view="achievements"] .pick__t{flex:1 1 100%}
+  [data-view="achievements"] .pick__tail{flex:1 1 100%;white-space:normal;padding-left:31px}
+  [data-view="achievements"] .pick__tail .conf{white-space:normal}
 }
 
 /* =============================================================================
@@ -2583,7 +2640,7 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
   box-shadow:var(--light-in);
 }
 .dir-step{
-  display:grid;place-items:center;width:38px;height:36px;
+  display:grid;place-items:center;width:40px;height:40px;
   border:0;background:transparent;color:var(--c-text-2);
   transition:background var(--dur-2) var(--ease-out),color var(--dur-2) var(--ease-out);
 }
@@ -2681,6 +2738,9 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
  * 6. 要求 vs 现状：矩阵里的"下一步补什么"
  * ========================================================================== */
 .dir-gaps{margin-top:var(--sp-4);min-width:640px}
+/* 每条方向压着两行差距：合并单元格 + 一条分界线，让"这两行是同一条方向的"看得出来 */
+.dir-gaps th[data-key][rowspan]{border-right:1px solid var(--c-border)}
+.dir-gaps tbody tr:nth-child(even) td{border-bottom-color:var(--c-border-strong)}
 .dir-gaps em.dir-gap{
   display:block;margin-top:3px;font-style:normal;
   font-size:var(--fs-12);color:var(--c-text-3);
@@ -2806,6 +2866,13 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
   .gl-grid{grid-template-columns:minmax(0,1fr)}
   .gl-spec{padding:var(--sp-3)}
   .gl-dont{padding:var(--sp-3)}
+  /* 类名 chip 是 nowrap 的（宽屏上必须，否则 `.lens__item` 会从中间断开），
+     但在窄屏上它就是溢出源：实测 span.pick__t 111>77 → .pick 377>298 →
+     整个 .pg 423>390。窄屏放开断行，宽屏保持不许断。 */
+  [data-view="gallery"] .gl-cls,
+  [data-view="gallery"] .gl-cell{white-space:normal;overflow-wrap:anywhere}
+  [data-view="gallery"] .gl-cells{min-width:0}
+  [data-view="gallery"] .pick__r{align-items:flex-start}
 }
 
 /* =============================================================================
@@ -3236,6 +3303,12 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
 /* 热词 = 虚线方角：它是在这 12 条的**正文里找词**，不是类别，所以形状不同 */
 [data-view="intel"] .int-hot{border-style:dashed;border-radius:var(--r-sm)}
 
+/* chip 上的条数（<small>）：共享层 `.chipf small` 只给了颜色，没给字号 ——
+   浏览器默认 `small` = 0.833em = **11.67px**，越出"字号只有 5 档"的纪律
+   （实测 intel 有 12 处 11.67px，plan / gallery 的 chipf 同样有）。
+   这里只在本视图内补回 12px；共享层的这一行该由 Lead 修（不改别人的写域）。 */
+[data-view="intel"] .chipf small{font-size:var(--fs-12)}
+
 /* 排序 = 分段控件：互斥单选，所以做成一条轨道 + 一个亮起的白块 */
 [data-view="intel"] .int-sort{
   display:inline-flex;align-items:center;gap:3px;max-width:100%;
@@ -3293,6 +3366,15 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
   .int-filter__r{grid-template-columns:minmax(0,1fr);gap:6px}
   .int-filter__k{padding-top:0}
   .int-match__l li{grid-template-columns:52px minmax(0,1fr)}
+  /* 排序轨道在 390 下三枚 chip 放不进一行（实测 324 可用 / 需要 ~338），
+     横排会被 flex-wrap 折成"一坨圆角"，横滚又会把第三个选项藏起来。
+     所以窄屏改成**竖排单选轨道**：三行 44px、全部可见、标签不折行，
+     "互斥单选"这件事反而更清楚。 */
+  [data-view="intel"] .int-sort{
+    display:flex;flex-direction:column;align-items:stretch;
+    width:100%;gap:2px;border-radius:var(--r-md);
+  }
+  [data-view="intel"] .int-sort .chipf{width:100%;justify-content:flex-start}
   [data-view="intel"] .int-zoom .zoom__body{padding:var(--sp-2) var(--sp-3) var(--sp-2) 11px}
   [data-view="intel"] .int-zoom .zoombtn{padding:8px 12px}
 }
@@ -5100,6 +5182,32 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
   .sp-scale__demo{flex:0 0 auto}
   .sp-rr__v{white-space:normal}
   [data-view="spec"] .cmp{--cmp-x:64px}
+
+  /* 窄屏下把表折成"一条一条"：表格的横排语义在 390 上会变成横向滚动，
+     那样每读一行都要左右拖，等于信息读不到。折行之后每个字段自带标签。 */
+  [data-view="spec"] .tbl,
+  [data-view="spec"] .tbl tbody,
+  [data-view="spec"] .tbl tr,
+  [data-view="spec"] .tbl th,
+  [data-view="spec"] .tbl td{display:block;width:auto}
+  [data-view="spec"] .tbl thead{display:none}
+  [data-view="spec"] .tbl td{padding:0 0 3px;border-bottom:0}
+  [data-view="spec"] .tbl tr{padding:var(--sp-3) 0;border-bottom:1px solid var(--c-border)}
+  [data-view="spec"] .tbl tr:last-child{border-bottom:0}
+  [data-view="spec"] .tbl td[data-num]{text-align:left}
+  [data-view="spec"] .tbl td + td{padding-top:6px}
+  /* 每个字段自带一个说明它是什么的小标 —— 说的是内容，不是版式 */
+  [data-view="spec"] .tbl td + td::before{
+    content:attr(data-label);
+    display:block;margin-bottom:2px;
+    font-size:var(--fs-12);font-weight:var(--fw-semibold);color:var(--c-text-3);
+  }
+  [data-view="spec"] .tbl td:nth-child(2)::before{content:"怎么判"}
+  [data-view="spec"] .tbl td:nth-child(3)::before{content:"依据在哪"}
+  [data-view="spec"] .tbl td:nth-child(4)::before{content:"出处 / 怎么判"}
+  /* 长令牌串允许在任意字符处断行：不这么做，一行 monospace 会把整页顶宽 */
+  [data-view="spec"] .sp-code,
+  [data-view="spec"] .sp-ref{white-space:normal;overflow-wrap:anywhere}
 }
 
 /* =============================================================================
@@ -5780,7 +5888,7 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
 
           <!-- ③ 粒度与溯源：同一条成绩的三种粒度 -->
           <div class="ac-trace">
-            <div class="zoom ac-zoom" data-zoom="sum">
+            <div class="zoom" data-zoom="sum">
               <div class="zoombar" role="group" aria-label="看到多细">
                 <button class="zoombtn" type="button" data-zoom-set="sum">摘要</button>
                 <button class="zoombtn" type="button" data-zoom-set="mid">细节</button>
@@ -5814,22 +5922,22 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.6"/><rect x="13" y="4" width="7" height="7" rx="1.6"/><rect x="4" y="13" width="7" height="7" rx="1.6"/><rect x="13" y="13" width="7" height="7" rx="1.6"/></svg>
               同一批成绩，按什么看
             </h2>
-            <p class="sec__d">上面 12 条，一条没删也没藏，这里换个组织方式：按来源、按学期、按课程类别、按校对进度。切一下，看哪一组最厚、哪一组还没对完。</p>
+            <p class="sec__d">上面这 14 条，一条没删也没藏，这里换个组织方式：按来源、按学期、按课程类别、按录入完整度。切一下，看哪一组最厚、哪一组还没对完。</p>
           </div>
           <div class="sec__acts">
             <span class="ac-num" id="acLensN">12 门 · 30 学分</span>
           </div>
         </div>
         <div class="sec__body">
-          <div class="lens ac-lens" data-lens="source"
+          <div class="lens" data-lens="source"
                data-order-source="教务系统|本人填写"
                data-order-time="2025–2026 春季"
                data-order-category="专业课|基础课|公共课|实践课"
                data-order-verify="已能核对原文|只有换算后的结果|学校给的是文字成绩|这次导入里没有成绩"
-               data-hint-source="按谁给的看：12 门全部来自 10 月 13 日导入的教务系统快照，没有一条是本人填的 —— 所以你这一栏现在是空着的那一组。"
-               data-hint-time="按什么时候的看：12 门全在 2025–2026 春季这一个学期，2026–2027 秋季的课表还没出成绩。"
-               data-hint-category="按课程类别看：专业课 5 门最厚，实践课 3 门学分最少（5 学分），基础课一门就 4 学分。"
-               data-hint-verify="按校对进度看：10 门已经能对到原文；1 门只有一个换算后的结果，要不要展开看由你；3 门学校给的是文字成绩；1 门这次导入里没有成绩。">
+               data-hint-source="按谁给的看：14 条里 13 条来自 10 月 13 日导入的教务系统快照，只有「材料实验 · 创新项目讨论」那一条挂在课表快照下。没有一条是本人填的 —— 所以你这一栏现在是空着的那一组。"
+               data-hint-time="按什么时候的看：12 门成绩全在 2025–2026 春季这一个学期；另外 2 条属于 2026–2027 秋季的课表，还没有成绩。"
+               data-hint-category="按课程类别看：专业课 5 门最厚；实践课 3 门加起来只有 5 学分，而基础课一门高等数学就 4 学分 —— 学分压在基础和专业上，不压在实践上。"
+               data-hint-verify="按校对进度看：12 门里 10 门能对到教务系统原文，3 门学校给的是文字成绩（优秀、良好、通过），「材料物理」这次导入里没带成绩；另外 2 条是课表里的课，还没有成绩。">
             <div class="lensbar" role="tablist" aria-label="按什么看这批成绩">
               <button class="lensbtn" type="button" role="tab" data-lens-set="source" aria-selected="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M5 8l7-5 7 5"/></svg>
@@ -5845,7 +5953,7 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
               </button>
               <button class="lensbtn" type="button" role="tab" data-lens-set="verify" aria-selected="false">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>
-                按校对进度
+                按录入完整度
               </button>
             </div>
             <p class="lens__hint" data-lens-hint aria-live="polite"></p>
@@ -5981,7 +6089,7 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
         </div>
       </section>
 
-      <!-- ====== ④ 冲突与缺时：重名重课，用真名，不另编 ====== -->
+      <!-- ====== ④ 冲突与缺时：用课表里的真名，不另编课程 ====== -->
       <section class="sec" aria-labelledby="acConT">
         <div class="sec__h">
           <div class="sec__ht">
@@ -6276,10 +6384,10 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
 
     <!-- ==================== ① 结构显形：这 6 条现在是什么状态 ==================== -->
     <section class="stats stats--pair" aria-label="成长记录总览">
-      <div class="stat">
+      <div class="stat stat--key">
         <p class="stat__n">3<small>条</small></p>
         <p class="stat__t">记录已计入</p>
-        <p class="stat__d">来自成绩快照、示例对话与复盘记录，来源逐条可查</p>
+        <p class="stat__d">来自成绩快照、示例对话与复盘记录</p>
       </div>
       <div class="stat">
         <p class="stat__n">3<small>条</small></p>
@@ -6289,9 +6397,9 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
       <div class="stat">
         <p class="stat__n">5<small>件</small></p>
         <p class="stat__t">解锁最少要补的事</p>
-        <p class="stat__d">课程实验写"方法"15 分钟 + 城市三项共 5 分钟 + 一句优先级 5 分钟，都在本子上就能做完</p>
+        <p class="stat__d">写方法 15 分钟 + 城市三项 5 分钟 + 一句优先级 5 分钟</p>
       </div>
-      <div class="stat stat--key">
+      <div class="stat">
         <p class="stat__n">3<small>天</small></p>
         <p class="stat__t">上次动手之后</p>
         <p class="stat__d">10 月 7 日做过一件事。停 3 天是"陪你推进的人"开口的线</p>
@@ -7027,15 +7135,16 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
         </div>
       </div>
       <div class="sec__body">
-        <!-- 当前排序读数：权重一动，这里与表格一起变（② 的落点） -->
+        <!-- 当前排序读数：权重一动，这里与表格一起变（② 的落点）。JS 一进来就重算，
+             这里写的是"五项都 3 档"时的兜底结果。 -->
         <div class="dir-live">
-          <p class="dir-live__t" id="dirLiveT">当前排序：半导体材料工艺 89 &gt; 新能源电池研发助理 84 &gt; 省内国企材料检测岗 79</p>
+          <p class="dir-live__t" id="dirLiveT">当前排序：<b>半导体材料工艺 79</b> &gt; 省内国企材料检测岗 78 &gt; 新能源电池研发助理 69</p>
           <p class="dir-live__d" id="dirLiveD">这是把五个权重项按一样重、用上表的分数加出来的排序分，只用于比较。页头的匹配分 0.82 / 0.64 / 0.58 是演示预设比例，也不是模型测算。</p>
         </div>
 
         <div class="tbl-wrap">
           <table class="tbl dir-scores">
-            <caption>三条方向 × 五个比较项。刻度统一为 0–100；括号里是"在这件事上排第几"，只标出每条方向的强项与短板。</caption>
+            <caption>三条方向 × 五个比较项。刻度统一为 0–100；每一行只标出"最高"和"最低"两处，中间的不标 —— 一眼看出差在哪，而不是三列各说各的。</caption>
             <thead>
               <tr>
                 <th scope="col">比较项</th>
@@ -7047,33 +7156,33 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
             <tbody>
               <tr>
                 <th scope="row" data-key="true">专业对口</th>
-                <td data-num="true"><span class="dir-sc" data-tone="hi"><span class="dir-sc__v">92</span><span class="dir-sc__t"><i style="--dir-fill:.92"></i></span><span class="dir-sc__n">最高</span></span></td>
+                <td data-num="true"><span class="dir-sc" data-tone="hi"><span class="dir-sc__v">90</span><span class="dir-sc__t"><i style="--dir-fill:.90"></i></span><span class="dir-sc__n">最高</span></span></td>
                 <td data-num="true"><span class="dir-sc"><span class="dir-sc__v">74</span><span class="dir-sc__t"><i style="--dir-fill:.74"></i></span></span></td>
                 <td data-num="true"><span class="dir-sc"><span class="dir-sc__v">84</span><span class="dir-sc__t"><i style="--dir-fill:.84"></i></span></span></td>
               </tr>
               <tr>
                 <th scope="row" data-key="true">岗位数量</th>
-                <td data-num="true"><span class="dir-sc" data-tone="hi"><span class="dir-sc__v">86</span><span class="dir-sc__t"><i style="--dir-fill:.86"></i></span><span class="dir-sc__n">最高</span></span></td>
-                <td data-num="true"><span class="dir-sc"><span class="dir-sc__v">60</span><span class="dir-sc__t"><i style="--dir-fill:.60"></i></span><span class="dir-sc__n">最少</span></span></td>
+                <td data-num="true"><span class="dir-sc" data-tone="hi"><span class="dir-sc__v">90</span><span class="dir-sc__t"><i style="--dir-fill:.90"></i></span><span class="dir-sc__n">最高</span></span></td>
+                <td data-num="true"><span class="dir-sc"><span class="dir-sc__v">74</span><span class="dir-sc__t"><i style="--dir-fill:.74"></i></span><span class="dir-sc__n">最少</span></span></td>
                 <td data-num="true"><span class="dir-sc"><span class="dir-sc__v">70</span><span class="dir-sc__t"><i style="--dir-fill:.70"></i></span></span></td>
               </tr>
               <tr>
                 <th scope="row" data-key="true">起薪水平</th>
-                <td data-num="true"><span class="dir-sc"><span class="dir-sc__v">76</span><span class="dir-sc__t"><i style="--dir-fill:.76"></i></span></span></td>
-                <td data-num="true"><span class="dir-sc" data-tone="hi"><span class="dir-sc__v">90</span><span class="dir-sc__t"><i style="--dir-fill:.90"></i></span><span class="dir-sc__n">最高</span></span></td>
-                <td data-num="true"><span class="dir-sc"><span class="dir-sc__v">62</span><span class="dir-sc__t"><i style="--dir-fill:.62"></i></span><span class="dir-sc__n">最低</span></span></td>
+                <td data-num="true"><span class="dir-sc"><span class="dir-sc__v">78</span><span class="dir-sc__t"><i style="--dir-fill:.78"></i></span></span></td>
+                <td data-num="true"><span class="dir-sc" data-tone="hi"><span class="dir-sc__v">86</span><span class="dir-sc__t"><i style="--dir-fill:.86"></i></span><span class="dir-sc__n">最高</span></span></td>
+                <td data-num="true"><span class="dir-sc" data-tone="lo"><span class="dir-sc__v">58</span><span class="dir-sc__t"><i style="--dir-fill:.58"></i></span><span class="dir-sc__n">最低</span></span></td>
               </tr>
               <tr>
                 <th scope="row" data-key="true">稳定性</th>
-                <td data-num="true"><span class="dir-sc"><span class="dir-sc__v">74</span><span class="dir-sc__t"><i style="--dir-fill:.74"></i></span></span></td>
+                <td data-num="true"><span class="dir-sc"><span class="dir-sc__v">66</span><span class="dir-sc__t"><i style="--dir-fill:.66"></i></span></span></td>
                 <td data-num="true"><span class="dir-sc" data-tone="lo"><span class="dir-sc__v">52</span><span class="dir-sc__t"><i style="--dir-fill:.52"></i></span><span class="dir-sc__n">最低</span></span></td>
                 <td data-num="true"><span class="dir-sc" data-tone="hi"><span class="dir-sc__v">92</span><span class="dir-sc__t"><i style="--dir-fill:.92"></i></span><span class="dir-sc__n">最高</span></span></td>
               </tr>
               <tr>
                 <th scope="row" data-key="true">通勤与地点</th>
-                <td data-num="true"><span class="dir-sc"><span class="dir-sc__v">72</span><span class="dir-sc__t"><i style="--dir-fill:.72"></i></span></span></td>
-                <td data-num="true"><span class="dir-sc" data-tone="lo"><span class="dir-sc__v">58</span><span class="dir-sc__t"><i style="--dir-fill:.58"></i></span><span class="dir-sc__n">最低</span></span></td>
-                <td data-num="true"><span class="dir-sc" data-tone="hi"><span class="dir-sc__v">90</span><span class="dir-sc__t"><i style="--dir-fill:.90"></i></span><span class="dir-sc__n">最高</span></span></td>
+                <td data-num="true"><span class="dir-sc"><span class="dir-sc__v">70</span><span class="dir-sc__t"><i style="--dir-fill:.70"></i></span></span></td>
+                <td data-num="true"><span class="dir-sc" data-tone="lo"><span class="dir-sc__v">60</span><span class="dir-sc__t"><i style="--dir-fill:.60"></i></span><span class="dir-sc__n">最低</span></span></td>
+                <td data-num="true"><span class="dir-sc" data-tone="hi"><span class="dir-sc__v">88</span><span class="dir-sc__t"><i style="--dir-fill:.88"></i></span><span class="dir-sc__n">最高</span></span></td>
               </tr>
             </tbody>
           </table>
@@ -7173,18 +7282,18 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
         <div class="dir-rank" id="dirRank" aria-label="三条方向按当前权重的排序">
           <div class="dir-rank__c" data-dir-d="semi" data-dir-rank="1">
             <p class="dir-rank__h"><span class="dir-rank__pos">1</span><span class="dir-rank__n">半导体材料工艺</span><span class="dir-rank__m">主攻</span></p>
-            <span class="dir-rank__track" aria-hidden="true"><i class="dir-rank__bar" style="--dir-fill:.82"></i></span>
-            <p class="dir-rank__v"><b>82</b> <small>分</small> <span class="dir-rank__g">领先第 2 名 2 分</span></p>
+            <span class="dir-rank__track" aria-hidden="true"><i class="dir-rank__bar" style="--dir-fill:.79"></i></span>
+            <p class="dir-rank__v"><b>79</b> <small>分</small> <span class="dir-rank__g">领先第 2 名 1 分</span></p>
           </div>
           <div class="dir-rank__c" data-dir-d="mat" data-dir-rank="2">
             <p class="dir-rank__h"><span class="dir-rank__pos">2</span><span class="dir-rank__n">省内国企材料检测岗</span><span class="dir-rank__m">保底</span></p>
-            <span class="dir-rank__track" aria-hidden="true"><i class="dir-rank__bar" style="--dir-fill:.80"></i></span>
-            <p class="dir-rank__v"><b>80</b> <small>分</small> <span class="dir-rank__g">落后第 1 名 2 分</span></p>
+            <span class="dir-rank__track" aria-hidden="true"><i class="dir-rank__bar" style="--dir-fill:.78"></i></span>
+            <p class="dir-rank__v"><b>78</b> <small>分</small> <span class="dir-rank__g">落后第 1 名 1 分</span></p>
           </div>
           <div class="dir-rank__c" data-dir-d="new" data-dir-rank="3">
             <p class="dir-rank__h"><span class="dir-rank__pos">3</span><span class="dir-rank__n">新能源电池研发助理</span><span class="dir-rank__m">平行</span></p>
-            <span class="dir-rank__track" aria-hidden="true"><i class="dir-rank__bar" style="--dir-fill:.72"></i></span>
-            <p class="dir-rank__v"><b>72</b> <small>分</small> <span class="dir-rank__g">落后第 1 名 10 分</span></p>
+            <span class="dir-rank__track" aria-hidden="true"><i class="dir-rank__bar" style="--dir-fill:.69"></i></span>
+            <p class="dir-rank__v"><b>69</b> <small>分</small> <span class="dir-rank__g">落后第 1 名 10 分</span></p>
           </div>
         </div>
         <p class="dir-note" id="dirCalc">怎么算的：排序分 = Σ（该比较项的分数 × 你给的档位÷5）÷ Σ（档位÷5）。档位 1–5 对应权重 0.2 / 0.4 / 0.6 / 0.8 / 1.0，三档（默认）就是每项一样重。这里排出来的是"按你现在看重的这几件事"，所以它和页头那份演示预设比例（0.82 / 0.64 / 0.58，另一套口径）不一定同序。调档只改这页的排序，不写进你的档案。</p>
@@ -7276,7 +7385,7 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
       </div>
       <div class="sec__foot">
         <span class="tag tag--live">进行时</span>
-        你现在的排序分最高的方向是 <strong id="dirLead">半导体材料工艺（82 分）</strong> —— 但这只是比较结果，不代表已经选定。
+        你现在的排序分最高的方向是 <strong id="dirLead">半导体材料工艺（79 分）</strong> —— 但这只是比较结果，不代表已经选定。
       </div>
     </section>
 
@@ -7335,37 +7444,34 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
           </thead>
           <tbody>
             <tr>
-              <th scope="row" data-key="true">半导体材料工艺</th>
+              <th scope="row" data-key="true" rowspan="2">半导体材料工艺</th>
               <td>能清楚说明本人项目贡献</td>
               <td>现有课程经历尚未整理成项目说明</td>
               <td>写出一次实验的目标、本人行动、结果与证据<em class="dir-gap">直接补的是缺口最大的那一行（20 / 60）</em></td>
             </tr>
             <tr>
-              <th scope="row" data-key="true">半导体材料工艺</th>
               <td>了解岗位实际工作环境</td>
               <td>仅看过演示要求，尚未核对真实岗位</td>
               <td>核对两份真实岗位说明并记录差异</td>
             </tr>
             <tr>
-              <th scope="row" data-key="true">新能源电池研发助理</th>
+              <th scope="row" data-key="true" rowspan="2">新能源电池研发助理</th>
               <td>能清楚说明本人项目贡献</td>
               <td>现有课程经历尚未整理成项目说明</td>
               <td>把相关实验课程的那次实验写成项目说明</td>
             </tr>
             <tr>
-              <th scope="row" data-key="true">新能源电池研发助理</th>
               <td>核对本科助理岗与研究生研发岗的区别</td>
               <td>仅看过演示要求，尚未核对真实岗位</td>
               <td>核对两份真实岗位说明并记录差异</td>
             </tr>
             <tr>
-              <th scope="row" data-key="true">省内国企材料检测岗</th>
+              <th scope="row" data-key="true" rowspan="2">省内国企材料检测岗</th>
               <td>能清楚说明本人项目贡献</td>
               <td>现有课程经历尚未整理成项目说明</td>
               <td>写出一次实验的目标、本人行动、结果与证据</td>
             </tr>
             <tr>
-              <th scope="row" data-key="true">省内国企材料检测岗</th>
               <td>了解岗位实际工作环境</td>
               <td>仅看过演示要求，尚未核对真实岗位</td>
               <td>核对两份真实岗位说明并记录差异</td>
@@ -13241,7 +13347,7 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
           </div>
         </div>
         <div class="sec__body">
-          <div class="zoom rv-zoom" data-zoom="sum">
+          <div class="zoom" data-zoom="sum">
             <div class="zoombar" role="group" aria-label="看到多细">
               <button class="zoombtn" type="button" data-zoom-set="sum">摘要</button>
               <button class="zoombtn" type="button" data-zoom-set="mid">细节</button>
@@ -13275,15 +13381,15 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
           </div>
         </div>
         <div class="sec__body">
-          <div class="lens rv-lens" data-lens="source"
+          <div class="lens" data-lens="source"
                data-order-source="本人说明|示例对话|演示复盘记录|课程成绩演示快照"
                data-order-time="10 月第一周|10 月第二周"
                data-order-topic="具体行动|方法调整|外部输入|能力认定|还没解锁的缺口"
                data-order-weight="直接支撑结论|间接相关|结论暂时用不上"
-               data-hint-source="按谁说的看：你自己说明的 2 条、示例对话里的 1 条、演示复盘记录 3 条、课程成绩演示快照 2 条，另外两条缺口来自「预算与家庭支持均未填写」。哪一组最厚，哪一组就只有一句话。"
-               data-hint-time="按什么时候的看：10 月第一周 8 条，第二周 2 条 —— 这一周没留下新记录。"
+               data-hint-source="按谁说的看：本人说明 2 条、示例对话 2 条、演示复盘记录 3 条、课程成绩演示快照 2 条，另外 1 条缺口来自「预算与家庭支持均未填写」。哪一组最厚，哪一组就只有一句话。"
+               data-hint-time="按什么时候的看：10 月第一周 8 条，10 月第二周 2 条 —— 第二周只留下两条复盘，成长记录这一周一条没长。"
                data-hint-topic="按在说哪件事看：「还没解锁的缺口」3 条最厚，而「具体行动」只有 2 条：零散的动作有了，成型的做法还少。"
-               data-hint-weight="按够不够当依据看：10 条里只有 5 条真的在支撑那条结论，3 条跟行动没关系，2 条现在还用不上。缺口不在记录少，在这 5 条之外的那 5 条。">
+               data-hint-weight="按够不够当依据看：3 条直接支撑那条结论、4 条只间接相关、3 条现在还用不上。4 条复盘全在前两组，缺口堆在成长记录那 6 条里。">
             <div class="lensbar" role="tablist" aria-label="按什么看这批记录">
               <button class="lensbtn" type="button" role="tab" data-lens-set="source" aria-selected="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M5 8l7-5 7 5"/></svg>
@@ -13506,7 +13612,7 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
         <div class="sec__body">
           <div class="rv-conc" id="rvConc">
             <button class="rv-conc__r" type="button" aria-pressed="false" id="rvConcBtn"
-                    data-rv-from="rvItem1003,rvItem1005,rvItem1006,rvItem1007">
+                    data-rv-from="rvRow1003,rvRow1005,rvRow1006,rvRow1007">
               <span class="rv-conc__r2">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4.5 21 19H3z"/><path d="M12 10v4M12 16.6v.1"/></svg>
                 点一下，看它靠哪几条
@@ -14575,7 +14681,7 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
             </tbody>
           </table>
         </div>
-        <p class="sp-note">第 7 条是判定口径的根：淡入、位移、数字滚动**都不影响截屏结果**，所以它们全都不能把一页从"死的"救成"活的"。这一条直接否掉了"加过渡动画"这条路。</p>
+        <p class="sp-note">第 7 条是判定口径的根：淡入、位移、数字滚动<b>都不影响截屏结果</b>，所以它们全都不能把一页从"死的"救成"活的"。这一条直接否掉了"加过渡动画"这条路。</p>
       </div>
     </section>
 
@@ -14722,7 +14828,7 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
 
         <div class="sub">
           <p class="sub__t">字重样张（400 / 500 / 600 / 700）</p>
-          <p class="sub__d">中文在低分辨率屏上 400 与 500 的差别很弱，所以对比要拉到 600 / 700 才成立 —— 这也是这一版把 700 补进来的原因。</p>
+          <p class="sub__d">中文在低分辨率屏上 400 与 500 的差别很弱，所以对比要拉到 600 / 700 才成立 —— 这也是这一版把 700 补进来的原因。<b>在 Windows 的中文字体栈下，500 常常被就近落到 400 渲染</b>：所以 500 与 400 的差别不要用来承载"哪一条更重要"，那个落点交给 600。</p>
           <div class="sp-weights">
             <div class="sp-weight"><span class="sp-weight__demo" data-sp-fw="400">专业基础</span><span class="sp-weight__v">--fw-regular · 400 <span class="sp-ref">L99</span></span></div>
             <div class="sp-weight"><span class="sp-weight__demo" data-sp-fw="500">专业基础</span><span class="sp-weight__v">--fw-medium · 500 <span class="sp-ref">L99</span></span></div>
@@ -14756,7 +14862,7 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 19V9M12 19V5M18 19v-7"/></svg>
             令牌 · 间距 / 圆角 / 阴影 / 动效
           </h2>
-          <p class="sec__d">间距是 4px 基数的整条阶梯，节奏**强制递减**：轮间 24 &gt; 块间 16 &gt; 卡间 12 ≥ 卡内段间 12 &gt; 行间 8。下面每一条尺子都是真的占位，量出来的宽度就是令牌的值。</p>
+          <p class="sec__d">间距是 4px 基数的整条阶梯，节奏<b>强制递减</b>：轮间 24 &gt; 块间 16 &gt; 卡间 12 ≥ 卡内段间 12 &gt; 行间 8。下面每一条尺子都是真的占位，量出来的宽度就是令牌的值。</p>
         </div>
         <div class="sec__acts"><span class="sec__n">间距 10 档 · 圆角 5 + 药丸</span></div>
       </div>
@@ -14844,7 +14950,7 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h11l3 3v13H5z"/><path d="M9 9h6M9 13h6"/></svg>
             这两个颜色是从哪来的，能信几分
           </h2>
-          <p class="sec__d">配色是全站地基，所以每个色值都要留下可复现的证据。结论先写在这里：两个颜色都**不是**从官方 VI 手册拿到的 —— 官方没有发布过 VI 标准色数值。</p>
+          <p class="sec__d">配色是全站地基，所以每个色值都要留下可复现的证据。结论先写在这里：两个颜色都<b>不是</b>从官方 VI 手册拿到的 —— 官方没有发布过 VI 标准色数值。</p>
         </div>
         <div class="sec__acts"><span class="sec__n">B 级 1 · C 级 1</span></div>
       </div>
@@ -14962,10 +15068,10 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
                 <tr><th data-key scope="col">#</th><th scope="col">落点</th><th scope="col">用哪些件</th><th scope="col">在页面上表现成什么</th></tr>
               </thead>
               <tbody>
-                <tr><td data-key data-num>①</td><td>结构显形</td><td><span class="sp-code">.sec .kv .tbl .tl .cmp .delta</span></td><td>不是一个列表，是信息的形状：谁支撑谁、差多少、连到哪</td></tr>
-                <tr><td data-key data-num>②</td><td>组织权交给用户</td><td><span class="sp-code">.lens</span></td><td>同一批信息按来源 / 时间 / 主题 / 贡献<b>重新分组</b>（条目被搬动，不是换列表）</td></tr>
-                <tr><td data-key data-num>③</td><td>粒度与溯源</td><td><span class="sp-code">.zoom .src .tl</span></td><td>摘要 ↔ 细节 ↔ 原文连续缩放；每条信息能剥开看到来历（哪次对话、什么时候、谁给的）</td></tr>
-                <tr><td data-key data-num>④</td><td>状态与不确定性</td><td><span class="sp-code">.conf .state .stale .callout</span></td><td>已核实 / 对话里说的 / 推断 / 过期 / 冲突<b>有品质差异</b>，不是一律灰字</td></tr>
+                <tr><td data-key data-num data-label="#">①</td><td data-label="落点">结构显形</td><td data-label="用哪些件"><span class="sp-code">.sec .kv .tbl .tl .cmp .delta</span></td><td data-label="表现成什么">不是一个列表，是信息的形状：谁支撑谁、差多少、连到哪</td></tr>
+                <tr><td data-key data-num data-label="#">②</td><td data-label="落点">组织权交给用户</td><td data-label="用哪些件"><span class="sp-code">.lens</span></td><td data-label="表现成什么">同一批信息按来源 / 时间 / 主题 / 贡献<b>重新分组</b>（条目被搬动，不是换列表）</td></tr>
+                <tr><td data-key data-num data-label="#">③</td><td data-label="落点">粒度与溯源</td><td data-label="用哪些件"><span class="sp-code">.zoom .src .tl</span></td><td data-label="表现成什么">摘要 ↔ 细节 ↔ 原文连续缩放；每条信息能剥开看到来历（哪次对话、什么时候、谁给的）</td></tr>
+                <tr><td data-key data-num data-label="#">④</td><td data-label="落点">状态与不确定性</td><td data-label="用哪些件"><span class="sp-code">.conf .state .stale .callout</span></td><td data-label="表现成什么">已核实 / 对话里说的 / 推断 / 过期 / 冲突<b>有品质差异</b>，不是一律灰字</td></tr>
               </tbody>
             </table>
           </div>
@@ -16336,12 +16442,20 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
       var host = box.querySelector('.lens__items') || box;
       if (!items.length || !btns.length) return;
 
+      /* 过滤器与视角重组的配合：被筛掉的条目（[hidden]）不参与分组，也不计入组内条数 ——
+         否则"筛到只剩 2 条"时组头还写着 12 条，数字就成了假的。
+         视图侧改完筛选后触发一次 `c2:relens`（或用 C2.relens(view)）即可重组。 */
+      function live() {
+        return items.filter(function (el) { return !el.hasAttribute('hidden'); });
+      }
+
       function set(lens) {
+        var shownItems = live();
         var before = new Map();
-        items.forEach(function (el) { before.set(el, el.getBoundingClientRect().top); });
+        shownItems.forEach(function (el) { before.set(el, el.getBoundingClientRect().top); });
 
         var groups = [], map = {};
-        items.forEach(function (el) {
+        shownItems.forEach(function (el) {
           var k = el.getAttribute('data-' + lens) || '未归组';
           if (!map[k]) { map[k] = []; groups.push(k); }
           map[k].push(el);
@@ -16377,7 +16491,7 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
         /* FLIP：让"被搬动"这件事看得见。这是本项目允许的动效类型 ——
            它回答"这里发生了什么"（同一批东西换了组织方式），不是进场装饰。 */
         var moved = 0;
-        items.forEach(function (el) {
+        shownItems.forEach(function (el) {
           var dy = before.get(el) - el.getBoundingClientRect().top;
           if (Math.abs(dy) < 1) return;
           moved++;
@@ -16392,6 +16506,7 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
 
         box.setAttribute('data-lens', lens);
         box.setAttribute('data-lens-moved', String(moved));
+        box.setAttribute('data-lens-count', String(shownItems.length));
         btns.forEach(function (b) {
           b.setAttribute('aria-selected', String(b.getAttribute('data-lens-set') === lens));
         });
@@ -16403,6 +16518,10 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
 
       btns.forEach(function (b) {
         b.addEventListener('click', function () { set(b.getAttribute('data-lens-set')); });
+      });
+      /* 视图侧改完筛选后触发一次，重组分组（组头与组内条数会跟着筛选走） */
+      box.addEventListener('c2:relens', function () {
+        set(box.getAttribute('data-lens') || btns[0].getAttribute('data-lens-set'));
       });
       var initial = box.getAttribute('data-lens') || btns[0].getAttribute('data-lens-set');
       box.removeAttribute('data-lens');
@@ -16467,6 +16586,12 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
     },
     show: function (key) { location.hash = '#/' + key; },
     lens: initLens,
+    /** 改变条目可见性（筛选/搜索）之后调用：让视角重组按新的可见集合重新分组 */
+    relens: function (root) {
+      Array.prototype.forEach.call((root || document).querySelectorAll('.lens'), function (box) {
+        box.dispatchEvent(new CustomEvent('c2:relens'));
+      });
+    },
     zoom: initZoom,
     toast: toast,
     esc: esc,
@@ -16725,11 +16850,11 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
 
   /* 五个比较项：权重键 → 三条方向的分数（0–100 演示刻度；权威值在标记里的表格中） */
   var CRIT = [
-    { key: 'major',  name: '专业对口',   v: { semi: 92, new: 80, mat: 84 } },
-    { key: 'jobs',   name: '岗位数量',   v: { semi: 85, new: 70, mat: 72 } },
-    { key: 'pay',    name: '起薪水平',   v: { semi: 78, new: 85, mat: 68 } },
-    { key: 'stable', name: '稳定性',     v: { semi: 76, new: 62, mat: 88 } },
-    { key: 'place',  name: '通勤与地点', v: { semi: 80, new: 65, mat: 86 } }
+    { key: 'major',  name: '专业对口',   v: { semi: 90, new: 74, mat: 84 } },
+    { key: 'jobs',   name: '岗位数量',   v: { semi: 90, new: 74, mat: 70 } },
+    { key: 'pay',    name: '起薪水平',   v: { semi: 78, new: 86, mat: 58 } },
+    { key: 'stable', name: '稳定性',     v: { semi: 66, new: 52, mat: 92 } },
+    { key: 'place',  name: '通勤与地点', v: { semi: 70, new: 60, mat: 88 } }
   ];
   var DIRS = [
     { key: 'semi', name: '半导体材料工艺',   role: '主攻' },
@@ -16813,19 +16938,24 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
       });
       return best;
     }
-    function whyText() {
-      var w = decisiveCrit();
+    function whyText(list, key) {
+      var w = key ? { key: key, name: critOf(key).name } : decisiveCrit();
       if (!w) return '';
       var c = critOf(w.key);
-      var hi = DIRS[0], lo = DIRS[0];
-      DIRS.forEach(function (d) {
-        if (c.v[d.key] > c.v[hi.key]) hi = d;
-        if (c.v[d.key] < c.v[lo.key]) lo = d;
-      });
-      if (hi.key === lo.key) return '';
-      return '你给的档位里「' + w.name + '」最重，而这一项上' + hi.name + '（' +
-        c.v[hi.key] + '）比' + lo.name + '（' + c.v[lo.key] + '）高 ' +
-        (c.v[hi.key] - c.v[lo.key]) + ' 分。';
+      /* 说清楚"为什么是它"：拿第 1 名和第 2 名比这一项 —— 它们才是互相顶位的那两个 */
+      var hi = list[0];
+      var lo = list[1];
+      if (!hi || !lo) return '';
+      var a = c.v[hi.key], b = c.v[lo.key];
+      if (a === b) {
+        var third = list[2];
+        if (!third || c.v[hi.key] === c.v[third.key]) return '';
+        lo = third; b = c.v[third.key];
+      }
+      var up = a > b;
+      return '你给的档位里「' + w.name + '」最重，这一项上' + (up ? hi.name : lo.name) + '（' +
+        (up ? a : b) + '）比' + (up ? lo.name : hi.name) + '（' + (up ? b : a) + '）高 ' +
+        Math.abs(a - b) + ' 分。';
     }
 
     /* ---- 4. 一次刷完：表格、五档刻度、排序卡、读数条 ----------------------- */
@@ -16941,7 +17071,8 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
       });
       if (moved.length) {
         msg += moved.join('、') + '。';
-        if (after === STEPS || after === 1) msg += whyText();
+        /* 顺序真变了才解释为什么 —— 说明的是"哪一项把它顶上去的"，所以用刚调的这项 */
+        msg += whyText(list, key);
       } else {
         msg += '顺序没变，分数动了（' + list.map(function (d) { return d.score; }).join(' / ') + '）。';
       }
@@ -17240,6 +17371,181 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
   } else {
     boot();
   }
+})();
+
+/* ---- _src/js/intel.js ---- */
+/* =============================================================================
+ * 岗位资讯 · 视图行为（把筛选做成真的会筛）
+ * -----------------------------------------------------------------------------
+ * 为什么需要这个文件：intel.html 的类别 chip / 热词 chip / 排序 chip / 清空筛选 /
+ * 空态都是**可点的**，但上一个作者只被授权写 CSS，所以它们点了不动 ——
+ * 页面看起来对、探针也全绿（无异常、无溢出），可"点了不筛"正是本项目最忌讳的那种
+ * "看起来完成了"的假完成。这一页的落点②（组织权交给用户）必须是真的。
+ *
+ * 三条轴各自不同语义，所以三种形状（见 intel.css）：
+ *   类别 chip  = 多选（并集）；「全部」= 清空类别
+ *   热词 chip  = 多选（且集：每个词都要在正文里出现）
+ *   排序 chip  = 互斥单选（相关度 / 什么时候用得上 / 类别）
+ *
+ * 与视角重组的配合：筛完必须调 C2.relens(view) —— 否则组头与组内条数还是筛前的数字
+ * （引擎只对可见条目分组，`hidden` 的不参与，见 _src/app.js 的 live()）。
+ * ========================================================================== */
+(function () {
+  'use strict';
+
+  C2.onView('intel', function () {
+    var view = document.querySelector('[data-view="intel"]');
+    if (!view) return;
+    var host = view.querySelector('.lens__items');
+    var cards = Array.prototype.slice.call(view.querySelectorAll('.int-card'));
+    if (!host || !cards.length) return;
+
+    var kindBtns = Array.prototype.slice.call(view.querySelectorAll('.chipf[data-int-kind]'));
+    var hotBtns = Array.prototype.slice.call(view.querySelectorAll('.chipf[data-int-hot]'));
+    var sortBtns = Array.prototype.slice.call(view.querySelectorAll('.chipf[data-int-sort]'));
+    var echo = document.getElementById('intEcho');
+    var countEl = document.getElementById('intCount');
+    var empty = document.getElementById('intEmpty');
+    var reset = document.getElementById('intReset');
+    var onlyCareer = document.getElementById('intOnlyCareer');
+    var emptyReset = document.getElementById('intEmptyReset');
+
+    var state = { kinds: [], hots: [], sort: 'fit' };
+    var SORT_NAME = { fit: '对你的相关度', when: '什么时候用得上', kind: '类别' };
+    var FIT_RANK = {
+      '直接对上主攻方向': 0,
+      '用来比较两个方向': 1,
+      '决定前必须核对': 2,
+      '不影响现在的决定': 3
+    };
+
+    function textOf(el) { return (el.textContent || '').replace(/\s+/g, ' '); }
+
+    function matches(el, kinds, hots) {
+      if (kinds.length && kinds.indexOf(el.getAttribute('data-kind')) < 0) return false;
+      for (var i = 0; i < hots.length; i++) {
+        if (textOf(el).indexOf(hots[i]) < 0) return false;
+      }
+      return true;
+    }
+
+    function sortKeyOf(el, sort) {
+      var idx = el.getAttribute('data-int-idx') || '';
+      if (sort === 'fit') {
+        var r = FIT_RANK[el.getAttribute('data-fit')];
+        return (r === undefined ? 9 : r) + '-' + idx;
+      }
+      if (sort === 'when') return (el.getAttribute('data-when') || '') + '-' + idx;
+      return (el.getAttribute('data-kind') || '') + '-' + idx;
+    }
+
+    function apply(silentMsg) {
+      /* 1) 排序是真的改 DOM 顺序（不是只写个 data 属性）：先重排，再让引擎重组分组，
+            这样组内顺序也跟着排序走。 */
+      cards.slice().sort(function (a, b) {
+        var ka = sortKeyOf(a, state.sort), kb = sortKeyOf(b, state.sort);
+        return ka < kb ? -1 : ka > kb ? 1 : 0;
+      }).forEach(function (el) { host.appendChild(el); });
+
+      /* 2) 筛选 */
+      var shown = 0;
+      cards.forEach(function (el) {
+        if (matches(el, state.kinds, state.hots)) { el.removeAttribute('hidden'); shown++; }
+        else el.setAttribute('hidden', '');
+      });
+
+      /* 3) 视角重组按新的可见集合重算（组头与"N 条"跟着走） */
+      C2.relens(view);
+
+      /* 4) chip 上的数字 = 点它之后会剩下几条（所以数字本身就是"下一步会发生什么"） */
+      kindBtns.forEach(function (b) {
+        var k = b.getAttribute('data-int-kind');
+        var n = cards.filter(function (el) {
+          return matches(el, k === '全部' ? [] : [k], state.hots);
+        }).length;
+        var s = b.querySelector('small');
+        if (s) s.textContent = String(n);
+        b.setAttribute('aria-pressed', String(k === '全部' ? state.kinds.length === 0 : state.kinds.indexOf(k) >= 0));
+      });
+      hotBtns.forEach(function (b) {
+        var w = b.getAttribute('data-int-hot');
+        var on = state.hots.indexOf(w) >= 0;
+        var next = on ? state.hots.filter(function (x) { return x !== w; }) : state.hots.concat([w]);
+        var n = cards.filter(function (el) { return matches(el, state.kinds, next); }).length;
+        var s = b.querySelector('small');
+        if (s) s.textContent = String(n);
+        b.setAttribute('aria-pressed', String(on));
+      });
+      sortBtns.forEach(function (b) {
+        b.setAttribute('aria-pressed', String(b.getAttribute('data-int-sort') === state.sort));
+      });
+
+      /* 5) 回声与空态 */
+      if (silentMsg) {
+        if (echo) echo.textContent = silentMsg;
+      } else if (echo) {
+        var parts = [state.kinds.length ? '只看 ' + state.kinds.join('、') : '不限类别'];
+        if (state.hots.length) parts.push('正文里有「' + state.hots.join('」且「') + '」');
+        parts.push('排序按' + SORT_NAME[state.sort]);
+        echo.textContent = parts.join(' · ') + '：剩下 ' + shown + ' 条。分组头与 chip 上的数字都跟着变了。';
+      }
+      if (countEl) countEl.textContent = shown + ' 条';
+      if (empty) empty.hidden = shown > 0;
+      return shown;
+    }
+
+    kindBtns.forEach(function (b) {
+      b.addEventListener('click', function () {
+        var k = b.getAttribute('data-int-kind');
+        if (k === '全部') {
+          state.kinds = [];
+        } else {
+          var i = state.kinds.indexOf(k);
+          if (i >= 0) state.kinds.splice(i, 1); else state.kinds.push(k);
+        }
+        apply();
+      });
+    });
+
+    hotBtns.forEach(function (b) {
+      b.addEventListener('click', function () {
+        var w = b.getAttribute('data-int-hot');
+        var i = state.hots.indexOf(w);
+        if (i >= 0) state.hots.splice(i, 1); else state.hots.push(w);
+        apply();
+      });
+    });
+
+    sortBtns.forEach(function (b) {
+      b.addEventListener('click', function () {
+        state.sort = b.getAttribute('data-int-sort');
+        apply();
+      });
+    });
+
+    function clearAll(msg) {
+      state.kinds = [];
+      state.hots = [];
+      state.sort = 'fit';
+      apply(msg);
+      C2.toast('筛选已清空，12 条全在。');
+    }
+    if (reset) reset.addEventListener('click', function () {
+      clearAll('筛选已清空：12 条全在，排序回到按对你的相关度。');
+    });
+    if (emptyReset) emptyReset.addEventListener('click', function () {
+      clearAll('筛选已清空：12 条全在。');
+    });
+    if (onlyCareer) onlyCareer.addEventListener('click', function () {
+      var already = state.kinds.length === 1 && state.kinds[0] === '岗位示例';
+      state.kinds = already ? [] : ['岗位示例'];
+      state.hots = [];
+      apply();
+      C2.toast(already ? '取消「只看岗位示例」，12 条全在。' : '只看岗位示例：5 条。');
+    });
+
+    apply();
+  });
 })();
 
 /* ---- _src/js/login.js ---- */
@@ -18329,6 +18635,12 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
         whens.push(el.getAttribute('data-rv-when') || '');
         var st = el.getAttribute('data-rv-st') || '未标状态';
         stats[st] = (stats[st] || 0) + 1;
+      });
+      /* 念出来的顺序跟页面一致：后面那条时间线也是倒序，两处不能各排各的。 */
+      whens.sort(function (a, b) {
+        var na = parseInt(String(a).replace(/[^0-9]/g, ''), 10);
+        var nb = parseInt(String(b).replace(/[^0-9]/g, ''), 10);
+        return nb - na;
       });
       var mix = Object.keys(stats).map(function (k) { return stats[k] + ' 条' + k; }).join('、');
 

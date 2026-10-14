@@ -48,6 +48,12 @@
         var st = el.getAttribute('data-rv-st') || '未标状态';
         stats[st] = (stats[st] || 0) + 1;
       });
+      /* 念出来的顺序跟页面一致：后面那条时间线也是倒序，两处不能各排各的。 */
+      whens.sort(function (a, b) {
+        var na = parseInt(String(a).replace(/[^0-9]/g, ''), 10);
+        var nb = parseInt(String(b).replace(/[^0-9]/g, ''), 10);
+        return nb - na;
+      });
       var mix = Object.keys(stats).map(function (k) { return stats[k] + ' 条' + k; }).join('、');
 
       /* 这几句是从上面数出来的固定事实，不是模板填空 —— 数字对不上就该改数据。 */

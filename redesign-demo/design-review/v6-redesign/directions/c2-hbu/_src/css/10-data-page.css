@@ -58,7 +58,11 @@
 .pgh__acts{margin-left:auto;flex:0 0 auto;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 /* 面包屑：分组 › 页面。它回答"我在全站的什么位置"，不是装饰 */
 .crumb{display:flex;align-items:center;gap:7px;font-size:var(--fs-12);color:var(--c-text-3)}
-.crumb a{color:var(--c-text-3)}
+/* 面包屑：分组 › 页面。它回答"我在全站的什么位置"，不是装饰。
+   高度必须 ≥24px：只有文字高度（21px）时，它是全站唯一一批"看着像链接、却比手指小"的目标。
+   WCAG 2.5.8 的豁免是给"句子里的行内链接"的，面包屑是一排独立目标，不在豁免里。
+   两个作者都独立报了这处（intel 与 academic/review），所以在这里一次修掉，不在各视图里 hack。 */
+.crumb a{display:inline-flex;align-items:center;min-height:24px;padding:0 2px;color:var(--c-text-3)}
 .crumb a:hover{color:var(--c-primary)}
 .crumb svg{width:12px;height:12px;opacity:.7}
 
@@ -206,6 +210,7 @@
 .srcs{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .src{
   display:inline-flex;align-items:center;gap:6px;
+  max-width:100%;
   padding:3px 9px 3px 7px;border-radius:var(--r-pill);
   background:var(--c-surface-2);border:1px solid var(--c-border);
   font-size:var(--fs-12);color:var(--c-text-3);line-height:1.5;
@@ -214,6 +219,10 @@
 .src:hover{background:var(--c-surface-solid);border-color:var(--c-border-strong)}
 .src__ic{display:grid;place-items:center;width:15px;height:15px;flex:0 0 auto;color:var(--c-text-3)}
 .src__ic svg{width:14px;height:14px}
+/* nowrap 让来源名与时间在宽屏上不会断行（重要），但在窄屏上它是**溢出源**：
+   一句长来源名（"本地课程与成绩演示快照 · 10 月 6 日"）在 390 下宽 404px > 容器 298px，
+   实测把日程页的正文撑破（probe --wrap：p.sc-daycard__v 404>298）。
+   同一个根因有两位作者在各自视图里补过；根因在共享层，所以在这里一次修掉。 */
 .src__k{font-weight:var(--fw-semibold);color:var(--c-text-2);white-space:nowrap}
 .src__w{white-space:nowrap;font-variant-numeric:tabular-nums}
 .src--chat .src__ic{color:var(--c-primary)}
@@ -246,8 +255,11 @@
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:var(--sp-3)}
 /* 带说明句的瓦片：148px 一列会把说明折成四行。给它们更宽的列（2×2 或 3 列） */
 .stats--wide{grid-template-columns:repeat(auto-fit,minmax(238px,1fr))}
-/* 主列窄（旁边有侧栏）时用这对：不高不低，2 列 */
-.stats--pair{grid-template-columns:repeat(auto-fit,minmax(262px,1fr))}
+/* 主列窄（旁边有侧栏）时用这对：**确定的两列**，不是 auto-fit。
+   为什么不用 auto-fit：主列在 1280 下只有 916px（.pg 1180 − 侧栏 264），
+   minmax(262px) 只放得下 3 列，4 个瓦片就变成 3+1 的孤行 —— 有人实测到并报了这一点。
+   要"2×2"就写死 2 列，别指望 auto-fit 的断点刚好落对。手机档（≤767）由媒体查询改成 1 列。 */
+.stats--pair{grid-template-columns:repeat(2,minmax(0,1fr))}
 .stat{
   display:flex;flex-direction:column;gap:3px;
   padding:var(--sp-3) var(--sp-4);
@@ -445,7 +457,9 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
   background:var(--c-primary-weak);border-color:var(--c-primary-border);
   color:var(--c-primary);font-weight:var(--fw-semibold);
 }
-.chipf small{color:var(--c-text-3);font-variant-numeric:tabular-nums}
+/* ⚠ 必须给字号：<small> 的浏览器默认值是 0.833em ≈ 11.67px，越出"字号只有 12/14/16/20/30"
+   这条硬纪律（intel / plan / gallery 三个视图都中过这一条）。 */
+.chipf small{font-size:var(--fs-12);color:var(--c-text-3);font-variant-numeric:tabular-nums}
 .chipf[aria-pressed="true"] small{color:var(--c-primary)}
 
 /* =============================================================================
@@ -490,9 +504,23 @@ details[open]>.fold__sum svg{transform:rotate(90deg)}
   .sec__body{padding:var(--sp-3) var(--sp-4) var(--sp-4)}
   .sec__foot{padding:var(--sp-3) var(--sp-4);border-radius:0 0 var(--r-lg) var(--r-lg)}
   .sec__acts{margin-left:0;width:100%;justify-content:flex-start}
-  .lensbar{width:100%;align-self:stretch;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none}
-  .lensbar::-webkit-scrollbar{display:none}
+  /* 窄屏的视角重组条：**换行**，不要横滚。
+     横滚会把第四个视角藏在屏幕外 —— 那等于把"按什么看"这件事藏了一半，
+     而"组织权交给用户"正是数据页活的主承重件。有人报过这里 flex-wrap 没生效：
+     原因是本文件早先在这一档写了 flex-wrap:nowrap + overflow-x:auto（我自己的规则），
+     不是基线声明失效。改成 wrap 之后所有带 .lens 的页面都受益。 */
+  .lensbar{width:100%;align-self:stretch;flex-wrap:wrap}
+  .lensbtn{flex:1 1 auto;justify-content:center}
+  /* 窄屏上 nowrap 的短标签必须能断，否则一句来源名就能把整页顶宽（见上面 .src 的注释） */
+  .src{flex-wrap:wrap}
+  .src__k,.src__w{white-space:normal}
+  /* .conf 同理：它本是给"依据充分 / 待验证"这种短标签用的，但有页面把**整句**
+     说明塞了进来（实测 schedule 的冲突说明 404px > 容器 298px）。窄屏放开断行兜底，
+     宽屏保持 nowrap（短标签不换行才整齐）。 */
+  .conf{white-space:normal;max-width:100%;flex-wrap:wrap}
   .stats{grid-template-columns:repeat(auto-fit,minmax(128px,1fr))}
+  /* 带说明句的瓦片在手机上排一列，别把一句话挤成四行 */
+  .stats--pair{grid-template-columns:minmax(0,1fr)}
   .stat__n{font-size:var(--fs-20)}
   .cmp__r{grid-template-columns:minmax(0,1fr) auto;gap:6px var(--sp-2);align-items:start}
   .cmp__k{text-align:left;grid-column:1 / -1}

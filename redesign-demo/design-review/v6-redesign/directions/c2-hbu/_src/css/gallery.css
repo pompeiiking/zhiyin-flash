@@ -96,4 +96,11 @@
   .gl-grid{grid-template-columns:minmax(0,1fr)}
   .gl-spec{padding:var(--sp-3)}
   .gl-dont{padding:var(--sp-3)}
+  /* 类名 chip 是 nowrap 的（宽屏上必须，否则 `.lens__item` 会从中间断开），
+     但在窄屏上它就是溢出源：实测 span.pick__t 111>77 → .pick 377>298 →
+     整个 .pg 423>390。窄屏放开断行，宽屏保持不许断。 */
+  [data-view="gallery"] .gl-cls,
+  [data-view="gallery"] .gl-cell{white-space:normal;overflow-wrap:anywhere}
+  [data-view="gallery"] .gl-cells{min-width:0}
+  [data-view="gallery"] .pick__r{align-items:flex-start}
 }

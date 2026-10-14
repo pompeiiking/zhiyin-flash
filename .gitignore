@@ -136,3 +136,8 @@ redesign-demo/design-review/**/*.png
 *.orig
 _backup-*
 *_backup-*
+
+# c2-hbu 并行施工时作者留下的草稿脚本（下划线前缀 = 一次性的诊断/探查脚本）。
+# 口径同 :115：**脚本入库，产物不入库** —— 正式的 _tools/*.mjs 入库，
+# `_tools/_*` 这种一次性的不入库（2026-10-14 有一批误入过提交，已清）。
+redesign-demo/design-review/v6-redesign/directions/c2-hbu/_tools/_*

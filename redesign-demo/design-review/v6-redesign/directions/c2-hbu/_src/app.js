@@ -602,12 +602,20 @@
       var host = box.querySelector('.lens__items') || box;
       if (!items.length || !btns.length) return;
 
+      /* 过滤器与视角重组的配合：被筛掉的条目（[hidden]）不参与分组，也不计入组内条数 ——
+         否则"筛到只剩 2 条"时组头还写着 12 条，数字就成了假的。
+         视图侧改完筛选后触发一次 `c2:relens`（或用 C2.relens(view)）即可重组。 */
+      function live() {
+        return items.filter(function (el) { return !el.hasAttribute('hidden'); });
+      }
+
       function set(lens) {
+        var shownItems = live();
         var before = new Map();
-        items.forEach(function (el) { before.set(el, el.getBoundingClientRect().top); });
+        shownItems.forEach(function (el) { before.set(el, el.getBoundingClientRect().top); });
 
         var groups = [], map = {};
-        items.forEach(function (el) {
+        shownItems.forEach(function (el) {
           var k = el.getAttribute('data-' + lens) || '未归组';
           if (!map[k]) { map[k] = []; groups.push(k); }
           map[k].push(el);
@@ -643,7 +651,7 @@
         /* FLIP：让"被搬动"这件事看得见。这是本项目允许的动效类型 ——
            它回答"这里发生了什么"（同一批东西换了组织方式），不是进场装饰。 */
         var moved = 0;
-        items.forEach(function (el) {
+        shownItems.forEach(function (el) {
           var dy = before.get(el) - el.getBoundingClientRect().top;
           if (Math.abs(dy) < 1) return;
           moved++;
@@ -658,6 +666,7 @@
 
         box.setAttribute('data-lens', lens);
         box.setAttribute('data-lens-moved', String(moved));
+        box.setAttribute('data-lens-count', String(shownItems.length));
         btns.forEach(function (b) {
           b.setAttribute('aria-selected', String(b.getAttribute('data-lens-set') === lens));
         });
@@ -669,6 +678,10 @@
 
       btns.forEach(function (b) {
         b.addEventListener('click', function () { set(b.getAttribute('data-lens-set')); });
+      });
+      /* 视图侧改完筛选后触发一次，重组分组（组头与组内条数会跟着筛选走） */
+      box.addEventListener('c2:relens', function () {
+        set(box.getAttribute('data-lens') || btns[0].getAttribute('data-lens-set'));
       });
       var initial = box.getAttribute('data-lens') || btns[0].getAttribute('data-lens-set');
       box.removeAttribute('data-lens');
@@ -733,6 +746,12 @@
     },
     show: function (key) { location.hash = '#/' + key; },
     lens: initLens,
+    /** 改变条目可见性（筛选/搜索）之后调用：让视角重组按新的可见集合重新分组 */
+    relens: function (root) {
+      Array.prototype.forEach.call((root || document).querySelectorAll('.lens'), function (box) {
+        box.dispatchEvent(new CustomEvent('c2:relens'));
+      });
+    },
     zoom: initZoom,
     toast: toast,
     esc: esc,

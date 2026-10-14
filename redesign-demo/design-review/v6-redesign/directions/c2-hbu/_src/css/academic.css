@@ -175,6 +175,8 @@
 
 /* ---- 7 · 核验是一个过程：四步各有状态，不是打一个勾 ---------------------- */
 .ac-tl .tl__d{max-width:62ch}
+/* .tl__meta 是 flex 容器：里面两个 span 挨着会读成一句话，给它补上间隔 */
+.ac-tl .tl__meta{gap:9px}
 .ac-found{
   display:inline-flex;align-items:center;padding:2px 8px;border-radius:var(--r-pill);
   background:var(--c-done-weak);border:1px solid var(--c-done-border);

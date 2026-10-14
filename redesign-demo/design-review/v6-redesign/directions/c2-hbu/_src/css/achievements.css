@@ -18,6 +18,9 @@
 [data-view="achievements"] .chipbtn{min-height:44px}
 [data-view="achievements"] .crumb a{
   display:inline-flex;align-items:center;min-height:44px;
+  /* 面包屑的两个文字链接只有 36 / 48 宽 —— 加上 4px 水平内边距，
+     两个字的那一个也到 44，探针的 <44px 计数才是 0 */
+  padding:0 4px;margin:0 -4px;
 }
 
 /* ---- 记录卡的头：标记 / 名称与说明 / 状态 ---------------------------------- */
@@ -94,6 +97,8 @@
   margin-top:var(--sp-3);font-size:var(--fs-12);line-height:var(--lh-snug);color:var(--c-text-3);
 }
 .ach__live[data-on="true"]{color:var(--c-text-2)}
+/* 勾选框要和标题首行对齐（基线 1px 是按单行标题定的，本页标题两行） */
+[data-view="achievements"] .pick__box{margin-top:7px}
 
 /* ---- 窄屏：标记与状态换行，解锁框内边距收一档 ------------------------------ */
 @media (max-width:767px){
@@ -102,4 +107,23 @@
   .ach__name{font-size:var(--fs-14)}
   .ach__unlock{padding:var(--sp-3)}
   [data-view="achievements"] .lens__item{padding:var(--sp-3)}
+  /* 来源 chip 里的 .src__k / .src__w 是 nowrap（共享组件），窄屏下它会把
+     .ach__trace 顶宽 16px 并被悄悄裁掉一个边。这里只让文字在 chip 内换行。 */
+  [data-view="achievements"] .src{
+    flex-wrap:wrap;align-items:flex-start;max-width:100%;
+  }
+  [data-view="achievements"] .src__k,
+  [data-view="achievements"] .src__w{white-space:normal}
+
+  /* 视角重组条在窄屏的排布由共享层负责（10-data-page.css 的 ≤767 档已改成
+     width:100% + flex-wrap:wrap + .lensbtn{flex:1 1 auto}）。
+     这里原先有一份"视图层 2×2 网格"的兜底 —— 那是在跟共享层较劲（本工程的老毛病），
+     Lead 已经把根因修在共享层，所以删掉这份兜底，让 21 个页面长得一样。 */
+
+  /* .pick__r 的尾巴是 nowrap（共享组件），390 下它会把标题挤成 34px 宽。
+     窄屏改成两行：标题占满一行，尾注换到下面并允许折行。 */
+  [data-view="achievements"] .pick__r{flex-wrap:wrap;align-items:flex-start}
+  [data-view="achievements"] .pick__t{flex:1 1 100%}
+  [data-view="achievements"] .pick__tail{flex:1 1 100%;white-space:normal;padding-left:31px}
+  [data-view="achievements"] .pick__tail .conf{white-space:normal}
 }

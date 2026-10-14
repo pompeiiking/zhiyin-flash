@@ -17,11 +17,11 @@
 
   /* 五个比较项：权重键 → 三条方向的分数（0–100 演示刻度；权威值在标记里的表格中） */
   var CRIT = [
-    { key: 'major',  name: '专业对口',   v: { semi: 88, new: 74, mat: 84 } },
-    { key: 'jobs',   name: '岗位数量',   v: { semi: 86, new: 78, mat: 70 } },
-    { key: 'pay',    name: '起薪水平',   v: { semi: 80, new: 90, mat: 62 } },
-    { key: 'stable', name: '稳定性',     v: { semi: 74, new: 52, mat: 92 } },
-    { key: 'place',  name: '通勤与地点', v: { semi: 76, new: 58, mat: 90 } }
+    { key: 'major',  name: '专业对口',   v: { semi: 90, new: 74, mat: 84 } },
+    { key: 'jobs',   name: '岗位数量',   v: { semi: 90, new: 74, mat: 70 } },
+    { key: 'pay',    name: '起薪水平',   v: { semi: 78, new: 86, mat: 58 } },
+    { key: 'stable', name: '稳定性',     v: { semi: 66, new: 52, mat: 92 } },
+    { key: 'place',  name: '通勤与地点', v: { semi: 70, new: 60, mat: 88 } }
   ];
   var DIRS = [
     { key: 'semi', name: '半导体材料工艺',   role: '主攻' },
