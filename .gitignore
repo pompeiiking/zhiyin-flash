@@ -131,3 +131,8 @@ redesign-demo/_shots/
 # index.html 与文档要入库（那是决策依据），实拍不入库。
 redesign-demo/design-review/**/shots/
 redesign-demo/design-review/**/*.png
+
+# 编辑过程中的临时备份（.orig / _backup-*）：产物不入库，脚本入库
+*.orig
+_backup-*
+*_backup-*
