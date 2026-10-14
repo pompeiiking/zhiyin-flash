@@ -261,7 +261,7 @@ const crowdedDays=computed(()=>[1,2,3,4,5,6,7].filter(wd=>coursesOn(thisWeek.val
 const undatedTasks=computed(()=>demo.use.now.value.filter(task=>!task.due))
 </script>
 <template>
-<div class="ws-page schedule-page"><PageHeading title="日历与课表" description="关键节点、今日任务和学校课程，各自保留来源。"><template #meta><div class="sched-meta"><span class="sched-meta__tag sched-meta__tag--demo">本地演示数据</span><span class="sched-meta__tag">{{ backendDemo.state.academic?.term || '学期未导入' }} · 第 {{ thisWeek?.n }} 周</span><span class="sched-meta__tag">{{ timed.length }} 门课有节次 · 本周课 {{ hours(thisWeek?.courseHours ?? 0) }}</span><span class="sched-meta__sep" aria-hidden="true" /><ConfidenceBadge :confidence="0.9" /><ConfidenceBadge :confidence="0.55" /><ConfidenceBadge v-if="pendingTimeCourses || pendingMarkCount" :confidence="null" /></div></template><button class="btn" :disabled="calendarBusy" @click="loadCalendar">{{ calendarBusy?'正在读取…':(readOnce?'更新最新日程':'读取最新日程') }}</button><RouterLink class="btn" to="/academic"><UiIcon name="upload" :size="16" />管理导入资料</RouterLink></PageHeading>
+<div class="ws-page schedule-page"><PageHeading title="日历与课表" description="关键节点、今日任务和学校课程，各自保留来源。"><template #meta><div class="sched-meta"><span class="sched-meta__tag sched-meta__tag--demo">本地资料</span><span class="sched-meta__tag">{{ backendDemo.state.academic?.term || '学期未导入' }} · 第 {{ thisWeek?.n }} 周</span><span class="sched-meta__tag">{{ timed.length }} 门课有节次 · 本周课 {{ hours(thisWeek?.courseHours ?? 0) }}</span><span class="sched-meta__sep" aria-hidden="true" /><ConfidenceBadge :confidence="0.9" /><ConfidenceBadge :confidence="0.55" /><ConfidenceBadge v-if="pendingTimeCourses || pendingMarkCount" :confidence="null" /></div></template><button class="btn" :disabled="calendarBusy" @click="loadCalendar">{{ calendarBusy?'正在读取…':(readOnce?'更新最新日程':'读取最新日程') }}</button><RouterLink class="btn" to="/academic"><UiIcon name="upload" :size="16" />管理导入资料</RouterLink></PageHeading>
 <p v-if="calendarError" class="ws-field-error" role="alert">{{ calendarError }}</p>
 <!-- ======= ① 结构显形：三周的课量与任务量摆在同一把尺子上 =======
      它是"课多的一周任务排得少"的**可核对版本**：两根横条共用一根刻度，
@@ -307,7 +307,7 @@ const undatedTasks=computed(()=>demo.use.now.value.filter(task=>!task.due))
 <div class="course-mobile"><div class="course-day-picker" role="group" aria-label="课程日期"><button v-for="w in 7" :key="w" :aria-pressed="courseDay===w" @click="courseDay=w">周{{ weekdays[w-1] }}</button></div><article v-for="(c,i) in visibleCourses" :key="i" class="course-list-item"><div>{{ c.start_period }}–{{ c.end_period }}<small>节</small></div><section><h3><button class="ws-text-button course-title" @click="courseDetails={...c}">{{ c.name }}<UiIcon name="arrow" :size="16"/></button></h3><p>{{ c.place || '地点未提供' }}<span v-if="c.weeks"> · {{ c.weeks }} 周</span></p></section></article><EmptyState v-if="!visibleCourses.length" kind="schedule" size="sm" :heading-level="4" :title="'周' + weekdays[courseDay-1] + '没有已导入的课程'" description="切到其他星期，或先回到资料页导入课表。" /></div>
 <StatusBanner v-if="unscheduled.length || timed.some(c=>c.end_period!>40)" tone="warning" class="ws-section" :message="'有 ' + (unscheduled.length + timed.filter(c=>c.end_period!>40).length) + ' 门课程的上课时间没有补全，这些课不会排进上面的课表；展开下方列表可逐条核对。'" /><Foldable v-if="unscheduled.length || timed.some(c=>c.end_period!>40)" title="时间待补充与其他节次的课程" variant="section" :count="unscheduled.length + timed.filter(c=>c.end_period!>40).length"><ul class="ws-mini-list"><li v-for="(c,i) in [...unscheduled,...timed.filter(c=>c.end_period!>40)]" :key="i">{{ c.name }} · {{ courseTimeLabel(c) }}</li></ul></Foldable><p class="ws-muted ws-section">课程按导入节次展示。相同时段的课程可能重叠，请回到资料页核对；空格仅表示快照中没有课程。</p></div></template>
 <section v-else class="ws-section"><EmptyState kind="schedule" :heading-level="2" title="课表还没有放进来" description="导入已有课表后，课程会按节次排列。" action-to="/academic" action-label="去导入课表" /></section>
-</PanelTabs><StatusBanner v-if="backendDemo.state.liveCalendar?.some(n=>!nodeDate(n.due_at))" tone="warning" class="ws-section" :message="'有 ' + backendDemo.state.liveCalendar.filter(n=>!nodeDate(n.due_at)).length + ' 条事项没有提供日期，因此不会出现在上面的日历里；展开下方列表可逐条核对。'" /><Foldable v-if="backendDemo.state.liveCalendar?.some(n=>!nodeDate(n.due_at))" title="日期待补充的事项" variant="section" :count="backendDemo.state.liveCalendar.filter(n=>!nodeDate(n.due_at)).length"><ul class="ws-mini-list"><li v-for="n in backendDemo.state.liveCalendar.filter(n=>!nodeDate(n.due_at))" :key="n.node_id">{{ n.title }}<p>{{ n.related_task_text }}</p></li></ul></Foldable><TimetableAdvice/><nav class="ws-related"><RouterLink to="/home">查看今日行动<UiIcon name="action" :size="16"/></RouterLink><RouterLink to="/academic">更新学校资料<UiIcon name="academic" :size="16"/></RouterLink></nav><p class="ws-demo-note">{{ backendDemo.state.liveCalendar!==null?'节点来自本次读取的日程。未提供日期的事项另行保留。':'关键节点为2026年10月示例。' }} 计划任务与课程读取各自的共享记录。</p><InfoSheet :open="courseDetails!==null" shape="sheet" :title="courseDetails?.name ?? '课程详情'" @close="courseDetails=null"><dl class="course-detail"><div><dt>上课时间</dt><dd>{{ courseDetails ? courseTimeLabel(courseDetails) : '' }}</dd></div><div><dt>地点</dt><dd>{{ courseDetails?.place || '未提供' }}</dd></div><div><dt>周次</dt><dd>{{ courseDetails?.weeks || '未提供' }}</dd></div><div><dt>教师</dt><dd>{{ courseDetails?.teacher || '未提供' }}</dd></div></dl><RouterLink class="ws-text-link ws-section" to="/academic" @click="courseDetails=null">核对导入资料</RouterLink></InfoSheet>
+</PanelTabs><StatusBanner v-if="backendDemo.state.liveCalendar?.some(n=>!nodeDate(n.due_at))" tone="warning" class="ws-section" :message="'有 ' + backendDemo.state.liveCalendar.filter(n=>!nodeDate(n.due_at)).length + ' 条事项没有提供日期，因此不会出现在上面的日历里；展开下方列表可逐条核对。'" /><Foldable v-if="backendDemo.state.liveCalendar?.some(n=>!nodeDate(n.due_at))" title="日期待补充的事项" variant="section" :count="backendDemo.state.liveCalendar.filter(n=>!nodeDate(n.due_at)).length"><ul class="ws-mini-list"><li v-for="n in backendDemo.state.liveCalendar.filter(n=>!nodeDate(n.due_at))" :key="n.node_id">{{ n.title }}<p>{{ n.related_task_text }}</p></li></ul></Foldable><TimetableAdvice/><nav class="ws-related"><RouterLink to="/home">查看今日行动<UiIcon name="action" :size="16"/></RouterLink><RouterLink to="/academic">更新学校资料<UiIcon name="academic" :size="16"/></RouterLink></nav><p class="ws-demo-note">{{ backendDemo.state.liveCalendar!==null?'节点来自本次读取的日程。未提供日期的事项另行保留。':'关键节点来自2026年10月计划。' }} 计划任务与课程读取各自的共享记录。</p><InfoSheet :open="courseDetails!==null" shape="sheet" :title="courseDetails?.name ?? '课程详情'" @close="courseDetails=null"><dl class="course-detail"><div><dt>上课时间</dt><dd>{{ courseDetails ? courseTimeLabel(courseDetails) : '' }}</dd></div><div><dt>地点</dt><dd>{{ courseDetails?.place || '未提供' }}</dd></div><div><dt>周次</dt><dd>{{ courseDetails?.weeks || '未提供' }}</dd></div><div><dt>教师</dt><dd>{{ courseDetails?.teacher || '未提供' }}</dd></div></dl><RouterLink class="ws-text-link ws-section" to="/academic" @click="courseDetails=null">核对导入资料</RouterLink></InfoSheet>
 </div>
 <!-- ======= 右侧粘性列：这一周的时间被谁占住了 =======
      与靶子的 `.pg-doc__side`（312×1146，sticky）是同一件东西：桌面粘在右侧，
@@ -334,7 +334,7 @@ const undatedTasks=computed(()=>demo.use.now.value.filter(task=>!task.due))
   <section class="sched-rail__block">
     <h3 class="sched-rail__t2">这份读数从哪来</h3>
     <p class="sched-rail__src"><SourceChip :label="backendDemo.state.academicOrigin === 'live' ? '教务系统导入' : '本人导入的课表快照'" kind="external" /><span>课量按导入的节次算（1 节 = 1 小时），周次用课程自己的 weeks 字段。</span></p>
-    <p class="sched-rail__src"><SourceChip :label="backendDemo.state.liveAction ? '服务端阶段计划' : '本地演示阶段计划'" kind="citation" /><span>任务量按阶段计划自己划的时间窗归周（第 {{ weekTerm?.from }}–{{ weekTerm?.to }} 周）。</span></p>
+    <p class="sched-rail__src"><SourceChip :label="backendDemo.state.liveAction ? '服务端阶段计划' : '当前阶段计划'" kind="citation" /><span>任务量按阶段计划自己划的时间窗归周（第 {{ weekTerm?.from }}–{{ weekTerm?.to }} 周）。</span></p>
     <p class="sched-rail__src" v-if="pendingTimeCourses"><SourceChip label="时间待补充的课程" kind="transcript" /><span>{{ pendingTimeCourses }} 门课没有节次或超出常规节次，不计入上面的课量。</span></p>
   </section>
 </aside>
@@ -358,7 +358,7 @@ const undatedTasks=computed(()=>demo.use.now.value.filter(task=>!task.due))
  * + `.conf` 品质标。这里照同一档重量做，但**内容全部是这一页的真实读数**
  * （学期、有节次的课数、这一周的课/事小时数），不是照抄"演示数据"四个字。
  *
- * 为什么"本地演示数据"那一颗最重（红底）：它说的是"这些数字是虚构的，别当真"，
+ * 为什么"本地资料"那一颗最重（红底）：它说的是"这些数字是虚构的，别当真"，
  * 属 tokens.css 里"需要你注意"的语义 —— 红是本站唯一允许承载它的色相。
  * 其余几颗是中性结构信息，用灰底；所以一屏里红色只有这一处。
  * ==========================================================================*/
@@ -453,7 +453,7 @@ const undatedTasks=computed(()=>demo.use.now.value.filter(task=>!task.due))
 .sched-cmp__m > span { font-size: var(--fs-14); font-weight: var(--fw-semibold); color: var(--c-text-2); }
 .sched-cmp__m small { display: block; }
 /* "这一周一条任务都没排"是**需要你注意**的事实（不是零读数）→ 红。
-   本页的红只落在两处：页头那颗"本地演示数据"与这里。 */
+   本页的红只落在两处：页头那颗"本地资料"与这里。 */
 .sched-cmp__m--none > span,
 .sched-cmp__m--none small { color: var(--c-attention); }
 

@@ -90,7 +90,7 @@ export const WORKSPACE_ITEMS: NavItem[] = [WORKSPACE_PRIMARY, ...GROUP_ITEMS]
 export const DIRECTORY_PAGES = [
   {label:'账号设置',to:'/settings',hint:'授权、提醒偏好、外观与导出'},
   {label:'提醒',to:'/reminders',hint:'需要处理的事项与处理结果'},
-  {label:'登录',to:'/login',hint:'选择预置演示账号'},
+  {label:'登录',to:'/login',hint:'选择当前工作空间'},
   {label:'工具',to:'/tools',hint:'六个工具与四步依赖链'},
   {label:'使用指南',to:'/guide',hint:'咨询、画像、选择与行动'},
   {label:'通用组件与状态',to:'/gallery',hint:'来源、把握度、加载、空白与错误'},

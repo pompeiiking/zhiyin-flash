@@ -28,9 +28,9 @@ import { WORKSPACE_GROUPS, WORKSPACE_PRIMARY, PORTAL_LINK } from '../lib/workspa
  * 404 原来标了 `public: true`（"一个坏地址不该再触发登录流程"），
  * 于是它被分到门户/规范那条裸分支里。把 `meta.public` 去掉之后，
  * 它自然落进 `.app__content` 那一支 —— 与另外 15 条路由**同一段壳层代码**，
- * 不是给它单独搭一套。本站其余非公开路由本来就会对未登录访问静默落到演示账号
+ * 不是给它单独搭一套。本站其余非公开路由本来就会对未登录访问静默落到体验账号
  * （router.ts 的 beforeEach 有明文注释），404 现在与它们一致。
- * ⚠ 唯一的行为变化：未登录直接打开一个坏地址时，会先静默落到演示账号再显示这一页
+ * ⚠ 唯一的行为变化：未登录直接打开一个坏地址时，会先静默落到体验账号再显示这一页
  *   （门户/规范/大一到大四三页仍标 public，不进壳）。这是路由表里的一个 `public` 之差，
  *   不是壳层归属问题 —— 若要改成"坏地址对未登录也裸着"，得动 App.vue 的 bare 判据，
  *   那不在本次写域内（见交付回报"已知不足"）。
@@ -57,16 +57,16 @@ const asked = computed(() => {
 })
 const state=ref('404')
 const errorTitles:Record<string,string>={'404':'这个地址不存在',denied:'暂时没有访问权限',offline:'服务暂时不可用'}
-const errorDescriptions:Record<string,string>={'404':'可能是旧链接，或地址敲错了。下面保留这次打开的地址与可用入口。',denied:'这是权限状态的演示。已保存的资料仍保留，可以回到自己的工作空间。',offline:'这是服务不可用的演示。原记录仍可阅读，可以重试或先去其他页面。'}
+const errorDescriptions:Record<string,string>={'404':'可能是旧链接，或地址敲错了。下面保留这次打开的地址与可用入口。',denied:'当前权限不足。已保存的资料仍保留，可以回到自己的工作空间。',offline:'服务目前没有响应。原记录仍可阅读，可以重试或先去其他页面。'}
 </script>
 
 <template>
-  <div class="ws-page c2-error-page"><div class="c2-lensbar" role="group" aria-label="异常状态演示"><button v-for="item in [{key:'404',label:'404'},{key:'denied',label:'无权限'},{key:'offline',label:'服务不可用'}]" :key="item.key" :aria-pressed="state===item.key" @click="state=item.key">{{ item.label }}</button></div>
+  <div class="ws-page c2-error-page"><div class="c2-lensbar" role="group" aria-label="异常状态"><button v-for="item in [{key:'404',label:'404'},{key:'denied',label:'无权限'},{key:'offline',label:'服务不可用'}]" :key="item.key" :aria-pressed="state===item.key" @click="state=item.key">{{ item.label }}</button></div>
     <PageHeading
       :title="errorTitles[state]"
       :description="errorDescriptions[state]"
     >
-      <RouterLink class="btn" to="/chat">回到咨询</RouterLink><button v-if="state==='offline'" class="btn" @click="state='404'">重试状态演示</button><RouterLink class="btn" to="/">回到门户</RouterLink>
+      <RouterLink class="btn" to="/chat">回到咨询</RouterLink><button v-if="state==='offline'" class="btn" @click="state='404'">重新检查</button><RouterLink class="btn" to="/">回到门户</RouterLink>
     </PageHeading>
 
     <section class="ws-paper" aria-labelledby="nf-addr-title">

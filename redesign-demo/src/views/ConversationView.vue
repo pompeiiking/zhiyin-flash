@@ -2,7 +2,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { demo } from '../store'
-import { PROFILE_FIELDS, STUDENT } from '../data/student'
+import { PROFILE_FIELDS } from '../data/student'
 import { useStreaming } from '../lib/motion'
 import UiIcon from '../components/UiIcon.vue'
 import InfoSheet from '../components/InfoSheet.vue'
@@ -35,7 +35,7 @@ const theoryOpen = ref(false)
 const activeTheory = computed(() => registry.theoryCards?.[0])
 const followTail = ref(true)
 const announcement = ref('')
-/** 「演示数据说明」展开态：解释挂在输入区旁边，不占常驻空间，也不与主行动争位置 */
+/** 「资料使用说明」展开态：解释挂在输入区旁边，不占常驻空间，也不与主行动争位置 */
 const composerNote = ref(false)
 /**
  * 桌面（宽导航模式）才给右侧 rail 让出一列。
@@ -187,7 +187,7 @@ const chartTicks = (chart: BarsChart) => {
   return [0, ...(out.length ? out : [max])]
 }
 const chartSummary = (chart: BarsChart) =>
-  '演示数据 · ' + chart.points.map(p => `${p.label} ${p.value}${chart.unit}`).join('，')
+  '' + chart.points.map(p => `${p.label} ${p.value}${chart.unit}`).join('，')
 
 const { stream, textOf, isStreaming } = useStreaming((_id, text) => {
   announcement.value = consultantLabel(host.value) + '：' + text
@@ -519,7 +519,6 @@ const presenceLabel = computed(() =>
 const sessionName = computed(() => backendDemo.currentSession.value?.task_name || '围绕当前问题开展咨询')
 /** 此刻主理这一段的顾问（会话头第三行「谁在跟你说话」用它，与在场卡同源） */
 const hostLabel = computed(() => consultantLabel(host.value))
-const demoMode = computed(() => backendDemo.state.dataMode === 'demo')
 
 /**
  * 会话头第二行的时间：**取自真实字段** `last_active_at`，不写死。
@@ -655,13 +654,13 @@ function reply(content: string, animate = true) {
     response = { from: 'host', speaker: '陪你推进的人', text: '建议先将当前任务拆分为 5 分钟可完成的步骤，再根据执行结果调整计划。', task: { title: '先投 1 家半导体方向的工艺岗', minutes: 5 } }
   } else if (/差多少|行不行|够不够/.test(content)) {
     why = '你想了解能力和方向门槛之间的差距'
-    response = { from: 'host', speaker: '帮你判断方向的人', text: '示例报告里，呈现能力是 46 分，主攻方向要求 50 分。差 4 分，这是可以先补的一项。可在诊断报告中查看具体差距与支持依据。', options: ['查看诊断报告', '制定 5 分钟行动任务'] }
+    response = { from: 'host', speaker: '帮你判断方向的人', text: '当前报告里，呈现能力是 46 分，主攻方向要求 50 分。差 4 分，这是可以先补的一项。可在诊断报告中查看具体差距与支持依据。', options: ['查看诊断报告', '制定 5 分钟行动任务'] }
   } else if (/怎么动|下一步|开始做|先动|5 分钟|一直没有开始/.test(content)) {
     why = '你已经开始关心具体怎么行动'
     response = { from: 'host', speaker: '帮你排计划的人', text: '建议联系一位相关专业的学长，了解目标方向的日常工作与岗位要求。可先将访谈作为当前行动任务。', task: { title: '给上一届学长发一条消息，问一句半导体岗日常', minutes: 5 } }
   } else if (/拿不准|选哪个|怎么选|纠结|方向|选错/.test(content)) {
     why = '你开始关心方向之间的差别'
-    response = { from: 'host', speaker: '帮你判断方向的人', text: '当前示例包含半导体工艺、新能源与材料检测三个方向。建议比较匹配依据、能力差距及主要风险后进行选择。', options: ['比较方向方案', '制定 5 分钟行动任务'] }
+    response = { from: 'host', speaker: '帮你判断方向的人', text: '当前候选方向包括半导体工艺、新能源与材料检测三个方向。建议比较匹配依据、能力差距及主要风险后进行选择。', options: ['比较方向方案', '制定 5 分钟行动任务'] }
   } else {
     response = { from: 'host', speaker: '了解你情况的人', text: content === '跳过这个问题' ? '已跳过当前问题。近期哪些活动是你愿意主动投入时间的？' : '已记录。对于方向选择，你更关注选择风险，还是执行进度？', options: ['更怕选错', '更怕一直没有开始', '跳过这个问题'] }
   }
@@ -745,7 +744,7 @@ onUnmounted(() => {
   <section class="ws-conversation dialogue-page" :class="{ 'has-rail': hasRail }" aria-label="对话空间">
     <!--
       头部只有**一行**：会话名 + 演示标识 + 4 个入口。
-      「错误态演示」是调试口子 → 只由 ?demo-error=1 触发，界面上不留按钮。
+      「错误状态预览」是调试口子 → 只由 ?demo-error=1 触发，界面上不留按钮。
       ---------------------------------------------------------------------------
       「现在跟你说话的是 + 头像 + 名字 + 职责」那块常驻身份牌**已删除**。
       原因是同一件事说了两遍：每条顾问消息的组首已经有头像、名字、职责
@@ -779,7 +778,7 @@ onUnmounted(() => {
         <div class="dialogue-chat-head__meta">
           <span v-if="sessionTime" class="dialogue-chip">最近活跃 {{ sessionTime }}</span>
           <span class="dialogue-chip">{{ hostLabel }} 主理</span>
-          <span v-if="demoMode" class="dialogue-chip dialogue-chip--demo" title="本地演示数据：虚构人物与预设结果，不代表真实档案">演示数据</span>
+
         </div>
       </div>
       <div class="dialogue-chat-head__acts">
@@ -809,8 +808,8 @@ onUnmounted(() => {
           <strong>{{ hostLabel }}</strong>
           <span class="dialogue-presence__state"><i class="dialogue-presence__dot" aria-hidden="true" />{{ presenceStateLabel }}</span>
         </p>
-        <p class="dialogue-presence__role">{{ agentOf(agentKeyOf(host)).role }}</p><span class="dialogue-presence__status"><i />{{ presenceStateLabel }}</span><p v-if="backendDemo.state.dataMode === 'demo'" class="c2-presence-hint">演示：切一下状态，看主理怎么变</p>
-      </div><div v-if="backendDemo.state.dataMode === 'demo'" class="c2-presence-controls" role="group" aria-label="顾问状态演示"><button v-for="state in [{key:'idle',label:'待命'},{key:'thinking',label:'思考'},{key:'speaking',label:'说话'}]" :key="state.key" :aria-pressed="presenceState === state.key" :disabled="demo.state.chatBusy" @click="presencePreview = state.key as 'idle' | 'thinking' | 'speaking'">{{ state.label }}</button></div>
+        <p class="dialogue-presence__role">{{ agentOf(agentKeyOf(host)).role }}</p><span class="dialogue-presence__status"><i />{{ presenceStateLabel }}</span>
+      </div><div v-if="backendDemo.state.dataMode === 'demo'" class="c2-presence-controls" role="group" aria-label="顾问状态预览"><button v-for="state in [{key:'idle',label:'待命'},{key:'thinking',label:'思考'},{key:'speaking',label:'说话'}]" :key="state.key" :aria-pressed="presenceState === state.key" :disabled="demo.state.chatBusy" @click="presencePreview = state.key as 'idle' | 'thinking' | 'speaking'">{{ state.label }}</button></div>
     </section>
     <!-- 桌面右侧 rail：产物与依据常驻在旁边，窄屏收起（见 dialogue.css） -->
     <aside class="dialogue-rail" aria-label="这次咨询的产出与依据">
@@ -877,7 +876,7 @@ onUnmounted(() => {
           <template v-if="t.from === 'me'">
             <div class="chat-turn__body">
               <div class="chat-bubble chat-bubble--me"><ReadableText :text="t.text" /></div>
-              <div v-if="t.materials?.length" class="desk-attachments"><span v-for="m in t.materials" :key="m.id" class="desk-attachment"><UiIcon name="attachment" :size="16" />{{ m.name }} · 演示附件</span></div>
+              <div v-if="t.materials?.length" class="desk-attachments"><span v-for="m in t.materials" :key="m.id" class="desk-attachment"><UiIcon name="attachment" :size="16" />{{ m.name }} · 附件记录</span></div>
             </div>
           </template>
           <template v-else>
@@ -954,8 +953,8 @@ onUnmounted(() => {
                           <!-- 数据块：后端契约 renderables 形状（kind=bars_chart），SVG 手绘，不引图表库 -->
                           <template v-else-if="card.kind === 'data'">
                             <div class="chat-bars">
-                              <div class="chat-bars__head"><h3>{{ card.label }}</h3><span v-if="card.demo" class="chat-bars__demo">演示数据</span></div>
-                              <p class="chat-bars__note">按后端 renderables 契约（kind = bars_chart）绘制；当前示例后端未投递，此处为本地演示数据。</p>
+                              <div class="chat-bars__head"><h3>{{ card.label }}</h3></div>
+                              <p class="chat-bars__note">同一刻度比较各方向。展开来源与依据，核对评分支持哪些判断。</p>
                               <div class="chat-bars__plot" role="img" :aria-label="chartSummary(card.chart)">
                                 <div class="chat-bars__grid" aria-hidden="true"><span v-for="tick in chartTicks(card.chart)" :key="tick" :style="{ left: (tick / Math.max(...card.chart.points.map(p => p.value), 1) * 100) + '%' }"><i>{{ tick }}</i></span></div>
                                 <ul class="chat-bars__rows">
@@ -1005,7 +1004,7 @@ onUnmounted(() => {
                 </div>
               </div>
 
-              <div v-if="t.materials?.length" class="desk-attachments"><span v-for="m in t.materials" :key="m.id" class="desk-attachment"><UiIcon name="attachment" :size="16" />{{ m.name }} · 演示附件</span></div>
+              <div v-if="t.materials?.length" class="desk-attachments"><span v-for="m in t.materials" :key="m.id" class="desk-attachment"><UiIcon name="attachment" :size="16" />{{ m.name }} · 附件记录</span></div>
               <footer v-if="t.from === 'host'" class="exp-message-tools dialogue-message__tools"><button class="exp-copy" :aria-label="copiedId === t.id ? copyStatus : '复制顾问回复'" :title="copiedId === t.id ? copyStatus : '复制顾问回复'" :disabled="isLive(t.id)" @click="copyReply(t.id, t.text)"><UiIcon name="copy" :size="16" />{{ copiedId === t.id ? copyLabel : '复制' }}</button></footer>
               <!-- 刷新态：Waiting 时用骨架盖住上一条回答（内容仍在 DOM 里，不是被摘掉）。
                    用 t.id 当 key 是为了让每次等待都从"透明"开始播一次淡入：换 key 会重建节点，
@@ -1015,7 +1014,7 @@ onUnmounted(() => {
           </template>
         </article>
       </template>
-      <!-- 失败态（另一条触发路径）：?demo-error=1 让本轮必然失败，可重试。界面上没有"错误态演示"按钮。
+      <!-- 失败态（另一条触发路径）：?demo-error=1 让本轮必然失败，可重试。界面上没有"错误状态预览"按钮。
            它是**流里的一条**，不是某条发言的一部分 —— 所以不要塞进上面那条 article 的 body，
            否则它会跑在"复制"工具条下面，读起来像那条回答的脚注。 -->
       <div v-if="errorVisible && !showFailure" class="chat-error" role="alert">
@@ -1059,7 +1058,7 @@ onUnmounted(() => {
       </ul>
       <p v-if="attachmentError" class="ws-field-error" role="alert">{{ attachmentError }}</p>
       <div class="composer-field">
-        <button type="button" class="composer-info" :class="{ 'is-on': composerNote }" :aria-expanded="composerNote" aria-controls="composer-note" :aria-label="composerNote ? '收起演示数据说明' : '演示数据说明'" @click="composerNote = !composerNote"><UiIcon name="info" :size="17" /></button>
+        <button type="button" class="composer-info" :class="{ 'is-on': composerNote }" :aria-expanded="composerNote" aria-controls="composer-note" :aria-label="composerNote ? '收起资料使用说明' : '资料使用说明'" @click="composerNote = !composerNote"><UiIcon name="info" :size="17" /></button>
         <form @submit.prevent="send()">
           <textarea ref="input" v-model="draft" rows="1" aria-label="咨询内容" placeholder="说说最想解决的事…" @input="grow" @keydown="keydown" />
           <div class="composer-actions">
@@ -1072,7 +1071,7 @@ onUnmounted(() => {
       </div>
       <!-- 常驻提示改为聚焦时出现：键盘用法在最需要它的时刻才出现，不长期占一行 -->
       <p class="ws-composer__note"><span>Enter 发送 · Shift + Enter 换行</span></p>
-      <p v-if="composerNote" id="composer-note" class="composer-note">演示对话 · 附件只记录名称，不上传；对话内容是虚构的演示数据，不代表真实档案。</p>
+      <p v-if="composerNote" id="composer-note" class="composer-note">附件名称保留在当前咨询；需要读取文件内容时，请使用资料上传入口。</p>
       <p v-if="stalled" class="composer-stalled" role="status">已停止生成。已生成的内容保留在对话里，可以继续追问或重新发送。</p>
     </div>
     <!-- shape 显式写成 sheet：`inspector` 是 @deprecated 的旧 prop，而 InfoSheet.vue:54-58 的
@@ -1101,7 +1100,7 @@ onUnmounted(() => {
           <pre class="dialogue-export">{{ exportText }}</pre>
         </section>
       </template>
-      <p class="ws-demo-note">{{ STUDENT.name }}的预置示例，不代表你的真实档案。</p>
+
     </InfoSheet>
     <InfoSheet :open="theoryOpen" :title="activeTheory?.name ?? '方法依据'" @close="theoryOpen = false"><p class="ws-muted">方法卡示例 · 来自后端的理论卡配置</p><p style="margin-top: var(--sp-4)">{{ activeTheory?.summary }}</p><h3 class="ws-section-title" style="margin-top: var(--sp-5)">应用说明</h3><p style="margin-top: var(--sp-3)">{{ activeTheory?.product_usage }}</p></InfoSheet>
   </section>

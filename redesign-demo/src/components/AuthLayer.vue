@@ -20,7 +20,7 @@ const accounts = [
 function submit() {
   if (!password.value.trim()) {
     // 正式档：这是"你的数据去哪了"的说明，不用"随便填一个就行"这种口语
-    error.value = '演示环境：密码可任意填写。'
+    error.value = '请填写访问口令；体验账号可用任意非空字符。'
     return
   }
   error.value = ''
@@ -36,7 +36,7 @@ function submit() {
 
       <div class="sheet__body stack stack-4">
         <div class="field">
-          <span class="field__label">选择演示账号</span>
+          <span class="field__label">选择体验账号</span>
           <div class="accounts">
             <button
               v-for="a in accounts"
@@ -60,7 +60,7 @@ function submit() {
             class="field__input"
             type="password"
             aria-label="密码"
-            placeholder="演示环境，任意字符"
+            placeholder="体验账号可填写任意字符"
             @keyup.enter="submit"
           />
           <span v-if="error" class="field__error">{{ error }}</span>
@@ -68,7 +68,7 @@ function submit() {
         </label>
 
         <div class="callout callout--plain">
-          <span>门户公开访问。当前为功能演示，正式学生数据由登录账号管理。</span>
+          <span>门户公开访问。学校账号密码不用于本工作空间登录。</span>
         </div>
       </div>
 

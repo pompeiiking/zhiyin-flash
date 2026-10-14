@@ -18,10 +18,10 @@
  *      都属于这条信息的注脚，跟着值走，值再长也不会把按钮挤到别的位置。
  *      （这两个东西在 v8 里不再是按钮，见 ⑥——基线不变，但命中区变成整行。）
  *   ④ 依赖关系优先消费契约里的 workspace.dependencies（DependencyEdgeView[]，
- *      含 via_profile_keys）；demo 才退回本地演示映射，且**不混用**——
+ *      含 via_profile_keys）；demo 才退回本地资料对应表，且**不混用**——
  *      用哪一套由"契约里有没有可匹配的边"一次性决定。
  *   ⑤ 可信度优先用后端的 overall_confidence / coverage；demo 没有时才自算，
- *      并明确标成演示口径。
+ *      并明确标成资料对应关系。
  *
  * v8 相对 v7 的改动（只改行内交互的触控与可达性，不动信息本身）：
  *   ⑥ v7 为了行高，把行内动作压成了注脚尺寸（「支撑 N 条判断」22px、
@@ -135,7 +135,7 @@ const COLLECT_OF: Record<string, string> = {
 }
 
 /**
- * 依赖映射 —— **本地演示口径，不是契约**。
+ * 依赖映射 —— **本地资料对应关系，不是契约**。
  *
  * live 模式下，只要契约的 workspace.dependencies 里有能匹配到这个结论的边，
  * 就用契约的 via_profile_keys；只有一条都匹配不上时，才退回下面这张表。
@@ -221,7 +221,7 @@ const depsFromContract = computed(() => edges.value !== DEMO_EDGES)
 const depsSourceNote = computed(() =>
   depsFromContract.value
     ? '依赖关系来自后端契约的 dependencies（每条边带 via_profile_keys）。'
-    : '依赖关系取自本页的演示映射：本地演示数据里没有 dependencies，所以按字段与结论的对应关系标出。',
+    : '依赖关系取自当前资料对应表：本地资料里没有 dependencies，所以按字段与结论的对应关系标出。',
 )
 
 /** 资产 id 的写法在不同实现里有差异，这里按"能对上就用"的顺序收窄，不做语义猜测 */
@@ -380,7 +380,7 @@ const tally = computed(() => {
   const fromBackend = backendRatio(livePanel.value?.coverage)
   const coverage = fromBackend ?? computedCoverage
   const coverageSource: 'backend' | 'local' | 'backend-count' = fromBackend !== null ? 'backend' : live.value ? 'backend-count' : 'local'
-  // 后端没给整体可信度时才自算：各条可信度按三段取平均（演示口径），有缺口再整体打折
+  // 后端没给整体可信度时才自算：各条可信度按三段取平均（资料对应关系），有缺口再整体打折
   const sum = firm * 1 + check * 0.62 + thin * 0.3
   const base = rows.length ? sum / rows.length : 0
   const localTrust = coverage ? Math.round(base * (0.6 + 0.4 * coverage) * 100) : 0
@@ -404,12 +404,12 @@ const confBands = computed(() =>
 )
 
 /** 口径说明：把"这个数是谁算的、怎么算的"写在数字旁边 */
-const trustOrigin = computed(() => (tally.value.trustFromBackend ? '后端给出' : live.value ? '本地按各条可信度折算（后端未给出整体可信度）' : '本地按演示口径折算'))
+const trustOrigin = computed(() => (tally.value.trustFromBackend ? '后端给出' : live.value ? '本地按各条可信度折算（后端未给出整体可信度）' : '本地按资料对应关系折算'))
 const coverageCount = computed(() => `${known.value.length}/${tally.value.total} 条`)
 const coverageNote = computed(() => {
   if (tally.value.coverageSource === 'backend') return `覆盖度取自后端（已收到 ${coverageCount.value}）`
   if (tally.value.coverageSource === 'backend-count') return `本次读取：收到 ${coverageCount.value}`
-  return `演示口径：画像池收到 ${coverageCount.value}`
+  return `资料对应关系：画像池收到 ${coverageCount.value}`
 })
 
 /** 覆盖度数值：进入页面从 0 生长到实际值；reduced-motion 下直接给终值 */
@@ -595,7 +595,7 @@ interface Conclusion {
   conf: number
   /** 正向：它依赖 A 里的哪几条 */
   deps: LinkedField[]
-  /** 这组依赖是从契约来的还是演示映射来的 */
+  /** 这组依赖是从契约来的还是资料对应表来的 */
   depsFromContract: boolean
   /** 依赖里手上还没有的 */
   missingKeys: string[]
@@ -907,12 +907,12 @@ const identity = computed(() => {
   if (!live.value && demo.state.account === 'fresh') return { name: '新用户', line: '学校与年级待补充' }
   return { name: name || '个人档案', line: [school, grade].filter(Boolean).join(' · ') || '学校与年级待补充' }
 })
-function exportProfile(){const url=URL.createObjectURL(new Blob([JSON.stringify({profile:known.value,gaps:gapRows.value,source:live.value?'本次读取的档案':'本地演示画像'},null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='职引-个人画像.json';a.click();URL.revokeObjectURL(url)}
+function exportProfile(){const url=URL.createObjectURL(new Blob([JSON.stringify({profile:known.value,gaps:gapRows.value,source:live.value?'本次读取的档案':'个人画像'},null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='职引-个人画像.json';a.click();URL.revokeObjectURL(url)}
 </script>
 
 <template>
   <div class="ws-page profile-page p7">
-    <PageHeading title="个人画像" :description="'顾问现在对你的了解，一共 '+tally.total+' 条。每一条都写着从哪来、有多结实、什么时候记下的。不同意就直接改，原始依据仍保留。'"><template #meta><div class="c2-page-meta"><span>{{ live?'已读取的档案':'演示数据' }}</span><span>{{ known.length }} 条已知 · {{ progress.gap }} 条待补充</span><span>{{ new Set(known.map(row=>row.desc)).size }} 个来源</span><span>每条都能追到原始依据</span></div></template>
+    <PageHeading title="个人画像" :description="'顾问现在对你的了解，一共 '+tally.total+' 条。每一条都写着从哪来、有多结实、什么时候记下的。不同意就直接改，原始依据仍保留。'"><template #meta><div class="c2-page-meta"><span v-if="live">已读取的档案</span><span>{{ known.length }} 条已知 · {{ progress.gap }} 条待补充</span><span>{{ new Set(known.map(row=>row.desc)).size }} 个来源</span><span>每条都能追到原始依据</span></div></template>
       <button class="btn" @click="exportProfile"><UiIcon name="download" :size="16"/>导出画像</button>
       <RouterLink class="btn" to="/chat">{{ progress.gap ? '补一条' : '更新信息' }}<UiIcon name="arrow" :size="16" /></RouterLink>
     </PageHeading>
@@ -1154,7 +1154,7 @@ function exportProfile(){const url=URL.createObjectURL(new Blob([JSON.stringify(
         />
       </header>
 
-      <p class="p7-deps-note"><strong>关系怎么来：</strong>{{ depsSourceNote }}<template v-if="depsMixed">极少数判断在契约里找不到对应的边，那几条用了演示映射，已分开标注。</template></p>
+      <p class="p7-deps-note"><strong>关系怎么来：</strong>{{ depsSourceNote }}<template v-if="depsMixed">极少数判断在契约里找不到对应的边，那几条用了资料对应表，已分开标注。</template></p>
 
       <ul class="p7-concls">
         <li
@@ -1212,7 +1212,7 @@ function exportProfile(){const url=URL.createObjectURL(new Blob([JSON.stringify(
               </li>
               <li v-if="!item.deps.length" class="p7-dep p7-dep--none">契约里还没有它的依赖边</li>
             </ul>
-            <span v-if="depsMixed && !item.depsFromContract" class="p7-concl__prov">演示映射</span>
+            <span v-if="depsMixed && !item.depsFromContract" class="p7-concl__prov">资料对应表</span>
           </div>
 
           <div v-show="openConclusion === item.key" :id="`p7-concl-more-${item.key}`" class="p7-concl__more-body">
@@ -1333,7 +1333,7 @@ function exportProfile(){const url=URL.createObjectURL(new Blob([JSON.stringify(
       <section><h2>这 {{ known.length }} 条从哪里来</h2><div v-for="source in SOURCE_GROUPS" :key="source.key" class="c2-source-row"><span>{{ source.label }}</span><span class="c2-source-track" role="meter" :aria-label="source.label" :aria-valuenow="known.filter(row => source.from.includes(row.desc)).length" :aria-valuemax="Math.max(1, known.length)" aria-valuemin="0"><i :style="{width: known.filter(row => source.from.includes(row.desc)).length / Math.max(1, known.length) * 100 + '%'}" /></span><b>{{ known.filter(row => source.from.includes(row.desc)).length }}</b></div></section>
       <section><h2>{{ identity.name }}</h2><p>{{ identity.line }}</p><p>整体可信度 {{ Math.round(trustShown) }}% · 覆盖 {{ known.length }} / {{ tally.total }}</p><Foldable variant="inline" title="查看计算依据"><p>{{ trustOrigin }}。{{ statusLine }}</p><p>{{ coverageNote }}</p></Foldable></section>
     </aside>
-    <p class="ws-demo-note">{{ live ? '字段与缺口来自本次读取的档案；更正按服务回包保存，需重算标记取自后端。' : '预置人物与来源仅作演示；依赖映射、可信度折算与"需要重算"都是本地演示口径，接上服务后改用后端契约的 dependencies / coverage / overall_confidence。' }}</p>
+
 
     <!-- 更正是一条信息的小表单（`text` + 两个按钮），不是"从一行钻进去看细节"。
          所以 shape 是 dialog（缺省也是它，这里写出来是为了让形态是**显式**的）。 -->
@@ -1570,7 +1570,7 @@ function exportProfile(){const url=URL.createObjectURL(new Blob([JSON.stringify(
    红底 + 左红条那套（三处里最重的一处）已经删掉，重量由组件的 state 承担。 */
 .p7-recompute { flex: none; width: min(280px, 100%); }
 
-/* P0-2 提到 14px：这是**读下去的说明句**（依赖关系从哪来、哪些是演示映射），
+/* P0-2 提到 14px：这是**读下去的说明句**（依赖关系从哪来、哪些是资料对应表），
    53 个字符的一句，不是坐标值。行距用 --lh-normal：它是这一段里唯一的正文型文本。 */
 .p7-deps-note { font-size: var(--fs-14); color: var(--c-text-3); margin-bottom: var(--sp-3); max-width: 84ch; line-height: var(--lh-normal); }
 .p7-deps-note strong { color: var(--c-text-2); font-weight: var(--fw-medium); }

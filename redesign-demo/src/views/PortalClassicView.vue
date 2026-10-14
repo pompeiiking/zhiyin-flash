@@ -173,7 +173,7 @@ const what = [
       但它不该在门户上多出第二个可点的东西 —— 门户只回答"从哪开始"。
     -->
     <footer class="foot">
-      <span class="foot__note">演示环境 · 数据为预置内容，页面交互真实可用</span>
+      <span class="foot__note">把方向想清楚，把行动做具体</span>
     </footer>
   </div>
 </template>
@@ -330,7 +330,7 @@ const what = [
 .top {
   position: relative;
   /* 3 而不是 2：`.main` 与 `.band` 都是 `z-index: 2`，DOM 里排在 `.top` 之后，
-     于是同层里后来的赢 —— 顶栏里 slot 的「演示设置」下拉（PortalView 给的 z-index:10，
+     于是同层里后来的赢 —— 顶栏里 slot 的「工作空间设置」下拉（PortalView 给的 z-index:10，
      但它在 `.top` 这个层叠上下文里）会被 `.main` 盖住，按钮点不动。抬一层即可。 */
   z-index: 3;
   height: var(--w-topbar);

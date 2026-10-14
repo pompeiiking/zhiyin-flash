@@ -22,7 +22,7 @@ async function switchPortal(original: boolean) {
 <template>
   <component :is="classic ? PortalClassic : PortalProposal">
     <template #portal-switch>
-      <details ref="settings" class="pv-settings" @keydown.esc="settings && (settings.open=false)"><summary>演示设置</summary><div class="pv-settings__body"><span class="pv-switcher__label">门户版本</span><div class="pv-switcher__buttons" role="group" aria-label="门户版本"><button :aria-pressed="!classic" @click="switchPortal(false)">新版</button><button :aria-pressed="classic" @click="switchPortal(true)">原版</button></div></div></details>
+      <details ref="settings" class="pv-settings" @keydown.esc="settings && (settings.open=false)"><summary>工作空间设置</summary><div class="pv-settings__body"><span class="pv-switcher__label">门户版本</span><div class="pv-switcher__buttons" role="group" aria-label="门户版本"><button :aria-pressed="!classic" @click="switchPortal(false)">新版</button><button :aria-pressed="classic" @click="switchPortal(true)">原版</button></div></div></details>
     </template>
   </component>
 </template>

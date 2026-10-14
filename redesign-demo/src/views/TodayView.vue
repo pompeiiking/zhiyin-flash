@@ -226,7 +226,7 @@ const academicAt = computed(() => backendDemo.state.academic?.imported_at ?? nul
       </aside>
     </div>
     <div v-if="!demo.state.guidesClosed.home" class="ws-guide"><UiIcon name="info" :size="18" /><p>优先完成当前建议任务。其他任务可按状态查看，完成后支持恢复。</p><button @click="demo.closeGuide('home')">收起</button></div>
-    <p class="ws-demo-note">任务与档案为预置示例，操作会改变当前演示中的记录。</p>
+
     </template><section class="c2-plan-tools"><div><button class="btn" @click="addOpen = true"><UiIcon name="plus" :size="16" />添加个人待办</button><TaskBrief/></div><LiveActionPlan v-if="backendDemo.state.dataMode === 'demo' && !backendDemo.state.liveAction" today/></section><InfoSheet :open="addOpen" shape="dialog" title="记一件今天能做的事" @close="addOpen = false"><form @submit.prevent="add"><label class="ws-field">做什么<input v-model="title" maxlength="100" placeholder="例如：给学长发一条消息" /></label><label class="ws-field">大约需要多久<select v-model.number="minutes"><option :value="5">5 分钟</option><option :value="15">15 分钟</option><option :value="30">30 分钟</option><option :value="60">60 分钟</option></select></label><p v-if="error" class="ws-field-error" role="alert">{{ error }}</p><div class="ws-inline-actions"><button class="btn btn--primary" type="submit">排进今天</button><button class="ws-text-button" type="button" @click="addOpen = false">先不记</button></div></form></InfoSheet>
   </div>
 </template>

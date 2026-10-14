@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import { demo } from '../store'
 import { SCENARIOS } from '../data/scenarios'
 import { JOURNEY_STEPS } from '../data/copy'
-import SourceChip from '../components/SourceChip.vue'
+import PageHeading from '../components/PageHeading.vue'
 
 /**
  * 大一到大四：场景化设计。
@@ -53,7 +53,7 @@ const PATH = [
     view: '方向方案',
     shot: 'v7-directions.jpg',
     what: '逐项比较三个方向的依据与风险，选定候选后统一确认。',
-    where: '改选后当场列出关联内容。本演示展示影响范围，尚未接入真实自动重算。',
+    where: '改选后当场列出关联内容。关联范围已列出；报告与计划需补齐依据后再更新。',
   },
   {
     step: '计划与行动 · 执行当前任务',
@@ -88,14 +88,8 @@ function onError(shot: string) {
 </script>
 
 <template>
-  <div class="page">
-    <header class="page__head">
-      <h1 class="page__title">大一到大四</h1>
-      <p class="page__sub">
-        同一条产品动线，四个年级要解决的事不一样。切一次年级，任务卡、画像进度、里程碑、
-        报告重点与复盘关注点整套跟着换；下面这张路径图说明每一步落在哪个界面上。
-      </p>
-    </header>
+  <div class="ws-page path-page">
+    <PageHeading title="大一到大四" description="四个年级，各有当前最值得解决的问题。切换年级，任务、里程碑和复盘重点一起更新。"><RouterLink class="btn" to="/chat">聊聊当前阶段</RouterLink></PageHeading>
 
     <!-- =====================================================================
          落点③溯源 —— 文档页的每类说法都要能回到它的出处
@@ -105,23 +99,7 @@ function onError(shot: string) {
          所以用 SourceChip 的三支不同**形态**（不靠颜色）分开 —— 灰度打印下也要分得清。
          ② 组织权在这一页不适用，理由见交付说明（不硬塞一个假的分组控件）。
          ===================================================================== -->
-    <section class="path-prov" aria-labelledby="path-prov-title">
-      <h2 id="path-prov-title" class="t-h2">这一页的每条说法从哪来</h2>
-      <ul class="path-prov__list">
-        <li>
-          <SourceChip label="评审要求原文" kind="citation" />
-          <span>四个年级的内容按评审原话组织：「按一年级到四年级的不同使用场景设计内容，每个操作步骤配对应界面截图，直观展示产品使用路径」。</span>
-        </li>
-        <li>
-          <SourceChip label="预置演示文案" kind="external" />
-          <span>处境、要解决的事、任务卡与里程碑来自预置示例文件 <code class="code">src/data/scenarios.ts</code>，不是任何一位学生的真实数据。</span>
-        </li>
-        <li>
-          <SourceChip label="实际浏览器预览" kind="transcript" :at="'2026-10-13'" />
-          <span>下面七张截图是 2026-10-13 在本地跑起来之后截的，文件在 <code class="code">public/shots/</code>；每一步的图注写了它属于哪一步。</span>
-        </li>
-      </ul>
-    </section>
+    <section class="ws-paper path-prov"><h2>从你现在的阶段开始</h2><p>大一探索兴趣，大二形成实践，大三核对方向，大四比较选择。每个阶段都从一件具体可做的事开始，保留资料来源与已发生的行动。</p></section>
 
     <!-- 年级选择 -->
     <div class="grades">
@@ -130,6 +108,7 @@ function onError(shot: string) {
         :key="g.id"
         class="gcard"
         :class="{ 'gcard--on': demo.state.grade === g.id }"
+        :aria-pressed="demo.state.grade === g.id"
         @click="demo.setGrade(g.id)"
       >
         <span class="gcard__grade">{{ g.grade }}</span>
@@ -182,7 +161,7 @@ function onError(shot: string) {
       <div class="section__head">
         <h2 class="t-h2">操作路径：每一步落在哪个界面</h2>
         <p class="t-note">
-          截图来自 2026-10-13 改造后的实际浏览器预览。门户进入对话，
+          下方保留 2026-10-13 的历史界面记录，当前页面可从导航直接打开。门户进入对话，
           桌面通过二级侧栏切换功能，历史会话位于菜单下方；移动端保留底部导航。
         </p>
       </div>

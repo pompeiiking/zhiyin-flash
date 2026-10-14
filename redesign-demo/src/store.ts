@@ -18,6 +18,7 @@ import { rememberSession } from './lib/session-cache'
 
 interface State {
   grade: Grade
+  contentVersion: number
   authed: boolean
   /** 演示账号：fresh / mid / stale */
   account: string
@@ -91,6 +92,7 @@ const storedAccount = readStoredAccount()
 
 const state = reactive<State>({
   grade: 'junior',
+  contentVersion: 0,
   authed: storedAccount !== null,
   account: storedAccount ?? '',
   tasks: storedAccount === 'fresh' ? [] : tasksFor('junior'),
@@ -118,7 +120,15 @@ const state = reactive<State>({
 })
 
 if(state.chatTurns[0]?.text==='我不知道自己适合什么。专业是调剂的，说不上喜欢。'&&state.chatTurns.every(t=>/^c\d+$/.test(t.id))&&state.account!=='fresh'&&backendDemo.state.dataMode==='demo')state.chatTurns=chatFor(state.account)
-rememberSession('workspace',state,['grade','tasks','lastDoneId','selectedDirectionId','previousDirectionId','reportVersion','chatCollected','guidesClosed','rippleOpen','chatTurns','profileEdits','profileEditTimes','reviewAttributions','reviewNotes','currentSessionId','noticeQueue','noticeIndex','interventionDismissed'])
+rememberSession('workspace',state,['contentVersion','grade','tasks','lastDoneId','selectedDirectionId','previousDirectionId','reportVersion','chatCollected','guidesClosed','rippleOpen','chatTurns','profileEdits','profileEditTimes','reviewAttributions','reviewNotes','currentSessionId','noticeQueue','noticeIndex','interventionDismissed'])
+// Append only new fixture IDs once; never revive removed tasks or overwrite edits.
+if (state.contentVersion < 1) {
+ if (state.account !== 'fresh' && backendDemo.state.dataMode === 'demo') {
+  if (state.grade === 'junior') for (const task of TASKS_BY_GRADE.junior.filter(t=>Number(t.id.slice(1))>8)) if(!state.tasks.some(t=>t.id===task.id))state.tasks.push({...task})
+  for (const notice of NOTICES.filter(n=>n.id!=='n1'))if(!state.noticeQueue.some(n=>n.id===notice.id))state.noticeQueue.push({...notice})
+ }
+ state.contentVersion=1
+}
 let toastTimer: ReturnType<typeof setTimeout> | null = null
 
 export function toast(message: string): void {
@@ -321,7 +331,7 @@ export const demo = {
     const plan = DIRECTION_PLANS.find((d) => d.id === id)
     toast(
       state.previousDirectionId
-        ? `已改选为「${plan?.title}」。当前演示显示 ${plan?.ripple ?? 0} 处关联内容，尚未自动重算。`
+        ? `已改选为「${plan?.title}」。已列出 ${plan?.ripple ?? 0} 处关联内容，尚未自动重算。`
         : `已选择「${plan?.title}」，可继续查看影响范围。`,
     )
   },
@@ -390,7 +400,7 @@ export const demo = {
   resolveNotice(id?: string) {
     const n = id ? state.noticeQueue.find(n => n.id === id) : state.noticeQueue[state.noticeIndex]
     if (n) {
-      demo.planChatTask('投递中建某院的结构岗', 10)
+      demo.planChatTask(n.task?.title ?? n.title, n.task?.minutes ?? 10)
       demo.dismissNotice(n.id)
     }
   },
@@ -444,6 +454,6 @@ export const demo = {
     state.reviewAttributions = {}; state.reviewNotes = {}
     state.lastDoneId = null
     state.noticeQueue = state.account === 'fresh' ? [] : NOTICES.map((n) => ({ ...n }))
-    toast('演示数据已复位')
+    toast('工作空间已重置')
   },
 }

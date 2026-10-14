@@ -6,6 +6,7 @@ import UiIcon from '../components/UiIcon.vue'
 import TodoSuggestions from '../components/TodoSuggestions.vue'
 import InfoSheet from '../components/InfoSheet.vue'
 import SkeletonBlock from '../components/SkeletonBlock.vue'
+import EmptyState from '../components/EmptyState.vue'
 import StatusBanner from '../components/StatusBanner.vue'
 import SourceChip from '../components/SourceChip.vue'
 import SegMeter from '../components/SegMeter.vue'
@@ -14,6 +15,8 @@ import { REVIEW_CONCLUSION, REVIEW_ITEMS } from '../data/student'
 import { attributionLabel } from '../lib/presentation'
 import type { NoteView } from '../api/backend-types'
 const noteAxis = ref('kind')
+const noteQuery = ref('')
+const visibleNotes = computed(()=>allNotes.value.filter(n=>!noteQuery.value.trim()||n.text.toLocaleLowerCase().includes(noteQuery.value.trim().toLocaleLowerCase())))
 const tab = ref<'todo'|'goal'>('todo'), drafts = ref({todo:'',goal:''}), error=ref(''), status=ref('')
 const deleting=ref<NoteView|null>(null),busy=ref(false),deleteError=ref('')
 /* 读取态与"忙"分开：busy 也覆盖添加/删除，用它画骨架会把"正在保存"错认成"还没读到" */
@@ -23,7 +26,7 @@ async function setDone(item: NoteView,done:boolean){if(busy.value)return;if(!bac
 const text=computed({get:()=>drafts.value[tab.value],set:v=>drafts.value[tab.value]=v})
 const items=computed(()=>backendDemo.state.notes.filter(n=>n.kind===tab.value))
 const pending=computed(()=>items.value.filter(n=>!n.done)), completed=computed(()=>items.value.filter(n=>n.done))
-async function add(){if(busy.value)return;try{if(!text.value.trim()||text.value.trim().length>200)throw new Error('请写下1–200个字。');if(items.value.some(n=>n.text===text.value.trim())){status.value='这条记录已存在，已保留原记录。';return}if(backendDemo.state.notesOrigin==='live'){busy.value=true;const note=await backendClient.addNote({kind:tab.value,text:text.value.trim()});backendDemo.upsertNote(note);status.value='已保存到个人记录。'}else{backendDemo.addNote(text.value,tab.value);status.value='已添加到当前演示。'}text.value='';error.value=''}catch{error.value='这条记录没有保存成功，请核对内容后重试。输入仍保留。'}finally{busy.value=false}}
+async function add(){if(busy.value)return;try{if(!text.value.trim()||text.value.trim().length>200)throw new Error('请写下1–200个字。');if(items.value.some(n=>n.text===text.value.trim())){status.value='这条记录已存在，已保留原记录。';return}if(backendDemo.state.notesOrigin==='live'){busy.value=true;const note=await backendClient.addNote({kind:tab.value,text:text.value.trim()});backendDemo.upsertNote(note);status.value='已保存到个人记录。'}else{backendDemo.addNote(text.value,tab.value);status.value='已保存这条个人记录。'}text.value='';error.value=''}catch{error.value='这条记录没有保存成功，请核对内容后重试。输入仍保留。'}finally{busy.value=false}}
 async function remove(){if(!deleting.value||busy.value)return;busy.value=true;deleteError.value='';try{const id=deleting.value.id;if(backendDemo.state.liveNoteIds.includes(id)){const result=await backendClient.removeNote(id);if(result.removed!==id)throw new Error('Delete was not confirmed')}backendDemo.removeNote(id);deleting.value=null;status.value='已删除这条记录。'}catch{deleteError.value='这条记录没有删除成功，请重试；原记录仍保留。'}finally{busy.value=false}}
 
 /* =============================================================================
@@ -51,9 +54,9 @@ const nextUp = computed(() => nextPending.value ?? firstPending.value)
 const tabLabel = computed(() => (tab.value === 'todo' ? '我的待办' : '个人目标'))
 const attributed = computed(() => REVIEW_ITEMS.filter((r) => r.attribution))
 const noteGroups = computed(() => {
- const notes = allNotes.value
+ const notes = visibleNotes.value
  if (noteAxis.value === 'done') return [{key:'pending',title:'还没有完成',items:notes.filter(n=>!n.done)},{key:'done',title:'已经完成',items:notes.filter(n=>n.done)}]
- if (noteAxis.value === 'source') return [{key:'live',title:'已保存的个人记录',items:notes.filter(n=>backendDemo.state.liveNoteIds.includes(n.id))},{key:'demo',title:'自己写的 · 本地演示记录',items:notes.filter(n=>!backendDemo.state.liveNoteIds.includes(n.id))}]
+ if (noteAxis.value === 'source') return [{key:'live',title:'已保存的个人记录',items:notes.filter(n=>backendDemo.state.liveNoteIds.includes(n.id))},{key:'demo',title:'自己写的 · 个人记录',items:notes.filter(n=>!backendDemo.state.liveNoteIds.includes(n.id))}]
  return [{key:'goal',title:'目标 · 为什么',items:notes.filter(n=>n.kind==='goal')},{key:'todo',title:'待办 · 做什么',items:notes.filter(n=>n.kind==='todo')}]
 })
 </script>
@@ -72,10 +75,11 @@ const noteGroups = computed(() => {
 <div class="journey-action-grid">
 <div class="journey-action-main">
  <section class="c2-profile-stats" aria-label="待办与目标概览"><article class="c2-profile-stat"><strong>{{ goalPending }}</strong><small>条</small><h2>目标在走</h2><p>你自己写下的个人目标</p></article><article class="c2-profile-stat"><strong>{{ todoPending }}</strong><small>条</small><h2>待办没做</h2><p>下一步可以动手的具体事项</p></article><article class="c2-profile-stat"><strong>{{ doneAll }}</strong><small>条</small><h2>已经完成</h2><p>完成后可恢复，也会保留记录</p></article><article class="c2-profile-stat"><strong>{{ allNotes.length }}</strong><small>条</small><h2>自己写下的</h2><p>个人记录独立保留，不与计划任务混算</p></article></section>
-<section class="c2-note-pool ws-paper"><header class="ws-section-head"><div><h2>你自己写下的 {{ allNotes.length }} 条</h2><p>同一批记录，换一种组织方式。勾掉一条，完成情况与下一件都会更新。</p></div><span>{{ allNotes.length }} 条 · 已完成 {{ doneAll }}</span></header>
+<section class="c2-note-pool ws-paper"><header class="ws-section-head"><div><h2>你自己写下的 {{ allNotes.length }} 条</h2><p>同一批记录，换一种组织方式。勾掉一条，完成情况与下一件都会更新。</p></div><span class="c2-pool-count">{{ allNotes.length }} 条 · 完成 {{ doneAll }}</span></header>
 <div class="c2-lensbar" role="group" aria-label="待办与目标的组织方式"><button v-for="axis in [{key:'kind',label:'按目标 / 待办'},{key:'done',label:'按做没做完'},{key:'source',label:'按它怎么来的'}]" :key="axis.key" :aria-pressed="noteAxis===axis.key" @click="noteAxis=axis.key">{{ axis.label }}</button></div><p class="c2-lens-hint">正在重组 {{ allNotes.length }} 条记录，条目总数不变。来源以实际保存状态为准。</p>
+<label class="c2-note-search">查找个人记录<input v-model="noteQuery" type="search" placeholder="输入关键词查找待办或目标…"/></label><p v-if="noteQuery" class="c2-lens-hint" role="status">找到 {{ visibleNotes.length }} 条，共 {{ allNotes.length }} 条。<button class="ws-text-button" @click="noteQuery=''">清空关键词</button></p>
 <StatusBanner :open="!!status" tone="success" :message="status" @dismiss="status=''"/><StatusBanner v-if="error" tone="error" :message="error" retry-label="重试读取" @retry="loadNotes"/>
-<div class="notes-page__records" :aria-busy="loading"><SkeletonBlock v-if="loading" :overlay="allNotes.length>0" variant="list" :lines="4"/>
+<EmptyState v-if="noteQuery && !visibleNotes.length" kind="search-empty" title="没有找到这条记录" description="换一个关键词，或清空关键词查看全部记录。" :next="false"><button class="btn" @click="noteQuery=''">查看全部记录</button></EmptyState><div class="notes-page__records" :aria-busy="loading"><SkeletonBlock v-if="loading" :overlay="allNotes.length>0" variant="list" :lines="4"/>
 <section v-for="group in noteGroups" :key="group.key" class="c2-note-group"><h3>{{ group.title }}<span>{{ group.items.length }} 条</span></h3><ul><li v-for="item in group.items" :key="item.id" class="desk-record c2-note-row" :class="{'desk-record--done':item.done}"><button class="desk-record__toggle" :aria-label="(item.done?'恢复：':'完成：')+item.text" :aria-pressed="item.done" @click="setDone(item,!item.done)" :disabled="busy"><UiIcon v-if="item.done" name="check" :size="16"/></button><div><p><span class="c2-note-kind">{{ item.kind==='goal'?'目标':'待办' }}</span>{{ item.text }}</p><span class="desk-record__source"><SourceChip source="user_edit" :at="item.created_at"/></span><small>{{ item.done ? '已完成；可以恢复' : '完成后移入已完成，记录仍保留' }}</small></div><button class="ws-icon-button" :aria-label="'删除：'+item.text" @click="deleting={...item}"><UiIcon name="trash" :size="17"/></button></li></ul><p v-if="!group.items.length" class="ws-muted">这一组现在没有记录。</p></section></div>
 <details class="c2-note-add"><summary>补一条目标或待办</summary><form class="desk-note-form" @submit.prevent="add"><label class="sr-only" for="note-kind">记录类型</label><select id="note-kind" v-model="tab"><option value="todo">待办</option><option value="goal">目标</option></select><label class="sr-only" for="desk-note-text">写下一条个人记录</label><input id="desk-note-text" v-model="text" maxlength="200" placeholder="下一件想做的事…"/><button class="btn" type="submit" :disabled="busy"><UiIcon name="plus" :size="16"/>添加</button></form></details></section>
 <TodoSuggestions/>
@@ -128,11 +132,11 @@ const noteGroups = computed(() => {
       <div class="hm-kv__r"><span class="hm-kv__k">个人目标</span><span class="hm-kv__v">{{ goalPending }} 条没做 · 共 {{ goalNotes.length }} 条</span></div>
       <div class="hm-kv__r"><span class="hm-kv__k">已完成</span><span class="hm-kv__v">{{ doneAll }} 条（全部 {{ allNotes.length }} 条里）</span></div>
     </div>
-    <p class="hm-side__warn">这一栏和「今日行动」里的任务不是同一本账：那边是从阶段计划拆下来的任务，这里是你自己写下的记录。<template v-if="backendDemo.state.notesOrigin === 'live'">现在读的是服务回包里的记录。</template><template v-else>现在读的是本次演示里的记录。</template></p>
+    <p class="hm-side__warn">这一栏和「今日行动」里的任务不是同一本账：那边是从阶段计划拆下来的任务，这里是你自己写下的记录。<template v-if="backendDemo.state.notesOrigin === 'live'">现在读的是服务回包里的记录。</template><template v-else>现在读的是当前工作空间的记录。</template></p>
   </section>
 </aside>
 </div>
-<nav class="ws-related"><RouterLink to="/chat">和顾问讨论这些安排<UiIcon name="chat" :size="16"/></RouterLink></nav><p class="ws-demo-note">每条最多200字，同类内容会去重。{{ backendDemo.state.notesOrigin==='live'?'读取的记录按服务回包保存。':'演示记录只保留在本次会话；正式建议采纳的条目按服务回包保存。' }}</p>
+<nav class="ws-related"><RouterLink to="/chat">和顾问讨论这些安排<UiIcon name="chat" :size="16"/></RouterLink></nav><p class="ws-demo-note">每条最多200字，同类内容会去重。{{ backendDemo.state.notesOrigin==='live'?'读取的记录按服务回包保存。':'个人记录保留在当前会话；正式建议采纳的条目按服务回包保存。' }}</p>
 <InfoSheet :open="deleting!==null" shape="dialog" title="删除这条记录？" @close="deleting=null"><p>{{ deleting?.text }}</p><p class="ws-muted ws-section">删除后无法恢复，完成的记录可以选择恢复到待执行。</p><p v-if="deleteError" class="ws-field-error" role="alert">{{ deleteError }}</p><div class="ws-inline-actions"><button class="btn btn--danger" @click="remove" :disabled="busy">{{ busy?'正在删除…':'确认删除' }}</button><button class="btn" @click="deleting=null">保留记录</button></div></InfoSheet></div>
 </template>
 <style scoped>

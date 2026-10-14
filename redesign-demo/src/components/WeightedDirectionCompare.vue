@@ -17,8 +17,8 @@ function reset(){criteria.forEach(c=>{weights[c.key]=3})}
  <div class="c2-compare">
   <section class="c2-compare-section" aria-labelledby="c2-comparison-title">
    <header class="c2-compare-head"><h2 id="c2-comparison-title">同一批比较项，同一把尺子</h2><span>5 项</span></header>
-   <p class="c2-compare-note">每一行是同一件事，三列是同一次评分。0–100 为原型演示刻度，可调整看重程度，观察排序怎样变化。</p>
-   <div class="c2-rank-reading" role="status" aria-live="polite"><strong>当前排序：{{ rankText }}</strong><p>排序分 = 各项演示分数按看重程度加权的平均值。当前最看重：{{ strongest }}。排序供比较参考，确认方向仍由你决定。</p></div>
+   <p class="c2-compare-note">每一行是同一件事，三列是同一次评分。0–100 为方向比较刻度，可调整看重程度，观察排序怎样变化。</p>
+   <div class="c2-rank-reading" role="status" aria-live="polite"><strong>当前排序：{{ rankText }}</strong><p>排序分 = 各项分数按看重程度加权的平均值。当前最看重：{{ strongest }}。排序供比较参考，确认方向仍由你决定。</p></div>
    <div class="c2-score-scroll" tabindex="0" aria-label="三个方向的同刻度比较，窄屏可横向滚动">
     <table class="c2-score-table"><caption>三个方向 × 五个比较项 · 同一刻度 0–100 · 每行标出最高和最低</caption>
      <thead><tr><th scope="col">比较项</th><th v-for="item in items" :key="item.id" scope="col">{{ item.title }} <small>{{ item.role }}</small></th></tr></thead>

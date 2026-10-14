@@ -28,7 +28,7 @@ const userName = computed(() => demo.state.account === 'fresh' ? '新用户' : S
  * 因为切年级（GradeSwitch / ⌘K）真的会换掉这个人所处的场景 —— 写死 STUDENT.grade
  * 就会出现"任务清单是大一的、人名行还写着大三"。
  */
-const personSub = computed(() => demo.state.account === 'fresh' ? '演示账号 · 待完善资料' : STUDENT.major + ' · ' + demo.use.scenario.value.grade)
+const personSub = computed(() => demo.state.account === 'fresh' ? '体验账号 · 待完善资料' : STUDENT.major + ' · ' + demo.use.scenario.value.grade)
 const chatActive = computed(() => isNavActive(WORKSPACE_PRIMARY, route))
 /**
  * 导航计数徽标（c2 的 `.nav__badge`）—— **两个数字都来自真实状态，没有一个写死**：

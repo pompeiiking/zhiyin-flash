@@ -16,7 +16,7 @@
  *   ② 逐项核验清单（演示数据里写着的"待确认 / 需核对 / 不代表…"被提炼成可勾的动作，
  *      这是"这条能不能用"的判据，卡片上没有）；
  *   ③ 同类别其它条目 + 它们与本文的关系（横向对比，卡片上更看不到）；
- *   ④ 弹层专有的来源说明（"本地虚构演示资料 · 非招聘公告"这类口径）。
+ *   ④ 弹层专有的来源说明（"咨询与课程记录 · 非招聘公告"这类口径）。
  * 卡片本身则加了：类别组头（12 条同构卡按类聚拢）、组内条数、
  * "同一批次读取"标记、以及每条**能核对的字段行**。
  * ============================================================================
@@ -92,16 +92,16 @@ function textLen(value?:string){return (value??'').replace(/\s/g,'').length}
    它不是新事实，是**同一段话的结构化读法** —— 所以每条都带原文出处，不能凭空加。 */
 const VERIFY:Record<string,{title:string;detail:string}[]> = {
   career:[
-    {title:'核对来源与发布日',detail:'卡片与弹层里印的是「本地虚构演示资料」。真实岗位必须换成招聘方原文，并确认在有效期内。'},
-    {title:'核对学历与专业门槛',detail:'原文给的是"本科材料相关专业"这一档；具体院校层次、是否接受跨专业都没有说明。'},
+    {title:'核对来源与发布日',detail:'职业探索笔记帮助准备问题；申请岗位需要核对招聘方原始公告与有效期。'},
+    {title:'核对学历与专业门槛',detail:'逐项核对学历、专业与实践条件，区分必须满足的要求与优先条件。'},
     {title:'核对职责、地点、待遇与期限',detail:'本条没有给出地点、待遇、招聘期限与投递方式；这些必须来自真实招聘来源才可用于选择。'},
   ],
   industry:[
-    {title:'核对两类的真实职责描述',detail:'原文的对比是演示口径；真实区别要拿两个在招岗位的职责说明逐条比。'},
+    {title:'核对两类的真实职责描述',detail:'用两个当前开放岗位的职责说明逐条比较，保留来源与发布日期。'},
     {title:'核对结论的适用范围',detail:'这条讲的是工作方式的差别，不构成"哪类更有前景"的判断。'},
   ],
   education:[
-    {title:'核对需要的材料',detail:'学籍核验需要本人授权的在线验证码；演示数据不代表核验通过。'},
+    {title:'核对需要的材料',detail:'学籍核验需要本人授权的在线验证码；本人整理的资料不等于核验通过。'},
     {title:'核对更新时间',detail:'学校、专业、年级与更新时间缺一项就无法判断这条资料还算不算数。'},
   ],
   campus:[
@@ -122,7 +122,7 @@ const readingLen=computed(()=>textLen(reading.value?.text))
 const cardLen=computed(()=>textLen(preview(reading.value?.text)))
 
 function sample(){backendDemo.loadIntelSample();status.value='已读取演示资讯；未发起远程检索。';error.value=''}
-async function load(refresh=false){if(busy.value)return;busy.value=true;error.value='';try{const result=refresh?await backendClient.refreshIntel(remoteQuery.value.trim()):await backendClient.intel(remoteQuery.value.trim());if(!result||!Array.isArray(result.items))throw new Error('Incomplete intel');backendDemo.setIntel(result.items);query.value='';kind.value='all';status.value='已读取'+result.items.length+'条'+(backendDemo.state.dataMode==='demo'?'本地演示资料。':'最新资讯。')}catch{error.value='资讯没有读取成功，请重试。当前条目与筛选输入仍保留。'}finally{busy.value=false}}
+async function load(refresh=false){if(busy.value)return;busy.value=true;error.value='';try{const result=refresh?await backendClient.refreshIntel(remoteQuery.value.trim()):await backendClient.intel(remoteQuery.value.trim());if(!result||!Array.isArray(result.items))throw new Error('Incomplete intel');backendDemo.setIntel(result.items);query.value='';kind.value='all';status.value='已读取'+result.items.length+'条'+(backendDemo.state.dataMode==='demo'?'当前资料。':'最新资讯。')}catch{error.value='资讯没有读取成功，请重试。当前条目与筛选输入仍保留。'}finally{busy.value=false}}
 function source(url?:string){return url&&/^https?:\/\//i.test(url)?url:undefined}
 function read(id:string){const found=backendDemo.state.intel.find(i=>i.id===id);if(found)reading.value={...found}}
 function facts(q:string){query.value=q;kind.value='all';mode.value='facts';status.value='已按「'+q+'」筛选现有资讯。没有对应条目时可在下方检索最新资讯。'}
@@ -131,9 +131,9 @@ function clearFilter(){query.value='';kind.value='all'}
 </script>
 <template>
   <div class="ws-page intel-page">
-    <PageHeading title="岗位资讯" description="先读事实，再看它和你有什么关系。每条保留要求、来源与读取时间。"><button class="btn" @click="clearFilter">清空筛选</button><button class="btn" @click="kind=kind==='career'?'all':'career';mode='facts'">{{ kind==='career'?'看全部资讯':'只看岗位示例' }}</button></PageHeading>
+    <PageHeading title="岗位资讯" description="先读事实，再看它和你有什么关系。每条保留要求、来源与读取时间。"><button class="btn" @click="clearFilter">清空筛选</button><button class="btn" @click="kind=kind==='career'?'all':'career';mode='facts'">{{ kind==='career'?'看全部资讯':'只看岗位要求' }}</button></PageHeading>
 
-    <section class="c2-profile-stats" aria-label="资讯概览"><article class="c2-profile-stat"><strong>{{ backendDemo.state.intel.length }}</strong><small>条</small><h2>这一批资讯</h2><p>同一批信息可按类别与时间重组</p></article><article class="c2-profile-stat"><strong>{{ kinds.length }}</strong><small>类</small><h2>可按类别筛选</h2><p>只显示这批资讯中出现的类别</p></article><article class="c2-profile-stat"><strong>{{ backendDemo.state.dataMode==='demo'?0:backendDemo.state.intel.filter(i=>source(i.source_url)).length }}</strong><small>条</small><h2>{{ backendDemo.state.dataMode==='demo'?'真实招聘':'提供原始链接' }}</h2><p>{{ backendDemo.state.dataMode==='demo'?'这一批是虚构样例，不能当作招聘公告':'来源是否有效仍需逐条核对' }}</p></article><article class="c2-profile-stat"><strong>{{ new Set(backendDemo.state.intel.map(i=>i.source_name||i.source_url||'来源未提供')).size }}</strong><small>个</small><h2>来源标记</h2><p>每条资讯单独核对来源</p></article></section>
+    <section class="c2-profile-stats" aria-label="资讯概览"><article class="c2-profile-stat"><strong>{{ backendDemo.state.intel.length }}</strong><small>条</small><h2>这一批资讯</h2><p>同一批信息可按类别与时间重组</p></article><article class="c2-profile-stat"><strong>{{ kinds.length }}</strong><small>类</small><h2>可按类别筛选</h2><p>只显示这批资讯中出现的类别</p></article><article class="c2-profile-stat"><strong>{{ backendDemo.state.intel.filter(i=>source(i.source_url)).length }}</strong><small>条</small><h2>提供原始链接</h2><p>来源与有效期仍需逐条核对</p></article><article class="c2-profile-stat"><strong>{{ new Set(backendDemo.state.intel.map(i=>i.source_name||i.source_url||'来源未提供')).size }}</strong><small>个</small><h2>来源标记</h2><p>每条资讯单独核对来源</p></article></section>
     <div class="c2-intel-body">
       <template v-if="mode==='facts'">
         <details class="c2-intel-retrieve"><summary>检索最新资讯 / 职业匹配</summary><form class="remote-search" @submit.prevent="load()">
@@ -207,7 +207,7 @@ function clearFilter(){query.value='';kind.value='all'}
           <button v-else class="btn btn--primary" @click="sample">加载资讯示例</button>
         </EmptyState>
 
-        <p class="ws-demo-note">{{ backendDemo.state.intelOrigin==='live'&&backendDemo.state.dataMode==='service'?'条目来自本次服务读取；本地筛选不再发起远程请求。':'当前条目为演示示例；上方检索与刷新调用正式资讯服务，不会以示例替代失败结果。' }}</p>
+        <p class="ws-demo-note">{{ backendDemo.state.intelOrigin==='live'&&backendDemo.state.dataMode==='service'?'条目来自本次服务读取；本地筛选不再发起远程请求。':'当前条目来自职业探索笔记；检索与刷新读取当前资料，筛选不会发起远程请求。' }}</p>
       </template>
     </div>
 
@@ -216,7 +216,7 @@ function clearFilter(){query.value='';kind.value='all'}
 
     <!-- 详情：shape=sheet（桌面右侧抽屉 / 小屏底部面板）。原来的 wide 必须一起去掉，
          否则 resolvedShape 里 wide 优先级更高，shape 会被静默覆盖。 -->
-    <aside class="c2-intel-side" aria-label="资讯来源与使用"><section><h2>这一批资讯从哪里来</h2><p>{{ backendDemo.state.intelOrigin === 'sample' ? '本地虚构演示资料，供比较岗位要求与来源，不作为招聘公告引用。' : '来自本次读取的资讯结果，每条保留自己的来源与读取时间。' }}</p><p>共 {{ backendDemo.state.intel.length }} 条、{{ kinds.length }} 类。读取时间与原始发布时间分别核对。</p></section><section><h2>先读事实，再决定</h2><p>点开一条资讯，可查看全文、核验清单和同类别的其他条目。核实岗位地点、学历要求及信息有效期，再纳入自己的计划。</p><RouterLink class="ws-text-link" to="/directions">回到方向比较 →</RouterLink></section></aside>
+    <aside class="c2-intel-side" aria-label="资讯来源与使用"><section><h2>这一批资讯从哪里来</h2><p>{{ backendDemo.state.intelOrigin === 'sample' ? '职业探索笔记，按方向整理职责、技能与准备事项。投递前请核对企业原始公告。' : '来自本次读取的资讯结果，每条保留自己的来源与读取时间。' }}</p><p>共 {{ backendDemo.state.intel.length }} 条、{{ kinds.length }} 类。读取时间与原始发布时间分别核对。</p></section><section><h2>先读事实，再决定</h2><p>点开一条资讯，可查看全文、核验清单和同类别的其他条目。核实岗位地点、学历要求及信息有效期，再纳入自己的计划。</p><RouterLink class="ws-text-link" to="/directions">回到方向比较 →</RouterLink></section></aside>
     <InfoSheet :open="reading!==null" shape="sheet" :title="reading?.title || '资讯详情'" @close="reading=null">
       <article v-if="reading" class="intel-detail">
         <div class="intel-detail__facts">

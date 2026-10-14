@@ -12,10 +12,10 @@ export const JOURNEY_STEPS = [
   { key: 'review', label: '执行复盘', note: '分析任务、方法或方向' },
 ]
 export const AUTH_COPY = {
-  title: '选择演示账号',
+  title: '选择工作空间',
   body: '当前展示预置场景，咨询与任务数据仅在本次页面会话中保留。进入后首先显示咨询对话。',
-  action: '进入演示',
-  accountHint: '演示账号：fresh / mid / stale，密码可任意填写',
+  action: '进入咨询',
+  accountHint: '选择当前阶段，体验账号使用任意访问口令',
 }
 export const FALLBACK_COPY = {
   modelTimeout: '本次未能生成内容，请重新提交。',

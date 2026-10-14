@@ -18,7 +18,7 @@ const commands = computed<Item[]>(() => [
   // 这里不再提供「外观」命令：外观的唯一入口是账号菜单 → 外观（PLAN §3.5）。
   ...[...WORKSPACE_ITEMS, ...DIRECTORY_PAGES, PORTAL_LINK].map((s) => ({ label: s.label, hint: s.hint, run: () => { router.push(s.to) } })),
   ...SCENARIOS.map((s) => ({ label: '使用场景：' + s.grade, hint: s.focus, run: () => demo.setGrade(s.id) })),
-  { label: '复位演示数据', hint: '恢复预置状态', run: () => demo.resetDemo() },
+  { label: '重置工作空间', hint: '恢复预置状态', run: () => demo.resetDemo() },
   { label: '恢复操作引导', hint: '重新查看各页使用提示', run: () => demo.resetGuide() },
 ])
 const results = computed(() => commands.value.filter((c) => (c.label + c.hint).toLowerCase().includes(query.value.trim().toLowerCase())))

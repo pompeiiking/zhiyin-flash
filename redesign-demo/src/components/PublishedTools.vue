@@ -7,14 +7,14 @@
  * 未做任何点击"的状态下量到 `落点 1/2`、`orgKinds {tabs:0, pressed:0, selects:0}` ——
  * 也就是说那一屏上除了页头和一个按钮，没有任何可读的结构、没有来源、没有状态。
  * 另外目录被劈成两半：上半是服务端已发布的工具（要点一下），
- * 下半塞在一个 `<details>` 里叫"查看演示工具入口"。同一种东西两种活法。
+ * 下半塞在一个 `<details>` 里叫"查看工作空间工具入口"。同一种东西两种活法。
  *
  * 【现在】三件事：
  *   ① 目录状态 ---- 三态（还没取 / 取了但没有 / 有内容）在首屏明说，亮着的一格是现在。
  *      它由 ModuleCatalog 回传的 stage 驱动，不是写死的图例。
  *   ② 工具目录 ---- 两个来源放进**同一个目录**，并且可以换分组轴（落点②组织权）。
  *      分组头带条数，换轴时条目被搬到别的组、条数跟着变。
- *   ③ 溯源 ------- 每条工具标出自己从哪来（服务端发布清单 / 本演示预置）与版本。
+ *   ③ 溯源 ------- 每条工具标出自己从哪来（服务端发布清单 / 工作空间内置）与版本。
  *
  * 【为什么组织权放在这一页是成立的】这一页的条目天然带两个正交属性：
  * 「从哪来」（服务端发布 / 演示预置）与「能不能立刻做事」（有动作 / 只跳转）。
@@ -134,7 +134,7 @@ const TOOL_REL: ToolRel[] = [
     /* 出处：src/lib/demo-service.ts:37 —— modules 返回 id 'demo-plan'、version 'demo-1' */
     id: 'demo-plan',
     dependsOn: [],
-    /* 出处：src/lib/demo-service.ts:39 moduleData 返回「本地阶段计划演示数据」的 phases/tasks */
+    /* 出处：src/lib/demo-service.ts:39 moduleData 返回「当前阶段计划」的 phases/tasks */
     writes: '任务完成状态',
     /* 它写的那份计划**没有工具会去读**（见 achievements 那格的注释）——
        印成"被行动计划进度读"就是把"同读一份数据"说成依赖。 */
@@ -188,12 +188,12 @@ const preset = registry.modules.map<DirectoryEntry>((m) => ({
   /* 【2026-10-14 · wave5】补上 id：预置入口原来只有 key（'r:'+id），没有 id ——
      于是"这条是谁"在模板里查不到，串联关系（readBy / readsOf）也认不出它。
      key 与 id 是两件事：key 是目录内唯一键（带来源前缀，避免与服务端 id 撞），
-     id 是**这条工具的身份**（服务端清单与本演示预置用的是同一批业务 id）。 */
+     id 是**这条工具的身份**（服务端清单与工作空间内置用的是同一批业务 id）。 */
   id: m.id,
   name: m.name,
   description: m.description,
   source: 'preset',
-  sourceLabel: '本演示预置',
+  sourceLabel: '工作空间内置',
   sourceKind: 'external',
   runnable: (m.actions?.length ?? 0) > 0,
   to: m.id === 'action_progress' ? '/plan' : '/review?view=achievements',
@@ -277,7 +277,7 @@ const toolGroups = computed<ToolGroup[]>(() => {
   }
   return [
     { key: 'published', title: '服务端已发布的工具', note: '由服务返回的发布清单决定；未发布或未启用的不放进目录。', items: all.filter((t) => t.source === 'published') },
-    { key: 'preset', title: '本演示预置的入口', note: '演示工程自带的条目，指向已经做好的页面。', items: all.filter((t) => t.source === 'preset') },
+    { key: 'preset', title: '工作空间内置的入口', note: '工作空间内置入口，打开后可直接使用。', items: all.filter((t) => t.source === 'preset') },
   ]
 })
 
@@ -315,10 +315,10 @@ function railBody(s: { key: string; body: string }): string {
 }
 
 /* ---- 溯源：目录本身从哪来 -------------------------------------------------- */
-const sourceLabel = computed(() => (backendDemo.state.dataMode === 'demo' ? '本地演示数据' : '服务端发布清单'))
+const sourceLabel = computed(() => (backendDemo.state.dataMode === 'demo' ? '本地资料' : '服务端发布清单'))
 const sourceDetail = computed(() =>
   backendDemo.state.dataMode === 'demo'
-    ? '本地演示服务（演示模式，不伪装成线上数据）'
+    ? '本地工作空间'
     : '服务端 /api/v1/modules，只返回已发布且启用的工具',
 )
 </script>
@@ -327,7 +327,7 @@ const sourceDetail = computed(() =>
   <div class="ws-page">
     <PageHeading
       title="应用工具"
-      description="服务端已发布的工具和本演示预置的入口放在同一个目录里：换一种分法，看的是同一批条目。"
+      description="服务端已发布的工具和工作空间内置的入口放在同一个目录里：换一种分法，看的是同一批条目。"
     >
       <button class="btn" :disabled="stage==='loading'" @click="reloadCatalog">
         {{ stage==='loading' ? '正在读取…' : '重新读取工具目录' }}

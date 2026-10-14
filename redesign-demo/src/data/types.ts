@@ -153,6 +153,7 @@ export interface Notice {
   deadline?: string
   /** 还有几条没显示 */
   queued: number
+  task?: { title: string; minutes: number }
 }
 
 export interface ReviewItem {

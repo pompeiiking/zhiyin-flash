@@ -6,8 +6,8 @@ import UiIcon from './UiIcon.vue'
 // 实际演示数据的可交互片段；不冒充已生成的个人报告。
 const stage = ref(0)
 const phases = ['聊清楚', '看依据', '迈一步']
-const opening = CHAT_TURNS.find((t) => t.id === 'c1')!
-const question = CHAT_TURNS.find((t) => t.id === 'c2')!
+const opening = CHAT_TURNS.find((t) => t.from === 'me')
+const question = CHAT_TURNS.find((t) => t.from === 'host' && t.text.trim())
 const direction = DIRECTION_PLANS[0]
 const taskTurn = CHAT_TURNS.find((t) => t.task)!
 const task = taskTurn.task!
@@ -17,7 +17,7 @@ function next() { stage.value = (stage.value + 1) % phases.length }
 
 <template>
   <section class="pe-story" aria-label="职引如何帮你，一段预置示例">
-    <header class="pe-story__head"><span>从一句话，到一小步</span><span class="pe-story__sample">预置示例</span></header>
+    <header class="pe-story__head"><span>从一句话，到一小步</span><span class="pe-story__sample">聊清楚 · 想明白 · 去行动</span></header>
     <div class="pe-story__choices" aria-label="查看示例阶段">
       <button v-for="(label, i) in phases" :key="label" :aria-pressed="stage === i" @click="stage = i">
         <UiIcon :name="['chat', 'report', 'action'][i]" :size="18" />{{ label }}
@@ -28,8 +28,8 @@ function next() { stage.value = (stage.value + 1) % phases.length }
         <article :key="stage" class="pe-phase">
           <template v-if="stage === 0">
             <p class="pe-phase__label">你可以这样开口</p>
-            <blockquote class="pe-question">{{ opening.text.split('。')[0] }}。</blockquote>
-            <div class="pe-answer"><p class="pe-phase__label">了解你情况的人</p><p>{{ question.text.split(' —— ')[1] ?? question.text }}</p></div>
+            <blockquote class="pe-question">{{ opening?.text.split('。')[0] ?? '我想先聊聊自己的方向' }}。</blockquote>
+            <div class="pe-answer"><p class="pe-phase__label">帮你判断方向的人</p><p>{{ question?.text.split('。')[0] ?? '先把当前情况与具体问题讲清楚，再一起核对依据。' }}。</p></div>
             <p class="pe-phase__note">不需要先想好答案。一次只问一个问题。</p>
           </template>
           <template v-else-if="stage === 1">
@@ -65,7 +65,7 @@ function next() { stage.value = (stage.value + 1) % phases.length }
 .pe-phase { grid-area: 1 / 1; }
 .pe-phase__label { color: var(--c-text-3); font-size: var(--fs-14); margin-bottom: 12px; }
 .pe-question { font-size: var(--fs-20); font-weight: 500; line-height: 1.6; margin-bottom: 24px; }
-.pe-answer { padding-left: 18px; border-left: 2px solid var(--c-primary); }
+.pe-answer { padding-left: 18px; border-left: 1px solid var(--c-primary); }
 .pe-answer > p:last-child { font-size: var(--fs-16); line-height: 1.85; color: var(--c-text); }
 .pe-phase__note { font-size: var(--fs-14); color: var(--c-text-3); margin-top: 24px; }
 .pe-direction, .pe-action { font-size: var(--fs-20); line-height: 1.6; }

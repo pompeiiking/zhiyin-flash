@@ -11,5 +11,5 @@ export const growthRecords = computed(() => [
   const at=events.map(event=>backendDemo.state.eventTimes[event]!).sort()[0]??null
   return {id:rule.code,title:labels[rule.code]??rule.code,source:'行为记录',topic:topics[rule.code]??'回头看',method:'由行为日志确认',at,done:!!at,evidence:events.length?events.map(event=>`${eventLabels[event]??'相关行为已发生'} · ${new Date(backendDemo.state.eventTimes[event]!).toLocaleString('zh-CN')}`):['还没有满足这一条规则的行为记录'],next:rule.trigger_events.map(event=>eventLabels[event]??'相关行为记录').join(' / ')}
  }),
- {id:'academic-verification',title:'核对过学校资料',source:'本人授权与学籍资料',topic:'了解自己',method:'由核验结果确认',at:backendDemo.state.chsiChecked?backendDemo.state.academic?.imported_at??null:null,done:backendDemo.state.chsiChecked,evidence:[backendDemo.state.chsiChecked?'本次演示核验已完成；结果仍为演示样例':'需要本人授权的在线验证码，导入课程不等于核验通过'],next:'在学籍与资料中核验'},
+ {id:'academic-verification',title:'核对过学校资料',source:'本人授权与学籍资料',topic:'了解自己',method:'由资料核对过程确认',at:backendDemo.state.chsiChecked?backendDemo.state.academic?.imported_at??null:null,done:backendDemo.state.chsiChecked,evidence:[backendDemo.state.chsiChecked?'已查看学校资料核验流程；个人核验仍需本人授权':'需要本人授权的在线验证码，导入课程不等于核验通过'],next:'在学籍与资料中核验'},
 ])

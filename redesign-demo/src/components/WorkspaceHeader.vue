@@ -17,7 +17,7 @@ import { activeGroup, labelForPath, PORTAL_LINK } from '../lib/workspace-nav'
  * **按频次分层**（PLAN §2.4 / §3.5）：
  * - 高频留在顶栏：搜索、提醒（带未读徽标）；
  * - 低频收进账号菜单：外观（主题 / 主色 / 风格）、账号身份、退出；
- * - 演示开关不再混进账号菜单 —— 拆出独立的「演示设置」，由演示标识进入。
+ * - 演示开关不再混进账号菜单 —— 拆出独立的「工作空间设置」，由演示标识进入。
  *
  * 原来这里还有一颗 `皮肤` 按钮和一条"演示数据 / 数据设置"带：
  * 390px 上顶栏一次挤着 品牌 + 搜索 40×40 + 皮肤 38×40 + 提醒 40×40 + 账号 34×34，
@@ -44,7 +44,7 @@ const demoOpen = ref(false)
 const expandButton = ref<HTMLButtonElement | null>(null)
 /** 打开「账号」抽屉：顶栏账号按钮、桌面侧栏人名行、折叠态顶栏**三处都走这一个入口**。 */
 function openAccount() { demoOpen.value = false; accountOpen.value = true }
-/** 打开「演示设置」：账号抽屉里的那一行与顶栏的演示标识都走这里。 */
+/** 打开「工作空间设置」：账号抽屉里的那一行与顶栏的演示标识都走这里。 */
 function openDemo() { accountOpen.value = false; demoOpen.value = true }
 defineExpose({
   showAccount: openAccount,
@@ -92,9 +92,9 @@ function signOut() {
   router.push('/')
 }
 /**
- * 错误态演示：对话页读 `?demo-error=1`，本轮必然失败并可重试。
+ * 错误状态预览：对话页读 `?demo-error=1`，本轮必然失败并可重试。
  * 原来那颗调试按钮长在对话页头（和"咨询成果""个人画像"并排），
- * 现在挪进这里 —— 调试开关属于演示设置，不属于学生页面的首要行动位。
+ * 现在挪进这里 —— 调试开关属于工作空间设置，不属于学生页面的首要行动位。
  * 这里只负责写 query 并跳到对话页，不再往别的文件里塞状态。
  */
 function openErrorDemo() {
@@ -134,10 +134,7 @@ function clearErrorDemo() {
       <!-- 搜索不再另留一颗 44×44 图标按钮：顶栏只留**一个**搜索入口（左边那个盒子），
            两颗并存就是"同一个功能两个入口"，正是这个壳层一直在收敛的东西。 -->
       <button class="ws-icon-button ws-inbox-trigger" :aria-label="'提醒，' + demo.state.noticeQueue.length + ' 条待处理'" @click="router.push('/reminders')"><UiIcon name="bell" :size="18" /><span v-if="demo.state.noticeQueue.length">{{ demo.state.noticeQueue.length }}</span></button>
-      <!-- 演示标识：壳层的一行小字，点击进「演示设置」。它不占行、不与主行动竞争 -->
-      <button class="ws-demo-badge" :class="{ 'ws-demo-badge--service': dataMode === 'service' }" :title="dataMode === 'demo' ? '演示数据 · 虚构人物与本地预设结果' : '服务数据 · 读取结果需后端支持'" :aria-label="'演示设置，当前' + (dataMode === 'demo' ? '演示数据' : '服务数据')" @click="demoOpen = true">
-        <span aria-hidden="true" />{{ dataMode === 'demo' ? '演示数据' : '服务数据' }}
-      </button>
+      <!-- 演示标识：壳层的一行小字，点击进「工作空间设置」。它不占行、不与主行动竞争 -->
       <button class="ws-account" aria-label="账号菜单" @click="openAccount">
         <span class="ws-account__avatar" aria-hidden="true">{{ demo.state.account === 'fresh' ? '新' : STUDENT.name.slice(0, 1) }}</span>
         <span class="ws-account__label hf-account__label">{{ demo.state.account === 'fresh' ? '新用户' : STUDENT.name }}</span>
@@ -146,18 +143,18 @@ function clearErrorDemo() {
     </div>
   </header>
 
-  <nav class="c2-appearance-bar" aria-label="工作空间外观"><span class="c2-prototype-badge" title="交互演示，所有资料为预置样例">演示</span>
+  <nav class="c2-appearance-bar" aria-label="工作空间外观">
     <button class="c2-directory-button" @click="emit('openPalette')"><UiIcon name="apps" :size="14" />全部页面</button>
     <div class="c2-appearance-axis"><span>主色</span><button v-for="o in accentOptions" :key="o.id" :aria-pressed="skin.state.accent === o.id" @click="skin.setAccent(o.id)">{{ o.label }}</button></div>
     <div class="c2-appearance-axis"><span>主题</span><button v-for="o in themeOptions" :key="o.id" :aria-pressed="skin.state.theme === o.id" @click="skin.setTheme(o.id)">{{ o.label }}</button></div>
     <div class="c2-appearance-axis"><span>密度</span><button :aria-pressed="skin.state.style !== 'dense'" @click="skin.setStyle('plain')">常规</button><button :aria-pressed="skin.state.style === 'dense'" @click="skin.setStyle('dense')">紧凑</button></div>
-  <span class="c2-appearance-reading">{{ skin.state.accent === 'blue' ? '校徽蓝 #0058A7' : '官网红 #96000E' }} · {{ themeOptions.find(o=>o.id===skin.state.theme)?.label }} · {{ skin.state.style === 'dense' ? '紧凑' : '常规' }}</span></nav>
+  <span class="c2-appearance-reading">{{ skin.state.accent === 'blue' ? '校徽蓝' : '官网红' }} · {{ themeOptions.find(o=>o.id===skin.state.theme)?.label }} · {{ skin.state.style === 'dense' ? '紧凑' : '常规' }}</span></nav>
 
   <!-- 账号抽屉：只管账号。身份、演示标识说明、退出。 -->
   <InfoSheet shape="sheet" :open="accountOpen" title="账号" @close="accountOpen = false">
     <p class="ws-person">{{ demo.state.account === 'fresh' ? '新用户' : STUDENT.name }}</p>
     <p class="ws-muted">{{ demo.state.account === 'fresh' ? '个人资料待完善' : scenario.grade + ' · ' + STUDENT.major + ' · ' + STUDENT.school }}</p>
-    <p class="ws-demo-note">这是一份示例，用来让你先看清职引能做什么。</p>
+
     <!-- PLAN §3.5：外观的唯一入口 = 账号菜单 → 外观（顶栏那颗「皮肤」按钮已移除）。
          展开后是三轴 18 组合，与 `lib/theme.ts` 同一套令牌；重置也在里面。 -->
     <details class="ws-appearance">
@@ -183,7 +180,7 @@ function clearErrorDemo() {
     </details>
     <div class="ws-account-list"><RouterLink class="ws-account-row" to="/settings" @click="accountOpen=false"><span><strong>账号设置</strong><small>资料授权、提醒、外观与导出</small></span><UiIcon name="arrow" :size="16"/></RouterLink>
       <button class="ws-account-row" @click="openDemo()">
-        <span><strong>演示设置</strong><small>数据来源、演示场景、导航布局、复位</small></span>
+        <span><strong>工作空间设置</strong><small>资料来源、年级、导航布局、重置</small></span>
         <UiIcon name="chevron" :size="16" />
       </button>
       <RouterLink class="ws-account-row" :to="PORTAL_LINK.to" @click="accountOpen = false">
@@ -194,17 +191,17 @@ function clearErrorDemo() {
     <div class="ws-stack"><button class="btn" @click="signOut">退出登录</button></div>
   </InfoSheet>
 
-  <!-- 演示设置：独立入口，收纳所有演示开关。账号抽屉里不再有这些。 -->
-  <InfoSheet shape="sheet" :open="demoOpen" title="演示设置" @close="demoOpen = false">
-    <p class="ws-demo-note">下面这些开关只影响这台的演示数据与导航形态，不改变学生看到的功能。</p>
+  <!-- 工作空间设置：独立入口，收纳所有演示开关。账号抽屉里不再有这些。 -->
+  <InfoSheet shape="sheet" :open="demoOpen" title="工作空间设置" @close="demoOpen = false">
+    <p class="ws-demo-note">设置当前资料来源、年级与导航布局。修改后会保留已有操作记录。</p>
     <label class="ws-field">数据来源
       <select aria-label="数据来源" :value="dataMode" @change="setDataSource">
-        <option value="demo">本地演示数据</option>
-        <option value="service">服务数据（需后端）</option>
+        <option value="demo">本地资料</option>
+        <option value="service">在线资料（需后端）</option>
       </select>
     </label>
-    <p class="ws-demo-note">本地演示使用虚构人物、岗位和预设分析，操作仅保存在当前浏览器会话。切换来源后请重新读取页面结果。</p>
-    <div class="desk-account-grade"><p class="ws-muted">演示使用场景</p><GradeSwitch /></div>
+    <p class="ws-demo-note">本地资料保存在当前浏览器会话；在线资料按服务返回结果展示。切换来源后请重新读取结果。</p>
+    <div class="desk-account-grade"><p class="ws-muted">当前年级</p><GradeSwitch /></div>
     <label class="ws-field">导航布局
       <select aria-label="导航布局" :value="desktop ? 'desktop' : 'mobile'" @change="navigation.set(($event.target as HTMLSelectElement).value as 'desktop' | 'mobile')">
         <option value="desktop" :disabled="navigation.compact.value">桌面侧栏</option>
@@ -212,13 +209,13 @@ function clearErrorDemo() {
       </select>
     </label>
     <div class="ws-stack">
-      <button class="btn" @click="openErrorDemo">错误态演示 · 去对话页触发一次失败</button>
-      <button class="btn" :disabled="route.query['demo-error'] === undefined" @click="clearErrorDemo">关掉错误态演示</button>
-      <button class="btn" @click="demo.resetDemo(); demoOpen = false">复位演示数据</button>
+      <button class="btn" @click="openErrorDemo">错误状态预览 · 去对话页触发一次失败</button>
+      <button class="btn" :disabled="route.query['demo-error'] === undefined" @click="clearErrorDemo">关掉错误状态预览</button>
+      <button class="btn" @click="demo.resetDemo(); demoOpen = false">重置工作空间</button>
       <button class="btn" @click="demo.resetGuide(); demoOpen = false">恢复操作引导</button>
     </div>
-    <p class="ws-demo-note">「错误态演示」打开后，对话页下一次回答会走真实失败路径（可重试、内容不丢）；关掉它才会恢复正常的预设回答。</p>
-    <p class="ws-demo-note">外观（主题 / 主色 / 风格）在账号菜单 → 外观里；这里只管演示状态。</p>
+    <p class="ws-demo-note">「错误状态预览」打开后，对话页下一次回答会走真实失败路径（可重试、内容不丢）；关掉它才会恢复正常的预设回答。</p>
+    <p class="ws-demo-note">外观（主题 / 主色 / 风格）在账号菜单 → 外观里；这里管理工作空间。</p>
   </InfoSheet>
 </template>
 

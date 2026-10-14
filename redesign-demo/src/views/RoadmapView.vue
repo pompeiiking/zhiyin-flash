@@ -113,7 +113,7 @@ function deadlineLabel(stage:typeof stages.value[number]){if(!stage.dueAt)return
 function blockedBy(stage:typeof stages.value[number]){return (stage.dependsOn??[]).map(id=>stages.value.find(s=>s.id===id)).filter(s=>s&&s.progress<1).map(s=>s!.title)}
 </script>
 <template>
-<div class="ws-page plan-page journey-page"><PageHeading title="阶段计划" :description="scenario.grade + ' · ' + scenario.focus"><template #meta><p v-if="!backendDemo.state.liveAction" class="c2-page-meta"><span>演示快照：2026-10-14；倒计时按此日计算</span></p></template><RouterLink class="btn btn--primary" to="/home">查看当前任务<UiIcon name="arrow" :size="16" /></RouterLink></PageHeading><AssetNotice/><LiveActionPlan v-if="backendDemo.state.dataMode === 'service' || backendDemo.state.liveAction" @busy="planBusy = $event"/><template v-if="!backendDemo.state.liveAction">
+<div class="ws-page plan-page journey-page"><PageHeading title="阶段计划" :description="scenario.grade + ' · ' + scenario.focus"><template #meta><p v-if="!backendDemo.state.liveAction" class="c2-page-meta"><span>计划基准日：2026-10-14；倒计时按此日计算</span></p></template><RouterLink class="btn btn--primary" to="/home">查看当前任务<UiIcon name="arrow" :size="16" /></RouterLink></PageHeading><AssetNotice/><LiveActionPlan v-if="backendDemo.state.dataMode === 'service' || backendDemo.state.liveAction" @busy="planBusy = $event"/><template v-if="!backendDemo.state.liveAction">
 <!-- 空态：`.ws-empty` → EmptyState（MIGRATION §4.2 E4）。整块正文被顶掉，所以显式 heading-level="2"（H5）。 -->
 <section v-if="!backendDemo.state.planAvailable" class="plan-empty" :aria-busy="planBusy"><SkeletonBlock v-if="planBusy" variant="list" :lines="3"/><EmptyState v-else kind="report" :heading-level="2" :next="false" title="阶段计划还没有形成" description="在咨询中明确方向后，再安排阶段目标和任务。"><RouterLink class="btn btn--primary" to="/chat">继续咨询</RouterLink><button class="ws-text-button" type="button" @click="backendDemo.loadPlanSample()">查看阶段计划示例</button></EmptyState></section>
 <!-- G-02：主列 + 右栏。两列与粘性**不在这里重写**：根上的 `journey-page` 让本页加入
@@ -201,7 +201,7 @@ function blockedBy(stage:typeof stages.value[number]){return (stage.dependsOn??[
   </section>
 </aside>
 </div>
-<nav class="ws-related" aria-label="计划相关操作"><RouterLink to="/schedule">查看日历与课表<UiIcon name="calendar" :size="16" /></RouterLink><RouterLink to="/directions">调整方向<UiIcon name="directions" :size="16" /></RouterLink><RouterLink to="/review">复盘并调整任务<UiIcon name="review" :size="16" /></RouterLink></nav></template></template><p v-if="!backendDemo.state.liveAction" class="ws-demo-note">阶段目标及任务关联为演示配置；任务计数随完成与恢复更新。没有关联任务的阶段不显示推测进度。</p></div>
+<nav class="ws-related" aria-label="计划相关操作"><RouterLink to="/schedule">查看日历与课表<UiIcon name="calendar" :size="16" /></RouterLink><RouterLink to="/directions">调整方向<UiIcon name="directions" :size="16" /></RouterLink><RouterLink to="/review">复盘并调整任务<UiIcon name="review" :size="16" /></RouterLink></nav></template></template><p v-if="!backendDemo.state.liveAction" class="ws-demo-note">阶段目标关联具体任务；任务计数随完成与恢复更新。没有关联任务的阶段不显示推测进度。</p></div>
 </template>
 <style scoped>
 /* ---- 读数：StatTile 是单列右对齐的，必须给一个**确定宽度**，进度条才不是"和文字一样宽" ----

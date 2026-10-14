@@ -85,10 +85,10 @@ try {
   assert.equal(await page.locator('.c2-note-row').count(),noteCount,'Notes regrouping must preserve every record')
  }
  await go('intel')
- await page.locator('.c2-filter-row').first().getByRole('button',{name:/岗位示例/}).click()
- assert.equal(await page.locator('.desk-intel-item').count(),5,'Category filters must select actual matching records')
+ await page.locator('.c2-filter-row').first().getByRole('button',{name:/岗位要求/}).click()
+ assert.equal(await page.locator('.desk-intel-item').count(),8,'Category filters must select actual matching records')
  await page.getByRole('button',{name:'清空筛选',exact:true}).click()
- assert.equal(await page.locator('.desk-intel-item').count(),12,'Clearing filters must restore the same information pool')
+ assert.equal(await page.locator('.desk-intel-item').count(),24,'Clearing filters must restore the same information pool')
  await go('tools')
  assert.equal(await page.locator('.c2-tool-grid article').count(),6)
  assert.equal(await page.locator('.c2-tool-chain > li').count(),4)
@@ -105,11 +105,11 @@ try {
  await go('reminders')
  if(await page.locator('.c2-reminder[data-state="later"]').count()) {
   await page.getByRole('button',{name:'恢复到待处理',exact:true}).first().click()
-  assert.equal(await page.locator('.c2-reminder[data-state="pending"]').count(),1,'Postponed notices must return with their original action')
+  assert.equal(await page.locator('.c2-reminder[data-state="pending"]').count(),noticeCount,'Postponed notices must return with their original action')
   await page.getByRole('button',{name:'稍后再看',exact:true}).first().click()
   await page.getByRole('button',{name:'现在处理',exact:true}).first().click()
   assert.equal(await page.locator('.c2-reminder[data-state="done"]').count(),1,'Postponed notices must still resolve to the original action')
-  assert.equal(await page.locator('.c2-reminder[data-state="pending"]').count(),0)
+  assert.equal(await page.locator('.c2-reminder[data-state="pending"]').count(),noticeCount-1)
  }
  console.log('PASS notes, intel, six-tool workflow, reminder history and error states')
  await go('review')

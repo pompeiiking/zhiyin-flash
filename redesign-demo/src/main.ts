@@ -9,6 +9,7 @@ import './styles/journey.css'
 import './styles/dialogue.css'
 import './styles/redesign.css'
 import './styles/c2-fidelity.css'
+import './styles/refinement.css'
 
 const app = createApp(App)
 

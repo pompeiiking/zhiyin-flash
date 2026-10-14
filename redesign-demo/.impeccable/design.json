@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-15T02:09:58.6958791+08:00",
+  "generatedAt": "2026-10-15T02:36:34.6290679+08:00",
   "title": "Design System: 职引 · C2 河北大学陪伴式学生空间",
   "extensions": {
     "motion": [
@@ -42,14 +42,14 @@
         "purpose": "选中导航"
       },
       {
-        "value": "0 1px 2px rgba(30,35,44,.04),0 18px 40px -26px rgba(30,35,44,.34)",
+        "value": "0 4px 16px -12px rgba(30,35,44,.22)",
         "name": "e-2",
-        "purpose": "内容与伙伴表面"
+        "purpose": "Refined light depth; main papers and key rails have none"
       },
       {
-        "value": "0 2px 4px rgba(30,35,44,.04),0 34px 72px -32px rgba(30,35,44,.42)",
+        "value": "0 12px 32px -20px rgba(30,35,44,.28)",
         "name": "e-3",
-        "purpose": "咨询输入"
+        "purpose": "Refined composer depth"
       },
       {
         "value": "inset 0 1px 0 rgba(255,255,255,.9)",
@@ -118,6 +118,10 @@
       "mobile-stat": {
         "displayName": "手机统计",
         "purpose": "24px画像统计数"
+      },
+      "page-heading": {
+        "displayName": "页标题",
+        "purpose": "24px/700 desktop and mobile, -.02em"
       }
     },
     "colorMeta": {
@@ -170,14 +174,22 @@
       "mobileNavigation": "full-width, bottom:0, safe-area padding",
       "bodyFont": "Microsoft YaHei UI, PingFang SC, Hiragino Sans GB, Noto Sans CJK SC, Source Han Sans SC, Segoe UI, var(--font-sans)",
       "defaultTheme": "light",
-      "appearanceMobile": "wrapping flex, 30px option minimum height"
+      "appearanceMobile": "horizontal scroll toolbar, no wrapping, 44px target"
     },
     "verification": {
       "date": "2026-10-15",
-      "scope": "Seven substantive C2 repairs only",
-      "review": "7 resolved / 0 partial / 0 unresolved; each 2/2",
-      "limitations": "Does not establish pixel identity or exhaustive state coverage for all 21 prototype responsibilities",
-      "screenshots": "63 paired sets (126 PNG) plus 9 reminder state PNG, local only"
+      "scope": "22-page Operate refinement",
+      "review": "Initial FIX two service-boundary issues -> both resolved -> limited SHIP; 0 partial/0 unresolved; six confirmation images valid; initial first-screen visual review permits delivery",
+      "checks": "Final build/contrast; check-c2 20x4; five check-refinement behavior groups; 22 pages375x812/844x390 reduced motion; classic portal no errors or unresolved components passed; check-service-boundaries1440/390 preview/current intel/mock503 passed; preview API0; post-boundary final build passed in5.40s",
+      "limitations": "Limited reviewed scope only; no real online recruitment/CHSI verification, no exhaustive interaction-state certification. No new detect run; class gate original five CSS only; no pixel-identity claim.",
+      "screenshots": "66 page screenshots plus6 service-boundary operation states,72total; new6do not replace page screenshots"
+    },
+    "surfaceOverrides": {
+      "source": "src/styles/refinement.css (loaded last)",
+      "flat": "ws-paper, profile/report/intel/action/schedule rails, review week",
+      "focus": "2px primary outline, 3px offset",
+      "scrollOffset": "desktop124px/96px;phone80px/96px",
+      "stats": "desktop4columns;phone2columns;thirdof3fullwidth"
     }
   },
   "components": [
@@ -206,7 +218,7 @@
       "description": "打开命令面板的搜索入口；预览仅表达外观。"
     },
     {
-      "css": ".ds-chip{background:var(--c-primary-weak,#eef5fc);color:var(--c-primary,#0058a7);border:1px solid var(--c-primary-border,#b8d5f2);border-radius:999px;padding:6px 12px;min-height:36px;font:600 12px sans-serif}.ds-chip:hover{background:var(--c-surface-3,#ebedf2)}.ds-chip:focus-visible{outline:2px solid var(--c-primary,#0058a7);outline-offset:3px}",
+      "css": ".ds-chip{background:var(--c-primary-weak,#eef5fc);color:var(--c-primary,#0058a7);border:1px solid var(--c-primary-border,#b8d5f2);border-radius:999px;padding:6px 12px;min-height:44px;font:600 12px sans-serif}.ds-chip:hover{background:var(--c-surface-3,#ebedf2)}.ds-chip:focus-visible{outline:2px solid var(--c-primary,#0058a7);outline-offset:3px}",
       "name": "外观选项",
       "refersTo": "appearance-chip",
       "html": "<button class=\"ds-chip\" aria-pressed=\"true\">河大蓝</button>",
@@ -221,12 +233,12 @@
       "css": ".ds-nav{padding:12px;background:var(--c-surface,rgba(255,255,255,.78))}.ds-nav-link{position:relative;display:flex;gap:12px;align-items:center;padding:9px 12px;color:var(--c-text,#1e232c);text-decoration:none;border-radius:8px;font:600 14px sans-serif;background:var(--c-surface,rgba(255,255,255,.78));box-shadow:var(--e-1,0 8px 20px -18px rgba(30,35,44,.3))}.ds-nav-link:before{content:\"\";position:absolute;left:-12px;top:12px;bottom:12px;width:3px;border-radius:0 3px 3px 0;background:var(--c-primary,#0058a7)}.ds-nav-link:hover{background:var(--c-surface-3,#ebedf2)}.ds-nav-link:focus-visible{outline:2px solid var(--c-primary,#0058a7);outline-offset:3px}"
     },
     {
-      "css": ".ds-card{background:var(--c-surface,rgba(255,255,255,.78));border:1px solid var(--c-border,#e1e5ee);border-radius:16px;padding:20px;box-shadow:inset 0 1px 0 rgba(255,255,255,.9),var(--e-2,0 18px 40px -26px rgba(30,35,44,.34));color:var(--c-text,#1e232c);font:14px/1.8 sans-serif}.ds-card h2{font-size:16px;font-weight:700;margin:0 0 12px}.ds-card p{margin:0 0 12px}.ds-card a{color:var(--c-primary,#0058a7);text-underline-offset:3px}.ds-card a:hover{text-decoration-thickness:2px}.ds-card a:focus-visible{outline:2px solid var(--c-primary,#0058a7);outline-offset:3px}",
+      "css": ".ds-card{background:var(--c-surface,rgba(255,255,255,.78));border:1px solid var(--c-border,#e1e5ee);border-radius:16px;padding:20px;color:var(--c-text,#1e232c);font:14px/1.8 sans-serif}.ds-card h2{font-size:16px;font-weight:700;margin:0 0 12px}.ds-card p{margin:0 0 12px}.ds-card a{color:var(--c-primary,#0058a7);text-underline-offset:3px}.ds-card a:hover{text-decoration-thickness:2px}.ds-card a:focus-visible{outline:2px solid var(--c-primary,#0058a7);outline-offset:3px}",
       "name": "内容表面",
       "refersTo": "card",
       "html": "<section class=\"ds-card\"><h2>当前判断</h2><p>查看支持依据，再决定下一步。</p><a href=\"#evidence\">查看依据</a></section>",
       "kind": "card",
-      "description": "连续背景上的透明内容表面，中层负扩散投影。"
+      "description": "Refinement主要工作面，透明背景与细描边，取消投影。"
     },
     {
       "css": ".ds-account{display:flex;align-items:center;gap:10px;background:transparent;border:0;color:var(--c-text,#1e232c);font:500 14px sans-serif;padding:4px}.ds-avatar{display:grid;place-items:center;width:34px;height:34px;border-radius:9px;background:var(--c-surface-3,#ebedf2);color:var(--c-text-2,#4b5157)}.ds-account:hover{background:var(--c-surface-2,rgba(250,250,251,.72));border-radius:12px}.ds-account:focus-visible{outline:2px solid var(--c-primary,#0058a7);outline-offset:3px}",
@@ -270,18 +282,18 @@
       "Don't 用旧版截图或原型截图替代实际 Vue 页面验收。"
     ],
     "northStar": "C2 · 陪你走完这一段",
-    "overview": "本文件记录 2026-10-14 已实现的学生空间。获批视觉与交互来源为 [c2-hbu/index.html](design-review/v6-redesign/directions/c2-hbu/index.html) 及其页面原型；Vue 实现仍保留原产品的数据、会话与操作链路。当前工作空间样式以最后加载的 [c2-fidelity.css](src/styles/c2-fidelity.css) 为准，位于 redesign.css 之后；基础语义、主题与密度来自 tokens.css，组件局部样式继续参与层叠。\n\n浅灰渐变背景、半透明白色表面、宽而柔软的负扩散投影及同主色伙伴头像共同建立陪伴感。导航与控件保持清楚，来源、解释与任务状态支持实际操作。门户是独立表面，保留原行为与原版对比入口。",
+    "overview": "本文件记录 2026-10-15 已实现的学生空间。获批视觉与交互来源为 [c2-hbu/index.html](design-review/v6-redesign/directions/c2-hbu/index.html) 及其页面原型；Vue 实现仍保留原产品的数据、会话与操作链路。当前工作空间最终覆盖为最后加载的 [refinement.css](src/styles/refinement.css)，位于redesign.css与c2-fidelity.css之后；本轮在C2世界内进行Operate精修，保留蓝红灰、中文及原生Vue。基础语义、主题与密度来自 tokens.css，组件局部样式继续参与层叠。\n\n浅灰渐变背景、半透明白色表面及同主色伙伴头像保持C2陪伴感；主要工作面和辅栏去阴影，其他层级使用更轻投影，强调阅读与操作。导航与控件保持清楚，来源、解释与任务状态支持实际操作。门户是独立表面，保留原行为与原版对比入口。",
     "dos": [
-      "Do 以最后加载的 C2 样式及实际 Vue 组件为准，维护 token-bearing DESIGN.md 与扩展 sidecar。",
+      "Do 以最后加载的refinement覆盖及实际Vue组件为准，维护 token-bearing DESIGN.md 与扩展 sidecar。",
       "Do 保持七档注册字号、平铺目录、历史恢复与共享同一账号抽屉和状态。",
-      "Do 用真实演示字段派生计数、任务与头像状态，明确标识固定合成比较评分。",
+      "Do 用当前字段派生计数、任务与头像状态；移除界面常见演示标识时，不伪造招聘公告、学校核验成功或新服务接入。",
       "Do 以当前路由和宽度截图验证响应式与实际操作。"
     ],
     "keyCharacteristics": [
       "蓝、红、灰白语义颜色；切主色时伙伴形象同步。",
-      "透明表面与柔软投影形成连续工作背景。",
+      "主要表面平坦、少量轻影形成连续工作背景。",
       "平铺功能目录、保留历史，响应式侧栏、图标栏与底栏。",
-      "状态与来源来自当前演示字段，比较评分明确标为合成刻度。"
+      "状态与来源来自当前字段；界面移除常见演示标识，数据性质和服务边界仍保留在产品文档。"
     ]
   }
 }

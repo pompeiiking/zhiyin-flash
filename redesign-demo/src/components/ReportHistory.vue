@@ -43,5 +43,5 @@ async function read(version: number, emit: (event: 'open', report: ReportFullTex
     </article>
     <EmptyState v-if="!versions.length" kind="report" size="sm" title="尚无已保存的报告版本" description="读取到第一版诊断后，这里会按版本列出生成时间、依赖信息与更新状态。" />
   </template>
-  <p v-else-if="!busy" class="ws-muted ws-section">按所选数据来源读取完整正文、生成时间、依赖信息和待更新标记。演示模式提供三版虚构报告。</p>
+  <p v-else-if="!busy" class="ws-muted ws-section">按所选数据来源读取完整正文、生成时间、依赖信息和待更新标记。版本记录保留三次分析的依据与变化。</p>
 </section></template>

@@ -41,7 +41,7 @@ const promises = [
     </main>
     <footer class="pf-footer">
       <p>回答仅用于生成你自己的报告</p>
-      <span>演示环境 · 数据为预置内容，页面交互真实可用</span>
+      <span>把方向想清楚，把行动做具体</span>
     </footer>
   </div>
 </template>

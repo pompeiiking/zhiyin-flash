@@ -78,10 +78,10 @@ export const PROFILE_FIELDS: ProfileField[] = [
   {
     key: 'time',
     label: '每周可投入',
-    value: '6 小时（示例对话本人说明，待核对）',
+    value: '6 小时（本人说明，待核对）',
     source: '本人填写',
     confidence: { level: 'mid', label: '待验证', bars: 2 },
-    noted: '9 月 20 日，示例本人说明',
+    noted: '9 月 20 日，本人说明',
   },
   {
     key: 'rank',
@@ -195,7 +195,7 @@ export const REPORT_SECTIONS: ReportSection[] = [
         conclusion: '倾向于实践与成果产出，理论研究兴趣相对较低',
         confidence: { level: 'mid', label: '待验证', bars: 2 },
         score: 68,
-        threshold: '示例方向中有两条偏向实践产出，与当前兴趣倾向基本匹配。',
+        threshold: '候选方向中有两条偏向实践产出，与当前兴趣倾向基本匹配。',
         evidence: ['你 9 月 12 日说的："比起算公式，我更愿意看东西被做出来"', '14 轮对话里，"动手"出现 9 次'],
       },
       {
@@ -213,7 +213,7 @@ export const REPORT_SECTIONS: ReportSection[] = [
         conclusion: '已有实践经历，但经历表达与简历组织能力仍需提升',
         confidence: { level: 'high', label: '依据充分', bars: 3 },
         score: 46,
-        threshold: '示例呈现能力为 46 分，目标要求为 50 分，差距为 4 分。',
+        threshold: '当前呈现能力为 46 分，目标要求为 50 分，差距为 4 分。',
         evidence: ['简历第一页目前只有 3 行有效信息', '已投 4 家，0 个回音'],
       },
     ],
@@ -225,29 +225,29 @@ export const REPORT_SECTIONS: ReportSection[] = [
       {
         key: 'demand',
         label: '岗位供给',
-        conclusion: '示例岗位快照提示不同细分方向的供给差异，实际趋势需核对最新来源',
+        conclusion: '不同方向的工作要求已有整理，当前岗位供给仍需核对最新来源',
         confidence: { level: 'mid', label: '待验证', bars: 2 },
         score: 55,
         threshold: '可进一步比较传统材料、新能源与半导体方向，选择前需核验实时岗位数据。',
-        evidence: ['演示统计：材料类岗位 218 条，同比 -12%（非真实实时数据）', '演示统计：新能源方向 +34%（非真实实时数据）'],
+        evidence: ['已整理半导体工艺、新能源材料与材料检测三类要求', '岗位开放数量、招聘期限与地区分布尚未完成最新核对'],
       },
       {
         key: 'threshold',
         label: '门槛要求',
-        conclusion: '示例岗位要求较重视项目或实习经历',
+        conclusion: '岗位要求笔记较重视项目或实习经历',
         confidence: { level: 'high', label: '依据充分', bars: 3 },
         score: 62,
         threshold: '建议补充相关实践经历，并在简历中清晰展示项目成果。',
-        evidence: ['抽查 60 条岗位要求，"项目/实习经历"出现 34 次'],
+        evidence: ['岗位要求笔记反复出现项目记录、实验过程与异常排查', '申请前仍需核对具体岗位的必须条件与加分条件'],
       },
       {
         key: 'compete',
         label: '竞争者情况',
-        conclusion: '示例对比显示，相关实习经历是当前主要差距之一',
+        conclusion: '方向比较显示，相关实习经历是当前主要差距之一',
         confidence: { level: 'mid', label: '待验证', bars: 2 },
         score: 48,
         threshold: '建议通过实习、项目或实验室实践补充岗位相关经历。',
-        evidence: ['同专业上一届 40 人的去向：实习过的 27 人，其中 22 人在秋招前拿到面试'],
+        evidence: ['本人目前没有可公开的企业实习材料', '课程项目能提供实践起点，但尚不能替代产线经历'],
       },
     ],
   },
@@ -280,7 +280,7 @@ export const REPORT_SECTIONS: ReportSection[] = [
         confidence: { level: 'high', label: '依据充分', bars: 3 },
         score: 60,
         threshold: '建议先确定主要目标，避免有限时间分散到多个执行方案。',
-        evidence: ['示例对话中本人说明每周可投入 6 小时；课表空档不直接视为空闲'],
+        evidence: ['本人在咨询中说明每周可投入 6 小时；课表空档不直接视为空闲'],
       },
     ],
   },
@@ -497,7 +497,7 @@ export const TASKS_BY_GRADE: Record<Grade, TaskItem[]> = {
       id: 't2',
       title: '投 3 家新能源方向的工艺岗',
       minutes: 25,
-      why: '根据示例投递计划安排本轮岗位申请，实际岗位开放情况需核验。',
+      why: '根据投递计划安排本轮岗位申请，实际岗位开放情况需核验。',
       bucket: 'now',
       origin: '计划拆下来的',
       due: '今天',
@@ -554,6 +554,14 @@ export const TASKS_BY_GRADE: Record<Grade, TaskItem[]> = {
       origin: '自己写的',
       doneAt: '10 月 2 日',
     },
+    {id:'t9',title:'整理材料测试的原始数据与日期',minutes:15,why:'写项目说明前先把证据找齐',bucket:'now',origin:'自己写的'},
+    {id:'t10',title:'给职业访谈写五个具体问题',minutes:15,why:'先问清日常、培训与排班，再回来核对方向',bucket:'now',origin:'自己写的'},
+    {id:'t11',title:'核对简历中写出的个人贡献',minutes:10,why:'把本人完成的步骤与团队成果分开',bucket:'now',origin:'自己写的'},
+    {id:'t12',title:'等待老师确认资料的公开范围',minutes:0,why:'已提出问题，回复前不发布实验材料',bucket:'waiting',origin:'自己写的',due:'本周内'},
+    {id:'t13',title:'整理第一版岗位要求对照表',minutes:20,why:'使用同一组条件比较方向',bucket:'done',origin:'自己写的',doneAt:'10 月 9 日'},
+    {id:'t14',title:'保存一次实验异常排查记录',minutes:15,why:'让项目说明能追到具体过程',bucket:'done',origin:'自己写的',doneAt:'10 月 10 日'},
+    {id:'t15',title:'确认周日晚间的复盘时间',minutes:5,why:'给计划调整留出固定时间',bucket:'done',origin:'自己写的',doneAt:'10 月 11 日'},
+    {id:'t16',title:'建立项目资料目录',minutes:10,why:'原始资料与简历版本分别保存',bucket:'done',origin:'自己写的',doneAt:'10 月 12 日'},
   ],
 
   senior: [
@@ -624,31 +632,29 @@ export const CALENDAR_MARKS: CalendarMark[] = [
   { day: 8, label: '投递 3 家', kind: 'action' },
   { day: 15, label: '完成简历修订', kind: 'deadline' },
   { day: 23, label: '本周复盘', kind: 'review' },
-  { day: 28, label: '中建笔试结果', kind: 'deadline' },
+  { day: 28, label: '项目说明定稿', kind: 'deadline' },
+  { day: 10, label: '整理异常排查记录', kind: 'action' },
+  { day: 12, label: '建立项目资料目录', kind: 'action' },
+  { day: 17, label: '准备职业访谈问题', kind: 'action' },
+  { day: 21, label: '核对岗位要求', kind: 'review' },
 ]
 
 /** 对话：含交接卡、可点选项、带时长的任务（第 4 幕） */
 /** Approved C2 conversation fixture. All figures and sources below are synthetic. */
 export const CHAT_TURNS: ChatTurn[] = [
  {id:'c2-question',from:'me',text:'材料科学与工程大三，成绩中上。半导体工艺、新能源材料、材料检测这三个方向我都在看，但说不清哪个更适合我。我该先补什么？'},
- {id:'c2-handoff',from:'host',speaker:'帮你判断方向的人',text:'',handoff:{to:'帮你判断方向的人',why:'你已经说清专业、年级与三个在看的候选方向；接下来要回答的是哪个站得住，这属于方向判断。',basedOn:'你刚才的回答 + 已核对的画像信息（演示样例）'}},
- {id:'c2-judgment',from:'host',speaker:'帮你判断方向的人',text:'三个方向里，半导体工艺现在最站得住；你要补的是“能讲清的实践证据”，不是再修一门课。三个方向的匹配分差 18 分，最大的一条差距不在成绩，在有没有一段能说清你做过什么的经历。',citations:['呈现能力：示例 46 分，目标要求 50 分，差 4 分（来源：本地演示诊断报告）','门槛要求：抽查 60 条岗位要求，项目或实习经历出现 34 次（来源：本地虚构岗位要求示例）','实践证据：简历第一页目前只有 3 行有效信息（来源：预置简历材料）','兴趣倾向：比起算公式，更愿意看东西被做出来（来源：预置咨询对话）'],task:{title:'先投 1 家新能源方向的工艺岗',minutes:5},options:['我先补哪段经历？','比较方向方案','查看诊断报告']},
- {id:'c2-evidence',from:'host',speaker:'帮你判断方向的人',text:'先把一个课程项目讲清楚：目标、你负责的步骤、异常怎么排查，以及留下了什么结果。只写确实做过的部分，暂时缺的证据保留为空。',citations:['材料实验的原始数据与过程记录可作为实践材料（来源：本地演示课程资料）','三个方向都需要能说清楚的实践经历（来源：本地岗位要求示例）'],task:{title:'找出 2 段能写进简历的课程项目',minutes:20}},
- {id:'c2-next',from:'host',speaker:'帮你判断方向的人',text:'方向还可以改，先做一次短访谈，把岗位日常问清楚。日常一旦对不上，前面的匹配判断就要回来核对。',citations:['工作日常需要实际从业者补充（来源：演示方法说明）'],task:{title:'联系学长，了解半导体岗位日常',minutes:5}},
+ {id:'c2-handoff',from:'host',speaker:'帮你判断方向的人',text:'',handoff:{to:'帮你判断方向的人',why:'你已经说清专业、年级与三个在看的候选方向；接下来要回答的是哪个站得住，这属于方向判断。',basedOn:'你刚才的回答 + 已核对的画像信息'}},
+ {id:'c2-judgment',from:'host',speaker:'帮你判断方向的人',text:'三个方向里，半导体工艺现在最站得住；你要补的是“能讲清的实践证据”，不是再修一门课。三个方向的匹配分差 18 分，最大的一条差距不在成绩，在有没有一段能说清你做过什么的经历。',citations:['呈现能力：46 分，目标要求 50 分，差 4 分（来源：诊断报告）','门槛要求：岗位要求笔记需要项目记录与异常排查证据（来源：岗位要求笔记）','实践证据：简历第一页目前只有 3 行有效信息（来源：预置简历材料）','兴趣倾向：比起算公式，更愿意看东西被做出来（来源：预置咨询对话）'],task:{title:'先投 1 家新能源方向的工艺岗',minutes:5},options:['我先补哪段经历？','比较方向方案','查看诊断报告']},
+ {id:'c2-evidence',from:'host',speaker:'帮你判断方向的人',text:'先把一个课程项目讲清楚：目标、你负责的步骤、异常怎么排查，以及留下了什么结果。只写确实做过的部分，暂时缺的证据保留为空。',citations:['材料实验的原始数据与过程记录可作为实践材料（来源：课程资料）','三个方向都需要能说清楚的实践经历（来源：岗位要求笔记）'],task:{title:'找出 2 段能写进简历的课程项目',minutes:20}},
+ {id:'c2-next',from:'host',speaker:'帮你判断方向的人',text:'方向还可以改，先做一次短访谈，把岗位日常问清楚。日常一旦对不上，前面的匹配判断就要回来核对。',citations:['工作日常需要实际从业者补充（来源：职业访谈准备方法）'],task:{title:'联系学长，了解半导体岗位日常',minutes:5}},
 ]
 
 /** 提醒与干预：一条消息只做一件事，必须自带动作（7.4） */
 export const NOTICES: Notice[] = [
-  {
-    id: 'n1',
-    kind: '提醒',
-    title: '中建某院的结构岗后天 18:00 截止',
-    body: '你收藏了但还没投',
-    action: '排进今天',
-    secondary: '不适合，撤掉',
-    deadline: '后天 18:00',
-    queued: 2,
-  },
+ {id:'n1',kind:'提醒',title:'项目说明初稿需要再核对一次',body:'你已经整理原始数据，接下来补上本人分工与结果。',action:'排进今天',secondary:'暂时不安排',deadline:'明天 18:00',queued:3,task:{title:'核对项目说明的本人分工与结果',minutes:15}},
+ {id:'n2',kind:'提醒',title:'职业访谈前，把问题单准备好',body:'先问工作日常、排班和新人培训；访谈时间还需与学长确认。',action:'准备问题单',deadline:'本周内',queued:2,task:{title:'整理职业访谈的五个问题',minutes:15}},
+ {id:'n3',kind:'干预',title:'这次先整理一张实验数据图',body:'完整项目说明可以拆开做，先选一张能够支持结论的图。',action:'拆成小一步',queued:1,task:{title:'选择一张支持实验结果的图',minutes:5}},
+ {id:'n4',kind:'情报',title:'三个方向的要求可以再对照一次',body:'岗位要求笔记已按类别整理。选择投递前仍需核对企业原始公告。',action:'核对岗位要求',queued:0,task:{title:'核对两份当前开放岗位的原始要求',minutes:20}},
 ]
 
 /** 复盘：时间线 + 归因三选一（不归到人） */
@@ -679,6 +685,14 @@ export const REVIEW_ITEMS: ReviewItem[] = [
     what: '和学长聊 15 分钟',
     result: 'done',
   },
+  {id:'r5',when:'10 月 8 日',what:'整理两张材料测试曲线',result:'done'},
+  {id:'r6',when:'10 月 9 日',what:'完成第一版岗位要求对照表',result:'done'},
+  {id:'r7',when:'10 月 10 日',what:'写出实验中的异常排查过程',result:'done'},
+  {id:'r8',when:'10 月 11 日',what:'准备职业访谈问题单',result:'partial',attribution:'方法不对'},
+  {id:'r9',when:'10 月 12 日',what:'建立项目资料目录',result:'done'},
+  {id:'r10',when:'10 月 12 日',what:'核对项目结果的公开范围',result:'missed',attribution:'尚不确定'},
+  {id:'r11',when:'10 月 13 日',what:'把课程实验压缩成两分钟表达',result:'partial',attribution:'任务太大'},
+  {id:'r12',when:'10 月 14 日',what:'确认下周两段稳定时间',result:'done'},
 ]
 
 export const REVIEW_CONCLUSION =

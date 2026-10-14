@@ -32,7 +32,7 @@ const state = reactive({
   drafts: {} as Record<string, { text: string; materials: { id: string; name: string }[]; scroll: number | null }>,
   currentSessionId: fresh ? 'session-new' : 'session-direction',
   sessions: sessionsFixture(),
-  histories: { 'session-direction': originalTurns(), 'session-first': originalTurns().slice(0, 4), ...structuredClone(DEMO_HISTORIES) } as Record<string, ChatTurn[]>,
+  histories: { 'session-direction': originalTurns(), ...structuredClone(DEMO_HISTORIES) } as Record<string, ChatTurn[]>,
   notes: notesFixture(),
   academic: fresh ? null : structuredClone(academicFixture) as AcademicPanelView | null,
   materials: [] as ConversationMaterialView[],
@@ -62,6 +62,17 @@ if(state.demoDataVersion<2){
  if(state.dataMode==='demo'&&history?.[0]?.text==='我不知道自己适合什么。专业是调剂的，说不上喜欢。'&&history.every(t=>/^c\d+$/.test(t.id))){state.histories['session-direction']=originalTurns();const session=state.sessions.find(s=>s.task_id==='session-direction');if(session)session.task_name=DEMO_SESSIONS[0]!.task_name}
  state.demoDataVersion=2
 }
+// Content expansion only updates owned fixtures; personal and online records remain intact.
+if(state.demoDataVersion<3){
+ if(!fresh && state.dataMode==='demo'){
+  for(const note of DEMO_NOTES.filter(n=>Number(n.id.slice(5))>12))if(!state.notes.some(n=>n.id===note.id))state.notes.push(structuredClone(note))
+  for(const session of DEMO_SESSIONS.slice(6))if(!state.sessions.some(s=>s.task_id===session.task_id))state.sessions.push(structuredClone(session))
+  for(const [id,turns] of Object.entries(DEMO_HISTORIES)){const old=state.histories[id];if(!old || (id==='session-first' && old.every(t=>/^c\d+$|^c2-/.test(t.id))) || (old.length===2 && old[0]?.text===turns[0]?.text && old[1]?.from==='host' && /^(先选一次你实际参与的实验|可以分别列出通勤|先保留没完成的记录|分别写出你与家里最看重)/.test(old[1].text)))state.histories[id]=structuredClone(turns)}
+  if(state.intelOrigin==='sample')state.intel=structuredClone(DEMO_INTEL)
+  if(state.academicOrigin==='sample')state.academic=structuredClone(DEMO_ACADEMIC)
+ }
+ state.demoDataVersion=3
+}
 export const backendDemo = {
   state: readonly(state),
   isFresh: computed(()=>state.freshAccount),
@@ -83,7 +94,7 @@ export const backendDemo = {
     state.academicOrigin = fresh ? 'local' : 'sample'
     state.sessions = sessionsFixture()
     state.currentSessionId = fresh ? 'session-new' : 'session-direction'
-    state.histories = { 'session-direction': originalTurns(), 'session-first': originalTurns().slice(0, 4), ...structuredClone(DEMO_HISTORIES) }
+    state.histories = { 'session-direction': originalTurns(), ...structuredClone(DEMO_HISTORIES) }
     state.notes = notesFixture()
     state.academic = fresh ? null : structuredClone(academicFixture)
     state.materials = []; state.intel = fresh ? [] : structuredClone(DEMO_INTEL); state.chsiChecked = false

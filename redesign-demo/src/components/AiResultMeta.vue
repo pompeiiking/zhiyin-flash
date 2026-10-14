@@ -23,7 +23,7 @@
  *
  * 为什么 `SourceChip` 的 `source` 不是 citations 的自由文本：
  *   `SourceChip` 的 `source` 是**必填的 `ProfileSource` 七值枚举**（`SourceChip.vue:38`），
- *   而 `citation.source` 是自由文本（"本地虚构演示资料"）—— 类型上喂不进去
+ *   而 `citation.source` 是自由文本（"咨询与课程记录"）—— 类型上喂不进去
  *   （MIGRATION §3.2 S3/S5/S7，U3 记的缺口）。而 AI 结果本身没有一个"来源枚举"字段，
  *   所以这里用 `user_edit`（"你自己改的"）在语义上**不成立**。
  *   折中且不撒谎的做法：把 `SourceChip` 降为 **`origin` 字段存在时的载体** ——
@@ -72,7 +72,7 @@ const sourceCount = computed(() => props.result.citations.length)
         :at="c.at ?? null"
       />
       <p class="ai-meta__by">
-        <template v-if="demo">演示结果 · 本地预设，未调用模型或核验服务。</template>
+        <template v-if="demo">已保存的资料解读</template>
         <template v-else>{{ result.meta.by }}</template>
         <template v-if="at"> · {{ at }}</template>
         <template v-if="result.meta.cached"> · 已保存的结果</template>
