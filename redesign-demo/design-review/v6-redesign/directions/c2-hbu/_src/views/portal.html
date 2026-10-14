@@ -1,0 +1,289 @@
+<div class="main__scroll">
+  <!-- ==========================================================================
+       门户（key=portal）· 入口与账户
+       --------------------------------------------------------------------------
+       需求方的硬约束原话：「门户页最好不变，且从门户进入必须直达对话页」。
+       所以这一页**不做营销落地页**：没有大图 hero、没有卖点三连、没有轮播。
+       它只回答两件事：① 这是什么 ② 从哪儿进去（主按钮直达 #/chat）。
+       剩下的"你在第几步""系统手上有什么"都是**克制的上下文**，放折叠里，不抢入口。
+
+       落点（轻页面，命中 3 个，理由见交付说明）：
+         ① 结构显形   L52–  .po-steps（五步进度）+ .meter   ；L86–  .po-facts 两列对照
+         ② 组织权     L130– .po-see 列视角（同一件处境按"谁说的"重组）
+         ④ 不确定性   L86–  右侧整列是"系统核对过、能拿出来给你看"的，与左侧"你自己说的"品质不同
+       视角数少一半（2 组而不是 3~4 组）：门户是入口，不该让人在进门前先做一次分析。
+       ======================================================================== -->
+  <div class="pg pg--narrow">
+
+    <!-- ============================ 页头 ============================ -->
+    <header class="pgh">
+      <p class="crumb">
+        <span>入口与账户</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+        <span>门户</span>
+      </p>
+      <div class="pgh__row">
+        <div class="pgh__t">
+          <h1 class="pgh__title">职引</h1>
+          <p class="pgh__lead">大学生生涯规划与就业指导智能支撑平台 —— 陪你走完"了解自己 → 做决定 → 去做 → 回头看"这一段。</p>
+          <div class="pgh__meta">
+            <span class="tag tag--demo">演示数据</span>
+            <span class="tag">整页为本地演示样张</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- ================= 这是什么 + 唯一的主入口（一个分区只有这一处主色） ================= -->
+    <section class="sec" aria-labelledby="poWhatT">
+      <div class="sec__h">
+        <div class="sec__ht">
+          <h2 class="sec__t" id="poWhatT">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5 2.5 8 12 12.5 21.5 8z"/><path d="M6 10.5V16c0 1.7 2.7 3 6 3s6-1.3 6-3v-5.5"/></svg>
+            这是什么
+          </h2>
+          <p class="sec__d">不是岗位聚合，也不是测评题。是把"我该走哪条路"拆成能一条条验证的小事，再陪你走完。</p>
+        </div>
+      </div>
+      <div class="sec__body">
+        <div class="po-open">
+          <p class="po-open__b">它做的事只有三件：先问清你的情况并记住每条从哪来；把三条备选方向的依据与差距摆出来，让你自己选；把选择拆成有时长、有理由的下一步，再和你一起复盘。</p>
+          <a class="btn btn--primary po-open__go" href="#/chat" data-nav-to="chat">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11.5a8 8 0 0 1-8.6 8 9 9 0 0 1-2.7-.4L4 21l1.5-3.8a8 8 0 0 1-.5-2.9 8 8 0 0 1 8-8 8 8 0 0 1 8 5.2Z"/></svg>
+            直接进入咨询对话
+          </a>
+          <p class="po-open__n">不经过任何中间页：点上面这个按钮就落到对话输入框。</p>
+        </div>
+      </div>
+      <div class="sec__foot">
+        <span>本地演示样张 · 对话与数据都只存在这份文件里，不会发送任何请求</span>
+      </div>
+    </section>
+
+    <!-- ================= ① 结构显形：你在这五步的第几步 ================= -->
+    <section class="sec" aria-labelledby="poStepsT">
+      <div class="sec__h">
+        <div class="sec__ht">
+          <h2 class="sec__t" id="poStepsT">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5 10 17.5 19 7"/></svg>
+            你现在在这一段的位置
+          </h2>
+          <p class="sec__d">五步是固定的一段路，不是五个页面。你现在停在第三步，第一步和第二步已经落了东西。</p>
+        </div>
+        <div class="sec__acts"><span class="sec__n" id="poStepsN">第 3 步 / 共 5 步</span></div>
+      </div>
+      <div class="sec__body">
+        <div class="meter po-meter" aria-hidden="true">
+          <i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i>
+        </div>
+        <ol class="po-steps">
+          <li class="po-steps__i po-steps__i--done">
+            <p class="po-steps__n">第 1 步</p>
+            <p class="po-steps__t">个人信息</p>
+            <p class="po-steps__d">逐项补充并保留来源 · 已了解 12 条</p>
+            <a class="po-steps__go" href="#/profile" data-nav-to="profile">去看画像</a>
+          </li>
+          <li class="po-steps__i po-steps__i--done">
+            <p class="po-steps__n">第 2 步</p>
+            <p class="po-steps__t">诊断报告</p>
+            <p class="po-steps__d">查看结论与支持依据 · v3，10 月 8 日生成</p>
+            <a class="po-steps__go" href="#/report" data-nav-to="report">去看报告</a>
+          </li>
+          <li class="po-steps__i po-steps__i--now">
+            <p class="po-steps__n">第 3 步 · 现在</p>
+            <p class="po-steps__t">方向选择</p>
+            <p class="po-steps__d">比较方案后自主选择 · 三条方向都还没选定</p>
+            <a class="po-steps__go" href="#/directions" data-nav-to="directions">去比方向</a>
+          </li>
+          <li class="po-steps__i">
+            <p class="po-steps__n">第 4 步</p>
+            <p class="po-steps__t">行动任务</p>
+            <p class="po-steps__d">查看任务、耗时与安排依据 · 今天有 1 件（25 分钟）</p>
+            <a class="po-steps__go" href="#/home" data-nav-to="home">今天的行动</a>
+          </li>
+          <li class="po-steps__i">
+            <p class="po-steps__n">第 5 步</p>
+            <p class="po-steps__t">执行复盘</p>
+            <p class="po-steps__d">分析任务、方法或方向 · 最近一次复盘 10 月 7 日</p>
+            <a class="po-steps__go" href="#/review" data-nav-to="review">看复盘</a>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- ================= ① 结构显形：左右两列"品质不同"（你说的 / 系统核对的） ================= -->
+    <section class="sec" aria-labelledby="poFactsT">
+      <div class="sec__h">
+        <div class="sec__ht">
+          <h2 class="sec__t" id="poFactsT">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M7 12h10M10 17h4"/></svg>
+            一进来它就知道这些
+          </h2>
+          <p class="sec__d">左边一列是你自己说的（还没被别的事印证），右边一列是学信网、教务系统或你标记过的动作（能拿出来给你看）。两列不混。</p>
+        </div>
+      </div>
+      <div class="sec__body">
+        <div class="po-facts">
+          <div class="po-facts__col">
+            <p class="po-facts__h">
+              <span class="src src--chat"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 0 1-8 8 8.5 8.5 0 0 1-3-.5L5 21l1.4-3.6A8 8 0 1 1 20 12Z"/></svg></span><span class="src__k">对话里说的</span></span>
+              <span class="conf conf--reported"><i aria-hidden="true"></i>待验证 4 条</span>
+            </p>
+            <ul class="po-list">
+              <li class="po-list__r"><span class="po-list__k">兴趣倾向</span><span class="po-list__v">偏"把事做成"，而不是"研究原理"<small>9 月 12 日，你说的原话</small></span></li>
+              <li class="po-list__r"><span class="po-list__k">家庭期待</span><span class="po-list__v">父母希望考公<small>9 月 12 日，你主动提的</small></span></li>
+              <li class="po-list__r"><span class="po-list__k">已知短板</span><span class="po-list__v">简历上没有一个能讲的项目<small>9 月 15 日，你自己说的</small></span></li>
+              <li class="po-list__r"><span class="po-list__k">每周可投入</span><span class="po-list__v">6 小时<small>9 月 20 日你自己填的，还没核对过实验课</small></span></li>
+            </ul>
+          </div>
+          <div class="po-facts__col">
+            <p class="po-facts__h">
+              <span class="src src--doc"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5z"/><path d="M9 9h6M9 13h6"/></svg></span><span class="src__k">系统核对过</span></span>
+              <span class="conf conf--verified"><i aria-hidden="true"></i>依据充分 3 条</span>
+            </p>
+            <ul class="po-list">
+              <li class="po-list__r"><span class="po-list__k">学籍与就读状态</span><span class="po-list__v">河北大学 · 材料科学与工程 · 大三（2024 级）<small>学信网，9 月 18 日核验</small></span></li>
+              <li class="po-list__r"><span class="po-list__k">成绩层级</span><span class="po-list__v">专业前 30%<small>教务系统，9 月 20 日导入</small></span></li>
+              <li class="po-list__r"><span class="po-list__k">投递现状</span><span class="po-list__v">投了 4 家，0 个回音<small>10 月 8 日，你标记的动作</small></span></li>
+            </ul>
+            <p class="po-tip">还有 3 条一直空着（实习经历、目标岗位类型、薪资底线）—— 不是忘了问，是还没聊到。进对话问一句就能补。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= ② 组织权：同一件处境，两种看法（列少一半是故意的） ================= -->
+    <section class="sec" aria-labelledby="poSeeT">
+      <div class="sec__h">
+        <div class="sec__ht">
+          <h2 class="sec__t" id="poSeeT">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M7 12h10M10 17h4"/></svg>
+            同一件处境，两种看法
+          </h2>
+          <p class="sec__d">下面这 7 条是它手上关于你的全部。按"谁说的"看，一眼能分出哪些还需要你自己确认。</p>
+        </div>
+        <div class="sec__acts"><span class="sec__n" id="poSeeN">7 条</span></div>
+      </div>
+      <div class="sec__body">
+        <div class="lens" data-lens="source"
+             data-order-source="你自己说的|系统记录的"
+             data-order-kind="学业与成绩|偏好与性格|家庭与外部期待|求职现状"
+             data-hint-source="按谁说的看：4 条来自你自己的话，3 条来自学信网、教务系统和你标记过的动作。前者要靠你确认，后者已经能拿出来核对。"
+             data-hint-kind="按它是哪一类看：学业与成绩最厚（3 条），但求职现状只有 2 条 —— 而三条方向卡的正是这一块：能讲清的实践证据，现在一条都还没有。">
+          <div class="lensbar" role="tablist" aria-label="按什么看">
+            <button class="lensbtn" type="button" role="tab" data-lens-set="source" aria-selected="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M5 8l7-5 7 5"/></svg>
+              按谁说的
+            </button>
+            <button class="lensbtn" type="button" role="tab" data-lens-set="kind" aria-selected="false">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.6"/><rect x="13" y="4" width="7" height="7" rx="1.6"/><rect x="4" y="13" width="7" height="7" rx="1.6"/><rect x="13" y="13" width="7" height="7" rx="1.6"/></svg>
+              按它是哪一类
+            </button>
+          </div>
+          <p class="lens__hint" data-lens-hint aria-live="polite"></p>
+          <div class="lens__items">
+            <article class="lens__item" data-source="你自己说的" data-kind="学业与成绩">
+              <p class="po-k">每周可投入</p>
+              <p class="po-v">6 小时</p>
+              <div class="po-m">
+                <span class="src src--self"><span class="src__ic" aria-hidden="true"></span><span class="src__k">你自己填的</span><span class="src__w">9 月 20 日</span></span>
+                <span class="conf conf--reported"><i aria-hidden="true"></i>待核对</span>
+              </div>
+            </article>
+            <article class="lens__item" data-source="你自己说的" data-kind="偏好与性格">
+              <p class="po-k">兴趣倾向</p>
+              <p class="po-v">偏"把事做成"，而不是"研究原理"</p>
+              <div class="po-m">
+                <span class="src src--chat"><span class="src__ic" aria-hidden="true"></span><span class="src__k">你的原话</span><span class="src__w">9 月 12 日</span></span>
+                <span class="conf conf--reported"><i aria-hidden="true"></i>待验证</span>
+              </div>
+            </article>
+            <article class="lens__item" data-source="你自己说的" data-kind="家庭与外部期待">
+              <p class="po-k">家庭期待</p>
+              <p class="po-v">父母希望考公</p>
+              <div class="po-m">
+                <span class="src src--chat"><span class="src__ic" aria-hidden="true"></span><span class="src__k">你主动提的</span><span class="src__w">9 月 12 日</span></span>
+                <span class="conf conf--verified"><i aria-hidden="true"></i>依据充分</span>
+              </div>
+            </article>
+            <article class="lens__item" data-source="你自己说的" data-kind="求职现状">
+              <p class="po-k">已知短板</p>
+              <p class="po-v">简历上没有一个能讲的项目</p>
+              <div class="po-m">
+                <span class="src src--chat"><span class="src__ic" aria-hidden="true"></span><span class="src__k">你自己说的</span><span class="src__w">9 月 15 日</span></span>
+                <span class="conf conf--verified"><i aria-hidden="true"></i>依据充分</span>
+              </div>
+            </article>
+            <article class="lens__item" data-source="系统记录的" data-kind="学业与成绩">
+              <p class="po-k">学籍与就读状态</p>
+              <p class="po-v">河北大学 · 材料科学与工程 · 大三（2024 级）</p>
+              <div class="po-m">
+                <span class="src src--doc"><span class="src__ic" aria-hidden="true"></span><span class="src__k">学信网</span><span class="src__w">9 月 18 日核验</span></span>
+                <span class="conf conf--verified"><i aria-hidden="true"></i>依据充分</span>
+              </div>
+            </article>
+            <article class="lens__item" data-source="系统记录的" data-kind="学业与成绩">
+              <p class="po-k">成绩层级</p>
+              <p class="po-v">专业前 30%</p>
+              <div class="po-m">
+                <span class="src src--doc"><span class="src__ic" aria-hidden="true"></span><span class="src__k">教务系统</span><span class="src__w">9 月 20 日导入</span></span>
+                <span class="conf conf--verified"><i aria-hidden="true"></i>依据充分</span>
+              </div>
+            </article>
+            <article class="lens__item" data-source="系统记录的" data-kind="求职现状">
+              <p class="po-k">投递现状</p>
+              <p class="po-v">投了 4 家，0 个回音</p>
+              <div class="po-m">
+                <span class="src src--self"><span class="src__ic" aria-hidden="true"></span><span class="src__k">你标记的动作</span><span class="src__w">10 月 8 日</span></span>
+                <span class="conf conf--verified"><i aria-hidden="true"></i>依据充分</span>
+              </div>
+            </article>
+          </div>
+        </div>
+      </div>
+      <div class="sec__foot">
+        <span>这 7 条只是画像池 15 条里的一小半</span>
+        <a href="#/profile" data-nav-to="profile">去看完整的 15 条 →</a>
+      </div>
+    </section>
+
+    <!-- 两处次要入口收进原生折叠：门户的第一屏只留一个主按钮 -->
+    <section class="sec sec--quiet" aria-labelledby="poMoreT">
+      <div class="sec__h">
+        <div class="sec__ht">
+          <h2 class="sec__t" id="poMoreT">还想要的，都在这里</h2>
+        </div>
+      </div>
+      <div class="sec__body">
+        <details class="fold">
+          <summary class="fold__sum">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+            账号、登录方式与提醒
+            <span class="fold__n">3 项</span>
+          </summary>
+          <div class="fold__body">
+            <div class="po-skip">
+              <a class="po-skip__a" href="#/login" data-nav-to="login"><span>登录</span><small>河北大学学生身份 · 演示样张，不会真的登录</small></a>
+              <a class="po-skip__a" href="#/settings" data-nav-to="settings"><span>账号设置</span><small>昵称、头像、通知开关、数据授权与注销</small></a>
+              <a class="po-skip__a" href="#/reminders" data-nav-to="reminders"><span>提醒</span><small>队列 5 条 · 其中 1 条需要你现在注意</small></a>
+            </div>
+          </div>
+        </details>
+        <details class="fold">
+          <summary class="fold__sum">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+            数据从哪来、你能管到哪
+            <span class="fold__n">2 条</span>
+          </summary>
+          <div class="fold__body">
+            <p class="po-tip">学信网与教务系统的两项读取要你逐项授权，授权后能看到什么、随时可以关、关了会怎样，都写在账号设置里；关掉不会删除你已经看过的报告。个人材料与咨询记录不用于对外提供，也不做对外排名或推荐。</p>
+            <a class="po-tip__go" href="#/settings" data-nav-to="settings">去账号设置看每一项的后果 →</a>
+          </div>
+        </details>
+      </div>
+      <div class="sec__foot">
+        <span><span class="tag tag--demo">演示数据</span> 本页人名、学校、日期与结论都是虚构样例，仅用于界面展示</span>
+      </div>
+    </section>
+  </div>
+</div>

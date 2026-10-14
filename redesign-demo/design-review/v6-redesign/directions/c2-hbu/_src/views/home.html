@@ -1,0 +1,340 @@
+<div class="main__scroll">
+  <!-- ==========================================================================
+       今日行动（key=home）
+       --------------------------------------------------------------------------
+       这一页回答的是上一轮最刺眼的那条问题：**勾掉一件事得到零反馈**。
+       所以它的核心不是"列清单"，而是"一条在推进的线"（DESIGN-LANGUAGE §8）：
+         ① 结构显形      今天该做的那一件 ↔ 它连着哪条差距（.hm-card 的"为什么是它"）
+         ② 组织权交给用户 .lens（同一批 5 条，按状态 / 来源 / 今天动得了动不了 重组）
+         ③ 粒度与溯源     .src 标出谁放进来的：计划拆下来的 / 建议的 / 自己写的
+         ④ 状态与不确定性 .conf--stale（时间没核对）、.callout--warn（上次没做成）
+       勾选的连锁写在 _src/js/home.js：进度条推进、剩余时间重算、下一件浮出、复盘留痕。
+       "直接开聊"的文案取自场景数据里大三的 taskCards（DEMO-DATA 第十二节 #12 的边界）。
+       ======================================================================== -->
+  <div class="pg-doc">
+    <div class="pg-doc__main">
+
+      <!-- ============================ 页头 ============================ -->
+      <header class="pgh">
+        <p class="crumb">
+          <span>去做</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+          <span>今日行动</span>
+        </p>
+        <div class="pgh__row">
+          <div class="pgh__t">
+            <h1 class="pgh__title">今日行动</h1>
+            <p class="pgh__lead">现在是秋招前，你手上最要紧的不是"更努力"，是把简历上那条讲不清的实践经历补出来。今天先动一件 —— 勾掉它，下面的顺序会跟着变。</p>
+            <div class="pgh__meta">
+              <span class="tag tag--demo">演示数据</span>
+              <span class="tag">10 月 14 日 周三</span>
+              <span class="tag">可投入 5 件 · 65 分钟</span>
+              <span class="conf conf--reported"><i aria-hidden="true"></i>本周可投入 6 小时（待核对）</span>
+            </div>
+          </div>
+          <div class="pgh__acts">
+            <a class="btn btn--ghost" href="#/plan" data-nav-to="plan">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4v16M12 4v16M18 4v10"/></svg>
+              看阶段计划
+            </a>
+          </div>
+        </div>
+      </header>
+
+      <!-- ============ ① 首屏第一位：今天该做的那一件，以及为什么是它 ============
+           简报第五节标了这一条：t2 投 3 家新能源方向的工艺岗（25 分钟，今天）。
+           它同时是复盘里"没完成、任务太大"的那一件 —— 三个页面讲同一件事。 -->
+      <section class="sec hm-hero" aria-labelledby="hmHeroT">
+        <div class="sec__h">
+          <div class="sec__ht">
+            <h2 class="sec__t" id="hmHeroT">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              今天该做的那一件
+            </h2>
+            <p class="sec__d">只推一件。推它的理由不是"它最急"，是三个方向都卡在同一处，而这一条同时补上其中两处。</p>
+          </div>
+          <div class="sec__acts"><span class="sec__n">今天 1 件</span></div>
+        </div>
+
+        <div class="sec__body">
+          <article class="hm-card" data-hm-id="t2" data-hm-bucket="now" data-hm-min="25"
+                   data-hm-origin="计划拆下来的" data-hm-due="今天" data-hm-done="false">
+            <div class="hm-card__hd">
+              <span class="hm-src src src--self"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h10M4 17h6"/></svg></span><span class="src__k">计划拆下来的</span><span class="src__w">来自阶段计划「申请 15 个岗位」</span></span>
+              <span class="pill pill--time">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>
+                25 分钟 · 今天
+              </span>
+              <span class="hm-badge" data-hm-badge>第 1 件</span>
+            </div>
+
+            <h3 class="hm-card__t">投 3 家新能源方向的工艺岗</h3>
+
+            <div class="hm-why">
+              <p class="hm-why__k">为什么是现在</p>
+              <p class="hm-why__d">根据示例投递计划安排本轮岗位申请，实际岗位开放情况需核验。</p>
+            </div>
+
+            <!-- 结构显形：这一件事 ≠ 孤立的待办，它连着具体哪条差距 -->
+            <div class="hm-link">
+              <p class="hm-link__k">它连着哪条差距</p>
+              <div class="hm-link__rows">
+                <p class="hm-link__r"><span class="hm-link__t">呈现能力</span><span class="hm-link__b">演示 46 / 要求 50，差 4 分</span><a href="#/report" data-nav-to="report">看报告里这条</a></p>
+                <p class="hm-link__r"><span class="hm-link__t">实践证据</span><span class="hm-link__b">简历第一页目前只有 3 行有效信息</span><a href="#/plan" data-nav-to="plan">看它挂在哪个里程碑</a></p>
+              </div>
+            </div>
+
+            <!-- 状态与不确定性：这一条上次没做成，原因写在复盘里，不归到人 -->
+            <p class="callout callout--warn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8.2v.1"/></svg>
+              <span>10 月 6 日这一条没做成，复盘里记的原因是 <b>任务太大</b> —— 一次要 40 分钟以上。顾问建议先投 1 家（5 分钟）。下面这张卡按 25 分钟算，你可以先做 5 分钟那一档。</span>
+            </p>
+
+            <div class="hm-card__ft">
+              <button class="btn btn--ghost" type="button" data-hm-ask="投了几家没回音">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 0 1-8 8 8.5 8.5 0 0 1-3-.5L5 21l1.4-3.6A8 8 0 1 1 20 12Z"/></svg>
+                直接开聊
+              </button>
+              <button class="hm-done" type="button" data-hm-toggle="t2" aria-pressed="false">
+                <span class="pick__box" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 10 17.5 19 7"/></svg></span>
+                <span data-hm-btnlabel>做完了，勾掉</span>
+              </button>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <!-- ============ ②③④ 今天这一条线：勾掉一件就往下走 ============
+           .meter 的每一段 = 一条可做任务；勾掉 → 亮一段、剩余时间重算、下一件浮出。 -->
+      <section class="sec" aria-labelledby="hmLineT">
+        <div class="sec__h">
+          <div class="sec__ht">
+            <h2 class="sec__t" id="hmLineT">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h5l2-5 2 10 2-5h5"/></svg>
+              今天这条线走到哪了
+            </h2>
+            <p class="sec__d">一根条 = 一件可做的事。勾掉一件，条亮一段、剩余时间重算、下一件浮上来 —— 不用你自己去列表里找下一个。</p>
+          </div>
+          <div class="sec__acts"><span class="sec__n" id="hmLiveN">1 / 5</span></div>
+        </div>
+
+        <div class="sec__body">
+          <div class="hm-live">
+            <p class="hm-live__t" id="hmState">已经做完 <b>0 件</b>，还有 <b>65 分钟</b>要动。下一件：把简历第一页的封面表述改成"工艺方向"。</p>
+            <div class="meter" id="hmMeter" role="img" aria-label="今天 5 件里已完成 0 件">
+              <i data-hm-seg="t1"></i><i data-hm-seg="t2"></i><i data-hm-seg="t3"></i><i data-hm-seg="t4"></i><i data-hm-seg="t7"></i>
+            </div>
+            <p class="hm-live__n" id="hmTrace">勾掉之后这里会写清：进度动了多少、剩多少分钟、复盘里留了什么痕。</p>
+          </div>
+
+          <div class="hm-grid">
+            <article class="hm-t" data-hm-id="t1" data-hm-bucket="now" data-hm-min="15"
+                     data-hm-origin="计划拆下来的" data-hm-done="false">
+              <div class="hm-t__hd">
+                <h3 class="hm-t__t">把简历第一页的封面表述改成"工艺方向"</h3>
+                <span class="hm-badge" data-hm-badge></span>
+              </div>
+              <p class="hm-t__d">建议根据目标岗位调整简历重点，提高经历与岗位要求的关联性。</p>
+              <div class="hm-t__m">
+                <span class="hm-src src src--self"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h10M4 17h6"/></svg></span><span class="src__k">计划拆下来的</span><span class="src__w">里程碑「完成简历修订并满足申请要求」</span></span>
+                <span class="pill">15 分钟</span>
+              </div>
+              <div class="hm-t__f">
+                <button class="btn btn--ghost" type="button" data-hm-ask="定了方向不知道怎么动">直接开聊</button>
+                <button class="hm-done hm-done--sm" type="button" data-hm-toggle="t1" aria-pressed="false">
+                  <span class="pick__box" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 10 17.5 19 7"/></svg></span>
+                  <span data-hm-btnlabel>勾掉</span>
+                </button>
+              </div>
+            </article>
+
+            <article class="hm-t" data-hm-id="t3" data-hm-bucket="now" data-hm-min="20"
+                     data-hm-origin="建议的" data-hm-done="false">
+              <div class="hm-t__hd">
+                <h3 class="hm-t__t">找出 2 段能写进简历的课程项目</h3>
+                <span class="hm-badge" data-hm-badge></span>
+              </div>
+              <p class="hm-t__d">整理已有课程项目，明确个人职责、实施过程及成果。</p>
+              <div class="hm-t__m">
+                <span class="hm-src src src--chat"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 0 1-8 8 8.5 8.5 0 0 1-3-.5L5 21l1.4-3.6A8 8 0 1 1 20 12Z"/></svg></span><span class="src__k">建议的</span><span class="src__w">顾问加的：三个方向都需要可说明的实践证据</span></span>
+                <span class="pill">20 分钟</span>
+              </div>
+              <div class="hm-t__f">
+                <button class="btn btn--ghost" type="button" data-hm-ask="定了方向不知道怎么动">直接开聊</button>
+                <button class="hm-done hm-done--sm" type="button" data-hm-toggle="t3" aria-pressed="false">
+                  <span class="pick__box" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 10 17.5 19 7"/></svg></span>
+                  <span data-hm-btnlabel>勾掉</span>
+                </button>
+              </div>
+            </article>
+
+            <article class="hm-t" data-hm-id="t4" data-hm-bucket="now" data-hm-min="5"
+                     data-hm-origin="建议的" data-hm-done="false">
+              <div class="hm-t__hd">
+                <h3 class="hm-t__t">联系学长，了解半导体岗位日常</h3>
+                <span class="hm-badge" data-hm-badge></span>
+              </div>
+              <p class="hm-t__d">通过职业访谈补充岗位认知，再确定是否申请。</p>
+              <div class="hm-t__m">
+                <span class="hm-src src src--chat"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 0 1-8 8 8.5 8.5 0 0 1-3-.5L5 21l1.4-3.6A8 8 0 1 1 20 12Z"/></svg></span><span class="src__k">建议的</span><span class="src__w">顾问加的：先问清岗位日常再决定投不投</span></span>
+                <span class="pill">5 分钟</span>
+              </div>
+              <div class="hm-t__f">
+                <button class="btn btn--ghost" type="button" data-hm-ask="想转方向">直接开聊</button>
+                <button class="hm-done hm-done--sm" type="button" data-hm-toggle="t4" aria-pressed="false">
+                  <span class="pick__box" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 10 17.5 19 7"/></svg></span>
+                  <span data-hm-btnlabel>勾掉</span>
+                </button>
+              </div>
+            </article>
+
+            <article class="hm-t hm-t--done" data-hm-id="t7" data-hm-bucket="done" data-hm-min="5"
+                     data-hm-origin="计划拆下来的" data-hm-done="true">
+              <div class="hm-t__hd">
+                <h3 class="hm-t__t">把每周可投入时间确认成 6 小时</h3>
+                <span class="hm-badge" data-hm-badge></span>
+              </div>
+              <p class="hm-t__d">明确可投入时间，有助于制定可执行计划。9 月 20 日做完的这一条 —— 现在它只是那条进度条上亮着的一段。</p>
+              <div class="hm-t__m">
+                <span class="hm-src src src--self"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h10M4 17h6"/></svg></span><span class="src__k">计划拆下来的</span><span class="src__w">9 月 20 日完成</span></span>
+                <span class="conf conf--stale"><i aria-hidden="true"></i>待核对：实验课与生活安排还没比过</span>
+              </div>
+              <div class="hm-t__f">
+                <button class="btn btn--ghost" type="button" data-hm-ask="定了方向不知道怎么动">直接开聊</button>
+                <button class="hm-done hm-done--sm" type="button" data-hm-toggle="t7" aria-pressed="true">
+                  <span class="pick__box" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 10 17.5 19 7"/></svg></span>
+                  <span data-hm-btnlabel>撤销</span>
+                </button>
+              </div>
+            </article>
+          </div>
+
+          <!-- 等结果：不是待办，却占着注意力。单独一层，别混进"今天要做"。 -->
+          <div class="sub hm-wait">
+            <p class="sub__t">不占今天的时间，但结果会自己回来</p>
+            <div class="hm-wait__rows">
+              <p class="hm-wait__r"><b>等中建某院结构岗的笔试结果</b><span>截止已过，结果预计本周出来，出来前不用动 —— 它不是待办，是等待，所以不占今天那 65 分钟。</span><span class="pill">本周内</span></p>
+            </div>          </div>
+        </div>
+
+        <div class="sec__foot">
+          <span>按谁放进来的看：<b>计划拆下来的 2 条、顾问建议的 2 条</b>、你自己写的 1 条。顾问给的一半是"去做"，一半是"先看清"。</span>
+          <a href="#/review" data-nav-to="review">看 10 月 6 日那条为什么没做成 →</a>
+        </div>
+      </section>
+
+      <!-- ============ ② 组织权交给用户：同一批 5 件，按什么看 ============
+           条目会被搬动（引擎做 FLIP），不是换一份列表。 -->
+      <section class="sec" aria-labelledby="hmLensT">
+        <div class="sec__h">
+          <div class="sec__ht">
+            <h2 class="sec__t" id="hmLensT">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M7 12h10M10 17h4"/></svg>
+              同一批事，按什么看
+            </h2>
+            <p class="sec__d">今天这 5 条一条没删。按"谁放进来的"看，你能看出顾问排的比你自己的多；按"今天动得了动不了"看，等结果的那两条会自动掉到最后一组。</p>
+          </div>
+          <div class="sec__acts"><span class="sec__n" id="hmLensN">5 条</span></div>
+        </div>
+        <div class="sec__body">
+          <div class="lens" data-lens="state"
+               data-order-state="进行中|未开始|等结果|已完成"
+               data-order-origin="计划拆下来的|建议的|自己写的|关键节点"
+               data-order-slot="今天动得了|今天先别动"
+               data-hint-state="按现在走到哪看：2 条正在做、1 条还没开始、1 条等结果、1 条已完成。正在做的两条里，只有一条挂在今天的截止上。"
+               data-hint-origin="按谁放进来看：计划拆下来的 2 条、顾问建议的 2 条、你自己写的 1 条。顾问建议的 2 条其实是同一件事的两半 —— 一条找证据、一条问现实。"
+               data-hint-slot="按今天动得了动不了看：4 条今天就能动（合计 65 分钟），1 条只能等。等结果的事不该占你今天的注意力，所以才单分一组。">
+
+            <div class="lensbar" role="tablist" aria-label="按什么看这批事">
+              <button class="lensbtn" type="button" role="tab" data-lens-set="state" aria-selected="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>
+                按状态
+              </button>
+              <button class="lensbtn" type="button" role="tab" data-lens-set="origin" aria-selected="false">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M5 8l7-5 7 5"/></svg>
+                按谁放进来的
+              </button>
+              <button class="lensbtn" type="button" role="tab" data-lens-set="slot" aria-selected="false">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 19V9M12 19V5M18 19v-7"/></svg>
+                按今天动得了动不了
+              </button>
+            </div>
+            <p class="lens__hint" data-lens-hint aria-live="polite"></p>
+
+            <div class="lens__items">
+              <article class="lens__item" data-state="进行中" data-origin="计划拆下来的" data-slot="今天动得了">
+                <p class="hm-i__t">投 3 家新能源方向的工艺岗</p>
+                <p class="hm-i__d">今天到期。上次没做成，原因是任务太大 —— 先投 1 家也算动了。</p>
+                <div class="hm-i__m">
+                  <span class="src src--self"><span class="src__ic" aria-hidden="true"></span><span class="src__k">计划拆下来的</span><span class="src__w">25 分钟 · 今天</span></span>
+                  <a href="#/review" data-nav-to="review">复盘里那一条</a>
+                </div>
+              </article>
+              <article class="lens__item" data-state="进行中" data-origin="计划拆下来的" data-slot="今天动得了">
+                <p class="hm-i__t">把简历第一页的封面表述改成"工艺方向"</p>
+                <p class="hm-i__d">挂在里程碑「完成简历修订并满足申请要求」下，那一段现在 50%。</p>
+                <div class="hm-i__m">
+                  <span class="src src--self"><span class="src__ic" aria-hidden="true"></span><span class="src__k">计划拆下来的</span><span class="src__w">15 分钟</span></span>
+                  <a href="#/plan" data-nav-to="plan">看它挂在哪</a>
+                </div>
+              </article>
+              <article class="lens__item" data-state="未开始" data-origin="建议的" data-slot="今天动得了">
+                <p class="hm-i__t">找出 2 段能写进简历的课程项目</p>
+                <p class="hm-i__d">顾问加的。它和上面那条改简历是同一件事的两半 —— 先找到料，才改得动封面。</p>
+                <div class="hm-i__m">
+                  <span class="src src--chat"><span class="src__ic" aria-hidden="true"></span><span class="src__k">建议的</span><span class="src__w">20 分钟</span></span>
+                </div>
+              </article>
+              <article class="lens__item" data-state="等结果" data-origin="自己写的" data-slot="今天先别动">
+                <p class="hm-i__t">等中建某院结构岗的笔试结果</p>
+                <p class="hm-i__d">截止已过，结果预计本周出来，出来前不用动 —— 这条不是待办，是等待。</p>
+                <div class="hm-i__m">
+                  <span class="src src--self"><span class="src__ic" aria-hidden="true"></span><span class="src__k">自己写的</span><span class="src__w">本周内</span></span>
+                </div>
+              </article>
+              <article class="lens__item" data-state="已完成" data-origin="关键节点" data-slot="今天动得了">
+                <p class="hm-i__t">把每周可投入时间确认成 6 小时</p>
+                <p class="hm-i__d">9 月 20 日做完。它让计划有了上限：每周 6 小时，所以今天排 65 分钟是合理的。</p>
+                <div class="hm-i__m">
+                  <span class="src src--self"><span class="src__ic" aria-hidden="true"></span><span class="src__k">计划拆下来的</span><span class="src__w">9 月 20 日</span></span>
+                  <span class="conf conf--stale"><i aria-hidden="true"></i>待核对</span>
+                </div>
+              </article>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ============================ 侧栏 ============================ -->
+    <aside class="pg-doc__side">
+
+      <section class="sec" aria-labelledby="hmSlotT">
+        <div class="sec__h"><div class="sec__ht"><h2 class="sec__t" id="hmSlotT">今天还剩多少时间</h2></div></div>
+        <div class="sec__body">
+          <p class="hm-side__n"><b id="hmLeftBig">65</b> 分钟</p>
+          <p class="hm-side__d" id="hmLeftD">5 件里 0 件做完。这个数字只有勾掉或撤销的时候才会变 —— 它算的是"还剩多少要动手的时间"，等结果的那两条不进去。</p>
+          <div class="srcs hm-side__src">
+            <span class="src src--doc"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5.5" width="16" height="14" rx="2.5"/><path d="M4 10h16"/></svg></span><span class="src__k">教务课表</span><span class="src__w">10 月 6 日</span></span>
+            <span class="src src--self"><span class="src__ic" aria-hidden="true"></span><span class="src__k">本人说明</span><span class="src__w">每周 6 小时</span></span>
+          </div>
+          <p class="hm-side__warn">课表上写着 10 月 6 日算的空档：周三、周五下午各有 2 小时。<b>空课格不代表空闲</b> —— 今天到底能坐多久，还得你自己拿主意。</p>
+        </div>
+      </section>
+
+      <section class="sec" aria-labelledby="hmWhyT">
+        <div class="sec__h"><div class="sec__ht"><h2 class="sec__t" id="hmWhyT">为什么今天排的是这一件</h2></div></div>
+        <div class="sec__body">
+          <div class="kv">
+            <div class="kv__r"><span class="kv__k">排在第一位</span><span class="kv__v">投 3 家新能源方向的工艺岗</span></div>
+            <div class="kv__r"><span class="kv__k">它补的缺口</span><span class="kv__v">实践证据 —— 三个方向共用的那一条</span></div>
+            <div class="kv__r"><span class="kv__k">不做会怎样</span><span class="kv__v">里程碑「申请 15 个岗位」现在只走到 3 家，10 月 31 日截止</span></div>
+            <div class="kv__r"><span class="kv__k">做不动的可能</span><span class="kv__v">它太大。顾问建议先投 1 家，5 分钟</span></div>
+            <div class="kv__r"><span class="kv__k">谁排的</span><span class="kv__v">帮你排计划的人 —— 它从阶段计划「申请 15 个岗位」那一段拆下来</span></div>
+          </div>
+        </div>
+        <div class="sec__foot"><a href="#/plan" data-nav-to="plan">这条挂在阶段计划的哪一段 →</a></div>
+      </section>
+    </aside>
+  </div>
+</div>

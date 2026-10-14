@@ -1,0 +1,236 @@
+/* =============================================================================
+ * 设计规范（spec）· 视图私有样式
+ * -----------------------------------------------------------------------------
+ * 这一页的任务是"能被核对"，所以它的样式层有一半是为了**把令牌渲染出来给人看**：
+ * 色块 / 字号样张 / 字重样张 / 间距标尺 / 圆角 / 阴影 / 对比度块。
+ * 这些样张一律通过 [data-sp-*] 属性挂上令牌值，不是截图、不是外链图片，
+ * 也不是在标记里写死字面量 —— 换 accent 或换主题时它们跟着变。
+ *
+ * 本页自己的配额：一个分区最多一处主色；红色只出现在 .tag--demo 与
+ * 「需要你注意」的 .callout--warn（全页各一处）。
+ * 字号只用 12 / 14 / 16 / 20 / 30；字重只用 400 / 500 / 600 / 700。
+ * ========================================================================== */
+
+/* ---- 可点面积：crumb a 基线只有 21px 高（10-data-page.css L60–63），按门禁抬到 44 ----
+   .btn 基线 padding 11px 20px（c2.css L1152）本来就在 44 以上，不需要兜底。 */
+[data-view="spec"] .crumb a{
+  display:inline-flex;align-items:center;min-height:44px;
+}
+
+/* ---- 行内代码与出处标记：它们是"可以回源文件核对"的锚点 -------------------- */
+.sp-code{
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:var(--fs-12);font-weight:var(--fw-medium);
+  padding:1px 5px;border-radius:var(--r-sm);
+  background:var(--c-surface-3);border:1px solid var(--c-border);color:var(--c-text-2);
+  white-space:nowrap;
+}
+.sp-ref{
+  display:inline-block;padding:0 5px;border-radius:var(--r-sm);
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:var(--fs-12);color:var(--c-text-3);
+  background:var(--c-surface-3);border:1px solid var(--c-border);
+  white-space:nowrap;
+}
+.sp-note{
+  margin-top:var(--sp-3);
+  font-size:var(--fs-12);line-height:var(--lh-normal);color:var(--c-text-3);
+}
+.sp-note b{font-weight:var(--fw-semibold);color:var(--c-text-2)}
+
+/* ---- 色块：底色就是令牌本身 ----------------------------------------------- */
+.sp-swatches{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  gap:var(--sp-3);margin-top:var(--sp-3);
+}
+.sp-sw{display:flex;flex-direction:column;gap:6px;min-width:0}
+.sp-sw__c{
+  display:block;height:52px;border-radius:var(--r-md);
+  border:1px solid var(--c-border);box-shadow:var(--light-in);
+}
+.sp-sw__c--line{border-color:var(--c-border-strong)}
+.sp-sw__k{font-size:var(--fs-12);font-weight:var(--fw-semibold);color:var(--c-text-2);line-height:var(--lh-snug)}
+.sp-sw__v{
+  font-size:var(--fs-12);color:var(--c-text-3);line-height:var(--lh-snug);
+  font-variant-numeric:tabular-nums;
+}
+
+[data-view="spec"] [data-sp-c="blue500"]{background:var(--blue-500)}
+[data-view="spec"] [data-sp-c="blue50"]{background:var(--blue-50)}
+[data-view="spec"] [data-sp-c="blue200"]{background:var(--blue-200)}
+[data-view="spec"] [data-sp-c="blue450"]{background:var(--blue-450)}
+[data-view="spec"] [data-sp-c="red500"]{background:var(--red-500)}
+[data-view="spec"] [data-sp-c="red50"]{background:var(--red-50)}
+[data-view="spec"] [data-sp-c="gray900"]{background:var(--gray-900)}
+[data-view="spec"] [data-sp-c="gray50"]{background:var(--gray-50)}
+
+/* ---- 字号 / 字重样张：用真令牌渲染，"差多少"就是实际差多少 ---------------- */
+.sp-scales{display:flex;flex-direction:column;gap:var(--sp-3);margin-top:var(--sp-3)}
+.sp-scale{
+  display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--sp-3);
+  padding-bottom:var(--sp-3);border-bottom:1px solid var(--c-border);
+}
+.sp-scale:last-child{border-bottom:0;padding-bottom:0}
+.sp-scale__demo{
+  flex:1 1 260px;min-width:0;color:var(--c-text);
+  line-height:var(--lh-snug);font-family:var(--font-title);
+}
+.sp-scale__v{
+  flex:0 0 auto;font-size:var(--fs-12);font-weight:var(--fw-semibold);color:var(--c-text-2);
+  font-variant-numeric:tabular-nums;
+}
+.sp-scale__u{flex:1 1 100%;font-size:var(--fs-12);color:var(--c-text-3);line-height:var(--lh-snug)}
+
+[data-view="spec"] [data-sp-fs="12"]{font-size:var(--fs-12)}
+[data-view="spec"] [data-sp-fs="14"]{font-size:var(--fs-14)}
+[data-view="spec"] [data-sp-fs="16"]{font-size:var(--fs-16)}
+[data-view="spec"] [data-sp-fs="20"]{font-size:var(--fs-20)}
+[data-view="spec"] [data-sp-fs="30"]{font-size:var(--fs-30);line-height:var(--lh-tight)}
+
+.sp-weights{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  gap:var(--sp-3);margin-top:var(--sp-3);
+}
+.sp-weight{display:flex;flex-direction:column;gap:4px;min-width:0}
+.sp-weight__demo{font-size:var(--fs-20);color:var(--c-text);line-height:var(--lh-snug)}
+.sp-weight__v{font-size:var(--fs-12);color:var(--c-text-3);font-variant-numeric:tabular-nums}
+
+[data-view="spec"] [data-sp-fw="400"]{font-weight:var(--fw-regular)}
+[data-view="spec"] [data-sp-fw="500"]{font-weight:var(--fw-medium)}
+[data-view="spec"] [data-sp-fw="600"]{font-weight:var(--fw-semibold)}
+[data-view="spec"] [data-sp-fw="700"]{font-weight:var(--fw-bold)}
+
+/* ---- 间距标尺：条子的宽度就是令牌的值 ------------------------------------- */
+.sp-ruler{display:flex;flex-direction:column;gap:7px;margin-top:var(--sp-3)}
+.sp-rr{display:flex;align-items:center;gap:var(--sp-3);min-width:0}
+.sp-rr__bar{
+  flex:0 0 auto;height:10px;border-radius:2px;
+  background:var(--c-primary);opacity:.9;
+}
+.sp-rr__v{
+  font-size:var(--fs-12);color:var(--c-text-3);white-space:nowrap;
+  font-variant-numeric:tabular-nums;
+}
+[data-view="spec"] [data-sp-sp="1"] .sp-rr__bar{width:4px}
+[data-view="spec"] [data-sp-sp="2"] .sp-rr__bar{width:8px}
+[data-view="spec"] [data-sp-sp="3"] .sp-rr__bar{width:12px}
+[data-view="spec"] [data-sp-sp="4"] .sp-rr__bar{width:16px}
+[data-view="spec"] [data-sp-sp="5"] .sp-rr__bar{width:20px}
+[data-view="spec"] [data-sp-sp="6"] .sp-rr__bar{width:24px}
+[data-view="spec"] [data-sp-sp="7"] .sp-rr__bar{width:32px}
+[data-view="spec"] [data-sp-sp="8"] .sp-rr__bar{width:40px}
+[data-view="spec"] [data-sp-sp="9"] .sp-rr__bar{width:56px}
+[data-view="spec"] [data-sp-sp="10"] .sp-rr__bar{width:72px}
+
+/* ---- 圆角样张 -------------------------------------------------------------- */
+.sp-rounds{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));
+  gap:var(--sp-3);margin-top:var(--sp-3);
+}
+.sp-rd{display:flex;flex-direction:column;gap:6px;align-items:flex-start;min-width:0}
+.sp-rd__box{
+  display:block;width:100%;height:44px;
+  background:var(--c-primary-weak);border:1px solid var(--c-primary-border);
+}
+.sp-rd__box--pill{border-radius:var(--r-pill)}
+.sp-rd__v{font-size:var(--fs-12);color:var(--c-text-3);font-variant-numeric:tabular-nums}
+
+[data-view="spec"] [data-sp-r="sm"]{border-radius:var(--r-sm)}
+[data-view="spec"] [data-sp-r="md"]{border-radius:var(--r-md)}
+[data-view="spec"] [data-sp-r="lg"]{border-radius:var(--r-lg)}
+[data-view="spec"] [data-sp-r="xl"]{border-radius:var(--r-xl)}
+[data-view="spec"] [data-sp-r="2xl"]{border-radius:var(--r-2xl)}
+[data-view="spec"] [data-sp-r="pill"]{border-radius:var(--r-pill)}
+
+/* ---- 阴影样张：同一张面，三档抬升 ----------------------------------------- */
+.sp-eles{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));
+  gap:var(--sp-3);margin-top:var(--sp-3);
+}
+.sp-el{display:flex;flex-direction:column;gap:6px;min-width:0}
+.sp-el__box{
+  display:block;height:56px;border-radius:var(--r-lg);
+  background:var(--c-surface-solid);border:1px solid var(--c-border);
+}
+.sp-el__v{font-size:var(--fs-12);font-weight:var(--fw-semibold);color:var(--c-text-2);font-variant-numeric:tabular-nums}
+.sp-el__u{font-size:var(--fs-12);color:var(--c-text-3);line-height:var(--lh-snug)}
+
+[data-view="spec"] [data-sp-e="1"]{box-shadow:var(--light-in),var(--e-1)}
+[data-view="spec"] [data-sp-e="2"]{box-shadow:var(--light-in),var(--e-2)}
+[data-view="spec"] [data-sp-e="3"]{box-shadow:var(--light-in),var(--e-3)}
+
+/* ---- 对比度块：底色与字色就是表里那一组，可以直接用眼睛复核 --------------- */
+.sp-cons{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
+  gap:var(--sp-3);
+}
+.sp-con{display:flex;flex-direction:column;gap:6px;min-width:0}
+.sp-con__d{
+  display:grid;place-items:center;height:52px;border-radius:var(--r-md);
+  font-size:var(--fs-14);font-weight:var(--fw-semibold);
+}
+.sp-con__d--line{border:1px solid var(--c-border)}
+.sp-con__v{font-size:var(--fs-12);font-weight:var(--fw-semibold);color:var(--c-text-2);font-variant-numeric:tabular-nums}
+
+[data-view="spec"] [data-sp-con="onBlue"]{background:var(--blue-500);color:var(--gray-0)}
+[data-view="spec"] [data-sp-con="blueOnWhite"]{background:var(--gray-0);color:var(--blue-500)}
+[data-view="spec"] [data-sp-con="blueOnBg"]{background:var(--gray-50);color:var(--blue-500)}
+[data-view="spec"] [data-sp-con="blueOnWeak"]{background:var(--blue-50);color:var(--blue-500)}
+[data-view="spec"] [data-sp-con="darkBlue"]{background:#151517;color:var(--blue-400)}
+[data-view="spec"] [data-sp-con="redOnWhite"]{background:var(--gray-0);color:var(--red-500)}
+[data-view="spec"] .callout--warn{background:var(--red-50);border-color:var(--red-100)}
+
+/* ---- 9 条自查：编号是结构，不是装饰 --------------------------------------- */
+.sp-check{display:flex;flex-direction:column;gap:var(--sp-2);margin-top:var(--sp-3)}
+.sp-check p{
+  display:flex;align-items:flex-start;gap:9px;
+  font-size:var(--fs-14);line-height:var(--lh-normal);color:var(--c-text-2);
+}
+.sp-check b{font-weight:var(--fw-semibold);color:var(--c-text)}
+.sp-check__n{
+  flex:0 0 auto;display:grid;place-items:center;width:20px;height:20px;margin-top:2px;
+  border-radius:var(--r-sm);border:1px solid var(--c-border);background:var(--c-surface-3);
+  font-size:var(--fs-12);font-weight:var(--fw-bold);color:var(--c-text-3);
+  font-variant-numeric:tabular-nums;
+}
+
+/* ---- 第 1 步那两根对照条：数据页那根更长，因为落点更多 --------------------- */
+[data-view="spec"] .cmp__bar{background:var(--c-done)}
+[data-view="spec"] .cmp__bar--half{right:48%}
+
+/* ---- 窄屏：并排的样张一律改成单列，避免挤压与溢出 ------------------------- */
+@media (max-width:767px){
+  .sp-swatches,.sp-weights,.sp-rounds,.sp-eles,.sp-cons{
+    grid-template-columns:repeat(auto-fit,minmax(132px,1fr));
+  }
+  .sp-scale{flex-direction:column;align-items:flex-start;gap:6px}
+  .sp-scale__demo{flex:0 0 auto}
+  .sp-rr__v{white-space:normal}
+  [data-view="spec"] .cmp{--cmp-x:64px}
+
+  /* 窄屏下把表折成"一条一条"：表格的横排语义在 390 上会变成横向滚动，
+     那样每读一行都要左右拖，等于信息读不到。折行之后每个字段自带标签。 */
+  [data-view="spec"] .tbl,
+  [data-view="spec"] .tbl tbody,
+  [data-view="spec"] .tbl tr,
+  [data-view="spec"] .tbl th,
+  [data-view="spec"] .tbl td{display:block;width:auto}
+  [data-view="spec"] .tbl thead{display:none}
+  [data-view="spec"] .tbl td{padding:0 0 3px;border-bottom:0}
+  [data-view="spec"] .tbl tr{padding:var(--sp-3) 0;border-bottom:1px solid var(--c-border)}
+  [data-view="spec"] .tbl tr:last-child{border-bottom:0}
+  [data-view="spec"] .tbl td[data-num]{text-align:left}
+  [data-view="spec"] .tbl td + td{padding-top:6px}
+  /* 每个字段自带一个说明它是什么的小标 —— 说的是内容，不是版式 */
+  [data-view="spec"] .tbl td + td::before{
+    content:attr(data-label);
+    display:block;margin-bottom:2px;
+    font-size:var(--fs-12);font-weight:var(--fw-semibold);color:var(--c-text-3);
+  }
+  [data-view="spec"] .tbl td:nth-child(2)::before{content:"怎么判"}
+  [data-view="spec"] .tbl td:nth-child(3)::before{content:"依据在哪"}
+  [data-view="spec"] .tbl td:nth-child(4)::before{content:"出处 / 怎么判"}
+  /* 长令牌串允许在任意字符处断行：不这么做，一行 monospace 会把整页顶宽 */
+  [data-view="spec"] .sp-code,
+  [data-view="spec"] .sp-ref{white-space:normal;overflow-wrap:anywhere}
+}

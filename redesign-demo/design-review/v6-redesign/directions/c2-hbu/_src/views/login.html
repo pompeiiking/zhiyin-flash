@@ -1,0 +1,233 @@
+<div class="main__scroll">
+  <!-- ==========================================================================
+       登录（key=login）· 入口与账户
+       --------------------------------------------------------------------------
+       第十二节 #1 说得很明白：登录方式与协议文案由作者自行构造，但**不得出现真实
+       第三方登录品牌名，也不得出现真实学校统一认证地址**。所以：
+         · 方式一 = 学号 + 密码（不链接任何真实认证域名）
+         · 方式二 = 手机号 + 验证码（占位号 138****0000）
+         · 第三方入口一律不写品牌名（只写「第三方账号」，点了只给演示提示）
+       并且必须写明：登录不会真的发生、不会发送任何请求（.tag--demo + L60 说明块）。
+
+       落点（轻页面，命中 3 个，理由见交付说明）：
+         ① 结构显形   L33–  两列开场（谁在等 / 这次只验证身份）
+         ② 组织权     L85–  同一份身份信息按"这次做什么"重组（登录 / 换设备 / 找回）
+         ③ 粒度溯源   L150– .zoom 两层：协议摘要 ↔ 逐条原文
+         ④ 不确定性   L60–  "不会真的登录、不发请求"写成一个说明块，不是页脚小字
+       ======================================================================== -->
+  <div class="pg pg--narrow">
+
+    <!-- ============================ 页头 ============================ -->
+    <header class="pgh">
+      <p class="crumb">
+        <a href="#/portal">入口与账户</a>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+        <span>登录</span>
+      </p>
+      <div class="pgh__row">
+        <div class="pgh__t">
+          <h1 class="pgh__title">用学生身份进来</h1>
+          <p class="pgh__lead">登录后先看到咨询对话 —— 它手上已经有你的 12 条情况，等你说下一句。</p>
+          <div class="pgh__meta">
+            <span class="tag tag--demo">演示数据</span>
+            <span class="tag">演示样张 · 不会真的登录</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- ============ ① 结构显形：谁在等 + 这次只验证什么 ============ -->
+    <section class="sec" aria-labelledby="lgWhoT">
+      <div class="sec__h">
+        <div class="sec__ht">
+          <h2 class="sec__t" id="lgWhoT">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></svg>
+            谁在等，等的是什么
+          </h2>
+        </div>
+      </div>
+      <div class="sec__body">
+        <div class="lg-two">
+          <div class="lg-two__c">
+            <p class="lg-two__k">这个账号是谁的</p>
+            <p class="lg-two__v">陈亦然 · 河北大学 · 材料科学与工程 · 大三（2024 级）</p>
+            <p class="lg-two__d">学校、专业与年级来自学信网（9 月 18 日核验），你不用再填一遍。</p>
+          </div>
+          <div class="lg-two__c">
+            <p class="lg-two__k">这次只验证身份</p>
+            <p class="lg-two__v">不读课表、不读成绩、不导入任何资料</p>
+            <p class="lg-two__d">学籍与成绩的读取是账号设置里的独立授权项，要你逐项点开；登录本身不采集。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ ③ 不确定性显形：演示声明做成说明块，不藏在页脚 ============ -->
+    <p class="callout callout--warn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8.2v.1"/></svg>
+      <span id="lgDemoNote" aria-live="polite">这是演示样张：点「进入演示」<b>不会真的登录</b>，也不会向学校或任何服务发送请求。账号、密码、验证码都不做校验，随便填都可以。</span>
+    </p>
+
+    <!-- ============ ② 组织权 + 表单：同一份身份信息，按"这次做什么"重组 ============ -->
+    <section class="sec" aria-labelledby="lgFormT">
+      <div class="sec__h">
+        <div class="sec__ht">
+          <h2 class="sec__t" id="lgFormT">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="10.5" width="14" height="9.5" rx="2.4"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/></svg>
+            你要做的这件事
+          </h2>
+          <p class="sec__d">同样是"确认你是你"，三种情形的边界不一样。选一个，下面只显示这件事要填的东西。</p>
+        </div>
+        <div class="sec__acts"><span class="sec__n" id="lgNeedN">填 2 项</span></div>
+      </div>
+      <div class="sec__body">
+        <div class="lens" data-lens="need"
+             data-order-need="第一次进这台设备|换一台设备登录|我忘了密码"
+             data-hint-need="按这次要做的事分：第一次进要填学号与密码；换设备收一条验证码；忘了密码只用手机号收码。每一项都写着它会被拿去做什么；下面换方式时，不在这次范围内的会先收起。"
+             data-order-keep="换页就不留|留在这台设备上"
+             data-hint-keep="按这条信息留不留看：学号、密码、验证码都只在这一次用，换页就没了；只有「记住我」会留在这台设备上，公共电脑上别开。">
+          <div class="lensbar" role="tablist" aria-label="这次要做什么">
+            <button class="lensbtn" type="button" role="tab" data-lens-set="need" aria-selected="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13"/><path d="m13 7 5 5-5 5"/></svg>
+              这次要填什么
+            </button>
+            <button class="lensbtn" type="button" role="tab" data-lens-set="keep" aria-selected="false">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="m8 8 4-4 4 4"/><path d="M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3"/></svg>
+              这条信息留不留
+            </button>
+          </div>
+          <p class="lens__hint" data-lens-hint aria-live="polite"></p>
+          <div class="lens__items">
+            <article class="lens__item" data-need="第一次进这台设备" data-keep="换页就不留">
+              <p class="lg-k">学号</p>
+              <p class="lg-v">10 位数字 · 只用来确认是本校在读学生</p>
+              <div class="lg-m">
+                <span class="src src--doc"><span class="src__ic" aria-hidden="true"></span><span class="src__k">学校发给你的</span></span>
+                <span class="conf conf--inferred"><i aria-hidden="true"></i>演示不校验</span>
+              </div>
+            </article>
+            <article class="lens__item" data-need="第一次进这台设备" data-keep="换页就不留">
+              <p class="lg-k">密码</p>
+              <p class="lg-v">你自己设的那个 · 只在本机比对</p>
+              <div class="lg-m">
+                <span class="src src--self"><span class="src__ic" aria-hidden="true"></span><span class="src__k">你自己保管</span></span>
+                <span class="conf conf--inferred"><i aria-hidden="true"></i>演示不校验</span>
+              </div>
+            </article>
+            <article class="lens__item" data-need="换一台设备登录" data-keep="换页就不留">
+              <p class="lg-k">设备验证码</p>
+              <p class="lg-v">6 位数字 · 确认这次是你本人在新设备上登</p>
+              <div class="lg-m">
+                <span class="src src--chat"><span class="src__ic" aria-hidden="true"></span><span class="src__k">发到 138****0000</span></span>
+                <span class="conf conf--reported"><i aria-hidden="true"></i>占位号码</span>
+              </div>
+            </article>
+            <article class="lens__item" data-need="我忘了密码" data-keep="换页就不留">
+              <p class="lg-k">手机号</p>
+              <p class="lg-v">收一条验证码来重设密码 · 不改你的学号</p>
+              <div class="lg-m">
+                <span class="src src--chat"><span class="src__ic" aria-hidden="true"></span><span class="src__k">发到 138****0000</span></span>
+                <span class="conf conf--reported"><i aria-hidden="true"></i>占位号码</span>
+              </div>
+            </article>
+            <article class="lens__item" data-need="第一次进这台设备" data-keep="留在这台设备上">
+              <p class="lg-k">"记住我"</p>
+              <p class="lg-v">留在这台设备上 · 换页之后仍然不用重登</p>
+              <div class="lg-m">
+                <span class="src src--self"><span class="src__ic" aria-hidden="true"></span><span class="src__k">你可以随时在账号设置里撤销</span></span>
+                <span class="conf conf--stale"><i aria-hidden="true"></i>公共电脑上别开</span>
+              </div>
+            </article>
+          </div>
+        </div>
+
+        <!-- 表单：两种方式二选一，切换只换字段，不换整页 -->
+        <form class="lg-form" id="lgForm" novalidate>
+          <div class="lg-form__tabs" role="tablist" aria-label="登录方式">
+            <button class="lg-way" type="button" role="tab" data-lg-way="id" aria-selected="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="13" rx="2.4"/><path d="M8 10.5h4M8 14h7"/></svg>
+              学号 + 密码
+            </button>
+            <button class="lg-way" type="button" role="tab" data-lg-way="sms" aria-selected="false">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6.5" y="3.5" width="11" height="17" rx="2.6"/><path d="M10.5 17.5h3"/></svg>
+              手机 + 验证码
+            </button>
+          </div>
+
+          <div class="lg-fields" data-lg-panel="id">
+            <div class="lg-field">
+              <label class="lg-field__k" for="lgId">学号</label>
+              <input class="lg-field__i" id="lgId" name="lgId" type="text" inputmode="numeric" autocomplete="off" placeholder="10 位数字">
+              <p class="lg-field__h">学校发的那个号；演示样张里不核对，随便填。</p>
+            </div>
+            <div class="lg-field">
+              <label class="lg-field__k" for="lgPw">密码</label>
+              <input class="lg-field__i" id="lgPw" name="lgPw" type="password" autocomplete="off" placeholder="任意填写">
+              <p class="lg-field__h">不会发出去，也不会存下来。</p>
+            </div>
+          </div>
+
+          <div class="lg-fields" data-lg-panel="sms" hidden>
+            <div class="lg-field">
+              <label class="lg-field__k" for="lgTel">手机号</label>
+              <input class="lg-field__i" id="lgTel" name="lgTel" type="tel" inputmode="numeric" autocomplete="off" value="138****0000">
+              <p class="lg-field__h">占位号码：真实场景里这里会发一条验证码。</p>
+            </div>
+            <div class="lg-field">
+              <label class="lg-field__k" for="lgCode">验证码</label>
+              <input class="lg-field__i" id="lgCode" name="lgCode" type="text" inputmode="numeric" autocomplete="off" placeholder="6 位数字">
+              <p class="lg-field__h">演示样张：没有短信发出，填什么都算过。</p>
+            </div>
+          </div>
+
+          <label class="lg-agree">
+            <input class="lg-agree__box" id="lgAgree" type="checkbox">
+            <span class="lg-agree__t" id="lgAgreeT">我读过 <a href="#lgPact">下面那段使用说明</a>，并同意这一页只用于界面评审。</span>
+          </label>
+
+          <div class="lg-cta">
+            <button class="btn btn--primary lg-go" id="lgGo" type="submit">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13"/><path d="m13 7 5 5-5 5"/></svg>
+              进入演示
+            </button>
+            <button class="btn btn--ghost" id="lgOther" type="button">第三方账号（演示不接）</button>
+          </div>
+          <p class="lg-echo" id="lgEcho" aria-live="polite">当前方式：学号 + 密码 · 选这个是因为你要在实验室的电脑上登，不想收短信。</p>
+        </form>
+      </div>
+      <div class="sec__foot">
+        <span id="lgPact">使用说明（演示版，逐条抄给你看）</span>
+        <a href="#/portal" data-nav-to="portal">回门户</a>
+      </div>
+    </section>
+
+    <!-- ============ ③ 粒度与溯源：协议摘要 ↔ 逐条原文 ============ -->
+    <section class="sec" aria-labelledby="lgZoomT">
+      <div class="sec__h">
+        <div class="sec__ht">
+          <h2 class="sec__t" id="lgZoomT">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
+            你要同意的是什么
+          </h2>
+          <p class="sec__d">同一份使用说明的两层：第一层一句话，第二层逐条原文 —— 两层同时在这张纸上，不是让你点开一个"协议"弹窗。</p>
+        </div>
+      </div>
+      <div class="sec__body">
+        <div class="zoom" data-zoom="sum">
+          <div class="zoombar" role="group" aria-label="看到多细">
+            <button class="zoombtn" type="button" data-zoom-set="sum" aria-pressed="true">摘要</button>
+            <button class="zoombtn" type="button" data-zoom-set="full" aria-pressed="false">原文</button>
+          </div>
+          <div class="zoom__body">
+            <span class="z--sum" id="lgPactSum">这次演示只做一件事：让你看见登录进来长什么样。它不读学校系统、不发短信、不保存你填的东西。</span>
+            <span class="z--full">1. 本页是本地演示样张，打开时不会向任何服务器发出请求；学号、密码、验证码只停留在你眼前的输入框里。<br>2. 本页不接入学校的统一身份认证，也不接入任何第三方登录服务；"第三方账号"按钮只用于展示位置。<br>3. 进入后看到的一切资料都是虚构样例：人物、学校、日期、成绩与结论均用于界面评审，不代表真实的学籍核验结果。<br>4. 真实的学籍与成绩读取是账号设置里的独立授权项，需要你逐项确认；授权后能看到什么、随时怎么关、关了会怎样，都写在那一页里。<br>5. 这份说明本身也是演示文案，不构成任何服务条款。</span>
+          </div>
+        </div>
+      </div>
+      <div class="sec__foot">
+        <span>读完这段再去点「进入演示」也来得及</span>
+        <a href="#/settings" data-nav-to="settings">看数据授权的每一项后果 →</a>
+      </div>
+    </section>
+  </div>
+</div>

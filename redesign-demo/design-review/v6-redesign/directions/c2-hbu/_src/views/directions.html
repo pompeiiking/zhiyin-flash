@@ -1,0 +1,555 @@
+<div class="main__scroll">
+  <!-- ==========================================================================
+       方向方案（key: directions）
+       --------------------------------------------------------------------------
+       数据页的活 = 组织可见（DESIGN-LANGUAGE §3）。这一页命中四个落点里的三个：
+         ① 结构显形       §1 同一批比较项 × 三条方向，一把尺子（.dir-scores）
+                          §4 要求 vs 现状矩阵（.tbl + .dir-gap）
+         ② 组织权交给用户  §2 权重可调 → 三条方向**当场重排**（DOM 顺序真的变），
+                          并在 .dir-live 里说明"变了什么"；§3 选定方向 → 连带改动显形
+         ③ 状态与不确定性  §5 .lens 条目带 .src 来历 + .conf 有多结实；
+                          全页数字口径写在 §2 页脚（演示预设比例，非模型测算）
+       没有 .zoom：这一页不需要"摘要↔原文"缩放。
+       一句话读法：**三条方向现在谁在前面 → 你更看重什么 → 换一个会连带改掉什么**。
+       ======================================================================== -->
+  <div class="pg pg--wide">
+
+    <!-- ============================ 页头 ============================ -->
+    <header class="pgh">
+      <p class="crumb">
+        <span>做决定</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+        <span>方向方案</span>
+      </p>
+      <div class="pgh__row">
+        <div class="pgh__t">
+          <h1 class="pgh__title">三个方向，一把尺子</h1>
+          <p class="pgh__lead">半导体材料工艺（主攻）、新能源电池研发助理（平行）、省内国企材料检测岗（保底）。三条都还开着，选哪条由你定 —— 系统不替你选，选定之后也能撤销。这页能做的：调你的看重程度，看排序怎么动；选定一条，看它会连带改掉什么。</p>
+          <div class="pgh__meta">
+            <span class="tag tag--demo">演示数据</span>
+            <span class="tag">匹配分 0.82 / 0.64 / 0.58</span>
+            <span class="tag">契合度 82 / 71 / 61</span>
+            <span class="conf conf--reported"><i aria-hidden="true"></i>依据来自 6 条记录与 14 轮对话</span>
+          </div>
+        </div>
+        <div class="pgh__acts">
+          <button class="chipbtn" type="button" data-dir-ask="三条方向我拿不准，帮我判断一下哪条值得先验证">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+            去问一句
+          </button>
+          <button class="chipbtn" type="button" data-dir-copy="dirPreset">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M15 5H6a2 2 0 0 0-2 2v9"/></svg>
+            复制这版比较
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- ================= ① 结构显形：三条方向，同一批比较项 ================= -->
+    <section class="sec" aria-labelledby="dirCmpT">
+      <div class="sec__h">
+        <div class="sec__ht">
+          <h2 class="sec__t" id="dirCmpT">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19V5M4 19h16"/><path d="M8 15v-4M12 15V7M16 15v-6"/></svg>
+            同一批比较项，同一把尺子
+          </h2>
+          <p class="sec__d">以前是三条方向各说一段话，你没法比。现在把比较项横过来：每一行是同一件事，三列是同一次打分（0–100 的演示刻度，不是模型测算）。行序就是它们对"现在该干什么"的影响大小。</p>
+        </div>
+        <div class="sec__acts">
+          <span class="sec__n" id="dirRowsN">5 项</span>
+        </div>
+      </div>
+      <div class="sec__body">
+        <!-- 当前排序读数：权重一动，这里与表格一起变（② 的落点）。JS 一进来就重算，
+             这里写的是"五项都 3 档"时的兜底结果。 -->
+        <div class="dir-live">
+          <p class="dir-live__t" id="dirLiveT">当前排序：<b>半导体材料工艺 76</b> &gt; 省内国企材料检测岗 69 &gt; 新能源电池研发助理 68</p>
+          <p class="dir-live__d" id="dirLiveD">这是把五个权重项按一样重、用上表的分数加出来的排序分，只用于比较。页头的匹配分 0.82 / 0.64 / 0.58 是演示预设比例，也不是模型测算。</p>
+        </div>
+
+        <div class="tbl-wrap">
+          <table class="tbl dir-scores">
+            <caption>三条方向 × 五个比较项。刻度统一为 0–100；每一行只标出"最高"和"最低"两处，中间的不标 —— 一眼看出差在哪，而不是三列各说各的。</caption>
+            <thead>
+              <tr>
+                <th scope="col">比较项</th>
+                <th scope="col">半导体材料工艺 <small>主攻</small></th>
+                <th scope="col">新能源电池研发助理 <small>平行</small></th>
+                <th scope="col">省内国企材料检测岗 <small>保底</small></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row" data-key="true">专业对口</th>
+                <td data-num="true"><span class="dir-sc" data-tone="hi"><span class="dir-sc__v">88</span><span class="dir-sc__t"><i style="--dir-fill:.88"></i></span><span class="dir-sc__n">最高</span></span></td>
+                <td data-num="true"><span class="dir-sc"><span class="dir-sc__v">74</span><span class="dir-sc__t"><i style="--dir-fill:.74"></i></span></span></td>
+                <td data-num="true"><span class="dir-sc"><span class="dir-sc__v">84</span><span class="dir-sc__t"><i style="--dir-fill:.84"></i></span></span></td>
+              </tr>
+              <tr>
+                <th scope="row" data-key="true">岗位数量</th>
+                <td data-num="true"><span class="dir-sc" data-tone="hi"><span class="dir-sc__v">86</span><span class="dir-sc__t"><i style="--dir-fill:.86"></i></span><span class="dir-sc__n">最高</span></span></td>
+                <td data-num="true"><span class="dir-sc"><span class="dir-sc__v">78</span><span class="dir-sc__t"><i style="--dir-fill:.78"></i></span><span class="dir-sc__n">最少</span></span></td>
+                <td data-num="true"><span class="dir-sc"><span class="dir-sc__v">70</span><span class="dir-sc__t"><i style="--dir-fill:.70"></i></span></span></td>
+              </tr>
+              <tr>
+                <th scope="row" data-key="true">起薪水平</th>
+                <td data-num="true"><span class="dir-sc"><span class="dir-sc__v">80</span><span class="dir-sc__t"><i style="--dir-fill:.80"></i></span></span></td>
+                <td data-num="true"><span class="dir-sc" data-tone="hi"><span class="dir-sc__v">90</span><span class="dir-sc__t"><i style="--dir-fill:.90"></i></span><span class="dir-sc__n">最高</span></span></td>
+                <td data-num="true"><span class="dir-sc"><span class="dir-sc__v">62</span><span class="dir-sc__t"><i style="--dir-fill:.62"></i></span><span class="dir-sc__n">最低</span></span></td>
+              </tr>
+              <tr>
+                <th scope="row" data-key="true">稳定性</th>
+                <td data-num="true"><span class="dir-sc"><span class="dir-sc__v">74</span><span class="dir-sc__t"><i style="--dir-fill:.74"></i></span></span></td>
+                <td data-num="true"><span class="dir-sc" data-tone="lo"><span class="dir-sc__v">52</span><span class="dir-sc__t"><i style="--dir-fill:.52"></i></span><span class="dir-sc__n">最低</span></span></td>
+                <td data-num="true"><span class="dir-sc" data-tone="hi"><span class="dir-sc__v">92</span><span class="dir-sc__t"><i style="--dir-fill:.92"></i></span><span class="dir-sc__n">最高</span></span></td>
+              </tr>
+              <tr>
+                <th scope="row" data-key="true">通勤与地点</th>
+                <td data-num="true"><span class="dir-sc"><span class="dir-sc__v">76</span><span class="dir-sc__t"><i style="--dir-fill:.76"></i></span></span></td>
+                <td data-num="true"><span class="dir-sc" data-tone="lo"><span class="dir-sc__v">58</span><span class="dir-sc__t"><i style="--dir-fill:.58"></i></span><span class="dir-sc__n">最低</span></span></td>
+                <td data-num="true"><span class="dir-sc" data-tone="hi"><span class="dir-sc__v">90</span><span class="dir-sc__t"><i style="--dir-fill:.90"></i></span><span class="dir-sc__n">最高</span></span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="kv dir-facts">
+          <div class="kv__r">
+            <p class="kv__k">契合依据</p>
+            <div class="kv__v">专业对口：材料科学与工程；兴趣倾向：实践与成果产出；示例供给：省内 3 家企业的模拟岗位快照。<br>示例供给：新能源相关岗位快照；示例成绩：相关实验课程表现良好。<br>示例岗位：材料检测类岗位要求；就业地域与当前偏好基本一致。</div>
+          </div>
+          <div class="kv__r">
+            <p class="kv__k">主要风险</p>
+            <div class="kv__v">需补充洁净室或产线相关实践经历。<br>研发岗普遍要求研究生学历，本科要投需要挑中小企业。<br>岗位日常与实践产出兴趣存在差异，需评估长期适应性。</div>
+          </div>
+          <div class="kv__r">
+            <p class="kv__k">目标描述</p>
+            <div class="kv__v">参与材料与半导体工艺流程、记录并排查实验问题。<br>协助电池材料实验与数据整理，需核对岗位学历门槛。<br>参与材料样品检测、质量记录与规范执行。</div>
+          </div>
+        </div>
+      </div>
+      <div class="sec__foot">
+        <span class="conf conf--verified"><i aria-hidden="true"></i>依据充分</span>
+        专业对口、兴趣倾向来自你的记录与对话；岗位供给与门槛来自<strong>本地虚构演示资料 · 非招聘公告</strong>，地点与待遇一律"待真实来源确认"。
+      </div>
+    </section>
+
+    <!-- ============ ② 组织权交给用户：改权重，排序当场重排 ============ -->
+    <section class="sec" aria-labelledby="dirWtT">
+      <div class="sec__h">
+        <div class="sec__ht">
+          <h2 class="sec__t" id="dirWtT">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h14"/><circle cx="9" cy="7" r="2.2"/><circle cx="15" cy="12" r="2.2"/><circle cx="8" cy="17" r="2.2"/></svg>
+            你更看重什么，排序就跟着动
+          </h2>
+          <p class="sec__d">上表那五个比较项，你各自有多看重，自己调。每调一档，下面三条方向的<strong>顺序和数字当场重算</strong>，并告诉你哪一条升了、为什么升 —— 不是换一段文字，是真的换位置。</p>
+        </div>
+        <div class="sec__acts">
+          <button class="chipbtn" type="button" id="dirReset">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10a8 8 0 1 1 2 6"/><path d="M4 5v5h5"/></svg>
+            回到一样重
+          </button>
+        </div>
+      </div>
+      <div class="sec__body">
+        <div class="dir-ctl" id="dirWeights" aria-label="五个比较项的重视程度，各五档">
+          <!-- 每一行：-[ 减 ]---刻度---[ 加 ]+  值。行由 directions.js 读取，不用改标记即可重算 -->
+          <div class="dir-ctl__r" data-dir-w="专业对口" data-dir-wkey="major">
+            <p class="dir-ctl__k">专业对口<small>学的东西用不用得上</small></p>
+            <div class="dir-ctl__adj">
+              <button class="dir-step" type="button" data-dir-step="-1" aria-label="专业对口，减少一档"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 12h12"/></svg></button>
+              <span class="dir-ctl__v" data-dir-val aria-live="polite">3</span>
+              <button class="dir-step" type="button" data-dir-step="1" aria-label="专业对口，增加一档"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 6v12M6 12h12"/></svg></button>
+            </div>
+            <span class="dir-ctl__bar" aria-hidden="true"></span>
+          </div>
+          <div class="dir-ctl__r" data-dir-w="岗位数量" data-dir-wkey="jobs">
+            <p class="dir-ctl__k">岗位数量<small>本科能投的有多少</small></p>
+            <div class="dir-ctl__adj">
+              <button class="dir-step" type="button" data-dir-step="-1" aria-label="岗位数量，减少一档"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 12h12"/></svg></button>
+              <span class="dir-ctl__v" data-dir-val aria-live="polite">3</span>
+              <button class="dir-step" type="button" data-dir-step="1" aria-label="岗位数量，增加一档"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 6v12M6 12h12"/></svg></button>
+            </div>
+            <span class="dir-ctl__bar" aria-hidden="true"></span>
+          </div>
+          <div class="dir-ctl__r" data-dir-w="起薪水平" data-dir-wkey="pay">
+            <p class="dir-ctl__k">起薪水平<small>第一份工作的钱</small></p>
+            <div class="dir-ctl__adj">
+              <button class="dir-step" type="button" data-dir-step="-1" aria-label="起薪水平，减少一档"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 12h12"/></svg></button>
+              <span class="dir-ctl__v" data-dir-val aria-live="polite">3</span>
+              <button class="dir-step" type="button" data-dir-step="1" aria-label="起薪水平，增加一档"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 6v12M6 12h12"/></svg></button>
+            </div>
+            <span class="dir-ctl__bar" aria-hidden="true"></span>
+          </div>
+          <div class="dir-ctl__r" data-dir-w="稳定性" data-dir-wkey="stable">
+            <p class="dir-ctl__k">稳定性<small>家里更在意的那条</small></p>
+            <div class="dir-ctl__adj">
+              <button class="dir-step" type="button" data-dir-step="-1" aria-label="稳定性，减少一档"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 12h12"/></svg></button>
+              <span class="dir-ctl__v" data-dir-val aria-live="polite">3</span>
+              <button class="dir-step" type="button" data-dir-step="1" aria-label="稳定性，增加一档"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 6v12M6 12h12"/></svg></button>
+            </div>
+            <span class="dir-ctl__bar" aria-hidden="true"></span>
+          </div>
+          <div class="dir-ctl__r" data-dir-w="通勤与地点" data-dir-wkey="place">
+            <p class="dir-ctl__k">通勤与地点<small>留不留在省内</small></p>
+            <div class="dir-ctl__adj">
+              <button class="dir-step" type="button" data-dir-step="-1" aria-label="通勤与地点，减少一档"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 12h12"/></svg></button>
+              <span class="dir-ctl__v" data-dir-val aria-live="polite">3</span>
+              <button class="dir-step" type="button" data-dir-step="1" aria-label="通勤与地点，增加一档"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 6v12M6 12h12"/></svg></button>
+            </div>
+            <span class="dir-ctl__bar" aria-hidden="true"></span>
+          </div>
+        </div>
+
+        <!-- 三条方向的实时顺序（① 结构显形 + ② 的落点）。下面这段是**静止时的兜底
+             标记**：directions.js 一进来就按当前权重重算并重新 append，所以真正的顺序
+             由脚本决定，这里写的是"五项都 3 档"时的那一份，供 JS 失效时也能读。 -->
+        <div class="dir-rank" id="dirRank" aria-label="三条方向按当前权重的排序">
+          <div class="dir-rank__c" data-dir-d="semi" data-dir-rank="1">
+            <p class="dir-rank__h"><span class="dir-rank__pos">1</span><span class="dir-rank__n">半导体材料工艺</span><span class="dir-rank__m">主攻</span></p>
+            <span class="dir-rank__track" aria-hidden="true"><i class="dir-rank__bar" style="--dir-fill:.76"></i></span>
+            <p class="dir-rank__v"><b>76</b> <small>分</small> <span class="dir-rank__g">领先第 2 名 7 分</span></p>
+          </div>
+          <div class="dir-rank__c" data-dir-d="mat" data-dir-rank="2">
+            <p class="dir-rank__h"><span class="dir-rank__pos">2</span><span class="dir-rank__n">省内国企材料检测岗</span><span class="dir-rank__m">保底</span></p>
+            <span class="dir-rank__track" aria-hidden="true"><i class="dir-rank__bar" style="--dir-fill:.69"></i></span>
+            <p class="dir-rank__v"><b>69</b> <small>分</small> <span class="dir-rank__g">落后第 1 名 7 分</span></p>
+          </div>
+          <div class="dir-rank__c" data-dir-d="new" data-dir-rank="3">
+            <p class="dir-rank__h"><span class="dir-rank__pos">3</span><span class="dir-rank__n">新能源电池研发助理</span><span class="dir-rank__m">平行</span></p>
+            <span class="dir-rank__track" aria-hidden="true"><i class="dir-rank__bar" style="--dir-fill:.68"></i></span>
+            <p class="dir-rank__v"><b>68</b> <small>分</small> <span class="dir-rank__g">落后第 1 名 8 分</span></p>
+          </div>
+        </div>
+        <p class="dir-note" id="dirCalc">怎么算的：排序分 = Σ（该比较项的分数 × 你给的档位÷5）÷ Σ（档位÷5）。档位 1–5 对应权重 0.2 / 0.4 / 0.6 / 0.8 / 1.0，三档（默认）就是每项一样重。这里排出来的是"按你现在看重的这几件事"，所以它和页头那份演示预设比例（0.82 / 0.64 / 0.58，另一套口径）不一定同序。调档只改这页的排序，不写进你的档案。</p>
+      </div>
+      <div class="sec__foot">
+        <span class="tag tag--demo">演示数据</span>
+        口径：匹配分 0.82 / 0.64 / 0.58 与契合度 82 / 71 / 61 是<strong>演示预设比例，用于展示比较关系；非模型测算</strong>。上面的排序分是在这五个比较项上按你的档位现算的，只用来排序。
+      </div>
+    </section>
+
+    <!-- ============ ② 的下一半：选定一条，连带改动当场显形 ============ -->
+    <section class="sec" aria-labelledby="dirCasT">
+      <div class="sec__h">
+        <div class="sec__ht">
+          <h2 class="sec__t" id="dirCasT">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h6M4 12h10M4 17h6"/><path d="m17 9 3 3-3 3"/></svg>
+            选定一条，会连带改掉什么
+          </h2>
+          <p class="sec__d">选方向不是贴个标签，它会让别的条目跟着动。三列并排放着，就是"如果我改选会怎样"：点一列看它的连带改动，随时能撤销。系统不替你选，这一列也不会自己亮起来。</p>
+        </div>
+        <div class="sec__acts">
+          <span class="sec__n" id="dirCasN">还没选</span>
+        </div>
+      </div>
+      <div class="sec__body">
+        <div class="dir-cards">
+          <div class="dir-card" data-dir-d="semi" data-dir-state="candidate" data-dir-name="半导体材料工艺">
+            <p class="dir-card__h">
+              <span class="dir-card__n">半导体材料工艺</span>
+              <span class="dir-card__m">主攻 · 匹配度较高（3 格）</span>
+            </p>
+            <p class="dir-card__now">现在不是选中的：下表按它算的改动只是预演，点下面的按钮才算。</p>
+            <dl class="dir-cas">
+              <div class="dir-cas__r"><dt>岗位资讯按什么筛</dt><dd>材料与半导体工艺岗；筛"工艺 / 制程 / 实验记录"三个词；地域先留省内</dd></div>
+              <div class="dir-cas__r"><dt>今日行动补哪一项</dt><dd>补洁净室或产线相关实践经历</dd></div>
+              <div class="dir-cas__r"><dt>报告里改哪条结论</dt><dd>关于"门槛要求"那条 —— 从"本科够得着"改成"要补一段产线或洁净室经历"</dd></div>
+              <div class="dir-cas__r"><dt>投递清单</dt><dd>前 5 家按工艺岗重排</dd></div>
+              <div class="dir-cas__r"><dt>简历第一页</dt><dd>主线表述换成材料与工艺</dd></div>
+            </dl>
+            <div class="dir-card__acts">
+              <button class="btn btn--ghost dir-card__btn" type="button" data-dir-pick="semi">选它当主攻</button>
+              <span class="dir-card__undo">选定后可撤销</span>
+            </div>
+          </div>
+
+          <div class="dir-card" data-dir-d="new" data-dir-state="candidate" data-dir-name="新能源电池研发助理">
+            <p class="dir-card__h">
+              <span class="dir-card__n">新能源电池研发助理</span>
+              <span class="dir-card__m">平行 · 待验证（2 格）</span>
+            </p>
+            <p class="dir-card__now">现在不是选中的：下表按它算的改动只是预演，点下面的按钮才算。</p>
+            <dl class="dir-cas">
+              <div class="dir-cas__r"><dt>岗位资讯按什么筛</dt><dd>新能源电池研发助理岗；先按"本科可投"筛一遍，再看企业规模</dd></div>
+              <div class="dir-cas__r"><dt>今日行动补哪一项</dt><dd>核对本科助理岗与研究生研发岗的区别</dd></div>
+              <div class="dir-cas__r"><dt>报告里改哪条结论</dt><dd>关于"是否需要考研"那条 —— 变成"先核对门槛，再决定考不考"</dd></div>
+              <div class="dir-cas__r"><dt>投递清单</dt><dd>重排，中小企业排在前面</dd></div>
+              <div class="dir-cas__r"><dt>简历里的课程项目</dt><dd>课程项目排序改成电池材料在前</dd></div>
+            </dl>
+            <div class="dir-card__acts">
+              <button class="btn btn--ghost dir-card__btn" type="button" data-dir-pick="new">选它当平行方向</button>
+              <span class="dir-card__undo">选定后可撤销</span>
+            </div>
+          </div>
+
+          <div class="dir-card" data-dir-d="mat" data-dir-state="candidate" data-dir-name="省内国企材料检测岗">
+            <p class="dir-card__h">
+              <span class="dir-card__n">省内国企材料检测岗</span>
+              <span class="dir-card__m">保底 · 待验证（2 格）</span>
+            </p>
+            <p class="dir-card__now">现在不是选中的：下表按它算的改动只是预演，点下面的按钮才算。</p>
+            <dl class="dir-cas">
+              <div class="dir-cas__r"><dt>岗位资讯按什么筛</dt><dd>材料检测类岗位；先按省内筛，岗位描述只看"检测 / 质量记录"</dd></div>
+              <div class="dir-cas__r"><dt>今日行动补哪一项</dt><dd>先算时间：把考公要用的时间从每周 6 小时里划出来</dd></div>
+              <div class="dir-cas__r"><dt>报告里改哪条结论</dt><dd>关于"是否需要考公"那条 —— 变成"先核对真实岗位日常，再决定考不考"</dd></div>
+              <div class="dir-cas__r"><dt>时间分配</dt><dd>每周 6 小时按考公与投递两头分</dd></div>
+              <div class="dir-cas__r"><dt>投递清单</dt><dd>只在省内这一类里排序</dd></div>
+            </dl>
+            <div class="dir-card__acts">
+              <button class="btn btn--ghost dir-card__btn" type="button" data-dir-pick="mat">选它当保底方向</button>
+              <span class="dir-card__undo">选定后可撤销</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="dir-live" id="dirCasLive">
+          <p class="dir-live__t">现在没有选定方向。三条都还开着，所以岗位资讯、今日行动、报告结论都保持中性，不按任何一条预筛。</p>
+          <p class="dir-live__d">选定只影响上面那几处的取舍方式，不改你档案里的任何数字；认定选错了就撤销，改动回退。</p>
+        </div>
+      </div>
+      <div class="sec__foot">
+        <span class="tag tag--live">进行时</span>
+        你现在的排序分最高的方向是 <strong id="dirLead">半导体材料工艺（76 分）</strong> —— 但这只是比较结果，不代表已经选定。
+      </div>
+    </section>
+
+    <!-- ============ ① 结构显形：要求 vs 现状矩阵（gaps） ============ -->
+    <section class="sec" aria-labelledby="dirGapT">
+      <div class="sec__h">
+        <div class="sec__ht">
+          <h2 class="sec__t" id="dirGapT">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h7M14 12h7"/><path d="m9 8-3 4 3 4"/><path d="m15 8 3 4-3 4"/></svg>
+            要求 vs 现状：差距集中在一处
+          </h2>
+          <p class="sec__d">四行是三条方向共用的要求；现状分只有一组，所以你不用逐条比三遍。差值下面写着差在哪、下一步补什么。</p>
+        </div>
+        <div class="sec__acts">
+          <span class="sec__n">差的 2 行 · 够的 2 行</span>
+        </div>
+      </div>
+      <div class="sec__body">
+        <div class="cmp" style="--cmp-x:104px">
+          <div class="cmp__r">
+            <p class="cmp__k">专业基础</p>
+            <span class="cmp__track"><i class="cmp__bar" style="width:88%"></i></span>
+            <span class="cmp__v">88<small> / 70</small></span>
+            <span class="delta delta--over">+18</span>
+          </div>
+          <div class="cmp__r">
+            <p class="cmp__k">项目表达</p>
+            <span class="cmp__track"><i class="cmp__bar" style="width:46%"></i></span>
+            <span class="cmp__v">46<small> / 50</small></span>
+            <span class="delta delta--under">−4</span>
+          </div>
+          <div class="cmp__r">
+            <p class="cmp__k">实践证据</p>
+            <span class="cmp__track"><i class="cmp__bar" style="width:20%"></i></span>
+            <span class="cmp__v">20<small> / 60</small></span>
+            <span class="delta delta--under">−40</span>
+          </div>
+          <div class="cmp__r">
+            <p class="cmp__k">地域条件</p>
+            <span class="cmp__track"><i class="cmp__bar" style="width:50%"></i></span>
+            <span class="cmp__v">50<small> / 50</small></span>
+            <span class="delta">持平</span>
+          </div>
+        </div>
+        <p class="dir-cmpnote">上面这套尺子是三条方向共用的（"要求"取三条里最严的那条）。逐条的要求分：半导体 70 / 50 / 60 / 60，新能源 75 / 65 / 70 / 50，材料检测 70 / 55 / 50 / 70 —— 现状分 88 / 46 / 20 / 50 对哪一条都一样。</p>
+
+        <table class="tbl dir-gaps">
+          <caption>每个方向的两条差距：要求什么、现状如何、下一步补什么。</caption>
+          <thead>
+            <tr>
+              <th scope="col">方向</th>
+              <th scope="col">要求</th>
+              <th scope="col">现状</th>
+              <th scope="col">下一步补什么</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row" data-key="true">半导体材料工艺</th>
+              <td>能清楚说明本人项目贡献</td>
+              <td>现有课程经历尚未整理成项目说明</td>
+              <td>写出一次实验的目标、本人行动、结果与证据<em class="dir-gap">直接补的是缺口最大的那一行（20 / 60）</em></td>
+            </tr>
+            <tr>
+              <th scope="row" data-key="true">半导体材料工艺</th>
+              <td>了解岗位实际工作环境</td>
+              <td>仅看过演示要求，尚未核对真实岗位</td>
+              <td>核对两份真实岗位说明并记录差异</td>
+            </tr>
+            <tr>
+              <th scope="row" data-key="true">新能源电池研发助理</th>
+              <td>能清楚说明本人项目贡献</td>
+              <td>现有课程经历尚未整理成项目说明</td>
+              <td>把相关实验课程的那次实验写成项目说明</td>
+            </tr>
+            <tr>
+              <th scope="row" data-key="true">新能源电池研发助理</th>
+              <td>核对本科助理岗与研究生研发岗的区别</td>
+              <td>仅看过演示要求，尚未核对真实岗位</td>
+              <td>核对两份真实岗位说明并记录差异</td>
+            </tr>
+            <tr>
+              <th scope="row" data-key="true">省内国企材料检测岗</th>
+              <td>能清楚说明本人项目贡献</td>
+              <td>现有课程经历尚未整理成项目说明</td>
+              <td>写出一次实验的目标、本人行动、结果与证据</td>
+            </tr>
+            <tr>
+              <th scope="row" data-key="true">省内国企材料检测岗</th>
+              <td>了解岗位实际工作环境</td>
+              <td>仅看过演示要求，尚未核对真实岗位</td>
+              <td>核对两份真实岗位说明并记录差异</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="sec__foot">
+        <span class="conf conf--inferred"><i aria-hidden="true"></i>信息不足</span>
+        "实践证据"只有 20 分，三条方向都卡在这里 —— 这不是你不够努力，是手上还没有一件能讲清的事。先补这一件，比再投 10 家有用。
+      </div>
+    </section>
+
+    <!-- ============ ③ 组织权 + 状态：同一批依据的四种看法 ============ -->
+    <section class="sec" aria-labelledby="dirLensT">
+      <div class="sec__h">
+        <div class="sec__ht">
+          <h2 class="sec__t" id="dirLensT">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M7 12h10M10 17h4"/></svg>
+            这十条依据，按什么看
+          </h2>
+          <p class="sec__d">三条方向的判断全靠这十条撑着，一条没删也没添。换一种组织方式，条目是被搬动的。你会看到：真正在支撑结论的只有 4 条，而"实践证据"这一组一条都没有。</p>
+        </div>
+        <div class="sec__acts">
+          <span class="sec__n" id="dirLensN">10 条</span>
+        </div>
+      </div>
+      <div class="sec__body">
+        <div class="lens" data-lens="source"
+             data-order-source="对话里说的|本人填写|官方记录|演示岗位快照"
+             data-order-topic="专业对口|地域与家庭期待|学历与门槛|岗位日常"
+             data-order-weight="直接支撑判断|与判断有冲突|还不足以支撑"
+             data-hint-source="按谁说的看：你自己的话 5 条、官方与教务记录 3 条、你填的 1 条、演示岗位快照 1 条。要核对的正是最后那 1 条。"
+             data-hint-topic="按它回答的问题看：'专业对口'这一组最厚（3 条），'岗位日常'只有 2 条 —— 而三条方向的风险全压在'岗位日常'上。"
+             data-hint-weight="按对判断的贡献看：只有 4 条真的在支撑结论，其中 3 条还和它冲突（每周 6 小时、实践经历空着、兴趣倾向），1 条还不足以支撑。差距不在信息总量，在这 3 条。">
+
+          <div class="lensbar" role="tablist" aria-label="这十条依据按什么看">
+            <button class="lensbtn" type="button" role="tab" data-lens-set="source" aria-selected="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M5 8l7-5 7 5"/></svg>
+              按来源
+            </button>
+            <button class="lensbtn" type="button" role="tab" data-lens-set="topic" aria-selected="false">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.6"/><rect x="13" y="4" width="7" height="7" rx="1.6"/><rect x="4" y="13" width="7" height="7" rx="1.6"/><rect x="13" y="13" width="7" height="7" rx="1.6"/></svg>
+              按主题
+            </button>
+            <button class="lensbtn" type="button" role="tab" data-lens-set="weight" aria-selected="false">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 19V9M12 19V5M18 19v-7"/></svg>
+              按对判断的贡献
+            </button>
+          </div>
+          <p class="lens__hint" data-lens-hint aria-live="polite"></p>
+
+          <div class="lens__items">
+            <article class="lens__item" data-source="官方记录" data-topic="专业对口" data-weight="直接支撑判断">
+              <p class="dir-k">专业</p>
+              <p class="dir-v">材料科学与工程，本科在读，秋招前</p>
+              <div class="dir-m">
+                <span class="src src--doc"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5z"/><path d="M9 9h6M9 13h6"/></svg></span><span class="src__k">学籍记录</span><span class="src__w">9 月 18 日</span></span>
+                <span class="conf conf--verified"><i aria-hidden="true"></i>依据充分</span>
+              </div>
+            </article>
+
+            <article class="lens__item" data-source="对话里说的" data-topic="专业对口" data-weight="与判断有冲突">
+              <p class="dir-k">专业是调剂的</p>
+              <p class="dir-v">"谈不上喜欢" —— 这是他自己说的，不是结论</p>
+              <div class="dir-m">
+                <span class="src src--chat"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 0 1-11.7 7.1L4 20l1-4.2A8 8 0 1 1 20 12z"/></svg></span><span class="src__k">对话里说的</span><span class="src__w">10 月 12 日</span></span>
+                <span class="conf conf--reported"><i aria-hidden="true"></i>待验证</span>
+              </div>
+            </article>
+
+            <article class="lens__item" data-source="对话里说的" data-topic="专业对口" data-weight="直接支撑判断">
+              <p class="dir-k">兴趣倾向</p>
+              <p class="dir-v">实践与成果产出 —— 愿意动手，也要看到东西做出来</p>
+              <div class="dir-m">
+                <span class="src src--chat"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 0 1-11.7 7.1L4 20l1-4.2A8 8 0 1 1 20 12z"/></svg></span><span class="src__k">对话里说的</span><span class="src__w">10 月 12 日</span></span>
+                <span class="conf conf--reported"><i aria-hidden="true"></i>待验证</span>
+              </div>
+            </article>
+
+            <article class="lens__item" data-source="对话里说的" data-topic="地域与家庭期待" data-weight="与判断有冲突">
+              <p class="dir-k">家里希望他考公</p>
+              <p class="dir-v">他从没打开过考公相关的岗位</p>
+              <div class="dir-m">
+                <span class="src src--chat"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 0 1-11.7 7.1L4 20l1-4.2A8 8 0 1 1 20 12z"/></svg></span><span class="src__k">对话里说的</span><span class="src__w">10 月 12 日</span></span>
+                <span class="conf conf--reported"><i aria-hidden="true"></i>待验证</span>
+              </div>
+            </article>
+
+            <article class="lens__item" data-source="本人填写" data-topic="地域与家庭期待" data-weight="直接支撑判断">
+              <p class="dir-k">就业地域</p>
+              <p class="dir-v">与当前偏好基本一致 —— 材料检测岗的地理条件对得上</p>
+              <div class="dir-m">
+                <span class="src src--self"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/><path d="M5 20a7 7 0 0 1 14 0"/></svg></span><span class="src__k">他自己填的</span><span class="src__w">9 月 30 日</span></span>
+                <span class="conf conf--reported"><i aria-hidden="true"></i>待验证</span>
+              </div>
+            </article>
+
+            <article class="lens__item" data-source="演示岗位快照" data-topic="学历与门槛" data-weight="直接支撑判断">
+              <p class="dir-k">学历门槛</p>
+              <p class="dir-v">研发岗普遍要求研究生学历，本科要投需要挑中小企业</p>
+              <div class="dir-m">
+                <span class="src src--doc"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16v13H4z"/><path d="M9 7V4h6v3"/></svg></span><span class="src__k">演示岗位快照</span><span class="src__w">本地虚构资料 · 非招聘公告</span></span>
+                <span class="conf conf--stale"><i aria-hidden="true"></i>未核对真实来源</span>
+              </div>
+            </article>
+
+            <article class="lens__item" data-source="官方记录" data-topic="学历与门槛" data-weight="直接支撑判断">
+              <p class="dir-k">成绩</p>
+              <p class="dir-v">相关实验课程表现良好（虚构的课程与成绩）</p>
+              <div class="dir-m">
+                <span class="src src--doc"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5z"/><path d="M9 9h6M9 13h6"/></svg></span><span class="src__k">教务系统</span><span class="src__w">10 月 8 日</span></span>
+                <span class="conf conf--verified"><i aria-hidden="true"></i>依据充分</span>
+              </div>
+            </article>
+
+            <article class="lens__item" data-source="官方记录" data-topic="学历与门槛" data-weight="与判断有冲突">
+              <p class="dir-k">实践经历</p>
+              <p class="dir-v">空着 —— 这是三条方向共用的最大缺口</p>
+              <div class="dir-m">
+                <span class="src src--doc"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5z"/><path d="M9 9h6M9 13h6"/></svg></span><span class="src__k">学籍与教务</span><span class="src__w">10 月 8 日</span></span>
+                <span class="conf conf--inferred"><i aria-hidden="true"></i>信息不足</span>
+              </div>
+            </article>
+
+            <article class="lens__item" data-source="对话里说的" data-topic="岗位日常" data-weight="与判断有冲突">
+              <p class="dir-k">每周可投入</p>
+              <p class="dir-v">6 小时（本人说明，还没核对过实验课与生活安排）</p>
+              <div class="dir-m">
+                <span class="src src--chat"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 0 1-11.7 7.1L4 20l1-4.2A8 8 0 1 1 20 12z"/></svg></span><span class="src__k">对话里说的</span><span class="src__w">10 月 12 日</span></span>
+                <span class="conf conf--reported"><i aria-hidden="true"></i>待验证</span>
+              </div>
+            </article>
+
+            <article class="lens__item" data-source="对话里说的" data-topic="岗位日常" data-weight="还不足以支撑">
+              <p class="dir-k">投递现状</p>
+              <p class="dir-v">投了 4 家，0 个回音 —— 不知道是简历问题还是方向问题</p>
+              <div class="dir-m">
+                <span class="src src--chat"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 0 1-11.7 7.1L4 20l1-4.2A8 8 0 1 1 20 12z"/></svg></span><span class="src__k">对话里说的</span><span class="src__w">10 月 12 日</span></span>
+                <span class="conf conf--reported"><i aria-hidden="true"></i>待验证</span>
+              </div>
+            </article>
+          </div>
+        </div>
+      </div>
+      <div class="sec__foot">
+        <span class="conf conf--conflict"><i aria-hidden="true"></i>冲突</span>
+        三条依据和"先验证工艺方向"这件事对着干：每周只有 6 小时、实践经历空着、专业本身是调剂的。它们不推翻结论，但决定了下一步该先补哪一件。
+      </div>
+    </section>
+
+  </div>
+</div>

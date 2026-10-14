@@ -1,0 +1,278 @@
+/* =============================================================================
+ * 岗位资讯（intel）· 视图私有样式
+ * -----------------------------------------------------------------------------
+ * 设计方向（DESIGN-LANGUAGE §8 / BRIEF §2）：整段正文罗列 → **事实与个人匹配分层**；
+ * 来源、时间、类别成为结构而不是灰字。所以这一份 CSS 只做三件事：
+ *
+ *   A. 卡片**分两层**。上半 `.int-fact` 是客观事实（白底），下半 `.int-match` 是
+ *      "这条和你有什么关系"（灰底 + 一条 strong 分隔线 + 左侧一条竖标）。
+ *      "不同的底 + 一条分隔线"就是 BRIEF §7「只有一层白」这条病的解药 ——
+ *      不是靠投影，是靠**两个面真的不一样**。
+ *   B. 把来源 / 时间 / 类别从灰字变成结构件，而且**形状各不相同**（不靠颜色也能分）：
+ *      类别 = 方角印章，时间 = 卡片右上角的实心时间戳，来源 = 一条带边的整宽来源条。
+ *   C. 筛选区的三条轴给三种形状：类别 = 胶囊，热词 = 虚线方角（它是在正文里找词，
+ *      不是分类），排序 = 分段控件（它是互斥的单选，不是多选）。
+ *
+ * 作用域纪律（BRIEF §1.4 / §1.6 / §9）：选择器要么是 `.int-*` 自有类，要么带
+ * `[data-view="intel"]` 限定。共享层（`_tools/c2.css`、`10-data-page.css`）的全局定义
+ * **一处都不改** —— 需要微调共享组件时只写"提高特异度的上下文覆盖"，
+ * 因为本工程出现过 4 次"规范被后加载文件全局覆盖"，build.mjs 有门禁盯着这一类写法。
+ *
+ * 颜色：一律走令牌。主色只出现在两个地方 —— "直接对上主攻方向"这一档匹配标签、
+ * 以及分段控件的选中态（那是交互态，不是装饰）。红色（--c-attention）只给
+ * "决定前必须核对"这一档：它确实是"需要你注意"。另外两档保持中性。
+ * 字号只用 --fs-12/14/16，字重只用 400/500/600/700。
+ * ========================================================================== */
+
+/* =============================================================================
+ * A · 卡片的两层
+ * ========================================================================== */
+/* 卡片自己不留白，两层各自留白 —— 这样分隔线能通到卡片两边，"两层"才像两层。
+   覆盖 `.lens__item` 的 padding 是**上下文覆盖**（带 [data-view] 与 .int-card 限定），
+   不会动到别的视图的 .lens__item。 */
+[data-view="intel"] .lens__item.int-card{
+  padding:0;overflow:hidden;
+  box-shadow:var(--light-in),var(--e-1);
+  transition:border-color var(--dur-2) var(--ease-out),box-shadow var(--dur-2) var(--ease-out);
+}
+[data-view="intel"] .lens__item.int-card:hover{
+  border-color:var(--c-border-strong);
+  box-shadow:var(--light-in),var(--e-2);
+}
+
+/* ---- A1 · 事实层（上半）：白面，正文按"类别 → 标题 → 事实 → 待确认"递减 -------- */
+.int-fact{
+  display:flex;flex-direction:column;gap:var(--sp-2);
+  padding:var(--sp-4) var(--sp-4) var(--sp-3);
+  background:var(--c-surface-solid);
+}
+.int-fact__top{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:var(--sp-2);flex-wrap:wrap;
+}
+.int-title{
+  margin-top:2px;
+  font-family:var(--font-title);font-size:var(--fs-16);font-weight:var(--fw-bold);
+  line-height:var(--lh-snug);letter-spacing:-.005em;color:var(--c-text);
+}
+.int-text{font-size:var(--fs-14);line-height:var(--lh-normal);color:var(--c-text-2)}
+
+/* 待真实来源确认的那一句：虚线左标 = 与 `.conf--inferred`（推断/待定）同一套语汇。
+   它是**未定状态**，不是次要灰字，所以给它一条线，而不是压小字号了事。 */
+.int-wait{
+  padding-left:11px;border-left:2px dashed var(--c-border-strong);
+  font-size:var(--fs-12);line-height:var(--lh-snug);color:var(--c-text-3);
+}
+
+/* ---- A2 · 匹配层（下半）：灰面 + strong 分隔线 + 左侧竖标 --------------------- */
+.int-match{
+  display:flex;flex-direction:column;gap:9px;
+  padding:var(--sp-3) var(--sp-4) var(--sp-4);
+  background:var(--c-surface-3);
+  border-top:1px solid var(--c-border-strong);
+  box-shadow:inset 3px 0 0 var(--c-border-strong);
+}
+.int-match__h{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:var(--sp-2);flex-wrap:wrap;
+  font-family:var(--font-title);font-size:var(--fs-14);font-weight:var(--fw-bold);
+  line-height:var(--lh-snug);color:var(--c-text);
+}
+
+/* 三行"对得上 / 差在哪 / 要补什么"：字段名一列 + 内容一列（与 .kv / .pf-k 同一套读法） */
+.int-match__l{display:flex;flex-direction:column}
+.int-match__l li{
+  display:grid;grid-template-columns:58px minmax(0,1fr);gap:var(--sp-2);
+  padding:8px 0;border-bottom:1px solid var(--c-border-strong);
+}
+.int-match__l li:first-child{padding-top:2px}
+.int-match__l li:last-child{padding-bottom:0;border-bottom:0}
+.int-match__l b{
+  font-size:var(--fs-12);font-weight:var(--fw-semibold);letter-spacing:.02em;
+  line-height:var(--lh-snug);color:var(--c-text-3);
+}
+.int-match__l span{min-width:0;font-size:var(--fs-14);line-height:var(--lh-normal);color:var(--c-text)}
+
+/* 匹配档位（数据来自卡片上的 data-fit，是内容不是装饰）：
+   直接对上 → 主色；决定前必须核对 → 红（需要你注意）；另外两档保持中性。 */
+[data-view="intel"] .int-card[data-fit="直接对上主攻方向"] .int-match__h .tag{
+  background:var(--c-primary-weak);border-color:var(--c-primary-border);
+  color:var(--c-primary);font-weight:var(--fw-semibold);
+}
+[data-view="intel"] .int-card[data-fit="决定前必须核对"] .int-match__h .tag{
+  background:var(--c-attention-weak);border-color:var(--c-attention-border);
+  color:var(--c-attention);font-weight:var(--fw-semibold);
+}
+
+/* =============================================================================
+ * B · 类别 / 时间 / 来源：从灰字变成结构件
+ * ========================================================================== */
+/* 类别 = 方角印章（r-sm，刻意不是胶囊：胶囊留给"时间"和可点的 chip） */
+.int-kind{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:3px 10px;border-radius:var(--r-sm);
+  background:var(--c-surface-3);border:1px solid var(--c-border-strong);
+  font-size:var(--fs-12);font-weight:var(--fw-bold);letter-spacing:.04em;
+  color:var(--c-text-2);line-height:1.5;
+}
+.int-kind::before{
+  content:"";flex:0 0 auto;width:3px;height:11px;border-radius:1px;
+  background:var(--c-text-3);
+}
+
+/* 时间 = 卡片右上角的实心时间戳（有边、有底、有等宽数字，不是一行灰字） */
+[data-view="intel"] .int-fact__top .pill{
+  background:var(--c-surface-3);border-color:var(--c-border-strong);
+  color:var(--c-text-2);font-weight:var(--fw-semibold);
+  font-variant-numeric:tabular-nums;
+}
+[data-view="intel"] .int-fact__top .pill svg{color:var(--c-text-3)}
+
+/* 来源 = 一条整宽来源条：名字在左、抓取时间贴右，两者都在同一条边里。
+   共享 `.src` 是 inline-flex 胶囊且 .src__k/.src__w 都 nowrap —— 在 390 下这条
+   nowrap 的"本地虚构演示资料 · 非招聘公告"会撑破卡片，所以这里**上下文覆盖**
+   成可折行（不改共享层，只在本视图里改），同时把它拉成整宽，让来源自己成一条结构。 */
+[data-view="intel"] .int-srcs{margin-top:2px}
+[data-view="intel"] .int-src{
+  display:flex;flex-wrap:wrap;align-items:center;gap:4px 9px;width:100%;
+  padding:7px 11px;border-radius:var(--r-md);
+  background:var(--c-surface-2);border:1px solid var(--c-border);
+}
+[data-view="intel"] .int-src .src__ic{color:var(--c-text-2)}
+[data-view="intel"] .int-src .src__k{
+  flex:1 1 auto;min-width:0;white-space:normal;   /* 长来源名必须能折行（390 下会溢出） */
+}
+[data-view="intel"] .int-src .src__w{
+  margin-left:auto;white-space:nowrap;
+  font-size:var(--fs-12);color:var(--c-text-3);
+}
+
+/* =============================================================================
+ * C · 粒度缩放：摘要 ↔ 细节 ↔ 原文
+ *     控件做成和 .lensbar 同一种"分段轨道"（同一类操作给同一种形状），
+ *     面板用一条左标 + 浅底：它是"那句话后面摊开的材料"，不是又一段正文。
+ * ========================================================================== */
+[data-view="intel"] .int-zoom{gap:var(--sp-2);margin-top:2px}
+[data-view="intel"] .int-zoom .zoombar{
+  display:flex;align-items:center;gap:3px;max-width:100%;
+  padding:3px;border-radius:var(--r-pill);
+  background:var(--seg-track);box-shadow:var(--seg-track-in);
+}
+[data-view="intel"] .int-zoom .zoombtn{
+  min-height:44px;padding:8px 15px;
+  background:transparent;border-color:transparent;color:var(--c-text-2);
+  font-weight:var(--fw-semibold);
+}
+[data-view="intel"] .int-zoom .zoombtn:hover{background:var(--seg-on);color:var(--c-text)}
+[data-view="intel"] .int-zoom .zoombtn[aria-pressed="true"]{
+  background:var(--seg-on);border-color:var(--c-primary-border);color:var(--c-primary);
+  box-shadow:var(--light-in),var(--e-1);
+}
+[data-view="intel"] .int-zoom .zoom__body{
+  padding:var(--sp-3) var(--sp-3) var(--sp-3) 13px;
+  border:1px solid var(--c-border);border-left:2px solid var(--c-border-strong);
+  border-radius:0 var(--r-md) var(--r-md) 0;
+  background:var(--c-surface-2);
+}
+/* 细节层是一组 <p><b>小标</b>事实</p>：小标要能当"字段名"读，段间距要收住 */
+[data-view="intel"] .int-zoom .zoom__body p+p{margin-top:7px}
+[data-view="intel"] .int-zoom .zoom__body b{
+  font-weight:var(--fw-semibold);color:var(--c-text);margin-right:4px;
+}
+[data-view="intel"] .int-zoom .z--sum{color:var(--c-text)}
+
+/* =============================================================================
+ * D · 筛选：三条轴给三种形状（同一批 chip，但用户看得出它们不是一件事）
+ * ========================================================================== */
+.int-filter{display:flex;flex-direction:column;gap:var(--sp-2)}
+.int-filter__r{
+  display:grid;grid-template-columns:60px minmax(0,1fr);gap:var(--sp-3);
+  align-items:start;
+}
+/* 轴标签要和第一排 chip 的文字基线对齐（chip 44 高、12px 行高 1.45 → 13px 顶距） */
+.int-filter__k{
+  padding-top:13px;
+  font-size:var(--fs-12);font-weight:var(--fw-bold);letter-spacing:.06em;
+  line-height:var(--lh-snug);color:var(--c-text-3);
+}
+/* 三条轴之间用细线断开：它们各自是一个问题（哪一类 / 哪个词 / 怎么排） */
+.int-filter__r+.int-filter__r{padding-top:var(--sp-3);border-top:1px solid var(--c-border)}
+
+/* 热词 = 虚线方角：它是在这 12 条的**正文里找词**，不是类别，所以形状不同 */
+[data-view="intel"] .int-hot{border-style:dashed;border-radius:var(--r-sm)}
+
+/* chip 上的条数（<small>）：共享层 `.chipf small` 只给了颜色，没给字号 ——
+   浏览器默认 `small` = 0.833em = **11.67px**，越出"字号只有 5 档"的纪律
+   （实测 intel 有 12 处 11.67px，plan / gallery 的 chipf 同样有）。
+   这里只在本视图内补回 12px；共享层的这一行该由 Lead 修（不改别人的写域）。 */
+[data-view="intel"] .chipf small{font-size:var(--fs-12)}
+
+/* 排序 = 分段控件：互斥单选，所以做成一条轨道 + 一个亮起的白块 */
+[data-view="intel"] .int-sort{
+  display:inline-flex;align-items:center;gap:3px;max-width:100%;
+  padding:3px;border-radius:var(--r-pill);
+  background:var(--seg-track);box-shadow:var(--seg-track-in);
+}
+[data-view="intel"] .int-sort .chipf{
+  min-height:44px;padding:6px 14px;
+  background:transparent;border-color:transparent;color:var(--c-text-2);
+}
+[data-view="intel"] .int-sort .chipf:hover{background:var(--seg-on);color:var(--c-text)}
+[data-view="intel"] .int-sort .chipf[aria-pressed="true"]{
+  background:var(--seg-on);border-color:var(--c-primary-border);color:var(--c-primary);
+  box-shadow:var(--light-in),var(--e-1);
+}
+
+/* 筛选结果的回话（aria-live）：虚线框 = "这是当前状态"，不是一段正文 */
+.int-filter__echo{
+  padding:9px var(--sp-3);border-radius:var(--r-md);
+  background:var(--c-surface-2);border:1px dashed var(--c-border);
+  font-size:var(--fs-12);line-height:var(--lh-snug);color:var(--c-text-2);
+}
+
+/* =============================================================================
+ * E · 侧栏：「这页不给什么」是一条否定清单，标记用短横，不用实心圆点
+ * ========================================================================== */
+.int-scope{display:flex;flex-direction:column;gap:9px}
+.int-scope li{
+  position:relative;padding-left:17px;
+  font-size:var(--fs-14);line-height:var(--lh-normal);color:var(--c-text-2);
+}
+.int-scope li::before{
+  content:"";position:absolute;left:2px;top:10px;
+  width:7px;height:2px;border-radius:1px;background:var(--c-text-3);
+}
+
+/* =============================================================================
+ * F · 触控尺寸（可点元素 ≥44 —— 这一页的 chip / 分段按钮都是主要动作）
+ *     共享层里 .chipf 34 / .zoombtn 36 / .lensbtn 40：那是全站口径，
+ *     这里是"本视图要更宽裕"的上下文覆盖，不动共享定义（BRIEF §1.6）。
+ * ========================================================================== */
+[data-view="intel"] .chipf,
+[data-view="intel"] .zoombtn,
+[data-view="intel"] .lensbtn,
+[data-view="intel"] .chipbtn{min-height:44px}
+[data-view="intel"] .chipbtn{padding:8px 16px}
+
+/* =============================================================================
+ * G · 窄屏（≤767）：卡片两层的留白收一档，筛选轴标签挪到 chip 上面
+ * ========================================================================== */
+@media (max-width:767px){
+  .int-fact{padding:var(--sp-3) var(--sp-3) var(--sp-3)}
+  .int-match{padding:var(--sp-3) var(--sp-3) var(--sp-4)}
+  .int-title{font-size:var(--fs-14)}
+  .int-filter__r{grid-template-columns:minmax(0,1fr);gap:6px}
+  .int-filter__k{padding-top:0}
+  .int-match__l li{grid-template-columns:52px minmax(0,1fr)}
+  /* 排序轨道在 390 下三枚 chip 放不进一行（实测 324 可用 / 需要 ~338），
+     横排会被 flex-wrap 折成"一坨圆角"，横滚又会把第三个选项藏起来。
+     所以窄屏改成**竖排单选轨道**：三行 44px、全部可见、标签不折行，
+     "互斥单选"这件事反而更清楚。 */
+  [data-view="intel"] .int-sort{
+    display:flex;flex-direction:column;align-items:stretch;
+    width:100%;gap:2px;border-radius:var(--r-md);
+  }
+  [data-view="intel"] .int-sort .chipf{width:100%;justify-content:flex-start}
+  [data-view="intel"] .int-zoom .zoom__body{padding:var(--sp-2) var(--sp-3) var(--sp-2) 11px}
+  [data-view="intel"] .int-zoom .zoombtn{padding:8px 12px}
+}

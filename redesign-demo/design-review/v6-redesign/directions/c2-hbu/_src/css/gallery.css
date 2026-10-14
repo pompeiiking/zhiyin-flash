@@ -1,0 +1,99 @@
+/* =============================================================================
+ * 通用组件与状态（gallery）· 视图私有样式
+ * -----------------------------------------------------------------------------
+ * 这一页不是产品页，是这份样张自己的说明书。所以它自己必须守规矩：
+ *   · 字号只用 --fs-12/14/16/20/30 五档，不新增（BRIEF §7）
+ *   · 一个分区最多一处主色强调；红色只给"需要你注意"（这里只有反例那一枚 ×）
+ *   · 只有一层白：样张面用 L2（--c-surface-2），反例面透明 + 虚线，都不再叠白
+ * 全部选择器带 .gl- 前缀；共享组件的全局定义一律不改。
+ * ========================================================================== */
+
+/* =============================================================================
+ * 1 · 组件索引（.lens 里那 12 张卡的内部形态）
+ * ========================================================================== */
+.gl-idx__k{font-size:var(--fs-14);font-weight:var(--fw-semibold);color:var(--c-text);line-height:var(--lh-snug)}
+.gl-idx__d{margin-top:3px;font-size:var(--fs-12);line-height:var(--lh-snug);color:var(--c-text-3)}
+.gl-idx__m{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+
+/* 类名：这不是内容，是"代码里的名字"。用凹槽底 + 12px，不占字号档 */
+.gl-cls{
+  display:inline-flex;align-items:center;
+  padding:1px 7px;border-radius:var(--r-sm);
+  background:var(--c-surface-3);border:1px solid var(--c-border);
+  font-size:var(--fs-12);color:var(--c-text-2);white-space:nowrap;
+}
+
+/* =============================================================================
+ * 2 · 展示矩阵：一族一块，两块一行（窄屏一块一行）
+ *     宽组件（表 / 对照 / 时间线 / 视角 / 粒度）用 .gl-wide 占整行
+ * ========================================================================== */
+.gl-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:var(--sp-4)}
+.gl-grid > .sec{min-width:0}
+.gl-wide{grid-column:1 / -1}
+
+/* 样张面：比 .sec 低一档的局部面（L2）。"这是在演示"靠这一层底 + 一句上下文说清，
+   不靠"示例"两个字贴在自己头上。 */
+.gl-spec{
+  display:flex;flex-direction:column;gap:var(--sp-3);
+  padding:var(--sp-4);border-radius:var(--r-lg);
+  background:var(--c-surface-2);border:1px solid var(--c-border);
+}
+.gl-spec__c{font-size:var(--fs-12);line-height:var(--lh-snug);color:var(--c-text-3)}
+.gl-row{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2)}
+.gl-stack{display:flex;flex-direction:column;gap:var(--sp-3)}
+
+/* 一行"现在发生了什么"：勾选 / 筛选之后的即时反馈落点 */
+.gl-live{font-size:var(--fs-12);line-height:var(--lh-snug);color:var(--c-text-3);min-height:18px}
+.gl-live b{color:var(--c-text-2);font-weight:var(--fw-semibold);font-variant-numeric:tabular-nums}
+
+/* 什么时候用：与反例同一套版式，但中性 —— 勾在 --c-done 系（完成不给颜色奖励） */
+.gl-use{display:flex;gap:10px;font-size:var(--fs-14);line-height:var(--lh-normal);color:var(--c-text-2)}
+.gl-use > svg{flex:0 0 auto;width:16px;height:16px;margin-top:4px;color:var(--c-done)}
+.gl-use b{color:var(--c-text);font-weight:var(--fw-semibold)}
+
+/* 反例面：虚线 + 透明底（与样张面的实线 + L2 一眼分得开）。
+   整块只有那一枚 × 是红的 —— 红色只用于"需要你注意"。 */
+.gl-dont{
+  display:flex;gap:10px;
+  padding:var(--sp-3) var(--sp-4);border-radius:var(--r-lg);
+  border:1px dashed var(--c-border-strong);background:transparent;
+  font-size:var(--fs-14);line-height:var(--lh-normal);color:var(--c-text-2);
+}
+.gl-dont > svg{flex:0 0 auto;width:16px;height:16px;margin-top:4px;color:var(--c-attention)}
+.gl-dont__b{min-width:0;flex:1 1 auto;display:flex;flex-direction:column;gap:var(--sp-3)}
+.gl-dont b{color:var(--c-text);font-weight:var(--fw-semibold)}
+.gl-dont__b > p + p{margin-top:-4px}
+
+/* 并排对照（好 / 坏两种排法都真的渲染出来，不是画个示意图） */
+.gl-pair{display:flex;flex-wrap:wrap;gap:var(--sp-4);align-items:flex-start}
+.gl-pair > *{min-width:0}
+.gl-pair__c{font-size:var(--fs-12);color:var(--c-text-3);margin-bottom:var(--sp-2);line-height:var(--lh-snug)}
+/* 复现"主列窄（旁边有侧栏）"时的真实列宽：148px 是 .stats 的默认列宽 */
+.gl-col148{width:148px;max-width:100%}
+.gl-col262{width:262px;max-width:100%}
+
+/* =============================================================================
+ * 3 · 状态矩阵与可点面积：两张表都用共享 .tbl，只补一处"格子里的状态点"
+ * ========================================================================== */
+.gl-cells{display:flex;flex-wrap:wrap;gap:5px}
+.gl-cell{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:1px 7px;border-radius:var(--r-pill);
+  font-size:var(--fs-12);font-weight:var(--fw-semibold);color:var(--c-text-2);
+  border:1px solid var(--c-border);background:var(--c-surface-2);white-space:nowrap;
+}
+.gl-cell i{width:6px;height:6px;border-radius:50%;flex:0 0 auto;background:var(--c-done)}
+.gl-cell--on{border-color:var(--c-primary-border);background:var(--c-primary-weak);color:var(--c-primary)}
+.gl-cell--on i{background:var(--c-primary)}
+.gl-cell--warn{border-color:var(--c-attention-border);background:var(--c-attention-weak);color:var(--c-attention)}
+.gl-cell--warn i{background:var(--c-attention)}
+.gl-cell--none{color:var(--c-text-3);background:transparent}
+
+/* =============================================================================
+ * 4 · 窄屏
+ * ========================================================================== */
+@media (max-width:767px){
+  .gl-grid{grid-template-columns:minmax(0,1fr)}
+  .gl-spec{padding:var(--sp-3)}
+  .gl-dont{padding:var(--sp-3)}
+}

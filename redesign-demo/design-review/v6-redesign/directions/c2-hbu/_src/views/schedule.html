@@ -1,0 +1,372 @@
+<div class="main__scroll">
+  <!-- ==========================================================================
+       日历与课表（key=schedule）
+       --------------------------------------------------------------------------
+       本页只讲一件事：**同一个 8 小时里，课占了多少，事就剩多少。**
+       三类占用画在**同一条时间轴**上（不是"月格 + 被挤窄的课表"）：
+         课程（固定）  实心墨条，不能被挪
+         截止（硬）    细线 + 标签，到点必须交
+         任务（可挪）  主色虚线条，压下去的 10 分钟都看得见
+       所以"这周课多 → 任务排得少"不是一句结论，是三条之间空出来的那一段。
+       四个落点：
+         ① 结构显形       .sc-day / .sc-fill（同轴三类）+ .cmp（三周课量对照）
+         ② 组织权交给用户  .lens（7 天按 周内轻重/占用类型/占用来源/时间位置 重组）
+         ③ 粒度与溯源     .src（每条占用的来源）+ .zoom（同一件事的三种粒度）
+         ④ 状态与不确定性  .conf--conflict（周三 7-8 节重叠）+ .conf--stale（时间待定、周次待通知）
+       ======================================================================== -->
+  <div class="pg-doc">
+    <div class="pg-doc__main">
+
+      <!-- ============================ 页头 ============================ -->
+      <header class="pgh">
+        <p class="crumb">
+          <a href="#/home">去做</a>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+          <span>日历与课表</span>
+        </p>
+        <div class="pgh__row">
+          <div class="pgh__t">
+            <h1 class="pgh__title">日历与课表</h1>
+            <p class="pgh__lead">课是固定的，截止是硬的，任务是可以挪的 —— 三类占用挤在同一段时间里。今天 10 月 14 日，看的是第 7 周：周三 12:00–16:00 四节材料实验把下午占满，"先投 1 家（5 分钟）"只抢到一格；这一天一件硬截止都没有。</p>
+            <div class="pgh__meta">
+              <span class="tag tag--demo">演示数据</span>
+              <span class="tag">2026–2027 学年秋季 · 第 7 周</span>
+              <span class="tag">12 门课</span>
+              <span class="conf conf--conflict"><i aria-hidden="true"></i>1 处时间重叠</span>
+            </div>
+          </div>
+          <div class="pgh__acts">
+            <button class="chipbtn" type="button" data-sc-jump="today">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5.5" width="16" height="14" rx="2.5"/><path d="M4 10h16"/></svg>
+              回到今天
+            </button>
+            <button class="chipbtn" type="button" data-sc-ask>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              报一个占用
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <!-- ======= ① 结构显形：这一页为什么是"按周"而不是"按月" ======= -->
+      <section class="stats stats--pair" aria-label="这一页的三个数">
+        <div class="stat">
+          <p class="stat__n">16<small>小时</small></p>
+          <p class="stat__t">本周课的占用</p>
+          <p class="stat__d">周三一天 4 小时（12:00–16:00），7–8 节两门重叠</p>
+        </div>
+        <div class="stat">
+          <p class="stat__n">6.08<small>小时</small></p>
+          <p class="stat__t">任务排进去的</p>
+          <p class="stat__d">对上你说的"每周可投入 6 小时"，没超</p>
+        </div>
+        <div class="stat stat--key">
+          <p class="stat__n">3<small>天</small></p>
+          <p class="stat__t">课多到摆不下事</p>
+          <p class="stat__d">周一、周二、周四课各 4 小时，都只挤进 0.33–0.67 小时的事</p>
+        </div>
+      </section>
+
+      <!-- ======= ① 结构显形：三周的课量摆在同一把尺子上 =======
+           它是"课多的一周任务排得少"的可核对版本：课量涨、任务量掉，两条柱子反向。 -->
+      <section class="sec" aria-labelledby="scWeeksT">
+        <div class="sec__h">
+          <div class="sec__ht">
+            <h2 class="sec__t" id="scWeeksT">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 19V9M12 19V5M18 19v-7"/></svg>
+              上周、这周、下周：课量与任务量是反的
+            </h2>
+            <p class="sec__d">同一把尺子量两件事。课量上去的那一周（第 6 周 14 小时），真正做进去的事只剩 1.25 小时 —— 而那一周恰好有一件没完成、一件只做了一半。</p>
+          </div>
+          <div class="sec__acts"><span class="sec__n">3 周</span></div>
+        </div>
+        <div class="sec__body">
+          <div class="cmp sc-cmp" aria-label="三周的课量与任务量对照">
+            <div class="cmp__r">
+              <span class="cmp__k">第 5 周<br>课量</span>
+              <span class="cmp__track"><i class="cmp__bar sc-cmp__c" style="width:25%"></i></span>
+              <span class="cmp__v">4<small>小时</small></span>
+            </div>
+            <div class="cmp__r">
+              <span class="cmp__k">第 5 周<br>任务量</span>
+              <span class="cmp__track"><i class="cmp__bar sc-cmp__t" style="width:0%"></i></span>
+              <span class="cmp__v">0<small>小时</small></span>
+            </div>
+            <div class="cmp__r">
+              <span class="cmp__k">第 6 周<br>课量</span>
+              <span class="cmp__track"><i class="cmp__bar sc-cmp__c" style="width:88%"></i></span>
+              <span class="cmp__v">14<small>小时</small></span>
+            </div>
+            <div class="cmp__r">
+              <span class="cmp__k">第 6 周<br>任务量</span>
+              <span class="cmp__track"><i class="cmp__bar sc-cmp__t" style="width:8%"></i></span>
+              <span class="cmp__v">1.25<small>小时</small></span>
+            </div>
+            <div class="cmp__r">
+              <span class="cmp__k">第 7 周<br>课量</span>
+              <span class="cmp__track"><i class="cmp__bar sc-cmp__c" style="width:100%"></i></span>
+              <span class="cmp__v">16<small>小时</small></span>
+            </div>
+            <div class="cmp__r">
+              <span class="cmp__k">第 7 周<br>任务量</span>
+              <span class="cmp__track"><i class="cmp__bar sc-cmp__t" style="width:38%"></i></span>
+              <span class="cmp__v">6<small>小时</small></span>
+            </div>
+          </div>
+          <p class="sc-tip">
+            <span class="sc-legend__i sc-legend__i--c" aria-hidden="true"></span>课量
+            <span class="sc-legend__i sc-legend__i--t" aria-hidden="true"></span>任务量（真正做进去的小时数，不含"等结果"）
+            —— 第 6 周课最多、做进去的最少，"投 3 家"原样没动；第 7 周课更多（16 小时），但"投 3 家"被拆成 5 分钟，"先投 1 家"才挤得进去。
+          </p>
+          <div class="sc-weeksw" role="tablist" aria-label="看哪一周">
+            <button class="sc-weekbtn" type="button" role="tab" data-sc-week="-1">第 6 周 · 10 月 5–11 日</button>
+            <button class="sc-weekbtn" type="button" role="tab" aria-selected="true" data-sc-week="0">第 7 周 · 10 月 12–18 日（本周）</button>
+            <button class="sc-weekbtn" type="button" role="tab" data-sc-week="1">第 8 周 · 10 月 19–25 日</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======= ②+① 主承重件：7 天在同一时间轴上互相挤压 =======
+           三类占用同轴：课程实心、截止细线、任务虚线条。
+           .lens 把同一批 7 天按 周内轻重 / 占用类型 / 占用来源 / 时间位置 重组。 -->
+      <section class="sec" id="scWeekSec" aria-labelledby="scLensT">
+        <div class="sec__h">
+          <div class="sec__ht">
+            <h2 class="sec__t" id="scLensT">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5.5" width="16" height="14" rx="2.5"/><path d="M4 10h16"/><path d="M9 5.5V4M15 5.5V4"/></svg>
+              <span id="scWeekLabel">第 7 周 · 10 月 12–18 日</span>：三类占用挤在一根轴上
+            </h2>
+            <p class="sec__d">每张卡是一天。上面那一条是课（固定），下面那一条是任务（可挪），红色细线是硬截止落下的那一刻 —— 两条都是 8:00–16:00，每格 10 分钟。斜纹底是"这一类没占"，不是空闲。</p>
+            <p class="sc-tip" id="scState" aria-live="polite">第 7 周：课 16 小时、任务 6.08 小时，周三整块被占满。</p>
+          </div>
+          <div class="sec__acts">
+            <span class="sec__n" id="scFillN">课 16 小时 · 事 6.08 小时</span>
+            <button class="btn btn--ghost" type="button" data-sc-week="-1">上一周</button>
+            <button class="btn btn--ghost" type="button" data-sc-week="1">下一周</button>
+          </div>
+        </div>
+        <div class="sec__body">
+          <div class="lens" data-lens="weight"
+               data-order-weight="课最多的一天|课不少的一天|课少的一天|没课的一天"
+               data-order-kind="课占住的|必须交的|可以挪的|还没定的"
+               data-order-from="学校课表|规划师写的节点|计划拆下来的|还没定的"
+               data-order-time="周初|周中|周末"
+               data-selected-week="0">
+            <div class="lensbar" role="tablist" aria-label="这 7 天按什么看">
+              <button class="lensbtn" type="button" role="tab" data-lens-set="weight">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 19V9M12 19V5M18 19v-7"/></svg>
+                按这天有多满
+              </button>
+              <button class="lensbtn" type="button" role="tab" data-lens-set="kind">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.6"/><rect x="13" y="4" width="7" height="7" rx="1.6"/><rect x="4" y="13" width="7" height="7" rx="1.6"/><rect x="13" y="13" width="7" height="7" rx="1.6"/></svg>
+                按占用类型
+              </button>
+              <button class="lensbtn" type="button" role="tab" data-lens-set="from">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M5 8l7-5 7 5"/></svg>
+                按谁安排的
+              </button>
+              <button class="lensbtn" type="button" role="tab" data-lens-set="time">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>
+                按时间位置
+              </button>
+            </div>
+            <p class="lens__hint" data-lens-hint aria-live="polite"></p>
+
+            <div class="sc-legend">
+              <span class="sc-legend__i sc-legend__i--c" aria-hidden="true"></span>课 · 固定
+              <span class="sc-legend__i sc-legend__i--d" aria-hidden="true"></span>截止 · 硬
+              <span class="sc-legend__i sc-legend__i--t" aria-hidden="true"></span>任务 · 可挪
+              <span class="sc-legend__i sc-legend__i--g" aria-hidden="true"></span>这一类没占
+              <span class="sc-legend__n">轴长 8:00–16:00，每格 10 分钟</span>
+            </div>
+
+            <div class="lens__items">
+              <!-- 7 天的格子：课量条与任务条都按统一刻度，条长就是量 -->
+              <div class="sc-week" id="scWeek" aria-label="这一周七天的课量与任务量">
+                <div class="sc-dc"><p class="sc-dc__d">一 12 日</p><p class="sc-dc__h">课 4 小时</p></div>
+                <div class="sc-dc"><p class="sc-dc__d">二 13 日</p><p class="sc-dc__h">课 4 小时</p></div>
+                <div class="sc-dc" data-today="true"><p class="sc-dc__d">今天 · 三 14 日</p><p class="sc-dc__h">课 4 小时 · 重叠</p></div>
+                <div class="sc-dc"><p class="sc-dc__d">四 15 日</p><p class="sc-dc__h">课 4 小时</p></div>
+                <div class="sc-dc"><p class="sc-dc__d">五 16 日</p><p class="sc-dc__h">课 2 小时</p></div>
+                <div class="sc-dc"><p class="sc-dc__d">六 17 日</p><p class="sc-dc__h">课 0 小时</p></div>
+                <div class="sc-dc"><p class="sc-dc__d">日 18 日</p><p class="sc-dc__h">课 2 小时</p></div>
+              </div>
+
+              <!-- 7 天的卡：三条同轴的账。下面这一张是兜底（脚本会重画全部 7 张） -->
+              <div class="sc-days" id="scDayList">
+                <article class="lens__item sc-daycard" data-weight="课不少的一天" data-kind="课占住的" data-from="学校课表" data-time="周初">
+                  <div class="sc-daycard__h">
+                    <span class="sc-daycard__d">周一 · 10 月 12 日</span>
+                    <span class="sc-daycard__n">课 4h · 事 0.67h · 余 3.33h</span>
+                  </div>
+                  <div class="sc-daycard__b">
+                    <div class="sc-daycard__g">
+                      <p class="sc-daycard__k">课（固定）</p>
+                      <p class="sc-daycard__v">材料分析方法 周一 1–2 节 · 综合楼 302 —— 8:00–10:00<br>工程数学 周一 5–6 节 · 理科楼 103 —— 13:00–15:00</p>
+                    </div>
+                    <div class="sc-daycard__g">
+                      <p class="sc-daycard__k">截止（硬）</p>
+                      <p class="sc-daycard__v">无 —— 这一天没有硬点，卡住它的是课</p>
+                    </div>
+                    <div class="sc-daycard__g">
+                      <p class="sc-daycard__k">任务（可挪）</p>
+                      <p class="sc-daycard__v">把简历第一页的封面表述改成"工艺方向"（15 分钟）<br>找出 2 段能写进简历的课程项目（20 分钟）<br>先投 1 家新能源方向的工艺岗（5 分钟）</p>
+                    </div>
+                  </div>
+                </article>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sec__foot">
+          <span>时间口径：<b>空课格不代表空闲</b>（画像第 12 条：本周课表空档＝周三、周五下午各有 2 小时）</span>
+          <a href="#/profile" data-nav-to="profile">去看画像里这条是怎么记的 →</a>
+        </div>
+      </section>
+
+      <!-- ======= ④ 状态与不确定性：冲突与待定各自有落点 ======= -->
+      <section class="sec" aria-labelledby="scFixT">
+        <div class="sec__h">
+          <div class="sec__ht">
+            <h2 class="sec__t" id="scFixT">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4 3 19h18z"/><path d="M12 10v4M12 16.6v.1"/></svg>
+              2 处要你去处理的
+            </h2>
+            <p class="sec__d">一处是重叠：周三 7–8 节两门课同时段。一处是没有时间：企业参访还没定。两处都写了下一步归谁。</p>
+          </div>
+          <div class="sec__acts"><span class="sec__n" id="scFixN">2 处</span></div>
+        </div>
+        <div class="sec__body">
+          <div class="sc-fixes">
+            <div class="sc-fix" data-sc-fix="conflict" data-resolved="false">
+              <div class="sc-fix__h">
+                <span class="conf conf--conflict"><i aria-hidden="true"></i>时间重叠</span>
+                <span class="sc-fix__when">周三 7–8 节 · 第 3–10 周（本周在内）</span>
+              </div>
+              <p class="sc-fix__t">材料实验 与 创新项目讨论，同一个人同一个时段</p>
+              <p class="sc-fix__d">材料实验是 5–8 节连上（实验中心），创新项目讨论是 7–8 节（创新中心）—— 后两节完全压在一起。不是冲突提示，是必须选一边。</p>
+              <div class="sc-fix__row">
+                <span class="sc-fix__k">下一步</span>
+                <span class="sc-fix__v" data-sc-fixout>找创新项目讨论的指导老师，问第 3–10 周能不能换到周四下午</span>
+              </div>
+              <div class="sc-fix__acts">
+                <button class="btn btn--ghost" type="button" data-sc-resolve="conflict">先按"材料实验优先"暂定</button>
+              </div>
+            </div>
+
+            <div class="sc-fix" data-sc-fix="pending" data-resolved="false">
+              <div class="sc-fix__h">
+                <span class="conf conf--stale"><i aria-hidden="true"></i>时间待定</span>
+                <span class="sc-fix__when">周次待通知 · 地点示例企业</span>
+              </div>
+              <p class="sc-fix__t">企业参访：占一个整天，但还不知道是哪天</p>
+              <p class="sc-fix__d">它现在不占任何一格 —— 所以本周的 6 小时是按"它不来"排的。等通知下来，那天整块要让出来，任务得再挪一次。<b>待定不是空白，是"需要你去确认"。</b></p>
+              <div class="sc-fix__row">
+                <span class="sc-fix__k">下一步</span>
+                <span class="sc-fix__v" data-sc-fixout>本周内问辅导员参访周次；确认后把当天的任务挪到周四或周五</span>
+              </div>
+              <div class="sc-fix__acts">
+                <button class="btn btn--ghost" type="button" data-sc-resolve="pending">记下"等我确认周次"</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======= ③ 粒度与溯源：同一次挤压的三种粒度 ======= -->
+      <section class="sec" aria-labelledby="scZoomT">
+        <div class="sec__h">
+          <div class="sec__ht">
+            <h2 class="sec__t" id="scZoomT">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
+              周三那 5 分钟是怎么挤出来的
+            </h2>
+            <p class="sec__d">同一件事的三层：一句话 → 那一天的账 → 课表原始条目。三层同时在这张纸上，只切看得多细。</p>
+          </div>
+        </div>
+        <div class="sec__body">
+          <div class="zoom" data-zoom="sum">
+            <div class="zoombar" role="group" aria-label="看到多细">
+              <button class="zoombtn" type="button" data-zoom-set="sum" aria-pressed="true">摘要</button>
+              <button class="zoombtn" type="button" data-zoom-set="mid" aria-pressed="false">细节</button>
+              <button class="zoombtn" type="button" data-zoom-set="full" aria-pressed="false">原文</button>
+            </div>
+            <div class="zoom__body">
+              <span class="z--sum">周三课满，能排进去的只有 5 分钟。</span>
+              <span class="z--mid">第 7 周周三 8:00–16:00 一共 8 小时，其中材料实验 5–8 节（4 小时）把上午到下午全占住；"先投 1 家新能源方向的工艺岗"被拆到 5 分钟，只占到 3.92 小时余量里的 1 格（10 分钟里的 5 分钟）。这一天**一件硬截止都没有** —— 卡住它的不是截止，是课。</span>
+              <span class="z--full">材料实验（示例教师乙，3 学分）—— 周三 5–8 节，1–16 周，实验中心<br>创新项目讨论（时间冲突示例）—— 周三 7–8 节，3–10 周，创新中心<br>同一时段两条都在课表里，来源：演示数据 · 教务课表快照<br>口径：虚构的课程与成绩，用于体验导入、冲突、周末和缺少时间的情况。<br>任务：「先投 1 家（5 分钟）」，来自复盘后顾问的拆分（原任务"投 3 家新能源方向的工艺岗"25 分钟）。</span>
+            </div>
+          </div>
+        </div>
+        <div class="sec__foot">
+          <span>这 5 分钟同时出现在 <b>复盘记录</b> 与 <b>成长记录</b> 上</span>
+          <a href="#/review" data-nav-to="review">去看它进了哪条复盘 →</a>
+        </div>
+      </section>
+    </div>
+
+    <!-- ============================ 侧栏 ============================ -->
+    <aside class="pg-doc__side">
+
+      <!-- ① 结构显形：日期从哪来。这是"被安排过"与"系统生成"的差别 -->
+      <section class="sec" aria-labelledby="scMarkT">
+        <div class="sec__h"><div class="sec__ht"><h2 class="sec__t" id="scMarkT">10 月的 4 个节点</h2></div></div>
+        <div class="sec__body">
+          <div class="sc-month" role="grid" aria-label="2026 年 10 月">
+            <span class="sc-month__wd" role="columnheader">一</span><span class="sc-month__wd" role="columnheader">二</span><span class="sc-month__wd" role="columnheader">三</span><span class="sc-month__wd" role="columnheader">四</span><span class="sc-month__wd" role="columnheader">五</span><span class="sc-month__wd" role="columnheader">六</span><span class="sc-month__wd" role="columnheader">日</span>
+            <span class="sc-month__d" role="gridcell"></span><span class="sc-month__d" role="gridcell"></span><span class="sc-month__d" role="gridcell"></span><span class="sc-month__d" role="gridcell">1</span><span class="sc-month__d" role="gridcell">2</span><span class="sc-month__d" role="gridcell">3</span><span class="sc-month__d" role="gridcell">4</span>
+            <span class="sc-month__d" role="gridcell">5</span><span class="sc-month__d" role="gridcell">6</span><span class="sc-month__d" role="gridcell">7</span><span class="sc-month__d sc-month__d--mark" role="gridcell">8</span><span class="sc-month__d" role="gridcell">9</span><span class="sc-month__d" role="gridcell">10</span><span class="sc-month__d" role="gridcell">11</span>
+            <span class="sc-month__d" role="gridcell">12</span><span class="sc-month__d" role="gridcell">13</span><span class="sc-month__d" role="gridcell" data-sc-today>14</span><span class="sc-month__d sc-month__d--mark" role="gridcell">15</span><span class="sc-month__d" role="gridcell">16</span><span class="sc-month__d" role="gridcell">17</span><span class="sc-month__d" role="gridcell">18</span>
+            <span class="sc-month__d" role="gridcell">19</span><span class="sc-month__d" role="gridcell">20</span><span class="sc-month__d" role="gridcell">21</span><span class="sc-month__d" role="gridcell">22</span><span class="sc-month__d sc-month__d--mark" role="gridcell">23</span><span class="sc-month__d" role="gridcell">24</span><span class="sc-month__d" role="gridcell">25</span>
+            <span class="sc-month__d" role="gridcell">26</span><span class="sc-month__d" role="gridcell">27</span><span class="sc-month__d sc-month__d--mark" role="gridcell">28</span><span class="sc-month__d" role="gridcell">29</span><span class="sc-month__d" role="gridcell">30</span><span class="sc-month__d" role="gridcell">31</span><span class="sc-month__d" role="gridcell"></span>
+          </div>
+          <div class="kv sc-kv">
+            <div class="kv__r">
+              <span class="kv__k">10 月 8 日</span>
+              <span class="kv__v">投递 3 家 · <span class="conf conf--stale"><i aria-hidden="true"></i>已过去，没补上</span></span>
+            </div>
+            <div class="kv__r">
+              <span class="kv__k">10 月 15 日</span>
+              <span class="kv__v">完成简历修订 · <span class="conf conf--reported"><i aria-hidden="true"></i>明天</span></span>
+            </div>
+            <div class="kv__r">
+              <span class="kv__k">10 月 23 日</span>
+              <span class="kv__v">本周复盘 · <span class="src src--doc"><span class="src__ic" aria-hidden="true"></span><span class="src__k">规划师写入</span></span></span>
+            </div>
+            <div class="kv__r">
+              <span class="kv__k">10 月 28 日</span>
+              <span class="kv__v">中建笔试结果 · <span class="conf conf--reported"><i aria-hidden="true"></i>等结果</span></span>
+            </div>
+          </div>
+          <p class="sc-note">这 4 个节点是<b>规划师写进来的，不是系统生成的排期</b>：8 日和 15 日是他排给你的，23 日是复盘，28 日是别人给的结果。所以它们能改，你说了算。</p>
+        </div>
+      </section>
+
+      <!-- ④ 不确定性：装不下的那件事去哪了 -->
+      <section class="sec sec--quiet" aria-labelledby="scPostT">
+        <div class="sec__h"><div class="sec__ht"><h2 class="sec__t" id="scPostT">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16v13H4z"/><path d="M4 11h16"/><path d="M8 7V4h8v3"/></svg>
+          排不进去的，没有消失
+        </h2></div></div>
+        <div class="sec__body">
+          <div class="sc-post" data-sc-post="true">
+            <p class="sc-post__t">投 3 家新能源方向的工艺岗（25 分钟）</p>
+            <div class="sc-post__m">
+              <span class="sc-post__badge">第 6 周没排进去</span>
+              <span class="sc-post__badge">原计划 25 分钟</span>
+            </div>
+            <p class="sc-post__d">第 6 周课 14 小时，30 分钟的整块只有周三一处，被它占了；25 分钟它自己也没抢到。它的去向写在复盘里：拆成 <b>先投 1 家（5 分钟）</b>，第 7 周才进了周三那一格。</p>
+          </div>
+          <div class="sc-post" data-sc-post="true">
+            <p class="sc-post__t">写简历封面表述（30 分钟）</p>
+            <div class="sc-post__m">
+              <span class="sc-post__badge">第 6 周只挤进 15 分钟</span>
+              <span class="sc-post__badge">原计划 30 分钟</span>
+            </div>
+            <p class="sc-post__d">两次各 15 分钟 —— 它没被取消，是被切成两半。切完之后"方法不对"这件事才看得出来（改的不是主线）。</p>
+          </div>
+        </div>
+      </section>
+    </aside>
+  </div>
+</div>

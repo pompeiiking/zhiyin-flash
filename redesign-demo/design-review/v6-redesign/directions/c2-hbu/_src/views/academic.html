@@ -1,0 +1,750 @@
+<div class="main__scroll">
+  <!-- ==========================================================================
+       学籍与资料 · key = academic
+       标记在这里，样式在 _src/css/academic.css，行为在 _src/js/academic.js
+       --------------------------------------------------------------------------
+       这一页回答四件事（BRIEF §2 四个落点，四处全用）：
+         ① 结构显形        .ac-av（四个来源各能取到什么）/ .cmp（按课程类别同刻度）/ .tbl（12 条成绩）
+         ② 组织权交给用户  .lens（12 条成绩按 来源/时间/课程类别/校对进度 重组）
+         ③ 粒度与溯源      .zoom（晶体结构 90 的三种粒度）+ .src（每条从哪来）
+         ④ 状态与不确定性  .conf--conflict/--stale/--inferred + .ac-card--wait（待定）+ .state
+       一句话读法：**这些资料从哪来 → 取得到什么取不到什么 → 成绩站不站得住 → 核验走到哪一步**。
+       数据逐字取自 _src/DEMO-DATA.md 第六节与第十节，不另造课程名。
+       ======================================================================== -->
+  <div class="pg-doc">
+    <div class="pg-doc__main">
+
+      <!-- ============================ 页头 ============================ -->
+      <header class="pgh">
+        <p class="crumb">
+          <a href="#/profile">了解自己</a>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+          <span>学籍与资料</span>
+        </p>
+        <div class="pgh__row">
+          <div class="pgh__t">
+            <h1 class="pgh__title">学籍与资料</h1>
+            <p class="pgh__lead">10 月 13 日从教务系统导进来 12 条成绩、一份课表快照。这一页把四件事摊开：每个来源能取到什么、取不到什么；成绩按类别放在同一把尺子上；有两条课现在对不上（一条时间冲突、一条时间待定）；核验走到第 2 步，卡在课程快照的指纹上。</p>
+            <div class="pgh__meta">
+              <span class="tag tag--demo">演示数据</span>
+              <span class="conf conf--stale"><i aria-hidden="true"></i>导入于 10 月 13 日，未再更新</span>
+              <span class="tag">12 条成绩</span>
+              <span class="conf conf--reported"><i aria-hidden="true"></i>核验 2 / 4 步</span>
+            </div>
+          </div>
+          <div class="pgh__acts">
+            <button class="chipbtn" type="button" id="acReimport">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 12a7.5 7.5 0 1 0 2.4-5.5"/><path d="M4 5v4h4"/></svg>
+              重新从教务系统导入
+            </button>
+            <button class="chipbtn" type="button" id="acUploadTop">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="m8 8 4-4 4 4"/><path d="M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3"/></svg>
+              自己传一份资料
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <!-- ====== ① 来源可靠性分级：四个来源各能取到什么、取不到什么 ====== -->
+      <section class="sec" aria-labelledby="acSrcT">
+        <div class="sec__h">
+          <div class="sec__ht">
+            <h2 class="sec__t" id="acSrcT">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M7 12h10M10 17h4"/></svg>
+              这些资料是从哪来的
+            </h2>
+            <p class="sec__d">四个来源的可靠性不一样，所以它们说的话分量也不一样：前两个是官方记录，第三个是学校按需开，第四个是你自己传的。同一格里，左半是「取得到」，右半是「取不到」。灰掉的那条不是没做，是这条路本身取不到。</p>
+          </div>
+          <div class="sec__acts">
+            <span class="ac-num" id="acSrcN">4 个来源 · 1 条取不到</span>
+          </div>
+        </div>
+        <div class="sec__body">
+          <div class="ac-av">
+            <div class="ac-av__h" aria-hidden="true">
+              <span>来源 / 能做到什么</span>
+              <span>取得到</span>
+              <span>取不到</span>
+            </div>
+
+            <article class="ac-av__r" data-ac-source="学信网">
+              <div class="ac-av__k">
+                <p class="ac-av__name">学信网</p>
+                <span class="src src--doc"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5z"/><path d="M9 9h6M9 13h6"/></svg></span><span class="src__k">学信网</span><span class="src__w">9 月 18 日</span></span>
+              </div>
+              <ul class="ac-av__y">
+                <li><b>学籍与学历</b> 学校、专业、学历阶段、在读状态</li>
+                <li><b>在线验证报告</b> 要用本人授权的验证码才能出</li>
+              </ul>
+              <ul class="ac-av__n">
+                <li>成绩单不在这一路里，学信网不出课程分数</li>
+              </ul>
+            </article>
+
+            <article class="ac-av__r" data-ac-source="教务系统">
+              <div class="ac-av__k">
+                <p class="ac-av__name">教务系统</p>
+                <span class="src src--doc"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5z"/><path d="M9 9h6M9 13h6"/></svg></span><span class="src__k">教务系统</span><span class="src__w">10 月 13 日导入</span></span>
+              </div>
+              <ul class="ac-av__y">
+                <li><b>12 条成绩</b> 课程、成绩、学分、类别</li>
+                <li><b>课表快照</b> 周次、节次、地点，含周末那两门</li>
+              </ul>
+              <ul class="ac-av__n">
+                <li>成绩层级的口径是「专业前 30%」（9 月 20 日），不要在成绩单上自己算一个排名</li>
+                <li>换算过程只给结果，不给平时/期末的分项</li>
+              </ul>
+            </article>
+
+            <article class="ac-av__r" data-ac-source="学校">
+              <div class="ac-av__k">
+                <p class="ac-av__name">学校（按需开证明）</p>
+                <span class="src src--teacher"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 3 8.5 12 13l9-4.5z"/><path d="M7 11v5c0 1.4 2.2 2.6 5 2.6s5-1.2 5-2.6v-5"/></svg></span><span class="src__k">学校</span><span class="src__w">要申请，不自动同步</span></span>
+              </div>
+              <ul class="ac-av__y">
+                <li><b>在学证明</b> 学院盖章，3 个工作日</li>
+                <li><b>成绩单盖章版</b> 教务处窗口，办一次能用一学期</li>
+              </ul>
+              <ul class="ac-av__n">
+                <li class="ac-strike"><b>实习单位评价</b> 需要实习单位出具，学校这边取不到 —— 你可以自己传一份</li>
+              </ul>
+            </article>
+
+            <article class="ac-av__r" data-ac-source="本人上传">
+              <div class="ac-av__k">
+                <p class="ac-av__name">本人上传</p>
+                <span class="src src--self"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.5" r="3.5"/><path d="M5 20c0-3.6 3.1-5.6 7-5.6s7 2 7 5.6"/></svg></span><span class="src__k">本人上传</span><span class="src__w">你自己给的</span></span>
+              </div>
+              <ul class="ac-av__y">
+                <li><b>证书与证明</b> 技能证书、竞赛获奖、志愿记录</li>
+                <li><b>经历材料</b> 实习评价、项目产出、作品</li>
+              </ul>
+              <ul class="ac-av__n">
+                <li>自己传的东西走 <span class="conf conf--reported"><i aria-hidden="true"></i>待验证</span>，不会自动变成官方记录</li>
+              </ul>
+            </article>
+          </div>
+
+          <p class="callout callout--warn ac-src-fix" id="acSrcFix">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8.2v.1"/></svg>
+            <span><b>实习单位评价</b> 这一条卡在「需要实习单位出具」上，学校取不到，顾问也编不出来。你手上有纸质版或截图的话，传一份上来就补上了。</span>
+            <button class="btn btn--ghost ac-src-act" type="button" data-ac-upload="实习单位评价">自己传一份</button>
+          </p>
+        </div>
+      </section>
+
+      <!-- ====== ① 结构显形：12 条成绩先给形状（按课程类别同刻度） ====== -->
+      <section class="sec" aria-labelledby="acGradeT">
+        <div class="sec__h">
+          <div class="sec__ht">
+            <h2 class="sec__t" id="acGradeT">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 19V9M12 19V5M18 19v-7"/></svg>
+              12 条成绩，先看形状
+            </h2>
+            <p class="sec__d">学科目全称是 <b>2025–2026 春季</b>，这里按课程类别摆在一起：同一把尺子（0 到 100 分），所以能看出学分压在哪儿、哪一门拉后腿。三门实践课没有数字成绩，用文字摆出来，也不给它补一个分数。</p>
+          </div>
+          <div class="sec__acts">
+            <span class="ac-num">12 门 · 30 学分</span>
+          </div>
+        </div>
+        <div class="sec__body">
+          <div class="cmp ac-cmp">
+            <div class="cmp__r">
+              <span class="cmp__k">专业课<br><small>5 门 13 学分</small></span>
+              <span class="cmp__track"><span class="cmp__bar" style="width:90%"></span></span>
+              <span class="cmp__v">90<small> 最高</small></span>
+            </div>
+            <ul class="ac-cmp__u">
+              <li>材料科学基础 86</li><li>材料热力学 82</li><li>晶体结构 90</li><li>金属学 85</li>
+            </ul>
+            <div class="cmp__r">
+              <span class="cmp__k">基础课<br><small>3 门 10 学分</small></span>
+              <span class="cmp__track"><span class="cmp__bar" style="width:88%"></span></span>
+              <span class="cmp__v">88<small> 最高</small></span>
+            </div>
+            <ul class="ac-cmp__u">
+              <li>高等数学 78</li><li>大学物理 84</li><li>无机化学 88</li>
+            </ul>
+            <div class="cmp__r">
+              <span class="cmp__k">公共课<br><small>2 门 4 学分</small></span>
+              <span class="cmp__track"><span class="cmp__bar" style="width:81%"></span></span>
+              <span class="cmp__v">81<small> 最高</small></span>
+            </div>
+            <ul class="ac-cmp__u">
+              <li>大学英语 81</li><li>程序设计基础 79</li>
+            </ul>
+            <div class="cmp__r">
+              <span class="cmp__k">实践课<br><small>3 门 5 学分 · 非数字</small></span>
+              <span class="cmp__track"><span class="ac-cmp__w"></span></span>
+              <span class="cmp__v ac-cmp__t">优秀 · 良好 · 通过</span>
+            </div>
+            <ul class="ac-cmp__u">
+              <li>实验方法 优秀</li><li>工程制图 良好</li><li>创新实践 通过</li>
+            </ul>
+          </div>
+          <p class="ac-note">换算成同一个分数是做不到的：学校没给换算规则，三门实践课的文字成绩也不能硬折成数字。这一页不替学校算。</p>
+        </div>
+      </section>
+
+      <!-- ====== ① + ③ 12 条成绩的明细，按类别分组；晶体结构那一条能剥到原文 ====== -->
+      <section class="sec" aria-labelledby="acTblT">
+        <div class="sec__h">
+          <div class="sec__ht">
+            <h2 class="sec__t" id="acTblT">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h11l3 3v13H5z"/><path d="M9 9h6M9 13h6"/></svg>
+              12 条成绩的明细
+            </h2>
+            <p class="sec__d">按课程类别分组，组里是按成绩从高到低。每条都带来源和把握度 —— 哪些能直接对到教务系统的原始记录，哪些只有一个换算后的结果。点下面那条「晶体结构 90」，能看到它是怎么来的。</p>
+          </div>
+          <div class="sec__acts">
+            <span class="ac-num">12 / 12 条已导入</span>
+          </div>
+        </div>
+        <div class="sec__body">
+          <div class="tbl-wrap">
+            <table class="tbl">
+              <caption>2025–2026 春季学期 · 虚构的课程与成绩，用于体验导入、冲突、周末和缺少时间的情况。</caption>
+              <thead>
+                <tr><th scope="col">课程</th><th scope="col">成绩</th><th scope="col" data-num>学分</th><th scope="col">来源与把握</th></tr>
+              </thead>
+              <tbody>
+                <tr data-key="true"><td colspan="4">专业课 · 5 门 13 学分</td></tr>
+                <tr>
+                  <td data-key>晶体结构</td>
+                  <td><b>90</b></td>
+                  <td data-num>2</td>
+                  <td><span class="conf conf--verified"><i aria-hidden="true"></i>依据充分</span></td>
+                </tr>
+                <tr>
+                  <td data-key>材料科学基础</td>
+                  <td><b>86</b></td>
+                  <td data-num>3</td>
+                  <td><span class="conf conf--verified"><i aria-hidden="true"></i>依据充分</span></td>
+                </tr>
+                <tr>
+                  <td data-key>金属学</td>
+                  <td><b>85</b></td>
+                  <td data-num>3</td>
+                  <td><span class="conf conf--verified"><i aria-hidden="true"></i>依据充分</span></td>
+                </tr>
+                <tr>
+                  <td data-key>材料热力学</td>
+                  <td><b>82</b></td>
+                  <td data-num>3</td>
+                  <td><span class="conf conf--verified"><i aria-hidden="true"></i>依据充分</span></td>
+                </tr>
+                <tr>
+                  <td data-key>材料物理</td>
+                  <td><b class="ac-nonum">—</b></td>
+                  <td data-num>2</td>
+                  <td><span class="conf conf--inferred"><i aria-hidden="true"></i>这次导入里没有成绩</span></td>
+                </tr>
+
+                <tr data-key="true"><td colspan="4">基础课 · 3 门 10 学分</td></tr>
+                <tr>
+                  <td data-key>无机化学</td>
+                  <td><b>88</b></td>
+                  <td data-num>3</td>
+                  <td><span class="conf conf--verified"><i aria-hidden="true"></i>依据充分</span></td>
+                </tr>
+                <tr>
+                  <td data-key>大学物理</td>
+                  <td><b>84</b></td>
+                  <td data-num>3</td>
+                  <td><span class="conf conf--verified"><i aria-hidden="true"></i>依据充分</span></td>
+                </tr>
+                <tr>
+                  <td data-key>高等数学</td>
+                  <td><b>78</b></td>
+                  <td data-num>4</td>
+                  <td><span class="conf conf--verified"><i aria-hidden="true"></i>依据充分</span></td>
+                </tr>
+
+                <tr data-key="true"><td colspan="4">公共课 · 2 门 4 学分</td></tr>
+                <tr>
+                  <td data-key>大学英语</td>
+                  <td><b>81</b></td>
+                  <td data-num>2</td>
+                  <td><span class="conf conf--verified"><i aria-hidden="true"></i>依据充分</span></td>
+                </tr>
+                <tr>
+                  <td data-key>程序设计基础</td>
+                  <td><b>79</b></td>
+                  <td data-num>2</td>
+                  <td><span class="conf conf--verified"><i aria-hidden="true"></i>依据充分</span></td>
+                </tr>
+
+                <tr data-key="true"><td colspan="4">实践课 · 3 门 5 学分 · 学校给的是文字成绩，不是分数</td></tr>
+                <tr>
+                  <td data-key>实验方法</td>
+                  <td><b class="ac-word">优秀</b></td>
+                  <td data-num>2</td>
+                  <td><span class="conf conf--verified"><i aria-hidden="true"></i>依据充分</span></td>
+                </tr>
+                <tr>
+                  <td data-key>工程制图</td>
+                  <td><b class="ac-word">良好</b></td>
+                  <td data-num>2</td>
+                  <td><span class="conf conf--verified"><i aria-hidden="true"></i>依据充分</span></td>
+                </tr>
+                <tr>
+                  <td data-key>创新实践</td>
+                  <td><b class="ac-word">通过</b></td>
+                  <td data-num>1</td>
+                  <td><span class="conf conf--verified"><i aria-hidden="true"></i>依据充分</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- ③ 粒度与溯源：同一条成绩的三种粒度 -->
+          <div class="ac-trace">
+            <div class="zoom" data-zoom="sum">
+              <div class="zoombar" role="group" aria-label="看到多细">
+                <button class="zoombtn" type="button" data-zoom-set="sum">摘要</button>
+                <button class="zoombtn" type="button" data-zoom-set="mid">细节</button>
+                <button class="zoombtn" type="button" data-zoom-set="full">原始记录</button>
+              </div>
+              <div class="zoom__body">
+                <p class="z--sum"><b>晶体结构 90 分，2 学分，专业课。</b>这一条能直接对到教务系统的原始记录，不是我自己填的。</p>
+                <p class="z--mid">教务系统里这一条记着两个分项：<b>期末 91、平时 88</b>，按期末 60% / 平时 40% 加权得到 <b>89.8</b>，成绩单上写的是 <b>90</b>。同一件事的三种粒度：成绩单给结果（90），教务系统给分项，导出文件给原始行。差的那 0.2 是进位，不是错。</p>
+                <p class="z--full"><b>教务系统导出（本地课程快照，演示数据）：</b>学期 2025–2026 春季 · 课程 晶体结构 · 课程性质 专业课 · 学分 2 · 期末 91 · 平时 88 · 加权 89.8 · 记载成绩 90 · 采集时间 2026-10-13 02:00 UTC。</p>
+              </div>
+            </div>
+            <div class="ac-trace__m">
+              <p class="ac-trace__t"><b>90</b> 是怎么来的</p>
+              <div class="srcs">
+                <span class="src src--doc"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5z"/><path d="M9 9h6M9 13h6"/></svg></span><span class="src__k">教务系统</span><span class="src__w">10 月 13 日导入</span></span>
+                <span class="conf conf--verified"><i aria-hidden="true"></i>依据充分</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sec__foot">
+          <span>成绩层级的口径用画像那一份：<b>专业前 30%</b>（来源教务系统，9 月 20 日导入）。这一页不拿成绩单自己算一个排名 —— 学校没给换算规则。</span>
+        </div>
+      </section>
+
+      <!-- ====== ② 组织权交给用户：同一批 12 条成绩，四种看法 ====== -->
+      <section class="sec" aria-labelledby="acLensT">
+        <div class="sec__h">
+          <div class="sec__ht">
+            <h2 class="sec__t" id="acLensT">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.6"/><rect x="13" y="4" width="7" height="7" rx="1.6"/><rect x="4" y="13" width="7" height="7" rx="1.6"/><rect x="13" y="13" width="7" height="7" rx="1.6"/></svg>
+              同一批成绩，按什么看
+            </h2>
+            <p class="sec__d">上面这 14 条，一条没删也没藏，这里换个组织方式：按来源、按学期、按课程类别、按录入完整度。切一下，看哪一组最厚、哪一组还没对完。</p>
+          </div>
+          <div class="sec__acts">
+            <span class="ac-num" id="acLensN">12 门 · 30 学分</span>
+          </div>
+        </div>
+        <div class="sec__body">
+          <div class="lens" data-lens="source"
+               data-order-source="教务系统|本人填写"
+               data-order-time="2025–2026 春季"
+               data-order-category="专业课|基础课|公共课|实践课"
+               data-order-verify="已能核对原文|只有换算后的结果|学校给的是文字成绩|这次导入里没有成绩"
+               data-hint-source="按谁给的看：14 条里 13 条来自 10 月 13 日导入的教务系统快照，只有「材料实验 · 创新项目讨论」那一条挂在课表快照下。没有一条是本人填的 —— 所以你这一栏现在是空着的那一组。"
+               data-hint-time="按什么时候的看：12 门成绩全在 2025–2026 春季这一个学期；另外 2 条属于 2026–2027 秋季的课表，还没有成绩。"
+               data-hint-category="按课程类别看：专业课 5 门最厚；实践课 3 门加起来只有 5 学分，而基础课一门高等数学就 4 学分 —— 学分压在基础和专业上，不压在实践上。"
+               data-hint-verify="按校对进度看：12 门里 10 门能对到教务系统原文，3 门学校给的是文字成绩（优秀、良好、通过），「材料物理」这次导入里没带成绩；另外 2 条是课表里的课，还没有成绩。">
+            <div class="lensbar" role="tablist" aria-label="按什么看这批成绩">
+              <button class="lensbtn" type="button" role="tab" data-lens-set="source" aria-selected="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M5 8l7-5 7 5"/></svg>
+                按来源
+              </button>
+              <button class="lensbtn" type="button" role="tab" data-lens-set="time" aria-selected="false">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>
+                按学期
+              </button>
+              <button class="lensbtn" type="button" role="tab" data-lens-set="category" aria-selected="false">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M7 12h10M10 17h4"/></svg>
+                按课程类别
+              </button>
+              <button class="lensbtn" type="button" role="tab" data-lens-set="verify" aria-selected="false">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>
+                按录入完整度
+              </button>
+            </div>
+            <p class="lens__hint" data-lens-hint aria-live="polite"></p>
+
+            <div class="lens__items">
+              <article class="lens__item" data-source="教务系统" data-time="2025–2026 春季" data-category="专业课" data-verify="已能核对原文">
+                <p class="ac-k">晶体结构</p>
+                <p class="ac-v"><b>90</b> · 2 学分 · 专业课</p>
+                <div class="ac-m">
+                  <span class="src src--doc"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5z"/><path d="M9 9h6M9 13h6"/></svg></span><span class="src__k">教务系统</span><span class="src__w">10 月 13 日</span></span>
+                  <span class="ac-w">已能核对原文</span>
+                </div>
+              </article>
+
+              <article class="lens__item" data-source="教务系统" data-time="2025–2026 春季" data-category="专业课" data-verify="已能核对原文">
+                <p class="ac-k">材料科学基础</p>
+                <p class="ac-v"><b>86</b> · 3 学分 · 专业课</p>
+                <div class="ac-m">
+                  <span class="src src--doc"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5z"/><path d="M9 9h6M9 13h6"/></svg></span><span class="src__k">教务系统</span><span class="src__w">10 月 13 日</span></span>
+                  <span class="ac-w">已能核对原文</span>
+                </div>
+              </article>
+
+              <article class="lens__item" data-source="教务系统" data-time="2025–2026 春季" data-category="专业课" data-verify="已能核对原文">
+                <p class="ac-k">金属学</p>
+                <p class="ac-v"><b>85</b> · 3 学分 · 专业课</p>
+                <div class="ac-m">
+                  <span class="src src--doc"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5z"/><path d="M9 9h6M9 13h6"/></svg></span><span class="src__k">教务系统</span><span class="src__w">10 月 13 日</span></span>
+                  <span class="ac-w">已能核对原文</span>
+                </div>
+              </article>
+
+              <article class="lens__item" data-source="教务系统" data-time="2025–2026 春季" data-category="专业课" data-verify="已能核对原文">
+                <p class="ac-k">材料热力学</p>
+                <p class="ac-v"><b>82</b> · 3 学分 · 专业课</p>
+                <div class="ac-m">
+                  <span class="src src--doc"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5z"/><path d="M9 9h6M9 13h6"/></svg></span><span class="src__k">教务系统</span><span class="src__w">10 月 13 日</span></span>
+                  <span class="ac-w">已能核对原文</span>
+                </div>
+              </article>
+
+              <article class="lens__item" data-source="教务系统" data-time="2025–2026 春季" data-category="专业课" data-verify="这次导入里没有成绩">
+                <p class="ac-k">材料物理</p>
+                <p class="ac-v"><b class="ac-nonum">—</b> · 2 学分 · 专业课 · 成绩没导进来</p>
+                <div class="ac-m">
+                  <span class="src src--doc"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5z"/><path d="M9 9h6M9 13h6"/></svg></span><span class="src__k">教务系统</span><span class="src__w">10 月 13 日导入，这一栏空着</span></span>
+                  <span class="conf conf--inferred"><i aria-hidden="true"></i>这次导入里没有成绩</span>
+                </div>
+              </article>
+
+              <article class="lens__item" data-source="教务系统" data-time="2025–2026 春季" data-category="基础课" data-verify="已能核对原文">
+                <p class="ac-k">无机化学</p>
+                <p class="ac-v"><b>88</b> · 3 学分 · 基础课</p>
+                <div class="ac-m">
+                  <span class="src src--doc"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5z"/><path d="M9 9h6M9 13h6"/></svg></span><span class="src__k">教务系统</span><span class="src__w">10 月 13 日</span></span>
+                  <span class="ac-w">已能核对原文</span>
+                </div>
+              </article>
+
+              <article class="lens__item" data-source="教务系统" data-time="2025–2026 春季" data-category="基础课" data-verify="已能核对原文">
+                <p class="ac-k">大学物理</p>
+                <p class="ac-v"><b>84</b> · 3 学分 · 基础课</p>
+                <div class="ac-m">
+                  <span class="src src--doc"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5z"/><path d="M9 9h6M9 13h6"/></svg></span><span class="src__k">教务系统</span><span class="src__w">10 月 13 日</span></span>
+                  <span class="ac-w">已能核对原文</span>
+                </div>
+              </article>
+
+              <article class="lens__item" data-source="教务系统" data-time="2025–2026 春季" data-category="基础课" data-verify="已能核对原文">
+                <p class="ac-k">高等数学</p>
+                <p class="ac-v"><b>78</b> · 4 学分 · 基础课</p>
+                <div class="ac-m">
+                  <span class="src src--doc"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5z"/><path d="M9 9h6M9 13h6"/></svg></span><span class="src__k">教务系统</span><span class="src__w">10 月 13 日</span></span>
+                  <span class="ac-w">已能核对原文</span>
+                </div>
+              </article>
+
+              <article class="lens__item" data-source="教务系统" data-time="2025–2026 春季" data-category="公共课" data-verify="已能核对原文">
+                <p class="ac-k">大学英语</p>
+                <p class="ac-v"><b>81</b> · 2 学分 · 公共课</p>
+                <div class="ac-m">
+                  <span class="src src--doc"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5z"/><path d="M9 9h6M9 13h6"/></svg></span><span class="src__k">教务系统</span><span class="src__w">10 月 13 日</span></span>
+                  <span class="ac-w">已能核对原文</span>
+                </div>
+              </article>
+
+              <article class="lens__item" data-source="教务系统" data-time="2025–2026 春季" data-category="公共课" data-verify="已能核对原文">
+                <p class="ac-k">程序设计基础</p>
+                <p class="ac-v"><b>79</b> · 2 学分 · 公共课</p>
+                <div class="ac-m">
+                  <span class="src src--doc"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5z"/><path d="M9 9h6M9 13h6"/></svg></span><span class="src__k">教务系统</span><span class="src__w">10 月 13 日</span></span>
+                  <span class="ac-w">已能核对原文</span>
+                </div>
+              </article>
+
+              <article class="lens__item" data-source="教务系统" data-time="2025–2026 春季" data-category="实践课" data-verify="学校给的是文字成绩">
+                <p class="ac-k">实验方法</p>
+                <p class="ac-v"><b class="ac-word">优秀</b> · 2 学分 · 实践课</p>
+                <div class="ac-m">
+                  <span class="src src--doc"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5z"/><path d="M9 9h6M9 13h6"/></svg></span><span class="src__k">教务系统</span><span class="src__w">10 月 13 日</span></span>
+                  <span class="ac-w ac-w--w">学校给的是文字成绩</span>
+                </div>
+              </article>
+
+              <article class="lens__item" data-source="教务系统" data-time="2025–2026 春季" data-category="实践课" data-verify="学校给的是文字成绩">
+                <p class="ac-k">工程制图</p>
+                <p class="ac-v"><b class="ac-word">良好</b> · 2 学分 · 实践课</p>
+                <div class="ac-m">
+                  <span class="src src--doc"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5z"/><path d="M9 9h6M9 13h6"/></svg></span><span class="src__k">教务系统</span><span class="src__w">10 月 13 日</span></span>
+                  <span class="ac-w ac-w--w">学校给的是文字成绩</span>
+                </div>
+              </article>
+
+              <article class="lens__item" data-source="教务系统" data-time="2025–2026 春季" data-category="实践课" data-verify="学校给的是文字成绩">
+                <p class="ac-k">创新实践</p>
+                <p class="ac-v"><b class="ac-word">通过</b> · 1 学分 · 实践课</p>
+                <div class="ac-m">
+                  <span class="src src--doc"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5z"/><path d="M9 9h6M9 13h6"/></svg></span><span class="src__k">教务系统</span><span class="src__w">10 月 13 日</span></span>
+                  <span class="ac-w ac-w--w">学校给的是文字成绩</span>
+                </div>
+              </article>
+
+              <article class="lens__item" data-source="本人填写" data-time="2026–2027 秋季" data-category="实践课" data-verify="还没有成绩">
+                <p class="ac-k">材料实验 · 创新项目讨论</p>
+                <p class="ac-v">这学期两门课在周三 7–8 节撞上了 · 还没有成绩</p>
+                <div class="ac-m">
+                  <span class="src src--self"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.5" r="3.5"/><path d="M5 20c0-3.6 3.1-5.6 7-5.6s7 2 7 5.6"/></svg></span><span class="src__k">课表快照</span><span class="src__w">10 月 13 日导入</span></span>
+                  <span class="conf conf--conflict"><i aria-hidden="true"></i>需要你注意</span>
+                </div>
+              </article>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====== ④ 冲突与缺时：重名重课，用真名，不另编 ====== -->
+      <section class="sec" aria-labelledby="acConT">
+        <div class="sec__h">
+          <div class="sec__ht">
+            <h2 class="sec__t" id="acConT">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4.5 21 19H3z"/><path d="M12 10v4M12 16.6v.1"/></svg>
+              两条课现在对不上
+            </h2>
+            <p class="sec__d">课表快照里有两处麻烦：一处是两门课在同一时间，一处是有一条根本没定时间。这不是数据错了，是真实课表就长这样 —— 它们卡在一起，是因为下一步要你决定。</p>
+          </div>
+          <div class="sec__acts">
+            <span class="ac-num">1 处冲突 · 1 处待定</span>
+          </div>
+        </div>
+        <div class="sec__body">
+          <div class="ac-cards">
+            <article class="ac-card ac-card--clash" id="acClash">
+              <p class="ac-card__tag"><span class="conf conf--conflict"><i aria-hidden="true"></i>需要你注意</span><span class="ac-num">周三 7–8 节重叠</span></p>
+              <h3 class="ac-card__t"><b>材料实验</b> 与 <b>创新项目讨论</b> 撞在同一节</h3>
+              <div class="ac-slot">
+                <div class="ac-slot__r">
+                  <span class="ac-slot__k">材料实验</span>
+                  <span class="ac-slot__bar"><i class="ac-slot__on" style="left:50%;width:50%"></i></span>
+                  <span class="ac-slot__v">周三 5–8 节 · 1–16 周 · 实验中心</span>
+                </div>
+                <div class="ac-slot__r">
+                  <span class="ac-slot__k">创新项目讨论</span>
+                  <span class="ac-slot__bar"><i class="ac-slot__on" style="left:75%;width:25%"></i></span>
+                  <span class="ac-slot__v">周三 7–8 节 · 3–10 周 · 创新中心</span>
+                </div>
+                <p class="ac-slot__x">两门课在周三 7–8 节同时占用。第 3–10 周每周都会撞一次。</p>
+              </div>
+              <p class="ac-card__d">课表里有这一条，不代表你要按它走。它现在只是「冲突」，不是「已解决」。下一步是找一门课的任课教师问一句能不能调，或者先按 <b>创新项目讨论</b> 走、把 <b>材料实验</b> 第 7–8 节那部分补做。</p>
+              <div class="ac-card__acts">
+                <button class="btn btn--ghost ac-card__b" type="button" data-ac-conflict="材料实验 与 创新项目讨论（周三 7–8 节）">记下这门课的处理方式</button>
+                <span class="ac-card__n">未处理</span>
+              </div>
+            </article>
+
+            <article class="ac-card ac-card--wait" id="acWait">
+              <p class="ac-card__tag"><span class="conf conf--stale"><i aria-hidden="true"></i>时间待通知</span><span class="ac-num">周次未定</span></p>
+              <h3 class="ac-card__t"><b>企业参访</b> —— 周次待通知，地点示例企业</h3>
+              <div class="ac-slot">
+                <div class="ac-slot__r">
+                  <span class="ac-slot__k">企业参访</span>
+                  <span class="ac-slot__bar"><i class="ac-slot__none"></i></span>
+                  <span class="ac-slot__v">周次待通知 · 地点示例企业</span>
+                </div>
+                <p class="ac-slot__x">没有周次，所以它在这份课表里占不了任何一格 —— 也还不能被排进计划。</p>
+              </div>
+              <p class="ac-card__d">缺时间的事不能当已知条件用：它既不算占用，也不算空闲。等周次通知下来再决定要不要去；在那之前，任何排期都不应该在它上面押时间。</p>
+              <div class="ac-card__acts">
+                <button class="btn btn--ghost ac-card__b" type="button" data-ac-wait="企业参访">周次一出来告诉我</button>
+                <span class="ac-card__n">未定</span>
+              </div>
+            </article>
+          </div>
+
+          <p class="callout callout--quiet ac-slot-note">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8.2v.1"/></svg>
+            <span>空课格不代表空闲。这两条没排进去的课，也不能当成「那段时间空着」——课表里还有周六 3–4 节的职业发展工作坊和周日 1–2 节的实验室安全培训。</span>
+          </p>
+        </div>
+      </section>
+
+      <!-- ====== ③ 核验是一个过程：哪几步做完了、下一步是什么、卡在哪 ====== -->
+      <section class="sec" aria-labelledby="acVeT">
+        <div class="sec__h">
+          <div class="sec__ht">
+            <h2 class="sec__t" id="acVeT">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.6-5.9"/><path d="M4 4.5V9h4.5"/></svg>
+              核验走到哪一步了
+            </h2>
+            <p class="sec__d">核验不是打一个绿勾，是四步走：两步做完了，一步正在进行，一步要等你。这两步的进度只代表「这份演示资料被核对过一遍」，替不了真的学籍验证。</p>
+          </div>
+          <div class="sec__acts">
+            <span class="ac-num" id="acVeN">已完成 <span id="acVeDone">2</span> / 4 步</span>
+          </div>
+        </div>
+        <div class="sec__body">
+          <div class="tl ac-tl">
+            <div class="tl__i">
+              <p class="tl__when"><span class="ac-found">已完成</span>2026-10-13 02:00 UTC · 本地演示资料</p>
+              <p class="tl__what">核对学籍基本信息</p>
+              <p class="tl__d">演示：河北大学、材料科学与工程、大三。核对到 3 项基本信息。此处为虚构样例，不代表通过学信网核验。</p>
+              <p class="tl__meta"><span class="conf conf--verified"><i aria-hidden="true"></i>依据充分</span><span class="ac-num">3 项</span></p>
+            </div>
+
+            <div class="tl__i tl__i--now">
+              <p class="tl__when"><span class="ac-found ac-found--now">进行中</span>今天 10 月 14 日 · 本地课程快照</p>
+              <p class="tl__what">检查课程与成绩 —— 24 项已取得，正在逐条对</p>
+              <p class="tl__d">24 项里已经对完 21 项。剩下 3 项是文字成绩（优秀、良好、通过），课表快照读不出对应的分数，我不能替学校补一个数字上去。</p>
+              <p class="tl__meta"><span class="conf conf--reported"><i aria-hidden="true"></i>21 / 24 项已对</span><span class="ac-num">卡在：课程快照读不出文字成绩对应的分数</span></p>
+            </div>
+
+            <div class="tl__i tl__i--future">
+              <p class="tl__when"><span class="ac-found">等条件</span>下一步 · 要你本人授权</p>
+              <p class="tl__what">出在线验证报告</p>
+              <p class="tl__d">要用本人授权的在线验证码才能出，我拿不到也不能替你要。真实核验需使用本人授权的在线验证码，演示数据不代表学籍验证通过。</p>
+              <p class="tl__meta"><span class="conf conf--inferred"><i aria-hidden="true"></i>缺你的授权码</span></p>
+            </div>
+
+            <div class="tl__i tl__i--future">
+              <p class="tl__when"><span class="ac-found">等条件</span>再往后 · 需要实习单位出具</p>
+              <p class="tl__what">补实习单位评价</p>
+              <p class="tl__d">这一项学校这边取不到，只有实习单位能出。你手上有纸质版或截图的话，传一份就补上了。</p>
+              <p class="tl__meta"><span class="conf conf--inferred"><i aria-hidden="true"></i>取不到</span></p>
+            </div>
+          </div>
+
+          <div class="sec__foot ac-ve-foot">
+            <span>这一步是演示可信度变化，不是官方结论：专业这一条从 <b>0.5 提高到 0.8</b>，因为演示可信度变化，仅用于展示核验反馈。</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====== ④ 资料清单：七份在，一份取不到 ====== -->
+      <section class="sec" aria-labelledby="acListT">
+        <div class="sec__h">
+          <div class="sec__ht">
+            <h2 class="sec__t" id="acListT">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h11l3 3v13H5z"/><path d="M9 9h6M9 13h6"/></svg>
+              资料清单：七份在，一份取不到
+            </h2>
+            <p class="sec__d">按来源排，不是按时间。最后一条是空的 —— 它是这一页唯一一处「没有」，也是唯一一处你能自己动手补的。</p>
+          </div>
+          <div class="sec__acts">
+            <span class="ac-num">7 / 8 份在手</span>
+          </div>
+        </div>
+        <div class="sec__body">
+          <div class="ac-rows">
+            <div class="ac-row">
+              <p class="ac-row__t">学籍基本信息</p>
+              <div class="ac-m"><span class="src src--doc"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5z"/><path d="M9 9h6M9 13h6"/></svg></span><span class="src__k">学信网</span></span><span class="conf conf--verified"><i aria-hidden="true"></i>依据充分</span></div>
+            </div>
+            <div class="ac-row">
+              <p class="ac-row__t">12 条成绩</p>
+              <div class="ac-m"><span class="src src--doc"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5z"/><path d="M9 9h6M9 13h6"/></svg></span><span class="src__k">教务系统</span><span class="src__w">10 月 13 日导入</span></span><span class="conf conf--verified"><i aria-hidden="true"></i>依据充分</span></div>
+            </div>
+            <div class="ac-row">
+              <p class="ac-row__t">课表快照</p>
+              <div class="ac-m"><span class="src src--doc"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5z"/><path d="M9 9h6M9 13h6"/></svg></span><span class="src__k">教务系统</span><span class="src__w">10 月 13 日导入</span></span><span class="conf conf--conflict"><i aria-hidden="true"></i>含 1 处冲突、1 处待定</span></div>
+            </div>
+            <div class="ac-row">
+              <p class="ac-row__t">等级考试成绩</p>
+              <div class="ac-m"><span class="src src--self"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.5" r="3.5"/><path d="M5 20c0-3.6 3.1-5.6 7-5.6s7 2 7 5.6"/></svg></span><span class="src__k">本人上传</span><span class="src__w">9 月 30 日</span></span><span class="conf conf--reported"><i aria-hidden="true"></i>待验证</span></div>
+            </div>
+            <div class="ac-row">
+              <p class="ac-row__t">获奖与证书</p>
+              <div class="ac-m"><span class="src src--self"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.5" r="3.5"/><path d="M5 20c0-3.6 3.1-5.6 7-5.6s7 2 7 5.6"/></svg></span><span class="src__k">本人上传</span><span class="src__w">9 月 30 日</span></span><span class="conf conf--reported"><i aria-hidden="true"></i>待验证</span></div>
+            </div>
+            <div class="ac-row">
+              <p class="ac-row__t">在学证明</p>
+              <div class="ac-m"><span class="src src--teacher"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 3 8.5 12 13l9-4.5z"/><path d="M7 11v5c0 1.4 2.2 2.6 5 2.6s5-1.2 5-2.6v-5"/></svg></span><span class="src__k">学校</span><span class="src__w">已开，3 个工作日</span></span><span class="conf conf--verified"><i aria-hidden="true"></i>依据充分</span></div>
+            </div>
+            <div class="ac-row">
+              <p class="ac-row__t">成绩单盖章版</p>
+              <div class="ac-m"><span class="src src--teacher"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 3 8.5 12 13l9-4.5z"/><path d="M7 11v5c0 1.4 2.2 2.6 5 2.6s5-1.2 5-2.6v-5"/></svg></span><span class="src__k">学校</span><span class="src__w">已开</span></span><span class="conf conf--verified"><i aria-hidden="true"></i>依据充分</span></div>
+            </div>
+            <div class="ac-row ac-row--gap" id="acGap">
+              <p class="ac-row__t">实习单位评价</p>
+              <div class="ac-m">
+                <span class="src src--self"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.5" r="3.5"/><path d="M5 20c0-3.6 3.1-5.6 7-5.6s7 2 7 5.6"/></svg></span><span class="src__k">本人上传</span><span class="src__w">还没有</span></span>
+                <span class="conf conf--inferred"><i aria-hidden="true"></i>取不到</span>
+              </div>
+              <p class="ac-row__d">需要实习单位出具，学校这边取不到 —— 你可以自己传一份。</p>
+              <button class="btn btn--ghost ac-row__b" type="button" data-ac-upload="实习单位评价">自己传一份</button>
+            </div>
+          </div>
+
+          <p class="callout callout--quiet ac-foot-note">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8.2v.1"/></svg>
+            <span>这一页的课程与成绩都是虚构的：虚构的课程与成绩，用于体验导入、冲突、周末和缺少时间的情况。真实核验需使用本人授权的在线验证码，演示数据不代表学籍验证通过。</span>
+          </p>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- ============================ 侧栏 ============================ -->
+    <aside class="pg-doc__side">
+
+      <!-- 核验进度：不是打勾，是 2/4 并写清卡在哪 -->
+      <section class="sec sec--quiet ac-side" aria-labelledby="acSideVeT">
+        <div class="sec__h">
+          <div class="sec__ht">
+            <h2 class="sec__t" id="acSideVeT">核验进度</h2>
+            <p class="sec__d">四步里两步做完。卡住的地方写在这儿，不用你翻回去找。</p>
+          </div>
+        </div>
+        <div class="sec__body">
+          <div class="ac-ve">
+            <p class="ac-ve__n"><b>2</b> / 4 步</p>
+            <div class="meter" aria-hidden="true"><i class="on"></i><i class="on"></i><i></i><i></i></div>
+            <ul class="ac-ve__l">
+              <li class="ac-ve__i ac-ve__i--done">核对学籍基本信息</li>
+              <li class="ac-ve__i ac-ve__i--done">检查课程与成绩</li>
+              <li class="ac-ve__i ac-ve__i--now" id="acVeNow">对 24 项课程，还剩 3 项文字成绩</li>
+              <li class="ac-ve__i">出在线验证报告（等你的授权码）</li>
+              <li class="ac-ve__i">补实习单位评价（学校取不到）</li>
+            </ul>
+          </div>
+        </div>
+        <div class="sec__foot">
+          <span>演示可信度变化：专业这一条 0.5 → 0.8，仅用于展示核验反馈。</span>
+        </div>
+      </section>
+
+      <!-- 缺的那一份：给落点，不给一句"请补充" -->
+      <section class="sec sec--quiet ac-side" aria-labelledby="acSideGapT">
+        <div class="sec__h">
+          <div class="sec__ht">
+            <h2 class="sec__t" id="acSideGapT">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 8.5v8M8 12.5h8"/></svg>
+              缺的那一份
+            </h2>
+          </div>
+        </div>
+        <div class="sec__body">
+          <p class="ac-side__p"><b>实习单位评价</b> 需要实习单位出具，学校这边取不到。它卡住的不是「你没交」，是「这条路走不通」。</p>
+          <div class="ac-act">
+            <button class="btn btn--primary" type="button" id="acUploadSide">自己传一份</button>
+            <button class="btn btn--ghost" type="button" id="acRecheck">重新对一遍（演示）</button>
+          </div>
+          <p class="ac-hint" id="acSideHint">传上来的材料会标成 <b>待验证</b>，不会自动变成官方记录。</p>
+        </div>
+      </section>
+
+      <!-- 口径：这一页能说什么、不能说什么 -->
+      <section class="sec sec--quiet ac-side" aria-labelledby="acSideCalT">
+        <div class="sec__h">
+          <div class="sec__ht">
+            <h2 class="sec__t" id="acSideCalT">这一页的口径</h2>
+          </div>
+        </div>
+        <div class="sec__body">
+          <div class="kv ac-kv">
+            <div class="kv__r"><span class="kv__k">学期</span><span class="kv__v">2026–2027 学年秋季（课表）· 2025–2026 春季（成绩）</span></div>
+            <div class="kv__r"><span class="kv__k">导入</span><span class="kv__v">2026-10-13 02:00 UTC · 来源：演示数据</span></div>
+            <div class="kv__r"><span class="kv__k">不说</span><span class="kv__v">不写「已通过学信网核验」，也不用成绩单自己算排名</span></div>
+          </div>
+        </div>
+      </section>
+
+    </aside>
+  </div>
+</div>

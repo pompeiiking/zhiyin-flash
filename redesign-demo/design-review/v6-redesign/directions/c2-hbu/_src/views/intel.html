@@ -1,0 +1,815 @@
+<div class="main__scroll">
+  <!-- ==========================================================================
+       岗位资讯（作者：intel 视图作者 · 结构在 _src/views/intel.html，样式在 _src/css/intel.css，
+       行为在 _src/js/intel.js）
+       --------------------------------------------------------------------------
+       DESIGN-LANGUAGE §8 给这一页的方向：**整段正文罗列 → 事实与个人匹配分层；
+       来源、时间、类别成为结构而不是灰字**。所以这一页按四件事组织：
+         ① 结构显形        .stats / .sec / .srcs / .tbl(kv) —— 12 条从哪来、有几类、引用哪些数字
+         ② 组织权交给用户   #intFilter（类别 .chipf / 热词 / 排序，真的能筛）+ .lens（同一批 12 条四种看法）
+         ③ 粒度与溯源      .zoom（摘要↔细节↔原文，原文层给 id 与抓取时间）+ .src（每条一个来源名）
+         ④ 状态与不确定性   .conf / .state（筛到 0 条时的空态）
+       每条卡片严格分两层：**上半是事实**（岗位/要求/来源/抓取时间），
+       **下半是"这条和你有什么关系"**（对得上 / 差在哪 / 要补什么）。
+       口径：第九节 12 条全部是本地虚构演示资料，不是招聘公告 —— 源名逐字照抄，不出现真实企业名。
+       ======================================================================== -->
+  <div class="pg-doc">
+    <div class="pg-doc__main">
+
+      <!-- ============================ 页头 ============================ -->
+      <header class="pgh">
+        <p class="crumb">
+          <a href="#/directions">做决定</a>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+          <span>岗位资讯</span>
+        </p>
+        <div class="pgh__row">
+          <div class="pgh__t">
+            <h1 class="pgh__title">岗位资讯</h1>
+            <p class="pgh__lead">一共 12 条，全部是本地虚构演示资料 —— 没有一条是招聘公告。每条卡片上半写事实（要求、来源、抓取时间），下半写"这条和你有什么关系"；来源与时间写在卡片里，不做灰色小字。</p>
+            <div class="pgh__meta">
+              <span class="tag tag--demo">演示数据</span>
+              <span class="tag">12 条 · 5 类</span>
+              <span class="tag">抓取 10 月 13 日</span>
+              <span class="conf conf--inferred"><i aria-hidden="true"></i>本地虚构演示资料 · 非招聘公告</span>
+            </div>
+          </div>
+          <div class="pgh__acts">
+            <button class="chipbtn" type="button" id="intReset">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 12a7.5 7.5 0 1 0 2.4-5.5"/><path d="M4 5v4h4"/></svg>
+              清空筛选
+            </button>
+            <button class="chipbtn" type="button" id="intOnlyCareer">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h6"/></svg>
+              只看岗位示例（5 条）
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <!-- ================= ① 结构显形：这 12 条到底是什么 ================= -->
+      <section class="stats stats--pair" aria-label="这批资讯的规模与性质">
+        <div class="stat stat--key">
+          <p class="stat__n">12<small>条</small></p>
+          <p class="stat__t">全部是本地虚构演示资料</p>
+          <p class="stat__d">没有一条能当招聘公告用；来源名逐条写在卡片里</p>
+        </div>
+        <div class="stat">
+          <p class="stat__n">5<small>类</small></p>
+          <p class="stat__t">类别就是筛选的那五类</p>
+          <p class="stat__d">岗位示例 5 · 行业比较 2 · 求职方法 2 · 校园活动 2 · 资料核验 1</p>
+        </div>
+        <div class="stat">
+          <p class="stat__n">0<small>条</small></p>
+          <p class="stat__t">真实招聘</p>
+          <p class="stat__d">地点、待遇和招聘期限，一律待真实来源确认</p>
+        </div>
+        <div class="stat">
+          <p class="stat__n">1<small>个来源</small></p>
+          <p class="stat__t">12 条共用同一个来源名</p>
+          <p class="stat__d">抓取时间都是 2026-10-13T02:00:00Z，不是发布日期</p>
+        </div>
+      </section>
+
+      <!-- ============ ② 检索与筛选态：三个动作都真的能筛（第十二节 #9）============
+           类别 chip（.chipf）+ 搜索热词 + 排序。三处都会即时改下面那份列表，
+           并且 chip 上的条数会跟着重算 —— 计数不是写死的。 -->
+      <section class="sec" aria-labelledby="intFilterT">
+        <div class="sec__h">
+          <div class="sec__ht">
+            <h2 class="sec__t" id="intFilterT">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+              先筛一遍，再看
+            </h2>
+            <p class="sec__d">类别只能取这 12 条里出现的五类；热词只在这 12 条的正文里找；排序改成"什么时候用得上"时，每个组里的先后会跟着变。</p>
+          </div>
+          <div class="sec__acts">
+            <span class="sec__n" id="intCount" aria-live="polite">12 条</span>
+          </div>
+        </div>
+        <div class="sec__body">
+          <div class="int-filter">
+            <div class="int-filter__r">
+              <span class="int-filter__k" id="intKindK">类别</span>
+              <div class="chipbar" role="group" aria-labelledby="intKindK">
+                <button class="chipf" type="button" data-int-kind="全部" aria-pressed="true">全部 <small>12</small></button>
+                <button class="chipf" type="button" data-int-kind="岗位示例" aria-pressed="false">岗位示例 <small>5</small></button>
+                <button class="chipf" type="button" data-int-kind="行业比较示例" aria-pressed="false">行业比较示例 <small>2</small></button>
+                <button class="chipf" type="button" data-int-kind="求职方法示例" aria-pressed="false">求职方法示例 <small>2</small></button>
+                <button class="chipf" type="button" data-int-kind="校园活动示例" aria-pressed="false">校园活动示例 <small>2</small></button>
+                <button class="chipf" type="button" data-int-kind="资料核验示例" aria-pressed="false">资料核验示例 <small>1</small></button>
+              </div>
+            </div>
+            <div class="int-filter__r">
+              <span class="int-filter__k" id="intHotK">热词</span>
+              <div class="chipbar" role="group" aria-labelledby="intHotK">
+                <button class="chipf int-hot" type="button" data-int-hot="半导体" aria-pressed="false">半导体 <small>2</small></button>
+                <button class="chipf int-hot" type="button" data-int-hot="新能源" aria-pressed="false">新能源 <small>4</small></button>
+                <button class="chipf int-hot" type="button" data-int-hot="检测" aria-pressed="false">检测 <small>2</small></button>
+                <button class="chipf int-hot" type="button" data-int-hot="实验" aria-pressed="false">实验 <small>5</small></button>
+                <button class="chipf int-hot" type="button" data-int-hot="简历" aria-pressed="false">简历 <small>2</small></button>
+                <button class="chipf int-hot" type="button" data-int-hot="核验" aria-pressed="false">核验 <small>2</small></button>
+              </div>
+            </div>
+            <div class="int-filter__r">
+              <span class="int-filter__k" id="intSortK">排序</span>
+              <div class="chipbar int-sort" role="group" aria-labelledby="intSortK">
+                <button class="chipf" type="button" data-int-sort="fit" aria-pressed="true">按对你的相关度</button>
+                <button class="chipf" type="button" data-int-sort="when" aria-pressed="false">按什么时候用得上</button>
+                <button class="chipf" type="button" data-int-sort="kind" aria-pressed="false">按类别</button>
+              </div>
+            </div>
+            <p class="int-filter__echo" id="intEcho" aria-live="polite">12 条全在。按类别筛、点一个热词、或换个排序，下面的列表、每一组的条数、以及 chip 上的数字都会跟着变。</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ ② 组织权交给用户：同一批 12 条，四种看法 ============
+           切换视角时条目是**被搬动的**（引擎做 FLIP），不是换一份列表。 -->
+      <section class="sec" aria-labelledby="intLensT">
+        <div class="sec__h">
+          <div class="sec__ht">
+            <h2 class="sec__t" id="intLensT">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M7 12h10M10 17h4"/></svg>
+              同一批 12 条，按什么看
+            </h2>
+            <p class="sec__d">一条没删也没藏。按来源看会发现最要紧的一件事：12 条只出自一份资料，所以它们只能当参考，不能当投递依据。</p>
+          </div>
+          <div class="sec__acts"><span class="sec__n">12 条</span></div>
+        </div>
+        <div class="sec__body">
+          <div class="lens" data-lens="kind"
+               data-order-kind="岗位示例|行业比较示例|求职方法示例|校园活动示例|资料核验示例"
+               data-order-when="拿到就核对|投递前对照|这周排进去|等学籍页一起做"
+               data-order-from="演示岗位要求快照|演示统计与行业比较|教务与学籍演示快照|演示方法说明"
+               data-order-fit="直接对上主攻方向|用来比较两个方向|决定前必须核对|不影响现在的决定"
+               data-hint-kind="按类别看：岗位示例 5 条最厚，资料核验只有 1 条 —— 而这 1 条决定学籍页能不能往下走。"
+               data-hint-when="抓取时间都是 10 月 13 日，所以时间这一维看的不是“什么时候发的”，而是“什么时候用得上”：4 条拿到就该核对，4 条等投递前对照，3 条这周能排进日历，1 条要和学籍页一起做完。"
+               data-hint-from="按来源看：12 条共用一个来源名（本地虚构演示资料 · 非招聘公告），但它们撑在四种不同的东西上 —— 岗位要求快照 5 条、演示统计 2 条、教务与学籍快照 3 条、纯方法说明 2 条。最后一组没有外部出处，只能当方法看。"
+               data-hint-fit="按对你的相关度看：4 条直接对着你的主攻方向（半导体工艺、新能源），3 条用来比较两个方向，3 条是决定前必须核对的，2 条校园活动不影响现在的决定。">
+
+            <div class="lensbar" role="tablist" aria-label="按什么看这 12 条资讯">
+              <button class="lensbtn" type="button" role="tab" data-lens-set="kind" aria-selected="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.6"/><rect x="13" y="4" width="7" height="7" rx="1.6"/><rect x="4" y="13" width="7" height="7" rx="1.6"/><rect x="13" y="13" width="7" height="7" rx="1.6"/></svg>
+                按类别
+              </button>
+              <button class="lensbtn" type="button" role="tab" data-lens-set="when" aria-selected="false">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>
+                按什么时候用得上
+              </button>
+              <button class="lensbtn" type="button" role="tab" data-lens-set="from" aria-selected="false">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M5 8l7-5 7 5"/></svg>
+                按来源
+              </button>
+              <button class="lensbtn" type="button" role="tab" data-lens-set="fit" aria-selected="false">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 19V9M12 19V5M18 19v-7"/></svg>
+                按对你的相关度
+              </button>
+            </div>
+            <p class="lens__hint" data-lens-hint aria-live="polite"></p>
+
+            <div class="lens__items">
+              <!-- ============ 1 · 岗位示例 ============ -->
+              <article class="lens__item int-card" data-kind="岗位示例" data-when="拿到就核对" data-from="演示岗位要求快照" data-fit="直接对上主攻方向" data-int-idx="1">
+                <div class="int-fact">
+                  <div class="int-fact__top">
+                    <span class="int-kind">岗位示例</span>
+                    <span class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>抓取 10 月 13 日</span>
+                  </div>
+                  <h3 class="int-title">半导体材料工艺工程师｜应届岗位示例</h3>
+                  <p class="int-text">工艺记录、基础材料分析和实验安全是重点。演示要求：本科材料相关专业；提供一项实验或项目说明。</p>
+                  <p class="int-wait">地点、待遇和招聘期限均待真实来源确认。</p>
+                  <div class="srcs int-srcs">
+                    <span class="src src--doc int-src"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5z"/><path d="M9 9h6M9 13h6"/></svg></span><span class="src__k">本地虚构演示资料 · 非招聘公告</span><span class="src__w">10 月 13 日抓取</span></span>
+                  </div>
+                  <div class="zoom int-zoom" data-zoom="sum">
+                    <div class="zoombar" role="group" aria-label="这一条看到多细">
+                      <button class="zoombtn" type="button" data-zoom-set="sum" aria-pressed="true">摘要</button>
+                      <button class="zoombtn" type="button" data-zoom-set="mid" aria-pressed="false">细节</button>
+                      <button class="zoombtn" type="button" data-zoom-set="full" aria-pressed="false">原文</button>
+                    </div>
+                    <div class="zoom__body">
+                      <div class="z--sum">一句话：工艺岗最看重"能记录、能排查、能守安全"，学历要求写在明面上。</div>
+                      <div class="z--mid">
+                        <p><b>要求细节</b>演示只写了两条硬要求（本科材料相关专业、提供一项实验或项目说明），没写证书、语言和实习时长 —— 没写不等于不要求，要拿真实说明补。</p>
+                        <p><b>要准备</b>一次实验的四件事：目标、你负责的步骤、结果、能公开的证据。</p>
+                        <p><b>时间节点</b>演示没有招聘期限；地点与待遇同样待真实来源确认，别把任何日期写进日历。</p>
+                        <p><b>要对谁核</b>这条对应的方向是"半导体材料工艺工程师"，报告里它的匹配度较高（演示预设比例）。</p>
+                      </div>
+                      <div class="z--full">
+                        <p>原文（逐字）："工艺记录、基础材料分析和实验安全是重点。演示要求：本科材料相关专业；提供一项实验或项目说明。地点、待遇和招聘期限均待真实来源确认。"</p>
+                        <p>id：demo-intel-1 · 类别：岗位示例 · 来源：本地虚构演示资料 · 非招聘公告</p>
+                        <p>抓取时间：2026-10-13T02:00:00Z（10 月 13 日）· 本条目不是招聘公告，没有真实招聘链接</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="int-match">
+                  <p class="int-match__h">这条和你有什么关系<span class="tag">直接对上主攻方向</span></p>
+                  <ul class="int-match__l">
+                    <li><b>对得上</b><span>它写明的专业要求就是材料科学与工程，你的专业对口是 88（要求 70，已满足）。</span></li>
+                    <li><b>差在哪</b><span>它要一项"能说清本人贡献"的实验说明，而这正是你简历上缺的那一项。</span></li>
+                    <li><b>要补什么</b><span>把材料实验写成三条：目标、你做的步骤、结果。本周 20 分钟，先写不完整的版本。</span></li>
+                  </ul>
+                </div>
+              </article>
+
+              <!-- ============ 2 · 岗位示例 ============ -->
+              <article class="lens__item int-card" data-kind="岗位示例" data-when="拿到就核对" data-from="演示岗位要求快照" data-fit="直接对上主攻方向" data-int-idx="2">
+                <div class="int-fact">
+                  <div class="int-fact__top">
+                    <span class="int-kind">岗位示例</span>
+                    <span class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>抓取 10 月 13 日</span>
+                  </div>
+                  <h3 class="int-title">新能源电池研发助理｜岗位比较示例</h3>
+                  <p class="int-text">演示要求：理解电化学基础，能整理实验数据。本科助理岗与研究生研发岗需分别核对，不把两类门槛混在一起。</p>
+                  <p class="int-wait">岗位地点、待遇与学历门槛的最终口径待真实来源确认。</p>
+                  <div class="srcs int-srcs">
+                    <span class="src src--doc int-src"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5z"/><path d="M9 9h6M9 13h6"/></svg></span><span class="src__k">本地虚构演示资料 · 非招聘公告</span><span class="src__w">10 月 13 日抓取</span></span>
+                  </div>
+                  <div class="zoom int-zoom" data-zoom="sum">
+                    <div class="zoombar" role="group" aria-label="这一条看到多细">
+                      <button class="zoombtn" type="button" data-zoom-set="sum" aria-pressed="true">摘要</button>
+                      <button class="zoombtn" type="button" data-zoom-set="mid" aria-pressed="false">细节</button>
+                      <button class="zoombtn" type="button" data-zoom-set="full" aria-pressed="false">原文</button>
+                    </div>
+                    <div class="zoom__body">
+                      <div class="z--sum">一句话：这条不给结论，只提醒本科助理岗和研究生研发岗是两类门槛。</div>
+                      <div class="z--mid">
+                        <p><b>要求细节</b>演示只写了两条：理解电化学基础、能整理实验数据。没有写学历以外的其他硬条件。</p>
+                        <p><b>要准备</b>课名加成绩能证明"学过"；要证明"整理过数据"，得拿出原始记录，不是截图出来的结论。</p>
+                        <p><b>核对项</b>分别找一份本科助理岗和一份研究生研发岗的说明，看学历门槛与职责差在哪两行。</p>
+                        <p><b>时间节点</b>这是这周就能做的核对，不必等简历改完。</p>
+                      </div>
+                      <div class="z--full">
+                        <p>原文（逐字）："演示要求：理解电化学基础，能整理实验数据。本科助理岗与研究生研发岗需分别核对，不把两类门槛混在一起。"</p>
+                        <p>id：demo-intel-2 · 类别：岗位示例 · 来源：本地虚构演示资料 · 非招聘公告</p>
+                        <p>抓取时间：2026-10-13T02:00:00Z（10 月 13 日）· 本条目不是招聘公告，没有真实招聘链接</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="int-match">
+                  <p class="int-match__h">这条和你有什么关系<span class="tag">直接对上主攻方向</span></p>
+                  <ul class="int-match__l">
+                    <li><b>对得上</b><span>无机化学 88、大学物理 84、材料物理都在这条要的基础里 —— 但成绩只能证明学过。</span></li>
+                    <li><b>差在哪</b><span>两个门槛写在一起，你现在按哪一类准备都不确定；报告里这条方向的匹配分是 0.64（演示预设比例）。</span></li>
+                    <li><b>要补什么</b><span>各找一份真实说明，把"学历门槛 / 每天做什么"两列抄成一张表。</span></li>
+                  </ul>
+                </div>
+              </article>
+
+              <!-- ============ 3 · 岗位示例 ============ -->
+              <article class="lens__item int-card" data-kind="岗位示例" data-when="拿到就核对" data-from="演示岗位要求快照" data-fit="用来比较两个方向" data-int-idx="3">
+                <div class="int-fact">
+                  <div class="int-fact__top">
+                    <span class="int-kind">岗位示例</span>
+                    <span class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>抓取 10 月 13 日</span>
+                  </div>
+                  <h3 class="int-title">省内国企材料检测岗｜职责示例</h3>
+                  <p class="int-text">演示职责：样品制备、检测记录、质量流程。可用来比较工作方式与地域偏好，不代表任何企业正在招聘。</p>
+                  <p class="int-wait">这条明确写着"不代表任何企业正在招聘"——演示里它只用来比较工作方式。</p>
+                  <div class="srcs int-srcs">
+                    <span class="src src--doc int-src"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5z"/><path d="M9 9h6M9 13h6"/></svg></span><span class="src__k">本地虚构演示资料 · 非招聘公告</span><span class="src__w">10 月 13 日抓取</span></span>
+                  </div>
+                  <div class="zoom int-zoom" data-zoom="sum">
+                    <div class="zoombar" role="group" aria-label="这一条看到多细">
+                      <button class="zoombtn" type="button" data-zoom-set="sum" aria-pressed="true">摘要</button>
+                      <button class="zoombtn" type="button" data-zoom-set="mid" aria-pressed="false">细节</button>
+                      <button class="zoombtn" type="button" data-zoom-set="full" aria-pressed="false">原文</button>
+                    </div>
+                    <div class="zoom__body">
+                      <div class="z--sum">一句话：检测岗的日常是制样、记录、走质量流程，比工艺岗更像"按规范做事"。</div>
+                      <div class="z--mid">
+                        <p><b>职责细节</b>样品制备是手上活，检测记录要写下来，质量流程要按流程走 —— 三条都指向"规范"，不是"发挥"。</p>
+                        <p><b>和你的偏好对照</b>你说过偏"把事做成"；这条岗位的成果是"记录准确"，不是"东西被做出来"。这一点要先想清楚。</p>
+                        <p><b>可以留着的地方</b>地域与"倾向留在省内"一致，所以它适合当保底，而不是主攻。</p>
+                        <p><b>时间节点</b>演示无期限；这条不会给你任何报名或截止日期。</p>
+                      </div>
+                      <div class="z--full">
+                        <p>原文（逐字）："演示职责：样品制备、检测记录、质量流程。可用来比较工作方式与地域偏好，不代表任何企业正在招聘。"</p>
+                        <p>id：demo-intel-3 · 类别：岗位示例 · 来源：本地虚构演示资料 · 非招聘公告</p>
+                        <p>抓取时间：2026-10-13T02:00:00Z（10 月 13 日）· 本条目不是招聘公告，没有真实招聘链接</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="int-match">
+                  <p class="int-match__h">这条和你有什么关系<span class="tag">用来比较两个方向</span></p>
+                  <ul class="int-match__l">
+                    <li><b>对得上</b><span>省内 + 国企，和"倾向留在省内"以及家里希望考公的期待不冲突。</span></li>
+                    <li><b>差在哪</b><span>日常是记录与流程，和你"想把东西做出来"的偏好方向相反；报告里这条是保底（0.58，演示预设比例）。</span></li>
+                    <li><b>要补什么</b><span>先自问一遍：每天做制样与检测记录，你能接受多久。答案写进待办，不用现在决定。</span></li>
+                  </ul>
+                </div>
+              </article>
+
+              <!-- ============ 4 · 岗位示例 ============ -->
+              <article class="lens__item int-card" data-kind="岗位示例" data-when="投递前对照" data-from="演示岗位要求快照" data-fit="直接对上主攻方向" data-int-idx="4">
+                <div class="int-fact">
+                  <div class="int-fact__top">
+                    <span class="int-kind">岗位示例</span>
+                    <span class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>抓取 10 月 13 日</span>
+                  </div>
+                  <h3 class="int-title">半导体材料工艺工程师｜面试准备示例</h3>
+                  <p class="int-text">围绕实验目的、变量控制、异常排查和结果表达准备问题。未参与产线实践时，应如实说明经历边界。</p>
+                  <p class="int-wait">问题清单是演示口径；真实面试问题需在拿到面谈安排后核对。</p>
+                  <div class="srcs int-srcs">
+                    <span class="src src--doc int-src"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5z"/><path d="M9 9h6M9 13h6"/></svg></span><span class="src__k">本地虚构演示资料 · 非招聘公告</span><span class="src__w">10 月 13 日抓取</span></span>
+                  </div>
+                  <div class="zoom int-zoom" data-zoom="sum">
+                    <div class="zoombar" role="group" aria-label="这一条看到多细">
+                      <button class="zoombtn" type="button" data-zoom-set="sum" aria-pressed="true">摘要</button>
+                      <button class="zoombtn" type="button" data-zoom-set="mid" aria-pressed="false">细节</button>
+                      <button class="zoombtn" type="button" data-zoom-set="full" aria-pressed="false">原文</button>
+                    </div>
+                    <div class="zoom__body">
+                      <div class="z--sum">一句话：四个问题都能用课程实验回答，缺的只是把它们讲成一段完整的话。</div>
+                      <div class="z--mid">
+                        <p><b>四问各对应什么素材</b>实验目的 → 材料实验为什么做；变量控制 → 你固定了什么、改了什么；异常排查 → 有没有一次数据不对、你怎么找的；结果表达 → 一页图加一句结论。</p>
+                        <p><b>边界怎么说</b>没有产线经历就直说没有，然后说清你做过什么 —— 演示原句是"未参与产线实践时，应如实说明经历边界"。</p>
+                        <p><b>时间节点</b>这是投递前的准备，不是拿到面试再想。</p>
+                      </div>
+                      <div class="z--full">
+                        <p>原文（逐字）："围绕实验目的、变量控制、异常排查和结果表达准备问题。未参与产线实践时，应如实说明经历边界。"</p>
+                        <p>id：demo-intel-4 · 类别：岗位示例 · 来源：本地虚构演示资料 · 非招聘公告</p>
+                        <p>抓取时间：2026-10-13T02:00:00Z（10 月 13 日）· 本条目不是招聘公告，没有真实招聘链接</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="int-match">
+                  <p class="int-match__h">这条和你有什么关系<span class="tag">直接对上主攻方向</span></p>
+                  <ul class="int-match__l">
+                    <li><b>对得上</b><span>你做过材料实验、材料性能测试，四问里前三问都有素材。</span></li>
+                    <li><b>差在哪</b><span>没有产线经历；硬答会露，而简历上"没有一个能讲的项目"正是同一条短板。</span></li>
+                    <li><b>要补什么</b><span>每个问题先写两句话（念出来 30 秒以内），第四问配一页图。</span></li>
+                  </ul>
+                </div>
+              </article>
+
+              <!-- ============ 5 · 岗位示例 ============ -->
+              <article class="lens__item int-card" data-kind="岗位示例" data-when="拿到就核对" data-from="演示岗位要求快照" data-fit="直接对上主攻方向" data-int-idx="5">
+                <div class="int-fact">
+                  <div class="int-fact__top">
+                    <span class="int-kind">岗位示例</span>
+                    <span class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>抓取 10 月 13 日</span>
+                  </div>
+                  <h3 class="int-title">新能源电池研发助理｜技能证据示例</h3>
+                  <p class="int-text">把电化学课程作业、测试数据和实验记录放在一起，确认哪些内容能证明技能；成绩好不直接等于岗位胜任。</p>
+                  <p class="int-wait">"成绩好不直接等于岗位胜任"是这条的原话，别把成绩单当证据用。</p>
+                  <div class="srcs int-srcs">
+                    <span class="src src--doc int-src"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5z"/><path d="M9 9h6M9 13h6"/></svg></span><span class="src__k">本地虚构演示资料 · 非招聘公告</span><span class="src__w">10 月 13 日抓取</span></span>
+                  </div>
+                  <div class="zoom int-zoom" data-zoom="sum">
+                    <div class="zoombar" role="group" aria-label="这一条看到多细">
+                      <button class="zoombtn" type="button" data-zoom-set="sum" aria-pressed="true">摘要</button>
+                      <button class="zoombtn" type="button" data-zoom-set="mid" aria-pressed="false">细节</button>
+                      <button class="zoombtn" type="button" data-zoom-set="full" aria-pressed="false">原文</button>
+                    </div>
+                    <div class="zoom__body">
+                      <div class="z--sum">一句话：技能证据 = 课程作业 + 原始测试数据 + 实验记录，三样放在一起看。</div>
+                      <div class="z--mid">
+                        <p><b>材料清单</b>电化学相关课程作业；原始测试数据（不是截图出来的结论）；一次实验的记录，写清你负责哪一步。</p>
+                        <p><b>评判口径</b>能不能用这三样回答"你独立做过什么"。答不上来就先别投 —— 演示原句是"成绩好不直接等于岗位胜任"。</p>
+                        <p><b>时间节点</b>三样现在就有，缺的是把它们放到一页里；这一步 30 分钟能起头。</p>
+                      </div>
+                      <div class="z--full">
+                        <p>原文（逐字）："把电化学课程作业、测试数据和实验记录放在一起，确认哪些内容能证明技能；成绩好不直接等于岗位胜任。"</p>
+                        <p>id：demo-intel-5 · 类别：岗位示例 · 来源：本地虚构演示资料 · 非招聘公告</p>
+                        <p>抓取时间：2026-10-13T02:00:00Z（10 月 13 日）· 本条目不是招聘公告，没有真实招聘链接</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="int-match">
+                  <p class="int-match__h">这条和你有什么关系<span class="tag">直接对上主攻方向</span></p>
+                  <ul class="int-match__l">
+                    <li><b>对得上</b><span>材料实验、材料性能测试的记录你手上都有，差的只是把它们收进一页。</span></li>
+                    <li><b>差在哪</b><span>记录在文件夹里，没有"你负责哪一步"的说明；导师评价也没有。</span></li>
+                    <li><b>要补什么</b><span>挑一次实验：原始数据 + 你动过的步骤 + 一句结论，放进同一页。</span></li>
+                  </ul>
+                </div>
+              </article>
+
+              <!-- ============ 6 · 行业比较示例 ============ -->
+              <article class="lens__item int-card" data-kind="行业比较示例" data-when="投递前对照" data-from="演示统计与行业比较" data-fit="用来比较两个方向" data-int-idx="6">
+                <div class="int-fact">
+                  <div class="int-fact__top">
+                    <span class="int-kind">行业比较示例</span>
+                    <span class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>抓取 10 月 13 日</span>
+                  </div>
+                  <h3 class="int-title">材料检测与工艺岗位有哪些区别</h3>
+                  <p class="int-text">演示比较：检测侧重规范与可追溯性，工艺侧重流程参数和问题排查。实际职责需核对具体岗位说明。</p>
+                  <p class="int-wait">这一条只给比较的三行，不给真实岗位；实际职责需核对具体岗位说明。</p>
+                  <div class="srcs int-srcs">
+                    <span class="src src--doc int-src"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5z"/><path d="M9 9h6M9 13h6"/></svg></span><span class="src__k">本地虚构演示资料 · 非招聘公告</span><span class="src__w">10 月 13 日抓取</span></span>
+                  </div>
+                  <div class="zoom int-zoom" data-zoom="sum">
+                    <div class="zoombar" role="group" aria-label="这一条看到多细">
+                      <button class="zoombtn" type="button" data-zoom-set="sum" aria-pressed="true">摘要</button>
+                      <button class="zoombtn" type="button" data-zoom-set="mid" aria-pressed="false">细节</button>
+                      <button class="zoombtn" type="button" data-zoom-set="full" aria-pressed="false">原文</button>
+                    </div>
+                    <div class="zoom__body">
+                      <div class="z--sum">一句话：检测看规范与可追溯性，工艺看流程参数与问题排查。</div>
+                      <div class="z--mid">
+                        <p><b>比较的三行</b>日常工作对象（样品 vs 流程参数）；记录要求（要追溯到什么粒度）；出问题时先做什么（复查流程 vs 排查参数）。</p>
+                        <p><b>可以引用的演示统计</b>材料类岗位 218 条，同比 -12%（非真实实时数据）；新能源方向 +34%（非真实实时数据）；抽查 60 条岗位要求，"项目/实习经历"出现 34 次。</p>
+                        <p><b>不能拿它做什么</b>它不能当岗位说明用，也不能用来判断哪个方向岗位更多。</p>
+                      </div>
+                      <div class="z--full">
+                        <p>原文（逐字）："演示比较：检测侧重规范与可追溯性，工艺侧重流程参数和问题排查。实际职责需核对具体岗位说明。"</p>
+                        <p>id：demo-intel-6 · 类别：行业比较示例 · 来源：本地虚构演示资料 · 非招聘公告</p>
+                        <p>抓取时间：2026-10-13T02:00:00Z（10 月 13 日）· 引用的三条统计都标着"非真实实时数据"</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="int-match">
+                  <p class="int-match__h">这条和你有什么关系<span class="tag">用来比较两个方向</span></p>
+                  <ul class="int-match__l">
+                    <li><b>对得上</b><span>你的三条方向里正好一条检测、一条工艺，这条就是拿来分它们的。</span></li>
+                    <li><b>差在哪</b><span>你现在只能凭这一句比较；抽查里"项目/实习经历"出现 34 次，你缺的正是这个。</span></li>
+                    <li><b>要补什么</b><span>拿两份真实说明，按"每天做什么 / 要不要倒班 / 记录写到什么粒度"三行填表。</span></li>
+                  </ul>
+                </div>
+              </article>
+
+              <!-- ============ 7 · 行业比较示例 ============ -->
+              <article class="lens__item int-card" data-kind="行业比较示例" data-when="这周排进去" data-from="演示统计与行业比较" data-fit="用来比较两个方向" data-int-idx="7">
+                <div class="int-fact">
+                  <div class="int-fact__top">
+                    <span class="int-kind">行业比较示例</span>
+                    <span class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>抓取 10 月 13 日</span>
+                  </div>
+                  <h3 class="int-title">新能源材料方向如何做小规模探索</h3>
+                  <p class="int-text">先用公开课程和可公开实验材料完成一页项目说明，再与真实岗位逐项核对。演示不提供行业增长预测。</p>
+                  <p class="int-wait">演示不提供行业增长预测 —— 所以这里不会出现"这个方向以后有多少岗位"。</p>
+                  <div class="srcs int-srcs">
+                    <span class="src src--doc int-src"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5z"/><path d="M9 9h6M9 13h6"/></svg></span><span class="src__k">本地虚构演示资料 · 非招聘公告</span><span class="src__w">10 月 13 日抓取</span></span>
+                  </div>
+                  <div class="zoom int-zoom" data-zoom="sum">
+                    <div class="zoombar" role="group" aria-label="这一条看到多细">
+                      <button class="zoombtn" type="button" data-zoom-set="sum" aria-pressed="true">摘要</button>
+                      <button class="zoombtn" type="button" data-zoom-set="mid" aria-pressed="false">细节</button>
+                      <button class="zoombtn" type="button" data-zoom-set="full" aria-pressed="false">原文</button>
+                    </div>
+                    <div class="zoom__body">
+                      <div class="z--sum">一句话：不用等企业资源，先用能公开的课程材料和实验记录做出一页项目说明。</div>
+                      <div class="z--mid">
+                        <p><b>一页说明的四行</b>目标、你做的步骤、结果、证据（哪份记录、哪张图）。</p>
+                        <p><b>材料清单</b>课程材料（记课程名就够，不用外链）、可公开的实验材料、你自己的原始记录。</p>
+                        <p><b>时间节点</b>本周先出一页草稿，不要等"资料齐了"再开始 —— 你的每周可投入是 6 小时，起手要小。</p>
+                      </div>
+                      <div class="z--full">
+                        <p>原文（逐字）："先用公开课程和可公开实验材料完成一页项目说明，再与真实岗位逐项核对。演示不提供行业增长预测。"</p>
+                        <p>id：demo-intel-7 · 类别：行业比较示例 · 来源：本地虚构演示资料 · 非招聘公告</p>
+                        <p>抓取时间：2026-10-13T02:00:00Z（10 月 13 日）· 本条目不含任何真实行业数据</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="int-match">
+                  <p class="int-match__h">这条和你有什么关系<span class="tag">用来比较两个方向</span></p>
+                  <ul class="int-match__l">
+                    <li><b>对得上</b><span>不需要企业资源、不需要导师名额，是你现在条件下唯一能立刻开始的补证据方式。</span></li>
+                    <li><b>差在哪</b><span>一页说明你现在写不出来；"整理材料实验的过程照片和原始数据"还挂在待办里没做。</span></li>
+                    <li><b>要补什么</b><span>这周先写三行：目标、我做的步骤、结果。缺的那行留空，别编。</span></li>
+                  </ul>
+                </div>
+              </article>
+
+              <!-- ============ 8 · 资料核验示例 ============ -->
+              <article class="lens__item int-card" data-kind="资料核验示例" data-when="等学籍页一起做" data-from="教务与学籍演示快照" data-fit="决定前必须核对" data-int-idx="8">
+                <div class="int-fact">
+                  <div class="int-fact__top">
+                    <span class="int-kind">资料核验示例</span>
+                    <span class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>抓取 10 月 13 日</span>
+                  </div>
+                  <h3 class="int-title">学籍资料核验前应准备什么</h3>
+                  <p class="int-text">核对学校、专业、年级与更新时间。真实核验需使用本人授权的在线验证码，演示数据不代表学籍验证通过。</p>
+                  <p class="int-wait">演示数据不代表学籍验证通过 —— 这一条不能当成"已核验"。</p>
+                  <div class="srcs int-srcs">
+                    <span class="src src--doc int-src"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5z"/><path d="M9 9h6M9 13h6"/></svg></span><span class="src__k">本地虚构演示资料 · 非招聘公告</span><span class="src__w">10 月 13 日抓取</span></span>
+                  </div>
+                  <div class="zoom int-zoom" data-zoom="sum">
+                    <div class="zoombar" role="group" aria-label="这一条看到多细">
+                      <button class="zoombtn" type="button" data-zoom-set="sum" aria-pressed="true">摘要</button>
+                      <button class="zoombtn" type="button" data-zoom-set="mid" aria-pressed="false">细节</button>
+                      <button class="zoombtn" type="button" data-zoom-set="full" aria-pressed="false">原文</button>
+                    </div>
+                    <div class="zoom__body">
+                      <div class="z--sum">一句话：核验前先对上四样 —— 学校、专业、年级、更新时间。</div>
+                      <div class="z--mid">
+                        <p><b>核验前能做的</b>核对学校、专业、年级与更新时间；本地演示资料的更新时间是 10 月 13 日。</p>
+                        <p><b>容易混的两件事</b>学信网证明在读身份，证明不了成绩和课表 —— 那部分在教务系统（学籍页里第二步就是查这个）。</p>
+                        <p><b>做不完的那一步</b>真实核验需使用本人授权的在线验证码；演示数据不代表学籍验证通过。</p>
+                      </div>
+                      <div class="z--full">
+                        <p>原文（逐字）："核对学校、专业、年级与更新时间。真实核验需使用本人授权的在线验证码，演示数据不代表学籍验证通过。"</p>
+                        <p>id：demo-intel-8 · 类别：资料核验示例 · 来源：本地虚构演示资料 · 非招聘公告</p>
+                        <p>抓取时间：2026-10-13T02:00:00Z（10 月 13 日）· 本条目不构成任何核验结论</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="int-match">
+                  <p class="int-match__h">这条和你有什么关系<span class="tag">决定前必须核对</span></p>
+                  <ul class="int-match__l">
+                    <li><b>对得上</b><span>学籍页已经把那三项列出来了：河北大学、材料科学与工程、大三。</span></li>
+                    <li><b>差在哪</b><span>演示里没有在线验证码，"核验"这一步在原型里做不完 —— 第二步还卡在课表冲突与时间待定上。</span></li>
+                    <li><b>要补什么</b><span>去学籍与资料页看三步核验，别把"已导入"当成"已核验"。</span></li>
+                  </ul>
+                </div>
+              </article>
+
+              <!-- ============ 9 · 校园活动示例 ============ -->
+              <article class="lens__item int-card" data-kind="校园活动示例" data-when="这周排进去" data-from="教务与学籍演示快照" data-fit="不影响现在的决定" data-int-idx="9">
+                <div class="int-fact">
+                  <div class="int-fact__top">
+                    <span class="int-kind">校园活动示例</span>
+                    <span class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>抓取 10 月 13 日</span>
+                  </div>
+                  <h3 class="int-title">职业发展工作坊｜校园活动示例</h3>
+                  <p class="int-text">示例活动：简历交流、经历表达练习和模拟问答。时间为课表演示配置；真实校内活动请以学校通知为准。</p>
+                  <p class="int-wait">时间为课表演示配置，真实校内活动请以学校通知为准；演示里没有报名入口。</p>
+                  <div class="srcs int-srcs">
+                    <span class="src src--doc int-src"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5z"/><path d="M9 9h6M9 13h6"/></svg></span><span class="src__k">本地虚构演示资料 · 非招聘公告</span><span class="src__w">10 月 13 日抓取</span></span>
+                  </div>
+                  <div class="zoom int-zoom" data-zoom="sum">
+                    <div class="zoombar" role="group" aria-label="这一条看到多细">
+                      <button class="zoombtn" type="button" data-zoom-set="sum" aria-pressed="true">摘要</button>
+                      <button class="zoombtn" type="button" data-zoom-set="mid" aria-pressed="false">细节</button>
+                      <button class="zoombtn" type="button" data-zoom-set="full" aria-pressed="false">原文</button>
+                    </div>
+                    <div class="zoom__body">
+                      <div class="z--sum">一句话：活动内容正对着你"简历第一页只有 3 行有效信息"这件事。</div>
+                      <div class="z--mid">
+                        <p><b>它在课表里的位置</b>职业发展工作坊 —— 周六 3–4 节，5、9、13 周，就业指导中心（演示配置）。</p>
+                        <p><b>冲突提示</b>周六有课这件事要算进你的 6 小时；空课格不代表空闲。</p>
+                        <p><b>时间节点</b>演示配置的周次不能当报名时间；真实活动请以学校通知为准。</p>
+                      </div>
+                      <div class="z--full">
+                        <p>原文（逐字）："示例活动：简历交流、经历表达练习和模拟问答。时间为课表演示配置；真实校内活动请以学校通知为准。"</p>
+                        <p>id：demo-intel-9 · 类别：校园活动示例 · 来源：本地虚构演示资料 · 非招聘公告</p>
+                        <p>抓取时间：2026-10-13T02:00:00Z（10 月 13 日）· 本条目没有实际报名入口</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="int-match">
+                  <p class="int-match__h">这条和你有什么关系<span class="tag">不影响现在的决定</span></p>
+                  <ul class="int-match__l">
+                    <li><b>对得上</b><span>简历交流与经历表达练习，正好是你最缺的那一块（呈现能力 46，要求 50）。</span></li>
+                    <li><b>差在哪</b><span>它排在周六，而你每周可投入 6 小时还没和实验课核对过 —— 先确认周六有没有家庭安排。</span></li>
+                    <li><b>要补什么</b><span>先做一次"周六能不能去"的确认，再去问活动通知。不用现在决定。</span></li>
+                  </ul>
+                </div>
+              </article>
+
+              <!-- ============ 10 · 校园活动示例 ============ -->
+              <article class="lens__item int-card" data-kind="校园活动示例" data-when="这周排进去" data-from="教务与学籍演示快照" data-fit="不影响现在的决定" data-int-idx="10">
+                <div class="int-fact">
+                  <div class="int-fact__top">
+                    <span class="int-kind">校园活动示例</span>
+                    <span class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>抓取 10 月 13 日</span>
+                  </div>
+                  <h3 class="int-title">实验室开放日｜实践探索示例</h3>
+                  <p class="int-text">先问清安全培训、可参与任务和指导安排。示例用来体验待办与日历衔接，没有实际报名入口。</p>
+                  <p class="int-wait">这条没有实际报名入口 —— 演示里它只用来验证待办与日历能不能接上。</p>
+                  <div class="srcs int-srcs">
+                    <span class="src src--doc int-src"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5z"/><path d="M9 9h6M9 13h6"/></svg></span><span class="src__k">本地虚构演示资料 · 非招聘公告</span><span class="src__w">10 月 13 日抓取</span></span>
+                  </div>
+                  <div class="zoom int-zoom" data-zoom="sum">
+                    <div class="zoombar" role="group" aria-label="这一条看到多细">
+                      <button class="zoombtn" type="button" data-zoom-set="sum" aria-pressed="true">摘要</button>
+                      <button class="zoombtn" type="button" data-zoom-set="mid" aria-pressed="false">细节</button>
+                      <button class="zoombtn" type="button" data-zoom-set="full" aria-pressed="false">原文</button>
+                    </div>
+                    <div class="zoom__body">
+                      <div class="z--sum">一句话：去之前先问清三件事 —— 能不能上手、谁带、做完能留下什么记录。</div>
+                      <div class="z--mid">
+                        <p><b>三问模板</b>能上手操作还是只能看；谁负责指导；做完能留下什么可公开的记录。</p>
+                        <p><b>为什么先问</b>你要补的是"能讲清的实践证据"，只看不做的半天补不了它；实验室安全培训在课表里是第 7 周周日 1–2 节。</p>
+                        <p><b>不能当真的地方</b>这条没有报名入口，也没有具体日期。</p>
+                      </div>
+                      <div class="z--full">
+                        <p>原文（逐字）："先问清安全培训、可参与任务和指导安排。示例用来体验待办与日历衔接，没有实际报名入口。"</p>
+                        <p>id：demo-intel-10 · 类别：校园活动示例 · 来源：本地虚构演示资料 · 非招聘公告</p>
+                        <p>抓取时间：2026-10-13T02:00:00Z（10 月 13 日）· 本条目没有实际报名入口</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="int-match">
+                  <p class="int-match__h">这条和你有什么关系<span class="tag">不影响现在的决定</span></p>
+                  <ul class="int-match__l">
+                    <li><b>对得上</b><span>你要补的正是能讲清的实践证据，这条给的是"怎么问清楚再进去"。</span></li>
+                    <li><b>差在哪</b><span>不问清安全培训与可参与范围，去了也只能在边上看；这一类经历写不进简历。</span></li>
+                    <li><b>要补什么</b><span>列三个具体问题（能上手吗 / 谁带 / 能留下什么记录），下次见到老师直接问。</span></li>
+                  </ul>
+                </div>
+              </article>
+
+              <!-- ============ 11 · 求职方法示例 ============ -->
+              <article class="lens__item int-card" data-kind="求职方法示例" data-when="投递前对照" data-from="演示方法说明" data-fit="决定前必须核对" data-int-idx="11">
+                <div class="int-fact">
+                  <div class="int-fact__top">
+                    <span class="int-kind">求职方法示例</span>
+                    <span class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>抓取 10 月 13 日</span>
+                  </div>
+                  <h3 class="int-title">项目经历如何写得可信</h3>
+                  <p class="int-text">按目标、本人行动、结果、证据组织内容。区分个人贡献与团队成果，缺失的数据保留待补充。</p>
+                  <p class="int-wait">缺失的数据保留待补充 —— 不要用估计值把空行填满。</p>
+                  <div class="srcs int-srcs">
+                    <span class="src src--doc int-src"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5z"/><path d="M9 9h6M9 13h6"/></svg></span><span class="src__k">本地虚构演示资料 · 非招聘公告</span><span class="src__w">10 月 13 日抓取</span></span>
+                  </div>
+                  <div class="zoom int-zoom" data-zoom="sum">
+                    <div class="zoombar" role="group" aria-label="这一条看到多细">
+                      <button class="zoombtn" type="button" data-zoom-set="sum" aria-pressed="true">摘要</button>
+                      <button class="zoombtn" type="button" data-zoom-set="mid" aria-pressed="false">细节</button>
+                      <button class="zoombtn" type="button" data-zoom-set="full" aria-pressed="false">原文</button>
+                    </div>
+                    <div class="zoom__body">
+                      <div class="z--sum">一句话：四行结构 —— 目标、本人行动、结果、证据；缺的那行留空。</div>
+                      <div class="z--mid">
+                        <p><b>四行的合格线</b>目标一句话；本人行动只写你动的部分；结果给可核对的数或现象；证据指向原始记录（照片、数据表、实验记录）。</p>
+                        <p><b>团队成果怎么标</b>写明"这部分是小组的"，别把小组结果写成个人成果。</p>
+                        <p><b>数据缺失怎么办</b>保留"待补充"，不要补一个估出来的数。</p>
+                      </div>
+                      <div class="z--full">
+                        <p>原文（逐字）："按目标、本人行动、结果、证据组织内容。区分个人贡献与团队成果，缺失的数据保留待补充。"</p>
+                        <p>id：demo-intel-11 · 类别：求职方法示例 · 来源：本地虚构演示资料 · 非招聘公告</p>
+                        <p>抓取时间：2026-10-13T02:00:00Z（10 月 13 日）· 这是方法说明，不是岗位信息</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="int-match">
+                  <p class="int-match__h">这条和你有什么关系<span class="tag">决定前必须核对</span></p>
+                  <ul class="int-match__l">
+                    <li><b>对得上</b><span>对着你"简历上没有一个能讲的项目"这条口径来的，四个方向都卡在同一处。</span></li>
+                    <li><b>差在哪</b><span>你还没写过一版；第一页现在只有 3 行有效信息。</span></li>
+                    <li><b>要补什么</b><span>今天写四行，其中"结果"和"证据"允许空着 —— 空着比编一个数有用。</span></li>
+                  </ul>
+                </div>
+              </article>
+
+              <!-- ============ 12 · 求职方法示例 ============ -->
+              <article class="lens__item int-card" data-kind="求职方法示例" data-when="投递前对照" data-from="演示方法说明" data-fit="决定前必须核对" data-int-idx="12">
+                <div class="int-fact">
+                  <div class="int-fact__top">
+                    <span class="int-kind">求职方法示例</span>
+                    <span class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>抓取 10 月 13 日</span>
+                  </div>
+                  <h3 class="int-title">拿到岗位信息后先核对这五项</h3>
+                  <p class="int-text">来源、发布日期、学历门槛、职责、地点。没有真实招聘链接的演示条目不应用来投递。</p>
+                  <p class="int-wait">没有真实招聘链接的演示条目不应用来投递 —— 这 12 条一条都不满足。</p>
+                  <div class="srcs int-srcs">
+                    <span class="src src--doc int-src"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5z"/><path d="M9 9h6M9 13h6"/></svg></span><span class="src__k">本地虚构演示资料 · 非招聘公告</span><span class="src__w">10 月 13 日抓取</span></span>
+                  </div>
+                  <div class="zoom int-zoom" data-zoom="sum">
+                    <div class="zoombar" role="group" aria-label="这一条看到多细">
+                      <button class="zoombtn" type="button" data-zoom-set="sum" aria-pressed="true">摘要</button>
+                      <button class="zoombtn" type="button" data-zoom-set="mid" aria-pressed="false">细节</button>
+                      <button class="zoombtn" type="button" data-zoom-set="full" aria-pressed="false">原文</button>
+                    </div>
+                    <div class="zoom__body">
+                      <div class="z--sum">一句话：五项 —— 来源、发布日期、学历门槛、职责、地点；五项齐了再投。</div>
+                      <div class="z--mid">
+                        <p><b>最容易被跳过的一项</b>发布日期。过期的岗位说明和没有一样。</p>
+                        <p><b>抓取时间的坑</b>这 12 条的抓取时间都是 10 月 13 日，但那是抓取时间，不是发布日期。</p>
+                        <p><b>对照这 12 条</b>第 1 条自己就写着"地点、待遇和招聘期限均待真实来源确认" —— 五项里它缺三项。</p>
+                      </div>
+                      <div class="z--full">
+                        <p>原文（逐字）："来源、发布日期、学历门槛、职责、地点。没有真实招聘链接的演示条目不应用来投递。"</p>
+                        <p>id：demo-intel-12 · 类别：求职方法示例 · 来源：本地虚构演示资料 · 非招聘公告</p>
+                        <p>抓取时间：2026-10-13T02:00:00Z（10 月 13 日）· 这是方法说明，不是岗位信息</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="int-match">
+                  <p class="int-match__h">这条和你有什么关系<span class="tag">决定前必须核对</span></p>
+                  <ul class="int-match__l">
+                    <li><b>对得上</b><span>五项缺哪项，正好能反过来解释这批演示条目为什么不能投。</span></li>
+                    <li><b>差在哪</b><span>你现在手上"投了 4 家，0 个回音"，但没有一张表能说明这 4 家是照什么投的。</span></li>
+                    <li><b>要补什么</b><span>把这五项做成一张表，以后每拿到一份说明就填一行，缺项的直接不进投递清单。</span></li>
+                  </ul>
+                </div>
+              </article>
+            </div>
+
+            <!-- ④ 状态与不确定性：筛到 0 条时的空态（不是把列表留白） -->
+            <div class="state" id="intEmpty" hidden>
+              <span class="state__ic" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
+              </span>
+              <p class="state__t">这 12 条里没有一条同时满足</p>
+              <p class="state__d">类别和热词叠起来时可能一条都不剩。类别只有五类，热词也只在这 12 条的正文里找 —— 换掉一个条件再试。</p>
+              <div class="state__acts">
+                <button class="chipbtn" type="button" id="intEmptyReset">去掉筛选，看全部 12 条</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sec__foot">
+          <span>排序在每一组里生效：换"按什么时候用得上"，组内顺序会按 <b>拿到就核对 → 投递前对照 → 这周排进去 → 等学籍页一起做</b> 重排。</span>
+        </div>
+      </section>
+    </div>
+
+    <!-- ============================ 侧栏 ============================ -->
+    <aside class="pg-doc__side">
+
+      <!-- ① 结构显形：这批资讯引用的数字，每一个都带着出处 -->
+      <section class="sec" aria-labelledby="intNumT">
+        <div class="sec__h">
+          <div class="sec__ht">
+            <h2 class="sec__t" id="intNumT">这几条引用的数字</h2>
+            <p class="sec__d">全部标着演示统计，不能当行业数据用。</p>
+          </div>
+        </div>
+        <div class="sec__body">
+          <div class="kv">
+            <div class="kv__r">
+              <p class="kv__k">材料类岗位</p>
+              <p class="kv__v">218 条，同比 -12%（非真实实时数据）
+                <span class="srcs"><span class="src src--doc"><span class="src__ic" aria-hidden="true"></span><span class="src__k">演示统计</span></span></span>
+              </p>
+            </div>
+            <div class="kv__r">
+              <p class="kv__k">新能源方向</p>
+              <p class="kv__v">+34%（非真实实时数据）
+                <span class="srcs"><span class="src src--doc"><span class="src__ic" aria-hidden="true"></span><span class="src__k">演示统计</span></span></span>
+              </p>
+            </div>
+            <div class="kv__r">
+              <p class="kv__k">要求抽查</p>
+              <p class="kv__v">抽查 60 条岗位要求，"项目/实习经历"出现 34 次
+                <span class="srcs"><span class="src src--doc"><span class="src__ic" aria-hidden="true"></span><span class="src__k">演示统计</span></span></span>
+              </p>
+            </div>
+            <div class="kv__r">
+              <p class="kv__k">省内供给</p>
+              <p class="kv__v">省内半导体材料产线今年新增 3 家，工艺岗需求在上升
+                <span class="srcs"><span class="src src--doc"><span class="src__ic" aria-hidden="true"></span><span class="src__k">就业资讯，10 月 13 日</span></span></span>
+              </p>
+            </div>
+            <div class="kv__r">
+              <p class="kv__k">上一届去向</p>
+              <p class="kv__v">同专业上一届 40 人的去向：实习过的 27 人，其中 22 人在秋招前拿到面试
+                <span class="srcs"><span class="src src--doc"><span class="src__ic" aria-hidden="true"></span><span class="src__k">学校上一届去向 · 演示</span></span></span>
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ④ 不确定性：这一页明确不给什么 -->
+      <section class="sec sec--quiet" aria-labelledby="intScopeT">
+        <div class="sec__h">
+          <div class="sec__ht">
+            <h2 class="sec__t" id="intScopeT">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8.2v.1"/></svg>
+              这页不给什么
+            </h2>
+          </div>
+        </div>
+        <div class="sec__body">
+          <ul class="int-scope">
+            <li>没有真实招聘链接，也没有真实企业名 —— 12 条全部是本地虚构演示资料。</li>
+            <li>不提供行业增长预测（演示原句）。上面那几条统计都标着"非真实实时数据"。</li>
+            <li>没有真实招聘链接的演示条目不应用来投递。</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- 读法：把"分层"这件事写清楚，避免被当成普通卡片流 -->
+      <section class="sec sec--quiet" aria-labelledby="intReadT">
+        <div class="sec__h">
+          <div class="sec__ht">
+            <h2 class="sec__t" id="intReadT">怎么读这一页</h2>
+          </div>
+        </div>
+        <div class="sec__body">
+          <div class="kv">
+            <div class="kv__r">
+              <p class="kv__k">上半</p>
+              <p class="kv__v">事实：岗位、职责、要求、来源、抓取时间，全部照抄演示资料。</p>
+            </div>
+            <div class="kv__r">
+              <p class="kv__k">下半</p>
+              <p class="kv__v">这条和你有什么关系：对得上什么、差在哪、要补什么。</p>
+            </div>
+            <div class="kv__r">
+              <p class="kv__k">摘要 / 细节 / 原文</p>
+              <p class="kv__v">三层是同一件事的三种粒度。原文层给 id 与抓取时间，方便逐条核对。</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </aside>
+  </div>
+</div>

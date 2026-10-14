@@ -1,0 +1,360 @@
+<div class="main__scroll" id="mainScroll">
+    <div class="stage">
+      <div class="column">
+
+        <!-- 会话头部：会话名 + 2 个操作 -->
+        <header class="conv-head">
+          <div>
+            <h1 class="conv-head__title">材料方向怎么选：三个方向的依据与差距</h1>
+            <div class="conv-head__meta">
+              <span class="tag">今天 14:20 开始</span>
+              <span class="tag">职业分析顾问 主理</span>
+              <span class="tag tag--demo">演示数据</span>
+            </div>
+          </div>
+          <div class="conv-head__acts">
+            <button class="chipbtn" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h11l3 3v7H4z"/><path d="M9 11h5M9 14h3"/></svg>
+              总结这段咨询
+            </button>
+            <button class="chipbtn" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="m8 8 4-4 4 4"/><path d="M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3"/></svg>
+              导出记录
+            </button>
+          </div>
+        </header>
+
+        <!-- 主理标识 -->
+        <section class="agent" aria-labelledby="agentName">
+          <div class="avatar avatar--lg" data-avatar>
+            <span class="avatar__halo" aria-hidden="true"></span>
+            <span class="avatar__pebble" id="heroAvatar"></span>
+          </div>
+          <div class="agent__id">
+            <p class="agent__name" id="agentName">职业分析顾问</p>
+            <p class="agent__role">比较方向、判断差距，说明哪个方向现在站得住</p>
+            <p class="agent__state" role="status">
+              <span class="dot" aria-hidden="true"></span>
+              <span id="stateText">正在想</span>
+            </p>
+            <p class="agent__hint">演示：切一下状态，看主理怎么变</p>
+          </div>
+          <div class="states" role="group" aria-label="切换主理状态（演示）">
+            <button class="statebtn" type="button" data-presence="idle" aria-pressed="false">待命</button>
+            <button class="statebtn" type="button" data-presence="thinking" aria-pressed="true">思考</button>
+            <button class="statebtn" type="button" data-presence="speaking" aria-pressed="false">说话</button>
+          </div>
+        </section>
+
+        <div class="stream">
+
+          <!-- 用户消息（右对齐） -->
+          <article class="turn-me" aria-label="你的消息">
+            <div class="bubble">
+              <p>材料科学与工程大三，成绩中上。半导体工艺、新能源材料、材料检测这三个方向我都在看，但说不清哪个更适合我。我该先补什么？</p>
+              <p class="bubble__meta"><time datetime="2026-10-14T14:20">14:20</time><span>· 已收到</span></p>
+            </div>
+          </article>
+
+          <!-- 顾问交接说明 -->
+          <section class="handoff" aria-label="顾问交接说明">
+            <span class="handoff__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h11l-3-3"/><path d="M20 16H9l3 3"/></svg>
+            </span>
+            <div class="handoff__body">
+              <p class="handoff__who">
+                <strong>画像分析师</strong>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13"/><path d="m13 7 5 5-5 5"/></svg>
+                <strong>职业分析顾问</strong> 接手
+              </p>
+              <p class="handoff__why">原因：你已经说清专业、年级与三个在看的候选方向，画像那一步该问的都问了；接下来要回答的是"哪个站得住"，这属于方向判断，交给职业分析顾问。</p>
+              <p class="handoff__from">依据：你刚才的回答 + 已核对的画像信息（4 条来自对话、2 条待补充）</p>
+            </div>
+          </section>
+
+          <!-- 一轮完整回答 -->
+          <article class="turn-host" aria-label="职业分析顾问的回复">
+            <div class="avatar avatar--sm" data-avatar aria-hidden="true">
+              <span class="avatar__halo"></span>
+              <span class="avatar__pebble" id="turnAvatar"></span>
+            </div>
+
+            <div class="turn-host__body">
+              <p class="who">
+                <span class="who__name">职业分析顾问</span>
+                <span class="who__role">方向判断 · 依据与差距</span>
+                <time class="who__time" datetime="2026-10-14T14:21">14:21</time>
+              </p>
+
+              <!-- 1. 结论 -->
+              <section class="lead" aria-labelledby="leadLabel">
+                <span class="lead__label" id="leadLabel">结论</span>
+                <p class="lead__text">三个方向里，半导体工艺现在最站得住；你要补的是"能讲清的实践证据"，不是再修一门课。</p>
+                <p class="lead__sub">三个方向的匹配分差 18 分，最大的一条差距不在成绩，在"有没有一段能说清你做过什么"的经历。</p>
+              </section>
+
+              <!-- 2. 支撑材料卡组 -->
+              <section class="mats" aria-labelledby="matsLabel">
+                <div class="mats__head">
+                  <h2 class="mats__label" id="matsLabel">支撑材料</h2>
+                  <div class="tabs" role="tablist" aria-label="支撑材料的三种视角">
+                    <button class="tab" role="tab" id="tab-ev" type="button" aria-selected="true" aria-controls="panel-ev">支持依据</button>
+                    <button class="tab" role="tab" id="tab-data" type="button" aria-selected="false" aria-controls="panel-data" tabindex="-1">数据对比</button>
+                    <button class="tab" role="tab" id="tab-method" type="button" aria-selected="false" aria-controls="panel-method" tabindex="-1">方法依据</button>
+                  </div>
+                  <p class="mats__pos" aria-hidden="true"><b id="posNow">1</b> / 3</p>
+                </div>
+
+                <div class="card">
+                  <!-- 2.1 依据卡 -->
+                  <div class="panel" id="panel-ev" role="tabpanel" aria-labelledby="tab-ev" data-active="true" tabindex="0">
+                    <div class="panel__inner">
+                      <ol class="ev">
+                        <li class="ev__item">
+                          <span class="ev__n" aria-hidden="true">1</span>
+                          <div class="ev__body">
+                            <p class="ev__text">你的专业基础课成绩落在前 30%，其中材料成型与热处理最高；这条支持偏工艺与制造的方向。</p>
+                            <p class="ev__src"><b>课程成绩快照</b><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 8v4.2l2.6 1.6"/></svg>2026-10-09 核对 · 来源：教务系统</p>
+                          </div>
+                        </li>
+                        <li class="ev__item">
+                          <span class="ev__n" aria-hidden="true">2</span>
+                          <div class="ev__body">
+                            <p class="ev__text">你在上一轮里说"愿意待在实验台把一件事做到底"，这句话与工艺岗的日常工作方式一致。</p>
+                            <p class="ev__src"><b>本次对话</b><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 8v4.2l2.6 1.6"/></svg>2026-10-14 14:12 · 来源：你亲口提供</p>
+                          </div>
+                        </li>
+                      </ol>
+                      <!-- 前 2 条默认可见，其余 2 条折在这层后面（一页最多一层折叠） -->
+                      <div class="ev__more" id="evMore" data-open="false">
+                        <div class="ev__more-in">
+                          <ol class="ev" id="evMoreList">
+                            <li class="ev__item">
+                              <span class="ev__n" aria-hidden="true">3</span>
+                              <div class="ev__body">
+                                <p class="ev__text">三段在招岗位里，工艺方向明确写了"接受材料专业应届"，另外两个方向有 60% 要求硕士。</p>
+                                <p class="ev__src"><b>岗位信息库</b><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 8v4.2l2.6 1.6"/></svg>2026-10-11 抓取 · 来源：公开招聘页</p>
+                              </div>
+                            </li>
+                            <li class="ev__item">
+                              <span class="ev__n" aria-hidden="true">4</span>
+                              <div class="ev__body">
+                                <p class="ev__text">你目前没有任何一段可写进简历的实践经历，三个方向都缺这一项，所以它不能用来区分方向。</p>
+                                <p class="ev__src"><b>画像缺口</b><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 8v4.2l2.6 1.6"/></svg>2026-10-14 14:18 · 来源：画像核对结果</p>
+                              </div>
+                            </li>
+                          </ol>
+                        </div>
+                      </div>
+                      <button class="expand" id="evToggle" type="button" aria-expanded="false" aria-controls="evMore">
+                        <span data-label>展开其余 2 条依据</span>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                      </button>
+                    </div>
+                    <div class="panel__foot">
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 8h.01M12 11v5"/></svg>
+                      共 4 条依据 · 2 条来自你自己提供，1 条来自公开岗位页，1 条来自画像核对
+                    </div>
+                  </div>
+
+                  <!-- 2.2 数据卡 -->
+                  <div class="panel" id="panel-data" role="tabpanel" aria-labelledby="tab-data" tabindex="0">
+                    <div class="panel__inner">
+                      <div class="chart">
+                        <p class="chart__unit"><b>三个方向与你的匹配度</b><i>·</i>0–100 分<i>·</i>单位：分</p>
+                        <div class="chart__rows" id="chartRows">
+                          <div class="row row--top">
+                            <span class="row__name">半导体工艺</span>
+                            <span class="row__track">
+                              <span class="row__bar" style="width:72%"></span>
+                              <span class="row__value">72<small>分</small></span>
+                            </span>
+                            <span class="row__cell">
+                              <span class="row__value">72<small>分</small></span>
+                              <span class="row__badge">领先</span>
+                            </span>
+                          </div>
+                          <div class="row">
+                            <span class="row__name">新能源材料</span>
+                            <span class="row__track">
+                              <span class="row__bar" style="width:61%"></span>
+                              <span class="row__value">61<small>分</small></span>
+                            </span>
+                            <span class="row__cell"><span class="row__value">61<small>分</small></span></span>
+                          </div>
+                          <div class="row">
+                            <span class="row__name">材料检测</span>
+                            <span class="row__track">
+                              <span class="row__bar" style="width:54%"></span>
+                              <span class="row__value">54<small>分</small></span>
+                            </span>
+                            <span class="row__cell"><span class="row__value">54<small>分</small></span></span>
+                          </div>
+                        </div>
+                        <div class="chart__axis">
+                          <div class="chart__ticks">
+                            <i style="left:0"></i><i style="left:33.3334%"></i>
+                            <i style="left:66.6667%"></i><i style="left:100%"></i>
+                            <span style="left:0">0</span>
+                            <span style="left:33.3334%">33</span>
+                            <span style="left:66.6667%">67</span>
+                            <span style="left:100%">100</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="panel__foot">
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 8h.01M12 11v5"/></svg>
+                      分差 18 分 · 三根条同一刻度（0–100），可直接比长度 · 演示数值，不构成对你个人的测评
+                    </div>
+                  </div>
+
+                  <!-- 2.3 方法卡 -->
+                  <div class="panel" id="panel-method" role="tabpanel" aria-labelledby="tab-method" tabindex="0">
+                    <div class="panel__inner">
+                      <p class="method__name">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4.5 14.4 9.7l5.6.7-4.2 3.8 1.2 5.6L12 17l-5 2.8 1.2-5.6L4 10.4l5.6-.7z"/></svg>
+                        差距—证据对照法
+                      </p>
+                      <p class="method__sum">把"我现在有什么"和"这个方向要求什么"摆在同一张表上，只保留能被原始材料证明的差距，其余一律标成待核对。</p>
+                      <div class="method__full" id="methodFull" data-open="false">
+                        <div class="method__full-in">
+                          <p>用法分三步。<b>第一步</b>，把方向要求拆成可以核对的项目（学历、专业、实践经历、可投入时间），不能核对的先不写。<b>第二步</b>，逐项找你自己的证据：来自教务系统的、来自你亲口说的、来自公开岗位页的，各自标出来源与时间，没有来源的记为缺口。<b>第三步</b>，只对"有证据的项"计算差距，并按可补的先后排序——先补那种一两周能出结果的。</p>
+                          <p>它不回答"你适合什么"，只回答"哪条差距现在挡着你，以及凭什么这么说"。所以三个方向的分差来自同一套算法、同一批证据，不会因为换了个说法就换一个排序。置信度偏低的项会在报告里单独标出来，而不是混进总分。</p>
+                        </div>
+                      </div>
+                      <button class="expand" id="methodToggle" type="button" aria-expanded="false" aria-controls="methodFull" style="margin-top:16px">
+                        <span data-label>展开全文</span>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                      </button>
+                    </div>
+                    <div class="panel__foot">
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 8h.01M12 11v5"/></svg>
+                      职引方法卡 · 来自方法库 v2.3 · 与诊断报告使用同一套算法
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <!-- 3. 说明段 -->
+              <section class="note" aria-label="说明">
+                <p>我为什么把工艺排在前面：另外两个方向不是不好，是<b>现在看不出你比别人的优势在哪</b>——新能源材料更看重项目经历，材料检测更看重证书与上手精度，这两项你手上都还是空的。工艺方向的要求里，专业基础和动手意愿占的权重最高，而这两点你已经有了可核对的依据。所以先补一段实践经历，比再修一门课有用：它能同时抬高三个方向的分，也能让你在两周内验证自己是否真的喜欢站在实验台前。</p>
+              </section>
+
+              <!-- 4. 行动卡 -->
+              <section class="action" aria-labelledby="actionTitle">
+                <div class="action__body">
+                  <p class="action__kicker">建议的下一步</p>
+                  <p class="action__title" id="actionTitle">给上一届去半导体厂的学长发一条消息，只要问一句"你的一天大概在做什么"</p>
+                  <div class="action__meta">
+                    <span class="pill pill--time">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 8v4.2l2.6 1.6"/></svg>
+                      约 5 分钟
+                    </span>
+                    <span class="pill">今天可完成</span>
+                    <span class="pill">能同时验证三个方向</span>
+                  </div>
+                </div>
+                <div class="action__cta">
+                  <button class="btn btn--primary" id="addTask" type="button" data-done="false">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                    <span data-label>加入今日行动</span>
+                  </button>
+                  <button class="btn btn--ghost" type="button">换个更小的</button>
+                </div>
+              </section>
+
+              <!-- 5. 后续问题 -->
+              <section class="follow" aria-labelledby="followLabel">
+                <h2 class="follow__label" id="followLabel">你可能还想问</h2>
+                <ul class="follow__list">
+                  <li>
+                    <button class="followbtn" type="button">
+                      <span class="followbtn__n" aria-hidden="true">1</span>
+                      如果两周后发现自己不喜欢实验室，来得及换吗
+                      <span class="followbtn__arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"/><path d="m13 7 5 5-5 5"/></svg></span>
+                    </button>
+                  </li>
+                  <li>
+                    <button class="followbtn" type="button">
+                      <span class="followbtn__n" aria-hidden="true">2</span>
+                      新能源材料那条差距，具体差在哪个项目上
+                      <span class="followbtn__arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"/><path d="m13 7 5 5-5 5"/></svg></span>
+                    </button>
+                  </li>
+                  <li>
+                    <button class="followbtn" type="button">
+                      <span class="followbtn__n" aria-hidden="true">3</span>
+                      帮我把这三条依据整理成一页，投简历时能用
+                      <span class="followbtn__arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"/><path d="m13 7 5 5-5 5"/></svg></span>
+                    </button>
+                  </li>
+                </ul>
+              </section>
+
+            </div><!-- /turn-host__body -->
+          </article>
+
+        </div><!-- /stream -->
+      </div><!-- /column -->
+
+      <!-- 右侧 rail -->
+      <aside class="rail" aria-label="咨询成果与个人画像">
+        <p class="rail__title">这段咨询的成果</p>
+
+        <a class="railcard" href="#">
+          <span class="railcard__top">
+            <span class="railcard__ic" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 10 17.5 19 7"/></svg>
+            </span>
+            <span class="railcard__n"><b>3</b> 项</span>
+          </span>
+          <span class="railcard__t">咨询成果</span>
+          <span class="railcard__d">已形成 3 条可执行建议，其中「问学长一句话」已加入今日行动。</span>
+          <span class="railcard__foot">看全部成果 <span aria-hidden="true">→</span></span>
+        </a>
+
+        <a class="railcard" href="#">
+          <span class="railcard__top">
+            <span class="railcard__ic" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></svg>
+            </span>
+            <span class="railcard__n"><b>8</b> / 12</span>
+          </span>
+          <span class="railcard__t">个人画像</span>
+          <span class="railcard__d">8 项已知、4 项待补充。其中「实践经历」空着，它正好是三个方向共用的那条差距。</span>
+          <span class="meter" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i></span>
+          <span class="railcard__foot">去核对画像与来源 <span aria-hidden="true">→</span></span>
+        </a>
+
+        <p class="railnote">右侧两张卡只放入口。咨询中形成的建议会自动汇总到「咨询成果」，画像的缺口会同步标在诊断报告里，不用你手动搬。</p>
+      </aside>
+    </div><!-- /stage -->
+
+    <!-- 输入区：只有这一行不参与滚动，永远留在视口底部 -->
+    <div class="main__fixed">
+    <div class="composer">
+      <div class="composer__inner">
+        <p class="composer__hint">
+          <b>当前主理：</b>职业分析顾问 · 回复会承接上面三条依据
+        </p>
+        <form class="box" id="box" data-focused="false" aria-label="输入你的问题">
+          <button class="box__attach" type="button" title="添加附件">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+            <span class="sr">添加附件</span>
+          </button>
+          <div class="box__field">
+            <label class="sr" for="msg">输入你的问题</label>
+            <textarea id="msg" rows="1" placeholder="接着问下去，或者说说你更在意哪一块……"></textarea>
+            <p class="box__foot"><kbd>Enter</kbd> 发送 · <kbd>Shift</kbd>+<kbd>Enter</kbd> 换行 · 演示样张，不会真的发出</p>
+          </div>
+          <button class="box__send" id="send" type="submit" aria-disabled="true">
+            <span class="box__send-label">发送</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13"/><path d="m13 7 5 5-5 5"/></svg>
+          </button>
+        </form>
+      </div>
+    </div>
+    </div>
+   </div><!-- /main__scroll -->
+

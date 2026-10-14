@@ -1,0 +1,133 @@
+/* =============================================================================
+ * 0 · 多视图外壳（本层在 c2.css 基线之后加载）
+ * -----------------------------------------------------------------------------
+ * c2.css 是"单页样张"的样式基线（已批准，不改）。本层只加多视图带来的新东西：
+ *   1. 视图切换（同一文档里的 .main__scroll[data-view]，只有一个参与布局）
+ *   2. 全部界面目录（门户 / 登录 / 设置 / 提醒 / 工具 / 指南 / 规范 / 异常页的入口）
+ *   3. 底部导航里多出来的那个 <button>（基线只写了 <a>）
+ *   4. 目录按钮 .segb--idx
+ *
+ * 纪律：不改基线里已有的任何一条规则 —— 需要微调时用 [data-view="x"] 提高特异度，
+ *       而不是去覆盖全局选择器。
+ * ========================================================================== */
+
+/* ---- 0.1 视图切换 ---------------------------------------------------------
+   不套包裹层、不用 display:contents：每个视图的根就是 .main__scroll 自己。
+   非当前视图 display:none —— 既不参与布局，也不进无障碍树、不被 Tab 命中。 */
+.main > .main__scroll:not([data-active="true"]){display:none}
+
+/* ---- 0.2 目录按钮 --------------------------------------------------------
+   必须显式 inline-flex：基线里 svg 是 display:block，所以"图标 + 文字"的按钮
+   会把图标和文字排成上下两行（实测 70×46，而同级纯文字 segb 是 60×33）。
+   这是量出来的，不是看出来的。 */
+.segb--idx{display:inline-flex;align-items:center;gap:5px}
+.segb--idx svg{opacity:.9;flex:0 0 auto}
+
+/* ---- 0.3 全部界面目录（模态面板） ---------------------------------------- */
+.idx{
+  position:fixed;inset:0;z-index:80;
+  display:grid;place-items:center;padding:var(--sp-5);
+}
+.idx[hidden]{display:none}
+.idx__mask{
+  position:absolute;inset:0;
+  background:var(--overlay-mask);
+  -webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);
+  animation:idxFade var(--dur-2) var(--ease-out);
+}
+.idx__panel{
+  position:relative;z-index:1;
+  display:flex;flex-direction:column;
+  width:min(940px,100%);max-height:min(86vh,860px);
+  background:var(--c-surface-solid);
+  border:1px solid var(--c-border);
+  border-radius:var(--r-2xl);
+  box-shadow:var(--e-3);
+  overflow:hidden;
+  animation:idxIn var(--dur-3) var(--ease-out);
+}
+.idx__head{
+  display:flex;align-items:flex-start;gap:var(--sp-4);
+  padding:var(--sp-5) var(--sp-5) var(--sp-4);
+  border-bottom:1px solid var(--c-border);
+  flex:0 0 auto;
+}
+.idx__title{
+  font-family:var(--font-title);font-size:var(--fs-20);font-weight:var(--fw-bold);
+  line-height:var(--lh-snug);letter-spacing:-.01em;color:var(--c-text);
+}
+.idx__sub{margin-top:4px;font-size:var(--fs-12);color:var(--c-text-3);line-height:var(--lh-snug)}
+.idx__x{margin-left:auto;flex:0 0 auto}
+.idx__body{
+  flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;
+  padding:var(--sp-4) var(--sp-5) var(--sp-6);
+  display:flex;flex-direction:column;gap:var(--sp-5);
+}
+.idx__grp{display:flex;flex-direction:column;gap:var(--sp-2)}
+.idx__glabel{
+  font-size:var(--fs-12);font-weight:var(--fw-bold);letter-spacing:.06em;
+  color:var(--c-text-3);
+  display:flex;align-items:center;gap:8px;
+}
+.idx__glabel::after{content:"";flex:1 1 auto;height:1px;background:var(--c-border)}
+.idx__list{display:grid;grid-template-columns:repeat(auto-fill,minmax(212px,1fr));gap:6px}
+.idx__a{
+  display:flex;align-items:center;gap:9px;
+  padding:9px 11px;border-radius:var(--r-md);
+  border:1px solid var(--c-border);
+  background:var(--c-surface-2);
+  color:var(--c-text-2);font-size:var(--fs-14);font-weight:var(--fw-medium);
+  transition:background var(--dur-2) var(--ease-out),border-color var(--dur-2) var(--ease-out),
+             color var(--dur-2) var(--ease-out),transform var(--dur-1) var(--ease-out);
+}
+.idx__a:hover{background:var(--c-surface-solid);border-color:var(--c-border-strong);color:var(--c-text)}
+.idx__a:active{transform:scale(.99)}
+.idx__a[aria-current="page"]{
+  background:var(--c-primary-weak);border-color:var(--c-primary-border);
+  color:var(--c-primary);font-weight:var(--fw-semibold);
+}
+.idx__a svg{flex:0 0 auto;width:16px;height:16px;opacity:.8}
+.idx__a[aria-current="page"] svg{opacity:1}
+.idx__k{
+  margin-left:auto;flex:0 0 auto;
+  font-family:var(--font-ui);font-size:var(--fs-12);
+  color:var(--c-text-3);letter-spacing:.02em;
+}
+.idx__a[aria-current="page"] .idx__k{color:var(--c-primary)}
+.idx__note{
+  padding:var(--sp-3) var(--sp-4);border-radius:var(--r-md);
+  border:1px dashed var(--c-border-strong);background:var(--c-surface-2);
+  font-size:var(--fs-12);line-height:var(--lh-snug);color:var(--c-text-3);
+}
+
+@keyframes idxFade{from{opacity:0}to{opacity:1}}
+@keyframes idxIn{from{opacity:0;transform:translateY(10px) scale(.986)}to{opacity:1;transform:none}}
+
+/* ---- 0.4 底部导航：多出来的那个 <button> 要和 <a> 长得一样 ---------------- */
+@media (max-width:767px){
+  .tabbar button{
+    display:flex;flex-direction:column;align-items:center;gap:3px;
+    padding:5px 2px;border-radius:var(--r-md);
+    border:0;background:none;appearance:none;
+    font-family:inherit;
+    font-size:var(--fs-12);font-weight:var(--fw-semibold);color:var(--c-text-3);
+    transition:color var(--dur-2) var(--ease-out),background var(--dur-2) var(--ease-out),transform var(--dur-1) var(--ease-spring);
+  }
+  .tabbar button:active{transform:scale(.92)}
+  .tabbar button svg{width:21px;height:21px}
+  .tabbar button[aria-expanded="true"]{color:var(--c-primary);background:var(--c-primary-weak)}
+}
+
+/* ---- 0.5 目录面板在窄屏：几乎整屏 ---------------------------------------- */
+@media (max-width:767px){
+  .idx{padding:var(--sp-3)}
+  .idx__panel{max-height:92vh;width:100%}
+  .idx__head{padding:var(--sp-4)}
+  .idx__body{padding:var(--sp-3) var(--sp-4) var(--sp-5);gap:var(--sp-4)}
+  .idx__list{grid-template-columns:minmax(0,1fr)}
+}
+
+/* ---- 0.6 降低动效：目录不做入场动画（其余在基线末尾已归零时长） ---------- */
+@media (prefers-reduced-motion:reduce){
+  .idx__mask,.idx__panel{animation:none}
+}

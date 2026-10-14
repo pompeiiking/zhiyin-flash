@@ -1,0 +1,392 @@
+<div class="main__scroll">
+  <!-- ==========================================================================
+       账号设置（key=settings）· 入口与账户
+       --------------------------------------------------------------------------
+       这一页的重点不是"一排开关"，而是**每一处不确定性都把后果说出来**：
+         · 3 类数据授权 = 3 组因果（读什么 / 授权后你能看到什么 / 随时可以关 / 关了会怎样）
+         · 关掉授权不是"变灰"，是**真的失去什么**：下面 .st-impact 会当场改数字，并且
+           「3 个里程碑按学籍核验」那条当场失效（连坐），即时可回滚。
+         · 隐私与注销：先说清楚会发生什么、什么会被删掉、什么会留下，再给按钮。
+
+       落点：
+         ① 结构显形   L78–  账号 5 行 .st-row；L180– 授权 3 块各带"依赖它的是什么"
+         ② 组织权     L196– 数据授权：按来源 / 按它影响到什么 重组同一批 4 项
+         ③ 粒度与溯源 L392– .zoom：一处授权（教务系统）的摘要 / 细节 / 授权原文
+         ④ 不确定性   L120– 通知关掉后的后果；L240– 授权关掉后的后果；L470– 注销后果
+       ======================================================================== -->
+  <div class="pg pg--narrow">
+
+    <!-- ============================ 页头 ============================ -->
+    <header class="pgh">
+      <p class="crumb">
+        <a href="#/portal">入口与账户</a>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+        <span>账号设置</span>
+      </p>
+      <div class="pgh__row">
+        <div class="pgh__t">
+          <h1 class="pgh__title">账号设置</h1>
+          <p class="pgh__lead">你在这里决定两件事：它能从学校那边读走什么，以及它什么时候可以找你。每一项都写着授权后会看到什么、随时怎么关、关了之后会怎样。</p>
+          <div class="pgh__meta">
+            <span class="tag tag--demo">演示数据</span>
+            <span class="tag">手机与邮箱为占位</span>
+            <span class="tag">改动只存在这份文件里</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- ===================== ① 账号本身（5 行，来源标在行里） ===================== -->
+    <section class="sec" aria-labelledby="stMeT">
+      <div class="sec__h">
+        <div class="sec__ht">
+          <h2 class="sec__t" id="stMeT">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></svg>
+            这个账号是谁的
+          </h2>
+          <p class="sec__d">只有昵称和头像是给你看的；学校、专业、年级改不了 —— 它们来自学信网，改的应该是那边。</p>
+        </div>
+      </div>
+      <div class="sec__body">
+        <div class="st-rows">
+          <div class="st-row">
+            <p class="st-row__k">昵称</p>
+            <div class="st-row__v">
+              <input class="st-input" id="stNick" type="text" value="陈亦然" aria-label="昵称">
+              <p class="st-row__h">只影响界面上的称呼，不会改学籍里的姓名。</p>
+            </div>
+            <div class="st-row__a"></div>
+          </div>
+          <div class="st-row">
+            <p class="st-row__k">头像</p>
+            <div class="st-row__v">
+              <p class="st-row__t">现在是主理头像占位</p>
+              <p class="st-row__h">演示样张不做上传：换头像不会真的保存。</p>
+            </div>
+            <div class="st-row__a"><button class="btn btn--ghost st-sm" type="button" id="stAvatar">换头像</button></div>
+          </div>
+          <div class="st-row">
+            <p class="st-row__k">学校与专业</p>
+            <div class="st-row__v">
+              <p class="st-row__t">河北大学 · 材料科学与工程 · 大三（2024 级）</p>
+              <p class="st-row__h">来自学信网，9 月 18 日核验。这一栏不可编辑。</p>
+            </div>
+            <div class="st-row__a"><span class="conf conf--verified"><i aria-hidden="true"></i>官方记录</span></div>
+          </div>
+          <div class="st-row">
+            <p class="st-row__k">手机号</p>
+            <div class="st-row__v">
+              <p class="st-row__t">138****0000</p>
+              <p class="st-row__h">占位号码。用它收登录验证码与岗位资讯提醒。</p>
+            </div>
+            <div class="st-row__a"><button class="btn btn--ghost st-sm" type="button" id="stPhone">换号</button></div>
+          </div>
+          <div class="st-row">
+            <p class="st-row__k">邮箱</p>
+            <div class="st-row__v">
+              <p class="st-row__t">demo@example.com</p>
+              <p class="st-row__h">占位邮箱。演示样张不发送任何邮件。</p>
+            </div>
+            <div class="st-row__a"><button class="btn btn--ghost st-sm" type="button" id="stMail">换邮箱</button></div>
+          </div>
+        </div>
+      </div>
+      <div class="sec__foot"><span>昵称改完立刻生效，按钮会告诉你改了什么</span></div>
+    </section>
+
+    <!-- ===================== ④ 通知：关掉之前先说失去什么 ===================== -->
+    <section class="sec" aria-labelledby="stNotifyT">
+      <div class="sec__h">
+        <div class="sec__ht">
+          <h2 class="sec__t" id="stNotifyT">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 15V10a6 6 0 1 0-12 0v5l-1.5 2.5h15z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>
+            什么时候可以找你
+          </h2>
+          <p class="sec__d">四类通知的边界不一样。关掉不是"清静一点"：每一行都写着关掉之后哪一件事不会再自己出现。</p>
+        </div>
+        <div class="sec__acts"><span class="sec__n" id="stNotifyN">已开 3 / 4</span></div>
+      </div>
+      <div class="sec__body">
+        <div class="st-rows st-rows--sw">
+          <div class="st-row st-row--sw">
+            <p class="st-row__k">今日行动提醒</p>
+            <div class="st-row__v">
+              <p class="st-row__t">每天 8:30 提醒今天那一件（今天：投 3 家新能源方向的工艺岗，25 分钟）</p>
+              <p class="st-row__h">关掉后：今天那一件不会主动出现，要你自己打开「今日行动」才看得到。</p>
+            </div>
+            <div class="st-row__a">
+              <span class="st-sw">
+                <input class="st-sw__i" id="stSw1" type="checkbox" checked data-st-name="今日行动提醒" data-st-off="已关掉今日行动提醒：今天那一件不会主动出现，得你自己打开「今日行动」">
+                <label class="st-sw__t" for="stSw1"></label>
+              </span>
+            </div>
+          </div>
+          <div class="st-row st-row--sw">
+            <p class="st-row__k">阶段计划节点</p>
+            <div class="st-row__v">
+              <p class="st-row__t">里程碑到期前 2 天提醒（最近：「完成简历修订并满足申请要求」9 月 20 日前 50%）</p>
+              <p class="st-row__h">关掉后：里程碑不会提前提醒，但它到期的日期仍然写在阶段计划里。</p>
+            </div>
+            <div class="st-row__a">
+              <span class="st-sw">
+                <input class="st-sw__i" id="stSw2" type="checkbox" checked data-st-name="阶段计划节点" data-st-off="已关掉阶段计划节点：里程碑不再提前提醒，到期日期仍然写在阶段计划里">
+                <label class="st-sw__t" for="stSw2"></label>
+              </span>
+            </div>
+          </div>
+          <div class="st-row st-row--sw">
+            <p class="st-row__k">岗位资讯推送</p>
+            <div class="st-row__v">
+              <p class="st-row__t">每周一上午推一次与三条方向相关的示例资讯</p>
+              <p class="st-row__h">关掉后：资讯仍然能自己翻，只是不会再推给你 —— 这些条目是虚构演示资料，本来也不该催你。</p>
+            </div>
+            <div class="st-row__a">
+              <span class="st-sw">
+                <input class="st-sw__i" id="stSw3" type="checkbox" checked data-st-name="岗位资讯推送" data-st-off="已关掉岗位资讯推送：示例资讯不再主动推给你，需要时自己在岗位资讯页翻">
+                <label class="st-sw__t" for="stSw3"></label>
+              </span>
+            </div>
+          </div>
+          <div class="st-row st-row--sw">
+            <p class="st-row__k">停滞时开口一次</p>
+            <div class="st-row__v">
+              <p class="st-row__t">停 3 天由「陪你推进的人」问一句，同一条冷却 48 小时，7 天最多 2 次</p>
+              <p class="st-row__h">关掉后：这条主动干预不再出现；复盘记录仍会照常记下你没动的那些天。</p>
+            </div>
+            <div class="st-row__a">
+              <span class="st-sw">
+                <input class="st-sw__i" id="stSw4" type="checkbox" data-st-name="停滞时开口一次" data-st-off="已关掉停滞干预：它不会主动开口；复盘记录仍会照常记下你没动的那些天">
+                <label class="st-sw__t" for="stSw4"></label>
+              </span>
+            </div>
+          </div>
+        </div>
+        <p class="st-note" id="stNotifyEcho" aria-live="polite">现在是 4 项里开了 3 项：每日 8:30 一次、里程碑提前 2 天、每周一上午一次；停滞干预默认关着，这是「陪你推进的人」唯一能主动开口的地方。</p>
+        <p class="st-note">另外两处：<a href="#/reminders" data-nav-to="reminders">免打扰时段在提醒页设</a>（设了之后哪些提醒推到什么时候，那一页会逐条说明）；单条提醒的已读/延后也在那里。</p>
+      </div>
+    </section>
+
+    <!-- ===================== ②④ 数据授权：本页的重点 ===================== -->
+    <section class="sec" aria-labelledby="stAuthT">
+      <div class="sec__h">
+        <div class="sec__ht">
+          <h2 class="sec__t" id="stAuthT">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4 5 7v5c0 4 3 7 7 8 4-1 7-4 7-8V7z"/><path d="m9.5 12 2 2 3.5-3.5"/></svg>
+            它可以从学校那边读走什么
+          </h2>
+          <p class="sec__d">每一项都是独立的：可以只开学籍不开成绩。授权后能看到什么、随时可以关、关了会怎样 —— 写在每一项自己身上。</p>
+        </div>
+        <div class="sec__acts"><span class="sec__n" id="stAuthN">已授权 2 / 4</span></div>
+      </div>
+      <div class="sec__body">
+
+        <!-- 组织权：同一批 4 项，两种看法（按来源 / 按它影响到什么） -->
+        <div class="lens" data-lens="from"
+             data-order-from="学信网|教务系统|你自己传|取不到"
+             data-order-affect="决定画像可信度|决定能不能自动排期|决定要不要你来补"
+             data-hint-from="按来源看：2 项来自学校系统（能自动读），1 项要你自己传，1 项学校这边取不到 —— 最后这一项要写清原因，不能装作能取。"
+             data-hint-affect="按它影响到什么看：同一批 4 项，一类决定画像里哪几条能算「依据充分」，一类决定计划能不能自动排期，一类只能靠你自己补。">
+          <div class="lensbar" role="tablist" aria-label="按什么看这几项授权">
+            <button class="lensbtn" type="button" role="tab" data-lens-set="from" aria-selected="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M5 8l7-5 7 5"/></svg>
+              按来源
+            </button>
+            <button class="lensbtn" type="button" role="tab" data-lens-set="affect" aria-selected="false">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 19V9M12 19V5M18 19v-7"/></svg>
+              按它影响到什么
+            </button>
+          </div>
+          <p class="lens__hint" data-lens-hint aria-live="polite"></p>
+          <div class="lens__items">
+
+            <!-- 授权 1：学信网 -->
+            <article class="lens__item st-auth" data-from="学信网" data-affect="决定画像可信度" data-on="true">
+              <div class="st-auth__h">
+                <p class="st-auth__t">学籍与就读状态</p>
+                <span class="st-auth__s" data-st-state>已授权 · 9 月 18 日核验</span>
+                <span class="st-sw st-sw--sm">
+                  <input class="st-sw__i" id="stSwEdu" type="checkbox" checked
+                         data-st-name="学籍与就读状态"
+                         data-st-on="已授权学籍与就读状态：学校、专业、年级会随学信网更新，画像里这 3 条保持「依据充分」"
+                         data-st-off="已撤回学籍与就读状态：画像里「专业、年级」停用，阶段计划里 3 个里程碑不能再按学籍核验自动核对，报告也不会重算">
+                  <label class="st-sw__t" for="stSwEdu"></label>
+                </span>
+              </div>
+              <dl class="st-auth__d">
+                <div class="st-auth__r"><dt>授权后能看到什么</dt><dd>学校、专业、年级、在读状态。它们进画像的 3 条，并在诊断报告里参与折算（报告 v2 就是核验后才算上成绩层级的）。</dd></div>
+                <div class="st-auth__r"><dt>随时可以关</dt><dd>就是右边这个开关，不用去学校那边办任何手续。</dd></div>
+                <div class="st-auth__r"><dt>关了会怎样</dt><dd>画像里这 3 条停用、退回「待你确认」；阶段计划里 3 个里程碑不能再按学籍核验自动核对，要你自己每周确认一次。已经生成的报告不会因此消失。</dd></div>
+              </dl>
+              <div class="st-impact">
+                <span class="st-impact__l">依赖它的是</span>
+                <span class="st-impact__c" data-st-chip>画像 3 条 · 里程碑 3 个</span>
+              </div>
+            </article>
+
+            <!-- 授权 2：教务系统 -->
+            <article class="lens__item st-auth" data-from="教务系统" data-affect="决定能不能自动排期" data-on="true">
+              <div class="st-auth__h">
+                <p class="st-auth__t">课程、成绩与本周课表</p>
+                <span class="st-auth__s" data-st-state>已授权 · 10 月 6 日按课表算的</span>
+                <span class="st-sw st-sw--sm">
+                  <input class="st-sw__i" id="stSwAca" type="checkbox" checked
+                         data-st-name="课程、成绩与本周课表"
+                         data-st-on="已授权课程、成绩与本周课表：成绩层级参与折算，排期按周三、周五下午的空档算"
+                         data-st-off="已撤回课程、成绩与本周课表：成绩层级停用；排期改回你手填的「每周可投入 6 小时」，空课格不再当作空闲">
+                  <label class="st-sw__t" for="stSwAca"></label>
+                </span>
+              </div>
+              <dl class="st-auth__d">
+                <div class="st-auth__r"><dt>授权后能看到什么</dt><dd>12 条课程记录与 12 条成绩，用来算成绩层级（专业前 30%）和本周空档（周三、周五下午各 2 小时）。空课格不代表空闲 —— 排期只按你确认过的时间算。</dd></div>
+                <div class="st-auth__r"><dt>随时可以关</dt><dd>关了之后，已经导入的课程与成绩仍留在学籍与资料页，不会再更新。</dd></div>
+                <div class="st-auth__r"><dt>关了会怎样</dt><dd>成绩层级停用，报告里「成绩层级参与折算」那条退回待确认；排期改用你自己填的「每周可投入 6 小时」，而不是课表 —— 结果往往更宽松，也更容易排不下。</dd></div>
+              </dl>
+              <div class="st-impact">
+                <span class="st-impact__l">依赖它的是</span>
+                <span class="st-impact__c" data-st-chip>画像 2 条 · 排期 4 处 · 报告折算</span>
+              </div>
+            </article>
+
+            <!-- 授权 3：行为记录（自己传） -->
+            <article class="lens__item st-auth" data-from="你自己传" data-affect="决定画像可信度" data-on="false">
+              <div class="st-auth__h">
+                <p class="st-auth__t">行为记录（投递与完成情况）</p>
+                <span class="st-auth__s" data-st-state>你自己标记 · 未授权采集</span>
+                <span class="st-sw st-sw--sm">
+                  <input class="st-sw__i" id="stSwBeh" type="checkbox"
+                         data-st-name="行为记录（投递与完成情况）"
+                         data-st-on="已开启行为记录：投递与完成情况会被记下，「投了 4 家，0 个回音」这类事实才立得住"
+                         data-st-off="已关闭行为记录：投递与完成情况不再被记下，画像里这一条会退回「信息不足」">
+                  <label class="st-sw__t" for="stSwBeh"></label>
+                </span>
+              </div>
+              <dl class="st-auth__d">
+                <div class="st-auth__r"><dt>这是什么</dt><dd>不是从学校读的，是你在产品里点出来的：投了哪几家、哪件任务做了没做。<b>「投了 4 家，0 个回音」就是 10 月 8 日你自己标的</b>。</dd></div>
+                <div class="st-auth__r"><dt>随时可以关</dt><dd>关掉之后不再新增记录，已有的记录保留在复盘里 —— 复盘的价值就在于它是真发生过的。</dd></div>
+                <div class="st-auth__r"><dt>关了会怎样</dt><dd>画像里「投递现状」退回「信息不足」，三条方向的契合依据会少一条；复盘与阶段里程碑仍然按已有记录继续算。</dd></div>
+              </dl>
+              <div class="st-impact">
+                <span class="st-impact__l">依赖它的是</span>
+                <span class="st-impact__c" data-st-chip>画像 1 条 · 复盘 4 条</span>
+              </div>
+            </article>
+
+            <!-- 授权 4：取不到的那一项（这一条不是开关，是一条说明） -->
+            <article class="lens__item st-auth st-auth--off" data-from="取不到" data-affect="决定要不要你来补" data-on="false">
+              <div class="st-auth__h">
+                <p class="st-auth__t">实习单位评价</p>
+                <span class="conf conf--conflict"><i aria-hidden="true"></i>学校这边取不到</span>
+              </div>
+              <dl class="st-auth__d">
+                <div class="st-auth__r"><dt>为什么取不到</dt><dd>需要实习单位出具，学校系统里没有这一项 —— 所以这里没有开关可以给你开。</dd></div>
+                <div class="st-auth__r"><dt>你可以做什么</dt><dd>自己传一份扫描件；不传也行，报告里会一直写着「企业实践资料待补充」，不会拿课程实验冒充产线经历。</dd></div>
+              </dl>
+              <div class="st-impact">
+                <span class="st-impact__l">依赖它的是</span>
+                <span class="st-impact__c" data-st-chip>画像缺口 1 条 · 成长记录 1 项未解锁</span>
+              </div>
+              <div class="st-auth__a">
+                <button class="btn btn--ghost st-sm" type="button" id="stUpload">自己传一份</button>
+              </div>
+            </article>
+          </div>
+        </div>
+
+        <!-- 连坐：撤掉授权之后，哪几条判断会变成「信息不足」 -->
+        <div class="st-conseq" id="stConseq" aria-live="polite">
+          <p class="st-conseq__t">现在这些授权撑着 <b id="stConcN">3</b> 条判断</p>
+          <ul class="st-conseq__l">
+            <li class="st-conseq__i" data-need="edu">「专业排名够、动手经历对口」这条判断 —— 靠学籍与成绩层级撑着</li>
+            <li class="st-conseq__i" data-need="aca">「报告第 2 版才算上成绩层级」这条结论 —— 靠教务系统的折算</li>
+            <li class="st-conseq__i" data-need="beh">「投了 4 家，0 个回音」这条事实 —— 靠行为记录</li>
+          </ul>
+          <p class="st-conseq__d" id="stConseqEcho" aria-live="polite">撤掉任何一项，对应那条会当场变成「信息不足」，而不是悄悄消失。</p>
+        </div>
+
+        <p class="st-note">「实习单位评价」不在这 4 项开关里 —— 它不是没开，是取不到。取不到的资料要么写清原因，要么留空，不用推测填满。</p>
+      </div>
+    </section>
+
+    <!-- ===================== ③ 粒度与溯源：一处授权的三层 ===================== -->
+    <section class="sec" aria-labelledby="stZoomT">
+      <div class="sec__h">
+        <div class="sec__ht">
+          <h2 class="sec__t" id="stZoomT">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
+            一处授权能看到多细
+          </h2>
+          <p class="sec__d">以「教务系统」为例。三层同时在这张纸上，只是看得多细由你定 —— 不是让你点开一个"授权详情"弹窗。</p>
+        </div>
+      </div>
+      <div class="sec__body">
+        <div class="zoom" data-zoom="sum">
+          <div class="zoombar" role="group" aria-label="看到多细">
+            <button class="zoombtn" type="button" data-zoom-set="sum" aria-pressed="true">摘要</button>
+            <button class="zoombtn" type="button" data-zoom-set="mid" aria-pressed="false">细节</button>
+            <button class="zoombtn" type="button" data-zoom-set="full" aria-pressed="false">授权原文</button>
+          </div>
+          <div class="zoom__body">
+            <span class="z--sum" id="stZoomSum">读你的课程、成绩和本周课表，用来算成绩层级和空档。</span>
+            <span class="z--mid">具体读走的是 <b>12 条课程</b>与 <b>12 条成绩</b>（含"优秀 / 良好 / 通过"这类非数字成绩，不会被补成数字）。算出来两件事：成绩层级 = 专业前 30%（9 月 20 日导入）；本周空档 = 周三、周五下午各 2 小时（10 月 6 日按课表算的，已经过了一周，标记为要重算）。排期只按你确认过的可投入时间走，<b>空课格不代表空闲</b>。</span>
+            <span class="z--full">授权范围原文（演示版）：<br>· 读取范围：本校本学期课程列表、成绩单、每周课表；不读取选课操作、不读取缴费与宿舍信息。<br>· 使用目的：折算成绩层级、计算本周可排期时段、在诊断报告里标注依据来源。<br>· 保留期限：演示样张不保留 —— 关掉这一页就没有任何数据留在本地文件之外。<br>· 撤回方式：本页开关，即时生效，不需要理由，不影响已生成的报告。<br>· 重要声明：<b>虚构的课程与成绩，用于体验导入、冲突、周末和缺少时间的情况。</b>真实核验需使用本人授权的在线验证码，演示数据不代表学籍验证通过。</span>
+          </div>
+        </div>
+      </div>
+      <div class="sec__foot">
+        <span>这一项现在撑着 <b>画像 2 条</b>、<b>排期 4 处</b></span>
+        <a href="#/academic" data-nav-to="academic">去看导入后的成绩与课表 →</a>
+      </div>
+    </section>
+
+    <!-- ===================== ④ 隐私与注销：先说后果，再给按钮 ===================== -->
+    <section class="sec sec--quiet" aria-labelledby="stPrivT">
+      <div class="sec__h">
+        <div class="sec__ht">
+          <h2 class="sec__t" id="stPrivT">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="10.5" width="14" height="9.5" rx="2.4"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/></svg>
+            你的资料会被怎么用
+          </h2>
+        </div>
+      </div>
+      <div class="sec__body">
+        <div class="st-priv">
+          <div class="st-priv__c">
+            <p class="st-priv__t">留在哪里</p>
+            <p class="st-priv__d">这份样张里的一切只存在你打开的这一个本地文件里：刷新就回到原样，关掉就没有了。没有账号同步，没有云端备份。</p>
+          </div>
+          <div class="st-priv__c">
+            <p class="st-priv__t">会不会被别人看到</p>
+            <p class="st-priv__d">个人材料与咨询记录不用于对外提供，也不做对外排名或推荐。演示样张不连接任何外部服务，所以现在也没有"第三方"可以拿到。</p>
+          </div>
+          <div class="st-priv__c">
+            <p class="st-priv__t">你能带走什么</p>
+            <p class="st-priv__d">画像 15 条、诊断报告、方向方案与复盘记录都可以导出成一份文件 —— 包括每条信息的来源与把握度，不只是结论。</p>
+          </div>
+        </div>
+        <div class="st-rows st-rows--act">
+          <div class="st-row">
+            <p class="st-row__k">导出</p>
+            <div class="st-row__v"><p class="st-row__h">导出的是一份静态文件，不需要联网就能打开。</p></div>
+            <div class="st-row__a"><button class="btn btn--ghost st-sm" type="button" id="stExport">导出我的资料</button></div>
+          </div>
+          <div class="st-row">
+            <p class="st-row__k">清空咨询记录</p>
+            <div class="st-row__v"><p class="st-row__h">清掉 14 轮对话。画像里那些"来自对话"的条目会一起退回「待验证」—— 它的依据就是那些话。</p></div>
+            <div class="st-row__a"><button class="btn btn--ghost st-sm" type="button" id="stWipe">清空</button></div>
+          </div>
+        </div>
+
+        <!-- 红只用在"需要你注意"：注销是这一个分区里唯一的红 -->
+        <p class="callout callout--warn st-danger">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4.5 21 19.5H3z"/><path d="M12 10v4M12 16.6v.1"/></svg>
+          <span><b>注销账号会发生什么：</b>学信网与教务系统的授权当场撤回，画像 15 条、咨询记录 14 轮、诊断报告与方向方案一起删除，三条方向的匹配依据全部失效；阶段计划里"已完成"的任务记录也会一起删掉。<b>唯一留下的是成长记录里已经解锁的三项</b>（专业基础、实践兴趣、能够复盘）—— 它们已经成了你对外的说法，删掉会让简历和你自己讲的经历对不上。<br>注销后想再用，要用同一个学号重新走一遍：学籍重新核验、画像从 0 条重新问、报告重新生成第 1 版。这一步现在可以停 —— 也可以先导出上面的那份文件再决定。</span>
+        </p>
+        <div class="st-danger__acts">
+          <button class="btn btn--ghost st-sm" type="button" id="stExport2">先导出一份</button>
+          <button class="btn st-sm st-danger__b" type="button" id="stDelete">注销账号</button>
+        </div>
+        <p class="st-note" id="stPrivEcho" aria-live="polite">注销是一个两步动作：上面那个按钮会先让你看清这一页写的内容，再让你确认一次。</p>
+      </div>
+    </section>
+  </div>
+</div>

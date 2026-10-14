@@ -1,0 +1,526 @@
+<div class="main__scroll">
+  <!-- ==========================================================================
+       复盘记录 · key = review
+       标记在这里，样式在 _src/css/review.css，行为在 _src/js/review.js
+       --------------------------------------------------------------------------
+       这一页要回答的是：**四条复盘是怎么攒出一条结论的，这条结论又改了哪件事**。
+       四个落点（BRIEF §2）：
+         ① 结构显形        .rv-item（原计划 ↔ 实际）/ .rv-conc（结论 ↔ 支撑它的那几条）
+         ② 组织权交给用户  .lens（10 条记录按 来源/时间/主题/对结论的贡献 重组）
+         ③ 粒度与溯源      .zoom（本周那三次动手的三种粒度）+ .src（每条从哪来）
+         ④ 状态与不确定性  .conf--verified/--reported/--stale + .rv-w（够不够当依据）+ .state
+       数据逐字取自 _src/DEMO-DATA.md 第八节；归因只在 任务太大 / 方法不对 / 方向要重估 里选，不归到人。
+       ======================================================================== -->
+  <div class="pg-doc">
+    <div class="pg-doc__main">
+
+      <!-- ============================ 页头 ============================ -->
+      <header class="pgh">
+        <p class="crumb">
+          <span>回头看</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+          <span>复盘记录</span>
+        </p>
+        <div class="pgh__row">
+          <div class="pgh__t">
+            <h1 class="pgh__title">复盘记录</h1>
+            <p class="pgh__lead">10 月 3 日到 7 日，四条复盘、六条成长记录。这一页不写感想：每条复盘都连着它当时对应的那件事 —— 原计划是什么、实际做成什么样、没做完归到哪一类原因。四条攒出的那条结论摆在下面，它靠哪几条撑着是点得出来的。</p>
+            <div class="pgh__meta">
+              <span class="tag tag--demo">演示数据</span>
+              <span class="conf conf--verified"><i aria-hidden="true"></i>4 条复盘 · 10 月 3–7 日</span>
+              <span class="tag">2 条完成 · 1 条部分 · 1 条没做</span>
+              <span class="tag">6 条成长记录</span>
+            </div>
+          </div>
+          <div class="pgh__acts">
+            <button class="chipbtn" type="button" id="rvAdd">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              补一条复盘
+            </button>
+            <button class="chipbtn" type="button" id="rvExport">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="m8 8 4-4 4 4"/><path d="M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3"/></svg>
+              导出给顾问看
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <!-- ③ 粒度与溯源：这一周到底动了几天手，三种粒度 -->
+      <section class="sec" aria-labelledby="rvZoomT">
+        <div class="sec__h">
+          <div class="sec__ht">
+            <h2 class="sec__t" id="rvZoomT">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>
+              这一周到底动了几天手
+            </h2>
+            <p class="sec__d">结论里那句「3 天动了手」不是感觉，是从四条复盘里数出来的。下面三层是同一件事：一句话、四天逐条的账、以及每条的原始出处。</p>
+          </div>
+        </div>
+        <div class="sec__body">
+          <div class="zoom" data-zoom="sum">
+            <div class="zoombar" role="group" aria-label="看到多细">
+              <button class="zoombtn" type="button" data-zoom-set="sum">摘要</button>
+              <button class="zoombtn" type="button" data-zoom-set="mid">细节</button>
+              <button class="zoombtn" type="button" data-zoom-set="full">原始记录</button>
+            </div>
+            <div class="zoom__body">
+              <p class="z--sum"><b>这一周你有 3 天动了手。</b>10 月 3 日、5 日、7 日各动了一次；10 月 6 日那次没做。</p>
+              <p class="z--mid">四天逐条对：<b>10 月 3 日和学长聊 15 分钟</b> 完成；<b>10 月 5 日改简历第一页</b> 做了一部分，归因「方法不对」；<b>10 月 6 日投 3 家半导体方向</b> 没做，归因「任务太大」；<b>10 月 7 日把每周可投入时间写进计划</b> 完成。所以动手的是 3 天，不是 4 天 —— 没做成的那一件不计进去。</p>
+              <p class="z--full"><b>四条复盘的原始记录（演示数据，归因三选一，不归到人）：</b>2026-10-07 把每周可投入时间写进计划 · 结果 完成 done；2026-10-06 投 3 家半导体方向 · 结果 没做 missed · 归因 任务太大；2026-10-05 改简历第一页 · 结果 做了一部分 partial · 归因 方法不对；2026-10-03 和学长聊 15 分钟 · 结果 完成 done。这 15 分钟来自本人说明，没有别的事实印证。</p>
+            </div>
+          </div>
+          <p class="callout callout--quiet rv-zoom-note">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8.2v.1"/></svg>
+            <span><b>15 分钟</b>这条只有你本人的说法，还没被别的事实印证，标着「待验证」。它撑得住「动过手」，撑不住「聊得有多深」。</span>
+          </p>
+        </div>
+      </section>
+
+      <!-- ② 组织权交给用户：10 条记录，四种组织方式 -->
+      <section class="sec" aria-labelledby="rvLensT">
+        <div class="sec__h">
+          <div class="sec__ht">
+            <h2 class="sec__t" id="rvLensT">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.6"/><rect x="13" y="4" width="7" height="7" rx="1.6"/><rect x="4" y="13" width="7" height="7" rx="1.6"/><rect x="13" y="13" width="7" height="7" rx="1.6"/></svg>
+              这 10 条记录，按什么看
+            </h2>
+            <p class="sec__d">四条复盘加六条成长记录，一条没删，摆在这儿。换一种组织方式，看它是「谁说的」、「什么时候的」、「在说哪件事」，还是「够不够当依据」。</p>
+          </div>
+          <div class="sec__acts">
+            <span class="rv-num" id="rvLensN">10 条 · 4 条复盘 + 6 条成长记录</span>
+          </div>
+        </div>
+        <div class="sec__body">
+          <div class="lens" data-lens="source"
+               data-order-source="本人说明|示例对话|演示复盘记录|课程成绩演示快照"
+               data-order-time="10 月第一周|10 月第二周"
+               data-order-topic="具体行动|方法调整|外部输入|能力认定|还没解锁的缺口"
+               data-order-weight="直接支撑结论|间接相关|结论暂时用不上"
+               data-hint-source="按谁说的看：本人说明 2 条、示例对话 2 条、演示复盘记录 3 条、课程成绩演示快照 2 条，另外 1 条缺口来自「预算与家庭支持均未填写」。哪一组最厚，哪一组就只有一句话。"
+               data-hint-time="按什么时候的看：10 月第一周 8 条，10 月第二周 2 条 —— 第二周只留下两条复盘，成长记录这一周一条没长。"
+               data-hint-topic="按在说哪件事看：「还没解锁的缺口」3 条最厚，而「具体行动」只有 2 条：零散的动作有了，成型的做法还少。"
+               data-hint-weight="按够不够当依据看：3 条直接支撑那条结论、4 条只间接相关、3 条现在还用不上。4 条复盘全在前两组，缺口堆在成长记录那 6 条里。">
+            <div class="lensbar" role="tablist" aria-label="按什么看这批记录">
+              <button class="lensbtn" type="button" role="tab" data-lens-set="source" aria-selected="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M5 8l7-5 7 5"/></svg>
+                按来源
+              </button>
+              <button class="lensbtn" type="button" role="tab" data-lens-set="time" aria-selected="false">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>
+                按时间
+              </button>
+              <button class="lensbtn" type="button" role="tab" data-lens-set="topic" aria-selected="false">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M7 12h10M10 17h4"/></svg>
+                按主题
+              </button>
+              <button class="lensbtn" type="button" role="tab" data-lens-set="weight" aria-selected="false">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 19V9M12 19V5M18 19v-7"/></svg>
+                按对结论的贡献
+              </button>
+            </div>
+            <p class="lens__hint" data-lens-hint aria-live="polite"></p>
+
+            <div class="lens__items">
+              <article class="lens__item" id="rvItem1007" data-source="演示复盘记录" data-time="10 月第二周" data-topic="具体行动" data-weight="直接支撑结论">
+                <p class="rv-k">10 月 7 日 · 把每周可投入时间写进计划</p>
+                <p class="rv-v">完成 · 每周可投入 6 小时（本人说明，还没核对过实验课与生活安排）</p>
+                <div class="rv-m">
+                  <span class="src src--chat"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a7 7 0 0 1-7 7H8l-4 3v-4.6A7 7 0 0 1 4 12V9a7 7 0 0 1 7-7h2a7 7 0 0 1 7 7z"/></svg></span><span class="src__k">演示复盘记录</span></span>
+                  <span class="rv-w rv-w--on">直接支撑结论</span>
+                </div>
+              </article>
+
+              <article class="lens__item" id="rvItem1006" data-source="演示复盘记录" data-time="10 月第二周" data-topic="具体行动" data-weight="直接支撑结论">
+                <p class="rv-k">10 月 6 日 · 投 3 家半导体方向</p>
+                <p class="rv-v">没做 · 归因「任务太大」</p>
+                <div class="rv-m">
+                  <span class="src src--chat"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a7 7 0 0 1-7 7H8l-4 3v-4.6A7 7 0 0 1 4 12V9a7 7 0 0 1 7-7h2a7 7 0 0 1 7 7z"/></svg></span><span class="src__k">演示复盘记录</span></span>
+                  <span class="rv-w rv-w--on">直接支撑结论</span>
+                </div>
+              </article>
+
+              <article class="lens__item" id="rvItem1005" data-source="演示复盘记录" data-time="10 月第二周" data-topic="方法调整" data-weight="直接支撑结论">
+                <p class="rv-k">10 月 5 日 · 改简历第一页</p>
+                <p class="rv-v">做了一部分 · 归因「方法不对」</p>
+                <div class="rv-m">
+                  <span class="src src--chat"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a7 7 0 0 1-7 7H8l-4 3v-4.6A7 7 0 0 1 4 12V9a7 7 0 0 1 7-7h2a7 7 0 0 1 7 7z"/></svg></span><span class="src__k">演示复盘记录</span></span>
+                  <span class="rv-w">间接相关</span>
+                </div>
+              </article>
+
+              <article class="lens__item" id="rvItem1003" data-source="本人说明" data-time="10 月第二周" data-topic="外部输入" data-weight="直接支撑结论">
+                <p class="rv-k">10 月 3 日 · 和学长聊 15 分钟</p>
+                <p class="rv-v">完成 · 15 分钟（本人说明，待验证）</p>
+                <div class="rv-m">
+                  <span class="src src--self"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.5" r="3.5"/><path d="M5 20c0-3.6 3.1-5.6 7-5.6s7 2 7 5.6"/></svg></span><span class="src__k">本人说明</span></span>
+                  <span class="rv-w">间接相关</span>
+                  <span class="conf conf--reported"><i aria-hidden="true"></i>待验证</span>
+                </div>
+              </article>
+
+              <article class="lens__item" data-source="课程成绩演示快照" data-time="10 月第一周" data-topic="能力认定" data-weight="结论暂时用不上">
+                <p class="rv-k">专业基础</p>
+                <p class="rv-v">材料科学基础 86、晶体结构 90，是演示成绩。</p>
+                <div class="rv-m">
+                  <span class="src src--doc"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5z"/><path d="M9 9h6M9 13h6"/></svg></span><span class="src__k">课程成绩演示快照</span></span>
+                  <span class="rv-w rv-w--off">结论暂时用不上</span>
+                </div>
+              </article>
+
+              <article class="lens__item" data-source="示例对话" data-time="10 月第一周" data-topic="能力认定" data-weight="间接相关">
+                <p class="rv-k">实践兴趣</p>
+                <p class="rv-v">示例对话倾向动手和成果产出。</p>
+                <div class="rv-m">
+                  <span class="src src--chat"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a7 7 0 0 1-7 7H8l-4 3v-4.6A7 7 0 0 1 4 12V9a7 7 0 0 1 7-7h2a7 7 0 0 1 7 7z"/></svg></span><span class="src__k">示例对话</span></span>
+                  <span class="rv-w">间接相关</span>
+                </div>
+              </article>
+
+              <article class="lens__item" data-source="演示复盘记录" data-time="10 月第一周" data-topic="能力认定" data-weight="直接支撑结论">
+                <p class="rv-k">能够复盘</p>
+                <p class="rv-v">已有未完成任务的原因记录，能据此缩小下一步。</p>
+                <div class="rv-m">
+                  <span class="src src--chat"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a7 7 0 0 1-7 7H8l-4 3v-4.6A7 7 0 0 1 4 12V9a7 7 0 0 1 7-7h2a7 7 0 0 1 7 7z"/></svg></span><span class="src__k">演示复盘记录</span></span>
+                  <span class="rv-w rv-w--on">直接支撑结论</span>
+                </div>
+              </article>
+
+              <article class="lens__item" data-source="课程成绩演示快照" data-time="10 月第一周" data-topic="还没解锁的缺口" data-weight="结论暂时用不上">
+                <p class="rv-k">实践证据待补充</p>
+                <p class="rv-v">没有真实产线经历，不把课程实验写成企业实习。</p>
+                <div class="rv-m">
+                  <span class="src src--doc"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5z"/><path d="M9 9h6M9 13h6"/></svg></span><span class="src__k">课程成绩演示快照 · 企业实践资料待补充</span></span>
+                  <span class="rv-w rv-w--off">结论暂时用不上</span>
+                </div>
+              </article>
+
+              <article class="lens__item" data-source="本人说明" data-time="10 月第一周" data-topic="还没解锁的缺口" data-weight="结论暂时用不上">
+                <p class="rv-k">城市条件待确认</p>
+                <p class="rv-v">预算、通勤与家庭支持都需要本人补充。</p>
+                <div class="rv-m">
+                  <span class="src src--self"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.5" r="3.5"/><path d="M5 20c0-3.6 3.1-5.6 7-5.6s7 2 7 5.6"/></svg></span><span class="src__k">本人说明 · 预算与家庭支持均未填写</span></span>
+                  <span class="conf conf--inferred"><i aria-hidden="true"></i>还没解锁</span>
+                </div>
+              </article>
+
+              <article class="lens__item" data-source="示例对话" data-time="10 月第一周" data-topic="还没解锁的缺口" data-weight="结论暂时用不上">
+                <p class="rv-k">家庭期待需讨论</p>
+                <p class="rv-v">稳定性与实践兴趣的优先级尚未确定。</p>
+                <div class="rv-m">
+                  <span class="src src--chat"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a7 7 0 0 1-7 7H8l-4 3v-4.6A7 7 0 0 1 4 12V9a7 7 0 0 1 7-7h2a7 7 0 0 1 7 7z"/></svg></span><span class="src__k">示例对话 · 同时出现实践兴趣与家庭稳定期待</span></span>
+                  <span class="conf conf--inferred"><i aria-hidden="true"></i>还没解锁</span>
+                </div>
+              </article>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ① 结构显形：四条复盘连着它们当时的行动 -->
+      <section class="sec" aria-labelledby="rvItemsT">
+        <div class="sec__h">
+          <div class="sec__ht">
+            <h2 class="sec__t" id="rvItemsT">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16M4 12h16M4 19h10"/></svg>
+              每条复盘连着它当时那件事
+            </h2>
+            <p class="sec__d">四条，按时间倒序。每条三样：原计划、实际怎样、没做完归到哪一类原因（只在 任务太大 / 方法不对 / 方向要重估 里选一个，不归到人）。左边那根竖线是同一个人的动作序列，不是四个孤立事件。</p>
+          </div>
+          <div class="sec__acts">
+            <span class="rv-num">4 条 · 完成 2 / 部分 1 / 没做 1</span>
+          </div>
+        </div>
+        <div class="sec__body">
+          <div class="rv-items">
+
+            <article class="rv-item" id="rvRow1007" data-rv-st="完成" data-rv-when="10 月 7 日">
+              <header class="rv-item__h">
+                <p class="rv-when">10 月 7 日</p>
+                <p class="rv-item__t">把每周可投入时间写进计划</p>
+                <span class="rv-st rv-st--done">完成</span>
+              </header>
+              <div class="rv-item__b">
+                <p class="rv-plan"><span>原计划</span>写下每周能稳定拿出来的时间，作为后面排任务的底。</p>
+                <p class="rv-real"><span>实际</span>写完并落进计划，定为<b>每周可投入 6 小时</b>。</p>
+                <p class="rv-why"><span>归因</span>完成，不归因。</p>
+              </div>
+              <div class="rv-m">
+                <span class="src src--self"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.5" r="3.5"/><path d="M5 20c0-3.6 3.1-5.6 7-5.6s7 2 7 5.6"/></svg></span><span class="src__k">本人说明</span><span class="src__w">这 6 小时还没核对过实验课与生活安排</span></span>
+                <span class="conf conf--reported"><i aria-hidden="true"></i>待验证</span>
+              </div>
+            </article>
+
+            <article class="rv-item rv-item--flag" id="rvRow1006" data-rv-st="没做" data-rv-when="10 月 6 日">
+              <header class="rv-item__h">
+                <p class="rv-when">10 月 6 日</p>
+                <p class="rv-item__t">投 3 家半导体方向</p>
+                <span class="rv-st rv-st--missed">没做</span>
+              </header>
+              <div class="rv-item__b">
+                <p class="rv-plan"><span>原计划</span>一天里投 3 家半导体方向。</p>
+                <p class="rv-real"><span>实际</span>一家都没投出去 —— 这一条连开工都没开。</p>
+                <p class="rv-why"><span>归因</span><b>任务太大</b>：一次要 40 分钟以上，不是你没自律。</p>
+              </div>
+              <div class="rv-m">
+                <span class="src src--chat"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a7 7 0 0 1-7 7H8l-4 3v-4.6A7 7 0 0 1 4 12V9a7 7 0 0 1 7-7h2a7 7 0 0 1 7 7z"/></svg></span><span class="src__k">演示复盘记录</span></span>
+                <span class="conf conf--verified"><i aria-hidden="true"></i>依据充分</span>
+              </div>
+            </article>
+
+            <article class="rv-item" id="rvRow1005" data-rv-st="做了一部分" data-rv-when="10 月 5 日">
+              <header class="rv-item__h">
+                <p class="rv-when">10 月 5 日</p>
+                <p class="rv-item__t">改简历第一页</p>
+                <span class="rv-st rv-st--partial">做了一部分</span>
+              </header>
+              <div class="rv-item__b">
+                <p class="rv-plan"><span>原计划</span>把第一页整页改完。</p>
+                <p class="rv-real"><span>实际</span>只动了 3 行有效信息 —— 改的是字句，不是内容。</p>
+                <p class="rv-why"><span>归因</span><b>方法不对</b>：先挑措辞，没先挑「哪一件事值得写上去」。</p>
+              </div>
+              <div class="rv-m">
+                <span class="src src--chat"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a7 7 0 0 1-7 7H8l-4 3v-4.6A7 7 0 0 1 4 12V9a7 7 0 0 1 7-7h2a7 7 0 0 1 7 7z"/></svg></span><span class="src__k">演示复盘记录</span></span>
+                <span class="conf conf--verified"><i aria-hidden="true"></i>依据充分</span>
+              </div>
+            </article>
+
+            <article class="rv-item" id="rvRow1003" data-rv-st="完成" data-rv-when="10 月 3 日">
+              <header class="rv-item__h">
+                <p class="rv-when">10 月 3 日</p>
+                <p class="rv-item__t">和学长聊 15 分钟</p>
+                <span class="rv-st rv-st--done">完成</span>
+              </header>
+              <div class="rv-item__b">
+                <p class="rv-plan"><span>原计划</span>问一句半导体方向实际在做什么。</p>
+                <p class="rv-real"><span>实际</span>聊了 <b>15 分钟</b>，有了一次外部输入。</p>
+                <p class="rv-why"><span>归因</span>完成，不归因。</p>
+              </div>
+              <div class="rv-m">
+                <span class="src src--self"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.5" r="3.5"/><path d="M5 20c0-3.6 3.1-5.6 7-5.6s7 2 7 5.6"/></svg></span><span class="src__k">本人说明</span><span class="src__w">只有你的说法，没有别的事实印证</span></span>
+                <span class="conf conf--reported"><i aria-hidden="true"></i>待验证</span>
+              </div>
+            </article>
+
+          </div>
+        </div>
+      </section>
+
+      <!-- ① 结论 ↔ 支撑它的那几条：点一下看连线 -->
+      <section class="sec" aria-labelledby="rvConcT">
+        <div class="sec__h">
+          <div class="sec__ht">
+            <h2 class="sec__t" id="rvConcT">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h6l2-5 2 10 2-5h4"/></svg>
+              这四条攒出的一句结论
+            </h2>
+            <p class="sec__d">结论不是总结陈词，是一句能被数出来的话。点它一下：撑它的那几条复盘会亮起来，其余退到后景，下面那行字会把「靠几条、哪几条、各是什么状态」念出来。</p>
+          </div>
+          <div class="sec__acts">
+            <span class="rv-num" id="rvConcN">1 条结论 · 压着 4 条复盘</span>
+          </div>
+        </div>
+        <div class="sec__body">
+          <div class="rv-conc" id="rvConc">
+            <button class="rv-conc__r" type="button" aria-pressed="false" id="rvConcBtn"
+                    data-rv-from="rvItem1003,rvItem1005,rvItem1006,rvItem1007">
+              <span class="rv-conc__r2">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4.5 21 19H3z"/><path d="M12 10v4M12 16.6v.1"/></svg>
+                点一下，看它靠哪几条
+              </span>
+              <p class="rv-conc__q">这一周你有 3 天动了手。没完成的那一件不是"你不自律" —— 是"投 3 家"这个任务本身太大，一次要 40 分钟以上。下一轮我把它拆成"先投 1 家"。</p>
+            </button>
+          </div>
+          <p class="rv-conc__echo" id="rvConcEcho" aria-live="polite">这条结论现在还压着 4 条复盘，没有一条撤掉。点上面的按钮，看它具体压在哪几条上。</p>
+
+          <div class="rv-sup">
+            <p class="rv-sup__t">这一条结论现在靠什么撑着</p>
+            <div class="rv-sup__r">
+              <span class="rv-sup__n">2</span>
+              <span class="rv-sup__k">条完成</span>
+              <span class="rv-sup__v">10 月 7 日把每周时间写进计划、10 月 3 日和学长聊 15 分钟 —— 这两条是「你有 3 天动了手」里的那 2 天</span>
+            </div>
+            <div class="rv-sup__r">
+              <span class="rv-sup__n">1</span>
+              <span class="rv-sup__k">条做了一部分</span>
+              <span class="rv-sup__v">10 月 5 日改简历第一页，只动了 3 行 —— 归因「方法不对」，所以结论里那句「不是你不自律」也含它</span>
+            </div>
+            <div class="rv-sup__r rv-sup__r--key">
+              <span class="rv-sup__n">1</span>
+              <span class="rv-sup__k">条没做</span>
+              <span class="rv-sup__v">10 月 6 日投 3 家半导体方向 —— 归因「任务太大」，结论后半句就压在这一条上</span>
+            </div>
+            <p class="rv-sup__d">数一下就对上了：4 条里 3 条动了手，所以结论写「3 天动了手」；唯一没做的那一条给出的理由是「任务太大」，所以结论不写「你不自律」。</p>
+          </div>
+        </div>
+        <div class="sec__foot">
+          <p class="rv-att"><b>归因只在三个里选</b>：任务太大 / 方法不对 / 方向要重估 —— 不写「不自律」「拖延」这类归到人身上、又没法改的话。</p>
+        </div>
+      </section>
+
+      <!-- ① 结构显形：干预是一条连起来的过程，不是一句提醒 -->
+      <section class="sec" aria-labelledby="rvInterT">
+        <div class="sec__h">
+          <div class="sec__ht">
+            <h2 class="sec__t" id="rvInterT">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a7 7 0 0 1-7 7H8l-4 3v-4.6A7 7 0 0 1 4 12V9a7 7 0 0 1 7-7h2a7 7 0 0 1 7 7z"/></svg>
+              顾问什么时候开口的，改了什么
+            </h2>
+            <p class="sec__d">全产品只有「陪你推进的人」会主动开口。这次开口不是催进度：触发它的是 10 月 6 日那条「任务太大」，它改的是同一件事的量。把这条链子摆出来，你才知道那句提醒从哪来、要你做什么。</p>
+          </div>
+        </div>
+        <div class="sec__body">
+          <div class="rv-chain">
+            <div class="rv-chain__s">
+              <span class="rv-chain__k">触发</span>
+              <p class="rv-chain__v">停滞 3 天。<b>10 月 6 日</b>「投 3 家半导体方向」没做，归因<b>任务太大</b>。</p>
+            </div>
+            <div class="rv-chain__s rv-chain__s--now">
+              <span class="rv-chain__k">开口</span>
+              <p class="rv-chain__v">主理：陪你推进的人 · <b>看你好几天没动，来问一句</b></p>
+              <p class="rv-chain__q">不是催你 —— 上次那条"投 3 家"确实太大了。要不先投 1 家，5 分钟？</p>
+              <div class="rv-chain__acts">
+                <button class="btn btn--primary" type="button" data-rv-accept>先投 1 家（5 分钟）</button>
+                <button class="btn btn--ghost" type="button" data-rv-defer>这周先缓一缓</button>
+              </div>
+              <p class="rv-chain__hint" id="rvInterHint">一条消息只做一件事：把「投 3 家」改成「先投 1 家」。按了之后计划里那一条会跟着换。</p>
+            </div>
+            <div class="rv-chain__s">
+              <span class="rv-chain__k">改了什么</span>
+              <p class="rv-chain__v">「投 3 家半导体方向」→「先投 1 家」。原条目不是删掉，是标成「已改口径」留在原位 —— 改过什么要留痕。</p>
+            </div>
+            <div class="rv-chain__s">
+              <span class="rv-chain__k">后来怎样</span>
+              <p class="rv-chain__v">改完之后这一条还没被标记完成。下一次复盘会看它动没动 —— 现在下结论太早。</p>
+              <p class="rv-chain__meta"><span class="conf conf--stale"><i aria-hidden="true"></i>还没验证</span><span class="rv-num">这一条在计划里是「进行中」</span></p>
+            </div>
+          </div>
+        </div>
+        <div class="sec__foot">
+          <p class="rv-att">开口的规矩写在这儿，你可以拿它核对顾问有没有越界：<b>停滞 3 天触发</b> · <b>同一条冷却 48 小时</b> · <b>7 天最多 2 次</b>。这一页只演示一次开口。</p>
+        </div>
+      </section>
+
+      <!-- ① 结构显形 + ④ 状态：成长记录，解锁与没解锁分开 -->
+      <section class="sec" aria-labelledby="rvGrowT">
+        <div class="sec__h">
+          <div class="sec__ht">
+            <h2 class="sec__t" id="rvGrowT">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4 3 8.5 12 13l9-4.5z"/><path d="M7 11v5c0 1.4 2.2 2.6 5 2.6s5-1.2 5-2.6v-5"/></svg>
+              六条成长记录，三条是「还没有」
+            </h2>
+            <p class="sec__d">已经能展示的三条在前，没解锁的三条在后 —— 它们不是「待办」，是现在真的拿不出依据。没解锁的那三条各自写清为什么，原因比状态重要。</p>
+          </div>
+          <div class="sec__acts">
+            <span class="rv-num">3 可展示 · 3 未解锁</span>
+          </div>
+        </div>
+        <div class="sec__body">
+          <div class="tbl-wrap">
+            <table class="tbl rv-tbl">
+              <caption>成长记录（演示数据）。来源依据一栏是这一条为什么能（或不能）算数。</caption>
+              <thead>
+                <tr><th scope="col">记录</th><th scope="col">说明</th><th scope="col">来源依据</th><th scope="col">状态</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td data-key>专业基础</td>
+                  <td>材料科学基础 86、晶体结构 90，是演示成绩。</td>
+                  <td>课程成绩演示快照</td>
+                  <td><span class="rv-st rv-st--done">已完成 / 可展示</span></td>
+                </tr>
+                <tr>
+                  <td data-key>实践兴趣</td>
+                  <td>示例对话倾向动手和成果产出。</td>
+                  <td>示例对话</td>
+                  <td><span class="rv-st rv-st--done">已完成 / 可展示</span></td>
+                </tr>
+                <tr>
+                  <td data-key>能够复盘</td>
+                  <td>已有未完成任务的原因记录，能据此缩小下一步。</td>
+                  <td>演示复盘记录</td>
+                  <td><span class="rv-st rv-st--done">已完成 / 可展示</span></td>
+                </tr>
+                <tr>
+                  <td data-key>实践证据待补充</td>
+                  <td>没有真实产线经历，不把课程实验写成企业实习。</td>
+                  <td>已有课程实验记录；企业实践资料待补充</td>
+                  <td><span class="rv-st rv-st--lock">未解锁</span></td>
+                </tr>
+                <tr>
+                  <td data-key>城市条件待确认</td>
+                  <td>预算、通勤与家庭支持都需要本人补充。</td>
+                  <td>预算与家庭支持均未填写</td>
+                  <td><span class="rv-st rv-st--lock">未解锁</span></td>
+                </tr>
+                <tr>
+                  <td data-key>家庭期待需讨论</td>
+                  <td>稳定性与实践兴趣的优先级尚未确定。</td>
+                  <td>演示对话中同时出现实践兴趣与家庭稳定期待</td>
+                  <td><span class="rv-st rv-st--lock">未解锁</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="rv-note">「未解锁」不是等时间到了自动开。三条各有各的补法：实践证据要一份能公开的项目材料；城市条件要你填预算与通勤；家庭期待要一次把优先级谈清楚。</p>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- ============================ 侧栏 ============================ -->
+    <aside class="pg-doc__side">
+
+      <!-- 开场就摆结论全文与它的口径 -->
+      <section class="sec sec--quiet rv-side" aria-labelledby="rvSideT">
+        <div class="sec__h">
+          <div class="sec__ht">
+            <h2 class="sec__t" id="rvSideT">这一周一句话</h2>
+          </div>
+        </div>
+        <div class="sec__body">
+          <p class="rv-side__q">这一周你有 3 天动了手。没完成的那一件不是"你不自律" —— 是"投 3 家"这个任务本身太大，一次要 40 分钟以上。下一轮我把它拆成"先投 1 家"。</p>
+          <p class="rv-side__d">原文照抄，没有润色。它是从上面四条复盘里数出来的，不是先有结论再去找证据。</p>
+        </div>
+      </section>
+
+      <section class="sec sec--quiet rv-side" aria-labelledby="rvSideRuleT">
+        <div class="sec__h">
+          <div class="sec__ht">
+            <h2 class="sec__t" id="rvSideRuleT">主动开口的三条规矩</h2>
+          </div>
+        </div>
+        <div class="sec__body">
+          <div class="kv rv-kv">
+            <div class="kv__r"><span class="kv__k">什么时候</span><span class="kv__v">停滞 3 天触发</span></div>
+            <div class="kv__r"><span class="kv__k">同一条</span><span class="kv__v">冷却 48 小时</span></div>
+            <div class="kv__r"><span class="kv__k">上限</span><span class="kv__v">7 天最多 2 次</span></div>
+          </div>
+        </div>
+        <div class="sec__foot">
+          <span>只有「陪你推进的人」能主动开口，别的角色不问不说话。</span>
+        </div>
+      </section>
+
+      <section class="sec sec--quiet rv-side" aria-labelledby="rvSideNextT">
+        <div class="sec__h">
+          <div class="sec__ht">
+            <h2 class="sec__t" id="rvSideNextT">下一次复盘要看什么</h2>
+          </div>
+        </div>
+        <div class="sec__body">
+          <div class="rv-try">
+            <div class="rv-try__r">
+              <p class="rv-try__t">先投 1 家（5 分钟）</p>
+              <span class="conf conf--stale"><i aria-hidden="true"></i>还没验证</span>
+            </div>
+            <p class="rv-try__d">干预改完口径之后，这一条还没被标记完成。下次复盘先看它 —— 动了就说明「拆小」这条路对，没动就要换归因。</p>
+            <div class="rv-act">
+              <button class="btn btn--ghost" type="button" id="rvNextAdd">把这一条记进下次复盘</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </aside>
+  </div>
+</div>

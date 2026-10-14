@@ -1,0 +1,105 @@
+/* =============================================================================
+ * 成长记录（achievements）· 视图私有样式
+ * -----------------------------------------------------------------------------
+ * 只放这个视图独有的东西；共享组件一律用基线 c2.css 与 10-data-page.css 的类。
+ * 需要抬高共享组件的可点面积时，用**属性限定**（[data-view="achievements"] …）
+ * 而不是裸类重定义 —— 裸类重定义会被 build.mjs 记为"视图层全局覆盖共享层"。
+ *
+ * 配色铁律：已完成一律 --c-done 灰系，不给绿/金/发光；红色在本视图只出现在
+ * "需要你注意"的那一处（本页未使用 .callout--warn）。
+ * 字号只用 12 / 14 / 16 / 20 / 30；字重只用 400 / 500 / 600 / 700。
+ * ========================================================================== */
+
+/* ---- 可点面积：共享组件默认低于 44px，本视图按门禁抬到 44（不换高度换宽度）----
+   .lensbtn 基线 40px（10-data-page.css L132）、.zoombtn 基线 36px（L178）、
+   .chipbtn 基线约 38px（c2.css L729–736）、.crumb a 基线只有 21px 高（L60–63）。 */
+[data-view="achievements"] .lensbtn{min-height:44px}
+[data-view="achievements"] .zoombtn{min-height:44px}
+[data-view="achievements"] .chipbtn{min-height:44px}
+[data-view="achievements"] .crumb a{
+  display:inline-flex;align-items:center;min-height:44px;
+}
+
+/* ---- 记录卡的头：标记 / 名称与说明 / 状态 ---------------------------------- */
+.ach__hd{display:flex;align-items:flex-start;gap:var(--sp-3)}
+.ach__t{flex:1 1 auto;min-width:0}
+.ach__name{
+  font-size:var(--fs-16);font-weight:var(--fw-bold);color:var(--c-text);
+  line-height:var(--lh-snug);font-family:var(--font-title);
+}
+.ach__d{margin-top:3px;font-size:var(--fs-14);color:var(--c-text-2);line-height:var(--lh-normal)}
+
+/* 标记：已计入是中性勾，未解锁是描线锁。两者都不是奖励，只是形状不同。 */
+.ach__mk{
+  flex:0 0 auto;display:grid;place-items:center;width:26px;height:26px;margin-top:1px;
+  border-radius:var(--r-sm);border:1px solid var(--c-done-border);background:var(--c-done-weak);
+  color:var(--c-done);
+}
+.ach__mk svg{width:15px;height:15px}
+.ach__mk--lock{border-style:dashed;background:transparent;border-color:var(--c-border-strong);color:var(--c-text-3)}
+
+/* 状态：写在卡片右上角的一句事实，不是徽章。 */
+.ach__st{
+  flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;margin-top:2px;
+  padding:3px 10px;border-radius:var(--r-pill);
+  font-size:var(--fs-12);font-weight:var(--fw-semibold);line-height:1.4;
+}
+.ach__st i{width:7px;height:7px;border-radius:50%;flex:0 0 auto}
+.ach__st--done{background:var(--c-done-weak);border:1px solid var(--c-done-border);color:var(--c-done)}
+.ach__st--done i{background:var(--c-done)}
+.ach__st--lock{border:1px dashed var(--c-border-strong);color:var(--c-text-3);background:transparent}
+.ach__st--lock i{background:transparent;border:1px solid var(--c-border-strong);border-radius:2px}
+
+/* ---- 已计入：为什么算数（一句事实，不是夸奖）------------------------------- */
+.ach__why{
+  margin-top:var(--sp-3);
+  font-size:var(--fs-14);line-height:var(--lh-normal);color:var(--c-text-2);
+}
+.ach__why b{font-weight:var(--fw-semibold);color:var(--c-text)}
+
+/* ---- 未解锁：差什么 / 三件条件 / 进度 -------------------------------------- */
+.ach--locked{background:var(--c-surface-2)}
+.ach__unlock{
+  margin-top:var(--sp-3);padding:var(--sp-3) var(--sp-4);
+  border:1px dashed var(--c-border-strong);border-radius:var(--r-lg);
+  background:var(--c-surface-solid);
+}
+.ach__uh{font-size:var(--fs-14);color:var(--c-text-2);line-height:var(--lh-normal)}
+.ach__uh b{font-weight:var(--fw-semibold);color:var(--c-text)}
+.ach__reqs{display:flex;flex-direction:column;gap:var(--sp-2);margin-top:var(--sp-3)}
+.ach__req{display:flex;align-items:flex-start;gap:9px}
+.ach__box{
+  flex:0 0 auto;width:15px;height:15px;margin-top:3px;border-radius:4px;
+  border:1.5px solid var(--c-border-strong);background:var(--c-surface-solid);
+}
+.ach__req[data-met="true"] .ach__box{background:var(--c-done);border-color:var(--c-done)}
+.ach__rt{font-size:var(--fs-14);line-height:var(--lh-normal);color:var(--c-text-2)}
+.ach__rt b{font-weight:var(--fw-semibold);color:var(--c-text)}
+.ach__req[data-met="true"] .ach__rt{color:var(--c-text-3)}
+.ach__uprog{
+  margin-top:9px;font-size:var(--fs-12);line-height:var(--lh-snug);color:var(--c-text-3);
+  font-variant-numeric:tabular-nums;
+}
+.ach__uprog b{font-weight:var(--fw-semibold);color:var(--c-text-2)}
+
+/* ---- 溯源：每条记录都要能点回产生它的那次行为 ------------------------------ */
+.ach__trace{
+  display:flex;flex-wrap:wrap;align-items:center;gap:6px;
+  margin-top:var(--sp-3);padding-top:var(--sp-3);
+  border-top:1px solid var(--c-border);
+}
+
+/* ---- 连锁反馈那一行（勾掉后由 achievements.js 改写）------------------------ */
+.ach__live{
+  margin-top:var(--sp-3);font-size:var(--fs-12);line-height:var(--lh-snug);color:var(--c-text-3);
+}
+.ach__live[data-on="true"]{color:var(--c-text-2)}
+
+/* ---- 窄屏：标记与状态换行，解锁框内边距收一档 ------------------------------ */
+@media (max-width:767px){
+  .ach__hd{flex-wrap:wrap;gap:9px}
+  .ach__st{margin-left:35px}
+  .ach__name{font-size:var(--fs-14)}
+  .ach__unlock{padding:var(--sp-3)}
+  [data-view="achievements"] .lens__item{padding:var(--sp-3)}
+}

@@ -1,0 +1,160 @@
+/* =============================================================================
+ * 今日行动（home）· 视图私有样式
+ * -----------------------------------------------------------------------------
+ * 只放这个视图独有的东西；共享组件（.sec / .lens / .meter / .pick__box / .src /
+ * .conf / .pill / .btn）一律用 10-data-page.css 与 c2.css 的名字，不改它们。
+ * 全部选择器带 .hm- 前缀，或限定在 [data-view="home"] 内 —— 全站只有一个文档。
+ *
+ * 这里唯一提高特异度覆盖共享组件的地方是 [data-view] .chipf 的 min-height：
+ * .chipf 基线是 34px，本项目裁定"主要动作 ≥44×44"，探针会把 34px 的筛选 chip
+ * 报出来。只在本视图内抬高，不动全局定义（BRIEF §1.6 允许的写法）。
+ * ========================================================================== */
+
+/* ---- 首屏那一件：今天该做的 ---------------------------------------------- */
+.hm-card{
+  display:flex;flex-direction:column;gap:var(--sp-3);
+  padding:var(--sp-4);
+  border-radius:var(--r-lg);
+  background:var(--c-surface-2);
+  border:1px solid var(--c-border);
+}
+.hm-card__hd{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.hm-card__t{
+  font-family:var(--font-title);
+  font-size:var(--fs-20);font-weight:var(--fw-bold);
+  line-height:var(--lh-snug);letter-spacing:-.01em;color:var(--c-text);
+}
+/* 徽标：说"它是这条线上的第几件"，不是装饰。主色只在这一处（分区内唯一） */
+.hm-badge{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:2px 9px;border-radius:var(--r-pill);
+  background:var(--c-primary-weak);border:1px solid var(--c-primary-border);
+  font-size:var(--fs-12);font-weight:var(--fw-semibold);color:var(--c-primary);
+  white-space:nowrap;
+}
+.hm-badge:empty{display:none}
+
+.hm-why{
+  padding:var(--sp-3) var(--sp-4);
+  border-radius:var(--r-lg);
+  background:var(--c-surface-solid);
+  border:1px solid var(--c-border);
+}
+.hm-why__k{font-size:var(--fs-12);font-weight:var(--fw-bold);letter-spacing:.06em;color:var(--c-text-3)}
+.hm-why__d{margin-top:4px;font-size:var(--fs-14);line-height:var(--lh-normal);color:var(--c-text)}
+
+/* 结构显形：这件事连着哪条差距 —— 关系可见，不是并列 */
+.hm-link{display:flex;flex-direction:column;gap:7px}
+.hm-link__k{font-size:var(--fs-12);font-weight:var(--fw-bold);letter-spacing:.06em;color:var(--c-text-3)}
+.hm-link__rows{display:flex;flex-direction:column;gap:6px}
+.hm-link__r{
+  display:flex;flex-wrap:wrap;align-items:baseline;gap:8px;
+  padding:9px var(--sp-3);
+  border-radius:var(--r-md);
+  background:var(--c-surface-solid);border:1px solid var(--c-border);
+  font-size:var(--fs-14);
+}
+.hm-link__t{font-weight:var(--fw-semibold);color:var(--c-text)}
+.hm-link__b{color:var(--c-text-3);font-size:var(--fs-12)}
+.hm-link__r a{margin-left:auto;font-size:var(--fs-12);white-space:nowrap}
+
+.hm-card__ft{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:2px}
+/* 勾选按钮：不是 .btn，但按 ≥44 高做（项目裁定）。完成不给颜色奖励：
+   勾上之后底色收回中性 --c-done-weak，与 .pick__box 的 --c-done 同一套。 */
+.hm-done{
+  display:inline-flex;align-items:center;gap:9px;
+  min-height:44px;padding:9px 16px;
+  border-radius:var(--r-pill);
+  border:1px solid var(--c-border-strong);background:var(--c-surface-solid);
+  font-size:var(--fs-14);font-weight:var(--fw-semibold);color:var(--c-text-2);
+  transition:background var(--dur-2) var(--ease-out),border-color var(--dur-2) var(--ease-out),
+             color var(--dur-2) var(--ease-out);
+}
+.hm-done:hover{background:var(--c-surface-2);color:var(--c-text)}
+.hm-done[aria-pressed="true"]{
+  background:var(--c-done-weak);border-color:var(--c-done-border);color:var(--c-done);
+}
+
+/* ---- 这条线：进度 + 剩余时间 + 下一件 ------------------------------------ */
+.hm-live{
+  display:flex;flex-direction:column;gap:var(--sp-2);
+  padding:var(--sp-3) var(--sp-4);
+  border-radius:var(--r-lg);
+  background:var(--c-surface-2);border:1px solid var(--c-border);
+}
+.hm-live__t{font-size:var(--fs-14);font-weight:var(--fw-semibold);color:var(--c-text);line-height:var(--lh-normal)}
+.hm-live__t b{font-weight:var(--fw-bold)}
+.hm-live .meter{margin-top:2px}
+.hm-live__n{font-size:var(--fs-12);line-height:var(--lh-snug);color:var(--c-text-3)}
+.hm-live__n b{color:var(--c-text-2);font-weight:var(--fw-semibold)}
+
+/* 任务格：勾掉之后不隐藏，用它承载"下一件"与"上一件"的状态差 */
+.hm-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:var(--sp-3);margin-top:var(--sp-4)}
+.hm-t{
+  display:flex;flex-direction:column;gap:9px;
+  padding:var(--sp-3) var(--sp-4);
+  border-radius:var(--r-lg);
+  background:var(--c-surface-solid);border:1px solid var(--c-border);
+  transition:opacity var(--dur-2) var(--ease-out),border-color var(--dur-2) var(--ease-out),
+             box-shadow var(--dur-3) var(--ease-out);
+}
+.hm-t__hd{display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap}
+.hm-t__t{font-size:var(--fs-14);font-weight:var(--fw-semibold);color:var(--c-text);line-height:var(--lh-snug);flex:1 1 auto}
+.hm-t__d{font-size:var(--fs-12);line-height:var(--lh-normal);color:var(--c-text-3)}
+.hm-t__m{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.hm-t__f{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:auto}
+.hm-done--sm{min-height:44px;padding:9px 14px;font-size:var(--fs-12)}
+.hm-done--sm .pick__box{width:18px;height:18px}
+
+/* 下一件：抬一点边界，并给出"它现在是下一个"的说明。这不是动画，是状态。 */
+.hm-t[data-hm-next="true"]{
+  border-color:var(--c-border-strong);
+  box-shadow:var(--light-in),var(--e-1),0 0 0 3px var(--c-focus-glow);
+}
+.hm-t[data-hm-busy="true"]{opacity:.56}
+.hm-t[data-hm-done="true"] .hm-t__t{color:var(--c-text-3);text-decoration:line-through;text-decoration-color:var(--c-border-strong)}
+
+/* ---- 等结果：不占时间的另一层 -------------------------------------------- */
+.hm-wait{margin-top:var(--sp-4);padding-top:var(--sp-4);border-top:1px solid var(--c-border)}
+.hm-wait__rows{display:flex;flex-direction:column;gap:7px}
+.hm-wait__r{
+  display:flex;flex-wrap:wrap;align-items:baseline;gap:9px;
+  padding:10px var(--sp-3);border-radius:var(--r-md);
+  background:var(--c-surface-2);border:1px dashed var(--c-border-strong);
+  font-size:var(--fs-12);color:var(--c-text-3);
+}
+.hm-wait__r b{font-size:var(--fs-14);font-weight:var(--fw-semibold);color:var(--c-text-2)}
+.hm-wait__r .pill{margin-left:auto}
+
+/* ---- .lens 里的条目：这一页的条目内容形状 ------------------------------- */
+.hm-i__t{font-size:var(--fs-14);font-weight:var(--fw-semibold);color:var(--c-text);line-height:var(--lh-snug)}
+.hm-i__d{margin-top:4px;font-size:var(--fs-12);line-height:var(--lh-normal);color:var(--c-text-3)}
+.hm-i__m{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:9px}
+.hm-i__m a{font-size:var(--fs-12);white-space:nowrap}
+
+/* ---- 侧栏：今天还剩多少时间 --------------------------------------------- */
+.hm-side__n{
+  display:flex;align-items:baseline;gap:5px;
+  font-family:var(--font-title);font-size:var(--fs-30);font-weight:var(--fw-bold);
+  line-height:1.05;letter-spacing:-.02em;color:var(--c-text);
+  font-variant-numeric:tabular-nums;
+}
+.hm-side__n b{font-weight:var(--fw-bold);font-size:var(--fs-30)}
+.hm-side__d{margin-top:6px;font-size:var(--fs-12);line-height:var(--lh-snug);color:var(--c-text-3)}
+.hm-side__src{margin-top:var(--sp-3)}
+.hm-side__warn{
+  margin-top:var(--sp-3);padding-top:var(--sp-3);border-top:1px solid var(--c-border);
+  font-size:var(--fs-12);line-height:var(--lh-snug);color:var(--c-text-3);
+}
+.hm-side__warn b{color:var(--c-text-2);font-weight:var(--fw-semibold)}
+
+/* 筛选 chip：基线 34px、视角按钮基线 38px，本视图都抬到 44（主要动作 ≥44×44）。 */
+[data-view="home"] .chipf{min-height:44px;padding:8px 14px}
+[data-view="home"] .lensbtn{min-height:44px;padding:10px 15px}
+
+@media (max-width:767px){
+  .hm-card__t{font-size:var(--fs-16)}
+  .hm-grid{grid-template-columns:minmax(0,1fr)}
+  .hm-link__r a{margin-left:0}
+  .hm-side__n,.hm-side__n b{font-size:var(--fs-20)}
+}

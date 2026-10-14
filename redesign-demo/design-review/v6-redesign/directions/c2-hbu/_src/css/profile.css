@@ -1,0 +1,88 @@
+/* =============================================================================
+ * 个人画像（样板页）· 视图私有样式
+ * -----------------------------------------------------------------------------
+ * 只放这个视图独有的东西；共享组件一律用 10-data-page.css 的类，不改它们的定义。
+ * 全部选择器带 .pf- 前缀或限定在 [data-view="profile"] 内 —— 全站只有一个文档，
+ * 不这样做就会撞到别的视图。
+ * ========================================================================== */
+
+/* ---- 画像条目：字段名 / 值 / 来源与把握 ---------------------------------- */
+.pf-k{
+  font-size:var(--fs-12);font-weight:var(--fw-semibold);letter-spacing:.02em;
+  color:var(--c-text-3);line-height:1.4;
+}
+.pf-v{
+  margin-top:2px;
+  font-size:var(--fs-14);font-weight:var(--fw-medium);color:var(--c-text);
+  line-height:var(--lh-snug);
+}
+.pf-m{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:9px}
+
+/* 结构显形：点一条判断，它依赖的条目亮起来、其余退到后景。
+   这是"信息之间的关系可见"（DESIGN-LANGUAGE §4.1）的落点，不是高亮装饰。
+   ⚠ 这三条**必须**限定在 [data-view="profile"] 内：`.lens__item` 是共享组件，
+   不加限定就是"后加载的视图样式全局覆盖共享层"——本工程出现过 4 次的病灶
+   （HANDOFF §9.4）。build.mjs 的跨视图撞车门禁会盯着这一类写法。 */
+[data-view="profile"] .lens__item[data-dim="true"]{opacity:.38}
+[data-view="profile"] .lens__item[data-hit="true"]{
+  border-color:var(--c-primary-border);
+  box-shadow:var(--light-in),var(--e-1),0 0 0 3px var(--c-focus-glow);
+}
+[data-view="profile"] .lens__item{transition:opacity var(--dur-2) var(--ease-out),border-color var(--dur-2) var(--ease-out),
+                        box-shadow var(--dur-3) var(--ease-out)}
+
+/* ---- 判断 ↔ 依据 ---------------------------------------------------------- */
+.pf-conc{display:flex;flex-direction:column;gap:var(--sp-2)}
+.pf-conc__r{
+  display:flex;flex-direction:column;gap:5px;width:100%;text-align:left;
+  padding:var(--sp-4);
+  border-radius:var(--r-lg);
+  border:1px solid var(--c-border);
+  background:var(--c-surface-2);
+  transition:background var(--dur-2) var(--ease-out),border-color var(--dur-2) var(--ease-out),
+             box-shadow var(--dur-2) var(--ease-out),transform var(--dur-1) var(--ease-out);
+}
+.pf-conc__r:hover{background:var(--c-surface-solid);border-color:var(--c-border-strong)}
+.pf-conc__r:active{transform:scale(.995)}
+.pf-conc__r[aria-pressed="true"]{
+  background:var(--c-surface-solid);
+  border-color:var(--c-primary-border);
+  box-shadow:var(--light-in),var(--e-1);
+}
+.pf-conc__r[aria-pressed="true"] .pf-conc__t::before{
+  content:"";display:inline-block;width:3px;height:14px;border-radius:2px;
+  background:var(--c-primary);margin-right:9px;vertical-align:-2px;
+}
+.pf-conc__t{
+  font-size:var(--fs-16);font-weight:var(--fw-bold);color:var(--c-text);
+  line-height:var(--lh-snug);font-family:var(--font-title);
+}
+.pf-conc__r[aria-pressed="false"] .pf-conc__t{color:var(--c-text-2)}
+.pf-conc__d{font-size:var(--fs-14);color:var(--c-text-3);line-height:var(--lh-normal)}
+.pf-conc__dep{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.pf-dep{
+  display:inline-flex;align-items:center;
+  padding:3px 9px;border-radius:var(--r-pill);
+  background:var(--c-surface-3);border:1px solid var(--c-border);
+  font-size:var(--fs-12);font-weight:var(--fw-medium);color:var(--c-text-2);
+}
+.pf-conc__r[aria-pressed="true"] .pf-dep{
+  background:var(--c-primary-weak);border-color:var(--c-primary-border);color:var(--c-primary);
+}
+
+/* ---- 侧栏：把控制权摆在明面上 -------------------------------------------- */
+.pf-act{display:flex;flex-direction:column;gap:7px}
+.pf-act .btn{justify-content:flex-start;width:100%}
+.pf-act .btn svg{width:16px;height:16px;flex:0 0 auto}
+.pf-hint{
+  margin-top:var(--sp-3);
+  font-size:var(--fs-12);line-height:var(--lh-snug);color:var(--c-text-3);
+}
+.pf-hint b{color:var(--c-text-2);font-weight:var(--fw-semibold)}
+
+/* ---- 窄屏：判断卡的依赖 chip 与侧栏排布 ---------------------------------- */
+@media (max-width:767px){
+  .pf-conc__t{font-size:var(--fs-14)}
+  .pf-conc__r{padding:var(--sp-3)}
+  [data-view="profile"] .lens__item{padding:var(--sp-3)}
+}

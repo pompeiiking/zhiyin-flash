@@ -1,0 +1,139 @@
+/* =============================================================================
+ * 异常页 · 视图私有样式（key=notfound）
+ * -----------------------------------------------------------------------------
+ * 全站最短的一页，所以这里也最克制：
+ *   · 没有动效（连 hover 位移都不加，只有颜色）；
+ *   · 没有插画、没有大色块、没有圆角图标堆；
+ *   · 红色只出现在"真的出错了"的那一态（404 / 无权限的图标），服务不可用那一态
+ *     是"等一会儿"而不是"你错了"，所以它的图标保持中性。
+ * 三态共用一套 .state 结构，区别在标题、说明、出口，以及"还能做什么"那张表。
+ * 全部选择器带 .nf- 前缀，或限定在 [data-view="notfound"] 之内。
+ * ========================================================================== */
+
+/* ---- 三态切换：用基线的 .lensbar 凹槽，不另造一套分段控件 ---------------- */
+.nf-switch{align-self:flex-start;margin-bottom:var(--sp-4);max-width:100%}
+.nf-switch .lensbtn{min-height:44px;padding:10px 14px}
+
+/* ---- 三态面板：同一位置只露一个 ----------------------------------------- */
+.nf-panel{min-width:0}
+.nf-panel[hidden]{display:none}
+
+/* 面板顶部那行"这是哪一种问题"：它是三态之间最直接的差别，所以给一行加粗短句 */
+.nf-why{
+  font-size:var(--fs-12);font-weight:var(--fw-bold);letter-spacing:.02em;
+  color:var(--c-text-2);
+  padding-bottom:9px;margin-bottom:var(--sp-3);
+  border-bottom:1px solid var(--c-border);
+}
+
+/* ---- 状态块：内部左对齐（这一页的说明是给人读的，居中会让换行更难跟） --- */
+.nf-panel .state{
+  align-items:flex-start;text-align:left;
+  padding:0 0 var(--sp-4);
+  gap:var(--sp-3);
+}
+.nf-panel .state__d{max-width:62ch}
+.nf-panel .state__acts{justify-content:flex-start}
+.nf-panel .state__acts .btn{text-decoration:none}
+
+/* 图标收一档（44 → 40）：这一页不该有一个视觉上最响的方块。
+   红色只管"真的出错"两态；服务不可用保持中性。 */
+[data-view="notfound"] .nf-panel .state__ic{width:40px;height:40px}
+[data-view="notfound"] .nf-panel .state__ic svg{width:19px;height:19px}
+[data-view="notfound"] .nf-panel[data-nf-panel="denied"] .state__ic,
+[data-view="notfound"] .nf-panel[data-nf-panel="down"] .state__ic{
+  background:var(--c-surface-2);border-color:var(--c-border);color:var(--c-text-3);
+}
+[data-view="notfound"] .nf-panel[data-nf-panel="404"] .state__ic{
+  background:var(--c-attention-weak);border-color:var(--c-attention-border);color:var(--c-attention);
+}
+
+/* ---- "这时候还能做什么"：三态各一份，这是三态真正的差别 ----------------- */
+.nf-acts{
+  margin-top:var(--sp-4);padding:var(--sp-3) var(--sp-4);
+  border-radius:var(--r-lg);
+  background:var(--c-surface-2);border:1px solid var(--c-border);
+}
+.nf-acts--flush{margin-top:var(--sp-4)}
+.nf-acts__t{
+  font-size:var(--fs-12);font-weight:var(--fw-bold);letter-spacing:.02em;color:var(--c-text-2);
+}
+.nf-acts__l{
+  list-style:none;margin:9px 0 0;padding:0;
+  display:flex;flex-direction:column;gap:7px;
+  font-size:var(--fs-14);line-height:var(--lh-snug);color:var(--c-text-2);
+}
+.nf-acts__l li{position:relative;padding-left:13px}
+.nf-acts__l li::before{
+  content:"";position:absolute;left:0;top:7px;width:5px;height:5px;border-radius:50%;
+  background:var(--c-border-strong);
+}
+.nf-acts__l b{font-weight:var(--fw-semibold);color:var(--c-text)}
+
+/* ---- 服务不可用：先做什么那张表 ----------------------------------------- */
+.nf-offline{margin-top:var(--sp-4)}
+
+/* ---- 有效地址：分组 + 每行一个能点的地址 --------------------------------
+   这是这一页的主内容（不是页脚附录）。每行 44px 高、整行可点，
+   右边那个 <code>#/key</code> 是可核对的地址本体。 */
+.nf-groups{display:flex;flex-direction:column;gap:var(--sp-4)}
+.nf-group{min-width:0}
+.nf-group__t{
+  display:flex;align-items:center;gap:9px;
+  font-size:var(--fs-12);font-weight:var(--fw-bold);letter-spacing:.04em;color:var(--c-text-3);
+}
+.nf-group__t::after{content:"";flex:1 1 auto;height:1px;background:var(--c-border)}
+.nf-group__n{
+  flex:0 0 auto;font-weight:var(--fw-semibold);color:var(--c-text-3);
+  font-variant-numeric:tabular-nums;
+}
+.nf-group__l{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(268px,1fr));
+  gap:6px;margin-top:var(--sp-2);
+}
+.nf-a{
+  display:flex;align-items:center;gap:9px;min-height:44px;
+  padding:9px 12px;border-radius:var(--r-md);
+  border:1px solid var(--c-border);background:var(--c-surface-2);
+  color:var(--c-text-2);font-size:var(--fs-14);font-weight:var(--fw-medium);
+  text-decoration:none;
+  transition:background var(--dur-2) var(--ease-out),border-color var(--dur-2) var(--ease-out),
+             color var(--dur-2) var(--ease-out);
+}
+.nf-a:hover{background:var(--c-surface-solid);border-color:var(--c-border-strong);color:var(--c-text)}
+.nf-a__t{min-width:0}
+.nf-a__k{
+  margin-left:auto;flex:0 0 auto;
+  font-family:var(--font-ui);font-size:var(--fs-12);font-weight:var(--fw-regular);
+  color:var(--c-text-3);letter-spacing:.02em;
+}
+.nf-a:hover .nf-a__k{color:var(--c-text-2)}
+.nf-a--here{border-color:var(--c-primary-border);background:var(--c-primary-weak);color:var(--c-primary)}
+.nf-a--here .nf-a__k{color:var(--c-primary)}
+
+/* 404 那一态里"你打开的到底是哪个地址"：它是可核对的地址本体，用等宽字面 */
+.nf-asked{
+  font-family:var(--font-ui);font-size:var(--fs-12);letter-spacing:.02em;
+  color:var(--c-text-2);
+  padding:1px 7px;border-radius:var(--r-sm);
+  background:var(--c-surface-2);border:1px solid var(--c-border);
+}
+
+/* ---- JS 没跑起来时的兜底清单 ------------------------------------------- */
+.nf-fallbackNote{
+  font-size:var(--fs-12);line-height:var(--lh-snug);color:var(--c-text-3);margin-bottom:9px;
+}
+.nf-fallback{
+  font-size:var(--fs-14);line-height:var(--lh-normal);color:var(--c-text-2);
+}
+
+/* ---- 窄屏：地址一行一个，切换条横滚 ------------------------------------- */
+@media (max-width:767px){
+  .nf-switch{
+    width:100%;align-self:stretch;
+    flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;
+  }
+  .nf-switch::-webkit-scrollbar{display:none}
+  .nf-group__l{grid-template-columns:minmax(0,1fr)}
+  .nf-acts{padding:var(--sp-3)}
+}

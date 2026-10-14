@@ -1,0 +1,371 @@
+<div class="main__scroll">
+  <!-- ==========================================================================
+       成长记录（成长记录 · 本视图标记在 _src/views/achievements.html，样式在 _src/css/achievements.css）
+       --------------------------------------------------------------------------
+       这一页要回答的是"凭什么是我的"：**每条记录都要能追到产生它的那一次行为**。
+       四个落点在本页：
+         ① 结构显形       6 条记录不是列表，是"来源行为 → 记录"的溯源结构（.ach--item + .src）
+         ② 组织权交给用户  .lens：同一批 6 条按 来源 / 时间 / 主题 / 达成方式 重组
+         ③ 粒度与溯源     .zoom：一条记录从一句话 → 三栏字段 → 可核对的原始表述
+         ④ 状态与不确定性  .conf（记录已计入 / 信息不足）+ 未解锁项的解锁条件与进度（将来时）
+       --------------------------------------------------------------------------
+       配色铁律：**已完成不给颜色奖励**。已完成的 3 条一律 --c-done 灰系 + 事实说明，
+       没有绿色、没有金色、没有徽章光效、没有撒花；红色在本页只出现在"需要你注意"的那一处。
+       ======================================================================== -->
+  <div class="pg">
+
+    <!-- ============================ 页头 ============================ -->
+    <header class="pgh">
+      <p class="crumb">
+        <a href="#/review">回头看</a>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+        <span>成长记录</span>
+      </p>
+      <div class="pgh__row">
+        <div class="pgh__t">
+          <h1 class="pgh__title">成长记录</h1>
+          <p class="pgh__lead">一共 6 条，3 条已经计入，3 条还没解锁。这里不发徽章 —— 每条记录底下都写着它是从哪一次行动、哪一句对话里长出来的，点得开、对得上。没解锁的那 3 条写清了差什么、还差几件、做完哪一件就成。</p>
+          <div class="pgh__meta">
+            <span class="tag tag--demo">演示数据</span>
+            <span class="tag">更新于 10 月 8 日</span>
+            <span class="conf conf--verified"><i aria-hidden="true"></i>3 条已计入</span>
+            <span class="conf conf--inferred"><i aria-hidden="true"></i>3 条未解锁</span>
+          </div>
+        </div>
+        <div class="pgh__acts">
+          <button class="btn btn--ghost" type="button" data-ach-export>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="m8 8 4-4 4 4"/><path d="M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3"/></svg>
+            导出全部 6 条（含未解锁）
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- ==================== ① 结构显形：这 6 条现在是什么状态 ==================== -->
+    <section class="stats stats--pair" aria-label="成长记录总览">
+      <div class="stat stat--key">
+        <p class="stat__n">3<small>条</small></p>
+        <p class="stat__t">记录已计入</p>
+        <p class="stat__d">来自成绩快照、示例对话与复盘记录</p>
+      </div>
+      <div class="stat">
+        <p class="stat__n">3<small>条</small></p>
+        <p class="stat__t">还没解锁</p>
+        <p class="stat__d">不是没做到，是证据本身还缺：产线经历、城市条件、家庭期待</p>
+      </div>
+      <div class="stat">
+        <p class="stat__n">5<small>件</small></p>
+        <p class="stat__t">解锁最少要补的事</p>
+        <p class="stat__d">写方法 15 分钟 + 城市三项 5 分钟 + 一句优先级 5 分钟</p>
+      </div>
+      <div class="stat">
+        <p class="stat__n">3<small>天</small></p>
+        <p class="stat__t">上次动手之后</p>
+        <p class="stat__d">10 月 7 日做过一件事。停 3 天是"陪你推进的人"开口的线</p>
+      </div>
+    </section>
+
+    <!-- ============ ② 组织权交给用户：同一批 6 条，四种看法 ============
+         切换视角时条目是被搬动的（引擎做 FLIP），不是换一份列表。全页只有这一处 .lens。 -->
+    <section class="sec" aria-labelledby="achLensT">
+      <div class="sec__h">
+        <div class="sec__ht">
+          <h2 class="sec__t" id="achLensT">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M7 12h10M10 17h4"/></svg>
+            同一批 6 条，按什么看
+          </h2>
+          <p class="sec__d">已计入的和没解锁的混在一起，一条没删。换一种组织方式，看到的是另一件事：按"怎么做成的"看，三条已计入的记录各自靠不同的路子；按达成方式看，"做到"和"没做到"的差别不在努力，在证据在谁手里。</p>
+        </div>
+        <div class="sec__acts">
+          <span class="sec__n">6 条（3 已计入）</span>
+        </div>
+      </div>
+      <div class="sec__body">
+        <div class="lens" data-lens="method"
+             data-order-source="课程成绩快照|示例对话里说的|系统复盘记录|你填的资料"
+             data-order-time="9 月成绩快照|10 月 3 日那次对话|10 月 5 日那次复盘|10 月 7 日那次复盘|填了就成立"
+             data-order-theme="专业基础|实践证据|方向取舍|城市条件"
+             data-order-method="靠已核对的记录|靠你自己讲出来|靠一次复盘留痕|靠你补一份资料|靠和家里谈一次"
+             data-hint-source="按谁给的说：教务成绩快照给了 1 条，示例对话给了 1 条，系统复盘记录给了 1 条，还有 3 条只能由你自己填 —— 那 3 条正是没解锁的。"
+             data-hint-time="按什么时候发生看：成绩快照在 9 月，10 月 3 日聊过一次，10 月 5 日和 7 日各复盘一次。剩下 3 条没有时间，因为触发它们的行为还没发生。"
+             data-hint-theme="按它回答哪个问题看：专业基础已经能答，实践证据和城市条件空着 —— 这两块正好是简历里最缺的那两行。"
+             data-hint-method="按它是怎么做成的看：1 条靠已核对的成绩记录，1 条靠你自己讲出来的倾向，1 条靠复盘留痕，3 条只能靠你新补一份材料或谈一次话 —— 已计入的没有一条是"坚持打卡"换来的。">
+
+          <div class="lensbar" role="tablist" aria-label="按什么看这 6 条记录">
+            <button class="lensbtn" type="button" role="tab" data-lens-set="source" aria-selected="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M5 8l7-5 7 5"/></svg>
+              按来源
+            </button>
+            <button class="lensbtn" type="button" role="tab" data-lens-set="time" aria-selected="false">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>
+              按时间
+            </button>
+            <button class="lensbtn" type="button" role="tab" data-lens-set="theme" aria-selected="false">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.6"/><rect x="13" y="4" width="7" height="7" rx="1.6"/><rect x="4" y="13" width="7" height="7" rx="1.6"/><rect x="13" y="13" width="7" height="7" rx="1.6"/></svg>
+              按主题
+            </button>
+            <button class="lensbtn" type="button" role="tab" data-lens-set="method" aria-selected="false">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 19V9M12 19V5M18 19v-7"/></svg>
+              按它是怎么做成的
+            </button>
+          </div>
+          <p class="lens__hint" data-lens-hint aria-live="polite"></p>
+
+          <div class="lens__items">
+
+            <!-- 记录 1 · 已完成 -->
+            <article class="lens__item" data-source="课程成绩快照" data-time="9 月成绩快照" data-theme="专业基础" data-method="靠已核对的记录" data-ach="true">
+              <div class="ach__hd">
+                <span class="ach__mk ach__mk--done" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 10 17.5 19 7"/></svg>
+                </span>
+                <div class="ach__t">
+                  <h3 class="ach__name">专业基础</h3>
+                  <p class="ach__d">材料科学基础 86、晶体结构 90，是演示成绩。两门都在 75 分以上，是这三个方向共同的前提。</p>
+                </div>
+                <p class="ach__st ach__st--done"><i aria-hidden="true"></i>记录已计入</p>
+              </div>
+              <p class="ach__why"><b>为什么算数：</b>它是从教务成绩快照里读出来的，不靠本人自述，所以不需要再确认就能用在材料里。</p>
+              <div class="ach__trace">
+                <span class="src src--doc"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5z"/><path d="M9 9h6M9 13h6"/></svg></span><span class="src__k">课程成绩演示快照</span><span class="src__w">9 月 18 日核验 · 虚构的课程与成绩</span></span>
+                <span class="src src--chat"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16v10H9l-5 4z"/></svg></span><span class="src__k">示例对话</span><span class="src__w">10 月 3 日 · 你提到这两门是唯一有底的</span></span>
+              </div>
+            </article>
+
+            <!-- 记录 2 · 已完成 -->
+            <article class="lens__item" data-source="示例对话里说的" data-time="10 月 3 日那次对话" data-theme="方向取舍" data-method="靠你自己讲出来" data-ach="true">
+              <div class="ach__hd">
+                <span class="ach__mk ach__mk--done" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 10 17.5 19 7"/></svg>
+                </span>
+                <div class="ach__t">
+                  <h3 class="ach__name">实践兴趣</h3>
+                  <p class="ach__d">示例对话倾向动手和成果产出。三次提到"想做能看见东西的活"，没提过坐办公室。</p>
+                </div>
+                <p class="ach__st ach__st--done"><i aria-hidden="true"></i>记录已计入</p>
+              </div>
+              <p class="ach__why"><b>为什么算数：</b>这不是猜的 —— 它是你自己在对话里说出来的倾向，记的是"你说过什么"，不是"你适合什么"。</p>
+              <div class="ach__trace">
+                <span class="src src--chat"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16v10H9l-5 4z"/></svg></span><span class="src__k">示例对话</span><span class="src__w">10 月 3 日 · 15 分钟那次</span></span>
+                <span class="conf conf--reported"><i aria-hidden="true"></i>依据充分</span>
+              </div>
+            </article>
+
+            <!-- 记录 3 · 已完成 -->
+            <article class="lens__item" data-source="系统复盘记录" data-time="10 月 5 日那次复盘" data-theme="方向取舍" data-method="靠一次复盘留痕" data-ach="true">
+              <div class="ach__hd">
+                <span class="ach__mk ach__mk--done" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 10 17.5 19 7"/></svg>
+                </span>
+                <div class="ach__t">
+                  <h3 class="ach__name">能够复盘</h3>
+                  <p class="ach__d">已有未完成任务的原因记录，能据此缩小下一步。10 月 6 日"投 3 家"没做成，记的原因是任务太大。</p>
+                </div>
+                <p class="ach__st ach__st--done"><i aria-hidden="true"></i>记录已计入</p>
+              </div>
+              <p class="ach__why"><b>为什么算数：</b>复盘的归因写在"任务太大 / 方法不对 / 方向要重估"里，没有一条归到人。所以下一轮它能把"投 3 家"拆成"先投 1 家"。</p>
+              <div class="ach__trace">
+                <span class="src src--doc"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5z"/><path d="M9 9h6M9 13h6"/></svg></span><span class="src__k">演示复盘记录</span><span class="src__w">10 月 5 日 · 改简历第一页，做了一部分</span></span>
+                <span class="src src--self"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c0-3.6 3.1-5.6 7-5.6s7 2 7 5.6"/></svg></span><span class="src__k">你填的</span><span class="src__w">10 月 7 日 · 每周可投入 6 小时</span></span>
+              </div>
+            </article>
+
+            <!-- 记录 4 · 未解锁 -->
+            <article class="lens__item ach--locked" data-source="你填的资料" data-time="填了就成立" data-theme="实践证据" data-method="靠你补一份资料" data-ach="false">
+              <div class="ach__hd">
+                <span class="ach__mk ach__mk--lock" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10.5" width="14" height="9" rx="2"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/></svg>
+                </span>
+                <div class="ach__t">
+                  <h3 class="ach__name">实践证据待补充</h3>
+                  <p class="ach__d">没有真实产线经历，不把课程实验写成企业实习。已有的只是课程实验记录，还缺一份能公开的项目资料。</p>
+                </div>
+                <p class="ach__st ach__st--lock"><i aria-hidden="true"></i>信息不足 · 未解锁</p>
+              </div>
+
+              <div class="ach__unlock">
+                <p class="ach__uh">差什么：<b>一份能公开的实验过程与结果</b>（只写你负责的那部分）</p>
+                <div class="ach__reqs">
+                  <div class="ach__req">
+                    <span class="ach__box" aria-hidden="true"></span>
+                    <span class="ach__rt"><b>写清方法</b> —— 用了什么、条件是什么（约 15 分钟）</span>
+                  </div>
+                  <div class="ach__req">
+                    <span class="ach__box" aria-hidden="true"></span>
+                    <span class="ach__rt"><b>写清你做了什么</b> —— 哪一步是你动手的（约 10 分钟）</span>
+                  </div>
+                  <div class="ach__req">
+                    <span class="ach__box" aria-hidden="true"></span>
+                    <span class="ach__rt"><b>写清可以公开的结果</b> —— 数字或现象，不用结论（约 5 分钟）</span>
+                  </div>
+                </div>
+                <div class="meter" data-ach-meter="prac" role="img" aria-label="解锁进度：3 件里已完成 0 件">
+                  <i></i><i></i><i></i>
+                </div>
+                <p class="ach__uprog" data-ach-progress="prac">已完成 0 / 3 件 · <b>做完第 1 件（写清方法）就可以先计入半条</b></p>
+              </div>
+
+              <div class="ach__trace">
+                <span class="src src--doc"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5z"/><path d="M9 9h6M9 13h6"/></svg></span><span class="src__k">已有课程实验记录</span><span class="src__w">来源行为：学籍页导入的实验课</span></span>
+                <span class="conf conf--stale"><i aria-hidden="true"></i>企业实践资料待补充</span>
+              </div>
+            </article>
+
+            <!-- 记录 5 · 未解锁 -->
+            <article class="lens__item ach--locked" data-source="你填的资料" data-time="填了就成立" data-theme="城市条件" data-method="靠你补一份资料" data-ach="false">
+              <div class="ach__hd">
+                <span class="ach__mk ach__mk--lock" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10.5" width="14" height="9" rx="2"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/></svg>
+                </span>
+                <div class="ach__t">
+                  <h3 class="ach__name">城市条件待确认</h3>
+                  <p class="ach__d">预算、通勤与家庭支持都需要本人补充。这三个字段现在都是空的 —— 不是没聊到，是需要你给数。</p>
+                </div>
+                <p class="ach__st ach__st--lock"><i aria-hidden="true"></i>信息不足 · 未解锁</p>
+              </div>
+
+              <div class="ach__unlock">
+                <p class="ach__uh">差什么：<b>三个只有你知道的数字与态度</b></p>
+                <div class="ach__reqs">
+                  <div class="ach__req">
+                    <span class="ach__box" aria-hidden="true"></span>
+                    <span class="ach__rt"><b>每月可承受的租房预算</b> —— 一个区间就够（约 2 分钟）</span>
+                  </div>
+                  <div class="ach__req">
+                    <span class="ach__box" aria-hidden="true"></span>
+                    <span class="ach__rt"><b>能接受的通勤时长</b> —— 单程多少分钟（约 1 分钟）</span>
+                  </div>
+                  <div class="ach__req">
+                    <span class="ach__box" aria-hidden="true"></span>
+                    <span class="ach__rt"><b>家里能不能接受异地</b> —— 你自己先给一个判断（约 2 分钟）</span>
+                  </div>
+                </div>
+                <div class="meter" data-ach-meter="city" role="img" aria-label="解锁进度：3 件里已完成 0 件">
+                  <i></i><i></i><i></i>
+                </div>
+                <p class="ach__uprog" data-ach-progress="city">已完成 0 / 3 件 · <b>三个都填完才计入</b>（少一个，三个方向里的城市取舍就没法比）</p>
+              </div>
+
+              <div class="ach__trace">
+                <span class="conf conf--inferred"><i aria-hidden="true"></i>预算与家庭支持均未填写</span>
+                <span class="src src--self"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c0-3.6 3.1-5.6 7-5.6s7 2 7 5.6"/></svg></span><span class="src__k">等你自己填</span><span class="src__w">画像第 14 / 15 条</span></span>
+              </div>
+            </article>
+
+            <!-- 记录 6 · 未解锁 -->
+            <article class="lens__item ach--locked" data-source="示例对话里说的" data-time="10 月 3 日那次对话" data-theme="方向取舍" data-method="靠和家里谈一次" data-ach="false">
+              <div class="ach__hd">
+                <span class="ach__mk ach__mk--lock" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10.5" width="14" height="9" rx="2"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/></svg>
+                </span>
+                <div class="ach__t">
+                  <h3 class="ach__name">家庭期待需讨论</h3>
+                  <p class="ach__d">稳定性与实践兴趣的优先级尚未确定。示例对话里两件事同时出现过，但你没说过哪个优先。</p>
+                </div>
+                <p class="ach__st ach__st--lock"><i aria-hidden="true"></i>还没定 · 未解锁</p>
+              </div>
+
+              <div class="ach__unlock">
+                <p class="ach__uh">差什么：<b>一句你自己排的优先级</b>（不是家里的，是你的）</p>
+                <div class="ach__reqs">
+                  <div class="ach__req">
+                    <span class="ach__box" aria-hidden="true"></span>
+                    <span class="ach__rt"><b>说一句"如果只能保一个"</b> —— 稳定还是实践（约 5 分钟）</span>
+                  </div>
+                  <div class="ach__req">
+                    <span class="ach__box" aria-hidden="true"></span>
+                    <span class="ach__rt"><b>把家里那句话记下来</b> —— 谁说的、原话是什么（约 3 分钟）</span>
+                  </div>
+                  <div class="ach__req">
+                    <span class="ach__box" aria-hidden="true"></span>
+                    <span class="ach__rt"><b>回看三条方向还成不成立</b> —— 成了才计入（约 2 分钟）</span>
+                  </div>
+                </div>
+                <div class="meter" data-ach-meter="fam" role="img" aria-label="解锁进度：3 件里已完成 0 件">
+                  <i></i><i></i><i></i>
+                </div>
+                <p class="ach__uprog" data-ach-progress="fam">已完成 0 / 3 件 · <b>做完第 1 件就会开一条"要和家里谈一次"的提醒</b></p>
+              </div>
+
+              <div class="ach__trace">
+                <span class="src src--chat"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16v10H9l-5 4z"/></svg></span><span class="src__k">示例对话</span><span class="src__w">实践兴趣与家庭稳定期待同时出现</span></span>
+                <span class="conf conf--inferred"><i aria-hidden="true"></i>只有对话，没有结论</span>
+              </div>
+            </article>
+
+          </div>
+        </div>
+      </div>
+      <div class="sec__foot">
+        <p>四条记录里 3 条已计入的，没有一条是"坚持打卡"换来的：<b>1 条靠已核对的成绩，1 条靠你讲出来的倾向，1 条靠复盘留痕</b>。剩下 3 条都要你新交一样东西 —— 一份材料、三个数字、一句优先级。</p>
+      </div>
+    </section>
+
+    <!-- ============ ④ 状态与不确定性：把没解锁的那条路具体到今天 ============ -->
+    <section class="sec" aria-labelledby="achNextT">
+      <div class="sec__h">
+        <div class="sec__ht">
+          <h2 class="sec__t" id="achNextT">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+            今天就能做的那一件（做完它会连锁）
+          </h2>
+          <p class="sec__d">勾掉下面这一件，上面"实践证据待补充"的解锁进度会立刻从 0 / 3 变成 1 / 3，剩下两件的时长会重新算给你看，页头那句"5 件解锁最少要补的事"也跟着变。这是这一页唯一会动的地方。</p>
+        </div>
+        <div class="sec__acts">
+          <span class="sec__n" data-ach-left>解锁还差 4 件</span>
+        </div>
+      </div>
+      <div class="sec__body">
+        <div class="pick">
+          <button class="pick__r" type="button" data-ach-pick="prac-1" data-ach-step="prac" data-done="false" aria-pressed="false">
+            <span class="pick__box" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 10 17.5 19 7"/></svg></span>
+            <span class="pick__t">
+              <span class="pick__title">给一次课程实验写"方法"那一段（15 分钟）</span>
+              <span class="pick__meta">
+                <span class="pill pill--time"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>15 分钟 · 今天</span>
+                <span class="src src--doc"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5z"/><path d="M9 9h6M9 13h6"/></svg></span><span class="src__k">解锁条件拆出来的</span><span class="src__w">实践证据待补充 · 第 1 / 3 件</span></span>
+              </span>
+            </span>
+            <span class="pick__tail"><span class="conf conf--reported"><i aria-hidden="true"></i>为什么是现在：它是三件里唯一不用等人配合的</span></span>
+          </button>
+        </div>
+        <p class="ach__live" data-ach-live aria-live="polite">还没有勾。勾掉之后进度会立刻更新，也能再取消。</p>
+        <div class="callout">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 8v5"/><path d="M12 16h.01"/></svg>
+          <p><b>一次只做一件事：</b>这条写着"什么 + 多久 + 为什么是现在"三样。上周那条"投 3 家"缺了第三样，所以没做成 —— 这次不重复那个错法。没做完也不会扣掉已计入的那 3 条。</p>
+        </div>
+      </div>
+      <div class="sec__foot">
+        <p class="stale">未知：企业实践资料取不到的原因已写明（需要实习单位出具，学校这边取不到）。这一格保持空着，不用推测填满。</p>
+      </div>
+    </section>
+
+    <!-- ============ ③ 粒度与溯源：一条记录的三层，从一句话到可核对原话 ============ -->
+    <section class="sec" aria-labelledby="achZoomT">
+      <div class="sec__h">
+        <div class="sec__ht">
+          <h2 class="sec__t" id="achZoomT">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M7 12h10M10 17h4"/></svg>
+            剥开一条记录：它到底记了什么
+          </h2>
+          <p class="sec__d">以「实践兴趣」为例。三层是同一件事的三种粒度，不是三段话：一句话的结论 → 三个字段的来路 → 可核对的原始表述。切到任何一层，信息都不会丢。</p>
+        </div>
+      </div>
+      <div class="sec__body">
+        <div class="zoom" data-zoom="sum">
+          <div class="zoombar" role="group" aria-label="这条记录看到多细">
+            <button class="zoombtn" type="button" data-zoom-set="sum">摘要</button>
+            <button class="zoombtn" type="button" data-zoom-set="mid">细节</button>
+            <button class="zoombtn" type="button" data-zoom-set="full">原文</button>
+          </div>
+          <div class="zoom__body">
+            <span class="z--sum">实践兴趣：示例对话倾向动手和成果产出。</span>
+            <span class="z--mid">来自 10 月 3 日那次 15 分钟的对话；触发它的是"想做能看见东西的活"这句话，一共出现过 3 次；它支撑的是"半导体工艺"方向的动手偏好，不支撑任何能力结论。</span>
+            <span class="z--full">原话（演示对话，非真实记录）："我想做那种做完能看见的东西的活。" / 同一次对话里另两句是"坐办公室我可能坐不住"和"实验课是我少数不困的课"。这条记录记的是倾向，不是能力 —— 它不能证明你会做，只能证明你说了。</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</div>

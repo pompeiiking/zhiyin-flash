@@ -1,0 +1,209 @@
+/* =============================================================================
+ * 复盘记录 · 视图私有样式
+ * -----------------------------------------------------------------------------
+ * 只放这个视图独有的东西；共享组件（.sec/.lens/.zoom/.src/.conf/.tbl/.kv/.btn）
+ * 一律用 10-data-page.css 与 c2.css 的定义，**不改它们**。
+ * 需要微调时提高特异度（[data-view="review"] …），不写全局覆盖 —— 全站只有一个
+ * 文档，全局覆盖会撞到别人的视图（BRIEF §1.6、§9）。
+ *
+ * 这一页的活 = 证据是怎么攒起来的：每条复盘连着它当时的行动，四条拧出一句结论，
+ * 结论能点出它压在哪几条上，干预是一条能追的链子。
+ * 字号只用 12/14/16/20/30，字重只用 400/500/600/700；红色只用于「需要你注意」，
+ * 完成不给颜色奖励（.rv-st--done 走 --c-done 灰系）。
+ * ========================================================================== */
+
+/* ---- 0 · 只在本视图内把可点元素抬到 44px（提高特异度，不动全局） ---------- */
+[data-view="review"] .pgh__acts .chipbtn,
+[data-view="review"] .lensbtn,
+[data-view="review"] .zoombtn,
+[data-view="review"] .btn{min-height:44px}
+[data-view="review"] .lensbtn,
+[data-view="review"] .zoombtn{display:inline-flex;align-items:center}
+[data-view="review"] .btn{display:inline-flex;align-items:center;justify-content:center}
+
+/* ---- 1 · 小节计数与说明 -------------------------------------------------- */
+.rv-num{
+  font-size:var(--fs-12);font-weight:var(--fw-semibold);color:var(--c-text-3);
+  font-variant-numeric:tabular-nums;
+}
+.rv-note{
+  margin-top:var(--sp-3);font-size:var(--fs-12);line-height:var(--lh-snug);color:var(--c-text-3);
+}
+.rv-zoom-note{margin-top:var(--sp-3)}
+
+/* ---- 2 · 视角重组：条目是记录，不是长段落 -------------------------------- */
+.rv-k{font-size:var(--fs-12);font-weight:var(--fw-semibold);color:var(--c-text-3);line-height:1.4}
+.rv-v{margin-top:2px;font-size:var(--fs-14);font-weight:var(--fw-medium);color:var(--c-text);line-height:var(--lh-snug)}
+.rv-m{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:9px}
+/* 够不够当依据：三档文字，最重的一档也不给红 —— 红只留给「需要你注意」 */
+.rv-w{
+  display:inline-flex;align-items:center;padding:3px 9px;border-radius:var(--r-pill);
+  background:var(--c-surface-3);border:1px solid var(--c-border);
+  font-size:var(--fs-12);font-weight:var(--fw-medium);color:var(--c-text-2);
+}
+.rv-w--on{background:var(--c-primary-weak);border-color:var(--c-primary-border);color:var(--c-primary)}
+.rv-w--off{border-style:dashed;background:transparent;color:var(--c-text-3)}
+
+/* ---- 3 · 四条复盘：原计划 ↔ 实际 ↔ 归因 --------------------------------- */
+.rv-items{display:flex;flex-direction:column;gap:var(--sp-3)}
+.rv-item{
+  display:flex;flex-direction:column;gap:var(--sp-3);
+  padding:var(--sp-4);border-radius:var(--r-lg);
+  background:var(--c-surface-solid);border:1px solid var(--c-border);
+  border-left:3px solid var(--c-border);
+  transition:opacity var(--dur-2) var(--ease-out),border-color var(--dur-2) var(--ease-out),
+             box-shadow var(--dur-3) var(--ease-out);
+}
+.rv-item__h{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
+.rv-when{
+  font-size:var(--fs-12);font-weight:var(--fw-semibold);color:var(--c-text-3);
+  font-variant-numeric:tabular-nums;white-space:nowrap;
+}
+.rv-item__t{
+  flex:1 1 220px;min-width:0;
+  font-size:var(--fs-14);font-weight:var(--fw-semibold);color:var(--c-text);line-height:var(--lh-snug);
+}
+.rv-item__b{display:flex;flex-direction:column;gap:6px}
+.rv-plan,.rv-real,.rv-why{
+  display:grid;grid-template-columns:56px minmax(0,1fr);gap:var(--sp-3);
+  font-size:var(--fs-14);line-height:var(--lh-normal);color:var(--c-text-2);
+}
+.rv-plan span,.rv-real span,.rv-why span{
+  font-size:var(--fs-12);font-weight:var(--fw-semibold);color:var(--c-text-3);padding-top:2px;
+}
+.rv-real{color:var(--c-text)}
+.rv-real b,.rv-why b{font-weight:var(--fw-bold)}
+/* 没做完的那一条：左沿给一条注意色 —— 这是全页唯一一处「需要你注意」 */
+.rv-item--flag{border-left-color:var(--c-attention)}
+.rv-st{
+  display:inline-flex;align-items:center;padding:3px 9px;border-radius:var(--r-pill);
+  border:1px solid var(--c-border);background:var(--c-surface-3);
+  font-size:var(--fs-12);font-weight:var(--fw-semibold);color:var(--c-text-3);
+}
+.rv-st--done{background:var(--c-done-weak);border-color:var(--c-done-border);color:var(--c-done)}
+.rv-st--partial{border-style:dashed;background:transparent}
+.rv-st--missed{background:var(--c-attention-weak);border-color:var(--c-attention-border);color:var(--c-attention)}
+.rv-st--lock{border-style:dashed;background:transparent;color:var(--c-text-3)}
+
+/* ---- 4 · 结论 ↔ 支撑它的那几条（本页的结构锚点） ------------------------- */
+.rv-conc{display:flex;flex-direction:column;gap:var(--sp-2)}
+.rv-conc__r{
+  display:flex;flex-direction:column;gap:7px;width:100%;text-align:left;
+  padding:var(--sp-4);border-radius:var(--r-lg);
+  border:1px solid var(--c-border);background:var(--c-surface-2);
+  transition:background var(--dur-2) var(--ease-out),border-color var(--dur-2) var(--ease-out),
+             box-shadow var(--dur-2) var(--ease-out),transform var(--dur-1) var(--ease-out);
+}
+.rv-conc__r:hover{background:var(--c-surface-solid);border-color:var(--c-border-strong)}
+.rv-conc__r:active{transform:scale(.995)}
+.rv-conc__r[aria-pressed="true"]{
+  background:var(--c-surface-solid);border-color:var(--c-primary-border);
+  box-shadow:var(--light-in),var(--e-1);
+}
+.rv-conc__r2{
+  display:inline-flex;align-items:center;gap:7px;
+  font-size:var(--fs-12);font-weight:var(--fw-semibold);color:var(--c-primary);
+}
+.rv-conc__r2 svg{width:14px;height:14px;flex:0 0 auto}
+.rv-conc__r[aria-pressed="true"] .rv-conc__r2{color:var(--c-text-3)}
+.rv-conc__q{
+  font-size:var(--fs-14);font-weight:var(--fw-medium);line-height:var(--lh-normal);color:var(--c-text);
+  max-width:66ch;
+}
+.rv-conc__echo{
+  margin-top:var(--sp-3);font-size:var(--fs-12);line-height:var(--lh-snug);color:var(--c-text-2);
+}
+.rv-conc__echo b{font-weight:var(--fw-semibold);color:var(--c-text)}
+/* 亮起来的复盘条目 / 退到后景 */
+[data-view="review"] .rv-item[data-dim="true"]{opacity:.36}
+[data-view="review"] .rv-item[data-hit="true"]{
+  border-color:var(--c-primary-border);
+  box-shadow:var(--light-in),var(--e-1),0 0 0 3px var(--c-focus-glow);
+}
+[data-view="review"] .lens__item[data-dim="true"]{opacity:.36}
+[data-view="review"] .lens__item[data-hit="true"]{
+  border-color:var(--c-primary-border);
+  box-shadow:var(--light-in),var(--e-1),0 0 0 3px var(--c-focus-glow);
+}
+[data-view="review"] .lens__item{transition:opacity var(--dur-2) var(--ease-out),
+  border-color var(--dur-2) var(--ease-out),box-shadow var(--dur-3) var(--ease-out)}
+
+/* 支撑结构：四条各自贡献了什么，一眼能数 */
+.rv-sup{margin-top:var(--sp-4);padding-top:var(--sp-4);border-top:1px solid var(--c-border)}
+.rv-sup__t{font-size:var(--fs-14);font-weight:var(--fw-semibold);color:var(--c-text)}
+.rv-sup__r{
+  display:grid;grid-template-columns:30px 92px minmax(0,1fr);gap:var(--sp-3);
+  align-items:start;padding:9px 0;border-bottom:1px solid var(--c-border);
+}
+.rv-sup__r:first-of-type{margin-top:9px;border-top:1px solid var(--c-border)}
+.rv-sup__r--key{background:var(--c-surface-2)}
+.rv-sup__n{
+  font-size:var(--fs-16);font-weight:var(--fw-bold);color:var(--c-text);
+  font-variant-numeric:tabular-nums;line-height:1.3;
+}
+.rv-sup__k{font-size:var(--fs-12);font-weight:var(--fw-semibold);color:var(--c-text-3);line-height:1.5}
+.rv-sup__v{font-size:var(--fs-12);line-height:var(--lh-snug);color:var(--c-text-2)}
+.rv-sup__d{
+  margin-top:9px;font-size:var(--fs-12);line-height:var(--lh-snug);color:var(--c-text-3);
+}
+.rv-att{margin:0;font-size:var(--fs-12);line-height:var(--lh-snug);color:var(--c-text-3)}
+.rv-att b{font-weight:var(--fw-semibold);color:var(--c-text-2)}
+
+/* ---- 5 · 干预：触发 → 开口 → 改了什么 → 后来怎样 ------------------------- */
+.rv-chain{display:flex;flex-direction:column;gap:var(--sp-3);position:relative;padding-left:20px}
+.rv-chain::before{content:"";position:absolute;left:5px;top:8px;bottom:8px;width:1px;background:var(--c-border)}
+.rv-chain__s{
+  position:relative;display:flex;flex-direction:column;gap:6px;
+  padding:var(--sp-3) var(--sp-4);border-radius:var(--r-lg);
+  background:var(--c-surface-2);border:1px solid var(--c-border);
+}
+.rv-chain__s::before{
+  content:"";position:absolute;left:-19px;top:15px;width:9px;height:9px;border-radius:50%;
+  background:var(--c-surface-solid);border:1.5px solid var(--c-border-strong);
+}
+.rv-chain__s--now{background:var(--c-surface-solid);border-color:var(--c-primary-border)}
+.rv-chain__s--now::before{border-color:var(--c-primary);background:var(--c-primary)}
+.rv-chain__k{
+  font-size:var(--fs-12);font-weight:var(--fw-semibold);color:var(--c-text-3);letter-spacing:.02em;
+}
+.rv-chain__v{font-size:var(--fs-14);line-height:var(--lh-normal);color:var(--c-text-2)}
+.rv-chain__v b{font-weight:var(--fw-semibold);color:var(--c-text)}
+.rv-chain__q{
+  font-size:var(--fs-14);font-weight:var(--fw-medium);line-height:var(--lh-normal);color:var(--c-text);
+  padding-left:11px;border-left:2px solid var(--c-primary-border);max-width:52ch;
+}
+.rv-chain__acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:3px}
+.rv-chain__meta{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.rv-chain__hint{font-size:var(--fs-12);line-height:var(--lh-snug);color:var(--c-text-3)}
+/* 「改了什么」那一格要看出是改动，不是新增 */
+.rv-chain__s:last-child{background:transparent;border-style:dashed}
+
+/* ---- 6 · 成长记录：可展示 / 未解锁 --------------------------------------- */
+.rv-tbl th:first-child,.rv-tbl td:first-child{width:150px}
+.rv-tbl td:first-child{font-size:var(--fs-14)}
+.rv-tbl{font-size:var(--fs-14)}
+.rv-tbl .rv-st{margin-top:1px}
+
+/* ---- 7 · 侧栏 ----------------------------------------------------------- */
+.rv-side .sec__d{font-size:var(--fs-12)}
+.rv-side__q{
+  font-size:var(--fs-14);font-weight:var(--fw-medium);line-height:var(--lh-normal);color:var(--c-text);
+}
+.rv-side__d{margin-top:9px;font-size:var(--fs-12);line-height:var(--lh-snug);color:var(--c-text-3)}
+.rv-kv .kv__v{font-size:var(--fs-12)}
+.rv-try{display:flex;flex-direction:column;gap:7px}
+.rv-try__r{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.rv-try__t{font-size:var(--fs-14);font-weight:var(--fw-semibold);color:var(--c-text)}
+.rv-try__d{font-size:var(--fs-12);line-height:var(--lh-snug);color:var(--c-text-3)}
+.rv-act{display:flex;flex-direction:column;gap:7px;margin-top:var(--sp-3)}
+.rv-act .btn{justify-content:flex-start;width:100%}
+
+/* ---- 8 · 窄屏 ----------------------------------------------------------- */
+@media (max-width:767px){
+  .rv-plan,.rv-real,.rv-why{grid-template-columns:minmax(0,1fr);gap:2px}
+  .rv-sup__r{grid-template-columns:26px minmax(0,1fr);gap:6px var(--sp-3)}
+  .rv-sup__v{grid-column:2 / -1}
+  .rv-tbl th:first-child,.rv-tbl td:first-child{width:auto}
+  .rv-item{padding:var(--sp-3)}
+  [data-view="review"] .lens__item{padding:var(--sp-3)}
+}

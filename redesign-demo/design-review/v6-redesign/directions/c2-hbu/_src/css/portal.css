@@ -1,0 +1,114 @@
+/* =============================================================================
+ * 门户（portal）· 视图私有样式
+ * -----------------------------------------------------------------------------
+ * 硬约束：「门户页最好不变，且从门户进入必须直达对话页」。
+ * 所以这一层只解决三件事：
+ *   1. 主入口按钮在窄列里足够显眼（.po-open）—— 全页唯一一处主色强调；
+ *   2. 五步进度是一条能横着读的线（.po-steps），窄屏两列，不塌成五个长条；
+ *   3. 「你说的 / 系统核对的」两列品质不同（.po-facts），不是两条一样的清单。
+ * 全部选择器带 .po- 前缀或限定在 [data-view="portal"] 内 —— 全站只有一个文档。
+ * ========================================================================== */
+
+/* ---- 主入口：一句话 + 一个显眼的门 ---------------------------------------- */
+.po-open{display:flex;flex-direction:column;align-items:flex-start;gap:var(--sp-3)}
+.po-open__b{
+  font-size:var(--fs-16);line-height:var(--lh-normal);color:var(--c-text);
+  max-width:52ch;
+}
+.po-open__go{min-height:52px;padding-left:26px;padding-right:26px}
+.po-open__n{font-size:var(--fs-12);line-height:var(--lh-snug);color:var(--c-text-3)}
+[data-view="portal"] .po-open__go svg{width:18px;height:18px}
+
+/* ---- 五步进度：横着读的一段路 -------------------------------------------- */
+.po-meter{margin-top:0}
+.po-steps{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(196px,1fr));
+  gap:var(--sp-3);margin-top:var(--sp-4);
+  list-style:none;counter-reset:none;
+}
+.po-steps__i{
+  display:flex;flex-direction:column;gap:3px;
+  padding:var(--sp-3) var(--sp-4);
+  border-radius:var(--r-lg);
+  border:1px solid var(--c-border);
+  background:var(--c-surface-2);
+}
+/* 现在这一步：主色边 + 主色小标题。除此之外五步同形（完成不给颜色奖励）。 */
+.po-steps__i--now{
+  background:var(--c-surface-solid);
+  border-color:var(--c-primary-border);
+  box-shadow:var(--light-in),var(--e-1);
+}
+.po-steps__i--now .po-steps__n{color:var(--c-primary)}
+.po-steps__n{
+  font-size:var(--fs-12);font-weight:var(--fw-bold);letter-spacing:.04em;color:var(--c-text-3);
+}
+.po-steps__i--done .po-steps__n{color:var(--c-text-2)}
+.po-steps__t{
+  font-family:var(--font-title);font-size:var(--fs-16);font-weight:var(--fw-bold);
+  line-height:var(--lh-snug);color:var(--c-text);
+}
+.po-steps__d{font-size:var(--fs-12);line-height:var(--lh-snug);color:var(--c-text-3)}
+.po-steps__go{
+  margin-top:auto;padding-top:9px;
+  display:inline-flex;align-items:center;min-height:44px;
+  font-size:var(--fs-12);font-weight:var(--fw-semibold);color:var(--c-text-2);
+}
+.po-steps__go:hover{color:var(--c-primary)}
+.po-steps__i--now .po-steps__go{color:var(--c-primary)}
+
+/* ---- 你说的 / 系统核对的：两列，品质不同 --------------------------------- */
+.po-facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(268px,1fr));gap:var(--sp-4)}
+.po-facts__col{
+  display:flex;flex-direction:column;gap:var(--sp-3);
+  padding:var(--sp-4);
+  border-radius:var(--r-lg);
+  border:1px solid var(--c-border);
+  background:var(--c-surface-2);
+}
+.po-facts__col:last-child{background:var(--c-surface-solid);box-shadow:var(--light-in),var(--e-1)}
+.po-facts__h{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.po-list{display:flex;flex-direction:column;list-style:none}
+.po-list__r{
+  display:grid;grid-template-columns:76px minmax(0,1fr);gap:var(--sp-3);
+  padding:9px 0;border-bottom:1px solid var(--c-border);
+}
+.po-list__r:last-child{border-bottom:0;padding-bottom:0}
+.po-list__k{font-size:var(--fs-12);font-weight:var(--fw-semibold);color:var(--c-text-3);line-height:var(--lh-snug);padding-top:1px}
+.po-list__v{min-width:0;font-size:var(--fs-14);font-weight:var(--fw-medium);color:var(--c-text);line-height:var(--lh-snug)}
+.po-list__v small{display:block;margin-top:3px;font-size:var(--fs-12);font-weight:var(--fw-regular);color:var(--c-text-3)}
+
+/* ---- 一条说明 + 一条去别处的路 ------------------------------------------- */
+.po-tip{font-size:var(--fs-12);line-height:var(--lh-snug);color:var(--c-text-3)}
+.po-tip__go{
+  display:inline-flex;align-items:center;min-height:44px;margin-top:var(--sp-2);
+  font-size:var(--fs-14);font-weight:var(--fw-semibold);color:var(--c-primary);
+}
+
+/* ---- 折叠里的次要入口（门户第一屏只留一个主按钮） ------------------------ */
+.po-skip{display:grid;grid-template-columns:repeat(auto-fit,minmax(212px,1fr));gap:var(--sp-2)}
+.po-skip__a{
+  display:flex;flex-direction:column;gap:2px;
+  min-height:44px;padding:11px var(--sp-3);
+  border-radius:var(--r-md);
+  border:1px solid var(--c-border);
+  background:var(--c-surface-2);
+  font-size:var(--fs-14);font-weight:var(--fw-semibold);color:var(--c-text-2);
+  transition:background var(--dur-2) var(--ease-out),border-color var(--dur-2) var(--ease-out),color var(--dur-2) var(--ease-out);
+}
+.po-skip__a:hover{background:var(--c-surface-solid);border-color:var(--c-border-strong);color:var(--c-text)}
+.po-skip__a small{font-size:var(--fs-12);font-weight:var(--fw-regular);color:var(--c-text-3);line-height:var(--lh-snug)}
+
+/* ---- 视角条目里的三行：字段名 / 值 / 来源 --------------------------------- */
+.po-k{font-size:var(--fs-12);font-weight:var(--fw-semibold);letter-spacing:.02em;color:var(--c-text-3);line-height:1.4}
+.po-v{margin-top:2px;font-size:var(--fs-14);font-weight:var(--fw-medium);color:var(--c-text);line-height:var(--lh-snug)}
+.po-m{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:9px}
+
+/* ---- 窄屏 ----------------------------------------------------------------- */
+@media (max-width:767px){
+  .po-open__b{font-size:var(--fs-14)}
+  .po-open__go{width:100%;justify-content:center}
+  .po-steps{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+  .po-steps__i{padding:var(--sp-3)}
+  .po-list__r{grid-template-columns:minmax(0,1fr);gap:2px}
+}

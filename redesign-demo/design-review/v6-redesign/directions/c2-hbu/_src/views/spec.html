@@ -1,0 +1,592 @@
+<div class="main__scroll">
+  <!-- ==========================================================================
+       设计规范（设计规范 · 本视图标记在 _src/views/spec.html，样式在 _src/css/spec.css）
+       --------------------------------------------------------------------------
+       这一页是这份样张**自己的说明书**，用途只有一个：
+       别人拿着它，能核对另一页做得对不对。
+       所以每一格都给了**出处**（_tools/c2.css 的行号）和**可核对的实测值**（对比度 / 盒高），
+       而不是复述形容词。令牌数值一律从 c2.css 里读出来，没有一个是凭记忆写的。
+       --------------------------------------------------------------------------
+       本页自己的配额：一个分区最多一处主色；红色只出现在 .tag--demo 与
+       「需要你注意」的那一处；字号只用 5 档、字重只用 4 档。
+       ======================================================================== -->
+  <div class="pg">
+
+    <!-- ============================ 页头 ============================ -->
+    <header class="pgh">
+      <p class="crumb">
+        <a href="#/gallery">系统与规范</a>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+        <span>设计规范</span>
+      </p>
+      <div class="pgh__row">
+        <div class="pgh__t">
+          <h1 class="pgh__title">设计规范</h1>
+          <p class="pgh__lead">这份样张的说明书。用法：把另一页打开，按下面这张自检表逐条对 —— 令牌用没用错、字号有没有冒出第 6 档、一屏有没有两个主色、红色是不是只出现在"需要你注意"的地方。每个数值后面都跟着它在 <code class="sp-code">_tools/c2.css</code> 里的行号，可以对回去。</p>
+          <div class="pgh__meta">
+            <span class="tag tag--demo">演示数据</span>
+            <span class="tag">只描述本样张自身的样式层</span>
+            <span class="conf conf--verified"><i aria-hidden="true"></i>令牌取值核对过源文件行号</span>
+          </div>
+        </div>
+        <div class="pgh__acts">
+          <button class="btn btn--ghost" type="button" data-sp-copy>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>
+            复制令牌表（纯文本）
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- ==================== ① 先给一张能直接用的自检表 ==================== -->
+    <section class="sec" aria-labelledby="spChkT">
+      <div class="sec__h">
+        <div class="sec__ht">
+          <h2 class="sec__t" id="spChkT">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h11l3 3v13H5z"/><path d="M9 9h6M9 13h6"/></svg>
+            拿这一页去核对另一页：7 条
+          </h2>
+          <p class="sec__d">左边是能一句话判定的问题，右边是判定依据在哪。前 6 条都能用工具量出数字，第 7 条要靠眼睛 —— 它是这份样张最根本的一条。</p>
+        </div>
+        <div class="sec__acts"><span class="sec__n">7 条 · 6 条可量</span></div>
+      </div>
+      <div class="sec__body">
+        <div class="tbl-wrap">
+          <table class="tbl">
+            <thead>
+              <tr><th data-key scope="col">核对什么</th><th scope="col">怎么判</th><th scope="col">依据在哪</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td data-key>字号档位</td>
+                <td>页面里所有 font-size 是否只落在 12 / 14 / 16 / 20 / 30 上</td>
+                <td><span class="sp-ref">c2.css L97</span></td>
+              </tr>
+              <tr>
+                <td data-key>字重档位</td>
+                <td>是否只用了 400 / 500 / 600 / 700</td>
+                <td><span class="sp-ref">c2.css L99</span></td>
+              </tr>
+              <tr>
+                <td data-key>主色配额</td>
+                <td>同一分区里实心主色是否只有一处；红色是否只用于"需要你注意"</td>
+                <td><span class="sp-ref">本页 §5 禁忌清单第 5 / 6 条</span></td>
+              </tr>
+              <tr>
+                <td data-key>可点面积</td>
+                <td><span class="sp-code">probe.mjs --tap</span> 报的 &lt;44px 控件数是否为 0</td>
+                <td><span class="sp-ref">本页 §5 第 7 条 · 实测数字见下</span></td>
+              </tr>
+              <tr>
+                <td data-key>横向溢出</td>
+                <td>1280 与 390 两档 scrollWidth 是否 &gt; clientWidth</td>
+                <td><span class="sp-ref">probe.mjs --wrap</span></td>
+              </tr>
+              <tr>
+                <td data-key>对比度</td>
+                <td>正文 ≥4.5:1、图形与控件边 ≥3:1；有没有把 <span class="sp-code">--c-text-4</span> 当文字色</td>
+                <td><span class="sp-ref">本页 §4 对比度表 · c2.css L148–151</span></td>
+              </tr>
+              <tr>
+                <td data-key>截屏测试</td>
+                <td>截一张静止图，信息一点没丢 → 这页是死的</td>
+                <td><span class="sp-ref">DESIGN-LANGUAGE §1</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="sp-note">第 7 条是判定口径的根：淡入、位移、数字滚动<b>都不影响截屏结果</b>，所以它们全都不能把一页从"死的"救成"活的"。这一条直接否掉了"加过渡动画"这条路。</p>
+      </div>
+    </section>
+
+    <!-- ==================== ② 令牌表：颜色 ==================== -->
+    <section class="sec" aria-labelledby="spColT">
+      <div class="sec__h">
+        <div class="sec__ht">
+          <h2 class="sec__t" id="spColT">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.6"/><rect x="13" y="4" width="7" height="7" rx="1.6"/><rect x="4" y="13" width="7" height="7" rx="1.6"/><rect x="13" y="13" width="7" height="7" rx="1.6"/></svg>
+            令牌 · 颜色
+          </h2>
+          <p class="sec__d">左边是色块本身（不是截图，是同一支令牌渲染出来的），右边是它的原始值与出处行号。语义层只允许指向下面这些原始值，不允许页面里现写一个十六进制。</p>
+        </div>
+        <div class="sec__acts"><span class="sec__n">原始值 8 档 · 语义 11 个</span></div>
+      </div>
+      <div class="sec__body">
+
+        <div class="sub">
+          <p class="sub__t">品牌与中性原始值</p>
+          <p class="sub__d">校徽蓝与官网红各有完整梯度；灰色阶承担全部结构色。页面底 <span class="sp-code">--c-bg</span> = <span class="sp-code">--gray-50</span>，工作面 = <span class="sp-code">--c-surface-solid</span> = <span class="sp-code">--gray-0</span>。</p>
+          <div class="sp-swatches">
+            <div class="sp-sw">
+              <span class="sp-sw__c" data-sp-c="blue500" aria-hidden="true"></span>
+              <p class="sp-sw__k">校徽蓝 <span class="sp-ref">L61</span></p>
+              <p class="sp-sw__v">--blue-500 · #0058a7</p>
+            </div>
+            <div class="sp-sw">
+              <span class="sp-sw__c" data-sp-c="blue50" aria-hidden="true"></span>
+              <p class="sp-sw__k">主色浅底 <span class="sp-ref">L55</span></p>
+              <p class="sp-sw__v">--blue-50 · #eef5fc</p>
+            </div>
+            <div class="sp-sw">
+              <span class="sp-sw__c" data-sp-c="blue200" aria-hidden="true"></span>
+              <p class="sp-sw__k">主色描边 <span class="sp-ref">L57</span></p>
+              <p class="sp-sw__v">--blue-200 · #b8d5f2</p>
+            </div>
+            <div class="sp-sw">
+              <span class="sp-sw__c" data-sp-c="blue450" aria-hidden="true"></span>
+              <p class="sp-sw__k">图形中档 <span class="sp-ref">L60</span></p>
+              <p class="sp-sw__v">--blue-450 · #5b98d2</p>
+            </div>
+            <div class="sp-sw">
+              <span class="sp-sw__c" data-sp-c="red500" aria-hidden="true"></span>
+              <p class="sp-sw__k">官网红 <span class="sp-ref">L73</span></p>
+              <p class="sp-sw__v">--red-500 · #96000e</p>
+            </div>
+            <div class="sp-sw">
+              <span class="sp-sw__c" data-sp-c="red50" aria-hidden="true"></span>
+              <p class="sp-sw__k">注意浅底 <span class="sp-ref">L68</span></p>
+              <p class="sp-sw__v">--red-50 · #fdf7f4</p>
+            </div>
+            <div class="sp-sw">
+              <span class="sp-sw__c" data-sp-c="gray900" aria-hidden="true"></span>
+              <p class="sp-sw__k">正文 <span class="sp-ref">L81</span></p>
+              <p class="sp-sw__v">--gray-900 · #1e232c</p>
+            </div>
+            <div class="sp-sw">
+              <span class="sp-sw__c sp-sw__c--line" data-sp-c="gray50" aria-hidden="true"></span>
+              <p class="sp-sw__k">页面底 <span class="sp-ref">L79</span></p>
+              <p class="sp-sw__v">--gray-50 · #f5f6f7</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="hr"></div>
+
+        <div class="sub">
+          <p class="sub__t">语义层指向谁（浅色主题）</p>
+          <p class="sub__d">语义令牌与原始值的对应关系，一个字不差地抄自源文件。切换 accent（蓝 ↔ 红）时，只换 <span class="sp-code">--c-primary</span> 这一支，<span class="sp-code">--c-attention</span> 在两套 accent 下都不变。</p>
+          <div class="tbl-wrap">
+            <table class="tbl">
+              <thead>
+                <tr><th data-key scope="col">语义令牌</th><th scope="col">指向</th><th scope="col">用在哪</th><th scope="col" data-num>源行</th></tr>
+              </thead>
+              <tbody>
+                <tr><td data-key>--c-primary</td><td>var(--blue-500)</td><td>唯一的实心主色、选中态、图表主序列</td><td data-num>L154</td></tr>
+                <tr><td data-key>--c-primary-weak</td><td>var(--blue-50)</td><td>主色的浅底（.stat--key、选中 chip）</td><td data-num>L157</td></tr>
+                <tr><td data-key>--c-primary-border</td><td>var(--blue-200)</td><td>主色块的 1px 描边</td><td data-num>L159</td></tr>
+                <tr><td data-key>--c-attention</td><td>var(--red-500)</td><td>截止 / 风险 / 门槛差距 —— 只给"需要你注意"</td><td data-num>L163</td></tr>
+                <tr><td data-key>--c-done</td><td>var(--gray-500)</td><td>已完成 · 中性。完成不给颜色奖励</td><td data-num>L168</td></tr>
+                <tr><td data-key>--c-text</td><td>var(--gray-900)</td><td>正文与结论</td><td data-num>L148</td></tr>
+                <tr><td data-key>--c-text-2</td><td>var(--gray-600)</td><td>次级正文、说明句</td><td data-num>L149</td></tr>
+                <tr><td data-key>--c-text-3</td><td>var(--gray-500)</td><td>最小正文档（白底 5.69:1）</td><td data-num>L150</td></tr>
+                <tr><td data-key>--c-text-4</td><td>var(--gray-400)</td><td><b>只给图标与分隔符，不承载文字</b></td><td data-num>L151</td></tr>
+                <tr><td data-key>--c-border</td><td>var(--gray-200)</td><td>静态面的发丝线</td><td data-num>L144</td></tr>
+                <tr><td data-key>--c-border-strong</td><td>var(--gray-300)</td><td>hover 边、凹槽描边</td><td data-num>L145</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+      <div class="sec__foot">
+        <p>判定规则：<b>语义层不许被绕过</b>。页面里出现 <span class="sp-code">#0058a7</span> 这类字面量就说明有人跳过了令牌 —— 换 accent 时那一处不会跟着换，它会在红主题下留在蓝色。</p>
+      </div>
+    </section>
+
+    <!-- ==================== ② 令牌表：字号 / 字重 / 行高 ==================== -->
+    <section class="sec" aria-labelledby="spTypeT">
+      <div class="sec__h">
+        <div class="sec__ht">
+          <h2 class="sec__t" id="spTypeT">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M7 12h10M10 17h4"/></svg>
+            令牌 · 字号 / 字重 / 行高
+          </h2>
+          <p class="sec__d">字号全站只有 5 档，字重只有 4 档。左边是按真实令牌渲染出来的样张 —— 它和正文用的是同一个 <span class="sp-code">font-size</span>，所以"看起来差多少"就是实际差多少。</p>
+        </div>
+        <div class="sec__acts"><span class="sec__n">5 档字号 · 4 档字重</span></div>
+      </div>
+      <div class="sec__body">
+
+        <div class="sub">
+          <p class="sub__t">字号样张（12 / 14 / 16 / 20 / 30）</p>
+          <div class="sp-scales">
+            <div class="sp-scale">
+              <span class="sp-scale__demo" data-sp-fs="12">陈亦然 · 材料科学与工程</span>
+              <span class="sp-scale__v">--fs-12 · 12px <span class="sp-ref">L97</span></span>
+              <span class="sp-scale__u">页内小字：标签、来源、行高说明</span>
+            </div>
+            <div class="sp-scale">
+              <span class="sp-scale__demo" data-sp-fs="14">陈亦然 · 材料科学与工程</span>
+              <span class="sp-scale__v">--fs-14 · 14px <span class="sp-ref">L97</span></span>
+              <span class="sp-scale__u">正文默认档：说明句、表体、按钮文字</span>
+            </div>
+            <div class="sp-scale">
+              <span class="sp-scale__demo" data-sp-fs="16">陈亦然 · 材料科学与工程</span>
+              <span class="sp-scale__v">--fs-16 · 16px <span class="sp-ref">L97</span></span>
+              <span class="sp-scale__u">小节标题、卡片标题</span>
+            </div>
+            <div class="sp-scale">
+              <span class="sp-scale__demo" data-sp-fs="20">陈亦然 · 材料科学与工程</span>
+              <span class="sp-scale__v">--fs-20 · 20px <span class="sp-ref">L97</span></span>
+              <span class="sp-scale__u">读数瓦片的大号数字、分区内的抓手</span>
+            </div>
+            <div class="sp-scale">
+              <span class="sp-scale__demo" data-sp-fs="30">陈亦然 · 材料</span>
+              <span class="sp-scale__v">--fs-30 · 30px <span class="sp-ref">L97</span></span>
+              <span class="sp-scale__u">页标题（.pgh__title，全页只出现一次）</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="hr"></div>
+
+        <div class="sub">
+          <p class="sub__t">字重样张（400 / 500 / 600 / 700）</p>
+          <p class="sub__d">中文在低分辨率屏上 400 与 500 的差别很弱，所以对比要拉到 600 / 700 才成立 —— 这也是这一版把 700 补进来的原因。</p>
+          <div class="sp-weights">
+            <div class="sp-weight"><span class="sp-weight__demo" data-sp-fw="400">专业基础</span><span class="sp-weight__v">--fw-regular · 400 <span class="sp-ref">L99</span></span></div>
+            <div class="sp-weight"><span class="sp-weight__demo" data-sp-fw="500">专业基础</span><span class="sp-weight__v">--fw-medium · 500 <span class="sp-ref">L99</span></span></div>
+            <div class="sp-weight"><span class="sp-weight__demo" data-sp-fw="600">专业基础</span><span class="sp-weight__v">--fw-semibold · 600 <span class="sp-ref">L99</span></span></div>
+            <div class="sp-weight"><span class="sp-weight__demo" data-sp-fw="700">专业基础</span><span class="sp-weight__v">--fw-bold · 700 <span class="sp-ref">L99</span></span></div>
+          </div>
+        </div>
+
+        <div class="hr"></div>
+
+        <div class="sub">
+          <p class="sub__t">行高（三档，对应三种密度）</p>
+          <div class="kv">
+            <div class="kv__r"><p class="kv__k">--lh-tight</p><p class="kv__v">1.32 —— 大号数字与页标题 <span class="sp-ref">c2.css L98</span></p></div>
+            <div class="kv__r"><p class="kv__k">--lh-snug</p><p class="kv__v">1.45 —— 标题、元信息、并列字段 <span class="sp-ref">c2.css L98</span></p></div>
+            <div class="kv__r"><p class="kv__k">--lh-normal</p><p class="kv__v">1.72 —— 正文段落（默认） <span class="sp-ref">c2.css L98</span></p></div>
+          </div>
+        </div>
+
+      </div>
+      <div class="sec__foot">
+        <p>判定规则：<b>不许出现第 6 档</b>。10px 在本项目被明确禁止；需要更小的字时，正确做法是删字，不是缩字号。</p>
+      </div>
+    </section>
+
+    <!-- ==================== ② 令牌表：间距 / 圆角 / 阴影 / 动效 ==================== -->
+    <section class="sec" aria-labelledby="spSpT">
+      <div class="sec__h">
+        <div class="sec__ht">
+          <h2 class="sec__t" id="spSpT">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 19V9M12 19V5M18 19v-7"/></svg>
+            令牌 · 间距 / 圆角 / 阴影 / 动效
+          </h2>
+          <p class="sec__d">间距是 4px 基数的整条阶梯，节奏<b>强制递减</b>：轮间 24 &gt; 块间 16 &gt; 卡间 12 ≥ 卡内段间 12 &gt; 行间 8。下面每一条尺子都是真的占位，量出来的宽度就是令牌的值。</p>
+        </div>
+        <div class="sec__acts"><span class="sec__n">间距 10 档 · 圆角 5 + 药丸</span></div>
+      </div>
+      <div class="sec__body">
+
+        <div class="sub">
+          <p class="sub__t">间距标尺（--sp-1 … --sp-10）</p>
+          <div class="sp-ruler" data-sp-ruler>
+            <div class="sp-rr" data-sp-sp="1"><span class="sp-rr__bar"></span><span class="sp-rr__v">--sp-1 · 4px <span class="sp-ref">L104</span></span></div>
+            <div class="sp-rr" data-sp-sp="2"><span class="sp-rr__bar"></span><span class="sp-rr__v">--sp-2 · 8px <span class="sp-ref">L104</span></span></div>
+            <div class="sp-rr" data-sp-sp="3"><span class="sp-rr__bar"></span><span class="sp-rr__v">--sp-3 · 12px <span class="sp-ref">L104</span></span></div>
+            <div class="sp-rr" data-sp-sp="4"><span class="sp-rr__bar"></span><span class="sp-rr__v">--sp-4 · 16px <span class="sp-ref">L104</span></span></div>
+            <div class="sp-rr" data-sp-sp="5"><span class="sp-rr__bar"></span><span class="sp-rr__v">--sp-5 · 20px <span class="sp-ref">L104</span></span></div>
+            <div class="sp-rr" data-sp-sp="6"><span class="sp-rr__bar"></span><span class="sp-rr__v">--sp-6 · 24px <span class="sp-ref">L105</span></span></div>
+            <div class="sp-rr" data-sp-sp="7"><span class="sp-rr__bar"></span><span class="sp-rr__v">--sp-7 · 32px <span class="sp-ref">L105</span></span></div>
+            <div class="sp-rr" data-sp-sp="8"><span class="sp-rr__bar"></span><span class="sp-rr__v">--sp-8 · 40px <span class="sp-ref">L105</span></span></div>
+            <div class="sp-rr" data-sp-sp="9"><span class="sp-rr__bar"></span><span class="sp-rr__v">--sp-9 · 56px <span class="sp-ref">L105</span></span></div>
+            <div class="sp-rr" data-sp-sp="10"><span class="sp-rr__bar"></span><span class="sp-rr__v">--sp-10 · 72px <span class="sp-ref">L105</span></span></div>
+          </div>
+        </div>
+
+        <div class="hr"></div>
+
+        <div class="sub">
+          <p class="sub__t">圆角与描边</p>
+          <div class="sp-rounds">
+            <div class="sp-rd"><span class="sp-rd__box" data-sp-r="sm" aria-hidden="true"></span><span class="sp-rd__v">--r-sm · 6px</span></div>
+            <div class="sp-rd"><span class="sp-rd__box" data-sp-r="md" aria-hidden="true"></span><span class="sp-rd__v">--r-md · 8px</span></div>
+            <div class="sp-rd"><span class="sp-rd__box" data-sp-r="lg" aria-hidden="true"></span><span class="sp-rd__v">--r-lg · 12px</span></div>
+            <div class="sp-rd"><span class="sp-rd__box" data-sp-r="xl" aria-hidden="true"></span><span class="sp-rd__v">--r-xl · 16px</span></div>
+            <div class="sp-rd"><span class="sp-rd__box" data-sp-r="2xl" aria-hidden="true"></span><span class="sp-rd__v">--r-2xl · 20px</span></div>
+            <div class="sp-rd"><span class="sp-rd__box sp-rd__box--pill" data-sp-r="pill" aria-hidden="true"></span><span class="sp-rd__v">--r-pill · 999px</span></div>
+          </div>
+          <p class="sp-note">描边一律 1px（源注释写在 <span class="sp-ref">c2.css L107</span>）。圆角与描边都在同一个文件的行区间里，没有第五级圆角。</p>
+        </div>
+
+        <div class="hr"></div>
+
+        <div class="sub">
+          <p class="sub__t">阴影：一个照明模型，光从左上 45° 来</p>
+          <p class="sub__d">所有抬升面 = 顶部 1px 内高光（<span class="sp-code">--light-in</span>）+ 底部大模糊 / 大负扩散的冷调投影。投影用 <span class="sp-code">--gray-900</span> 的冷调，不用纯黑、也不用暖褐。</p>
+          <div class="sp-eles">
+            <div class="sp-el"><span class="sp-el__box" data-sp-e="1" aria-hidden="true"></span><span class="sp-el__v">--e-1 <span class="sp-ref">L228</span></span><span class="sp-el__u">静态面：分区、条目卡</span></div>
+            <div class="sp-el"><span class="sp-el__box" data-sp-e="2" aria-hidden="true"></span><span class="sp-el__v">--e-2 <span class="sp-ref">L229</span></span><span class="sp-el__u">悬浮面：下拉、浮层</span></div>
+            <div class="sp-el"><span class="sp-el__box" data-sp-e="3" aria-hidden="true"></span><span class="sp-el__v">--e-3 <span class="sp-ref">L230</span></span><span class="sp-el__u">抬升配额只有 2 个：行动卡 + 输入区</span></div>
+          </div>
+          <div class="kv">
+            <div class="kv__r"><p class="kv__k">--light-top</p><p class="kv__v">rgba(255,255,255,.9) —— 受光面的顶边内高光 <span class="sp-ref">c2.css L225</span></p></div>
+            <div class="kv__r"><p class="kv__k">--light-in</p><p class="kv__v">inset 0 1px 0 var(--light-top) —— 每张面的"厚度"就靠它 <span class="sp-ref">c2.css L226</span></p></div>
+          </div>
+        </div>
+
+        <div class="hr"></div>
+
+        <div class="sub">
+          <p class="sub__t">动效：四条曲线 · 四档时长</p>
+          <div class="tbl-wrap">
+            <table class="tbl">
+              <thead>
+                <tr><th data-key scope="col">令牌</th><th scope="col">值</th><th scope="col">什么时候用</th><th scope="col" data-num>源行</th></tr>
+              </thead>
+              <tbody>
+                <tr><td data-key>--ease-out</td><td>cubic-bezier(.23,1,.32,1)</td><td>入场与状态迁移的默认曲线</td><td data-num>L114</td></tr>
+                <tr><td data-key>--ease-in-out</td><td>cubic-bezier(.77,0,.175,1)</td><td>呼吸（.tag--live 的 2.6s 周期）</td><td data-num>L115</td></tr>
+                <tr><td data-key>--ease-drawer</td><td>cubic-bezier(.32,.72,0,1)</td><td>面板开合</td><td data-num>L116</td></tr>
+                <tr><td data-key>--ease-spring</td><td>cubic-bezier(.34,1.56,.64,1)</td><td>只给小控件（按钮按下），有过冲</td><td data-num>L117</td></tr>
+                <tr><td data-key>--dur-1</td><td>150ms</td><td>按下 / 松开</td><td data-num>L118</td></tr>
+                <tr><td data-key>--dur-2</td><td>190ms</td><td>hover、颜色与边的变化</td><td data-num>L118</td></tr>
+                <tr><td data-key>--dur-3</td><td>260ms</td><td>状态迁移、面板内元素</td><td data-num>L118</td></tr>
+                <tr><td data-key>--dur-4</td><td>440ms</td><td>视角重组的 FLIP 搬动（引擎写死的唯一一处长时长）</td><td data-num>L118</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="sp-note">降级：基线的 <span class="sp-code">prefers-reduced-motion</span> 把所有 <span class="sp-code">transition-duration</span> 归零到 1ms。<b>不要把信息只放在动画里</b> —— 动画一停就丢信息，等于这页没做完。</p>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ==================== ③ 配色来源与可靠性分级 ==================== -->
+    <section class="sec" aria-labelledby="spSrcT">
+      <div class="sec__h">
+        <div class="sec__ht">
+          <h2 class="sec__t" id="spSrcT">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h11l3 3v13H5z"/><path d="M9 9h6M9 13h6"/></svg>
+            这两个颜色是从哪来的，能信几分
+          </h2>
+          <p class="sec__d">配色是全站地基，所以每个色值都要留下可复现的证据。结论先写在这里：两个颜色都<b>不是</b>从官方 VI 手册拿到的 —— 官方没有发布过 VI 标准色数值。</p>
+        </div>
+        <div class="sec__acts"><span class="sec__n">B 级 1 · C 级 1</span></div>
+      </div>
+      <div class="sec__body">
+        <div class="tbl-wrap">
+          <table class="tbl">
+            <thead>
+              <tr><th data-key scope="col">颜色</th><th scope="col">来源</th><th scope="col">实测依据</th><th scope="col">可靠性</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td data-key>校徽蓝 #0058A7</td>
+                <td>河北大学官网「标识系统」页的两份正式资产：圆形校徽 PNG（187×188）与校名标准字 PNG（529×213）</td>
+                <td>下载原始 PNG → 纯 Node 解码（zlib + PNG 反滤波）→ 统计非背景像素：① 13,278 个非背景像素中 #0058a7 占 <b>100%</b>；② 22,049 个中占 <b>100%</b>。两份独立资产互相印证</td>
+                <td><span class="conf conf--reported"><i aria-hidden="true"></i>C 级 · 图片像素取样</span></td>
+              </tr>
+              <tr>
+                <td data-key>官网红 #96000E</td>
+                <td>官网 <span class="sp-code">css/layout.css</span> 里显式写死的色值（出现 57 次，含 rgba 派生）；首页图标资产 icon1–4.svg 的 fill 直接写 #96000e</td>
+                <td>不是取样：是官方自己写在样式表里的值。2026-10-14 独立抓取该 CSS 复核，用于 .top 背景、.header.fixed 背景、a:hover、边框、选中态</td>
+                <td><span class="conf conf--reported"><i aria-hidden="true"></i>B 级 · 官方网页资产显式色值</span></td>
+              </tr>
+              <tr>
+                <td data-key>官方 VI 标准色数值</td>
+                <td>公网没有发布</td>
+                <td>官方《校徽管理办法》PDF 全文提取后只有管理条款、<b>无任何色彩规格</b>；标识系统页只有 PNG，无 SVG / AI / EPS。唯一官方矢量是"建校 105 周年标识"，其 .ai 的 XMP 色板里只有 Illustrator 默认色板</td>
+                <td><span class="conf conf--inferred"><i aria-hidden="true"></i>无 · 不假装有</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout callout--warn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4 3 20h18z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>
+          <p><b>需要你注意（本页唯一一处红）：</b>"官网红"的准确说法是<b>中文主页的品牌红</b>，属于 B 级而非 A 级 —— 河北大学没有全校统一的公开标准色定义，英文站用的是 #840308 系，信息公开站混用 #185688 / #E6191B。谁要把这套色写进正式物料，先向校方索取 VI 手册或校徽矢量授权。</p>
+        </div>
+        <p class="sp-note">另：v5 的令牌文件里写着"校徽蓝 #154494 …… 98.3% 的蓝色像素落在同一值上"，那句话<b>无法复现</b>（没说采的是哪张图），而且与官方两份资产都不符，已按实测更正为 #0058A7。</p>
+      </div>
+    </section>
+
+    <!-- ==================== ④ 对比度实测与门禁口径 ==================== -->
+    <section class="sec" aria-labelledby="spConT">
+      <div class="sec__h">
+        <div class="sec__ht">
+          <h2 class="sec__t" id="spConT">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 3v18"/></svg>
+            对比度：每一格都是量出来的
+          </h2>
+          <p class="sec__d">下面每张色块的底色与字色就是表里那一组，直接用眼睛复核。门禁口径：<b>正文 ≥4.5:1，图形与控件边 ≥3:1</b>。数字来自全站门禁脚本的实测。</p>
+        </div>
+        <div class="sec__acts"><span class="sec__n">6 组 · 全部通过</span></div>
+      </div>
+      <div class="sec__body">
+        <div class="sp-cons">
+          <div class="sp-con"><span class="sp-con__d" data-sp-con="onBlue" aria-hidden="true">白字 / 校徽蓝</span><span class="sp-con__v">7.11:1 · 过 AAA</span></div>
+          <div class="sp-con"><span class="sp-con__d sp-con__d--line" data-sp-con="blueOnWhite" aria-hidden="true">校徽蓝 / 白底</span><span class="sp-con__v">7.11:1 · 过 AAA</span></div>
+          <div class="sp-con"><span class="sp-con__d" data-sp-con="blueOnBg" aria-hidden="true">校徽蓝 / 页面底</span><span class="sp-con__v">6.59:1 · 过</span></div>
+          <div class="sp-con"><span class="sp-con__d" data-sp-con="blueOnWeak" aria-hidden="true">校徽蓝 / 自身浅底</span><span class="sp-con__v">6.47:1 · 过</span></div>
+          <div class="sp-con"><span class="sp-con__d" data-sp-con="darkBlue" aria-hidden="true">深色主题亮蓝 / 深底</span><span class="sp-con__v">7.22:1 · 过</span></div>
+          <div class="sp-con"><span class="sp-con__d" data-sp-con="redOnWhite" aria-hidden="true">官网红 / 白底</span><span class="sp-con__v">9.12:1 · 过 AAA</span></div>
+        </div>
+        <p class="sp-note">结论：<span class="sp-code">#0058A7</span> 对白底 <b>7.11:1</b> —— 主色本身就能承载文字。所以 <span class="sp-code">--c-primary</span> 与品牌色取同一个值，<b>不需要</b>"图形档 / 文字档"分叉。灰色阶里 <span class="sp-code">--c-text-3</span>（白底 5.69:1）是最小的正文档；再浅一档的 <span class="sp-code">--c-text-4</span> 只给图标与分隔符，把它当文字色用会被门禁抓。</p>
+      </div>
+    </section>
+
+    <!-- ==================== ⑤ 「活」的判定口径 ==================== -->
+    <section class="sec" aria-labelledby="spLiveT">
+      <div class="sec__h">
+        <div class="sec__ht">
+          <h2 class="sec__t" id="spLiveT">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>
+            「活」怎么判定：两类页面，两种活
+          </h2>
+          <p class="sec__d">这一节是整份样张最根本的判定口径，其余所有规矩都从它推出来。核别的页面时，先判它属于哪一类，再按那一类的落点去数。</p>
+        </div>
+        <div class="sec__acts"><span class="sec__n">1 个测试 · 2 类页面 · 4 个落点</span></div>
+      </div>
+      <div class="sec__body">
+
+        <div class="sub">
+          <p class="sub__t">第 0 步：截屏测试</p>
+          <p class="sub__d">截一张静止图。<b>如果信息一点没丢，这个界面就是死的</b>；活的界面静图一定会丢东西 —— 因为它此刻正在生成、正在思考、正在交接、正在推进。</p>
+          <p class="sp-note">这条测试的价值在于把"感觉"变成可判定的东西，也直接否掉了"加过渡动画"这条路：淡入、位移、数字滚动<b>都不影响截屏结果</b>，所以全都不是"活"。静态界面只有一个时态（现在时）；活的界面有三种 —— 进行时（正在发生）、完成时（刚发生了什么）、将来时（接下来会怎样）。<b>中间状态可见，就活了一半；只给最终态，就是死的。</b></p>
+        </div>
+
+        <div class="hr"></div>
+
+        <div class="sub">
+          <p class="sub__t">第 1 步：这是哪一类页面</p>
+          <div class="cmp" data-sp-cmp>
+            <div class="cmp__r">
+              <span class="cmp__k">对话页</span>
+              <span class="cmp__track"><span class="cmp__bar cmp__bar--half" aria-hidden="true"></span></span>
+              <span class="cmp__v">过程可见</span>
+            </div>
+            <div class="cmp__r">
+              <span class="cmp__k">数据页</span>
+              <span class="cmp__track"><span class="cmp__bar" aria-hidden="true"></span></span>
+              <span class="cmp__v">组织可见</span>
+            </div>
+          </div>
+          <div class="kv">
+            <div class="kv__r"><p class="kv__k">对话页</p><p class="kv__v">天生有一个主体（顾问）和一条时间线（你一句我一句）→ 只要让主体显得在动就活了。它的活 = <b>过程可见</b>。</p></div>
+            <div class="kv__r"><p class="kv__k">数据页</p><p class="kv__v">画像 / 报告 / 方向 / 计划 / 日历 / 资讯都是静态名词的陈列：没有主体、没有时间线。它的活 = <b>组织可见</b>。</p></div>
+          </div>
+          <p class="sp-note">常见错法：给数据页搬来对话页那套（流式、头像、气泡）。它根本不成立 —— 数据页照对话页做，只会得到一页会动的静态陈列。</p>
+        </div>
+
+        <div class="hr"></div>
+
+        <div class="sub">
+          <p class="sub__t">第 2 步：数据页数这 4 个落点，每页至少命中 3 个</p>
+          <div class="tbl-wrap">
+            <table class="tbl">
+              <thead>
+                <tr><th data-key scope="col">#</th><th scope="col">落点</th><th scope="col">用哪些件</th><th scope="col">在页面上表现成什么</th></tr>
+              </thead>
+              <tbody>
+                <tr><td data-key data-num data-label="#">①</td><td data-label="落点">结构显形</td><td data-label="用哪些件"><span class="sp-code">.sec .kv .tbl .tl .cmp .delta</span></td><td data-label="表现成什么">不是一个列表，是信息的形状：谁支撑谁、差多少、连到哪</td></tr>
+                <tr><td data-key data-num data-label="#">②</td><td data-label="落点">组织权交给用户</td><td data-label="用哪些件"><span class="sp-code">.lens</span></td><td data-label="表现成什么">同一批信息按来源 / 时间 / 主题 / 贡献<b>重新分组</b>（条目被搬动，不是换列表）</td></tr>
+                <tr><td data-key data-num data-label="#">③</td><td data-label="落点">粒度与溯源</td><td data-label="用哪些件"><span class="sp-code">.zoom .src .tl</span></td><td data-label="表现成什么">摘要 ↔ 细节 ↔ 原文连续缩放；每条信息能剥开看到来历（哪次对话、什么时候、谁给的）</td></tr>
+                <tr><td data-key data-num data-label="#">④</td><td data-label="落点">状态与不确定性</td><td data-label="用哪些件"><span class="sp-code">.conf .state .stale .callout</span></td><td data-label="表现成什么">已核实 / 对话里说的 / 推断 / 过期 / 冲突<b>有品质差异</b>，不是一律灰字</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="sp-note">判②的真假只有一个方法：切一次视角，看条目是不是<b>被搬动</b>的。如果只是列表内容整块换掉，那它是 tab，不是组织权。</p>
+        </div>
+
+        <div class="hr"></div>
+
+        <div class="sub">
+          <p class="sub__t">第 3 步：9 条自查，逐条过</p>
+          <div class="sp-check">
+            <p><span class="sp-check__n">1</span>静图会丢什么信息？丢了什么就说明这页活了。</p>
+            <p><span class="sp-check__n">2</span>有没有"进行时"（正在发生的事可见）？</p>
+            <p><span class="sp-check__n">3</span>用户改一下组织方式 / 勾掉一件事，看到的反馈是<b>即时且连锁</b>的吗？</p>
+            <p><span class="sp-check__n">4</span>信息之间的<b>关系</b>可见吗（不只是并列）？</p>
+            <p><span class="sp-check__n">5</span>组织方式能被用户改变吗？</p>
+            <p><span class="sp-check__n">6</span>状态与不确定性被看见了吗？</p>
+            <p><span class="sp-check__n">7</span>每一处动效，能回答"<b>这里发生了什么</b>"吗？答不上来的删掉。</p>
+            <p><span class="sp-check__n">8</span><span class="sp-code">prefers-reduced-motion</span> 下有可用形态吗？</p>
+            <p><span class="sp-check__n">9</span>桌面 1280 与手机 390 都成立吗？</p>
+          </div>
+        </div>
+
+      </div>
+      <div class="sec__foot">
+        <p>允许且鼓励的动效只有一类：<b>它回答"发生了什么"</b> —— 视角重组的 FLIP 搬动、勾选导致的状态迁移（进度推进 / 剩余重算 / 下一件浮出）、进行时标记（<span class="sp-code">.tl__i--now</span> / <span class="sp-code">.tag--live</span> / 骨架）、数值与关系<b>真的变了</b>之后的过渡。第 7 条自查就是它们的准入线。</p>
+      </div>
+    </section>
+
+    <!-- ==================== ⑥ 禁忌清单 ==================== -->
+    <section class="sec" aria-labelledby="spBanT">
+      <div class="sec__h">
+        <div class="sec__ht">
+          <h2 class="sec__t" id="spBanT">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg>
+            禁忌清单：10 条，见到就退
+          </h2>
+          <p class="sec__d">前 5 条是"不许动"（它们都不影响截屏结果，所以都是装饰）；后 5 条是"配额"（超了就等于全页没有重点）。这一节是审阅时最省事的一节：随便挑一条，都能在一分钟内判定。</p>
+        </div>
+        <div class="sec__acts"><span class="sec__n">10 条</span></div>
+      </div>
+      <div class="sec__body">
+        <div class="tbl-wrap">
+          <table class="tbl">
+            <thead>
+              <tr><th data-key scope="col">#</th><th scope="col">禁止</th><th scope="col">为什么</th><th scope="col">怎么判</th></tr>
+            </thead>
+            <tbody>
+              <tr><td data-key data-num>1</td><td>fade 进场、元素位移进场、给静态界面加"过渡感"</td><td>不影响截屏结果，所以不产生信息</td><td>刷新一次，看有没有东西在"进场"</td></tr>
+              <tr><td data-key data-num>2</td><td>数字滚动</td><td>同上；而且滚动途中读不到确切值</td><td>看 .stat__n 是不是从 0 跳上去的</td></tr>
+              <tr><td data-key data-num>3</td><td>粒子、持续背景运动、marquee</td><td>背景永远在动 = 没有一处是"现在"</td><td>静置 10 秒，画面是否完全静止</td></tr>
+              <tr><td data-key data-num>4</td><td>发光边框、徽章光效</td><td>光效是奖励语言；本样张的完成不给奖励</td><td>看有没有 box-shadow 光晕或 pulse</td></tr>
+              <tr><td data-key data-num>5</td><td>自动轮播</td><td>用户没动，信息自己在换 = 信息会丢</td><td>打开后不操作，内容是否自己变</td></tr>
+              <tr><td data-key data-num>6</td><td>字号冒出第 6 档（含 10px）</td><td>5 档是排印节奏的地基，多一档就没有节奏</td><td>抓所有 font-size 去重，应只有 12 / 14 / 16 / 20 / 30</td></tr>
+              <tr><td data-key data-num>7</td><td>字重超出 4 档</td><td>中文对比需要 3 档以上，但不需要第 5 档</td><td>抓 font-weight 去重，应只有 400 / 500 / 600 / 700</td></tr>
+              <tr><td data-key data-num>8</td><td>一个分区里两处主色</td><td>两个都蓝，等于两个都不是主</td><td>数实心主色与主色文字块，每分区 ≤1</td></tr>
+              <tr><td data-key data-num>9</td><td>红色用于非"需要你注意"</td><td>红色是注意语义；当状态色用会制造假警报</td><td>数 .tag--demo / --warn / --conflict 之外的红色</td></tr>
+              <tr><td data-key data-num>10</td><td>完成 / 成功给颜色奖励</td><td>已完成走 --c-done 灰系 + 一句事实说明</td><td>看已完成态有没有绿、金、光效</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="sec__foot">
+        <p>第 9 条有个固定例外，写清楚免得误判：<b>红色在这份样张里有一个合法用法</b> —— <span class="sp-code">.tag--demo</span>（"这条是演示数据"的口径标记）。它说的不是状态，是内容可靠性，所以它出现在这一页的页头不违反配额。</p>
+      </div>
+    </section>
+
+    <!-- ==================== ⑦ 组件与状态：盒高实测 ==================== -->
+    <section class="sec" aria-labelledby="spBoxT">
+      <div class="sec__h">
+        <div class="sec__ht">
+          <h2 class="sec__t" id="spBoxT">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 10h16"/></svg>
+            可点面积：量出来的，不是感觉的
+          </h2>
+          <p class="sec__d">门禁是"主要动作 ≥44×44、卡片内次要动作 ≥36×36"。下面每一行的数字来自 <span class="sp-code">probe.mjs</span> 的实际盒模型测量，不是从 CSS 里读的声明值 —— 声明值和实际渲染是两件事。</p>
+        </div>
+        <div class="sec__acts"><span class="sec__n">6 个件</span></div>
+      </div>
+      <div class="sec__body">
+        <div class="tbl-wrap">
+          <table class="tbl">
+            <thead>
+              <tr><th data-key scope="col">组件</th><th scope="col">来源层</th><th scope="col" data-num>声明值</th><th scope="col">处置</th></tr>
+            </thead>
+            <tbody>
+              <tr><td data-key>.btn / .btn--ghost</td><td>基线 c2.css L1152</td><td data-num>padding 11px 20px</td><td>主要动作档，实测过 44</td></tr>
+              <tr><td data-key>.chipbtn</td><td>基线 c2.css L729</td><td data-num>padding 7px 13px</td><td>页头轻动作，本样张按 44 兜底</td></tr>
+              <tr><td data-key>.lensbtn</td><td>数据页层 L132</td><td data-num>min-height 40px</td><td><b>差 4px</b>，共享组件基准；改它影响全站，要产品拍板</td></tr>
+              <tr><td data-key>.zoombtn</td><td>数据页层 L178</td><td data-num>min-height 36px</td><td><b>差 8px</b>，同上</td></tr>
+              <tr><td data-key>.pick__r</td><td>数据页层 L343</td><td data-num>min-height 44px</td><td>达标，勾选行是主要动作档</td></tr>
+              <tr><td data-key>.fold__sum</td><td>数据页层（原生 details）</td><td data-num>行高 44px</td><td>达标</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="sp-note">这一页不自己改共享组件的基准值：<span class="sp-code">.lensbtn</span> 40px 与 <span class="sp-code">.zoombtn</span> 36px 是全站统一值，单个视图去覆盖就是"规范被后加载文件覆盖"的老病灶。正确处置是<b>把数字留在这里，交给产品拍板</b> —— 这一格存在的意义就是让下一轮不用重新量一遍。</p>
+      </div>
+      <div class="sec__foot">
+        <p>量法：<span class="sp-code">node _tools/probe.mjs --file _shots/preview-&lt;key&gt;.html --tap --view &lt;key&gt;</span>。探针同时会报页面 JS 异常 —— <b>一个未捕获异常会打断整个 IIFE</b>，后面的路由与引擎都不跑，页面只是"看起来有点不对"。</p>
+      </div>
+    </section>
+
+  </div>
+</div>

@@ -1,0 +1,86 @@
+/* =============================================================================
+ * 待办与目标（notes）· 视图私有样式
+ * -----------------------------------------------------------------------------
+ * 只放这个视图独有的东西。共享组件（.sec / .lens / .pick / .chipf / .src /
+ * .conf / .state / .stats）一律用共享层的名字，不改它们的定义。
+ * 全部选择器带 .nt- 前缀，或限定在 [data-view="notes"] 内。
+ *
+ * 唯一提高特异度覆盖共享组件的地方是 [data-view="notes"] .chipf /
+ * [data-view="notes"] .lensbtn 的 min-height —— 基线 34px / 38px，
+ * 本项目裁定"主要动作 ≥44×44"。视图内抬高，不动全局定义（BRIEF §1.6）。
+ * ========================================================================== */
+
+/* ---- 条目形状：目标 / 待办 两层要一眼分得开 ------------------------------ */
+.nt-k{
+  display:inline-flex;align-items:center;
+  padding:1px 8px;border-radius:var(--r-pill);
+  background:var(--c-surface-3);border:1px solid var(--c-border);
+  font-size:var(--fs-12);font-weight:var(--fw-bold);letter-spacing:.04em;color:var(--c-text-3);
+}
+/* 目标那一层：底纹略深一格，与待办区分开；两级都不是"卡片叠卡片"。
+   完成不给颜色奖励 —— 这里没有任何绿/蓝的完成态。 */
+.nt-goal .pick__r{background:var(--c-surface-2);border-color:var(--c-border)}
+.nt-goal .pick__title{font-size:var(--fs-16);font-weight:var(--fw-bold);font-family:var(--font-title)}
+.nt-todo .pick__title{font-size:var(--fs-14)}
+.nt-d{display:block;margin-top:5px;font-size:var(--fs-12);line-height:var(--lh-normal);color:var(--c-text-3)}
+.nt-why{display:block;margin-top:4px;font-size:var(--fs-12);line-height:var(--lh-snug);color:var(--c-text-2)}
+
+/* 挂在哪条目标下 / 影响什么：关系可见，不是并列的一堆标签 */
+.nt-tie{
+  display:inline-flex;align-items:center;
+  padding:2px 9px;border-radius:var(--r-pill);
+  background:var(--c-surface-3);border:1px dashed var(--c-border-strong);
+  font-size:var(--fs-12);color:var(--c-text-3);
+}
+.nt-meter{font-size:var(--fs-12);color:var(--c-text-3);font-variant-numeric:tabular-nums}
+.nt-meter b{color:var(--c-text-2);font-weight:var(--fw-semibold)}
+
+/* 条目里的链接与 .pick 的勾选盒：勾选盒基线 20px（无文字的控件），
+   这里不动它；可点的 <a> 与 <button> 单独保证高度。 */
+.nt-goal .pick__box,.nt-todo .pick__box{margin-top:2px}
+.nt-sug .pick__title{font-size:var(--fs-14)}
+
+/* ---- 勾掉之后影响了什么 -------------------------------------------------- */
+.nt-impact{
+  padding:var(--sp-3) var(--sp-4);
+  border-radius:var(--r-lg);
+  background:var(--c-surface-solid);border:1px solid var(--c-border);
+  font-size:var(--fs-14);line-height:var(--lh-normal);color:var(--c-text-2);
+}
+.nt-impact b{color:var(--c-text);font-weight:var(--fw-semibold)}
+.nt-counts{display:flex;flex-wrap:wrap;gap:var(--sp-2);margin-top:var(--sp-3)}
+.nt-count{
+  display:flex;align-items:baseline;gap:7px;
+  padding:7px var(--sp-3);border-radius:var(--r-pill);
+  background:var(--c-surface-2);border:1px solid var(--c-border);
+}
+.nt-count b{
+  font-family:var(--font-title);font-size:var(--fs-20);font-weight:var(--fw-bold);
+  color:var(--c-text);font-variant-numeric:tabular-nums;line-height:1;
+}
+.nt-count span{font-size:var(--fs-12);color:var(--c-text-3)}
+
+/* ---- 空态：用真实缺口写，不写"暂无数据" --------------------------------- */
+.nt-empty{margin-top:var(--sp-4);padding:var(--sp-5);border-top:1px solid var(--c-border)}
+.nt-empty .state__d{max-width:56ch}
+.nt-empty .state__acts .btn{text-decoration:none}
+
+/* ---- 侧栏 ---------------------------------------------------------------- */
+.nt-side__d{font-size:var(--fs-12);line-height:var(--lh-normal);color:var(--c-text-2)}
+.nt-side__d+.nt-side__d{margin-top:9px}
+.nt-side__d b{color:var(--c-text);font-weight:var(--fw-semibold)}
+.nt-side__big{
+  margin:var(--sp-2) 0;
+  font-family:var(--font-title);font-size:var(--fs-16);font-weight:var(--fw-bold);
+  line-height:var(--lh-snug);color:var(--c-text);
+}
+
+/* 筛选 chip / 视角按钮：基线 34px / 38px，本视图抬到 44。 */
+[data-view="notes"] .chipf{min-height:44px;padding:8px 14px}
+[data-view="notes"] .lensbtn{min-height:44px;padding:10px 15px}
+
+@media (max-width:767px){
+  .nt-goal .pick__title{font-size:var(--fs-14)}
+  .nt-goal .pick__r,.nt-todo .pick__r{padding:10px}
+  .nt-count b{font-size:var(--fs-16)}
+}

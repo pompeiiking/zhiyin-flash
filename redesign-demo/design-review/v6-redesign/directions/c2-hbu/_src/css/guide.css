@@ -1,0 +1,63 @@
+/* =============================================================================
+ * 使用指南 · 视图私有样式（key=guide）
+ * -----------------------------------------------------------------------------
+ * 这一页的三种粒度各用一种现成组件，不新造交互：
+ *   · 四步走    → .tl（先后关系）+ .callout--quiet（做完你会看到）
+ *   · 常见问题  → 原生 <details class="fold">（一句话在上，展开是整段回答）
+ *   · 词表      → .zoom（一句话 ↔ 加一层 ↔ 预设原始结果）
+ * 本文件只做三件事：把 .fold__sum 与 .zoombtn 抬到 44px 触控高、给词条加一个
+ * 左列词名、把"去哪个页面"的出口按钮排成一行。其余一律用共享组件。
+ * 全部选择器带 .gd- 前缀，或限定在 [data-view="guide"] 之内。
+ * ========================================================================== */
+
+/* ---- 四步走：每一步的"做完你会看到"紧跟在说明后面 ----------------------- */
+.tl-steps .tl__d{max-width:70ch}
+.tl-see{margin-top:var(--sp-3)}
+.tl-see b{font-weight:var(--fw-semibold)}
+.tl-steps .tl__meta{margin-top:var(--sp-3)}
+
+/* 出口按钮：chipbtn 默认是 inline-flex，这里保证它在 tl__meta 里不塌 */
+.gd-exit{text-decoration:none;min-height:36px}
+
+/* ---- 常见问题：折叠头必须够 44px（盘 <44px 时它是第一个会被点到的） ---- */
+[data-view="guide"] .fold{margin-top:0;padding:2px 0}
+[data-view="guide"] .fold__sum{
+  min-height:48px;padding:13px 2px;
+  font-size:var(--fs-14);font-weight:var(--fw-semibold);color:var(--c-text);
+}
+[data-view="guide"] .fold__sum:hover{color:var(--c-primary)}
+[data-view="guide"] .fold__body{
+  padding:0 0 var(--sp-4) 26px;
+  display:flex;flex-direction:column;gap:9px;
+}
+[data-view="guide"] .fold__body p{font-size:var(--fs-14);line-height:var(--lh-normal);color:var(--c-text-2)}
+[data-view="guide"] .fold__body b{font-weight:var(--fw-semibold);color:var(--c-text)}
+.gd-links{display:flex;flex-wrap:wrap;gap:var(--sp-4)}
+.gd-links a{font-size:var(--fs-14);font-weight:var(--fw-semibold)}
+
+/* ---- 词表：左列是词，右列是三层粒度 -------------------------------------
+   .zoom 的 zoombar 自带 flex-wrap，这里把词名钉在最左边、按钮跟在后面；
+   窄屏词名独占一行（否则 7 个词的按钮行会被挤成两截）。
+   按钮抬到 44px：这一页是给人从头读到尾的，误触成本比省 12px 高。 */
+.gd-term{border-top:1px solid var(--c-border);padding:var(--sp-4) 0}
+.gd-term:first-child{border-top:0;padding-top:0}
+.gd-term__k{
+  flex:0 0 auto;
+  font-family:var(--font-title);font-size:var(--fs-16);font-weight:var(--fw-bold);
+  line-height:var(--lh-snug);color:var(--c-text);
+  margin-right:var(--sp-3);
+}
+.gd-term .zoombar{align-items:center}
+.gd-term .zoombtn{min-height:44px;padding:9px 14px;display:inline-flex;align-items:center}
+.gd-term .zoom__body{max-width:70ch}
+.gd-term .z--full{font-variant-numeric:tabular-nums}
+
+/* ---- 末尾那条口径说明 ---------------------------------------------------- */
+.gd-note{margin-top:var(--sp-4)}
+
+/* ---- 窄屏 ---------------------------------------------------------------- */
+@media (max-width:767px){
+  .gd-term__k{width:100%;margin:0 0 var(--sp-2)}
+  .gd-term .zoombar{width:100%;align-self:stretch}
+  [data-view="guide"] .fold__body{padding-left:0}
+}

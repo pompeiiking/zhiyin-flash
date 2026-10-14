@@ -1,0 +1,357 @@
+<div class="main__scroll">
+  <!-- ==========================================================================
+       阶段计划（key=plan）
+       --------------------------------------------------------------------------
+       计划不是一张表，是**一条在推进的线**（DESIGN-LANGUAGE §8）：
+         ① 结构显形      .tl 三段里程碑 + 每段"挂几条任务、完成几条"（里程碑↔任务对应显形）
+         ② 组织权交给用户 .lens（同一批 8 条任务，按阶段 / 来源 / 目标 / 贡献 重组）
+         ③ 粒度与溯源    .src 标出每条任务是自己写的还是顾问建议的；.tl 给出时间厚度
+         ④ 状态与不确定性 进行中 --now / 未开始 --future / 已完成；逾期那一段单独说清
+       上一轮的病是"单页 21 处折叠、嵌套 3 层"。这里**一个折叠都没有**（fold=0）：
+       要收起来的东西用一排 .chipf 筛选，其余全部展开。
+       里程碑 ↔ 任务的对应关系照 DEMO-DATA 第五节给出的表，不按标题猜：
+         m-j1→t1,t3 · m-j2→t2,t4 · m-j3→t5 · t6,t7,t8 不挂里程碑
+       ======================================================================== -->
+  <div class="pg-doc">
+    <div class="pg-doc__main">
+
+      <!-- ============================ 页头 ============================ -->
+      <header class="pgh">
+        <p class="crumb">
+          <a href="#/home">去做</a>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+          <span>阶段计划</span>
+        </p>
+        <div class="pgh__row">
+          <div class="pgh__t">
+            <h1 class="pgh__title">阶段计划</h1>
+            <p class="pgh__lead">大三这一段有三步：先把简历改成"工艺方向"能投的样子，再投够 15 家，然后拿到 2 次面试。三步之间是接力的 —— 前一步没走完，后一步的时钟照走。</p>
+            <div class="pgh__meta">
+              <span class="tag tag--demo">演示数据</span>
+              <span class="tag">大三（2024 级）· 秋招前</span>
+              <span class="tag">2 个主攻方向在跑</span>
+              <span class="conf conf--conflict"><i aria-hidden="true"></i>第一步已逾期 24 天</span>
+            </div>
+          </div>
+          <div class="pgh__acts">
+            <a class="btn btn--ghost" href="#/home" data-nav-to="home">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5 10 17.5 19 7"/></svg>
+              回到今天
+            </a>
+          </div>
+        </div>
+      </header>
+
+      <!-- ============ ① 结构显形：这条线现在走到哪 ============ -->
+      <section class="stats stats--pair" aria-label="阶段计划总览">
+        <div class="stat stat--key">
+          <p class="stat__n">1<small>/ 3 步</small></p>
+          <p class="stat__t">正在走的那一步</p>
+          <p class="stat__d">「完成简历修订并满足申请要求」卡在 50%，时间窗 9 月 20 日已经过了 24 天</p>
+        </div>
+        <div class="stat">
+          <p class="stat__n">3<small>/ 15 家</small></p>
+          <p class="stat__t">岗位申请</p>
+          <p class="stat__d">第二步要求 15 家、主攻方向不少于一半；10 月 31 日截止，还剩 17 天</p>
+        </div>
+        <div class="stat">
+          <p class="stat__n">3<small>/ 8 条</small></p>
+          <p class="stat__t">任务已完成</p>
+          <p class="stat__d">8 条里 3 条做完、3 条能现在动、1 条等结果、1 条是 5 分钟的问询</p>
+        </div>
+        <div class="stat">
+          <p class="stat__n">0<small>次</small></p>
+          <p class="stat__t">面试机会</p>
+          <p class="stat__d">第三步 11 月 30 日截止；投了 4 家、0 个回音，这一步还没开始计时</p>
+        </div>
+      </section>
+
+      <!-- ============ ①③ 这条线：三段里程碑，每段能看到还剩多少、下一步解锁什么 ============ -->
+      <section class="sec" aria-labelledby="plTlT">
+        <div class="sec__h">
+          <div class="sec__ht">
+            <h2 class="sec__t" id="plTlT">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4v16M12 4v16M18 4v10"/></svg>
+              三步怎么接力
+            </h2>
+            <p class="sec__d">每段写着：时间窗、现在走到百分之几、还剩多少天、以及"走完它解锁下一步的什么"。点一段上的任务数，右边那批任务会只留下它的。</p>
+          </div>
+          <div class="sec__acts"><span class="sec__n">3 段 · 10 月 14 日</span></div>
+        </div>
+        <div class="sec__body">
+          <div class="tl" id="plTl">
+
+            <!-- 逾期的那一段压暗一点（.86），并把"逾期 24 天"写成第三段 chip 上的事实 -->
+            <article class="tl__i tl__i--now pl-ms" data-pl-ms="m-j1" data-pl-overdue="true">
+              <p class="tl__when">
+                <span>9 月 20 日前</span>
+                <span class="pl-left">还剩 0 天 · 逾期 24 天</span>
+                <span class="pl-state">进行中</span>
+              </p>
+              <h3 class="tl__what">完成简历修订并满足申请要求</h3>
+              <p class="tl__d">优先完成目标岗位所需的简历材料。这一段没走完，第二步"投 15 家"投出去的还是同一版讲不清的简历 —— 所以它逾期比后面两段更要紧。</p>
+
+              <div class="pl-bar">
+                <div class="meter" role="img" aria-label="这一段走到 50%">
+                  <i class="on"></i><i class="on"></i><i></i><i></i>
+                </div>
+                <span class="pl-pct">50%</span>
+              </div>
+
+              <div class="tl__meta">
+                <button class="chipf" type="button" data-pl-focus="m-j1" aria-pressed="false">挂 2 条任务 · 完成 0 条</button>
+                <span class="src src--self"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h10M4 17h6"/></svg></span><span class="src__k">计划拆下来的</span><span class="src__w">2 条都来自这一段</span></span>
+              </div>
+              <p class="pl-next">走完它解锁：第二步「申请 15 个岗位」投出去的是对得上的版本 —— 现在投的 3 家，简历第一页还是原来那版。</p>
+            </article>
+
+            <article class="tl__i tl__i--now pl-ms" data-pl-ms="m-j2">
+              <p class="tl__when">
+                <span>10 月 31 日前</span>
+                <span class="pl-left">还剩 17 天</span>
+                <span class="pl-state">进行中</span>
+              </p>
+              <h3 class="tl__what">申请 15 个岗位，主攻方向不少于一半</h3>
+              <p class="tl__d">结合岗位开放情况与匹配程度执行投递计划。走到 3 家，还差 12 家；其中主攻方向（半导体材料工艺）不少于一半，也就是至少 8 家。</p>
+
+              <div class="pl-bar">
+                <div class="meter" role="img" aria-label="这一段走到 27%">
+                  <i class="on"></i><i></i><i></i><i></i>
+                </div>
+                <span class="pl-pct">27%</span>
+              </div>
+
+              <div class="tl__meta">
+                <button class="chipf" type="button" data-pl-focus="m-j2" aria-pressed="false">挂 2 条任务 · 完成 0 条</button>
+                <span class="src src--chat"><span class="src__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 0 1-8 8 8.5 8.5 0 0 1-3-.5L5 21l1.4-3.6A8 8 0 1 1 20 12Z"/></svg></span><span class="src__k">建议的</span><span class="src__w">1 条是顾问加的</span></span>
+              </div>
+              <p class="pl-next">走完它解锁：第三步的面试才有机会出现 —— 15 家投不出去，11 月 30 日那个"2 次面试"是等着落空的。</p>
+            </article>
+
+            <article class="tl__i tl__i--future pl-ms" data-pl-ms="m-j3">
+              <p class="tl__when">
+                <span>11 月 30 日前</span>
+                <span class="pl-left">还剩 47 天</span>
+                <span class="pl-state">还没开始</span>
+              </p>
+              <h3 class="tl__what">获得 2 次面试机会</h3>
+              <p class="tl__d">结合面试反馈进一步修订方向与求职材料。这一步现在只能"等" —— 它挂在前面两段上，前面没走完，这里不会自己动。</p>
+
+              <div class="pl-bar">
+                <div class="meter" role="img" aria-label="这一段还没开始，0%">
+                  <i></i><i></i><i></i><i></i>
+                </div>
+                <span class="pl-pct">0%</span>
+              </div>
+
+              <div class="tl__meta">
+                <button class="chipf" type="button" data-pl-focus="m-j3" aria-pressed="false">挂 1 条任务 · 完成 0 条</button>
+                <span class="src src--self"><span class="src__ic" aria-hidden="true"></span><span class="src__k">自己写的</span><span class="src__w">等结果，不用动手</span></span>
+              </div>
+              <p class="pl-next">走完它解锁：这一段本来就是终点 —— 走到这里，这一轮秋招的"计划"部分就结束了，剩下的归复盘。</p>
+            </article>
+          </div>
+        </div>
+        <div class="sec__foot">
+          <span>三段的时间窗是<b>规划师写进来的</b>，不是前端写死的排期；今天 10 月 14 日，第一段已经超期。</span>
+          <a href="#/review" data-nav-to="review">看第一段为什么卡住 →</a>
+        </div>
+      </section>
+
+      <!-- ============ ② 组织权交给用户：这 8 条任务，按什么看 ============ -->
+      <section class="sec" aria-labelledby="plTasksT">
+        <div class="sec__h">
+          <div class="sec__ht">
+            <h2 class="sec__t" id="plTasksT">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M7 12h10M10 17h4"/></svg>
+              这 8 条任务，按什么看
+            </h2>
+            <p class="sec__d">上面三段是"按时间推进"的看法。同一批任务换一种组织方式，能看出别的东西 —— 比如顾问建议的那几条其实都指向同一个缺口。上面点了某一段的"挂 N 条任务"，这里就只剩它的。</p>
+          </div>
+          <div class="sec__acts"><span class="sec__n" id="plLensN">8 条</span></div>
+        </div>
+        <div class="sec__body">
+          <div class="chipbar pl-filter" role="group" aria-label="只看某一段的任务">
+            <button class="chipf" type="button" data-pl-filter="all" aria-pressed="true">全部 <small>8 条</small></button>
+            <button class="chipf" type="button" data-pl-filter="m-j1" aria-pressed="false">第 1 步 <small>2 条</small></button>
+            <button class="chipf" type="button" data-pl-filter="m-j2" aria-pressed="false">第 2 步 <small>2 条</small></button>
+            <button class="chipf" type="button" data-pl-filter="m-j3" aria-pressed="false">第 3 步 <small>1 条</small></button>
+            <button class="chipf" type="button" data-pl-filter="none" aria-pressed="false">不挂里程碑 <small>3 条</small></button>
+          </div>
+          <p class="pl-filter__n" id="plFilterN" aria-live="polite">显示全部 8 条</p>
+
+          <div class="lens" data-lens="stage"
+               data-order-stage="第一步 · 简历改到能投|第二步 · 投够 15 家|第三步 · 拿到面试|不挂里程碑"
+               data-order-origin="计划拆下来的|建议的|自己写的|关键节点"
+               data-order-goal="支撑主攻方向|支撑全部三条方向|只影响时间安排|还不足以支撑目标"
+               data-order-contrib="直接支撑目标|间接相关|只是时间安排|还不足以支撑"
+               data-hint-stage="按这条线走到第几步看：前两步各 2 条，第三步 1 条，另有 3 条做完的事不挂任何里程碑 —— 它们当时是给计划让路的，不是给目标让路的。"
+               data-hint-origin="按谁放进来看：计划拆下来的 4 条、顾问建议的 2 条、你自己写的 1 条、关键节点 1 条。顾问加的 2 条不占里程碑，却都指向"实践证据"这一个缺口。"
+               data-hint-goal="按它支撑哪条方向看：6 条同时在支撑主攻方向，2 条只影响时间安排。三条备选方向里，只有主攻方向有任务在推它。"
+               data-hint-contrib="按对目标的贡献看：3 条直接支撑目标、3 条间接相关、2 条还不足以支撑。差距不在"做了多少条"，在这 2 条做完也没有证据。">
+
+            <div class="lensbar" role="tablist" aria-label="按什么看这批任务">
+              <button class="lensbtn" type="button" role="tab" data-lens-set="stage" aria-selected="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4v16M12 4v16M18 4v10"/></svg>
+                按阶段
+              </button>
+              <button class="lensbtn" type="button" role="tab" data-lens-set="origin" aria-selected="false">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M5 8l7-5 7 5"/></svg>
+                按来源
+              </button>
+              <button class="lensbtn" type="button" role="tab" data-lens-set="goal" aria-selected="false">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.5"/></svg>
+                按支撑哪个方向
+              </button>
+              <button class="lensbtn" type="button" role="tab" data-lens-set="contrib" aria-selected="false">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 19V9M12 19V5M18 19v-7"/></svg>
+                按对目标的贡献
+              </button>
+            </div>
+            <p class="lens__hint" data-lens-hint aria-live="polite"></p>
+
+            <div class="lens__items" id="plItems">
+              <article class="lens__item pl-task" data-stage="第一步 · 简历改到能投" data-origin="计划拆下来的" data-goal="支撑主攻方向" data-contrib="直接支撑目标" data-pl-ms-of="m-j1" data-pl-state="进行中">
+                <p class="pl-t">把简历第一页的封面表述改成"工艺方向"</p>
+                <p class="pl-d">建议根据目标岗位调整简历重点，提高经历与岗位要求的关联性。</p>
+                <div class="pl-m">
+                  <span class="conf conf--verified"><i aria-hidden="true"></i>进行中</span>
+                  <span class="src src--self"><span class="src__ic" aria-hidden="true"></span><span class="src__k">计划拆下来的</span><span class="src__w">15 分钟</span></span>
+                  <span class="pl-tie">第 1 步</span>
+                </div>
+              </article>
+
+              <article class="lens__item pl-task" data-stage="第一步 · 简历改到能投" data-origin="建议的" data-goal="支撑全部三条方向" data-contrib="直接支撑目标" data-pl-ms-of="m-j1" data-pl-state="还没开始">
+                <p class="pl-t">找出 2 段能写进简历的课程项目</p>
+                <p class="pl-d">整理已有课程项目，明确个人职责、实施过程及成果。三个方向都需要可说明的实践证据，所以这条不只服务主攻方向。</p>
+                <div class="pl-m">
+                  <span class="conf conf--inferred"><i aria-hidden="true"></i>还没开始</span>
+                  <span class="src src--chat"><span class="src__ic" aria-hidden="true"></span><span class="src__k">建议的</span><span class="src__w">20 分钟</span></span>
+                  <span class="pl-tie">第 1 步</span>
+                </div>
+              </article>
+
+              <article class="lens__item pl-task" data-stage="第二步 · 投够 15 家" data-origin="计划拆下来的" data-goal="支撑主攻方向" data-contrib="直接支撑目标" data-pl-ms-of="m-j2" data-pl-state="进行中">
+                <p class="pl-t">投 3 家新能源方向的工艺岗</p>
+                <p class="pl-d">根据示例投递计划安排本轮岗位申请，实际岗位开放情况需核验。今天到期 —— 它就是今日行动首屏那一件。</p>
+                <div class="pl-m">
+                  <span class="conf conf--conflict"><i aria-hidden="true"></i>今天到期</span>
+                  <span class="src src--self"><span class="src__ic" aria-hidden="true"></span><span class="src__k">计划拆下来的</span><span class="src__w">25 分钟</span></span>
+                  <span class="pl-tie">第 2 步</span>
+                </div>
+              </article>
+
+              <article class="lens__item pl-task" data-stage="第二步 · 投够 15 家" data-origin="建议的" data-goal="支撑主推方向" data-contrib="间接相关" data-pl-ms-of="m-j2" data-pl-state="进行中">
+                <p class="pl-t">联系学长，了解半导体岗位日常</p>
+                <p class="pl-d">通过职业访谈补充岗位认知，再确定是否申请。它不产出投递数，只减少投错的可能。</p>
+                <div class="pl-m">
+                  <span class="conf conf--reported"><i aria-hidden="true"></i>进行中</span>
+                  <span class="src src--chat"><span class="src__ic" aria-hidden="true"></span><span class="src__k">建议的</span><span class="src__w">5 分钟</span></span>
+                  <span class="pl-tie">第 2 步</span>
+                </div>
+              </article>
+
+              <article class="lens__item pl-task" data-stage="第三步 · 拿到面试" data-origin="自己写的" data-goal="支撑主推方向" data-contrib="间接相关" data-pl-ms-of="m-j3" data-pl-state="等结果">
+                <p class="pl-t">等中建某院结构岗的笔试结果</p>
+                <p class="pl-d">截止已过，结果预计本周出来，出来前不用动。它挂在第三步上，但这条本身动不了手。</p>
+                <div class="pl-m">
+                  <span class="conf conf--stale"><i aria-hidden="true"></i>等结果</span>
+                  <span class="src src--self"><span class="src__ic" aria-hidden="true"></span><span class="src__k">自己写的</span><span class="src__w">本周内</span></span>
+                  <span class="pl-tie">第 3 步</span>
+                </div>
+              </article>
+
+              <article class="lens__item pl-task" data-stage="不挂里程碑" data-origin="关键节点" data-goal="还不足以支撑目标" data-contrib="还不足以支撑" data-pl-ms-of="none" data-pl-state="已完成">
+                <p class="pl-t">完成学籍在线验证</p>
+                <p class="pl-d">核验完，成绩层级才能参与折算，报告才有第 2 版。9 月 18 日做完 —— 它当时服务的是"看清自己"，不是这三步里的任何一步。</p>
+                <div class="pl-m">
+                  <span class="conf conf--verified"><i aria-hidden="true"></i>已完成 9 月 18 日</span>
+                  <span class="src src--self"><span class="src__ic" aria-hidden="true"></span><span class="src__k">关键节点</span><span class="src__w">10 分钟</span></span>
+                  <span class="pl-tie">不挂里程碑</span>
+                </div>
+              </article>
+
+              <article class="lens__item pl-task" data-stage="不挂里程碑" data-origin="计划拆下来的" data-goal="只影响时间安排" data-contrib="只是时间安排" data-pl-ms-of="none" data-pl-state="已完成">
+                <p class="pl-t">把每周可投入时间确认成 6 小时</p>
+                <p class="pl-d">明确可投入时间，有助于制定可执行计划。它是三段共同的"预算"—— 每周 6 小时这个上限，决定每一步能排多快。</p>
+                <div class="pl-m">
+                  <span class="conf conf--verified"><i aria-hidden="true"></i>已完成 9 月 20 日</span>
+                  <span class="src src--self"><span class="src__ic" aria-hidden="true"></span><span class="src__k">计划拆下来的</span><span class="src__w">5 分钟</span></span>
+                  <span class="conf conf--stale"><i aria-hidden="true"></i>待核对</span>
+                </div>
+              </article>
+
+              <article class="lens__item pl-task" data-stage="不挂里程碑" data-origin="自己写的" data-goal="还不足以支撑目标" data-contrib="还不足以支撑" data-pl-ms-of="none" data-pl-state="已完成">
+                <p class="pl-t">看清三条方向的差别</p>
+                <p class="pl-d">根据当前咨询目标安排优先事项。10 月 2 日做完，它产出的是"我知道了"，不是"我能证明"—— 所以它不推任何一步。</p>
+                <div class="pl-m">
+                  <span class="conf conf--verified"><i aria-hidden="true"></i>已完成 10 月 2 日</span>
+                  <span class="src src--self"><span class="src__ic" aria-hidden="true"></span><span class="src__k">自己写的</span><span class="src__w">30 分钟</span></span>
+                  <span class="pl-tie">不挂里程碑</span>
+                </div>
+              </article>
+            </div>
+          </div>
+        </div>
+        <div class="sec__foot">
+          <span>8 条任务全部在上面的 <b>3 步</b> 里 —— 里程碑与任务的挂接关系是给定的，不按标题猜。</span>
+          <a href="#/home" data-nav-to="home">今天先动哪一件 →</a>
+        </div>
+      </section>
+    </div>
+
+    <!-- ============================ 侧栏 ============================ -->
+    <aside class="pg-doc__side">
+
+      <section class="sec" aria-labelledby="plCtxT">
+        <div class="sec__h"><div class="sec__ht"><h2 class="sec__t" id="plCtxT">大三这一段的处境</h2></div></div>
+        <div class="sec__body">
+          <div class="kv">
+            <div class="kv__r"><span class="kv__k">现在这一步</span><span class="kv__v">确定主攻方向，并执行当前优先任务</span></div>
+            <div class="kv__r"><span class="kv__k">报告重点</span><span class="kv__v">决策条件与约束</span></div>
+            <div class="kv__r"><span class="kv__k">复盘关注</span><span class="kv__v">分析岗位申请结果与执行障碍</span></div>
+            <div class="kv__r"><span class="kv__k">每周上限</span><span class="kv__v">6 小时（本人说明，待核对）</span></div>
+            <div class="kv__r"><span class="kv__k">课表空档</span><span class="kv__v">周三、周五下午各 2 小时 —— 空课格不代表空闲</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="sec" aria-labelledby="plGapT">
+        <div class="sec__h"><div class="sec__ht"><h2 class="sec__t" id="plGapT">这三步都压在同一个缺口上</h2></div></div>
+        <div class="sec__body">
+          <p class="pl-side__d">三段的任务加起来 8 条，但真正在补"能讲清的实践经历"的只有 3 条。所以第一段即使做完，第二段的投递质量也不一定跟着上去 —— 这也是顾问为什么一直在加"实践证据"那一类的建议。</p>
+          <div class="cmp pl-side__cmp" aria-label="三条方向的要求与现状">
+            <div class="cmp__r">
+              <span class="cmp__k">呈现能力</span>
+              <span class="cmp__track"><i class="cmp__bar" style="width:46%"></i></span>
+              <span class="cmp__v">46 <small>/ 50</small></span>
+            </div>
+            <div class="cmp__r">
+              <span class="cmp__k">项目经历</span>
+              <span class="cmp__track"><i class="cmp__bar" style="width:20%"></i></span>
+              <span class="cmp__v">20 <small>/ 60</small></span>
+            </div>
+            <div class="cmp__r">
+              <span class="cmp__k">专业对口</span>
+              <span class="cmp__track"><i class="cmp__bar" style="width:88%"></i></span>
+              <span class="cmp__v">88 <small>/ 70</small></span>
+            </div>
+          </div>
+          <p class="pl-side__n">同一把尺子，三个刻度：专业已经够了，缺的是"讲过一遍"的那部分。</p>
+        </div>
+        <div class="sec__foot"><a href="#/report" data-nav-to="report">看报告里的门槛表 →</a></div>
+      </section>
+
+      <section class="sec sec--quiet" aria-labelledby="plRiskT">
+        <div class="sec__h"><div class="sec__ht"><h2 class="sec__t" id="plRiskT">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8.2v.1"/></svg>
+          这一段最容易被拖没的地方
+        </h2></div></div>
+        <div class="sec__body">
+          <p class="pl-side__d">第一段的时间窗已经过了。计划不会自动顺延 —— 你只有两个选择：现在把它补上，或者接受第二段从"简历还没改完"的状态开始投。这一条不替你做决定，只是让代价可见。</p>
+          <p class="pl-side__d">另外 17 天投 12 家，按每周 6 小时算是排得下的；排不下的是"一次投 3 家"这种整块任务 —— 复盘里那一条就是这么没做成的。</p>
+        </div>
+      </section>
+    </aside>
+  </div>
+</div>

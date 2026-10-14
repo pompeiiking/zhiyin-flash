@@ -1,0 +1,246 @@
+/* =============================================================================
+ * 日历与课表（schedule）· 视图私有样式
+ * -----------------------------------------------------------------------------
+ * 只放这个视图独有的东西；共享组件一律用 10-data-page.css 的名字，不改它们的定义。
+ * 全部选择器带 .sc- 前缀或限定在 [data-view="schedule"] 内 —— 全站只有一个文档。
+ *
+ * 这一层要解决的是**一件事**：让三类占用在同一条轴上可比。
+ *   课（固定）实心墨条 / 截止（硬）细线 / 任务（可挪）主色虚线条
+ * 所以下面大半的规则是在给 `.lens__item` 画那条 8 小时的轴，而不是在做卡片装饰。
+ * ========================================================================== */
+
+/* ---- 图例：三类占用各占一个色，只用一次（一个分区最多一处主色强调） ------- */
+.sc-legend{
+  display:flex;align-items:center;gap:7px;flex-wrap:wrap;
+  font-size:var(--fs-12);color:var(--c-text-3);line-height:1.6;
+}
+.sc-legend__i{
+  display:inline-block;width:16px;height:8px;border-radius:2px;flex:0 0 auto;
+  background:var(--c-text-3);
+}
+.sc-legend__i:not(:first-child){margin-left:9px}
+.sc-legend__i--c{background:var(--c-text-2)}
+.sc-legend__i--d{height:0;border-top:1px dashed var(--c-attention);background:none}
+.sc-legend__i--t{
+  background:repeating-linear-gradient(90deg,var(--c-primary) 0 3px,transparent 3px 5px);
+}
+.sc-legend__i--g{
+  background:repeating-linear-gradient(135deg,var(--c-surface-3) 0 2px,var(--c-surface-solid) 2px 5px);
+  border:1px solid var(--c-border);
+}
+.sc-legend__n{margin-left:auto;color:var(--c-text-3);font-variant-numeric:tabular-nums}
+
+/* ---- 三周对照：两条柱子用两种填充，和轴上的语义对上 ---------------------- */
+.sc-cmp .cmp__track{height:16px}
+.sc-cmp__c{background:var(--c-text-2)}
+.sc-cmp__t{background:var(--c-primary)}
+.sc-tip{
+  margin-top:var(--sp-4);
+  font-size:var(--fs-12);line-height:1.7;color:var(--c-text-3);
+  display:flex;align-items:center;gap:7px;flex-wrap:wrap;
+}
+
+/* ---- 切换周：三个按钮，选中态是"这一周" ---------------------------------- */
+.sc-weeksw{
+  display:flex;align-items:center;gap:6px;flex-wrap:wrap;
+  margin-top:var(--sp-4);padding-top:var(--sp-4);border-top:1px solid var(--c-border);
+}
+.sc-weekbtn{
+  display:inline-flex;align-items:center;
+  padding:9px 14px;min-height:38px;border-radius:var(--r-pill);
+  border:1px solid var(--c-border);background:var(--c-surface);
+  font-size:var(--fs-14);font-weight:var(--fw-medium);color:var(--c-text-2);
+  transition:background var(--dur-2) var(--ease-out),border-color var(--dur-2) var(--ease-out),
+             color var(--dur-2) var(--ease-out),transform var(--dur-1) var(--ease-spring);
+}
+.sc-weekbtn:hover{background:var(--c-surface-solid);border-color:var(--c-border-strong)}
+.sc-weekbtn:active{transform:scale(.97)}
+.sc-weekbtn[aria-selected="true"]{
+  background:var(--c-primary-weak);border-color:var(--c-primary-border);
+  color:var(--c-primary);font-weight:var(--fw-semibold);
+}
+
+/* ---- 一周 7 天：一天一格，横排；窄屏改纵向堆叠（同一条轴上比不了宽就比内容） */
+.sc-week{
+  display:grid;grid-template-columns:repeat(7,minmax(0,1fr));
+  gap:var(--sp-2);margin-bottom:var(--sp-3);
+}
+.sc-days{display:flex;flex-direction:column;gap:var(--sp-2)}
+.sc-dc{
+  min-width:0;display:flex;flex-direction:column;gap:5px;
+  padding:10px 9px;border-radius:var(--r-lg);
+  border:1px solid var(--c-border);background:var(--c-surface-2);
+}
+.sc-dc[data-today="true"]{border-color:var(--c-primary-border);background:var(--c-primary-weak)}
+.sc-dc[data-dim="true"]{opacity:.34}
+.sc-dc__d{font-size:var(--fs-12);font-weight:var(--fw-semibold);color:var(--c-text-2)}
+.sc-dc[data-today="true"] .sc-dc__d{color:var(--c-primary)}
+.sc-dc__h{
+  font-size:var(--fs-12);color:var(--c-text-3);line-height:1.45;
+  font-variant-numeric:tabular-nums;min-height:2.9em;
+}
+.sc-dc__m{
+  margin-top:auto;font-size:var(--fs-12);font-weight:var(--fw-semibold);color:var(--c-text-2);
+  font-variant-numeric:tabular-nums;
+}
+.sc-dc__empty{color:var(--c-text-3);font-weight:var(--fw-regular)}
+/* 课量刻度：不用数字比，用两根小条比 —— 课多的那天，条长、事少 */
+.sc-dc__bars{display:flex;flex-direction:column;gap:3px;margin-top:3px}
+.sc-bar{
+  display:block;height:5px;border-radius:2px;background:var(--c-surface-3);overflow:hidden;
+}
+.sc-bar i{display:block;height:100%}
+.sc-bar--c i{background:var(--c-text-2)}
+.sc-bar--t i{background:var(--c-primary)}
+
+/* ---- 8 小时轴：一格 10 分钟。轴本身是固定刻度，所以"空了多少"能直接量 ----- */
+.sc-track{
+  position:relative;height:26px;margin-top:4px;border-radius:var(--r-sm);
+  overflow:hidden;background:var(--c-surface-2);border:1px solid var(--c-border);
+  --sc-free:repeating-linear-gradient(135deg,var(--c-surface-3) 0 2px,transparent 2px 5px);
+}
+.sc-fill{position:absolute;top:0;bottom:0;cursor:default}
+.sc-fill__i{position:absolute;top:0;bottom:0}
+.sc-fill--c>.sc-fill__i{background:var(--c-text-2)}
+.sc-fill--t{cursor:pointer}
+.sc-fill--t>.sc-fill__i{background:var(--c-primary)}
+.sc-fill--t>.sc-fill__i::after{
+  content:"";position:absolute;inset:0;
+  background:repeating-linear-gradient(90deg,var(--c-surface-solid) 0 2px,transparent 2px 4px);
+}
+.sc-fill--t>.sc-fill__i.missed{opacity:.55}
+.sc-fill--t.paused>.sc-fill__i{background:var(--c-surface-3);outline:1px dashed var(--c-border-strong);outline-offset:-1px}
+.sc-fill--g>.sc-fill__i{background:var(--sc-free)}
+/* 硬截止：一条细线压在轴上，位置就是它那一刻 */
+.sc-fill--d>.sc-fill__i{
+  width:2px;border-radius:0;background:var(--c-attention);
+}
+.sc-fill--d>.sc-fill__i::before{
+  content:"";position:absolute;top:0;left:-5px;width:10px;height:5px;
+  background:var(--c-attention);
+  clip-path:polygon(0 0,100% 0,50% 100%);
+}
+/* 进行时：今天这一刻（10:20）画在轴上，位置是算出来的 */
+.sc-now{
+  position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--c-attention);
+  box-shadow:0 0 0 2px var(--c-attention-weak);pointer-events:none;
+}
+.sc-now[hidden]{display:none}
+
+/* ---- 一天的卡：三条同轴的账 + 三行文字 ----------------------------------- */
+.sc-daycard{padding:var(--sp-4)}
+.sc-daycard[data-dim="true"]{opacity:.34}
+.sc-daycard[data-week-end="true"]{background:var(--c-primary-weak);border-color:var(--c-primary-border)}
+.sc-daycard__h{
+  display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;margin-bottom:9px;
+}
+.sc-daycard__d{font-size:var(--fs-14);font-weight:var(--fw-bold);color:var(--c-text);font-family:var(--font-title)}
+.sc-daycard__n{
+  margin-left:auto;font-size:var(--fs-12);font-weight:var(--fw-semibold);color:var(--c-text-3);
+  font-variant-numeric:tabular-nums;
+}
+.sc-daycard__b{display:flex;flex-wrap:wrap;gap:var(--sp-4)}
+.sc-daycard__g{flex:1 1 200px;min-width:0}
+.sc-daycard__k{
+  font-size:var(--fs-12);font-weight:var(--fw-semibold);letter-spacing:.02em;
+  color:var(--c-text-3);line-height:1.4;
+}
+.sc-daycard__v{
+  margin-top:3px;font-size:var(--fs-14);font-weight:var(--fw-medium);color:var(--c-text);
+  line-height:1.55;
+}
+.sc-daycard__v b{font-weight:var(--fw-semibold)}
+.sc-daycard__v .src{margin-top:5px}
+.sc-daycard__f{
+  margin-top:9px;padding-top:8px;border-top:1px dashed var(--c-border);
+  font-size:var(--fs-12);color:var(--c-text-3);
+}
+/* 被折进来的 10 分钟：主色只出现在这里，别处不再用 */
+.sc-para{display:flex;flex-wrap:wrap;gap:6px;margin-top:5px}
+
+/* ---- 冲突与待定：两处各自有下一步，不合并成一条"注意" -------------------- */
+.sc-fixes{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:var(--sp-3)}
+.sc-fix{
+  display:flex;flex-direction:column;gap:7px;
+  padding:var(--sp-4);border-radius:var(--r-lg);
+  border:1px solid var(--c-attention-border);background:var(--c-attention-weak);
+}
+.sc-fix[data-sc-fix="pending"]{
+  border-color:var(--c-border-strong);border-style:dashed;background:var(--c-surface-2);
+}
+.sc-fix[data-resolved="true"]{
+  border-color:var(--c-border);border-style:solid;background:var(--c-surface-2);
+}
+.sc-fix__h{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.sc-fix__when{font-size:var(--fs-12);color:var(--c-text-3);font-variant-numeric:tabular-nums}
+.sc-fix__t{font-size:var(--fs-16);font-weight:var(--fw-bold);color:var(--c-text);line-height:var(--lh-snug);font-family:var(--font-title)}
+.sc-fix__d{font-size:var(--fs-14);line-height:var(--lh-normal);color:var(--c-text-2)}
+.sc-fix__row{display:grid;grid-template-columns:60px minmax(0,1fr);gap:var(--sp-3);align-items:start}
+.sc-fix__k{font-size:var(--fs-12);font-weight:var(--fw-semibold);color:var(--c-text-3);padding-top:2px}
+.sc-fix__v{font-size:var(--fs-14);line-height:var(--lh-normal);color:var(--c-text);font-weight:var(--fw-medium)}
+.sc-fix__acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px}
+
+/* ---- 侧栏：10 月与"排不进去的" ------------------------------------------ */
+.sc-month{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:var(--sp-4)}
+.sc-month__wd{
+  font-size:var(--fs-12);font-weight:var(--fw-semibold);color:var(--c-text-3);
+  text-align:center;padding-bottom:2px;
+}
+.sc-month__d{
+  display:grid;place-items:center;height:30px;border-radius:var(--r-sm);
+  font-size:var(--fs-12);color:var(--c-text-2);font-variant-numeric:tabular-nums;
+  border:1px solid transparent;
+}
+.sc-month__d--mark{
+  border-color:var(--c-border-strong);background:var(--c-surface-3);
+  font-weight:var(--fw-bold);color:var(--c-text);
+}
+.sc-month__d[data-sc-today]{
+  border-color:var(--c-primary-border);background:var(--c-primary-weak);
+  color:var(--c-primary);font-weight:var(--fw-bold);
+}
+.sc-month__d--hit{
+  border-color:var(--c-primary);background:var(--c-primary);
+  color:var(--c-on-primary);font-weight:var(--fw-bold);
+}
+.sc-kv{margin-top:var(--sp-2)}
+.sc-kv .kv__k{font-variant-numeric:tabular-nums}
+.sc-note{
+  margin-top:var(--sp-3);font-size:var(--fs-12);line-height:1.7;color:var(--c-text-3);
+}
+.sc-note b{color:var(--c-text-2);font-weight:var(--fw-semibold)}
+
+.sc-post{
+  padding:var(--sp-3) var(--sp-4);border-radius:var(--r-lg);
+  border:1px solid var(--c-border);background:var(--c-surface-solid);
+}
+.sc-post+.sc-post{margin-top:var(--sp-2)}
+.sc-post[data-sc-post="moved"]{border-color:var(--c-primary-border);background:var(--c-primary-weak)}
+.sc-post__t{font-size:var(--fs-14);font-weight:var(--fw-semibold);color:var(--c-text);line-height:var(--lh-snug)}
+.sc-post__m{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.sc-post__badge{
+  display:inline-flex;align-items:center;padding:2px 9px;border-radius:var(--r-pill);
+  background:var(--c-surface-3);border:1px solid var(--c-border);
+  font-size:var(--fs-12);font-weight:var(--fw-semibold);color:var(--c-text-2);
+}
+.sc-post[data-sc-post="moved"] .sc-post__badge{
+  background:var(--c-surface-solid);border-color:var(--c-primary-border);color:var(--c-primary);
+}
+.sc-post__d{margin-top:6px;font-size:var(--fs-12);line-height:1.7;color:var(--c-text-3)}
+.sc-post__d b{color:var(--c-text-2);font-weight:var(--fw-semibold)}
+
+/* ---- 窄屏：横排 7 天站不住，改纵向堆叠（同一批 7 天，换一种排法） ---------- */
+@media (max-width:1100px){
+  .sc-week{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+@media (max-width:767px){
+  .sc-week{grid-template-columns:minmax(0,1fr);gap:var(--sp-2)}
+  .sc-dc__h{min-height:0}
+  .sc-daycard{padding:var(--sp-3)}
+  .sc-daycard__b{gap:var(--sp-3)}
+  .sc-daycard__g{flex:1 1 100%}
+  .sc-fixes{grid-template-columns:minmax(0,1fr)}
+  .sc-weekbtn{flex:1 1 auto;justify-content:center;min-height:44px}
+  .sc-fix__row{grid-template-columns:minmax(0,1fr);gap:2px}
+  .sc-fix__acts .btn{flex:1 1 auto;justify-content:center;min-height:44px}
+}
