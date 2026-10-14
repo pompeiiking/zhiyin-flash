@@ -3,6 +3,240 @@
 生成时间：2026-10-14。**方法：只读 + grep 穷举 + 逐条核对组件 props**，不引用任何对话里的结论。
 基线：`redesign-demo`（Vue 3 + Vite）。
 
+---
+
+## 执行状态（2026-10-14 · wave1 / wave2 回填）
+
+> **本节是回填。** §1–§7 写在改造开始**之前**，里面的数字是**当时的基线**（"迁移 = 0% 执行"那个状态）；
+> 与本节冲突时**以本节为准**，冲突处已在原文标注（不静默改）。
+> 本节每条结论带 `文件:行` 或实测数字，来源只有三个：
+> ① `_shots/wave1-*/`、`_shots/wave2-fixes/*.json` 的探针结果；② 工作树 grep；③ `_tools/wave2-fixes/*.mjs`（可复跑）。
+> 磁盘上查不到的，本节一律写"未记录"。
+> **被测树状态**：`e48829c`「feat(redesign): wave1 七路页面铺设 + wave2 组件缺陷修复与死代码清理」（2026-10-14 13:46），
+> 服务 `http://127.0.0.1:5180`（未重启）。证据快照时间 13:0x–13:4x，与提交同批。
+> 子节编号是 `0-A` … `0-K`，**与下面的 `## 0.` 无关**；引用时请写"执行状态 §0-I"。
+
+### 0-A. 执行度总表
+
+| 条目 | 执行度 | 口径 / 硬证据 |
+|---|---|---|
+| **折叠收敛** | **25 / 30 行位**（旧四类名 23/25；E 类连带 2/5） | `audit-final.json` 逐页 `staticCount` / `collapsibleCount`；源码 grep |
+| **弹层 shape** | **组件侧完成，调用点 12 / 18** | `InfoSheet.vue:18-25,42,53-56`；18 个 `<InfoSheet` 逐个 grep；`audit-final.json` 全 20 个 route×宽 `hasWideInspector:false` |
+| **信息原语** | **MeterRow 2/2；画像页印法 3→1；StatTile 18 处 / SourceChip 5 处已落**，但 §3.2/§3.3 的候选没走完 | 组件调用点 grep；`_shots/wave1-profile/{before,after}-probe.json` |
+| **四态** | **骨架 15 处 / 空态 17 处 / 状态条 13 处 + `AiStatus` 并入**；`.ws-empty` 仍有 3 个活调用点 | 组件调用点 grep；`AiStatus.vue:24,30-53` |
+| **全站 <44px** | **@1280 9→4，@390 19→4**（10 路由 × 2 档实测） | `audit-before.json` vs `audit-final.json`（见 §0-F） |
+| **组件缺陷** | 磁盘上可逐条指认 **11 条**（任务书写"8 条"，没有找到恰好 8 条的清单） | 见 §0-G，每条带 `文件:行` |
+| **死代码** | 已删 **10 族**；**不能删 5 族**（有活调用点/活依赖） | 见 §0-H |
+
+### 0-B. 折叠（逐页，带实测）
+
+`改造前` 取 §1.5 / `COVERAGE.md:159` 的基线；`改造后` 取 `_shots/wave2-fixes/audit-final.json`（`?as=mid`）与 wave1 探针。
+
+| 页面 | 改造前 | 改造后（实测） | 完成的 `文件:行` | 未完成 |
+|---|---|---|---|---|
+| `/report` | 4 处可折叠（D1–D4） | **0 可折叠**（10 个 `static` 常显） | `AssessmentView.vue:117`（维度 ×9 的 `Foldable static`，`v-for`）、`:118`（能力画像 `static`）；`_shots/wave1-report/after-probe.json` preset@1280：`foldCount 10 / foldStatic 10 / foldOpen 10 / wsFold 0 / wsContext 0` | `:121-122` 两处仍可折叠（D3 折线示意、D4 关联内容），属 `/directions` 分支，保留是对的（`forceOpen` 保打印） |
+| `/plan` | **21 处、20 处收起、嵌套 3 层**（`COVERAGE.md:159`） | **2 处可折叠、0 收起、1 层** | `RoadmapView.vue:44`（`:static="i===0"` + `:default-open="i>0"`）、`TaskList.vue:35`（`static`）、`RoadmapView.vue:45`（按来源改为筛选 chips，不再折叠）；`audit-final.json` plan@1280：`fold 11 = static 9 + 可折叠 2` | 无（按 §1.5 目标达成） |
+| `/home` | 2 | **0 可折叠** | `TaskBrief.vue:31`（static）、`TaskList.vue:35`（static，每任务一条）；`audit-final.json` home@1280：`fold 3 / static 3 / 可折叠 0` —— 这 3 个 static 就是上面两处。注：`LiveActionPlan.vue:33` 在 `/home`（`today=true`）下 `:static` 为假、`:default-open="!today"` 也为假，本次快照里 phases 未渲染，故不计入 | 无 |
+| `/notes` | 2（A1 + A13） | **2，其中 1 个收起** | `NotesView.vue:42`（`:default-open="true"`） | **`TodoSuggestions.vue:12` 的 `<details class="ws-context">` 未迁**（就是那个收起的） |
+| `/chat` | `.ws-fold` 1（D5） | **0 可折叠** | `ConversationView.vue:908`（`static variant="inline"`）；`audit-final.json` chat：`fold 1 / 可折叠 0` | 理论卡弹层仍未迁（见 §0-C） |
+| `/schedule` | 2（A4 + A12） | **1** | `ScheduleView.vue:60`（本月关键节点）、`:63` / `:65`（两条告警降为 `StatusBanner` + 一条可折叠）；`_shots/wave1-sched-acad-review/metrics-after.json` schedule@1280：`foldTotal 2 → 1` | 无 |
+| `/academic` | 1（A2） | **1**（拆成 static 核验入口 + 1 个说明折叠） | `AcademicView.vue:140`（课程时间完整性）；`metrics-after.json` academic `1 → 1` | 无 |
+| `/review` | 2、嵌套 2 层 | **1、嵌套 0 层** | `ReflectionView.vue:53`（inline 保留）；外层**不是改 static，而是整个拆掉**——"近期完成任务 / 执行支持"变成常显侧栏 `:50-54`（比 §1.3 A3 的方案更彻底，等价于 static）；`verify-after.json` review@1280：`foldTotal 1 / nestedCount 0` | 无 |
+
+**未迁移的 5 个折叠行位**（旧 `<details>` 或原生 details；标"漏项"的才是真欠账）：
+
+| 文件:行 | 旧类名 | 判定 |
+|---|---|---|
+| `TodoSuggestions.vue:12` | `.ws-context` | **漏项**：`/notes` 可达，生成按钮仍在折叠体内（正是 §1.3 A13 要修的那件事） |
+| `ToolsView.vue:8` | `.ws-context` | 按 §1.8「不迁」（页面按 `PLAN.md:39` 待移出） |
+| `PortalView.vue:25` | `.pv-settings` | 按 §1.8「不迁」（门户只做协调性精修） |
+| `WorkspaceHeader.vue:134` | `.ws-appearance`（E2） | **未记录**是否本轮范围；仍是原生 `<details>` |
+| `EvidenceList.vue:33` | `.exp-evidence`（E3） | **未记录**是否本轮范围；仍是原生 `<details>` |
+
+> E5（`StudentView` 的行内 `openField` 自实现展开）**已销**：这一页现在只有 `Foldable`（`StudentView.vue:960`、`:1108`、`:1341`）。
+
+### 0-C. 弹层（只完成了一半，必须说清）
+
+**组件侧已完成**：`wide` / `inspector` 两个 `@deprecated` prop 与 `resolvedShape` 覆盖链**已删除**，形态只有一个来源 `shape`，缺省 `dialog`（`InfoSheet.vue:18-25`、`:53-56`、`:42`）。
+
+**调用点侧只做了 12 / 18**：
+
+| 状态 | 处数 | `文件:行` |
+|---|---|---|
+| **显式 `shape=`** | **12** | `AcademicView.vue:145`(panel) `:146`(dialog) `:147`(panel)、`NotesView.vue:44`(dialog)、`ConversationView.vue:897`(sheet)、`CareSheet.vue:15`(sheet)、`IntelView.vue:222`(sheet)、`TodayView.vue:73`(dialog)、`StudentView.vue:1364`(dialog)、`ScheduleView.vue:65`(sheet)、`InboxSheet.vue:24`(sheet)、`ProfileInsights.vue:49`(sheet) |
+| **仍走缺省 `dialog`** | **6** | `AuthLayer.vue:33`（原定就是 dialog，**一致**）、`CommandMenu.vue:45`（原定 `panel`）、`ConversationView.vue:915` 理论卡（原定 `sheet`）、`WorkspaceNav.vue:52`「更多功能」（原定 `panel`）、`WorkspaceHeader.vue:128` 账号抽屉（原定 `sheet`）、`WorkspaceHeader.vue:169` 演示设置（原定 `sheet`） |
+
+**实测几何（5 个调用点，都带 `legacyPropClass: null`）**：
+
+| 调用点 | shape | 桌面 | 小屏 |
+|---|---|---|---|
+| `AcademicView` 导入课表与成绩 | `panel` | 800×852 @(240,24) | 390×900 @(0,0) 全屏 |
+| `AcademicView` 撤回导入资料确认 | `dialog` | 540×217 @(370,341) | 352×226 @(19,337) 居中 |
+| `ScheduleView` 课程详情 | `sheet` | 460×876 @(808,12) | 390×494 @(0,406)，`maxHeight 792px` |
+| `ProfileInsights` 画像详情 / `IntelView` 详情 / `ConversationView` 检查器 | `sheet` | 460×876 @(808,12) | 390×792 @(top:108) 底部面板（`radius 16px`、`grabber:flex`） |
+| `ConversationView` 方法依据（未显式 shape） | `dialog` | 540×308 @(370,296) | 未记录 |
+
+> 证据：`_shots/wave1-sched-acad-review/sheets-after.json`（前 3 行 + @390）、`_shots/wave2-fixes/infosheet-probe-2.json`、`_shots/wave1-intel/README.md:43-52`。
+> `_shots/wave1-sched-acad-review/shape-precedence.json` 是**改前**状态（`classList` 里同时有 `--panel` 与 `--wide`），用来证明"`wide` 静默盖过 `shape`"这条判断成立。
+
+**旧类名已从 DOM 消失**：`audit-final.json` 全 20 个 route×宽 `hasWideInspector: false`。
+**但旧全局 CSS 没删**（§2.5 未执行）：`workspace.css:421` 的 `.ws-sheet--wide`、`experience.css:88-91,132,149-151,160` 的 `.ws-sheet--inspector` 现在是 **0 DOM 命中的死规则**。
+**并且 `.ws-sheet` 全局一族不能删**：`background` / `box-shadow` / `::backdrop` **只在** `workspace.css:420,422` 定义，`InfoSheet.vue` 的 scoped 里没有这三项（`:255-307` 只重定义了尺寸/边框/圆角/溢出）—— §2.5 / H4 警告的"删全局 = 18 个弹层同时失去阴影和遮罩"是**已经存在的活依赖**。
+
+### 0-D. 信息原语
+
+| 原语 | 落地处数（模板调用点合计） | 代表 `文件:行`（一行里多个标签的只列行） | 备注 |
+|---|---|---|---|
+| `MeterRow` | **2**（穷举） | `AssessmentView.vue:117`、`:118` | 都已是 `:value` 0–1 + `formatScore01`；`audit` 侧 `/report` preset 实测 `meterRows 12 / meterVisibleRows 12`（9 个维度里 3 个无分值），雷达图 `1 / 可见 1` —— §3.1 说的"46/50 压在最后一次点击里"**已不成立** |
+| `SourceChip` | **5**（穷举） | `AcademicView.vue:126`、`CareerMatchPanel.vue:42`、`NotesView.vue:39`、`:42`、`StudentView.vue:1085` | 其中 4 处是 §3.2 A 类（真枚举），`CareerMatchPanel` 走 `source="record"`；外部媒体名走 `SourceChip` 新增的自由文本口（见 §0-G） |
+| `StatTile` | **18** | `CareerMatchPanel.vue:39`、`LiveActionPlan.vue:34`、`ModuleCatalog.vue:51`、`TaskBrief.vue:36`、`AcademicView.vue:125`、`AssessmentView.vue:113`、`ConversationView.vue:898/901/903`、`IntelView.vue:155`、`ReflectionView.vue:43`、`RoadmapView.vue:40/44`、`TodayView.vue:67` | 覆盖 §3.3 的 T1–T5、T8–T12、T13；T6/T7（`/profile` 的环与覆盖度）见下一行 |
+| `ConfidenceBadge` | **7** | `AssessmentView.vue:117/119`、`StudentView.vue:1086/1218`、`SpecView.vue:435/436/437` | **画像页 3 套印法 → 1 套**：`_shots/wave1-profile/before-probe.json`（@390）`badge 0 / legacyBars 48 / p7tick 3` → `after-probe.json` `badge 24 / legacyBars 0 / p7tick 0`；`grep confidence__bar|p7-tick src/views/StudentView.vue` → 0 命中 |
+| | | | ⚠️ `SpecView.vue:435-437` 仍是**旧对象 API**（`:value="{level,label,bars}"`），§3.4 G1c"规范页教旧 API"的账**没还** |
+
+`/profile` 的原语落地全貌（同一对探针，@390）：`sourceChip 0→12`、`statTile 0→6`、`foldable 0→14`、`emptyState 1→2`、`detailsTotal 3→1`（只剩外观抽屉）。
+
+### 0-E. 四态
+
+| 件 | 落地处数 | 代表落点 | 证据 |
+|---|---|---|---|
+| `SkeletonBlock` | **15** | `NotesView.vue:38`（`overlay` 不摘内容）、`AcademicView.vue:123`、`ScheduleView.vue:57`、`IntelView.vue:201`、`RoadmapView.vue:39`、`AssessmentView.vue:113`、`LiveActionPlan.vue:32`、`ReportHistory.vue:28`、`ConversationView.vue:829/857/858`、`StudentView.vue:1155`、`ModuleCatalog.vue:51`、`TimetableAdvice.vue:18` | 组件调用点 grep；`after-probe.json`（report）`skeletonText 6 / skeletonAriaHidden "true"` |
+| `EmptyState` | **17** | `TodayView.vue:59`、`ScheduleView.vue:64`、`RoadmapView.vue:39`、`ReflectionView.vue:48`、`AcademicView.vue:127/128/132`、`StudentView.vue:1159`、`NotesView.vue:39`、`TaskList.vue:47`、`ProfileInsights.vue:48`、`ReportHistory.vue:44`、`LiveActionPlan.vue:40`、`ModuleCatalog.vue:51` | `after-final.json`（report）`emptyStateHeading.h2 = ["H2|报告还没有生成","H3|尚无已保存的报告版本"]` → **H5 的 `headingLevel` 显式传值已执行** |
+| `StatusBanner` | **13** + `AiStatus` 并入 | `NotesView.vue:34`、`ReflectionView.vue:47`、`AcademicView.vue:116`、`IntelView.vue:136/137`、`ScheduleView.vue:63/65`、`AssessmentView.vue:113`、`LiveActionPlan.vue:27`、`ModuleCatalog.vue:51`、`ProfileInsights.vue:47`、`AcademicVerification.vue:17` | `AiStatus.vue:24,30-53`（busy→`tone="info"`+停止生成；error→`tone="error"`+重试；成功不渲染）；`redesign.css:50` 记 `.inline-status` 已删 → §4.3 B10/B11/B16 **已修** |
+
+**没做完的**：`.ws-empty` 仍有 **3** 个活调用点（`LiveDirectionCompare.vue:25`、`TodoSuggestions.vue:12`、`ConversationView.vue:899`），所以 `workspace.css:408-409` 的 `.ws-empty` 本体**不能删**（H6 未到）。
+
+### 0-F. 全站 <44px（实测，10 路由 × 2 档）
+
+| 档位 | 改前（`audit-before.json`） | 改后（`audit-final.json`） | 剩余来源 |
+|---|---|---|---|
+| @1280 | **9** | **4** | `.btn--sm` 36px（`home`/`plan`：`采纳建议`）、`input.ws-task__check` 18×18（`review`，命中区已由 `::after` 撑到 44 见 `workspace.css:835-840`）、`input.sr-only` 1×1（`chat`） |
+| @390 | **19** | **4** | 与 @1280 同 3 类：`.btn--sm` 36px ×2（`home`/`plan`）、`input.ws-task__check` 18×18 ×1（`review`）、`input.sr-only` 1×1 ×1（`chat`） |
+
+- 改前 @390 的 19 条里，**10 条是 `.ws-demo-badge` 25×44**（宽度不足，10 个路由各 1 条）—— 本轮已修（`workspace.css:669` 一段的注释记了这条），所以 `audit-final` 里它整体消失。
+- 其余消失的 5 条：`/review` 的两条页签链接（70×38 / 56×38）、`Foldable` inline 折叠头（914×40 → 44）、`/home` 与 `/review` 各一个"收起"按钮（28×44 → 44×44）。
+- 另修：`.ws-guide button` 28×44 → 44×44（`workspace.css:412-419`，`TodayView.vue:71` / `ReflectionView.vue:57` 两处共用）；`Foldable` inline 折叠头 40 → 44（`Foldable.vue:245`，实测 `review@1280 fold__head 914×40` → `audit-final` 里已不在 small 列表）。
+- ⚠️ **与任务书给的锚点不一致**：任务书写"@1280 9→5、@390 17→4"。磁盘上 `audit-before.json` / `audit-final.json` 按同一口径（`audit.mjs:34-68`，跳过 `::after` 已撑开命中区的）复算出的是 **9→4 / 19→4**。本节按磁盘写；差的那 1–2 条**未记录**是哪几条，不猜。
+
+### 0-G. 组件缺陷（本轮修掉，每条都有 `文件:行`）
+
+| # | 缺陷 | 修法 | 证据 |
+|---|---|---|---|
+| 1 | `SourceChip.source` 是**必填 7 值枚举**，自由文本来源喂不进去 | `source` 放宽为可选 + 新增 `label` / `kind` 逃生口（三支外部来源字形） | `SourceChip.vue:92-122`、`:263`、`:396` |
+| 2 | `EmptyState` 缺 `plan` / `direction` / `notice` / `tools` 四档，三路 agent 各自借用语义不符的 kind | 补 4 档 + 各自的 `NEXT`（既有 9 档一字未动） | `EmptyState.vue:20-40`、`:109`、`:132`、`:206` |
+| 3 | `SkeletonBlock` 根**写死 `<div>`** → 放进 `<button>` 是非法 HTML，一路 agent 因此放弃 8 处 P2 行内用法 | 新增 `as?: 'div' \| 'span'` | `SkeletonBlock.vue:49-64`、`:117` |
+| 4 | `Foldable static` **只有 h3 一档**，调用方只能传 `:title="''"` 自己造头 | 新增 `titleLevel`（2/3/4） | `Foldable.vue:42-52`、`:174` |
+| 5 | 同上：`:title="''"` 仍会渲染一个**空 h3**（读屏念到空标题） | 新增 `headless` | `Foldable.vue:53-63`、`:168-171` |
+| 6 | `Foldable` inline 折叠头 `min-height: 40px`（<44 硬约束） | 40 → 44 | `Foldable.vue:245` |
+| 7 | `Foldable` 层级判据把 `.fold--static` 也算一层 → **误报**（把最该用的组合赶出代码库） | 判据只数可折叠的 `.fold` | `Foldable.vue:92-101`、`:131-136`（副作用见 §0-I） |
+| 8 | `Foldable` 的 body id 用实例局部计数 → 全站 11 个折叠体 id 全是 `fold-body-1` | 改用 Vue 3.5 `useId()` | `Foldable.vue:109-124` |
+| 9 | `InfoSheet` 的 `wide`/`inspector` **静默盖过** `shape`，且 `:wide="false"` 也关不掉（Boolean prop 存在即为真） | 两个 prop 与 `resolvedShape` 覆盖链整体删除 | `InfoSheet.vue:18-25`、`:53-56` |
+| 10 | `StatusBanner` 动作位高度不足 | 动作位 ≥44px | `StatusBanner.vue:289` |
+| 11 | `MeterRow` 量纲放宽 → 调用方可能画错尺 | 收紧为**只吃 0–1**，且不把 0–1 直接印成人话（`format` 归调用方） | `MeterRow.vue:26-34`；代价见 §0-J 第 2 条 |
+
+> 任务书写"组件缺陷 8 条已修"。我在磁盘上**没有找到恰好 8 条的清单**（`_shots/`、`_tools/` 里无此表），
+> 上表是能从源码注释与探针逐条指认的 **11 条**。差集**未记录**。
+
+### 0-H. 死代码（已删 / 不能删）
+
+**已删（10 族，注释留在原处当墓碑，都写了证据）**
+
+| 族 | 原址 | 删除依据（注释） |
+|---|---|---|
+| `.meter` / `.meter__fill` 一族（6 条 + reduced-motion 1 条） | `base.css:827-856`、`:1006-1008` | `base.css:920-938`；`motion.ts:10-15` 的引用同时改指 `.mtr__fill` |
+| `.confidence` / `__bars` / `__bar` / `__bar--on` | `base.css:568-590` | `base.css:666-681`（含 `StudentView` 的 `:deep(.confidence__*)` 覆盖一起删） |
+| `.ws-task__details` 一族 6 条 | `workspace.css:439-444` | `workspace.css:460-464`（`class="ws-task__details"` 0 命中） |
+| `.ws-fold` 一族 4 条 | `workspace.css:456-459` | `workspace.css:476-481`（含"`.ws-fold__body` 的 padding 会漏进 Foldable slot"这条） |
+| `.ws-diagnostic` 一族 4 条 + 窄屏 1 条 | `workspace.css:537-540`、`:654` | `workspace.css:559-564` |
+| `.plan-stage` 一族 9 条 | `redesign.css:190-198` | `redesign.css:235-241`（`.plan-current` / `.plan-stages` **不是**死代码，只摘 `.plan-stage`） |
+| `.live-action .plan-stage` | `redesign.css:83` | `redesign.css:120-121` |
+| `.ws-empty h3` / `.ws-empty a` | `workspace.css`（旧处） | `workspace.css:401-407` |
+| `.inline-status` / `.inline-status--error` | `redesign.css:37-38` | `redesign.css:50`（窄屏 `display:none !important` 同时消失） |
+| 三条父类 0 命中的复合选择器 | `workspace.css:438,447` | `workspace.css:575-582`（`ws-dimension` / `ws-direction__role` 先死） |
+
+**不能删（有活调用点 / 活依赖）**
+
+| 族 | 定义处 | 活调用点 |
+|---|---|---|
+| `.ws-context` / `.ws-context__body` | `redesign.css:33-41` | `ToolsView.vue:8`、`TodoSuggestions.vue:12`（`<details class="ws-context">`）；`StudentView.vue:1342` 的 `<div class="ws-context__body">`（样式钩子在 `:1404`、`:1452-1455`） |
+| `.ws-empty` 本体 + `.ws-empty p` | `workspace.css:408-409` | **3 处**：`LiveDirectionCompare.vue:25`、`TodoSuggestions.vue:12`、`ConversationView.vue:899`。⚠️ `workspace.css:402-403` 的注释只记了 2 处（**漏了 `ConversationView:899`**）——结论（h3/a 可删）不受影响，但计数要订正 |
+| `.desk-status` 两份冲突定义 | `workspace.css:215`、`redesign.css:49` 与 `:70` | `AcademicView.vue:119`、`LiveDirectionCompare.vue:25`。`redesign.css` 最后加载 → `--c-surface-2` + 边框那份胜出（`redesign.css:43-48` 记了为什么不删） |
+| `.ws-sheet` 全局一族 | `workspace.css:420-427`、`:732-733`、`:794` | **活依赖**：`background`/`box-shadow`/`::backdrop` 只在全局；`InfoSheet.vue:255-307` 的 scoped 没写这三项 |
+| `.ws-sheet--wide` / `.ws-sheet--inspector` | `workspace.css:421`、`experience.css:88-91,132,149-151,160` | **无活调用点（0 DOM 命中）→ 是死规则，但没删**（§2.5 未执行，见 §0-C） |
+
+### 0-I. ⚠️ 检测器盲区：「可折叠外层 + static 内层」看不见
+
+**这是本轮最重要的一条，因为它会让"合规"变成"看起来合规"。**
+
+1. wave2 把 `Foldable` 的嵌套判据从「数 `.fold`」改成「**只数可折叠的** `.fold`」（排除 `.fold--static`，`Foldable.vue:92-101`、`:131-136`）。这个改动本身是对的——它修掉了"static 容器 + 内部 inline"的误报，而被误报的那个组合正是设计语言最推荐的一层（`Foldable.vue:96-100`）。
+2. **副作用**：`/plan` 上"可折叠外层（阶段 2、3）+ static 内层（`ws-task__why`）"这个**真实存在的结构嵌套**，从检测器里彻底消失了。
+   - 结构事实：`RoadmapView.vue:44` 每个阶段一个 `Foldable variant="group"`，`:static="i===0"`；阶段内是 `TaskList`，其 `TaskList.vue:35` 是 `<Foldable static variant="inline">`。
+   - 实测：`audit-final.json` plan@1280 = `fold 11 / static 9 / 可折叠 2 / trulyNestedCount 0 / collapsibleInsideStatic 0`。
+     把 11 拆开看：可折叠 2 = 阶段 2、3 各 1（`RoadmapView.vue:44` 的 `v-for`，`:static="i===0"`）；
+     static 9 = 阶段 1 容器 1 + 各任务的 `ws-task__why` 8（`TaskList.vue:35`）。
+     于是结构嵌套是 3 对：**阶段 1（static 外 + static 内）1 对，阶段 2、3（可折叠外 + static 内）2 对** ——
+     后 2 对正是检测器看不见的那一档，**嵌套告警 0 条**。
+   - `_tools/wave2-fixes/audit.mjs:98-99` 也只统计了 `nestedReal`（可折叠套可折叠）与 `staticWrapCollapsible`（static 套可折叠）——**没有** "static 套在可折叠里的"这一档，所以脚本与组件是同一个盲区。
+3. wave2 的隔离测试覆盖了 A 与 B，**漏了 C**：`_tools/wave2-fixes/fold-depth-probe.mjs:32-45` 有 `#probe-a`（static 外 + inline 内，合法）与 `#probe-b`（可折叠外 + inline 内，真嵌套），**没有**"可折叠外 + static 内"这一例；而 C 恰好是 `/plan` 的真实形态。
+   （隔离开关页 `#/__fold-probe` 已不在工作树：`grep -rn '__fold-probe'` 只命中探针脚本本身 `fold-depth-probe.mjs:20`。）
+4. **裁定**：用户视角只有 **1 次点击**（static 内层不需要再点），所以 `/plan` **不算违规**。但检测器看不到这个组合是**真实盲区**——它意味着"`/plan` 合规"这句话里有一半不是检测器给的，是人判的。
+
+**以后怎么检**（两条都要，缺一条还是会漏）：
+
+- **判据层**：把"被可折叠祖先遮住的 static"单独识别出来——即 `static` 折叠体只要存在**可折叠祖先**，就记一条 `staticUnderCollapsible`（**不报警、只计数**），并断言"一个可折叠容器里最多 1 个 static 折叠加一次点击"。这样"1 次点击"从设计判断变成可测事实。
+- **断言层**：在 `audit.mjs` 里补第 4 个计数（现在的 3 个是 `trulyNestedCount` / `collapsibleInsideStatic` / 无）：
+  `staticInsideCollapsible = statics.filter(f => f.parentElement?.closest('.fold:not(.fold--static)'))`，
+  然后给每页一个硬断言：`可折叠层数 ≤ 1` **且** `页内"需要用户点击才能看到的折叠加"≤ 1`（static 不计入点击）。
+- **隔离测试要覆盖三元组**：A（static 外 + inline 内）／B（可折叠外 + inline 内）／**C（可折叠外 + static 内）**，三例都在同一个探针页里各断言一次（现在 `fold-depth-probe.mjs` 只有 A、B）。
+
+### 0-J. 订正（原文处也已标注）
+
+**订正 1 · §5.2 说 `SpecView` 的 `.meter-row__*` "全库无样式定义" —— 错。**
+`SpecView.vue` 自己的 scoped `<style>` 里有**四条**同名规则：`.meter-row__track`（`:760-765`）、`.meter-row__fill`（`:767-771`）、`.meter-row__fill--warn`（`:773-775`）、`.meter-row__req`（`:777-784`）。
+所以那三条 `<div>`（`SpecView.vue:474-476`）**不是**引用不存在的组件、也不会以默认块级样式竖向堆叠——它是**规格页自己手写的一把假尺**（与 `.mtr__*` 并行实现的第二份）。
+真正的死代码是 `workspace.css` 的 `.ws-diagnostic .meter-row__*`（旧版 MeterRow 的残留），**已删**（墓碑在 `workspace.css:559-564`）。
+原文 §5.2 的"三重问题"第 1 条据此订正；第 2 条的结论（`ws-diagnostic` 全 0 命中）不受影响。
+
+**订正 2 · "`.ws-subnav a` @390 = 38px" —— 错，且归属搞错了。**
+- 实测 `.ws-subnav a` 已是 **56×44**：`workspace.css:391` 就是 `display:inline-flex; align-items:center; height:44px`（`workspace.css:385-390` 记了"原来 41.2px"的账）。
+- `/review` **根本不渲染** `.ws-subnav`：`.ws-subnav` 只出现在 `AssessmentView.vue:112`（`/report`、`/directions`）与 `ActionPlanNav.vue:5`（`/home`、`/plan`）；`/review` 用的是 `.desk-section-nav`（`ReflectionView.vue:40`）。
+- 那两条 38px 的真身是 **`.desk-section-nav a`**：定义在 `workspace.css:191-200`（`min-height:44px`，`workspace.css:191` 的注释写明"`/review` 的这两个页签实测 `70×38` / `56×38`"），改前实测见 `_shots/wave1-sched-acad-review/metrics-before.json` 的 `review@1280/390`（`a 70×38 推进与复盘`、`a 56×38 完成记录`），已修到 44（`audit-final.json` 的 review small 列表里这两条已消失）。
+- 这句话**不在**本文件或 `COVERAGE.md` 里；它只出现在探针脚本的注释：`_tools/wave2-fixes/subnav-probe.mjs:1`（"定位 `.ws-subnav a` 在 390 下为什么只有 38px"）。脚本在本次写权限之外，故在此订正，不改脚本。
+
+### 0-K. 本轮教训（三类 + 一条系统性病灶）
+
+**1 · 组件 API 是按"设想的用法"设计的，不是按"代码里真实存在的用法"**
+
+| 缺口 | 真实世界的用法 | 代价 | 证据 |
+|---|---|---|---|
+| `SourceChip.source` 必填枚举 | 资讯 `source_name`、AI `citation.source`、方法卡来源**都是自由文本** | 三路 agent 独立撞上，最后都退回 `<p class="ws-muted">` 灰字 = `DESIGN-LANGUAGE.md:102` 点名的降级 | `SourceChip.vue:100-108`（原文写"组件的能力边界成了设计语言的执行边界"） |
+| `EmptyState` 只有 9 档 kind | 计划 / 方向 / 提醒 / 工具四类空态**只能借用** | 每个借用都留下一条"我知道不对但没办法"的注释；`NEXT.report` 甚至指向一个不存在的按钮 | `EmptyState.vue:20-36`（逐条列了四路借用与代价） |
+| `Foldable` 层级误判（连 static 也数） | "static 容器 + 内部 inline"是**设计语言最推荐**的组合，被报成第 2 层 | **一路 agent 因此放弃了按需折叠，把该折的改成始终展开** | `Foldable.vue:99-100` |
+| `SkeletonBlock` 根写死 `<div>` | 8 处 P2 用法是"按钮里显示正在读取"（`读取中 <SkeletonBlock inline …/>`） | 根节点在 `<button>` 里非法 → 那一路**直接没做这 8 处** | `SkeletonBlock.vue:52-57` |
+
+**2 · 修一个问题造一个新问题**
+
+- `Foldable` 判据改动 → **检测器盲区**（§0-I）：为了修 static 的误报，把"可折叠外 + static 内"整档从判据里删掉了，`/plan` 的真实形态就此不可见。
+- `MeterRow` API 收紧（只吃 0–1、且不代印人话，`MeterRow.vue:26-34`）→ **`/report` 回归**：报告页口径是"整分"，不显式传 `formatScore01` 就会同屏出现 `46%` 与 `46 分` 两把尺；现在靠调用点逐个补 `:format`（`AssessmentView.vue:84-86` 记了这条推导，`:117`、`:118` 是补法）。**组件的"更干净"直接变成了所有调用点的义务。**
+
+**3 · `<script setup>` 没有模块作用域**
+
+`Foldable` 第一版用 `let foldSeq = 0` + `fold-body-${++foldSeq}` 生成 id。那个 `let` 在 `<script setup>` 里是**每个实例重新执行的局部变量**，所以每个实例都从 0 开始 → **全站 11 个折叠体的 id 全叫 `fold-body-1`**，`aria-controls` 全员指向文档里第一个折叠体（实测 `/plan` 里每个头 `targetIsOwnBody: false`）。
+已修：改用 Vue 3.5 的 `useId()`（`Foldable.vue:109-124`）。
+**判据**：任何"全局计数 / 单例缓存 / 只跑一次"的写法放进 `<script setup>` 都会变成"每个实例各来一次"；要模块级状态就得另开一个普通 `<script>` 块。
+
+**4 · 规范被"后加载的文件"覆盖（系统性病灶，本轮抓到 4 次）**
+
+| # | 现象 | 根因 | 修法 / 证据 |
+|---|---|---|---|
+| 1 | 侧栏**看不出边界** | `experience.css` 后加载、同权重，一条 `background: transparent` **盖掉** `workspace.css:67` 的 `background: var(--c-surface)` | `experience.css:8-11`（改前/改后都在注释里） |
+| 2 | 正文行距令牌**完全失效**（dense 皮肤切了没反应） | `body` 写死字面量 `line-height: 1.7`，组件里的 `var(--lh-normal)` 只是把 1.7 抄了一遍 | `base.css:54-67`；实测 `_shots/wave1-styles/REPORT-wave1-styles.md:66-73`：plain 27.2px 不变、**soft 1.78 / dense 1.55 改前都是 27.2px（令牌无效）**，改后 28.48 / 24.8 |
+| 3 | 全站同屏出现 **32/36/38/40/41/42/44/46 共 8 档**控件高度 | `redesign.css` **最后**加载，把 8 类控件又写成 `min-height: 40px`（`.ws-text-button` / `.ws-text-link` / `.profile-toolbar select` / `.calendar-view select` / `.report-toc a` / `.intel-title` / `.skin__trigger` / `.ws-task__details > summary`） | 实测改前 `plan@1280` 有 18 个 40px + 2 个 41px + 2 个 42px，`report@1280` 有 5 个 40px + 2 个 41px + 3 个 42px；修法是在 `workspace.css:819-826` 用 **0,2,0 的更高特异度**收回 44（不改 `redesign.css`：写权限之外，且这层覆盖关系要留证据） |
+| 4 | 字号与字距门禁**测不出**门户标题 | `PortalProposalView.vue:63`、`:93` 用 `clamp(38px, 4.9vw, 68px)` / `clamp(38px, 8.5vw, 56px)` 写字号 | 门禁问的是"这个字号是几 px / 是否 ≥20px"，`clamp()` 让答案随视口变 → 静态检查失效。**未修**（门户在写权限之外） |
+
+**对策已写进 `base.css:8-27` 的"全局样式纪律"**：① 裸元素选择器只允许"重置与继承默认"，角色量（字号/字距/行高/颜色）必须落在具名类上；② 能令牌化的量一律写 `var()`，字面量等于"把值钉死在加载顺序里"；③ **加载顺序不是契约**（`main.ts`：tokens → base → workspace → experience → journey → dialogue → redesign），要压过别人就压**特异度**并写明原因。
+
+---
+
 ## 0. 怎么核对这些数字
 
 本文件所有 `文件:行` 都可以用下面几条命令复现（行号为当前工作树状态）：
@@ -15,7 +249,8 @@ grep -rn --include=*.vue -E 'class="ws-fold|class="ws-context|class="plan-stage|
 grep -rn --include=*.vue '<details' src
 # 弹层
 grep -rn --include=*.vue '<InfoSheet' src
-# 新组件是否已被使用（结论：全部 0 处）
+# 新组件是否已被使用（⚠️【订正 2026-10-14】这句"结论：全部 0 处"是改造前的状态；
+# 现在这条 grep 会命中 Foldable 19 / SkeletonBlock 15 / StatusBanner 13 / SourceChip 5 / StatTile 18，见顶部「执行状态」§0-D/§0-E）
 grep -rn --include=*.vue -E '<Foldable|<SkeletonBlock|<StatusBanner|<SourceChip|<StatTile' src
 # 空态两套实现
 grep -rn --include=*.vue -E '<EmptyState|class="ws-empty' src
@@ -23,7 +258,10 @@ grep -rn --include=*.vue -E '<EmptyState|class="ws-empty' src
 grep -rn --include=*.vue '<MeterRow' src
 ```
 
-**先记一条总账（这决定了迁移的性质）**：
+**先记一条总账（这决定了迁移的性质）**（⚠️【订正 2026-10-14】下表是**改造前**的总账。现在的实测值：
+`Foldable` 19、`SkeletonBlock` 15、`StatusBanner` 13、`SourceChip` 5、`StatTile` 18、`ConfidenceBadge` 7、
+`MeterRow` 2、`EmptyState` 17；`InfoSheet` 仍是 18 处调用点，但**没有一处**传 `shape` 这句要改成**6 处没传**——
+逐条见顶部「执行状态」§0-C/§0-D/§0-E）：
 
 | 组件 | 文件 | 模板调用点 |
 |---|---|---|
@@ -37,7 +275,9 @@ grep -rn --include=*.vue '<MeterRow' src
 | `charts/MeterRow.vue`（`:score→:value`） | 已交付 | **2**（都已用 `:value`，未迁移数 = 0，见 §3.1） |
 | `EmptyState.vue`（升级） | 已交付 | **2**（另有 `.ws-empty` **18** 处，见 §4.2） |
 
-**所以"迁移"目前是 0% 执行的状态**：组件先落地了，页面一条都没改。
+**所以"迁移"目前是 0% 执行的状态**（⚠️【订正 2026-10-14】这句描述的是**改造开始前**。
+截至 2026-10-14 13:4x，wave1/wave2 已执行了一部分：折叠 25/30 行位、弹层调用点 12/18、
+四态与多条原语已落地 —— 逐条见本节顶部的「执行状态」）：组件先落地了，页面一条都没改。
 这不是"补几个调用点"，而是"组件库 → 17 个页面"的一次铺设。**改组件不迁移调用点 = 页面不会变好，但也不会坏**——因为新组件全部是新增，没有替换任何旧类名。真正的风险只在 §3.1 的量纲和 §5 地雷。
 
 ---
@@ -573,8 +813,22 @@ grep -rn --include=*.vue -E 'class="meter|meter__fill' src   # → 只命中 Spe
 | `workspace.css:540` | `.ws-diagnostic { grid-template-columns: minmax(0,1fr); gap:24px }`（窄屏） | **孤儿** |
 
 **三重问题**：
-1. `SpecView.vue:474-476` 用的类名 `.meter-row__track` / `__fill` / `__req` / `--warn` **全库没有任何 CSS 定义**（`MeterRow.vue` 用的是 `.mtr__*`，见 `MeterRow.vue:231,242,253…`）。
+
+> ### ⚠️【订正 2026-10-14】`SpecView` 的 `.meter-row__*` **有**样式定义
+>
+> 下面第 1 条写的"全库没有任何 CSS 定义"是**错的**。`SpecView.vue` 自己的 scoped `<style>` 里有**四条**：
+> `.meter-row__track`（`SpecView.vue:760-765`）、`.meter-row__fill`（`:767-771`）、
+> `.meter-row__fill--warn`（`:773-775`）、`.meter-row__req`（`:777-784`）。
+> 所以 `SpecView.vue:474-476` 的三个 `<div>` **不会**以默认块级样式竖向堆叠 —— 那是一条**能画出来的条**。
+> 它的真问题是另一件事：**规格页手写了一把与 `.mtr__*` 并行的第二份实现**（"假尺"指的不是"没有样式"，
+> 而是"规格页在示范一份不存在于任何组件里的实现"），加上它用的是 `style="width: 46%"` 这种绕过量纲的写法。
+> 真正"引用不存在的组件"的死代码是 `workspace.css` 的 `.ws-diagnostic .meter-row__*`（旧版 MeterRow 残留），
+> **已删**（墓碑见 `workspace.css:559-564`）。订正只针对"有没有样式定义"这一点；
+> 第 2 条（`ws-diagnostic` 父类与三个子类全 0 命中）与第 3 条（规格页不在学生壳里）仍然成立。
+
+1. `SpecView.vue:474-476` 用的类名 `.meter-row__track` / `__fill` / `__req` / `--warn` **全库没有任何 CSS 定义**（⚠️**这一句错，见上方订正**；实际定义在 `SpecView.vue:760-784` 的 scoped 样式里）（`MeterRow.vue` 用的是 `.mtr__*`，见 `MeterRow.vue:231,242,253…`）。
    → 规格页在**教一个不存在的组件**，而且它自己的示例是**失真的**：三个 `div` 会以默认块级样式竖向堆叠，不是一条"同刻度的尺"。
+   （⚠️**同样错，见上方订正**：它有样式，能画出条；真正的病灶是"手写第二份实现 + 用 `style="width:46%"` 绕过量纲"。）
 2. `workspace.css:425-427` 的 `.ws-diagnostic .meter-row__*` 引用的父类 `.ws-diagnostic` 与三个子类**全部 0 命中**——这是**旧版 MeterRow 的残留**（旧版类名是 `.meter-row__*`，本次改造改名成 `.mtr__*` 时只改了组件、没清全局）。
 3. 规格页是 `meta.public`（`COVERAGE.md:210`：`router.ts:80` 标 public → `App.vue:88` 走 bare 分支），它**不在学生壳里**，但它在 `HELP_LINKS` 里仍然可达。
 **处置**：SpecView 的示例应换成真实的 `<MeterRow :value="0.46" :requirement="0.5"/>`；`workspace.css:424-427` 与 `:540` 一起删。
