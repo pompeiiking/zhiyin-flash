@@ -193,8 +193,27 @@ const fsGhost = fsRegistered.filter((t) => !fsDeclared.includes(t))
 /**
  * 装饰令牌允许用 color: 的选择器 —— 用字符画的圆点属于装饰，不是文字。
  * 这张白名单要短：每加一条，都得有人负责解释"它为什么不是文字"。
+ *
+ * 【2026-10-14 · 开工时的 6 处红怎么分的】先逐处问"它承不承载文字"，答案把 6 处劈成两半：
+ *   · 承载文字的 3 处（全在 ConfidenceBadge.vue）→ **改令牌**，已经改成 --c-text-3：
+ *     .cf__num（"46%"这个读数）、.cf__none（「未评估」三个字）、.cf--unknown（容器文字色）。
+ *     它们原来对纸面 2.50:1 —— 把这三个标成"装饰"就是拿门禁换绿，没做。
+ *   · 真的只是图形的 3 处 → 登记在这里。三条的共同形状是
+ *     **"color 不是文字色，而是某个绘制的填充源或一个分隔字符"**，
+ *     与既有那一条（.dot：`background: currentColor` 的圆点，base.css:658）是同一个机制。
+ * 每一条的理由都写在下面这一行里；组件侧同一处也留了同样的注释（两边能互相找到）。
  */
-const DECORATIVE_ALLOWED = [/\.dot\b/]
+const DECORATIVE_ALLOWED = [
+  /\.dot\b/, /* 状态圆点：color → background: currentColor，元素内没有字符（base.css:658） */
+  /* 差距斜纹带：空 span + aria-hidden，color 只喂 --meter-gap-pattern 的 currentColor
+     （tokens.css:395 的 repeating-linear-gradient）；差距的数值由图例文字与 aria-label 承担。 */
+  /\.mtr__gap\b/,
+  /* 图例里那枚 10×8 的斜纹小方块：同上，同一个 pattern；说明文字就在同一图例项里。 */
+  /\.mtr__legend-glyph--gap\b/,
+  /* "5 / 8" 之间那道分隔斜杠：aria-hidden 的单字符，token 登记用途里"分隔符"是明写的一项
+     （tokens.css:253）；它比两侧数字浅一档是刻意的，分隔符不该和读数抢重量。 */
+  /\.tile__slash\b/,
+]
 
 function walk(dir) {
   const out = []

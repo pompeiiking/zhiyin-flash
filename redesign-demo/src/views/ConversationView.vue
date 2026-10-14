@@ -201,6 +201,21 @@ const planned = computed(() => [...demo.use.now.value, ...demo.use.waiting.value
 const handoffs = computed(() => turns.value.filter((t) => t.handoff).map((t) => t.handoff!))
 const host = computed(() => [...turns.value].reverse().find((t) => t.from === 'host' && t.speaker)?.speaker ?? '了解你情况的人')
 const taskAdded = (title: string) => demo.state.tasks.some(task => task.title === title)
+/**
+ * 右栏第一张卡的读数：**已经落到行动清单上的建议**。
+ *
+ * 与「咨询成果」这个标题必须同义 —— 用 `planned.length`（今日行动 + 待办）而不是
+ * 会话里出现过几次建议，否则用户点进成果页会发现数字对不上。
+ */
+const outcomeCount = computed(() => planned.value.length)
+/**
+ * 右栏第二张卡的读数与进度：**已知 / 总数**，进度条就画这个比例。
+ * 逐段（12 段 = 画像池全量）比一条连续的百分比条更贴靶子，也更老实：
+ * 段数就是待补充的项数，用户能一段一段数出来。
+ */
+const profileKnown = computed(() => progress.value.known)
+const profileTotal = computed(() => progress.value.total)
+const profileOn = computed(() => Math.max(0, Math.min(profileTotal.value, profileKnown.value)))
 const taskAddedAt = ref('')
 const topicLabels: Record<string, { title: string; description: string; icon: string }> = { confused: { title: '兴趣与能力', description: '了解个人特点与适合的领域', icon: 'profile' }, undecided: { title: '方向选择', description: '比较备选方向与决策依据', icon: 'directions' }, how_to_act: { title: '行动规划', description: '将目标转化为具体行动', icon: 'action' }, stuck: { title: '执行调整', description: '分析执行障碍并调整方案', icon: 'review' } }
 const starters = registry.taskEntries.filter(t => topicLabels[t.code]).map(t => ({ ...t, ...topicLabels[t.code] }))
@@ -444,16 +459,75 @@ const hostState = computed<'idle' | 'thinking' | 'speaking'>(() => {
   if (thinking.value) return 'thinking'
   return turns.value.some((t) => isStreaming(t.id)) ? 'speaking' : 'idle'
 })
-/** 状态词：只说"此刻在干什么"，不给角色名（角色名就在同一行的 .chat-who 上） */
+/**
+ * 状态词：只说"此刻在干什么"，不给角色名（角色名就在同一行的 .chat-who 上）。
+ *
+ * 【2026-10-14 · 对齐 c2-hbu】词表从"正在分析你的问题 / 正在回答 / 在线"收到
+ * 靶子的三个短词（正在想 / 正在说 / 在听）：在场卡的形态与间距照靶子搬，
+ * 状态词就不该比靶子长一倍 —— 那是同一行里唯一还在"解释"的东西。
+ * 它不是新的状态源：判据仍然是 hostState，而 hostState 由真实字段驱动
+ * （thinking / isStreaming，见下面的 hostState 定义）。
+ */
 const presenceLabel = computed(() =>
-  hostState.value === 'thinking' ? '正在分析你的问题' : hostState.value === 'speaking' ? '正在回答' : '在线，等你开口',
+  hostState.value === 'thinking' ? '正在想' : hostState.value === 'speaking' ? '正在说' : '在听',
 )
 /** 头部那一行左侧的会话名（可截断；完整名字走 title） */
 const sessionName = computed(() => backendDemo.currentSession.value?.task_name || '围绕当前问题开展咨询')
+/** 此刻主理这一段的顾问（会话头第三行「谁在跟你说话」用它，与在场卡同源） */
+const hostLabel = computed(() => consultantLabel(host.value))
+const demoMode = computed(() => backendDemo.state.dataMode === 'demo')
+
+/**
+ * 会话头第二行的时间：**取自真实字段** `last_active_at`，不写死。
+ *
+ * 它是"最近一次活动"，所以不冒充靶子那句「今天 14:20 开始」——
+ * 拿不到确切开始时间就如实说"最近活跃"，绝不用一句更漂亮的话替掉真话。
+ * 该字段在 service 模式下由后端投递，格式也按它自己解析；解析不了就整行不显示。
+ */
+const sessionTime = computed(() => {
+  const raw = backendDemo.currentSession.value?.last_active_at
+  if (!raw) return ''
+  const at = new Date(raw)
+  if (Number.isNaN(at.getTime())) return ''
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${at.getMonth() + 1}-${pad(at.getDate())} ${pad(at.getHours())}:${pad(at.getMinutes())}`
+})
 async function copyReply(id: string, text: string) {
   copiedId.value = id
   try { await navigator.clipboard.writeText(text); copyStatus.value = '回复已复制。'; copyLabel.value = '已复制' }
   catch { copyStatus.value = '未能复制，请选中正文手动复制。'; copyLabel.value = '复制失败' }
+}
+
+/* =============================================================================
+ * 页头两个动作：总结这段咨询 / 导出记录
+ * -----------------------------------------------------------------------------
+ * 靶子页头右边就是这两个动作（c2-hbu index.html:7040-7049），现网没有它们。
+ * 搬过来的同时必须**真的做事**，否则它们是两枚假按钮：
+ *   · 总结这段咨询 → 复用已经存在的产出面板（咨询成果 sheet）：
+ *     它本来就是"这一段咨询产出了什么"的落点，不另造一个总结弹层；
+ *   · 导出记录 → 真的把这一轮对话写成文本放进剪贴板。
+ *     移动端 Safari 不给剪贴板权限时**必须留退路**：把文本显示在成果面板里，
+ *     让用户自己选区复制 —— 不允许出现"点了没反应"。
+ * ========================================================================== */
+const exportText = ref('')
+function summaryOf(): string {
+  return turns.value.map((t, i) => {
+    const who = t.from === 'me' ? '我' : t.from === 'system' ? '系统提示' : consultantLabel(t.speaker)
+    // 「从谁交给谁」只能回头看这一条之前最后一位主理 —— handoff 自己只记了 to
+    const extra = t.handoff ? `（${consultantLabel(speakerBefore(i))}交给${consultantLabel(t.handoff.to)}：${t.handoff.why}）` : ''
+    return `${who}：${t.text}${extra}`
+  }).join('\n\n')
+}
+function exportRecord() {
+  const body = summaryOf()
+  if (!body.trim()) { copyStatus.value = '这段咨询还没有内容可以导出。'; announcement.value = copyStatus.value; return }
+  exportText.value = body
+  const task = navigator.clipboard?.writeText(body)
+  if (!task) { panel.value = 'outcomes'; announcement.value = '已把这段咨询整理成文本，放在「咨询成果」里，可自行复制。'; return }
+  void task.then(
+    () => { announcement.value = '这段咨询已整理成文本并复制到剪贴板。' },
+    () => { panel.value = 'outcomes'; announcement.value = '浏览器没给剪贴板权限，已把文本放在「咨询成果」里，可自行复制。' },
+  )
 }
 function goToLatest() { followTail.value = true; void scrollToEnd() }
 function newSession() {
@@ -630,10 +704,31 @@ onUnmounted(() => {
       为的是把宽度让给会话名、把高度彻底让给消息：任何"再起一行"都会吃掉
       首屏 44px，而首屏让出的空间是这次改动的硬指标。
     -->
+    <!--
+      页头 = 靶子的三行结构（c2-hbu index.html:7031-7050）：
+        第一行 会话名（20px/700，主题字体）
+        第二行 「最近活跃 10-12 10:00」+「<顾问> 主理」+ 演示数据 + 四个入口
+        右侧   「总结这段咨询」「导出记录」两个动作
+      与靶子的差别只有措辞：靶子写「今天 14:20 开始」，那是**写死的演示文案**；
+      这里的时间来自真实字段 `last_active_at`，所以只说它真的表示的事（"最近活跃"）。
+      ---------------------------------------------------------------------------
+      「现在跟你说话的是 + 头像 + 名字 + 职责」那块**常驻在场卡**在页头下面
+      （.dialogue-presence），96px 头像 + 名字 + 职责 + 状态词；空态与有消息时
+      都在场 —— 它就是靶子那块 .agent 卡，也是「谁在说、此刻在干什么」的落点。
+    -->
     <header class="ws-chat-head">
-      <p class="ws-chat-head__session" :title="sessionName">{{ sessionName }}</p>
-      <!-- 演示/真实数据的区分不能丢，但留在**这同一行**里，不另起一块 -->
-      <span v-if="backendDemo.state.dataMode === 'demo'" class="ws-chat-head__demo" title="本地演示数据：虚构人物与预设结果，不代表真实档案">演示数据</span>
+      <div class="dialogue-chat-head__id">
+        <h1 class="dialogue-chat-head__title" :title="sessionName">{{ sessionName }}</h1>
+        <div class="dialogue-chat-head__meta">
+          <span v-if="sessionTime" class="dialogue-chip">最近活跃 {{ sessionTime }}</span>
+          <span class="dialogue-chip">{{ hostLabel }} 主理</span>
+          <span v-if="demoMode" class="dialogue-chip dialogue-chip--demo" title="本地演示数据：虚构人物与预设结果，不代表真实档案">演示数据</span>
+        </div>
+      </div>
+      <div class="dialogue-chat-head__acts">
+        <button type="button" class="dialogue-chipbtn" @click="panel = 'outcomes'"><UiIcon name="report" :size="16" />总结这段咨询</button>
+        <button type="button" class="dialogue-chipbtn" @click="exportRecord"><UiIcon name="upload" :size="16" />导出记录</button>
+      </div>
       <nav v-if="!hasRail" class="ws-chat-head__flow" aria-label="这次咨询的产出与依据">
         <button type="button" aria-label="咨询成果" title="咨询成果" @click="panel = 'outcomes'"><UiIcon name="report" :size="18" /><span class="ws-chat-head__label">咨询成果</span></button>
         <button type="button" aria-label="个人画像" title="个人画像" @click="panel = 'profile'"><UiIcon name="profile" :size="18" /><span class="ws-chat-head__label">个人画像</span></button>
@@ -643,38 +738,56 @@ onUnmounted(() => {
         <button type="button" :disabled="demo.state.chatBusy" aria-label="历史会话" title="历史会话" @click="panel = 'sessions'"><UiIcon name="chat" :size="18" /><span class="ws-chat-head__label">历史会话</span></button>
       </div>
     </header>
+    <!--
+      在场卡（靶子的 .agent 卡）：96px 头像 + 名字 + 职责 + 状态。
+      它**不受空态约束** —— 靶子里它常驻页头，所以现网也常驻：
+      原来这块只在 `v-if="!turns.length"` 的空态里出现（消息一来"顾问"就消失），
+      那正是 HANDOFF §5.2 说的"顾问在场该块不存在"。
+      状态由 hostState 驱动（真实字段，见 script 里的定义），不是演示台控件。
+    -->
+    <section class="dialogue-presence" :class="'is-' + hostState" aria-label="此刻在场的主理">
+      <AgentAvatar :agent="agentKeyOf(host)" :size="96" :state="hostState" />
+      <div class="dialogue-presence__intro">
+        <p class="dialogue-presence__who">
+          <strong>{{ hostLabel }}</strong>
+          <span class="dialogue-presence__state"><i class="dialogue-presence__dot" aria-hidden="true" />{{ presenceLabel }}</span>
+        </p>
+        <p class="dialogue-presence__role">{{ agentOf(agentKeyOf(host)).role }}</p>
+      </div>
+    </section>
     <!-- 桌面右侧 rail：产物与依据常驻在旁边，窄屏收起（见 dialogue.css） -->
     <aside class="dialogue-rail" aria-label="这次咨询的产出与依据">
-      <button type="button" class="dialogue-rail__item" @click="panel = 'outcomes'">
-        <UiIcon name="report" :size="18" />
-        <span><strong>咨询成果</strong><small>{{ planned.length ? planned.length + ' 条行动建议' : '还没有形成建议' }}</small></span>
+      <p class="dialogue-rail__title">这段咨询的成果</p>
+      <button type="button" class="dialogue-rail__card" :aria-pressed="panel === 'outcomes'" @click="panel = 'outcomes'">
+        <span class="dialogue-rail__top">
+          <span class="dialogue-rail__ic" aria-hidden="true"><UiIcon name="check" :size="16" /></span>
+          <span class="dialogue-rail__num"><strong>{{ outcomeCount }}</strong> 项</span>
+        </span>
+        <span class="dialogue-rail__t">咨询成果</span>
+        <span class="dialogue-rail__d">{{ outcomeCount ? '已形成 ' + outcomeCount + ' 条可执行建议，已加入今日行动或待办。' : '还没有形成建议。咨询里定下的行动会汇总到这里。' }}</span>
+        <span class="dialogue-rail__foot">看全部成果 <span aria-hidden="true">→</span></span>
       </button>
-      <button type="button" class="dialogue-rail__item" @click="panel = 'profile'">
-        <UiIcon name="profile" :size="18" />
-        <span><strong>个人画像</strong><small>{{ progress.known }} 项已知 · {{ progress.gap }} 项待补充</small></span>
+      <button type="button" class="dialogue-rail__card" :aria-pressed="panel === 'profile'" @click="panel = 'profile'">
+        <span class="dialogue-rail__top">
+          <span class="dialogue-rail__ic" aria-hidden="true"><UiIcon name="profile" :size="16" /></span>
+          <span class="dialogue-rail__num"><strong>{{ profileKnown }}</strong> / {{ profileTotal }}</span>
+        </span>
+        <span class="dialogue-rail__t">个人画像</span>
+        <span class="dialogue-rail__d">{{ profileKnown }} 项已知、{{ progress.gap }} 项待补充。每一段就是画像池里的一项。</span>
+        <span class="dialogue-rail__meter" role="img" :aria-label="'画像进度：' + profileTotal + ' 项里已知 ' + profileKnown + ' 项'">
+          <i v-for="seg in profileTotal" :key="seg" :class="{ 'is-on': seg <= profileOn }" />
+        </span>
+        <span class="dialogue-rail__foot">去核对画像与来源 <span aria-hidden="true">→</span></span>
       </button>
       <p class="dialogue-rail__note">这两项是这次咨询的产出与依据，会话本身只有「新对话 / 历史会话」。</p>
     </aside>
     <div class="exp-conversation-body"><div ref="flow" class="ws-chat-flow" tabindex="0" role="log" aria-live="off" aria-label="对话记录" @scroll="followScroll"><div class="dialogue-thread">
       <div v-if="!turns.length" class="ws-chat-welcome">
         <!--
-          【2026-10-14 · P0-3】空态是整页最贵的一屏，原来只有一句标题与四张起步卡：
-          "这里有一个顾问"完全没被看见。顶端常驻身份牌删掉之后，第一屏就不该再有
-          第二块身份牌 —— 所以这里放的是**这一次咨询的在席者**（会随主理切换而换人），
-          而且用的是刚进页时的 idle 形态：睁着眼睛在等你开口。
-          它不是被删掉的那块牌的翻版：那块牌是"常驻页头"，首屏过后还在；
-          这一块是空态的一部分，消息一出现就被对话本身替代。
+          空态：页头那块在场卡（.dialogue-presence）已经在上面常驻了，
+          所以这里**不再放第二张身份牌** —— 一屏两块"我是谁"就是同一件事说两遍。
+          这里只留"从哪句话开始"：一句引导 + 四张起步卡。
         -->
-        <div class="dialogue-presence">
-          <AgentAvatar :agent="agentKeyOf(host)" :size="96" :state="hostState" />
-          <div class="dialogue-presence__intro">
-            <p class="dialogue-presence__who">
-              <strong>{{ consultantLabel(host) }}</strong>
-              <span class="dialogue-presence__state">{{ presenceLabel }}</span>
-            </p>
-            <p class="dialogue-presence__role">{{ agentOf(agentKeyOf(host)).role }}</p>
-          </div>
-        </div>
         <div class="exp-intro"><div><h2>从你正在想的事聊起</h2><p>方向还没想清楚也没关系。选一句最像你的，或者直接说说现在的困惑。</p></div></div>
         <div class="ws-chat-prompts"><button v-for="topic in starters" :key="topic.code" @click="send(topic.label)"><UiIcon :name="topic.icon" :size="22" /><span><strong>{{ topic.title }}</strong><small>{{ topic.description }}</small></span><UiIcon name="arrow" :size="16" /></button></div>
       </div>
@@ -728,12 +841,14 @@ onUnmounted(() => {
 
               <!-- 一条顾问回答 = 按内容类型选出来的若干块，依次落位 -->
               <div v-else class="chat-answer" :class="{ 'is-live': isLive(t.id) }">
-                <!-- 块一 · 结论：一句话主张，大字，不等用户去段落里找。
-                     层级**只用排印手段**做（字号 + 字重 + 下边缘收束线），不新增"结论"这类
-                     结构自述词 —— 用户不需要被告知"这是一条判断"，他需要一眼看出来。 -->
-                <section v-if="leadText(t)" class="chat-block chat-block--lead" :style="blockDelay(0)" aria-label="结论">
-                  <ReadableText :text="leadText(t)" />
-                  <span v-if="isLive(t.id) && !liveDetail(t)" class="chat-caret" aria-hidden="true" />
+                <!-- 块一 · 结论：一句话主张，极大字，不等用户去段落里找。
+                     形态照靶子（c2-hbu .lead）：**左侧 3px 粗色条 + --fs-30 的大字**，
+                     外面套一层白卡（靶子那层 .lead 的材质）。
+                     `aria-label="结论"` 只是给屏幕阅读器的分组名，**页面上不出现"结论"二字** ——
+                     HANDOFF §4.3 明确记载"给结论块加「结论」小标"这条要求已作废，
+                     DESIGN-LANGUAGE 禁止结构自述词，评审也判定现网"不加标签"是对的。 -->
+                <section v-if="leadText(t)" class="chat-block chat-block--lead" :class="{ 'is-live': isLive(t.id) }" :style="blockDelay(0)" aria-label="结论">
+                  <p class="chat-block--lead__text"><ReadableText :text="leadText(t)" /><span v-if="isLive(t.id) && !liveDetail(t)" class="chat-caret" aria-hidden="true" /></p>
                 </section>
                 <!-- 块二的支撑材料出完之后才轮到"接下来做什么"，所以行动与后续问题都排在它后面 -->
 
@@ -909,6 +1024,13 @@ onUnmounted(() => {
           <ul class="ws-mini-list"><li v-for="h in handoffs" :key="h.to + h.why"><strong>{{ consultantLabel(h.to) }}</strong><p>{{ h.why }}</p></li></ul>
         </Foldable>
         <button v-if="activeTheory" class="ws-text-button" @click="theoryOpen = true">方法依据：{{ activeTheory.name }}<UiIcon name="arrow" :size="16" /></button><RouterLink class="ws-text-link" to="/home">查看行动计划<UiIcon name="arrow" :size="16" /></RouterLink>
+        <!-- 「导出记录」的退路：剪贴板不可用（或没权限）时，文本落在这里，用户自己选区复制。
+             宁可多一块可选中的文本，也不能让那个按钮点了没反应。 -->
+        <section v-if="exportText" class="ws-section">
+          <h3>导出文本</h3>
+          <p class="ws-muted">下面就是这段咨询的纯文本，可选中复制。</p>
+          <pre class="dialogue-export">{{ exportText }}</pre>
+        </section>
       </template>
       <p class="ws-demo-note">{{ STUDENT.name }}的预置示例，不代表你的真实档案。</p>
     </InfoSheet>

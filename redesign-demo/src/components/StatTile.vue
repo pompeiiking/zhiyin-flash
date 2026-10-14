@@ -245,6 +245,12 @@ const ariaText = computed(() => {
   margin-left: 2px;
 }
 
+/* 5 / 8 之间那道分隔斜杠：**它是分隔符，不是文字**。
+ * 三条依据：① 模板里写的是 `aria-hidden="true"` 的单字符 span（读屏直接把 "5" 与 "8" 相邻读出来）；
+ * ② tokens.css:253 给 --c-text-4 登记的用途里，"分隔符"是**明写的一项**；
+ * ③ 它比两侧的数字浅一档是刻意的 —— 分隔符不该和读数抢同一层重量。
+ * 所以这里保留 --c-text-4，并在 scripts/check-contrast.mjs 的 DECORATIVE_ALLOWED
+ * 里登记了这个选择器（先例：同在该表里的 `.dot`）。 */
 .tile__slash {
   margin-right: 1px;
   color: var(--c-text-4);

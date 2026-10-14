@@ -417,14 +417,21 @@
    本次不改），所以修在 CSS 上是唯一不越界又能一次覆盖两处的做法。
    `padding-inline` 保留一点内距让文字不贴边；`justify-content: center` 让两个字居中。 */
 .ws-guide button { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; padding: 0 var(--sp-3); color: var(--c-text-3); font-size: var(--fs-14); white-space: nowrap; }
-.ws-sheet { padding: 0; width: min(540px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); border: 0; border-radius: var(--r-lg); color: var(--c-text); background: var(--c-surface); box-shadow: var(--e-3); overflow: auto; }
-.ws-sheet--wide { width: min(800px, calc(100vw - 32px)); }
-.ws-sheet::backdrop { background: var(--overlay-mask); }
-.ws-sheet[open] { animation: ws-sheet-enter 180ms var(--ease-out); }
-.ws-sheet__head { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 24px 28px 18px; }
-.ws-sheet__head h2 { font-size: var(--fs-20); }
-.ws-sheet__body { padding: 8px 28px 32px; }
-.ws-sheet__body .ws-tabs { margin-bottom: 24px; }
+/* 【2026-10-14 · 弹层一族已整体搬进 InfoSheet.vue 的 scoped 样式（见该文件 "0 · 基础形态"）】
+ * 这里原有 8 条全局声明：.ws-sheet ／ .ws-sheet--wide ／ .ws-sheet::backdrop ／ .ws-sheet[open]
+ * ／ .ws-sheet__head ／ .ws-sheet__head h2 ／ .ws-sheet__body ／ .ws-sheet__body .ws-tabs。
+ * 为什么删：它们是**撞车门禁的两条硬失败之一**（`.ws-sheet__head` 的 display/gap/padding 会从
+ * scoped 的缝里漏进组件），而且 `background` / `box-shadow` / `color` / `::backdrop` 只在全局
+ * 声明过 —— "只删不搬"会让 18 个弹层一起透明无遮罩（HANDOFF §6.4）。
+ * 搬完再删的依据（都实测过，不是推断）：
+ *   · 全站渲染 `.ws-sheet*` 的只有 InfoSheet.vue（grep class="ws-sheet → 1 个组件；
+ *     ConversationView.vue:896 只剩一句注释）→ 组件自己声明 = 覆盖全部调用点。
+ *   · `.ws-sheet--wide` 与体验样式表里的 `.ws-sheet--inspector` 一族**零发射点**：
+ *     InfoSheet 的 shape 只有 dialog/sheet/panel（TS 联合类型挡着），旧 wide/inspector prop 已删。
+ *   · `.ws-sheet[open] { animation: ws-sheet-enter }` 从来不生效：三种形态各自的 `[open]` 规则
+ *     特异度更高（0,3,0 > 0,2,0）且都声明了 animation，reduce 下那条又把它盖成 none。
+ *     17 个路由 × 2 档视口 × 2 档动效的 computed animationName 实测里，它一次都没出现过
+ *     （看到的是 sheet-rise / sheet-slide-in / sheet-slide-up）。所以连 @keyframes 一起删。 */
 .ws-directory a { display: grid; grid-template-columns: 1fr 24px; gap: 6px 20px; padding: 20px 0; color: var(--c-text); }
 .ws-directory a + a { border-top: 1px solid var(--c-border); }
 .ws-directory a:hover { text-decoration: none; color: var(--c-primary); }
@@ -631,7 +638,8 @@
 .ws-timeline li + li { border-top: 1px solid var(--c-border); }
 .ws-timeline time, .ws-timeline__state { font-size: var(--fs-14); color: var(--c-text-3); }
 .ws-timeline small { display: block; margin-top: 6px; color: var(--c-text-3); font-size: var(--fs-14); }
-@keyframes ws-sheet-enter { from { opacity: .6; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+/* @keyframes ws-sheet-enter 已删（2026-10-14）：它的唯一消费者 `.ws-sheet[open]` 从来不生效，
+   理由与实测证据写在上面弹层那一节的注释里；形态动画与它们的 keyframes 都在 InfoSheet.vue。 */
 
 /* ============================================================================
  * 断点：只有两档 —— 768 / 1120（PLAN §2.7）
@@ -729,8 +737,8 @@
   .ws-composer__note span:last-child { display: none; }
   .ws-composer form { gap: 8px; }
   .ws-composer .btn { min-width: 58px; padding: 8px 12px; }
-  .ws-sheet__head { padding: 20px; }
-  .ws-sheet__body { padding: 0 20px 24px; }
+  /* .ws-sheet__head / .ws-sheet__body 的 767px 内距搬进了 InfoSheet.vue 的 scoped 样式
+     （2026-10-14，见本文件弹层那一节）。这里不再有这两条。 */
   .ws-subnav { gap: 20px; flex-wrap: wrap; }
   .ws-subnav a { font-size: var(--fs-14); }
   .desk-layout-select { margin-right: 0; }
@@ -791,7 +799,9 @@
   .app--desktop { padding-left: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .ws-sheet[open] { animation: none; }
+  /* `.ws-sheet[open] { animation: none }` 已删（2026-10-14）：基础动画本身已随弹层一族搬走，
+     三种形态的动画都在 InfoSheet.vue 里包在 `prefers-reduced-motion: no-preference` 中了，
+     降级路径由那里保证（实测 reduce 下 computed animationName = none）。 */
   .ws-bookmark, .ws-progress span { transition: none; }
   .ws-chat-flow { scroll-behavior: auto; }
 }

@@ -380,7 +380,14 @@ const selfText = computed(() => (self.value == null ? '暂无依据' : props.for
 }
 
 /* 差距带：中性斜纹。不是红的 —— 差距是常态量，不是警报。
-   高度必须与轨道一致（不能跟着对照线的 ±2px 长），否则带子会变成梯形。 */
+   高度必须与轨道一致（不能跟着对照线的 ±2px 长），否则带子会变成梯形。
+
+   【2026-10-14 · check-contrast 门禁】这里的 `color` **不是文字色**，它是斜纹的填充源：
+   `--meter-gap-pattern` 是一段 repeating-linear-gradient，里面用的是 currentColor
+   （tokens.css:395）。元素本身是空 span + aria-hidden，带子里一个字符都没有 ——
+   差距的数值由旁边的图例文字（"还差 8 分"）与 role="img" 的 aria-label 承担。
+   与 base.css:658 的 `.dot`（color 只喂 background: currentColor）是同一个机制，
+   所以保留 --c-text-4 并在 scripts/check-contrast.mjs 的 DECORATIVE_ALLOWED 里登记。 */
 .mtr__gap {
   position: absolute;
   top: 0;
@@ -550,6 +557,9 @@ const selfText = computed(() => (self.value == null ? '暂无依据' : props.for
   border-top: 5px solid var(--c-text-2);
 }
 
+/* 图例里那枚 10×8 的小方块：与 .mtr__gap 同一条斜纹、同一个机制，
+   它的说明文字就在同一个 .mtr__legend-item 里（"还差 8 分"），方块本身 aria-hidden。
+   同样保留 --c-text-4 并登记在 check-contrast 的 DECORATIVE_ALLOWED。 */
 .mtr__legend-glyph--gap {
   height: 8px;
   color: var(--c-text-4);

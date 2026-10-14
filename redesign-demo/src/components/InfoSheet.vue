@@ -249,6 +249,40 @@ function onDragEnd(event: PointerEvent) {
 
 <style scoped>
 /* ===========================================================================
+ * 0 · 基础形态：把 workspace.css 的全局 `.ws-sheet` 一族**整体搬进来**（2026-10-14）
+ * ---------------------------------------------------------------------------
+ * 为什么必须搬（不是顺手清理）：check-classes.mjs 报的 `.ws-sheet__head` 硬撞车只是**症状**。
+ * 机制是 scoped 的 `.ws-sheet--x[data-v-*]` 只赢下它自己声明过的属性，而
+ * `background` / `box-shadow` / `color` / `::backdrop` **只在全局声明过** ——
+ * 所以"删掉全局一族"这一步如果不同时搬，18 个弹层会一起变透明、无遮罩（HANDOFF §6.4 原话）。
+ * 搬法：全局那几条原样搬过来，能令牌化的一律走令牌（tokens.css:411-421 本来就是按它们的值定的）。
+ * 逐条对应（左 = 改前全局 workspace.css:420-422 / 右 = 这里）：
+ *   width: min(540px, calc(100vw - 32px)) → var(--sheet-dialog-w)，同一个 540px
+ *   max-height: calc(100dvh - 48px)       → var(--sheet-dialog-max-h)，同一个值
+ *   padding: 0 · border: 0 · border-radius: var(--r-lg) · overflow: auto
+ *   color: var(--c-text) · background: var(--c-surface) · box-shadow: var(--e-3)
+ * 顺序写在三种形态**之前**：base 与 `.ws-sheet--x[data-v-*]` 的特异度相同（0,2,0），
+ * 靠"谁更靠后"取胜 —— 与改前（全局 0,1,0 输给 scoped）的逐属性结果一致。
+ * ========================================================================= */
+.ws-sheet {
+  width: min(var(--sheet-dialog-w), calc(100vw - 32px));
+  max-height: var(--sheet-dialog-max-h);
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-lg);
+  overflow: auto;
+  color: var(--c-text);
+  background: var(--c-surface);
+  box-shadow: var(--e-3);
+}
+
+/* 遮罩也只在全局定义过。scoped 里的 ::backdrop 会被编译成 `.ws-sheet[data-v-*]::backdrop`
+   （Vue 把 scope 属性插在最后一个非伪元素节点之后），<dialog> 是组件根节点、带得到它。 */
+.ws-sheet::backdrop {
+  background: var(--overlay-mask);
+}
+
+/* ===========================================================================
  * 形态一 · dialog（确认 / 表单）
  * 桌面与移动端都是居中窄盒：确认类需要"手指停一下"，底部化会把它读成抽屉。
  * ========================================================================= */
@@ -293,7 +327,9 @@ function onDragEnd(event: PointerEvent) {
   overflow: hidden;
 }
 
-/* ---- 内部结构：头固定、体可滚（滚动交给内容层，弹层自己不再滚） ---- */
+/* ---- 内部结构：头固定、体可滚（滚动交给内容层，弹层自己不再滚） ----
+ * 【2026-10-14】头与体的版式原来也只在全局（workspace.css:424-427），那正是门禁报的硬撞车
+ * （全局那条含 display / gap / padding，会从 scoped 的缝里漏进组件）。声明原样搬过来。 */
 .ws-sheet__inner {
   display: flex;
   flex-direction: column;
@@ -302,9 +338,34 @@ function onDragEnd(event: PointerEvent) {
 }
 .ws-sheet--sheet .ws-sheet__inner,
 .ws-sheet--panel .ws-sheet__inner { max-height: 100%; }
-.ws-sheet__head { flex: none; }
+.ws-sheet__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 24px 28px 18px;
+  flex: none;
+}
+.ws-sheet__head h2 { font-size: var(--fs-20); }
 .ws-sheet__desc { flex: none; padding: 0 28px 4px; margin: 0; font-size: var(--fs-14); color: var(--c-text-3); }
-.ws-sheet__body { overflow-y: auto; overscroll-behavior: contain; min-height: 0; }
+.ws-sheet__body {
+  padding: 8px 28px 32px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  min-height: 0;
+}
+/* `.ws-tabs` 是**插槽内容**（它的类名挂在调用方组件上，带的是调用方的 scope 属性），
+   所以这一条必须写 :deep() —— 写成 `.ws-sheet__body .ws-tabs` 会编译成
+   `.ws-sheet__body .ws-tabs[data-v-*]`，插槽内容拿不到那个属性，规则会静默失效
+   （实测：学术页导入面板里 .ws-tabs 的 computed margin-bottom 必须是 24px）。 */
+.ws-sheet__body :deep(.ws-tabs) { margin-bottom: 24px; }
+
+/* 全局那一族的 767px 覆盖（原 workspace.css:732-733，它落在 max-width:767px 那一档里）。
+   断点保持 767 不合并到本组件的 768：两档并存是改前的实际行为，搬动不顺手改口径。 */
+@media (max-width: 767px) {
+  .ws-sheet__head { padding: 20px; }
+  .ws-sheet__body { padding: 0 20px 24px; }
+}
 
 /* 把手：只在非 dialog 形态出现；桌面鼠标下不显示（桌面用不到下拉） */
 .ws-sheet__grabber {

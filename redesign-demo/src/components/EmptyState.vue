@@ -274,13 +274,48 @@ const actionTarget = computed<'none' | 'link' | 'href' | 'button'>(() => {
 /* ============================================================================
  * 空态
  * 说明文字停在 34em：超出这个宽度，一行会开始"扫读不回来"。
- * 图形沿用 .exp-motif 的既有尺寸（宽屏 180 / 窄屏 140），不改全局规则。
+ *
+ * 【2026-10-14 · 从 experience.css 搬进来的那一族】
+ * 全局 `.exp-empty` 一族已删除：它是 check-classes.mjs 报的两条硬失败之一（全局那条含
+ * padding，会从 scoped 的缝里漏进组件根盒子）。逐条对应（左 = 改前 experience.css:104-108,155-156）：
+ *   .exp-empty { text-align:center; padding: 28px 12px 36px }                → 下面 .exp-empty
+ *   @media ≤760: .exp-empty { padding: 20px 0 28px }                         → 下面的 ≤760 块
+ *   .exp-empty .exp-motif { width:180px; display:block; margin:0 auto 12px } → 下面 :deep(.exp-motif)
+ *   @media ≤760: .exp-empty .exp-motif { width: 140px }                      → 下面的 ≤760 块
+ *   .exp-empty h2 { font-size: var(--fs-20); font-weight: 500 }              → **不搬**：.exp-empty__title
+ *                                                                             同值（20px/500）且特异度更高
+ *   .exp-empty p { font-size / color / max-width }                           → **不搬**：__desc 与 __next
+ *                                                                             逐条盖住（含 max-width 34em > 32em）
+ *   ↑ 那条 p 里唯一还有效的部分是**左右 auto 外边距** → 并入 .exp-empty__desc 的 margin 简写
+ *   .exp-empty__actions { margin-top: 16px }                                 → **不搬**：scoped 的 var(--sp-4)
+ *                                                                             本来就赢（同一元素、特异度更高）
+ * 两条纪律：
+ *   ① 图形必须用 :deep()。.exp-motif 可能来自子组件 WorkspaceMotif 的**根元素**（它带的是父组件的
+ *      scope 属性），而 :deep() 编译出的特异度（0,2,0）与改前那条全局规则完全相同 ——
+ *      所以 StudentView 的 `.p7-group__empty[data-v] .exp-motif`（0,3,0，宽 120px）仍然压得住它。
+ *      写成不带 :deep 的 `.exp-empty .exp-motif` 会变成（0,3,0），与它打平、靠加载顺序决胜。
+ *   ② ≤760 的 padding 覆盖必须排在本文件 `.exp-empty--sm` **之前**：改前那条是全局规则（特异度更低），
+ *      盖不住 sm 档；顺序反了就会把 sm 档的内距也一起改掉。
  * ========================================================================= */
 .exp-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
+  padding: 28px 12px 36px;
+}
+
+/* 图形尺寸沿用 .exp-motif 的既有口径（宽屏 200 → 空态 180 / 窄屏 140），不改全局那条。 */
+.exp-empty :deep(.exp-motif) {
+  width: 180px;
+  display: block;
+  margin: 0 auto 12px;
+}
+
+/* 窄屏：内距与图形各收一档（原来都在 experience.css 的 ≤760 里） */
+@media (max-width: 760px) {
+  .exp-empty { padding: 20px 0 28px; }
+  .exp-empty :deep(.exp-motif) { width: 140px; }
 }
 
 .exp-empty--sm {
@@ -295,9 +330,13 @@ const actionTarget = computed<'none' | 'link' | 'href' | 'button'>(() => {
   color: var(--c-text);
 }
 
+/* margin 用简写不是风格问题：改前 desc 的左右外边距来自全局 `.exp-empty p { margin: 10px auto 0 }`
+   （auto），那条规则随全局一族删掉了。写成 `margin-top` 会把左右外边距退回 0px，
+   computed 从 241px/auto 掉成 0px —— 虽然 flex 下 align-items:center 也能居中，
+   但那是"另一个理由得到同一个像素"，不是"外观不变"。 */
 .exp-empty__desc {
   max-width: 34em;
-  margin-top: var(--sp-2);
+  margin: var(--sp-2) auto 0;
   font-size: var(--fs-14);
   line-height: var(--lh-normal);
   color: var(--c-text-3);

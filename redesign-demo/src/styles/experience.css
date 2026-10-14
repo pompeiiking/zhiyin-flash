@@ -85,10 +85,11 @@
 .exp-evidence li > span { display: grid; place-items: center; min-width: 22px; height: 22px; margin-top: 2px; font-size: var(--fs-12); color: var(--c-primary); background: var(--c-primary-weak); border-radius: 5px; }
 .exp-latest { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 16px; border: 1px solid var(--c-border); border-radius: var(--r-pill); color: var(--c-text-2); background: var(--c-surface); box-shadow: var(--e-2); font-size: var(--fs-14); white-space: nowrap; }
 .exp-latest:hover { border-color: var(--c-primary); color: var(--c-primary); }
-.ws-sheet--inspector { position: fixed; inset: 12px 12px 12px auto; margin: 0; width: min(460px, calc(100vw - 24px)); max-width: none; height: calc(100dvh - 24px); max-height: none; overflow: hidden; border: 1px solid var(--c-border); border-radius: 16px; }
-.ws-sheet--inspector .ws-sheet__inner { height: 100%; display: flex; flex-direction: column; }
-.ws-sheet--inspector .ws-sheet__head { border-bottom: 1px solid var(--c-border); padding: 24px; flex: none; }
-.ws-sheet--inspector .ws-sheet__body { flex: 1; overflow-y: auto; padding: 24px; overscroll-behavior: contain; }
+/* 【2026-10-14】`.ws-sheet--inspector` 一族（这里原有 4 条：本体 / __inner / __head / __body，
+   以及下面媒体查询里的 3 条与 1 条入场动画）已删除。依据：**零发射点** ——
+   InfoSheet 的 shape 是 TS 联合类型 'dialog' | 'sheet' | 'panel'，旧的 wide/inspector 两个
+   @deprecated prop 已随 wave2 物理删除；全站 grep `ws-sheet--inspector` 只剩注释。
+   它的几何早已被 shape 的 sheet 形态取代（--sheet-drawer-w: 460px 就是从这里抄的值）。 */
 .exp-overview__head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; justify-content: space-between; }
 .exp-overview__head > span { color: var(--c-text-3); font-size: var(--fs-12); }
 .exp-overview__body { display: flex; align-items: center; gap: 24px; margin: 20px 0 10px; }
@@ -101,11 +102,17 @@
 .exp-overview__body dl > div { display: flex; justify-content: space-between; gap: 12px; }
 .exp-overview__body dt { color: var(--c-text-3); }
 .exp-overview__body dd { font-variant-numeric: tabular-nums; }
-.exp-empty { text-align: center; padding: 28px 12px 36px; }
-.exp-empty .exp-motif { width: 180px; display: block; margin: 0 auto 12px; }
-.exp-empty h2 { font-size: var(--fs-20); font-weight: 500; }
-.exp-empty p { font-size: var(--fs-14); color: var(--c-text-3); max-width: 32em; margin: 10px auto 0; }
-.exp-empty__actions { margin-top: 16px; }
+/* 【2026-10-14】`.exp-empty` 一族（这里原有 5 条：本体 / .exp-motif / h2 / p / __actions）
+   已整体搬进 EmptyState.vue 的 scoped 样式，然后删除。依据三条：
+ *   · 全站渲染 `class="exp-empty*"` 的只有 EmptyState.vue 一个组件（grep 全部 .vue：命中 0 处裸用）；
+ *   · 它的 padding 是门禁 check-classes 报的两条硬失败之一 —— 全局那条含 padding，
+     会从 scoped 的缝里漏进组件根盒子；
+ *   · 剩下的 h2 / p / __actions 三条对组件是**被 scoped 完全盖住**的死声明（逐属性核过：
+     .exp-empty__title / __desc / __actions 的特异度更高，h2 那条连值都一样：20px / 500），
+     而 `.exp-empty p` 唯一还有效的部分是 desc 段落的 auto 外边距 —— 已原样并入
+     EmptyState.vue 的 `.exp-empty__desc { margin: var(--sp-2) auto 0 }`。
+ * 注意 `.exp-motif` 本体（上一节那条 width:200px）**没有删**：它不是 exp-empty 一族，
+   .exp-intro 与 StudentView 的 :deep(.exp-motif) 都还在用它。 */
 .exp-compare-wrap { min-width: 0; }
 .exp-compare { overflow-x: auto; border: 1px solid var(--c-border); border-radius: var(--r-lg); scrollbar-width: thin; }
 .exp-compare__hint { display: none; }
@@ -129,10 +136,8 @@
 @media (prefers-reduced-motion: no-preference) {
   .exp-tabs__indicator { transition: width 180ms ease, transform 180ms ease; }
   .exp-overview__ring circle { transition: stroke-dashoffset 220ms ease; }
-  .ws-sheet--inspector[open] { animation: exp-inspector-enter 220ms var(--ease-drawer); }
   .ws-chat-prompts button { transition: background-color 160ms ease, border-color 160ms ease; }
 }
-@keyframes exp-inspector-enter { from { opacity: .5; transform: translateX(18px); } to { opacity: 1; transform: none; } }
 @media (max-width: 1200px) { .app--desktop .ws-page { padding-top: 28px; } .exp-overview__body { gap: 18px; } }
 @media (min-width: 1000px) and (max-height: 800px) { .desk-brand-row { padding-bottom: 16px; } .exp-intro .exp-motif { width: 140px; } .ws-chat-prompts { margin-top: 20px; } .app--desktop .ws-chat-flow { padding-top: 16px; } .app--desktop .ws-conversation { gap: 14px; padding-top: 20px; } }
 @media (max-width: 760px) {
@@ -146,16 +151,11 @@
   .exp-tabs__trigger { padding: 10px 12px; }
   .exp-tabs__list { min-width: 0; }
   .exp-tabs__panel { margin-top: 20px; }
-  .ws-sheet--inspector { inset: auto 0 0; width: 100%; height: auto; max-height: 88dvh; border-radius: 16px 16px 0 0; }
-  .ws-sheet--inspector .ws-sheet__inner { max-height: 88dvh; }
-  .ws-sheet--inspector .ws-sheet__head, .ws-sheet--inspector .ws-sheet__body { padding: 20px; }
   .exp-compare th, .exp-compare td { padding: 18px; }
   .exp-compare__hint { display: block; margin-bottom: 12px; color: var(--c-text-3); font-size: var(--fs-14); }
   .exp-compare th:first-child { width: 110px; }
-  .exp-empty { padding: 20px 0 28px; }
-  .exp-empty .exp-motif { width: 140px; }
+  /* `.exp-empty` 与 `.exp-empty .exp-motif` 的 760px 覆盖搬进了 EmptyState.vue 的 scoped 样式。 */
   .ws-turn { margin: 24px 0; }
 }
 @media (max-height: 700px) { .exp-conversation-body > .ws-chat-flow { max-height: 60dvh; } .app--desktop .ws-conversation { height: auto; } }
-@media (prefers-reduced-motion: reduce) { .ws-sheet--inspector[open] { animation: none; } }
 @media print { .app--desktop .app__main { margin: 0; border: 0; border-radius: 0; } .exp-tabs__scroll { display: none; } .exp-compare { overflow: visible; border: 0; } .exp-compare table { min-width: 0; } .exp-compare th, .exp-compare td { padding: 12px; } .exp-compare th:first-child { position: static; } }

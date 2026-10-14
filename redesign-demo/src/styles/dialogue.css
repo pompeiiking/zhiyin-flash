@@ -72,54 +72,132 @@ html[data-accent='red'] .dialogue-page {
  * ========================================================================== */
 
 .dialogue-page .exp-conversation-body { display: flex; min-height: 0; }
-/* 头部（整行）/ 阅读列 / 右侧 rail：rail 走独立列，不挤压对话列，也不参与头部按钮位 */
-.dialogue-page { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+/* 页头 / 在场卡 / 阅读列 / 右侧 rail：rail 走独立列，不挤压对话列。
+   三行**必须显式写出来**：`.ws-conversation` 在桌面是定高网格
+   （height: calc(100dvh - …)），不写行定义时浏览器会把"内容更矮"的那一行
+   （在场卡所在行）压到 34px，96px 的头像于是溢出到下一行、压住对话纸面
+   —— 实测就是这么坏的。auto / auto / minmax(0,1fr)：页头与在场卡各拿自己需要的高度，
+   剩下的全给对话体。 */
+.dialogue-page {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 16px;
+}
 .dialogue-page .ws-chat-head,
+.dialogue-page .dialogue-presence,
 .dialogue-page .exp-conversation-body { grid-column: 1 / -1; }
 .app--desktop .dialogue-page { max-width: var(--w-content); padding-top: 24px; gap: 16px; }
 .dialogue-page .ws-chat-head p { line-height: 1.6; }
 
-/* ---- 头部：一行 ---- */
+/* =============================================================================
+ * 页头：三行（会话名 / 元信息 / 动作）—— 对齐 c2-hbu .conv-head
+ * -----------------------------------------------------------------------------
+ * 靶子实测（1280）：
+ *   .conv-head{display:flex;gap:12px;padding:0 2px;align-items:flex-start}
+ *   .conv-head__title{font-family:var(--font-title);font-size:var(--fs-20);font-weight:700;
+ *                     line-height:var(--lh-snug);letter-spacing:-.01em}       → 实测 20px/700/29px
+ *   .conv-head__meta{margin-top:5px;gap:8px;font-size:var(--fs-12);color:var(--c-text-3)}
+ *   .conv-head__acts{margin-left:auto;display:flex;gap:6px}
+ *   .chipbtn{padding:7px 13px;border-radius:var(--r-pill);border:1px solid var(--c-border);
+ *            background:var(--c-surface);font-size:var(--fs-14);font-weight:500}
+ * 现网原来是"一行小字会话名 + 2 个按钮"，所以标题档、元信息行、两个真动作都要补回来。
+ * 壳层给 .ws-chat-head 画的那些（max-width:700px / min-height:44px / 下边框）在这里
+ * 逐条按靶子口径覆盖掉 —— 它是页头，不是工具条。
+ * ========================================================================== */
 .dialogue-page .ws-chat-head {
   display: flex;
-  align-items: center;
-  /* 必须显式 nowrap：workspace.css 在窄屏给 .ws-chat-head 设了 flex-wrap: wrap，
-     头部一旦换行就变成两行 —— 那 44px 正是这次要从头上让出来的空间。
-     宽度不够时由会话名（flex:1 + min-width:0 + ellipsis）承担收缩，按钮永不被挤走 */
-  flex-wrap: nowrap;
-  gap: 6px;
-  max-width: 700px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 12px;
+  max-width: none;
   width: 100%;
-  margin: 0 auto;
-  min-height: 44px;
-  padding: 0 0 10px;
-  border-bottom: 1px solid var(--c-border);
+  min-height: 0;
+  margin: 0;
+  padding: 0 2px;
+  border-bottom: 0;
 }
-/* 会话名：小字号、可截断。它只交代"这是哪一次咨询"，不与按钮争宽 */
-.ws-chat-head__session {
-  flex: 1 1 auto;
-  min-width: 0;
-  margin: 0 !important;
-  font-size: var(--fs-14);
-  color: var(--c-text-2);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.dialogue-chat-head__id { min-width: 0; flex: 1 1 320px; }
+/* 选择器带上 .ws-chat-head：workspace.css 有 `.ws-chat-head h1{font-size:var(--fs-30)}`
+   （同特异性、后加载顺序还压不定），标题档按靶子取 --fs-20，必须写得更明确 */
+.dialogue-page .ws-chat-head h1.dialogue-chat-head__title,
+.dialogue-chat-head__title {
+  margin: 0;
+  font-family: var(--font-title);
+  font-size: var(--fs-20);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-snug);
+  letter-spacing: -0.01em;
+  color: var(--c-text);
 }
-.ws-chat-head__demo {
-  flex: none;
-  padding: 1px 8px;
+.dialogue-chat-head__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 5px;
+  font-size: var(--fs-12);
+  color: var(--c-text-3);
+}
+/* 元信息里的小胶囊（靶子 .tag）。默认是中性灰底 —— 蓝色配额不给页头 */
+.dialogue-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 9px;
   border: 1px solid var(--c-border);
   border-radius: var(--r-pill);
+  background: var(--c-surface-2);
   color: var(--c-text-3);
   font-size: var(--fs-12);
   font-variant-numeric: tabular-nums;
 }
-
-/* 头部四个入口：一律 44×44 起，克制到"要找才看见"（中性灰，不参与蓝色配额） */
-.dialogue-page .ws-chat-head__tools,
+/* 「演示数据」走注意色：它是"这些不是真档案"的提醒，与靶子的 .tag--demo 同义 */
+.dialogue-chip--demo {
+  background: var(--c-attention-weak);
+  border-color: var(--c-attention-border);
+  color: var(--c-attention);
+  font-weight: var(--fw-semibold);
+}
+.dialogue-chat-head__acts { margin-left: auto; display: flex; gap: 6px; flex: 0 0 auto; }
+/* 页头动作（靶子 .chipbtn）：药丸 + 发丝边。**≥44px 高**——靶子实测只有 40.1px，
+   那是样张口径；本仓库的触控纪律是主要动作 ≥44（HANDOFF §5.4 已把 <44 清到 4 处，
+   不允许这里再还回去），所以 padding 从 7px 提到 11px。 */
+.dialogue-chipbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 11px 13px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-pill);
+  background: var(--c-surface);
+  color: var(--c-text-2);
+  font-size: var(--fs-14);
+  font-weight: var(--fw-medium);
+  transition: background var(--dur-2) var(--ease-out), border-color var(--dur-2) var(--ease-out), color var(--dur-2) var(--ease-out);
+}
+.dialogue-chipbtn:hover { background: var(--c-surface-solid); border-color: var(--c-border-strong); color: var(--c-text); }
+.dialogue-chipbtn svg { flex: none; }
+/* 会话入口（新对话 / 历史会话）跟着页头一起右对齐；rail 在场时它们是 rail 那份的重复，藏掉 */
+.dialogue-page .ws-chat-head__tools { display: flex; align-items: center; gap: 4px; flex: none; }
+.dialogue-page .ws-chat-head__tools button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  color: var(--c-text-2);
+  font-size: var(--fs-14);
+}
+.dialogue-page.has-rail .ws-chat-head__tools { display: none; }
+.dialogue-page .ws-chat-head__tools button:hover { background: var(--c-surface-3); color: var(--c-text); }
+.dialogue-page .ws-chat-head__tools button:disabled { opacity: .5; }
+/* 窄屏没有 rail，产出与依据的两个入口回到页头（与"新对话/历史会话"同排） */
 .dialogue-page .ws-chat-head__flow { display: flex; align-items: center; gap: 4px; flex: none; }
-.dialogue-page .ws-chat-head__tools button,
 .dialogue-page .ws-chat-head__flow button {
   display: inline-flex;
   align-items: center;
@@ -133,32 +211,190 @@ html[data-accent='red'] .dialogue-page {
   color: var(--c-text-2);
   font-size: var(--fs-14);
 }
-.dialogue-page .ws-chat-head__tools button:hover,
 .dialogue-page .ws-chat-head__flow button:hover { background: var(--c-surface-3); color: var(--c-text); }
-.dialogue-page .ws-chat-head__tools button:disabled,
-.dialogue-page .ws-chat-head__flow button:disabled { opacity: .5; }
+
+/* =============================================================================
+ * 在场卡（靶子的 .agent 卡）
+ * -----------------------------------------------------------------------------
+ * 靶子实测（1280）：96px 头像 · 名字 20px/700 · 职责 14px/--c-text-2 ·
+ * 状态胶囊 12px/700 带一个呼吸圆点 · 整块玻璃面 + 1px 边 + 内高光 + --e-1。
+ * 三态（在听 / 正在想 / 正在说）由 .is-* 驱动，**判据是真实字段**（hostState），
+ * 不是靶子里那组给评审看的「待命/思考/说话」演示台按钮。
+ * ========================================================================== */
+.dialogue-presence {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  padding: var(--sp-4);
+  border: var(--bw-1) solid var(--c-border);
+  border-radius: var(--r-2xl);
+  background: linear-gradient(180deg, var(--c-glass-1), var(--c-glass-2));
+  box-shadow: var(--light-in), var(--e-1);
+}
+/* 头像不许被中文职责句压扁（默认 flex-shrink:1 会把它从 96 压成 ~48） */
+.dialogue-presence .ag { flex: none; }
+.dialogue-presence__intro { min-width: 0; flex: 1 1 auto; }
+.dialogue-presence__who { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.dialogue-presence__who strong {
+  font-family: var(--font-title);
+  font-size: var(--fs-20);
+  font-weight: var(--fw-bold);
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  color: var(--c-text);
+}
+/* 状态：**胶囊**（靶子 .agent__state 就是一枚 12px/700 的状态胶囊），不是一行小灰字。
+   它是"在场"这件事唯一随状态变形的零件，所以给它形状：
+   底 + 边 + 一个会呼吸的圆点。中性态（在听）走灰，进行时（正在想 / 正在说）走 --st-* —— 与头像同一个状态色源。 */
+.dialogue-presence__state {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 11px 4px 9px;
+  border: var(--bw-1) solid var(--c-border);
+  border-radius: var(--r-pill);
+  background: var(--c-surface-2);
+  color: var(--c-text-2);
+  font-size: var(--fs-12);
+  font-weight: var(--fw-bold);
+  transition: background var(--dur-3) var(--ease-out), border-color var(--dur-3) var(--ease-out);
+}
+.dialogue-presence__dot {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--c-border-strong);
+}
+.dialogue-presence__role { margin-top: 3px; max-width: 34em; color: var(--c-text-2); font-size: var(--fs-14); line-height: var(--lh-snug); }
+/* 「正在说」：胶囊跟着头像的 speaking 状态走（同一个 --st-a/--st-b 来源），圆点吃主色 */
+.dialogue-presence.is-speaking .dialogue-presence__state { background: var(--c-primary-weak); border-color: var(--c-primary-border); }
+.dialogue-presence.is-speaking .dialogue-presence__dot { background: var(--c-primary); animation: dialogue-state-pulse 2.4s var(--ease-in-out) infinite; }
+/* 「正在想」：同样的胶囊 + 更快的呼吸 —— 进行时必须在"事情正在发生"的位置看得见。
+   形状（一枚带圆点的胶囊）在 reduced-motion 下仍然成立，只是不再呼吸。 */
+.dialogue-presence.is-thinking .dialogue-presence__state { background: var(--c-primary-weak); border-color: var(--c-primary-border); }
+.dialogue-presence.is-thinking .dialogue-presence__dot { background: var(--c-primary); animation: dialogue-state-pulse 1.5s var(--ease-in-out) infinite; }
+@keyframes dialogue-state-pulse {
+  0%, 100% { transform: scale(1); opacity: .55; }
+  50% { transform: scale(1.35); opacity: 1; }
+}
 
 .dialogue-rail { display: none; }
-.dialogue-rail__item { display: flex; align-items: flex-start; gap: 10px; width: 100%; min-height: 44px; padding: 12px; border: 1px solid var(--c-border); border-radius: var(--r-md); background: var(--c-surface); text-align: left; color: var(--c-text-2); }
-.dialogue-rail__item + .dialogue-rail__item { margin-top: 8px; }
-/* rail 的 hover 也走灰：它是导航，不是强调；蓝只留给"当前在哪"与主按钮 */
-.dialogue-rail__item:hover { border-color: var(--c-border-strong); background: var(--c-surface-2); color: var(--c-text); }
-.dialogue-rail__item svg { flex: none; margin-top: 2px; color: var(--c-text-3); }
-.dialogue-rail__item span { min-width: 0; }
-.dialogue-rail__item strong { display: block; font-size: var(--fs-14); font-weight: 500; color: var(--c-text); }
-.dialogue-rail__item small { display: block; margin-top: 3px; font-size: var(--fs-14); color: var(--c-text-3); line-height: 1.5; }
-/* 【2026-10-14 · P0-2】rail 的说明是一句话（"这两项是这次咨询的产出与依据…"）：12px → 14px。 */
-.dialogue-rail__note { margin-top: 12px; color: var(--c-text-3); font-size: var(--fs-14); line-height: 1.7; }
+/* 右栏标题（靶子 .rail__title）：12px/700/正字距 —— 12px 短标签是唯一允许正字距的地方 */
+.dialogue-rail__title {
+  padding: 0 4px 2px;
+  margin: 0;
+  font-size: var(--fs-12);
+  font-weight: var(--fw-bold);
+  letter-spacing: .06em;
+  color: var(--c-text-3);
+}
+/* =============================================================================
+ * 右栏卡（靶子 .railcard）
+ * -----------------------------------------------------------------------------
+ * 靶子实测（1280，卡宽 296 / 内距 16 / 圆角 12 / 1px 边 / 内高光 + --e-1）：
+ *   .railcard__ic  30×30 圆角 10 的图标格（勾选图标在里面）
+ *   .railcard__n   数字：现网与靶子都只有 12–14px，**不是"大号数字"**
+ *   .railcard__t   16px/700 卡名；.railcard__d 14px/--c-text-2 一句说明
+ *   .railcard__foot 12px/600/--c-primary 「看全部成果 →」
+ *   .meter{display:flex;gap:3px;margin-top:11px} .meter i{flex:1;height:5px;border-radius:3px;
+ *          background:var(--c-done-weak)} .meter i.on{background:linear-gradient(90deg,
+ *          var(--c-primary),var(--c-primary-hover))}
+ * **数字这一项按任务书口径做**：示例写的是「大号数字（如「3 项」「8 / 12」）」，
+ * 所以主数用 --fs-20（字号阶梯上"页标题/主要任务"一档，也是 5 档里最大的一档），
+ * 分母与单位回到 --fs-14。靶子那两个 12/14px 是它自己没兑现的一处，
+ * 这里取**任务书给的语义**而不是它当时的像素值，并在交付说明里点名。
+ * ========================================================================== */
+.dialogue-rail__card {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  min-height: 44px;
+  padding: var(--sp-4);
+  border: var(--bw-1) solid var(--c-border);
+  border-radius: var(--r-lg);
+  background: linear-gradient(180deg, var(--c-glass-1), var(--c-glass-2));
+  box-shadow: var(--light-in), var(--e-1);
+  text-align: left;
+  color: var(--c-text-2);
+  transition: border-color var(--dur-2) var(--ease-out), box-shadow var(--dur-2) var(--ease-out);
+}
+.dialogue-rail__card + .dialogue-rail__card { margin-top: var(--sp-3); }
+.dialogue-rail__card:hover { border-color: var(--c-border-strong); box-shadow: var(--light-in), var(--e-2); }
+.dialogue-rail__card[aria-pressed='true'] { border-color: var(--c-border-strong); background: var(--c-surface-solid); }
+.dialogue-rail__top { display: flex; align-items: center; gap: 9px; }
+.dialogue-rail__ic {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: var(--bw-1) solid var(--c-border);
+  border-radius: 10px;
+  background: var(--c-surface-2);
+  color: var(--c-text-2);
+}
+/* 大号数字：主数 20px/700，单位与分母 14px —— "有多少"必须一眼读出来 */
+.dialogue-rail__num {
+  margin-left: auto;
+  flex: none;
+  color: var(--c-text-3);
+  font-size: var(--fs-14);
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+.dialogue-rail__num strong { font-size: var(--fs-20); font-weight: var(--fw-bold); color: var(--c-text); }
+.dialogue-rail__t {
+  margin-top: 9px;
+  font-family: var(--font-title);
+  font-size: var(--fs-16);
+  font-weight: var(--fw-bold);
+  letter-spacing: -0.005em;
+  color: var(--c-text);
+}
+.dialogue-rail__d { margin-top: 3px; font-size: var(--fs-14); line-height: var(--lh-snug); color: var(--c-text-2); }
+.dialogue-rail__foot {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 11px;
+  font-size: var(--fs-12);
+  font-weight: var(--fw-semibold);
+  color: var(--c-primary);
+}
+.dialogue-rail__foot span { transition: transform var(--dur-2) var(--ease-out); }
+.dialogue-rail__card:hover .dialogue-rail__foot span { transform: translateX(3px); }
+/* 进度：一段 = 画像池里的一项。整段走 --c-done-weak（中性灰 = "还没到"），
+   已知的那几段走主色渐变（与图表同一支色，跟着 accent 换）。 */
+.dialogue-rail__meter { display: flex; gap: 3px; margin-top: 11px; }
+.dialogue-rail__meter i { flex: 1; height: 5px; border-radius: 3px; background: var(--c-done-weak); }
+.dialogue-rail__meter i.is-on { background: linear-gradient(90deg, var(--c-primary), var(--c-primary-hover)); }
+/* 说明（保留原类名，窄屏也复用它）：虚线边的一块"这是入口、不是全部"。
+   靶子把它做成 .railnote（虚线 + --c-surface-2 底 + --r-md）——
+   它不是正文，是一段"边界说明"，虚线把"这不是内容"这件事说清楚。 */
+.dialogue-rail__note {
+  margin-top: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  border: var(--bw-1) dashed var(--c-border-strong);
+  border-radius: var(--r-md);
+  background: var(--c-surface-2);
+  color: var(--c-text-3);
+  font-size: var(--fs-14);
+  line-height: var(--lh-snug);
+}
 
 /* 右侧 rail 真的要**占一列**，而网格里一列一行只能放一件东西：
-   所以 rail 在场时，对话体让出第 2 列（否则两个都铺在 1 / -1 上会叠在一起）。
+   所以 rail 在场时，在场卡与对话体都让出第 2 列（否则会叠在一起）。
    .has-rail 由组件在挂载时按导航模式打上（窄屏没有这一列）。 */
+.dialogue-page .dialogue-presence { grid-column: 1 / -1; }
 .dialogue-page .exp-conversation-body { grid-column: 1; }
 .dialogue-page.has-rail { grid-template-columns: minmax(0, 1fr) 236px; column-gap: 20px; }
-/* 头部只占阅读列那一栏：跨列居中会让它相对纸面偏出去（700px 的头部居中在 1180px 上，
-   纸面居中在 924px 的对话列上，两者差半条 rail 的宽度） */
-.dialogue-page.has-rail .ws-chat-head { grid-column: 1; }
-.dialogue-page.has-rail .dialogue-rail { display: block; grid-column: 2; grid-row: 2; align-self: start; position: sticky; top: 8px; }
+/* 页头与在场卡只占阅读列那一栏：跨列会让它们相对纸面偏出去 */
+.dialogue-page.has-rail .ws-chat-head,
+.dialogue-page.has-rail .dialogue-presence { grid-column: 1; }
+.dialogue-page.has-rail .dialogue-rail { display: block; grid-column: 2; grid-row: 2 / span 2; align-self: start; position: sticky; top: 8px; }
 
 /* =============================================================================
  * L1 工作面：对话流 = 一张纸
@@ -263,22 +499,56 @@ html[data-accent='red'] .dialogue-page {
   to { opacity: 1; transform: none; }
 }
 
-/* 块一 · 结论：一句话主张。
-   层级**只用排印手段**：20px / 600 / 负字距 -0.01em（中文可查觉的上限）+ 下边缘一条收束线。
-   不新增"结论"这类结构自述词 —— 用户不需要被告知"这是一条判断"，
-   他需要的是它跟正文一眼不同；下边缘那条线同时回答了"后面的支撑材料为什么跟在这儿"。
-   仍用 flex 行 + wrap（而不是列）：光标是它的第二个 flex 子项，必须落在文字尾巴上。 */
+/* =============================================================================
+ * 块一 · 结论：一句话主张，**这张牌子就是本页的视觉锚点**
+ * -----------------------------------------------------------------------------
+ * 形态逐条对齐靶子（c2-hbu index.html:947-966 的 .lead / .lead__text）：
+ *   ① 一张白卡（玻璃面 + 1px 边 + 内高光 + --e-1，圆角 --r-lg，内距 20px，左侧 26px）
+ *   ② **左侧 3px 粗色条**：.chat-block--lead::before —— left:12px、上下各让 20px、
+ *      linear-gradient(180deg, --c-primary, --c-primary-weak-2)、圆角 3px
+ *   ③ **极大字**：--fs-30 / --fw-bold / --lh-tight / letter-spacing -.015em
+ *      （靶子实测 30px / 700 / 行高 39.6px / 字距 -0.45px）
+ *   ④ 不再用"下边缘收束线"表达层级：色条 + 字号已经把"这是主张"说完，
+ *      底下再压一条线就是同一句话说两遍（也是旧版"与正文同重"的残留）。
+ *
+ * ⚠️ 靶子那张卡里还有一行「结论」小标（.lead__label）。**不搬**：
+ *    HANDOFF-REDESIGN §4.3 明确记载 §2.3 的这条要求已作废，DESIGN-LANGUAGE §215
+ *    禁止"结构自述词"，评审（DESIGN-REVIEW-V7 §5）判定现网"不加标签"是对的。
+ *    屏幕阅读器仍然拿得到分组名：`aria-label="结论"` 在模板的 <section> 上。
+ *
+ * 光标仍留在文字尾巴上：所以大字包在内层 <p> 里，flex 行由块自己承担
+ * （靶子的 .lead__text 是块级，没有这层需要）。
+ * ========================================================================== */
 .chat-block--lead {
+  position: relative;
   display: flex;
   align-items: flex-end;
   flex-wrap: wrap;
-  gap: var(--sp-2);
-  padding-bottom: var(--sp-3);
-  border-bottom: var(--bw-1) solid var(--c-border);
-  font-size: var(--fs-20);
-  line-height: var(--lh-snug);
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  width: 100%;
+  padding: var(--sp-5) var(--sp-5) var(--sp-5) 26px;
+  border: var(--bw-1) solid var(--c-border);
+  border-radius: var(--r-lg);
+  background: linear-gradient(180deg, var(--c-glass-1), var(--c-glass-2));
+  box-shadow: var(--light-in), var(--e-1);
+}
+.chat-block--lead::before {
+  content: '';
+  position: absolute;
+  left: 12px;
+  top: var(--sp-5);
+  bottom: var(--sp-5);
+  width: 3px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, var(--c-primary), var(--c-primary-weak-2));
+}
+.chat-block--lead__text {
+  min-width: 0;
+  flex: 1 1 auto;
+  font-family: var(--font-title);
+  font-size: var(--fs-30);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-tight);
+  letter-spacing: -0.015em;
   color: var(--c-text);
 }
 .chat-block--lead .readable-text > * + * { margin-top: 8px; }
@@ -611,63 +881,62 @@ html[data-accent='red'] .dialogue-page {
 .dialogue-page .ws-chat-prompts { margin-top: 24px; gap: 12px; }
 
 /* =============================================================================
- * 空态的在席者（P0-3）
+ * 空态的起步区
  * -----------------------------------------------------------------------------
- * 「顾问此刻就在这儿」这一句，只能由**一张脸 + 名字 + 职责 + 状态词**一起说。
- * 布局是"大头像 + 文字列"两栏：96px 是 c2-hbu 定的大档，390 上退到 64px
- * （见文件末的媒体查询），否则首屏会被头像吃掉半屏。
- *
- * 与消息级头像同源、同组件、同状态机 —— 空态说"在线，等你开口"，
- * 头像就得是 idle（睁着眼睛扫视），不能是 thinking。
- * 它**不是**被删掉的那块常驻身份牌：那一块首屏过后还在，这一块随空态消失。
+ * 在场卡已经常驻在页头（见上面的 .dialogue-presence），所以空态里**不再放第二张
+ * 身份牌** —— 一屏两块"我是谁"就是同一件事说两遍，而且消息一出现就消失的那一块
+ * 反而会让"顾问在场"变成"只在空态在场"。
  * ========================================================================== */
-.dialogue-presence {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-5);
-  padding-bottom: var(--sp-5);
-  border-bottom: var(--bw-1) solid var(--c-border);
-}
-/* 头像不许被文字列压扁：中文职责句很长，默认的 flex-shrink:1 会把它从 96 压到 ~48
-   （实测宽 48.6 / 高 64 的畸形比例）。它是这一块的锚点，先保它，文字自己去折行 */
-.dialogue-presence .ag { flex: none; }
-.dialogue-presence__intro { min-width: 0; }
-/* 名字是这一块唯一的人信息，用 16px 而不是 12px：它旁边就是 96px 的脸 */
-.dialogue-presence__who { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
-.dialogue-presence__who strong { font-size: var(--fs-16); font-weight: 600; color: var(--c-text); }
-.dialogue-presence__role { margin-top: var(--sp-2); max-width: 34em; color: var(--c-text-2); font-size: var(--fs-16); line-height: var(--lh-normal); }
-/* 状态词与 .chat-who__state 同一套语法（前置圆点 + 中灰），只是字大一号 */
-.dialogue-presence__state { position: relative; padding-left: 10px; color: var(--c-text-2); font-weight: 500; font-size: var(--fs-14); }
-.dialogue-presence__state::before { content: ''; position: absolute; left: 0; top: 50%; width: 4px; height: 4px; margin-top: -2px; border-radius: 50%; background: var(--c-border-strong); }
-/* 在席者与"起步主张"之间留一段呼吸：脸是第一眼，话是第二眼 */
+/* 起步主张与在场卡之间留一段呼吸：脸是第一眼，话是第二眼 */
 .dialogue-page .ws-chat-welcome .exp-intro { margin-top: var(--sp-6); }
 /* 空态的四张起步卡是 L2（局部关注区），悬停走灰：它们不是"选中"，只是"要点" */
 .dialogue-page .ws-chat-prompts button { background: var(--c-surface-2); border-color: var(--c-border); padding: 18px; }
 .dialogue-page .ws-chat-prompts button:hover { background: var(--c-surface-3); border-color: var(--c-border-strong); }
 .dialogue-page .ws-chat-prompts button > svg { color: var(--c-text-3); }
 
+/* 「导出记录」的退路：剪贴板不可用时，纯文本落在这里供用户自己选中复制 */
+.dialogue-export {
+  margin-top: var(--sp-3);
+  max-height: 320px;
+  overflow: auto;
+  padding: var(--sp-3) var(--sp-4);
+  border: var(--bw-1) solid var(--c-border);
+  border-radius: var(--r-md);
+  background: var(--c-surface-2);
+  color: var(--c-text-2);
+  font-family: var(--font-ui);
+  font-size: var(--fs-14);
+  line-height: var(--lh-normal);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 @keyframes chat-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes chat-caret { 50% { opacity: 0; } }
 @keyframes chat-handoff-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
 /* =============================================================================
- * 窄屏：一行头部 + 卡片组横滑 + 明确的当前位置
+ * 窄屏：三行页头 + 在场卡退一档 + 卡片组横滑 + 明确的当前位置
  * -----------------------------------------------------------------------------
- * 头部四个入口收成 44×44 图标按钮：宽度让给会话名，高度**一点都不多占**——
- * 任何"再起一行"都会吃掉首屏 44px。名字仍在（aria-label + title），只是不占宽度。
+ * 页头在窄屏仍是三行（标题 / 元信息 / 动作），但两个页头动作与四个图标入口
+ * 一律保持 ≥44px：窄屏不是把触控目标打八折的理由（HANDOFF §5.4 把 <44px 清到 4 处，
+ * 不允许在这里还回去）。
+ * 在场卡 96 → 64px（靶子 1412 行同款缩放），结论块 30 → 20px（靶子 1415 行同款）。
  * 横滑必须落在组内，不能带出整页横滚：viewport 用 clip，轨道自己滚。
- * 触控目标仍然一律 ≥44px —— 窄屏不是打折的理由。
  * ========================================================================== */
 @media (max-width: 760px) {
   /* 首屏每一 px 都先给消息：页顶那条 8px 外边距（workspace.css 的 .ws-conversation）
      在这里不承载任何信息，收掉 */
   .dialogue-page.ws-conversation { margin-top: 0; }
   .dialogue-page { gap: 6px; }
-  .dialogue-page .ws-chat-head { gap: 4px; padding-bottom: 4px; }
-  /* 【2026-10-14 · P0-2】窄屏不让"会话名"掉回 12px：它和桌面一样是 --fs-14 的控件文字，
-     宽度不够时由 flex:1 + min-width:0 + ellipsis 承担，不靠缩字号。 */
-  .ws-chat-head__session { font-size: var(--fs-14); }
-  /* 四个入口只留图标：44×4 + 演示标识 + 名字仍能同处一行（390 实测） */
+  .dialogue-page .ws-chat-head { gap: 8px; padding: 0 2px; }
+  /* 窄屏页头一样是三行：标题 20px 不掉档（它是"这是哪一次咨询"），元信息换行，
+     两个动作占满一行 —— 都要 ≥44px，窄屏不是打折的理由 */
+  .dialogue-page .ws-chat-head h1.dialogue-chat-head__title,
+  .dialogue-chat-head__title { font-size: var(--fs-20); line-height: 1.35; }
+  .dialogue-chat-head__acts { margin-left: 0; width: 100%; }
+  .dialogue-chipbtn { flex: 1 1 0; justify-content: center; }
+  /* 四个入口只留图标：44×4 + 元信息仍能同处一行（390 实测） */
   .ws-chat-head__label { display: none; }
   .dialogue-page .ws-chat-head__tools,
   .dialogue-page .ws-chat-head__flow { gap: 2px; }
@@ -703,11 +972,17 @@ html[data-accent='red'] .dialogue-page {
   .dialogue-page .composer-stop { min-width: 84px; padding: 0 14px; }
   .composer-info { top: 4px; right: 4px; }
   .dialogue-page .ws-chat-prompts button { padding: 14px; }
-  /* 空态的大头像在 390 上退一档：96px 的头像 + 文字列会把首屏挤成一栏半，
-     64px 仍然读得出眼睛与嘴（c2-hbu 的窄屏档就是这一档）。
+  /* 在场卡的大头像在 390 上退一档：96px + 中文职责句会把首屏挤成一栏半，
+     64px 仍然读得出眼睛与嘴（c2-hbu 的窄屏档就是这一档，见它 1412 行）。
      头像格子必须跟着改宽高 —— 组件内联的是 96px，这里按同一特异性覆盖 */
-  .dialogue-presence { gap: var(--sp-4); padding-bottom: var(--sp-4); }
+  .dialogue-presence { gap: var(--sp-4); padding: var(--sp-4); }
   .dialogue-presence .ag { flex: none; width: 64px !important; height: 64px !important; }
+  .dialogue-presence__who strong { font-size: var(--fs-16); }
+  /* 窄屏结论块：与靶子同一处缩放（它 1415 行也是把 .lead__text 退回 --fs-20）——
+     大字是"占屏宽 2/3"的锚点，一屏只有 390 时 30px 一行放不下几个字 */
+  .chat-block--lead { padding: var(--sp-4) var(--sp-4) var(--sp-4) 22px; }
+  .chat-block--lead::before { left: 9px; top: var(--sp-4); bottom: var(--sp-4); }
+  .chat-block--lead__text { font-size: var(--fs-20); letter-spacing: -0.01em; line-height: var(--lh-snug); }
   .dialogue-page .ws-chat-welcome .exp-intro { margin-top: var(--sp-4); }
 }
 
@@ -748,5 +1023,13 @@ html[data-accent='red'] .dialogue-page {
   .dialogue-page .ws-composer { transition: none; }
   .dialogue-action,
   .dialogue-action:hover { transition: none; transform: none; }
+  /* 在场状态圆点：**降级到静止的实心主色圆点**，不 display:none。
+     理由与 SkeletonBlock 同一条 —— 状态本身（正在想 / 正在说 / 在听）
+     由文字承担，呼吸只是加强；关掉动效不能让"正在想"这件事消失。 */
+  .dialogue-presence.is-thinking .dialogue-presence__dot,
+  .dialogue-presence.is-speaking .dialogue-presence__dot { animation: none; opacity: 1; transform: none; }
+  .dialogue-rail__foot span { transition: none; }
+  .dialogue-rail__card:hover .dialogue-rail__foot span { transform: none; }
+  .dialogue-chipbtn { transition: none; }
 }
 @keyframes chat-swap { from { opacity: 0; } to { opacity: 1; } }

@@ -178,13 +178,22 @@ const title = computed(() =>
   font-weight: var(--fw-medium);
 }
 
+/* 【2026-10-14 · 门禁 check-contrast 的 6 处红之一】下面三处原来都用 `--c-text-4`。
+ * 那是**用错了登记用途**：tokens.css:253 写的是"只给图标/分隔符"，而这里三处都是文字 ——
+ *   · .cf__num  = 展开粒度时印出来的 "46%"（一个真数字，用户要读的）
+ *   · .cf__none = 「未评估」三个字（本组件靠**文字**把"未知"与"很低"分开，见文件头量纲注释）
+ *   · .cf--unknown = 未知档容器色（后代里没有自己声明颜色的文字都继承它）
+ * 对纸面 #a2a4a6 只有 2.50:1，连 4.5:1 的一半都不到。改用最小的正文档 `--c-text-3`
+ * （对纸面 **5.80:1**，取自 check-contrast 的打印值；tokens.css 与 PortalClassicView 的注释里
+ * 写的 5.69 是旧记录，实测是 5.80。它本身就是 check-contrast 里 must:true 的一条）。
+ * 未知档仍然比已知档轻：它的标签是 --c-text-3 + 常规字重，已知档的标签是 --c-text-2 + 中等字重。 */
 .cf__num {
   font-variant-numeric: tabular-nums;
-  color: var(--c-text-4);
+  color: var(--c-text-3);
 }
 
 .cf__none {
-  color: var(--c-text-4);
+  color: var(--c-text-3);
 }
 
 /* 已知的三档：**只改文字色，不改底**（底一旦上色，一屏里就会出现三种色块） */
@@ -196,9 +205,12 @@ const title = computed(() =>
   color: var(--c-text-2);
 }
 
-/* 未知：整枚退到最轻的一档，避免和"依据充分"抢同一条视线的重量 */
+/* 未知：整枚退到最轻的一档，避免和"依据充分"抢同一条视线的重量。
+ * 【2026-10-14 · 门禁 6 处红的第三处】这里原来是 `--c-text-4`：它是**容器文字色**，
+ * 后代里凡是没有自己声明颜色的文字都继承它 —— 一枚整身都是文字的徽标，容器色就是文字色。
+ * 最轻的**可承载文字**的一档是 --c-text-3；再浅一档的 --c-text-4 只许画图形与分隔符。 */
 .cf--unknown {
-  color: var(--c-text-4);
+  color: var(--c-text-3);
 }
 .cf--unknown .cf__label {
   color: var(--c-text-3);

@@ -2,7 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { AccordionContent, AccordionHeader, AccordionItem, AccordionRoot, AccordionTrigger } from 'reka-ui'
-import { WORKSPACE_GROUPS, WORKSPACE_PRIMARY, PORTAL_LINK, isNavActive, activeGroup } from '../lib/workspace-nav'
+import { WORKSPACE_GROUPS, WORKSPACE_PRIMARY, PORTAL_LINK, isNavActive, activeGroup, type NavItem } from '../lib/workspace-nav'
 import { demo } from '../store'
 import { STUDENT } from '../data/student'
 import UiIcon from './UiIcon.vue'
@@ -31,19 +31,39 @@ function resumeSession(id: string) {
   router.push('/chat')
 }
 const userName = computed(() => demo.state.account === 'fresh' ? '新用户' : STUDENT.name)
+/**
+ * 底部人名行的副行 = **专业 · 年级**（c2 靶子的 `.nav__me-s`）。
+ * 专业取自 `data/student.ts` 的 `STUDENT.major`；年级取当前演示场景（`demo.use.scenario`），
+ * 因为切年级（GradeSwitch / ⌘K）真的会换掉这个人所处的场景 —— 写死 STUDENT.grade
+ * 就会出现"任务清单是大一的、人名行还写着大三"。
+ */
+const personSub = computed(() => demo.state.account === 'fresh' ? '演示账号 · 待完善资料' : STUDENT.major + ' · ' + demo.use.scenario.value.grade)
+const chatActive = computed(() => isNavActive(WORKSPACE_PRIMARY, route))
+/**
+ * 导航计数徽标（c2 的 `.nav__badge`）—— **两个数字都来自真实状态，没有一个写死**：
+ *   · 咨询对话 = `backendDemo.state.sessions` 的条数。侧栏「历史会话」表头读的是同一个字段
+ *     （`backendDemo.ts:33` 初始化，`demo-fixtures.ts:27` 的 6 条演示会话），所以表头与徽标永远一致。
+ *   · 今日行动 = `demo.state.tasks` 里 `bucket === 'now'` 的条数，与 `store.ts:138` 的
+ *     `demo.use.now` 是同一份数据。大三档恰好是 3 件（与 c2 样张那个 3 数值相同），
+ *     但样张的 3 是写死的，这里勾掉一件就变 2。
+ * 0 件时不渲染徽标（`v-if` 在模板里），所以 fresh 账号不会挂一个"0"。
+ */
+const sessionCount = computed(() => backendDemo.state.sessions.length)
+const nowCount = computed(() => demo.state.tasks.filter((t) => t.bucket === 'now').length)
+function navCount(item: NavItem) { return item.key === 'home' ? nowCount.value : 0 }
 function sessionDate(date?: string | null) { return date ? new Date(date).toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' }) : '' }
 </script>
 <template>
   <aside id="student-desktop-sidebar" class="desk-sidebar" aria-label="桌面导航">
-    <div class="desk-brand-row"><RouterLink class="desk-brand" to="/chat" aria-label="职引，回到对话"><span class="desk-brand__symbol" aria-hidden="true"><span /><span /><span /></span><div><strong>职引</strong><span>生涯规划与就业指导</span></div></RouterLink><button ref="collapseButton" class="ws-icon-button desk-collapse" aria-label="收起侧栏" title="收起侧栏" aria-controls="student-desktop-sidebar" aria-expanded="true" @click="$emit('collapse')"><UiIcon name="sidebar" :size="19" /></button></div>
+    <div class="desk-brand-row"><RouterLink class="desk-brand" to="/chat" aria-label="职引，回到对话"><span class="hf-mark" aria-hidden="true">职</span><div class="hf-names"><strong>职引</strong><span>陪你走完这一段</span></div></RouterLink><button ref="collapseButton" class="ws-icon-button desk-collapse" aria-label="收起侧栏" title="收起侧栏" aria-controls="student-desktop-sidebar" aria-expanded="true" @click="$emit('collapse')"><UiIcon name="sidebar" :size="19" /></button></div>
     <button class="desk-new-chat" :disabled="demo.state.chatBusy" @click="$emit('newChat')"><UiIcon name="plus" :size="18" /><span>新建咨询</span></button>
     <div class="desk-scroll">
     <nav class="desk-nav" aria-label="学生空间导航">
-      <RouterLink :to="WORKSPACE_PRIMARY.to" class="desk-link desk-link--conversation" :aria-current="isNavActive(WORKSPACE_PRIMARY, route) ? 'page' : undefined"><UiIcon :name="WORKSPACE_PRIMARY.icon" :size="20" /><span>{{ WORKSPACE_PRIMARY.label }}</span><span class="desk-link__dot" v-if="isNavActive(WORKSPACE_PRIMARY, route)" /></RouterLink>
+      <RouterLink :to="WORKSPACE_PRIMARY.to" class="desk-link desk-link--conversation" :aria-current="isNavActive(WORKSPACE_PRIMARY, route) ? 'page' : undefined"><UiIcon :name="WORKSPACE_PRIMARY.icon" :size="20" /><span class="hf-label">{{ WORKSPACE_PRIMARY.label }}</span><span class="hf-tail" v-if="sessionCount || chatActive"><span v-if="sessionCount" class="hf-badge" :title="'共 ' + sessionCount + ' 段咨询'">{{ sessionCount }}</span><span v-if="chatActive" class="desk-link__dot" /></span></RouterLink>
       <AccordionRoot v-model="openGroups" type="multiple" class="desk-menu">
         <AccordionItem v-for="group in WORKSPACE_GROUPS" :key="group.key" :value="group.key" class="desk-menu__group">
           <AccordionHeader><AccordionTrigger class="desk-menu__trigger" :class="{ 'desk-menu__trigger--active': group.items.some(i => isNavActive(i, route)) }"><UiIcon :name="group.icon" :size="19" /><span>{{ group.label }}</span><UiIcon class="desk-menu__chevron" name="chevron" :size="15" /></AccordionTrigger></AccordionHeader>
-          <AccordionContent class="desk-menu__content"><div class="desk-menu__children"><RouterLink v-for="item in group.items" :key="item.key" :to="item.to" class="desk-link desk-link--child" :aria-current="isNavActive(item, route) ? 'page' : undefined"><span>{{ item.label }}</span><span v-if="isNavActive(item, route)" class="desk-link__dot" /></RouterLink></div></AccordionContent>
+          <AccordionContent class="desk-menu__content"><div class="desk-menu__children"><RouterLink v-for="item in group.items" :key="item.key" :to="item.to" class="desk-link desk-link--child" :aria-current="isNavActive(item, route) ? 'page' : undefined"><span class="hf-label">{{ item.label }}</span><span class="hf-tail" v-if="navCount(item) || isNavActive(item, route)"><span v-if="navCount(item)" class="hf-badge" :title="'今天有 ' + navCount(item) + ' 件要做'">{{ navCount(item) }}</span><span v-if="isNavActive(item, route)" class="desk-link__dot" /></span></RouterLink></div></AccordionContent>
         </AccordionItem>
       </AccordionRoot>
     </nav>
@@ -55,8 +75,83 @@ function sessionDate(date?: string | null) { return date ? new Date(date).toLoca
       每颗 35×41 —— 既不到 44px，又让内部文档从导航裂缝漏回学生入口。
     -->
     <div class="desk-footer">
-      <button class="desk-person" aria-label="账号" @click="$emit('account')"><span class="desk-person__avatar">{{ userName.slice(0, 1) }}</span><span><strong>{{ userName }}</strong><small>{{ demo.state.account === 'fresh' ? '演示账号 · 待完善资料' : demo.use.scenario.value.grade + ' · ' + STUDENT.school }}</small></span><UiIcon name="chevron" :size="16" /></button>
+      <button class="desk-person hf-person" aria-label="账号" @click="$emit('account')"><span class="desk-person__avatar">{{ userName.slice(0, 1) }}</span><span class="hf-person-text"><strong>{{ userName }}</strong><small>{{ personSub }}</small></span></button>
       <div class="desk-footer__links"><RouterLink :to="PORTAL_LINK.to">{{ PORTAL_LINK.label }}</RouterLink></div>
     </div>
   </aside>
 </template>
+
+<style scoped>
+/*
+  左侧栏：把 c2 靶子的 `.nav__mark` / `.nav__names` / `.nav__badge` / `.nav__me*` 落到真实侧栏上。
+  为什么全写在这里（scoped）而不是 `workspace.css`：
+    · `.desk-sidebar` / `.desk-brand` / `.desk-link` / `.desk-person` 这一族是 workspace.css
+      （另一位作者独占，本轮不许改）里的**全局裸类**；scoped 规则带 `[data-v-*]` 后特异度
+      高于它们，所以"只改这一处"在层叠上是成立的。
+    · 反过来说，把这些靶子类名（`.nav__mark` 等）写进 scoped 会立刻被
+      `scripts/check-classes.mjs` 拦下（同名类同时出现在全局与 scoped 且带版面属性），
+      所以本组件一律用 `hf-` 前缀，不复用任何全局类名。
+  与靶子的差异（回报里逐条点名）：
+    · `.hf-mark` 15px/700 → `--fs-16`/`--fw-semibold`：本项目字号只有登记档（12/14/16/20/30/38）、
+      字重只有 400/500/600 三档，15px 与 700 都不存在，不能为了样张偷偷加一档。
+    · 投影取 `--e-1`（既有令牌）而不是 c2 的 `--sh-accent-2`：本项目**没有带主色的影令牌**，
+      也不许在组件里写颜色字面量。要完全对上靶子那层蓝色浮起，得先加一个全局令牌 ——
+      规则原样写在 `_shots/B-needs-workspace-css.md`，由 Lead 合并。
+    · 品牌名与副标保持**上下两行**（靶子的 `.nav__names` 是行内、两个字并排）：
+      侧栏实测内宽 200px，并排需要约 170px，一行之差就会挤掉右侧那颗 44px 的折叠按钮。
+    · 底部头像保持本工程既有的 34px 圆形身份片（与顶栏 `.ws-account__avatar` 是同一颗），
+      没有换成靶子的 30px 灰色方片：§5.2 这一项要的是"人名带专业年级"，头像形态不在差异项里，
+      而 `--chip-1/2/ink` 这三个靶子令牌本工程也不存在。
+*/
+.hf-mark {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  background: linear-gradient(148deg, var(--c-primary), var(--c-primary-active));
+  box-shadow: var(--e-1);
+  display: grid;
+  place-items: center;
+  color: var(--c-on-primary);
+  font-size: var(--fs-16);
+  font-weight: var(--fw-semibold);
+  line-height: 1;
+}
+.hf-names { min-width: 0; }
+.hf-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+/* 徽标与"当前页"圆点一起收进尾组：两个都带 `margin-left:auto` 时会把空隙对半分，
+   徽标就会飘到行的中间；用一个 auto 外边距的尾组，它们始终贴在同一侧。 */
+.hf-tail {
+  margin-left: auto;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.hf-badge {
+  flex: none;
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: var(--r-pill);
+  background: var(--c-primary-weak);
+  color: var(--c-primary);
+  border: var(--bw-1) solid var(--c-primary-border);
+  font-size: var(--fs-12);
+  font-weight: var(--fw-semibold);
+  line-height: 1.5;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+/* 人名行：内容高而不是钉死 44px。
+   全局 `.desk-person` 是 `height: 44px`，两行文字靠 line-height 压进去；
+   副行现在是"专业 · 年级"（比原来的"大三 · 河北大学"长），万一对不齐换行，
+   定高会让文字从盒子里溢出去压住页脚上边距。min-height 保住 44px 命中区。 */
+.hf-person { height: auto; min-height: 44px; }
+.hf-person-text { flex: 1 1 auto; min-width: 0; }
+</style>
