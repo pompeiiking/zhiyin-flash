@@ -180,7 +180,7 @@ const sourceNote = computed(
 </script>
 
 <template>
-  <div class="spec">
+  <div class="ws-page spec">
     <header class="spec__top">
       <div class="hstack hstack-3">
         <span class="spec__mark">职引</span>

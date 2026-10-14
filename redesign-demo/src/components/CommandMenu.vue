@@ -2,7 +2,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { demo } from '../store'
-import { WORKSPACE_ITEMS, PORTAL_LINK } from '../lib/workspace-nav'
+import { WORKSPACE_ITEMS, PORTAL_LINK, DIRECTORY_PAGES } from '../lib/workspace-nav'
 import { SCENARIOS } from '../data/scenarios'
 import InfoSheet from './InfoSheet.vue'
 import UiIcon from './UiIcon.vue'
@@ -16,7 +16,7 @@ const commands = computed<Item[]>(() => [
   // 只读**唯一导航模型**（+ 门户那一颗）。内部页 /spec /path /tools 不在模型里，
   // 所以不会像以前那样从 ⌘K 漏回学生面前 —— 直链仍然打得开。
   // 这里不再提供「外观」命令：外观的唯一入口是账号菜单 → 外观（PLAN §3.5）。
-  ...[...WORKSPACE_ITEMS, PORTAL_LINK].map((s) => ({ label: s.label, hint: s.hint, run: () => { router.push(s.to) } })),
+  ...[...WORKSPACE_ITEMS, ...DIRECTORY_PAGES, PORTAL_LINK].map((s) => ({ label: s.label, hint: s.hint, run: () => { router.push(s.to) } })),
   ...SCENARIOS.map((s) => ({ label: '使用场景：' + s.grade, hint: s.focus, run: () => demo.setGrade(s.id) })),
   { label: '复位演示数据', hint: '恢复预置状态', run: () => demo.resetDemo() },
   { label: '恢复操作引导', hint: '重新查看各页使用提示', run: () => demo.resetGuide() },

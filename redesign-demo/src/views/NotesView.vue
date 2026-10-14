@@ -3,11 +3,8 @@ import { computed, ref } from 'vue'
 import { backendDemo } from '../lib/backend-demo'
 import PageHeading from '../components/PageHeading.vue'
 import UiIcon from '../components/UiIcon.vue'
-import PanelTabs from '../components/PanelTabs.vue'
-import EmptyState from '../components/EmptyState.vue'
 import TodoSuggestions from '../components/TodoSuggestions.vue'
 import InfoSheet from '../components/InfoSheet.vue'
-import Foldable from '../components/Foldable.vue'
 import SkeletonBlock from '../components/SkeletonBlock.vue'
 import StatusBanner from '../components/StatusBanner.vue'
 import SourceChip from '../components/SourceChip.vue'
@@ -16,6 +13,7 @@ import { backendClient } from '../api/backend-client'
 import { REVIEW_CONCLUSION, REVIEW_ITEMS } from '../data/student'
 import { attributionLabel } from '../lib/presentation'
 import type { NoteView } from '../api/backend-types'
+const noteAxis = ref('kind')
 const tab = ref<'todo'|'goal'>('todo'), drafts = ref({todo:'',goal:''}), error=ref(''), status=ref('')
 const deleting=ref<NoteView|null>(null),busy=ref(false),deleteError=ref('')
 /* 读取态与"忙"分开：busy 也覆盖添加/删除，用它画骨架会把"正在保存"错认成"还没读到" */
@@ -46,12 +44,18 @@ const goalNotes = computed(() => allNotes.value.filter((n) => n.kind === 'goal')
 const todoPending = computed(() => todoNotes.value.filter((n) => !n.done).length)
 const goalPending = computed(() => goalNotes.value.filter((n) => !n.done).length)
 const doneAll = computed(() => backendDemo.notesDone.value)
-const firstPending = computed(() => pending.value[0] ?? null)
-const nextPending = computed(() => pending.value[1] ?? null)
+const firstPending = computed(() => allNotes.value.find(n=>!n.done) ?? null)
+const nextPending = computed(() => allNotes.value.filter(n=>!n.done)[1] ?? null)
 /** 勾掉第一条之后浮上来的那一条（没有第二条时退回第一条，"只剩这一条"由文案交代） */
 const nextUp = computed(() => nextPending.value ?? firstPending.value)
 const tabLabel = computed(() => (tab.value === 'todo' ? '我的待办' : '个人目标'))
 const attributed = computed(() => REVIEW_ITEMS.filter((r) => r.attribution))
+const noteGroups = computed(() => {
+ const notes = allNotes.value
+ if (noteAxis.value === 'done') return [{key:'pending',title:'还没有完成',items:notes.filter(n=>!n.done)},{key:'done',title:'已经完成',items:notes.filter(n=>n.done)}]
+ if (noteAxis.value === 'source') return [{key:'live',title:'已保存的个人记录',items:notes.filter(n=>backendDemo.state.liveNoteIds.includes(n.id))},{key:'demo',title:'自己写的 · 本地演示记录',items:notes.filter(n=>!backendDemo.state.liveNoteIds.includes(n.id))}]
+ return [{key:'goal',title:'目标 · 为什么',items:notes.filter(n=>n.kind==='goal')},{key:'todo',title:'待办 · 做什么',items:notes.filter(n=>n.kind==='todo')}]
+})
 </script>
 <template>
 <div class="ws-page notes-page journey-page"><PageHeading title="待办与目标" description="写下你自己的安排，与方向方案生成的任务分别保留。"><button class="btn" :disabled="busy" @click="loadNotes">{{ busy?'正在处理…':'读取最新记录' }}</button><RouterLink class="btn" to="/home">去行动计划<UiIcon name="arrow" :size="16"/></RouterLink></PageHeading>
@@ -68,19 +72,12 @@ const attributed = computed(() => REVIEW_ITEMS.filter((r) => r.attribution))
 <div class="journey-action-grid">
 <div class="journey-action-main">
  <section class="c2-profile-stats" aria-label="待办与目标概览"><article class="c2-profile-stat"><strong>{{ goalPending }}</strong><small>条</small><h2>目标在走</h2><p>你自己写下的个人目标</p></article><article class="c2-profile-stat"><strong>{{ todoPending }}</strong><small>条</small><h2>待办没做</h2><p>下一步可以动手的具体事项</p></article><article class="c2-profile-stat"><strong>{{ doneAll }}</strong><small>条</small><h2>已经完成</h2><p>完成后可恢复，也会保留记录</p></article><article class="c2-profile-stat"><strong>{{ allNotes.length }}</strong><small>条</small><h2>自己写下的</h2><p>个人记录独立保留，不与计划任务混算</p></article></section>
-<PanelTabs :model-value="tab" @update:model-value="tab=$event as 'todo'|'goal';status='';error=''" label="待办与目标视图" :items="[{key:'todo',label:'我的待办',count:backendDemo.state.notes.filter(n=>n.kind==='todo').length},{key:'goal',label:'个人目标',count:backendDemo.state.notes.filter(n=>n.kind==='goal').length}]">
-<form class="desk-note-form" @submit.prevent="add"><label class="sr-only" for="desk-note-text">{{ tab==='todo'?'写下一件事':'写下一个目标' }}</label><input id="desk-note-text" v-model="text" maxlength="200" :placeholder="tab==='todo'?'下一件想做的事…':'你想达成什么…'"/><button class="btn btn--primary" type="submit"><UiIcon name="plus" :size="16"/>添加</button></form><p v-if="error" class="ws-field-error" role="alert">{{ error }}</p>
-<!-- 成功反馈换成 StatusBanner：旧写法是 `v-if="status"` 常驻不消失（审计 D9 点名的病灶），
-     success 由组件在 4s 后自动收起，也可以手动关。 -->
-<StatusBanner class="notes-page__status" tone="success" :message="status" :open="!!status" @dismiss="status=''"/>
-<!-- 加载态与"真的没有待办"分开（MIGRATION §4.1 K2：v-if="pending.length" 让两者长得一样）。
-     有内容时用 overlay 盖在仍在 DOM 的记录上：刷新不该让已有记录先消失再重建。 -->
-<div class="notes-page__records" :aria-busy="loading">
-<SkeletonBlock v-if="loading" :overlay="items.length > 0" variant="list" :lines="4"/>
-<ul v-if="pending.length"><li v-for="item in pending" :key="item.id" class="desk-record"><button class="desk-record__toggle" :aria-label="'完成：'+item.text" :aria-pressed="false" @click="setDone(item,true)" :disabled="busy"><UiIcon name="check" :size="16"/></button><div><p>{{ item.text }}</p><!-- 来源与时间原来是 12px 灰字；换成 SourceChip（来源默认可见，DESIGN-LANGUAGE §4.3） --><span class="desk-record__source"><SourceChip source="user_edit" :at="item.created_at"/></span></div><button class="ws-icon-button" :aria-label="'删除：'+item.text" @click="deleting={...item}"><UiIcon name="trash" :size="17"/></button></li></ul><EmptyState v-else kind="notes" :title="completed.length?'当前记录都已完成':tab==='todo'?'暂无个人待办':'暂无个人目标'" description="在上方写下新的安排，已经完成的记录仍可恢复。"/>
-<!-- 已完成：`.ws-context` → Foldable。计数由组件内建徽标承载，且默认展开 ——
-     这是全页唯一能"看到完成时"的地方，不该藏在一次点击后面（MIGRATION §1.3 A1 / §1.4）。 -->
-<Foldable v-if="completed.length" variant="section" :count="completed.length" :default-open="true" title="已完成"><ul><li v-for="item in completed" :key="item.id" class="desk-record desk-record--done"><button class="desk-record__toggle" :aria-label="'恢复：'+item.text" :aria-pressed="true" @click="setDone(item,false)" :disabled="busy"><UiIcon name="check" :size="16"/></button><div><p>{{ item.text }}</p><span class="desk-record__source"><SourceChip source="user_edit" :at="item.created_at"/></span></div><button class="ws-icon-button" :aria-label="'删除：'+item.text" @click="deleting={...item}"><UiIcon name="trash" :size="17"/></button></li></ul></Foldable></div></PanelTabs>
+<section class="c2-note-pool ws-paper"><header class="ws-section-head"><div><h2>你自己写下的 {{ allNotes.length }} 条</h2><p>同一批记录，换一种组织方式。勾掉一条，完成情况与下一件都会更新。</p></div><span>{{ allNotes.length }} 条 · 已完成 {{ doneAll }}</span></header>
+<div class="c2-lensbar" role="group" aria-label="待办与目标的组织方式"><button v-for="axis in [{key:'kind',label:'按目标 / 待办'},{key:'done',label:'按做没做完'},{key:'source',label:'按它怎么来的'}]" :key="axis.key" :aria-pressed="noteAxis===axis.key" @click="noteAxis=axis.key">{{ axis.label }}</button></div><p class="c2-lens-hint">正在重组 {{ allNotes.length }} 条记录，条目总数不变。来源以实际保存状态为准。</p>
+<StatusBanner :open="!!status" tone="success" :message="status" @dismiss="status=''"/><StatusBanner v-if="error" tone="error" :message="error" retry-label="重试读取" @retry="loadNotes"/>
+<div class="notes-page__records" :aria-busy="loading"><SkeletonBlock v-if="loading" :overlay="allNotes.length>0" variant="list" :lines="4"/>
+<section v-for="group in noteGroups" :key="group.key" class="c2-note-group"><h3>{{ group.title }}<span>{{ group.items.length }} 条</span></h3><ul><li v-for="item in group.items" :key="item.id" class="desk-record c2-note-row" :class="{'desk-record--done':item.done}"><button class="desk-record__toggle" :aria-label="(item.done?'恢复：':'完成：')+item.text" :aria-pressed="item.done" @click="setDone(item,!item.done)" :disabled="busy"><UiIcon v-if="item.done" name="check" :size="16"/></button><div><p><span class="c2-note-kind">{{ item.kind==='goal'?'目标':'待办' }}</span>{{ item.text }}</p><span class="desk-record__source"><SourceChip source="user_edit" :at="item.created_at"/></span><small>{{ item.done ? '已完成；可以恢复' : '完成后移入已完成，记录仍保留' }}</small></div><button class="ws-icon-button" :aria-label="'删除：'+item.text" @click="deleting={...item}"><UiIcon name="trash" :size="17"/></button></li></ul><p v-if="!group.items.length" class="ws-muted">这一组现在没有记录。</p></section></div>
+<details class="c2-note-add"><summary>补一条目标或待办</summary><form class="desk-note-form" @submit.prevent="add"><label class="sr-only" for="note-kind">记录类型</label><select id="note-kind" v-model="tab"><option value="todo">待办</option><option value="goal">目标</option></select><label class="sr-only" for="desk-note-text">写下一条个人记录</label><input id="desk-note-text" v-model="text" maxlength="200" placeholder="下一件想做的事…"/><button class="btn" type="submit" :disabled="busy"><UiIcon name="plus" :size="16"/>添加</button></form></details></section>
 <TodoSuggestions/>
 </div>
 

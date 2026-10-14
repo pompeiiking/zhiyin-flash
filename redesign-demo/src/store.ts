@@ -117,6 +117,7 @@ const state = reactive<State>({
   chatBusy: false,
 })
 
+if(state.chatTurns[0]?.text==='我不知道自己适合什么。专业是调剂的，说不上喜欢。'&&state.chatTurns.every(t=>/^c\d+$/.test(t.id))&&state.account!=='fresh'&&backendDemo.state.dataMode==='demo')state.chatTurns=chatFor(state.account)
 rememberSession('workspace',state,['grade','tasks','lastDoneId','selectedDirectionId','previousDirectionId','reportVersion','chatCollected','guidesClosed','rippleOpen','chatTurns','profileEdits','profileEditTimes','reviewAttributions','reviewNotes','currentSessionId','noticeQueue','noticeIndex','interventionDismissed'])
 let toastTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -140,10 +141,12 @@ export const demo = {
     done: computed(() => state.tasks.filter((t) => t.bucket === 'done')),
     /** 完成记录：只由行为日志驱动，不由"计划里写了"驱动 */
     doneCount: computed(() => state.tasks.filter((t) => t.bucket === 'done').length),
-    /** 今天能勾掉的最小一件 */
+    /** 今天到期的优先；同一时限内从最小的一件开始。 */
     smallestNow: computed(() => {
       const now = state.tasks.filter((t) => t.bucket === 'now')
-      return now.length ? now.reduce((a, b) => (a.minutes <= b.minutes ? a : b)) : null
+      const dueToday = now.filter(t => t.due === '今天')
+      const candidates = dueToday.length ? dueToday : now
+      return candidates.length ? candidates.reduce((a, b) => (a.minutes <= b.minutes ? a : b)) : null
     }),
     selectedDirection: computed(() =>
       state.selectedDirectionId
@@ -384,15 +387,20 @@ export const demo = {
       state.noticeOpen = false
     }
   },
-  resolveNotice() {
-    const n = state.noticeQueue[state.noticeIndex]
+  resolveNotice(id?: string) {
+    const n = id ? state.noticeQueue.find(n => n.id === id) : state.noticeQueue[state.noticeIndex]
     if (n) {
       demo.planChatTask('投递中建某院的结构岗', 10)
-      demo.dismissNotice()
+      demo.dismissNotice(n.id)
     }
   },
-  dismissNotice() {
-    state.noticeQueue.splice(state.noticeIndex, 1)
+  restoreNotice(notice: Notice) {
+    if (!state.noticeQueue.some(item => item.id === notice.id)) state.noticeQueue.push({ ...notice })
+  },
+  dismissNotice(id?: string) {
+    const index = id ? state.noticeQueue.findIndex(n => n.id === id) : state.noticeIndex
+    if (index < 0) return
+    state.noticeQueue.splice(index, 1)
     state.noticeIndex = Math.min(state.noticeIndex, Math.max(0, state.noticeQueue.length - 1))
     state.noticeOpen = false
   },

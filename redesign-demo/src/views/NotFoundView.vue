@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import PageHeading from '../components/PageHeading.vue'
 import UiIcon from '../components/UiIcon.vue'
@@ -55,15 +55,18 @@ const asked = computed(() => {
   const p = (route.fullPath || '/').split('?')[0]
   return p || '/'
 })
+const state=ref('404')
+const errorTitles:Record<string,string>={'404':'这个地址不存在',denied:'暂时没有访问权限',offline:'服务暂时不可用'}
+const errorDescriptions:Record<string,string>={'404':'可能是旧链接，或地址敲错了。下面保留这次打开的地址与可用入口。',denied:'这是权限状态的演示。已保存的资料仍保留，可以回到自己的工作空间。',offline:'这是服务不可用的演示。原记录仍可阅读，可以重试或先去其他页面。'}
 </script>
 
 <template>
-  <div class="ws-page">
+  <div class="ws-page c2-error-page"><div class="c2-lensbar" role="group" aria-label="异常状态演示"><button v-for="item in [{key:'404',label:'404'},{key:'denied',label:'无权限'},{key:'offline',label:'服务不可用'}]" :key="item.key" :aria-pressed="state===item.key" @click="state=item.key">{{ item.label }}</button></div>
     <PageHeading
-      title="这个地址不存在"
-      description="多半是一个旧链接（界面改过几轮，地址变过），或者地址敲错了一个字符。"
+      :title="errorTitles[state]"
+      :description="errorDescriptions[state]"
     >
-      <RouterLink class="btn btn--primary" to="/">回到门户</RouterLink>
+      <RouterLink class="btn" to="/chat">回到咨询</RouterLink><button v-if="state==='offline'" class="btn" @click="state='404'">重试状态演示</button><RouterLink class="btn" to="/">回到门户</RouterLink>
     </PageHeading>
 
     <section class="ws-paper" aria-labelledby="nf-addr-title">

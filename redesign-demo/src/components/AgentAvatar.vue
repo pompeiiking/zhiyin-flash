@@ -151,7 +151,7 @@ const ARC_RIGHT_INNER = 'M77 17.8A42 42 0 0 1 77 82.2'
     :aria-label="identity.name"
     :title="`${identity.name} · ${identity.role}`"
   >
-    <svg class="ag-svg" viewBox="-8 -8 116 116" aria-hidden="true" focusable="false">
+    <svg class="ag-svg" viewBox="0 0 100 100" aria-hidden="true" focusable="false">
       <defs>
         <!-- 材质层第 2 层：光从上面来。这是形体上唯一的"体积"信息，不再有镜面高光。
              两端都取自 --ag-hue：上端全透明、下端压到 .3 —— 同色相内的明暗，不引入第二支色 -->
@@ -221,32 +221,32 @@ const ARC_RIGHT_INNER = 'M77 17.8A42 42 0 0 1 77 82.2'
                gaze 负责左右扫视（±1.4px）、lift 负责思考时上移（1.4px），两个位移分两层挂 -->
           <g class="ag-face">
             <g class="ag-eye ag-eye--l">
-              <ellipse class="ag-eye-white" cx="37.5" cy="47" rx="7" ry="7.6" />
-              <ellipse class="ag-eye-rim" cx="37.5" cy="47" rx="7" ry="7.6" />
+              <ellipse class="ag-eye-white" cx="37.5" cy="43" rx="7" ry="7.6" />
+              <ellipse class="ag-eye-rim" cx="37.5" cy="43" rx="7" ry="7.6" />
               <g class="ag-pupil">
                 <g class="ag-gaze">
                   <g class="ag-lift">
-                    <circle class="ag-pupil__ink" cx="38.4" cy="48.2" r="4.6" />
-                    <circle class="ag-glint" cx="36.5" cy="45.9" r="1.7" />
+                    <circle class="ag-pupil__ink" cx="38.4" cy="44.2" r="4.6" />
+                    <circle class="ag-glint" cx="36.5" cy="42.1" r="1.7" />
                   </g>
                 </g>
               </g>
             </g>
             <g class="ag-eye ag-eye--r">
-              <ellipse class="ag-eye-white" cx="62.5" cy="47" rx="7" ry="7.6" />
-              <ellipse class="ag-eye-rim" cx="62.5" cy="47" rx="7" ry="7.6" />
+              <ellipse class="ag-eye-white" cx="62.5" cy="43" rx="7" ry="7.6" />
+              <ellipse class="ag-eye-rim" cx="62.5" cy="43" rx="7" ry="7.6" />
               <g class="ag-pupil">
                 <g class="ag-gaze">
                   <g class="ag-lift">
-                    <circle class="ag-pupil__ink" cx="63.4" cy="48.2" r="4.6" />
-                    <circle class="ag-glint" cx="61.5" cy="45.9" r="1.7" />
+                    <circle class="ag-pupil__ink" cx="63.4" cy="44.2" r="4.6" />
+                    <circle class="ag-glint" cx="61.5" cy="42.1" r="1.7" />
                   </g>
                 </g>
               </g>
             </g>
 
             <!-- 嘴：一条自信的弧线。说话时 scaleY 开合（.34s），思考时压扁，其他时候静息 -->
-            <path class="ag-mouth" d="M43.5 65.5q6.5 6.2 13 0" />
+            <path class="ag-mouth" d="M43.5 61.5q6.5 6.2 13 0" />
           </g>
 
           <!-- ===== 识别件：主理"手里拿的那件东西"，思考时它是动态元素 =====

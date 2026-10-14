@@ -8,7 +8,7 @@ const icons: Record<string, Component> = {
   more: PhDotsThree, search: PhMagnifyingGlass, bell: PhBell, info: PhInfo, calendar: PhCalendarBlank,
   directions: PhMapTrifold, compass: PhCompass, notes: PhNotePencil, attachment: PhPaperclip, upload: PhUploadSimple,
   academic: PhGraduationCap, trash: PhTrash, apps: PhSquaresFour, shield: PhShieldCheck, copy: PhCopy, down: PhArrowDown, sidebar: PhSidebarSimple,
-  path: PhPath, trophy: PhTrophy, menu: PhList,
+  path: PhPath, trophy: PhTrophy, menu: PhList, download: PhArrowDown,
 }
 </script>
 <template>

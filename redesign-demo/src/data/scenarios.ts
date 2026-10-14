@@ -100,6 +100,9 @@ export const SCENARIOS: Scenario[] = [
     milestones: [
       {
         id: 'm-j1',
+        dueAt: '2026-09-20',
+        dependsOn: [],
+        handoff: '简历修订完成后，下一步投出去的才是更新后的材料。',
         title: '完成简历修订并满足申请要求',
         window: '9 月 20 日前',
         progress: 0.5,
@@ -107,6 +110,9 @@ export const SCENARIOS: Scenario[] = [
       },
       {
         id: 'm-j2',
+        dueAt: '2026-10-31',
+        dependsOn: ['m-j1'],
+        handoff: '投递的岗位与回应会成为下一步面试准备的依据。',
         title: '申请 15 个岗位，主攻方向不少于一半',
         window: '10 月 31 日前',
         progress: 0.27,
@@ -114,6 +120,9 @@ export const SCENARIOS: Scenario[] = [
       },
       {
         id: 'm-j3',
+        dueAt: '2026-11-30',
+        dependsOn: ['m-j2'],
+        handoff: '面试反馈回到复盘，继续核对方向与材料。',
         title: '获得 2 次面试机会',
         window: '11 月 30 日前',
         progress: 0,

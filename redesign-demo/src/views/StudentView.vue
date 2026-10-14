@@ -439,11 +439,13 @@ function tweenTo(target: number, duration = 760) {
  * ======================================================================== */
 
 const modes = [
-  { key: 'topic', label: '按主题', note: '按"这是哪一类情况"归拢' },
   { key: 'source', label: '按来源', note: '按"这条是谁给的"归拢' },
+  { key: 'time', label: '按时间', note: '按记录时间归拢，时间未提供的单列' },
+  { key: 'topic', label: '按主题', note: '按"这是哪一类情况"归拢' },
+  { key: 'weight', label: '按对结论的贡献', note: '按实际依赖这条资料的判断数量归拢' },
   { key: 'conf', label: '按可信度', note: '按"这条有多结实"归拢' },
 ] as const
-const mode = ref<'topic' | 'source' | 'conf'>('topic')
+const mode = ref<'topic' | 'source' | 'time' | 'weight' | 'conf'>('source')
 const focus = ref<string | null>(null)   // 来源视角下只留一类的旧能力
 const confFocus = ref<string | null>(null)
 const anyFocus = computed(() => (mode.value === 'conf' ? confFocus.value : mode.value === 'source' ? focus.value : null))
@@ -468,6 +470,17 @@ interface RowGroup {
 
 const groups = computed<RowGroup[]>(() => {
   const rows = visible.value
+  if (mode.value === 'time') {
+    const dates = [...new Set(rows.map(row => row.iso?.slice(0, 10) || '时间未提供'))].sort().reverse()
+    return dates.map(date => ({ key: date, title: date, hint: '', rows: rows.filter(row => (row.iso?.slice(0, 10) || '时间未提供') === date) }))
+  }
+  if (mode.value === 'weight') {
+    return [
+      { key: 'many', title: '撑起多条判断', hint: '至少两条判断依赖这些信息', rows: rows.filter(row => row.supports >= 2) },
+      { key: 'one', title: '撑起一条判断', hint: '依赖关系可以在每条的原始依据里核对', rows: rows.filter(row => row.supports === 1) },
+      { key: 'none', title: '暂未参与判断', hint: '信息仍然保留，不用贡献大小判断它是否值得记录', rows: rows.filter(row => row.supports === 0) },
+    ]
+  }
   if (mode.value === 'source') {
     return SOURCE_GROUPS.map((group) => ({ key: group.key, title: group.label, hint: '', rows: rows.filter((row) => group.from.includes(row.desc)) }))
   }
@@ -894,13 +907,14 @@ const identity = computed(() => {
   if (!live.value && demo.state.account === 'fresh') return { name: '新用户', line: '学校与年级待补充' }
   return { name: name || '个人档案', line: [school, grade].filter(Boolean).join(' · ') || '学校与年级待补充' }
 })
+function exportProfile(){const url=URL.createObjectURL(new Blob([JSON.stringify({profile:known.value,gaps:gapRows.value,source:live.value?'本次读取的档案':'本地演示画像'},null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='职引-个人画像.json';a.click();URL.revokeObjectURL(url)}
 </script>
 
 <template>
   <div class="ws-page profile-page p7">
-    <PageHeading title="个人画像" description="从这里能看到：我知道什么、所以我判断了什么、还缺什么。每条都能追到来源。">
-      <button class="btn" :disabled="loading" @click="loadWorkspace">{{ loading ? '正在读取…' : '读取最新档案' }}</button>
-      <RouterLink class="btn btn--primary" to="/chat">{{ progress.gap ? '补充信息' : '更新信息' }}<UiIcon name="arrow" :size="16" /></RouterLink>
+    <PageHeading title="个人画像" :description="'顾问现在对你的了解，一共 '+tally.total+' 条。每一条都写着从哪来、有多结实、什么时候记下的。不同意就直接改，原始依据仍保留。'"><template #meta><div class="c2-page-meta"><span>{{ live?'已读取的档案':'演示数据' }}</span><span>{{ known.length }} 条已知 · {{ progress.gap }} 条待补充</span><span>{{ new Set(known.map(row=>row.desc)).size }} 个来源</span><span>每条都能追到原始依据</span></div></template>
+      <button class="btn" @click="exportProfile"><UiIcon name="download" :size="16"/>导出画像</button>
+      <RouterLink class="btn" to="/chat">{{ progress.gap ? '补一条' : '更新信息' }}<UiIcon name="arrow" :size="16" /></RouterLink>
     </PageHeading>
 
     <StatusBanner
@@ -949,7 +963,7 @@ const identity = computed(() => {
       </header>
 
       <!-- 第二层：在同一个视角里再收窄（原来那个"来源筛选"并到这里，不再有第二套控件） -->
-      <div v-if="mode !== 'topic'" class="p7-subfilter" data-testid="sub-filter">
+      <div v-if="mode === 'source' || mode === 'conf'" class="p7-subfilter" data-testid="sub-filter">
         <span>只看</span>
         <button
           class="p7-subchip"

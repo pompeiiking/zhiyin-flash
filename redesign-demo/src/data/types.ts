@@ -86,6 +86,9 @@ export interface TaskItem {
 }
 
 export interface Milestone {
+  dueAt?: string
+  dependsOn?: string[]
+  handoff?: string
   id: string
   title: string
   window: string

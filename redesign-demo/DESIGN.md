@@ -9,6 +9,7 @@ colors:
   primary-weak-2: "#dbeafa"
   primary-border: "#b8d5f2"
   attention: "#96000e"
+  attention-strong: "#7d000c"
   attention-weak: "#fdf7f4"
   text: "#1e232c"
   text-secondary: "#4b5157"
@@ -43,12 +44,15 @@ typography:
     fontSize: "30px"
     fontWeight: 700
     lineHeight: 1.45
+  mobile-stat:
+    fontSize: "24px"
+    fontWeight: 700
   title:
     fontSize: "20px"
     fontWeight: 700
     lineHeight: 1.45
   body:
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Source Han Sans SC', 'Noto Sans CJK SC', sans-serif"
+    fontFamily: "'Microsoft YaHei UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans CJK SC', 'Source Han Sans SC', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif"
     fontSize: "16px"
     fontWeight: 400
     lineHeight: 1.7
@@ -86,6 +90,14 @@ components:
     padding: "8px 16px"
   button-primary-hover:
     backgroundColor: "{colors.primary-hover}"
+  button-danger:
+    backgroundColor: "{colors.attention-strong}"
+    textColor: "{colors.on-primary}"
+    rounded: "{rounded.pill}"
+    height: "44px"
+    padding: "8px 16px"
+  button-danger-hover:
+    backgroundColor: "{colors.attention}"
   button-secondary:
     backgroundColor: "{colors.surface}"
     textColor: "{colors.text}"
@@ -121,7 +133,7 @@ components:
 
 **Creative North Star: "C2 · 陪你走完这一段"**
 
-本文件记录 2026-10-14 已实现的学生空间。获批视觉与交互来源为 [c2-hbu/index.html](design-review/v6-redesign/directions/c2-hbu/index.html) 及其页面原型；Vue 实现仍保留原产品的数据、会话与操作链路。当前工作空间样式以最后加载的 [c2-fidelity.css](src/styles/c2-fidelity.css) 为准，位于 redesign.css 之后；基础语义、主题与密度来自 tokens.css，组件局部样式继续参与层叠。
+本文件记录 2026-10-15 已实现的学生空间。获批视觉与交互来源为 [c2-hbu/index.html](design-review/v6-redesign/directions/c2-hbu/index.html) 及其页面原型；Vue 实现仍保留原产品的数据、会话与操作链路。当前工作空间样式以最后加载的 [c2-fidelity.css](src/styles/c2-fidelity.css) 为准，位于 redesign.css 之后；基础语义、主题与密度来自 tokens.css，组件局部样式继续参与层叠。
 
 浅灰渐变背景、半透明白色表面、宽而柔软的负扩散投影及同主色伙伴头像共同建立陪伴感。导航与控件保持清楚，来源、解释与任务状态支持实际操作。门户是独立表面，保留原行为与原版对比入口。
 
@@ -152,13 +164,14 @@ frontmatter 的默认值对应浅色、蓝主、常规密度的 C2 工作空间�
 
 ## Typography
 
-正文采用 frontmatter 的系统中文无衬线栈，标题使用更适合显示的系统栈，无新增字体下载。注册字号仅六档；实际角色由字号、字重、位置和留白共同决定。字重使用 400、500、600、700。
+正文采用 frontmatter 的系统中文无衬线栈，标题使用更适合显示的系统栈，无新增字体下载。注册字号为七档（12、14、16、20、24、30、38px）；实际角色由字号、字重、位置和留白共同决定。字重使用 400、500、600、700。
 
 | 角色 | 当前用途 |
 | --- | --- |
 | display | 关键数字及既有门户主张 |
 | headline | 桌面主要结论、任务及统计 |
 | title | 工作空间页标题与手机主要结论 |
+| mobile-stat | 手机画像统计数，避免沿用桌面大数字 |
 | body | 咨询正文、输入与内容阅读 |
 | control | 功能名称、控件与次要说明 |
 | label | 来源、时间、计数、短注解及 C2 外观选项 |
@@ -167,13 +180,13 @@ C2 页标题使用 title，节标题多使用 body 的尺寸并加粗；页面�
 
 ## Layout
 
-桌面展开侧栏宽 264px，从顶部身份条下方铺满高度；1024px 起使用完整目录。768–1023px 为 76px 图标栏，每个功能图标仍可达，历史数据保留、列表视觉隐藏。低于 768px 使用底部导航及更多目录。侧栏可整体收起。完整桌面侧栏展开时，顶栏与侧栏页脚均提供账号入口，两者打开同一账号抽屉并共享状态；手机及窄屏图标栏使用顶栏入口，整体收起侧栏时隐藏其页脚入口。
+桌面展开侧栏宽 264px，从顶部身份条下方铺满高度；1024px 起使用完整目录。768–1023px 为 76px 图标栏，每个功能图标仍可达，历史数据保留、列表视觉隐藏。低于 768px 使用全宽贴底的底部导航及更多目录，底栏内距计入安全区。侧栏可整体收起。完整桌面侧栏展开时，顶栏与侧栏页脚均提供账号入口，两者打开同一账号抽屉并共享状态；手机及窄屏图标栏使用顶栏入口，整体收起侧栏时隐藏其页脚入口。
 
-桌面头部高 64px，手机高 60px。头部提供真实命令搜索，外观栏提供主色、主题与密度三轴及全部页面命令入口。手机将外观栏排为两行，每行 36px，选项高 36px，第一行包含全部页面与主色，第二行包含主题与密度。
+桌面头部高 64px，手机高 60px。头部提供真实命令搜索，外观栏提供主色、主题与密度三轴及全部页面命令入口。手机外观栏使用可换行的紧凑 flex 布局，选项最小高 30px；按可用空间组织全部页面、主色、主题与密度入口。
 
-桌面外壳高 100dvh，主内容独立纵向滚动；没有有边框的内嵌主画布。常规页面最大宽 1200px，内距 24px，底部 64px；手机为左右 16px、顶部 20px，底部为底栏预留空间。主辅列为弹性主列与 296px 辅助列、间距 24px；低于 1280px 收为单列，咨询辅栏隐藏，报告等辅区进入正文流。画像辅区在中等宽度可排为两列，手机再收单列。
+桌面外壳高 100dvh，主内容独立纵向滚动；没有有边框的内嵌主画布。常规页面最大宽 1200px，内距 24px，底部 64px；手机为左右 16px、顶部 20px，底部为底栏预留空间。主辅列为弹性主列与 312px 通用辅助列、间距 24px；低于 1280px 收为单列，咨询辅栏隐藏，报告等辅区进入正文流。画像辅区在中等宽度可排为两列，手机再收单列。
 
-咨询是连续文档流，桌面内容上限 1074px并向主区左侧对齐；1440px视口下为706px阅读列、24px间隔与296px辅助列。手机伙伴与概览纵向排列。画像与资讯辅助内容在DOM中位于主内容之后，桌面网格保留右栏位置。输入区位于完整记录之后、参与页面滚动，回复没有覆盖式状态层。表格仅在自身容器横向滚动，方向比较表最小宽 700px。
+咨询是连续文档流，桌面内容上限 1074px并向主区左侧对齐；咨询辅助列296px，通用辅助列312px；全局替换误伤已纠正并复拍。手机伙伴与概览纵向排列。画像与资讯辅助内容在DOM中位于主内容之后，桌面网格保留右栏位置。输入区位于完整记录之后、参与页面滚动，回复没有覆盖式状态层。表格仅在自身容器横向滚动，方向比较表最小宽 700px。
 
 **The 可达性 Rule.** 功能目录平铺分组，路由与图标保持可达；切外观、宽度或侧栏显隐不会丢失会话与当前操作状态。
 
@@ -193,7 +206,7 @@ C2 使用透明表面、细线、顶部内高光与大范围负扩散投影的�
 
 ### Buttons / Inputs
 
-普通按钮高 44px、小档 36px，胶囊圆角、细描边与内高光。主要按钮使用实心主色。外观选项按 aria-pressed 标出选中，搜索打开真实命令面板并支持 Ctrl/Cmd + K、方向键与 Enter。全局键盘焦点使用主色轮廓，输入光标、选区与滚动条调用语义颜色。咨询输入保留 Enter 发送、Shift + Enter 换行与中文输入合成处理。
+普通按钮高 44px、小档 36px，胶囊圆角、细描边与内高光。主要按钮使用实心主色。danger按钮显式定义底色、前景和hover，避免浅底白字。外观选项按 aria-pressed 标出选中，搜索打开真实命令面板并支持 Ctrl/Cmd + K、方向键与 Enter。全局键盘焦点使用主色轮廓，输入光标、选区与滚动条调用语义颜色。咨询输入保留 Enter 发送、Shift + Enter 换行与中文输入合成处理。
 
 ### Navigation / History
 
@@ -201,11 +214,11 @@ C2 使用透明表面、细线、顶部内高光与大范围负扩散投影的�
 
 ### Companion / Conversation
 
-顶部伙伴主体使用当前主色、白眼与深灰结构色，状态由 ConversationView 的 thinking 和 streaming 字段派生 idle / thinking / speaking；组件另支持 done 一次性反馈。循环节奏按身份错开，减少动效时保留静态状态区别。不要把 SVG 外观当作新增模型能力。回复来源、复制、交接、成果及历史面板保留原行为；输入位于记录之后。
+顶部伙伴主体使用当前主色、白眼与深灰结构色，在演示模式且未生成时，顶部伙伴允许显式切换 idle / thinking / speaking 预览；服务模式或实际生成期间仍由 ConversationView 的 thinking 和 streaming 字段驱动，并禁用演示切换。组件另支持 done 一次性反馈。循环节奏按身份错开，减少动效时保留静态状态区别。不要把 SVG 外观当作新增模型能力。回复来源、复制、交接、成果及历史面板保留原行为；输入位于记录之后。
 
 ### Report / Direction Comparison
 
-报告当前摘要放在“判断”区域内；判断选择改变对应维度的强调，诊断正文、依据与版本仍保留。方向页使用同一五项比较尺度、三方向固定合成评分：
+报告当前摘要放在“判断”区域内；默认demo显示两项待核对依赖，requestReportReview标记在SPA中保留且不修改原分数；三条具体判断分别关联具体维度，选择改变对应维度的强调，诊断正文、依据与版本仍保留。方向页使用同一五项比较尺度、三方向固定合成评分：
 
 | 比较项 | 主攻 | 平行 | 备选 |
 | --- | ---: | ---: | ---: |
@@ -219,8 +232,14 @@ C2 使用透明表面、细线、顶部内高光与大范围负扩散投影的�
 
 ### Home / Plan / Review / Tools
 
-今日下一任务显示任务来源、推荐理由、证据链接、完成状态及预计时间，并与任务操作相连。阶段计划显示四项真实派生指标，时间线可展开阶段与任务细节。复盘提供周摘要、详细与原始记录视图，完成与恢复继续同步状态。工具页以依赖时间线说明顺序，并在目录之后的可展开状态披露中展示本地契约目录；69 schema / 50 operation 不代表在线后端完成量。
+今日下一任务优先取到期任务，同期限优先小任务，显示任务来源、推荐理由、证据链接、完成状态及预计时间，并与任务操作相连。阶段计划显示四项真实派生指标，时间线可展开阶段与任务细节；大三里程碑使用结构化dueAt ISO、dependsOn与handoff，逾期与倒计时以可见2026-10-14演示快照为基准，不猜文案。日历第三概览统计课程占用至少四小时的天数，所选日期显示真实无due未安排任务。画像与报告增加来源、时间、主题及对结论贡献重组，保留既有可信度等轴；同池重组不删信息。复盘recordPool现由执行记录与已经发生的成长记录组成，来源、时间、主题、贡献四轴实际重组；周活动读数仍只计算原items，不混计成长。复盘提供周摘要、详细与原始记录视图，完成与恢复继续同步状态。待办与目标使用同一记录池的类型、完成与来源三轴；资讯提供类别 chips、热词与排序。工具页提供六个工具及四步依赖流程，并在目录之后的可展开状态披露中展示本地契约目录；69 schema / 50 operation 不代表在线后端完成量。
 
+
+### System Pages / Account
+
+账号设置、提醒、登录、使用指南、组件状态与成长记录均为原生 Vue 页面，命令目录包含系统页；异常页与规范页保持独立入口。设置中的资料授权开关、主动提醒与安静时间仅是本地演示偏好，不能表述为服务端授权执行或提醒调度。提醒处理历史通过rememberSession保留，换账号清空。read保留原queue，later归档完整原Notice及action/deadline，done沿用resolve逻辑；later可恢复原队列或现在处理，三轴实际组织。成长页使用原五条实际badge条件与核验条件组成六条记录，证据字段映射为可读事件名，提供来源、时间、主题、确认轴。指南有四项FAQ及七项词汇；gallery提供十二族组件两轴真实样例和四流程 × 四状态矩阵。登录页使用非空演示密码选择预置账号；门户与 /portal 别名保留原行为。
+
+咨询预置内容按C2组织，只迁移仍未经用户修改的旧seed；用户实际消息不替换。今日与阶段统计使用现有store计数与任务时间，不复制原型硬编码的申请或面试次数。服务端原工具通过 PublishedTools.vue 的披露入口保留。
 ### Motion / Print
 
 状态反馈沿用已注册短时长与缓出曲线；报告判断切换为 200ms，伙伴状态保持可解释的小幅运动。减少动效偏好关闭相关循环与过渡。打印保留当前视图，隐藏导航工具，移除表面投影；旧版本记录不冒充完整旧报告。
@@ -230,7 +249,7 @@ C2 使用透明表面、细线、顶部内高光与大范围负扩散投影的�
 ### Do:
 
 - **Do** 以最后加载的 C2 样式及实际 Vue 组件为准，维护 token-bearing DESIGN.md 与扩展 sidecar。
-- **Do** 保持六档注册字号、平铺目录、历史恢复与共享同一账号抽屉和状态。
+- **Do** 保持七档注册字号、平铺目录、历史恢复与共享同一账号抽屉和状态。
 - **Do** 用真实演示字段派生计数、任务与头像状态，明确标识固定合成比较评分。
 - **Do** 以当前路由和宽度截图验证响应式与实际操作。
 
@@ -240,6 +259,7 @@ C2 使用透明表面、细线、顶部内高光与大范围负扩散投影的�
 - **Don't** 将本地演示、目录检查或合成比较描述为正式 API、模型、学校核验或实时岗位接入。
 - **Don't** 用旧版截图或原型截图替代实际 Vue 页面验收。
 
-当前浏览器检查脚本为 scripts/check-c2.mjs，覆盖实际行为及 12 路由 × 4 宽度。类型、构建、颜色对比、现有类名检查与实际行为及响应式检查通过。check-design 的几何纠正已通过：学生页面没有裁切或硬失败，仍有 /spec 的两项小按钮建议及可滚动步骤建议。check-classes 仅列入原五份全局 CSS，未包含 redesign.css 和 c2-fidelity.css，所以其通过不代表新覆盖文件的全部类名均已静态检查；不得宣称像素完全一致或21个原型视图均已逐一迁移。当前证明图位于仓库 .tmp-shots/c2-fidelity/verdict-app-{route}-{1440,390}.png 与 final-target-* 文件；仅实际生成的文件可作为证据。
+当前浏览器检查脚本 scripts/check-c2.mjs 已通过其行为断言及20条工作空间路由 × 1440/1280/900/390px检查，detect仅运行一次，结果为[]；最终构建、类型、颜色对比与现有check-classes通过。20条受测工作空间路由与保留门户共对应21个原型职责；额外 /path 与未知地址兜底仍保留，路由可达不代表每个交互状态都已穷尽验证。check-classes仅列入原五份全局CSS，未包含redesign.css和c2-fidelity.css，因此不得将旧检查通过外推为新覆盖文件全部静态验证。
 
+当前证明图位于仓库 .tmp-shots/c2-repair-final：21路由 × 1440/390/858px，共63组原型/Vue配对、126张PNG；另有提醒read/later/done三态 × 1440/390/858px的9张操作态图，共135张PNG。截图为本地评审产物，不提交。独立finish reviewer初次提出fix，最终七项实质修复均获2/2，7 resolved / 0 partial / 0 unresolved；不得宣称像素完全相同或所有状态均已验收。旧C2-PARITY-AUDIT与前轮c2-fidelity图保留为历史，修复对应与限制见 design-review/v6-redesign/C2-REPAIR-RESULT.md。
 V5 的历史 QA、操作记录和截图继续保留在 design-review/desktop-v5；它们记录旧版状态，不构成当前 C2 规则。后端边界仍见 PRODUCT.md 与 design-review/BACKEND-AUDIT-V5.md。当前未发布 Sites。

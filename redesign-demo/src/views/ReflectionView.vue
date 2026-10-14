@@ -14,6 +14,7 @@ import Foldable from '../components/Foldable.vue'
 import EmptyState from '../components/EmptyState.vue'
 import StatTile from '../components/StatTile.vue'
 import StatusBanner from '../components/StatusBanner.vue'
+import { growthRecords } from '../lib/growth-records'
 const route = useRoute()
 const achievementView = computed(() => route.query.view === 'achievements')
 const items = computed<ReviewItem[]>(() => [
@@ -56,12 +57,15 @@ function nextStep() {
  * 44px 触控高度由全局 .exp-tabs__trigger 保证。
  * ==========================================================================*/
 const REVIEW_VIEWS = [
+  { key: 'source', label: '按来源' },
   { key: 'time', label: '按时间看' },
+  { key: 'topic', label: '按主题' },
+  { key: 'weight', label: '按对结论的贡献' },
   { key: 'result', label: '按结果看' },
   { key: 'reason', label: '按原因看' },
 ]
 /* 与 AssessmentView 同理：PanelTabs 的 v-model 走 string，不写联合类型 */
-const reviewView = ref('time')
+const reviewView = ref('source')
 
 /* ============================================================================
  * 打印必须按【默认轴】= 按时间看 —— 与 /report 同一条口径、同一套实现
@@ -101,7 +105,7 @@ onBeforeUnmount(() => {
   printQuery = null
 })
 /** 这一页的默认轴：打印与"还没选过"都按它 */
-const DEFAULT_REVIEW_VIEW = 'time'
+const DEFAULT_REVIEW_VIEW = 'source'
 /** 实际用于**渲染**的轴：打印时是默认轴，屏幕上是用户点的那个 */
 const printAxis = computed(() => (printMedia.value ? DEFAULT_REVIEW_VIEW : reviewView.value))
 
@@ -127,9 +131,25 @@ const REASON_BUCKETS = [
 ]
 
 interface ReviewGroup { key: string; title: string; note: string | null; items: ReviewItem[] }
+const recordPool = computed<ReviewItem[]>(() => [...items.value,...growthRecords.value.filter(r=>r.done).map(r=>({id:'growth-'+r.id,when:r.at?.slice(0,10)??'时间未提供',what:r.title,result:'done' as const}))])
 
 const reviewGroups = computed<ReviewGroup[]>(() => {
-  const all = items.value
+  const all = recordPool.value
+  if (printAxis.value === 'source') return [
+    {key:'live',title:'本次执行留下的记录',note:'本次完成的任务。',items:all.filter(r=>r.id.startsWith('done-'))},
+    {key:'sample',title:'预置复盘记录',note:'这份演示样张的原始复盘。',items:all.filter(r=>!r.id.startsWith('done-')&&!r.id.startsWith('growth-'))},
+    {key:'growth',title:'成长与核验记录',note:'与周活动读数分别保留，避免重复计数。',items:all.filter(r=>r.id.startsWith('growth-'))},
+  ].filter(group=>group.items.length)
+  if (printAxis.value === 'time') return [...new Set(all.map(r=>r.when))].map(when=>({key:when,title:when,note:null,items:all.filter(r=>r.when===when)}))
+  if (printAxis.value === 'topic') {
+    const topicOf=(r:ReviewItem)=>r.id.startsWith('growth-')?growthRecords.value.find(g=>'growth-'+g.id===r.id)?.topic??'回头看':/简历|项目|材料/.test(r.what)?'材料与经历':/投|岗位|面试/.test(r.what)?'岗位与申请':'安排与探索'
+    return [...new Set(all.map(topicOf))].map(title=>({key:title,title,note:null,items:all.filter(r=>topicOf(r)===title)}))
+  }
+  if (printAxis.value === 'weight') return [
+    {key:'activity',title:'支撑这一周动手的判断',note:'摘要只计算执行记录，成长依据另列。',items:all.filter(r=>!r.id.startsWith('growth-')&&r.result!=='missed')},
+    {key:'obstacle',title:'解释没有完成的那一次',note:'归因仍在具体任务上，不归到人。',items:all.filter(r=>r.result==='missed')},
+    {key:'growth',title:'确认已经发生过的成长',note:'这些确认记录不重复计入本周动手次数。',items:all.filter(r=>r.id.startsWith('growth-'))},
+  ].filter(group=>group.items.length)
   if (printAxis.value === 'result') {
     return RESULT_BUCKETS
       .map((b) => ({ key: b.key, title: b.title, note: b.note, items: all.filter((r) => r.result === b.key) }))
@@ -146,6 +166,9 @@ const reviewGroups = computed<ReviewGroup[]>(() => {
 /* 说明句跟着**渲染出来的那条轴**：打印时屏幕上那句话也换成默认轴的说法，
    否则"按原因看"的说明会留在纸上，与下面的分组自相矛盾。 */
 const reviewAxisNote = computed(() => {
+  if (printAxis.value === 'source') return `按来源重新分组：${recordPool.value.length} 条执行与成长记录；周活动只计算执行事实。`
+  if (printAxis.value === 'topic') return `按正在说明的事情重新分组：同一批 ${recordPool.value.length} 条记录，内容没有更换。`
+  if (printAxis.value === 'weight') return '把支撑动手、解释阻碍和确认成长的依据分别组织，避免重复计数。'
   const n = items.value.length
   const groups = reviewGroups.value.length
   if (printAxis.value === 'result') return `按完成结果重新分组：${groups} 组 · 共 ${n} 条；条目从时间线上搬进对应的组。`
@@ -160,7 +183,7 @@ const reviewAxisNote = computed(() => {
     <AchievementsSection v-if="achievementView" />
     <template v-else>
 <section class="c2-review-week"><h2>这一周到底动了几次</h2><p>按下面这批记录计算：完成与部分完成都算动了手，未完成的保留当时的原因。</p><div class="c2-review-zoom" role="group" aria-label="本周复盘的阅读粒度"><button v-for="entry in [{key:'summary',label:'摘要'},{key:'detail',label:'细节'},{key:'raw',label:'原始记录'}]" :key="entry.key" :aria-pressed="weekDetail === entry.key" @click="weekDetail = entry.key">{{ entry.label }}</button></div><p v-if="weekDetail === 'summary'"><strong>{{ completed.length + partial.length }} 次动了手</strong>，这批共有 {{ items.length }} 条记录。没做完的那一件，从任务、方法或方向上核对原因。</p><p v-else-if="weekDetail === 'detail'">{{ completed.length }} 次已经完成，{{ partial.length }} 次做了一部分，{{ items.filter(r=>r.result==='missed').length }} 次还没有完成。<template v-if="missed">最近一次没有做完的是「{{ missed.what }}」，记录的原因是 {{ attributionLabel(demo.state.reviewAttributions[missed.id] ?? missed.attribution ?? '尚不确定') }}。</template></p><ul v-else><li v-for="item in items" :key="item.id"><time>{{ item.when }}</time> · {{ item.what }} · {{ labels[item.result] }}</li></ul>    <div class="ws-stat-row review-summary"><StatTile :value="completed.length" unit="件" label="已完成" /><StatTile :value="partial.length" unit="件" label="部分完成" /><StatTile :value="items.filter((r) => r.result === 'missed').length" unit="件" label="待复盘" /></div></section>
-    <section class="ws-paper ws-section"><div class="ws-section-head"><div><h2>执行记录</h2><p>只记录事实与时间；同一批记录可以按时间、结果或原因重新分组。完成状态可以在今日任务里恢复。</p></div></div><PanelTabs v-model="reviewView" label="执行记录的视角" :items="REVIEW_VIEWS"><p class="review-views__note">{{ reviewAxisNote }}</p><template v-if="items.length"><section v-for="g in reviewGroups" :key="g.key" class="review-group"><h3 class="review-group__head">{{ g.title }}<span class="review-group__count">{{ g.items.length }} 条</span></h3><p v-if="g.note" class="review-group__note">{{ g.note }}</p><ol class="ws-timeline"><li v-for="r in g.items" :key="r.id"><time>{{ r.when }}</time><div class="ws-timeline__content">{{ r.what }}<small v-if="demo.state.reviewAttributions[r.id] ?? r.attribution">原因：{{ attributionLabel(demo.state.reviewAttributions[r.id] ?? r.attribution) }}</small><p v-if="demo.state.reviewNotes[r.id]" class="review-note">{{ demo.state.reviewNotes[r.id] }}</p></div><span class="ws-timeline__state">{{ labels[r.result] }}</span></li></ol></section></template><p v-else class="ws-muted">完成一件事，就会留下第一条记录。</p></PanelTabs></section>
+    <section class="ws-paper ws-section"><div class="ws-section-head"><div><h2>这 {{ recordPool.length }} 条记录，按什么看</h2><p>只记录事实与时间；同一批记录可以按时间、结果或原因重新分组。完成状态可以在今日任务里恢复。</p></div></div><PanelTabs v-model="reviewView" label="执行记录的视角" :items="REVIEW_VIEWS"><p class="review-views__note">{{ reviewAxisNote }}</p><template v-if="items.length"><section v-for="g in reviewGroups" :key="g.key" class="review-group"><h3 class="review-group__head">{{ g.title }}<span class="review-group__count">{{ g.items.length }} 条</span></h3><p v-if="g.note" class="review-group__note">{{ g.note }}</p><ol class="ws-timeline"><li v-for="r in g.items" :key="r.id"><time>{{ r.when }}</time><div class="ws-timeline__content">{{ r.what }}<small v-if="demo.state.reviewAttributions[r.id] ?? r.attribution">原因：{{ attributionLabel(demo.state.reviewAttributions[r.id] ?? r.attribution) }}</small><p v-if="demo.state.reviewNotes[r.id]" class="review-note">{{ demo.state.reviewNotes[r.id] }}</p></div><span class="ws-timeline__state">{{ labels[r.result] }}</span></li></ol></section></template><p v-else class="ws-muted">完成一件事，就会留下第一条记录。</p></PanelTabs></section>
     <div class="ws-two-columns">
       <section class="ws-paper">
         <template v-if="missed"><h2 class="ws-section-title">未完成任务分析</h2><p style="margin-top: var(--sp-4)">待复盘任务：「{{ missed.what }}」。</p><p class="ws-muted" style="margin-top: var(--sp-2)">请选择影响执行的主要原因，查看调整建议。</p><fieldset class="ws-attributions review-choices"><legend class="sr-only">复盘归因</legend><label v-for="a in choices" :key="a" :class="{'review-choice--on': choice === a}"><input type="radio" name="review-reason" :checked="choice === a" @change="demo.setReviewAttribution(missed.id, a)" />{{ attributionLabel(a) }}</label></fieldset><form class="ws-section" @submit.prevent="saveNote"><label class="ws-field">补充实际情况<textarea v-model="reviewNote" maxlength="500" rows="3" placeholder="发生了什么、试过什么，或者还不确定的原因…"/></label><button class="btn" type="submit">保存复盘说明</button></form><StatusBanner v-if="noteStatus" tone="success" class="ws-section" :message="noteStatus" @dismiss="noteStatus = ''" /><p v-if="!choice" class="ws-muted ws-section">还没有确认原因。也可以先和顾问讨论，再决定怎样调整。</p><div v-if="choice" class="ws-review-result" aria-live="polite"><p>{{ explanation }}</p><div class="ws-inline-actions"><RouterLink v-if="choice === '方向要重估'" class="btn btn--primary" to="/directions">重新比较方向<UiIcon name="arrow" :size="16" /></RouterLink><button v-else-if="choice==='任务太大'||choice==='方法不对'" class="btn btn--primary" @click="nextStep">添加调整任务<UiIcon name="arrow" :size="16" /></button><RouterLink class="ws-text-link" :to="'/chat?question='+encodeURIComponent('我想复盘：'+missed.what+'。'+reviewNote)">咨询调整方案</RouterLink></div></div></template>

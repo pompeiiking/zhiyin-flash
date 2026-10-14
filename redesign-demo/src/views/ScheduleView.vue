@@ -257,6 +257,8 @@ const hours = (v: number) =>
   v > 0 && v < 1
     ? Math.max(1, Math.round(v * 60)) + ' 分钟'
     : (Math.round(v * 10) / 10).toLocaleString('zh-CN') + ' 小时'
+const crowdedDays=computed(()=>[1,2,3,4,5,6,7].filter(wd=>coursesOn(thisWeek.value?.n??termWeekOf(today),wd).reduce((n,c)=>n+weekCmpFor(c),0)>=4).length)
+const undatedTasks=computed(()=>demo.use.now.value.filter(task=>!task.due))
 </script>
 <template>
 <div class="ws-page schedule-page"><PageHeading title="日历与课表" description="关键节点、今日任务和学校课程，各自保留来源。"><template #meta><div class="sched-meta"><span class="sched-meta__tag sched-meta__tag--demo">本地演示数据</span><span class="sched-meta__tag">{{ backendDemo.state.academic?.term || '学期未导入' }} · 第 {{ thisWeek?.n }} 周</span><span class="sched-meta__tag">{{ timed.length }} 门课有节次 · 本周课 {{ hours(thisWeek?.courseHours ?? 0) }}</span><span class="sched-meta__sep" aria-hidden="true" /><ConfidenceBadge :confidence="0.9" /><ConfidenceBadge :confidence="0.55" /><ConfidenceBadge v-if="pendingTimeCourses || pendingMarkCount" :confidence="null" /></div></template><button class="btn" :disabled="calendarBusy" @click="loadCalendar">{{ calendarBusy?'正在读取…':(readOnce?'更新最新日程':'读取最新日程') }}</button><RouterLink class="btn" to="/academic"><UiIcon name="upload" :size="16" />管理导入资料</RouterLink></PageHeading>
@@ -268,7 +270,7 @@ const hours = (v: number) =>
 
 <div class="sched-split">
 <div class="sched-split__main">
- <section class="c2-profile-stats" aria-label="本周课程与任务占用"><article class="c2-profile-stat"><strong>{{ hours(thisWeek?.courseHours ?? 0) }}</strong><h2>本周课的占用</h2><p>按导入课程节次计算</p></article><article class="c2-profile-stat"><strong>{{ hours(thisWeek?.taskHours ?? 0) }}</strong><h2>任务排进去的</h2><p>任务与课量使用同一刻度</p></article></section>
+ <section class="c2-profile-stats" aria-label="本周课程与任务占用"><article class="c2-profile-stat"><strong>{{ hours(thisWeek?.courseHours ?? 0) }}</strong><h2>本周课的占用</h2><p>按导入课程节次计算</p></article><article class="c2-profile-stat"><strong>{{ hours(thisWeek?.taskHours ?? 0) }}</strong><h2>任务排进去的</h2><p>任务与课量使用同一刻度</p></article><article class="c2-profile-stat"><strong>{{ crowdedDays }}</strong><small>天</small><h2>课程较多的一天</h2><p>按导入节次，至少 4 小时课程；空档不等于可投入时间</p></article></section>
 <section class="ws-section sched-cmp" aria-labelledby="sched-cmp-title">
   <div class="ws-section-head">
     <div>
@@ -311,7 +313,8 @@ const hours = (v: number) =>
      与靶子的 `.pg-doc__side`（312×1146，sticky）是同一件东西：桌面粘在右侧，
      <768px 收成单列（见本文件 `@media (max-width: 767px)` 那一段）。
      三块：读数（课/事/剩下的）· 图例（把上面那块对照图的语法说清）· 口径与来源。 -->
-<aside class="sched-rail" aria-labelledby="sched-rail-title">
+<aside class="sched-rail" aria-labelledby="sched-rail-title"><section class="sched-rail__block c2-calendar-overview"><h2>{{ month.getMonth()+1 }} 月的 {{ marks.length }} 个节点</h2><div class="c2-month-grid"><span v-for="weekday in weekdays" :key="weekday">{{ weekday }}</span><span v-for="n in offset" :key="'offset'+n"/><button v-for="d in length" :key="d" :aria-pressed="day===d" :class="{'has-node':marks.some(m=>m.day===d)}" @click="day=d;tab='calendar';advice=false">{{ d }}</button></div><article v-for="mark in marks" :key="mark.day+mark.label" class="c2-calendar-node"><button @click="day=mark.day;tab='calendar';advice=false">{{ month.getMonth()+1 }} 月 {{ mark.day }} 日</button><p>{{ mark.label }}</p></article><p class="ws-muted">节点来自当前计划，点日期核对当日安排。不是系统替你生成的理想日程。</p></section>
+  <section class="sched-rail__block c2-undated-tasks"><h2>还没有具体日期的任务</h2><article v-for="task in undatedTasks" :key="task.id" class="c2-calendar-node"><h3>{{ task.title }}</h3><p>{{ task.minutes }} 分钟 · 仍保留在计划里，尚未排到具体日期</p><RouterLink class="ws-text-link" to="/home">回到行动计划 →</RouterLink></article><p v-if="!undatedTasks.length">当前待执行任务都有日期标记。</p></section>
   <section class="sched-rail__block">
     <h2 class="sched-rail__t" id="sched-rail-title">第 {{ thisWeek?.n }} 周的时间分配</h2>
     <p class="sched-rail__n"><b class="t-num">{{ hours(thisWeek?.courseHours ?? 0) }}</b><small>课的占用（{{ thisWeek?.courses ?? 0 }} 天有课）</small></p>

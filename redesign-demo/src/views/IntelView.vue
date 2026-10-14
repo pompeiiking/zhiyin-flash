@@ -47,16 +47,22 @@ import SkeletonBlock from '../components/SkeletonBlock.vue'
 import StatusBanner from '../components/StatusBanner.vue'
 import StatTile from '../components/StatTile.vue'
 import CareerMatchPanel from '../components/CareerMatchPanel.vue'
-import PanelTabs from '../components/PanelTabs.vue'
 import ReadableText from '../components/ReadableText.vue'
 import type { IntelItemView } from '../api/backend-types'
 
 const query=ref(''),remoteQuery=ref(''),kind=ref('all'),mode=ref('facts'),status=ref(''),busy=ref(false),error=ref(''),reading=ref<IntelItemView|null>(null)
 /* 组织方式：按类别聚拢 / 按时间看。两个视角**重新组织同一批条目**（DESIGN-LANGUAGE §4.2），
    不是一个换内容的 tab。同类别的顺序在两种视角下都保留，所以侧着看不会"换了个列表"。 */
-const view=ref<'category'|'timeline'>('category')
+const view=ref<'category'|'timeline'|'relevance'>('relevance')
+const hotWords = ['半导体','新能源','检测','实验','简历','核验']
+const keywordCount = (word:string) => backendDemo.state.intel.filter(i=>((i.title??'')+' '+(i.text??'')).includes(word)).length
 
-const items=computed(()=>backendDemo.state.intel.filter(i=>(kind.value==='all'||i.kind===kind.value)&&((i.title??'')+' '+(i.text??'')+' '+(i.kind_label??'')).includes(query.value.trim())))
+const items=computed(()=>{
+ const list=backendDemo.state.intel.filter(i=>(kind.value==='all'||i.kind===kind.value)&&((i.title??'')+' '+(i.text??'')+' '+(i.kind_label??'')).includes(query.value.trim()))
+ if(view.value==='timeline') return [...list].sort((a,b)=>(b.fetched_at??'').localeCompare(a.fetched_at??''))
+ if(view.value==='relevance') return [...list].sort((a,b)=>Number(b.kind==='career')-Number(a.kind==='career'))
+ return list
+})
 const kinds=computed(()=>[...new Map(backendDemo.state.intel.map(i=>[i.kind??'other',i.kind_label??'其他资讯'])).entries()])
 
 /* 分组：同一批条目按 kind 聚拢。组按下标稳定排序，切视角不改组内顺序。 */
@@ -125,32 +131,21 @@ function clearFilter(){query.value='';kind.value='all'}
 </script>
 <template>
   <div class="ws-page intel-page">
-    <PageHeading title="岗位资讯" description="阅读来源事实，再结合个人情况比较职业要求。"/>
+    <PageHeading title="岗位资讯" description="先读事实，再看它和你有什么关系。每条保留要求、来源与读取时间。"><button class="btn" @click="clearFilter">清空筛选</button><button class="btn" @click="kind=kind==='career'?'all':'career';mode='facts'">{{ kind==='career'?'看全部资讯':'只看岗位示例' }}</button></PageHeading>
 
-    <section class="c2-profile-stats" aria-label="资讯概览"><article class="c2-profile-stat"><strong>{{ backendDemo.state.intel.length }}</strong><small>条</small><h2>这一批资讯</h2><p>同一批信息可按类别与时间重组</p></article><article class="c2-profile-stat"><strong>{{ kinds.length }}</strong><small>类</small><h2>可按类别筛选</h2><p>只显示这批资讯中出现的类别</p></article><article class="c2-profile-stat"><strong>{{ items.length }}</strong><small>条</small><h2>当前筛选结果</h2><p>随关键词和类别选择更新</p></article><article class="c2-profile-stat"><strong>{{ new Set(backendDemo.state.intel.map(i=>i.source_name||i.source_url||'来源未提供')).size }}</strong><small>个</small><h2>来源标记</h2><p>每条资讯单独核对来源</p></article></section>
-    <PanelTabs v-model="mode" label="资讯与匹配视图" :items="[{key:'facts',label:'资讯事实'},{key:'match',label:'职业匹配'}]">
+    <section class="c2-profile-stats" aria-label="资讯概览"><article class="c2-profile-stat"><strong>{{ backendDemo.state.intel.length }}</strong><small>条</small><h2>这一批资讯</h2><p>同一批信息可按类别与时间重组</p></article><article class="c2-profile-stat"><strong>{{ kinds.length }}</strong><small>类</small><h2>可按类别筛选</h2><p>只显示这批资讯中出现的类别</p></article><article class="c2-profile-stat"><strong>{{ backendDemo.state.dataMode==='demo'?0:backendDemo.state.intel.filter(i=>source(i.source_url)).length }}</strong><small>条</small><h2>{{ backendDemo.state.dataMode==='demo'?'真实招聘':'提供原始链接' }}</h2><p>{{ backendDemo.state.dataMode==='demo'?'这一批是虚构样例，不能当作招聘公告':'来源是否有效仍需逐条核对' }}</p></article><article class="c2-profile-stat"><strong>{{ new Set(backendDemo.state.intel.map(i=>i.source_name||i.source_url||'来源未提供')).size }}</strong><small>个</small><h2>来源标记</h2><p>每条资讯单独核对来源</p></article></section>
+    <div class="c2-intel-body">
       <template v-if="mode==='facts'">
-        <form class="remote-search" @submit.prevent="load()">
+        <details class="c2-intel-retrieve"><summary>检索最新资讯 / 职业匹配</summary><form class="remote-search" @submit.prevent="load()">
           <label class="ws-field">检索最新资讯<input v-model="remoteQuery" placeholder="职业、方向或关键词…" maxlength="200"/></label>
           <button class="btn btn--primary" type="submit" :disabled="busy">{{ busy?'正在读取…':'检索' }}</button>
           <button class="btn" type="button" :disabled="busy" @click="load(true)">刷新资讯</button>
-        </form>
+        </form><button class="ws-text-button" @click="mode='match'">结合个人情况看职业匹配 →</button></details>
         <StatusBanner v-if="error" class="intel-banner" tone="error" :message="error" retry-label="重试" @retry="load()"/>
         <StatusBanner v-if="status" class="intel-banner" tone="success" :message="status" :open="!!status" @dismiss="status=''"/>
 
-        <div class="intel-toolbar">
-          <label class="ws-field">筛选当前条目<input v-model="query" aria-label="筛选资讯" placeholder="只筛选当前已经读取的标题与内容…"/></label>
-          <label class="ws-field">内容类型<select v-model="kind"><option value="all">全部类型</option><option v-for="[key,label] in kinds" :key="key" :value="key">{{ label }}</option></select></label>
-        </div>
-
-        <!-- 组织方式：两种视角重新组织同一批条目，不是换内容 -->
-        <div class="intel-views" role="group" aria-label="组织方式">
-          <button class="intel-views__btn" :aria-pressed="view==='category'" @click="view='category'">按类别</button>
-          <button class="intel-views__btn" :aria-pressed="view==='timeline'" @click="view='timeline'">按时间</button>
-          <p class="intel-views__hint">{{ view==='category' ? '同一类别的条目排在一起，可以横向对比。' : '按读取批次排开，能看出哪些条目来自同一次读取。' }}</p>
-        </div>
-
-        <div v-if="items.length && view==='category'" class="intel-groups">
+<section class="c2-intel-filter ws-paper"><header class="ws-section-head"><div><h2>先筛一遍，再看</h2><p>只筛选这一批已读取的条目，换排序时条目重新组织。</p></div><span>{{ items.length }} 条</span></header><div class="c2-filter-row"><span>类别</span><div><button :aria-pressed="kind==='all'" @click="kind='all'">全部 {{ backendDemo.state.intel.length }}</button><button v-for="[key,label] in kinds" :key="key" :aria-pressed="kind===key" @click="kind=key">{{ label }} {{ backendDemo.state.intel.filter(i=>i.kind===key).length }}</button></div></div><div class="c2-filter-row"><span>热词</span><div><button v-for="word in hotWords" :key="word" :aria-pressed="query===word" @click="query=query===word?'':word">{{ word }} {{ keywordCount(word) }}</button></div></div><div class="c2-filter-row"><span>排序</span><div class="c2-lensbar" role="group" aria-label="组织方式"><button :aria-pressed="view==='relevance'" @click="view='relevance'">按对你的相关度</button><button :aria-pressed="view==='timeline'" @click="view='timeline'">按什么时候用得上</button><button :aria-pressed="view==='category'" @click="view='category'">按类别</button></div></div><label class="c2-intel-keyword">筛选资讯<input v-model="query" aria-label="筛选资讯" placeholder="在已读取条目中筛选关键词…"/></label><p class="c2-lens-hint">剩下 {{ items.length }} 条。类别分组与条数跟着筛选更新，原始条目仍保留。</p></section>
+        <div v-if="items.length && view!=='timeline'" class="intel-groups">
           <section v-for="g in groups" :key="g.key" class="intel-group">
             <header class="intel-group__head">
               <h2>{{ g.label }}</h2>
@@ -214,7 +209,7 @@ function clearFilter(){query.value='';kind.value='all'}
 
         <p class="ws-demo-note">{{ backendDemo.state.intelOrigin==='live'&&backendDemo.state.dataMode==='service'?'条目来自本次服务读取；本地筛选不再发起远程请求。':'当前条目为演示示例；上方检索与刷新调用正式资讯服务，不会以示例替代失败结果。' }}</p>
       </template>
-    </PanelTabs>
+    </div>
 
     <CareerMatchPanel v-show="mode==='match'" :facts="backendDemo.state.intel" @read="read" @facts="facts"/>
     <nav class="ws-related"><RouterLink to="/directions">对照方向方案</RouterLink><RouterLink to="/report">查看个人诊断</RouterLink></nav>

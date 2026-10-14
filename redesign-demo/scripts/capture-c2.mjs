@@ -22,7 +22,7 @@ try {
   for (const route of routes) {
    for (const side of ['target','app']) {
     await page.goto(side==='target' ? `${reference.href}#/${route}` : `${base}/#/${route}?as=mid&data=demo`)
-    await page.waitForSelector(side==='target'?`.main__scroll[data-view="${route}"][data-active="true"]`:'.ws-page, .dialogue-page')
+    await page.waitForSelector(side==='target'?`.main__scroll[data-view="${route}"][data-active="true"]`:'.app h1:visible')
     await page.waitForTimeout(600)
     await page.evaluate(()=>{
       window.scrollTo(0,0)

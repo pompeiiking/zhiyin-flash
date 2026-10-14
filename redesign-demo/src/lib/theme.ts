@@ -39,7 +39,7 @@ interface SkinState {
 }
 
 const state = reactive<SkinState>({
-  theme: 'system',
+  theme: 'light',
   accent: 'blue',
   style: 'plain',
   systemDark: false,
@@ -209,7 +209,7 @@ export const skin = {
 
   reset() {
     withSwitch(() => {
-      state.theme = 'system'
+      state.theme = 'light'
       state.accent = 'blue'
       state.style = 'plain'
       persist()

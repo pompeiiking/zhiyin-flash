@@ -21,6 +21,7 @@ export const router = createRouter({
   routes: [
     {
       path: '/',
+      alias: '/portal',
       name: 'portal',
       component: () => import('./views/PortalView.vue'),
       meta: { public: true, title: '门户' },
@@ -67,6 +68,8 @@ export const router = createRouter({
     { path: '/notes', name: 'notes', component: () => import('./views/NotesView.vue'), meta: { title: '待办与目标' } },
     { path: '/intel', name: 'intel', component: () => import('./views/IntelView.vue'), meta: { title: '岗位资讯' } },
     { path: '/tools', name: 'tools', component: () => import('./views/ToolsView.vue'), meta: { title: '应用工具' } },
+    ...['settings','reminders','guide','gallery','login','achievements'].map(name => ({path:'/' + name,name,component:() => import('./views/SystemView.vue'),meta:{title:({settings:'账号设置',reminders:'提醒',guide:'使用指南',gallery:'通用组件与状态',login:'登录',achievements:'成长记录'} as Record<string,string>)[name]}})),
+    { path: '/notfound', name: 'notfound', component: () => import('./views/NotFoundView.vue'), meta: { title: '异常页' } },
     {
       path: '/path',
       name: 'path',
@@ -77,7 +80,7 @@ export const router = createRouter({
       path: '/spec',
       name: 'spec',
       component: () => import('./views/SpecView.vue'),
-      meta: { public: true, title: '设计规范' },
+      meta: { title: '设计规范' },
     },
     /*
      * 兜底：**必须放最后**。没有它时，匹配不到的地址会让 <RouterView> 什么都不渲染 ——

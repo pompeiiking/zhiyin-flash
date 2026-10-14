@@ -165,6 +165,7 @@ const DECORATIVE_ONLY = ['c-text-4']
  * ======================================================================== */
 
 const FONT_SIZE_USES = [
+  { tok: '24', use: 'C2 手机统计读数，保持原型的紧凑数字层级', where: 'c2-fidelity.css 的手机 c2-profile-stat strong' },
   { tok: '16', use: '学生空间正文与对话，中文长句的阅读基准', where: 'workspace.css 的工作空间正文、对话与任务条目' },
   { tok: '12', use: '说明、注解、表头、标签、序号、行副标题（.t-note / .t-label / .chip）', where: 'base.css 的 .t-label / .t-note / .chip / .table th / .row__sub / .field__hint；各页的说明行' },
   { tok: '14', use: '正文基准（body / .t-body / .t-sm）、卡片标题、条目行、密集正文', where: 'base.css 的 body / .t-body / .t-sm / .card__title / .page__sub；各页的条目行' },

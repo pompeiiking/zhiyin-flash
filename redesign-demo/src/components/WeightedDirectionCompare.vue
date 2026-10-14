@@ -22,7 +22,7 @@ function reset(){criteria.forEach(c=>{weights[c.key]=3})}
    <div class="c2-score-scroll" tabindex="0" aria-label="三个方向的同刻度比较，窄屏可横向滚动">
     <table class="c2-score-table"><caption>三个方向 × 五个比较项 · 同一刻度 0–100 · 每行标出最高和最低</caption>
      <thead><tr><th scope="col">比较项</th><th v-for="item in items" :key="item.id" scope="col">{{ item.title }} <small>{{ item.role }}</small></th></tr></thead>
-     <tbody><tr v-for="criterion in criteria" :key="criterion.key"><th scope="row">{{ criterion.label }}</th><td v-for="item in items" :key="item.id"><strong>{{ criterion.scores[roleIndex(item)] }}</strong><div class="c2-score-track"><i :style="{width:criterion.scores[roleIndex(item)]+'%'}" :class="{'c2-score-high':criterion.scores[roleIndex(item)]===Math.max(...criterion.scores),'c2-score-low':criterion.scores[roleIndex(item)]===Math.min(...criterion.scores)}" /></div><small>{{ criterion.scores[roleIndex(item)]===Math.max(...criterion.scores)?'最高':criterion.scores[roleIndex(item)]===Math.min(...criterion.scores)?'最低':'—' }}</small></td></tr></tbody>
+     <tbody><tr v-for="criterion in criteria" :key="criterion.key"><th scope="row">{{ criterion.label }}</th><td v-for="item in items" :key="item.id"><strong>{{ criterion.scores[roleIndex(item)] }}</strong><div class="c2-score-track"><i :style="{width:'100%'}" :class="{'c2-score-high':criterion.scores[roleIndex(item)]===Math.max(...criterion.scores),'c2-score-low':criterion.scores[roleIndex(item)]===Math.min(...criterion.scores)}" /></div><small>{{ criterion.scores[roleIndex(item)]===Math.max(...criterion.scores)?'最高':criterion.scores[roleIndex(item)]===Math.min(...criterion.scores)?'最低':'—' }}</small></td></tr></tbody>
     </table>
    </div>
   </section>

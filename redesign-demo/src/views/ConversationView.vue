@@ -507,6 +507,11 @@ const hostState = computed<'idle' | 'thinking' | 'speaking'>(() => {
  * 它不是新的状态源：判据仍然是 hostState，而 hostState 由真实字段驱动
  * （thinking / isStreaming，见下面的 hostState 定义）。
  */
+const presencePreview = ref<'idle' | 'thinking' | 'speaking' | null>('thinking')
+const presenceState = computed(() => backendDemo.state.dataMode === 'service' || demo.state.chatBusy ? hostState.value : presencePreview.value ?? hostState.value)
+watch(() => demo.state.chatBusy, busy => { if (busy) presencePreview.value = null })
+const presenceStateLabel = computed(() => presenceState.value === 'thinking' ? '正在想' : presenceState.value === 'speaking' ? '正在说' : '在听')
+
 const presenceLabel = computed(() =>
   hostState.value === 'thinking' ? '正在想' : hostState.value === 'speaking' ? '正在说' : '在听',
 )
@@ -797,15 +802,15 @@ onUnmounted(() => {
       那正是 HANDOFF §5.2 说的"顾问在场该块不存在"。
       状态由 hostState 驱动（真实字段，见 script 里的定义），不是演示台控件。
     -->
-    <section class="dialogue-presence" :class="'is-' + hostState" aria-label="此刻在场的主理">
-      <AgentAvatar :agent="agentKeyOf(host)" :size="96" :state="hostState" />
+    <section class="dialogue-presence" :class="'is-' + presenceState" aria-label="此刻在场的主理">
+      <AgentAvatar :agent="agentKeyOf(host)" :size="96" :state="presenceState" />
       <div class="dialogue-presence__intro">
         <p class="dialogue-presence__who">
           <strong>{{ hostLabel }}</strong>
-          <span class="dialogue-presence__state"><i class="dialogue-presence__dot" aria-hidden="true" />{{ presenceLabel }}</span>
+          <span class="dialogue-presence__state"><i class="dialogue-presence__dot" aria-hidden="true" />{{ presenceStateLabel }}</span>
         </p>
-        <p class="dialogue-presence__role">{{ agentOf(agentKeyOf(host)).role }}</p>
-      </div>
+        <p class="dialogue-presence__role">{{ agentOf(agentKeyOf(host)).role }}</p><span class="dialogue-presence__status"><i />{{ presenceStateLabel }}</span><p v-if="backendDemo.state.dataMode === 'demo'" class="c2-presence-hint">演示：切一下状态，看主理怎么变</p>
+      </div><div v-if="backendDemo.state.dataMode === 'demo'" class="c2-presence-controls" role="group" aria-label="顾问状态演示"><button v-for="state in [{key:'idle',label:'待命'},{key:'thinking',label:'思考'},{key:'speaking',label:'说话'}]" :key="state.key" :aria-pressed="presenceState === state.key" :disabled="demo.state.chatBusy" @click="presencePreview = state.key as 'idle' | 'thinking' | 'speaking'">{{ state.label }}</button></div>
     </section>
     <!-- 桌面右侧 rail：产物与依据常驻在旁边，窄屏收起（见 dialogue.css） -->
     <aside class="dialogue-rail" aria-label="这次咨询的产出与依据">

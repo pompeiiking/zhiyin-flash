@@ -133,7 +133,7 @@ function clearErrorDemo() {
     <div class="ws-topbar__tools">
       <!-- 搜索不再另留一颗 44×44 图标按钮：顶栏只留**一个**搜索入口（左边那个盒子），
            两颗并存就是"同一个功能两个入口"，正是这个壳层一直在收敛的东西。 -->
-      <button class="ws-icon-button ws-inbox-trigger" :aria-label="'提醒，' + demo.state.noticeQueue.length + ' 条待处理'" @click="demo.openNotice()"><UiIcon name="bell" :size="18" /><span v-if="demo.state.noticeQueue.length">{{ demo.state.noticeQueue.length }}</span></button>
+      <button class="ws-icon-button ws-inbox-trigger" :aria-label="'提醒，' + demo.state.noticeQueue.length + ' 条待处理'" @click="router.push('/reminders')"><UiIcon name="bell" :size="18" /><span v-if="demo.state.noticeQueue.length">{{ demo.state.noticeQueue.length }}</span></button>
       <!-- 演示标识：壳层的一行小字，点击进「演示设置」。它不占行、不与主行动竞争 -->
       <button class="ws-demo-badge" :class="{ 'ws-demo-badge--service': dataMode === 'service' }" :title="dataMode === 'demo' ? '演示数据 · 虚构人物与本地预设结果' : '服务数据 · 读取结果需后端支持'" :aria-label="'演示设置，当前' + (dataMode === 'demo' ? '演示数据' : '服务数据')" @click="demoOpen = true">
         <span aria-hidden="true" />{{ dataMode === 'demo' ? '演示数据' : '服务数据' }}
@@ -146,12 +146,12 @@ function clearErrorDemo() {
     </div>
   </header>
 
-  <nav class="c2-appearance-bar" aria-label="工作空间外观">
+  <nav class="c2-appearance-bar" aria-label="工作空间外观"><span class="c2-prototype-badge" title="交互演示，所有资料为预置样例">演示</span>
     <button class="c2-directory-button" @click="emit('openPalette')"><UiIcon name="apps" :size="14" />全部页面</button>
     <div class="c2-appearance-axis"><span>主色</span><button v-for="o in accentOptions" :key="o.id" :aria-pressed="skin.state.accent === o.id" @click="skin.setAccent(o.id)">{{ o.label }}</button></div>
     <div class="c2-appearance-axis"><span>主题</span><button v-for="o in themeOptions" :key="o.id" :aria-pressed="skin.state.theme === o.id" @click="skin.setTheme(o.id)">{{ o.label }}</button></div>
     <div class="c2-appearance-axis"><span>密度</span><button :aria-pressed="skin.state.style !== 'dense'" @click="skin.setStyle('plain')">常规</button><button :aria-pressed="skin.state.style === 'dense'" @click="skin.setStyle('dense')">紧凑</button></div>
-  </nav>
+  <span class="c2-appearance-reading">{{ skin.state.accent === 'blue' ? '校徽蓝 #0058A7' : '官网红 #96000E' }} · {{ themeOptions.find(o=>o.id===skin.state.theme)?.label }} · {{ skin.state.style === 'dense' ? '紧凑' : '常规' }}</span></nav>
 
   <!-- 账号抽屉：只管账号。身份、演示标识说明、退出。 -->
   <InfoSheet shape="sheet" :open="accountOpen" title="账号" @close="accountOpen = false">
@@ -181,7 +181,7 @@ function clearErrorDemo() {
         <p class="ws-demo-note">选择记在本地，下次打开还是这套；改的只是令牌，页面结构不动。</p>
       </div>
     </details>
-    <div class="ws-account-list">
+    <div class="ws-account-list"><RouterLink class="ws-account-row" to="/settings" @click="accountOpen=false"><span><strong>账号设置</strong><small>资料授权、提醒、外观与导出</small></span><UiIcon name="arrow" :size="16"/></RouterLink>
       <button class="ws-account-row" @click="openDemo()">
         <span><strong>演示设置</strong><small>数据来源、演示场景、导航布局、复位</small></span>
         <UiIcon name="chevron" :size="16" />

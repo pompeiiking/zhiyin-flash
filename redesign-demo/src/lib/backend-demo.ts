@@ -16,6 +16,7 @@ const state = reactive({
   freshAccount: fresh,
   dataMode: 'demo' as 'demo'|'service',
   assetChanges: { profileKeys: [] as string[], direction: false },
+  reportReviewRequested: false,
   liveAction: null as ActionPlanView | null,
   intelOrigin: 'sample' as 'sample' | 'live',
   liveWorkspace: null as WorkspacePageView | null,
@@ -55,6 +56,12 @@ if(state.demoDataVersion<1){
   }
   state.demoDataVersion=1
 }
+// Only replace an untouched legacy fixture. Custom messages and service sessions remain intact.
+if(state.demoDataVersion<2){
+ const history=state.histories['session-direction']
+ if(state.dataMode==='demo'&&history?.[0]?.text==='我不知道自己适合什么。专业是调剂的，说不上喜欢。'&&history.every(t=>/^c\d+$/.test(t.id))){state.histories['session-direction']=originalTurns();const session=state.sessions.find(s=>s.task_id==='session-direction');if(session)session.task_name=DEMO_SESSIONS[0]!.task_name}
+ state.demoDataVersion=2
+}
 export const backendDemo = {
   state: readonly(state),
   isFresh: computed(()=>state.freshAccount),
@@ -63,6 +70,7 @@ export const backendDemo = {
   notesDone: computed(() => state.notes.filter(n => n.done).length),
   reset(account: string) {
     state.assetChanges = { profileKeys: [], direction: false }
+    state.reportReviewRequested = false
     state.liveAction = null
     state.intelOrigin = 'sample'
     state.liveWorkspace = null
@@ -96,6 +104,7 @@ export const backendDemo = {
   setLiveDirections(plans: DirectionPlanListView) { state.liveDirections = plans },
   markProfileChange(key: string) { state.profileEditSerial++;if (!state.assetChanges.profileKeys.includes(key)) state.assetChanges.profileKeys.push(key) },
   markDirectionChange() { state.assetChanges.direction = true },
+  requestReportReview() { state.reportReviewRequested = true },
   setIntel(items: IntelItemView[]) { state.intel = items; state.intelOrigin = 'live' },
   setAction(plan: ActionPlanView) { state.liveAction = plan },
   setWorkspace(workspace: WorkspacePageView) { state.liveWorkspace = workspace; if (workspace.academic_panel !== undefined) { state.academic = workspace.academic_panel;state.academicOrigin=state.dataMode==='demo'?'sample':'live' } },
