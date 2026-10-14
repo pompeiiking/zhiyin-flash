@@ -432,12 +432,15 @@
  *     特异度更高（0,3,0 > 0,2,0）且都声明了 animation，reduce 下那条又把它盖成 none。
  *     17 个路由 × 2 档视口 × 2 档动效的 computed animationName 实测里，它一次都没出现过
  *     （看到的是 sheet-rise / sheet-slide-in / sheet-slide-up）。所以连 @keyframes 一起删。 */
-.ws-directory a { display: grid; grid-template-columns: 1fr 24px; gap: 6px 20px; padding: 20px 0; color: var(--c-text); }
-.ws-directory a + a { border-top: 1px solid var(--c-border); }
-.ws-directory a:hover { text-decoration: none; color: var(--c-primary); }
-.ws-directory strong { font-size: var(--fs-16); }
-.ws-directory span { grid-column: 1; font-size: var(--fs-14); color: var(--c-text-3); }
-.ws-directory svg { grid-column: 2; grid-row: 1 / 3; align-self: center; }
+/* 【2026-10-14 · wave4】裸 `.ws-directory` 一族 6 条已删（原 :435-440）。
+   依据（`grep -rn "ws-directory" src` 的完整结果）：
+     · 全仓唯一的发射点是 WorkspaceNav.vue:53 的 `class="ws-directory__primary"`；
+     · `class="ws-directory"`（**裸类名**，不带 `__` 后缀）在 .vue / .ts / .css 里 0 命中 ——
+       它盯着的是一个"目录列表容器"，而那个容器已经不存在了。
+   区分"裸类名"与"前缀"就是这一步的关键：`.ws-directory__primary` 是 BEM 的**元素**，
+   与被删的 `.ws-directory a / strong / span / svg` 那组后代选择器不是同一件事 ——
+   删掉的是"容器里的 a/strong/span/svg 长什么样"（没有容器，所以永远不生效），
+   下面 `.ws-directory__primary` 那 5 条**仍然在用**，一条都没动。 */
 /* 「更多」抽屉里的主入口（原来这个类没有样式，落成了一条默认链接） */
 .ws-directory__primary { display: grid; grid-template-columns: 24px 1fr 20px; align-items: center; gap: 4px 14px; min-height: 56px; padding: 14px; margin-bottom: 8px; border: 1px solid var(--c-primary-border); border-radius: var(--r-md); background: var(--c-primary-weak); color: var(--c-primary); }
 .ws-directory__primary:hover { text-decoration: none; }

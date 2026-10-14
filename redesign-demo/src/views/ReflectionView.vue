@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { demo } from '../store'
 import { INTERVENTION, REVIEW_ITEMS } from '../data/student'
 import type { ReviewItem } from '../data/types'
@@ -62,6 +62,48 @@ const REVIEW_VIEWS = [
 /* 与 AssessmentView 同理：PanelTabs 的 v-model 走 string，不写联合类型 */
 const reviewView = ref('time')
 
+/* ============================================================================
+ * 打印必须按【默认轴】= 按时间看 —— 与 /report 同一条口径、同一套实现
+ * ---------------------------------------------------------------------------
+ * 【病灶】实测（`emulateMedia({media:'print'})`）：屏幕上切到「按原因看」再打印，
+ * 打印稿的分组头是「任务负担过高 / 执行方法需调整 / 还没选原因」。
+ * 打印稿的读者看不到 tab 条（`@media print` 里 `.exp-tabs__scroll { display:none }`，
+ * experience.css:161），他读到的分组却取决于打印的人当时点了哪个视角 ——
+ * 同一页记录，两个人印出来不一样，而纸上没有任何说明。
+ *
+ * 【口径】打印稿 = 这页默认长什么样：/review 默认「按时间看」，
+ * 也就是一条从近到远的完整时间线（加看角之前的那一版）。
+ *
+ * 【实现】`matchMedia('print')` 为主（真实打印、刷新后接着打印、
+ * `emulateMedia({media:'print'})` 三条路径都会翻），beforeprint/afterprint 为真机保险。
+ * 实测坑：Playwright 的 emulateMedia **不派发** beforeprint/afterprint，
+ * 只监听那一对事件的实现在这条尺子下会静默失效。
+ * `reviewView`（用户的屏幕选择）一个字节都不动 —— 打印不许打乱屏幕状态。
+ * ==========================================================================*/
+const printMedia = ref(false)
+let printQuery: MediaQueryList | null = null
+function onPrintMediaChange(event: MediaQueryListEvent) { printMedia.value = event.matches }
+function onBeforePrintMedia() { printMedia.value = true }
+function onAfterPrintMedia() { printMedia.value = false }
+onMounted(() => {
+  if (typeof window.matchMedia !== 'function') return
+  printQuery = window.matchMedia('print')
+  printMedia.value = printQuery.matches
+  printQuery.addEventListener('change', onPrintMediaChange)
+  window.addEventListener('beforeprint', onBeforePrintMedia)
+  window.addEventListener('afterprint', onAfterPrintMedia)
+})
+onBeforeUnmount(() => {
+  printQuery?.removeEventListener('change', onPrintMediaChange)
+  window.removeEventListener('beforeprint', onBeforePrintMedia)
+  window.removeEventListener('afterprint', onAfterPrintMedia)
+  printQuery = null
+})
+/** 这一页的默认轴：打印与"还没选过"都按它 */
+const DEFAULT_REVIEW_VIEW = 'time'
+/** 实际用于**渲染**的轴：打印时是默认轴，屏幕上是用户点的那个 */
+const printAxis = computed(() => (printMedia.value ? DEFAULT_REVIEW_VIEW : reviewView.value))
+
 /** 每条记录**当下**的归因：页面上改过的（reviewAttributions）优先于预置值 */
 function reasonOf(id: string): string {
   return demo.state.reviewAttributions[id] ?? items.value.find((r) => r.id === id)?.attribution ?? ''
@@ -87,12 +129,12 @@ interface ReviewGroup { key: string; title: string; note: string | null; items: 
 
 const reviewGroups = computed<ReviewGroup[]>(() => {
   const all = items.value
-  if (reviewView.value === 'result') {
+  if (printAxis.value === 'result') {
     return RESULT_BUCKETS
       .map((b) => ({ key: b.key, title: b.title, note: b.note, items: all.filter((r) => r.result === b.key) }))
       .filter((g) => g.items.length > 0)
   }
-  if (reviewView.value === 'reason') {
+  if (printAxis.value === 'reason') {
     return REASON_BUCKETS
       .map((b) => ({ key: b.key || 'none', title: b.title, note: b.note, items: all.filter((r) => reasonOf(r.id) === b.key) }))
       .filter((g) => g.items.length > 0)
@@ -100,11 +142,13 @@ const reviewGroups = computed<ReviewGroup[]>(() => {
   return [{ key: 'all', title: '全部记录', note: null, items: all }]
 })
 
+/* 说明句跟着**渲染出来的那条轴**：打印时屏幕上那句话也换成默认轴的说法，
+   否则"按原因看"的说明会留在纸上，与下面的分组自相矛盾。 */
 const reviewAxisNote = computed(() => {
   const n = items.value.length
   const groups = reviewGroups.value.length
-  if (reviewView.value === 'result') return `按完成结果重新分组：${groups} 组 · 共 ${n} 条；条目从时间线上搬进对应的组。`
-  if (reviewView.value === 'reason') return `按你选的原因重新分组：${groups} 组 · 共 ${n} 条；还没归因的单独成组。`
+  if (printAxis.value === 'result') return `按完成结果重新分组：${groups} 组 · 共 ${n} 条；条目从时间线上搬进对应的组。`
+  if (printAxis.value === 'reason') return `按你选的原因重新分组：${groups} 组 · 共 ${n} 条；还没归因的单独成组。`
   return `按发生时间从近到远排：共 ${n} 条。切换到「按结果看」或「按原因看」，同一批记录会被重新分组。`
 })
 </script>

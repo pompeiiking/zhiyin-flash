@@ -53,8 +53,27 @@ const published = ref<PublishedTool[]>([])
 const reloadToken = ref(0)
 /** 要打开的那条服务端工具 */
 const openId = ref<string | null>(null)
-
-function onStage(v: ToolStage) { stage.value = v }
+/* ============================================================================
+ * 【2026-10-14 · wave4】"打开页面自动读的那一次没读到"
+ * ---------------------------------------------------------------------------
+ * ModuleCatalog 在挂载时自动读一次（这是上一轮刻意做的：首屏不该是空壳 + 一个按钮）。
+ * 但**服务模式 + 后端没起**时，那一读必然失败 —— 上一版会让首屏直接是一条红条，
+ * 用户还没做任何事就先被宣判了一次失败。
+ *
+ * 现在分成两件事：
+ *   · 自动读失败 → 这一格置真。首屏**不出红条**，状态轨停在第一格「还没取」，
+ *     并且那一格的说明改成"还没取到 + 可以重试"（不再说"会自动读一次"那种已完成态的话）。
+ *   · 用户点「重新读取工具目录」→ ModuleCatalog 走**用户发起**的那条路径：
+ *     再失败时红条连同原因一起出现（错误信息没有被吞掉，见 ModuleCatalog 的长注释）。
+ * 状态轨的语义不变：三格还是三格，亮着的仍然是"现在在哪一格"（`aria-current="step"`）。
+ * ==========================================================================*/
+const autoLoadFailed = ref(false)
+function onStage(v: ToolStage) {
+  stage.value = v
+  // "在读"与"读到了"都意味着上一次的失败已经不是现在的事实了
+  if (v === 'loading' || v === 'ready' || v === 'empty') autoLoadFailed.value = false
+}
+function onAutoLoadFailed(failed: boolean) { autoLoadFailed.value = failed }
 function onEntries(v: PublishedTool[]) { published.value = v }
 function reloadCatalog() { reloadToken.value += 1 }
 function pick(t: DirectoryEntry) { openId.value = t.id ?? null }
@@ -136,8 +155,10 @@ const axisNote = computed(() => {
 /** 某一组为空时说什么 —— 服务端那一组的三种状态要分开说，不能都写成"没有"。 */
 function emptyText(g: ToolGroup): string {
   if (g.key !== 'published') return '这一组现在没有条目。'
-  if (stage.value === 'error') return '这次没有读到发布清单；页头的「重新读取工具目录」可以重试。'
   if (stage.value === 'loading') return '正在读取发布清单…'
+  /* 用户自己点过重读、还是没读到 → 这时红条已经在运行区里给了原因，这里只指路。
+     没点过（自动读那一次没读到）→ 说"还没取到 + 可以重试"，不替用户宣布失败。 */
+  if (autoLoadFailed.value) return '还没取到发布清单；页头的「重新读取工具目录」可以重试，重试失败时会写出原因。'
   return '还没有读取发布清单。'
 }
 
@@ -148,6 +169,15 @@ const RAIL = [
   { key: 'ready', title: '有内容', body: '目录有内容：可以按来源或按可用性重新分组，选中一条即可读取它的数据。' },
 ]
 const railStage = computed(() => (stage.value === 'ready' ? 'ready' : stage.value === 'empty' ? 'none' : 'unread'))
+/* 自动读失败时，第一格的说明换一句 —— 那格仍然是"还没取"（事实没变），
+   但要写明"为什么还没取到"与"下一步是什么"，而不是复述"打开会自动读一次"。
+   这句只在**自动读那一次失败**时出现；用户点过重读之后由运行区的红条说原因。 */
+function railBody(s: { key: string; body: string }): string {
+  if (s.key === 'unread' && autoLoadFailed.value) {
+    return '打开这一页自动读了，但这次没有取到发布清单；可以点页头的「重新读取工具目录」重试，失败原因会在运行区写出来。'
+  }
+  return s.body
+}
 
 /* ---- 溯源：目录本身从哪来 -------------------------------------------------- */
 const sourceLabel = computed(() => (backendDemo.state.dataMode === 'demo' ? '本地演示数据' : '服务端发布清单'))
@@ -187,7 +217,7 @@ const sourceDetail = computed(() =>
         >
           <span class="tools-state__mark" aria-hidden="true" />
           <span class="tools-state__title">{{ s.title }}</span>
-          <span class="tools-state__body">{{ s.body }}</span>
+          <span class="tools-state__body">{{ railBody(s) }}</span>
         </li>
       </ol>
       <p class="tools-source">
@@ -255,7 +285,7 @@ const sourceDetail = computed(() =>
           <p>选中的工具在这里读取数据、执行动作；没选中时这里会说明该点什么。</p>
         </div>
       </div>
-      <ModuleCatalog :open-id="openId" :reload-token="reloadToken" @update:stage="onStage" @update:entries="onEntries" />
+      <ModuleCatalog :open-id="openId" :reload-token="reloadToken" @update:stage="onStage" @update:entries="onEntries" @auto-load-failed="onAutoLoadFailed" />
     </section>
   </div>
 </template>

@@ -124,6 +124,14 @@
     -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
     'Microsoft YaHei', 'Source Han Sans SC', 'Noto Sans CJK SC', sans-serif;
   --font-mono: 'SF Mono', 'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;
+  /* 标题字体栈。⚠ 这个令牌**曾经不存在**，而 dialogue.css 有 5 处在用 `font-family:var(--font-title)`
+     —— 变量没定义时整条声明失效，标题就落回继承字体。与 `--fw-bold` 是同一天发现的同一类
+     静默失效（并排对照才看出来），`check-design.mjs` 的"未解析的自定义属性"检查现在会盯住它。
+     取值与靶子 c2 的 `--font-title` 同构：把 CJK 的正文黑体排前面、以 --font-sans 收尾，
+     仍然是**系统栈，不下载任何字体**（离线自足是硬约束）。 */
+  --font-title:
+    'Microsoft YaHei UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans CJK SC',
+    'Segoe UI Variable Display', 'Segoe UI', var(--font-sans);
 
   /* ---- 字号 ----
    * 六档（2026-10-12）：在原先五档上恢复 16px，改善内页长句阅读。
@@ -161,6 +169,13 @@
   --fw-regular: 400;
   --fw-medium: 500;
   --fw-semibold: 600;
+  /* ⚠ 这一档曾经**缺失**，而代码里有 7 处在用 `var(--fw-bold)` —— CSS 变量没有定义时
+     整条声明失效、落回 `normal`(400)，而且**不报错**：结论大字（30px）本该是最重的一级，
+     实际以 400 渲染，跟正文同重。两道门禁都查不到（check-contrast 只登记颜色与字号）。
+     2026-10-14 补上；同一天给 check-design.mjs 加了"未解析的自定义属性"静态检查，
+     让这一类静默失效以后会当场失败而不是靠人眼在并排图里看出来。
+     字重四档是 DESIGN-LANGUAGE 的明文纪律：400 / 500 / 600 / 700。 */
+  --fw-bold: 700;
 
   /* ---- 间距（4px 基数）---- */
   --sp-1: 4px;
@@ -231,6 +246,11 @@
   --c-surface-2: var(--gray-75);
   --c-surface-3: var(--gray-100);
   --c-rail: rgba(255, 255, 255, 0.82); /* 顶栏/导航的玻璃底 */
+  /* 卡片的顶边受光（与 --e-* 一起用：`box-shadow: var(--hi-inset), var(--e-1)`）。
+     原先这个值以字面量散在样式里（`inset 0 1px 0 rgba(255,255,255,.6)`），
+     而对话页又引用了两个**不存在的**名字（--light-in / --hi-inset）——变量没定义时整条
+     box-shadow 声明失效，浮起感直接没了。2026-10-14 统一到这一个令牌，两个主题各给一值。 */
+  --hi-inset: inset 0 1px 0 rgba(255, 255, 255, 0.6);
 
   /* 描边
    * 【2026-10-14 · P0-1】判据（结构线）分两档，因为两者的判据来源不同：
@@ -445,6 +465,8 @@ html[data-theme='dark'] {
   --c-surface-2: var(--dk-850);
   --c-surface-3: var(--dk-800);
   --c-rail: rgba(27, 27, 29, 0.84);
+  /* 深色下不能沿用浅色那 0.6 的白（会在每张卡顶边拉出一道亮线）—— 收到 0.06。 */
+  --hi-inset: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 
   /* 深色边框要比浅色**更强**：DeepSeek 暗色边框是 白 12%/16%/20%，
      浅色只有 黑 10%。照搬 10% 会让深色下所有边框消失。

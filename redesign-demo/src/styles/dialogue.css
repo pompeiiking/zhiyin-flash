@@ -176,7 +176,7 @@ html[data-accent='red'] .dialogue-page {
   font-weight: var(--fw-medium);
   transition: background var(--dur-2) var(--ease-out), border-color var(--dur-2) var(--ease-out), color var(--dur-2) var(--ease-out);
 }
-.dialogue-chipbtn:hover { background: var(--c-surface-solid); border-color: var(--c-border-strong); color: var(--c-text); }
+.dialogue-chipbtn:hover { background: var(--c-surface); border-color: var(--c-border-strong); color: var(--c-text); }
 .dialogue-chipbtn svg { flex: none; }
 /* 会话入口（新对话 / 历史会话）跟着页头一起右对齐；rail 在场时它们是 rail 那份的重复，藏掉 */
 .dialogue-page .ws-chat-head__tools { display: flex; align-items: center; gap: 4px; flex: none; }
@@ -227,9 +227,9 @@ html[data-accent='red'] .dialogue-page {
   gap: var(--sp-4);
   padding: var(--sp-4);
   border: var(--bw-1) solid var(--c-border);
-  border-radius: var(--r-2xl);
-  background: linear-gradient(180deg, var(--c-glass-1), var(--c-glass-2));
-  box-shadow: var(--light-in), var(--e-1);
+  border-radius: var(--r-lg);
+  background: linear-gradient(180deg, var(--c-surface), var(--c-surface-2));
+  box-shadow: var(--hi-inset), var(--e-1);
 }
 /* 头像不许被中文职责句压扁（默认 flex-shrink:1 会把它从 96 压成 ~48） */
 .dialogue-presence .ag { flex: none; }
@@ -314,15 +314,15 @@ html[data-accent='red'] .dialogue-page {
   padding: var(--sp-4);
   border: var(--bw-1) solid var(--c-border);
   border-radius: var(--r-lg);
-  background: linear-gradient(180deg, var(--c-glass-1), var(--c-glass-2));
-  box-shadow: var(--light-in), var(--e-1);
+  background: linear-gradient(180deg, var(--c-surface), var(--c-surface-2));
+  box-shadow: var(--hi-inset), var(--e-1);
   text-align: left;
   color: var(--c-text-2);
   transition: border-color var(--dur-2) var(--ease-out), box-shadow var(--dur-2) var(--ease-out);
 }
 .dialogue-rail__card + .dialogue-rail__card { margin-top: var(--sp-3); }
-.dialogue-rail__card:hover { border-color: var(--c-border-strong); box-shadow: var(--light-in), var(--e-2); }
-.dialogue-rail__card[aria-pressed='true'] { border-color: var(--c-border-strong); background: var(--c-surface-solid); }
+.dialogue-rail__card:hover { border-color: var(--c-border-strong); box-shadow: var(--hi-inset), var(--e-2); }
+.dialogue-rail__card[aria-pressed='true'] { border-color: var(--c-border-strong); background: var(--c-surface); }
 .dialogue-rail__top { display: flex; align-items: center; gap: 9px; }
 .dialogue-rail__ic {
   width: 30px;
@@ -528,8 +528,8 @@ html[data-accent='red'] .dialogue-page {
   padding: var(--sp-5) var(--sp-5) var(--sp-5) 26px;
   border: var(--bw-1) solid var(--c-border);
   border-radius: var(--r-lg);
-  background: linear-gradient(180deg, var(--c-glass-1), var(--c-glass-2));
-  box-shadow: var(--light-in), var(--e-1);
+  background: linear-gradient(180deg, var(--c-surface), var(--c-surface-2));
+  box-shadow: var(--hi-inset), var(--e-1);
 }
 .chat-block--lead::before {
   content: '';
@@ -908,7 +908,7 @@ html[data-accent='red'] .dialogue-page {
   border-radius: var(--r-md);
   background: var(--c-surface-2);
   color: var(--c-text-2);
-  font-family: var(--font-ui);
+  font-family: var(--font-sans);
   font-size: var(--fs-14);
   line-height: var(--lh-normal);
   white-space: pre-wrap;

@@ -226,6 +226,58 @@ const DECLARED_EXCEPTIONS = [
 const REGISTERED_SIZES = [12, 14, 16, 20, 30, 38]
 
 /**
+ * 未解析的自定义属性 —— 与"数字滚动"同一种思路：**看定义了没有**，不看词出现没出现。
+ *
+ * 为什么值得单独一条门禁：`var(--x)` 指向一个没有定义的名字时，CSS 会**整条声明失效**
+ * 并落回初始值，而且**不报错、不警告**。2026-10-14 的真实案例：
+ * tokens.css 的字重只到 `--fw-semibold`(600)，而代码里有 7 处在用 `var(--fw-bold)`，
+ * 结论大字（30px，本该是全页最重的一级）实际以 400 渲染、和正文同重。
+ * check-contrast 只登记颜色与字号、check-design 当时只解析 `var(--fs-N)`，两道门禁都看不见，
+ * 最后是"逐页与靶子并排对照"靠人眼在两边的字重差里看出来的 —— 这正是本脚本要消灭的那类问题。
+ *
+ * 已排除的合法情形：
+ *   · `var(--x, 兜底)` —— 有兜底就是显式意图，不算失效（单独计数，写进报告）；
+ *   · 运行时由 JS 设置的（`style.setProperty('--x', …)` / `el.style.setProperty` / `--x:` 写在
+ *     模板的 `:style` 里）—— 只扫 CSS/Vue 文件会把这些误判成"没有定义"，所以把它们也算已定义。
+ */
+function unresolvedVars(files) {
+  const defined = new Set()
+  const referenced = new Map()   // name -> [{rel}]
+  let withFallback = 0
+  /* 第三方运行时注入的变量：reka-ui 在弹层上写 `--reka-popover-content-available-height` 这类值，
+     我们的源码里当然没有定义。引用它们是**对接库的公开契约**，不是失效 —— 排除，并在报告里
+     单独列出（不静默丢掉，否则下一个人看不出我们放过了一类）。 */
+  const THIRD_PARTY_VAR = [/^--reka-/]
+  for (const f of files) {
+    const raw = readFileSync(f, 'utf8')
+    const code = stripComments(raw)
+    const rel = f.slice(ROOT.length + 1)
+    /* 定义 = 这些写法之一：
+       · CSS 声明 `--x: …`（行首/分号/花括号之后）
+       · **任何带引号的 `--x`** —— 从 JS/TS/Vue 里给元素设 CSS 变量，名字一定是字符串：
+         `setProperty('--x', …)`、`:style="{ '--x': v }"`、以及 `{ period: '--ag-period' }`
+         这类"名字当值传出去"的写法。第一版只认前两种，于是 --ag-period / --meter-h / --ag-shift
+         被误判成未解析 —— 门禁报假阳性比不报更糟，人们会学会忽略它。 */
+    for (const m of code.matchAll(/(^|[\s;{'"(])--([a-zA-Z0-9_-]+)\s*:/g)) defined.add('--' + m[2])
+    for (const m of code.matchAll(/['"`](--[a-zA-Z0-9_-]+)['"`]/g)) defined.add(m[1])
+    for (const m of code.matchAll(/setProperty\(\s*['"`](--[a-zA-Z0-9_-]+)['"`]/g)) defined.add(m[1])
+    for (const m of code.matchAll(/var\(\s*(--[a-zA-Z0-9_-]+)\s*(,)?/g)) {
+      if (m[2]) { withFallback++; continue }
+      if (!referenced.has(m[1])) referenced.set(m[1], [])
+      const arr = referenced.get(m[1])
+      if (arr.length < 6) arr.push({ rel })
+    }
+  }
+  const hits = [...referenced.entries()]
+    .filter(([name]) => !defined.has(name) && !THIRD_PARTY_VAR.some((re) => re.test(name)))
+    .map(([name, uses]) => ({ name, uses }))
+  const thirdParty = [...referenced.keys()].filter(
+    (name) => !defined.has(name) && THIRD_PARTY_VAR.some((re) => re.test(name))
+  )
+  return { defined, referenced, hits, withFallback, thirdParty }
+}
+
+/**
  * 数字滚动的专用判定 —— 这一类**不能**用词表匹配，两个方向都会错：
  *   · 正例（曾经）：`src/lib/motion.ts` 里有个 `useCountUp`（0 → 值，首挂也跑）。
  *     它已被删除（本轮清掉的死代码 —— 定义 1 处、调用 0 处，而且数字滚动本身是反例表点名的装饰）。
@@ -1410,6 +1462,28 @@ async function main() {
     }
   }
   log(`  · 数字滚动：定义 ${countUp.decl.length} 处 · 调用 ${countUp.uses.length} 处（判据是"定义了有没有人用"，不是有没有出现这个词）`)
+  /* 未解析的自定义属性：`var(--x)` 指向一个全仓没有定义的名字时，**整条声明失效、
+     静默落回初始值**，而且不报错。2026-10-14 就是这样漏掉一个字的：
+     tokens.css 的字重只登记到 `--fw-semibold`(600)，而代码里有 7 处在用 `var(--fw-bold)` ——
+     结论大字（30px，本该是全页最重的一级）实际以 400 渲染、跟正文同重，
+     check-contrast（只查颜色/字号）与 check-design（当时只查 var(--fs-N)）都看不见它，
+     是"逐页与靶子并排对照"时靠人眼在两边的字重差里看出来的。
+     判据：定义了没有 —— 与"数字滚动"同一种思路，不看这个词出现没出现。
+     `var(--x, fallback)` 有兜底，不算失效，跳过。 */
+  const vars = unresolvedVars(walkSource(join(ROOT, 'src')))
+  for (const v of vars.hits) {
+    fail(
+      '(静态)',
+      '令牌解析',
+      `var(${v.name}) 没有定义（${v.uses.length} 处在用）`,
+      `${v.uses.map((u) => u.rel).join('、')} —— 引用了一个全仓找不到定义的自定义属性，` +
+        `整条声明会静默失效、落回初始值（而且不报错）`,
+      `在 tokens.css 里定义 ${v.name}，或改用已定义的令牌；` +
+        `若确实允许缺失，就写成 var(${v.name}, 兜底值) 让意图显式`,
+      { name: v.name, uses: v.uses.map((u) => u.rel) }
+    )
+  }
+  log(`  · 自定义属性：定义 ${vars.defined.size} 个 · 被引用 ${vars.referenced.size} 个 · 未解析 ${vars.hits.length} 个${vars.withFallback ? `（另有 ${vars.withFallback} 处带兜底值，不算失效）` : ''}`)
   log(`  · 含 accent 光晕的 box-shadow：${scan.glow.length} 处（焦点环与 select 高亮属允许项，逐条看）`)
   for (const k of [...scan.keyframes.keys()]) {
     if (!ANIM_ALLOWED[k] && !ANIM_VIOLATION[k]) {

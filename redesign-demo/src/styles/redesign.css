@@ -113,9 +113,14 @@ input[type='radio'], input[type='checkbox'] { accent-color: var(--c-primary); wi
 .structured-facts { display: grid; grid-template-columns: minmax(90px,140px) minmax(0,1fr); gap: 12px 20px; margin: 16px 0; line-height: 1.85; }
 .structured-facts dt { color: var(--c-text-3); }
 .structured-facts dd { min-width: 0; overflow-wrap: anywhere; }
-.module-entry { display: flex; flex-direction: column; gap: 8px; align-items: start; text-align: left; width: 100%; padding: 20px 0; border-bottom: 1px solid var(--c-border); }
-.module-entry strong { font-size: var(--fs-20); }
-.module-entry span { line-height: 1.8; color: var(--c-text-2); }
+/* 【2026-10-14 · wave2】`.module-entry` 一族 3 条已删（原 :116-118）。
+   证据与判据：`grep -rn "module-entry" src` 除这三行定义外 **0 命中**（.vue 模板、
+   .ts、其它 .css 全查过）—— 目录的渲染上一轮搬进 ToolsView，类名换成了
+   `.tools-entry`（见 ToolsView.vue 的 scoped 段），旧那一套只留下这几条规则
+   等一个再也不会出现的元素。这与本轮清掉的 `useCountUp`、
+   `.ws-sheet--wide / --inspector` 是同一类：定义了、没人用，就该清掉。
+   注意区分"裸类名"与"前缀"：`.module-entry` 没有被任何 `.module-entry*` 复用
+   （`.module-catalog__title` 是另一个名字），所以整族删干净。 */
 .live-action { margin: 24px 0; }
 /* 【2026-10-14 · wave2】`.live-action .plan-stage { margin-top: 24px }` 已删（原 :83）：
    `.plan-stage` 裸类名 0 命中，见下方 `.plan-stage` 一族的说明。 */
