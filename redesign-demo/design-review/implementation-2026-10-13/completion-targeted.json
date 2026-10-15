@@ -1,9 +1,0 @@
-{
-  "results": [
-    {
-      "id": "published-module-directory-data-invoke-action-failure",
-      "status": "passed"
-    }
-  ],
-  "scope": "Local frontend and controlled contract responses. No real service mutation."
-}

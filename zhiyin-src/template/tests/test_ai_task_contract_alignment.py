@@ -29,7 +29,7 @@ import pytest
 import zhiyin_business.contracts.ai_tasks as ai_tasks
 
 TEMPLATE_ROOT = Path(__file__).resolve().parents[1]
-REGISTRY_TS = TEMPLATE_ROOT.parents[1] / "redesign-demo" / "src" / "api" / "ai-types.ts"
+REGISTRY_TS = TEMPLATE_ROOT.parents[1] / "zhiyin-src/template/zhiyin-web" / "src" / "api" / "ai-types.ts"
 
 #: 前端 interface 名 → 后端契约模型。两边同名是刻意的：改名字要一起改。
 CONTRACT_MODELS = (

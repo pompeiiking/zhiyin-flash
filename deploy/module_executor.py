@@ -208,7 +208,7 @@ class Executor:
         self.log("checking", self.run(["docker", "run", "--rm", "--name", name, "--label", "zhiyin.module.check=true",
             "-v", f"{checkout}:/source:ro", "-w", "/workspace", "python:3.11-slim", "sh", "-c", command]))
         self.log("checking", "执行前端类型检查、构建和 API 类型一致性检查")
-        frontend = "cp -a /source/. /workspace/ && cd /workspace/redesign-demo && npm ci --no-audit --no-fund && cp src/api/types.ts /tmp/api-types.ts && npm run gen:api && cmp src/api/types.ts /tmp/api-types.ts && npm run build"
+        frontend = "cp -a /source/. /workspace/ && cd /workspace/zhiyin-src/template/zhiyin-web && npm ci --no-audit --no-fund && cp src/api/types.ts /tmp/api-types.ts && npm run gen:api && cmp src/api/types.ts /tmp/api-types.ts && npm run build"
         self.log("checking", self.run(["docker", "run", "--rm", "--name", name, "--label", "zhiyin.module.check=true",
             "-v", f"{checkout}:/source:ro", "-w", "/workspace", "node:22-alpine", "sh", "-c", frontend]))
 

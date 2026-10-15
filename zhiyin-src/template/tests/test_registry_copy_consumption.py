@@ -6,7 +6,7 @@ portal uses trust_blocks. It no longer promises to render the removed canvas.
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
-WEB = ROOT / "redesign-demo/src"
+WEB = ROOT / "zhiyin-src/template/zhiyin-web/src"
 
 
 def test_profile_and_badge_copies_are_consumed():

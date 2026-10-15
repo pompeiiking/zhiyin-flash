@@ -6,7 +6,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
 TEMPLATE = ROOT / "zhiyin-src/template"
-WEB = ROOT / "redesign-demo"
+WEB = ROOT / "zhiyin-src/template/zhiyin-web"
 
 
 def test_inventory_covers_every_controller():
@@ -25,7 +25,7 @@ def test_inventory_covers_every_controller():
                 ):
                     expected.add(d.func.attr.upper() + " /api/v1" + d.args[0].value)
     rows = json.loads(
-        (ROOT / "docs/frontend-integration/backend-capabilities.json").read_text(encoding="utf-8")
+        (ROOT / "docs/前端/后端接入/后端接口与模型.json").read_text(encoding="utf-8")
     )["endpoints"]
     assert expected == {r["id"] for r in rows}
     for r in rows:
@@ -62,8 +62,10 @@ def test_no_fake_service_or_query_auth():
 
 
 def test_single_frontend_preserves_classic_portal_and_brands():
-    assert not (TEMPLATE / "zhiyin-web/src").exists()
-    assert "dockerfile: redesign-demo/Dockerfile" in (ROOT / "docker-compose.yml").read_text(
+    assert (TEMPLATE / "zhiyin-web/src").is_dir()
+    assert not (ROOT / "redesign-demo").exists()
+    assert not (ROOT / "frontend").exists()
+    assert "dockerfile: zhiyin-src/template/zhiyin-web/Dockerfile" in (ROOT / "docker-compose.yml").read_text(
         encoding="utf-8"
     )
     theme = (WEB / "src/lib/theme.ts").read_text(encoding="utf-8")

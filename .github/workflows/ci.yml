@@ -54,14 +54,14 @@ jobs:
     timeout-minutes: 20
     defaults:
       run:
-        working-directory: redesign-demo
+        working-directory: zhiyin-src/template/zhiyin-web
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: redesign-demo/package-lock.json
+          cache-dependency-path: zhiyin-src/template/zhiyin-web/package-lock.json
       - name: 安装依赖
         # package-lock.json 已入库，用 npm ci 保证 CI 装到的版本与本地一致。
         run: npm ci --no-audit --no-fund

@@ -24,7 +24,7 @@
 # 重启一次即可；要让库里的那份跟着变，再跑一次 `--resync-registry`。
 #
 # 前端不在这条路上：`zhiyin-flash-web` 是 nginx 托管的**静态构建产物**，
-# 挂源码进去不会重新构建。改前端用 `cd redesign-demo && npm run dev`
+# 挂源码进去不会重新构建。改前端用 `cd zhiyin-src/template/zhiyin-web && npm run dev`
 # （与容器同一个 5173 端口，所以先 `docker compose stop web`），或重建 web 镜像。
 #
 # 与部署的差别（用这个文件时你要知道）：

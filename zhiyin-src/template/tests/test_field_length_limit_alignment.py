@@ -31,7 +31,7 @@ from pathlib import Path
 
 TEMPLATE_ROOT = Path(__file__).resolve().parents[1]
 FRONTEND_FIELD_LIST = (
-    TEMPLATE_ROOT.parents[1] / "redesign-demo" / "src" / "views" / "StudentView.vue"
+    TEMPLATE_ROOT.parents[1] / "zhiyin-src/template/zhiyin-web" / "src" / "views" / "StudentView.vue"
 )
 
 #: 前端那处常量的声明形状（`const MAX_CHARS = 40`）。

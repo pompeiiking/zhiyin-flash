@@ -45,7 +45,8 @@ AUDIT_DOC_DIR = "docs/测试与优化-袁"
 #:   · `docs/Kev-接入与联调说明.md` —— 一个外部意图决策服务的接入说明（压测-佟 交付）。
 DOCS_ALLOWED_EXTRA: tuple[str, ...] = (
     "docs/issue-assets/",
-    "docs/frontend-integration/",
+    "docs/前端/",
+    "docs/文档导航.md",
     "docs/Kev-接入与联调说明.md",
 )
 
@@ -53,7 +54,8 @@ DOCS_ALLOWED_EXTRA: tuple[str, ...] = (
 CURRENT_DOCS: tuple[str, ...] = (
     "README.md",
     DESIGN_DOC,
-    "redesign-demo/README.md",
+    "zhiyin-src/template/zhiyin-web/README.md",
+    "docs/前端/开发与维护/正式前端说明.md",
 )
 
 # 外部协议：不解析成本地文件
@@ -193,8 +195,7 @@ def test_single_design_doc_exists() -> None:
 def test_entry_docs_link_to_design_doc(relative_doc: str) -> None:
     """入口 README 必须给出指向唯一设计文档的相对链接。"""
     doc = REPO_ROOT / relative_doc
-    depth = len(doc.parent.relative_to(REPO_ROOT).parts)
-    expected = "/".join([".."] * depth + DESIGN_DOC.split("/"))
+    expected = os.path.relpath(REPO_ROOT / DESIGN_DOC, doc.parent).replace("\\", "/")
 
     links = {unquote(link).replace("\\", "/") for link in _relative_links(doc)}
     assert expected in links, (
@@ -268,7 +269,7 @@ _SHORTHAND_ALIASES: dict[str, str] = {
     "orchestration": "zhiyin-orchestration/zhiyin_orchestration",
     "infrastructure": "zhiyin-infrastructure/zhiyin_infrastructure",
     "boot": "zhiyin-boot/zhiyin_boot",
-    "web": "../../redesign-demo",
+    "web": "zhiyin-web",
 }
 
 
@@ -297,7 +298,7 @@ def _resolves(relative: str, doc_dir: Path) -> bool:
             if sub.is_dir():
                 candidates.append(sub / relative)
 
-    for extra in ("data", "tests", "../../redesign-demo", "../../redesign-demo/src"):
+    for extra in ("data", "tests", "zhiyin-web", "zhiyin-web/src"):
         candidates.append(TEMPLATE_ROOT / extra / relative)
 
     return any(candidate.exists() for candidate in candidates)

@@ -67,7 +67,7 @@ dist-ssr/
 .tmp-impeccable/
 /.impeccable/questions/
 # 重设计调研时抓下来的原始 CSS / HTML 证据（约 48MB）：
-# 结论已经写进 DESIGN-RESEARCH.md 与 DESIGNEEER-DIRECTORY.md，原始件只当本地证据留着，
+# 结论已经写进 docs/前端/历史设计/早期方案/设计决策调研.md 与 docs/前端/历史设计/早期方案/设计资源目录.md，原始件只当本地证据留着，
 # 不进版本库 —— 48MB 的抓取物会把仓库撑坏，而且下次抓就覆盖了。
 .tmp-research/
 # pytest 的临时根目录：测试里把 TEMP 指到模板目录下时，会在仓库里长出一棵树
@@ -112,12 +112,7 @@ scripts/kev-config-backup.json
 release/
 .platform/
 
-# ---- 本轮重设计的取证产物（截图、探针输出、方向样张的实拍）----
-# 同上面 :60-79 的口径：**脚本入库，产物不入库**。
-# 实测这几处合起来 100MB+（_shots/ 104.8MB、_pdf_v3_pages/ 20.4MB、
-# design-review 下各方向的 shots/ 合计 24MB），一次性提交进去会让仓库体积
-# 永久不可逆 —— 而它们全部可以靠 _tools/*.mjs 重新跑出来。
-# 需要留证时把对应行删掉即可。
+# 本地取证与临时产物；保留的设计、验收文档统一位于 docs/前端。
 _shots/
 _shots-now/
 _backup/
@@ -127,22 +122,12 @@ _pdf_v3_pages/
 _pdf_*.py
 _pdf_*.txt
 _wtest.txt
-redesign-demo/_shots/
-# 方向样张（directions/a-workbench 等）的实拍与规格页截图：
-# index.html 与文档要入库（那是决策依据），实拍不入库。
-redesign-demo/design-review/**/shots/
-redesign-demo/design-review/**/*.png
+zhiyin-src/template/zhiyin-web/_shots/
 
 # 编辑过程中的临时备份（.orig / _backup-*）：产物不入库，脚本入库
 *.orig
 _backup-*
 *_backup-*
 
-# c2-hbu 并行施工时作者留下的草稿脚本（下划线前缀 = 一次性的诊断/探查脚本）。
-# 口径同 :115：**脚本入库，产物不入库** —— 正式的 _tools/*.mjs 入库，
-# `_tools/_*` 这种一次性的不入库（2026-10-14 有一批误入过提交，已清）。
-redesign-demo/design-review/v6-redesign/directions/c2-hbu/_tools/_*
-
 # Local integration credentials and raw responses
-_tmp-spike/integration-account.json
-_tmp-spike/integration-*.json
+_tmp-spike/

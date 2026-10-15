@@ -14,7 +14,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--base', default='http://127.0.0.1:5275')
 args = parser.parse_args()
 root = Path(__file__).resolve().parents[1]
-ops = json.loads((root/'redesign-demo/src/api/operations.json').read_text())
+ops = json.loads((root/'zhiyin-src/template/zhiyin-web/src/api/operations.json').read_text())
 results = {}
 client = httpx.Client(base_url=args.base, timeout=120)
 
@@ -87,8 +87,8 @@ try:
     assert expired.status_code==401 or expired.json().get('code')==1004
     results['POST /api/v1/app/auth/logout']['revocation_verified']=True
 finally:
-    out=root/'docs/frontend-integration/live-smoke-results.json'
+    out=root/'docs/前端/后端接入/基础联调结果.json'
     out.write_text(json.dumps({'at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'base':args.base,'isolated_test_account':True,'results':results},ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
     client.close()
 
-assert results and all(value.get('ok') for value in results.values()), 'Some integration checks failed; inspect live-smoke-results.json'
+assert results and all(value.get('ok') for value in results.values()), 'Some integration checks failed; inspect 基础联调结果.json'

@@ -1,6 +1,6 @@
 # 职引 ZHIYIN
 
-当前正式前端位于 [redesign-demo](redesign-demo/README.md)，完整接入范围与验证状态见[后端能力清单](docs/frontend-integration/BACKEND-CAPABILITIES.md)。旧前端已移除。
+当前正式前端位于 [zhiyin-src/template/zhiyin-web](zhiyin-src/template/zhiyin-web/README.md)，原正式目录已由接入真实后端的新前端替换。完整文档从[文档导航](docs/文档导航.md)进入，逐项验证状态见[后端能力清单](docs/前端/后端接入/后端能力与接入清单.md)。
 
 项目规则与实现边界见[完整设计文档](docs/职引-完整设计文档.md)；全功能测试与提示词优化记录见[测试与优化 · 袁](docs/测试与优化-袁/README.md)。
 研发入口：[模块开发与发布说明](deploy/模块开发说明.md)。

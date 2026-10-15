@@ -1,0 +1,673 @@
+{
+  "DELETE /api/v1/app/academic": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/views/AcademicView.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+  },
+  "POST /api/v1/app/academic/import": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/views/AcademicView.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+  },
+  "POST /api/v1/app/academic/import/file": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/views/AcademicView.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+  },
+  "GET /api/v1/app/achievements": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/router.ts",
+      "zhiyin-src/template/zhiyin-web/src/components/PublishedTools.vue",
+      "zhiyin-src/template/zhiyin-web/src/lib/system-data.ts",
+      "zhiyin-src/template/zhiyin-web/src/lib/workspace-nav.ts",
+      "zhiyin-src/template/zhiyin-web/src/views/ReflectionView.vue",
+      "zhiyin-src/template/zhiyin-web/src/views/SystemView.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+  },
+  "POST /api/v1/app/assets/export": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/views/SystemView.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json；服务边界：第一期仅预留导出入口，已显示原因，未产生下载文件"
+  },
+  "GET /api/v1/app/assets/{asset_type}/versions": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/components/ReportHistory.vue",
+      "zhiyin-src/template/zhiyin-web/src/views/AssessmentView.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+  },
+  "POST /api/v1/app/auth/login": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/components/AuthLayer.vue",
+      "zhiyin-src/template/zhiyin-web/src/lib/auth.ts"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+  },
+  "POST /api/v1/app/auth/logout": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/components/WorkspaceHeader.vue",
+      "zhiyin-src/template/zhiyin-web/src/lib/auth.ts",
+      "zhiyin-src/template/zhiyin-web/src/views/SystemView.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+  },
+  "POST /api/v1/app/auth/register": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/components/AuthLayer.vue",
+      "zhiyin-src/template/zhiyin-web/src/lib/auth.ts"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+  },
+  "GET /api/v1/app/bootstrap": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/lib/auth.ts"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+  },
+  "POST /api/v1/app/brief/today": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/api/validate-ai.ts",
+      "zhiyin-src/template/zhiyin-web/src/components/TaskBrief.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+  },
+  "GET /api/v1/app/calendar": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/lib/workspace-nav.ts",
+      "zhiyin-src/template/zhiyin-web/src/views/ScheduleView.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+  },
+  "POST /api/v1/app/chsi/bind": {
+    "status": "环境阻塞",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/api/validate-ai.ts",
+      "zhiyin-src/template/zhiyin-web/src/components/AcademicVerification.vue"
+    ],
+    "verification": "前端已连接；非法验证码 SSE 错误路径通过。正向验收需要本人有效学信网在线验证码；文件导入不等于学信核验。见 剩余接口验收结果.json。"
+  },
+  "POST /api/v1/app/conversation/material": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/views/ConversationView.vue",
+      "zhiyin-src/template/zhiyin-web/src/views/StudentView.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+  },
+  "POST /api/v1/app/conversation/message": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/developer/ProjectsVersions.vue",
+      "zhiyin-src/template/zhiyin-web/src/developer/Workflows.vue",
+      "zhiyin-src/template/zhiyin-web/src/views/ConversationView.vue",
+      "zhiyin-src/template/zhiyin-web/src/views/DeveloperView.vue"
+    ],
+    "verification": "已连接；浏览器向真实模型发送咨询并收到回复，刷新和 Docker 构建均能读回历史"
+  },
+  "POST /api/v1/app/day/{day}/advice": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/api/validate-ai.ts",
+      "zhiyin-src/template/zhiyin-web/src/components/DayAdvicePanel.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+  },
+  "POST /api/v1/app/dimensions/{dimension_id}": {
+    "status": "隔离联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/api/validate-ai.ts",
+      "zhiyin-src/template/zhiyin-web/src/components/ProfileInsights.vue",
+      "zhiyin-src/template/zhiyin-web/src/views/StudentView.vue"
+    ],
+    "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+  },
+  "POST /api/v1/app/gaps/{gap_key}/clarify": {
+    "status": "隔离联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/api/validate-ai.ts",
+      "zhiyin-src/template/zhiyin-web/src/components/ProfileInsights.vue"
+    ],
+    "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+  },
+  "GET /api/v1/app/intel": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/router.ts",
+      "zhiyin-src/template/zhiyin-web/src/components/EmptyState.vue",
+      "zhiyin-src/template/zhiyin-web/src/components/WorkspaceMotif.vue",
+      "zhiyin-src/template/zhiyin-web/src/lib/workspace-nav.ts",
+      "zhiyin-src/template/zhiyin-web/src/views/IntelView.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+  },
+  "POST /api/v1/app/intel/refresh": {
+    "status": "隔离联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/views/IntelView.vue"
+    ],
+    "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+  },
+  "POST /api/v1/app/match/careers": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/api/validate-ai.ts",
+      "zhiyin-src/template/zhiyin-web/src/components/CareerMatchPanel.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+  },
+  "GET /api/v1/app/modules": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/components/ModuleCatalog.vue",
+      "zhiyin-src/template/zhiyin-web/src/views/DeveloperView.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+  },
+  "POST /api/v1/app/modules/{module_id}/actions": {
+    "status": "隔离联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/components/ModuleCatalog.vue"
+    ],
+    "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+  },
+  "GET /api/v1/app/modules/{module_id}/data": {
+    "status": "隔离联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/components/ModuleCatalog.vue"
+    ],
+    "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+  },
+  "POST /api/v1/app/modules/{module_id}/invoke": {
+    "status": "隔离联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/components/ModuleCatalog.vue"
+    ],
+    "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+  },
+  "GET /api/v1/app/notes": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/router.ts",
+      "zhiyin-src/template/zhiyin-web/src/components/EmptyState.vue",
+      "zhiyin-src/template/zhiyin-web/src/components/InboxSheet.vue",
+      "zhiyin-src/template/zhiyin-web/src/components/TaskList.vue",
+      "zhiyin-src/template/zhiyin-web/src/components/WorkspaceMotif.vue",
+      "zhiyin-src/template/zhiyin-web/src/lib/system-data.ts",
+      "zhiyin-src/template/zhiyin-web/src/lib/workspace-nav.ts",
+      "zhiyin-src/template/zhiyin-web/src/views/NotesView.vue",
+      "zhiyin-src/template/zhiyin-web/src/views/TodayView.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+  },
+  "POST /api/v1/app/notes": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/store.ts",
+      "zhiyin-src/template/zhiyin-web/src/components/TodoSuggestions.vue",
+      "zhiyin-src/template/zhiyin-web/src/views/NotesView.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+  },
+  "DELETE /api/v1/app/notes/{note_id}": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/views/NotesView.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+  },
+  "PATCH /api/v1/app/notes/{note_id}": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/views/NotesView.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+  },
+  "GET /api/v1/app/notifications/pending": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/lib/system-data.ts"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+  },
+  "POST /api/v1/app/notifications/{message_id}/read": {
+    "status": "隔离联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/store.ts",
+      "zhiyin-src/template/zhiyin-web/src/views/SystemView.vue"
+    ],
+    "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+  },
+  "GET /api/v1/app/plan/action": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/components/CareSheet.vue",
+      "zhiyin-src/template/zhiyin-web/src/components/EmptyState.vue",
+      "zhiyin-src/template/zhiyin-web/src/components/LiveActionPlan.vue",
+      "zhiyin-src/template/zhiyin-web/src/components/ModuleCatalog.vue",
+      "zhiyin-src/template/zhiyin-web/src/components/PortalExample.vue",
+      "zhiyin-src/template/zhiyin-web/src/components/StatusBanner.vue",
+      "zhiyin-src/template/zhiyin-web/src/components/TaskProgressMap.vue",
+      "zhiyin-src/template/zhiyin-web/src/developer/Workflows.vue",
+      "zhiyin-src/template/zhiyin-web/src/lib/system-data.ts",
+      "zhiyin-src/template/zhiyin-web/src/lib/workspace-nav.ts",
+      "zhiyin-src/template/zhiyin-web/src/modules/ModuleContent.vue",
+      "zhiyin-src/template/zhiyin-web/src/views/ConversationView.vue",
+      "zhiyin-src/template/zhiyin-web/src/views/DeveloperView.vue",
+      "zhiyin-src/template/zhiyin-web/src/views/ScheduleView.vue",
+      "zhiyin-src/template/zhiyin-web/src/views/StudentView.vue",
+      "zhiyin-src/template/zhiyin-web/src/views/TodayView.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+  },
+  "PATCH /api/v1/app/plan/action/tasks": {
+    "status": "隔离联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/store.ts",
+      "zhiyin-src/template/zhiyin-web/src/components/LiveActionPlan.vue",
+      "zhiyin-src/template/zhiyin-web/src/views/ConversationView.vue",
+      "zhiyin-src/template/zhiyin-web/src/views/TodayView.vue"
+    ],
+    "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+  },
+  "GET /api/v1/app/plan/directions": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/router.ts",
+      "zhiyin-src/template/zhiyin-web/src/components/WeightedDirectionCompare.vue",
+      "zhiyin-src/template/zhiyin-web/src/lib/workspace-nav.ts",
+      "zhiyin-src/template/zhiyin-web/src/views/AssessmentView.vue",
+      "zhiyin-src/template/zhiyin-web/src/views/ConversationView.vue",
+      "zhiyin-src/template/zhiyin-web/src/views/ToolsView.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+  },
+  "POST /api/v1/app/plan/directions/{option_id}/select": {
+    "status": "隔离联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/views/AssessmentView.vue"
+    ],
+    "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+  },
+  "POST /api/v1/app/plan/timetable": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/api/validate-ai.ts",
+      "zhiyin-src/template/zhiyin-web/src/components/TimetableAdvice.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+  },
+  "POST /api/v1/app/plan/todos/suggestions": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/api/validate-ai.ts",
+      "zhiyin-src/template/zhiyin-web/src/components/TodoSuggestions.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+  },
+  "GET /api/v1/app/portal": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/router.ts",
+      "zhiyin-src/template/zhiyin-web/src/views/PortalClassicView.vue",
+      "zhiyin-src/template/zhiyin-web/src/views/PortalView.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+  },
+  "POST /api/v1/app/portrait/analysis": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/api/validate-ai.ts",
+      "zhiyin-src/template/zhiyin-web/src/components/ProfileInsights.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+  },
+  "POST /api/v1/app/profile/fields/{key}": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/views/StudentView.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+  },
+  "GET /api/v1/app/report/full-text": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/router.ts",
+      "zhiyin-src/template/zhiyin-web/src/components/EmptyState.vue",
+      "zhiyin-src/template/zhiyin-web/src/components/EvidenceList.vue",
+      "zhiyin-src/template/zhiyin-web/src/components/LiveActionPlan.vue",
+      "zhiyin-src/template/zhiyin-web/src/components/PortalExample.vue",
+      "zhiyin-src/template/zhiyin-web/src/components/ReportHistory.vue",
+      "zhiyin-src/template/zhiyin-web/src/data/copy.ts",
+      "zhiyin-src/template/zhiyin-web/src/developer/client.ts",
+      "zhiyin-src/template/zhiyin-web/src/lib/workspace-nav.ts",
+      "zhiyin-src/template/zhiyin-web/src/views/AssessmentView.vue",
+      "zhiyin-src/template/zhiyin-web/src/views/ConversationView.vue",
+      "zhiyin-src/template/zhiyin-web/src/views/SystemView.vue",
+      "zhiyin-src/template/zhiyin-web/src/views/ToolsView.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+  },
+  "POST /api/v1/app/report/summary": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/api/validate-ai.ts",
+      "zhiyin-src/template/zhiyin-web/src/components/ReportSummary.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+  },
+  "GET /api/v1/app/sessions": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/lib/system-data.ts",
+      "zhiyin-src/template/zhiyin-web/src/views/ConversationView.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+  },
+  "GET /api/v1/app/sessions/{task_id}/turns": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/lib/system-data.ts"
+    ],
+    "verification": "已连接；浏览器真实对话收发及刷新后历史恢复通过（开发服务与 Docker 正式构建）"
+  },
+  "POST /api/v1/app/task/enter": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/lib/system-data.ts"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+  },
+  "GET /api/v1/app/theory-cards/{theory_id}": {
+    "status": "隔离联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/views/ConversationView.vue"
+    ],
+    "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+  },
+  "POST /api/v1/app/track": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/router.ts",
+      "zhiyin-src/template/zhiyin-web/src/api/validate-ai.ts"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+  },
+  "GET /api/v1/app/track/events": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/lib/system-data.ts"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+  },
+  "POST /api/v1/app/workflows/{workflow_id}/run": {
+    "status": "隔离联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/components/WorkflowRunner.vue"
+    ],
+    "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+  },
+  "GET /api/v1/app/workspace": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/components/AcademicVerification.vue",
+      "zhiyin-src/template/zhiyin-web/src/lib/system-data.ts",
+      "zhiyin-src/template/zhiyin-web/src/views/AcademicView.vue",
+      "zhiyin-src/template/zhiyin-web/src/views/ScheduleView.vue",
+      "zhiyin-src/template/zhiyin-web/src/views/StudentView.vue",
+      "zhiyin-src/template/zhiyin-web/src/views/ToolsView.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+  },
+  "POST /api/v1/app/config/reload": {
+    "status": "隔离联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/views/DeveloperView.vue",
+      "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
+    ],
+    "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+  },
+  "GET /api/v1/developer/capabilities": {
+    "status": "隔离联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/developer/ProjectsVersions.vue",
+      "zhiyin-src/template/zhiyin-web/src/developer/GettingStarted.vue",
+      "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
+    ],
+    "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+  },
+  "GET /api/v1/developer/checks": {
+    "status": "隔离联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/views/DeveloperView.vue",
+      "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
+    ],
+    "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+  },
+  "POST /api/v1/developer/checks": {
+    "status": "隔离联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/views/DeveloperView.vue",
+      "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
+    ],
+    "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+  },
+  "GET /api/v1/developer/context": {
+    "status": "隔离联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/views/DeveloperView.vue",
+      "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
+    ],
+    "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+  },
+  "GET /api/v1/developer/modules": {
+    "status": "隔离联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/views/DeveloperView.vue",
+      "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
+    ],
+    "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+  },
+  "PUT /api/v1/developer/modules/{module_id}/policy": {
+    "status": "隔离联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/views/DeveloperView.vue",
+      "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
+    ],
+    "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+  },
+  "POST /api/v1/developer/modules/{module_id}/preview": {
+    "status": "隔离联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/views/DeveloperView.vue",
+      "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
+    ],
+    "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+  },
+  "GET /api/v1/developer/platform-status": {
+    "status": "隔离联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/views/DeveloperView.vue",
+      "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
+    ],
+    "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+  },
+  "GET /api/v1/developer/projects": {
+    "status": "隔离联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/developer/ProjectsVersions.vue",
+      "zhiyin-src/template/zhiyin-web/src/developer/GettingStarted.vue",
+      "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
+    ],
+    "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+  },
+  "POST /api/v1/developer/projects": {
+    "status": "隔离联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/developer/ProjectsVersions.vue",
+      "zhiyin-src/template/zhiyin-web/src/developer/GettingStarted.vue",
+      "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
+    ],
+    "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+  },
+  "PUT /api/v1/developer/projects/{project_id}": {
+    "status": "隔离联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/developer/ProjectsVersions.vue",
+      "zhiyin-src/template/zhiyin-web/src/developer/GettingStarted.vue",
+      "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
+    ],
+    "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+  },
+  "GET /api/v1/developer/projects/{project_id}/versions": {
+    "status": "隔离联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/developer/ProjectsVersions.vue",
+      "zhiyin-src/template/zhiyin-web/src/developer/GettingStarted.vue",
+      "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
+    ],
+    "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+  },
+  "POST /api/v1/developer/projects/{project_id}/versions": {
+    "status": "隔离联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/developer/ProjectsVersions.vue",
+      "zhiyin-src/template/zhiyin-web/src/developer/GettingStarted.vue",
+      "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
+    ],
+    "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+  },
+  "GET /api/v1/developer/releases": {
+    "status": "隔离联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/views/DeveloperView.vue",
+      "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
+    ],
+    "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。发布记录与申请/审批仅验证入队和回读，未执行部署。"
+  },
+  "POST /api/v1/developer/releases": {
+    "status": "隔离联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/views/DeveloperView.vue",
+      "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
+    ],
+    "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。发布记录与申请/审批仅验证入队和回读，未执行部署。"
+  },
+  "POST /api/v1/developer/releases/{job_id}/approve": {
+    "status": "隔离联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/views/DeveloperView.vue",
+      "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
+    ],
+    "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。发布记录与申请/审批仅验证入队和回读，未执行部署。"
+  },
+  "GET /api/v1/developer/templates": {
+    "status": "隔离联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/developer/ProjectsVersions.vue",
+      "zhiyin-src/template/zhiyin-web/src/developer/GettingStarted.vue",
+      "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
+    ],
+    "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+  },
+  "GET /api/v1/developer/versions/{version_id}": {
+    "status": "隔离联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/developer/ProjectsVersions.vue",
+      "zhiyin-src/template/zhiyin-web/src/developer/GettingStarted.vue",
+      "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
+    ],
+    "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+  },
+  "GET /api/v1/developer/versions/{version_id}/package": {
+    "status": "隔离联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/developer/ProjectsVersions.vue",
+      "zhiyin-src/template/zhiyin-web/src/developer/GettingStarted.vue",
+      "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
+    ],
+    "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+  },
+  "POST /api/v1/developer/versions/{version_id}/release": {
+    "status": "环境阻塞",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/developer/ProjectsVersions.vue",
+      "zhiyin-src/template/zhiyin-web/src/developer/GettingStarted.vue",
+      "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
+    ],
+    "verification": "前端已连接；离线执行器/无有效验收证据时拒绝发布已验证。正向发布需要真实 Source Worker、完整候选构建/数据流/浏览器证据及在线 Executor，未伪造过关结果。见 剩余接口验收结果.json。"
+  },
+  "POST /api/v1/developer/versions/{version_id}/retry": {
+    "status": "隔离联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/developer/ProjectsVersions.vue",
+      "zhiyin-src/template/zhiyin-web/src/developer/GettingStarted.vue",
+      "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
+    ],
+    "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。以隔离失败版本验证重试入队，未冒充构建成功。"
+  },
+  "GET /api/v1/developer/workflows": {
+    "status": "隔离联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/developer/Workflows.vue",
+      "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
+    ],
+    "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+  },
+  "POST /api/v1/developer/workflows": {
+    "status": "隔离联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/developer/Workflows.vue",
+      "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
+    ],
+    "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+  },
+  "POST /api/v1/developer/workflows/{workflow_id}/publish": {
+    "status": "隔离联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/developer/Workflows.vue",
+      "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
+    ],
+    "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+  },
+  "POST /api/v1/developer/workflows/{workflow_id}/run": {
+    "status": "隔离联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/developer/Workflows.vue",
+      "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
+    ],
+    "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+  },
+  "GET /api/v1/developer/workflows/{workflow_id}/runs": {
+    "status": "隔离联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/developer/Workflows.vue",
+      "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
+    ],
+    "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+  },
+  "POST /api/v1/developer/workflows/{workflow_id}/unpublish": {
+    "status": "隔离联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/developer/Workflows.vue",
+      "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
+    ],
+    "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+  }
+}

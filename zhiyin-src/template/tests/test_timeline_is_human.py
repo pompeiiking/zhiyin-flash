@@ -125,7 +125,7 @@ def test_charts_coming_from_the_model_are_validated_too() -> None:
 
 
 APPLICATION = TEMPLATE_ROOT / "zhiyin-api" / "zhiyin_api" / "facade" / "application.py"
-REVIEW_OVERLAY = TEMPLATE_ROOT.parents[1] / "redesign-demo" / "src" / "views" / "ReflectionView.vue"
+REVIEW_OVERLAY = TEMPLATE_ROOT.parents[1] / "zhiyin-src/template/zhiyin-web" / "src" / "views" / "ReflectionView.vue"
 
 
 def test_every_frontend_event_says_whether_it_belongs_on_the_timeline() -> None:

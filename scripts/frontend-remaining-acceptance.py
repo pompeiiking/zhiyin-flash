@@ -46,7 +46,7 @@ async def main():
     only = sys.argv[1] if len(sys.argv) > 1 else ""
     if only:
         report = json.loads(
-            Path("/results/remaining-acceptance-results.json").read_text()
+            Path("/results/剩余接口验收结果.json").read_text()
         )
         report["at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
     clients = {}
@@ -603,7 +603,7 @@ async def main():
                 case["positive"] and case["passed"] for case in entry["cases"]
             )
         report["limitations"] = list(dict.fromkeys(report["limitations"]))
-        Path("/results/remaining-acceptance-results.json").write_text(
+        Path("/results/剩余接口验收结果.json").write_text(
             json.dumps(report, ensure_ascii=False, indent=2) + "\n"
         )
     assert all(s["passed"] for s in report["scenarios"].values()), (
