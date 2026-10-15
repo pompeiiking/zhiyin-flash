@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import TaskProgressMap from '../components/TaskProgressMap.vue'
 import DetailPopover from '../components/DetailPopover.vue'
 import { computed, ref } from 'vue'
 import { demo } from '../store'
@@ -17,19 +18,22 @@ import SourceChip from '../components/SourceChip.vue'
 import UiIcon from '../components/UiIcon.vue'
 import InfoSheet from '../components/InfoSheet.vue'
 import { taskOriginLabel } from '../lib/presentation'
-import PanelTabs from '../components/PanelTabs.vue'
+import ResultPager from '../components/ResultPager.vue'
+import { usePagedItems } from '../lib/paged-items'
 import { DEMO_PHASE_TASK_IDS } from '../data/phase-tasks'
 import { PROFILE_FIELDS, REPORT_SECTIONS } from '../data/student'
 import type { ProfileSource } from '../api/backend-types'
 
 const smallest = computed(() => demo.use.smallestNow.value)
-const group = ref('now')
+const actionBasisOpen=ref(false)
+const queueOpen=ref(false), queueQuery=ref('')
 const groups = computed(() => [
   { key: 'now', label: '其他待执行', items: demo.use.now.value.filter(t => t.id !== smallest.value?.id) },
   { key: 'waiting', label: '等待中', items: demo.use.waiting.value },
   { key: 'done', label: '已完成', items: demo.use.done.value },
 ])
-const active = computed(() => groups.value.find((g) => g.key === group.value)!)
+const queue=computed(()=>groups.value.flatMap(g=>g.items).filter(t=>t.title.includes(queueQuery.value.trim())))
+const {page:queuePage,paged:queueRows}=usePagedItems(queue,5)
 const lastDone = computed(() => demo.use.done.value.find((t) => t.id === demo.state.lastDoneId))
 /* 执行记录那一段原本只有一句分母文案（"已完成 N 件任务…"）—— 换成 StatTile，
    读数和进度条一起长出来（MIGRATION §3.3 T8）。与 /plan 的"当前安排"是同一形状。 */
@@ -42,7 +46,7 @@ const error = ref('')
 function add() {
   if (!title.value.trim()) { error.value = '先写下你准备做什么。'; return }
   demo.planChatTask(title.value.trim(), minutes.value)
-  title.value = ''; error.value = ''; addOpen.value = false; group.value = 'now'
+  title.value = ''; error.value = ''; addOpen.value = false
 }
 
 /* =============================================================================
@@ -158,15 +162,15 @@ const academicAt = computed(() => backendDemo.state.academic?.imported_at ?? nul
     <AssetNotice/><LiveActionPlan v-if="backendDemo.state.dataMode === 'service' || backendDemo.state.liveAction" today/><template v-if="!backendDemo.state.liveAction">
     <section v-if="lastDone" :key="lastDone.id" class="journey-complete" role="status">
       <span class="journey-complete__mark"><UiIcon name="check" :size="24" /></span>
-      <div><h2>又完成了一步</h2><p>{{ lastDone.title }}</p></div>
+      <div><h2>已完成</h2><p>{{ lastDone.title }}</p></div>
       <button class="ws-text-button" @click="demo.reopenTask(lastDone.id)">恢复任务</button>
     </section>
     <div class="journey-action-grid">
       <div class="journey-action-main">
-    <section v-if="smallest" class="c2-today-task"><header class="c2-today-task-head"><h2>当前优先任务</h2><span>今天 1 件</span></header><p class="c2-today-task-note">完成后可继续下一项任务。</p><div class="journey-focus">
+    <section v-if="smallest" class="c2-today-task"><header class="c2-today-task-head"><h2>当前优先任务</h2><span>今天 1 件</span></header><div class="journey-focus">
       <div class="journey-focus__copy">
-        <div class="c2-today-task-sources"><SourceChip :label="taskOriginLabel(smallest.origin)" kind="citation" /><span class="tag">{{ smallest.minutes }} 分钟 · 今天</span></div><h2>{{ smallest.title }}</h2><DetailPopover title="任务依据与关联计划" label="查看任务依据与关联计划"><template #trigger>为什么建议这项任务<UiIcon name="info" :size="16" /></template><div class="c2-today-task-why"><h3>为什么是现在</h3><p>{{ smallest.why }}</p></div><div class="c2-today-task-evidence"><h3>它连着哪条差距</h3><RouterLink to="/report"><strong>呈现能力</strong><span>示例 46 / 要求 50，差 4 分</span><small>看报告里这条 →</small></RouterLink><RouterLink v-if="focusMilestone" to="/plan"><strong>实践证据</strong><span>{{ focusMilestone.title }}</span><small>看它挂在哪个里程碑 →</small></RouterLink></div></DetailPopover>
-        <div class="journey-focus__meta"><span><UiIcon name="review" :size="17" />约 {{ smallest.minutes }} 分钟</span><span><UiIcon name="action" :size="17" />{{ taskOriginLabel(smallest.origin) }}</span><span v-if="smallest.due"><UiIcon name="calendar" :size="17" />{{ smallest.due }}</span></div>
+        <div class="c2-today-task-sources"><SourceChip :label="taskOriginLabel(smallest.origin)" kind="citation" /><span class="tag">{{ smallest.minutes }} 分钟 · 今天</span></div><h2>{{ smallest.title }}</h2><DetailPopover title="任务依据与关联计划" label="查看任务依据与关联计划"><template #trigger>为什么建议这项任务<UiIcon name="info" :size="16" /></template><div class="c2-today-task-why"><h3>为什么是现在</h3><p>{{ smallest.why }}</p></div><div class="c2-today-task-evidence"><h3>它连着哪条差距</h3><RouterLink to="/report"><strong>呈现能力</strong><span>本版 46 / 要求 50，差 4 分</span><small>看报告里这条 →</small></RouterLink><RouterLink v-if="focusMilestone" to="/plan"><strong>实践证据</strong><span>{{ focusMilestone.title }}</span><small>看它挂在哪个里程碑 →</small></RouterLink></div></DetailPopover>
+
         <div class="journey-focus__actions"><RouterLink class="btn" to="/chat">咨询此任务<UiIcon name="chat" :size="16"/></RouterLink><button class="btn" @click="demo.completeTask(smallest.id)">标记完成<UiIcon name="check" :size="18" /></button><button v-if="smallest.minutes > 5" class="ws-text-button" @click="demo.shrinkTask(smallest.id)">先拆成 5 分钟</button><RouterLink v-else class="ws-text-link" to="/chat">需要调整，和顾问聊聊<UiIcon name="arrow" :size="16" /></RouterLink></div>
       </div>
     </div></section>
@@ -179,16 +183,16 @@ const academicAt = computed(() => backendDemo.state.academic?.imported_at ?? nul
              那句 14px/400 的元数据标签，静图丢掉"走到哪了"。 -->
         <section class="hm-live" aria-labelledby="hmLiveT">
           <div class="hm-live__head"><h2 id="hmLiveT">任务完成情况</h2><span class="hm-live__n">{{ lineDone }} / {{ lineTotal }}</span></div>
-          <p class="hm-live__t">已经做完 <b>{{ lineDone }} 件</b>，待执行任务预计 <b>{{ remainingMinutes }} 分钟</b>。<template v-if="smallest">下一件：<b>{{ smallest.title }}</b>。</template><template v-else>今天没有待执行的任务了。</template></p>
+<p class="hm-live__t">已完成 {{ lineDone }} / {{ lineTotal }} 件 · 待执行约 {{ remainingMinutes }} 分钟</p>
           <SegMeter v-if="lineTotal" :total="lineTotal" :lit="lineDone" :label="`这一批 ${lineTotal} 件里已完成 ${lineDone} 件`" />
-          <p class="hm-live__note">完成任务后自动更新，等待结果的事项不计入预计用时。</p>
+          
         </section>
         <section class="ws-paper journey-task-list">
           <div class="ws-section-head"><h2>执行队列</h2><span class="ws-muted">按状态查看</span></div>
-          <PanelTabs v-model="group" label="任务分组" :items="groups.map(g => ({ key: g.key, label: g.label, count: g.items.length }))"><TaskList :items="active.items.filter(t => group !== 'now' || t.id !== smallest?.id)" :mode="group" /></PanelTabs>
+<TaskList :items="groups[0]!.items.slice(0,3)" mode="now"/><button class="ws-text-button" @click="queueOpen=true">查看全部任务（{{ groups.reduce((n,g)=>n+g.items.length,0) }}）<UiIcon name="arrow" :size="16"/></button><InfoSheet :open="queueOpen" shape="panel" title="全部行动任务" @close="queueOpen=false"><label class="information-search">查找任务<input v-model="queueQuery" type="search" placeholder="输入任务关键词…"/></label><section v-for="g in groups" :key="g.key"><h3 v-if="queueRows.some(t=>g.items.some(item=>item.id===t.id))">{{ g.label }}</h3><TaskList v-if="queueRows.some(t=>g.items.some(item=>item.id===t.id))" :items="queueRows.filter(t=>g.items.some(item=>item.id===t.id))" :mode="g.key"/></section><p v-if="!queueRows.length" class="ws-muted">没有匹配的任务。</p><ResultPager v-model:page="queuePage" :total="queue.length" :size="5" label="行动任务"/></InfoSheet>
         </section>
       </div>
-      <aside class="journey-action-aside ws-related-block">
+      <aside class="journey-action-aside today-visual-rail"><TaskProgressMap :tasks="demo.state.tasks" @inspect="id=>{queueQuery=demo.state.tasks.find(task=>task.id===id)?.title ?? '';queueOpen=true}"/><section class="today-time-brief"><h2>今天的安排</h2><strong>{{ nowTasks.length }} 件待执行</strong><p>预计需要 {{ remainingMinutes }} 分钟</p><button class="ws-text-button" @click="actionBasisOpen=true">任务与时间依据<UiIcon name="info" :size="16"/></button></section></aside><InfoSheet :open="actionBasisOpen" shape="panel" title="任务与时间依据" @close="actionBasisOpen=false">
 
         <!-- G-01：右栏第一块。靶子 `.hm-side__n b` 实测 36×52、**30px/700**、文本"65"；
              这里印的是 `remainingMinutes`（正在做的任务的分钟合计），它会随勾选重算。 -->
@@ -224,7 +228,7 @@ const academicAt = computed(() => backendDemo.state.academic?.imported_at ?? nul
 
         <section><h2>执行记录</h2><StatTile v-if="lastDone" label="已完成" :value="doneCount" :denominator="totalCount" :trend="{ label: '可在完成记录中查看' }"/><p v-else>完成任务后，将在此显示最近的执行记录。</p><RouterLink class="ws-text-link" to="/review">查看复盘记录<UiIcon name="arrow" :size="16" /></RouterLink></section>
         <section><p>执行遇到困难时，可通过咨询调整任务或方案。</p><RouterLink class="ws-text-link" to="/chat">回到对话<UiIcon name="arrow" :size="16" /></RouterLink></section>
-      </aside>
+      </InfoSheet>
     </div>
     <div v-if="!demo.state.guidesClosed.home" class="ws-guide"><UiIcon name="info" :size="18" /><p>优先完成当前建议任务。其他任务可按状态查看，完成后支持恢复。</p><button @click="demo.closeGuide('home')">收起</button></div>
 

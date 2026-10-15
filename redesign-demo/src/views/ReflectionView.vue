@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { demo } from '../store'
 import { INTERVENTION, REVIEW_ITEMS } from '../data/student'
 import type { ReviewItem } from '../data/types'
@@ -9,7 +9,10 @@ import AchievementsSection from '../components/AchievementsSection.vue'
 import { useRoute } from 'vue-router'
 import { attributionLabel } from '../lib/presentation'
 import { consultantLabel } from '../lib/consultant'
-import PanelTabs from '../components/PanelTabs.vue'
+import DetailPopover from '../components/DetailPopover.vue'
+import InfoSheet from '../components/InfoSheet.vue'
+import ResultPager from '../components/ResultPager.vue'
+import { usePagedItems } from '../lib/paged-items'
 import Foldable from '../components/Foldable.vue'
 import EmptyState from '../components/EmptyState.vue'
 import StatTile from '../components/StatTile.vue'
@@ -22,11 +25,11 @@ const items = computed<ReviewItem[]>(() => [
   ...(demo.state.account === 'fresh' ? [] : REVIEW_ITEMS),
 ])
 const completed = computed(() => items.value.filter((r) => r.result === 'done'))
-const weekDetail = ref('summary')
 const partial = computed(() => items.value.filter((r) => r.result === 'partial'))
 const missed = computed(() => items.value.find((r) => r.result === 'missed') ?? null)
 const choices = ['任务太大', '方法不对', '方向要重估', '其他', '尚不确定'] as const
 const reviewNote = ref(''), noteStatus = ref('')
+const recordDetails = ref<ReviewItem | null>(null)
 watch(() => missed.value?.id, id => { reviewNote.value = id ? demo.state.reviewNotes[id] ?? '' : ''; noteStatus.value = '' }, { immediate: true })
 function saveNote() { if (missed.value) { demo.setReviewNote(missed.value.id, reviewNote.value); noteStatus.value = '说明已保存在这条复盘记录中。' } }
 const choice = computed(() => missed.value ? demo.state.reviewAttributions[missed.value.id] ?? '' : '')
@@ -56,134 +59,18 @@ function nextStep() {
  * 控件用 PanelTabs（reka-ui）：role=tablist / role=tab / aria-selected / 方向键内建，
  * 44px 触控高度由全局 .exp-tabs__trigger 保证。
  * ==========================================================================*/
-const REVIEW_VIEWS = [
-  { key: 'source', label: '按来源' },
-  { key: 'time', label: '按时间看' },
-  { key: 'topic', label: '按主题' },
-  { key: 'weight', label: '按对结论的贡献' },
-  { key: 'result', label: '按结果看' },
-  { key: 'reason', label: '按原因看' },
-]
-/* 与 AssessmentView 同理：PanelTabs 的 v-model 走 string，不写联合类型 */
-const reviewView = ref('source')
-
-/* ============================================================================
- * 打印必须按【默认轴】= 按时间看 —— 与 /report 同一条口径、同一套实现
- * ---------------------------------------------------------------------------
- * 【病灶】实测（`emulateMedia({media:'print'})`）：屏幕上切到「按原因看」再打印，
- * 打印稿的分组头是「任务负担过高 / 执行方法需调整 / 还没选原因」。
- * 打印稿的读者看不到 tab 条（`@media print` 里 `.exp-tabs__scroll { display:none }`，
- * experience.css:161），他读到的分组却取决于打印的人当时点了哪个视角 ——
- * 同一页记录，两个人印出来不一样，而纸上没有任何说明。
- *
- * 【口径】打印稿 = 这页默认长什么样：/review 默认「按时间看」，
- * 也就是一条从近到远的完整时间线（加看角之前的那一版）。
- *
- * 【实现】`matchMedia('print')` 为主（真实打印、刷新后接着打印、
- * `emulateMedia({media:'print'})` 三条路径都会翻），beforeprint/afterprint 为真机保险。
- * 实测坑：Playwright 的 emulateMedia **不派发** beforeprint/afterprint，
- * 只监听那一对事件的实现在这条尺子下会静默失效。
- * `reviewView`（用户的屏幕选择）一个字节都不动 —— 打印不许打乱屏幕状态。
- * ==========================================================================*/
-const printMedia = ref(false)
-let printQuery: MediaQueryList | null = null
-function onPrintMediaChange(event: MediaQueryListEvent) { printMedia.value = event.matches }
-function onBeforePrintMedia() { printMedia.value = true }
-function onAfterPrintMedia() { printMedia.value = false }
-onMounted(() => {
-  if (typeof window.matchMedia !== 'function') return
-  printQuery = window.matchMedia('print')
-  printMedia.value = printQuery.matches
-  printQuery.addEventListener('change', onPrintMediaChange)
-  window.addEventListener('beforeprint', onBeforePrintMedia)
-  window.addEventListener('afterprint', onAfterPrintMedia)
-})
-onBeforeUnmount(() => {
-  printQuery?.removeEventListener('change', onPrintMediaChange)
-  window.removeEventListener('beforeprint', onBeforePrintMedia)
-  window.removeEventListener('afterprint', onAfterPrintMedia)
-  printQuery = null
-})
-/** 这一页的默认轴：打印与"还没选过"都按它 */
-const DEFAULT_REVIEW_VIEW = 'source'
-/** 实际用于**渲染**的轴：打印时是默认轴，屏幕上是用户点的那个 */
-const printAxis = computed(() => (printMedia.value ? DEFAULT_REVIEW_VIEW : reviewView.value))
-
-/** 每条记录**当下**的归因：页面上改过的（reviewAttributions）优先于预置值 */
-function reasonOf(id: string): string {
-  return demo.state.reviewAttributions[id] ?? items.value.find((r) => r.id === id)?.attribution ?? ''
-}
-
-const RESULT_BUCKETS = [
-  { key: 'done', title: '已完成', note: '这些已经发生，可以作为下一次的参照。' },
-  { key: 'partial', title: '部分完成', note: '做了一部分 —— 记录里写着卡在哪一步。' },
-  { key: 'missed', title: '暂未完成', note: '没做完的记录。原因可以在左栏选定。' },
-]
-
-/** 原因轴：前五档与左栏归因选项逐字同序，最后是"还没选原因"。 */
-const REASON_BUCKETS = [
-  { key: '任务太大', title: '任务负担过高', note: null },
-  { key: '方法不对', title: '执行方法需调整', note: null },
-  { key: '方向要重估', title: '方向需重新评估', note: null },
-  { key: '其他', title: '其他原因', note: null },
-  { key: '尚不确定', title: '还没弄清楚', note: null },
-  { key: '', title: '还没选原因', note: '这些记录还没有归因；选定原因之后，它会移到对应的组里。' },
-]
-
-interface ReviewGroup { key: string; title: string; note: string | null; items: ReviewItem[] }
-const recordPool = computed<ReviewItem[]>(() => [...items.value,...growthRecords.value.filter(r=>r.done).map(r=>({id:'growth-'+r.id,when:r.at?.slice(0,10)??'时间未提供',what:r.title,result:'done' as const}))])
-
-const reviewGroups = computed<ReviewGroup[]>(() => {
-  const all = recordPool.value
-  if (printAxis.value === 'source') return [
-    {key:'live',title:'本次执行留下的记录',note:'本次完成的任务。',items:all.filter(r=>r.id.startsWith('done-'))},
-    {key:'sample',title:'预置复盘记录',note:'这份演示样张的原始复盘。',items:all.filter(r=>!r.id.startsWith('done-')&&!r.id.startsWith('growth-'))},
-    {key:'growth',title:'成长与核验记录',note:'与周活动读数分别保留，避免重复计数。',items:all.filter(r=>r.id.startsWith('growth-'))},
-  ].filter(group=>group.items.length)
-  if (printAxis.value === 'time') return [...new Set(all.map(r=>r.when))].map(when=>({key:when,title:when,note:null,items:all.filter(r=>r.when===when)}))
-  if (printAxis.value === 'topic') {
-    const topicOf=(r:ReviewItem)=>r.id.startsWith('growth-')?growthRecords.value.find(g=>'growth-'+g.id===r.id)?.topic??'回头看':/简历|项目|材料/.test(r.what)?'材料与经历':/投|岗位|面试/.test(r.what)?'岗位与申请':'安排与探索'
-    return [...new Set(all.map(topicOf))].map(title=>({key:title,title,note:null,items:all.filter(r=>topicOf(r)===title)}))
-  }
-  if (printAxis.value === 'weight') return [
-    {key:'activity',title:'支撑这一周动手的判断',note:'摘要只计算执行记录，成长依据另列。',items:all.filter(r=>!r.id.startsWith('growth-')&&r.result!=='missed')},
-    {key:'obstacle',title:'解释没有完成的那一次',note:'归因仍在具体任务上，不归到人。',items:all.filter(r=>r.result==='missed')},
-    {key:'growth',title:'确认已经发生过的成长',note:'这些确认记录不重复计入本周动手次数。',items:all.filter(r=>r.id.startsWith('growth-'))},
-  ].filter(group=>group.items.length)
-  if (printAxis.value === 'result') {
-    return RESULT_BUCKETS
-      .map((b) => ({ key: b.key, title: b.title, note: b.note, items: all.filter((r) => r.result === b.key) }))
-      .filter((g) => g.items.length > 0)
-  }
-  if (printAxis.value === 'reason') {
-    return REASON_BUCKETS
-      .map((b) => ({ key: b.key || 'none', title: b.title, note: b.note, items: all.filter((r) => reasonOf(r.id) === b.key) }))
-      .filter((g) => g.items.length > 0)
-  }
-  return [{ key: 'all', title: '全部记录', note: null, items: all }]
-})
-
-/* 说明句跟着**渲染出来的那条轴**：打印时屏幕上那句话也换成默认轴的说法，
-   否则"按原因看"的说明会留在纸上，与下面的分组自相矛盾。 */
-const reviewAxisNote = computed(() => {
-  if (printAxis.value === 'source') return `按来源重新分组：${recordPool.value.length} 条执行与成长记录；周活动只计算执行事实。`
-  if (printAxis.value === 'topic') return `按正在说明的事情重新分组：同一批 ${recordPool.value.length} 条记录，内容没有更换。`
-  if (printAxis.value === 'weight') return '把支撑动手、解释阻碍和确认成长的依据分别组织，避免重复计数。'
-  const n = items.value.length
-  const groups = reviewGroups.value.length
-  if (printAxis.value === 'result') return `按完成结果重新分组：${groups} 组 · 共 ${n} 条；条目从时间线上搬进对应的组。`
-  if (printAxis.value === 'reason') return `按你选的原因重新分组：${groups} 组 · 共 ${n} 条；还没归因的单独成组。`
-  return `按发生时间从近到远排：共 ${n} 条。切换到「按结果看」或「按原因看」，同一批记录会被重新分组。`
-})
+const reviewQuery=ref('')
+const recordPool=computed<ReviewItem[]>(()=>[...items.value,...growthRecords.value.filter(r=>r.done).map(r=>({id:'growth-'+r.id,when:r.at?.slice(0,10)??'时间未提供',what:r.title,result:'done' as const}))])
+const filteredRecords=computed(()=>recordPool.value.filter(r=>(r.what+' '+r.when+' '+(demo.state.reviewNotes[r.id]??'')).includes(reviewQuery.value.trim())))
+const {page:reviewPage,paged:reviewRows}=usePagedItems(filteredRecords,4)
 </script>
 <template>
   <div class="ws-page review-page">
     <PageHeading title="复盘与记录" :description="achievementView ? '记录已完成的关键行动，展示阶段成果。' : demo.use.scenario.value.grade + ' · ' + demo.use.scenario.value.reviewFocus"><RouterLink class="btn" to="/home">回到今日行动<UiIcon name="arrow" :size="16" /></RouterLink></PageHeading>
-    <nav class="desk-section-nav" aria-label="复盘视图"><RouterLink to="/review" :aria-current="!achievementView ? 'page' : undefined">推进与复盘</RouterLink><RouterLink to="/review?view=achievements" :aria-current="achievementView ? 'page' : undefined">完成记录</RouterLink></nav>
+
     <AchievementsSection v-if="achievementView" />
     <template v-else>
-<section class="c2-review-week"><h2>行动概况</h2><p>汇总当前记录中的完成情况，未完成的事项保留原因。</p><div class="c2-review-zoom" role="group" aria-label="行动概况的阅读粒度"><button v-for="entry in [{key:'summary',label:'摘要'},{key:'detail',label:'细节'},{key:'raw',label:'原始记录'}]" :key="entry.key" :aria-pressed="weekDetail === entry.key" @click="weekDetail = entry.key">{{ entry.label }}</button></div><p v-if="weekDetail === 'summary'"><strong>{{ completed.length + partial.length }} 项已有进展</strong>，这批共有 {{ items.length }} 条记录。没做完的那一件，从任务、方法或方向上核对原因。</p><p v-else-if="weekDetail === 'detail'">{{ completed.length }} 次已经完成，{{ partial.length }} 次做了一部分，{{ items.filter(r=>r.result==='missed').length }} 次还没有完成。<template v-if="missed">当前待复盘的是「{{ missed.what }}」，记录的原因是 {{ attributionLabel(demo.state.reviewAttributions[missed.id] ?? missed.attribution ?? '尚不确定') }}。</template></p><ul v-else><li v-for="item in items" :key="item.id"><time>{{ item.when }}</time> · {{ item.what }} · {{ labels[item.result] }}</li></ul>    <div class="ws-stat-row review-summary"><StatTile :value="completed.length" unit="件" label="已完成" /><StatTile :value="partial.length" unit="件" label="部分完成" /><StatTile :value="items.filter((r) => r.result === 'missed').length" unit="件" label="待复盘" /></div></section>
-    <section class="ws-paper ws-section"><div class="ws-section-head"><div><h2>这 {{ recordPool.length }} 条记录，按什么看</h2><p>只记录事实与时间；同一批记录可以按时间、结果或原因重新分组。完成状态可以在今日任务里恢复。</p></div></div><PanelTabs v-model="reviewView" label="执行记录的视角" :items="REVIEW_VIEWS"><p class="review-views__note">{{ reviewAxisNote }}</p><template v-if="items.length"><section v-for="g in reviewGroups" :key="g.key" class="review-group"><h3 class="review-group__head">{{ g.title }}<span class="review-group__count">{{ g.items.length }} 条</span></h3><p v-if="g.note" class="review-group__note">{{ g.note }}</p><ol class="ws-timeline"><li v-for="r in g.items" :key="r.id"><time>{{ r.when }}</time><div class="ws-timeline__content">{{ r.what }}<small v-if="demo.state.reviewAttributions[r.id] ?? r.attribution">原因：{{ attributionLabel(demo.state.reviewAttributions[r.id] ?? r.attribution) }}</small><p v-if="demo.state.reviewNotes[r.id]" class="review-note">{{ demo.state.reviewNotes[r.id] }}</p></div><span class="ws-timeline__state">{{ labels[r.result] }}</span></li></ol></section></template><p v-else class="ws-muted">完成一件事，就会留下第一条记录。</p></PanelTabs></section>
+<section class="c2-review-week"><h2>行动概况</h2><p><strong>{{ completed.length + partial.length }} 项已有进展</strong>，共有 {{ items.length }} 条执行记录。</p><DetailPopover title="行动概况说明" label="查看行动概况说明"><p>{{ completed.length }} 次已完成，{{ partial.length }} 次部分完成，{{ items.filter(r=>r.result==='missed').length }} 次待复盘。</p></DetailPopover><div class="ws-stat-row review-summary"><StatTile :value="completed.length" unit="件" label="已完成" /><StatTile :value="partial.length" unit="件" label="部分完成" /><StatTile :value="items.filter((r) => r.result === 'missed').length" unit="件" label="待复盘" /></div></section>
     <div class="ws-two-columns">
       <section class="ws-paper">
         <template v-if="missed"><h2 class="ws-section-title">未完成任务分析</h2><p style="margin-top: var(--sp-4)">待复盘任务：「{{ missed.what }}」。</p><p class="ws-muted" style="margin-top: var(--sp-2)">请选择影响执行的主要原因，查看调整建议。</p><fieldset class="ws-attributions review-choices"><legend class="sr-only">复盘归因</legend><label v-for="a in choices" :key="a" :class="{'review-choice--on': choice === a}"><input type="radio" name="review-reason" :checked="choice === a" @change="demo.setReviewAttribution(missed.id, a)" />{{ attributionLabel(a) }}</label></fieldset><form class="ws-section" @submit.prevent="saveNote"><label class="ws-field">补充实际情况<textarea v-model="reviewNote" maxlength="500" rows="3" placeholder="发生了什么、试过什么，或者还不确定的原因…"/></label><button class="btn" type="submit">保存复盘说明</button></form><StatusBanner v-if="noteStatus" tone="success" class="ws-section" :message="noteStatus" @dismiss="noteStatus = ''" /><p v-if="!choice" class="ws-muted ws-section">还没有确认原因。也可以先和顾问讨论，再决定怎样调整。</p><div v-if="choice" class="ws-review-result" aria-live="polite"><p>{{ explanation }}</p><div class="ws-inline-actions"><RouterLink v-if="choice === '方向要重估'" class="btn btn--primary" to="/directions">重新比较方向<UiIcon name="arrow" :size="16" /></RouterLink><button v-else-if="choice==='任务太大'||choice==='方法不对'" class="btn btn--primary" @click="nextStep">添加调整任务<UiIcon name="arrow" :size="16" /></button><RouterLink class="ws-text-link" :to="'/chat?question='+encodeURIComponent('我想复盘：'+missed.what+'。'+reviewNote)">咨询调整方案</RouterLink></div></div></template>
@@ -196,9 +83,11 @@ const reviewAxisNote = computed(() => {
       </div>
     </div>
 
+<section class="ws-section review-records"><div class="ws-section-head"><h2>执行与成长记录</h2><RouterLink class="ws-text-link" to="/achievements">查看成长记录<UiIcon name="arrow" :size="16"/></RouterLink></div><label class="information-search">查找记录<input v-model="reviewQuery" type="search" placeholder="输入任务、日期或复盘关键词…"/></label><ol v-if="reviewRows.length" class="ws-timeline"><li v-for="r in reviewRows" :key="r.id"><time>{{ r.when }}</time><div class="ws-timeline__content"><button class="review-record-title" @click="recordDetails=r">{{ r.what }}</button><small v-if="demo.state.reviewAttributions[r.id] ?? r.attribution">原因：{{ attributionLabel(demo.state.reviewAttributions[r.id] ?? r.attribution) }}</small><p v-if="demo.state.reviewNotes[r.id]">{{ demo.state.reviewNotes[r.id] }}</p></div><span class="ws-timeline__state">{{ labels[r.result] }}</span></li></ol><p v-else class="ws-muted">{{ reviewQuery ? '没有匹配的记录，请更换关键词。' : '完成一件事后，会在这里留下记录。' }}</p><ResultPager v-model:page="reviewPage" :total="filteredRecords.length" :size="4" label="复盘记录"/></section>
     <div v-if="!demo.state.guidesClosed.review" class="ws-guide"><UiIcon name="info" :size="18" /><p>复盘结合执行记录分析原因，并提供相应的调整建议。</p><button @click="demo.closeGuide('review')">收起</button></div>
 
     </template>
+    <InfoSheet :open="recordDetails!==null" shape="sheet" title="执行记录" @close="recordDetails=null"><template v-if="recordDetails"><h3>{{ recordDetails.what }}</h3><p class="ws-muted ws-section">{{ recordDetails.when }} · {{ labels[recordDetails.result] }}</p><p v-if="demo.state.reviewAttributions[recordDetails.id] ?? recordDetails.attribution" class="ws-section">原因：{{ attributionLabel(demo.state.reviewAttributions[recordDetails.id] ?? recordDetails.attribution) }}</p><p v-if="demo.state.reviewNotes[recordDetails.id]" class="ws-section">{{ demo.state.reviewNotes[recordDetails.id] }}</p><RouterLink class="btn ws-section" to="/home" @click="recordDetails=null">查看行动任务<UiIcon name="arrow" :size="16"/></RouterLink></template></InfoSheet>
   </div>
 </template>
 

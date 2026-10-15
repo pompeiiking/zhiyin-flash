@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import ResultPager from '../components/ResultPager.vue'
+import { usePagedItems } from '../lib/paged-items'
 import DetailPopover from '../components/DetailPopover.vue'
 import { computed, ref } from 'vue'
 import { backendDemo } from '../lib/backend-demo'
@@ -8,7 +10,6 @@ import InfoSheet from '../components/InfoSheet.vue'
 import { parseAcademicTable } from '../lib/academic-parser'
 import AcademicVerification from '../components/AcademicVerification.vue'
 import { backendClient } from '../api/backend-client'
-import PanelTabs from '../components/PanelTabs.vue'
 import UiIcon from '../components/UiIcon.vue'
 import Foldable from '../components/Foldable.vue'
 import SkeletonBlock from '../components/SkeletonBlock.vue'
@@ -19,7 +20,11 @@ import StatusBanner from '../components/StatusBanner.vue'
 import type { ProfileSource } from '../api/backend-types'
 import { hasCourseTime, courseTimeLabel } from '../lib/academic'
 const academic = computed(() => backendDemo.state.academic)
-const tab = ref('overview')
+const academicQuery=ref(''), recordsOpen=ref(false)
+const courseRows=computed(()=>academic.value?.courses?.filter(c=>c.name.includes(academicQuery.value.trim()))??[])
+const gradeRows=computed(()=>academic.value?.grades?.filter(g=>g.name.includes(academicQuery.value.trim()))??[])
+const {page:coursePage,paged:pagedCourses}=usePagedItems(courseRows)
+const {page:gradePage,paged:pagedGrades}=usePagedItems(gradeRows)
 const importOpen = ref(false)
 const verifyOpen = ref(false)
 const importMode = ref<'text'|'file'|'table'>('table')
@@ -119,20 +124,19 @@ async function revoke() {if(saving.value)return;if(backendDemo.state.academicOri
         <DetailPopover class="academic-provenance" title="资料来源与使用范围" label="查看资料来源与使用范围"><template #trigger>资料来源与使用范围<UiIcon name="info" :size="16" /></template><p>学校档案、课程成绩和本人补充分别保留来源。每条资料能核对什么、还缺什么，在同一张表里查看。</p><table><thead><tr><th scope="col">来源</th><th scope="col">能核对什么</th><th scope="col">还需要什么</th></tr></thead><tbody><tr><th scope="row">学信网</th><td>学校、专业、年级与在读状态</td><td>本人提供在线验证码，再核对学籍</td></tr><tr><th scope="row">课程与成绩</th><td>{{ academic?.courses?.length ?? 0 }} 门课程、{{ academic?.grades?.length ?? 0 }} 条成绩快照</td><td>{{ Math.max(0,(academic?.courses?.length ?? 0)-scheduled) }} 门课的时间待补充；空课格不等于空闲</td></tr><tr><th scope="row">学校（按需开证明）</th><td>在学证明、成绩单盖章版；需要向学校申请</td><td>实习单位评价需由实习单位出具，学校这边取不到</td></tr><tr><th scope="row">本人上传</th><td>已有的课表、成绩与经历资料</td><td>确认导入后才替换快照；保留本人来源</td></tr></tbody></table></DetailPopover>
         <div class="ws-section-head"><div><h2>{{ academic ? academic.school : '暂无学校资料' }}</h2><p>{{ academic ? academic.term : '导入课程与成绩，为时间安排和个人画像提供依据。' }}</p></div><UiIcon name="academic" :size="32" /></div>
         <p v-if="status" class="desk-status" role="status">{{ status }}</p>
-        <PanelTabs v-model="tab" label="学校资料视图" :items="[{key: 'overview', label: '资料概况'}, {key: 'courses', label: '课程表'}, {key: 'grades', label: '成绩记录'}]">
         <template v-if="academic">
           <div class="academic-refresh" :aria-busy="refreshingSample">
             <SkeletonBlock v-if="refreshingSample" class="academic-refresh__sk" variant="list" :lines="3" />
             <p v-if="refreshingSample" class="sr-only" role="status">正在读取已保存的学校资料，当前快照保留。</p>
-            <dl v-if="tab === 'overview'" class="ws-facts academic-facts"><div class="academic-facts__cell"><dt>已有课程</dt><dd><StatTile :value="academic.courses?.length ?? 0" unit="门" label="已有课程" /></dd></div><div class="academic-facts__cell"><dt>可排进课表</dt><dd><StatTile :value="scheduled" unit="门" label="可排进课表" :denominator="academic.courses?.length ?? 0" :progress="academic.courses?.length ? scheduled / academic.courses.length : 0" /></dd></div><div class="academic-facts__cell"><dt>成绩记录</dt><dd><StatTile :value="academic.grades?.length ?? 0" unit="条" label="成绩记录" /></dd></div></dl>
-            <div v-if="tab === 'overview'" class="ws-inline-actions academic-source"><SourceChip :source="sourceKind" size="md" /><span class="academic-source__note">{{ sourceLabel }}<template v-if="academic.imported_at"> · 导入于 <time :datetime="academic.imported_at">{{ new Date(academic.imported_at).toLocaleDateString('zh-CN') }}</time></template> · 学籍核验：{{ backendDemo.state.chsiChecked ? '已展示核验示例' : '待核验' }}</span></div>
-            <div v-if="tab === 'courses'" class="desk-table-wrap ws-section"><table class="desk-table"><thead><tr><th>课程</th><th>上课时间</th><th>地点</th></tr></thead><tbody><tr v-for="c in academic.courses" :key="c.name + c.weekday"><td>{{ c.name }}</td><td>{{ courseTimeLabel(c) }}</td><td>{{ c.place || '未提供' }}</td></tr></tbody></table><EmptyState v-if="!academic.courses?.length" class="ws-section" kind="academic" size="sm" :heading-level="4" title="这份快照没有课程" description="可以粘贴教务表格，或读取 CSV、JSON 再导入。" /></div>
-            <div v-if="tab === 'grades'" class="desk-table-wrap ws-section"><table class="desk-table"><thead><tr><th>课程</th><th>成绩</th><th>学分</th><th>学期</th></tr></thead><tbody><tr v-for="g in academic.grades" :key="g.name + g.term"><td>{{ g.name }}</td><td>{{ g.score || '未提供' }}</td><td>{{ g.credit || '—' }}</td><td>{{ g.term || '未提供' }}</td></tr></tbody></table><EmptyState v-if="!academic.grades?.length" class="ws-section" kind="academic" size="sm" :heading-level="4" title="这份快照没有成绩" description="成绩可以随课表一起导入，等级制成绩会原样保存。" /></div>
-            <div class="ws-inline-actions"><RouterLink class="ws-text-link" to="/schedule">查看日历与课表<UiIcon name="arrow" :size="16" /></RouterLink></div>
+            <dl class="ws-facts academic-facts"><div class="academic-facts__cell"><dt>已有课程</dt><dd><StatTile :value="academic.courses?.length ?? 0" unit="门" label="已有课程" /></dd></div><div class="academic-facts__cell"><dt>可排进课表</dt><dd><StatTile :value="scheduled" unit="门" label="可排进课表" :denominator="academic.courses?.length ?? 0" :progress="academic.courses?.length ? scheduled / academic.courses.length : 0" /></dd></div><div class="academic-facts__cell"><dt>成绩记录</dt><dd><StatTile :value="academic.grades?.length ?? 0" unit="条" label="成绩记录" /></dd></div></dl>
+            <div class="ws-inline-actions academic-source"><SourceChip :source="sourceKind" size="md" /><span class="academic-source__note">{{ sourceLabel }}<template v-if="academic.imported_at"> · 导入于 <time :datetime="academic.imported_at">{{ new Date(academic.imported_at).toLocaleDateString('zh-CN') }}</time></template> · 学籍核验：{{ backendDemo.state.chsiChecked ? '已展示核验示例' : '待核验' }}</span></div>
+<section v-if="academic.courses?.length" class="academic-preview" aria-label="近期课程"><table class="desk-table"><thead><tr><th>课程</th><th>时间</th><th>地点</th></tr></thead><tbody><tr v-for="course in academic.courses.slice(0,5)" :key="course.name+course.weekday"><td>{{ course.name }}</td><td>{{ courseTimeLabel(course) }}</td><td>{{ course.place || '待补充' }}</td></tr></tbody></table></section><button class="information-entry" @click="recordsOpen=true"><span><strong>课程与成绩记录</strong><small>{{ academic.courses?.length ?? 0 }} 门课程 · {{ academic.grades?.length ?? 0 }} 条成绩，可按课程名称查找</small></span><UiIcon name="arrow" :size="18"/></button><InfoSheet :open="recordsOpen" shape="panel" title="课程与成绩记录" @close="recordsOpen=false"><label class="information-search">查找课程<input v-model="academicQuery" type="search" placeholder="输入课程名称…"/></label>            <div  class="desk-table-wrap ws-section"><h3>课程记录</h3><table class="desk-table"><thead><tr><th>课程</th><th>上课时间</th><th>地点</th></tr></thead><tbody><tr v-for="c in pagedCourses" :key="c.name + c.weekday"><td>{{ c.name }}</td><td>{{ courseTimeLabel(c) }}</td><td>{{ c.place || '未提供' }}</td></tr></tbody></table><ResultPager v-model:page="coursePage" :total="courseRows.length" label="课程记录"/><EmptyState v-if="!academic.courses?.length" class="ws-section" kind="academic" size="sm" :heading-level="4" title="这份快照没有课程" description="可以粘贴教务表格，或读取 CSV、JSON 再导入。" /></div>
+            <div  class="desk-table-wrap ws-section"><h3>成绩记录</h3><table class="desk-table"><thead><tr><th>课程</th><th>成绩</th><th>学分</th><th>学期</th></tr></thead><tbody><tr v-for="g in pagedGrades" :key="g.name + g.term"><td>{{ g.name }}</td><td>{{ g.score || '未提供' }}</td><td>{{ g.credit || '—' }}</td><td>{{ g.term || '未提供' }}</td></tr></tbody></table><ResultPager v-model:page="gradePage" :total="gradeRows.length" label="成绩记录"/><EmptyState v-if="!academic.grades?.length" class="ws-section" kind="academic" size="sm" :heading-level="4" title="这份快照没有成绩" description="成绩可以随课表一起导入，等级制成绩会原样保存。" /></div>
+<p v-if="academicQuery && !courseRows.length && !gradeRows.length" class="ws-muted">没有找到相应课程，请更换关键词。</p></InfoSheet>            <div class="ws-inline-actions"><RouterLink class="ws-text-link" to="/schedule">查看日历与课表<UiIcon name="arrow" :size="16" /></RouterLink></div>
           </div>
         </template>
         <EmptyState v-else class="ws-section" kind="academic" :heading-level="2" title="还没有学校资料" description="导入课表与成绩，核对识别结果后再确认保存。" action-label="加载课表示例" @action="loadSample" />
-        </PanelTabs>
+
       </section>
       <div class="academic-side">
         <section class="academic-side__verify">

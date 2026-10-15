@@ -12,7 +12,9 @@ import MeterRow from '../components/charts/MeterRow.vue'
 import QuadrantChart from '../components/charts/QuadrantChart.vue'
 import TrendLine from '../components/charts/TrendLine.vue'
 import { backendDemo } from '../lib/backend-demo'
-import PanelTabs from '../components/PanelTabs.vue'
+import InfoSheet from '../components/InfoSheet.vue'
+const reportBasisOpen=ref(false)
+const reportDetails=ref(false), chartDetails=ref(false), activeChapter=ref('')
 import DirectionCompare from '../components/WeightedDirectionCompare.vue'
 import FullReportBody from '../components/FullReportBody.vue'
 import DirectionDetails from '../components/LiveDirectionCompare.vue'
@@ -37,7 +39,7 @@ const reportVerdicts = [
   { key: 'supply', title: '岗位供给信息仍需核实', detail: '岗位供给来自本版统计，实际趋势仍需核对最新来源；这条不确定性会影响方向与时间取舍。', depends: ['demand', 'time'] },
   { key: 'conditions', title: '结合家庭期待与目标城市评估选择', detail: '家庭期待、城市与预算都参与同一个决定。已有信息和仍需核对的条件，不能混成一条确定结论。', depends: ['family', 'city'] },
 ]
-function chooseEvidence(key: string) { evidenceSection.value = evidenceSection.value === key ? '' : key }
+function chooseEvidence(key: string) { evidenceSection.value=key;activeChapter.value='';reportDetails.value=true }
 function evidenceHit(key: string) { return reportVerdicts.find(s => s.key === evidenceSection.value)?.depends.includes(key) ?? false }
 const candidate = ref(demo.state.selectedDirectionId ?? '')
 const fullReport = computed(() => backendDemo.state.liveReport)
@@ -100,21 +102,6 @@ const pendingDirection = computed(() => DIRECTION_PLANS.find(d => d.id === candi
  *          「这个地址不存在」）—— 这是这一步唯一必须"多拼一截"的理由。
  *      为什么先剥掉已有的第二段 `#`：连点两条 toc 时不能再叠一层。
  * ==========================================================================*/
-function jumpTo(id: string) {
-  const el = document.getElementById(id)
-  if (!el) return
-  el.scrollIntoView({
-    behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth',
-    block: 'start',
-  })
-  /* 连续点同一个条目时 fragment 没变、浏览器不会重滚 —— 上面那条 scrollIntoView 因此不是冗余。 */
-  const routeFragment = location.hash.split('#')[1] ?? '/report'
-  try {
-    history.replaceState(history.state, '', '#' + routeFragment + '#' + id)
-  } catch {
-    /* 极少数环境（file:// / 隐私模式）会拒绝 replaceState：滚动已经做了，地址栏只是加分项 */
-  }
-}
 const version = computed(() => REPORT_VERSIONS.find((v) => v.id === demo.state.reportVersion) ?? REPORT_VERSIONS[0])
 const selected = computed(() => demo.use.selectedDirection.value)
 const previous = computed(() => demo.use.previousDirection.value)
@@ -189,52 +176,6 @@ function dimensionCount(d: { evidence?: string[] }): number {
  * 控件用 PanelTabs（reka-ui）：role=tablist / role=tab / aria-selected / 左右方向键
  * 都是它内建的，44px 触控高度由全局 .exp-tabs__trigger 保证。键盘与读屏不用另写。
  * ==========================================================================*/
-const PERSPECTIVES = [
-  { key: 'source', label: '按来源' },
-  { key: 'time', label: '按时间' },
-  { key: 'section', label: '按主题' },
-  { key: 'weight', label: '按对结论的贡献' },
-  { key: 'confidence', label: '按把握看' },
-  { key: 'score', label: '按分值看' },
-]
-/* 类型不写死成联合类型：PanelTabs 的 v-model 走的是 string（它 emit 的是 String(value)），
-   写成 'section'|'confidence'|'score' 会让 vue-tsc 在模板里报"string 不能赋给它"。 */
-const perspective = ref('source')
-
-/* ============================================================================
- * 打印必须按【默认轴】—— 不是"当前轴"
- * ---------------------------------------------------------------------------
- * 【病灶】上一轮加了三个看角，但打印沿用了"屏幕上点到哪就印哪"：
- * 实测（`emulateMedia({media:'print'})`）—— 屏幕上切到「按分值看」再打印，
- * 打印稿的分组头是「需要提升（低于 55 分）/ 中间一段 / 相对有底」。
- * 这不合口径：**打印稿的读者看不到 tab 条**（`@media print` 里
- * `.exp-tabs__scroll { display:none }`，experience.css:161），他拿到的那一份
- * 取决于"打印的人当时点了哪个视角"——同一份报告，两个人印出来不一样，
- * 而纸上没有任何东西说明它为什么长这样。
- *
- * 【口径】打印稿以**这页默认长什么样**为准：/report 默认「按章节看」
- * （与加看角之前的那一版逐字一致），/review 默认「按时间看」。
- *
- * 【实现】打印态来自 `matchMedia('print')`，在三种路径下都会翻转：
- *   · 真实打印：Chromium / Firefox 在打印前让 print 媒体查询生效 → change 事件；
- *   · 刷新后仍接着打印（页面在 print 媒体下重建）：初始 `matches` 就是 true；
- *   · `emulateMedia({media:'print'})`（本轮实测证据就是这么取的）—— 见下。
- * 真机上还有 beforeprint/afterprint 这对事件，一起听：`matchMedia` 在个别老
- * WebKit 上不派发 print 的 change，而打不打得出东西是硬要求，两条路都要有。
- * 重复触发无所谓（`printMedia` 只是重复写同一个布尔）。
- *
- * 【为什么不写 JS 状态机，也不在 DOM 里同时渲染三条轴】
- *   · 不在 DOM 里并排渲染三条轴：那会给同一批维度造三份 id，
- *     与"锚点不能重复"直接冲突（见下面 toc 那段）。
- *   · 不在 beforeprint 里改 `perspective` 那个 ref：那会把**用户的屏幕选择**一起改掉，
- *     打印完退回屏幕就是另一个视角了 —— 打印不许打乱屏幕状态。
- *     所以这里只派生一个**只读**的 `printAxis`，`perspective` 一个字节都不动。
- *
- * 【实测口径的坑】Playwright 的 `emulateMedia({media:'print'})` **不派发**
- * beforeprint / afterprint（实测：change 事件到了，那两个事件一次都没有）。
- * 只监听 beforeprint 的实现在这条尺子下会静默失效 —— 所以 matchMedia 是主路径，
- * beforeprint/afterprint 只是真机上的保险。这条是量出来的，不是猜的。
- * ==========================================================================*/
 const printMedia = ref(false)
 let printQuery: MediaQueryList | null = null
 function onPrintMediaChange(event: MediaQueryListEvent) { printMedia.value = event.matches }
@@ -254,10 +195,7 @@ onUnmounted(() => {
   window.removeEventListener('afterprint', onAfterPrintMedia)
   printQuery = null
 })
-/** 这一页的默认轴：打印与"还没选过"都按它 */
-const DEFAULT_PERSPECTIVE = 'source'
-/** 实际用于**渲染**的轴：打印时是默认轴，屏幕上是用户点的那个 */
-const printAxis = computed(() => (printMedia.value ? DEFAULT_PERSPECTIVE : perspective.value))
+const printAxis = computed(() => 'section')
 
 type ReportItem = ReportDimension & { sectionKey: string; sectionTitle: string }
 
@@ -266,140 +204,33 @@ const allDimensions = computed<ReportItem[]>(() =>
   REPORT_SECTIONS.flatMap((s) => s.dimensions.map((d) => ({ ...d, sectionKey: s.key, sectionTitle: s.title }))),
 )
 
-/** 把握度三档。组名与 data/student.ts 里逐条的 `Confidence.label` 同一口径，只是这里按组归纳。 */
-const CONFIDENCE_BANDS = [
-  { key: 'high', title: '依据充分', note: '这一组的结论有三条以上可核对的依据，可以直接拿去用。' },
-  { key: 'mid', title: '待验证', note: '已有依据仍需核实：下面写清还缺什么，补上再当结论。' },
-  { key: 'low', title: '信息不足', note: '只有一条依据，先当线索看，不要当结论。' },
-] as const
+const reportGroups = computed(() => REPORT_SECTIONS.map(section => ({ key: section.key, title: section.title, note: null, items: allDimensions.value.filter(item => item.sectionKey === section.key) })))
 
-/** 分值三档。55 / 65 是这一组示例数据（46–72 分）的自然断点，不是通用阈值 —— 所以它写在这一页，不写进令牌。 */
-const SCORE_BANDS = [
-  { key: 'gap', title: '需要提升（低于 55 分）', note: '和门槛的差距主要落在这几项上。' },
-  { key: 'mid', title: '中间一段（55–65 分）', note: '已具备一定基础，仍需继续完善。' },
-  { key: 'edge', title: '相对较强（高于 65 分）', note: '这些方面是当前的相对优势。' },
-] as const
-
-function inScoreBand(score: number | undefined, band: 'gap' | 'mid' | 'edge'): boolean {
-  if (score == null) return false
-  if (band === 'gap') return score < 55
-  if (band === 'mid') return score >= 55 && score <= 65
-  return score > 65
-}
-
-interface ReportGroup {
-  key: string
-  title: string
-  /** 分组轴的解释。按章节看时是 null —— 分区的意思不需要再解释一遍。 */
-  note: string | null
-  items: ReportItem[]
-}
-
-const reportGroups = computed<ReportGroup[]>(() => {
-  const all = allDimensions.value
-  if (printAxis.value === 'source') {
-    const sourceOf = (d: ReportItem) => d.evidence?.some(e => /岗位|企业|产线/.test(e)) ? '岗位与去向资料' : d.evidence?.some(e => /简历|课表|投了|已投/.test(e)) ? '材料与行为记录' : '本人说明与对话'
-    return [...new Set(all.map(sourceOf))].map(title => ({ key: title, title, note: '按这一条原始依据的来源重组；每条仍保留完整依据。', items: all.filter(d => sourceOf(d) === title) }))
-  }
-  if (printAxis.value === 'time') {
-    const dateOf = (d: ReportItem) => d.evidence?.join(' ').match(/\d+\s*月\s*\d+\s*日/)?.[0] || '依据时间未提供'
-    return [...new Set(all.map(dateOf))].map(title => ({ key: title, title, note: '日期取自原始依据；没有日期的条目另列，不补造时间。', items: all.filter(d => dateOf(d) === title) }))
-  }
-  if (printAxis.value === 'weight') {
-    const countOf = (d: ReportItem) => reportVerdicts.filter(v => v.depends.includes(d.key)).length
-    return [1, 0].map(n => ({ key: 'weight-' + n, title: n ? '支撑页首判断' : '其他保留的判断', note: n ? '点击页首判断，可以核对这些结论的依赖关系。' : '不参与页首摘要，也仍在完整报告中保留。', items: all.filter(d => n ? countOf(d) > 0 : countOf(d) === 0) }))
-  }
-  if (printAxis.value === 'confidence') {
-    return CONFIDENCE_BANDS.map((b) => ({
-      key: b.key,
-      title: b.title,
-      note: b.note,
-      items: all.filter((d) => d.confidence.level === b.key),
-    }))
-  }
-  if (printAxis.value === 'score') {
-    return SCORE_BANDS.map((b) => ({
-      key: b.key,
-      title: b.title,
-      note: b.note,
-      items: all.filter((d) => inScoreBand(d.score, b.key)),
-    }))
-  }
-  return REPORT_SECTIONS.map((s) => ({
-    key: s.key,
-    title: s.title,
-    note: null,
-    items: all.filter((d) => d.sectionKey === s.key),
-  }))
-})
-
-/* 说明句跟着**渲染出来的那条轴**：打印时屏幕上那句话也换成默认轴的说法，
-   否则"按分值看"的说明会留在纸上，和下面的分组自相矛盾。 */
-const perspectiveNote = computed(() => {
-  const total = allDimensions.value.length
-  if (printAxis.value === 'confidence') {
-    return `按"这份结论是否充分"重新分组：条目从原来的分区里搬出来，同一档把握的排在一起（共 ${total} 项）。`
-  }
-  if (printAxis.value === 'score') {
-    return `按分值重新分组：46–72 分之间的自然断点落在 55 与 65（共 ${total} 项）。`
-  }
-  return `按报告原本的三个分区排：同一分区里的维度连在一起（共 ${total} 项）。下拉框切的是版本，这里切的是看角。`
-})
-
-/* ============================================================================
- * toc 常驻 —— 锚点跟着**渲染出来的那条轴**走
- * ---------------------------------------------------------------------------
- * 【病灶】上一轮 toc 只在「按章节看」渲染（`v-if="perspective==='section'"`），
- * 而且它的 href 是坏的：`'#'+$route.fullPath+'#report-'+key` 拼出
- * `#/report?as=mid#report-self`，点下去 vue-router 把整个路由当 hash 改掉，
- * 实测 `location.hash` 只变成 `#/report?as=mid` —— **锚点从来没进过地址栏**，
- * 目标元素更不会被滚动到（实测 4 项全部 found:false，见交付回报）。
- *
- * 【现在】三件事：
- *   ① 常驻：toc 搬到 PanelTabs **外面**（同一节里、tab 条下面），换轴不再把它整块收掉；
- *   ② 每条轴下的每个分组都有自己的锚点：`report-<轴>-<组>`。
- *      `.report-chapter` 本来就带 `scroll-margin-top: 24px`（redesign.css:180），
- *      所以"滚到分组头"是现成的，不用另加偏移。
- *   ③ 文案跟着轴走：条目就是**当前轴**的分组标题（含条数），点进去一定找得到；
- *      末尾固定一项「完整结论」（`#report-full`，静态小节，不随轴变）。
- *
- * 【id 不许重复】同一时刻只有一条轴在渲染（`printAxis` 是单个值），
- * 所以 `report-section-self` / `report-confidence-high` / `report-score-gap`
- * 这种"轴前缀 + 组 key"的命名天然唯一 —— 换轴时旧的那些 id 随 DOM 一起消失。
- * 实测：三条轴各自渲染时页内重复 id 都是 0。
- *
- * 【默认轴的 id 保持原样】默认轴（section）的 id 与原来那三个逐字相同
- * （`report-self` / `report-market` / `report-tradeoff`）—— 原来就有人把
- * `#report-market` 这类地址贴进笔记，换轴方案不该把它们改坏。
- * ==========================================================================*/
 const axisPrefix = computed(() => (printAxis.value === 'section' ? 'report-' : `report-${printAxis.value}-`))
 function anchorOf(key: string): string {
   return axisPrefix.value + key
 }
-/** toc 的条目：当前轴的分组 + 一个不随轴变的「完整结论」 */
-const tocItems = computed<{ key: string; label: string; count: number; id: string }[]>(() => [
-  ...reportGroups.value.map((g) => ({ key: g.key, label: g.title, count: g.items.length, id: anchorOf(g.key) })),
-  { key: 'full', label: '完整结论', count: 0, id: 'report-full' },
-])
-
 /* `printing`（方向页的 Foldable `:force-open`）与 printMedia 同源：
    真机靠 beforeprint/afterprint，emulateMedia 靠 media 的 change。
    两处都写同一个 ref，不另开一份状态 —— 两份状态一定会漂。 */
 watch(printMedia, (on) => { printing.value = on })
 </script>
 <template>
-<div class="ws-page assessment-page" :class="{'directions-page':view==='directions', 'c2-report-layout':view==='summary'}"><PageHeading :title="view==='directions'?'方向方案':'诊断报告'" :description="view==='directions'?'把支持依据和风险放在一起比较，再确认你的选择。':'先看关键判断，再逐项核对支持依据。'"><label v-if="view!=='directions'&&available&&!fullReport" class="ws-version-select"><span class="sr-only">报告版本</span><select :value="view==='versions'?demo.state.reportVersion:'v3'" @change="demo.setReportVersion(($event.target as HTMLSelectElement).value);changeView('versions')"><option v-for="v in REPORT_VERSIONS" :key="v.id" :value="v.id">{{ v.label }}</option></select></label><button v-if="view!=='directions'" class="btn" :disabled="reportLoading" @click="loadFullReport">{{ reportLoading?'正在读取…':'获取完整报告' }}</button><button v-if="view==='directions'" class="btn" :disabled="directionLoading||directionSaving" @click="loadDirections">{{ directionLoading?'正在读取…':'获取最新方案' }}</button><button v-if="available" class="btn" @click="printReport">打印 / 保存 PDF</button></PageHeading>
-<nav v-if="view!=='directions'&&available" class="ws-subnav" aria-label="诊断报告视图"><RouterLink to="/report" :aria-current="view==='summary'?'page':undefined" @click.prevent="changeView('summary')">诊断结果</RouterLink><RouterLink to="/report?focus=versions" :aria-current="view==='versions'?'page':undefined" @click.prevent="changeView('versions')">版本记录</RouterLink></nav>
+<div class="ws-page assessment-page" :class="{'directions-page':view==='directions', 'c2-report-layout':view==='summary'}"><PageHeading :title="view==='directions'?'方向方案':'诊断报告'" :description="view==='directions'?'把支持依据和风险放在一起比较，再确认你的选择。':'先看关键判断，再逐项核对支持依据。'"><button v-if="view!=='directions'" class="btn" :disabled="reportLoading" @click="loadFullReport">{{ reportLoading?'正在读取…':'获取完整报告' }}</button><button v-if="view==='directions'" class="btn" :disabled="directionLoading||directionSaving" @click="loadDirections">{{ directionLoading?'正在读取…':'获取最新方案' }}</button><button v-if="view!=='directions'&&available" class="btn" @click="changeView(view==='versions'?'summary':'versions')">{{ view==='versions'?'返回当前报告':'历史版本' }}</button><button v-if="available" class="btn" @click="printReport">打印 / 保存 PDF</button></PageHeading>
+
 <AssetNotice v-if="!fullReport&&!reportMetadata"/><template v-if="fullReport"><div class="report-status"><StatTile :label="reportStatusLabel" :value="reportStatusValue" unit="版" :state="recomputeState(reportMetadata)"/><p class="ws-muted" :class="{ 'ws-attention': reportMetadata?.needs_recompute }">{{ reportStatusNote }}</p><StatusBanner v-if="reportMetadata?.needs_recompute" tone="warning" title="这版报告待更新" message="依据已有变化，当前正文仍是原版本。请核对新的个人信息后，通过咨询更新报告。" action-label="核对完整版本记录" @action="changeView('versions')"/><p v-else class="ws-muted">正文版本、生成时间和来源如下；可在版本记录中核对依赖与变化。</p></div></template><p v-if="directionError&&!latestDirections" class="ws-field-error" role="alert">{{ directionError }}</p><p v-if="reportError" class="ws-field-error" role="alert">{{ reportError }}</p><SkeletonBlock v-if="reportLoading&&!available" variant="text" :lines="6" /><EmptyState v-else-if="!available&&!reportLoading" kind="report" :heading-level="2" :title="view==='directions'?'方向方案还没有形成':'报告还没有生成'" description="完成咨询并补充必要信息后，再查看相应结果。"><RouterLink class="btn btn--primary" to="/chat">继续咨询</RouterLink><button class="ws-text-button" @click="backendDemo.loadAssessmentSample()">查看{{ view==='directions'?'方向':'报告' }}示例</button></EmptyState>
 <template v-else><FullReportBody v-if="view==='summary'&&fullReport" :report="fullReport"/><template v-else-if="view==='summary'">
-<section class="c2-report-verdicts"><h2>当前诊断</h2><p>当前报告的主要结论与优先建议。</p><div class="c2-report-summary"><p>{{ REPORT_SUMMARY }}</p></div><button v-for="verdict in reportVerdicts" :key="verdict.key" class="c2-report-verdict" :aria-pressed="evidenceSection === verdict.key" @click="chooseEvidence(verdict.key)"><strong>{{ verdict.title }}</strong><span>{{ verdict.detail }}</span><span class="c2-dependencies"><small v-for="key in verdict.depends" :key="key">{{ allDimensions.find(d=>d.key===key)?.label }}</small></span></button><p class="c2-proof-note" role="status">{{ evidenceSection ? '已突出显示这条判断的支撑依据，再点一次恢复全部。' : '选择判断可定位对应依据。' }}</p><button class="btn" @click="jumpTo('report-views')">查看详细依据<UiIcon name="arrow" :size="16" /></button></section>
-<section id="report-views" class="report-views"><div class="ws-section-head"><div><h2>详细分析</h2><p>{{ perspectiveNote }}</p></div></div><PanelTabs v-model="perspective" label="报告的看角" :items="PERSPECTIVES"><section v-for="g in reportGroups" :key="g.key" :id="anchorOf(g.key)" class="report-chapter"><h2>{{ g.title }}<span class="report-chapter__count">{{ g.items.length }} 项</span></h2><p v-if="g.note" class="report-chapter__note">{{ g.note }}</p><article v-for="d in g.items" :key="d.key" class="report-dimension" :class="{'c2-dimension--active':evidenceHit(d.key),'c2-dimension--dim':evidenceSection && !evidenceHit(d.key)}"><div class="ws-section-head"><h3>{{ d.label }}</h3><ConfidenceBadge :value="d.confidence"/></div><p>{{ d.conclusion }}</p><p v-if="printAxis!=='section'" class="report-dimension__from">原本在「{{ d.sectionTitle }}」</p><DetailPopover :title="d.label + ' · 分值与依据'" :label="'查看' + d.label + '分值与依据'"><template #trigger>分值与依据 <span>{{ dimensionCount(d) }}</span><UiIcon name="info" :size="16"/></template><p v-if="d.threshold">{{ d.threshold }}</p><MeterRow v-if="d.score!=null" :label="d.label" :value="d.score/100" :requirement="d.key==='present'?0.5:undefined" :format="formatScore01"/><ul><li v-for="e in d.evidence" :key="e">{{ e }}</li></ul></DetailPopover></article></section></PanelTabs><nav class="report-toc" aria-label="报告章节"><a v-for="item in tocItems" :key="item.key" :href="'#'+item.id" @click.prevent="jumpTo(item.id)">{{ item.label }}<span v-if="item.count" class="report-toc__count">{{ item.count }} 项</span></a></nav></section>
-<Foldable static :title-level="2" class="report-block" title="能力画像与门槛对照"><div class="ws-chart-grid"><div><RadarChart :axes="SELF_RADAR" :size="300" :baseline="50"/><p class="ws-muted">自评与方向要求使用同一刻度；虚线为50分参考线。</p></div><div class="ws-stack"><MeterRow v-for="d in THRESHOLD_COMPARE" :key="d.label" :label="d.label" :value="d.mine/100" :requirement="d.requirement/100" :format="formatScore01"/></div></div></Foldable><section id="report-full" class="report-chapter reading-prose"><h2>完整结论</h2><p>{{ REPORT_SUMMARY }}</p></section></template>
+<section class="c2-report-verdicts report-overview"><div class="ws-section-head"><h2>当前诊断</h2><DetailPopover title="完整诊断概述" label="查看完整诊断概述"><p>{{ REPORT_SUMMARY }}</p></DetailPopover></div>
+<div class="diagnosis-visual"><div class="diagnosis-visual__message"><span class="diagnosis-visual__symbol"><UiIcon name="report" :size="28"/></span><h2>项目经历与表达<br/>仍需完善</h2><p>当前优先完善项目表达，补充实践证据。</p><RouterLink class="btn btn--primary" to="/home">查看建议行动<UiIcon name="arrow" :size="16"/></RouterLink></div><div class="diagnosis-visual__scores"><div class="diagnosis-key"><span><i/>当前评分</span><span><i/>方向要求</span></div><div v-for="item in THRESHOLD_COMPARE" :key="item.label" class="diagnosis-measure"><div><strong>{{ item.label }}</strong><span>{{ item.mine < item.requirement ? '待提升 '+(item.requirement-item.mine)+' 分' : '已达本版要求' }}</span></div><div class="diagnosis-track" :aria-label="item.label+'：当前'+item.mine+'分，方向要求'+item.requirement+'分'"><i :style="{width:item.mine+'%'}"/><b :style="{left:item.requirement+'%'}"/></div><small>当前 {{ item.mine }}<span>要求 {{ item.requirement }}</span></small></div></div></div>
+<div class="diagnosis-findings"><button v-for="verdict in reportVerdicts" :key="verdict.key" class="diagnosis-finding" :class="'diagnosis-finding--'+verdict.key" @click="chooseEvidence(verdict.key)"><span class="diagnosis-finding__type">{{ verdict.key==='expression'?'优先行动':verdict.key==='supply'?'待核实':'选择条件' }}</span><span><strong>{{ verdict.title }}</strong><small>{{ verdict.detail }}</small></span><span class="diagnosis-finding__link">{{ verdict.key==='expression'?'核对能力差距':verdict.key==='supply'?'核对资讯来源':'查看决策条件' }}<UiIcon name="arrow" :size="16"/></span></button></div></section>
+<section class="report-reading-index"><div class="ws-section-head"><h2>报告分析</h2><button class="ws-text-button" @click="chartDetails=true">能力与门槛对照<UiIcon name="arrow" :size="16"/></button></div><button v-for="g in reportGroups" :key="g.key" class="information-entry" @click="activeChapter=g.key;evidenceSection='';reportDetails=true"><span><strong>{{ g.title }}</strong><small>{{ g.items.length }} 项分析 · {{ g.items[0]?.label }}</small></span><UiIcon name="arrow" :size="18"/></button></section>
+<InfoSheet :open="reportDetails" shape="panel" :title="activeChapter ? reportGroups.find(g=>g.key===activeChapter)?.title ?? '报告依据' : reportVerdicts.find(v=>v.key===evidenceSection)?.title ?? '报告依据'" @close="reportDetails=false"><section v-for="g in reportGroups.filter(group => !activeChapter || group.key === activeChapter)" :key="g.key" :id="anchorOf(g.key)" class="report-chapter"><h2>{{ g.title }}<span class="report-chapter__count">{{ g.items.length }} 项</span></h2><p v-if="g.note" class="report-chapter__note">{{ g.note }}</p><article v-for="d in g.items.filter(item => !evidenceSection || evidenceHit(item.key))" :key="d.key" class="report-dimension" :class="{'c2-dimension--active':evidenceHit(d.key),'c2-dimension--dim':evidenceSection && !evidenceHit(d.key)}"><div class="ws-section-head"><h3>{{ d.label }}</h3><ConfidenceBadge :value="d.confidence"/></div><p>{{ d.conclusion }}</p><p v-if="printAxis!=='section'" class="report-dimension__from">原本在「{{ d.sectionTitle }}」</p><DetailPopover :title="d.label + ' · 分值与依据'" :label="'查看' + d.label + '分值与依据'"><template #trigger>分值与依据 <span>{{ dimensionCount(d) }}</span><UiIcon name="info" :size="16"/></template><p v-if="d.threshold">{{ d.threshold }}</p><MeterRow v-if="d.score!=null" :label="d.label" :value="d.score/100" :requirement="d.key==='present'?0.5:undefined" :format="formatScore01"/><ul><li v-for="e in d.evidence" :key="e">{{ e }}</li></ul></DetailPopover></article></section></InfoSheet>
+<InfoSheet :open="chartDetails" shape="panel" title="能力与门槛对照" @close="chartDetails=false"><Foldable static :title-level="2" class="report-block" title="能力画像与门槛对照"><div class="ws-chart-grid"><div><RadarChart :axes="SELF_RADAR" :size="300" :baseline="50"/><p class="ws-muted">自评与方向要求使用同一刻度；虚线为50分参考线。</p></div><div class="ws-stack"><MeterRow v-for="d in THRESHOLD_COMPARE" :key="d.label" :label="d.label" :value="d.mine/100" :requirement="d.requirement/100" :format="formatScore01"/></div></div></Foldable></InfoSheet><div class="information-print-only"><section v-for="g in reportGroups" :key="g.key" :id="'print-'+anchorOf(g.key)" class="report-chapter"><h2>{{ g.title }}<span class="report-chapter__count">{{ g.items.length }} 项</span></h2><p v-if="g.note" class="report-chapter__note">{{ g.note }}</p><article v-for="d in g.items" :key="d.key" class="report-dimension" :class="{'c2-dimension--active':evidenceHit(d.key),'c2-dimension--dim':evidenceSection && !evidenceHit(d.key)}"><div class="ws-section-head"><h3>{{ d.label }}</h3><ConfidenceBadge :value="d.confidence"/></div><p>{{ d.conclusion }}</p><p v-if="printAxis!=='section'" class="report-dimension__from">原本在「{{ d.sectionTitle }}」</p><DetailPopover :title="d.label + ' · 分值与依据'" :label="'查看' + d.label + '分值与依据'"><template #trigger>分值与依据 <span>{{ dimensionCount(d) }}</span><UiIcon name="info" :size="16"/></template><p v-if="d.threshold">{{ d.threshold }}</p><MeterRow v-if="d.score!=null" :label="d.label" :value="d.score/100" :requirement="d.key==='present'?0.5:undefined" :format="formatScore01"/><ul><li v-for="e in d.evidence" :key="e">{{ e }}</li></ul></DetailPopover></article></section><Foldable static :title-level="2" class="report-block" title="能力画像与门槛对照"><div class="ws-chart-grid"><div><RadarChart :axes="SELF_RADAR" :size="300" :baseline="50"/><p class="ws-muted">自评与方向要求使用同一刻度；虚线为50分参考线。</p></div><div class="ws-stack"><MeterRow v-for="d in THRESHOLD_COMPARE" :key="d.label" :label="d.label" :value="d.mine/100" :requirement="d.requirement/100" :format="formatScore01"/></div></div></Foldable></div><section id="report-full" class="report-chapter reading-prose information-print-only"><h2>完整结论</h2><p>{{ REPORT_SUMMARY }}</p></section></template>
 <template v-else-if="view==='directions'&&latestDirections"><DirectionDetails :plans="latestDirections" :saving="directionSaving||directionLoading" :error="directionError" @select="selectLatest"/></template><template v-else-if="view==='directions'"><DirectionCompare :items="DIRECTION_PLANS" :selected-id="candidate" @pick="candidate=$event"/>
 <section class="direction-confirm"><div><h2>{{ pendingDirection ? pendingDirection.title : '比较后再确认' }}</h2><p>{{ candidate===selected?.id?'当前方向已确认，仍可选择其他方向。':pendingDirection?'确认后显示关联内容；已有执行记录保留。':'选择一个候选方向，确认后加入当前计划。' }}</p></div><button class="btn btn--primary" :disabled="!candidate||candidate===selected?.id" @click="demo.chooseDirection(candidate)">确认方向<UiIcon name="check" :size="16"/></button></section>
 <Foldable title="机会与门槛示意" :force-open="printing"><p class="ws-muted">两轴坐标为预置示意，不代表真实岗位数量或计算结果。点选只改变候选方向。</p><QuadrantChart :items="quadrants" :selected-id="candidate" @pick="candidate=$event"/></Foldable>
 <section v-if="selected" class="direction-impact" role="status"><h2>{{ previous?'方向选择已更新':'当前选择已确认' }}</h2><p>{{ previous?'从「'+previous.title+'」改选为「'+selected.title+'」。':selected.title }}</p><p>关联{{ selected.ripple }}处内容；关联范围已列出，报告与计划需要补齐依据后再更新。</p><Foldable title="查看关联内容" variant="inline" :default-open="demo.state.rippleOpen" :force-open="printing"><ul><li v-for="p in selected.ripplePoints" :key="p">{{ p }}</li></ul></Foldable><RouterLink class="ws-text-link" to="/plan">查看阶段计划<UiIcon name="arrow" :size="16"/></RouterLink></section></template>
-<section v-else class="report-versions"><ReportHistory @open="openHistorical"/><header class="ws-section-head"><h2>{{ version.label }} · {{ version.at }}</h2></header><p>{{ version.change }}</p><div class="ws-chart-grid ws-section"><TrendLine :points="trend" :highlight-index="REPORT_VERSIONS.length-1-REPORT_VERSIONS.findIndex(v=>v.id===version.id)"/><p class="ws-muted">第1–3版为预置匹配度快照。详细正文使用第3版，历史摘要不代表完整旧版报告。</p></div><article v-for="v in REPORT_VERSIONS" :key="v.id" class="ws-version-row"><strong>{{ v.label }}</strong><p>{{ v.change }}</p><time>{{ v.at }}</time></article></section></template><aside v-if="view==='summary' && available" class="c2-report-side" aria-label="诊断依据与下一步"><section><h2>报告依据</h2><h3>办法</h3><p>把兴趣与经历交叉核对，再与目标岗位要求逐项比较。资料不足的地方保留待确认。</p><h3>来源</h3><p>咨询记录、学籍与资料、岗位要求笔记。每一项结论都能展开查看原始依据。</p><p class="c2-report-note">评分用于方向比较。资料变化后保留旧版依据，可通过页头读取最新报告。</p></section><section class="c2-report-recheck"><h2>{{ backendDemo.state.dataMode==='demo'?'有两条要核对最新来源':'核对报告更新状态' }}</h2><p>岗位供给和时间取舍仍使用本版的依据。原始判断与数字保留，不因点按钮自动变成新结果。</p><p v-if="backendDemo.state.reportReviewRequested" role="status">已标记为待更新。请通过咨询补齐资料，再核对最新报告。</p><button v-else class="btn" @click="backendDemo.requestReportReview()">标记为待更新</button><RouterLink class="ws-text-link" to="/chat?topic=核对报告依据">补齐依据并继续咨询 →</RouterLink></section><section><h2>建议优先补充</h2><p>补充经历中的具体行动和结果，核对它与目标岗位的关联。</p><RouterLink class="btn" to="/chat?topic=实践经历">和顾问聊聊</RouterLink><RouterLink class="ws-text-link" to="/profile">核对画像来源</RouterLink></section></aside><p v-else class="ws-demo-note">当前内容来自本次读取的数据。版本、来源和选择均按返回结果展示；资料变化后请核对更新状态。</p></div>
+<section v-else class="report-versions"><ReportHistory @open="openHistorical"/><header class="ws-section-head"><h2>{{ version.label }} · {{ version.at }}</h2></header><p>{{ version.change }}</p><div class="ws-chart-grid ws-section"><TrendLine :points="trend" :highlight-index="REPORT_VERSIONS.length-1-REPORT_VERSIONS.findIndex(v=>v.id===version.id)"/><p class="ws-muted">第1–3版为预置匹配度快照。详细正文使用第3版，历史摘要不代表完整旧版报告。</p></div><article v-for="v in REPORT_VERSIONS" :key="v.id" class="ws-version-row"><button class="ws-text-button" :aria-pressed="demo.state.reportVersion===v.id" @click="demo.setReportVersion(v.id)">{{ v.label }} · 查看版本摘要</button><p>{{ v.change }}</p><time>{{ v.at }}</time></article></section></template><aside v-if="view==='summary' && available" class="c2-report-side report-next-rail" aria-label="诊断依据与下一步"><section><span class="report-next-symbol"><UiIcon name="action" :size="24"/></span><h2>接下来，完善经历</h2><p>补充具体行动、使用的方法与实际结果。</p><RouterLink class="btn" to="/chat?topic=实践经历">和顾问一起完善<UiIcon name="arrow" :size="16"/></RouterLink></section><section><h2>报告更新状态</h2><p>{{ reportMetadata ? reportMetadata.needs_recompute ? '依据已有变化，请核对最新资料。' : '已取得本版更新状态。' : '本版状态尚未取得，请核对来源与资料。' }}</p><button class="ws-text-button" @click="reportBasisOpen=true">报告依据与更新<UiIcon name="info" :size="16"/></button></section></aside><InfoSheet :open="reportBasisOpen" shape="panel" title="报告依据与更新" @close="reportBasisOpen=false"><section><h2>报告依据</h2><h3>办法</h3><p>把兴趣与经历交叉核对，再与目标岗位要求逐项比较。资料不足的地方保留待确认。</p><h3>来源</h3><p>咨询记录、学籍与资料、岗位要求笔记。每一项结论都能展开查看原始依据。</p><p class="c2-report-note">评分用于方向比较。资料变化后保留旧版依据，可通过页头读取最新报告。</p></section><section class="c2-report-recheck"><h2>{{ backendDemo.state.dataMode==='demo'?'有两条要核对最新来源':'核对报告更新状态' }}</h2><p>岗位供给和时间取舍仍使用本版的依据。原始判断与数字保留，不因点按钮自动变成新结果。</p><p v-if="backendDemo.state.reportReviewRequested" role="status">已标记为待更新。请通过咨询补齐资料，再核对最新报告。</p><button v-else class="btn" @click="backendDemo.requestReportReview()">标记为待更新</button><RouterLink class="ws-text-link" to="/chat?topic=核对报告依据">补齐依据并继续咨询 →</RouterLink></section><section><h2>建议优先补充</h2><p>补充经历中的具体行动和结果，核对它与目标岗位的关联。</p><RouterLink class="btn" to="/chat?topic=实践经历">和顾问聊聊</RouterLink><RouterLink class="ws-text-link" to="/profile">核对画像来源</RouterLink></section></InfoSheet><p v-if="view!=='summary'" class="ws-demo-note">当前内容来自本次读取的数据。版本、来源和选择均按返回结果展示；资料变化后请核对更新状态。</p></div>
 </template>
 
 <style scoped>

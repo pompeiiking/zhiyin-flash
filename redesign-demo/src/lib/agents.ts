@@ -89,7 +89,7 @@ const HUES = {
 export const AGENTS: Record<AgentKey, AgentIdentity> = {
   profile_analyst: {
     key: 'profile_analyst',
-    name: '画像分析师',
+    name: '信息采集顾问',
     role: '把你的情况问清楚、建成可核对的能力与兴趣画像',
     hue: HUES.slate,
     shape: 'round',
@@ -99,7 +99,7 @@ export const AGENTS: Record<AgentKey, AgentIdentity> = {
   career_advisor: {
     key: 'career_advisor',
     name: '职业分析顾问',
-    role: '比较方向、判断差距，说明哪个方向现在站得住',
+    role: '比较方向与差距，说明各项建议的依据',
     hue: HUES.teal,
     shape: 'square',
     eyes: 'tall',
@@ -107,7 +107,7 @@ export const AGENTS: Record<AgentKey, AgentIdentity> = {
   },
   path_planner: {
     key: 'path_planner',
-    name: '路径规划师',
+    name: '行动规划顾问',
     role: '把选定的方向拆成有先后顺序、能排进日程的行动',
     hue: HUES.iris,
     shape: 'shield',
@@ -116,7 +116,7 @@ export const AGENTS: Record<AgentKey, AgentIdentity> = {
   },
   companion_coach: {
     key: 'companion_coach',
-    name: '陪伴教练',
+    name: '行动支持顾问',
     role: '跟进执行、复盘卡点，把中断接回可持续的节奏',
     hue: HUES.rose,
     shape: 'capsule',
@@ -125,8 +125,8 @@ export const AGENTS: Record<AgentKey, AgentIdentity> = {
   },
   info_scout: {
     key: 'info_scout',
-    name: '就业情报员',
-    role: '去查招聘与行业实况，把外部信息带回来给你对账',
+    name: '就业资讯顾问',
+    role: '查找招聘与行业信息，核对来源与适用范围',
     hue: HUES.graph,
     shape: 'flower',
     eyes: 'scan',

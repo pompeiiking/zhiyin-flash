@@ -1,8 +1,17 @@
 <script setup lang="ts">
-import OverviewMetric from './OverviewMetric.vue'
+import DetailPopover from './DetailPopover.vue'
 import { computed, ref } from 'vue'
 import { growthRecords } from '../lib/growth-records'
 import UiIcon from './UiIcon.vue'
-const axis=ref('source')
-const groups=computed(()=>{const keyOf=(r:typeof growthRecords.value[number])=>axis.value==='time'?(r.at?.slice(0,10)??'尚未发生'):axis.value==='topic'?r.topic:axis.value==='method'?r.method:r.source;return [...new Set(growthRecords.value.map(keyOf))].map(title=>({title,items:growthRecords.value.filter(r=>keyOf(r)===title)}))})
-</script><template><section class="c2-profile-stats" aria-label="成长记录概览"><OverviewMetric label="已完成记录"><template #value><strong>{{ growthRecords.filter(r=>r.done).length }}</strong><small>/ {{ growthRecords.length }} 条</small></template><p>取自咨询、任务与复盘的行为记录</p></OverviewMetric><OverviewMetric label="待完成事项"><template #value><strong>{{ growthRecords.filter(r=>!r.done).length }}</strong><small>条</small></template><p>没有记录的保持未完成，不用打开次数代替</p></OverviewMetric></section><section class="ws-paper c2-growth-pool"><div class="ws-section-head"><div><h2>成长记录，共 {{ growthRecords.length }} 项</h2><p>按来源、时间、主题或确认方式查看，保留完成条件与原始记录。</p></div></div><div class="c2-lensbar" role="group" aria-label="成长记录的组织方式"><button v-for="o in [{key:'source',label:'按来源'},{key:'time',label:'按时间'},{key:'topic',label:'按主题'},{key:'method',label:'按确认方式'}]" :key="o.key" :aria-pressed="axis===o.key" @click="axis=o.key">{{ o.label }}</button></div><section v-for="group in groups" :key="group.title" class="c2-note-group"><h3>{{ group.title }}<span>{{ group.items.length }} 条</span></h3><article v-for="r in group.items" :key="r.id" class="c2-growth-record" :data-record-id="r.id"><header><UiIcon :name="r.done?'check':'review'" :size="20"/><h3>{{ r.title }}</h3><span>{{ r.done?'已发生':'还没有可确认的记录' }}</span></header><p>{{ r.source }} · {{ r.at ? new Date(r.at).toLocaleDateString('zh-CN') : '时间未提供' }}</p><ul><li v-for="line in r.evidence" :key="line">{{ line }}</li></ul><small>确认方式：{{ r.method }} · {{ r.next }}</small></article></section></section></template>
+const query=ref('')
+const records=computed(()=>growthRecords.value.filter(r=>(r.title+' '+r.topic+' '+r.source).includes(query.value.trim())))
+const completed=computed(()=>growthRecords.value.filter(r=>r.done))
+const topicLink=(topic:string)=>topic==='做决定'?'/directions':topic==='去做'?'/home':topic==='回头看'?'/review':'/chat'
+</script>
+<template>
+<section class="growth-overview"><div><h2>每一步，都有记录</h2><p>从了解自己到采取行动，回看已经发生的改变。</p></div><div class="growth-overview__count"><strong>{{ completed.length }}</strong><span>/ {{ growthRecords.length }} 项已完成</span></div></section>
+<section class="growth-workspace"><header class="growth-workspace__toolbar"><h2>成长足迹</h2><label class="intelligence-search"><UiIcon name="search" :size="16"/><input v-model="query" type="search" aria-label="查找成长记录" placeholder="查找名称、主题或来源"/></label></header>
+<div class="growth-milestones"><article v-for="r in records" :key="r.id" class="growth-milestone" :class="{'is-complete':r.done}" :data-record-id="r.id"><span class="growth-milestone__mark"><UiIcon :name="r.done?'check':'review'" :size="20"/></span><div class="growth-milestone__body"><span class="growth-milestone__topic">{{ r.topic }}</span><h3>{{ r.title }}</h3><p>{{ r.done ? (r.at ? new Date(r.at).toLocaleDateString('zh-CN') : '已记录') : '等待行动记录' }}</p><DetailPopover :title="r.title+' · 完成依据'" :label="'查看'+r.title+'完成依据'"><template #trigger>查看依据<UiIcon name="info" :size="14"/></template><p>{{ r.source }} · {{ r.method }}</p><ul><li v-for="line in r.evidence" :key="line">{{ line }}</li></ul><p>{{ r.next }}</p></DetailPopover></div><RouterLink v-if="!r.done" :to="r.id==='academic-verification'?'/academic':topicLink(r.topic)" class="growth-milestone__action" :aria-label="'继续：'+r.title"><UiIcon name="arrow" :size="18"/></RouterLink></article></div>
+<p v-if="!records.length" class="ws-muted">没有匹配的记录，请调整关键词。</p>
+</section>
+</template>

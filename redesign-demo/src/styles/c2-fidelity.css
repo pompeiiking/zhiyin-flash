@@ -264,12 +264,6 @@ html[data-theme='dark'] .app.app--workspace {
 .c2-today-task-evidence a span { color:var(--c-text-2); }
 .c2-today-task-evidence a small { margin-left:auto; color:var(--c-text); }
 .app.app--workspace :is(.p7,.c2-report-layout,.schedule-page,.review-page,.intel-page,.ws-two-columns) { grid-template-columns:minmax(0,1fr) 312px; }
-.app.app--workspace .journey-page { display:grid; grid-template-columns:minmax(0,1fr) 312px; gap:20px 24px; align-items:start; }
-.app.app--workspace .journey-page > * { grid-column:1; min-width:0; }
-.app.app--workspace .journey-page > .journey-action-grid { display:contents; }
-.app.app--workspace .journey-page .journey-action-main { grid-column:1; }
-.app.app--workspace .journey-page .journey-action-aside { grid-column:2; grid-row:1 / span 20; position:sticky; top:20px; width:auto; min-width:0; }
-.app.app--workspace .journey-page .ws-heading { margin-bottom:0; }
 .app.app--workspace .spec__top { display:none; }
 .app.app--workspace .c2-error-page > .c2-lensbar { margin-bottom:24px; }
 .app.app--workspace .dialogue-page.has-rail { align-content:start; grid-auto-rows:min-content; }
@@ -390,7 +384,6 @@ html[data-theme='dark'] .app.app--workspace {
 .app.app--workspace .sched-cmp__legend { display:none; }
 .app.app--workspace .review-page { display:grid; grid-template-columns:minmax(0,1fr) 312px; gap:20px 24px; align-items:start; }
 .app.app--workspace .review-page > * { grid-column:1; min-width:0; margin:0; }
-.app.app--workspace .review-page > .ws-two-columns { display:contents; }
 .app.app--workspace .review-page .ws-two-columns > .ws-paper { grid-column:1; }
 .app.app--workspace .review-side { grid-column:2; grid-row:1 / span 12; position:sticky; top:20px; }
 .app.app--workspace .review-summary { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }

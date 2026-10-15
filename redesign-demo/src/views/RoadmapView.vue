@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import TaskProgressMap from '../components/TaskProgressMap.vue'
+import InfoSheet from '../components/InfoSheet.vue'
+import ResultPager from '../components/ResultPager.vue'
+import { usePagedItems } from '../lib/paged-items' 
 import OverviewMetric from '../components/OverviewMetric.vue'
 import { computed, ref } from 'vue'
 import { demo } from '../store'
@@ -7,12 +11,10 @@ import PageHeading from '../components/PageHeading.vue'
 import LiveActionPlan from '../components/LiveActionPlan.vue'
 import AssetNotice from '../components/AssetNotice.vue'
 import TaskList from '../components/TaskList.vue'
-import Foldable from '../components/Foldable.vue'
 import SkeletonBlock from '../components/SkeletonBlock.vue'
 import EmptyState from '../components/EmptyState.vue'
 import UiIcon from '../components/UiIcon.vue'
 import { backendDemo } from '../lib/backend-demo'
-import { taskOriginLabel } from '../lib/presentation'
 import { DEMO_PHASE_TASK_IDS } from '../data/phase-tasks'
 import SegMeter from '../components/SegMeter.vue'
 import MeterRow, { formatScore01 } from '../components/charts/MeterRow.vue'
@@ -22,9 +24,13 @@ import { PROFILE_FIELDS, REPORT_SECTIONS, THRESHOLD_COMPARE } from '../data/stud
 import type { FieldSource } from '../data/types'
 import type { ProfileSource } from '../api/backend-types'
 const scenario = computed(() => demo.use.scenario.value)
-const books = computed(() => ['计划拆下来的', '建议的', '自己写的', '关键节点'].map(label => ({ label, tasks: demo.state.tasks.filter(t => t.origin === label) })))
 const pending = computed(() => [...demo.use.now.value, ...demo.use.waiting.value])
 const stages = computed(() => scenario.value.milestones.map(m => ({ ...m, tasks: demo.state.tasks.filter(t => DEMO_PHASE_TASK_IDS[m.id]?.includes(t.id)) })))
+const planBasisOpen=ref(false)
+const selectedStageId=ref<string|null>(null), allTasksOpen=ref(false), taskQuery=ref('')
+const selectedStage=computed(()=>stages.value.find(stage=>stage.id===selectedStageId.value))
+const planTasks=computed(()=>demo.state.tasks.filter(task=>(task.title+' '+task.origin).includes(taskQuery.value.trim())))
+const {page:planTaskPage,paged:planTaskRows}=usePagedItems(planTasks,5)
 const ungrouped = computed(() => pending.value.filter(t => !stages.value.some(s => s.tasks.some(item => item.id === t.id))))
 /* 进度读数（MIGRATION §3.3 T1/T2）：分母取自同一批任务，进度条由 StatTile 自己长出来 */
 const doneCount = computed(() => demo.use.done.value.length)
@@ -33,10 +39,6 @@ const stageDone = (tasks: { bucket: string }[]) => tasks.filter(t => t.bucket ==
 /* 「按任务来源查看」原来是一行里套两层的 <details>（外层 .ws-context + 内层 v-for .ws-fold），
    是全站最该拆的一行（MIGRATION §1.3 A7/D6、审计"嵌套 3 层"的元凶）。
    这里按审计给的第二条路收成**一条筛选**：筛选行本身不是折叠层，选中哪一类就重组出哪一类任务。 */
-const origin = ref<string | null>(null)
-const originGroups = computed(() => books.value.filter(b => b.tasks.length))
-const activeOrigin = computed(() => origin.value ?? originGroups.value[0]?.label ?? null)
-const shownBook = computed(() => originGroups.value.find(b => b.label === activeOrigin.value) ?? null)
 /* LiveActionPlan 正在读计划时，本页不先说"阶段计划还没有形成"（MIGRATION §4.1 K5：假空态） */
 const planBusy = ref(false)
 
@@ -128,8 +130,7 @@ function blockedBy(stage:typeof stages.value[number]){return (stage.dependsOn??[
 <!-- 阶段：当前阶段（i===0）static＝永远可见（审计"当前阶段默认收起＝用户看不到自己该做什么"）；
      其余阶段保留可折叠、但默认展开（审计"第二三阶段默认一屏看不到"）。两者同一形状，
      LiveActionPlan 的阶段头用同一套规则，/plan 与 /home 不再漂移。 -->
-<section class="plan-stages c2-plan-surface"><h2>{{ stages.length }} 步怎么接力</h2><Foldable v-for="(m,i) in stages" :key="m.id" variant="group" :static="i === 0" :default-open="i > 0" :title="m.title"><template #title><span class="plan-stage__title"><span class="plan-stage__mark" aria-hidden="true" /><span class="plan-stage__copy"><strong>{{ m.title }}</strong></span><span class="c2-stage-reading"><b>{{ Math.round(m.progress*100) }}%</b><small>{{ m.window }}</small></span></span></template><p class="c2-stage-window"><time v-if="m.dueAt" :datetime="m.dueAt">{{ m.window }}</time><span v-else>{{ m.window }}</span><strong :class="{'ws-attention':deadlineLabel(m).startsWith('逾期')}">{{ deadlineLabel(m) }}</strong></p><p>{{ m.note }}</p><p class="c2-stage-handoff">{{ m.handoff || '完成这一段后，继续核对下一步的条件。' }}</p><p v-if="blockedBy(m).length" class="c2-proof-note">前一步「{{ blockedBy(m).join('、') }}」还没完成。后一步的期限仍保留，请先核对正在沿用的材料。</p><div class="c2-stage-progress" role="progressbar" :aria-valuenow="Math.round(m.progress*100)" aria-valuemin="0" aria-valuemax="100" :aria-label="m.title"><i :style="{width:m.progress*100+'%'}"/></div><p class="c2-stage-window">挂 {{ m.tasks.length }} 条任务 · 完成 {{ stageDone(m.tasks) }} 条。任务完成情况与阶段目标进度分别保留。</p><Foldable v-if="m.tasks.length" variant="inline" :title="'查看这一步的 ' + m.tasks.length + ' 件任务'"><TaskList :items="m.tasks"/></Foldable><p v-else class="ws-muted">此阶段尚未关联执行任务。</p><RouterLink class="ws-text-link" :to="'/chat?topic=' + encodeURIComponent(m.title)">讨论本阶段的下一步<UiIcon name="arrow" :size="16" /></RouterLink></Foldable></section><section v-if="ungrouped.length" class="ws-section"><h2 class="ws-section-title">其他待推进任务</h2><TaskList :items="ungrouped"/></section>
-<section class="plan-sources ws-section"><h2 class="ws-section-title">按任务来源查看</h2><div class="plan-sources__filter" role="group" aria-label="按任务来源筛选"><button v-for="b in originGroups" :key="b.label" type="button" class="plan-sources__chip" :aria-pressed="activeOrigin === b.label" @click="origin = b.label">{{ taskOriginLabel(b.label) }}<b>{{ b.tasks.length }}</b></button></div><TaskList v-if="shownBook?.tasks.length" :items="shownBook.tasks"/><p v-else class="ws-muted ws-section">这一类还没有任务。</p></section>
+<section class="plan-stages c2-plan-surface"><div class="ws-section-head"><h2>阶段路径</h2><span class="ws-muted">{{ stages.length }} 个阶段</span></div><div class="phase-path"><button v-for="(m,index) in stages" :key="m.id" class="phase-stop" :class="{'phase-stop--current':index===currentStage-1,'phase-stop--complete':m.progress>=1}" @click="selectedStageId=m.id"><span class="phase-stop__date"><strong>{{ m.dueAt ? Number(m.dueAt.slice(8,10)) : '—' }}</strong><small>{{ m.dueAt ? Number(m.dueAt.slice(5,7))+' 月' : '时间待补充' }}</small></span><span class="phase-stop__point"><UiIcon v-if="m.progress>=1" name="check" :size="13"/></span><span class="phase-stop__body"><span class="phase-stop__status">{{ index===currentStage-1?'当前阶段':m.progress>=1?'已经完成':'下一阶段' }}</span><strong>{{ m.title }}</strong><span class="phase-stop__progress"><i :style="{width:m.progress*100+'%'}"/></span><small>阶段目标进度 <b>{{ Math.round(m.progress*100) }}%</b> · {{ stageDone(m.tasks) }}/{{ m.tasks.length }} 件关联任务完成</small></span><UiIcon name="arrow" :size="18"/></button></div></section><section v-if="ungrouped.length" class="ws-section"><h2 class="ws-section-title">其他待推进任务</h2><TaskList :items="ungrouped.slice(0,2)"/></section><InfoSheet :open="selectedStageId!==null" shape="panel" :title="selectedStage?.title ?? '阶段安排'" @close="selectedStageId=null"><template v-for="m in selectedStage ? [selectedStage] : []" :key="m.id"><p class="c2-stage-window"><time v-if="m.dueAt" :datetime="m.dueAt">{{ m.window }}</time><span v-else>{{ m.window }}</span><strong :class="{'ws-attention':deadlineLabel(m).startsWith('逾期')}">{{ deadlineLabel(m) }}</strong></p><p>{{ m.note }}</p><p class="c2-stage-handoff">{{ m.handoff || '完成这一段后，继续核对下一步的条件。' }}</p><p v-if="blockedBy(m).length" class="c2-proof-note">前一步「{{ blockedBy(m).join('、') }}」还没完成。后一步的期限仍保留，请先核对正在沿用的材料。</p><div class="c2-stage-progress" role="progressbar" :aria-valuenow="Math.round(m.progress*100)" aria-valuemin="0" aria-valuemax="100" :aria-label="m.title"><i :style="{width:m.progress*100+'%'}"/></div><p class="c2-stage-window">挂 {{ m.tasks.length }} 条任务 · 完成 {{ stageDone(m.tasks) }} 条。任务完成情况与阶段目标进度分别保留。</p><TaskList v-if="m.tasks.length" :items="m.tasks"/><p v-else class="ws-muted">此阶段尚未关联执行任务。</p><RouterLink class="ws-text-link" :to="'/chat?topic=' + encodeURIComponent(m.title)">讨论本阶段的下一步<UiIcon name="arrow" :size="16" /></RouterLink></template></InfoSheet><button class="information-entry" @click="allTasksOpen=true"><span><strong>全部计划任务</strong><small>{{ demo.state.tasks.length }} 件任务，按名称或来源查找</small></span><UiIcon name="arrow" :size="18"/></button><InfoSheet :open="allTasksOpen" shape="panel" title="全部计划任务" @close="allTasksOpen=false"><label class="information-search">查找计划任务<input v-model="taskQuery" type="search" placeholder="任务名称或来源…"/></label><TaskList :items="planTaskRows"/><ResultPager v-model:page="planTaskPage" :total="planTasks.length" :size="5" label="计划任务"/></InfoSheet>
 </div>
 
 <!-- ============================ 右栏（G-02） ============================
@@ -137,7 +138,7 @@ function blockedBy(stage:typeof stages.value[number]){return (stage.dependsOn??[
      整块不存在，所以 /plan 读起来只剩一个阶段列表（报告 G-02）。
      下面四段覆盖靶子那三块（处境 / 缺口与刻度 / 代价）；靶子中间那一块在真实数据里
      是两件事（三段各挂了几件 · 三条刻度对照），所以拆成两段写，不硬塞成一块。 -->
-<aside class="journey-action-aside">
+<aside class="journey-action-aside plan-visual-rail"><TaskProgressMap :tasks="demo.state.tasks" @inspect="id=>{taskQuery=demo.state.tasks.find(task=>task.id===id)?.title ?? '';allTasksOpen=true}"/><section class="plan-time-brief"><h2>可投入时间</h2><strong>{{ timeFact?.value ?? '待补充' }}</strong><p>{{ scheduleFact?.value ?? '课程安排待补充' }}</p><button class="ws-text-button" @click="planBasisOpen=true">计划依据与说明<UiIcon name="info" :size="16"/></button></section></aside><InfoSheet :open="planBasisOpen" shape="panel" title="计划依据与统计口径" @close="planBasisOpen=false">
 
   <!-- ① 处境：靶子那 5 行 `.kv`。真实数据里站得住的是这 5 行，每行指得出字段：
        data/scenarios.ts:98（现在这一步）/ :99（报告重点）/ :123（复盘关注），
@@ -200,7 +201,7 @@ function blockedBy(stage:typeof stages.value[number]){return (stage.dependsOn??[
     <p>还要动手的是 <b>{{ remainingMinutes }} 分钟</b>；这三段里现在有 <b>{{ untouchedStages }} 段</b>一件都还没做完。计划不会自己顺延 —— 这一段不动，下一步的时间窗照走。</p>
     <RouterLink class="ws-text-link" to="/review">看执行记录里卡在哪一步<UiIcon name="arrow" :size="16" /></RouterLink>
   </section>
-</aside>
+</InfoSheet>
 </div>
 <nav class="ws-related" aria-label="计划相关操作"><RouterLink to="/schedule">查看日历与课表<UiIcon name="calendar" :size="16" /></RouterLink><RouterLink to="/directions">调整方向<UiIcon name="directions" :size="16" /></RouterLink><RouterLink to="/review">复盘并调整任务<UiIcon name="review" :size="16" /></RouterLink></nav></template></template><p v-if="!backendDemo.state.liveAction" class="ws-demo-note">阶段目标关联具体任务；任务计数随完成与恢复更新。没有关联任务的阶段不显示推测进度。</p></div>
 </template>

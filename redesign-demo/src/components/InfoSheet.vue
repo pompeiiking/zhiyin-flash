@@ -168,6 +168,7 @@ function dragEnabled() { return props.draggable && bottomForm.value }
 
 function onDragStart(event: PointerEvent) {
   if (!dragEnabled()) return
+  if (event.target instanceof Element && event.target.closest('button,a,input,select,textarea,[role="button"]')) return
   if (event.pointerType === 'mouse' && event.button !== 0) return
   const host = event.currentTarget as HTMLElement
   dragStart = event.clientY

@@ -190,8 +190,19 @@ const chartTicks = (chart: BarsChart) => {
 const chartSummary = (chart: BarsChart) =>
   '' + chart.points.map(p => `${p.label} ${p.value}${chart.unit}`).join('，')
 
-const { stream, textOf, isStreaming } = useStreaming((_id, text) => {
+const completedReply = ref<string | null>(null)
+let completionTimer: ReturnType<typeof setTimeout> | null = null
+function clearCompletion() {
+  if (completionTimer) clearTimeout(completionTimer)
+  completionTimer = null
+  completedReply.value = null
+}
+const { stream, textOf, isStreaming } = useStreaming((id, text) => {
+  if (stopped.value.includes(id) || !turns.value.some(turn => turn.id === id)) return
   announcement.value = consultantLabel(host.value) + '：' + text
+  clearCompletion()
+  completedReply.value = id
+  completionTimer = setTimeout(clearCompletion, 700)
 })
 let timer: ReturnType<typeof setTimeout> | null = null
 let pendingContent = ''
@@ -310,6 +321,7 @@ const streamingTurn = computed(() => turns.value.find(t => isStreaming(t.id) && 
 /** 输入区是否处于"可以停下"的状态：等待回复、或正在逐字输出 */
 const canStop = computed(() => thinking.value || stalled.value || !!streamingTurn.value)
 function stopGeneration() {
+  clearCompletion()
   const current = streamingTurn.value
   if (current) stopped.value = [...stopped.value, current.id]
   if (thinking.value) { stalled.value = true; thinking.value = false }
@@ -430,7 +442,7 @@ function syncScrollGroup(turn: ChatTurn, event: Event) {
 }
 
 /** 切换会话时缓存的选择就不能留：卡片的 id 里带 turn 前缀，不清理只是变脏，但会一直长 */
-watch(() => demo.state.currentSessionId, () => { cardGroups.value = {}; stopped.value = []; stalled.value = false; errorVisible.value = false })
+watch(() => demo.state.currentSessionId, () => { clearCompletion(); cardGroups.value = {}; stopped.value = []; stalled.value = false; errorVisible.value = false })
 
 /** 区块不是"同时铺开"，而是**顺序落位**：结论 → 支撑 → 行动 → 后续问题 */
 function blockDelay(step: number): Record<string, string> { return { '--block-step': String(step) } }
@@ -497,7 +509,7 @@ function turnAgent(turn: ChatTurn): string {
  */
 const hostState = computed<'idle' | 'thinking' | 'speaking'>(() => {
   if (thinking.value) return 'thinking'
-  return turns.value.some((t) => isStreaming(t.id)) ? 'speaking' : 'idle'
+  return turns.value.some((t) => isLive(t.id)) ? 'speaking' : 'idle'
 })
 /**
  * 状态词：只说"此刻在干什么"，不给角色名（角色名就在同一行的 .chat-who 上）。
@@ -509,9 +521,9 @@ const hostState = computed<'idle' | 'thinking' | 'speaking'>(() => {
  * （thinking / isStreaming，见下面的 hostState 定义）。
  */
 const presencePreview = ref<'idle' | 'thinking' | 'speaking' | null>(null)
-const presenceState = computed(() => backendDemo.state.dataMode === 'service' || demo.state.chatBusy ? hostState.value : presencePreview.value ?? hostState.value)
+const presenceState = computed(() => demo.state.chatBusy ? hostState.value : completedReply.value ? 'done' : backendDemo.state.dataMode === 'service' ? hostState.value : presencePreview.value ?? hostState.value)
 watch(() => demo.state.chatBusy, busy => { if (busy) presencePreview.value = null })
-const presenceStateLabel = computed(() => presenceState.value === 'thinking' ? '正在想' : presenceState.value === 'speaking' ? '正在说' : '在听')
+const presenceStateLabel = computed(() => presenceState.value === 'thinking' ? '正在想' : presenceState.value === 'speaking' ? '正在说' : presenceState.value === 'done' ? '已回复' : '在听')
 
 const presenceLabel = computed(() =>
   hostState.value === 'thinking' ? '正在想' : hostState.value === 'speaking' ? '正在说' : '在听',
@@ -673,6 +685,7 @@ function send(text?: string, option?: GuideOptionView) {
   if (!content || thinking.value) return
   followTail.value = true
   stalled.value = false
+  clearCompletion()
   const request: MessageRequest = { task_id: demo.state.currentSessionId, message: content, client_msg_id: crypto.randomUUID(), option_id: option?.option_id, option_value: option?.value, material_ids: attached.value.map(m => m.id) }
   backendDemo.recordMessage(request)
   append({ from: 'me', text: content, materials: attached.value.map(m => ({ ...m })) })
@@ -732,6 +745,7 @@ onMounted(() => {
   else void scrollToEnd()
 })
 onUnmounted(() => {
+  clearCompletion()
   window.removeEventListener('scroll', followScroll)
   flow.value?.closest('.app__main')?.removeEventListener('scroll', followScroll)
   rememberDraft()
@@ -860,18 +874,7 @@ onUnmounted(() => {
       </div>
       <template v-for="(t, i) in turns" :key="t.id">
         <section v-if="t.handoff" class="chat-handoff" aria-label="顾问交接">
-          <div class="chat-handoff__flow">
-            <!-- 交接卡里的两张脸也是 40px：它是同一种"人"，不该在别处缩成 34px ——
-                 一屏里同一个主理出现两种尺寸，读起来是两套头像而不是一个角色 -->
-            <AgentAvatar :agent="agentKeyOf(speakerBefore(i))" :size="40" />
-            <span class="chat-handoff__arrow" aria-hidden="true"><UiIcon name="arrow" :size="15" /></span>
-            <AgentAvatar :agent="agentKeyOf(t.handoff.to)" :size="40" state="speaking" />
-          </div>
-          <div class="chat-handoff__said">
-            <strong>{{ consultantLabel(t.handoff.to) }}接手</strong>
-            <p>{{ t.handoff.why }}</p>
-            <p class="chat-handoff__basis"><UiIcon name="info" :size="13" />依据：{{ t.handoff.basedOn }}</p>
-          </div>
+<AgentAvatar :agent="agentKeyOf(t.handoff.to)" :size="24"/><span>{{ consultantLabel(t.handoff.to) }}接手</span><DetailPopover title="顾问交接依据" label="查看顾问交接依据"><p>{{ consultantLabel(speakerBefore(i)) }} → {{ consultantLabel(t.handoff.to) }}</p><p>{{ t.handoff.why }}</p><p>依据：{{ t.handoff.basedOn }}</p></DetailPopover>
         </section>
         <article v-else class="chat-turn" :class="['chat-turn--' + t.from, { 'chat-turn--cont': !isGroupStart(i) }]" :aria-label="t.from === 'me' ? '你的消息' : consultantLabel(t.speaker) + '的回复'">
           <template v-if="t.from === 'me'">
@@ -881,7 +884,7 @@ onUnmounted(() => {
             </div>
           </template>
           <template v-else>
-            <AgentAvatar v-if="isGroupStart(i)" class="chat-turn__avatar" :agent="turnAgent(t)" :size="40" :state="isSpeaking(t.id) ? 'speaking' : 'idle'" />
+            <AgentAvatar v-if="isGroupStart(i)" class="chat-turn__avatar" :agent="turnAgent(t)" :size="40" :state="isSpeaking(t.id) ? 'speaking' : completedReply === t.id ? 'done' : 'idle'" />
             <span v-else class="chat-turn__avatar chat-turn__avatar--gap" aria-hidden="true" />
             <div class="chat-turn__body">
               <!--

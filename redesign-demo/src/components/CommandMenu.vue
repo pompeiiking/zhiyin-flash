@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { demo } from '../store'
 import { WORKSPACE_ITEMS, PORTAL_LINK, DIRECTORY_PAGES } from '../lib/workspace-nav'
-import { SCENARIOS } from '../data/scenarios'
 import InfoSheet from './InfoSheet.vue'
 import UiIcon from './UiIcon.vue'
 interface Item { label: string; hint: string; run: () => void }
@@ -13,13 +11,9 @@ const cursor = ref(0)
 const field = ref<HTMLInputElement | null>(null)
 const router = useRouter()
 const commands = computed<Item[]>(() => [
-  // 只读**唯一导航模型**（+ 门户那一颗）。内部页 /spec /path /tools 不在模型里，
-  // 所以不会像以前那样从 ⌘K 漏回学生面前 —— 直链仍然打得开。
+  // 学生任务与低频辅助入口共用唯一模型，内部预览页不进入日常搜索。
   // 这里不再提供「外观」命令：外观的唯一入口是账号菜单 → 外观（PLAN §3.5）。
   ...[...WORKSPACE_ITEMS, ...DIRECTORY_PAGES, PORTAL_LINK].map((s) => ({ label: s.label, hint: s.hint, run: () => { router.push(s.to) } })),
-  ...SCENARIOS.map((s) => ({ label: '使用场景：' + s.grade, hint: s.focus, run: () => demo.setGrade(s.id) })),
-  { label: '重置工作空间', hint: '恢复预置状态', run: () => demo.resetDemo() },
-  { label: '恢复操作引导', hint: '重新查看各页使用提示', run: () => demo.resetGuide() },
 ])
 const results = computed(() => commands.value.filter((c) => (c.label + c.hint).toLowerCase().includes(query.value.trim().toLowerCase())))
 watch(query, () => { cursor.value = 0 })
@@ -43,7 +37,7 @@ defineExpose({ show })
 </script>
 <template>
   <InfoSheet shape="panel" :open="open" title="搜索与跳转" @close="hide" @opened="field?.focus()">
-    <label class="ws-command-search"><UiIcon name="search" /><input ref="field" v-model="query" placeholder="找页面、切年级、换外观…" aria-label="搜索命令" /></label>
+    <label class="ws-command-search"><UiIcon name="search" /><input ref="field" v-model="query" placeholder="搜索页面或功能…" aria-label="搜索命令" /></label>
     <div class="ws-command-results"><button v-for="(item, index) in results" :id="'ws-command-' + index" :key="item.label + index" class="ws-command-item" :class="{ 'ws-command-item--on': cursor === index }" @mouseenter="cursor = index" @click="run(index)"><strong>{{ item.label }}</strong><span>{{ item.hint }}</span></button><p v-if="!results.length" class="ws-muted">没有匹配的功能，换个词试试。</p></div>
     <p class="ws-muted" style="margin-top: var(--sp-4)">↑ ↓ 选择 · Enter 打开 · Esc 关闭</p>
   </InfoSheet>

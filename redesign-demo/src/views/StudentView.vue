@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import OverviewMetric from '../components/OverviewMetric.vue'
+import ResultPager from '../components/ResultPager.vue'
+import { usePagedItems } from '../lib/paged-items'
 /**
  * 个人画像 · v8
  * ---------------------------------------------------------------------------
@@ -445,7 +446,6 @@ const modes = [
   { key: 'source', label: '按来源', note: '按"这条是谁给的"归拢' },
   { key: 'time', label: '按时间', note: '按记录时间归拢，时间未提供的单列' },
   { key: 'topic', label: '按主题', note: '按"这是哪一类情况"归拢' },
-  { key: 'weight', label: '按关联判断', note: '按实际依赖这条资料的判断数量归拢' },
   { key: 'conf', label: '按可信度', note: '按"这条是否充分"归拢' },
 ] as const
 const mode = ref<'topic' | 'source' | 'time' | 'weight' | 'conf'>('topic')
@@ -454,8 +454,9 @@ const confFocus = ref<string | null>(null)
 const anyFocus = computed(() => (mode.value === 'conf' ? confFocus.value : mode.value === 'source' ? focus.value : null))
 
 /** 视角切换 = 这一页"正在发生的组织过程"：换的是分组与顺序，不是列表内容 */
+const profileQuery=ref('')
 const visible = computed<FieldRow[]>(() => {
-  const rows = known.value
+  const rows = known.value.filter(row => !profileQuery.value.trim() || (row.label+' '+row.value).toLocaleLowerCase().includes(profileQuery.value.trim().toLocaleLowerCase()))
   if (mode.value === 'source' && focus.value) {
     const group = SOURCE_GROUPS.find((item) => item.key === focus.value)
     if (group) return rows.filter((row) => group.from.includes(row.desc))
@@ -472,7 +473,7 @@ interface RowGroup {
 }
 
 const groups = computed<RowGroup[]>(() => {
-  const rows = visible.value
+  const rows = pagedProfile.value
   if (mode.value === 'time') {
     const dates = [...new Set(rows.map(row => row.iso?.slice(0, 10) || '时间未提供'))].sort().reverse()
     return dates.map(date => ({ key: date, title: date, hint: '', rows: rows.filter(row => (row.iso?.slice(0, 10) || '时间未提供') === date) }))
@@ -693,6 +694,8 @@ const depsTextByField = computed<Record<string, string>>(() => {
 /** A 段最终形态：在 rowsBase 上补上"支撑 N 条判断"。关系与 B 段同源，不另算一套。 */
 const known = computed<FieldRow[]>(() => rowsBase.value.map((row) => ({ ...row, supports: (fieldDeps.value[row.key] ?? []).length })))
 
+const {page:profilePage,paged:pagedProfile}=usePagedItems(visible)
+
 /** 覆盖度环：进入页面从 0 生长到实际值；reduced-motion 直接给终值 */
 watch(() => tally.value.trust, (value) => tweenTo(value), { immediate: true })
 
@@ -853,6 +856,10 @@ async function jumpToGap(key: string) {
  */
 async function jumpToField(key: string) {
   profileTab.value = 'facts'
+  profileQuery.value=''
+  mode.value='topic';focus.value=null;confFocus.value=null
+  await nextTick()
+  profilePage.value=Math.floor(Math.max(0,visible.value.findIndex(row=>row.key===key))/6)+1
   openField.value = key
   await nextTick()
   let el = document.querySelector<HTMLElement>(`.p7-row[data-key="${key}"]`)
@@ -936,74 +943,22 @@ function exportProfile(){const url=URL.createObjectURL(new Blob([JSON.stringify(
     />
 
     <!-- ═══ 活的度量：可信度环从 0 生长到实际值；数字旁边写清是谁算的 ═══ -->
-    <section class="c2-profile-stats" aria-label="画像信息概览">
-      <OverviewMetric label="已记录信息"><template #value><strong>{{ known.length }}</strong><small>条</small></template><p>画像池共 {{ tally.total }} 条，已收到的信息都在这里</p></OverviewMetric>
-      <OverviewMetric label="依据充分"><template #value><strong>{{ confBands[0]?.count ?? 0 }}</strong><small>条</small></template><p>有正式来源或多处事实印证</p></OverviewMetric>
-      <OverviewMetric label="还要核对"><template #value><strong>{{ confBands[1]?.count ?? 0 }}</strong><small>条</small></template><p>已记录，仍需进一步确认</p></OverviewMetric>
-      <OverviewMetric label="待补充"><template #value><strong>{{ progress.gap }}</strong><small>条</small></template><p>补充这些信息，判断会更完整</p></OverviewMetric>
-    </section>
+<section class="profile-identity"><div class="profile-identity__portrait" aria-hidden="true">{{ identity.name.slice(0,1) }}</div><div class="profile-identity__person"><h2>{{ identity.name }}</h2><p>{{ identity.line }}</p></div><DetailPopover title="个人资料概况" label="查看个人资料概况"><p>已记录 {{ known.length }} 项信息，{{ progress.gap }} 项待补充。</p><p>依据充分 {{ confBands[0]?.count ?? 0 }} 项，待核对 {{ confBands[1]?.count ?? 0 }} 项。</p></DetailPopover><div class="profile-identity__coverage"><div><span>个人信息</span><strong>{{ known.length }}<small> / {{ known.length + progress.gap }} 项</small></strong></div><div class="profile-coverage-track" :aria-label="'已记录'+known.length+'项，待补充'+progress.gap+'项'"><i v-for="n in known.length + progress.gap" :key="n" :class="{'is-known':n<=known.length}"/></div></div></section>
 
 
-    <nav class="workspace-tabs profile-tabs" aria-label="个人画像内容">
-      <button :aria-pressed="profileTab === 'facts'" @click="profileTab='facts'">个人信息 <span>{{ known.length }}</span></button>
-      <button :aria-pressed="profileTab === 'judgments'" @click="profileTab='judgments'">分析与判断</button>
-      <button :aria-pressed="profileTab === 'gaps'" @click="profileTab='gaps'">待补充 <span>{{ gapRows.length }}</span></button>
-      <button :aria-pressed="profileTab === 'sources'" @click="profileTab='sources'">资料管理</button>
-    </nav>
-    <section v-show="profileTab === 'judgments'"><ProfileInsights ref="insights" /></section>
+
+    
 
     <!-- ═══ A · 我知道什么 ═══ -->
-    <section v-show="profileTab === 'facts'" class="p7-block" aria-labelledby="p7-a-title">
+    <section class="p7-block" aria-labelledby="p7-a-title">
       <header class="p7-block__head">
         <div>
-          <h2 id="p7-a-title">个人信息</h2>
-          <p>核对当前记录，查看依据或更正内容。</p>
+          <h2 id="p7-a-title" class="sr-only">个人信息</h2>
+          
         </div>
-        <DetailPopover title="组织个人信息" label="选择个人信息组织方式" class="profile-organize"><template #trigger>{{ modes.find(item => item.key === mode)?.label }}<UiIcon name="chevron" :size="16" /></template><div class="p7-modes" role="group" aria-label="换一种组织方式">
-          <span class="p7-modes__label">组织方式</span>
-          <div class="p7-modes__set">
-            <button
-              v-for="item in modes"
-              :key="item.key"
-              class="p7-mode"
-              :class="{ 'p7-mode--on': mode === item.key }"
-              :aria-pressed="mode === item.key"
-              :title="item.note"
-              data-testid="view-mode"
-              @click="mode = item.key"
-            >{{ item.label }}</button>
-          </div><div v-if="mode === 'source' || mode === 'conf'" class="p7-subfilter" data-testid="sub-filter">
-        <span>只看</span>
-        <button
-          class="p7-subchip"
-          :class="{ 'p7-subchip--on': !anyFocus }"
-          type="button"
-          @click="mode === 'conf' ? (confFocus = null) : (focus = null)"
-        >全部</button>
-        <template v-if="mode === 'source'">
-          <button
-            v-for="item in SOURCE_GROUPS"
-            :key="item.key"
-            class="p7-subchip"
-            :class="{ 'p7-subchip--on': focus === item.key }"
-            type="button"
-            @click="focus = focus === item.key ? null : item.key"
-          >{{ item.label }}</button>
-        </template>
-        <template v-else>
-          <button
-            v-for="item in CONF_GROUPS"
-            :key="item.key"
-            class="p7-subchip"
-            :class="{ 'p7-subchip--on': confFocus === item.key }"
-            type="button"
-            @click="confFocus = confFocus === item.key ? null : item.key"
-          >{{ item.title }}</button>
-        </template>
-        <span v-if="filteredNote" class="p7-subfilter__note">{{ filteredNote }}</span>
-      </div>
-        </div></DetailPopover>
+        
       </header>
+      <label class="information-search"><span class="sr-only">查找个人信息</span><input v-model="profileQuery" type="search" placeholder="专业、兴趣、城市或其他关键词…"/></label>
 
       <!-- 第二层：在同一个视角里再收窄（原来那个"来源筛选"并到这里，不再有第二套控件） -->
 
@@ -1012,7 +967,7 @@ function exportProfile(){const url=URL.createObjectURL(new Blob([JSON.stringify(
       <LayoutGroup>
         <motion.div class="p7-groups" :layout="true" :layout-dependency="0" :transition="{ duration: 0.32, ease: [0.23, 1, 0.32, 1] }">
           <motion.section
-            v-for="group in groups"
+            v-for="group in groups.filter(group=>group.rows.length)"
             :key="group.key"
             class="p7-group"
             :data-key="group.key"
@@ -1109,7 +1064,7 @@ function exportProfile(){const url=URL.createObjectURL(new Blob([JSON.stringify(
             </motion.ul>
           </motion.section>
         </motion.div>
-      </LayoutGroup>
+      </LayoutGroup><ResultPager v-model:page="profilePage" :total="visible.length" label="个人信息"/><p v-if="profileQuery && !visible.length" class="ws-muted">没有匹配的信息，请换一个关键词。</p>
 
       <!-- 刷新时的加载态：骨架**盖在仍在 DOM 的内容上**（`SkeletonBlock.vue:21-26`），不摘内容 ——
            原来只有页头按钮的文案从「读取最新档案」变成「正在读取…」，内容区在重新取数的
@@ -1126,8 +1081,23 @@ function exportProfile(){const url=URL.createObjectURL(new Blob([JSON.stringify(
       </EmptyState>
     </section>
 
+<section class="profile-reading-entries" aria-label="个人资料详情"><button class="information-entry" @click="profileTab='gaps'"><span><strong>待补充信息</strong><small>{{ gapRows.length }} 项信息有待完善</small></span><UiIcon name="arrow" :size="18"/></button><button class="information-entry" @click="profileTab='judgments'"><span><strong>分析与判断</strong><small>查看已有资料支持的结论</small></span><UiIcon name="arrow" :size="18"/></button><button class="information-entry" @click="profileTab='sources'"><span><strong>资料管理</strong><small>核对来源、核验说明与组织方式</small></span><UiIcon name="arrow" :size="18"/></button></section>
     <!-- ═══ B · 所以判断了什么 ═══ -->
-    <section v-show="profileTab === 'judgments'" class="p7-block" aria-labelledby="p7-b-title">
+    
+
+    <!-- ═══ C · 还缺什么 ═══ -->
+    
+
+    <!-- 溯源总账。原来是 `.ws-context` 折叠 —— 正是 `DESIGN-LANGUAGE.md:102` 点名的
+         「溯源做成一个折叠的『来源』」。这里不是"还有更多内容"，是"我为什么该这么理解"，
+         所以用 Foldable 的 **static** 形态：标题照排，内容始终可见。
+         改 static 之后本页的折叠层数：度量口径(static) + 行内(1 层) + 这里(static) = **1 层**。 -->
+    
+
+    
+
+
+<InfoSheet :open="profileTab === 'judgments'" shape="panel" title="分析与判断" @close="profileTab='facts'"><section><ProfileInsights ref="insights" /></section><section class="p7-block" aria-labelledby="p7-b-title">
       <header class="p7-block__head">
         <div>
           <h2 id="p7-b-title">资料支持的判断</h2>
@@ -1250,10 +1220,8 @@ function exportProfile(){const url=URL.createObjectURL(new Blob([JSON.stringify(
           </div>
         </li>
       </ul>
-    </section>
-
-    <!-- ═══ C · 还缺什么 ═══ -->
-    <section v-show="profileTab === 'gaps'" class="p7-block" aria-labelledby="p7-c-title">
+    </section></InfoSheet>
+<InfoSheet :open="profileTab === 'gaps'" shape="panel" title="待补充信息" @close="profileTab='facts'"><section class="p7-block" aria-labelledby="p7-c-title">
       <header class="p7-block__head">
         <div>
           <h2 id="p7-c-title">建议补充的信息</h2>
@@ -1297,13 +1265,51 @@ function exportProfile(){const url=URL.createObjectURL(new Blob([JSON.stringify(
         </li>
       </ul>
       <p v-else class="ws-muted p7-none">暂未发现缺口。已记录的信息会继续按来源与可信度核对。</p>
-    </section>
-
-    <!-- 溯源总账。原来是 `.ws-context` 折叠 —— 正是 `DESIGN-LANGUAGE.md:102` 点名的
-         「溯源做成一个折叠的『来源』」。这里不是"还有更多内容"，是"我为什么该这么理解"，
-         所以用 Foldable 的 **static** 形态：标题照排，内容始终可见。
-         改 static 之后本页的折叠层数：度量口径(static) + 行内(1 层) + 这里(static) = **1 层**。 -->
-    <Foldable v-show="profileTab === 'sources'" class="p7-sources" static variant="section" title="资料来源与核验说明">
+    </section></InfoSheet>
+<InfoSheet :open="profileTab === 'sources'" shape="panel" title="资料管理" @close="profileTab='facts'"><DetailPopover title="组织个人信息" label="选择个人信息组织方式" class="profile-organize"><template #trigger>{{ modes.find(item => item.key === mode)?.label }}<UiIcon name="chevron" :size="16" /></template><div class="p7-modes" role="group" aria-label="换一种组织方式">
+          <span class="p7-modes__label">组织方式</span>
+          <div class="p7-modes__set">
+            <button
+              v-for="item in modes"
+              :key="item.key"
+              class="p7-mode"
+              :class="{ 'p7-mode--on': mode === item.key }"
+              :aria-pressed="mode === item.key"
+              :title="item.note"
+              data-testid="view-mode"
+              @click="mode = item.key"
+            >{{ item.label }}</button>
+          </div><div v-if="mode === 'source' || mode === 'conf'" class="p7-subfilter" data-testid="sub-filter">
+        <span>只看</span>
+        <button
+          class="p7-subchip"
+          :class="{ 'p7-subchip--on': !anyFocus }"
+          type="button"
+          @click="mode === 'conf' ? (confFocus = null) : (focus = null)"
+        >全部</button>
+        <template v-if="mode === 'source'">
+          <button
+            v-for="item in SOURCE_GROUPS"
+            :key="item.key"
+            class="p7-subchip"
+            :class="{ 'p7-subchip--on': focus === item.key }"
+            type="button"
+            @click="focus = focus === item.key ? null : item.key"
+          >{{ item.label }}</button>
+        </template>
+        <template v-else>
+          <button
+            v-for="item in CONF_GROUPS"
+            :key="item.key"
+            class="p7-subchip"
+            :class="{ 'p7-subchip--on': confFocus === item.key }"
+            type="button"
+            @click="confFocus = confFocus === item.key ? null : item.key"
+          >{{ item.title }}</button>
+        </template>
+        <span v-if="filteredNote" class="p7-subfilter__note">{{ filteredNote }}</span>
+      </div>
+        </div></DetailPopover><Foldable class="p7-sources" static variant="section" title="资料来源与核验说明">
       <div class="ws-context__body">
         <section>
           <h3>可获取的信息</h3>
@@ -1320,15 +1326,11 @@ function exportProfile(){const url=URL.createObjectURL(new Blob([JSON.stringify(
           <RouterLink class="ws-text-link" to="/academic">管理学籍与资料<UiIcon name="arrow" :size="16" /></RouterLink>
         </section>
       </div>
-    </Foldable>
-
-    <aside v-show="profileTab === 'sources'" class="c2-profile-side" aria-label="画像操作与来源">
+    </Foldable><aside class="c2-profile-side" aria-label="画像操作与来源">
       <section><h2>核对与管理资料</h2><RouterLink class="btn" to="/chat">补充一条信息<UiIcon name="plus" :size="16" /></RouterLink><button class="btn" :disabled="loading" @click="loadWorkspace">{{ loading ? '正在读取…' : '重新核对档案' }}</button><p>点开一条信息，可以查看依据、修改内容。更正后会标出受影响的判断。</p></section>
       <section><h2>这 {{ known.length }} 条从哪里来</h2><div v-for="source in SOURCE_GROUPS" :key="source.key" class="c2-source-row"><span>{{ source.label }}</span><span class="c2-source-track" role="meter" :aria-label="source.label" :aria-valuenow="known.filter(row => source.from.includes(row.desc)).length" :aria-valuemax="Math.max(1, known.length)" aria-valuemin="0"><i :style="{width: known.filter(row => source.from.includes(row.desc)).length / Math.max(1, known.length) * 100 + '%'}" /></span><b>{{ known.filter(row => source.from.includes(row.desc)).length }}</b></div></section>
       <section><h2>{{ identity.name }}</h2><p>{{ identity.line }}</p><p>整体可信度 {{ Math.round(trustShown) }}% · 覆盖 {{ known.length }} / {{ tally.total }}</p><Foldable variant="inline" title="查看计算依据"><p>{{ trustOrigin }}。{{ statusLine }}</p><p>{{ coverageNote }}</p></Foldable></section>
-    </aside>
-
-
+    </aside></InfoSheet>
     <!-- 更正是一条信息的小表单（`text` + 两个按钮），不是"从一行钻进去看细节"。
          所以 shape 是 dialog（缺省也是它，这里写出来是为了让形态是**显式**的）。 -->
     <InfoSheet shape="dialog" :open="correction !== null" :title="'更正' + (correction?.label ?? '信息')" @close="correction = null">
@@ -1671,7 +1673,7 @@ function exportProfile(){const url=URL.createObjectURL(new Blob([JSON.stringify(
 .p7-affect { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 var(--sp-2); border: 1px dashed var(--c-attention-border); border-radius: var(--r-sm); background: transparent; color: var(--c-text-2); font-size: var(--fs-14); }
 .p7-affect i { width: 6px; height: 6px; border-radius: var(--r-pill); border: 1px solid var(--c-attention); flex: none; }
 .p7-affect:hover { border-color: var(--c-attention); color: var(--c-attention-strong); }
-.p7-gap__ask { border-left: 2px solid var(--c-primary-border); padding-left: var(--sp-3); }
+.p7-gap__ask { border-left: 0; padding-left: var(--sp-3); }
 .p7-gap__actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-4); grid-column: 1 / -1; }
 .p7-gap__actions .ws-text-link { min-height: 44px; }
 .p7-gap__actions .ws-text-button { min-height: 44px; }
