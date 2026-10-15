@@ -7,19 +7,19 @@ import ts from 'typescript'
 function runtime(fetcher) {
   const storage = new Map([['zhiyin_token', 'test-token']])
   const events = []
-  const globals = { AbortController, URLSearchParams, Event, TextDecoder, Object, setTimeout, clearTimeout,
+  const globals = { AbortController, URLSearchParams, Headers, FormData, Event, TextDecoder, Object, setTimeout, clearTimeout,
     fetch: fetcher, localStorage: {getItem:k=>storage.get(k)},
     window: {dispatchEvent:e=>events.push(e.type)} }
   const modules = {}
   const ops = JSON.parse(readFileSync(new URL('../src/api/operations.json',import.meta.url)))
-  for (const file of ['backend-client','backend-stream']) {
+  for (const file of ['backend-client','backend-stream','client']) {
     const source = readFileSync(new URL(`../src/api/${file}.ts`,import.meta.url),'utf8')
     const code = ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,esModuleInterop:true}}).outputText
     const exports = {}
     vm.runInNewContext(code,{...globals,exports,require:p=>p==='./operations.json'?ops:modules[p]})
     modules['./'+file]=exports
   }
-  return {...modules['./backend-client'],...modules['./backend-stream'],storage,events}
+  return {...modules['./backend-client'],...modules['./backend-stream'],...modules['./client'],storage,events}
 }
 const json = (data,code=0,status=200)=>new Response(JSON.stringify({code,data,message:code?'拒绝请求':'ok'}),{status,headers:{'Content-Type':'application/json'}})
 const sse = frames=>new Response(frames.map(f=>'data: '+JSON.stringify(f)+'\n\n').join(''),{headers:{'Content-Type':'text/event-stream'}})
@@ -71,4 +71,33 @@ test('SSE authentication errors invalidate the session',async()=>{
   const app=runtime(async()=>sse([{error:{code:1004,message:'会话已过期'}}]))
   await assert.rejects(app.streamBackend('brief',{},()=>{}),e=>e.code===1004)
   assert.deepEqual(app.events,['zhiyin:unauthorized'])
+})
+
+test('late developer results and 401 responses cannot overwrite or log out the new account',async()=>{
+  for (const response of [json({role:'admin'}),json(null,1004,401)]) {
+    let release;const app=runtime(()=>new Promise(resolve=>release=resolve))
+    const pending=app.api('/developer/context');app.storage.set('zhiyin_token','new-account');release(response)
+    await assert.rejects(pending,e=>e.code===1004)
+    assert.deepEqual(app.events,[])
+  }
+})
+
+test('late SSE authentication errors cannot invalidate a different account',async()=>{
+  for (const response of [sse([{error:{code:1004,message:'expired'}}]),json(null,1004,401)]) {
+    let release;const app=runtime(()=>new Promise(resolve=>release=resolve))
+    const pending=app.streamBackend('dimension',{params:{dimension_id:'interest'}},()=>{})
+    app.storage.set('zhiyin_token','new-account');release(response)
+    await assert.rejects(pending,e=>e.code===1004)
+    assert.deepEqual(app.events,[])
+  }
+})
+
+test('account switch while reading response bodies rejects old results and auth errors',async()=>{
+  for (const invoke of [app=>app.backendClient.workspace(),app=>app.api('/developer/context'),app=>app.streamBackend('brief',{},()=>{})]) {
+    let release;let started;const reading=new Promise(resolve=>started=resolve)
+    const app=runtime(async()=>({ok:true,status:200,headers:new Headers({'Content-Type':'application/json'}),json:()=>{started();return new Promise(resolve=>release=resolve)}}))
+    const pending=invoke(app);await reading;app.storage.set('zhiyin_token','new-account');release({code:1004,message:'expired'})
+    await assert.rejects(pending,e=>e.code===1004)
+    assert.deepEqual(app.events,[])
+  }
 })

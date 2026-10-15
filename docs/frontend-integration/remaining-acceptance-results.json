@@ -1,0 +1,838 @@
+{
+  "at": "2026-10-15T18:25:17.360520+00:00",
+  "environment": "isolated PostgreSQL + Redis + real HTTP; synthetic account data",
+  "results": {
+    "PATCH /api/v1/app/plan/action/tasks": {
+      "cases": [
+        {
+          "label": "complete=True",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        },
+        {
+          "label": "complete=False",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        }
+      ],
+      "passed": true,
+      "positive_verified": true
+    },
+    "GET /api/v1/app/plan/action": {
+      "cases": [
+        {
+          "label": "success",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        },
+        {
+          "label": "success",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        },
+        {
+          "label": "success",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        }
+      ],
+      "passed": true,
+      "positive_verified": true
+    },
+    "POST /api/v1/app/plan/directions/{option_id}/select": {
+      "cases": [
+        {
+          "label": "choose main",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        },
+        {
+          "label": "choose parallel",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        }
+      ],
+      "passed": true,
+      "positive_verified": true
+    },
+    "GET /api/v1/app/plan/directions": {
+      "cases": [
+        {
+          "label": "success",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        },
+        {
+          "label": "success",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        }
+      ],
+      "passed": true,
+      "positive_verified": true
+    },
+    "POST /api/v1/app/notifications/{message_id}/read": {
+      "cases": [
+        {
+          "label": "other account changes no rows",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        },
+        {
+          "label": "success",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        }
+      ],
+      "passed": true,
+      "positive_verified": true
+    },
+    "GET /api/v1/app/notifications/pending": {
+      "cases": [
+        {
+          "label": "success",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        },
+        {
+          "label": "success",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        }
+      ],
+      "passed": true,
+      "positive_verified": true
+    },
+    "GET /api/v1/app/theory-cards/{theory_id}": {
+      "cases": [
+        {
+          "label": "success",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        }
+      ],
+      "passed": true,
+      "positive_verified": true
+    },
+    "POST /api/v1/app/intel/refresh": {
+      "cases": [
+        {
+          "label": "success",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        }
+      ],
+      "passed": true,
+      "positive_verified": true
+    },
+    "POST /api/v1/app/dimensions/{dimension_id}": {
+      "cases": [
+        {
+          "label": "real model result",
+          "http": 200,
+          "passed": true,
+          "positive": true,
+          "error": null
+        }
+      ],
+      "passed": true,
+      "positive_verified": true
+    },
+    "POST /api/v1/app/gaps/{gap_key}/clarify": {
+      "cases": [
+        {
+          "label": "real model result",
+          "http": 200,
+          "passed": true,
+          "positive": true,
+          "error": null
+        }
+      ],
+      "passed": true,
+      "positive_verified": true
+    },
+    "POST /api/v1/app/chsi/bind": {
+      "cases": [
+        {
+          "label": "invalid code rejected before external verification",
+          "http": 200,
+          "passed": true,
+          "positive": false,
+          "error": {
+            "kind": "malformed_code",
+            "message": "这串码的格式不对：应为 12 位数字，或以 A / X 开头的 16 位码。"
+          }
+        }
+      ],
+      "passed": true,
+      "positive_verified": false
+    },
+    "GET /api/v1/developer/context": {
+      "cases": [
+        {
+          "label": "student forbidden",
+          "http": 401,
+          "code": 1004,
+          "passed": true,
+          "positive": false,
+          "message": "需要开发者权限"
+        },
+        {
+          "label": "success",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        }
+      ],
+      "passed": true,
+      "positive_verified": true
+    },
+    "GET /api/v1/developer/capabilities": {
+      "cases": [
+        {
+          "label": "student forbidden",
+          "http": 401,
+          "code": 1004,
+          "passed": true,
+          "positive": false,
+          "message": "需要开发者权限"
+        },
+        {
+          "label": "success",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        }
+      ],
+      "passed": true,
+      "positive_verified": true
+    },
+    "GET /api/v1/developer/modules": {
+      "cases": [
+        {
+          "label": "student forbidden",
+          "http": 401,
+          "code": 1004,
+          "passed": true,
+          "positive": false,
+          "message": "需要开发者权限"
+        },
+        {
+          "label": "success",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        },
+        {
+          "label": "success",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        },
+        {
+          "label": "success",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        }
+      ],
+      "passed": true,
+      "positive_verified": true
+    },
+    "GET /api/v1/developer/checks": {
+      "cases": [
+        {
+          "label": "student forbidden",
+          "http": 401,
+          "code": 1004,
+          "passed": true,
+          "positive": false,
+          "message": "需要开发者权限"
+        },
+        {
+          "label": "success",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        }
+      ],
+      "passed": true,
+      "positive_verified": true
+    },
+    "GET /api/v1/developer/releases": {
+      "cases": [
+        {
+          "label": "student forbidden",
+          "http": 401,
+          "code": 1004,
+          "passed": true,
+          "positive": false,
+          "message": "需要开发者权限"
+        },
+        {
+          "label": "success",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        },
+        {
+          "label": "success",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        }
+      ],
+      "passed": true,
+      "positive_verified": true
+    },
+    "GET /api/v1/developer/platform-status": {
+      "cases": [
+        {
+          "label": "student forbidden",
+          "http": 401,
+          "code": 1004,
+          "passed": true,
+          "positive": false,
+          "message": "需要开发者权限"
+        },
+        {
+          "label": "success",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        }
+      ],
+      "passed": true,
+      "positive_verified": true
+    },
+    "GET /api/v1/developer/projects": {
+      "cases": [
+        {
+          "label": "student forbidden",
+          "http": 401,
+          "code": 1004,
+          "passed": true,
+          "positive": false,
+          "message": "需要开发者权限"
+        },
+        {
+          "label": "success",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        },
+        {
+          "label": "success",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        }
+      ],
+      "passed": true,
+      "positive_verified": true
+    },
+    "GET /api/v1/developer/workflows": {
+      "cases": [
+        {
+          "label": "student forbidden",
+          "http": 401,
+          "code": 1004,
+          "passed": true,
+          "positive": false,
+          "message": "需要开发者权限"
+        },
+        {
+          "label": "success",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        }
+      ],
+      "passed": true,
+      "positive_verified": true
+    },
+    "POST /api/v1/app/config/reload": {
+      "cases": [
+        {
+          "label": "student forbidden",
+          "http": 401,
+          "code": 1004,
+          "passed": true,
+          "positive": false,
+          "message": "需要管理员权限"
+        },
+        {
+          "label": "success",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        }
+      ],
+      "passed": true,
+      "positive_verified": true
+    },
+    "PUT /api/v1/developer/modules/{module_id}/policy": {
+      "cases": [
+        {
+          "label": "success",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        },
+        {
+          "label": "success",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        },
+        {
+          "label": "success",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        }
+      ],
+      "passed": true,
+      "positive_verified": true
+    },
+    "POST /api/v1/developer/checks": {
+      "cases": [
+        {
+          "label": "success",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        }
+      ],
+      "passed": true,
+      "positive_verified": true
+    },
+    "POST /api/v1/developer/modules/{module_id}/preview": {
+      "cases": [
+        {
+          "label": "fixture",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        },
+        {
+          "label": "live",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        }
+      ],
+      "passed": true,
+      "positive_verified": true
+    },
+    "GET /api/v1/app/modules/{module_id}/data": {
+      "cases": [
+        {
+          "label": "success",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        }
+      ],
+      "passed": true,
+      "positive_verified": true
+    },
+    "POST /api/v1/app/modules/{module_id}/invoke": {
+      "cases": [
+        {
+          "label": "success",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        }
+      ],
+      "passed": true,
+      "positive_verified": true
+    },
+    "POST /api/v1/app/modules/{module_id}/actions": {
+      "cases": [
+        {
+          "label": "success",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        }
+      ],
+      "passed": true,
+      "positive_verified": true
+    },
+    "POST /api/v1/developer/workflows": {
+      "cases": [
+        {
+          "label": "success",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        }
+      ],
+      "passed": true,
+      "positive_verified": true
+    },
+    "POST /api/v1/developer/workflows/{workflow_id}/run": {
+      "cases": [
+        {
+          "label": "success",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        }
+      ],
+      "passed": true,
+      "positive_verified": true
+    },
+    "POST /api/v1/developer/workflows/{workflow_id}/publish": {
+      "cases": [
+        {
+          "label": "success",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        }
+      ],
+      "passed": true,
+      "positive_verified": true
+    },
+    "POST /api/v1/app/workflows/{workflow_id}/run": {
+      "cases": [
+        {
+          "label": "success",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        },
+        {
+          "label": "idempotent replay",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        },
+        {
+          "label": "unpublished rejected",
+          "http": 404,
+          "code": 1002,
+          "passed": true,
+          "positive": false,
+          "message": "工作流尚未发布"
+        }
+      ],
+      "passed": true,
+      "positive_verified": true
+    },
+    "GET /api/v1/developer/workflows/{workflow_id}/runs": {
+      "cases": [
+        {
+          "label": "success",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        }
+      ],
+      "passed": true,
+      "positive_verified": true
+    },
+    "POST /api/v1/developer/workflows/{workflow_id}/unpublish": {
+      "cases": [
+        {
+          "label": "success",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        }
+      ],
+      "passed": true,
+      "positive_verified": true
+    },
+    "POST /api/v1/developer/projects": {
+      "cases": [
+        {
+          "label": "success",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        }
+      ],
+      "passed": true,
+      "positive_verified": true
+    },
+    "PUT /api/v1/developer/projects/{project_id}": {
+      "cases": [
+        {
+          "label": "success",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        },
+        {
+          "label": "success",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        }
+      ],
+      "passed": true,
+      "positive_verified": true
+    },
+    "GET /api/v1/developer/templates": {
+      "cases": [
+        {
+          "label": "success",
+          "http": 200,
+          "code": null,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        }
+      ],
+      "passed": true,
+      "positive_verified": true
+    },
+    "POST /api/v1/developer/projects/{project_id}/versions": {
+      "cases": [
+        {
+          "label": "success",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        }
+      ],
+      "passed": true,
+      "positive_verified": true
+    },
+    "GET /api/v1/developer/projects/{project_id}/versions": {
+      "cases": [
+        {
+          "label": "success",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        }
+      ],
+      "passed": true,
+      "positive_verified": true
+    },
+    "GET /api/v1/developer/versions/{version_id}": {
+      "cases": [
+        {
+          "label": "success",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        }
+      ],
+      "passed": true,
+      "positive_verified": true
+    },
+    "GET /api/v1/developer/versions/{version_id}/package": {
+      "cases": [
+        {
+          "label": "success",
+          "http": 200,
+          "code": null,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        }
+      ],
+      "passed": true,
+      "positive_verified": true
+    },
+    "POST /api/v1/developer/versions/{version_id}/retry": {
+      "cases": [
+        {
+          "label": "failed version returns to queue",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        }
+      ],
+      "passed": true,
+      "positive_verified": true
+    },
+    "POST /api/v1/developer/versions/{version_id}/release": {
+      "cases": [
+        {
+          "label": "offline executor / unsigned version rejected",
+          "http": 422,
+          "code": 1001,
+          "passed": true,
+          "positive": false,
+          "message": "执行器离线，无法确认环境版本，请等待恢复"
+        }
+      ],
+      "passed": true,
+      "positive_verified": false
+    },
+    "POST /api/v1/developer/releases": {
+      "cases": [
+        {
+          "label": "success",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        }
+      ],
+      "passed": true,
+      "positive_verified": true
+    },
+    "POST /api/v1/developer/releases/{job_id}/approve": {
+      "cases": [
+        {
+          "label": "success",
+          "http": 200,
+          "code": 0,
+          "passed": true,
+          "positive": true,
+          "message": "ok"
+        }
+      ],
+      "passed": true,
+      "positive_verified": true
+    }
+  },
+  "scenarios": {
+    "student write/readback and account isolation": {
+      "passed": true
+    },
+    "remaining read and AI interfaces": {
+      "passed": true
+    },
+    "module permissions preview and live actions": {
+      "passed": true
+    },
+    "workflow publish run replay history unpublish": {
+      "passed": true
+    },
+    "project templates versions download and release guards": {
+      "passed": true
+    }
+  },
+  "limitations": [
+    "CHSI positive verification requires a real online verification code; never simulated as success",
+    "Version deployment positive path requires a real source worker, candidate build/dataflow/browser evidence and executor; no fabricated gate results",
+    "Release request/approval tested to queue only; isolated environment has no executor and never deploys"
+  ]
+}

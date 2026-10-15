@@ -479,12 +479,12 @@
           "description": "Successful Response"
         }
       },
-      "status": "前端已连接",
+      "status": "环境阻塞",
       "frontend": [
         "redesign-demo/src/api/validate-ai.ts",
         "redesign-demo/src/components/AcademicVerification.vue"
       ],
-      "verification": "核验表单和 SSE 已连接；尚无真实核验资料，未执行学信网验证"
+      "verification": "前端已连接；非法验证码 SSE 错误路径通过。正向验收需要本人有效学信网在线验证码；文件导入不等于学信核验。见 remaining-acceptance-results.json。"
     },
     {
       "id": "POST /api/v1/app/conversation/material",
@@ -671,13 +671,13 @@
           "description": "Validation Error"
         }
       },
-      "status": "前端已连接",
+      "status": "隔离联调通过",
       "frontend": [
         "redesign-demo/src/api/validate-ai.ts",
         "redesign-demo/src/components/ProfileInsights.vue",
         "redesign-demo/src/views/StudentView.vue"
       ],
-      "verification": "代码已接入；真实联调待验证"
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 remaining-acceptance-results.json。"
     },
     {
       "id": "POST /api/v1/app/gaps/{gap_key}/clarify",
@@ -719,12 +719,12 @@
           "description": "Validation Error"
         }
       },
-      "status": "前端已连接",
+      "status": "隔离联调通过",
       "frontend": [
         "redesign-demo/src/api/validate-ai.ts",
         "redesign-demo/src/components/ProfileInsights.vue"
       ],
-      "verification": "代码已接入；真实联调待验证"
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 remaining-acceptance-results.json。"
     },
     {
       "id": "GET /api/v1/app/intel",
@@ -822,11 +822,11 @@
           "description": "Validation Error"
         }
       },
-      "status": "前端已连接",
+      "status": "隔离联调通过",
       "frontend": [
         "redesign-demo/src/views/IntelView.vue"
       ],
-      "verification": "代码已接入；真实联调待验证"
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 remaining-acceptance-results.json。"
     },
     {
       "id": "POST /api/v1/app/match/careers",
@@ -960,11 +960,11 @@
           "description": "Validation Error"
         }
       },
-      "status": "前端已连接",
+      "status": "隔离联调通过",
       "frontend": [
         "redesign-demo/src/components/ModuleCatalog.vue"
       ],
-      "verification": "已接入；等待发布模块/工作流及匹配权限后进行真实执行验收"
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 remaining-acceptance-results.json。"
     },
     {
       "id": "GET /api/v1/app/modules/{module_id}/data",
@@ -1008,11 +1008,11 @@
           "description": "Validation Error"
         }
       },
-      "status": "前端已连接",
+      "status": "隔离联调通过",
       "frontend": [
         "redesign-demo/src/components/ModuleCatalog.vue"
       ],
-      "verification": "已接入；等待发布模块/工作流及匹配权限后进行真实执行验收"
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 remaining-acceptance-results.json。"
     },
     {
       "id": "POST /api/v1/app/modules/{module_id}/invoke",
@@ -1065,11 +1065,11 @@
           "description": "Validation Error"
         }
       },
-      "status": "前端已连接",
+      "status": "隔离联调通过",
       "frontend": [
         "redesign-demo/src/components/ModuleCatalog.vue"
       ],
-      "verification": "已接入；等待发布模块/工作流及匹配权限后进行真实执行验收"
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 remaining-acceptance-results.json。"
     },
     {
       "id": "GET /api/v1/app/notes",
@@ -1331,12 +1331,12 @@
           "description": "Validation Error"
         }
       },
-      "status": "前端已连接",
+      "status": "隔离联调通过",
       "frontend": [
         "redesign-demo/src/store.ts",
         "redesign-demo/src/views/SystemView.vue"
       ],
-      "verification": "代码已接入；真实联调待验证"
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 remaining-acceptance-results.json。"
     },
     {
       "id": "GET /api/v1/app/plan/action",
@@ -1422,14 +1422,14 @@
           "description": "Validation Error"
         }
       },
-      "status": "前端已连接",
+      "status": "隔离联调通过",
       "frontend": [
         "redesign-demo/src/store.ts",
         "redesign-demo/src/components/LiveActionPlan.vue",
         "redesign-demo/src/views/ConversationView.vue",
         "redesign-demo/src/views/TodayView.vue"
       ],
-      "verification": "代码已接入；真实联调待验证"
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 remaining-acceptance-results.json。"
     },
     {
       "id": "GET /api/v1/app/plan/directions",
@@ -1506,11 +1506,11 @@
           "description": "Validation Error"
         }
       },
-      "status": "前端已连接",
+      "status": "隔离联调通过",
       "frontend": [
         "redesign-demo/src/views/AssessmentView.vue"
       ],
-      "verification": "代码已接入；真实联调待验证"
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 remaining-acceptance-results.json。"
     },
     {
       "id": "POST /api/v1/app/plan/timetable",
@@ -1950,11 +1950,11 @@
           "description": "Validation Error"
         }
       },
-      "status": "前端已连接",
+      "status": "隔离联调通过",
       "frontend": [
         "redesign-demo/src/views/ConversationView.vue"
       ],
-      "verification": "代码已接入；真实联调待验证"
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 remaining-acceptance-results.json。"
     },
     {
       "id": "POST /api/v1/app/track",
@@ -2104,11 +2104,11 @@
           "description": "Validation Error"
         }
       },
-      "status": "前端已连接",
+      "status": "隔离联调通过",
       "frontend": [
         "redesign-demo/src/components/WorkflowRunner.vue"
       ],
-      "verification": "已接入；等待发布模块/工作流及匹配权限后进行真实执行验收"
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 remaining-acceptance-results.json。"
     },
     {
       "id": "GET /api/v1/app/workspace",
@@ -2647,12 +2647,12 @@
           "description": "Successful Response"
         }
       },
-      "status": "前端已连接",
+      "status": "隔离联调通过",
       "frontend": [
         "redesign-demo/src/views/DeveloperView.vue",
         "redesign-demo/src/developer/client.ts"
       ],
-      "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 remaining-acceptance-results.json。"
     },
     {
       "id": "GET /api/v1/developer/capabilities",
@@ -2676,13 +2676,13 @@
           "description": "Successful Response"
         }
       },
-      "status": "前端已连接",
+      "status": "隔离联调通过",
       "frontend": [
         "redesign-demo/src/developer/ProjectsVersions.vue",
         "redesign-demo/src/developer/GettingStarted.vue",
         "redesign-demo/src/developer/client.ts"
       ],
-      "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 remaining-acceptance-results.json。"
     },
     {
       "id": "GET /api/v1/developer/checks",
@@ -2706,12 +2706,12 @@
           "description": "Successful Response"
         }
       },
-      "status": "前端已连接",
+      "status": "隔离联调通过",
       "frontend": [
         "redesign-demo/src/views/DeveloperView.vue",
         "redesign-demo/src/developer/client.ts"
       ],
-      "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 remaining-acceptance-results.json。"
     },
     {
       "id": "POST /api/v1/developer/checks",
@@ -2735,12 +2735,12 @@
           "description": "Successful Response"
         }
       },
-      "status": "前端已连接",
+      "status": "隔离联调通过",
       "frontend": [
         "redesign-demo/src/views/DeveloperView.vue",
         "redesign-demo/src/developer/client.ts"
       ],
-      "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 remaining-acceptance-results.json。"
     },
     {
       "id": "GET /api/v1/developer/context",
@@ -2764,12 +2764,12 @@
           "description": "Successful Response"
         }
       },
-      "status": "前端已连接",
+      "status": "隔离联调通过",
       "frontend": [
         "redesign-demo/src/views/DeveloperView.vue",
         "redesign-demo/src/developer/client.ts"
       ],
-      "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 remaining-acceptance-results.json。"
     },
     {
       "id": "GET /api/v1/developer/modules",
@@ -2793,12 +2793,12 @@
           "description": "Successful Response"
         }
       },
-      "status": "前端已连接",
+      "status": "隔离联调通过",
       "frontend": [
         "redesign-demo/src/views/DeveloperView.vue",
         "redesign-demo/src/developer/client.ts"
       ],
-      "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 remaining-acceptance-results.json。"
     },
     {
       "id": "PUT /api/v1/developer/modules/{module_id}/policy",
@@ -2851,12 +2851,12 @@
           "description": "Validation Error"
         }
       },
-      "status": "前端已连接",
+      "status": "隔离联调通过",
       "frontend": [
         "redesign-demo/src/views/DeveloperView.vue",
         "redesign-demo/src/developer/client.ts"
       ],
-      "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 remaining-acceptance-results.json。"
     },
     {
       "id": "POST /api/v1/developer/modules/{module_id}/preview",
@@ -2909,12 +2909,12 @@
           "description": "Validation Error"
         }
       },
-      "status": "前端已连接",
+      "status": "隔离联调通过",
       "frontend": [
         "redesign-demo/src/views/DeveloperView.vue",
         "redesign-demo/src/developer/client.ts"
       ],
-      "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 remaining-acceptance-results.json。"
     },
     {
       "id": "GET /api/v1/developer/platform-status",
@@ -2938,12 +2938,12 @@
           "description": "Successful Response"
         }
       },
-      "status": "前端已连接",
+      "status": "隔离联调通过",
       "frontend": [
         "redesign-demo/src/views/DeveloperView.vue",
         "redesign-demo/src/developer/client.ts"
       ],
-      "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 remaining-acceptance-results.json。"
     },
     {
       "id": "GET /api/v1/developer/projects",
@@ -2967,13 +2967,13 @@
           "description": "Successful Response"
         }
       },
-      "status": "前端已连接",
+      "status": "隔离联调通过",
       "frontend": [
         "redesign-demo/src/developer/ProjectsVersions.vue",
         "redesign-demo/src/developer/GettingStarted.vue",
         "redesign-demo/src/developer/client.ts"
       ],
-      "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 remaining-acceptance-results.json。"
     },
     {
       "id": "POST /api/v1/developer/projects",
@@ -3016,13 +3016,13 @@
           "description": "Validation Error"
         }
       },
-      "status": "前端已连接",
+      "status": "隔离联调通过",
       "frontend": [
         "redesign-demo/src/developer/ProjectsVersions.vue",
         "redesign-demo/src/developer/GettingStarted.vue",
         "redesign-demo/src/developer/client.ts"
       ],
-      "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 remaining-acceptance-results.json。"
     },
     {
       "id": "PUT /api/v1/developer/projects/{project_id}",
@@ -3075,13 +3075,13 @@
           "description": "Validation Error"
         }
       },
-      "status": "前端已连接",
+      "status": "隔离联调通过",
       "frontend": [
         "redesign-demo/src/developer/ProjectsVersions.vue",
         "redesign-demo/src/developer/GettingStarted.vue",
         "redesign-demo/src/developer/client.ts"
       ],
-      "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 remaining-acceptance-results.json。"
     },
     {
       "id": "GET /api/v1/developer/projects/{project_id}/versions",
@@ -3125,13 +3125,13 @@
           "description": "Validation Error"
         }
       },
-      "status": "前端已连接",
+      "status": "隔离联调通过",
       "frontend": [
         "redesign-demo/src/developer/ProjectsVersions.vue",
         "redesign-demo/src/developer/GettingStarted.vue",
         "redesign-demo/src/developer/client.ts"
       ],
-      "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 remaining-acceptance-results.json。"
     },
     {
       "id": "POST /api/v1/developer/projects/{project_id}/versions",
@@ -3184,13 +3184,13 @@
           "description": "Validation Error"
         }
       },
-      "status": "前端已连接",
+      "status": "隔离联调通过",
       "frontend": [
         "redesign-demo/src/developer/ProjectsVersions.vue",
         "redesign-demo/src/developer/GettingStarted.vue",
         "redesign-demo/src/developer/client.ts"
       ],
-      "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 remaining-acceptance-results.json。"
     },
     {
       "id": "GET /api/v1/developer/releases",
@@ -3214,12 +3214,12 @@
           "description": "Successful Response"
         }
       },
-      "status": "前端已连接",
+      "status": "隔离联调通过",
       "frontend": [
         "redesign-demo/src/views/DeveloperView.vue",
         "redesign-demo/src/developer/client.ts"
       ],
-      "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 remaining-acceptance-results.json。发布记录与申请/审批仅验证入队和回读，未执行部署。"
     },
     {
       "id": "POST /api/v1/developer/releases",
@@ -3262,12 +3262,12 @@
           "description": "Validation Error"
         }
       },
-      "status": "前端已连接",
+      "status": "隔离联调通过",
       "frontend": [
         "redesign-demo/src/views/DeveloperView.vue",
         "redesign-demo/src/developer/client.ts"
       ],
-      "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 remaining-acceptance-results.json。发布记录与申请/审批仅验证入队和回读，未执行部署。"
     },
     {
       "id": "POST /api/v1/developer/releases/{job_id}/approve",
@@ -3311,12 +3311,12 @@
           "description": "Validation Error"
         }
       },
-      "status": "前端已连接",
+      "status": "隔离联调通过",
       "frontend": [
         "redesign-demo/src/views/DeveloperView.vue",
         "redesign-demo/src/developer/client.ts"
       ],
-      "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 remaining-acceptance-results.json。发布记录与申请/审批仅验证入队和回读，未执行部署。"
     },
     {
       "id": "GET /api/v1/developer/templates",
@@ -3391,13 +3391,13 @@
           "description": "Validation Error"
         }
       },
-      "status": "前端已连接",
+      "status": "隔离联调通过",
       "frontend": [
         "redesign-demo/src/developer/ProjectsVersions.vue",
         "redesign-demo/src/developer/GettingStarted.vue",
         "redesign-demo/src/developer/client.ts"
       ],
-      "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 remaining-acceptance-results.json。"
     },
     {
       "id": "GET /api/v1/developer/versions/{version_id}",
@@ -3441,13 +3441,13 @@
           "description": "Validation Error"
         }
       },
-      "status": "前端已连接",
+      "status": "隔离联调通过",
       "frontend": [
         "redesign-demo/src/developer/ProjectsVersions.vue",
         "redesign-demo/src/developer/GettingStarted.vue",
         "redesign-demo/src/developer/client.ts"
       ],
-      "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 remaining-acceptance-results.json。"
     },
     {
       "id": "GET /api/v1/developer/versions/{version_id}/package",
@@ -3484,13 +3484,13 @@
           "description": "Validation Error"
         }
       },
-      "status": "前端已连接",
+      "status": "隔离联调通过",
       "frontend": [
         "redesign-demo/src/developer/ProjectsVersions.vue",
         "redesign-demo/src/developer/GettingStarted.vue",
         "redesign-demo/src/developer/client.ts"
       ],
-      "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 remaining-acceptance-results.json。"
     },
     {
       "id": "POST /api/v1/developer/versions/{version_id}/release",
@@ -3534,13 +3534,13 @@
           "description": "Validation Error"
         }
       },
-      "status": "前端已连接",
+      "status": "环境阻塞",
       "frontend": [
         "redesign-demo/src/developer/ProjectsVersions.vue",
         "redesign-demo/src/developer/GettingStarted.vue",
         "redesign-demo/src/developer/client.ts"
       ],
-      "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+      "verification": "前端已连接；离线执行器/无有效验收证据时拒绝发布已验证。正向发布需要真实 Source Worker、完整候选构建/数据流/浏览器证据及在线 Executor，未伪造过关结果。见 remaining-acceptance-results.json。"
     },
     {
       "id": "POST /api/v1/developer/versions/{version_id}/retry",
@@ -3584,13 +3584,13 @@
           "description": "Validation Error"
         }
       },
-      "status": "前端已连接",
+      "status": "隔离联调通过",
       "frontend": [
         "redesign-demo/src/developer/ProjectsVersions.vue",
         "redesign-demo/src/developer/GettingStarted.vue",
         "redesign-demo/src/developer/client.ts"
       ],
-      "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 remaining-acceptance-results.json。以隔离失败版本验证重试入队，未冒充构建成功。"
     },
     {
       "id": "GET /api/v1/developer/workflows",
@@ -3614,12 +3614,12 @@
           "description": "Successful Response"
         }
       },
-      "status": "前端已连接",
+      "status": "隔离联调通过",
       "frontend": [
         "redesign-demo/src/developer/Workflows.vue",
         "redesign-demo/src/developer/client.ts"
       ],
-      "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 remaining-acceptance-results.json。"
     },
     {
       "id": "POST /api/v1/developer/workflows",
@@ -3662,12 +3662,12 @@
           "description": "Validation Error"
         }
       },
-      "status": "前端已连接",
+      "status": "隔离联调通过",
       "frontend": [
         "redesign-demo/src/developer/Workflows.vue",
         "redesign-demo/src/developer/client.ts"
       ],
-      "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 remaining-acceptance-results.json。"
     },
     {
       "id": "POST /api/v1/developer/workflows/{workflow_id}/publish",
@@ -3720,12 +3720,12 @@
           "description": "Validation Error"
         }
       },
-      "status": "前端已连接",
+      "status": "隔离联调通过",
       "frontend": [
         "redesign-demo/src/developer/Workflows.vue",
         "redesign-demo/src/developer/client.ts"
       ],
-      "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 remaining-acceptance-results.json。"
     },
     {
       "id": "POST /api/v1/developer/workflows/{workflow_id}/run",
@@ -3778,12 +3778,12 @@
           "description": "Validation Error"
         }
       },
-      "status": "前端已连接",
+      "status": "隔离联调通过",
       "frontend": [
         "redesign-demo/src/developer/Workflows.vue",
         "redesign-demo/src/developer/client.ts"
       ],
-      "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 remaining-acceptance-results.json。"
     },
     {
       "id": "GET /api/v1/developer/workflows/{workflow_id}/runs",
@@ -3827,12 +3827,12 @@
           "description": "Validation Error"
         }
       },
-      "status": "前端已连接",
+      "status": "隔离联调通过",
       "frontend": [
         "redesign-demo/src/developer/Workflows.vue",
         "redesign-demo/src/developer/client.ts"
       ],
-      "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 remaining-acceptance-results.json。"
     },
     {
       "id": "POST /api/v1/developer/workflows/{workflow_id}/unpublish",
@@ -3885,12 +3885,12 @@
           "description": "Validation Error"
         }
       },
-      "status": "前端已连接",
+      "status": "隔离联调通过",
       "frontend": [
         "redesign-demo/src/developer/Workflows.vue",
         "redesign-demo/src/developer/client.ts"
       ],
-      "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 remaining-acceptance-results.json。"
     }
   ],
   "schemas": {

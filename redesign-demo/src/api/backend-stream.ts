@@ -23,11 +23,16 @@ export async function streamBackend<T>(
   const headers: Record<string, string> = { Accept: 'text/event-stream', 'Content-Type': 'application/json' }
   try { const token = localStorage.getItem('zhiyin_token'); if (token) headers.Authorization = 'Bearer ' + token } catch { /* request without a persisted token */ }
   let reader: ReadableStreamDefaultReader<Uint8Array> | undefined
+  const ensureSameAccount = () => {
+    if (headers.Authorization !== (localStorage.getItem('zhiyin_token') ? 'Bearer ' + localStorage.getItem('zhiyin_token') : undefined)) throw new BackendError('账号已变更，请重新生成。', 1004)
+  }
   try {
     const arg = options.arg ?? (key === 'dayAdvice' ? -new Date().getTimezoneOffset() : '')
     const response = await fetch('/api/v1' + path, { method: operation.method, headers, signal: controller.signal, body: JSON.stringify({ arg }) })
+    ensureSameAccount()
     if (!response.ok || !response.headers.get('content-type')?.includes('text/event-stream')) {
       const body = await response.json().catch(() => null) as { code?: number; message?: string; trace_id?: string } | null
+      ensureSameAccount()
       if (response.status === 401 || body?.code === 1004) window.dispatchEvent(new Event('zhiyin:unauthorized'))
       throw new BackendError(body?.message || '这次生成没有接上，请稍后重试。', body?.code ?? response.status, body?.trace_id)
     }
@@ -38,6 +43,7 @@ export async function streamBackend<T>(
     let result: T | undefined
     let finished = false
     function consume(block: string) {
+      ensureSameAccount()
       const data = block.split(/\r?\n/).filter(line => line.startsWith('data:')).map(line => line.slice(5).trimStart()).join('\n')
       if (!data) return
       const frame = JSON.parse(data) as StreamProgress & { error?: { code: number; message: string }; result?: T }

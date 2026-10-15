@@ -29,6 +29,7 @@ async function request<T>(key: keyof typeof operations, options: Options = {}): 
     if (headers.Authorization !== (localStorage.getItem('zhiyin_token') ? 'Bearer ' + localStorage.getItem('zhiyin_token') : undefined)) throw new BackendError('账号已变更，请重新读取。', 1004)
     if (response.status === 401 && key !== 'login' && key !== 'register') window.dispatchEvent(new Event('zhiyin:unauthorized'))
     const result = await response.json() as Envelope<T>
+    if (headers.Authorization !== (localStorage.getItem('zhiyin_token') ? 'Bearer ' + localStorage.getItem('zhiyin_token') : undefined)) throw new BackendError('账号已变更，请重新读取。', 1004)
     if ((response.status !== 401 && result.code === 1004) && key !== 'login' && key !== 'register') window.dispatchEvent(new Event('zhiyin:unauthorized'))
     if (!response.ok || result.code !== 0) throw new BackendError(result.message || '这次请求没有接上，请稍后重试。', result.code ?? response.status, result.trace_id)
 

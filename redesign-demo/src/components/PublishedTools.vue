@@ -211,7 +211,7 @@ const directory = computed<DirectoryEntry[]>(() => [
     runnable: e.runnable,
     version: e.version,
   })),
-  ...preset,
+  ...preset.filter(entry=>!published.value.some(item=>item.id===entry.id)),
 ])
 
 /* ---- 串联：把"被谁读"算出来给模板用 ----------------------------------------
@@ -272,7 +272,7 @@ const toolGroups = computed<ToolGroup[]>(() => {
   if (toolAxis.value === 'availability') {
     return [
       { key: 'run', title: '打开就能做事', note: '有可执行动作：选中它就能读数据、改任务状态。', items: all.filter((t) => t.runnable) },
-      { key: 'view', title: '只跳到别的页面', note: '自身没有动作，点开是跳到对应页面去看。', items: all.filter((t) => !t.runnable) },
+      { key: 'view', title: '查看数据', note: '查看工具结果或进入对应页面，不执行写入操作。', items: all.filter((t) => !t.runnable) },
     ]
   }
   return [
@@ -390,13 +390,13 @@ const sourceDetail = computed(() =>
               <RouterLink v-if="t.to" class="tools-entry" :to="t.to">
                 <strong class="tools-entry__name">{{ t.name }}</strong>
                 <span class="tools-entry__desc">{{ t.description }}</span>
-                <span class="tools-entry__meta"><SourceChip :label="t.sourceLabel" :kind="t.sourceKind" /><span class="tools-entry__tag">{{ t.runnable ? '可直接用' : '只跳转' }}</span><span v-if="readBy[t.key]" class="tools-entry__rel">被<strong>{{ readBy[t.key].join('、') }}</strong>读</span></span>
+                <span class="tools-entry__meta"><SourceChip :label="t.sourceLabel" :kind="t.sourceKind" /><span class="tools-entry__tag">{{ t.runnable ? '可操作' : t.to ? '打开页面' : '查看数据' }}</span><span v-if="readBy[t.key]" class="tools-entry__rel">被<strong>{{ readBy[t.key].join('、') }}</strong>读</span></span>
                 <UiIcon class="tools-entry__go" name="arrow" :size="16" />
               </RouterLink>
               <button v-else class="tools-entry" type="button" :aria-pressed="openId === t.id" @click="pick(t)">
                 <strong class="tools-entry__name">{{ t.name }}</strong>
                 <span class="tools-entry__desc">{{ t.description }}</span>
-                <span class="tools-entry__meta"><SourceChip :label="t.sourceLabel" :kind="t.sourceKind" /><span v-if="t.version" class="tools-entry__ver t-num">v{{ t.version }}</span><span class="tools-entry__tag">{{ t.runnable ? '可直接用' : '只跳转' }}</span><span v-if="readBy[t.key]" class="tools-entry__rel">被<strong>{{ readBy[t.key].join('、') }}</strong>读</span></span>
+                <span class="tools-entry__meta"><SourceChip :label="t.sourceLabel" :kind="t.sourceKind" /><span v-if="t.version" class="tools-entry__ver t-num">v{{ t.version }}</span><span class="tools-entry__tag">{{ t.runnable ? '可操作' : t.to ? '打开页面' : '查看数据' }}</span><span v-if="readBy[t.key]" class="tools-entry__rel">被<strong>{{ readBy[t.key].join('、') }}</strong>读</span></span>
                 <UiIcon class="tools-entry__go" name="arrow" :size="16" />
               </button>
             </li>

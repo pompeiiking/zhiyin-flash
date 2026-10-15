@@ -17,7 +17,7 @@ const navigation = computed(() => [
   { id: 'checks', label: '接入检查' }, { id: 'preview', label: '调试预览' },
   ...(isWorkbench.value ? [{ id: 'releases', label: '发布记录' }] : []),
 ])
-const workbenchUrl = new URL('/developer', window.location.href)
+const workbenchUrl = new URL('/#/developer', window.location.href)
 workbenchUrl.port = '5174'
 const modules = ref<ModuleView[]>([])
 const checks = ref<Record<string, any>[]>([])
@@ -98,10 +98,10 @@ onMounted(() => {
   }, 5000)
 })
 onBeforeUnmount(() => { alive = false; clearInterval(poll) })
-async function reloadConfig(){try{await api('/app/config/reload',{method:'POST'});window.alert('动态配置已重新加载')}catch(e){window.alert((e as Error).message)}}
+function reloadConfig(){void run(()=>api('/app/config/reload',{method:'POST'}),'动态配置已重新加载。')}
 </script>
 <template>
-<button class="btn" @click="reloadConfig">管理员：重新加载动态配置</button>
+<button v-if="administrator" class="btn" :disabled="busy" @click="reloadConfig">重新加载动态配置</button>
   <main class="developer">
     <header class="dev-header"><div><RouterLink to="/">← 职引</RouterLink><h1>{{ !context || isWorkbench ? '模块开发工作台' : context.environment === 'staging' ? '测试环境模块管理' : '模块管理' }}</h1><p>{{ !context || isWorkbench ? '开发组件、验证完整数据流，将通过验收的版本部署到职引。' : '管理当前环境已安装模块的启停与授权，编排数据流并调试真实组件。' }}</p></div>
       <div v-if="context" class="identity">{{ context.user_id }} · {{ administrator ? '管理员' : '开发者' }}<small>{{ context.environment }}</small></div>

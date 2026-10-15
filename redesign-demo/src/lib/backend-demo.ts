@@ -22,6 +22,7 @@ const state = reactive(emptyState())
 rememberSession('production-drafts', state, ['drafts'])
 export const backendDemo = {
   state: readonly(state),
+  chsiVerified: computed(()=>state.liveWorkspace?.profile_panel?.fields?.some(f=>f.source==='record'&&f.evidence?.some(e=>{try{const host=new URL(e).hostname;return host==='chsi.com.cn'||host.endsWith('.chsi.com.cn')}catch{return false}}))??false),
   isFresh: computed(()=>state.freshAccount),
   setDataMode(_mode: 'demo'|'service') { state.dataMode='service' },
   currentSession: computed(() => state.sessions.find(s => s.task_id === state.currentSessionId)),
