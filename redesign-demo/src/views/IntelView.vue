@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { onMounted } from 'vue'
 import { computed, ref, nextTick } from 'vue'
 import { backendDemo } from '../lib/backend-demo'
 import { backendClient } from '../api/backend-client'
@@ -49,6 +50,7 @@ const VERIFY:Record<string,{title:string;detail:string}[]> = {
 }
 function verifyPoints(item?:IntelItemView|null){return VERIFY[item?.kind??'']??[{title:'核对来源与时间',detail:'确认这条来自哪个来源、什么时候读取，再决定要不要用它。'}]}
 
+onMounted(()=>{ void load() })
 </script>
 <template>
 <div class="ws-page intel-page intelligence-workspace">

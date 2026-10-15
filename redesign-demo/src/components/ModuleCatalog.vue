@@ -61,8 +61,11 @@ import SkeletonBlock from './SkeletonBlock.vue'
 import StatTile from './StatTile.vue'
 import StatusBanner from './StatusBanner.vue'
 import StructuredFacts from './StructuredFacts.vue'
+import ModuleContent from '../modules/ModuleContent.vue'
+import type { ModuleView } from '../modules/client'
+import { loadShell } from '../lib/system-data'
 type Schema={type?:string;title?:string;enum?:unknown[];default?:unknown;properties?:Record<string,Schema>;required?:string[]}
-type Module={manifest:{id:string;name:string;version:string;description:string;kind:string;tool?:string;actions:string[];input_schema?:Schema};policy:{enabled:boolean;actions?:string[]}}
+type Module = ModuleView & { manifest: ModuleView['manifest'] & { input_schema?: Schema } }
 type Result={data:Record<string,unknown>;sources?:string[];empty?:boolean;module_version?:string}
 const modules=ref<Module[]|null>(null),active=ref<Module|null>(null),result=ref<Result|null>(null),busy=ref(false),error=ref(''),status=ref(''),inputs=ref<Record<string,string|number|boolean>>({})
 /* 只给"读目录 / 读工具数据"这两条真正的取数路径开骨架屏；
@@ -112,7 +115,7 @@ async function load(user=false){
   try{
     const data=await backendRequest<Module[]>('modules')
     if(!Array.isArray(data))throw new Error('Incomplete modules')
-    modules.value=data.filter(m=>m.policy?.enabled&&m.manifest&&m.manifest.kind!=='tool')
+    modules.value=data.filter(m=>m.effective_enabled&&m.manifest)
   }catch{
     // 这次是**谁**发起的：自动读失败不出红条，"还没取到"由状态轨说
     userInitiated.value=user
@@ -124,13 +127,20 @@ async function load(user=false){
 }
 async function open(module:Module){if(busy.value)return;active.value=module;result.value=null;status.value='';inputs.value={};fields.value.forEach(([key,s])=>{if(['string','number','boolean'].includes(typeof s.default))inputs.value[key]=s.default as string|number|boolean});await fetchData()}
 async function fetchData(invoke=false){if(!active.value||busy.value)return;busy.value=true;if(!invoke)loading.value=true;error.value='';try{const m=active.value.manifest;if(invoke){for(const k of m.input_schema?.required??[])if(inputs.value[k]===undefined||inputs.value[k]==='')throw new Error('请填写所有必填项。')}const data=await backendRequest<Result>(invoke?'moduleInvoke':'moduleData',{params:{module_id:m.id},body:invoke?{input:inputs.value,expected_version:m.version,request_id:crypto.randomUUID()}:undefined});if(!data||typeof data.data!=='object')throw new Error('Incomplete module result');result.value=data;status.value=invoke?'工具调用已完成。':'工具数据已读取。'}catch(e){lastFailed.value='data';error.value=e instanceof Error&&e.message==='请填写所有必填项。'?e.message:'工具暂时没有返回结果，请重试。输入和原内容仍保留。';pendingError.value=error.value;dismissedError.value='';userInitiated.value=true}finally{busy.value=false;loading.value=false}}
+async function performAction(action:string,payload:Record<string,unknown>){
+  if(!active.value||busy.value)return
+  busy.value=true;error.value=''
+  try{result.value=await backendRequest<Result>('moduleAction',{params:{module_id:active.value.manifest.id},body:{action,payload,expected_version:active.value.manifest.version}});status.value='操作已保存。';await loadShell()}
+  catch(e){lastFailed.value='action';error.value=e instanceof Error?e.message:'操作未完成，请重试。';pendingError.value=error.value;dismissedError.value='';userInitiated.value=true}
+  finally{busy.value=false}
+}
 async function setDone(task:{task_id:string;done:boolean}){if(!active.value||busy.value)return;busy.value=true;error.value='';try{const data=await backendRequest<Result>('moduleAction',{params:{module_id:active.value.manifest.id},body:{action:'plan.task.set_done',payload:{task_id:task.task_id,done:!task.done},expected_version:active.value.manifest.version}});result.value=data;status.value='任务状态已保存。';const plan=await backendClient.action();backendDemo.setAction(plan)}catch{lastFailed.value='action';error.value='这次操作没有完整完成，请重新读取工具数据核对状态。';pendingError.value=error.value;dismissedError.value='';userInitiated.value=true}finally{busy.value=false}}
 /* 重试 = 用户发起的重读：这一次失败必须让他看见原因（所以 userInitiated 置真）。
    页头的「重新读取工具目录」走 ToolsView 的 reloadToken，那条路径在下面 watch 里同样置真。 */
 function retry(){userInitiated.value=true;dismissedError.value='';if(lastFailed.value==='load')void load(true);else if(lastFailed.value==='data')void fetchData();else void backendClient.action().then(plan=>backendDemo.setAction(plan)).catch(()=>{})}
 /** 用户关掉这条错误：记住"这一条看过了"，不要自己弹回来 */
 function dismissError(){dismissedError.value=error.value}
-const canComplete=computed(()=>active.value?.manifest.actions.includes('plan.task.set_done')&&active.value.policy.actions?.includes('plan.task.set_done'))
+const canComplete=computed(()=>active.value?.manifest.actions?.includes('plan.task.set_done')&&active.value.policy.actions?.includes('plan.task.set_done'))
 
 /* ============================================================================
  * 【2026-10-14 · wave2 第二批】三件事，都是"这一页首屏不该是空壳 + 一个按钮"的修法
@@ -166,7 +176,7 @@ const entries = computed<ToolEntry[]>(() =>
     name: m.manifest.name,
     description: m.manifest.description,
     version: m.manifest.version,
-    kind: m.manifest.kind,
+    kind: m.manifest.kind ?? 'application',
     runnable: (m.manifest.actions?.length ?? 0) > 0,
   })),
 )
@@ -218,7 +228,7 @@ watch(() => props.reloadToken, () => { void load(true) })
 
 onMounted(() => { void load() })
 </script>
-<template><section class="module-catalog"><StatusBanner v-if="showError" tone="error" :message="error" title="还没取到工具目录" retry-label="重试" @retry="retry" @dismiss="dismissError"/><StatusBanner v-if="status" tone="success" :message="status" :open="!!status" @dismiss="status=''"/><p v-if="!active" class="ws-muted">在上面的目录里选一条工具，这里会显示它的数据与可执行动作。</p><section v-if="active" class="ws-section"><div class="ws-section-head"><h3 class="module-catalog__title">{{ active.manifest.name }}</h3><button class="btn" :disabled="busy" @click="fetchData()">刷新工具数据</button></div><p class="ws-muted">{{ active.manifest.description }}</p><form v-if="active.manifest.tool" class="ws-section" @submit.prevent="fetchData(true)"><label v-for="[key,s] in fields" :key="key" class="ws-field">{{ s.title || key }}<select v-if="s.enum" v-model="inputs[key]"><option v-for="v in s.enum" :key="String(v)" :value="v">{{ v }}</option></select><input v-else-if="s.type==='boolean'" v-model="inputs[key]" type="checkbox"/><input v-else-if="s.type==='number'||s.type==='integer'" v-model.number="inputs[key]" type="number" :required="active.manifest.input_schema?.required?.includes(key)"/><input v-else v-model="inputs[key]" maxlength="500" :required="active.manifest.input_schema?.required?.includes(key)"/></label><button class="btn btn--primary" :disabled="busy" type="submit">{{ busy?'正在运行…':'运行工具' }}</button></form><SkeletonBlock v-if="loading" class="ws-section" variant="list" :lines="3"/><template v-else-if="result"><EmptyState v-if="result.empty" kind="search-empty" title="工具当前没有可展示的结果" description="这次调用没有返回内容；输入与已有数据都保留。" size="sm" :next="false"><button class="btn" @click="fetchData()">重新读取工具数据</button></EmptyState><template v-else><ul v-if="tasks.length" class="ws-mini-list"><li v-for="t in tasks" :key="t.task_id" class="live-task"><div><strong>{{ t.text }}</strong><p class="ws-muted">{{ t.phase }} · {{ t.done?'已完成':'待执行' }}</p></div><button v-if="canComplete" class="btn" :disabled="busy" :aria-pressed="t.done" @click="setDone(t)">{{ t.done?'恢复任务':'完成任务' }}</button></li></ul><StructuredFacts v-else :value="result.data"/><StatTile v-if="tasks.length" class="ws-section" :value="doneCount" :denominator="tasks.length" unit="件" label="已完成"/></template><Foldable v-if="result.sources?.length" variant="inline" title="工具数据来源" :count="result.sources.length"><ul class="ws-mini-list"><li v-for="s in result.sources" :key="s">{{ s }}</li></ul></Foldable></template></section></section></template>
+<template><section class="module-catalog"><StatusBanner v-if="showError" tone="error" :message="error" title="还没取到工具目录" retry-label="重试" @retry="retry" @dismiss="dismissError"/><StatusBanner v-if="status" tone="success" :message="status" :open="!!status" @dismiss="status=''"/><p v-if="!active" class="ws-muted">在上面的目录里选一条工具，这里会显示它的数据与可执行动作。</p><section v-if="active" class="ws-section"><div class="ws-section-head"><h3 class="module-catalog__title">{{ active.manifest.name }}</h3><button class="btn" :disabled="busy" @click="fetchData()">刷新工具数据</button></div><p class="ws-muted">{{ active.manifest.description }}</p><form v-if="active.manifest.tool" class="ws-section" @submit.prevent="fetchData(true)"><label v-for="[key,s] in fields" :key="key" class="ws-field">{{ s.title || key }}<select v-if="s.enum" v-model="inputs[key]"><option v-for="v in s.enum" :key="String(v)" :value="v">{{ v }}</option></select><input v-else-if="s.type==='boolean'" v-model="inputs[key]" type="checkbox"/><input v-else-if="s.type==='number'||s.type==='integer'" v-model.number="inputs[key]" type="number" :required="active.manifest.input_schema?.required?.includes(key)"/><input v-else v-model="inputs[key]" maxlength="500" :required="active.manifest.input_schema?.required?.includes(key)"/></label><button class="btn btn--primary" :disabled="busy" type="submit">{{ busy?'正在运行…':'运行工具' }}</button></form><SkeletonBlock v-if="loading" class="ws-section" variant="list" :lines="3"/><template v-else-if="result"><EmptyState v-if="result.empty" kind="search-empty" title="工具当前没有可展示的结果" description="这次调用没有返回内容；输入与已有数据都保留。" size="sm" :next="false"><button class="btn" @click="fetchData()">重新读取工具数据</button></EmptyState><template v-else><ModuleContent v-if="active.manifest.detail || active.manifest.card" :module="active" :result="result" :slot-name="active.manifest.detail ? 'detail' : 'card'" :busy="busy" @action="performAction"/><ul v-else-if="tasks.length" class="ws-mini-list"><li v-for="t in tasks" :key="t.task_id" class="live-task"><div><strong>{{ t.text }}</strong><p class="ws-muted">{{ t.phase }} · {{ t.done?'已完成':'待执行' }}</p></div><button v-if="canComplete" class="btn" :disabled="busy" :aria-pressed="t.done" @click="setDone(t)">{{ t.done?'恢复任务':'完成任务' }}</button></li></ul><StructuredFacts v-else :value="result.data"/><StatTile v-if="tasks.length" class="ws-section" :value="doneCount" :denominator="tasks.length" unit="件" label="已完成"/></template><Foldable v-if="result.sources?.length" variant="inline" title="工具数据来源" :count="result.sources.length"><ul class="ws-mini-list"><li v-for="s in result.sources" :key="s">{{ s }}</li></ul></Foldable></template></section></section></template>
 
 <style scoped>
 /* ============================================================================

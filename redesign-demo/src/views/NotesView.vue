@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { onMounted } from 'vue'
 import DetailPopover from '../components/DetailPopover.vue'
 import ResultPager from '../components/ResultPager.vue'
 import { usePagedItems } from '../lib/paged-items'
@@ -26,11 +27,11 @@ const deleting=ref<NoteView|null>(null),busy=ref(false),deleteError=ref('')
 /* 读取态与"忙"分开：busy 也覆盖添加/删除，用它画骨架会把"正在保存"错认成"还没读到" */
 const loading=ref(false)
 async function loadNotes(){if(busy.value)return;busy.value=true;loading.value=true;error.value='';try{const notes=await backendClient.notes();if(!Array.isArray(notes))throw new Error('Incomplete notes');backendDemo.setNotes(notes);status.value='已读取最新个人记录。'}catch{error.value='最新记录没有取得，请重试。现有条目和输入仍保留。'}finally{busy.value=false;loading.value=false}}
-async function setDone(item: NoteView,done:boolean){if(busy.value)return;if(!backendDemo.state.liveNoteIds.includes(item.id)){backendDemo.setNoteDone(item.id,done);return}busy.value=true;error.value='';try{const result=await backendClient.noteDone(item.id,done);backendDemo.upsertNote(result);status.value='记录状态已保存。'}catch{error.value='记录状态没有保存成功，请重试。原状态仍保留。'}finally{busy.value=false}}
+async function setDone(item: NoteView,done:boolean){if(busy.value)return;busy.value=true;error.value='';try{const result=await backendClient.noteDone(item.id,done);backendDemo.upsertNote(result);status.value='记录状态已保存。'}catch{error.value='记录状态没有保存成功，请重试。原状态仍保留。'}finally{busy.value=false}}
 const text=computed({get:()=>drafts.value[tab.value],set:v=>drafts.value[tab.value]=v})
 const items=computed(()=>backendDemo.state.notes.filter(n=>n.kind===tab.value))
 const pending=computed(()=>items.value.filter(n=>!n.done)), completed=computed(()=>items.value.filter(n=>n.done))
-async function add(){if(busy.value)return;try{if(!text.value.trim()||text.value.trim().length>200)throw new Error('请写下1–200个字。');if(items.value.some(n=>n.text===text.value.trim())){status.value='这条记录已存在，已保留原记录。';return}if(backendDemo.state.notesOrigin==='live'){busy.value=true;const note=await backendClient.addNote({kind:tab.value,text:text.value.trim()});backendDemo.upsertNote(note);status.value='已保存到个人记录。'}else{backendDemo.addNote(text.value,tab.value);status.value='已保存这条个人记录。'}text.value='';error.value=''}catch{error.value='这条记录没有保存成功，请核对内容后重试。输入仍保留。'}finally{busy.value=false}}
+async function add(){if(busy.value)return;try{if(!text.value.trim()||text.value.trim().length>200)throw new Error('请写下1–200个字。');if(items.value.some(n=>n.text===text.value.trim())){status.value='这条记录已存在，已保留原记录。';return}{busy.value=true;const note=await backendClient.addNote({kind:tab.value,text:text.value.trim()});backendDemo.upsertNote(note);status.value='已保存到个人记录。'}text.value='';error.value=''}catch{error.value='这条记录没有保存成功，请核对内容后重试。输入仍保留。'}finally{busy.value=false}}
 async function remove(){if(!deleting.value||busy.value)return;busy.value=true;deleteError.value='';try{const id=deleting.value.id;if(backendDemo.state.liveNoteIds.includes(id)){const result=await backendClient.removeNote(id);if(result.removed!==id)throw new Error('Delete was not confirmed')}backendDemo.removeNote(id);deleting.value=null;status.value='已删除这条记录。'}catch{deleteError.value='这条记录没有删除成功，请重试；原记录仍保留。'}finally{busy.value=false}}
 
 /* =============================================================================
@@ -64,6 +65,7 @@ const noteGroups = computed(() => {
  if (noteAxis.value === 'source') return [{key:'live',title:'已保存的个人记录',items:notes.filter(n=>backendDemo.state.liveNoteIds.includes(n.id))},{key:'demo',title:'自己写的 · 个人记录',items:notes.filter(n=>!backendDemo.state.liveNoteIds.includes(n.id))}]
  return [{key:'goal',title:'目标 · 为什么',items:notes.filter(n=>n.kind==='goal')},{key:'todo',title:'待办 · 做什么',items:notes.filter(n=>n.kind==='todo')}]
 })
+onMounted(()=>{ void loadNotes() })
 </script>
 <template>
 <div class="ws-page notes-page journey-page"><PageHeading title="待办与目标" description="写下你自己的安排，与方向方案生成的任务分别保留。"><button class="btn" :disabled="busy" @click="loadNotes">{{ busy?'正在处理…':'读取最新记录' }}</button><RouterLink class="btn" to="/home">查看今日行动<UiIcon name="arrow" :size="16"/></RouterLink></PageHeading>

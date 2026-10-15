@@ -1,15 +1,16 @@
 <script setup lang="ts">
+import { onMounted } from 'vue'
 import DetailPopover from '../components/DetailPopover.vue'
 import OverviewMetric from '../components/OverviewMetric.vue'
 import { computed, ref } from 'vue'
 import { backendDemo } from '../lib/backend-demo'
 import { demo } from '../store'
-import { CALENDAR_MARKS, TASKS_BY_GRADE } from '../data/student'
-import { DEMO_PHASE_TASK_IDS } from '../data/phase-tasks'
+
+
 import PageHeading from '../components/PageHeading.vue'
 import UiIcon from '../components/UiIcon.vue'
-import SourceChip from '../components/SourceChip.vue'
-import ConfidenceBadge from '../components/ConfidenceBadge.vue'
+
+
 import { hasCourseTime, courseTimeLabel } from '../lib/academic'
 import InfoSheet from '../components/InfoSheet.vue'
 import DayAdvicePanel from '../components/DayAdvicePanel.vue'
@@ -28,16 +29,16 @@ const selectedDate = computed(() => month.value.getFullYear()+'-'+String(month.v
 const weekDates = computed(() => { const start=new Date(month.value.getFullYear(),month.value.getMonth(),day.value);start.setDate(start.getDate()-(start.getDay()+6)%7);return Array.from({length:7},(_,i)=>new Date(start.getFullYear(),start.getMonth(),start.getDate()+i)) })
 const title = computed(() => mode.value==='week' ? (weekDates.value[0].getMonth()+1)+'月'+weekDates.value[0].getDate()+'日 — '+(weekDates.value[6].getMonth()+1)+'月'+weekDates.value[6].getDate()+'日' : month.value.getFullYear() + ' 年 ' + (month.value.getMonth()+1) + ' 月')
 function selectDate(date:Date){month.value=new Date(date.getFullYear(),date.getMonth(),1);day.value=date.getDate();advice.value=false}
-function weekItems(date:Date){const key=date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0');return backendDemo.state.liveCalendar!==null ? backendDemo.state.liveCalendar.filter(n=>nodeDate(n.due_at)===key).map(n=>n.title) : date.getFullYear()===2026&&date.getMonth()===9 ? CALENDAR_MARKS.filter(m=>m.day===date.getDate()).map(m=>m.label) : [] }
+function weekItems(date:Date){const key=date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0');return backendDemo.state.liveCalendar!==null ? backendDemo.state.liveCalendar.filter(n=>nodeDate(n.due_at)===key).map(n=>n.title) : [] }
 const offset = computed(() => (month.value.getDay()+6)%7)
 const length = computed(() => new Date(month.value.getFullYear(),month.value.getMonth()+1,0).getDate())
-const isFixtureMonth = computed(() => month.value.getFullYear()===2026 && month.value.getMonth()===9)
+
 const calendarBusy=ref(false),calendarError=ref(''),refreshing=ref(false),readOnce=ref(false)
 /* 刷新 = "页面上已经有内容，这次是再读一遍"。没有内容时是首次加载：
    这时用按钮自身的"正在读取…"，不要拿骨架屏盖住空日历（那会把"还没有"说成"正在有"）。 */
-async function loadCalendar(){if(calendarBusy.value)return;calendarBusy.value=true;calendarError.value='';if(readOnce.value)refreshing.value=true;try{const data=await backendClient.calendar();if(!Array.isArray(data))throw new Error('Incomplete calendar');backendDemo.setCalendar(data);readOnce.value=true}catch{calendarError.value='最新日程没有取得，请重试。当前日期和内容仍保留。'}finally{calendarBusy.value=false;refreshing.value=false}}
+async function loadCalendar(){if(calendarBusy.value)return;calendarBusy.value=true;calendarError.value='';if(readOnce.value)refreshing.value=true;try{const [data,plan,workspace]=await Promise.all([backendClient.calendar(),backendClient.action(),backendClient.workspace()]);backendDemo.setAction(plan);backendDemo.setWorkspace(workspace);if(!Array.isArray(data))throw new Error('Incomplete calendar');backendDemo.setCalendar(data);readOnce.value=true}catch{calendarError.value='最新日程没有取得，请重试。当前日期和内容仍保留。'}finally{calendarBusy.value=false;refreshing.value=false}}
 function nodeDate(value?:string|null){if(!value)return '';if(/^\d{4}-\d{2}-\d{2}$/.test(value))return value;const date=new Date(value);return Number.isNaN(date.getTime())?'':date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0')}
-const marks = computed(() => backendDemo.state.liveCalendar!==null ? backendDemo.state.liveCalendar.filter(n=>{const d=nodeDate(n.due_at);return d.startsWith(month.value.getFullYear()+'-'+String(month.value.getMonth()+1).padStart(2,'0')+'-')}).map(n=>({day:Number(nodeDate(n.due_at).slice(-2)),label:n.title,kind:'action',source:n.source,detail:n.related_task_text})) : isFixtureMonth.value ? CALENDAR_MARKS : [])
+const marks = computed(() => backendDemo.state.liveCalendar!==null ? backendDemo.state.liveCalendar.filter(n=>{const d=nodeDate(n.due_at);return d.startsWith(month.value.getFullYear()+'-'+String(month.value.getMonth()+1).padStart(2,'0')+'-')}).map(n=>({day:Number(nodeDate(n.due_at).slice(-2)),label:n.title,kind:'action',source:n.source,detail:n.related_task_text})) : [])
 const selectedMarks = computed(() => marks.value.filter(m => m.day === day.value))
 const selectedTasks = computed(() => backendDemo.state.liveAction ? (backendDemo.state.liveAction.phases?.flatMap(p=>p.tasks??[])??[]).filter(t=>!t.done&&nodeDate(t.due_date)===selectedDate.value).map(t=>({id:t.task_id,title:t.text,minutes:null})) : month.value.getFullYear()===today.getFullYear() && month.value.getMonth()===today.getMonth() && day.value===today.getDate() ? demo.use.now.value : [])
 function move(n: number) { if(mode.value==='week'){selectDate(new Date(month.value.getFullYear(),month.value.getMonth(),day.value+n*7));return} month.value = new Date(month.value.getFullYear(),month.value.getMonth()+n,1); day.value=1; advice.value=false }
@@ -56,215 +57,13 @@ const lanes = computed(() => weekdays.flatMap((_w,i) => {
 }))
 const advice = ref(false)
 
-/* ============================================================================
- * 课量与任务量的关系
- * ---------------------------------------------------------------------------
- * 【这一块回答什么】DESIGN-LANGUAGE §8 给「日历」页点的方向原文是：
- *   "课程/截止/任务在**同一时间轴**互相影响（课多的一周任务自动排少）"。
- * 真实页原来把这三类做成了三张各管各的卡（月历 / 课表 tab / 当日议程），
- * "互相影响"没有被表达 —— §4.1「让结构显形」与 §6 第 5 问（关系是否可见）
- * 因此都不成立（vs1 报告 G-03：页高只有靶子的 27%，这块整块不存在）。
- *
- * 【数据从哪来 —— 没有一处是写死的】
- *   课量：`backendDemo.state.academic.courses` 的真实节次。每门课的开始/结束节次
- *         就是它的时长（1 节 = 1 小时），`weeks` 字段决定它在哪几周上。
- *   任务量：`demo.state.tasks`（真实任务清单）按**阶段计划的分段窗**归周，
- *         分段窗来自 `ActionPlanView.phases[].date_range`（服务模式）
- *         或 `demo-service.ts:15` 的同一条常量（演示模式）。
- *         两者指的是同一个东西，任务与周的对应关系在两条路径上一致。
- * 【为什么任务量不按 due_date 归周】演示模式下 `demo-service.ts:15` 把每条任务的
- *   `due_date` 写成 null（真实产品也没有逐条任务的日期），逐条归周会得到"三周都是 0"
- *   这种假读数。所以按**计划自己划的周窗**归 —— 那是计划对"这段什么时候做"的原话。
- *
- * 【"反的"是怎么被看出来的】每行用**同一把尺子**量两件事：横条的宽度 = 小时数 /
- * 三周最大值。课量条（深灰）越长的那一周，任务量条（主色）越短，第三列直接把
- * 差值写成"余 N 小时"。所以这个关系不是一句结论，是三条之间空出来的那一段。
- * ==========================================================================*/
-const GRADE_KEY: Record<string, string> = { freshman: 'f', sophomore: 's', junior: 'j', senior: 'e' }
-
-function mondayOf(date: Date): Date {
-  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate())
-  d.setDate(d.getDate() - ((d.getDay() + 6) % 7))
-  return d
-}
-function dateKey(d: Date): string {
-  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')
-}
-function monthDay(d: Date): string {
-  return d.getMonth() + 1 + ' 月 ' + d.getDate() + ' 日'
-}
-/** 学年锚点：演示学期的第 1 周从这一天（周一）开始。真实数据里没有学期起始日，所以这是一个明写的假设。 */
-const TERM_FIRST_MONDAY = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 41)
-const thisMonday = mondayOf(today)
-const termWeekOf = (d: Date) =>
-  Math.max(1, Math.round((mondayOf(d).getTime() - TERM_FIRST_MONDAY.getTime()) / 604800000) + 1)
-
-interface WeekRow {
-  offset: number
-  /** 学年第几周 */
-  n: number
-  monday: Date
-  /** 计划给这一段写的时间窗（服务模式用后端的原话，演示模式用同一条常量） */
-  range: string | null
-  courseHours: number
-  taskHours: number
-  taskDone: number
-  taskTotal: number
-  /** 同一天、同一周里两门课的节次重叠了几处 */
-  conflicts: number
-  /** 这一周有几门课真的在上 */
-  courses: number
-}
-function weeksOf(raw?: string): number[] | null {
-  if (!raw) return null
-  const s = raw.replace(/[第周\s]/g, '')
-  if (!/[0-9]/.test(s)) return null
-  if (/[-–—~]/.test(s)) {
-    const m = s.match(/(\d+)\s*[-–—~]\s*(\d+)/)
-    if (m) {
-      const out: number[] = []
-      for (let i = Number(m[1]); i <= Number(m[2]) && out.length < 40; i++) out.push(i)
-      return out
-    }
-  }
-  const list = (s.match(/\d+/g) ?? []).map(Number)
-  return list.length ? list : null
-}
-function weekCmpFor(courses: AcademicCourseView | null | undefined): number {
-  const s = courses?.start_period
-  const e = courses?.end_period
-  return s && e && e >= s ? e - s + 1 : 0
-}
-/** 同一天、同一周、节次有重叠 —— 与课表里画出来的冲突是同一件事。 */
-function overlapsInWeek(a: AcademicCourseView, b: AcademicCourseView): boolean {
-  if (!a.weeks || !b.weeks) return false
-  const wa = weeksOf(a.weeks)
-  const wb = weeksOf(b.weeks)
-  if (!wa || !wb) return false
-  return wa.some((w) => wb.includes(w))
-}
-function overlapsInDay(a: AcademicCourseView, b: AcademicCourseView): boolean {
-  return (a.start_period ?? 0) <= (b.end_period ?? 0) && (b.start_period ?? 0) <= (a.end_period ?? 0)
-}
-function coursesOn(week: number, weekday: number): AcademicCourseView[] {
-  return timed.value.filter(
-    (c) => c.weekday === weekday && (weeksOf(c.weeks)?.includes(week) ?? false) && (c.start_period ?? 0) > 0 && (c.end_period ?? 0) > 0,
-  )
-}
-/** 这一周里同一门课只算一次重叠：拿"被两门课同时占住的节次"数，不是数对数。 */
-function conflictCount(week: number): number {
-  const seen = new Set<number>()
-  for (let wd = 1; wd <= 7; wd++) {
-    const day = coursesOn(week, wd)
-    for (let i = 0; i < day.length; i++) {
-      for (let j = i + 1; j < day.length; j++) {
-        if (!overlapsInWeek(day[i], day[j]) || !overlapsInDay(day[i], day[j])) continue
-        const lo = Math.max(day[i].start_period ?? 0, day[j].start_period ?? 0)
-        const hi = Math.min(day[i].end_period ?? 0, day[j].end_period ?? 0)
-        for (let p = lo; p <= hi; p++) seen.add(wd * 100 + p)
-      }
-    }
-  }
-  return seen.size
-}
-/** 某一周有哪些任务 —— 与 demo-service.ts 的 `action()` 走同一份对照。
- *  `ActionTaskView`（backend-types.ts:343）里**没有** minutes 字段，所以时长必须回查
- *  `demo.state.tasks` / 年级任务表；标题与完成态取计划自己的（那是服务端的事实）。
- *  两条路径用的是同一份 id 对照（`DEMO_PHASE_TASK_IDS` + `m-<年级字母><段号>`），
- *  所以演示模式与服务模式下"哪条任务算在哪一周"是一致的。 */
-function taskIdsForPhase(phaseId: string): readonly string[] {
-  const phase = backendDemo.state.liveAction?.phases?.[Number(phaseId) - 1]
-  if (phase?.tasks?.length) return phase.tasks.map((t) => t.task_id)
-  const grade = demo.state.grade
-  return DEMO_PHASE_TASK_IDS['m-' + (GRADE_KEY[grade] ?? 'j') + phaseId] ?? []
-}
-function taskDoneForPhase(phaseId: string, id: string): boolean {
-  const phase = backendDemo.state.liveAction?.phases?.[Number(phaseId) - 1]
-  const live = phase?.tasks?.find((t) => t.task_id === id)
-  if (live) return live.done === true
-  return demo.state.tasks.find((t) => t.id === id)?.bucket === 'done'
-}
-function tasksForPhase(phaseId: string): { title: string; minutes: number; done: boolean }[] {
-  const grade = demo.state.grade
-  const store = demo.state.tasks.length ? demo.state.tasks : (TASKS_BY_GRADE[grade] ?? [])
-  const plan = backendDemo.state.liveAction?.phases?.[Number(phaseId) - 1]?.tasks
-  return taskIdsForPhase(phaseId).map((id) => ({
-    title: plan?.find((t) => t.task_id === id)?.text ?? store.find((t) => t.id === id)?.title ?? id,
-    minutes: store.find((t) => t.id === id)?.minutes ?? 0,
-    done: taskDoneForPhase(phaseId, id),
-  }))
-}
-
-const weekRows = computed<WeekRow[]>(() =>
-  [-1, 0, 1].map((offset) => {
-    const monday = new Date(thisMonday.getFullYear(), thisMonday.getMonth(), thisMonday.getDate() + offset * 7)
-    const phaseId = String(offset + 1)
-    const phase = backendDemo.state.liveAction?.phases?.[offset + 1]
-    const tasks = tasksForPhase(phaseId)
-    const done = tasks.filter((t) => t.done)
-    const dayHours = [1, 2, 3, 4, 5, 6, 7].map((wd) =>
-      coursesOn(termWeekOf(monday), wd).reduce((sum, c) => sum + weekCmpFor(c), 0),
-    )
-    const n = termWeekOf(monday)
-    return {
-      offset,
-      n,
-      monday,
-      range: phase?.date_range ?? null,
-      courseHours: dayHours.reduce((a, b) => a + b, 0),
-      /* 任务量 = 真正排进去的小时数。done 的按**全部时长**记（它做进去了），
-         没做的也按计划时长记（它排在那一周）—— 所以这个数读的是"计划排了多少"。
-         `minutes: 0` 是"等结果"那类不占时间的条目，天然不计入。 */
-      taskHours: tasks.reduce((sum, t) => sum + t.minutes, 0) / 60,
-      taskDone: done.length,
-      taskTotal: tasks.length,
-      conflicts: conflictCount(n),
-      courses: [1, 2, 3, 4, 5, 6, 7].filter((wd) => coursesOn(n, wd).length > 0).length,
-    }
-  }),
-)
-const weekMax = computed(() => Math.max(1, ...weekRows.value.flatMap((w) => [w.courseHours, w.taskHours])))
-const weekTerm = computed(() => {
-  const a = weekRows.value[0]
-  const b = weekRows.value[2]
-  return a && b ? { from: a.n, to: b.n } : null
-})
-/** 三周里课最多 / 课最少的那一周 —— 只在页头那句对比里用一次。 */
-const heavyWeek = computed(() => weekRows.value.reduce((a, b) => (b.courseHours > a.courseHours ? b : a)))
-const lightWeek = computed(() => weekRows.value.reduce((a, b) => (b.courseHours <= a.courseHours ? b : a)))
-/** 一件事占这一周课程时间的比例 —— 这是"课多的一周任务排得少"的可核对读法。 */
-const perCourseHour = (w: WeekRow) => (w.courseHours ? w.taskHours / w.courseHours : 0)
-const thisWeek = computed(() => weekRows.value[1])
-/** 课最多的那一天（放在右栏，"这一天为什么动不了"就落在具体某天）。 */
-const busiestDay = computed(() => {
-  const n = thisWeek.value?.n ?? termWeekOf(today)
-  return [1, 2, 3, 4, 5, 6, 7]
-    .map((wd) => ({
-      wd,
-      label: '周' + weekdays[wd - 1],
-      hours: coursesOn(n, wd).reduce((sum, c) => sum + weekCmpFor(c), 0),
-      names: coursesOn(n, wd).map((c) => c.name),
-    }))
-    .sort((a, b) => b.hours - a.hours)[0]
-})
-const weekHref = (w: WeekRow) => '/home?week=' + dateKey(w.monday)
-const pendingTimeCourses = computed(() => timed.value.filter((c) => c.end_period! > 40).length + unscheduled.value.length)
-const pendingMarkCount = computed(() => {
-  const live = backendDemo.state.liveCalendar
-  if (live?.length) return live.filter((n) => !nodeDate(n.due_at)).length
-  return 0
-})
-/** 不足 1 小时的读数换成分钟："0.58 小时"没人读得出来，"35 分钟"可以。 */
-const hours = (v: number) =>
-  v > 0 && v < 1
-    ? Math.max(1, Math.round(v * 60)) + ' 分钟'
-    : (Math.round(v * 10) / 10).toLocaleString('zh-CN') + ' 小时'
-const crowdedDays=computed(()=>[1,2,3,4,5,6,7].filter(wd=>coursesOn(thisWeek.value?.n??termWeekOf(today),wd).reduce((n,c)=>n+weekCmpFor(c),0)>=4).length)
+const pendingTimeCourses = computed(() => timed.value.filter(c=>c.end_period!>40).length + unscheduled.value.length)
 const undatedTasks=computed(()=>demo.use.now.value.filter(task=>!task.due))
 const scheduleDetailsOpen=ref(false)
+onMounted(()=>{ void loadCalendar() })
 </script>
 <template>
-<div class="ws-page schedule-page"><PageHeading title="日历与课表" description="关键节点、今日任务和学校课程，各自保留来源。"><template #meta><div class="sched-meta"><span class="sched-meta__tag sched-meta__tag--demo">本地资料</span><span class="sched-meta__tag">{{ backendDemo.state.academic?.term || '学期未导入' }} · 第 {{ thisWeek?.n }} 周</span><span class="sched-meta__tag">{{ timed.length }} 门课有节次 · 本周课 {{ hours(thisWeek?.courseHours ?? 0) }}</span><span class="sched-meta__sep" aria-hidden="true" /><ConfidenceBadge :confidence="0.9" /><ConfidenceBadge :confidence="0.55" /><ConfidenceBadge v-if="pendingTimeCourses || pendingMarkCount" :confidence="null" /></div></template><button class="btn" :disabled="calendarBusy" @click="loadCalendar">{{ calendarBusy?'正在读取…':(readOnce?'更新最新日程':'读取最新日程') }}</button><RouterLink class="btn" to="/academic"><UiIcon name="upload" :size="16" />管理导入资料</RouterLink></PageHeading>
+<div class="ws-page schedule-page"><PageHeading title="日历与课表" description="关键节点、今日任务和学校课程，各自保留来源。"><template #meta><div class="sched-meta"><span>{{backendDemo.state.academic?.term || '学期未导入'}}</span><span>{{timed.length}} 门课程有节次</span><span v-if="pendingTimeCourses">{{pendingTimeCourses}} 门待补充时间</span></div></template><button class="btn" :disabled="calendarBusy" @click="loadCalendar">{{ calendarBusy?'正在读取…':(readOnce?'更新最新日程':'读取最新日程') }}</button><RouterLink class="btn" to="/academic"><UiIcon name="upload" :size="16" />管理导入资料</RouterLink></PageHeading>
 <p v-if="calendarError" class="ws-field-error" role="alert">{{ calendarError }}</p>
 <!-- ======= ① 结构显形：三周的课程与任务用时对比 =======
      它是"课多的一周任务排得少"的**可核对版本**：两根横条共用一根刻度，
@@ -273,34 +72,8 @@ const scheduleDetailsOpen=ref(false)
 
 <div class="sched-split">
 <div class="sched-split__main">
- <section class="c2-profile-stats" aria-label="本周课程与任务占用"><OverviewMetric label="本周课程"><template #value><strong>{{ hours(thisWeek?.courseHours ?? 0) }}</strong></template><p>按导入课程节次计算</p></OverviewMetric><OverviewMetric label="已安排任务"><template #value><strong>{{ hours(thisWeek?.taskHours ?? 0) }}</strong></template><p>任务与课量使用同一刻度</p></OverviewMetric><OverviewMetric label="课程较满的日期"><template #value><strong>{{ crowdedDays }}</strong><small>天</small></template><p>按导入节次，至少 4 小时课程；空档不等于可投入时间</p></OverviewMetric></section>
-<DetailPopover class="schedule-comparison" title="近期课程与任务用时" label="查看近期课程与任务用时"><template #trigger>比较近期时间安排<UiIcon name="info" :size="16"/></template><section class="ws-section sched-cmp" aria-labelledby="sched-cmp-title">
-  <div class="ws-section-head">
-    <div>
-      <h2 id="sched-cmp-title">{{ weekTerm ? '第 ' + weekTerm.from + '–' + weekTerm.to + ' 周' : '这一周' }}：课程与任务用时对比</h2>
-      <p v-if="heavyWeek && lightWeek">{{ heavyWeek.n === lightWeek.n ? '这一周课最多' : '第 ' + heavyWeek.n + ' 周课最多（' + hours(heavyWeek.courseHours) + '），第 ' + lightWeek.n + ' 周课最少（' + hours(lightWeek.courseHours) + '）' }} —— 每 1 小时课配到多少分钟事，看最右边那一列。</p>
-      <p v-else>同一把尺子量两件事 —— 横条的长度就是时长。导入课表后这里才有可对照的读数。</p>
-    </div>
-    <span class="sched-cmp__count">3 周 · 同一刻度</span>
-  </div>
-  <div class="sched-cmp__grid">
-    <div class="sched-cmp__legend"><span class="sched-cmp__k">课量 / 任务量</span><span class="sched-cmp__k sched-cmp__k--v">时长</span><span class="sched-cmp__k sched-cmp__k--r">每 1 小时课配到的事</span></div>
-    <div v-for="w in weekRows" :key="w.monday.toISOString()" class="sched-cmp__row">
-      <p class="sched-cmp__w">第 {{ w.n }} 周<small>{{ w.range || (monthDay(w.monday) + ' — ' + monthDay(new Date(w.monday.getFullYear(), w.monday.getMonth(), w.monday.getDate() + 6))) }}{{ w.offset === 0 ? ' · 本周' : '' }}</small></p>
-      <div class="sched-cmp__bars">
-        <span class="sched-cmp__k">课</span>
-        <div class="sched-cmp__track"><i class="sched-cmp__bar sched-cmp__bar--c" :style="{ width: (w.courseHours / weekMax * 100) + '%' }" /></div>
-        <span class="sched-cmp__k">事</span>
-        <div class="sched-cmp__track"><i class="sched-cmp__bar sched-cmp__bar--t" :style="{ width: (w.taskHours / weekMax * 100) + '%' }" /></div>
-      </div>
-      <p class="sched-cmp__v"><b class="t-num">{{ hours(w.courseHours) }}</b><span>课</span><b class="t-num">{{ hours(w.taskHours) }}</b><span>事</span></p>
-      <p class="sched-cmp__m" :class="{ 'sched-cmp__m--none': w.taskHours === 0 }"><span class="t-num">{{ w.taskHours === 0 ? '0' : Math.round(perCourseHour(w) * 60) }}</span> 分钟<small>{{ w.taskHours === 0 ? '这一周任务一条都没排' : '课 ' + hours(w.courseHours) + ' · 事 ' + hours(w.taskHours) }}</small></p>
-      <RouterLink class="ws-text-link sched-cmp__go" :to="weekHref(w)" :aria-label="'看第 ' + w.n + ' 周'">看这一周<UiIcon name="arrow" :size="16" /></RouterLink>
-    </div>
-    <p class="sched-cmp__empty" v-if="!weekRows.some((w) => w.courseHours || w.taskHours)">还没有可以对照的课表或任务：导入课表后，这里会按周把两件事摆在同一把尺子上。</p>
-  </div>
-  <p class="sched-cmp__foot"><span>时间口径：<b>空课格不代表空闲</b> —— 一格空着只是那天没有排课，不等于那段时间可以用。</span><RouterLink class="ws-text-link sched-cmp__footlink" to="/academic">核对导入的课表<UiIcon name="arrow" :size="16" /></RouterLink></p>
-</section></DetailPopover>
+ <section class="c2-profile-stats" aria-label="已保存的日程与课程"><OverviewMetric label="本月节点"><template #value><strong>{{marks.length}}</strong></template></OverviewMetric><OverviewMetric label="有节次的课程"><template #value><strong>{{timed.length}}</strong></template></OverviewMetric><OverviewMetric label="待执行任务"><template #value><strong>{{demo.use.now.value.length}}</strong></template></OverviewMetric></section>
+
 <div class="schedule-reading-actions"><button class="ws-text-button" @click="scheduleDetailsOpen=true">时间依据<UiIcon name="info" :size="16"/></button><button class="btn" @click="coursesOpen=true">查看一周课表<UiIcon name="academic" :size="16"/></button></div><div class="sched-refresh-shell" :aria-busy="refreshing"><div v-if="refreshing" class="sched-refresh"><SkeletonBlock variant="chart" :columns="7" /></div><p v-if="refreshing" class="sr-only" role="status">正在读取最新日程，日历内容保留。</p><header class="calendar-toolbar"><h2>{{ title }}</h2><div class="calendar-toolbar__actions"><button class="ws-icon-button" :aria-label="mode==='week'?'上一周':'上个月'" @click="move(-1)"><UiIcon name="back" /></button><button class="btn" @click="resetDate">今天</button><button class="ws-icon-button" :aria-label="mode==='week'?'下一周':'下个月'" @click="move(1)"><UiIcon name="arrow" /></button><DetailPopover title="日历显示方式" label="选择日历显示方式"><template #trigger>{{ mode==='month'?'月历':mode==='week'?'周视图':'议程' }}<UiIcon name="settings" :size="16"/></template><fieldset class="ws-field"><legend>日历显示方式</legend><label v-for="option in [{key:'month',label:'月历'},{key:'week',label:'周视图'},{key:'agenda',label:'议程'}]" :key="option.key" class="direction-radio"><input v-model="mode" type="radio" name="calendar-mode" :value="option.key"/>{{ option.label }}</label></fieldset></DetailPopover></div></header>
 <div v-if="mode==='week'" class="calendar-week-events" aria-label="本周事项"><button v-for="date in weekDates" :key="date.toISOString()" :aria-pressed="date.getDate()===day && date.getMonth()===month.getMonth()" @click="selectDate(date)"><strong>周{{ weekdays[(date.getDay()+6)%7] }} · {{ date.getMonth()+1 }}/{{ date.getDate() }}</strong><span v-for="label in weekItems(date)" :key="label">{{ label }}</span><small v-if="!weekItems(date).length">没有已记录的事项</small></button></div><div class="calendar-layout"><div v-if="mode==='month'" class="calendar-month"><div class="ws-calendar"><span v-for="w in weekdays" :key="w" class="ws-calendar__weekday">{{ w }}</span><span v-for="n in offset" :key="'empty'+n"/><button v-for="d in length" :key="d" class="ws-calendar__day" :class="{'ws-calendar__day--selected':day===d,'ws-calendar__day--marked':marks.some(m=>m.day===d)}" :aria-label="(month.getMonth()+1)+'月'+d+'日'" :aria-pressed="day===d" @click="day=d;advice=false"><span>{{ d }}</span><small v-for="m in marks.filter(m=>m.day===d)" :key="m.label" :title="m.label">{{ m.label }}</small><small v-if="d===today.getDate() && month.getMonth()===today.getMonth() && month.getFullYear()===today.getFullYear() && !backendDemo.state.liveAction && demo.use.now.value.length">{{ demo.use.now.value.length }} 件待执行</small></button></div></div>
 <section class="calendar-agenda"><div class="ws-section-head"><h3>{{ month.getMonth()+1 }} 月 {{ day }} 日</h3><span class="ws-muted">当日议程</span></div><label v-if="mode==='agenda'" class="ws-field">选择日期<input type="date" :value="selectedDate" @change="($event.target as HTMLInputElement).value && selectDate(new Date(($event.target as HTMLInputElement).value+'T12:00:00'))"/></label><article v-for="m in selectedMarks" :key="m.label" class="agenda-item"><UiIcon name="calendar" :size="18"/><div><h4>{{ m.label }}</h4><p>{{ backendDemo.state.liveCalendar!==null ? '已读取的日程节点' : '预置'+(m.kind==='deadline'?'截止节点':m.kind==='review'?'复盘安排':'行动节点') }}</p></div></article><article v-for="t in selectedTasks" :key="t.id" class="agenda-item"><UiIcon name="action" :size="18"/><div><h4>{{ t.title }}</h4><p>计划任务<span v-if="t.minutes!==null"> · 约 {{ t.minutes }} 分钟</span></p><RouterLink class="ws-text-link" to="/home">查看并执行</RouterLink></div></article><p v-if="!selectedMarks.length&&!selectedTasks.length" class="ws-muted ws-section">这天没有已记录的安排。</p><button class="ws-text-button" @click="advice=true">查看当日建议<UiIcon name="arrow" :size="16"/></button><DayAdvicePanel v-if="advice" :date="selectedDate"/></section></div>
@@ -316,29 +89,8 @@ const scheduleDetailsOpen=ref(false)
      <768px 收成单列（见本文件 `@media (max-width: 767px)` 那一段）。
      三块：读数（课/事/剩下的）· 图例（把上面那块对照图的语法说清）· 口径与来源。 -->
 <InfoSheet :open="scheduleDetailsOpen" shape="panel" title="课程与任务时间依据" @close="scheduleDetailsOpen=false"><aside class="sched-rail" aria-labelledby="sched-rail-title">
-  <section class="sched-rail__block c2-undated-tasks"><h2>还没有具体日期的任务</h2><article v-for="task in undatedTasks" :key="task.id" class="c2-calendar-node"><h3>{{ task.title }}</h3><p>{{ task.minutes }} 分钟 · 仍保留在计划里，尚未排到具体日期</p><RouterLink class="ws-text-link" to="/home">回到行动计划 →</RouterLink></article><p v-if="!undatedTasks.length">当前待执行任务都有日期标记。</p></section>
-  <section class="sched-rail__block">
-    <h2 class="sched-rail__t" id="sched-rail-title">第 {{ thisWeek?.n }} 周的时间分配</h2>
-    <p class="sched-rail__n"><b class="t-num">{{ hours(thisWeek?.courseHours ?? 0) }}</b><small>课的占用（{{ thisWeek?.courses ?? 0 }} 天有课）</small></p>
-    <p class="sched-rail__n sched-rail__n--key"><b class="t-num">{{ hours(thisWeek?.taskHours ?? 0) }}</b><small>已安排任务（{{ thisWeek?.taskDone ?? 0 }}/{{ thisWeek?.taskTotal ?? 0 }} 件已完成）</small></p>
-    <p class="sched-rail__d">每 1 小时课配到 <b>{{ thisWeek && thisWeek.taskHours ? Math.round(perCourseHour(thisWeek) * 60) : 0 }} 分钟</b>事。{{ thisWeek && thisWeek.conflicts ? '有 ' + thisWeek.conflicts + ' 个节次被两门课同时占住，那几节是排不进任务的。' : '没有课与课撞在一起的节次。' }}</p>
-    <p class="sched-rail__d" v-if="busiestDay && busiestDay.hours">{{ busiestDay.label }}最重：{{ busiestDay.names.join('、') }}，合计 {{ hours(busiestDay.hours) }} —— 这一天基本摆不下事。</p>
-  </section>
-  <section class="sched-rail__block">
-    <h3 class="sched-rail__t2">上面那张图怎么看</h3>
-    <ul class="sched-rail__key">
-      <li><i class="sched-rail__i sched-rail__i--c" aria-hidden="true" />课量（固定，不能挪）</li>
-      <li><i class="sched-rail__i sched-rail__i--t" aria-hidden="true" />任务量（可按你的时间重排）</li>
-      <li><i class="sched-rail__i sched-rail__i--r" aria-hidden="true" />空槽（这一类没占，不是空闲）</li>
-    </ul>
-    <p class="sched-rail__d">两根横条共用一根刻度，所以"课多的一周事排得少"是看出来的，不是读一句话读出来的；最右一列把它折成每小时的比值，方便横向比。</p>
-  </section>
-  <section class="sched-rail__block">
-    <h3 class="sched-rail__t2">这份读数从哪来</h3>
-    <p class="sched-rail__src"><SourceChip :label="backendDemo.state.academicOrigin === 'live' ? '教务系统导入' : '本人导入的课表快照'" kind="external" /><span>课量按导入的节次算（1 节 = 1 小时），周次用课程自己的 weeks 字段。</span></p>
-    <p class="sched-rail__src"><SourceChip :label="backendDemo.state.liveAction ? '服务端阶段计划' : '当前阶段计划'" kind="citation" /><span>任务量按阶段计划自己划的时间窗归周（第 {{ weekTerm?.from }}–{{ weekTerm?.to }} 周）。</span></p>
-    <p class="sched-rail__src" v-if="pendingTimeCourses"><SourceChip label="时间待补充的课程" kind="transcript" /><span>{{ pendingTimeCourses }} 门课没有节次或超出常规节次，不计入上面的课量。</span></p>
-  </section>
+  <section class="sched-rail__block c2-undated-tasks"><h2>还没有具体日期的任务</h2><article v-for="task in undatedTasks" :key="task.id" class="c2-calendar-node"><h3>{{ task.title }}</h3><p>仍保留在计划里，尚未排到具体日期</p><RouterLink class="ws-text-link" to="/home">回到行动计划 →</RouterLink></article><p v-if="!undatedTasks.length">当前待执行任务都有日期标记。</p></section>
+  <section class="sched-rail__block"><h2 id="sched-rail-title">时间来源</h2><p>课程按导入的星期、节次和周次展示；截止日期来自已保存的行动计划。学期起始日期和每节课时长尚未提供，因此不估算每周空闲时间。</p></section>
 </aside></InfoSheet>
 </div>
 </div>

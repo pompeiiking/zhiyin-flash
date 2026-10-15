@@ -1,0 +1,68 @@
+import { reactive } from 'vue'
+import { backendClient } from '../api/backend-client'
+import { auth } from './auth'
+import { backendDemo } from './backend-demo'
+import { demo } from '../store'
+import type { ChatTurn } from '../data/types'
+import type { ConversationMessageView, TrackEventView, AchievementListView } from '../api/backend-types'
+
+export const systemData = reactive({ busy: false, error: '', events: [] as TrackEventView[], achievements: null as AchievementListView | null })
+export function mapMessage(message: ConversationMessageView, id: string): ChatTurn {
+  return { ...message, id, from: message.role === 'user' ? 'me' : message.role === 'agent' ? 'host' : 'system',
+    speaker: message.agent_name || message.agent_id || undefined, text: message.text,
+    citations: [...(message.theory_refs ?? []).map(r => r.name), ...(message.intel_refs ?? []).map(r => r.title || '')] }
+}
+export function clearSystemData(){selecting++;systemData.events=[];systemData.achievements=null;systemData.error='';systemData.busy=false}
+let selecting = 0
+export async function openSession(id: string) {
+  if (demo.state.chatBusy) return
+  const serial = ++selecting
+  systemData.busy = true; systemData.error = ''
+  try {
+    const messages = await backendClient.turns(id)
+    if (serial !== selecting) return
+    const turns = messages.map((m, i) => mapMessage(m, `${id}-${i}`))
+    backendDemo.selectSession(id); backendDemo.saveTurns(id, turns); demo.setChatTurns(turns, id)
+  } catch(e) { systemData.error = (e as Error).message; throw e }
+  finally { if (serial === selecting) systemData.busy = false }
+}
+export async function newSession(taskCode?: string) {
+  if (systemData.busy || demo.state.chatBusy) throw new Error('正在读取会话，请稍候再试。')
+  systemData.busy = true; systemData.error = ''
+  try {
+    const code = taskCode || auth.state.bootstrap?.task_entries?.[0]?.code
+    if (!code) throw new Error('当前没有可用的咨询入口，请刷新或联系管理员。')
+    const session = await backendClient.enter(code)
+    backendDemo.setCurrentSession(session)
+    const turns = (await backendClient.turns(session.task_id)).map((m,i) => mapMessage(m, `${session.task_id}-${i}`))
+    demo.setChatTurns(turns, session.task_id)
+  } catch(e) { systemData.error = (e as Error).message; throw e }
+  finally { systemData.busy = false }
+}
+export async function refreshNotifications() {
+  const notices = await backendClient.notifications()
+  demo.setNotices(notices.map(n => ({ id:n.id, title:n.title, body:n.body ?? '', kind:'提醒', action:'标为已读', secondary:'关闭', queued:0 })))
+}
+export async function loadShell() {
+  systemData.error = ''
+  const results = await Promise.allSettled([
+    backendClient.sessions().then(async s => {
+      backendDemo.setSessions(s.sessions ?? [], demo.state.currentSessionId || s.current_task_id || '')
+      const restoreId=s.current_task_id || s.sessions?.[0]?.task_id
+      if (!demo.state.currentSessionId && restoreId) await openSession(restoreId)
+    }),
+    backendClient.action().then(backendDemo.setAction),
+    backendClient.notes().then(backendDemo.setNotes),
+    backendClient.workspace().then(backendDemo.setWorkspace),
+    refreshNotifications(),
+  ])
+  const failure = results.find(r => r.status === 'rejected')
+  if (failure?.status === 'rejected') systemData.error = failure.reason instanceof Error ? failure.reason.message : '部分资料加载失败'
+}
+export async function loadRecords() {
+  const [events, achievements] = await Promise.allSettled([backendClient.events(), backendClient.achievements()])
+  if(events.status === 'fulfilled') systemData.events = events.value
+  if(achievements.status === 'fulfilled') systemData.achievements = achievements.value
+  if(events.status === 'rejected') throw events.reason
+  if(achievements.status === 'rejected') throw achievements.reason
+}

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppTopBar from './components/WorkspaceHeader.vue'
 import WorkspaceNav from './components/WorkspaceNav.vue'
@@ -12,7 +12,9 @@ import { skin } from './lib/theme'
 import { INTERVENTION } from './data/student'
 import DesktopSidebar from './components/DesktopSidebar.vue'
 import { useNavigationLayout } from './lib/layout'
-import { backendDemo } from './lib/backend-demo'
+import { loadShell, newSession, systemData, refreshNotifications } from './lib/system-data'
+import { auth } from './lib/auth'
+import { toast } from './store'
 import { routeLoadError, retryRoute } from './router'
 import { sessionCacheAvailable } from './lib/session-cache'
 
@@ -51,12 +53,10 @@ async function expandSidebar() {
   await nextTick()
   sidebar.value?.focusCollapse()
 }
-function newChat() {
-  if (demo.state.chatBusy) return
-  backendDemo.newSession()
-  demo.startChatSession([], backendDemo.state.currentSessionId)
-  router.push('/chat')
+async function newChat() {
+ try { await newSession(); await router.push('/chat') } catch(e) { toast((e as Error).message) }
 }
+
 /**
  * 顶部进度条的宽度：**跟内容列对齐**，不是一个全页固定值。
  * 原来写死 920px 居中，而对话页中栏只有 760px（且当时左右栏 232/272 不对称，
@@ -66,6 +66,7 @@ const progressMax = computed(() => (route.name === 'chat' ? '760px' : '920px'))
 const authOpen = computed(() => route.query.signin === '1' && !demo.state.authed)
 
 function closeAuth() {
+  if(demo.state.authed){void router.replace(typeof route.query.redirect==='string' && route.query.redirect.startsWith('/') && !route.query.redirect.startsWith('//') ? route.query.redirect : '/chat');return}
   if (route.query.signin) {
     const q = { ...route.query }
     delete q.signin
@@ -82,18 +83,21 @@ watch(
      * 只认"门户 + 带 signin"这一种情况：点「稍后再说」不会把 authed 置真，不会被卷进来，
      * 而门户本身要留着可访问（它是宣传入口，用户可能只是想回来再看一眼）。
      */
-    if (v && route.path === '/' && route.query.signin) router.replace('/chat')
+    if(v) { void loadShell(); if(route.path === '/' && route.query.signin) router.replace(typeof route.query.redirect==='string' && route.query.redirect.startsWith('/') && !route.query.redirect.startsWith('//') ? route.query.redirect : '/chat') }
   },
 )
 
 onMounted(() => {
   document.documentElement.lang = 'zh-CN'
   skin.init()
+  void auth.restore().then(ok => {if(ok)void loadShell()})
 })
 watch(() => route.path, async () => {
   await nextTick()
   document.querySelector('.app__main')?.scrollTo(0, 0)
 })
+const notificationTimer=setInterval(()=>{if(demo.state.authed && document.visibilityState==='visible')void refreshNotifications().catch(()=>{})},60000)
+onUnmounted(()=>clearInterval(notificationTimer))
 </script>
 
 <template>
@@ -113,7 +117,7 @@ watch(() => route.path, async () => {
         <!-- 氛围层：与门户同一套语言（一片很淡的品牌色光 + 颗粒），但强度低得多 -->
         <div class="app__atmos" aria-hidden="true" />
 
-        <div class="app__content">
+        <div class="app__content"><div v-if="systemData.error" class="ws-field-error" role="alert">{{systemData.error}} <button class="ws-text-button" @click="loadShell">重新连接</button></div>
           <section v-if="routeLoadError" class="ws-page ws-route-error" role="alert"><h1>页面暂时没有加载成功</h1><p>{{ sessionCacheAvailable ? '本次演示记录和已保存的咨询草稿会在重新加载后恢复。' : '浏览器未能保存当前工作空间上下文，请先保留重要内容。' }}可以重新加载，或先查看其他页面。</p><div class="ws-inline-actions"><button class="btn btn--primary" @click="retryRoute">重新加载</button><RouterLink class="btn" to="/chat">去咨询对话</RouterLink></div></section>
           <RouterView v-else v-slot="{ Component }">
             <component :is="Component" :key="route.path" />

@@ -2,7 +2,11 @@
 import { useRoute, useRouter } from 'vue-router'
 import { ref, onMounted, onUnmounted } from 'vue'
 import { demo } from '../store'
-import { STUDENT } from '../data/student'
+import {inject,computed,type Ref} from 'vue'
+import type {PortalView} from '../api/backend-types'
+const portalContent=inject<Ref<PortalView|null>>('portalContent')
+const publishedTrust=computed(()=>portalContent?.value?.trust_blocks??[])
+
 
 /** 旧门户动态背景恢复自 60d4e4f（2026-10-16 用户确认）。
  * 保留漂移光晕、呼吸网格、扫光与路径节点；减少动态效果时保留静态背景。
@@ -106,9 +110,9 @@ const what = [
         <span class="top__mark" aria-hidden="true" />
         <span class="top__name">职引</span>
         <span class="top__divider" />
-        <span class="top__context">{{ STUDENT.school }} · 生涯规划与就业指导</span>
+        <span class="top__context">{{ '河北大学' }} · 生涯规划与就业指导</span>
       </div>
-      <div class="pc-controls"><slot name="portal-switch" /><RouterLink v-if="demo.state.authed" class="top__account" to="/chat"><span class="pc-account-name">{{ STUDENT.name }} · </span>进入</RouterLink><button v-else class="top__login" @click="start">登录</button></div>
+      <div class="pc-controls"><slot name="portal-switch" /><RouterLink v-if="demo.state.authed" class="top__account" to="/chat"><span class="pc-account-name">{{ demo.state.account }} · </span>进入</RouterLink><button v-else class="top__login" @click="start">登录</button></div>
     </header>
 
     <main class="main">
@@ -145,7 +149,7 @@ const what = [
     <section class="band" aria-label="它具体怎么帮你">
       <div class="band__inner">
         <ul class="band__list">
-          <li v-for="w in what" :key="w.title" class="item">
+          <li v-for="w in (publishedTrust.length ? publishedTrust : what)" :key="w.title" class="item">
             <p class="item__title">{{ w.title }}</p>
             <p class="item__body">{{ w.body }}</p>
           </li>

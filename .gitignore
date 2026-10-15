@@ -142,3 +142,7 @@ _backup-*
 # 口径同 :115：**脚本入库，产物不入库** —— 正式的 _tools/*.mjs 入库，
 # `_tools/_*` 这种一次性的不入库（2026-10-14 有一批误入过提交，已清）。
 redesign-demo/design-review/v6-redesign/directions/c2-hbu/_tools/_*
+
+# Local integration credentials and raw responses
+_tmp-spike/integration-account.json
+_tmp-spike/integration-*.json

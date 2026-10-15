@@ -4,8 +4,6 @@ import { BackendError } from '../api/backend-client'
 import type { AiResult } from '../api/ai-types'
 import type operations from '../api/operations.json'
 import { backendDemo } from './backend-demo'
-import { demoAi } from '../data/demo-ai'
-import { demo } from '../store'
 import { validAiData } from '../api/validate-ai'
 export function useAiTask<T>() {
   const result = shallowRef<AiResult<T> | null>(null), busy = ref(false), error = ref(''), progress = ref('')
@@ -16,7 +14,7 @@ export function useAiTask<T>() {
     const request = ++serial
     controller = new AbortController(); busy.value = true; error.value = ''; progress.value = '正在核对已有资料…'
     try {
-      const data = backendDemo.state.dataMode === 'demo' ? demoAi(key,options.params,demo.state.account==='fresh') as AiResult<T> : await streamBackend<AiResult<T>>(key, { ...options, signal: controller.signal }, frame => {
+      const data = await streamBackend<AiResult<T>>(key, { ...options, signal: controller.signal }, frame => {
         if (request === serial) progress.value = frame.note || frame.text || '正在整理结果…'
       })
       if (!data || !validAiData(key,data.data) || !Array.isArray(data.citations) || !data.meta || !data.citations.every(c=>c&&typeof c.source==='string'&&typeof c.detail==='string')) throw new Error('Incomplete result')

@@ -191,7 +191,6 @@ class Executor:
     def gates(self, checkout):
         """Run checks against this commit in containers; retain the user's existing runtime."""
         self.log("checking", "执行后端测试、模块测试、架构守卫及契约检查")
-        template = checkout / "zhiyin-src" / "template"
         # Source-worker tests exercise real commits, ancestry and conflict checks.
         # Git belongs in this disposable test container, not the application image.
         command = (
@@ -209,9 +208,9 @@ class Executor:
         self.log("checking", self.run(["docker", "run", "--rm", "--name", name, "--label", "zhiyin.module.check=true",
             "-v", f"{checkout}:/source:ro", "-w", "/workspace", "python:3.11-slim", "sh", "-c", command]))
         self.log("checking", "执行前端类型检查、构建和 API 类型一致性检查")
-        frontend = "cp -a /source/. /workspace/ && cd /workspace/zhiyin-web && npm ci --no-audit --no-fund && cp src/api/types.ts /tmp/api-types.ts && npm run gen:api && cmp src/api/types.ts /tmp/api-types.ts && npm run build"
+        frontend = "cp -a /source/. /workspace/ && cd /workspace/redesign-demo && npm ci --no-audit --no-fund && cp src/api/types.ts /tmp/api-types.ts && npm run gen:api && cmp src/api/types.ts /tmp/api-types.ts && npm run build"
         self.log("checking", self.run(["docker", "run", "--rm", "--name", name, "--label", "zhiyin.module.check=true",
-            "-v", f"{template}:/source:ro", "-w", "/workspace", "node:22-alpine", "sh", "-c", frontend]))
+            "-v", f"{checkout}:/source:ro", "-w", "/workspace", "node:22-alpine", "sh", "-c", frontend]))
 
     def wait_healthy(self, revision):
         deadline = time.monotonic() + 180

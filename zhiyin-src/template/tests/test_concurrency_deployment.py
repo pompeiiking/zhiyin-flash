@@ -45,7 +45,7 @@ def test_perf_compose_has_scalable_api_and_single_background_service() -> None:
 
 def test_nginx_keeps_sse_and_records_actual_upstream() -> None:
     nginx = (
-        ROOT / "zhiyin-src" / "template" / "zhiyin-web" / "nginx.conf"
+        ROOT / "redesign-demo" / "nginx.conf"
     ).read_text(encoding="utf-8")
 
     assert "resolver 127.0.0.11" in nginx

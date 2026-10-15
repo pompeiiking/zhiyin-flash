@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import ReportHistory from './ReportHistory.vue'
+import { onMounted } from 'vue'
 import { computed, ref, watch } from 'vue'
 import { backendClient } from '../api/backend-client'
 import { backendDemo } from '../lib/backend-demo'
@@ -21,6 +23,7 @@ async function done(task: ActionTaskView){if(saving.value)return;saving.value=ta
 const phaseDone = (phase: { tasks?: readonly { done?: boolean }[] }) => phase.tasks?.filter(t => t.done).length ?? 0
 const phaseTotal = (phase: { tasks?: readonly unknown[] }) => phase.tasks?.length ?? 0
 const phaseTrend = (phase: { date_range?: string }) => (phase.date_range ? { label: phase.date_range } : null)
+onMounted(()=>{ void load() })
 </script>
 <template><section class="live-action"><div class="ws-section-head"><h2>{{ today?'当前行动':'阶段任务' }}</h2><button class="btn" :disabled="busy||!!saving" @click="load">{{ busy?'正在读取…':'读取最新行动计划' }}</button></div>
 <!-- 错误态：换成 StatusBanner（只报错不给下一步＝把问题丢回用户；组件为错误态内建动作位） -->
@@ -39,10 +42,10 @@ const phaseTrend = (phase: { date_range?: string }) => (phase.date_range ? { lab
        并关掉它的预设下一步（report 的 NEXT 是"生成第一份诊断"，对阶段计划是错的）。 -->
   <EmptyState v-if="!plan.phases?.length" kind="report" size="sm" :next="false" title="当前尚未形成阶段计划" description="可以在咨询中明确方向，再安排阶段任务。" />
 </div>
-<p class="ws-muted ws-section">以上按本次读取的计划与任务回包显示；不与预置任务混算。</p></template>
+<p class="ws-muted ws-section">任务完成状态会保存到账号。</p></template>
 <!-- 还没读过 = 这里没有内容。旧写法是"标题 + 按钮 + 一片空白"，看不出是没读还是读空了
      （MIGRATION §4.1 P1：口径说明降级成一行小字，不要占正文首屏）。 -->
-<p v-else-if="!today" class="ws-muted ws-section">还没有读取行动计划。上方按钮读取服务里的阶段与任务；它与下面的预置阶段分别保留，不混算。</p></section></template>
+<p v-else-if="!today" class="ws-muted ws-section">正在连接行动计划；读取失败时可重试。</p><ReportHistory v-if="!today" asset-type="action_plan" /></section></template>
 <style scoped>
 /* StatTile 自已是单列、右对齐；给它一个确定宽度，进度条才不是"和文字一样宽"。 */
 .plan-stage__title { display: flex; align-items: center; gap: var(--sp-4); width: 100%; min-width: 0; }

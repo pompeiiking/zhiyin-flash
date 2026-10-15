@@ -3,7 +3,8 @@ import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { WORKSPACE_GROUPS, WORKSPACE_PRIMARY, PORTAL_LINK, isNavActive, type NavItem } from '../lib/workspace-nav'
 import { demo } from '../store'
-import { STUDENT } from '../data/student'
+import { openSession } from '../lib/system-data'
+import { toast } from '../store'
 import UiIcon from './UiIcon.vue'
 import { backendDemo } from '../lib/backend-demo'
 const route = useRoute()
@@ -16,19 +17,18 @@ defineExpose({ focusCollapse() { collapseButton.value?.focus() } })
  * 整体侧栏仍能收起，历史会话继续使用已有的恢复逻辑。
  */
 const sessions = computed(() => [...backendDemo.state.sessions].sort((a, b) => (b.last_active_at ?? '').localeCompare(a.last_active_at ?? '')))
-function resumeSession(id: string) {
-  if (demo.state.chatBusy) return
-  if (id !== demo.state.currentSessionId) demo.startChatSession(backendDemo.selectSession(id), id)
-  router.push('/chat')
+async function resumeSession(id: string) {
+  try { await openSession(id); await router.push('/chat') } catch(e) { toast((e as Error).message) }
 }
-const userName = computed(() => demo.state.account === 'fresh' ? '新用户' : STUDENT.name)
+const userName = computed(() => demo.state.account || '当前用户')
+
 /**
  * 底部人名行的副行 = **专业 · 年级**（c2 靶子的 `.nav__me-s`）。
  * 专业取自 `data/student.ts` 的 `STUDENT.major`；年级取当前演示场景（`demo.use.scenario`），
  * 因为切年级（GradeSwitch / ⌘K）真的会换掉这个人所处的场景 —— 写死 STUDENT.grade
  * 就会出现"任务清单是大一的、人名行还写着大三"。
  */
-const personSub = computed(() => demo.state.account === 'fresh' ? '体验账号 · 待完善资料' : STUDENT.major + ' · ' + demo.use.scenario.value.grade)
+const personSub = computed(() => backendDemo.state.liveWorkspace?.profile_panel?.fields?.filter(f=>['major','grade'].includes(f.key)).map(f=>String(f.value ?? '')).join(' · ') || '个人资料待完善')
 const chatActive = computed(() => isNavActive(WORKSPACE_PRIMARY, route))
 /**
  * 导航计数徽标（c2 的 `.nav__badge`）—— **两个数字都来自真实状态，没有一个写死**：

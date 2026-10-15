@@ -2,114 +2,37 @@ import { computed, reactive, readonly } from 'vue'
 import { rememberSession } from './session-cache'
 import type { AcademicPanelView, AcademicCourseView, AcademicGradeView, ConversationMaterialView, IntelItemView, MessageRequest, NoteView, TaskSessionView, DirectionPlanListView, ActionPlanView, WorkspacePageView, ProfileFieldView, CalendarNodeView, ReportFullTextView, AssetVersionView } from '../api/backend-types'
 import type { ChatTurn } from '../data/types'
-import { CHAT_TURNS } from '../data/student'
-import { DEMO_ACADEMIC, DEMO_SESSIONS, DEMO_NOTES, DEMO_INTEL, DEMO_HISTORIES } from '../data/demo-fixtures'
 const now = () => new Date().toISOString()
-let fresh = false
-try { fresh = localStorage.getItem('zhiyin-demo-auth') === 'fresh' } catch { /* session-only */ }
-const originalTurns = () => CHAT_TURNS.filter(t => t.from !== 'system').map(t => ({ ...t }))
-const academicFixture: AcademicPanelView = DEMO_ACADEMIC
-const sessionsFixture = (): TaskSessionView[] => fresh ? [] : structuredClone(DEMO_SESSIONS)
-const notesFixture = (): NoteView[] => fresh ? [] : structuredClone(DEMO_NOTES)
-const state = reactive({
-  demoDataVersion: 0,
-  freshAccount: fresh,
-  dataMode: 'demo' as 'demo'|'service',
-  assetChanges: { profileKeys: [] as string[], direction: false },
-  reportReviewRequested: false,
-  liveAction: null as ActionPlanView | null,
-  intelOrigin: 'sample' as 'sample' | 'live',
-  liveWorkspace: null as WorkspacePageView | null,
-  profileOriginals: {} as Record<string,ProfileFieldView>,
-  liveCalendar: null as CalendarNodeView[] | null,
-  liveNoteIds: [] as string[],
-  notesOrigin: 'sample' as 'sample'|'live',
-  profileEditSerial: 0,
-  liveReport: null as ReportFullTextView | null,
-  reportMetadata: null as AssetVersionView | null,
-  academicOrigin: 'sample' as 'sample'|'local'|'live',
-  liveDirections: null as DirectionPlanListView | null,
-  drafts: {} as Record<string, { text: string; materials: { id: string; name: string }[]; scroll: number | null }>,
-  currentSessionId: fresh ? 'session-new' : 'session-direction',
-  sessions: sessionsFixture(),
-  histories: { 'session-direction': originalTurns(), ...structuredClone(DEMO_HISTORIES) } as Record<string, ChatTurn[]>,
-  notes: notesFixture(),
-  academic: fresh ? null : structuredClone(academicFixture) as AcademicPanelView | null,
-  materials: [] as ConversationMaterialView[],
-  intel: (fresh ? [] : structuredClone(DEMO_INTEL)) as IntelItemView[],
-  chsiChecked: false,
-  reportAvailable: !fresh,
-  directionsAvailable: !fresh,
-  planAvailable: !fresh,
-  messageRequests: [] as MessageRequest[],
-  eventTimes: (fresh ? {} : { answer: '2026-09-12T02:00:00Z', task_done: '2026-09-20T02:00:00Z', review: '2026-09-24T02:00:00Z' }) as Record<string, string>,
+const emptyState = () => ({
+  freshAccount: true, dataMode: 'service' as 'demo'|'service',
+  assetChanges: {profileKeys: [] as string[], direction: false}, reportReviewRequested: false,
+  liveAction: null as ActionPlanView|null, liveWorkspace: null as WorkspacePageView|null,
+  liveCalendar: [] as CalendarNodeView[]|null, liveReport: null as ReportFullTextView|null,
+  liveDirections: null as DirectionPlanListView|null, reportMetadata: null as AssetVersionView|null,
+  profileOriginals: {} as Record<string,ProfileFieldView>, profileEditSerial: 0,
+  intelOrigin: 'live' as 'sample'|'live', notesOrigin: 'live' as 'sample'|'live', academicOrigin: 'live' as 'sample'|'local'|'live',
+  liveNoteIds: [] as string[], drafts: {} as Record<string,{text:string;materials:{id:string;name:string}[];scroll:number|null}>,
+  currentSessionId: '', sessions: [] as TaskSessionView[], histories: {} as Record<string,ChatTurn[]>,
+  notes: [] as NoteView[], academic: null as AcademicPanelView|null, materials: [] as ConversationMaterialView[],
+  intel: [] as IntelItemView[], chsiChecked:false, reportAvailable:false,directionsAvailable:false,planAvailable:false,
+  messageRequests: [] as MessageRequest[], eventTimes: {} as Record<string,string>,
 })
-rememberSession('data',state,Object.keys(state) as (keyof typeof state)[])
-// Enrich older demo sessions once, preserving custom notes and edited/imported material.
-if(state.demoDataVersion<1){
-  if(!fresh&&state.dataMode==='demo'){
-    for(const item of DEMO_NOTES)if(!state.notes.some(n=>n.id===item.id))state.notes.push(structuredClone(item))
-    for(const item of DEMO_SESSIONS)if(!state.sessions.some(s=>s.task_id===item.task_id))state.sessions.push(structuredClone(item))
-    for(const [id,turns] of Object.entries(DEMO_HISTORIES))if(!state.histories[id])state.histories[id]=structuredClone(turns)
-    if(state.academicOrigin==='sample')state.academic=structuredClone(DEMO_ACADEMIC)
-    if(state.intelOrigin==='sample')state.intel=structuredClone(DEMO_INTEL)
-  }
-  state.demoDataVersion=1
-}
-// Only replace an untouched legacy fixture. Custom messages and service sessions remain intact.
-if(state.demoDataVersion<2){
- const history=state.histories['session-direction']
- if(state.dataMode==='demo'&&history?.[0]?.text==='我不知道自己适合什么。专业是调剂的，说不上喜欢。'&&history.every(t=>/^c\d+$/.test(t.id))){state.histories['session-direction']=originalTurns();const session=state.sessions.find(s=>s.task_id==='session-direction');if(session)session.task_name=DEMO_SESSIONS[0]!.task_name}
- state.demoDataVersion=2
-}
-// Content expansion only updates owned fixtures; personal and online records remain intact.
-if(state.demoDataVersion<3){
- if(!fresh && state.dataMode==='demo'){
-  for(const note of DEMO_NOTES.filter(n=>Number(n.id.slice(5))>12))if(!state.notes.some(n=>n.id===note.id))state.notes.push(structuredClone(note))
-  for(const session of DEMO_SESSIONS.slice(6))if(!state.sessions.some(s=>s.task_id===session.task_id))state.sessions.push(structuredClone(session))
-  for(const [id,turns] of Object.entries(DEMO_HISTORIES)){const old=state.histories[id];if(!old || (id==='session-first' && old.every(t=>/^c\d+$|^c2-/.test(t.id))) || (old.length===2 && old[0]?.text===turns[0]?.text && old[1]?.from==='host' && /^(先选一次你实际参与的实验|可以分别列出通勤|先保留没完成的记录|分别写出你与家里最看重)/.test(old[1].text)))state.histories[id]=structuredClone(turns)}
-  if(state.intelOrigin==='sample')state.intel=structuredClone(DEMO_INTEL)
-  if(state.academicOrigin==='sample')state.academic=structuredClone(DEMO_ACADEMIC)
- }
- state.demoDataVersion=3
-}
+const state = reactive(emptyState())
+// Only editable drafts are cached; server data is fetched afresh after authentication.
+rememberSession('production-drafts', state, ['drafts'])
 export const backendDemo = {
   state: readonly(state),
   isFresh: computed(()=>state.freshAccount),
-  setDataMode(mode: 'demo'|'service') { if(state.dataMode===mode)return;state.dataMode=mode;state.liveWorkspace=null;state.liveReport=null;state.reportMetadata=null;state.liveDirections=null;state.liveAction=null;state.liveCalendar=null;state.profileOriginals={};state.liveNoteIds=[];state.notesOrigin='sample';if(mode==='demo'){state.academic=fresh?null:structuredClone(DEMO_ACADEMIC);state.academicOrigin='sample';state.notes=notesFixture();state.intel=fresh?[]:structuredClone(DEMO_INTEL);state.intelOrigin='sample'}else{state.academic=null;state.academicOrigin='local';state.intel=[]} },
+  setDataMode(_mode: 'demo'|'service') { state.dataMode='service' },
   currentSession: computed(() => state.sessions.find(s => s.task_id === state.currentSessionId)),
   notesDone: computed(() => state.notes.filter(n => n.done).length),
-  reset(account: string) {
-    state.assetChanges = { profileKeys: [], direction: false }
-    state.reportReviewRequested = false
-    state.liveAction = null
-    state.intelOrigin = 'sample'
-    state.liveWorkspace = null
-    state.profileOriginals = {}; state.liveCalendar = null
-    state.liveNoteIds = [];state.notesOrigin = 'sample'
-    state.profileEditSerial = 0
-    state.liveReport = null;state.reportMetadata=null
-    fresh = account === 'fresh'
-    state.freshAccount=fresh
-    state.academicOrigin = fresh ? 'local' : 'sample'
-    state.sessions = sessionsFixture()
-    state.currentSessionId = fresh ? 'session-new' : 'session-direction'
-    state.histories = { 'session-direction': originalTurns(), ...structuredClone(DEMO_HISTORIES) }
-    state.notes = notesFixture()
-    state.academic = fresh ? null : structuredClone(academicFixture)
-    state.materials = []; state.intel = fresh ? [] : structuredClone(DEMO_INTEL); state.chsiChecked = false
-    state.drafts = {}
-    state.liveDirections = null
-    state.reportAvailable = !fresh; state.directionsAvailable = !fresh; state.planAvailable = !fresh
-    state.messageRequests = []
-    state.eventTimes = fresh ? {} : { answer: '2026-09-12T02:00:00Z', task_done: '2026-09-20T02:00:00Z', review: '2026-09-24T02:00:00Z' }
-  },
+  reset(_account: string) { Object.assign(state, emptyState()) },
+  setSessions(sessions: TaskSessionView[], current = '') { state.sessions=sessions; if(current)state.currentSessionId=current },
+  setCurrentSession(session: TaskSessionView) { const i=state.sessions.findIndex(s=>s.task_id===session.task_id);if(i<0)state.sessions.unshift(session);else state.sessions[i]=session;state.currentSessionId=session.task_id },
   saveTurns(id: string, turns: readonly ChatTurn[]) {
     if (JSON.stringify(state.histories[id]) === JSON.stringify(turns)) return
     state.histories[id] = turns.map(t => ({ ...t }))
-    const session = state.sessions.find(s => s.task_id === id)
-    if (session) session.last_active_at = now()
-    else if (turns.length) state.sessions.push({ task_id: id, task_name: '了解自己的第一段对话', stage: 'collect', stage_label: '了解自己', lead_agent_name: '了解你情况的人', last_active_at: now(), status: 'active' })
+
   },
   recordMessage(body: MessageRequest) { state.messageRequests.push(body) },
   setLiveDirections(plans: DirectionPlanListView) { state.liveDirections = plans },
@@ -144,8 +67,8 @@ export const backendDemo = {
   },
   setNoteDone(id: string, done: boolean) { const note = state.notes.find(n => n.id === id); if (note) note.done = done },
   removeNote(id: string) { state.notes = state.notes.filter(n => n.id !== id) },
-  loadAcademicSample() { state.academicOrigin='sample'; state.academic = { ...structuredClone(academicFixture), imported_at: now() } },
-  academicSample() { return structuredClone(academicFixture) },
+  loadAcademicSample() { throw new Error('请导入自己的学业资料') },
+  academicSample(): AcademicPanelView { return {courses:[],grades:[]} },
   setAcademic(courses: AcademicCourseView[], grades: AcademicGradeView[], school: string, term: string) {
     state.academicOrigin='local'
     state.academic = { courses, grades, school, term, source: '本人导入的表格快照', imported_at: now(), note: '本次已核对表格或JSON数据；未经正式学籍核验。' }
@@ -159,8 +82,7 @@ export const backendDemo = {
     return item
   },
   loadIntelSample() {
-    state.intelOrigin = 'sample'
-    state.intel = structuredClone(DEMO_INTEL)
+    state.intel = []
   },
   verifySample() { state.chsiChecked = true },
   loadAssessmentSample() { state.reportAvailable = true; state.directionsAvailable = true },

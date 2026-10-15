@@ -1,9 +1,14 @@
 <script setup lang="ts">
-import { computed, ref, nextTick } from 'vue'
+import { computed, ref, nextTick, onMounted, provide } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import PortalProposal from './PortalProposalView.vue'
 import PortalClassic from './PortalClassicView.vue'
 
+import {backendClient} from '../api/backend-client'
+import type {PortalView as PortalContent} from '../api/backend-types'
+const content=ref<PortalContent|null>(null)
+provide('portalContent',content)
+onMounted(()=>backendClient.portal().then(data=>{content.value=data}).catch(()=>{}))
 const route = useRoute()
 const router = useRouter()
 const classic = computed(() => route.query.portal === 'classic')

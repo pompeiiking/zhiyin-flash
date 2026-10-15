@@ -63,4 +63,5 @@ app.config.errorHandler = (err) => {
 window.addEventListener('error', (e) => showFatal(e.error ?? e.message))
 window.addEventListener('unhandledrejection', (e) => showFatal(e.reason))
 
-app.use(router).mount('#app')
+app.use(router)
+void router.isReady().then(()=>app.mount('#app'))

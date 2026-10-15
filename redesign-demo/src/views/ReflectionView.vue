@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, onMounted } from 'vue'
 import { demo } from '../store'
-import { INTERVENTION, REVIEW_ITEMS } from '../data/student'
+import { INTERVENTION } from '../data/student'
 import type { ReviewItem } from '../data/types'
 import PageHeading from '../components/PageHeading.vue'
 import UiIcon from '../components/UiIcon.vue'
@@ -18,11 +18,14 @@ import EmptyState from '../components/EmptyState.vue'
 import StatTile from '../components/StatTile.vue'
 import StatusBanner from '../components/StatusBanner.vue'
 import { growthRecords } from '../lib/growth-records'
+import {systemData,loadRecords} from '../lib/system-data'
+const loadError=ref('')
+onMounted(()=>loadRecords().catch(e=>{loadError.value=e.message}))
 const route = useRoute()
 const achievementView = computed(() => route.query.view === 'achievements')
 const items = computed<ReviewItem[]>(() => [
   ...demo.use.done.value.filter((t) => t.doneAt === '刚刚').map((t) => ({ id: 'done-' + t.id, when: '刚刚', what: t.title, result: 'done' as const })),
-  ...(demo.state.account === 'fresh' ? [] : REVIEW_ITEMS),
+  ...systemData.events.map(e=>({id:e.id,when:e.occurred_at?new Date(e.occurred_at).toLocaleString('zh-CN'):'时间未提供',what:e.title,result:e.type==='milestone_done'?'done' as const:'record' as const})),
 ])
 const completed = computed(() => items.value.filter((r) => r.result === 'done'))
 const partial = computed(() => items.value.filter((r) => r.result === 'partial'))
@@ -34,7 +37,7 @@ watch(() => missed.value?.id, id => { reviewNote.value = id ? demo.state.reviewN
 function saveNote() { if (missed.value) { demo.setReviewNote(missed.value.id, reviewNote.value); noteStatus.value = '说明已保存在这条复盘记录中。' } }
 const choice = computed(() => missed.value ? demo.state.reviewAttributions[missed.value.id] ?? '' : '')
 const explanation = computed(() => choice.value === '任务太大' ? '将「'+missed.value?.what+'」拆成一个约5分钟可开始的步骤，再记录实际结果。' : choice.value === '方法不对' ? '先核对「'+missed.value?.what+'」使用的方法与实际反馈，再调整做法。' : choice.value === '方向要重估' ? '结合这条执行记录重新比较方向，保留已有任务与完成记录。' : '先保留你的说明，和顾问核对事实后再决定怎样调整。')
-const labels: Record<string, string> = { done: '已完成', partial: '部分完成', missed: '暂未完成' }
+const labels: Record<string, string> = { record:'咨询与资料记录', done: '已完成', partial: '部分完成', missed: '暂未完成' }
 function nextStep() {
   if (!missed.value || !['任务太大','方法不对'].includes(choice.value)) return
   demo.planChatTask((choice.value === '任务太大' ? '拆小一步：' : '核对方法：') + missed.value.what, choice.value === '任务太大' ? 5 : 15)
@@ -65,7 +68,7 @@ const filteredRecords=computed(()=>recordPool.value.filter(r=>(r.what+' '+r.when
 const {page:reviewPage,paged:reviewRows}=usePagedItems(filteredRecords,4)
 </script>
 <template>
-  <div class="ws-page review-page">
+  <div class="ws-page review-page"><p v-if="loadError" class="ws-field-error" role="alert">{{loadError}} <button @click="loadRecords().catch(e=>loadError=e.message)">重新读取</button></p>
     <PageHeading title="复盘与记录" :description="achievementView ? '记录已完成的关键行动，展示阶段成果。' : demo.use.scenario.value.grade + ' · ' + demo.use.scenario.value.reviewFocus"><RouterLink class="btn" to="/home">回到今日行动<UiIcon name="arrow" :size="16" /></RouterLink></PageHeading>
 
     <AchievementsSection v-if="achievementView" />

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import RenderableBlock from '../components/RenderableBlock.vue'
 import DetailPopover from '../components/DetailPopover.vue'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
@@ -9,7 +10,10 @@ import UiIcon from '../components/UiIcon.vue'
 import InfoSheet from '../components/InfoSheet.vue'
 import type { ChatTurn } from '../data/types'
 import { backendDemo } from '../lib/backend-demo'
-import registry from '../data/backend-registry.json'
+import {auth} from '../lib/auth'
+import { backendClient } from '../api/backend-client'
+import { newSession as createSession, openSession, mapMessage, loadShell } from '../lib/system-data'
+import { toast } from '../store'
 import type { GuideOptionView, MessageRequest } from '../api/backend-types'
 import { consultantLabel, agentKeyOf } from '../lib/consultant'
 import { navigation } from '../lib/layout'
@@ -33,7 +37,9 @@ const attachmentInput = ref<HTMLInputElement | null>(null)
 const attachmentError = ref('')
 const attached = ref<{ id: string; name: string }[]>(restoredDraft.materials.map(m => ({ ...m })))
 const theoryOpen = ref(false)
-const activeTheory = computed(() => registry.theoryCards?.[0])
+const activeTheory = ref<import('../api/backend-types').TheoryCardView|null>(null)
+const theoryError=ref('')
+async function readTheory(id:string){try{activeTheory.value=await backendClient.theory(id)}catch(e){theoryError.value=(e as Error).message}}
 const followTail = ref(true)
 const announcement = ref('')
 /** 「资料使用说明」展开态：解释挂在输入区旁边，不占常驻空间，也不与主行动争位置 */
@@ -105,7 +111,7 @@ function leadOf(text: string): string {
   if (body.length <= 44) return body
   const soft = body.search(/[，,；;]/)
   if (soft >= 8 && soft <= 30) return body.slice(0, soft + 1)
-  return body.slice(0, 44) + '…'
+  return body.slice(0, 44)
 }
 
 /**
@@ -115,29 +121,7 @@ function leadOf(text: string): string {
  * bars_chart 形状本地造一份，并在卡片上标注"演示数据"——不伪装成真实统计。
  * 只在两条真正谈"匹配 / 差距"的回答上挂，避免变成每句话都配一张图。
  */
-function chartFor(text: string, speaker: string | undefined): BarsChart | null {
-  if (speaker !== '帮你判断方向的人' && speaker !== '陪你推进的人') return null
-  if (/匹配|日常/.test(text)) {
-    return {
-      unit: '分',
-      points: [
-        { label: '半导体工艺', value: 72 },
-        { label: '新能源材料', value: 61 },
-        { label: '材料检测', value: 54 },
-      ],
-    }
-  }
-  if (/差距|门槛|够不够|多少/.test(text)) {
-    return {
-      unit: '分',
-      points: [
-        { label: '当前水平', value: 46 },
-        { label: '方向要求', value: 50 },
-      ],
-    }
-  }
-  return null
-}
+function chartFor(_text: string, _speaker?: string): BarsChart | null { return null }
 
 const optionRefsOf = (turn: ChatTurn): { option_id: string; label: string; value: unknown }[] =>
   turn.optionRefs?.map(item => ({ ...item })) ?? []
@@ -155,7 +139,7 @@ function turnBlocks(turn: ChatTurn): TurnBlocks {
   }
   const chart = chartFor(text, turn.speaker)
   if (chart) peers.push({ id: turn.id + '-data', kind: 'data', label: '数据对比', chart, demo: true })
-  if (!chart && activeTheory.value) {
+  if (!chart && activeTheory.value && turn.theory_refs?.some(r=>r.theory_id===activeTheory.value?.id)) {
     peers.push({
       id: turn.id + '-method',
       kind: 'method',
@@ -204,11 +188,20 @@ const { stream, textOf, isStreaming } = useStreaming((id, text) => {
   completedReply.value = id
   completionTimer = setTimeout(clearCompletion, 700)
 })
-let timer: ReturnType<typeof setTimeout> | null = null
-let pendingContent = ''
+let requestSerial = 0
+let messageController: AbortController | null = null
+const guideSaving = ref('')
+const guideDone = computed(() => new Set(backendDemo.state.liveAction?.phases?.flatMap(p => p.tasks ?? []).filter(t=>t.done).map(t=>t.task_id) ?? []))
+async function completeGuide(taskId: string) {
+ if(guideSaving.value)return
+ guideSaving.value=taskId
+ try { backendDemo.setAction(await backendClient.actionDone({task_id:taskId,done:!guideDone.value.has(taskId)})); toast('任务状态已保存') } catch(e) {toast((e as Error).message)} finally {guideSaving.value=''}
+}
+let retryRequest: MessageRequest | null = null
+const requestError = ref('')
 let seq = Date.now()
 const progress = computed(() => demo.use.profileProgress.value)
-const known = computed(() => PROFILE_FIELDS.slice(0, progress.value.known))
+const known = computed(() => (backendDemo.state.liveWorkspace?.profile_panel?.fields??[]).map(f=>({...f,value:String(f.value??'')})))
 const planned = computed(() => [...demo.use.now.value, ...demo.use.waiting.value])
 const handoffs = computed(() => turns.value.filter((t) => t.handoff).map((t) => t.handoff!))
 const host = computed(() => [...turns.value].reverse().find((t) => t.from === 'host' && t.speaker)?.speaker ?? '了解你情况的人')
@@ -230,7 +223,9 @@ const profileTotal = computed(() => progress.value.total)
 const profileOn = computed(() => Math.max(0, Math.min(profileTotal.value, profileKnown.value)))
 const taskAddedAt = ref('')
 const topicLabels: Record<string, { title: string; description: string; icon: string }> = { confused: { title: '兴趣与能力', description: '了解个人特点与适合的领域', icon: 'profile' }, undecided: { title: '方向选择', description: '比较备选方向与决策依据', icon: 'directions' }, how_to_act: { title: '行动规划', description: '将目标转化为具体行动', icon: 'action' }, stuck: { title: '执行调整', description: '分析执行障碍并调整方案', icon: 'review' } }
-const starters = registry.taskEntries.filter(t => topicLabels[t.code]).map(t => ({ ...t, ...topicLabels[t.code] }))
+const starters = computed(()=>(auth.state.bootstrap?.task_entries??[]).map(t => ({ ...t, ...(topicLabels[t.code] ?? {title:t.label,description:'',icon:'chat'}) })))
+async function startTopic(code:string,label:string){try{await createSession(code);await send(label)}catch(e){requestError.value=(e as Error).message;errorVisible.value=true}}
+function answered(turn:ChatTurn){return turns.value.slice(turns.value.indexOf(turn)+1).some(t=>t.from==='me')}
 
 /* =============================================================================
  * 后续问题 —— 「过程可见」五问的第四问（DESIGN-LANGUAGE §3）
@@ -256,7 +251,7 @@ const starters = registry.taskEntries.filter(t => topicLabels[t.code]).map(t => 
  * ========================================================================== */
 const OPENING_QUESTIONS = [
   '我不知道自己适合什么',
-  '半导体方向和新能源方向，我该选哪个',
+  '有几个感兴趣的方向，我该怎样比较',
   '知道该做什么，但一直没有开始',
 ]
 const FOLLOW_UP_FALLBACK = [
@@ -278,14 +273,13 @@ const copyLabel = ref('复制')
  * 触发口子只有查询参数 `?demo-error=1`——它**不是产品功能**，界面上不留按钮。
  * 所以这里用一次性快照而不是 computed：进页面时带上参数，这一次咨询就会走失败分支，
  * 之后即使用户把地址栏里的参数删掉，本轮错误态也不会凭空消失。 */
-const routeError = ref(false)
 /** demo 数据里那条"未能生成"的系统消息：它本身就是可触发的一次真实失败 */
 const failureTurn = computed(() => turns.value.find(t => t.from === 'system' && /未能生成/.test(t.text)) ?? null)
 const errorVisible = ref(false)
 /** 重试之后这条失败记录就不再占位（不改 store，只在本地隐去） */
 const retriedIds = ref<string[]>([])
 const showFailure = computed(() => !!failureTurn.value && !retriedIds.value.includes(failureTurn.value.id))
-const errorText = computed(() => (failureTurn.value?.text ?? '本次未能生成内容。').trim())
+const errorText = computed(() => requestError.value || (failureTurn.value?.text ?? '本次未能生成内容。').trim())
 function retry() {
   const last = [...turns.value].reverse().find(t => t.from === 'me')
   const failed = failureTurn.value
@@ -321,12 +315,13 @@ const streamingTurn = computed(() => turns.value.find(t => isStreaming(t.id) && 
 /** 输入区是否处于"可以停下"的状态：等待回复、或正在逐字输出 */
 const canStop = computed(() => thinking.value || stalled.value || !!streamingTurn.value)
 function stopGeneration() {
+  messageController?.abort()
   clearCompletion()
   const current = streamingTurn.value
   if (current) stopped.value = [...stopped.value, current.id]
   if (thinking.value) { stalled.value = true; thinking.value = false }
-  if (timer) { clearTimeout(timer); timer = null }
-  announcement.value = '已停止生成。已生成的内容保留，可以继续追问或重新发送。'
+  requestSerial++
+  announcement.value = '已停止等待。服务器可能仍在处理，可重新读取这段会话核对结果。'
 }
 
 /**
@@ -586,29 +581,15 @@ function exportRecord() {
   )
 }
 function goToLatest() { followTail.value = true; void scrollToEnd() }
-function newSession() {
-  if (demo.state.chatBusy) return
+async function newSession() {
   rememberDraft()
-  backendDemo.newSession()
-  demo.startChatSession([], backendDemo.state.currentSessionId)
-  panel.value = null; announcement.value = ''
+  try { await createSession(); panel.value=null; announcement.value='' } catch(e){toast((e as Error).message)}
 }
-function selectSession(id: string) {
-  if (demo.state.chatBusy) return
-  rememberDraft()
-  if (id !== demo.state.currentSessionId) demo.startChatSession(backendDemo.selectSession(id), id)
-  panel.value = null; announcement.value = ''
-}
-function attach(event: Event) {
-  attachmentError.value = ''
-  const file = (event.target as HTMLInputElement).files?.[0]
-  if (!file) return
-  try {
-    if (attached.value.length >= 5) throw new Error('每轮最多添加 5 份材料。')
-    const receipt = backendDemo.recordMaterial(file)
-    attached.value.push({ id: receipt.material_id, name: receipt.name ?? file.name })
-  } catch (error) { attachmentError.value = (error as Error).message }
-  ;(event.target as HTMLInputElement).value = ''
+async function selectSession(id:string){rememberDraft();try{await openSession(id);panel.value=null}catch(e){toast((e as Error).message)}}
+async function attach(event:Event){
+ const el=event.target as HTMLInputElement, file=el.files?.[0];if(!file)return
+ attachmentError.value=''
+ try{if(attached.value.length>=5)throw new Error('每轮最多添加 5 份材料。');const receipt=await backendClient.material(file);attached.value.push({id:receipt.material_id,name:receipt.name||file.name})}catch(e){attachmentError.value=(e as Error).message}finally{el.value=''}
 }
 function readingRoot() {
   const main = flow.value?.closest<HTMLElement>('.app__main')
@@ -627,7 +608,7 @@ function followScroll() {
   followTail.value = root ? root.scrollHeight - root.scrollTop - root.clientHeight < 100 : document.documentElement.scrollHeight - window.scrollY - window.innerHeight < 100
 }
 function append(turn: Omit<ChatTurn, 'id'>, animate = true) {
-  const complete = { ...turn, id: 'turn-' + (++seq), optionRefs: turn.options?.map((label, index) => ({ option_id: 'option-' + seq + '-' + index, label, value: label })) }
+  const complete = { ...turn, id: 'turn-' + (++seq), optionRefs: turn.optionRefs }
   demo.addChatTurn(complete)
   if (animate && turn.from === 'host' && !turn.handoff) {
     announcement.value = ''
@@ -659,49 +640,30 @@ const coveredTurn = computed(() => {
   return last.id
 })
 function isCovered(id: string): boolean { return coveredTurn.value === id }
-function reply(content: string, animate = true) {
-  let response: Omit<ChatTurn, 'id'>
-  let why = '继续了解你的情况'
-  if (/卡住|做不动|坚持不了|忘了/.test(content)) {
-    why = '你需要先把行动负担降下来'
-    response = { from: 'host', speaker: '陪你推进的人', text: '建议先将当前任务拆分为 5 分钟可完成的步骤，再根据执行结果调整计划。', task: { title: '先投 1 家半导体方向的工艺岗', minutes: 5 } }
-  } else if (/差多少|行不行|够不够/.test(content)) {
-    why = '你想了解能力和方向门槛之间的差距'
-    response = { from: 'host', speaker: '帮你判断方向的人', text: '当前报告里，呈现能力是 46 分，主攻方向要求 50 分。差 4 分，这是可以先补的一项。可在诊断报告中查看具体差距与支持依据。', options: ['查看诊断报告', '制定 5 分钟行动任务'] }
-  } else if (/怎么动|下一步|开始做|先动|5 分钟|一直没有开始/.test(content)) {
-    why = '你已经开始关心具体怎么行动'
-    response = { from: 'host', speaker: '帮你排计划的人', text: '建议联系一位相关专业的学长，了解目标方向的日常工作与岗位要求。可先将访谈作为当前行动任务。', task: { title: '给上一届学长发一条消息，问一句半导体岗日常', minutes: 5 } }
-  } else if (/拿不准|选哪个|怎么选|纠结|方向|选错/.test(content)) {
-    why = '你开始关心方向之间的差别'
-    response = { from: 'host', speaker: '帮你判断方向的人', text: '当前候选方向包括半导体工艺、新能源与材料检测三个方向。建议比较匹配依据、能力差距及主要风险后进行选择。', options: ['比较方向方案', '制定 5 分钟行动任务'] }
-  } else {
-    response = { from: 'host', speaker: '了解你情况的人', text: content === '跳过这个问题' ? '已跳过当前问题。近期哪些活动是你愿意主动投入时间的？' : '已记录。对于方向选择，你更关注选择风险，还是执行进度？', options: ['更怕选错', '更怕一直没有开始', '跳过这个问题'] }
-  }
-  if (host.value !== response.speaker) append({ from: 'host', speaker: response.speaker, text: '将由对应顾问继续处理当前咨询。', handoff: { to: response.speaker!, why, basedOn: '你刚才的回答与已有档案' } })
-  append(response, animate)
-}
-function send(text?: string, option?: GuideOptionView) {
-  const content = (text ?? draft.value).trim()
-  if (!content || thinking.value) return
-  followTail.value = true
-  stalled.value = false
-  clearCompletion()
-  const request: MessageRequest = { task_id: demo.state.currentSessionId, message: content, client_msg_id: crypto.randomUUID(), option_id: option?.option_id, option_value: option?.value, material_ids: attached.value.map(m => m.id) }
-  backendDemo.recordMessage(request)
-  append({ from: 'me', text: content, materials: attached.value.map(m => ({ ...m })) })
-  attached.value = []
-  draft.value = ''
-  if (input.value) input.value.style.height = '48px'
-  if (content !== '跳过这个问题') demo.noteCollected(2)
-  if (routeError.value) { errorVisible.value = true; return }
-  thinking.value = true
-  pendingContent = content
-  timer = setTimeout(() => {
-    thinking.value = false
-    reply(content)
-    pendingContent = ''
-    timer = null
-  }, 520)
+async function send(text?: string, option?: GuideOptionView) {
+ const content=(text ?? draft.value).trim()
+ if(!content||thinking.value)return
+ if(!demo.state.currentSessionId){try{await createSession()}catch(e){requestError.value=(e as Error).message;errorVisible.value=true;return}}
+ const serial=++requestSerial, sessionId=demo.state.currentSessionId
+ const request:MessageRequest = retryRequest && retryRequest.message===content && retryRequest.task_id===sessionId ? retryRequest : {task_id:sessionId,message:content,client_msg_id:crypto.randomUUID(),option_id:option?.option_id,option_value:option?.value,material_ids:attached.value.map(m=>m.id)}
+ const retrying=request===retryRequest
+ retryRequest=request;thinking.value=true;stalled.value=false;errorVisible.value=false;requestError.value='';clearCompletion();followTail.value=true
+ if(!retrying)append({from:'me',text:content,materials:attached.value.map(m=>({...m}))},false)
+ try {
+   messageController = new AbortController()
+   const result=await backendClient.message(request,messageController.signal)
+   if(serial!==requestSerial || sessionId!==demo.state.currentSessionId)return
+   if(result.disclosure)append({from:'system',text:result.disclosure.text,handoff:result.disclosure.kind==='lead_change'?{to:result.disclosure.to_agent||result.badge.name,why:result.disclosure.text,basedOn:''}:undefined},false)
+   const messages=(result.messages??[]).filter(m=>m.role!=='user')
+   for(const message of messages){const turn=mapMessage(message,crypto.randomUUID());append(turn)}
+   if(result.badge.theory_refs?.[0])void readTheory(result.badge.theory_refs[0].theory_id)
+   const guide=result.guide
+   if(guide && (guide.question || guide.options?.length || guide.task || guide.reminder || (!messages.length && guide.text)))append({from:'host',speaker:result.badge.name,text:guide.text||guide.question||'',guideTask:guide.task??undefined,reminder:guide.reminder??undefined,question:guide.question??undefined,options:guide.options?.map(o=>o.label),optionRefs:guide.options?.map(o=>({...o,value:o.value}))})
+   draft.value='';attached.value=[];retryRequest=null;backendDemo.saveDraft('', '', [], null)
+   backendDemo.saveTurns(sessionId,demo.state.chatTurns)
+   void loadShell()
+ }catch(e){if(serial===requestSerial){requestError.value=(e as Error).message;errorVisible.value=true}}
+ finally{if(serial===requestSerial)thinking.value=false}
 }
 function grow() {
   if (!input.value) return
@@ -728,6 +690,7 @@ watch(() => {
   return last ? textOf(last.id, last.text) : ''
 }, () => { if (followTail.value) void scrollToEnd() })
 onMounted(() => {
+  if(demo.state.currentSessionId)void openSession(demo.state.currentSessionId).catch(e=>{requestError.value=e.message;errorVisible.value=true})
   window.addEventListener('scroll', followScroll, { passive: true })
   flow.value?.closest('.app__main')?.addEventListener('scroll', followScroll, { passive: true })
   const question = typeof route.query.question === 'string' ? route.query.question : ''
@@ -737,10 +700,7 @@ onMounted(() => {
   const gap = PROFILE_FIELDS.find(f => f.key === route.query.gap)
   const gapLabel = gap?.label || backendDemo.state.liveWorkspace?.profile_panel?.gaps?.find(g=>g.key===route.query.gap)?.label || (typeof route.query.label==='string'?route.query.label:'')
   if (gapLabel && !draft.value) draft.value = '我想补充' + gapLabel + '：'
-  const n = Number(route.query.collected)
-  if (Number.isFinite(n) && n > 0) demo.noteCollected(n)
   /* 错误态只由查询参数触发（界面上没有按钮）：?demo-error=1 */
-  if (route.query['demo-error'] === '1') { routeError.value = true; errorVisible.value = true }
   if (restoredDraft.scroll !== null) void nextTick(() => { const root = readingRoot(); if (root) root.scrollTop = restoredDraft.scroll!; else window.scrollTo(0, restoredDraft.scroll!); followScroll() })
   else void scrollToEnd()
 })
@@ -749,9 +709,8 @@ onUnmounted(() => {
   window.removeEventListener('scroll', followScroll)
   flow.value?.closest('.app__main')?.removeEventListener('scroll', followScroll)
   rememberDraft()
-  if (timer) clearTimeout(timer)
+  requestSerial++; messageController?.abort()
   /* 停止生成之后离开页面：那条回复按"已停止"落在原地，不再补一次完整回答 */
-  if (pendingContent && !stalled.value) reply(pendingContent, false)
   demo.setChatBusy(false)
 })
 </script>
@@ -861,7 +820,7 @@ onUnmounted(() => {
           + 三句开场问题（直接点一句就发出去，见下面的 .dialogue-options）。
         -->
         <div class="exp-intro"><div><h2>从你正在想的事聊起</h2><p>方向还没想清楚也没关系。先选一类最像你的，也可以直接问下面这一句。</p></div></div>
-        <div class="ws-chat-prompts"><button v-for="topic in starters" :key="topic.code" @click="send(topic.label)"><UiIcon :name="topic.icon" :size="22" /><span><strong>{{ topic.title }}</strong><small>{{ topic.description }}</small></span><UiIcon name="arrow" :size="16" /></button></div>
+        <div class="ws-chat-prompts"><button v-for="topic in starters" :key="topic.code" @click="startTopic(topic.code,topic.title)"><UiIcon :name="topic.icon" :size="22" /><span><strong>{{ topic.title }}</strong><small>{{ topic.description }}</small></span><UiIcon name="arrow" :size="16" /></button></div>
         <!--
           开场问题：**点一句就发出去**，不是把话填进输入框让用户再按一次发送。
           与"回答之后的后续问题"共用 .dialogue-options / .ws-chat-options
@@ -994,6 +953,12 @@ onUnmounted(() => {
                 <p v-else-if="liveDetail(t)" class="chat-block chat-block--transient" aria-hidden="true">{{ liveDetail(t) }}<span class="chat-caret" /></p>
 
                 <!-- 块四 · 行动：要你做的事，别的块都不许长得像它 -->
+                <RenderableBlock v-for="(block,bi) in t.renderables ?? []" :key="t.id+'-'+bi" :item="block" />
+                <section v-if="ready(t) && t.guideTask" class="chat-block dialogue-action" aria-label="计划任务">
+                  <h2>下一步行动</h2><p>{{t.guideTask.text}}</p><p v-if="t.guideTask.due_date" class="ws-muted">{{t.guideTask.due_date}}</p>
+                  <button class="btn btn--primary" :disabled="!!guideSaving" :aria-pressed="guideDone.has(t.guideTask.task_id)" @click="completeGuide(t.guideTask.task_id)">{{guideSaving===t.guideTask.task_id?'正在保存…':guideDone.has(t.guideTask.task_id)?'恢复任务':'标记完成'}}</button>
+                </section>
+                <section v-if="ready(t) && t.reminder" class="chat-block"><p>{{t.reminder.title}} {{t.reminder.detail}}</p><RouterLink class="ws-text-link" to="/reminders">查看提醒</RouterLink></section>
                 <section v-if="ready(t) && t.task" class="chat-block chat-block--action dialogue-action" :style="blockDelay(3)" :class="{ 'is-added': taskAdded(t.task.title) || taskAddedAt === t.task.title }" aria-label="行动建议">
                   <div class="dialogue-action__head"><UiIcon name="action" :size="18" /><h2>建议下一步</h2><span>约 {{ t.task.minutes }} 分钟</span></div>
                   <p class="dialogue-action__title">{{ t.task.title }}</p>
@@ -1004,7 +969,7 @@ onUnmounted(() => {
                      条数不再是"有没有 options"的条件 —— 没有 options 时走兜底三句，
                      所以**每一条回答结束处都有一组可点的问题**（见 script 里的 followUpsOf）。 -->
                 <div v-if="ready(t) && i === turns.length - 1" class="chat-block chat-block--follow dialogue-options" :style="blockDelay(4)" aria-label="后续问题">
-                  <p>你可以这样继续</p><div class="ws-chat-options"><template v-for="option in followUpsOf(t)" :key="option"><RouterLink v-if="option === '比较方向方案' || option === '查看诊断报告'" class="btn" :to="option === '比较方向方案' ? '/directions' : '/report'">{{ option }}</RouterLink><button v-else type="button" :disabled="thinking" @click="send(option, blocksFor(t).optionRefs.find(item => item.label === option))">{{ option }}</button></template></div>
+                  <p>你可以这样继续</p><div class="ws-chat-options"><template v-for="option in followUpsOf(t)" :key="option"><RouterLink v-if="option === '比较方向方案' || option === '查看诊断报告'" class="btn" :to="option === '比较方向方案' ? '/directions' : '/report'">{{ option }}</RouterLink><button v-else type="button" :disabled="thinking || answered(t)" @click="send(option, blocksFor(t).optionRefs.find(item => item.label === option))">{{ option }}</button></template></div>
                 </div>
               </div>
 
@@ -1064,7 +1029,7 @@ onUnmounted(() => {
       <div class="composer-field">
         <form @submit.prevent="send()">
           <textarea ref="input" v-model="draft" rows="1" aria-label="咨询内容" placeholder="说说最想解决的事…" @input="grow" @keydown="keydown" />
-          <div class="composer-actions"><DetailPopover title="咨询与资料使用" label="查看咨询与资料使用说明"><p>Enter 发送，Shift + Enter 换行。</p><p>附件名称保留在当前咨询；需要读取文件内容时，请使用资料上传入口。</p></DetailPopover>
+          <div class="composer-actions"><DetailPopover title="咨询与资料使用" label="查看咨询与资料使用说明"><p>Enter 发送，Shift + Enter 换行。</p><p>添加材料后会上传至系统，发送消息时一并交给顾问读取。</p></DetailPopover>
             <button type="button" class="composer-action desk-attachment-control" aria-label="添加材料" :disabled="thinking" @click="attachmentInput?.click()"><UiIcon name="attachment" :size="20" /></button>
             <input ref="attachmentInput" type="file" class="sr-only" tabindex="-1" accept=".txt,.csv,.json,.md,.pdf,.docx" @change="attach" />
             <button v-if="canStop" type="button" class="btn composer-stop" @click="stopGeneration"><span class="composer-stop__mark" aria-hidden="true" />停止生成</button>
@@ -1104,6 +1069,6 @@ onUnmounted(() => {
       </template>
 
     </InfoSheet>
-    <InfoSheet :open="theoryOpen" :title="activeTheory?.name ?? '方法依据'" @close="theoryOpen = false"><p class="ws-muted">方法卡示例 · 来自后端的理论卡配置</p><p style="margin-top: var(--sp-4)">{{ activeTheory?.summary }}</p><h3 class="ws-section-title" style="margin-top: var(--sp-5)">应用说明</h3><p style="margin-top: var(--sp-3)">{{ activeTheory?.product_usage }}</p></InfoSheet>
+    <InfoSheet :open="theoryOpen" :title="activeTheory?.name ?? '方法依据'" @close="theoryOpen = false"><p class="ws-muted">咨询使用的方法说明</p><p v-if="theoryError" class="ws-field-error">{{theoryError}}</p><p style="margin-top: var(--sp-4)">{{ activeTheory?.summary }}</p><h3 class="ws-section-title" style="margin-top: var(--sp-5)">应用说明</h3><p style="margin-top: var(--sp-3)">{{ activeTheory?.product_usage }}</p></InfoSheet>
   </section>
 </template>

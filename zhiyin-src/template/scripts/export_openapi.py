@@ -76,7 +76,7 @@ def main(argv: list[str] | None = None) -> int:
     schema = build_openapi_schema()
     print(f"已写入 {target}")
     print(f"  接口 {len(schema.get('paths', {}))} 条，DTO {len(schema.get('components', {}).get('schemas', {}))} 个")
-    print("下一步：cd zhiyin-web && npm run gen:api")
+    print("下一步：cd ../../redesign-demo && npm run gen:api")
     return 0
 
 

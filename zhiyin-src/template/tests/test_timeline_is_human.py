@@ -81,12 +81,18 @@ def test_default_bars_refuses_out_of_range_scores() -> None:
     `contracts/decide.py` 的 `match_score: ge=0.0, le=1.0`，
     上游给 90 这种值应当被拒绝，而不是被服务端猜成 0.9。
     """
-    assert _renderables_for_turn(
-        [], LoopStage.DECIDE, {"plans": [{"name": "甲", "match_score": 90}, {"name": "乙", "match_score": 60}]}
-    ) == []
+    assert (
+        _renderables_for_turn(
+            [],
+            LoopStage.DECIDE,
+            {"plans": [{"name": "甲", "match_score": 90}, {"name": "乙", "match_score": 60}]},
+        )
+        == []
+    )
     # 契约内的分值照常出图
     good = _default_bars(
-        LoopStage.DECIDE, {"plans": [{"name": "甲", "match_score": 0.74}, {"name": "乙", "match_score": 0.64}]}
+        LoopStage.DECIDE,
+        {"plans": [{"name": "甲", "match_score": 0.74}, {"name": "乙", "match_score": 0.64}]},
     )
     assert good is not None
     assert [point["value"] for point in good.payload["points"]] == [0.74, 0.64]
@@ -101,7 +107,8 @@ def test_charts_coming_from_the_model_are_validated_too() -> None:
     `validate_renderables` 一路走到前端，前端再当比值乘 100。
     """
     chart = _default_bars(
-        LoopStage.DECIDE, {"plans": [{"name": "甲", "match_score": 0.74}, {"name": "乙", "match_score": 0.64}]}
+        LoopStage.DECIDE,
+        {"plans": [{"name": "甲", "match_score": 0.74}, {"name": "乙", "match_score": 0.64}]},
     )
     assert chart is not None
     tampered = chart.model_copy(
@@ -118,7 +125,7 @@ def test_charts_coming_from_the_model_are_validated_too() -> None:
 
 
 APPLICATION = TEMPLATE_ROOT / "zhiyin-api" / "zhiyin_api" / "facade" / "application.py"
-REVIEW_OVERLAY = TEMPLATE_ROOT / "zhiyin-web" / "src" / "components" / "console" / "ReviewOverlay.vue"
+REVIEW_OVERLAY = TEMPLATE_ROOT.parents[1] / "redesign-demo" / "src" / "views" / "ReflectionView.vue"
 
 
 def test_every_frontend_event_says_whether_it_belongs_on_the_timeline() -> None:
@@ -150,8 +157,8 @@ def test_usage_telemetry_never_reaches_the_review_timeline() -> None:
     )
 
 
-def test_review_timeline_collapses_identical_records() -> None:
-    """同一条记录合并成一行、次数写在后面（50 行同一个文本就是"在刷屏"）。"""
+def test_review_timeline_is_paginated_and_uses_backend_labels() -> None:
     source = REVIEW_OVERLAY.read_text(encoding="utf-8")
-    assert "const rows = computed" in source, "复盘时间线没有做合并"
-    assert "row.n > 1" in source and "次" in source, "合并之后要把次数写出来 —— 不隐藏事实"
+    assert "usePagedItems" in source and "ResultPager" in source
+    assert "what:e.title" in source
+    assert "e.type==='milestone_done'" in source

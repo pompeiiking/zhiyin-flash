@@ -1,0 +1,673 @@
+{
+  "DELETE /api/v1/app/academic": {
+    "status": "联调通过",
+    "frontend": [
+      "redesign-demo/src/views/AcademicView.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 live-smoke-results.json"
+  },
+  "POST /api/v1/app/academic/import": {
+    "status": "联调通过",
+    "frontend": [
+      "redesign-demo/src/views/AcademicView.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 live-smoke-results.json"
+  },
+  "POST /api/v1/app/academic/import/file": {
+    "status": "联调通过",
+    "frontend": [
+      "redesign-demo/src/views/AcademicView.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 live-smoke-results.json"
+  },
+  "GET /api/v1/app/achievements": {
+    "status": "联调通过",
+    "frontend": [
+      "redesign-demo/src/router.ts",
+      "redesign-demo/src/components/PublishedTools.vue",
+      "redesign-demo/src/lib/system-data.ts",
+      "redesign-demo/src/lib/workspace-nav.ts",
+      "redesign-demo/src/views/ReflectionView.vue",
+      "redesign-demo/src/views/SystemView.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 live-smoke-results.json"
+  },
+  "POST /api/v1/app/assets/export": {
+    "status": "联调通过",
+    "frontend": [
+      "redesign-demo/src/views/SystemView.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 live-smoke-results.json；服务边界：第一期仅预留导出入口，已显示原因，未产生下载文件"
+  },
+  "GET /api/v1/app/assets/{asset_type}/versions": {
+    "status": "联调通过",
+    "frontend": [
+      "redesign-demo/src/components/ReportHistory.vue",
+      "redesign-demo/src/views/AssessmentView.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 live-smoke-results.json"
+  },
+  "POST /api/v1/app/auth/login": {
+    "status": "联调通过",
+    "frontend": [
+      "redesign-demo/src/components/AuthLayer.vue",
+      "redesign-demo/src/lib/auth.ts"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 live-smoke-results.json"
+  },
+  "POST /api/v1/app/auth/logout": {
+    "status": "联调通过",
+    "frontend": [
+      "redesign-demo/src/components/WorkspaceHeader.vue",
+      "redesign-demo/src/lib/auth.ts",
+      "redesign-demo/src/views/SystemView.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 live-smoke-results.json"
+  },
+  "POST /api/v1/app/auth/register": {
+    "status": "联调通过",
+    "frontend": [
+      "redesign-demo/src/components/AuthLayer.vue",
+      "redesign-demo/src/lib/auth.ts"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 live-smoke-results.json"
+  },
+  "GET /api/v1/app/bootstrap": {
+    "status": "联调通过",
+    "frontend": [
+      "redesign-demo/src/lib/auth.ts"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 live-smoke-results.json"
+  },
+  "POST /api/v1/app/brief/today": {
+    "status": "联调通过",
+    "frontend": [
+      "redesign-demo/src/api/validate-ai.ts",
+      "redesign-demo/src/components/TaskBrief.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 live-smoke-results.json"
+  },
+  "GET /api/v1/app/calendar": {
+    "status": "联调通过",
+    "frontend": [
+      "redesign-demo/src/lib/workspace-nav.ts",
+      "redesign-demo/src/views/ScheduleView.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 live-smoke-results.json"
+  },
+  "POST /api/v1/app/chsi/bind": {
+    "status": "前端已连接",
+    "frontend": [
+      "redesign-demo/src/api/validate-ai.ts",
+      "redesign-demo/src/components/AcademicVerification.vue"
+    ],
+    "verification": "核验表单和 SSE 已连接；尚无真实核验资料，未执行学信网验证"
+  },
+  "POST /api/v1/app/conversation/material": {
+    "status": "联调通过",
+    "frontend": [
+      "redesign-demo/src/views/ConversationView.vue",
+      "redesign-demo/src/views/StudentView.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 live-smoke-results.json"
+  },
+  "POST /api/v1/app/conversation/message": {
+    "status": "联调通过",
+    "frontend": [
+      "redesign-demo/src/developer/ProjectsVersions.vue",
+      "redesign-demo/src/developer/Workflows.vue",
+      "redesign-demo/src/views/ConversationView.vue",
+      "redesign-demo/src/views/DeveloperView.vue"
+    ],
+    "verification": "已连接；浏览器向真实模型发送咨询并收到回复，刷新和 Docker 构建均能读回历史"
+  },
+  "POST /api/v1/app/day/{day}/advice": {
+    "status": "联调通过",
+    "frontend": [
+      "redesign-demo/src/api/validate-ai.ts",
+      "redesign-demo/src/components/DayAdvicePanel.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 live-smoke-results.json"
+  },
+  "POST /api/v1/app/dimensions/{dimension_id}": {
+    "status": "前端已连接",
+    "frontend": [
+      "redesign-demo/src/api/validate-ai.ts",
+      "redesign-demo/src/components/ProfileInsights.vue",
+      "redesign-demo/src/views/StudentView.vue"
+    ],
+    "verification": "代码已接入；真实联调待验证"
+  },
+  "POST /api/v1/app/gaps/{gap_key}/clarify": {
+    "status": "前端已连接",
+    "frontend": [
+      "redesign-demo/src/api/validate-ai.ts",
+      "redesign-demo/src/components/ProfileInsights.vue"
+    ],
+    "verification": "代码已接入；真实联调待验证"
+  },
+  "GET /api/v1/app/intel": {
+    "status": "联调通过",
+    "frontend": [
+      "redesign-demo/src/router.ts",
+      "redesign-demo/src/components/EmptyState.vue",
+      "redesign-demo/src/components/WorkspaceMotif.vue",
+      "redesign-demo/src/lib/workspace-nav.ts",
+      "redesign-demo/src/views/IntelView.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 live-smoke-results.json"
+  },
+  "POST /api/v1/app/intel/refresh": {
+    "status": "前端已连接",
+    "frontend": [
+      "redesign-demo/src/views/IntelView.vue"
+    ],
+    "verification": "代码已接入；真实联调待验证"
+  },
+  "POST /api/v1/app/match/careers": {
+    "status": "联调通过",
+    "frontend": [
+      "redesign-demo/src/api/validate-ai.ts",
+      "redesign-demo/src/components/CareerMatchPanel.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 live-smoke-results.json"
+  },
+  "GET /api/v1/app/modules": {
+    "status": "联调通过",
+    "frontend": [
+      "redesign-demo/src/components/ModuleCatalog.vue",
+      "redesign-demo/src/views/DeveloperView.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 live-smoke-results.json"
+  },
+  "POST /api/v1/app/modules/{module_id}/actions": {
+    "status": "前端已连接",
+    "frontend": [
+      "redesign-demo/src/components/ModuleCatalog.vue"
+    ],
+    "verification": "已接入；等待发布模块/工作流及匹配权限后进行真实执行验收"
+  },
+  "GET /api/v1/app/modules/{module_id}/data": {
+    "status": "前端已连接",
+    "frontend": [
+      "redesign-demo/src/components/ModuleCatalog.vue"
+    ],
+    "verification": "已接入；等待发布模块/工作流及匹配权限后进行真实执行验收"
+  },
+  "POST /api/v1/app/modules/{module_id}/invoke": {
+    "status": "前端已连接",
+    "frontend": [
+      "redesign-demo/src/components/ModuleCatalog.vue"
+    ],
+    "verification": "已接入；等待发布模块/工作流及匹配权限后进行真实执行验收"
+  },
+  "GET /api/v1/app/notes": {
+    "status": "联调通过",
+    "frontend": [
+      "redesign-demo/src/router.ts",
+      "redesign-demo/src/components/EmptyState.vue",
+      "redesign-demo/src/components/InboxSheet.vue",
+      "redesign-demo/src/components/TaskList.vue",
+      "redesign-demo/src/components/WorkspaceMotif.vue",
+      "redesign-demo/src/lib/system-data.ts",
+      "redesign-demo/src/lib/workspace-nav.ts",
+      "redesign-demo/src/views/NotesView.vue",
+      "redesign-demo/src/views/TodayView.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 live-smoke-results.json"
+  },
+  "POST /api/v1/app/notes": {
+    "status": "联调通过",
+    "frontend": [
+      "redesign-demo/src/store.ts",
+      "redesign-demo/src/components/TodoSuggestions.vue",
+      "redesign-demo/src/views/NotesView.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 live-smoke-results.json"
+  },
+  "DELETE /api/v1/app/notes/{note_id}": {
+    "status": "联调通过",
+    "frontend": [
+      "redesign-demo/src/views/NotesView.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 live-smoke-results.json"
+  },
+  "PATCH /api/v1/app/notes/{note_id}": {
+    "status": "联调通过",
+    "frontend": [
+      "redesign-demo/src/views/NotesView.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 live-smoke-results.json"
+  },
+  "GET /api/v1/app/notifications/pending": {
+    "status": "联调通过",
+    "frontend": [
+      "redesign-demo/src/lib/system-data.ts"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 live-smoke-results.json"
+  },
+  "POST /api/v1/app/notifications/{message_id}/read": {
+    "status": "前端已连接",
+    "frontend": [
+      "redesign-demo/src/store.ts",
+      "redesign-demo/src/views/SystemView.vue"
+    ],
+    "verification": "代码已接入；真实联调待验证"
+  },
+  "GET /api/v1/app/plan/action": {
+    "status": "联调通过",
+    "frontend": [
+      "redesign-demo/src/components/CareSheet.vue",
+      "redesign-demo/src/components/EmptyState.vue",
+      "redesign-demo/src/components/LiveActionPlan.vue",
+      "redesign-demo/src/components/ModuleCatalog.vue",
+      "redesign-demo/src/components/PortalExample.vue",
+      "redesign-demo/src/components/StatusBanner.vue",
+      "redesign-demo/src/components/TaskProgressMap.vue",
+      "redesign-demo/src/developer/Workflows.vue",
+      "redesign-demo/src/lib/system-data.ts",
+      "redesign-demo/src/lib/workspace-nav.ts",
+      "redesign-demo/src/modules/ModuleContent.vue",
+      "redesign-demo/src/views/ConversationView.vue",
+      "redesign-demo/src/views/DeveloperView.vue",
+      "redesign-demo/src/views/ScheduleView.vue",
+      "redesign-demo/src/views/StudentView.vue",
+      "redesign-demo/src/views/TodayView.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 live-smoke-results.json"
+  },
+  "PATCH /api/v1/app/plan/action/tasks": {
+    "status": "前端已连接",
+    "frontend": [
+      "redesign-demo/src/store.ts",
+      "redesign-demo/src/components/LiveActionPlan.vue",
+      "redesign-demo/src/views/ConversationView.vue",
+      "redesign-demo/src/views/TodayView.vue"
+    ],
+    "verification": "代码已接入；真实联调待验证"
+  },
+  "GET /api/v1/app/plan/directions": {
+    "status": "联调通过",
+    "frontend": [
+      "redesign-demo/src/router.ts",
+      "redesign-demo/src/components/WeightedDirectionCompare.vue",
+      "redesign-demo/src/lib/workspace-nav.ts",
+      "redesign-demo/src/views/AssessmentView.vue",
+      "redesign-demo/src/views/ConversationView.vue",
+      "redesign-demo/src/views/ToolsView.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 live-smoke-results.json"
+  },
+  "POST /api/v1/app/plan/directions/{option_id}/select": {
+    "status": "前端已连接",
+    "frontend": [
+      "redesign-demo/src/views/AssessmentView.vue"
+    ],
+    "verification": "代码已接入；真实联调待验证"
+  },
+  "POST /api/v1/app/plan/timetable": {
+    "status": "联调通过",
+    "frontend": [
+      "redesign-demo/src/api/validate-ai.ts",
+      "redesign-demo/src/components/TimetableAdvice.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 live-smoke-results.json"
+  },
+  "POST /api/v1/app/plan/todos/suggestions": {
+    "status": "联调通过",
+    "frontend": [
+      "redesign-demo/src/api/validate-ai.ts",
+      "redesign-demo/src/components/TodoSuggestions.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 live-smoke-results.json"
+  },
+  "GET /api/v1/app/portal": {
+    "status": "联调通过",
+    "frontend": [
+      "redesign-demo/src/router.ts",
+      "redesign-demo/src/views/PortalClassicView.vue",
+      "redesign-demo/src/views/PortalView.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 live-smoke-results.json"
+  },
+  "POST /api/v1/app/portrait/analysis": {
+    "status": "联调通过",
+    "frontend": [
+      "redesign-demo/src/api/validate-ai.ts",
+      "redesign-demo/src/components/ProfileInsights.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 live-smoke-results.json"
+  },
+  "POST /api/v1/app/profile/fields/{key}": {
+    "status": "联调通过",
+    "frontend": [
+      "redesign-demo/src/views/StudentView.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 live-smoke-results.json"
+  },
+  "GET /api/v1/app/report/full-text": {
+    "status": "联调通过",
+    "frontend": [
+      "redesign-demo/src/router.ts",
+      "redesign-demo/src/components/EmptyState.vue",
+      "redesign-demo/src/components/EvidenceList.vue",
+      "redesign-demo/src/components/LiveActionPlan.vue",
+      "redesign-demo/src/components/PortalExample.vue",
+      "redesign-demo/src/components/ReportHistory.vue",
+      "redesign-demo/src/data/copy.ts",
+      "redesign-demo/src/developer/client.ts",
+      "redesign-demo/src/lib/workspace-nav.ts",
+      "redesign-demo/src/views/AssessmentView.vue",
+      "redesign-demo/src/views/ConversationView.vue",
+      "redesign-demo/src/views/SystemView.vue",
+      "redesign-demo/src/views/ToolsView.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 live-smoke-results.json"
+  },
+  "POST /api/v1/app/report/summary": {
+    "status": "联调通过",
+    "frontend": [
+      "redesign-demo/src/api/validate-ai.ts",
+      "redesign-demo/src/components/ReportSummary.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 live-smoke-results.json"
+  },
+  "GET /api/v1/app/sessions": {
+    "status": "联调通过",
+    "frontend": [
+      "redesign-demo/src/lib/system-data.ts",
+      "redesign-demo/src/views/ConversationView.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 live-smoke-results.json"
+  },
+  "GET /api/v1/app/sessions/{task_id}/turns": {
+    "status": "联调通过",
+    "frontend": [
+      "redesign-demo/src/lib/system-data.ts"
+    ],
+    "verification": "已连接；浏览器真实对话收发及刷新后历史恢复通过（开发服务与 Docker 正式构建）"
+  },
+  "POST /api/v1/app/task/enter": {
+    "status": "联调通过",
+    "frontend": [
+      "redesign-demo/src/lib/system-data.ts"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 live-smoke-results.json"
+  },
+  "GET /api/v1/app/theory-cards/{theory_id}": {
+    "status": "前端已连接",
+    "frontend": [
+      "redesign-demo/src/views/ConversationView.vue"
+    ],
+    "verification": "代码已接入；真实联调待验证"
+  },
+  "POST /api/v1/app/track": {
+    "status": "联调通过",
+    "frontend": [
+      "redesign-demo/src/router.ts",
+      "redesign-demo/src/api/validate-ai.ts"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 live-smoke-results.json"
+  },
+  "GET /api/v1/app/track/events": {
+    "status": "联调通过",
+    "frontend": [
+      "redesign-demo/src/lib/system-data.ts"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 live-smoke-results.json"
+  },
+  "POST /api/v1/app/workflows/{workflow_id}/run": {
+    "status": "前端已连接",
+    "frontend": [
+      "redesign-demo/src/components/WorkflowRunner.vue"
+    ],
+    "verification": "已接入；等待发布模块/工作流及匹配权限后进行真实执行验收"
+  },
+  "GET /api/v1/app/workspace": {
+    "status": "联调通过",
+    "frontend": [
+      "redesign-demo/src/components/AcademicVerification.vue",
+      "redesign-demo/src/lib/system-data.ts",
+      "redesign-demo/src/views/AcademicView.vue",
+      "redesign-demo/src/views/ScheduleView.vue",
+      "redesign-demo/src/views/StudentView.vue",
+      "redesign-demo/src/views/ToolsView.vue"
+    ],
+    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 live-smoke-results.json"
+  },
+  "POST /api/v1/app/config/reload": {
+    "status": "前端已连接",
+    "frontend": [
+      "redesign-demo/src/views/DeveloperView.vue",
+      "redesign-demo/src/developer/client.ts"
+    ],
+    "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+  },
+  "GET /api/v1/developer/capabilities": {
+    "status": "前端已连接",
+    "frontend": [
+      "redesign-demo/src/developer/ProjectsVersions.vue",
+      "redesign-demo/src/developer/GettingStarted.vue",
+      "redesign-demo/src/developer/client.ts"
+    ],
+    "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+  },
+  "GET /api/v1/developer/checks": {
+    "status": "前端已连接",
+    "frontend": [
+      "redesign-demo/src/views/DeveloperView.vue",
+      "redesign-demo/src/developer/client.ts"
+    ],
+    "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+  },
+  "POST /api/v1/developer/checks": {
+    "status": "前端已连接",
+    "frontend": [
+      "redesign-demo/src/views/DeveloperView.vue",
+      "redesign-demo/src/developer/client.ts"
+    ],
+    "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+  },
+  "GET /api/v1/developer/context": {
+    "status": "前端已连接",
+    "frontend": [
+      "redesign-demo/src/views/DeveloperView.vue",
+      "redesign-demo/src/developer/client.ts"
+    ],
+    "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+  },
+  "GET /api/v1/developer/modules": {
+    "status": "前端已连接",
+    "frontend": [
+      "redesign-demo/src/views/DeveloperView.vue",
+      "redesign-demo/src/developer/client.ts"
+    ],
+    "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+  },
+  "PUT /api/v1/developer/modules/{module_id}/policy": {
+    "status": "前端已连接",
+    "frontend": [
+      "redesign-demo/src/views/DeveloperView.vue",
+      "redesign-demo/src/developer/client.ts"
+    ],
+    "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+  },
+  "POST /api/v1/developer/modules/{module_id}/preview": {
+    "status": "前端已连接",
+    "frontend": [
+      "redesign-demo/src/views/DeveloperView.vue",
+      "redesign-demo/src/developer/client.ts"
+    ],
+    "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+  },
+  "GET /api/v1/developer/platform-status": {
+    "status": "前端已连接",
+    "frontend": [
+      "redesign-demo/src/views/DeveloperView.vue",
+      "redesign-demo/src/developer/client.ts"
+    ],
+    "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+  },
+  "GET /api/v1/developer/projects": {
+    "status": "前端已连接",
+    "frontend": [
+      "redesign-demo/src/developer/ProjectsVersions.vue",
+      "redesign-demo/src/developer/GettingStarted.vue",
+      "redesign-demo/src/developer/client.ts"
+    ],
+    "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+  },
+  "POST /api/v1/developer/projects": {
+    "status": "前端已连接",
+    "frontend": [
+      "redesign-demo/src/developer/ProjectsVersions.vue",
+      "redesign-demo/src/developer/GettingStarted.vue",
+      "redesign-demo/src/developer/client.ts"
+    ],
+    "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+  },
+  "PUT /api/v1/developer/projects/{project_id}": {
+    "status": "前端已连接",
+    "frontend": [
+      "redesign-demo/src/developer/ProjectsVersions.vue",
+      "redesign-demo/src/developer/GettingStarted.vue",
+      "redesign-demo/src/developer/client.ts"
+    ],
+    "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+  },
+  "GET /api/v1/developer/projects/{project_id}/versions": {
+    "status": "前端已连接",
+    "frontend": [
+      "redesign-demo/src/developer/ProjectsVersions.vue",
+      "redesign-demo/src/developer/GettingStarted.vue",
+      "redesign-demo/src/developer/client.ts"
+    ],
+    "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+  },
+  "POST /api/v1/developer/projects/{project_id}/versions": {
+    "status": "前端已连接",
+    "frontend": [
+      "redesign-demo/src/developer/ProjectsVersions.vue",
+      "redesign-demo/src/developer/GettingStarted.vue",
+      "redesign-demo/src/developer/client.ts"
+    ],
+    "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+  },
+  "GET /api/v1/developer/releases": {
+    "status": "前端已连接",
+    "frontend": [
+      "redesign-demo/src/views/DeveloperView.vue",
+      "redesign-demo/src/developer/client.ts"
+    ],
+    "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+  },
+  "POST /api/v1/developer/releases": {
+    "status": "前端已连接",
+    "frontend": [
+      "redesign-demo/src/views/DeveloperView.vue",
+      "redesign-demo/src/developer/client.ts"
+    ],
+    "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+  },
+  "POST /api/v1/developer/releases/{job_id}/approve": {
+    "status": "前端已连接",
+    "frontend": [
+      "redesign-demo/src/views/DeveloperView.vue",
+      "redesign-demo/src/developer/client.ts"
+    ],
+    "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+  },
+  "GET /api/v1/developer/templates": {
+    "status": "前端已连接",
+    "frontend": [
+      "redesign-demo/src/developer/ProjectsVersions.vue",
+      "redesign-demo/src/developer/GettingStarted.vue",
+      "redesign-demo/src/developer/client.ts"
+    ],
+    "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+  },
+  "GET /api/v1/developer/versions/{version_id}": {
+    "status": "前端已连接",
+    "frontend": [
+      "redesign-demo/src/developer/ProjectsVersions.vue",
+      "redesign-demo/src/developer/GettingStarted.vue",
+      "redesign-demo/src/developer/client.ts"
+    ],
+    "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+  },
+  "GET /api/v1/developer/versions/{version_id}/package": {
+    "status": "前端已连接",
+    "frontend": [
+      "redesign-demo/src/developer/ProjectsVersions.vue",
+      "redesign-demo/src/developer/GettingStarted.vue",
+      "redesign-demo/src/developer/client.ts"
+    ],
+    "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+  },
+  "POST /api/v1/developer/versions/{version_id}/release": {
+    "status": "前端已连接",
+    "frontend": [
+      "redesign-demo/src/developer/ProjectsVersions.vue",
+      "redesign-demo/src/developer/GettingStarted.vue",
+      "redesign-demo/src/developer/client.ts"
+    ],
+    "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+  },
+  "POST /api/v1/developer/versions/{version_id}/retry": {
+    "status": "前端已连接",
+    "frontend": [
+      "redesign-demo/src/developer/ProjectsVersions.vue",
+      "redesign-demo/src/developer/GettingStarted.vue",
+      "redesign-demo/src/developer/client.ts"
+    ],
+    "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+  },
+  "GET /api/v1/developer/workflows": {
+    "status": "前端已连接",
+    "frontend": [
+      "redesign-demo/src/developer/Workflows.vue",
+      "redesign-demo/src/developer/client.ts"
+    ],
+    "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+  },
+  "POST /api/v1/developer/workflows": {
+    "status": "前端已连接",
+    "frontend": [
+      "redesign-demo/src/developer/Workflows.vue",
+      "redesign-demo/src/developer/client.ts"
+    ],
+    "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+  },
+  "POST /api/v1/developer/workflows/{workflow_id}/publish": {
+    "status": "前端已连接",
+    "frontend": [
+      "redesign-demo/src/developer/Workflows.vue",
+      "redesign-demo/src/developer/client.ts"
+    ],
+    "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+  },
+  "POST /api/v1/developer/workflows/{workflow_id}/run": {
+    "status": "前端已连接",
+    "frontend": [
+      "redesign-demo/src/developer/Workflows.vue",
+      "redesign-demo/src/developer/client.ts"
+    ],
+    "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+  },
+  "GET /api/v1/developer/workflows/{workflow_id}/runs": {
+    "status": "前端已连接",
+    "frontend": [
+      "redesign-demo/src/developer/Workflows.vue",
+      "redesign-demo/src/developer/client.ts"
+    ],
+    "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+  },
+  "POST /api/v1/developer/workflows/{workflow_id}/unpublish": {
+    "status": "前端已连接",
+    "frontend": [
+      "redesign-demo/src/developer/Workflows.vue",
+      "redesign-demo/src/developer/client.ts"
+    ],
+    "verification": "管理界面已接入；未提供管理员账号，未进行真实管理写操作"
+  }
+}

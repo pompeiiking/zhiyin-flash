@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { useRoute, useRouter } from 'vue-router'
 import { demo } from '../store'
-import { STUDENT } from '../data/student'
+import {inject,computed,type Ref} from 'vue'
+import type {PortalView} from '../api/backend-types'
+const portalContent=inject<Ref<PortalView|null>>('portalContent')
+const publishedTrust=computed(()=>portalContent?.value?.trust_blocks??[])
 import UiIcon from '../components/UiIcon.vue'
 import PortalExample from '../components/PortalExample.vue'
 
@@ -22,8 +25,8 @@ const promises = [
 <template>
   <div class="pf-portal">
     <header class="pf-header">
-      <div class="pf-brand"><span class="pf-brand__mark" aria-hidden="true" /><strong>职引</strong><span class="pf-brand__school">{{ STUDENT.school }} · 生涯规划与就业指导</span></div>
-      <div class="pf-header__controls"><slot name="portal-switch" /><RouterLink v-if="demo.state.authed" class="pf-account" to="/chat"><span class="pf-account__name">{{ STUDENT.name }} ·</span>进入<UiIcon name="arrow" :size="16" /></RouterLink><button v-else class="pf-login" @click="start">登录</button></div>
+      <div class="pf-brand"><span class="pf-brand__mark" aria-hidden="true" /><strong>职引</strong><span class="pf-brand__school">{{ '河北大学' }} · 生涯规划与就业指导</span></div>
+      <div class="pf-header__controls"><slot name="portal-switch" /><RouterLink v-if="demo.state.authed" class="pf-account" to="/chat"><span class="pf-account__name">{{ demo.state.account }} ·</span>进入<UiIcon name="arrow" :size="16" /></RouterLink><button v-else class="pf-login" @click="start">登录</button></div>
     </header>
     <main class="pf-main">
       <section class="pf-hero" aria-label="职引，给大学生的生涯规划与就业指导">
@@ -36,7 +39,7 @@ const promises = [
         <div class="pf-example"><PortalExample /></div>
       </section>
       <section class="pf-promises" aria-label="我们的四个承诺">
-        <article v-for="p in promises" :key="p.title"><h2>{{ p.title }}</h2><p>{{ p.body }}</p></article>
+        <article v-for="p in (publishedTrust.length?publishedTrust:promises)" :key="p.title"><h2>{{ p.title }}</h2><p>{{ p.body }}</p></article>
       </section>
     </main>
     <footer class="pf-footer">

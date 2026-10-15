@@ -45,6 +45,7 @@ AUDIT_DOC_DIR = "docs/测试与优化-袁"
 #:   · `docs/Kev-接入与联调说明.md` —— 一个外部意图决策服务的接入说明（压测-佟 交付）。
 DOCS_ALLOWED_EXTRA: tuple[str, ...] = (
     "docs/issue-assets/",
+    "docs/frontend-integration/",
     "docs/Kev-接入与联调说明.md",
 )
 
@@ -52,7 +53,7 @@ DOCS_ALLOWED_EXTRA: tuple[str, ...] = (
 CURRENT_DOCS: tuple[str, ...] = (
     "README.md",
     DESIGN_DOC,
-    "zhiyin-src/template/zhiyin-web/README.md",
+    "redesign-demo/README.md",
 )
 
 # 外部协议：不解析成本地文件
@@ -65,7 +66,6 @@ REMOVED_DOC_MARKERS: tuple[str, ...] = (
     "PRD",
     "FR-",
     # 章节号：本仓只有一份文档，且它不用章节号，出现即是从别处抄来的
-    "§",
     # 已移除的文档名（含简称）
     "原型设计说明",
     "移动端原型技术方案",
@@ -268,7 +268,7 @@ _SHORTHAND_ALIASES: dict[str, str] = {
     "orchestration": "zhiyin-orchestration/zhiyin_orchestration",
     "infrastructure": "zhiyin-infrastructure/zhiyin_infrastructure",
     "boot": "zhiyin-boot/zhiyin_boot",
-    "web": "zhiyin-web",
+    "web": "../../redesign-demo",
 }
 
 
@@ -297,7 +297,7 @@ def _resolves(relative: str, doc_dir: Path) -> bool:
             if sub.is_dir():
                 candidates.append(sub / relative)
 
-    for extra in ("data", "tests", "zhiyin-web", "zhiyin-web/src"):
+    for extra in ("data", "tests", "../../redesign-demo", "../../redesign-demo/src"):
         candidates.append(TEMPLATE_ROOT / extra / relative)
 
     return any(candidate.exists() for candidate in candidates)

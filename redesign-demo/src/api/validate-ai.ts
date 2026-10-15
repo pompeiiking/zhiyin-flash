@@ -11,6 +11,7 @@ export function validAiData(key: string, data: unknown): boolean {
     case 'dimension': return strings(data,['id','name','conclusion','reading','next']) && Array.isArray(data.trend) && data.trend.every(p=>object(p)&&strings(p,['at','why'])&&typeof p.v==='number')
     case 'gap': return strings(data,['question','whyNow']) && list(data.options,['label','why'])
     case 'careerMatch': return list(data.ranking,['track','gap','why']) && Array.isArray(data.cells) && data.cells.every(p=>object(p)&&strings(p,['track','skill'])&&typeof p.need==='number'&&typeof p.have==='number') && object(data.recommend) && strings(data.recommend,['title','body']) && Array.isArray(data.recommend.because) && data.recommend.because.every(p=>typeof p==='string')
+    case 'reportSummary': return strings(data,['headline']) && Array.isArray(data.paragraphs) && data.paragraphs.every(p=>typeof p==='string') && list(data.moves,['label','why'])
     case 'brief': return strings(data,['headline','ifYouSkip']) && list(data.because,['text','from']) && list(data.changed,['text','at']) && list(data.next,['id','label','why'])
     case 'dayAdvice': return strings(data,['date','headline','reading','watch']) && list(data.plan,['label','why'])
     case 'timetable': return strings(data,['headline']) && list(data.windows,['day','slot','why']) && list(data.moves,['at','what','why'])

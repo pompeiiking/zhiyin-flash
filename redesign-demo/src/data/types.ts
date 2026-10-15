@@ -119,6 +119,10 @@ export interface DirectionPlan {
 
 /** 对话里的一条消息 */
 export interface ChatTurn {
+  renderables?: import('../api/backend-types').RenderableView[]
+  theory_refs?: import('../api/backend-types').TheoryRefView[]
+  guideTask?: import('../api/backend-types').GuideTaskView
+  reminder?: import('../api/backend-types').GuideReminderView
   id: string
   from: 'me' | 'host' | 'system'
   /** 主理的身份短语，例如「帮你判断方向的人」（不是职位名） */
@@ -160,7 +164,7 @@ export interface ReviewItem {
   id: string
   when: string
   what: string
-  result: 'done' | 'partial' | 'missed'
+  result: 'done' | 'partial' | 'missed' | 'record'
   /** 归因三选一：任务太大 / 方法不对 / 方向要重估（不归到人） */
   attribution?: '任务太大' | '方法不对' | '方向要重估' | '其他' | '尚不确定'
 }

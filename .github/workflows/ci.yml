@@ -54,21 +54,21 @@ jobs:
     timeout-minutes: 20
     defaults:
       run:
-        working-directory: zhiyin-src/template/zhiyin-web
+        working-directory: redesign-demo
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: zhiyin-src/template/zhiyin-web/package-lock.json
+          cache-dependency-path: redesign-demo/package-lock.json
       - name: 安装依赖
         # package-lock.json 已入库，用 npm ci 保证 CI 装到的版本与本地一致。
         run: npm ci --no-audit --no-fund
       - name: 类型检查
         run: npm run typecheck
       - name: 对话任务完成回归
-        run: npm run test:action-task
+        run: npm test
       - name: 构建（产物能不能出来，构建期才能发现的问题）
         run: npm run build
       - name: 前端类型与后端接口契约一致（types.ts == 契约快照的生成物）

@@ -1,84 +1,25 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { demo } from '../store'
-import { AUTH_COPY } from '../data/copy'
+import { auth } from '../lib/auth'
 import InfoSheet from './InfoSheet.vue'
-
-const emit = defineEmits<{ close: [] }>()
-
-const account = ref('mid')
-const password = ref('')
-const error = ref('')
-
-/** 登录拦截必须解释"为什么是现在"，并把"已答的内容不会丢"说清楚 */
-const accounts = [
-  { id: 'fresh', label: '全新空账号', note: '从零开始建档，真实性最强' },
-  { id: 'mid', label: '已推进到诊断之后', note: '有报告、三套方向、行动计划' },
-  { id: 'stale', label: '三天未动', note: '登录后主动消息会自己出现' },
-]
-
-function submit() {
-  if (!password.value.trim()) {
-    // 正式档：这是"你的数据去哪了"的说明，不用"随便填一个就行"这种口语
-    error.value = '请填写访问口令；体验账号可用任意非空字符。'
-    return
-  }
-  error.value = ''
-  demo.signIn(account.value)
-  emit('close')
+const emit=defineEmits<{close:[]}>()
+const account=ref(''),password=ref(''),error=ref(''),busy=ref(false),mode=ref<'login'|'register'>('login')
+async function submit(){
+ if(busy.value)return
+ if(account.value.trim().length<2||password.value.length<6){error.value='账号至少 2 个字符，密码至少 6 个字符。';return}
+ busy.value=true;error.value=''
+ try { await auth.login(mode.value,account.value.trim(),password.value);password.value='';emit('close') }
+ catch(e){error.value=(e as Error).message}finally{busy.value=false}
 }
 </script>
-
-<template>
-  <InfoSheet :open="true" title="登录" @close="emit('close')">
-          <h3 class="ws-section-title">{{ AUTH_COPY.title }}</h3>
-          <p class="t-note" style="margin-top: 6px">{{ AUTH_COPY.body }}</p>
-
-      <div class="sheet__body stack stack-4">
-        <div class="field">
-          <span class="field__label">选择体验账号</span>
-          <div class="accounts">
-            <button
-              v-for="a in accounts"
-              :key="a.id"
-              class="account"
-              :class="{ 'account--on': account === a.id }"
-              :aria-pressed="account === a.id"
-              @click="account = a.id"
-            >
-              <span class="account__id t-mono">{{ a.id }}</span>
-              <span class="account__label">{{ a.label }}</span>
-              <span class="account__note">{{ a.note }}</span>
-            </button>
-          </div>
-        </div>
-
-        <label class="field">
-          <span class="field__label">密码</span>
-          <input
-            v-model="password"
-            class="field__input"
-            type="password"
-            aria-label="密码"
-            placeholder="体验账号可填写任意字符"
-            @keyup.enter="submit"
-          />
-          <span v-if="error" class="field__error">{{ error }}</span>
-          <span v-else class="field__hint">{{ AUTH_COPY.accountHint }}</span>
-        </label>
-
-        <div class="callout callout--plain">
-          <span>门户公开访问。学校账号密码不用于本工作空间登录。</span>
-        </div>
-      </div>
-
-      <footer class="sheet__foot">
-        <button class="btn" @click="emit('close')">稍后再说</button>
-        <button class="btn btn--primary" @click="submit">{{ AUTH_COPY.action }}</button>
-      </footer>
-  </InfoSheet>
-</template>
-
+<template><InfoSheet :open="true" :title="mode==='login'?'登录职引':'创建账号'" @close="!busy&&emit('close')">
+<form class="sheet__body stack stack-4" @submit.prevent="submit">
+<label class="field"><span class="field__label">账号</span><input v-model="account" class="field__input" autocomplete="username" minlength="2" maxlength="64" required :disabled="busy"/></label>
+<label class="field"><span class="field__label">密码</span><input v-model="password" class="field__input" type="password" :autocomplete="mode==='login'?'current-password':'new-password'" minlength="6" maxlength="128" required :disabled="busy"/></label>
+<p v-if="error" class="field__error" role="alert">{{error}}</p><p class="t-note">使用职引账号登录，无需填写学校或学信网密码。</p>
+<button class="btn btn--primary" :disabled="busy">{{busy?'正在连接…':mode==='login'?'登录':'注册并登录'}}</button>
+<button type="button" class="ws-text-button" :disabled="busy" @click="mode=mode==='login'?'register':'login';error=''">{{mode==='login'?'没有账号？注册':'已有账号？登录'}}</button>
+</form></InfoSheet></template>
 <style scoped>
 .layer {
   position: fixed;

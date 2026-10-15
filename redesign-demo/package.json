@@ -1,16 +1,19 @@
 {
-  "name": "zhiyin-redesign-demo",
+  "name": "zhiyin-web",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.1.0",
   "type": "module",
-  "description": "职引 · 学生端前端重设计演示（Vue 3 + Vite）",
+  "description": "职引正式前端（已选定 redesign 界面）",
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "vue-tsc --noEmit",
     "sync:backend": "node scripts/sync-backend-types.mjs",
-    "check:backend": "node scripts/check-backend.mjs"
+    "check:backend": "node scripts/check-backend.mjs",
+    "gen:api": "openapi-typescript ../zhiyin-src/template/contracts/openapi.json -o src/api/types.ts",
+    "check:api": "npm run gen:api && git diff --exit-code -- src/api/types.ts",
+    "test": "node --test tests/*.test.mjs"
   },
   "dependencies": {
     "@phosphor-icons/vue": "^2.2.1",
@@ -23,6 +26,7 @@
     "@vitejs/plugin-vue": "^5.2.1",
     "typescript": "^5.6.3",
     "vite": "^5.4.11",
-    "vue-tsc": "^2.1.10"
+    "vue-tsc": "^2.1.10",
+    "openapi-typescript": "^6.7.0"
   }
 }

@@ -1,23 +1,21 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { CHAT_TURNS, DIRECTION_PLANS } from '../data/student'
 import UiIcon from './UiIcon.vue'
 
-// 实际演示数据的可交互片段；不冒充已生成的个人报告。
+// 门户的产品使用示例，与登录后的个人数据完全分离。
 const stage = ref(0)
 const phases = ['聊清楚', '看依据', '迈一步']
-const opening = CHAT_TURNS.find((t) => t.from === 'me')
-const question = CHAT_TURNS.find((t) => t.from === 'host' && t.text.trim())
-const direction = DIRECTION_PLANS[0]
-const taskTurn = CHAT_TURNS.find((t) => t.task)!
-const task = taskTurn.task!
+const opening = { text: '我想先聊聊自己的方向' }
+const question = { text: '先把当前情况与具体问题讲清楚，再一起核对依据' }
+const direction = { title: '从一个感兴趣的岗位开始', evidence: ['对照自己的课程和项目经历', '核对岗位公开要求与信息来源'], risk: '尚不清楚的要求，可以在咨询中继续核实' }
+const task = { title: '记下一条最想了解的岗位要求', minutes: 5 }
 const nextLabel = computed(() => ['看看如何判断', '看看如何行动', '回到对话片段'][stage.value])
 function next() { stage.value = (stage.value + 1) % phases.length }
 </script>
 
 <template>
   <section class="pe-story" aria-label="职引如何帮你，一段预置示例">
-    <header class="pe-story__head"><span>从一句话，到一小步</span><span class="pe-story__sample">聊清楚 · 想明白 · 去行动</span></header>
+    <header class="pe-story__head"><span>从一句话，到一小步</span><span class="pe-story__sample">使用示例 · 非个人报告</span></header>
     <div class="pe-story__choices" aria-label="查看示例阶段">
       <button v-for="(label, i) in phases" :key="label" :aria-pressed="stage === i" @click="stage = i">
         <UiIcon :name="['chat', 'report', 'action'][i]" :size="18" />{{ label }}

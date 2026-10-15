@@ -1,4 +1,7 @@
 <script setup lang="ts">
+const MAX_CHARS = 40
+import {profileLabel} from '../lib/server-copy'
+import { onMounted } from 'vue'
 import ResultPager from '../components/ResultPager.vue'
 import { usePagedItems } from '../lib/paged-items'
 /**
@@ -189,7 +192,7 @@ const loading = ref(false)
 const serviceError = ref('')
 const livePanel = computed(() => backendDemo.state.liveWorkspace?.profile_panel)
 /** 是不是"服务这次真的给了档案"。缺口清单、依赖边都以这次读取为准，不用演示数据兜底。 */
-const live = computed(() => !!livePanel.value)
+const live = computed(() => backendDemo.state.dataMode === 'service')
 const originalLive = computed(() => backendDemo.state.profileOriginals)
 const insights = ref<InstanceType<typeof ProfileInsights> | null>(null)
 
@@ -201,6 +204,9 @@ async function loadWorkspace() {
     const data = await backendClient.workspace()
     if (!data?.profile_panel) throw new Error('Incomplete profile')
     backendDemo.setWorkspace(data)
+    const results=await Promise.allSettled([backendClient.report(),backendClient.directions()])
+    if(results[0].status==='fulfilled')backendDemo.setReport(results[0].value)
+    if(results[1].status==='fulfilled')backendDemo.setLiveDirections(results[1].value)
   } catch {
     serviceError.value = '最新档案暂时没有取得，请重试。现有内容仍保留。'
   } finally {
@@ -219,7 +225,7 @@ type ReadonlyEdge = { readonly from_asset: string; readonly to_asset: string; re
 const edges = computed<readonly ReadonlyEdge[]>(() => {
   const declared = backendDemo.state.liveWorkspace?.dependencies ?? []
   const usable = declared.filter((edge) => (edge.via_profile_keys ?? []).length > 0)
-  return usable.length ? usable : DEMO_EDGES
+  return live.value ? usable : DEMO_EDGES
 })
 const depsFromContract = computed(() => edges.value !== DEMO_EDGES)
 const depsSourceNote = computed(() =>
@@ -296,7 +302,7 @@ const rowsBase = computed<Omit<FieldRow, 'supports'>[]>(() => {
       const edited = field.source === 'user_edit'
       const priorKey = originalLive.value[field.key]
       return {
-        key: field.key, label: field.label ?? field.key, value: human(field.value),
+        key: field.key, label: profileLabel(field.key,field.label || field.key), value: human(field.value),
         source: SOURCE_NAMES[field.source] ?? '学校',
         // 契约模式：来源本来就是枚举，直接透传；没有 0–1 时按档位折算（未知仍是未知）
         src: field.source,
@@ -626,6 +632,19 @@ const conclusionMap = computed<Record<string, Conclusion>>(() => {
   }
   const map: Record<string, Conclusion> = {}
 
+  if(live.value){
+    for(const section of backendDemo.state.liveReport?.sections??[])for(const dimension of section.items??[]){
+      const key=section.id+'.'+dimension.index
+      const keys=edges.value.filter(e=>e.to_asset==='report'||e.to_asset===backendDemo.state.liveReport?.report_id).flatMap(e=>e.via_profile_keys??[])
+      const links=[...new Set(keys)].map(link)
+      map[key]={key,kind:'dimension',section:section.title,label:dimension.name,brief:briefOf(dimension.conclusion),full:dimension.conclusion,conf:NaN,deps:links,depsFromContract:true,missingKeys:links.filter(x=>!x.present).map(x=>x.key),evidence:dimension.evidence?[dimension.evidence]:[],note:dimension.tag,risk:'',ripple:''}
+    }
+    for(const plan of backendDemo.state.liveDirections?.plans??[]){
+      const links=[...new Set(edges.value.filter(e=>e.to_asset===plan.id||e.to_asset==='direction_plan').flatMap(e=>e.via_profile_keys??[]))].map(link)
+      map[plan.id]={key:plan.id,kind:'direction',section:'方向方案',label:plan.name,brief:briefOf(plan.fit_reason??''),full:plan.fit_reason??'',conf:NaN,deps:links,depsFromContract:true,missingKeys:links.filter(x=>!x.present).map(x=>x.key),evidence:[],note:plan.target_desc??'',risk:plan.main_risk??'',ripple:''}
+    }
+    return map
+  }
   for (const section of REPORT_SECTIONS) {
     for (const dimension of section.dimensions) {
       const deps = depsOf(dimension.key, 'dimension')
@@ -894,7 +913,7 @@ function edit(row: FieldRow) {
 
 async function save() {
   if (!value.value.trim()) { correctionError.value = '请填写更正后的信息。'; return }
-  if (value.value.trim().length > 40) { correctionError.value = '更正内容最多 40 个字。'; return }
+  if (value.value.trim().length > MAX_CHARS) { correctionError.value = '更正内容最多 40 个字。'; return }
   if (correction.value && live.value) {
     const field = correction.value
     const previous = livePanel.value?.fields?.find((item) => item.key === field.key)
@@ -923,6 +942,7 @@ const identity = computed(() => {
   return { name: name || '个人档案', line: [school, grade].filter(Boolean).join(' · ') || '学校与年级待补充' }
 })
 function exportProfile(){const url=URL.createObjectURL(new Blob([JSON.stringify({profile:known.value,gaps:gapRows.value,source:live.value?'本次读取的档案':'个人画像'},null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='职引-个人画像.json';a.click();URL.revokeObjectURL(url)}
+onMounted(()=>{ void loadWorkspace() })
 </script>
 
 <template>

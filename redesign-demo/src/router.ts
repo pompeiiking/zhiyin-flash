@@ -1,7 +1,7 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import { demo } from './store'
-import { backendDemo } from './lib/backend-demo'
-import type { Grade } from './data/types'
+import { auth } from './lib/auth'
+import {backendRequest} from './api/backend-client'
 import { ref } from 'vue'
 import { sessionCacheAvailable } from './lib/session-cache'
 export const routeLoadError = ref(false)
@@ -19,6 +19,8 @@ export function retryRoute() { try { sessionStorage.removeItem('zhiyin-demo-chun
 export const router = createRouter({
   history: createWebHashHistory(),
   routes: [
+    { path:'/login',redirect:'/?signin=1' },
+    { path:'/developer',component:()=>import('./views/DeveloperView.vue'),meta:{title:'开发者管理'} },
     {
       path: '/',
       alias: '/portal',
@@ -68,20 +70,8 @@ export const router = createRouter({
     { path: '/notes', name: 'notes', component: () => import('./views/NotesView.vue'), meta: { title: '待办与目标' } },
     { path: '/intel', name: 'intel', component: () => import('./views/IntelView.vue'), meta: { title: '岗位资讯' } },
     { path: '/tools', name: 'tools', component: () => import('./views/ToolsView.vue'), meta: { title: '应用工具' } },
-    ...['settings','reminders','guide','gallery','login','achievements'].map(name => ({path:'/' + name,name,component:() => import('./views/SystemView.vue'),meta:{title:({settings:'账号设置',reminders:'提醒',guide:'使用指南',gallery:'通用组件与状态',login:'登录',achievements:'成长记录'} as Record<string,string>)[name]}})),
+    ...['settings','reminders','guide','achievements'].map(name => ({path:'/' + name,name,component:() => import('./views/SystemView.vue'),meta:{title:({settings:'账号设置',reminders:'提醒',guide:'使用指南',gallery:'通用组件与状态',login:'登录',achievements:'成长记录'} as Record<string,string>)[name]}})),
     { path: '/notfound', name: 'notfound', component: () => import('./views/NotFoundView.vue'), meta: { title: '异常页' } },
-    {
-      path: '/path',
-      name: 'path',
-      component: () => import('./views/PathView.vue'),
-      meta: { title: '大一到大四', step: 'choose' },
-    },
-    {
-      path: '/spec',
-      name: 'spec',
-      component: () => import('./views/SpecView.vue'),
-      meta: { title: '设计规范' },
-    },
     /*
      * 兜底：**必须放最后**。没有它时，匹配不到的地址会让 <RouterView> 什么都不渲染 ——
      * 外壳在、中间全空、控制台也不报错，用户看到的就是"页面坏了"。
@@ -103,48 +93,10 @@ export const router = createRouter({
   scrollBehavior: () => ({ top: 0 }),
 })
 
-router.beforeEach((to) => {
-  if (to.path === '/report' && to.query.focus === 'choose') {
-    const query = { ...to.query }
-    delete query.focus
-    return { path: '/directions', query, replace: true }
-  }
-  /*
-   * 演示直达：地址里带 ?as=<账号> 就直接落到已登录状态。
-   * 用途有两个：给评审发一条"打开就是这一屏"的链接；给截图脚本用（不用先点登录）。
-   * 真实产品里没有这个口子 —— 这是演示工程。
-   */
-  const as = to.query.as
-  if (typeof as === 'string' && as && !demo.state.authed) {
-    demo.signIn(as, true)
-  }
-
-  if(to.query.data==='service'||to.query.data==='demo') backendDemo.setDataMode(to.query.data)
-
-  // 直达链接：?grade=freshman 直接落到某个年级的使用场景
-  const grade = to.query.grade
-  if (
-    typeof grade === 'string' &&
-    ['freshman', 'sophomore', 'junior', 'senior'].includes(grade)
-  ) {
-    demo.setGrade(grade as Grade, true)
-  }
-
-  // 直达链接：?dir=d1 预置"已选主攻方向"的状态
-  const dir = to.query.dir
-  if (typeof dir === 'string' && dir && !demo.state.selectedDirectionId) {
-    demo.preselectDirection(dir)
-  }
-
+router.beforeEach(async (to) => {
+  if (to.path === '/report' && to.query.focus === 'choose') return '/directions'
   if (to.meta.public) return true
-  if (!demo.state.authed) {
-    /*
-     * 未登录直接打开内页（刷新、新标签页、粘贴 URL）时**静默落到演示账号**，
-     * 不再弹回门户：演示里链接就是主要入口，一个"请先登录"的白墙等于链接坏了。
-     * 门户上的登录 / 退出流程照旧保留 —— 想演示换账号，点「退出登录」即可。
-     */
-    demo.signIn('mid', true)
-  }
+  if (!demo.state.authed && !await auth.restore()) return {path:'/',query:{signin:'1',redirect:to.fullPath}}
   return true
 })
 
@@ -174,7 +126,10 @@ router.onError((_error, _to) => {
   window.location.reload()
 })
 
-router.afterEach(() => {
+router.afterEach((to) => {
+  const event:Record<string,string>={'/report':'diagnosis_view','/directions':'decision_compare','/profile':'collect_gap_show'}
+  if(demo.state.authed && event[to.path])void backendRequest('track',{body:{event:event[to.path],payload:{path:to.path},client_event_id:crypto.randomUUID()}}).catch(()=>{})
+
   routeLoadError.value = false
   try {
     sessionStorage.removeItem(RELOAD_KEY)

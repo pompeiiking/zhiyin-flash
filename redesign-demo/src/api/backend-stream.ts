@@ -28,6 +28,7 @@ export async function streamBackend<T>(
     const response = await fetch('/api/v1' + path, { method: operation.method, headers, signal: controller.signal, body: JSON.stringify({ arg }) })
     if (!response.ok || !response.headers.get('content-type')?.includes('text/event-stream')) {
       const body = await response.json().catch(() => null) as { code?: number; message?: string; trace_id?: string } | null
+      if (response.status === 401 || body?.code === 1004) window.dispatchEvent(new Event('zhiyin:unauthorized'))
       throw new BackendError(body?.message || '这次生成没有接上，请稍后重试。', body?.code ?? response.status, body?.trace_id)
     }
     reader = response.body?.getReader()
@@ -40,7 +41,7 @@ export async function streamBackend<T>(
       const data = block.split(/\r?\n/).filter(line => line.startsWith('data:')).map(line => line.slice(5).trimStart()).join('\n')
       if (!data) return
       const frame = JSON.parse(data) as StreamProgress & { error?: { code: number; message: string }; result?: T }
-      if (frame.error) throw new BackendError(frame.error.message, frame.error.code, response.headers.get('X-Trace-Id') ?? '')
+      if (frame.error) { if (frame.error.code === 1004) window.dispatchEvent(new Event('zhiyin:unauthorized')); throw new BackendError(frame.error.message, frame.error.code, response.headers.get('X-Trace-Id') ?? '') }
       if (Object.hasOwn(frame, 'result')) { result = frame.result; finished = true }
       else onProgress(frame)
     }
@@ -54,6 +55,7 @@ export async function streamBackend<T>(
       if (chunk.done) { if (buffer.trim()) consume(buffer); break }
     }
     if (!finished) throw new BackendError('生成结束了，但没有收到完整结果，请重试。', 1007)
+    if (headers.Authorization !== (localStorage.getItem('zhiyin_token') ? 'Bearer ' + localStorage.getItem('zhiyin_token') : undefined)) throw new BackendError('账号已变更，请重新生成。', 1004)
     return result as T
   } catch (error) {
     if (error instanceof BackendError) throw error

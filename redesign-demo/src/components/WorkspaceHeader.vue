@@ -2,9 +2,8 @@
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { demo } from '../store'
-import { backendDemo } from '../lib/backend-demo'
-import { STUDENT } from '../data/student'
-import GradeSwitch from './GradeSwitch.vue'
+import { auth } from '../lib/auth'
+import { toast } from '../store'
 import { skin, type Accent, type StyleId, type ThemeMode } from '../lib/theme'
 import UiIcon from './UiIcon.vue'
 import InfoSheet from './InfoSheet.vue'
@@ -51,8 +50,6 @@ defineExpose({
   showDemo: openDemo,
   focusExpand() { expandButton.value?.focus() },
 })
-const scenario = computed(() => demo.use.scenario.value)
-const dataMode = computed(() => backendDemo.state.dataMode)
 /**
  * 外观（PLAN §3.5：唯一入口 = 账号菜单 → 外观）。
  *
@@ -81,33 +78,7 @@ const appearanceSummary = computed(() => {
   return `${t} · ${skin.state.accent === 'red' ? '河大红' : '河大蓝'} · ${styleOptions.find((o) => o.id === skin.state.style)?.label ?? '极简'}`
 })
 
-function setDataSource(event: Event) {
-  const mode = (event.target as HTMLSelectElement).value as 'demo' | 'service'
-  backendDemo.setDataMode(mode)
-  void router.replace({ path: route.path, query: { ...route.query, data: mode } })
-}
-function signOut() {
-  accountOpen.value = false
-  demo.signOut()
-  router.push('/')
-}
-/**
- * 错误状态预览：对话页读 `?demo-error=1`，本轮必然失败并可重试。
- * 原来那颗调试按钮长在对话页头（和"咨询成果""个人画像"并排），
- * 现在挪进这里 —— 调试开关属于工作空间设置，不属于学生页面的首要行动位。
- * 这里只负责写 query 并跳到对话页，不再往别的文件里塞状态。
- */
-function openErrorDemo() {
-  demoOpen.value = false
-  const query = { ...route.query, 'demo-error': '1' }
-  void router.push({ path: '/chat', query })
-}
-function clearErrorDemo() {
-  if (route.query['demo-error'] === undefined) return
-  const query = { ...route.query }
-  delete query['demo-error']
-  void router.replace({ path: route.path, query })
-}
+async function signOut() { try {await auth.logout();accountOpen.value=false;router.push('/')}catch(e){toast((e as Error).message)} }
 </script>
 <template>
   <header class="ws-topbar">
@@ -136,8 +107,8 @@ function clearErrorDemo() {
       <button class="ws-icon-button ws-inbox-trigger" :aria-label="'提醒，' + demo.state.noticeQueue.length + ' 条待处理'" @click="router.push('/reminders')"><UiIcon name="bell" :size="18" /><span v-if="demo.state.noticeQueue.length">{{ demo.state.noticeQueue.length }}</span></button>
       <!-- 演示标识：壳层的一行小字，点击进「工作空间设置」。它不占行、不与主行动竞争 -->
       <button class="ws-account" aria-label="账号菜单" @click="openAccount">
-        <span class="ws-account__avatar" aria-hidden="true">{{ demo.state.account === 'fresh' ? '新' : STUDENT.name.slice(0, 1) }}</span>
-        <span class="ws-account__label hf-account__label">{{ demo.state.account === 'fresh' ? '新用户' : STUDENT.name }}</span>
+        <span class="ws-account__avatar" aria-hidden="true">{{ demo.state.account.slice(0, 1) }}</span>
+        <span class="ws-account__label hf-account__label">{{ demo.state.account }}</span>
         <UiIcon class="ws-account__chevron" name="chevron" :size="15" />
       </button>
     </div>
@@ -145,8 +116,8 @@ function clearErrorDemo() {
 
 <!-- 账号抽屉：只管账号。身份、演示标识说明、退出。 -->
   <InfoSheet shape="sheet" :open="accountOpen" title="账号" @close="accountOpen = false">
-    <p class="ws-person">{{ demo.state.account === 'fresh' ? '新用户' : STUDENT.name }}</p>
-    <p class="ws-muted">{{ demo.state.account === 'fresh' ? '个人资料待完善' : scenario.grade + ' · ' + STUDENT.major + ' · ' + STUDENT.school }}</p>
+    <p class="ws-person">{{ demo.state.account }}</p>
+    <p class="ws-muted">{{ '职引个人账号' }}</p>
 
     <!-- PLAN §3.5：外观的唯一入口 = 账号菜单 → 外观（顶栏那颗「皮肤」按钮已移除）。
          展开后是三轴 18 组合，与 `lib/theme.ts` 同一套令牌；重置也在里面。 -->
@@ -173,7 +144,7 @@ function clearErrorDemo() {
     </details>
     <div class="ws-account-list"><RouterLink class="ws-account-row" to="/settings" @click="accountOpen=false"><span><strong>账号设置</strong><small>资料授权、提醒、外观与导出</small></span><UiIcon name="arrow" :size="16"/></RouterLink>
       <button class="ws-account-row" @click="openDemo()">
-        <span><strong>工作空间设置</strong><small>资料来源、年级、导航布局、重置</small></span>
+        <span><strong>工作空间设置</strong><small>导航布局与操作引导</small></span>
         <UiIcon name="chevron" :size="16" />
       </button>
       <RouterLink class="ws-account-row" :to="PORTAL_LINK.to" @click="accountOpen = false">
@@ -186,29 +157,13 @@ function clearErrorDemo() {
 
   <!-- 工作空间设置：独立入口，收纳所有演示开关。账号抽屉里不再有这些。 -->
   <InfoSheet shape="sheet" :open="demoOpen" title="工作空间设置" @close="demoOpen = false">
-    <p class="ws-demo-note">设置当前资料来源、年级与导航布局。修改后会保留已有操作记录。</p>
-    <label class="ws-field">数据来源
-      <select aria-label="数据来源" :value="dataMode" @change="setDataSource">
-        <option value="demo">本地资料</option>
-        <option value="service">在线资料（需后端）</option>
-      </select>
-    </label>
-    <p class="ws-demo-note">本地资料保存在当前浏览器会话；在线资料按服务返回结果展示。切换来源后请重新读取结果。</p>
-    <div class="desk-account-grade"><p class="ws-muted">当前年级</p><GradeSwitch /></div>
     <label class="ws-field">导航布局
       <select aria-label="导航布局" :value="desktop ? 'desktop' : 'mobile'" @change="navigation.set(($event.target as HTMLSelectElement).value as 'desktop' | 'mobile')">
         <option value="desktop" :disabled="navigation.compact.value">桌面侧栏</option>
         <option value="mobile">移动导航</option>
       </select>
     </label>
-    <div class="ws-stack">
-      <button class="btn" @click="openErrorDemo">错误状态预览 · 去对话页触发一次失败</button>
-      <button class="btn" :disabled="route.query['demo-error'] === undefined" @click="clearErrorDemo">关掉错误状态预览</button>
-      <button class="btn" @click="demo.resetDemo(); demoOpen = false">重置工作空间</button>
-      <button class="btn" @click="demo.resetGuide(); demoOpen = false">恢复操作引导</button>
-    </div>
-    <p class="ws-demo-note">「错误状态预览」打开后，对话页下一次回答会走真实失败路径（可重试、内容不丢）；关掉它才会恢复正常的预设回答。</p>
-    <p class="ws-demo-note">外观（主题 / 主色 / 风格）在账号菜单 → 外观里；这里管理工作空间。</p>
+    <button class="btn" @click="demo.resetGuide();demoOpen=false">恢复操作引导</button>
   </InfoSheet>
 </template>
 

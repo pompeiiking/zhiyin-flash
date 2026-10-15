@@ -1,9 +1,9 @@
-import { computed, reactive, readonly } from 'vue'
+import { computed, reactive, readonly, watch } from 'vue'
 import { SCENARIOS, scenarioOf } from './data/scenarios'
-import { CHAT_TURNS, DIRECTION_PLANS, NOTICES, PROFILE_FIELDS, TASKS_BY_GRADE } from './data/student'
+import { DIRECTION_PLANS } from './data/student'
 import type { ChatTurn, Grade, Notice, ReviewItem, TaskItem } from './data/types'
 import { backendDemo } from './lib/backend-demo'
-import { rememberSession } from './lib/session-cache'
+import { backendClient } from './api/backend-client'
 
 /**
  * 演示状态。
@@ -62,12 +62,10 @@ interface State {
 
 /** 每个年级一份任务清单：切年级必须连"要做的事"一起换，否则场景化就是假的 */
 function tasksFor(grade: Grade): TaskItem[] {
-  return TASKS_BY_GRADE[grade].map((t) => ({ ...t }))
+  void grade; return []
 }
 
-function chatFor(account: string | null): ChatTurn[] {
-  return account === 'fresh' ? [] : CHAT_TURNS.filter((t) => t.from !== 'system').map((t) => ({ ...t }))
-}
+function chatFor(_account: string | null): ChatTurn[] { return [] }
 
 /**
  * 登录态持久化。
@@ -77,7 +75,7 @@ function chatFor(account: string | null): ChatTurn[] {
  * 用 localStorage（不是 sessionStorage）：登一次，之后所有标签页与刷新都算已登录；
  * 「退出登录」会把它清掉，所以换账号的演示流程照旧。
  */
-const AUTH_KEY = 'zhiyin-demo-auth'
+const AUTH_KEY = 'zhiyin-account'
 
 function readStoredAccount(): string | null {
   try {
@@ -93,16 +91,16 @@ const storedAccount = readStoredAccount()
 const state = reactive<State>({
   grade: 'junior',
   contentVersion: 0,
-  authed: storedAccount !== null,
+  authed: false,
   account: storedAccount ?? '',
   tasks: storedAccount === 'fresh' ? [] : tasksFor('junior'),
   lastDoneId: null,
   selectedDirectionId: null,
   previousDirectionId: null,
-  reportVersion: 'v3',
+  reportVersion: '',
   chatCollected: 0,
   openField: null,
-  noticeQueue: storedAccount === 'fresh' ? [] : NOTICES.map((n) => ({ ...n })),
+  noticeQueue: [],
   noticeIndex: 0,
   noticeOpen: false,
   interventionOpen: false,
@@ -119,16 +117,14 @@ const state = reactive<State>({
   chatBusy: false,
 })
 
-if(state.chatTurns[0]?.text==='我不知道自己适合什么。专业是调剂的，说不上喜欢。'&&state.chatTurns.every(t=>/^c\d+$/.test(t.id))&&state.account!=='fresh'&&backendDemo.state.dataMode==='demo')state.chatTurns=chatFor(state.account)
-rememberSession('workspace',state,['contentVersion','grade','tasks','lastDoneId','selectedDirectionId','previousDirectionId','reportVersion','chatCollected','guidesClosed','rippleOpen','chatTurns','profileEdits','profileEditTimes','reviewAttributions','reviewNotes','currentSessionId','noticeQueue','noticeIndex','interventionDismissed'])
-// Append only new fixture IDs once; never revive removed tasks or overwrite edits.
-if (state.contentVersion < 1) {
- if (state.account !== 'fresh' && backendDemo.state.dataMode === 'demo') {
-  if (state.grade === 'junior') for (const task of TASKS_BY_GRADE.junior.filter(t=>Number(t.id.slice(1))>8)) if(!state.tasks.some(t=>t.id===task.id))state.tasks.push({...task})
-  for (const notice of NOTICES.filter(n=>n.id!=='n1'))if(!state.noticeQueue.some(n=>n.id===notice.id))state.noticeQueue.push({...notice})
- }
- state.contentVersion=1
-}
+// Navigation counters and action summaries share the server plan; durations are unknown.
+watch(() => backendDemo.state.liveAction, plan => {
+  state.tasks = (plan?.phases ?? []).flatMap(p => (p.tasks ?? []).map(t => ({
+    id:t.task_id,title:t.text,minutes:0,why:p.name,bucket:t.done?'done' as const:'now' as const,
+    origin:'计划拆下来的' as const,due:t.due_date??undefined,doneAt:t.done_at??undefined,
+  })))
+}, {deep:true})
+
 let toastTimer: ReturnType<typeof setTimeout> | null = null
 
 export function toast(message: string): void {
@@ -177,10 +173,9 @@ export const demo = {
      * 这样"已经了解 12 条"与实际列出的条数永远不会对不上。
      */
     profileProgress: computed(() => {
-      const s = scenarioOf(state.grade)
-      const total = PROFILE_FIELDS.length
-      const known = Math.min((state.account === 'fresh' ? 0 : s.known) + state.chatCollected, total)
-      return { known, gap: total - known, total }
+      const panel = backendDemo.state.liveWorkspace?.profile_panel
+      const known = panel?.fields?.length ?? 0, gap = panel?.gaps?.length ?? 0
+      return {known, gap, total: known + gap}
     }),
   },
 
@@ -212,7 +207,7 @@ export const demo = {
       state.reviewAttributions = {}; state.reviewNotes = {}
       backendDemo.reset(account)
       state.currentSessionId = backendDemo.state.currentSessionId
-      state.noticeQueue = account === 'fresh' ? [] : NOTICES.map((n) => ({ ...n }))
+      state.noticeQueue = []
       state.noticeIndex = 0
       state.noticeOpen = false
     }
@@ -225,15 +220,12 @@ export const demo = {
       /* 隐私模式下写不进去就算了，不该因此登不上 */
     }
     // 'stale' 是"三天没动"的账号：登录后主动消息自己出现（第 9 幕）
-    if (account === 'stale') {
-      state.interventionOpen = true
-      state.interventionDismissed = false
-    }
     if (!silent) toast(`已登录：${account}`)
   },
   signOut() {
     state.authed = false
     state.account = ''
+    backendDemo.reset(''); state.chatTurns=[]; state.currentSessionId=''; state.tasks=[];state.profileEdits={};state.noticeQueue=[]
     state.interventionOpen = false
     try {
       localStorage.removeItem(AUTH_KEY)
@@ -244,21 +236,11 @@ export const demo = {
   },
 
   // ---- 任务：勾掉 = 行为日志 + 完成记录（第 8 幕）----
-  completeTask(id: string) {
-    const t = state.tasks.find((x) => x.id === id)
-    if (!t || t.bucket === 'done') return
-    backendDemo.recordEvent('task_done')
-    t.bucket = 'done'
-    t.doneAt = '刚刚'
-    state.lastDoneId = id
-    toast('任务已完成，执行记录已更新。')
+  async completeTask(id: string) {
+    try { backendDemo.setAction(await backendClient.actionDone({task_id:id,done:true}));state.lastDoneId=id;toast('任务状态已保存') } catch(e) {toast((e as Error).message)}
   },
-  reopenTask(id: string) {
-    const t = state.tasks.find((x) => x.id === id)
-    if (!t) return
-    t.bucket = 'now'
-    t.doneAt = undefined
-    toast('任务已恢复至待执行状态。')
+  async reopenTask(id: string) {
+    try { backendDemo.setAction(await backendClient.actionDone({task_id:id,done:false}));toast('任务已恢复') } catch(e) {toast((e as Error).message)}
   },
   /** 建议可采纳可否决，否决回流也是数据（第 8 幕） */
   acceptSuggestion(id: string) {
@@ -278,27 +260,12 @@ export const demo = {
    * 所以这里不必判断"是不是问过了" —— 重复调用只会被 min() 吃掉。
    */
   noteCollected(n = 2) {
-    state.chatCollected += n
+    void n
   },
 
-  planChatTask(title: string, minutes: number) {
-    const exist = state.tasks.find((t) => t.title === title)
-    if (exist) {
-      if (exist.origin === '建议的') exist.origin = '自己写的'
-      exist.bucket = 'now'
-      exist.due = '今天'
-    } else {
-      state.tasks.unshift({
-        id: `chat-${state.grade}-${Date.now()}`,
-        title,
-        minutes,
-        why: '这是你决定排进今天的一件事。先完成这一小步，再看接下来怎么走。',
-        bucket: 'now',
-        origin: '自己写的',
-        due: '今天',
-      })
-    }
-    toast(exist ? '该任务已在今日安排中。' : '任务已加入今日安排。')
+  async planChatTask(title: string, _minutes: number) {
+    try { backendDemo.upsertNote(await backendClient.addNote({text:title,kind:'todo'})); toast('已保存到个人待办') }
+    catch(e) { toast(e instanceof Error ? e.message : '保存失败') }
   },
   /** 从提醒/建议里"排进今天"：它进"现在要做的"，并带上截止 */
   planToday(id: string) {
@@ -375,6 +342,9 @@ export const demo = {
     state.chatTurns = turns
     state.currentSessionId = id
   },
+  setAccount(account: string) { state.account=account },
+  setChatTurns(turns: ChatTurn[], id: string) { state.chatTurns=turns;state.currentSessionId=id },
+  setNotices(notices: Notice[]) { state.noticeQueue=notices;state.noticeIndex=0 },
   setChatBusy(busy: boolean) { state.chatBusy = busy },
   setReviewNote(id: string, note: string) { state.reviewNotes[id] = note.trim().slice(0,500) },
   setReviewAttribution(id: string, value: NonNullable<ReviewItem['attribution']>) {
@@ -397,12 +367,10 @@ export const demo = {
       state.noticeOpen = false
     }
   },
-  resolveNotice(id?: string) {
-    const n = id ? state.noticeQueue.find(n => n.id === id) : state.noticeQueue[state.noticeIndex]
-    if (n) {
-      demo.planChatTask(n.task?.title ?? n.title, n.task?.minutes ?? 10)
-      demo.dismissNotice(n.id)
-    }
+  async resolveNotice(id?: string) {
+    const notice = id ? state.noticeQueue.find(n=>n.id===id) : state.noticeQueue[state.noticeIndex]
+    if(!notice)return
+    try { await backendClient.notificationRead(notice.id);demo.dismissNotice(notice.id);toast('已标为已读') } catch(e) {toast((e as Error).message)}
   },
   restoreNotice(notice: Notice) {
     if (!state.noticeQueue.some(item => item.id === notice.id)) state.noticeQueue.push({ ...notice })
@@ -453,7 +421,7 @@ export const demo = {
     state.profileEdits = {}; state.profileEditTimes = {}
     state.reviewAttributions = {}; state.reviewNotes = {}
     state.lastDoneId = null
-    state.noticeQueue = state.account === 'fresh' ? [] : NOTICES.map((n) => ({ ...n }))
+    state.noticeQueue = []
     toast('工作空间已重置')
   },
 }
