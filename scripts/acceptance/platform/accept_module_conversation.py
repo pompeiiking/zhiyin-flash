@@ -1,11 +1,14 @@
 """Exercise the real public conversation API with the authorized module tool."""
 import json
+import sys
 from pathlib import Path
 from uuid import uuid4
 
-from module_executor import request, read_env
+ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(ROOT / "deploy"))  # Standalone entry point; reuse deployment tools.
 
-ROOT = Path(__file__).resolve().parents[1]
+from module_executor import request, read_env  # noqa: E402
+
 BASE = "http://127.0.0.1:8014"
 
 

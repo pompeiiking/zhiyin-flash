@@ -7,7 +7,7 @@
 东西（`docker compose build` 自己会把镜像做出来），而不是一个已经把构建结果固化的
 黑盒。
 
-发布件不整目录携带 `docs/`；只有 Kev 的运维联调说明作为本次运行依赖按文件加入。
+发布件不整目录携带 `docs/`；部署运维说明、模块开发说明及 README 配图按白名单加入。
 其余设计文档属于研发资产，会随代码一起变，跟着每个部署包走只会让包越来越大、
 还容易与线上版本对不上。
 
@@ -65,8 +65,8 @@ REQUIRED_FILES: tuple[str, ...] = (
     "docker-compose.yml",
     "docker-compose.kev.yml",
     "deploy/migration.json",
-    "scripts/kev_config.py",
-    "scripts/kev_smoke.py",
+    "scripts/integrations/kev/kev_config.py",
+    "scripts/integrations/kev/kev_smoke.py",
 )
 
 #: 随包一起走的内容
@@ -78,14 +78,18 @@ TOP_FILES: tuple[str, ...] = (
     "docker-compose.yml",
     "docker-compose.kev.yml",
     "README.md",
-    "docs/Kev-接入与联调说明.md",
-    "scripts/kev_config.py",
-    "scripts/kev_smoke.py",
+    "docs/部署运维/Kev接入与联调说明.md",
+    "docs/部署运维/部署说明.md",
+    "docs/部署运维/模块服务器部署.md",
+    "docs/部署运维/负载均衡与数据一致性部署说明.md",
+    "docs/开发指南/模块开发说明.md",
+    "scripts/integrations/kev/kev_config.py",
+    "scripts/integrations/kev/kev_smoke.py",
 )
 TOP_DIRS: tuple[str, ...] = (
     "deploy",
     # README 里引用的配图：发布件带 README，就得带它引用的图，否则包里的 README 是断图的。
-    "assets",
+    "docs/资源/产品截图",
     "zhiyin-src/template",
 )
 

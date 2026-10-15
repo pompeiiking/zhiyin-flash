@@ -13,6 +13,7 @@ import argparse
 from datetime import datetime, timezone
 import hashlib
 import json
+import sys
 from pathlib import Path
 import re
 import subprocess
@@ -20,9 +21,11 @@ import threading
 import time
 import urllib.request
 
-from module_executor import read_env, request
+ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(ROOT / "deploy"))  # Standalone entry point; reuse deployment tools.
 
-ROOT = Path(__file__).resolve().parents[1]
+from module_executor import read_env, request  # noqa: E402
+
 DIRECTORY = ROOT / ".platform/acceptance"
 WORKBENCH = "http://127.0.0.1:8014"
 STAGING = "http://127.0.0.1:5175"

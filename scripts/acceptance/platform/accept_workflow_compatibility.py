@@ -18,7 +18,7 @@ import urllib.error
 from uuid import uuid4
 
 
-HERE = Path(__file__).resolve().parent
+HERE = Path(__file__).resolve().parents[3] / "deploy"
 
 
 def load(name):

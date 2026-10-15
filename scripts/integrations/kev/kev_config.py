@@ -10,7 +10,7 @@ from pathlib import Path
 
 import asyncpg
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[3]
 REGISTRY_DIR = ROOT / "zhiyin-src" / "template" / "data" / "registry"
 DEFAULT_BACKUP = Path(__file__).with_name("kev-config-backup.json")
 DEFAULT_DSN = "postgresql://zhiyin:zhiyin@127.0.0.1:55432/zhiyin"

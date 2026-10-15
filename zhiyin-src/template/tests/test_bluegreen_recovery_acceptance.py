@@ -8,7 +8,7 @@ import pytest
 
 
 ROOT = Path(__file__).resolve().parents[3]
-spec = importlib.util.spec_from_file_location("tested_recovery_acceptance", ROOT / "deploy/accept_bluegreen_recovery.py")
+spec = importlib.util.spec_from_file_location("tested_recovery_acceptance", ROOT / "scripts/acceptance/platform/accept_bluegreen_recovery.py")
 acceptance = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(acceptance)
 REVISION = "a" * 40

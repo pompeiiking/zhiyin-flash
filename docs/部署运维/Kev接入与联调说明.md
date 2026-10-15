@@ -15,7 +15,7 @@ docker compose -f docker-compose.yml -f docker-compose.kev.yml up -d
 3. 将既有 PostgreSQL 中的两项试点配置定向切到 active，然后重启后端：
 
 ```powershell
-uv run --with asyncpg python scripts/kev_config.py active
+uv run --with asyncpg python scripts/integrations/kev/kev_config.py active
 docker compose -f docker-compose.yml -f docker-compose.kev.yml restart zhiyin-flash
 ```
 
@@ -32,9 +32,9 @@ docker compose -f docker-compose.yml -f docker-compose.kev.yml restart zhiyin-fl
 ## 切换和恢复
 
 ```powershell
-uv run --with asyncpg python scripts/kev_config.py shadow
-uv run --with asyncpg python scripts/kev_config.py off
-uv run --with asyncpg python scripts/kev_config.py restore
+uv run --with asyncpg python scripts/integrations/kev/kev_config.py shadow
+uv run --with asyncpg python scripts/integrations/kev/kev_config.py off
+uv run --with asyncpg python scripts/integrations/kev/kev_config.py restore
 ```
 
 脚本第一次修改前将原值保存为 `scripts/kev-config-backup.json`，且只修改 `decision_intent_routing` 和 `decision_routing`。每次切换后重启后端，或调用项目已有的配置重载入口。
@@ -44,13 +44,13 @@ uv run --with asyncpg python scripts/kev_config.py restore
 脚本会创建测试账号、验证 active 采用、低置信度回退和重复消息幂等：
 
 ```powershell
-uv run --with asyncpg python scripts/kev_smoke.py
+uv run --with asyncpg python scripts/integrations/kev/kev_smoke.py
 ```
 
 验证 Kev 停止后的安全回退：先将服务保持 active，停止 Kev，再执行：
 
 ```powershell
-uv run --with asyncpg python scripts/kev_smoke.py --expect-kev-down
+uv run --with asyncpg python scripts/integrations/kev/kev_smoke.py --expect-kev-down
 ```
 
 查看后端日志：
@@ -63,7 +63,7 @@ docker logs --tail 200 zhiyin-flash
 
 ## 关闭顺序
 
-1. `python scripts/kev_config.py off`。
+1. `python scripts/integrations/kev/kev_config.py off`。
 2. 重启职引后端，使动态配置生效。
 3. 停止 Kev。
 

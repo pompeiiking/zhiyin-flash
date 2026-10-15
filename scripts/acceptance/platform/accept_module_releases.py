@@ -12,9 +12,11 @@ import subprocess
 import sys
 from uuid import uuid4
 
-from module_executor import Executor, process_lock, request
+ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(ROOT / "deploy"))  # Standalone entry point; reuse deployment tools.
 
-ROOT = Path(__file__).resolve().parents[1]
+from module_executor import Executor, process_lock, request  # noqa: E402
+
 
 
 def main(faults=True):

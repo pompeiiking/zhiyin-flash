@@ -18,12 +18,15 @@ import re
 import time
 import uuid
 import zipfile
+import sys
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from module_executor import read_env
+ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(ROOT / "deploy"))  # Standalone entry point; reuse deployment tools.
 
-ROOT = Path(__file__).resolve().parents[1]
+from module_executor import read_env  # noqa: E402
+
 DIRECTORY = ROOT / ".platform" / "acceptance"
 LIFECYCLE = DIRECTORY / "developer-v2-lifecycle.json"
 WORKBENCH = "http://127.0.0.1:5174"

@@ -1,6 +1,6 @@
 """Opt-in local integration: disposable account, real HTTP, no existing user data.
 
-Usage: python scripts/frontend-smoke.py --base http://127.0.0.1:5275
+Usage: python scripts/acceptance/frontend/frontend-smoke.py --base http://127.0.0.1:5275
 Stores only outcomes, never tokens or credentials. No administrative mutations.
 """
 import argparse
@@ -13,7 +13,7 @@ import httpx
 parser = argparse.ArgumentParser()
 parser.add_argument('--base', default='http://127.0.0.1:5275')
 args = parser.parse_args()
-root = Path(__file__).resolve().parents[1]
+root = Path(__file__).resolve().parents[3]
 ops = json.loads((root/'zhiyin-src/template/zhiyin-web/src/api/operations.json').read_text())
 results = {}
 client = httpx.Client(base_url=args.base, timeout=120)

@@ -6,7 +6,7 @@ import ast
 import json
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 BASE = ROOT / 'zhiyin-src/template'
 OUT = ROOT / 'docs/前端/后端接入'
 OUT.mkdir(parents=True, exist_ok=True)
@@ -41,7 +41,7 @@ rows.sort(key=lambda r:(r['scope'], r['path'], r['method']))
 lines = ['# 后端能力与前端接入清单', '', '以控制器源码逐条扫描，并附完整 OpenAPI 请求、响应和模型，不能仅以学生端封装数量代表后端能力。', '',
          f'控制器 HTTP 接口共 **{len(rows)}** 项。机器专用接口仍列出，但不将部署、执行器凭证放进学生端。', '',
          '状态定义：尚未接入；前端已连接（代码可达，尚待联调）；联调通过（当前本机系统）；隔离联调通过（独立数据库、合成账号与业务资料，真实 HTTP）；环境阻塞（缺少真实资料或执行环境）。隔离验收不代表生产发布成功；构建通过不等于服务可用。', '',
-         '完整参数、请求体、响应体与模型定义见 [后端接口与模型.json](后端接口与模型.json)。接入证据记录于 接口接入证据.json，运行 `python scripts/frontend-capabilities.py` 更新本表。', '',
+         '完整参数、请求体、响应体与模型定义见 [后端接口与模型.json](后端接口与模型.json)。接入证据记录于 接口接入证据.json，运行 `python scripts/contracts/frontend-capabilities.py` 更新本表。', '',
          '## 公共协议', '', '学生端使用 Bearer token；普通响应为 `{code,message,data,trace_id}`，仅 code=0 算成功。HTTP 401 或业务码 1004 需要重新登录。AI 任务为 SSE，按进度/错误/最终 result 处理，缺少最终结果不能视为成功。管理端还需后端权限校验；Worker 与 Executor 使用各自的服务身份。', '',
          '## 能力清单', '', '|能力/接口|归属|前端接入状态|页面与代码证据|联调结果|', '|---|---|---|---|---|']
 for r in rows:

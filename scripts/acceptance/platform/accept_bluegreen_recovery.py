@@ -7,7 +7,7 @@ have the same real revision; successful same-revision switching calls the actual
 rollout primitives explicitly, while recovery uses BlueGreenRollout.execute.
 
 Run only after the baseline gateway is deployed:
-  python deploy/accept_bluegreen_recovery.py --config .platform/executor.json
+  python scripts/acceptance/platform/accept_bluegreen_recovery.py --config .platform/executor.json
 The live application and database are read-only inputs. All injected failures,
 synthetic accounts and containers belong to a unique private acceptance project.
 """
@@ -24,7 +24,7 @@ from pathlib import Path
 from uuid import uuid4
 
 
-HERE = Path(__file__).resolve().parent
+HERE = Path(__file__).resolve().parents[3] / "deploy"
 PROTECTED_PORTS = {5173, 5174, 5175, 5176, 5177, 8000, 8014, 8015, 8016, 8017}
 PROJECT_PREFIX = "zhiyin-recovery-acceptance-"
 

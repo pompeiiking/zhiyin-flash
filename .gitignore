@@ -84,8 +84,8 @@ zhiyin-src/template/pytest-of-*/
 # 作者明确要求不进仓库。文件仍留在工作区里，只是不跟版本走 ——
 # 需要入库时把对应行删掉即可。
 信息采集与快速回答问题定位.md
-docs/测试与优化-袁/移动云杯AI-Coding参赛改造方案.md
-docs/测试与优化-袁/项目分析.md
+docs/测试验收/提示词与业务测试/移动云杯AI-Coding参赛改造方案.md
+docs/测试验收/提示词与业务测试/项目分析.md
 
 # ---- 编辑器与系统 ----
 .vscode/*
@@ -108,7 +108,7 @@ Thumbs.db
 # 迁移文件里含 `infra_ai_provider.config.api_key`（模型密钥只存库，这是它的唯一副本），
 # 是**要随发布件发给部署方**的东西，但绝不该进版本库。
 deploy/migration.json
-scripts/kev-config-backup.json
+scripts/integrations/kev/kev-config-backup.json
 release/
 .platform/
 
