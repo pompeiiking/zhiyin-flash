@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import DetailPopover from '../components/DetailPopover.vue'
 import { computed, ref } from 'vue'
 import { backendDemo } from '../lib/backend-demo'
 import type { AcademicCourseView, AcademicGradeView } from '../api/backend-types'
@@ -115,7 +116,7 @@ async function revoke() {if(saving.value)return;if(backendDemo.state.academicOri
     <PageHeading title="学籍与资料" description="管理学校信息、课程与成绩快照，并核验学籍资料。"><button class="btn" :disabled="saving" @click="loadSaved">{{ saving?'正在处理…':'读取已保存资料' }}</button><button class="btn btn--primary" @click="openImport"><UiIcon name="upload" :size="16" />导入课表与成绩</button></PageHeading>
     <StatusBanner v-if="status" tone="success" class="ws-section" :message="status" @dismiss="status = ''" /><p v-if="serviceError" class="ws-field-error" role="alert">{{ serviceError }}</p><div class="ws-two-columns">
       <section class="ws-paper">
-        <section class="c2-academic-sources" aria-label="资料来源与边界"><h2>这些资料是从哪里来的</h2><p>学校档案、课程成绩和本人补充分别保留来源。每条资料能核对什么、还缺什么，在同一张表里查看。</p><table><thead><tr><th scope="col">来源</th><th scope="col">能核对什么</th><th scope="col">还需要什么</th></tr></thead><tbody><tr><th scope="row">学信网</th><td>学校、专业、年级与在读状态</td><td>本人提供在线验证码，再核对学籍</td></tr><tr><th scope="row">课程与成绩</th><td>{{ academic?.courses?.length ?? 0 }} 门课程、{{ academic?.grades?.length ?? 0 }} 条成绩快照</td><td>{{ Math.max(0,(academic?.courses?.length ?? 0)-scheduled) }} 门课的时间待补充；空课格不等于空闲</td></tr><tr><th scope="row">学校（按需开证明）</th><td>在学证明、成绩单盖章版；需要向学校申请</td><td>实习单位评价需由实习单位出具，学校这边取不到</td></tr><tr><th scope="row">本人上传</th><td>已有的课表、成绩与经历资料</td><td>确认导入后才替换快照；保留本人来源</td></tr></tbody></table></section>
+        <DetailPopover class="academic-provenance" title="资料来源与使用范围" label="查看资料来源与使用范围"><template #trigger>资料来源与使用范围<UiIcon name="info" :size="16" /></template><p>学校档案、课程成绩和本人补充分别保留来源。每条资料能核对什么、还缺什么，在同一张表里查看。</p><table><thead><tr><th scope="col">来源</th><th scope="col">能核对什么</th><th scope="col">还需要什么</th></tr></thead><tbody><tr><th scope="row">学信网</th><td>学校、专业、年级与在读状态</td><td>本人提供在线验证码，再核对学籍</td></tr><tr><th scope="row">课程与成绩</th><td>{{ academic?.courses?.length ?? 0 }} 门课程、{{ academic?.grades?.length ?? 0 }} 条成绩快照</td><td>{{ Math.max(0,(academic?.courses?.length ?? 0)-scheduled) }} 门课的时间待补充；空课格不等于空闲</td></tr><tr><th scope="row">学校（按需开证明）</th><td>在学证明、成绩单盖章版；需要向学校申请</td><td>实习单位评价需由实习单位出具，学校这边取不到</td></tr><tr><th scope="row">本人上传</th><td>已有的课表、成绩与经历资料</td><td>确认导入后才替换快照；保留本人来源</td></tr></tbody></table></DetailPopover>
         <div class="ws-section-head"><div><h2>{{ academic ? academic.school : '暂无学校资料' }}</h2><p>{{ academic ? academic.term : '导入课程与成绩，为时间安排和个人画像提供依据。' }}</p></div><UiIcon name="academic" :size="32" /></div>
         <p v-if="status" class="desk-status" role="status">{{ status }}</p>
         <PanelTabs v-model="tab" label="学校资料视图" :items="[{key: 'overview', label: '资料概况'}, {key: 'courses', label: '课程表'}, {key: 'grades', label: '成绩记录'}]">

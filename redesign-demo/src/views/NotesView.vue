@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import OverviewMetric from '../components/OverviewMetric.vue'
 import { computed, ref } from 'vue'
 import { backendDemo } from '../lib/backend-demo'
 import PageHeading from '../components/PageHeading.vue'
@@ -74,8 +75,8 @@ const noteGroups = computed(() => {
      那是信息架构改动，留给 Lead 拍板；这一轮先把右栏做到位。 -->
 <div class="journey-action-grid">
 <div class="journey-action-main">
- <section class="c2-profile-stats" aria-label="待办与目标概览"><article class="c2-profile-stat"><strong>{{ goalPending }}</strong><small>条</small><h2>目标在走</h2><p>你自己写下的个人目标</p></article><article class="c2-profile-stat"><strong>{{ todoPending }}</strong><small>条</small><h2>待办没做</h2><p>下一步可以动手的具体事项</p></article><article class="c2-profile-stat"><strong>{{ doneAll }}</strong><small>条</small><h2>已经完成</h2><p>完成后可恢复，也会保留记录</p></article><article class="c2-profile-stat"><strong>{{ allNotes.length }}</strong><small>条</small><h2>自己写下的</h2><p>个人记录独立保留，不与计划任务混算</p></article></section>
-<section class="c2-note-pool ws-paper"><header class="ws-section-head"><div><h2>你自己写下的 {{ allNotes.length }} 条</h2><p>同一批记录，换一种组织方式。勾掉一条，完成情况与下一件都会更新。</p></div><span class="c2-pool-count">{{ allNotes.length }} 条 · 完成 {{ doneAll }}</span></header>
+ <section class="c2-profile-stats" aria-label="待办与目标概览"><OverviewMetric label="进行中目标"><template #value><strong>{{ goalPending }}</strong><small>条</small></template><p>你个人记录个人目标</p></OverviewMetric><OverviewMetric label="待完成事项"><template #value><strong>{{ todoPending }}</strong><small>条</small></template><p>下一步可以动手的具体事项</p></OverviewMetric><OverviewMetric label="已经完成"><template #value><strong>{{ doneAll }}</strong><small>条</small></template><p>完成后可恢复，也会保留记录</p></OverviewMetric><OverviewMetric label="个人记录"><template #value><strong>{{ allNotes.length }}</strong><small>条</small></template><p>个人记录独立保留，不与计划任务混算</p></OverviewMetric></section>
+<section class="c2-note-pool ws-paper"><header class="ws-section-head"><div><h2>你个人记录 {{ allNotes.length }} 条</h2><p>同一批记录，换一种组织方式。勾掉一条，完成情况与下一件都会更新。</p></div><span class="c2-pool-count">{{ allNotes.length }} 条 · 完成 {{ doneAll }}</span></header>
 <div class="c2-lensbar" role="group" aria-label="待办与目标的组织方式"><button v-for="axis in [{key:'kind',label:'按目标 / 待办'},{key:'done',label:'按做没做完'},{key:'source',label:'按它怎么来的'}]" :key="axis.key" :aria-pressed="noteAxis===axis.key" @click="noteAxis=axis.key">{{ axis.label }}</button></div><p class="c2-lens-hint">正在重组 {{ allNotes.length }} 条记录，条目总数不变。来源以实际保存状态为准。</p>
 <label class="c2-note-search">查找个人记录<input v-model="noteQuery" type="search" placeholder="输入关键词查找待办或目标…"/></label><p v-if="noteQuery" class="c2-lens-hint" role="status">找到 {{ visibleNotes.length }} 条，共 {{ allNotes.length }} 条。<button class="ws-text-button" @click="noteQuery=''">清空关键词</button></p>
 <StatusBanner :open="!!status" tone="success" :message="status" @dismiss="status=''"/><StatusBanner v-if="error" tone="error" :message="error" retry-label="重试读取" @retry="loadNotes"/>
@@ -132,7 +133,7 @@ const noteGroups = computed(() => {
       <div class="hm-kv__r"><span class="hm-kv__k">个人目标</span><span class="hm-kv__v">{{ goalPending }} 条没做 · 共 {{ goalNotes.length }} 条</span></div>
       <div class="hm-kv__r"><span class="hm-kv__k">已完成</span><span class="hm-kv__v">{{ doneAll }} 条（全部 {{ allNotes.length }} 条里）</span></div>
     </div>
-    <p class="hm-side__warn">这一栏和「今日行动」里的任务不是同一本账：那边是从阶段计划拆下来的任务，这里是你自己写下的记录。<template v-if="backendDemo.state.notesOrigin === 'live'">现在读的是服务回包里的记录。</template><template v-else>现在读的是当前工作空间的记录。</template></p>
+    <p class="hm-side__warn">这一栏和「今日行动」里的任务不是同一本账：那边是从阶段计划拆下来的任务，这里是你个人记录记录。<template v-if="backendDemo.state.notesOrigin === 'live'">现在读的是服务回包里的记录。</template><template v-else>现在读的是当前工作空间的记录。</template></p>
   </section>
 </aside>
 </div>

@@ -1,6 +1,6 @@
 ---
-name: 职引 · C2 河北大学陪伴式学生空间
-description: 将获批 c2-hbu 交互原型落实为可操作的 Vue 学生工作空间。
+name: 职引 · 清晰连续的个人工作空间
+description: 以任务、结论和下一步为中心，深入信息就近查看的学生工作空间。
 colors:
   primary: "#0058a7"
   primary-hover: "#004885"
@@ -11,263 +11,231 @@ colors:
   attention: "#96000e"
   attention-strong: "#7d000c"
   attention-weak: "#fdf7f4"
-  text: "#1e232c"
-  text-secondary: "#4b5157"
-  text-muted: "#61666b"
-  background: "#f5f6f7"
-  field-top: "#fbfcfd"
-  field-middle: "#f3f5f7"
-  field-bottom: "#eceff2"
-  surface: "rgba(255,255,255,.78)"
-  surface-secondary: "rgba(250,250,251,.72)"
-  surface-tertiary: "#ebedf2"
-  glass-top: "rgba(255,255,255,.90)"
-  glass-bottom: "rgba(255,255,255,.66)"
-  border: "#e1e5ee"
-  border-strong: "#cfd3d6"
+  background: "#ffffff"
+  surface: "#ffffff"
+  surface-secondary: "#f6f7f9"
+  surface-tertiary: "#eef0f3"
+  nav-background: "#f7f8fa"
+  text: "#20252d"
+  text-secondary: "#505967"
+  text-muted: "#656d79"
+  border: "#e7e9ed"
+  border-strong: "#cbd0d8"
   border-control: "#8f959e"
   on-primary: "#ffffff"
-  dark-background: "#151517"
-  dark-surface: "rgba(35,35,36,.82)"
-  dark-surface-secondary: "rgba(44,44,46,.62)"
-  dark-surface-tertiary: "#353638"
-  dark-border-strong: "#45464a"
-  dark-text: "#f9fafb"
+  dark-background: "#191b20"
+  dark-surface: "#20232a"
+  dark-surface-secondary: "#242830"
+  dark-surface-tertiary: "#2e333d"
+  dark-nav-background: "#16181d"
+  dark-float: "#252931"
+  dark-text: "#edf0f5"
+  dark-text-secondary: "#c2cad7"
+  dark-text-muted: "#a3adbc"
+  dark-border: "#343a45"
+  dark-border-strong: "#515c6d"
+  dark-popover-border: "#414955"
   dark-primary: "#6fa8dc"
+  dark-primary-hover: "#86b6e6"
+  dark-primary-active: "#b8d5f2"
+  dark-primary-brand: "#5b98d2"
+  dark-primary-weak: "#1d2137"
+  dark-primary-weak-2: "#21284a"
+  dark-primary-border: "#38406d"
+  dark-on-primary: "#151517"
   dark-attention: "#d98a92"
+  dark-attention-weak: "#2f1115"
+  dark-attention-border: "#583d41"
+  red-primary-weak-2: "#f8f0e9"
+  red-primary-active: "#5f0009"
+  dark-red-primary-hover: "#e8a7ad"
+  dark-red-primary-active: "#f0c4c8"
+  dark-red-primary-weak: "#341015"
+  dark-red-primary-weak-2: "#410e14"
+  dark-red-primary-border: "#67464b"
 typography:
-  display:
-    fontFamily: "'Microsoft YaHei UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans CJK SC', 'Segoe UI Variable Display', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif"
-    fontSize: "38px"
-    fontWeight: 700
   headline:
+    fontFamily: "'PingFang SC','Noto Sans CJK SC','Microsoft YaHei UI','Segoe UI',sans-serif"
     fontSize: "30px"
-    fontWeight: 700
-    lineHeight: 1.45
-  page-heading:
-    fontSize: "24px"
-    fontWeight: 700
-    letterSpacing: "-.02em"
-  mobile-stat:
-    fontSize: "24px"
-    fontWeight: 700
-  title:
-    fontSize: "20px"
-    fontWeight: 700
-    lineHeight: 1.45
+    fontWeight: 600
+    lineHeight: 1.4
+    letterSpacing: "-.025em"
+  headline-mobile:
+    fontSize: "26px"
+    fontWeight: 600
+    lineHeight: 1.4
+  task-title:
+    fontSize: "26px"
+    lineHeight: 1.6
+  task-title-mobile:
+    fontSize: "22px"
+  section-title:
+    fontSize: "18px"
+    fontWeight: 600
+    lineHeight: 1.5
   body:
-    fontFamily: "'Microsoft YaHei UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans CJK SC', 'Source Han Sans SC', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif"
     fontSize: "16px"
-    fontWeight: 400
-    lineHeight: 1.7
+  fact:
+    fontSize: "15px"
+    fontWeight: 500
+    lineHeight: 1.65
   control:
     fontSize: "14px"
     fontWeight: 500
-  label:
+  detail:
+    fontFamily: "'PingFang SC','Noto Sans CJK SC','Microsoft YaHei UI',sans-serif"
+    fontSize: "14px"
+    lineHeight: 1.75
+  summary:
+    fontSize: "13px"
+  annotation:
     fontSize: "12px"
 rounded:
+  flat: "0px"
   sm: "6px"
+  nav: "7px"
   md: "8px"
-  row: "12px"
-  surface: "16px"
-  companion: "20px"
-  avatar-chip: "9px"
-  identity-edge: "3px"
-  pill: "999px"
+  summary: "10px"
+  lg: "12px"
 spacing:
-  sp-1: "4px"
-  sp-2: "8px"
-  sp-3: "12px"
-  sp-4: "16px"
-  sp-5: "20px"
-  sp-6: "24px"
-  sp-7: "32px"
-  sp-8: "40px"
-  sp-9: "56px"
-  sp-10: "72px"
+  micro: "4px"
+  xs: "8px"
+  sm: "12px"
+  md: "16px"
+  content: "20px"
+  section: "24px"
+  heading: "28px"
+  lg: "32px"
+  page-top: "36px"
+  columns: "40px"
+  page-side: "48px"
+  page-bottom: "72px"
 components:
   button-primary:
     backgroundColor: "{colors.primary}"
     textColor: "{colors.on-primary}"
-    rounded: "{rounded.pill}"
-    height: "44px"
-    padding: "8px 16px"
-  button-primary-hover:
-    backgroundColor: "{colors.primary-hover}"
-  button-danger:
-    backgroundColor: "{colors.attention-strong}"
-    textColor: "{colors.on-primary}"
-    rounded: "{rounded.pill}"
-    height: "44px"
-    padding: "8px 16px"
-  button-danger-hover:
-    backgroundColor: "{colors.attention}"
+    typography: "{typography.control}"
+    rounded: "{rounded.md}"
+    padding: "0 16px"
   button-secondary:
     backgroundColor: "{colors.surface}"
     textColor: "{colors.text}"
-    rounded: "{rounded.pill}"
-    height: "44px"
-    padding: "8px 16px"
-  appearance-chip:
+    rounded: "{rounded.md}"
+  nav-active:
     backgroundColor: "{colors.primary-weak}"
     textColor: "{colors.primary}"
-    rounded: "{rounded.pill}"
-    height: "44px"
-    padding: "6px 12px"
-  command-search:
+    rounded: "{rounded.nav}"
+    padding: "8px 12px"
+  detail-popover:
     backgroundColor: "{colors.surface}"
-    textColor: "{colors.text-secondary}"
-    rounded: "{rounded.pill}"
-  card:
-    backgroundColor: "{colors.surface}"
-    rounded: "{rounded.surface}"
+    textColor: "{colors.text}"
+    typography: "{typography.detail}"
+    rounded: "{rounded.lg}"
     padding: "20px"
-  companion-presence:
-    rounded: "{rounded.companion}"
-    padding: "20px"
-  avatar-chip:
-    backgroundColor: "{colors.surface-tertiary}"
-    textColor: "{colors.text-secondary}"
-    rounded: "{rounded.avatar-chip}"
+  task-focus:
+    backgroundColor: "{colors.primary-weak}"
+    rounded: "{rounded.lg}"
+    padding: "28px"
 ---
 
-# Design System: 职引 · C2 河北大学陪伴式学生空间
+# Design System: 职引 · 清晰连续的个人工作空间
 
 ## Overview
 
-**Creative North Star: "C2 · 陪你走完这一段"**
+**Creative North Star: "清晰连续的个人工作空间"**
 
-本文件记录 2026-10-15 已实现的学生空间。获批视觉与交互来源为 [c2-hbu/index.html](design-review/v6-redesign/directions/c2-hbu/index.html) 及其页面原型；Vue 实现仍保留原产品的数据、会话与操作链路。当前工作空间最终覆盖为最后加载的 [refinement.css](src/styles/refinement.css)，位于redesign.css与c2-fidelity.css之后；本轮在C2世界内进行Operate精修，保留蓝红灰、中文及原生Vue。基础语义、主题与密度来自 tokens.css，组件局部样式继续参与层叠。
+当前前端的视觉权威是 `redesign-demo` 的运行实现与本规范。2026-10-15 用户确认全站重新设计，取消 C2 基准；以任务、结论、当前状态和下一步组织首屏，深入信息在触发位置附近查看。语言自然、中性、清楚。
 
-浅灰渐变背景、半透明白色表面及同主色伙伴头像保持C2陪伴感；主要工作面和辅栏去阴影，其他层级使用更轻投影，强调阅读与操作。导航与控件保持清楚，来源、解释与任务状态支持实际操作。门户是独立表面，保留原行为与原版对比入口。
+这是已实现系统的记录。标准导航保持稳定，成长档案提供连续记录与就近溯源的结构启发。没有获批视觉效果图或可用 Stitch 生成屏幕；历史原型不是当前验收基准。产品事实见根 `PRODUCT.md`。
 
 **Key Characteristics:**
+- 默认信息精简，操作和关键结论优先。
+- 连续内容以对齐、留白和细分隔组织。
+- 蓝或红主色、灰白底与独立深色覆盖。
+- 来源、短说明和筛选通过锚定浮层展开。
 
-- 蓝、红、灰白语义颜色；切主色时伙伴形象同步。
-- 主要表面平坦、少量轻影形成连续工作背景。
-- 平铺功能目录、保留历史，响应式侧栏、图标栏与底栏。
-- 状态与来源来自当前字段；界面移除常见演示标识，数据性质和服务边界仍保留在产品文档。
+`src/main.ts` 仍依次加载 tokens、base、workspace、experience、journey、dialogue、redesign、c2-fidelity、refinement，最后加载 `workspace-modern.css`。最后一层与当前 Vue 结构共同定义替换后的外观；旧样式仍承担未覆盖的路由机制、控件状态和样式。不能据此宣称旧 CSS 已移除，也不能把旧 C2 卡片布局重新当成约束。
 
 ## Colors
 
-frontmatter 的默认值对应浅色、蓝主、常规密度的 C2 工作空间。主题覆盖以运行时语义变量为准。
-
 ### Primary
 
-校徽蓝承担主要操作、链接、选中状态与伙伴主体。来源记录见 [COLORS.md](design-review/v6-redesign/COLORS.md)：是官方资产实际像素值，不能表述为公开 VI 标准色定义。主色可切为河大红，深色主题使用提亮版本。
+主色沿用现有校徽蓝；红色强调主题仍可切换。蓝、红的色值来源沿用 `tokens.css` 的已有资产取样记录，本轮未重新核验外部品牌标准。主操作、活动导航、选中状态与链接调用 `--c-primary` 系列，不复制固定蓝到组件。
 
-### Secondary
-
-注意红用于风险、截止与差距；完成状态使用中性灰。红主设置保留主操作与注意区域的不同表面、文字和状态表达。
+红色也是需要注意的语义色。完成状态采用中性色，不新增绿色或琥珀色体系。
 
 ### Neutral
 
-主文字、次要文字与注解使用三档灰；卡片与顶栏使用透明白色而非纯白板。背景从 field-top 经 field-middle 过渡至 field-bottom；最后一档来自批准原型，属于背景阴影色，不新增状态色。深色使用透明深灰表面与较亮文字。
+工作区用白色画布、浅灰导航和灰阶文字，表面为不透明底色。深色工作区使用 frontmatter 的 `dark-*` 色值，覆盖原 token 中的旧底色。浮层通过 Portal 挂载，拥有独立深色规则；其分隔线使用 `dark-popover-border`，不能只依赖工作区祖先继承。
 
-**The 语义颜色 Rule.** 调用语义变量，状态同时提供文字、图标或可读数值；不得把演示排序当作岗位事实。
+### Theme mapping
+
+默认蓝主题使用 `primary-*`；深蓝文字主色使用 `dark-primary`，品牌图形使用 `dark-primary-brand`。红主题以 `attention` 为主色、`attention-strong` 为 hover、`red-primary-active` 为 active，弱底采用 `attention-weak` 与 `red-primary-weak-2`。深红使用 `dark-attention` 和 `dark-red-primary-*`，品牌图形保留原红。深色实心按钮前景沿用 `dark-on-primary`。注意色的深色 strong 与正文注意色同值。
+
+**The Semantic Accent Rule.** 主色表示当前入口或行动，注意色表示风险与待处理事项；在红主题中仍保留文字与结构区分状态。
 
 ## Typography
 
-正文采用 frontmatter 的系统中文无衬线栈，标题使用更适合显示的系统栈，无新增字体下载。注册字号为七档（12、14、16、20、24、30、38px）；实际角色由字号、字重、位置和留白共同决定。字重使用 400、500、600、700。
+工作区采用系统中文无衬线栈，弹出详情使用对应中文栈；不下载字体。字号按实际使用登记，不再把旧七档变量误写成全站唯一尺度。
 
-| 角色 | 当前用途 |
-| --- | --- |
-| display | 关键数字及既有门户主张 |
-| headline | 桌面主要结论、任务及统计 |
-| page-heading | 桌面和手机工作空间页标题，24px/700、-.02em |
-| title | 手机重点结论及伙伴名称 |
-| mobile-stat | 手机画像统计数，避免沿用桌面大数字 |
-| body | 咨询正文、输入与内容阅读 |
-| control | 功能名称、控件与次要说明 |
-| label | 来源、时间、计数、短注解及 C2 外观选项 |
+页标题使用 headline，手机使用 headline-mobile；任务强调使用 task-title 与 task-title-mobile；章节标题使用 section-title。连续正文保留 body，画像字段使用 fact，控件使用 control，概览及组标题使用 summary，时间和计数使用 annotation。浮层标题与内联概览读数为正文尺度且字重600。今日重点任务另有24px标题；继承页面仍使用20/24/38px等原档，不把它们冒充全部已统一。
 
-工作空间页标题统一page-heading，描述最大66ch、标题平衡换行；节标题多使用 body 的尺寸并加粗；页面说明为 control，行高 1.8。手机重点结论回到 title。密度不缩放注册字号。咨询沿用中文宽行距，数据比较与统计使用等宽数字。
+数字优先等宽数字特性；不把全站正文改为等宽字体。13/15/18/22/26/30px均为当前实现中的有意层级，不能为了符合旧登记而抹掉。
 
 ## Layout
 
-桌面展开侧栏宽 264px，从顶部身份条下方铺满高度；1024px 起使用完整目录。768–1023px 为 76px 图标栏，每个功能图标仍可达，历史数据保留、列表视觉隐藏。低于 768px 使用全宽贴底的底部导航及更多目录，底栏内距计入安全区。侧栏可整体收起。完整桌面侧栏展开时，顶栏与侧栏页脚均提供账号入口，两者打开同一账号抽屉并共享状态；手机及窄屏图标栏使用顶栏入口，整体收起侧栏时隐藏其页脚入口。
+桌面侧栏宽240px，顶栏高64px。普通工作页最大宽1176px，内边距36px 48px 72px；1100px及以下横向收为32px，767px及以下为24px 20px 100px，顶栏高60px。页头标题、说明入口与操作保持同一区域；概览采用内联读数而非统计卡片。
 
-桌面头部高 64px，手机高 60px。头部提供真实命令搜索，外观栏提供主色、主题与密度三轴及全部页面命令入口。手机外观栏改为不换行的横向滚动工具栏，按钮目标44px；全部页面、主色、主题与密度入口保持可达。
+画像主题桌面两列、手机一列。报告和资讯主体与260px侧栏在1000px及以下合并；手机方向比较改为按维度的可读列表。页签可横向滚动，活动项用底部细线表示。不同任务保留不同内容构成，不能把所有页面强行排成同一种卡片网格。
 
-桌面外壳高 100dvh，主内容独立纵向滚动；没有有边框的内嵌主画布。常规页面最大宽 1200px，内距 24px，底部 64px；手机为左右 16px、顶部 20px，底部为底栏预留空间。主辅列为弹性主列与 312px 通用辅助列、间距 24px；低于 1280px 收为单列，咨询辅栏隐藏，报告等辅区进入正文流。画像辅区在中等宽度可排为两列，手机再收单列。
-
-咨询是连续文档流，桌面内容上限 1074px并向主区左侧对齐；咨询辅助列296px，通用辅助列312px；全局替换误伤已纠正并复拍。手机伙伴与概览纵向排列。画像与资讯辅助内容在DOM中位于主内容之后，桌面网格保留右栏位置。输入区位于完整记录之后、参与页面滚动，回复没有覆盖式状态层。表格仅在自身容器横向滚动，方向比较表最小宽 700px。
-
-**The 可达性 Rule.** 功能目录平铺分组，路由与图标保持可达；切外观、宽度或侧栏显隐不会丢失会话与当前操作状态。
+对话使用工作视口内的网格：桌面高度扣除64px、手机扣除128px；记录区域独立滚动，输入区留在网格末行。手机隐藏辅助侧栏。操作、中文输入和实际状态路径由组件保留。
 
 ## Elevation & Depth
 
-refinement使用透明表面与细线分层。ws-paper、画像/报告/资讯辅栏、行动辅栏、日历辅块及复盘周摘要取消投影；其他表面沿用轻层级。最终e-2为0 4px 16px -12px rgba(30,35,44,.22)，e-3为0 12px 32px -20px rgba(30,35,44,.28)，sidecar记录完整扩展。
+主要内容平放在画布上，靠留白、对齐和分隔表达层级。任务重点与少量摘要使用浅色填充。浮层使用柔影 `0 12px 48px -8px #1c263033`；工作区另保留浮动表面影变量 `0 16px 48px -12px #1c26302e`。这不是所有表面都无影的承诺，继承控件与覆盖层仍有各自状态。
 
-低层用于选中导航；中层轻影用于仍需区分的表面与伙伴概览；高层轻影用于咨询输入。阴影均有纵向偏移和柔软模糊。紧凑密度减少中层投影并将部分表面内距收至 16px。顶栏与输入区域使用有限背景模糊，不能据此给所有内容增加装饰效果。
+浮层入场为160ms、`cubic-bezier(.16,1,.3,1)`，轻微上移和缩放；减少动效偏好关闭此动画。指针停留180ms后打开，离开280ms后关闭未固定详情；点击可固定。
+
+**The Nearby Detail Rule.** 短解释、来源和小型筛选保留触发位置上下文，长任务与编辑流程仍使用合适的原有页面或面板。
 
 ## Shapes
 
-顶部身份条高 3px，蓝红形成同一品牌标记；选中导航侧标使用同一细尺度及收口圆角。常用内容表面圆角 16px，内部行与重点块 12px，伙伴概览与输入区 20px。按钮、搜索和外观选项使用胶囊；账号头像片为 9px 圆角。紧凑模式覆盖部分内容表面为 12px。形态依据 C2 明确规则，不继续采用 V5 的内嵌画布或旧组件圆角默认值。
+内容章节默认直边平放，交互控件采用轻圆角。导航与部分切换按钮使用 nav，普通按钮和说明触发器使用 md，浮层与重点任务使用 lg，摘要使用 summary；小关闭控件和部分条目使用 sm。不得将实际导航圆角随意改成统一8px。
 
-图标使用已有 Phosphor Vue 体系，伙伴是内联 SVG，不新增位图。五个主理保留轮廓与身份字段，当前主体均采用运行中的主色；学生和系统使用中性身份色。
+主题的 plain/soft/dense 仍影响未被末层覆盖的间距或控件；现代工作区明确覆盖的形状和间距以末层为准，不承诺三种密度对所有元素都有同等效果。
 
 ## Components
 
 ### Buttons / Inputs
 
-普通按钮高 44px、小档 36px，胶囊圆角、细描边与内高光。主要按钮使用实心主色。danger按钮显式定义底色、前景和hover，避免浅底白字。外观选项按 aria-pressed 标出选中，搜索打开真实命令面板并支持 Ctrl/Cmd + K、方向键与 Enter。全局键盘焦点为2px主色轮廓、3px偏移；桌面滚动偏移124px/96px、手机80px/96px，防止聚焦控件被壳层遮住。输入光标、选区与滚动条调用语义颜色。咨询输入保留 Enter 发送、Shift + Enter 换行与中文输入合成处理。
+主按钮为实心语义主色，普通按钮为表面色、细描边；工作区按钮最小高42px。说明触发器最小44×44px，部分筛选按钮为36或40px；浮层关闭控件36px。不要宣称全部点击目标都为44px。全局焦点与详情触发器使用2px主色轮廓、3px偏移。搜索及字段保留真实标签、输入和空结果状态。
 
-### Navigation / History
+### Navigation / Tabs
 
-桌面功能组平铺所有链接，不再使用 V5 可折叠业务菜单。历史位于业务导航下方，显示恢复入口与真实活跃日期；会话数量、今日行动徽标与专业年级来自当前字段。手机底栏与更多目录复用同一功能体系，手机顶栏菜单打开现有导航面板，搜索保留完整入口。导航使用 aria-current，账号使用同一抽屉。
+240px桌面侧栏按现有功能分组，活动入口以浅主色底和主色文字表达，40px最小行高。历史与账号路径保留，外观设置进入账号面板。手机使用当前导航机制。页签48px最小高，活动底线2px；可见标签应保持简短。
 
-### Companion / Conversation
+### Continuous sections / Task focus
 
-顶部伙伴主体使用当前主色、白眼与深灰结构色，在本地模式且未生成时，顶部伙伴允许显式切换 idle / thinking / speaking 预览；服务模式或实际生成期间仍由 ConversationView 的 thinking 和 streaming 字段驱动，并禁用演示切换。组件另支持 done 一次性反馈。循环节奏按身份错开，减少动效时保留静态状态区别。不要把 SVG 外观当作新增模型能力。回复来源、复制、交接、成果及历史面板保留原行为；输入位于记录之后。
+章节以18px标题和间距定位，记录行采用细底边；不再给每一组资料套带影卡片。重点任务用主色弱底、桌面28px内距和12px圆角；具体今日任务覆盖为24px内距，手机20px。摘要和结果必须取自现有状态，不能靠视觉重做新增成果。
 
-### Report / Direction Comparison
+### DetailPopover / OverviewMetric / PageHeading
 
-报告当前摘要放在“判断”区域内；默认demo显示两项待核对依赖，requestReportReview标记在SPA中保留且不修改原分数；三条具体判断分别关联具体维度，选择改变对应维度的强调，诊断正文、依据与版本仍保留。方向页使用同一五项比较尺度、三方向固定合成评分：
+PageHeading统一标题、就近说明与操作；OverviewMetric把统计呈现为带详情入口的内联读数。DetailPopover使用 Reka 非模态锚定弹层，宽不超过384px且两侧保留16px，最大高580px并受可用视口限制，内部可滚动；与锚点间隔8px。支持鼠标、焦点、点击固定、Esc、关闭后返回触发器；不能只靠 hover。来源及嵌套正文可换行。
 
-| 比较项 | 主攻 | 平行 | 备选 |
-| --- | ---: | ---: | ---: |
-| 专业对口 | 90 | 74 | 84 |
-| 岗位数量 | 90 | 74 | 70 |
-| 起薪水平 | 78 | 86 | 58 |
-| 稳定性 | 66 | 52 | 92 |
-| 通勤与地点 | 70 | 60 | 88 |
+### Local state and service boundaries
 
-权重可调 1–5、初值 3，排序分为加权平均取整；重置恢复同等权重；共享状态位于 src/lib/direction-comparison.ts，同一SPA会话中切路由或视图保留优先级。当前排序、原始分数及方向确认是不同状态。数据来自获批 directions.js 的合成刻度，不能宣称真实薪酬、岗位数量或自动诊断重算。
-
-### Home / Plan / Review / Tools
-
-今日下一任务优先取到期任务，同期限优先小任务，显示任务来源、推荐理由、证据链接、完成状态及预计时间，并与任务操作相连。阶段计划显示四项真实派生指标，时间线可展开阶段与任务细节；大三里程碑使用结构化dueAt ISO、dependsOn与handoff，逾期与倒计时以可见2026-10-14演示快照为基准，不猜文案。日历第三概览统计课程占用至少四小时的天数，所选日期显示真实无due未安排任务。画像与报告增加来源、时间、主题及对结论贡献重组，保留既有可信度等轴；同池重组不删信息。复盘recordPool现由执行记录与已经发生的成长记录组成，来源、时间、主题、贡献四轴实际重组；周活动读数仍只计算原items，不混计成长。复盘提供周摘要、详细与原始记录视图，完成与恢复继续同步状态。待办与目标使用同一记录池的类型、完成与来源三轴，并支持关键词搜索、跨轴保留检索与空结果恢复；资讯提供类别 chips、热词与排序。工具页提供六个工具及四步依赖流程，并在目录之后的可展开状态披露中展示本地契约目录；69 schema / 50 operation 不代表在线后端完成量。
-
-
-### System Pages / Account
-
-账号设置、提醒、登录、使用指南、组件状态与成长记录均为原生 Vue 页面，命令目录包含系统页；异常页与规范页保持独立入口。设置中的资料授权开关、主动提醒与安静时间仅是本地演示偏好，不能表述为服务端授权执行或提醒调度。提醒处理历史通过rememberSession保留，换账号清空。read保留原queue，later归档完整原Notice及action/deadline，done沿用resolve逻辑；later可恢复原队列或现在处理，三轴实际组织。成长页使用原五条实际badge条件与核验条件组成六条记录，证据字段映射为可读事件名，提供来源、时间、主题、确认轴。指南有四项FAQ及七项词汇；gallery提供十二族组件两轴真实样例和四流程 × 四状态矩阵。登录页使用非空演示密码选择预置账号；门户与 /portal 别名保留原行为。
-
-咨询预置内容按C2组织，只迁移仍未经用户修改的旧seed；用户实际消息不替换。今日与阶段统计使用现有store计数与任务时间，不复制原型硬编码的申请或面试次数。服务端原工具通过 PublishedTools.vue 的披露入口保留。
-统计区域在1280px起四指标同排；手机两列，三指标组合的末项跨全宽。日历桌面比较首列96px、手机72px并重排动作。手机伙伴概览最小高116px，隐藏冗长职责，状态按钮44px。/path采用PageHeading与四年级aria-pressed，历史截图明确标注2026-10-13。
-
-报告sourceOf按岗位、企业、产线来源归组。核验预览结果由16课与18成绩派生，不固定写成24；此预览不证明真实学信网核验。
-
-### Motion / Print
-
-状态反馈沿用已注册短时长与缓出曲线；报告判断切换为 200ms，伙伴状态保持可解释的小幅运动。减少动效偏好关闭相关循环与过渡。打印保留当前视图，隐藏导航工具，移除表面投影；旧版本记录不冒充完整旧报告。
+保留画像更正、导入导出、报告、方向、行动、日历、复盘、记录、工具、指南、账号、提醒、登录与内部页面的原功能路径。方向比较采用现有合成刻度与可调权重；排序、方向确认和原始分数是不同状态。本地偏好、预置内容、契约目录、核验预览不证明真实服务上线、授权执行或学校核验成功。用户实际消息和修改资料不应被新版预置内容覆盖。
 
 ## Do's and Don'ts
 
 ### Do:
-
-- **Do** 以最后加载的refinement覆盖及实际Vue组件为准，维护 token-bearing DESIGN.md 与扩展 sidecar。
-- **Do** 保持七档注册字号、平铺目录、历史恢复与共享同一账号抽屉和状态。
-- **Do** 用当前字段派生计数、任务与头像状态；移除界面常见演示标识时，不伪造招聘公告、学校核验成功或新服务接入。
-- **Do** 以当前路由和宽度截图验证响应式与实际操作。
+- **Do** 用当前源码与实际路由截图核对规范，维护 token-bearing 文档及配套 sidecar。
+- **Do** 首先呈现关键结论、当前状态和下一步，将短依据放在附近可操作的详情入口。
+- **Do** 保留主色主题、独立深色覆盖、键盘焦点与手机内容顺序。
+- **Do** 使用自然、中性、清楚的中文，以真实字段和状态派生读数。
 
 ### Don't:
-
-- **Don't** 将 V5 的 228px 侧栏、内嵌主画布、折叠分组或固定回复覆盖层作为当前规则。
-- **Don't** 将本地演示、目录检查或合成比较描述为正式 API、模型、学校核验或实时岗位接入。
-- **Don't** 用旧版截图或原型截图替代实际 Vue 页面验收。
-
-本轮check-refinement五组行为检查通过，check-c2更新八岗位/二十四资讯与四提醒断言并通过20工作空间路由 × 四宽度，build与contrast通过；含/path、复制修正及展开文案的最终build已通过。最终63张页面截图位于仓库根 .tmp-shots/frontend-polish-final（21页 × 1440/858/390px），另有/path三张，共66张；已检查无溢出、错误及常见演示标识。更多状态由行为断言覆盖，不宣称所有状态已验收；最终新增22页375×812与844×390减少动效检查通过，原版门户变体无错误或无法解析组件。新增check-service-boundaries.mjs在1440/390px对预览读取、local资讯和mock503失败通过，预览API调用为0；.tmp-shots/service-boundaries新增六张操作态PNG，与此前66页面图合为72张，新增图不替换全页面截图。两项修复后最终build通过（5.40s）。本轮未再次运行detect，check-classes仍限原五份CSS，不能外推到新增覆盖文件。
-
-独立新reviewer初审仅提出两项服务边界fix，已修复并通过专项检查，有限复核verdict为SHIP，两项均resolved，0 partial / 0 unresolved；本轮逐页范围与数据边界见 design-review/v6-redesign/FRONTEND-POLISH-RESULT.md。此前七项C2修复终审7 resolved / 0 partial / 0 unresolved仅属于历史修复范围，不替代本轮审查。旧C2-REPAIR与V5记录保持历史，不改写其结论。当前未发布Sites。
+- **Don't** 以历史 C2 原型、旧截图或不存在的生成稿覆盖当前全站授权。
+- **Don't** 将每段内容重新包装为统计卡片或重复解释栏。
+- **Don't** 将本地演示、合成比较或契约数量描述为在线服务成功。
+- **Don't** 将有限截图与行为检查等同于完整 WCAG、性能或真实后端验收。

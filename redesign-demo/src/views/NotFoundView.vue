@@ -2,7 +2,6 @@
 import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import PageHeading from '../components/PageHeading.vue'
-import UiIcon from '../components/UiIcon.vue'
 import { WORKSPACE_GROUPS, WORKSPACE_PRIMARY, PORTAL_LINK } from '../lib/workspace-nav'
 
 /**
@@ -66,9 +65,10 @@ const errorDescriptions:Record<string,string>={'404':'可能是旧链接，或�
       :title="errorTitles[state]"
       :description="errorDescriptions[state]"
     >
-      <RouterLink class="btn" to="/chat">回到咨询</RouterLink><button v-if="state==='offline'" class="btn" @click="state='404'">重新检查</button><RouterLink class="btn" to="/">回到门户</RouterLink>
+      <RouterLink class="btn" to="/chat">回到咨询</RouterLink><RouterLink class="btn" to="/">回到门户</RouterLink>
     </PageHeading>
 
+    <p class="error-explanation" role="status">{{ errorDescriptions[state] }}</p>
     <section class="ws-paper" aria-labelledby="nf-addr-title">
       <div class="ws-section-head">
         <div>
@@ -102,14 +102,7 @@ const errorDescriptions:Record<string,string>={'404':'可能是旧链接，或�
 
       <!-- "是哪一种问题"：地址类错误与账号/服务类错误要分开说，
            否则用户会去改密码或等服务器 —— 那两件事跟这个地址没关系。 -->
-      <div class="notfound__scope">
-        <h3 class="notfound__scope-t">这一页只说明地址不对</h3>
-        <ul class="notfound__scope-l">
-          <li><UiIcon name="shield" :size="14" />你的账号是好的：下面这些入口都能打开，登录状态没有问题。</li>
-          <li><UiIcon name="check" :size="14" />服务是好的：这一页渲染出来了，说明取数据那条路是通的。</li>
-          <li><UiIcon name="search" :size="14" />只有这一个地址没有内容 —— 换上面任意一条即可，不用等也不用重试。</li>
-        </ul>
-      </div>
+      <div class="notfound__scope"><h3>处理建议</h3><p>{{ state === '404' ? '请检查链接地址，或从导航中进入所需页面。' : state === 'denied' ? '请核对当前账号，或联系相关人员确认访问范围。' : '请稍后重新打开所需页面；已保存的本地记录仍可查看。' }}</p></div>
     </section>
 
     <p class="ws-muted t-note" style="margin-top: var(--sp-4)">

@@ -65,6 +65,7 @@ dist-ssr/
 .tmp-evidence/
 .tmp-build/
 .tmp-impeccable/
+/.impeccable/questions/
 # 重设计调研时抓下来的原始 CSS / HTML 证据（约 48MB）：
 # 结论已经写进 DESIGN-RESEARCH.md 与 DESIGNEEER-DIRECTORY.md，原始件只当本地证据留着，
 # 不进版本库 —— 48MB 的抓取物会把仓库撑坏，而且下次抓就覆盖了。

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import OverviewMetric from '../components/OverviewMetric.vue'
 /**
  * 个人画像 · v8
  * ---------------------------------------------------------------------------
@@ -40,6 +41,7 @@ import { LayoutGroup, motion } from 'motion-v'
 import { demo } from '../store'
 import { COLLECT_ITEMS, DIRECTION_PLANS, PROFILE_FIELDS, REPORT_SECTIONS, STUDENT } from '../data/student'
 import type { FieldSource, ProfileField } from '../data/types'
+import DetailPopover from '../components/DetailPopover.vue'
 import PageHeading from '../components/PageHeading.vue'
 import UiIcon from '../components/UiIcon.vue'
 import InfoSheet from '../components/InfoSheet.vue'
@@ -116,7 +118,7 @@ const SOURCE_GROUPS: { key: string; label: string; from: ProfileField['source'][
 const CONF_GROUPS = [
   { key: 'high', title: '比较确定', hint: '有正式来源或多处印证' },
   { key: 'mid', title: '还要核对', hint: '来自对话，尚未核验' },
-  { key: 'low', title: '依据不足', hint: '只提过一次或还没聊到' },
+  { key: 'low', title: '依据不足', hint: '只提过一次或待补充' },
 ]
 
 /** 缺口说明：demo 数据里没有 reason / suggested_next_action，所以在这里显式写清楚 */
@@ -181,6 +183,7 @@ const DEMO_EDGES: DependencyEdgeView[] = (() => {
  * 2. 读取与更正（能力与原来一致：demo / service 双模式，逐条更正写回）
  * ======================================================================== */
 
+const profileTab = ref<'facts' | 'judgments' | 'gaps' | 'sources'>('facts')
 const loading = ref(false)
 const serviceError = ref('')
 const livePanel = computed(() => backendDemo.state.liveWorkspace?.profile_panel)
@@ -442,10 +445,10 @@ const modes = [
   { key: 'source', label: '按来源', note: '按"这条是谁给的"归拢' },
   { key: 'time', label: '按时间', note: '按记录时间归拢，时间未提供的单列' },
   { key: 'topic', label: '按主题', note: '按"这是哪一类情况"归拢' },
-  { key: 'weight', label: '按对结论的贡献', note: '按实际依赖这条资料的判断数量归拢' },
-  { key: 'conf', label: '按可信度', note: '按"这条有多结实"归拢' },
+  { key: 'weight', label: '按关联判断', note: '按实际依赖这条资料的判断数量归拢' },
+  { key: 'conf', label: '按可信度', note: '按"这条是否充分"归拢' },
 ] as const
-const mode = ref<'topic' | 'source' | 'time' | 'weight' | 'conf'>('source')
+const mode = ref<'topic' | 'source' | 'time' | 'weight' | 'conf'>('topic')
 const focus = ref<string | null>(null)   // 来源视角下只留一类的旧能力
 const confFocus = ref<string | null>(null)
 const anyFocus = computed(() => (mode.value === 'conf' ? confFocus.value : mode.value === 'source' ? focus.value : null))
@@ -476,8 +479,8 @@ const groups = computed<RowGroup[]>(() => {
   }
   if (mode.value === 'weight') {
     return [
-      { key: 'many', title: '撑起多条判断', hint: '至少两条判断依赖这些信息', rows: rows.filter(row => row.supports >= 2) },
-      { key: 'one', title: '撑起一条判断', hint: '依赖关系可以在每条的原始依据里核对', rows: rows.filter(row => row.supports === 1) },
+      { key: 'many', title: '支持多项判断', hint: '至少两条判断依赖这些信息', rows: rows.filter(row => row.supports >= 2) },
+      { key: 'one', title: '支持单项判断', hint: '依赖关系可以在每条的原始依据里核对', rows: rows.filter(row => row.supports === 1) },
       { key: 'none', title: '暂未参与判断', hint: '信息仍然保留，不用贡献大小判断它是否值得记录', rows: rows.filter(row => row.supports === 0) },
     ]
   }
@@ -800,7 +803,7 @@ const litFields = computed(() => new Set(activeConclusion.value ? conclusionMap.
 const litConclusions = computed(() => new Set(activeField.value ? fieldDeps.value[activeField.value] ?? [] : []))
 
 /** A 段：一行一次展开（键盘由 <button> 原生负责 Enter / Space） */
-function toggleRow(key: string) { openField.value = openField.value === key ? null : key }
+
 /** B 段：一条判断一次展开 */
 function toggleConclusion(key: string) { openConclusion.value = openConclusion.value === key ? null : key }
 /**
@@ -823,7 +826,9 @@ function bindConclusion(key: string, el: Element | null) {
 }
 const flashId = ref('')
 let flashTimer = 0
-function jumpToConclusion(key: string) {
+async function jumpToConclusion(key: string) {
+  profileTab.value = 'judgments'
+  await nextTick()
   conclusionEls.get(key)?.scrollIntoView({ block: 'center', behavior: reduced() ? 'instant' : 'smooth' })
   flashId.value = key
   window.clearTimeout(flashTimer)
@@ -833,7 +838,9 @@ function jumpToConclusion(key: string) {
 /** B 段的缺口标记 → C 段那条缺口：滚过去 + 闪一下，让"堵在哪"有落点 */
 const gapFlash = ref('')
 let gapTimer = 0
-function jumpToGap(key: string) {
+async function jumpToGap(key: string) {
+  profileTab.value = 'gaps'
+  await nextTick()
   document.querySelector(`[data-gap="${key}"]`)?.scrollIntoView({ block: 'center', behavior: reduced() ? 'instant' : 'smooth' })
   gapFlash.value = key
   window.clearTimeout(gapTimer)
@@ -845,6 +852,7 @@ function jumpToGap(key: string) {
  * 44px 行上）。视角会过滤掉行，所以找不到时先把视角放回"按主题"再看一次。
  */
 async function jumpToField(key: string) {
+  profileTab.value = 'facts'
   openField.value = key
   await nextTick()
   let el = document.querySelector<HTMLElement>(`.p7-row[data-key="${key}"]`)
@@ -912,9 +920,9 @@ function exportProfile(){const url=URL.createObjectURL(new Blob([JSON.stringify(
 
 <template>
   <div class="ws-page profile-page p7">
-    <PageHeading title="个人画像" :description="'顾问现在对你的了解，一共 '+tally.total+' 条。每一条都写着从哪来、有多结实、什么时候记下的。不同意就直接改，原始依据仍保留。'"><template #meta><div class="c2-page-meta"><span v-if="live">已读取的档案</span><span>{{ known.length }} 条已知 · {{ progress.gap }} 条待补充</span><span>{{ new Set(known.map(row=>row.desc)).size }} 个来源</span><span>每条都能追到原始依据</span></div></template>
+    <PageHeading title="个人画像" description="查看与核对个人信息，了解这些资料如何影响方向建议。"><template #meta><div class="c2-page-meta"><span v-if="live">已读取的档案</span><span>{{ known.length }} 条已知 · {{ progress.gap }} 条待补充</span><span>{{ new Set(known.map(row=>row.desc)).size }} 个来源</span><span>每条都能追到原始依据</span></div></template>
       <button class="btn" @click="exportProfile"><UiIcon name="download" :size="16"/>导出画像</button>
-      <RouterLink class="btn" to="/chat">{{ progress.gap ? '补一条' : '更新信息' }}<UiIcon name="arrow" :size="16" /></RouterLink>
+      <RouterLink class="btn" to="/chat">{{ progress.gap ? '补充信息' : '更新信息' }}<UiIcon name="arrow" :size="16" /></RouterLink>
     </PageHeading>
 
     <StatusBanner
@@ -929,24 +937,30 @@ function exportProfile(){const url=URL.createObjectURL(new Blob([JSON.stringify(
 
     <!-- ═══ 活的度量：可信度环从 0 生长到实际值；数字旁边写清是谁算的 ═══ -->
     <section class="c2-profile-stats" aria-label="画像信息概览">
-      <article class="c2-profile-stat"><strong>{{ known.length }}</strong><small>条</small><h2>已经了解</h2><p>画像池共 {{ tally.total }} 条，已收到的信息都在这里</p></article>
-      <article class="c2-profile-stat"><strong>{{ confBands[0]?.count ?? 0 }}</strong><small>条</small><h2>依据充分</h2><p>有正式来源或多处事实印证</p></article>
-      <article class="c2-profile-stat"><strong>{{ confBands[1]?.count ?? 0 }}</strong><small>条</small><h2>还要核对</h2><p>已记录，仍需进一步确认</p></article>
-      <article class="c2-profile-stat"><strong>{{ progress.gap }}</strong><small>条</small><h2>还没聊到</h2><p>补充这些信息，判断会更完整</p></article>
+      <OverviewMetric label="已记录信息"><template #value><strong>{{ known.length }}</strong><small>条</small></template><p>画像池共 {{ tally.total }} 条，已收到的信息都在这里</p></OverviewMetric>
+      <OverviewMetric label="依据充分"><template #value><strong>{{ confBands[0]?.count ?? 0 }}</strong><small>条</small></template><p>有正式来源或多处事实印证</p></OverviewMetric>
+      <OverviewMetric label="还要核对"><template #value><strong>{{ confBands[1]?.count ?? 0 }}</strong><small>条</small></template><p>已记录，仍需进一步确认</p></OverviewMetric>
+      <OverviewMetric label="待补充"><template #value><strong>{{ progress.gap }}</strong><small>条</small></template><p>补充这些信息，判断会更完整</p></OverviewMetric>
     </section>
 
 
-    <ProfileInsights ref="insights" />
+    <nav class="workspace-tabs profile-tabs" aria-label="个人画像内容">
+      <button :aria-pressed="profileTab === 'facts'" @click="profileTab='facts'">个人信息 <span>{{ known.length }}</span></button>
+      <button :aria-pressed="profileTab === 'judgments'" @click="profileTab='judgments'">分析与判断</button>
+      <button :aria-pressed="profileTab === 'gaps'" @click="profileTab='gaps'">待补充 <span>{{ gapRows.length }}</span></button>
+      <button :aria-pressed="profileTab === 'sources'" @click="profileTab='sources'">资料管理</button>
+    </nav>
+    <section v-show="profileTab === 'judgments'"><ProfileInsights ref="insights" /></section>
 
     <!-- ═══ A · 我知道什么 ═══ -->
-    <section class="p7-block" aria-labelledby="p7-a-title">
+    <section v-show="profileTab === 'facts'" class="p7-block" aria-labelledby="p7-a-title">
       <header class="p7-block__head">
         <div>
-          <h2 id="p7-a-title"><span class="p7-block__tag">A</span>我知道什么</h2>
-          <p>每条都带着来源、可信度和时间。<strong>整行可以点</strong>：展开后是这条信息的原始依据、它撑起的判断，以及更正入口。悬停或聚焦一条，B 段里用到它的判断会一起亮。</p>
+          <h2 id="p7-a-title">个人信息</h2>
+          <p>核对当前记录，查看依据或更正内容。</p>
         </div>
-        <div class="p7-modes" role="group" aria-label="换一种组织方式">
-          <span class="p7-modes__label">换个看法</span>
+        <DetailPopover title="组织个人信息" label="选择个人信息组织方式" class="profile-organize"><template #trigger>{{ modes.find(item => item.key === mode)?.label }}<UiIcon name="chevron" :size="16" /></template><div class="p7-modes" role="group" aria-label="换一种组织方式">
+          <span class="p7-modes__label">组织方式</span>
           <div class="p7-modes__set">
             <button
               v-for="item in modes"
@@ -958,12 +972,7 @@ function exportProfile(){const url=URL.createObjectURL(new Blob([JSON.stringify(
               data-testid="view-mode"
               @click="mode = item.key"
             >{{ item.label }}</button>
-          </div>
-        </div>
-      </header>
-
-      <!-- 第二层：在同一个视角里再收窄（原来那个"来源筛选"并到这里，不再有第二套控件） -->
-      <div v-if="mode === 'source' || mode === 'conf'" class="p7-subfilter" data-testid="sub-filter">
+          </div><div v-if="mode === 'source' || mode === 'conf'" class="p7-subfilter" data-testid="sub-filter">
         <span>只看</span>
         <button
           class="p7-subchip"
@@ -993,6 +1002,11 @@ function exportProfile(){const url=URL.createObjectURL(new Blob([JSON.stringify(
         </template>
         <span v-if="filteredNote" class="p7-subfilter__note">{{ filteredNote }}</span>
       </div>
+        </div></DetailPopover>
+      </header>
+
+      <!-- 第二层：在同一个视角里再收窄（原来那个"来源筛选"并到这里，不再有第二套控件） -->
+
 
       <!-- 组织方式切换后，分组与顺序都变：这里的 layout 让"重组"被看见 -->
       <LayoutGroup>
@@ -1041,14 +1055,7 @@ function exportProfile(){const url=URL.createObjectURL(new Blob([JSON.stringify(
                 @focusout="hoverField = null"
               >
                 <!-- 整行就是命中区：这一行的关系与来历都从这一下开始，注脚尺寸只留给信息本身 -->
-                <button
-                  class="p7-row__hit"
-                  type="button"
-                  :aria-expanded="openField === row.key"
-                  :aria-controls="`p7-more-${row.key}`"
-                  :title="openField === row.key ? `收起「${row.label}」的来历与操作` : `展开「${row.label}」的来历与操作`"
-                  @click="toggleRow(row.key)"
-                >
+                <DetailPopover class="profile-fact" :title="row.label" :label="row.label + '：' + fieldValue(row) + '，查看依据'" :model-value="openField === row.key" @update:model-value="(open: boolean) => openField = open ? row.key : null"><template #trigger>
                   <span class="p7-row__label">{{ row.label }}</span>
                   <span class="p7-row__main">
                     <span class="p7-row__value" :title="fieldValue(row)">{{ valueParts(row).head }}</span>
@@ -1064,25 +1071,12 @@ function exportProfile(){const url=URL.createObjectURL(new Blob([JSON.stringify(
                         :class="{ 'p7-support--on': openField === row.key, 'p7-support--none': !row.supports }"
                         :title="row.supports ? `用到它的判断：${depsTextByField[row.key]}` : '还没有判断用到这条信息'"
                       >
-                        <i class="p7-support__mark" aria-hidden="true" />{{ row.supports ? `支撑 ${row.supports} 条判断` : '还没进任何判断' }}
+                        <i class="p7-support__mark" aria-hidden="true" />{{ row.supports ? `支撑 ${row.supports} 条判断` : '暂未用于判断' }}
                       </span>
-                      <span class="p7-row__cue">
-                        {{ openField === row.key ? '收起来历' : '来历与操作' }}<UiIcon name="chevron" :size="14" />
-                      </span>
+                      <span v-if="row.conf < 0.8" class="profile-needs-check">待核对</span><span class="p7-row__cue">查看依据<UiIcon name="info" :size="16" /></span>
                     </span>
                   </span>
-                </button>
-
-                <!-- 一层折叠：`Foldable variant=inline`。原来的 v-show 自实现与组件重复，
-                     现在这一页所有可折叠处都只走 Foldable（另外两处是 static / 度量口径）。
-                     来源与时间已经在这一行的 SourceChip 里，所以这里不再印第二遍。 -->
-                <Foldable
-                  class="p7-row__more"
-                  variant="inline"
-                  :model-value="openField === row.key"
-                  :title="row.desc"
-                  @update:model-value="(open: boolean) => (openField = open ? row.key : null)"
-                >
+                </template><p>{{ row.desc }} · {{ row.noted }}</p><ConfidenceBadge :confidence="row.conf" />
                   <div :id="`p7-more-${row.key}`" class="p7-row__more-body">
                     <template v-if="row.evidence.length">
                       <p class="p7-facts__title">原始证据</p>
@@ -1093,13 +1087,13 @@ function exportProfile(){const url=URL.createObjectURL(new Blob([JSON.stringify(
                     <p v-else class="p7-evidence__none">这条没有附原始证据，只有来源与时间。</p>
 
                     <!-- 关系本身在折叠内可点：跳到 B 段那条判断（≥44px 的行，不再是 24px 的 chip） -->
-                    <p class="p7-facts__title">它撑起的判断</p>
+                    <p class="p7-facts__title">该信息支持的判断</p>
                     <ul v-if="fieldDeps[row.key]?.length" class="p7-links">
                       <li v-for="key in fieldDeps[row.key]" :key="key">
                         <button class="p7-link" type="button" @click="jumpToConclusion(key)">
                           <span class="p7-link__label">{{ conclusionMap[key]?.label ?? key }}</span>
                           <span class="p7-link__value" :title="conclusionMap[key]?.brief">{{ conclusionMap[key]?.brief }}</span>
-                          <span class="p7-link__go">去 B 段<UiIcon name="arrow" :size="14" /></span>
+                          <span class="p7-link__go">查看判断<UiIcon name="arrow" :size="14" /></span>
                         </button>
                       </li>
                     </ul>
@@ -1110,7 +1104,7 @@ function exportProfile(){const url=URL.createObjectURL(new Blob([JSON.stringify(
                       <button class="ws-text-button" type="button" @click="edit(row)">更正信息<UiIcon name="arrow" :size="14" /></button>
                     </div>
                   </div>
-                </Foldable>
+                </DetailPopover>
               </motion.li>
             </motion.ul>
           </motion.section>
@@ -1133,11 +1127,11 @@ function exportProfile(){const url=URL.createObjectURL(new Blob([JSON.stringify(
     </section>
 
     <!-- ═══ B · 所以判断了什么 ═══ -->
-    <section class="p7-block" aria-labelledby="p7-b-title">
+    <section v-show="profileTab === 'judgments'" class="p7-block" aria-labelledby="p7-b-title">
       <header class="p7-block__head">
         <div>
-          <h2 id="p7-b-title"><span class="p7-block__tag">B</span>所以判断了什么</h2>
-          <p>第一行是判断本身，下面写着它靠 A 的哪几条、缺哪几条（缺的标出 C 段编号）。<strong>整行可以点</strong>：展开后能读完整判断与原话，并逐条跳到 A 段那条信息或 C 段那张缺口卡。</p>
+          <h2 id="p7-b-title">资料支持的判断</h2>
+          <p>查看判断与对应依据；资料不足或变化时，相关结论会保留提示。</p>
         </div>
         <!-- `needs_recompute` 在本页原来是最重的一处印法（红底 + 左红条 + 14/12px 两级字）。
              改成 `StatTile state="recompute"`：与 MeterRow / StatTile 同一把 0–1 的尺，
@@ -1148,9 +1142,9 @@ function exportProfile(){const url=URL.createObjectURL(new Blob([JSON.stringify(
           class="p7-recompute"
           :value="needsRecompute"
           unit="条"
-          label="需要重算的判断"
+          label="待更新的判断"
           :state="needsRecompute ? 'recompute' : 'done'"
-          :trend="{ label: `你更正了 ${changedFields.size} 条信息 · ${live ? '服务标记' : '演示模式：本地按依赖关系模拟'}` }"
+          :trend="{ label: `你更正了 ${changedFields.size} 条信息 · ${live ? '服务标记' : '依据关联资料更新'}` }"
         />
       </header>
 
@@ -1259,11 +1253,11 @@ function exportProfile(){const url=URL.createObjectURL(new Blob([JSON.stringify(
     </section>
 
     <!-- ═══ C · 还缺什么 ═══ -->
-    <section class="p7-block" aria-labelledby="p7-c-title">
+    <section v-show="profileTab === 'gaps'" class="p7-block" aria-labelledby="p7-c-title">
       <header class="p7-block__head">
         <div>
-          <h2 id="p7-c-title"><span class="p7-block__tag">C</span>还缺什么</h2>
-          <p>缺口只在这里讲一次：缺什么、为什么重要、卡住了哪几条判断、去哪补、现在能做什么。</p>
+          <h2 id="p7-c-title">建议补充的信息</h2>
+          <p>优先完善会影响方向选择的信息。</p>
         </div>
         <span class="p7-block__count">{{ gapRows.length }} 条待补充</span>
       </header>
@@ -1309,7 +1303,7 @@ function exportProfile(){const url=URL.createObjectURL(new Blob([JSON.stringify(
          「溯源做成一个折叠的『来源』」。这里不是"还有更多内容"，是"我为什么该这么理解"，
          所以用 Foldable 的 **static** 形态：标题照排，内容始终可见。
          改 static 之后本页的折叠层数：度量口径(static) + 行内(1 层) + 这里(static) = **1 层**。 -->
-    <Foldable class="p7-sources" static variant="section" title="资料来源与核验说明">
+    <Foldable v-show="profileTab === 'sources'" class="p7-sources" static variant="section" title="资料来源与核验说明">
       <div class="ws-context__body">
         <section>
           <h3>可获取的信息</h3>
@@ -1328,8 +1322,8 @@ function exportProfile(){const url=URL.createObjectURL(new Blob([JSON.stringify(
       </div>
     </Foldable>
 
-    <aside class="c2-profile-side" aria-label="画像操作与来源">
-      <section><h2>这份画像你说了算</h2><RouterLink class="btn" to="/chat">补充一条信息<UiIcon name="plus" :size="16" /></RouterLink><button class="btn" :disabled="loading" @click="loadWorkspace">{{ loading ? '正在读取…' : '重新核对档案' }}</button><p>点开一条信息，可以查看依据、修改内容。更正后会标出受影响的判断。</p></section>
+    <aside v-show="profileTab === 'sources'" class="c2-profile-side" aria-label="画像操作与来源">
+      <section><h2>核对与管理资料</h2><RouterLink class="btn" to="/chat">补充一条信息<UiIcon name="plus" :size="16" /></RouterLink><button class="btn" :disabled="loading" @click="loadWorkspace">{{ loading ? '正在读取…' : '重新核对档案' }}</button><p>点开一条信息，可以查看依据、修改内容。更正后会标出受影响的判断。</p></section>
       <section><h2>这 {{ known.length }} 条从哪里来</h2><div v-for="source in SOURCE_GROUPS" :key="source.key" class="c2-source-row"><span>{{ source.label }}</span><span class="c2-source-track" role="meter" :aria-label="source.label" :aria-valuenow="known.filter(row => source.from.includes(row.desc)).length" :aria-valuemax="Math.max(1, known.length)" aria-valuemin="0"><i :style="{width: known.filter(row => source.from.includes(row.desc)).length / Math.max(1, known.length) * 100 + '%'}" /></span><b>{{ known.filter(row => source.from.includes(row.desc)).length }}</b></div></section>
       <section><h2>{{ identity.name }}</h2><p>{{ identity.line }}</p><p>整体可信度 {{ Math.round(trustShown) }}% · 覆盖 {{ known.length }} / {{ tally.total }}</p><Foldable variant="inline" title="查看计算依据"><p>{{ trustOrigin }}。{{ statusLine }}</p><p>{{ coverageNote }}</p></Foldable></section>
     </aside>

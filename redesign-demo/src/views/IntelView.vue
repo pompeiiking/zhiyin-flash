@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import DetailPopover from '../components/DetailPopover.vue'
 /*
  * IntelView —— 岗位资讯（`/intel`）。
  *
@@ -18,7 +19,7 @@
  *   ③ 同类别其它条目 + 它们与本文的关系（横向对比，卡片上更看不到）；
  *   ④ 弹层专有的来源说明（"咨询与课程记录 · 非招聘公告"这类口径）。
  * 卡片本身则加了：类别组头（12 条同构卡按类聚拢）、组内条数、
- * "同一批次读取"标记、以及每条**能核对的字段行**。
+ * "逐条保留读取时间"标记、以及每条**能核对的字段行**。
  * ============================================================================
  *
  * 另外两条对应 MIGRATION：
@@ -133,18 +134,18 @@ function clearFilter(){query.value='';kind.value='all'}
   <div class="ws-page intel-page">
     <PageHeading title="岗位资讯" description="先读事实，再看它和你有什么关系。每条保留要求、来源与读取时间。"><button class="btn" @click="clearFilter">清空筛选</button><button class="btn" @click="kind=kind==='career'?'all':'career';mode='facts'">{{ kind==='career'?'看全部资讯':'只看岗位要求' }}</button></PageHeading>
 
-    <section class="c2-profile-stats" aria-label="资讯概览"><article class="c2-profile-stat"><strong>{{ backendDemo.state.intel.length }}</strong><small>条</small><h2>这一批资讯</h2><p>同一批信息可按类别与时间重组</p></article><article class="c2-profile-stat"><strong>{{ kinds.length }}</strong><small>类</small><h2>可按类别筛选</h2><p>只显示这批资讯中出现的类别</p></article><article class="c2-profile-stat"><strong>{{ backendDemo.state.intel.filter(i=>source(i.source_url)).length }}</strong><small>条</small><h2>提供原始链接</h2><p>来源与有效期仍需逐条核对</p></article><article class="c2-profile-stat"><strong>{{ new Set(backendDemo.state.intel.map(i=>i.source_name||i.source_url||'来源未提供')).size }}</strong><small>个</small><h2>来源标记</h2><p>每条资讯单独核对来源</p></article></section>
+    <div class="intel-summary"><span>{{ items.length }} 条资讯</span><DetailPopover title="资讯范围与来源" label="查看资讯范围与来源"><dl class="intel-source-counts"><div><dt>已收录资讯</dt><dd>{{ backendDemo.state.intel.length }} 条</dd></div><div><dt>可筛选类别</dt><dd>{{ kinds.length }} 类</dd></div><div><dt>原始来源链接</dt><dd>{{ backendDemo.state.intel.filter(i=>source(i.source_url)).length }} 条</dd></div></dl><p>来源、读取时间与有效期按每条记录分别核对。</p></DetailPopover></div>
     <div class="c2-intel-body">
       <template v-if="mode==='facts'">
-        <details class="c2-intel-retrieve"><summary>检索最新资讯 / 职业匹配</summary><form class="remote-search" @submit.prevent="load()">
+        <DetailPopover class="intel-retrieve-trigger" title="检索与职业匹配" label="检索新资讯或查看职业匹配"><template #trigger>检索新资讯<UiIcon name="search" :size="16"/></template><section class="intel-search-surface" aria-label="检索与匹配"><form class="remote-search" @submit.prevent="load()">
           <label class="ws-field">检索最新资讯<input v-model="remoteQuery" placeholder="职业、方向或关键词…" maxlength="200"/></label>
           <button class="btn btn--primary" type="submit" :disabled="busy">{{ busy?'正在读取…':'检索' }}</button>
           <button class="btn" type="button" :disabled="busy" @click="load(true)">刷新资讯</button>
-        </form><button class="ws-text-button" @click="mode='match'">结合个人情况看职业匹配 →</button></details>
+        </form><button class="ws-text-button" @click="mode='match'">查看职业匹配 →</button></section></DetailPopover>
         <StatusBanner v-if="error" class="intel-banner" tone="error" :message="error" retry-label="重试" @retry="load()"/>
         <StatusBanner v-if="status" class="intel-banner" tone="success" :message="status" :open="!!status" @dismiss="status=''"/>
 
-<section class="c2-intel-filter ws-paper"><header class="ws-section-head"><div><h2>先筛一遍，再看</h2><p>只筛选这一批已读取的条目，换排序时条目重新组织。</p></div><span>{{ items.length }} 条</span></header><div class="c2-filter-row"><span>类别</span><div><button :aria-pressed="kind==='all'" @click="kind='all'">全部 {{ backendDemo.state.intel.length }}</button><button v-for="[key,label] in kinds" :key="key" :aria-pressed="kind===key" @click="kind=key">{{ label }} {{ backendDemo.state.intel.filter(i=>i.kind===key).length }}</button></div></div><div class="c2-filter-row"><span>热词</span><div><button v-for="word in hotWords" :key="word" :aria-pressed="query===word" @click="query=query===word?'':word">{{ word }} {{ keywordCount(word) }}</button></div></div><div class="c2-filter-row"><span>排序</span><div class="c2-lensbar" role="group" aria-label="组织方式"><button :aria-pressed="view==='relevance'" @click="view='relevance'">按对你的相关度</button><button :aria-pressed="view==='timeline'" @click="view='timeline'">按什么时候用得上</button><button :aria-pressed="view==='category'" @click="view='category'">按类别</button></div></div><label class="c2-intel-keyword">筛选资讯<input v-model="query" aria-label="筛选资讯" placeholder="在已读取条目中筛选关键词…"/></label><p class="c2-lens-hint">剩下 {{ items.length }} 条。类别分组与条数跟着筛选更新，原始条目仍保留。</p></section>
+<section class="intel-filter-bar" aria-label="查找与筛选资讯"><label class="c2-intel-keyword">查找资讯<input v-model="query" aria-label="查找资讯" placeholder="搜索标题或关键词…"/></label><DetailPopover class="intel-filter-trigger" title="筛选与排序" label="打开资讯筛选与排序"><template #trigger>筛选<UiIcon name="chevron" :size="16"/></template><section class="c2-intel-filter ws-paper"><header class="ws-section-head"><div><h2>筛选资讯</h2><p>只筛选这一批已读取的条目，换排序时条目重新组织。</p></div><span>{{ items.length }} 条</span></header><div class="c2-filter-row"><span>类别</span><div><button :aria-pressed="kind==='all'" @click="kind='all'">全部 {{ backendDemo.state.intel.length }}</button><button v-for="[key,label] in kinds" :key="key" :aria-pressed="kind===key" @click="kind=key">{{ label }} {{ backendDemo.state.intel.filter(i=>i.kind===key).length }}</button></div></div><div class="c2-filter-row"><span>热词</span><div><button v-for="word in hotWords" :key="word" :aria-pressed="query===word" @click="query=query===word?'':word">{{ word }} {{ keywordCount(word) }}</button></div></div><div class="c2-filter-row"><span>排序</span><div class="c2-lensbar" role="group" aria-label="组织方式"><button :aria-pressed="view==='relevance'" @click="view='relevance'">岗位优先</button><button :aria-pressed="view==='timeline'" @click="view='timeline'">按读取时间</button><button :aria-pressed="view==='category'" @click="view='category'">按类别</button></div></div><p class="c2-lens-hint">剩下 {{ items.length }} 条。类别分组与条数跟着筛选更新，原始条目仍保留。</p></section></DetailPopover></section>
         <div v-if="items.length && view!=='timeline'" class="intel-groups">
           <section v-for="g in groups" :key="g.key" class="intel-group">
             <header class="intel-group__head">
@@ -153,7 +154,7 @@ function clearFilter(){query.value='';kind.value='all'}
               <p class="intel-group__time">
                 <time v-if="g.items[0]?.fetched_at" :datetime="isoDay(g.items[0]?.fetched_at)">{{ timeLabel(g.items[0]?.fetched_at) }}</time>
                 <span v-else>时间未提供</span>
-                <span class="intel-group__batch">同一批次读取</span>
+                <span class="intel-group__batch">逐条保留读取时间</span>
                 <button class="ws-text-button intel-group__only" @click="kind=g.key;query=''">只看这一类</button>
               </p>
             </header>
@@ -163,11 +164,11 @@ function clearFilter(){query.value='';kind.value='all'}
                 <!-- 预览而不是全文：全文在弹层里（这是"核对来源"有增益的第一步） -->
                 <p class="intel-card__text">{{ preview(item.text) }}</p>
                 <!-- 来源与时间做进卡片结构，不再是灰字尾注 -->
-                <div class="intel-card__facts">
+                <DetailPopover :title="item.title || '资讯来源'" label="查看来源与读取时间"><template #trigger><UiIcon name="info" :size="16"/>来源信息</template><div class="intel-card__facts">
                   <span class="intel-fact"><span class="intel-fact__key">来源</span>{{ item.source_name || '未提供来源' }}</span>
                   <span class="intel-fact"><span class="intel-fact__key">读取</span><time v-if="item.fetched_at" :datetime="isoDay(item.fetched_at)">{{ isoDay(item.fetched_at) }}</time><template v-else>时间未提供</template></span>
-                  <span class="intel-fact"><span class="intel-fact__key">原文</span>{{ textLen(item.text) }} 字</span>
-                </div>
+
+                </div></DetailPopover>
                 <div class="desk-intel-item__source">
                   <a v-if="source(item.source_url)" class="ws-text-link" :href="source(item.source_url)" target="_blank" rel="noopener noreferrer">打开原始来源<UiIcon name="arrow" :size="16"/></a>
                   <span v-else class="ws-muted">未提供原始来源链接</span>
@@ -216,7 +217,7 @@ function clearFilter(){query.value='';kind.value='all'}
 
     <!-- 详情：shape=sheet（桌面右侧抽屉 / 小屏底部面板）。原来的 wide 必须一起去掉，
          否则 resolvedShape 里 wide 优先级更高，shape 会被静默覆盖。 -->
-    <aside class="c2-intel-side" aria-label="资讯来源与使用"><section><h2>这一批资讯从哪里来</h2><p>{{ backendDemo.state.intelOrigin === 'sample' ? '职业探索笔记，按方向整理职责、技能与准备事项。投递前请核对企业原始公告。' : '来自本次读取的资讯结果，每条保留自己的来源与读取时间。' }}</p><p>共 {{ backendDemo.state.intel.length }} 条、{{ kinds.length }} 类。读取时间与原始发布时间分别核对。</p></section><section><h2>先读事实，再决定</h2><p>点开一条资讯，可查看全文、核验清单和同类别的其他条目。核实岗位地点、学历要求及信息有效期，再纳入自己的计划。</p><RouterLink class="ws-text-link" to="/directions">回到方向比较 →</RouterLink></section></aside>
+    <aside class="c2-intel-side" aria-label="资讯来源与使用"><section><h2>已收录资讯从哪里来</h2><p>{{ backendDemo.state.intelOrigin === 'sample' ? '职业探索笔记，按方向整理职责、技能与准备事项。投递前请核对企业原始公告。' : '来自本次读取的资讯结果，每条保留自己的来源与读取时间。' }}</p><p>共 {{ backendDemo.state.intel.length }} 条、{{ kinds.length }} 类。读取时间与原始发布时间分别核对。</p></section><section><h2>先读事实，再决定</h2><p>点开一条资讯，可查看全文、核验清单和同类别的其他条目。核实岗位地点、学历要求及信息有效期，再纳入自己的计划。</p><RouterLink class="ws-text-link" to="/directions">回到方向比较 →</RouterLink></section></aside>
     <InfoSheet :open="reading!==null" shape="sheet" :title="reading?.title || '资讯详情'" @close="reading=null">
       <article v-if="reading" class="intel-detail">
         <div class="intel-detail__facts">
@@ -322,7 +323,7 @@ function clearFilter(){query.value='';kind.value='all'}
 /* 日期一行的宽度：把"只看这一类"收进这一行，窄屏整行换行而不是被拆散 */
 .intel-group__time { flex: 0 1 auto; }
 .intel-group__only { flex: none; margin-left: var(--sp-2); }
-/* "同一批次读取"：把"12 条时间戳一模一样"这件事实说出来，
+/* "逐条保留读取时间"：把"12 条时间戳一模一样"这件事实说出来，
    而不是让它看起来像 12 个独立时点（DESIGN-LANGUAGE §4.4 状态与不确定性显形） */
 .intel-group__batch {
   padding: 1px var(--sp-2);

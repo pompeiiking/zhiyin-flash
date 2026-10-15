@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import DetailPopover from '../components/DetailPopover.vue'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { demo } from '../store'
@@ -36,7 +37,7 @@ const activeTheory = computed(() => registry.theoryCards?.[0])
 const followTail = ref(true)
 const announcement = ref('')
 /** 「资料使用说明」展开态：解释挂在输入区旁边，不占常驻空间，也不与主行动争位置 */
-const composerNote = ref(false)
+
 /**
  * 桌面（宽导航模式）才给右侧 rail 让出一列。
  * 用导航模式而不是纯 width 媒体查询：页面宽度与"壳层是不是窄导航"是一致的，
@@ -507,7 +508,7 @@ const hostState = computed<'idle' | 'thinking' | 'speaking'>(() => {
  * 它不是新的状态源：判据仍然是 hostState，而 hostState 由真实字段驱动
  * （thinking / isStreaming，见下面的 hostState 定义）。
  */
-const presencePreview = ref<'idle' | 'thinking' | 'speaking' | null>('thinking')
+const presencePreview = ref<'idle' | 'thinking' | 'speaking' | null>(null)
 const presenceState = computed(() => backendDemo.state.dataMode === 'service' || demo.state.chatBusy ? hostState.value : presencePreview.value ?? hostState.value)
 watch(() => demo.state.chatBusy, busy => { if (busy) presencePreview.value = null })
 const presenceStateLabel = computed(() => presenceState.value === 'thinking' ? '正在想' : presenceState.value === 'speaking' ? '正在说' : '在听')
@@ -809,7 +810,7 @@ onUnmounted(() => {
           <span class="dialogue-presence__state"><i class="dialogue-presence__dot" aria-hidden="true" />{{ presenceStateLabel }}</span>
         </p>
         <p class="dialogue-presence__role">{{ agentOf(agentKeyOf(host)).role }}</p><span class="dialogue-presence__status"><i />{{ presenceStateLabel }}</span>
-      </div><div v-if="backendDemo.state.dataMode === 'demo'" class="c2-presence-controls" role="group" aria-label="顾问状态预览"><button v-for="state in [{key:'idle',label:'待命'},{key:'thinking',label:'思考'},{key:'speaking',label:'说话'}]" :key="state.key" :aria-pressed="presenceState === state.key" :disabled="demo.state.chatBusy" @click="presencePreview = state.key as 'idle' | 'thinking' | 'speaking'">{{ state.label }}</button></div>
+      </div>
     </section>
     <!-- 桌面右侧 rail：产物与依据常驻在旁边，窄屏收起（见 dialogue.css） -->
     <aside class="dialogue-rail" aria-label="这次咨询的产出与依据">
@@ -1041,7 +1042,7 @@ onUnmounted(() => {
               <SkeletonBlock variant="card" :columns="2" />
             </div>
           </template>
-          <p class="chat-skeleton__label">正在分析咨询内容…（回答会分成结论、依据与行动几块，逐块落位）</p>
+          <p class="chat-skeleton__label">正在分析咨询内容…</p>
         </div>
       </div>
     </div></div>
@@ -1058,10 +1059,9 @@ onUnmounted(() => {
       </ul>
       <p v-if="attachmentError" class="ws-field-error" role="alert">{{ attachmentError }}</p>
       <div class="composer-field">
-        <button type="button" class="composer-info" :class="{ 'is-on': composerNote }" :aria-expanded="composerNote" aria-controls="composer-note" :aria-label="composerNote ? '收起资料使用说明' : '资料使用说明'" @click="composerNote = !composerNote"><UiIcon name="info" :size="17" /></button>
         <form @submit.prevent="send()">
           <textarea ref="input" v-model="draft" rows="1" aria-label="咨询内容" placeholder="说说最想解决的事…" @input="grow" @keydown="keydown" />
-          <div class="composer-actions">
+          <div class="composer-actions"><DetailPopover title="咨询与资料使用" label="查看咨询与资料使用说明"><p>Enter 发送，Shift + Enter 换行。</p><p>附件名称保留在当前咨询；需要读取文件内容时，请使用资料上传入口。</p></DetailPopover>
             <button type="button" class="composer-action desk-attachment-control" aria-label="添加材料" :disabled="thinking" @click="attachmentInput?.click()"><UiIcon name="attachment" :size="20" /></button>
             <input ref="attachmentInput" type="file" class="sr-only" tabindex="-1" accept=".txt,.csv,.json,.md,.pdf,.docx" @change="attach" />
             <button v-if="canStop" type="button" class="btn composer-stop" @click="stopGeneration"><span class="composer-stop__mark" aria-hidden="true" />停止生成</button>
@@ -1071,7 +1071,6 @@ onUnmounted(() => {
       </div>
       <!-- 常驻提示改为聚焦时出现：键盘用法在最需要它的时刻才出现，不长期占一行 -->
       <p class="ws-composer__note"><span>Enter 发送 · Shift + Enter 换行</span></p>
-      <p v-if="composerNote" id="composer-note" class="composer-note">附件名称保留在当前咨询；需要读取文件内容时，请使用资料上传入口。</p>
       <p v-if="stalled" class="composer-stalled" role="status">已停止生成。已生成的内容保留在对话里，可以继续追问或重新发送。</p>
     </div>
     <!-- shape 显式写成 sheet：`inspector` 是 @deprecated 的旧 prop，而 InfoSheet.vue:54-58 的

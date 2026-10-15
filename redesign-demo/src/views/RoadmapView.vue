@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import OverviewMetric from '../components/OverviewMetric.vue'
 import { computed, ref } from 'vue'
 import { demo } from '../store'
 import PageHeading from '../components/PageHeading.vue'
@@ -123,7 +124,7 @@ function blockedBy(stage:typeof stages.value[number]){return (stage.dependsOn??[
 <template v-else>
 <div class="journey-action-grid">
 <div class="journey-action-main">
-<section class="c2-profile-stats" aria-label="阶段计划概览"><article class="c2-profile-stat"><strong>{{ currentStage }}</strong><small>/ {{ stages.length }} 步</small><h2>正在走的那一步</h2><p>从当前目标开始，再接上下一阶段</p></article><article class="c2-profile-stat"><strong>{{ doneCount }}</strong><small>/ {{ totalCount }} 条</small><h2>任务已完成</h2><p>{{ pending.length }} 件仍在推进，完成记录独立保留</p></article><article class="c2-profile-stat"><strong>{{ applications }}</strong><small>家</small><h2>岗位申请</h2><p>{{ pipelineText || '还没有可核对的投递记录' }}</p></article><article class="c2-profile-stat"><strong>{{ interviews }}</strong><small>次</small><h2>面试 / 回应</h2><p>取自投递记录，没有提供时保留为空</p></article></section>
+<section class="c2-profile-stats" aria-label="阶段计划概览"><OverviewMetric label="当前阶段"><template #value><strong>{{ currentStage }}</strong><small>/ {{ stages.length }} 步</small></template><p>从当前目标开始，再接上下一阶段</p></OverviewMetric><OverviewMetric label="任务已完成"><template #value><strong>{{ doneCount }}</strong><small>/ {{ totalCount }} 条</small></template><p>{{ pending.length }} 件仍在推进，完成记录独立保留</p></OverviewMetric><OverviewMetric label="岗位申请"><template #value><strong>{{ applications }}</strong><small>家</small></template><p>{{ pipelineText || '还没有可核对的投递记录' }}</p></OverviewMetric><OverviewMetric label="面试 / 回应"><template #value><strong>{{ interviews }}</strong><small>次</small></template><p>取自投递记录，没有提供时保留为空</p></OverviewMetric></section>
 <!-- 阶段：当前阶段（i===0）static＝永远可见（审计"当前阶段默认收起＝用户看不到自己该做什么"）；
      其余阶段保留可折叠、但默认展开（审计"第二三阶段默认一屏看不到"）。两者同一形状，
      LiveActionPlan 的阶段头用同一套规则，/plan 与 /home 不再漂移。 -->

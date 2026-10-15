@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import DetailPopover from '../components/DetailPopover.vue'
+import OverviewMetric from '../components/OverviewMetric.vue'
 import { computed, ref } from 'vue'
 import { backendDemo } from '../lib/backend-demo'
 import { demo } from '../store'
@@ -263,18 +265,18 @@ const undatedTasks=computed(()=>demo.use.now.value.filter(task=>!task.due))
 <template>
 <div class="ws-page schedule-page"><PageHeading title="日历与课表" description="关键节点、今日任务和学校课程，各自保留来源。"><template #meta><div class="sched-meta"><span class="sched-meta__tag sched-meta__tag--demo">本地资料</span><span class="sched-meta__tag">{{ backendDemo.state.academic?.term || '学期未导入' }} · 第 {{ thisWeek?.n }} 周</span><span class="sched-meta__tag">{{ timed.length }} 门课有节次 · 本周课 {{ hours(thisWeek?.courseHours ?? 0) }}</span><span class="sched-meta__sep" aria-hidden="true" /><ConfidenceBadge :confidence="0.9" /><ConfidenceBadge :confidence="0.55" /><ConfidenceBadge v-if="pendingTimeCourses || pendingMarkCount" :confidence="null" /></div></template><button class="btn" :disabled="calendarBusy" @click="loadCalendar">{{ calendarBusy?'正在读取…':(readOnce?'更新最新日程':'读取最新日程') }}</button><RouterLink class="btn" to="/academic"><UiIcon name="upload" :size="16" />管理导入资料</RouterLink></PageHeading>
 <p v-if="calendarError" class="ws-field-error" role="alert">{{ calendarError }}</p>
-<!-- ======= ① 结构显形：三周的课量与任务量摆在同一把尺子上 =======
+<!-- ======= ① 结构显形：三周的课程与任务用时对比 =======
      它是"课多的一周任务排得少"的**可核对版本**：两根横条共用一根刻度，
      课量长的与任务量长的分别是哪一周，一眼就分得出来。
      数据全部来自真实课表（节次 + weeks）与真实任务（按阶段计划的时间窗归周）。 -->
 
 <div class="sched-split">
 <div class="sched-split__main">
- <section class="c2-profile-stats" aria-label="本周课程与任务占用"><article class="c2-profile-stat"><strong>{{ hours(thisWeek?.courseHours ?? 0) }}</strong><h2>本周课的占用</h2><p>按导入课程节次计算</p></article><article class="c2-profile-stat"><strong>{{ hours(thisWeek?.taskHours ?? 0) }}</strong><h2>任务排进去的</h2><p>任务与课量使用同一刻度</p></article><article class="c2-profile-stat"><strong>{{ crowdedDays }}</strong><small>天</small><h2>课程较多的一天</h2><p>按导入节次，至少 4 小时课程；空档不等于可投入时间</p></article></section>
-<section class="ws-section sched-cmp" aria-labelledby="sched-cmp-title">
+ <section class="c2-profile-stats" aria-label="本周课程与任务占用"><OverviewMetric label="本周课程"><template #value><strong>{{ hours(thisWeek?.courseHours ?? 0) }}</strong></template><p>按导入课程节次计算</p></OverviewMetric><OverviewMetric label="已安排任务"><template #value><strong>{{ hours(thisWeek?.taskHours ?? 0) }}</strong></template><p>任务与课量使用同一刻度</p></OverviewMetric><OverviewMetric label="课程较满的日期"><template #value><strong>{{ crowdedDays }}</strong><small>天</small></template><p>按导入节次，至少 4 小时课程；空档不等于可投入时间</p></OverviewMetric></section>
+<DetailPopover class="schedule-comparison" title="近期课程与任务用时" label="查看近期课程与任务用时"><template #trigger>比较近期时间安排<UiIcon name="info" :size="16"/></template><section class="ws-section sched-cmp" aria-labelledby="sched-cmp-title">
   <div class="ws-section-head">
     <div>
-      <h2 id="sched-cmp-title">{{ weekTerm ? '第 ' + weekTerm.from + '–' + weekTerm.to + ' 周' : '这一周' }}：课量与任务量摆在同一把尺子上</h2>
+      <h2 id="sched-cmp-title">{{ weekTerm ? '第 ' + weekTerm.from + '–' + weekTerm.to + ' 周' : '这一周' }}：课程与任务用时对比</h2>
       <p v-if="heavyWeek && lightWeek">{{ heavyWeek.n === lightWeek.n ? '这一周课最多' : '第 ' + heavyWeek.n + ' 周课最多（' + hours(heavyWeek.courseHours) + '），第 ' + lightWeek.n + ' 周课最少（' + hours(lightWeek.courseHours) + '）' }} —— 每 1 小时课配到多少分钟事，看最右边那一列。</p>
       <p v-else>同一把尺子量两件事 —— 横条的长度就是时长。导入课表后这里才有可对照的读数。</p>
     </div>
@@ -297,7 +299,7 @@ const undatedTasks=computed(()=>demo.use.now.value.filter(task=>!task.due))
     <p class="sched-cmp__empty" v-if="!weekRows.some((w) => w.courseHours || w.taskHours)">还没有可以对照的课表或任务：导入课表后，这里会按周把两件事摆在同一把尺子上。</p>
   </div>
   <p class="sched-cmp__foot"><span>时间口径：<b>空课格不代表空闲</b> —— 一格空着只是那天没有排课，不等于那段时间可以用。</span><RouterLink class="ws-text-link sched-cmp__footlink" to="/academic">核对导入的课表<UiIcon name="arrow" :size="16" /></RouterLink></p>
-</section>
+</section></DetailPopover>
 <PanelTabs v-model="tab" label="日程视图" :items="[{key:'calendar',label:'关键日历'},{key:'courses',label:'一周课表'}]">
 <template v-if="tab==='calendar'"><div class="sched-refresh-shell" :aria-busy="refreshing"><div v-if="refreshing" class="sched-refresh"><SkeletonBlock variant="chart" :columns="7" /></div><p v-if="refreshing" class="sr-only" role="status">正在读取最新日程，日历内容保留。</p><header class="calendar-toolbar"><h2>{{ title }}</h2><div class="calendar-toolbar__actions"><button class="ws-icon-button" :aria-label="mode==='week'?'上一周':'上个月'" @click="move(-1)"><UiIcon name="back" /></button><button class="btn" @click="resetDate">今天</button><button class="ws-icon-button" :aria-label="mode==='week'?'下一周':'下个月'" @click="move(1)"><UiIcon name="arrow" /></button><label class="calendar-view">视图<select v-model="mode" aria-label="日历显示方式"><option value="month">月历</option><option value="week">周视图</option><option value="agenda">议程</option></select></label></div></header>
 <div v-if="mode==='week'" class="calendar-week-events" aria-label="本周事项"><button v-for="date in weekDates" :key="date.toISOString()" :aria-pressed="date.getDate()===day && date.getMonth()===month.getMonth()" @click="selectDate(date)"><strong>周{{ weekdays[(date.getDay()+6)%7] }} · {{ date.getMonth()+1 }}/{{ date.getDate() }}</strong><span v-for="label in weekItems(date)" :key="label">{{ label }}</span><small v-if="!weekItems(date).length">没有已记录的事项</small></button></div><div class="calendar-layout"><div v-if="mode==='month'" class="calendar-month"><div class="ws-calendar"><span v-for="w in weekdays" :key="w" class="ws-calendar__weekday">{{ w }}</span><span v-for="n in offset" :key="'empty'+n"/><button v-for="d in length" :key="d" class="ws-calendar__day" :class="{'ws-calendar__day--selected':day===d,'ws-calendar__day--marked':marks.some(m=>m.day===d)}" :aria-label="(month.getMonth()+1)+'月'+d+'日'" :aria-pressed="day===d" @click="day=d;advice=false"><span>{{ d }}</span><small v-for="m in marks.filter(m=>m.day===d)" :key="m.label" :title="m.label">{{ m.label }}</small><small v-if="d===today.getDate() && month.getMonth()===today.getMonth() && month.getFullYear()===today.getFullYear() && !backendDemo.state.liveAction && demo.use.now.value.length">{{ demo.use.now.value.length }} 件待执行</small></button></div></div>
@@ -318,7 +320,7 @@ const undatedTasks=computed(()=>demo.use.now.value.filter(task=>!task.due))
   <section class="sched-rail__block">
     <h2 class="sched-rail__t" id="sched-rail-title">第 {{ thisWeek?.n }} 周的时间分配</h2>
     <p class="sched-rail__n"><b class="t-num">{{ hours(thisWeek?.courseHours ?? 0) }}</b><small>课的占用（{{ thisWeek?.courses ?? 0 }} 天有课）</small></p>
-    <p class="sched-rail__n sched-rail__n--key"><b class="t-num">{{ hours(thisWeek?.taskHours ?? 0) }}</b><small>任务排进去的（{{ thisWeek?.taskDone ?? 0 }}/{{ thisWeek?.taskTotal ?? 0 }} 件已完成）</small></p>
+    <p class="sched-rail__n sched-rail__n--key"><b class="t-num">{{ hours(thisWeek?.taskHours ?? 0) }}</b><small>已安排任务（{{ thisWeek?.taskDone ?? 0 }}/{{ thisWeek?.taskTotal ?? 0 }} 件已完成）</small></p>
     <p class="sched-rail__d">每 1 小时课配到 <b>{{ thisWeek && thisWeek.taskHours ? Math.round(perCourseHour(thisWeek) * 60) : 0 }} 分钟</b>事。{{ thisWeek && thisWeek.conflicts ? '有 ' + thisWeek.conflicts + ' 个节次被两门课同时占住，那几节是排不进任务的。' : '没有课与课撞在一起的节次。' }}</p>
     <p class="sched-rail__d" v-if="busiestDay && busiestDay.hours">{{ busiestDay.label }}最重：{{ busiestDay.names.join('、') }}，合计 {{ hours(busiestDay.hours) }} —— 这一天基本摆不下事。</p>
   </section>
@@ -387,7 +389,7 @@ const undatedTasks=computed(()=>demo.use.now.value.filter(task=>!task.due))
 }
 
 /* ============================================================================
- * ① 结构显形：三周的课量与任务量摆在同一把尺子上
+ * ① 结构显形：三周的课程与任务用时对比
  * ---------------------------------------------------------------------------
  * 一行 = 一周，行内两根横条**共用同一根刻度**（宽度 = 小时 / 三周最大值）。
  * 所以"课量最大的那一周任务量最小"不是文案，是两根条的相对长度。

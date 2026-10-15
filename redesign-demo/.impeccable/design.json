@@ -1,151 +1,12 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-15T02:36:34.6290679+08:00",
-  "title": "Design System: 职引 · C2 河北大学陪伴式学生空间",
+  "generatedAt": "2026-10-15T10:52:18.3907334+08:00",
+  "title": "Design System: 职引 · 清晰连续的个人工作空间",
   "extensions": {
-    "motion": [
-      {
-        "value": "cubic-bezier(0.23,1,0.32,1)",
-        "name": "ease-out",
-        "purpose": "状态与入场"
-      },
-      {
-        "value": "150ms",
-        "name": "duration-short",
-        "purpose": "悬停"
-      },
-      {
-        "value": "180ms",
-        "name": "duration-state",
-        "purpose": "小浮层与状态"
-      },
-      {
-        "value": "240ms",
-        "name": "duration-panel",
-        "purpose": "抽屉面板"
-      },
-      {
-        "value": "200ms ease",
-        "name": "report-dimension",
-        "purpose": "判断维度强调"
-      },
-      {
-        "value": "prefers-reduced-motion: reduce",
-        "name": "reduced-motion",
-        "purpose": "关闭循环与过渡，保留静态状态"
-      }
-    ],
-    "shadows": [
-      {
-        "value": "0 1px 1px rgba(30,35,44,.03),0 8px 20px -18px rgba(30,35,44,.30)",
-        "name": "e-1",
-        "purpose": "选中导航"
-      },
-      {
-        "value": "0 4px 16px -12px rgba(30,35,44,.22)",
-        "name": "e-2",
-        "purpose": "Refined light depth; main papers and key rails have none"
-      },
-      {
-        "value": "0 12px 32px -20px rgba(30,35,44,.28)",
-        "name": "e-3",
-        "purpose": "Refined composer depth"
-      },
-      {
-        "value": "inset 0 1px 0 rgba(255,255,255,.9)",
-        "name": "inset-light",
-        "purpose": "表面顶部高光"
-      },
-      {
-        "value": "0 1px 1px rgba(30,35,44,.04),0 12px 26px -20px rgba(30,35,44,.30)",
-        "name": "dense-e-2",
-        "purpose": "紧凑密度"
-      },
-      {
-        "value": "0 1px 1px rgba(0,0,0,.28),0 8px 20px -18px rgba(0,0,0,.7)",
-        "name": "dark-e-1",
-        "purpose": "深色低层"
-      },
-      {
-        "value": "0 1px 2px rgba(0,0,0,.34),0 18px 40px -26px rgba(0,0,0,.8)",
-        "name": "dark-e-2",
-        "purpose": "深色中层"
-      }
-    ],
-    "breakpoints": [
-      {
-        "value": "767px",
-        "name": "phone"
-      },
-      {
-        "value": "768px",
-        "name": "icon-rail-start"
-      },
-      {
-        "value": "1024px",
-        "name": "full-sidebar-start"
-      },
-      {
-        "value": "1280px",
-        "name": "secondary-rail-start"
-      }
-    ],
-    "typographyMeta": {
-      "display": {
-        "purpose": "关键数字及门户",
-        "displayName": "展示"
-      },
-      "body": {
-        "purpose": "中文咨询与输入",
-        "displayName": "正文"
-      },
-      "control": {
-        "purpose": "功能与操作名称",
-        "displayName": "控件"
-      },
-      "headline": {
-        "purpose": "主要结论与任务",
-        "displayName": "重点"
-      },
-      "title": {
-        "purpose": "C2工作空间标题",
-        "displayName": "页标题"
-      },
-      "label": {
-        "purpose": "来源、时间、计数与外观选项",
-        "displayName": "标注"
-      },
-      "mobile-stat": {
-        "displayName": "手机统计",
-        "purpose": "24px画像统计数"
-      },
-      "page-heading": {
-        "displayName": "页标题",
-        "purpose": "24px/700 desktop and mobile, -.02em"
-      }
-    },
     "colorMeta": {
-      "attention": {
-        "role": "secondary",
-        "displayName": "河大站点注意红",
-        "tonalRamp": [
-          "oklch(15% .11 25)",
-          "oklch(27% .11 25)",
-          "#5f0009",
-          "#7d000c",
-          "#96000e",
-          "#d98a92",
-          "#f8f0e9",
-          "#fdf7f4"
-        ]
-      },
-      "field-bottom": {
-        "displayName": "原型背景阴影灰",
-        "role": "neutral"
-      },
       "primary": {
-        "role": "primary",
         "displayName": "校徽蓝",
+        "role": "primary",
         "tonalRamp": [
           "#002d54",
           "#003a6b",
@@ -157,143 +18,181 @@
           "#eef5fc"
         ]
       },
-      "surface": {
-        "displayName": "透明白色表面",
-        "role": "neutral"
+      "attention": {
+        "displayName": "注意红",
+        "role": "secondary",
+        "tonalRamp": [
+          "#5f0009",
+          "#7d000c",
+          "#96000e",
+          "#d98a92",
+          "#e8a7ad",
+          "#f0c4c8",
+          "#f8f0e9",
+          "#fdf7f4"
+        ]
       },
       "background": {
-        "displayName": "连续浅灰背景",
-        "role": "neutral"
+        "displayName": "工作区白",
+        "role": "neutral",
+        "tonalRamp": [
+          "#20252d",
+          "#505967",
+          "#656d79",
+          "#cbd0d8",
+          "#e7e9ed",
+          "#eef0f3",
+          "#f6f7f9",
+          "#ffffff"
+        ]
       }
     },
-    "layout": {
-      "sidebar": "264px",
-      "iconRail": "76px",
-      "secondaryRail": "312px",
-      "conversationRail": "296px",
-      "mobileNavigation": "full-width, bottom:0, safe-area padding",
-      "bodyFont": "Microsoft YaHei UI, PingFang SC, Hiragino Sans GB, Noto Sans CJK SC, Source Han Sans SC, Segoe UI, var(--font-sans)",
-      "defaultTheme": "light",
-      "appearanceMobile": "horizontal scroll toolbar, no wrapping, 44px target"
+    "typographyMeta": {
+      "fact": {
+        "purpose": "15px画像字段，与14px字段标签区分。",
+        "displayName": "字段正文"
+      },
+      "headline": {
+        "purpose": "桌面30px，手机使用独立26px角色。",
+        "displayName": "页标题"
+      },
+      "summary": {
+        "purpose": "13px的概览标签、主题组标题和短说明。",
+        "displayName": "概览"
+      }
     },
-    "verification": {
-      "date": "2026-10-15",
-      "scope": "22-page Operate refinement",
-      "review": "Initial FIX two service-boundary issues -> both resolved -> limited SHIP; 0 partial/0 unresolved; six confirmation images valid; initial first-screen visual review permits delivery",
-      "checks": "Final build/contrast; check-c2 20x4; five check-refinement behavior groups; 22 pages375x812/844x390 reduced motion; classic portal no errors or unresolved components passed; check-service-boundaries1440/390 preview/current intel/mock503 passed; preview API0; post-boundary final build passed in5.40s",
-      "limitations": "Limited reviewed scope only; no real online recruitment/CHSI verification, no exhaustive interaction-state certification. No new detect run; class gate original five CSS only; no pixel-identity claim.",
-      "screenshots": "66 page screenshots plus6 service-boundary operation states,72total; new6do not replace page screenshots"
-    },
-    "surfaceOverrides": {
-      "source": "src/styles/refinement.css (loaded last)",
-      "flat": "ws-paper, profile/report/intel/action/schedule rails, review week",
-      "focus": "2px primary outline, 3px offset",
-      "scrollOffset": "desktop124px/96px;phone80px/96px",
-      "stats": "desktop4columns;phone2columns;thirdof3fullwidth"
-    }
+    "shadows": [
+      {
+        "purpose": "锚定详情浮层。",
+        "value": "0 12px 48px -8px #1c263033",
+        "name": "popover"
+      },
+      {
+        "purpose": "工作区浮动表面变量，非全部内容容器。",
+        "value": "0 16px 48px -12px #1c26302e",
+        "name": "workspace-float"
+      }
+    ],
+    "motion": [
+      {
+        "purpose": "浮层入场；减少动效时关闭。",
+        "value": "160ms cubic-bezier(.16,1,.3,1)",
+        "name": "detail-arrive"
+      },
+      {
+        "purpose": "鼠标悬停后打开详情。",
+        "value": "180ms",
+        "name": "hover-open"
+      },
+      {
+        "purpose": "离开后关闭未固定详情。",
+        "value": "280ms",
+        "name": "hover-close"
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "page-inset",
+        "value": "1100px"
+      },
+      {
+        "name": "report-intel-stack",
+        "value": "1000px"
+      },
+      {
+        "name": "mobile",
+        "value": "767px"
+      }
+    ]
   },
   "components": [
     {
-      "css": ".ds-primary{background:var(--c-primary,#0058a7);color:var(--c-on-primary,#fff);border:1px solid var(--c-primary,#0058a7);border-radius:999px;padding:8px 16px;min-height:44px;font:500 14px sans-serif;transition:background 150ms ease,transform 150ms ease}.ds-primary:hover{background:var(--c-primary-hover,#004885)}.ds-primary:active{transform:scale(.98)}.ds-primary:focus-visible{outline:2px solid var(--c-primary,#0058a7);outline-offset:3px}",
-      "name": "主要按钮",
-      "refersTo": "button-primary",
-      "html": "<button class=\"ds-primary\">确认方向</button>",
+      "name": "Primary Button",
+      "html": "<button class=\"ds-button ds-primary\">保存更正</button>",
+      "description": "主操作调用当前语义主色。",
+      "css": ".ds-button{font:500 14px/1.5 var(--font-ui,sans-serif);border:1px solid var(--c-border-strong,#cbd0d8);border-radius:8px;min-height:42px;padding:0 16px;cursor:pointer;background:var(--c-surface,#fff);color:var(--c-text,#20252d)}.ds-button:hover{background:var(--c-surface-2,#f6f7f9)}.ds-button:focus-visible{outline:2px solid var(--c-primary,#0058a7);outline-offset:3px}.ds-button:active{transform:scale(.98)}.ds-primary{background:var(--c-primary,#0058a7);color:var(--c-on-primary,#fff);border-color:var(--c-primary,#0058a7)}.ds-primary:hover{background:var(--c-primary-hover,#004885)}",
       "kind": "button",
-      "description": "主要确认操作，胶囊形状与语义主色。"
+      "refersTo": "button-primary"
     },
     {
-      "css": ".ds-secondary{background:var(--c-surface,rgba(255,255,255,.78));color:var(--c-text,#1e232c);border:1px solid var(--c-border,#e1e5ee);border-radius:999px;padding:8px 16px;min-height:44px;font:500 14px sans-serif;box-shadow:inset 0 1px 0 rgba(255,255,255,.9);transition:background 150ms ease}.ds-secondary:hover{background:var(--c-surface-3,#ebedf2)}.ds-secondary:active{transform:scale(.98)}.ds-secondary:focus-visible{outline:2px solid var(--c-primary,#0058a7);outline-offset:3px}",
-      "name": "次要按钮",
-      "refersTo": "button-secondary",
-      "html": "<button class=\"ds-secondary\">查看依据</button>",
+      "name": "Secondary Button",
+      "html": "<button class=\"ds-button\">查看记录</button>",
+      "description": "保留细描边的次要操作。",
+      "css": ".ds-button{font:500 14px/1.5 var(--font-ui,sans-serif);border:1px solid var(--c-border-strong,#cbd0d8);border-radius:8px;min-height:42px;padding:0 16px;cursor:pointer;background:var(--c-surface,#fff);color:var(--c-text,#20252d)}.ds-button:hover{background:var(--c-surface-2,#f6f7f9)}.ds-button:focus-visible{outline:2px solid var(--c-primary,#0058a7);outline-offset:3px}.ds-button:active{transform:scale(.98)}",
       "kind": "button",
-      "description": "卡片内补充操作，透明表面与细描边。"
+      "refersTo": "button-secondary"
     },
     {
-      "css": ".ds-search{display:flex;align-items:center;gap:10px;background:var(--c-surface,rgba(255,255,255,.78));color:var(--c-text-2,#4b5157);border:1px solid var(--c-border,#e1e5ee);border-radius:999px;padding:10px 16px;font:500 14px sans-serif}.ds-search kbd{font:12px sans-serif;margin-left:18px}.ds-search:hover{border-color:var(--c-border-strong,#cfd3d6)}.ds-search:focus-visible{outline:2px solid var(--c-primary,#0058a7);outline-offset:3px}",
-      "name": "命令搜索",
-      "refersTo": "command-search",
-      "html": "<button class=\"ds-search\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><circle cx=\"10\" cy=\"10\" r=\"6\"/><path d=\"m15 15 5 5\"/></svg>搜索页面或操作 <kbd>Ctrl K</kbd></button>",
+      "css": ".ds-field{display:grid;gap:8px;font:14px/1.5 sans-serif;color:var(--c-text,#20252d)}.ds-field input{min-height:44px;padding:0 12px;border:1px solid var(--c-border-strong,#cbd0d8);border-radius:8px;background:var(--c-surface,#fff);color:inherit;font:inherit}.ds-field input:hover{border-color:var(--c-primary,#0058a7)}.ds-field input:focus-visible{outline:2px solid var(--c-primary,#0058a7);outline-offset:3px}",
       "kind": "input",
-      "description": "打开命令面板的搜索入口；预览仅表达外观。"
+      "description": "中性底搜索框，保留明确标签。",
+      "name": "Search Field",
+      "html": "<label class=\"ds-field\">搜索内容<input placeholder=\"输入关键词\" /></label>"
     },
     {
-      "css": ".ds-chip{background:var(--c-primary-weak,#eef5fc);color:var(--c-primary,#0058a7);border:1px solid var(--c-primary-border,#b8d5f2);border-radius:999px;padding:6px 12px;min-height:44px;font:600 12px sans-serif}.ds-chip:hover{background:var(--c-surface-3,#ebedf2)}.ds-chip:focus-visible{outline:2px solid var(--c-primary,#0058a7);outline-offset:3px}",
-      "name": "外观选项",
-      "refersTo": "appearance-chip",
-      "html": "<button class=\"ds-chip\" aria-pressed=\"true\">河大蓝</button>",
-      "kind": "chip",
-      "description": "选中状态与主色、主题及密度轴一致。"
-    },
-    {
-      "description": "保持全部功能入口，当前项使用细侧标与低层投影。",
+      "name": "Active Navigation",
+      "html": "<nav><a class=\"ds-nav\" href=\"#profile\" aria-current=\"page\">个人信息</a></nav>",
+      "description": "轻圆角、浅主色底的当前页面入口。",
+      "css": ".ds-nav{display:flex;align-items:center;min-height:40px;padding:8px 12px;border-radius:7px;font:500 14px/1.5 sans-serif;text-decoration:none;color:var(--c-primary,#0058a7);background:var(--c-primary-weak,#eef5fc)}.ds-nav:hover{background:var(--c-primary-weak-2,#dbeafa)}.ds-nav:focus-visible{outline:2px solid var(--c-primary,#0058a7);outline-offset:3px}",
       "kind": "nav",
-      "name": "平铺导航项",
-      "html": "<nav class=\"ds-nav\"><a class=\"ds-nav-link\" href=\"#today\" aria-current=\"page\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><path d=\"m4 12 5 5L20 6\"/></svg>今日行动</a></nav>",
-      "css": ".ds-nav{padding:12px;background:var(--c-surface,rgba(255,255,255,.78))}.ds-nav-link{position:relative;display:flex;gap:12px;align-items:center;padding:9px 12px;color:var(--c-text,#1e232c);text-decoration:none;border-radius:8px;font:600 14px sans-serif;background:var(--c-surface,rgba(255,255,255,.78));box-shadow:var(--e-1,0 8px 20px -18px rgba(30,35,44,.3))}.ds-nav-link:before{content:\"\";position:absolute;left:-12px;top:12px;bottom:12px;width:3px;border-radius:0 3px 3px 0;background:var(--c-primary,#0058a7)}.ds-nav-link:hover{background:var(--c-surface-3,#ebedf2)}.ds-nav-link:focus-visible{outline:2px solid var(--c-primary,#0058a7);outline-offset:3px}"
+      "refersTo": "nav-active"
     },
     {
-      "css": ".ds-card{background:var(--c-surface,rgba(255,255,255,.78));border:1px solid var(--c-border,#e1e5ee);border-radius:16px;padding:20px;color:var(--c-text,#1e232c);font:14px/1.8 sans-serif}.ds-card h2{font-size:16px;font-weight:700;margin:0 0 12px}.ds-card p{margin:0 0 12px}.ds-card a{color:var(--c-primary,#0058a7);text-underline-offset:3px}.ds-card a:hover{text-decoration-thickness:2px}.ds-card a:focus-visible{outline:2px solid var(--c-primary,#0058a7);outline-offset:3px}",
-      "name": "内容表面",
-      "refersTo": "card",
-      "html": "<section class=\"ds-card\"><h2>当前判断</h2><p>查看支持依据，再决定下一步。</p><a href=\"#evidence\">查看依据</a></section>",
-      "kind": "card",
-      "description": "Refinement主要工作面，透明背景与细描边，取消投影。"
-    },
-    {
-      "css": ".ds-account{display:flex;align-items:center;gap:10px;background:transparent;border:0;color:var(--c-text,#1e232c);font:500 14px sans-serif;padding:4px}.ds-avatar{display:grid;place-items:center;width:34px;height:34px;border-radius:9px;background:var(--c-surface-3,#ebedf2);color:var(--c-text-2,#4b5157)}.ds-account:hover{background:var(--c-surface-2,rgba(250,250,251,.72));border-radius:12px}.ds-account:focus-visible{outline:2px solid var(--c-primary,#0058a7);outline-offset:3px}",
-      "name": "账号头像片",
-      "refersTo": "avatar-chip",
-      "html": "<button class=\"ds-account\" aria-label=\"账号\"><span class=\"ds-avatar\">李</span>李同学</button>",
+      "css": ".ds-chip{min-height:40px;padding:6px 10px;font:13px/1.5 sans-serif;border:0;border-radius:6px;background:var(--c-primary-weak,#eef5fc);color:var(--c-primary,#0058a7);cursor:pointer}.ds-chip:hover{background:var(--c-primary-weak-2,#dbeafa)}.ds-chip:focus-visible{outline:2px solid var(--c-primary,#0058a7);outline-offset:3px}.ds-chip:active{transform:scale(.98)}",
       "kind": "chip",
-      "description": "账号入口使用中性灰、9px圆角。"
+      "description": "浮层中的小型筛选，文本表达选中状态。",
+      "name": "Filter Chip",
+      "html": "<button class=\"ds-chip\" aria-pressed=\"true\">学习</button>"
     },
     {
-      "name": "咨询输入",
-      "kind": "input",
-      "description": "记录之后的咨询输入字段，真实应用保留中文输入法处理。",
-      "html": "<label class=\"ds-field-label\">继续咨询<textarea class=\"ds-field\" placeholder=\"说说你现在想解决的问题\"></textarea></label>",
-      "css": ".ds-field-label{display:block;color:var(--c-text,#1e232c);font:500 14px sans-serif}.ds-field{display:block;width:calc(100% - 26px);margin-top:8px;padding:12px;background:var(--c-surface,rgba(255,255,255,.78));border:1px solid var(--c-border-control,#8f959e);border-radius:12px;color:var(--c-text,#1e232c);caret-color:var(--c-primary,#0058a7);font:400 16px/1.7 sans-serif;min-height:72px;resize:vertical}.ds-field::placeholder{color:var(--c-text-3,#61666b)}.ds-field:hover{border-color:var(--c-primary,#0058a7)}.ds-field:focus-visible{outline:2px solid var(--c-primary,#0058a7);outline-offset:3px}"
+      "name": "Task Focus",
+      "html": "<article class=\"ds-task\"><h2>完善一项经历</h2><p>补充职责和实际完成的内容。</p></article>",
+      "description": "少量重点任务的浅色强调区域。",
+      "css": ".ds-task{padding:28px;border-radius:12px;background:var(--c-primary-weak,#eef5fc);color:var(--c-text,#20252d);font:16px/1.75 sans-serif}.ds-task h2{font-size:26px;line-height:1.6;margin:0 0 16px}.ds-task p{margin:0}",
+      "kind": "card",
+      "refersTo": "task-focus"
     },
     {
-      "name": "危险操作按钮",
-      "kind": "button",
-      "description": "显式注意色背景与前景，保证危险操作文字可见。",
-      "html": "<button class=\"ds-danger\">撤回资料</button>",
-      "css": ".ds-danger{background:var(--c-attention-strong,#7d000c);color:var(--c-on-attention,#fff);border:1px solid var(--c-attention-strong,#7d000c);border-radius:999px;padding:8px 16px;min-height:44px;font:500 14px sans-serif;transition:background 150ms ease}.ds-danger:hover{background:var(--c-attention,#96000e);border-color:var(--c-attention,#96000e);color:var(--c-on-attention,#fff)}.ds-danger:active{transform:scale(.98)}.ds-danger:focus-visible{outline:2px solid var(--c-primary,#0058a7);outline-offset:3px}"
+      "name": "Detail Popover",
+      "html": "<section class=\"ds-popover\" aria-label=\"资料来源\"><header><h2>资料来源</h2><button aria-label=\"关闭详情\">×</button></header><p>查看该信息的来源与更新时间。</p></section>",
+      "description": "静态外观样例；真实锚定、Esc和焦点恢复由DetailPopover实现。",
+      "css": ".ds-popover{width:min(384px,calc(100vw - 32px));max-height:580px;overflow:auto;padding:20px;border-radius:12px;background:var(--workspace-float,#fff);color:var(--c-text,#20252d);box-shadow:0 12px 48px -8px #1c263033;font:14px/1.75 sans-serif}.ds-popover header{display:flex;justify-content:space-between;gap:12px;margin-bottom:12px}.ds-popover h2{font-size:16px;font-weight:600;margin:7px 0 0}.ds-popover p{margin:0;overflow-wrap:anywhere}.ds-popover button{width:36px;height:36px;border:0;border-radius:6px;background:transparent;color:inherit;cursor:pointer}.ds-popover button:hover{background:#858b981a}.ds-popover button:focus-visible{outline:2px solid var(--c-primary,#0058a7);outline-offset:3px}",
+      "kind": "custom",
+      "refersTo": "detail-popover"
     }
   ],
   "narrative": {
-    "rules": [
-      {
-        "name": "语义颜色",
-        "section": "colors",
-        "body": "调用语义变量，状态同时提供文字、图标或可读数值；不得把演示排序当作岗位事实。"
-      },
-      {
-        "name": "可达性",
-        "section": "layout",
-        "body": "功能目录平铺分组，路由与图标保持可达；切外观、宽度或侧栏显隐不会丢失会话与当前操作状态。"
-      }
+    "overview": "当前前端的视觉权威是 `redesign-demo` 的运行实现与本规范。2026-10-15 用户确认全站重新设计，取消 C2 基准；以任务、结论、当前状态和下一步组织首屏，深入信息在触发位置附近查看。语言自然、中性、清楚。\n\n这是已实现系统的记录。标准导航保持稳定，成长档案提供连续记录与就近溯源的结构启发。没有获批视觉效果图或可用 Stitch 生成屏幕；历史原型不是当前验收基准。产品事实见根 `PRODUCT.md`。",
+    "northStar": "清晰连续的个人工作空间",
+    "dos": [
+      "Do 用当前源码与实际路由截图核对规范，维护 token-bearing 文档及配套 sidecar。",
+      "Do 首先呈现关键结论、当前状态和下一步，将短依据放在附近可操作的详情入口。",
+      "Do 保留主色主题、独立深色覆盖、键盘焦点与手机内容顺序。",
+      "Do 使用自然、中性、清楚的中文，以真实字段和状态派生读数。"
     ],
     "donts": [
-      "Don't 将 V5 的 228px 侧栏、内嵌主画布、折叠分组或固定回复覆盖层作为当前规则。",
-      "Don't 将本地演示、目录检查或合成比较描述为正式 API、模型、学校核验或实时岗位接入。",
-      "Don't 用旧版截图或原型截图替代实际 Vue 页面验收。"
+      "Don't 以历史 C2 原型、旧截图或不存在的生成稿覆盖当前全站授权。",
+      "Don't 将每段内容重新包装为统计卡片或重复解释栏。",
+      "Don't 将本地演示、合成比较或契约数量描述为在线服务成功。",
+      "Don't 将有限截图与行为检查等同于完整 WCAG、性能或真实后端验收。"
     ],
-    "northStar": "C2 · 陪你走完这一段",
-    "overview": "本文件记录 2026-10-15 已实现的学生空间。获批视觉与交互来源为 [c2-hbu/index.html](design-review/v6-redesign/directions/c2-hbu/index.html) 及其页面原型；Vue 实现仍保留原产品的数据、会话与操作链路。当前工作空间最终覆盖为最后加载的 [refinement.css](src/styles/refinement.css)，位于redesign.css与c2-fidelity.css之后；本轮在C2世界内进行Operate精修，保留蓝红灰、中文及原生Vue。基础语义、主题与密度来自 tokens.css，组件局部样式继续参与层叠。\n\n浅灰渐变背景、半透明白色表面及同主色伙伴头像保持C2陪伴感；主要工作面和辅栏去阴影，其他层级使用更轻投影，强调阅读与操作。导航与控件保持清楚，来源、解释与任务状态支持实际操作。门户是独立表面，保留原行为与原版对比入口。",
-    "dos": [
-      "Do 以最后加载的refinement覆盖及实际Vue组件为准，维护 token-bearing DESIGN.md 与扩展 sidecar。",
-      "Do 保持七档注册字号、平铺目录、历史恢复与共享同一账号抽屉和状态。",
-      "Do 用当前字段派生计数、任务与头像状态；移除界面常见演示标识时，不伪造招聘公告、学校核验成功或新服务接入。",
-      "Do 以当前路由和宽度截图验证响应式与实际操作。"
+    "rules": [
+      {
+        "body": "主色表示当前入口或行动，注意色表示风险与待处理事项；在红主题中仍保留文字与结构区分状态。",
+        "section": "colors",
+        "name": "The Semantic Accent Rule"
+      },
+      {
+        "body": "短解释、来源和小型筛选保留触发位置上下文，长任务与编辑流程仍使用合适的原有页面或面板。",
+        "section": "elevation",
+        "name": "The Nearby Detail Rule"
+      }
     ],
     "keyCharacteristics": [
-      "蓝、红、灰白语义颜色；切主色时伙伴形象同步。",
-      "主要表面平坦、少量轻影形成连续工作背景。",
-      "平铺功能目录、保留历史，响应式侧栏、图标栏与底栏。",
-      "状态与来源来自当前字段；界面移除常见演示标识，数据性质和服务边界仍保留在产品文档。"
+      "默认信息精简，操作和关键结论优先。",
+      "连续内容以对齐、留白和细分隔组织。",
+      "蓝或红主色、灰白底与独立深色覆盖。",
+      "来源、短说明和筛选通过锚定浮层展开。"
     ]
   }
 }

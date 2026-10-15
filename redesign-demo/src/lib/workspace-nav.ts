@@ -62,7 +62,7 @@ export const WORKSPACE_GROUPS: NavGroup[] = [
   },
   {
     key: 'act',
-    label: '去做',
+    label: '行动安排',
     icon: 'action',
     items: [
       { key: 'home', label: '今日行动', to: '/home', icon: 'action', paths: ['/home'], hint: '今天该做的那一件与待执行任务' },
@@ -73,7 +73,7 @@ export const WORKSPACE_GROUPS: NavGroup[] = [
   },
   {
     key: 'review',
-    label: '回头看',
+    label: '复盘与成长',
     icon: 'review',
     items: [
       { key: 'review', label: '复盘记录', to: '/review', icon: 'review', paths: ['/review'], hint: '做过的事与调整' },

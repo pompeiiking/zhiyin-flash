@@ -1,4 +1,5 @@
 import { reactive } from 'vue'
+import { rememberSession } from './session-cache'
 
 // Approved C2 synthetic comparison scale; no current recruitment claims.
 export const directionCriteria = [
@@ -13,3 +14,5 @@ export const directionCriteria = [
 export const directionPriorities = reactive<Record<string, number>>(
   Object.fromEntries(directionCriteria.map(criterion => [criterion.key, 3])),
 )
+
+rememberSession('direction-priorities', directionPriorities, directionCriteria.map(item => item.key))

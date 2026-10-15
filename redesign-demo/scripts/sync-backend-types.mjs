@@ -34,7 +34,7 @@ for (let i = 0; i < queue.length; i++) {
 }
 const target = resolve(root, 'src/api/backend-types.ts')
 if (process.argv.includes('--check')) {
-  if (readFileSync(target, 'utf8') !== output) throw new Error('Backend types changed. Run npm run sync:backend.')
+  if (readFileSync(target, 'utf8').replace(/\r\n/g, '\n') !== output) throw new Error('Backend types changed. Run npm run sync:backend.')
 } else { mkdirSync(dirname(target), { recursive: true }); writeFileSync(target, output) }
 console.log('Backend contract: ' + seen.size + ' schemas synchronized.')
 const dataRoot = resolve(root, '../zhiyin-src/template/data/registry')
@@ -51,5 +51,5 @@ const registry = {
 const registryTarget = resolve(root, 'src/data/backend-registry.json')
 const registryOutput = JSON.stringify(registry, null, 2) + '\n'
 if (process.argv.includes('--check')) {
-  if (readFileSync(registryTarget, 'utf8') !== registryOutput) throw new Error('Backend registry changed. Run npm run sync:backend.')
+  if (readFileSync(registryTarget, 'utf8').replace(/\r\n/g, '\n') !== registryOutput) throw new Error('Backend registry changed. Run npm run sync:backend.')
 } else writeFileSync(registryTarget, registryOutput)

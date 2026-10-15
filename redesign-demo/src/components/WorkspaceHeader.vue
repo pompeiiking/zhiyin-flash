@@ -143,14 +143,7 @@ function clearErrorDemo() {
     </div>
   </header>
 
-  <nav class="c2-appearance-bar" aria-label="工作空间外观">
-    <button class="c2-directory-button" @click="emit('openPalette')"><UiIcon name="apps" :size="14" />全部页面</button>
-    <div class="c2-appearance-axis"><span>主色</span><button v-for="o in accentOptions" :key="o.id" :aria-pressed="skin.state.accent === o.id" @click="skin.setAccent(o.id)">{{ o.label }}</button></div>
-    <div class="c2-appearance-axis"><span>主题</span><button v-for="o in themeOptions" :key="o.id" :aria-pressed="skin.state.theme === o.id" @click="skin.setTheme(o.id)">{{ o.label }}</button></div>
-    <div class="c2-appearance-axis"><span>密度</span><button :aria-pressed="skin.state.style !== 'dense'" @click="skin.setStyle('plain')">常规</button><button :aria-pressed="skin.state.style === 'dense'" @click="skin.setStyle('dense')">紧凑</button></div>
-  <span class="c2-appearance-reading">{{ skin.state.accent === 'blue' ? '校徽蓝' : '官网红' }} · {{ themeOptions.find(o=>o.id===skin.state.theme)?.label }} · {{ skin.state.style === 'dense' ? '紧凑' : '常规' }}</span></nav>
-
-  <!-- 账号抽屉：只管账号。身份、演示标识说明、退出。 -->
+<!-- 账号抽屉：只管账号。身份、演示标识说明、退出。 -->
   <InfoSheet shape="sheet" :open="accountOpen" title="账号" @close="accountOpen = false">
     <p class="ws-person">{{ demo.state.account === 'fresh' ? '新用户' : STUDENT.name }}</p>
     <p class="ws-muted">{{ demo.state.account === 'fresh' ? '个人资料待完善' : scenario.grade + ' · ' + STUDENT.major + ' · ' + STUDENT.school }}</p>
@@ -175,7 +168,7 @@ function clearErrorDemo() {
         </div>
         <p class="ws-appearance__hint">{{ styleOptions.find((o) => o.id === skin.state.style)?.hint }}</p>
         <button class="btn btn--sm btn--block" @click="skin.reset()">恢复默认外观</button>
-        <p class="ws-demo-note">选择记在本地，下次打开还是这套；改的只是令牌，页面结构不动。</p>
+        <p class="ws-demo-note">外观设置自动保存，下次进入时沿用。</p>
       </div>
     </details>
     <div class="ws-account-list"><RouterLink class="ws-account-row" to="/settings" @click="accountOpen=false"><span><strong>账号设置</strong><small>资料授权、提醒、外观与导出</small></span><UiIcon name="arrow" :size="16"/></RouterLink>
