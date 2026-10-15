@@ -1,102 +1,70 @@
 ---
-name: 职引 · 清晰连续的个人工作空间
-description: 以任务、结论和下一步为中心，深入信息就近查看的学生工作空间。
+name: 职引 · 学生产品工作空间
+description: 精确、安静、紧凑的中文学生工作空间，以真实任务与证据组织各页。
 colors:
-  primary: "#0058a7"
-  primary-hover: "#004885"
-  primary-active: "#003a6b"
-  primary-weak: "#eef5fc"
-  primary-weak-2: "#dbeafa"
-  primary-border: "#b8d5f2"
-  attention: "#96000e"
-  attention-strong: "#7d000c"
-  attention-weak: "#fdf7f4"
-  background: "#ffffff"
+  primary: "#2563eb"
+  primary-weak: "#eff5ff"
+  primary-weak-2: "#dbe8ff"
+  primary-border: "#b9d0ff"
+  background: "#f7f8fa"
   surface: "#ffffff"
   surface-secondary: "#f6f7f9"
   surface-tertiary: "#eef0f3"
-  nav-background: "#f7f8fa"
   text: "#20252d"
   text-secondary: "#505967"
   text-muted: "#656d79"
   border: "#e7e9ed"
   border-strong: "#cbd0d8"
-  border-control: "#8f959e"
+  attention: "#96000e"
+  attention-strong: "#7d000c"
   on-primary: "#ffffff"
-  dark-background: "#191b20"
+  dark-background: "#181a20"
+  dark-nav: "#1e2128"
   dark-surface: "#20232a"
   dark-surface-secondary: "#242830"
   dark-surface-tertiary: "#2e333d"
-  dark-nav-background: "#16181d"
-  dark-float: "#252931"
   dark-text: "#edf0f5"
   dark-text-secondary: "#c2cad7"
   dark-text-muted: "#a3adbc"
   dark-border: "#343a45"
   dark-border-strong: "#515c6d"
-  dark-popover-border: "#414955"
-  dark-primary: "#6fa8dc"
-  dark-primary-hover: "#86b6e6"
-  dark-primary-active: "#b8d5f2"
-  dark-primary-brand: "#5b98d2"
-  dark-primary-weak: "#1d2137"
-  dark-primary-weak-2: "#21284a"
-  dark-primary-border: "#38406d"
-  dark-on-primary: "#151517"
-  dark-attention: "#d98a92"
-  dark-attention-weak: "#2f1115"
-  dark-attention-border: "#583d41"
-  red-primary-weak-2: "#f8f0e9"
-  red-primary-active: "#5f0009"
-  dark-red-primary-hover: "#e8a7ad"
-  dark-red-primary-active: "#f0c4c8"
-  dark-red-primary-weak: "#341015"
-  dark-red-primary-weak-2: "#410e14"
-  dark-red-primary-border: "#67464b"
+  dark-float: "#252931"
 typography:
   headline:
-    fontFamily: "'PingFang SC','Noto Sans CJK SC','Microsoft YaHei UI','Segoe UI',sans-serif"
-    fontSize: "30px"
+    fontFamily: "'Segoe UI','Microsoft YaHei','PingFang SC','Noto Sans CJK SC',sans-serif"
+    fontSize: "24px"
     fontWeight: 600
     lineHeight: 1.4
-    letterSpacing: "-.025em"
+    letterSpacing: "-.02em"
   headline-mobile:
-    fontSize: "26px"
+    fontSize: "22px"
     fontWeight: 600
     lineHeight: 1.4
-  task-title:
-    fontSize: "26px"
-    lineHeight: 1.6
-  task-title-mobile:
-    fontSize: "22px"
   section-title:
-    fontSize: "18px"
-    fontWeight: 600
-    lineHeight: 1.5
-  body:
     fontSize: "16px"
-  fact:
-    fontSize: "15px"
-    fontWeight: 500
-    lineHeight: 1.65
-  control:
+    fontWeight: 600
+  body:
+    fontFamily: "'Segoe UI','Microsoft YaHei','PingFang SC','Noto Sans CJK SC',sans-serif"
     fontSize: "14px"
+    lineHeight: 1.6
+  control:
+    fontSize: "13px"
     fontWeight: 500
   detail:
     fontFamily: "'PingFang SC','Noto Sans CJK SC','Microsoft YaHei UI',sans-serif"
     fontSize: "14px"
     lineHeight: 1.75
-  summary:
-    fontSize: "13px"
   annotation:
     fontSize: "12px"
+  metadata:
+    fontSize: "11px"
 rounded:
   flat: "0px"
   sm: "6px"
   nav: "7px"
-  md: "8px"
+  control: "8px"
   summary: "10px"
-  lg: "12px"
+  surface: "12px"
 spacing:
   micro: "4px"
   xs: "8px"
@@ -104,141 +72,147 @@ spacing:
   md: "16px"
   content: "20px"
   section: "24px"
-  heading: "28px"
-  lg: "32px"
-  page-top: "36px"
-  columns: "40px"
-  page-side: "48px"
-  page-bottom: "72px"
+  page-side: "32px"
+  page-bottom: "48px"
 components:
   button-primary:
     backgroundColor: "{colors.primary}"
     textColor: "{colors.on-primary}"
     typography: "{typography.control}"
-    rounded: "{rounded.md}"
-    padding: "0 16px"
+    rounded: "{rounded.control}"
+    padding: "7px 14px"
   button-secondary:
     backgroundColor: "{colors.surface}"
     textColor: "{colors.text}"
-    rounded: "{rounded.md}"
+    rounded: "{rounded.control}"
+    padding: "7px 14px"
   nav-active:
     backgroundColor: "{colors.primary-weak}"
     textColor: "{colors.primary}"
     rounded: "{rounded.nav}"
+    padding: "7px 10px"
+  input-search:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.text}"
+    rounded: "{rounded.control}"
     padding: "8px 12px"
   detail-popover:
     backgroundColor: "{colors.surface}"
     textColor: "{colors.text}"
     typography: "{typography.detail}"
-    rounded: "{rounded.lg}"
+    rounded: "{rounded.surface}"
     padding: "20px"
-  task-focus:
-    backgroundColor: "{colors.primary-weak}"
-    rounded: "{rounded.lg}"
-    padding: "28px"
+  workspace-surface:
+    backgroundColor: "{colors.surface}"
+    rounded: "{rounded.surface}"
+    padding: "20px"
 ---
 
-# Design System: 职引 · 清晰连续的个人工作空间
+# Design System: 职引 · 学生产品工作空间
 
 ## Overview
 
-**Creative North Star: "清晰连续的个人工作空间"**
+**Creative North Star: "精确、安静、紧凑的学生工作空间"**
 
-当前前端的视觉权威是 `redesign-demo` 的运行实现与本规范。2026-10-15 用户确认全站重新设计，取消 C2 基准；以任务、结论、当前状态和下一步组织首屏，深入信息在触发位置附近查看。语言自然、中性、清楚。
+当前视觉权威为运行实现、本文及 `design-review/navigation-rethink/BRIEF.md` 最后的2026-10-15完整产品重构契约。用户已撤销C2复刻要求，并授权整个学生端独立重构。参考截图和GenieLink仅解释品质期待，不规定构图，也不将范围缩为两个页面。根PRODUCT.md承载产品事实。
 
-这是已实现系统的记录。标准导航保持稳定，成长档案提供连续记录与就近溯源的结构启发。没有获批视觉效果图或可用 Stitch 生成屏幕；历史原型不是当前验收基准。产品事实见根 `PRODUCT.md`。
+信息以学生正在处理的任务为单位：比较展示差别，报告展示当前值和门槛，计划展示阶段与真实进度，日历展示日期与完整日程，记录展示可操作条目。共享的是尺度与控件，不是每页相同的大卡片。语言自然、中性、清楚。最新参考站Finsight的逐界面实地检查仍在进行，本规范不宣称它已完成。
 
 **Key Characteristics:**
-- 默认信息精简，操作和关键结论优先。
-- 连续内容以对齐、留白和细分隔组织。
-- 蓝或红主色、灰白底与独立深色覆盖。
-- 来源、短说明和筛选通过锚定浮层展开。
+- 浅灰工作底、白色任务表面、克制蓝色行动强调。
+- 分类导航与紧凑工具栏稳定，主体结构随任务变化。
+- 当前状态、真实名称、主要操作优先，短依据附近查看。
+- 四个获批机器人造型与独立采集变体承担实际身份和处理状态。
 
-`src/main.ts` 仍依次加载 tokens、base、workspace、experience、journey、dialogue、redesign、c2-fidelity、refinement，最后加载 `workspace-modern.css`。最后一层与当前 Vue 结构共同定义替换后的外观；旧样式仍承担未覆盖的路由机制、控件状态和样式。不能据此宣称旧 CSS 已移除，也不能把旧 C2 卡片布局重新当成约束。
+`src/main.ts` 仍加载旧样式；最终加载的 `workspace-modern.css` 中“Product workspace”起及其后续修正规则定义当前替换系统。前半段240px侧栏、64px顶栏、30px标题是被覆盖的旧值，不能抽取为当前标准。根文档另保留历史模板说明。
 
 ## Colors
 
 ### Primary
 
-主色沿用现有校徽蓝；红色强调主题仍可切换。蓝、红的色值来源沿用 `tokens.css` 的已有资产取样记录，本轮未重新核验外部品牌标准。主操作、活动导航、选中状态与链接调用 `--c-primary` 系列，不复制固定蓝到组件。
+行动蓝用于主操作、当前导航、已选方向、真实进度和可操作链接。浅蓝用于选择与少量语义强调。复用语义变量；不能把图表全部染蓝当作完成设计。
 
-红色也是需要注意的语义色。完成状态采用中性色，不新增绿色或琥珀色体系。
+### Secondary
+
+注意红沿用现有风险/待处理语义，不作为装饰性第二主色。完成与未完成同时使用文字和形态表达。
 
 ### Neutral
 
-工作区用白色画布、浅灰导航和灰阶文字，表面为不透明底色。深色工作区使用 frontmatter 的 `dark-*` 色值，覆盖原 token 中的旧底色。浮层通过 Portal 挂载，拥有独立深色规则；其分隔线使用 `dark-popover-border`，不能只依赖工作区祖先继承。
+浅灰工作底托住不透明白色表面；细灰边界分隔内容、字段和日历。正文、次正文、元信息各用对应灰阶。深色覆盖包含独立背景、侧栏、表面和文字；Portal浮层有自己的深色覆盖。
 
-### Theme mapping
+**The Meaningful Accent Rule.** 主色必须对应当前状态、可执行动作或有尺度的真实数据。
 
-默认蓝主题使用 `primary-*`；深蓝文字主色使用 `dark-primary`，品牌图形使用 `dark-primary-brand`。红主题以 `attention` 为主色、`attention-strong` 为 hover、`red-primary-active` 为 active，弱底采用 `attention-weak` 与 `red-primary-weak-2`。深红使用 `dark-attention` 和 `dark-red-primary-*`，品牌图形保留原红。深色实心按钮前景沿用 `dark-on-primary`。注意色的深色 strong 与正文注意色同值。
-
-**The Semantic Accent Rule.** 主色表示当前入口或行动，注意色表示风险与待处理事项；在红主题中仍保留文字与结构区分状态。
+当前末层固定了工作区主色系列，因此旧红/蓝偏好并不保证所有工作区主色切换；旧hover/active变量与偏好设置仍存在。此处记录实际覆盖关系，不把主题间不一致当作新的主题规则，也不宣称全主题重建已验收。
 
 ## Typography
 
-工作区采用系统中文无衬线栈，弹出详情使用对应中文栈；不下载字体。字号按实际使用登记，不再把旧七档变量误写成全站唯一尺度。
+界面使用frontmatter中的系统无衬线栈；当前Windows浏览器实际解析中文为Microsoft YaHei。正文和表单共享字体，详情浮层保留独立中文栈。不下载展示字体，不将系统界面字体提升为装饰性展示字体。
 
-页标题使用 headline，手机使用 headline-mobile；任务强调使用 task-title 与 task-title-mobile；章节标题使用 section-title。连续正文保留 body，画像字段使用 fact，控件使用 control，概览及组标题使用 summary，时间和计数使用 annotation。浮层标题与内联概览读数为正文尺度且字重600。今日重点任务另有24px标题；继承页面仍使用20/24/38px等原档，不把它们冒充全部已统一。
+页标题使用headline，手机使用headline-mobile；共享章节标题使用section-title。任务名、字段值、正文以body为主；导航、操作、紧凑说明使用control；时间、注解用annotation，类别与少量元信息用metadata。阅读器标题、报告结论、方向分数各保留服务内容的独立层级，不将这些局部字号扩张成全站标题。
 
-数字优先等宽数字特性；不把全站正文改为等宽字体。13/15/18/22/26/30px均为当前实现中的有意层级，不能为了符合旧登记而抹掉。
+**The Working Text Rule.** 真实名称和操作使用清晰可读的工作字号；元信息降级不能取代正文，进度必须保留数值含义。
 
 ## Layout
 
-桌面侧栏宽240px，顶栏高64px。普通工作页最大宽1176px，内边距36px 48px 72px；1100px及以下横向收为32px，767px及以下为24px 20px 100px，顶栏高60px。页头标题、说明入口与操作保持同一区域；概览采用内联读数而非统计卡片。
+桌面分类侧栏216px，顶栏56px。普通页最大宽1440px，内边距24px 32px 48px；1100px及以下变为20px 24px 48px；767px及以下变为20px 16px 92px。页标题桌面24px、手机22px。分类结构保留，允许调整类下菜单；不恢复撤回的五入口与页头组内导航。
 
-画像主题桌面两列、手机一列。报告和资讯主体与260px侧栏在1000px及以下合并；手机方向比较改为按维度的可读列表。页签可横向滚动，活动项用底部细线表示。不同任务保留不同内容构成，不能把所有页面强行排成同一种卡片网格。
+画像使用身份区与对齐字段，桌面两列字段、手机单列。方向桌面三项并排，手机逐项完整阅读。报告用当前值/门槛刻度及语义发现列表。资讯桌面结果列表配阅读面，900px及以下进入单列阅读路径。日历使用完整主区宽度，日议程在旁、手机置下。今日任务和阶段计划保留任务名称、动作、阶段目标及实际完成比例；不使用无名方格作为主体。
 
-对话使用工作视口内的网格：桌面高度扣除64px、手机扣除128px；记录区域独立滚动，输入区留在网格末行。手机隐藏辅助侧栏。操作、中文输入和实际状态路径由组件保留。
+常规主辅列使用272px辅助列和24px间隔，1100px及以下折为单列；资讯、日历和复盘有各自适用的折叠规则。成长记录以里程碑及证据组织。记录页保留紧凑新增区、本页计数、搜索及分页结果，空分组省略。复盘原因表单先于历史证据。
+
+对话占工作视口，记录独立滚动，输入区保留在末行；桌面减去56px顶栏，手机视口扣除120px，900px及以下隐藏辅助栏。移动布局要核对实际使用状态，不能只验证空闲首屏。
 
 ## Elevation & Depth
 
-主要内容平放在画布上，靠留白、对齐和分隔表达层级。任务重点与少量摘要使用浅色填充。浮层使用柔影 `0 12px 48px -8px #1c263033`；工作区另保留浮动表面影变量 `0 16px 48px -12px #1c26302e`。这不是所有表面都无影的承诺，继承控件与覆盖层仍有各自状态。
+表面以浅灰底、白色填充与细边界区分，默认没有环境投影；字段、清单与连续记录用对齐和细分隔组织。被选方向保留1px主色外描影。详情浮层使用 `0 12px 48px -8px #1c263033`；浮动表面变量仍为 `0 16px 48px -12px #1c26302e`，并非所有内容的默认影。
 
-浮层入场为160ms、`cubic-bezier(.16,1,.3,1)`，轻微上移和缩放；减少动效偏好关闭此动画。指针停留180ms后打开，离开280ms后关闭未固定详情；点击可固定。
+浮层160ms进入，曲线为 `cubic-bezier(.16,1,.3,1)`；减少动效偏好停用进入动画。机器人动作与实际状态关联，减少动效偏好停用部件动画。
 
-**The Nearby Detail Rule.** 短解释、来源和小型筛选保留触发位置上下文，长任务与编辑流程仍使用合适的原有页面或面板。
+**The Nearby Detail Rule.** 短解释、来源与小型选择保留触发上下文；长报告和文章使用独立阅读安排。
 
 ## Shapes
 
-内容章节默认直边平放，交互控件采用轻圆角。导航与部分切换按钮使用 nav，普通按钮和说明触发器使用 md，浮层与重点任务使用 lg，摘要使用 summary；小关闭控件和部分条目使用 sm。不得将实际导航圆角随意改成统一8px。
-
-主题的 plain/soft/dense 仍影响未被末层覆盖的间距或控件；现代工作区明确覆盖的形状和间距以末层为准，不承诺三种密度对所有元素都有同等效果。
+普通控件轻圆角，导航使用nav，按钮与搜索用control，主要白色任务表面与浮层用surface。连续字段和条目可保持直边；不是所有内容都需要表面，也不要求所有内容去卡片。小圆角、轨道和圆形状态点按内容语义使用。
 
 ## Components
 
 ### Buttons / Inputs
 
-主按钮为实心语义主色，普通按钮为表面色、细描边；工作区按钮最小高42px。说明触发器最小44×44px，部分筛选按钮为36或40px；浮层关闭控件36px。不要宣称全部点击目标都为44px。全局焦点与详情触发器使用2px主色轮廓、3px偏移。搜索及字段保留真实标签、输入和空结果状态。
+桌面普通按钮最小高36px、手机40px；工作文字13px。主按钮实心蓝配白字，次按钮白底细边；搜索使用真实标签、输入值与空结果。控件保留hover和2px主色键盘焦点；详情触发器焦点偏移3px。手机任务勾选和记录切换为44px，部分说明与小动作仍小于44px，不宣称全站触点统一达标。
 
-### Navigation / Tabs
+### Navigation / PageHeading
 
-240px桌面侧栏按现有功能分组，活动入口以浅主色底和主色文字表达，40px最小行高。历史与账号路径保留，外观设置进入账号面板。手机使用当前导航机制。页签48px最小高，活动底线2px；可见标签应保持简短。
+分类侧栏保持简短入口与历史会话；普通导航最小36px，活动项浅蓝底和蓝字，圆角7px。PageHeading复用标题、说明与操作结构，不强加一套页内菜单。移动保留当前底栏/导航机制与返回路径。
 
-### Continuous sections / Task focus
+### Task surfaces / Comparison / Progress
 
-章节以18px标题和间距定位，记录行采用细底边；不再给每一组资料套带影卡片。重点任务用主色弱底、桌面28px内距和12px圆角；具体今日任务覆盖为24px内距，手机20px。摘要和结果必须取自现有状态，不能靠视觉重做新增成果。
+白色表面集中承载一个任务，内距通常18–22px。方向同时展示分项差别、风险和确认操作，排序与方向确认不是同一状态。报告刻度分别标记当前数值和门槛。TaskProgressMap与阶段路径保留名称、时间、目标和实际完成数量；计划目标百分比不能冒充完成百分比。完成/恢复任务引发的页面反馈应来自真实状态。
 
-### DetailPopover / OverviewMetric / PageHeading
+### DetailPopover / Reading
 
-PageHeading统一标题、就近说明与操作；OverviewMetric把统计呈现为带详情入口的内联读数。DetailPopover使用 Reka 非模态锚定弹层，宽不超过384px且两侧保留16px，最大高580px并受可用视口限制，内部可滚动；与锚点间隔8px。支持鼠标、焦点、点击固定、Esc、关闭后返回触发器；不能只靠 hover。来源及嵌套正文可换行。
+非模态锚定浮层宽不超过384px、两侧保留16px，最大高580px且受可用视口限制；内距20px，与锚点相隔8px。鼠标180ms打开、离开280ms关闭未固定内容；焦点打开、点击固定、Esc关闭、关闭后焦点返回。原生dialog内的浮层挂在所属dialog中以维持交互。长文本可换行、内部可滚动。完整打印使用打印专用正文，不依赖用户逐个打开浮层。
 
-### Local state and service boundaries
+IntelArticle提供正文、来源和行动检查；移动结果与阅读有明确往返路径。查找和分页计数必须说明作用范围。
 
-保留画像更正、导入导出、报告、方向、行动、日历、复盘、记录、工具、指南、账号、提醒、登录与内部页面的原功能路径。方向比较采用现有合成刻度与可调权重；排序、方向确认和原始分数是不同状态。本地偏好、预置内容、契约目录、核验预览不证明真实服务上线、授权执行或学校核验成功。用户实际消息和修改资料不应被新版预置内容覆盖。
+### RobotAvatar / AchievementsSection
+
+复用四个获批SVG：职业分析、行动规划、行动支持、就业资讯；第五信息采集身份使用独立变体，自己与系统使用中性图标。每个实例的SVG paint server ID独立。待命眨眼、思考眼睛/天线、实际回复口部/声条、真实完成单次点头；停止或失败不能产生完成点头。减少动效停用动画。
+
+成长记录以实际里程碑与可追溯证据呈现；不把系统说明或预置计数伪装为学生已取得的成果。本地状态、契约目录与预览不证明真实服务已上线。
 
 ## Do's and Don'ts
 
 ### Do:
-- **Do** 用当前源码与实际路由截图核对规范，维护 token-bearing 文档及配套 sidecar。
-- **Do** 首先呈现关键结论、当前状态和下一步，将短依据放在附近可操作的详情入口。
-- **Do** 保留主色主题、独立深色覆盖、键盘焦点与手机内容顺序。
-- **Do** 使用自然、中性、清楚的中文，以真实字段和状态派生读数。
+- **Do** 用最终覆盖源码、实际字体与真实变更状态核对全站，而非只看初始截图。
+- **Do** 让比较、阅读、日历、任务和记录使用适合各自用途的主体结构。
+- **Do** 保留分类导航、键盘焦点、手机阅读顺序与真实状态反馈。
+- **Do** 使用自然中性中文，显示真实任务名称、阶段目标和实际完成情况。
 
 ### Don't:
-- **Don't** 以历史 C2 原型、旧截图或不存在的生成稿覆盖当前全站授权。
-- **Don't** 将每段内容重新包装为统计卡片或重复解释栏。
-- **Don't** 将本地演示、合成比较或契约数量描述为在线服务成功。
-- **Don't** 将有限截图与行为检查等同于完整 WCAG、性能或真实后端验收。
+- **Don't** 将C2历史、两张参考截图或不可用生成稿当成当前构图约束。
+- **Don't** 将无名矩阵、重复大卡片或整页文章式说明作为通用解决方案。
+- **Don't** 将服务契约、本地演示、合成刻度或停止响应说成在线成功或完成。
+- **Don't** 将有限截图、专项检查或七项修复复核等同于全站品质终审或完整WCAG认证。
 
 ---
 

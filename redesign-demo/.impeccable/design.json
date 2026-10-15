@@ -1,103 +1,113 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-15T10:52:18.3907334+08:00",
-  "title": "Design System: 职引 · 清晰连续的个人工作空间",
+  "generatedAt": "2026-10-15T12:50:09.7139561+08:00",
+  "title": "Design System: 职引 · 学生产品工作空间",
   "extensions": {
     "colorMeta": {
       "primary": {
-        "displayName": "校徽蓝",
         "role": "primary",
+        "displayName": "行动蓝",
         "tonalRamp": [
-          "#002d54",
-          "#003a6b",
-          "#004885",
-          "#0058a7",
-          "#6fa8dc",
-          "#86b6e6",
-          "#b8d5f2",
-          "#eef5fc"
-        ]
-      },
-      "attention": {
-        "displayName": "注意红",
-        "role": "secondary",
-        "tonalRamp": [
-          "#5f0009",
-          "#7d000c",
-          "#96000e",
-          "#d98a92",
-          "#e8a7ad",
-          "#f0c4c8",
-          "#f8f0e9",
-          "#fdf7f4"
+          "oklch(15% .14 262)",
+          "oklch(26% .14 262)",
+          "oklch(38% .14 262)",
+          "oklch(49% .14 262)",
+          "oklch(61% .14 262)",
+          "oklch(72% .14 262)",
+          "oklch(84% .14 262)",
+          "oklch(95% .14 262)"
         ]
       },
       "background": {
-        "displayName": "工作区白",
         "role": "neutral",
+        "displayName": "浅灰工作底",
         "tonalRamp": [
-          "#20252d",
-          "#505967",
-          "#656d79",
-          "#cbd0d8",
-          "#e7e9ed",
-          "#eef0f3",
-          "#f6f7f9",
-          "#ffffff"
+          "oklch(15% .004 260)",
+          "oklch(26% .004 260)",
+          "oklch(38% .004 260)",
+          "oklch(49% .004 260)",
+          "oklch(61% .004 260)",
+          "oklch(72% .004 260)",
+          "oklch(84% .004 260)",
+          "oklch(95% .004 260)"
+        ]
+      },
+      "attention": {
+        "role": "secondary",
+        "displayName": "注意红",
+        "tonalRamp": [
+          "oklch(15% .12 23)",
+          "oklch(26% .12 23)",
+          "oklch(38% .12 23)",
+          "oklch(49% .12 23)",
+          "oklch(61% .12 23)",
+          "oklch(72% .12 23)",
+          "oklch(84% .12 23)",
+          "oklch(95% .12 23)"
         ]
       }
     },
     "typographyMeta": {
-      "fact": {
-        "purpose": "15px画像字段，与14px字段标签区分。",
-        "displayName": "字段正文"
-      },
       "headline": {
-        "purpose": "桌面30px，手机使用独立26px角色。",
-        "displayName": "页标题"
+        "displayName": "页标题",
+        "purpose": "桌面24px，手机22px。中文在本机浏览器解析为Microsoft YaHei。"
       },
-      "summary": {
-        "purpose": "13px的概览标签、主题组标题和短说明。",
-        "displayName": "概览"
+      "body": {
+        "displayName": "工作正文",
+        "purpose": "真实字段值、任务名称和正文；不是装饰性展示字体。"
+      },
+      "metadata": {
+        "displayName": "紧凑元信息",
+        "purpose": "类别与少量元信息，不替代正文。"
       }
     },
     "shadows": [
       {
-        "purpose": "锚定详情浮层。",
+        "name": "detail-popover",
         "value": "0 12px 48px -8px #1c263033",
-        "name": "popover"
+        "purpose": "锚定详情浮层。"
       },
       {
-        "purpose": "工作区浮动表面变量，非全部内容容器。",
+        "name": "workspace-float",
         "value": "0 16px 48px -12px #1c26302e",
-        "name": "workspace-float"
+        "purpose": "保留的浮动表面变量，非普通任务表面默认。"
+      },
+      {
+        "name": "selected-direction",
+        "value": "0 0 0 1px var(--c-primary)",
+        "purpose": "已确认方向描边。"
       }
     ],
     "motion": [
       {
-        "purpose": "浮层入场；减少动效时关闭。",
+        "name": "detail-arrive",
         "value": "160ms cubic-bezier(.16,1,.3,1)",
-        "name": "detail-arrive"
+        "purpose": "详情入场；减少动效时关闭。"
       },
       {
-        "purpose": "鼠标悬停后打开详情。",
+        "name": "detail-hover-open",
         "value": "180ms",
-        "name": "hover-open"
+        "purpose": "鼠标进入打开延迟。"
       },
       {
-        "purpose": "离开后关闭未固定详情。",
+        "name": "detail-hover-close",
         "value": "280ms",
-        "name": "hover-close"
+        "purpose": "未固定详情离开关闭延迟。"
+      },
+      {
+        "name": "robot-nod",
+        "value": ".65s ease-out 1",
+        "purpose": "真实完成后单次点头；失败、停止不触发。减少动效时关闭。"
       }
     ],
     "breakpoints": [
       {
-        "name": "page-inset",
+        "name": "compact",
         "value": "1100px"
       },
       {
-        "name": "report-intel-stack",
-        "value": "1000px"
+        "name": "reader-single",
+        "value": "900px"
       },
       {
         "name": "mobile",
@@ -107,92 +117,98 @@
   },
   "components": [
     {
-      "name": "Primary Button",
-      "html": "<button class=\"ds-button ds-primary\">保存更正</button>",
-      "description": "主操作调用当前语义主色。",
-      "css": ".ds-button{font:500 14px/1.5 var(--font-ui,sans-serif);border:1px solid var(--c-border-strong,#cbd0d8);border-radius:8px;min-height:42px;padding:0 16px;cursor:pointer;background:var(--c-surface,#fff);color:var(--c-text,#20252d)}.ds-button:hover{background:var(--c-surface-2,#f6f7f9)}.ds-button:focus-visible{outline:2px solid var(--c-primary,#0058a7);outline-offset:3px}.ds-button:active{transform:scale(.98)}.ds-primary{background:var(--c-primary,#0058a7);color:var(--c-on-primary,#fff);border-color:var(--c-primary,#0058a7)}.ds-primary:hover{background:var(--c-primary-hover,#004885)}",
+      "name": "主操作",
       "kind": "button",
-      "refersTo": "button-primary"
+      "refersTo": "button-primary",
+      "description": "紧凑实心主操作。",
+      "html": "<button class=\"ds-primary\">确认方向</button>",
+      "css": ".ds-primary{background:var(--c-primary,#2563eb);color:#fff;padding:7px 14px;min-height:36px;border:0;border-radius:8px;font:500 13px 'Segoe UI','Microsoft YaHei',sans-serif;cursor:pointer}.ds-primary:hover{background:var(--c-primary-hover,#004885)}.ds-primary:active{background:var(--c-primary-active,#003a6b)}.ds-primary:focus-visible{outline:2px solid var(--c-primary,#2563eb);outline-offset:3px}"
     },
     {
-      "name": "Secondary Button",
-      "html": "<button class=\"ds-button\">查看记录</button>",
-      "description": "保留细描边的次要操作。",
-      "css": ".ds-button{font:500 14px/1.5 var(--font-ui,sans-serif);border:1px solid var(--c-border-strong,#cbd0d8);border-radius:8px;min-height:42px;padding:0 16px;cursor:pointer;background:var(--c-surface,#fff);color:var(--c-text,#20252d)}.ds-button:hover{background:var(--c-surface-2,#f6f7f9)}.ds-button:focus-visible{outline:2px solid var(--c-primary,#0058a7);outline-offset:3px}.ds-button:active{transform:scale(.98)}",
+      "name": "次操作",
       "kind": "button",
-      "refersTo": "button-secondary"
+      "refersTo": "button-secondary",
+      "description": "白底细边次操作。",
+      "html": "<button class=\"ds-secondary\">查看依据</button>",
+      "css": ".ds-secondary{background:var(--c-surface,#fff);color:var(--c-text,#20252d);border:1px solid var(--c-border,#e7e9ed);padding:7px 14px;min-height:36px;border-radius:8px;font:500 13px 'Segoe UI','Microsoft YaHei',sans-serif;cursor:pointer}.ds-secondary:hover{background:var(--c-surface-2,#f6f7f9)}.ds-secondary:active{background:var(--c-surface-3,#eef0f3)}.ds-secondary:focus-visible{outline:2px solid var(--c-primary,#2563eb);outline-offset:3px}"
     },
     {
-      "css": ".ds-field{display:grid;gap:8px;font:14px/1.5 sans-serif;color:var(--c-text,#20252d)}.ds-field input{min-height:44px;padding:0 12px;border:1px solid var(--c-border-strong,#cbd0d8);border-radius:8px;background:var(--c-surface,#fff);color:inherit;font:inherit}.ds-field input:hover{border-color:var(--c-primary,#0058a7)}.ds-field input:focus-visible{outline:2px solid var(--c-primary,#0058a7);outline-offset:3px}",
+      "name": "搜索",
       "kind": "input",
-      "description": "中性底搜索框，保留明确标签。",
-      "name": "Search Field",
-      "html": "<label class=\"ds-field\">搜索内容<input placeholder=\"输入关键词\" /></label>"
+      "refersTo": "input-search",
+      "description": "带真实标签的工作区查找。",
+      "html": "<label class=\"ds-search-label\">查找记录<input class=\"ds-search\" type=\"search\" placeholder=\"输入关键词\"></label>",
+      "css": ".ds-search-label{display:grid;gap:8px;font:13px 'Segoe UI','Microsoft YaHei',sans-serif;color:var(--c-text-2,#505967)}.ds-search{min-height:38px;padding:8px 12px;border:1px solid var(--c-border-control,#8f959e);border-radius:8px;background:var(--c-surface,#fff);color:var(--c-text,#20252d);font:14px 'Segoe UI','Microsoft YaHei',sans-serif}.ds-search:hover{border-color:var(--c-border-strong,#cbd0d8)}.ds-search:focus-visible{outline:2px solid var(--c-primary,#2563eb);outline-offset:2px}"
     },
     {
-      "name": "Active Navigation",
-      "html": "<nav><a class=\"ds-nav\" href=\"#profile\" aria-current=\"page\">个人信息</a></nav>",
-      "description": "轻圆角、浅主色底的当前页面入口。",
-      "css": ".ds-nav{display:flex;align-items:center;min-height:40px;padding:8px 12px;border-radius:7px;font:500 14px/1.5 sans-serif;text-decoration:none;color:var(--c-primary,#0058a7);background:var(--c-primary-weak,#eef5fc)}.ds-nav:hover{background:var(--c-primary-weak-2,#dbeafa)}.ds-nav:focus-visible{outline:2px solid var(--c-primary,#0058a7);outline-offset:3px}",
+      "name": "活动导航",
       "kind": "nav",
-      "refersTo": "nav-active"
+      "refersTo": "nav-active",
+      "description": "分类导航中的当前页面。",
+      "html": "<nav aria-label=\"学生工作空间\"><a class=\"ds-nav\" href=\"#profile\" aria-current=\"page\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"8\" r=\"4\"/><path d=\"M4 21v-2a8 8 0 0 1 16 0v2\"/></svg>个人画像</a></nav>",
+      "css": ".ds-nav{display:flex;align-items:center;gap:10px;min-height:36px;padding:7px 10px;border-radius:7px;background:var(--c-primary-weak,#eff5ff);color:var(--c-primary,#2563eb);font:13px 'Segoe UI','Microsoft YaHei',sans-serif;text-decoration:none}.ds-nav:hover{background:var(--c-primary-weak-2,#dbe8ff)}.ds-nav:focus-visible{outline:2px solid var(--c-primary,#2563eb);outline-offset:3px}"
     },
     {
-      "css": ".ds-chip{min-height:40px;padding:6px 10px;font:13px/1.5 sans-serif;border:0;border-radius:6px;background:var(--c-primary-weak,#eef5fc);color:var(--c-primary,#0058a7);cursor:pointer}.ds-chip:hover{background:var(--c-primary-weak-2,#dbeafa)}.ds-chip:focus-visible{outline:2px solid var(--c-primary,#0058a7);outline-offset:3px}.ds-chip:active{transform:scale(.98)}",
+      "name": "内容类别",
       "kind": "chip",
-      "description": "浮层中的小型筛选，文本表达选中状态。",
-      "name": "Filter Chip",
-      "html": "<button class=\"ds-chip\" aria-pressed=\"true\">学习</button>"
+      "description": "资讯结果的静态类别标签。",
+      "html": "<span class=\"ds-kind\">岗位资讯</span>",
+      "css": ".ds-kind{display:inline-block;padding:1px 6px;border-radius:4px;background:var(--c-surface-2,#f6f7f9);color:var(--c-text-2,#505967);font:11px 'Segoe UI','Microsoft YaHei',sans-serif}"
     },
     {
-      "name": "Task Focus",
-      "html": "<article class=\"ds-task\"><h2>完善一项经历</h2><p>补充职责和实际完成的内容。</p></article>",
-      "description": "少量重点任务的浅色强调区域。",
-      "css": ".ds-task{padding:28px;border-radius:12px;background:var(--c-primary-weak,#eef5fc);color:var(--c-text,#20252d);font:16px/1.75 sans-serif}.ds-task h2{font-size:26px;line-height:1.6;margin:0 0 16px}.ds-task p{margin:0}",
+      "name": "任务表面",
       "kind": "card",
-      "refersTo": "task-focus"
+      "refersTo": "workspace-surface",
+      "description": "承载一个任务的白色工作表面。",
+      "html": "<section class=\"ds-surface\"><h2>今日重点</h2><p>真实任务名称、当前状态与下一步。</p></section>",
+      "css": ".ds-surface{padding:20px;border:1px solid var(--c-border,#e7e9ed);border-radius:12px;background:var(--c-surface,#fff);color:var(--c-text,#20252d);font:14px/1.6 'Segoe UI','Microsoft YaHei',sans-serif}.ds-surface h2{font-size:16px;font-weight:600;margin:0 0 12px}.ds-surface p{margin:0;color:var(--c-text-2,#505967)}"
     },
     {
-      "name": "Detail Popover",
-      "html": "<section class=\"ds-popover\" aria-label=\"资料来源\"><header><h2>资料来源</h2><button aria-label=\"关闭详情\">×</button></header><p>查看该信息的来源与更新时间。</p></section>",
-      "description": "静态外观样例；真实锚定、Esc和焦点恢复由DetailPopover实现。",
-      "css": ".ds-popover{width:min(384px,calc(100vw - 32px));max-height:580px;overflow:auto;padding:20px;border-radius:12px;background:var(--workspace-float,#fff);color:var(--c-text,#20252d);box-shadow:0 12px 48px -8px #1c263033;font:14px/1.75 sans-serif}.ds-popover header{display:flex;justify-content:space-between;gap:12px;margin-bottom:12px}.ds-popover h2{font-size:16px;font-weight:600;margin:7px 0 0}.ds-popover p{margin:0;overflow-wrap:anywhere}.ds-popover button{width:36px;height:36px;border:0;border-radius:6px;background:transparent;color:inherit;cursor:pointer}.ds-popover button:hover{background:#858b981a}.ds-popover button:focus-visible{outline:2px solid var(--c-primary,#0058a7);outline-offset:3px}",
+      "name": "详情表面",
       "kind": "custom",
-      "refersTo": "detail-popover"
+      "refersTo": "detail-popover",
+      "description": "附近短说明的视觉表面；示例静态展示，不模拟Vue浮层行为。",
+      "html": "<aside class=\"ds-detail\"><h2>数据依据</h2><p>短来源与解释保留当前任务上下文。</p><button class=\"ds-detail-action\">查看原记录</button></aside>",
+      "css": ".ds-detail{width:min(344px,calc(100vw - 72px));max-height:580px;overflow:auto;padding:20px;border-radius:12px;background:var(--workspace-float,#fff);color:var(--c-text,#20252d);box-shadow:0 12px 48px -8px #1c263033;font:14px/1.75 'PingFang SC','Noto Sans CJK SC','Microsoft YaHei UI',sans-serif}.ds-detail h2{font-size:16px;font-weight:600;margin:0 0 12px}.ds-detail p{margin:0 0 12px}.ds-detail-action{border:0;background:transparent;min-height:44px;color:var(--c-primary,#2563eb);cursor:pointer}.ds-detail-action:hover{text-decoration:underline}.ds-detail-action:focus-visible{outline:2px solid var(--c-primary,#2563eb);outline-offset:3px}"
     }
   ],
   "narrative": {
-    "overview": "当前前端的视觉权威是 `redesign-demo` 的运行实现与本规范。2026-10-15 用户确认全站重新设计，取消 C2 基准；以任务、结论、当前状态和下一步组织首屏，深入信息在触发位置附近查看。语言自然、中性、清楚。\n\n这是已实现系统的记录。标准导航保持稳定，成长档案提供连续记录与就近溯源的结构启发。没有获批视觉效果图或可用 Stitch 生成屏幕；历史原型不是当前验收基准。产品事实见根 `PRODUCT.md`。",
-    "northStar": "清晰连续的个人工作空间",
-    "dos": [
-      "Do 用当前源码与实际路由截图核对规范，维护 token-bearing 文档及配套 sidecar。",
-      "Do 首先呈现关键结论、当前状态和下一步，将短依据放在附近可操作的详情入口。",
-      "Do 保留主色主题、独立深色覆盖、键盘焦点与手机内容顺序。",
-      "Do 使用自然、中性、清楚的中文，以真实字段和状态派生读数。"
-    ],
-    "donts": [
-      "Don't 以历史 C2 原型、旧截图或不存在的生成稿覆盖当前全站授权。",
-      "Don't 将每段内容重新包装为统计卡片或重复解释栏。",
-      "Don't 将本地演示、合成比较或契约数量描述为在线服务成功。",
-      "Don't 将有限截图与行为检查等同于完整 WCAG、性能或真实后端验收。"
+    "northStar": "精确、安静、紧凑的学生工作空间",
+    "overview": "当前视觉权威为运行实现、本文及 `design-review/navigation-rethink/BRIEF.md` 最后的2026-10-15完整产品重构契约。用户已撤销C2复刻要求，并授权整个学生端独立重构。参考截图和GenieLink仅解释品质期待，不规定构图，也不将范围缩为两个页面。根PRODUCT.md承载产品事实。\n\n信息以学生正在处理的任务为单位：比较展示差别，报告展示当前值和门槛，计划展示阶段与真实进度，日历展示日期与完整日程，记录展示可操作条目。共享的是尺度与控件，不是每页相同的大卡片。语言自然、中性、清楚。最新参考站Finsight的逐界面实地检查仍在进行，本规范不宣称它已完成。",
+    "keyCharacteristics": [
+      "浅灰工作底、白色任务表面、克制蓝色行动强调。",
+      "分类导航与紧凑工具栏稳定，主体结构随任务变化。",
+      "当前状态、真实名称、主要操作优先，短依据附近查看。",
+      "四个获批机器人造型与独立采集变体承担实际身份和处理状态。"
     ],
     "rules": [
       {
-        "body": "主色表示当前入口或行动，注意色表示风险与待处理事项；在红主题中仍保留文字与结构区分状态。",
-        "section": "colors",
-        "name": "The Semantic Accent Rule"
+        "name": "The Meaningful Accent Rule",
+        "body": "主色必须对应当前状态、可执行动作或有尺度的真实数据。",
+        "section": "colors"
       },
       {
-        "body": "短解释、来源和小型筛选保留触发位置上下文，长任务与编辑流程仍使用合适的原有页面或面板。",
-        "section": "elevation",
-        "name": "The Nearby Detail Rule"
+        "name": "The Working Text Rule",
+        "body": "真实名称和操作使用清晰可读的工作字号；元信息降级不能取代正文，进度必须保留数值含义。",
+        "section": "typography"
+      },
+      {
+        "name": "The Nearby Detail Rule",
+        "body": "短解释、来源与小型选择保留触发上下文；长报告和文章使用独立阅读安排。",
+        "section": "elevation"
       }
     ],
-    "keyCharacteristics": [
-      "默认信息精简，操作和关键结论优先。",
-      "连续内容以对齐、留白和细分隔组织。",
-      "蓝或红主色、灰白底与独立深色覆盖。",
-      "来源、短说明和筛选通过锚定浮层展开。"
+    "dos": [
+      "**Do** 用最终覆盖源码、实际字体与真实变更状态核对全站，而非只看初始截图。",
+      "**Do** 让比较、阅读、日历、任务和记录使用适合各自用途的主体结构。",
+      "**Do** 保留分类导航、键盘焦点、手机阅读顺序与真实状态反馈。",
+      "**Do** 使用自然中性中文，显示真实任务名称、阶段目标和实际完成情况。"
+    ],
+    "donts": [
+      "**Don't** 将C2历史、两张参考截图或不可用生成稿当成当前构图约束。",
+      "**Don't** 将无名矩阵、重复大卡片或整页文章式说明作为通用解决方案。",
+      "**Don't** 将服务契约、本地演示、合成刻度或停止响应说成在线成功或完成。",
+      "**Don't** 将有限截图、专项检查或七项修复复核等同于全站品质终审或完整WCAG认证。"
     ]
   }
 }
