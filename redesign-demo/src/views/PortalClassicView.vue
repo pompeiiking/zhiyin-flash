@@ -1,34 +1,18 @@
 <script setup lang="ts">
 import { useRoute, useRouter } from 'vue-router'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { demo } from '../store'
 import { STUDENT } from '../data/student'
 
-/**
- * 门户。
- *
- * 结构（自上而下）：
- *   两侧竖排四句口号 ｜ 品牌 → 主张 → 宣传词 → 定位 → 一个入口 → 成本 ｜ 四件事说明
- *
- * 关于那四句 —— 评审要求里本来就写着「核心口号参考"持续陪伴、专业牵引、行动落地、心想事成"」，
- * 上一轮我把它当成装饰删了，是错的：它是产品的四条承诺，属于内容。
- * 现在做成**两侧竖排**（左：持续陪伴 / 专业牵引；右：行动落地 / 心想事成）：
- *   · 竖排是中文原有的排法，放在一个中国高校的产品上不突兀；
- *   · 它正好用掉左右两条空白带（评审说"两侧还是有点空"）；
- *   · 不占正文的注意力 —— 它是"氛围里的承诺"，不是要你读的第一行。
- *
- * 背景**全部是静态图形，没有一处持续运动**（设计语言 §5 反例表 / §7.3）：
- *   1. 两片品牌色光晕（左上 / 右下），只负责"底不空"
- *   2. 一片居中的光晕，把中段托起来
- *   3. 版面竖线格，静态（透明度写死 0.3）
- *   4. 两条极淡的路线（SVG path），作为构图的一部分
- *   5. 颗粒纹理（压在文字底下，本来就是静止的）
- *
- * 上一版这里是"氛围海报"：光晕 22s/30s 无限漂移、网格 12s 呼吸、一道 12s 扫光、
- * 三个节点沿路径跑 SMIL animateMotion —— 全站最典型的"吵不是活"。
- * 现在只保留图形、撤掉运动：门户是宣传面，静图就是它的完整形态，
- * 动起来反而不承载任何信息（看的人答不出"这里发生了什么"）。
- * 唯一的例外是"删掉即没有意义"的扫光带，整层删除（见交付说明）。
+/** 旧门户动态背景恢复自 60d4e4f（2026-10-16 用户确认）。
+ * 保留漂移光晕、呼吸网格、扫光与路径节点；减少动态效果时保留静态背景。
+ * 门户是用户明确要求保留的版本，不套用工作区的装饰动效限制。
  */
+const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)')
+const reducedMotion = ref(motionPreference.matches)
+function syncMotionPreference(event: MediaQueryListEvent) { reducedMotion.value = event.matches }
+onMounted(() => motionPreference.addEventListener('change', syncMotionPreference))
+onUnmounted(() => motionPreference.removeEventListener('change', syncMotionPreference))
 
 const router = useRouter()
 const route = useRoute()
@@ -77,30 +61,32 @@ const what = [
       <div class="bg__glow bg__glow--c" />
       <div class="bg__glow bg__glow--b" />
 
-      <!--
-        两条路线：纯粹的静态构图，不再有沿路径移动的节点。
-        上一版这里挂了三个 `<animateMotion>`（24s / 38s / 31s 无限循环），
-        是整页最贵也最没信息量的动效 —— 节点在跑，但没人知道它在跑什么。
-        现在只留两条曲线（`<use>`），它们撑住下部构图；节点连同心圆一起删掉：
-        没有运动的圆点落在线上，读起来只是一个来路不明的斑点。
-      -->
       <svg class="bg__paths" viewBox="0 0 1200 700" preserveAspectRatio="xMidYMid slice">
         <defs>
-          <!--
-            两条曲线必须**整条都在通栏之上**：上一版下面那条起点 y=692，
-            越过了通栏顶边（约 643），于是它从通栏边缘冒出来 —— 看着就是"断掉的曲线"。
-            现在两条的 y 都在 310–615 之间，通栏顶边之上留出余量。
-            起点 x=-200、终点 x=1320 都在可视区之外（slice 居中裁切后可视约 90–1109），
-            所以两端都是从屏幕外进来的，不会有突兀的断头。
-          -->
-          <path id="zp1" d="M-200,520 C 180,470 360,545 640,450 S 1000,345 1320,310" />
+              <path id="zp1" d="M-200,520 C 180,470 360,545 640,450 S 1000,345 1320,310" />
           <path id="zp2" d="M-200,600 C 200,575 420,615 740,520 S 1020,435 1320,420" />
         </defs>
         <use class="bg__curve" href="#zp1" />
         <use class="bg__curve bg__curve--dim" href="#zp2" />
+        <circle v-if="!reducedMotion" class="bg__node" r="3">
+          <animateMotion dur="24s" repeatCount="indefinite" calcMode="linear">
+            <mpath href="#zp1" />
+          </animateMotion>
+        </circle>
+        <circle v-if="!reducedMotion" class="bg__node bg__node--dim" r="2.5">
+          <animateMotion dur="38s" repeatCount="indefinite" calcMode="linear" begin="-14s">
+            <mpath href="#zp1" />
+          </animateMotion>
+        </circle>
+        <circle v-if="!reducedMotion" class="bg__node bg__node--accent" r="2.5">
+          <animateMotion dur="31s" repeatCount="indefinite" calcMode="linear" begin="-6s">
+            <mpath href="#zp2" />
+          </animateMotion>
+        </circle>
       </svg>
 
       <div class="bg__grid" />
+      <div class="bg__sweep" />
       <div class="bg__grain" />
     </div>
 
@@ -205,13 +191,12 @@ const what = [
   filter: blur(60px);
 }
 
-/* 两片光晕各有位置，没有动画 —— 它们曾经 22s / 30s 交替漂移（交替的周期是"一眼看出在放动画"），
-   现在停在各自的静态位置上；构图（左上 / 右下 + 中间托底）原样保留。 */
 .bg__glow--a {
   left: -14%;
   top: -14%;
   width: 1060px;
   height: 700px;
+  animation: drift-a 22s var(--ease-in-out) infinite alternate;
 }
 
 .bg__glow--b {
@@ -220,9 +205,10 @@ const what = [
   width: 940px;
   height: 640px;
   opacity: 0.85;
+  animation: drift-b 30s var(--ease-in-out) infinite alternate;
 }
 
-/* 居中那片本来就不漂移：前两片在左上与右下，中间一条会是纯白，视觉上就成了"上下两块空" */
+/* 居中那片不漂移：前两片在左上与右下，中间一条会是纯白，视觉上就成了"上下两块空" */
 .bg__glow--c {
   left: 50%;
   top: 26%;
@@ -231,8 +217,25 @@ const what = [
   transform: translateX(-50%);
 }
 
-/* 路径：极淡，只做"这条路一直在"的暗示，不抢文字。现在整条线是静止的。
-   沿路径跑的三个节点（.bg__node*）与它们的 animateMotion 已删除。 */
+@keyframes drift-a {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(16%, 12%, 0);
+  }
+}
+
+@keyframes drift-b {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-18%, -10%, 0);
+  }
+}
+
+/* 路径与节点：极淡，只做"这条路一直在走"的暗示，不抢文字 */
 .bg__paths {
   position: absolute;
   inset: 0;
@@ -251,9 +254,22 @@ const what = [
   opacity: 0.45;
 }
 
+.bg__node {
+  fill: var(--c-primary-brand);
+  opacity: 0.55;
+}
+
+.bg__node--dim {
+  opacity: 0.3;
+}
+
+.bg__node--accent {
+  fill: var(--brand-stripe);
+  opacity: 0.35;
+}
+
 /* 版面竖线格（思路取自 designeer 清单里 Fffuel 的 ooorganize）。
-   上一版这里 12s 呼吸（opacity 0.2↔0.4）—— 背景"活着"最省的一种动法，但**它仍然不传达信息**，
-   属于设计语言 §5 点名的"持续背景运动"。现在透明度固定在原区间的中值 0.3。 */
+   缓慢呼吸：透明度 12s 往复 —— 这是"背景活着"最省的一种动法，只动 opacity。 */
 .bg__grid {
   position: absolute;
   inset: 0;
@@ -264,15 +280,47 @@ const what = [
   );
   -webkit-mask-image: radial-gradient(ellipse 74% 68% at 50% 44%, #000 26%, transparent 100%);
   mask-image: radial-gradient(ellipse 74% 68% at 50% 44%, #000 26%, transparent 100%);
-  opacity: 0.3;
+  animation: grid-breathe 12s var(--ease-in-out) infinite alternate;
 }
 
-/* 这里原本是一道 12s 从左到右的扫光带（.bg__sweep + @keyframes sweep）。
-   它的存在意义**完全依赖运动**：静止时它只是一块斜的白色蒙版，盖在文字上只会让人以为屏幕脏了，
-   所以整层删除，而不是"留在原地不动"。 */
+@keyframes grid-breathe {
+  from {
+    opacity: 0.2;
+  }
+  to {
+    opacity: 0.4;
+  }
+}
 
-/* 颗粒（思路取自 Fffuel 的 nnnoise）。**本来就是静止的**，不属于禁令范围，原样保留：
-   它压在文字底下，动起来字会发飘。 */
+/* 一道非常淡的光带，每 12s 从左侧扫到右侧。
+   宽度是页面的 1.6 倍、起始位置在视口外，所以进出都不露头。 */
+.bg__sweep {
+  position: absolute;
+  top: -20%;
+  left: -70%;
+  width: 46%;
+  height: 140%;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    var(--sweep-color) 45%,
+    var(--sweep-color) 55%,
+    transparent 100%
+  );
+  animation: sweep 12s var(--ease-in-out) infinite;
+}
+
+@keyframes sweep {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  70%,
+  100% {
+    transform: translate3d(320%, 0, 0);
+  }
+}
+
+/* 颗粒（思路取自 Fffuel 的 nnnoise）。**刻意不动** —— 它压在文字底下，动起来字会发飘 */
 .bg__grain {
   position: absolute;
   inset: 0;
@@ -542,18 +590,12 @@ const what = [
   color: var(--c-text-3);
 }
 
-/* ===========================================================================
- * 减少动效 —— 降级到"可用形态"，不是"关掉就白一块"
- * ---------------------------------------------------------------------------
- * 上一版这里是 `.bg { display: none }`，理由写得挺诚实（"SMIL 没法用 CSS 停"），
- * 但结果是：用户在系统里开了"减少动态效果"，看到的是一个**光秃秃的静态排版**——
- * 背景层次、构图、两条路线全没了。设计语言 §7.4 明确禁止这种做法。
- *
- * 现在整页**本来就没有持续运动**（光晕 / 网格 / 路线 / 颗粒全是静止图形），
- * 所以减少动效下不需要关掉任何东西：只需要把"交互与一次性"的动效停掉，静态形态原样保留。
- * 于是 reduced-motion 与正常模式的观感一致，页面仍然是一个完整的门户。
- * ======================================================================== */
+/* 减少动态效果：保留背景与正文，停止 CSS 动画并移除移动节点。 */
 @media (prefers-reduced-motion: reduce) {
+  .bg__glow, .bg__grid, .bg__sweep { animation: none; }
+  .bg__grid { opacity: 0.3; }
+  .bg__sweep { display: none; }
+
   .top__login,
   .hero__cta {
     transition: none;
