@@ -111,8 +111,14 @@ _TASK_INPUTS: dict[str, tuple[str, ...]] = {
     ),
     # 缺口追问：问的就是那一条缺口（画像与缺口同源）
     "gap": ("profile_field_updated",),
-    # 报告小结：报告正文 + 画像
-    "report.summary": ("asset_version_changed", "profile_field_updated"),
+    # 报告导读：报告正文 + 画像 + 学业 + 方向/行动状态 + 用户笔记
+    "report.summary": (
+        "asset_version_changed",
+        "profile_field_updated",
+        "academic_changed",
+        "asset_state_changed",
+        "note_changed",
+    ),
     # 空档课表：导入的课表 + 行动计划的时段
     "plan.timetable": (
         "academic_changed",
@@ -880,8 +886,24 @@ class AiTaskService:
                 )
             )
             blocks.append(("诊断结论", [report.verdict.title, report.verdict.summary]))
-            blocks.append(("优劣势", list(report.swot.strength) + list(report.swot.weakness)))
+            blocks.append(("已有优势", list(report.swot.strength)))
+            blocks.append(("当前短板", list(report.swot.weakness)))
+            blocks.append(("外部机会", list(report.swot.opportunity)))
             blocks.append(("主要风险", list(report.swot.risk)))
+            blocks.append((
+                "报告的全部维度判断",
+                [
+                    f"{item.name}（{item.tag}）：{item.conclusion}；依据：{item.evidence}"
+                    for group in report.dimensions
+                    for item in group.items
+                ],
+            ))
+            blocks.append((
+                "各章节采用的判断方式",
+                [f"{group.group}：{group.group_method}" for group in report.dimensions],
+            ))
+            blocks.append(("本报告列出的资料来源", list(report.sources)))
+            blocks.append(("本报告采用的方法", list(report.methodologies)))
         else:
             citations.append(
                 Citation(
@@ -892,12 +914,115 @@ class AiTaskService:
             )
         blocks.append(("我已经知道的", self._profile_lines(profile)))
         blocks.append(("还缺的", self._gap_lines(profile)))
+
+        notes = await self._note_texts(user_id)
+        blocks.append(("他自己写下的", notes))
+
+        try:
+            recent = await self._behaviors.recent(user_id, limit=8)
+            blocks.append((
+                "他最近做过的事",
+                [f"{event.occurred_at.strftime('%m-%d')} {event.event_type.value}" for event in recent],
+            ))
+            if recent:
+                citations.append(Citation(
+                    source="近期行为记录",
+                    detail=f"最近 {len(recent)} 条行为",
+                    confidence=0.9,
+                    at=recent[0].occurred_at.strftime("%Y-%m-%d"),
+                ))
+        except Exception:  # noqa: BLE001
+            _log.exception("读取近期行为失败：报告导读不使用行为记录")
+
+        if self._academic_records is not None:
+            try:
+                snapshot = await self._academic_records.get(user_id)
+                courses = list(getattr(snapshot, "courses", []) or [])
+                grades = list(getattr(snapshot, "grades", []) or [])
+                blocks.append((
+                    "课程记录",
+                    [
+                        f"{course.name}：周{getattr(course, 'weekday', '?')}，"
+                        f"第{getattr(course, 'start_period', '?')}-{getattr(course, 'end_period', '?')}节，"
+                        f"地点{getattr(course, 'place', '') or '未记录'}，教师{getattr(course, 'teacher', '') or '未记录'}"
+                        for course in courses
+                    ],
+                ))
+                blocks.append((
+                    "成绩记录",
+                    [
+                        f"{grade.name}：成绩{getattr(grade, 'score', '') or '未记录'}，"
+                        f"学分{getattr(grade, 'credit', '') or '未记录'}，学期{getattr(grade, 'term', '') or '未记录'}"
+                        for grade in grades
+                    ],
+                ))
+                if courses or grades:
+                    citations.append(Citation(
+                        source="学业记录",
+                        detail=f"{len(courses)} 门课程 · {len(grades)} 条成绩",
+                        confidence=0.95,
+                        origin="academic",
+                    ))
+            except Exception:  # noqa: BLE001
+                _log.exception("读取学业记录失败：报告导读不使用课程和成绩")
+
+        try:
+            directions = await self._assets.list_direction_plans(user_id)
+            blocks.append((
+                "已经形成的方向方案",
+                [
+                    f"{'已选择' if plan.selected else plan.role.value}方向 {plan.name}：{plan.target_desc}；"
+                    f"契合依据：{plan.fit_reason}；主要风险：{plan.main_risk}；"
+                    f"差距：{'；'.join(f'{gap.requirement}（现状：{gap.current_state}；建议：{gap.suggestion}）' for gap in plan.gaps)}"
+                    for plan in directions
+                ],
+            ))
+            if directions:
+                citations.append(Citation(
+                    source="方向方案",
+                    detail=f"{len(directions)} 个方向，其中 {sum(1 for plan in directions if plan.selected)} 个已选择",
+                    confidence=0.9,
+                ))
+        except Exception:  # noqa: BLE001
+            _log.exception("读取方向方案失败：报告导读不使用方向方案")
+
+        try:
+            action_plan = await self._assets.get_action_plan(user_id)
+            phases = list(getattr(action_plan, "phases", []) or [])
+            blocks.append((
+                "正在执行的行动计划",
+                [
+                    f"{phase.name}（{phase.date_range}）："
+                    + "；".join(
+                        f"{task.text}（状态 {task.status}，进度 {task.progress}%）"
+                        for task in phase.tasks
+                    )
+                    for phase in phases
+                ],
+            ))
+            if phases:
+                citations.append(Citation(
+                    source="行动计划",
+                    detail=f"{len(phases)} 个阶段 · {sum(len(phase.tasks) for phase in phases)} 项任务",
+                    confidence=0.9,
+                ))
+        except Exception:  # noqa: BLE001
+            _log.exception("读取行动计划失败：报告导读不使用行动计划")
+
+        if profile is not None:
+            citations.append(Citation(
+                source="个人画像",
+                detail=f"{len(profile.fields)} 个字段 · {len(profile.gaps)} 条待补信息",
+                confidence=0.85,
+            ))
+        if notes:
+            citations.append(Citation(source="用户笔记", detail=f"{len(notes)} 条自建内容", confidence=0.9))
         return await self._generate(
             user_id,
             "report.summary",
             context_text=self._context(*blocks),
             citations=citations,
-            rationale="没有诊断就不编结论：报告还没生成时，这一段的任务是说清还差什么。",
+            rationale="导读综合报告全文、个人画像、学业记录、方向与行动状态、笔记和近期行为；缺失的数据不补写，没有诊断时不编结论。",
         )
 
     async def _bind_chsi(self, user_id: str, profile: Optional[Profile], arg: str, *, by: str) -> AiResultEnvelope:
