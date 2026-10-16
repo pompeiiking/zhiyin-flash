@@ -15,6 +15,13 @@ export function deadline(value, now = new Date()) {
 export function actionRows(plan) {
   return (plan?.phases ?? []).flatMap((phase, phaseIndex) => (phase.tasks ?? []).map(task => ({ ...task, phase: task.phase || phase.name, phaseIndex })))
 }
+export function actionStatusMatches(task, filter) {
+  if (filter === 'all') return true
+  if (filter === 'done') return !!task.done
+  if (task.done) return false
+  if (filter === 'pending') return !task.status || task.status === 'pending'
+  return task.status === filter
+}
 export function taskGroup(task, now = new Date()) {
   if (task.done) return 'done'
   const due = deadline(task.due_date, now)
