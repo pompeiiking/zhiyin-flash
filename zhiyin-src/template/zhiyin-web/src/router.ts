@@ -64,7 +64,7 @@ export const router = createRouter({
       component: () => import('./views/ReflectionView.vue'),
       meta: { title: '复盘与记录', step: 'review' },
     },
-    { path: '/directions', name: 'directions', component: () => import('./views/AssessmentView.vue'), meta: { title: '方向方案' } },
+    { path: '/directions', name: 'directions', component: () => import('./views/DirectionsView.vue'), meta: { title: '方向方案' } },
     { path: '/academic', redirect: '/grades' },
     { path: '/grades', name: 'grades', component: () => import('./views/GradesView.vue'), meta: { title: '我的成绩', step: 'know' } },
     { path: '/schedule', name: 'schedule', component: () => import('./views/ScheduleView.vue'), meta: { title: '日历与课表' } },

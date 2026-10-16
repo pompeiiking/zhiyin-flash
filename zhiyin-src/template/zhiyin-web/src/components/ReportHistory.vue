@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {studentApi} from '../api/student-capabilities'
 import DetailPopover from './DetailPopover.vue'
-import { onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 import { ref } from 'vue'
 import { backendClient } from '../api/backend-client'
 import type { AssetVersionView, ReportFullTextView } from '../api/backend-types'
@@ -10,6 +10,7 @@ import EmptyState from './EmptyState.vue'
 import StatTile from './StatTile.vue'
 const props = withDefaults(defineProps<{assetType?: 'report'|'direction_plan'|'action_plan'}>(),{assetType:'report'})
 defineEmits<{ open: [report: ReportFullTextView, metadata: AssetVersionView | null] }>()
+const heading=computed(()=>props.assetType==='direction_plan'?'方案版本与更新状态':props.assetType==='action_plan'?'计划版本与更新状态':'完整版本与更新状态')
 const historical=ref<{version:number;content:any}|null>(null)
 async function readSnapshot(version:number){error.value='';try{historical.value=await studentApi.snapshot(props.assetType,version)}catch(e){error.value=(e as Error).message}}
 const versions = ref<AssetVersionView[] | null>(null), busy = ref(false), error = ref(''), reading = ref<number | null>(null)
@@ -31,7 +32,7 @@ const formatDate=(value:string)=>new Intl.DateTimeFormat('zh-CN',{dateStyle:'med
 onMounted(()=>{ void load() })
 </script>
 <template><section class="report-history-live">
-  <div class="ws-section-head"><h2>完整版本与更新状态</h2><button class="btn" :disabled="busy||reading!==null" @click="load">{{ busy?'正在读取…':'读取版本记录' }}</button></div>
+  <div class="ws-section-head"><h2>{{heading}}</h2><button class="btn" :disabled="busy||reading!==null" @click="load">{{ busy?'正在读取…':'读取版本记录' }}</button></div>
   <p v-if="error" class="ws-field-error" role="alert">{{ error }}</p>
   <SkeletonBlock v-if="busy&&!versions" variant="list" :lines="3" />
   <template v-if="versions">
@@ -55,7 +56,7 @@ onMounted(()=>{ void load() })
       <p class="ws-muted ws-section">生成于 {{ new Date(v.created_at).toLocaleString('zh-CN') }}</p>
       <p class="ws-section">{{ v.diff_from_previous || '本版没有提供差异摘要。' }}</p>
       <p v-if="v.depends_on_profile_keys?.length" class="ws-muted">依赖的个人信息：{{ v.depends_on_profile_keys.join('、') }}</p>
-      <DetailPopover :title="'第 '+v.version+' 版正文'" side="right" @update:model-value="open=>open&&readSnapshot(v.version)"><template #trigger>阅读历史正文</template><template v-if="historical?.version===v.version"><template v-if="assetType==='action_plan'"><section v-for="p in historical.content.phases" :key="p.id||p.name"><h3>{{p.name}}</h3><p v-for="t in p.tasks" :key="t.id">{{t.done?'✓':'○'}} {{t.text}}</p></section></template><template v-else><section v-for="p in historical.content" :key="p.id"><h3>{{p.name}}</h3><p>{{p.target_desc}}</p><p>{{p.fit_reason}}</p><p>{{p.main_risk}}</p></section></template></template><p v-else>请点击读取历史正文；缺少快照时会在版本列表显示原因。</p></DetailPopover>
+      <DetailPopover v-if="assetType!=='report'" :title="'第 '+v.version+' 版正文'" side="right" @update:model-value="open=>open&&readSnapshot(v.version)"><template #trigger>阅读历史正文</template><template v-if="historical?.version===v.version"><template v-if="assetType==='action_plan'"><section v-for="p in historical.content.phases" :key="p.id||p.name"><h3>{{p.name}}</h3><p v-for="t in p.tasks" :key="t.id">{{t.done?'✓':'○'}} {{t.text}}</p></section></template><template v-else><section v-for="p in historical.content" :key="p.id" class="history-direction"><h3>{{p.name}}</h3><dl><div><dt>方向目标</dt><dd>{{p.target_desc||'本版未提供'}}</dd></div><div><dt>匹配依据</dt><dd>{{p.fit_reason||'本版未提供'}}</dd></div><div><dt>主要风险</dt><dd>{{p.main_risk||'本版未提供'}}</dd></div></dl><section v-if="p.gaps?.length"><h4>差距与补齐建议</h4><article v-for="(gap,index) in p.gaps" :key="gap.id||index"><strong>{{gap.requirement||'未命名要求'}}</strong><p>当前情况：{{gap.current_state||'本版未提供'}}</p><p>补齐建议：{{gap.suggestion||'本版未提供'}}</p></article></section></section></template></template><p v-else>正在读取历史正文；缺少快照时会在版本列表显示原因。</p></DetailPopover>
     </article>
     </template>
     <EmptyState v-if="!versions.length" kind="report" size="sm" title="尚无已保存的资产版本" description="生成第一版后，这里会按版本列出生成时间、依赖信息与更新状态。" />
@@ -65,4 +66,5 @@ onMounted(()=>{ void load() })
 
 <style scoped>
 .report-version-list{margin-top:20px;border-top:1px solid var(--c-border)}.report-version-row{display:grid;grid-template-columns:130px minmax(0,1fr) auto;gap:20px;align-items:center;padding:20px 4px;border-bottom:1px solid var(--c-border)}.report-version-row--attention{border-left:3px solid var(--c-attention);padding-left:14px}.report-version-row__identity{display:grid;gap:6px}.report-version-row__identity strong{font-size:var(--fs-16)}.report-version-row__identity span{width:max-content;padding:3px 7px;border-radius:999px;background:var(--c-surface-3);color:var(--c-text-2);font-size:var(--fs-12)}.report-version-row--attention .report-version-row__identity span{background:var(--c-attention-weak);color:var(--c-attention-strong)}.report-version-row__content{min-width:0}.report-version-row__content>p{line-height:1.65}.report-version-row__meta{display:flex;flex-wrap:wrap;align-items:center;gap:2px 16px;margin-top:8px;color:var(--c-text-3);font-size:var(--fs-12);font-variant-numeric:tabular-nums}.report-version-row__meta :deep(.detail-trigger){min-height:32px;padding:0;color:var(--c-primary);font-size:var(--fs-12)}@media(max-width:767px){.report-version-row{grid-template-columns:minmax(0,1fr) auto;gap:12px;padding:18px 0}.report-version-row__content{grid-column:1 / -1;grid-row:2}.report-version-row>.btn{grid-column:2;grid-row:1}.report-version-row--attention{padding-left:12px}}
+.history-direction+ .history-direction{margin-top:20px;padding-top:20px;border-top:1px solid var(--c-border)}.history-direction dl{display:grid;gap:12px;margin:12px 0}.history-direction dt{color:var(--c-text-3);font-size:var(--fs-12)}.history-direction dd{margin:3px 0 0;line-height:1.6}.history-direction h4{margin:16px 0 8px}.history-direction article{padding:10px 0;border-top:1px solid var(--c-border)}.history-direction article p{margin-top:5px;color:var(--c-text-2)}
 </style>
