@@ -1,150 +1,49 @@
 <script setup lang="ts">
-import { computed, ref, watch, onMounted } from 'vue'
-import { demo } from '../store'
-import { INTERVENTION } from '../data/student'
-import type { ReviewItem } from '../data/types'
-import PageHeading from '../components/PageHeading.vue'
-import UiIcon from '../components/UiIcon.vue'
-import AchievementsSection from '../components/AchievementsSection.vue'
-import { useRoute } from 'vue-router'
-import { attributionLabel } from '../lib/presentation'
-import { consultantLabel } from '../lib/consultant'
-import DetailPopover from '../components/DetailPopover.vue'
-import InfoSheet from '../components/InfoSheet.vue'
-import ResultPager from '../components/ResultPager.vue'
-import { usePagedItems } from '../lib/paged-items'
-import Foldable from '../components/Foldable.vue'
-import EmptyState from '../components/EmptyState.vue'
-import StatTile from '../components/StatTile.vue'
-import StatusBanner from '../components/StatusBanner.vue'
-import { growthRecords } from '../lib/growth-records'
+import {computed,onMounted,ref,watch} from 'vue'
+import {useRoute} from 'vue-router'
+import {backendClient} from '../api/backend-client'
+import {backendDemo} from '../lib/backend-demo'
 import {systemData,loadRecords} from '../lib/system-data'
-const loadError=ref('')
-onMounted(()=>loadRecords().catch(e=>{loadError.value=e.message}))
-const route = useRoute()
-const achievementView = computed(() => route.query.view === 'achievements')
-const items = computed<ReviewItem[]>(() => [
-  ...demo.use.done.value.filter((t) => t.doneAt === '刚刚').map((t) => ({ id: 'done-' + t.id, when: '刚刚', what: t.title, result: 'done' as const })),
-  ...systemData.events.map(e=>({id:e.id,when:e.occurred_at?new Date(e.occurred_at).toLocaleString('zh-CN'):'时间未提供',what:e.title,result:e.type==='milestone_done'?'done' as const:'record' as const})),
-])
-const completed = computed(() => items.value.filter((r) => r.result === 'done'))
-const partial = computed(() => items.value.filter((r) => r.result === 'partial'))
-const missed = computed(() => items.value.find((r) => r.result === 'missed') ?? null)
-const choices = ['任务太大', '方法不对', '方向要重估', '其他', '尚不确定'] as const
-const reviewNote = ref(''), noteStatus = ref('')
-const recordDetails = ref<ReviewItem | null>(null)
-watch(() => missed.value?.id, id => { reviewNote.value = id ? demo.state.reviewNotes[id] ?? '' : ''; noteStatus.value = '' }, { immediate: true })
-function saveNote() { if (missed.value) { demo.setReviewNote(missed.value.id, reviewNote.value); noteStatus.value = '说明已保存在这条复盘记录中。' } }
-const choice = computed(() => missed.value ? demo.state.reviewAttributions[missed.value.id] ?? '' : '')
-const explanation = computed(() => choice.value === '任务太大' ? '将「'+missed.value?.what+'」拆成一个约5分钟可开始的步骤，再记录实际结果。' : choice.value === '方法不对' ? '先核对「'+missed.value?.what+'」使用的方法与实际反馈，再调整做法。' : choice.value === '方向要重估' ? '结合这条执行记录重新比较方向，保留已有任务与完成记录。' : '先保留你的说明，和顾问核对事实后再决定怎样调整。')
-const labels: Record<string, string> = { record:'咨询与资料记录', done: '已完成', partial: '部分完成', missed: '暂未完成' }
-function nextStep() {
-  if (!missed.value || !['任务太大','方法不对'].includes(choice.value)) return
-  demo.planChatTask((choice.value === '任务太大' ? '拆小一步：' : '核对方法：') + missed.value.what, choice.value === '任务太大' ? 5 : 15)
-}
-
-/* ============================================================================
- * 落点②组织权 —— 复盘记录的三条轴
- * ---------------------------------------------------------------------------
- * 【病灶】这一页原来只有一条固定顺序的 `<ol class="ws-timeline">`：信息组织得清楚，
- * 但用户**改不了组织方式**。门禁实测 `orgKinds {tabs:0, pressed:0, selects:0}`。
- *
- * 【判据】三条轴都是真的换分组：条目被搬进别的组，分组头的条数跟着变。
- * 同一批记录的实测分布（演示数据 4 条：r1 完成 / r2 暂未完成·任务太大 /
- * r3 部分完成·方法不对 / r4 完成）：
- *   按时间看  1 组 · 全部记录 4 条（r1 r2 r3 r4，时间顺序）
- *   按结果看  ⇢ 已完成 2（r1 r4）/ 部分完成 1（r3）/ 暂未完成 1（r2）
- *   按原因看  ⇢ 任务负担过高 1（r2）/ 执行方法需调整 1（r3）/ 还没选原因 2（r1 r4）
- * 关键证据不是"组数变了"，而是**相邻关系变了**：r1 与 r4 在时间线上被 r2、r3 隔开，
- * 在按结果看里变成同组相邻；而 r2、r3 在按原因看里各自单独成组。
- * 空组不渲染（六档归因里四档为空），组数因此也随数据变。
- *
- * 控件用 PanelTabs（reka-ui）：role=tablist / role=tab / aria-selected / 方向键内建，
- * 44px 触控高度由全局 .exp-tabs__trigger 保证。
- * ==========================================================================*/
-const reviewQuery=ref('')
-const recordPool=computed<ReviewItem[]>(()=>[...items.value,...growthRecords.value.filter(r=>r.done).map(r=>({id:'growth-'+r.id,when:r.at?.slice(0,10)??'时间未提供',what:r.title,result:'done' as const}))])
-const filteredRecords=computed(()=>recordPool.value.filter(r=>(r.what+' '+r.when+' '+(demo.state.reviewNotes[r.id]??'')).includes(reviewQuery.value.trim())))
-const {page:reviewPage,paged:reviewRows}=usePagedItems(filteredRecords,4)
+import {actionRows,dateKey,deadline} from '../lib/action-insights.mjs'
+import {usePagedItems} from '../lib/paged-items'
+import PageHeading from '../components/PageHeading.vue'
+import DetailPopover from '../components/DetailPopover.vue'
+import CapabilityGap from '../components/CapabilityGap.vue'
+import ResultPager from '../components/ResultPager.vue'
+import StatusBanner from '../components/StatusBanner.vue'
+import AchievementsSection from '../components/AchievementsSection.vue'
+const route=useRoute(),busy=ref(false),error=ref(''),status=ref('')
+const tasks=computed(()=>actionRows(backendDemo.state.liveAction))
+const completed=computed(()=>tasks.value.filter(t=>t.done))
+const pending=computed(()=>tasks.value.filter(t=>!t.done))
+const overdue=computed(()=>pending.value.filter(t=>deadline(t.due_date).overdue))
+const selectedId=ref(''),reason=ref(''),memo=ref(''),query=ref(''),filter=ref('all')
+const choices=['任务太大','方法不对','方向要重估','其他','尚不确定']
+const selected=computed(()=>tasks.value.find(t=>t.task_id===selectedId.value))
+const prefix=computed(()=>selected.value?'【任务复盘:'+selected.value.task_id+'】':'')
+const saved=computed(()=>backendDemo.state.notes.filter(n=>prefix.value&&n.text.startsWith(prefix.value)).slice().sort((a,b)=>b.created_at.localeCompare(a.created_at)))
+const noteBody=computed(()=>prefix.value+reason.value+'｜'+memo.value.trim())
+const memoLimit=computed(()=>Math.max(0,200-prefix.value.length-reason.value.length-1))
+watch(selectedId,()=>{reason.value='';memo.value='';status.value=''})
+const records=computed(()=>[
+ ...completed.value.map(t=>({id:'task-'+t.task_id,title:t.text,date:t.done_at||'',kind:'done',label:'任务完成',body:t.phase})),
+ ...systemData.events.filter(e=>!(e.type==='milestone_done'&&completed.value.some(t=>t.task_id===e.related_task_id))).map(e=>({id:'event-'+e.id,title:e.title,date:e.occurred_at||'',kind:'event',label:'系统记录',body:e.detail||''})),
+ ...backendDemo.state.notes.filter(n=>n.text.startsWith('【任务复盘:')).map(n=>({id:'note-'+n.id,title:tasks.value.find(t=>n.text.startsWith('【任务复盘:'+t.task_id+'】'))?.text||'历史任务复盘',date:n.created_at,kind:'review',label:'个人复盘说明',body:n.text.slice(n.text.indexOf('】')+1)}))
+].sort((a,b)=>b.date.localeCompare(a.date)))
+const filtered=computed(()=>records.value.filter(r=>(filter.value==='all'||r.kind===filter.value)&&[r.title,r.body,r.date].join(' ').includes(query.value.trim())))
+const {page,paged}=usePagedItems(filtered,5)
+const explanation=computed(()=>reason.value==='任务太大'?'先讨论如何拆成能开始的小步骤。':reason.value==='方法不对'?'把已经尝试的方法与结果一起带入咨询。':reason.value==='方向要重估'?'结合实际进展重新比较方向。':'先记录实际情况，再决定如何调整。')
+const question=computed(()=>'我想复盘任务「'+(selected.value?.text||'')+'」，阶段：'+(selected.value?.phase||'')+'。我认为的原因：'+(reason.value||'尚不确定')+'。实际情况：'+memo.value)
+async function load(){if(busy.value)return;busy.value=true;error.value='';try{const results=await Promise.allSettled([backendClient.action(),backendClient.notes(),loadRecords()]);if(results[0].status==='fulfilled')backendDemo.setAction(results[0].value);if(results[1].status==='fulfilled')backendDemo.setNotes(results[1].value);const failure=results.find(r=>r.status==='rejected');if(failure?.status==='rejected')throw failure.reason}catch(e){error.value=(e as Error).message}finally{busy.value=false}}
+async function save(){if(busy.value||!selected.value||!reason.value||noteBody.value.length>200)return;busy.value=true;error.value='';try{backendDemo.upsertNote(await backendClient.addNote({kind:'todo',text:noteBody.value}));status.value='复盘说明已保存到个人记录，刷新后仍可查看。'}catch(e){error.value=(e as Error).message}finally{busy.value=false}}
+async function adjustment(){if(busy.value||!selected.value)return;const text=(reason.value==='任务太大'?'拆小一步：':'核对方法：')+selected.value.text;if(text.length>200){error.value='任务标题过长，请在个人待办中缩短后添加。';return}busy.value=true;error.value='';try{backendDemo.upsertNote(await backendClient.addNote({kind:'todo',text}));status.value='调整待办已保存，尚未排入阶段计划。'}catch(e){error.value=(e as Error).message}finally{busy.value=false}}
+onMounted(load)
 </script>
-<template>
-  <div class="ws-page review-page"><p v-if="loadError" class="ws-field-error" role="alert">{{loadError}} <button @click="loadRecords().catch(e=>loadError=e.message)">重新读取</button></p>
-    <PageHeading title="复盘与记录" :description="achievementView ? '记录已完成的关键行动，展示阶段成果。' : demo.use.scenario.value.grade + ' · ' + demo.use.scenario.value.reviewFocus"><RouterLink class="btn" to="/home">回到今日行动<UiIcon name="arrow" :size="16" /></RouterLink></PageHeading>
-
-    <AchievementsSection v-if="achievementView" />
-    <template v-else>
-<section class="c2-review-week"><h2>行动概况</h2><p><strong>{{ completed.length + partial.length }} 项已有进展</strong>，共有 {{ items.length }} 条执行记录。</p><DetailPopover title="行动概况说明" label="查看行动概况说明"><p>{{ completed.length }} 次已完成，{{ partial.length }} 次部分完成，{{ items.filter(r=>r.result==='missed').length }} 次待复盘。</p></DetailPopover><div class="ws-stat-row review-summary"><StatTile :value="completed.length" unit="件" label="已完成" /><StatTile :value="partial.length" unit="件" label="部分完成" /><StatTile :value="items.filter((r) => r.result === 'missed').length" unit="件" label="待复盘" /></div></section>
-    <div class="ws-two-columns">
-      <section class="ws-paper">
-        <template v-if="missed"><h2 class="ws-section-title">未完成任务分析</h2><p style="margin-top: var(--sp-4)">待复盘任务：「{{ missed.what }}」。</p><p class="ws-muted" style="margin-top: var(--sp-2)">请选择影响执行的主要原因，查看调整建议。</p><fieldset class="ws-attributions review-choices"><legend class="sr-only">复盘归因</legend><label v-for="a in choices" :key="a" :class="{'review-choice--on': choice === a}"><input type="radio" name="review-reason" :checked="choice === a" @change="demo.setReviewAttribution(missed.id, a)" />{{ attributionLabel(a) }}</label></fieldset><form class="ws-section" @submit.prevent="saveNote"><label class="ws-field">补充实际情况<textarea v-model="reviewNote" maxlength="500" rows="3" placeholder="发生了什么、试过什么，或者还不确定的原因…"/></label><button class="btn" type="submit">保存复盘说明</button></form><StatusBanner v-if="noteStatus" tone="success" class="ws-section" :message="noteStatus" @dismiss="noteStatus = ''" /><p v-if="!choice" class="ws-muted ws-section">还没有确认原因。也可以先和顾问讨论，再决定怎样调整。</p><div v-if="choice" class="ws-review-result" aria-live="polite"><p>{{ explanation }}</p><div class="ws-inline-actions"><RouterLink v-if="choice === '方向要重估'" class="btn btn--primary" to="/directions">重新比较方向<UiIcon name="arrow" :size="16" /></RouterLink><button v-else-if="choice==='任务太大'||choice==='方法不对'" class="btn btn--primary" @click="nextStep">添加调整任务<UiIcon name="arrow" :size="16" /></button><RouterLink class="ws-text-link" :to="'/chat?question='+encodeURIComponent('我想复盘：'+missed.what+'。'+reviewNote)">咨询调整方案</RouterLink></div></div></template>
-        <EmptyState v-else class="ws-section" kind="review" :heading-level="2" :title="completed.length ? '当前没有待复盘任务' : '暂无执行记录'" description="完成行动任务后，可在此查看执行记录与复盘建议。" action-to="/home" action-label="查看当前任务" />
-      </section>
-      <div class="review-side">
-        <section class="review-side__recent"><h2>近期完成任务</h2><ul v-if="completed.length" class="ws-mini-list"><li v-for="r in completed.slice(0, 4)" :key="r.id">{{ r.what }}<p class="ws-muted">{{ r.when }}</p></li></ul><p v-else>完成第一件事后，会在这里看到它。</p></section>
-        <section class="review-side__support"><h2>执行支持</h2><p>可通过拆分任务、调整方法或重新评估方向处理执行障碍。</p><button class="ws-text-button" @click="demo.openIntervention()">查看提醒示例<UiIcon name="arrow" :size="16" /></button></section>
-        <Foldable title="主动提醒规则" variant="inline"><ul class="ws-mini-list"><li v-for="r in INTERVENTION.rules" :key="r">{{ r }}</li></ul><p class="ws-muted">主动提醒由{{ consultantLabel(INTERVENTION.host) }}提供。</p></Foldable>
-      </div>
-    </div>
-
-<section class="ws-section review-records"><div class="ws-section-head"><h2>执行与成长记录</h2><RouterLink class="ws-text-link" to="/achievements">查看成长记录<UiIcon name="arrow" :size="16"/></RouterLink></div><label class="information-search">查找记录<input v-model="reviewQuery" type="search" placeholder="输入任务、日期或复盘关键词…"/></label><ol v-if="reviewRows.length" class="ws-timeline"><li v-for="r in reviewRows" :key="r.id"><time>{{ r.when }}</time><div class="ws-timeline__content"><button class="review-record-title" @click="recordDetails=r">{{ r.what }}</button><small v-if="demo.state.reviewAttributions[r.id] ?? r.attribution">原因：{{ attributionLabel(demo.state.reviewAttributions[r.id] ?? r.attribution) }}</small><p v-if="demo.state.reviewNotes[r.id]">{{ demo.state.reviewNotes[r.id] }}</p></div><span class="ws-timeline__state">{{ labels[r.result] }}</span></li></ol><p v-else class="ws-muted">{{ reviewQuery ? '没有匹配的记录，请更换关键词。' : '完成一件事后，会在这里留下记录。' }}</p><ResultPager v-model:page="reviewPage" :total="filteredRecords.length" :size="4" label="复盘记录"/></section>
-    <div v-if="!demo.state.guidesClosed.review" class="ws-guide"><UiIcon name="info" :size="18" /><p>复盘结合执行记录分析原因，并提供相应的调整建议。</p><button @click="demo.closeGuide('review')">收起</button></div>
-
-    </template>
-    <InfoSheet :open="recordDetails!==null" shape="sheet" title="执行记录" @close="recordDetails=null"><template v-if="recordDetails"><h3>{{ recordDetails.what }}</h3><p class="ws-muted ws-section">{{ recordDetails.when }} · {{ labels[recordDetails.result] }}</p><p v-if="demo.state.reviewAttributions[recordDetails.id] ?? recordDetails.attribution" class="ws-section">原因：{{ attributionLabel(demo.state.reviewAttributions[recordDetails.id] ?? recordDetails.attribution) }}</p><p v-if="demo.state.reviewNotes[recordDetails.id]" class="ws-section">{{ demo.state.reviewNotes[recordDetails.id] }}</p><RouterLink class="btn ws-section" to="/home" @click="recordDetails=null">查看行动任务<UiIcon name="arrow" :size="16"/></RouterLink></template></InfoSheet>
-  </div>
-</template>
-
-<style scoped>
-/* 三个读数是同一把尺（StatTile）：等宽分栏、窄屏落成单列 */
-.review-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-5); margin-bottom: var(--sp-3); }
-@media (max-width: 760px) { .review-summary { grid-template-columns: minmax(0, 1fr); gap: var(--sp-4); } }
-/* 右栏：近期完成 + 执行支持是主信息（static），只有"主动提醒规则"折一层 */
-.review-side { display: grid; gap: var(--sp-6); align-content: start; min-width: 0; }
-.review-side__recent h2, .review-side__support h2 { font-size: var(--fs-16); font-weight: var(--fw-semibold); }
-.review-side__recent .ws-mini-list, .review-side__support p { margin-top: var(--sp-3); }
-.review-side__support p { color: var(--c-text-2); font-size: var(--fs-14); line-height: 1.8; }
-.review-side__support .ws-text-button { margin-top: var(--sp-3); }
-
-/* ============================================================================
- * 落点②组织权 · 复盘记录的"看角"
- * ---------------------------------------------------------------------------
- * 分组头带条数：换轴时条目被搬动、条数跟着变 —— 这是"真的重组"唯一可核对的证据。
- * 三条轴共用一处渲染（按时间看是"1 组"，不是另一套模板），所以三种视角下
- * 每一条记录的 DOM 形状完全一致，只有**它落在哪个组**变了。
- * ==========================================================================*/
-.review-views__note {
-  margin-bottom: var(--sp-4);
-  font-size: var(--fs-14);
-  line-height: var(--lh-normal);
-  color: var(--c-text-3);
-}
-
-.review-group + .review-group { margin-top: var(--sp-5); }
-
-.review-group__head {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-  font-size: var(--fs-16);
-  font-weight: var(--fw-semibold);
-}
-
-.review-group__count {
-  padding: 0 var(--sp-2);
-  border: var(--bw-1) solid var(--c-border);
-  border-radius: var(--r-pill);
-  font-size: var(--fs-12);
-  font-weight: var(--fw-regular);
-  font-variant-numeric: tabular-nums;
-  color: var(--c-text-3);
-}
-
-.review-group__note {
-  margin-top: var(--sp-2);
-  font-size: var(--fs-12);
-  line-height: var(--lh-normal);
-  color: var(--c-text-3);
-}
-
-.review-group .ws-timeline { margin-top: var(--sp-1); }
-</style>
+<template><div class="ws-page review-page"><PageHeading title="复盘与记录" description="回看真实执行结果，再决定怎样调整。"><button class="btn" :disabled="busy" @click="load">刷新记录</button><RouterLink class="btn" to="/home">回到今日行动</RouterLink></PageHeading><StatusBanner v-if="error" tone="error" :message="error" retry-label="重试" @retry="load"/><p v-if="status" class="desk-status" role="status">{{status}}</p>
+<AchievementsSection v-if="route.query.view==='achievements'"/><template v-else>
+<section class="review-overview"><button @click="filter='done'"><strong>{{completed.length}}</strong><span>已完成任务</span></button><button @click="selectedId=overdue[0]?.task_id||''"><strong>{{overdue.length}}</strong><span>已过截止日且未完成</span></button><button @click="filter='review'"><strong>{{records.filter(r=>r.kind==='review').length}}</strong><span>个人复盘说明</span></button><CapabilityGap title="部分完成与正式复盘状态" reason="任务接口没有部分完成状态，也没有复盘结论字段。已过截止日不自动判定为失败；复盘说明使用个人记录保存。"/></section>
+<div class="ws-two-columns"><section class="ws-paper"><h2>选择一件事复盘</h2><label class="ws-field">任务<select v-model="selectedId" :disabled="busy"><option value="">选择已完成或未完成的任务</option><optgroup label="尚未完成"><option v-for="t in pending" :key="t.task_id" :value="t.task_id">{{t.text}} · {{deadline(t.due_date).label}}</option></optgroup><optgroup label="已完成"><option v-for="t in completed" :key="t.task_id" :value="t.task_id">{{t.text}}</option></optgroup></select></label>
+<template v-if="selected"><p class="ws-muted">{{selected.phase}} · {{selected.done?'已完成':'未完成'}} · {{dateKey(selected.due_date)||'未设日期'}}</p><fieldset class="review-reasons"><legend>你认为主要原因是什么？</legend><label v-for="choice in choices" :key="choice"><input v-model="reason" :disabled="busy" type="radio" name="review-reason" :value="choice"/>{{choice}}</label></fieldset><form @submit.prevent="save"><label class="ws-field">实际情况<textarea v-model="memo" :disabled="busy" :maxlength="memoLimit" rows="3" placeholder="发生了什么、试过什么、得到什么反馈…"/></label><small class="ws-muted">保存为账号内的个人复盘说明，不会自动改变任务状态。</small><div class="ws-inline-actions ws-section"><button class="btn btn--primary" :disabled="busy||!reason||noteBody.length>200">保存复盘说明</button><RouterLink class="btn" :to="'/chat?question='+encodeURIComponent(question)">咨询调整方案</RouterLink></div></form><section v-if="reason" class="ws-review-result"><p>{{explanation}}</p><RouterLink v-if="reason==='方向要重估'" class="btn" to="/directions">重新比较方向</RouterLink><button v-else-if="reason==='任务太大'||reason==='方法不对'" class="btn" :disabled="busy" @click="adjustment">添加调整待办</button></section><section v-if="saved.length" class="ws-section"><h3>这项任务的已保存说明</h3><article v-for="n in saved" :key="n.id"><time class="ws-muted">{{dateKey(n.created_at)}}</time><p>{{n.text.slice(prefix.length)}}</p></article></section></template><p v-else class="ws-empty">选择一项真实任务，核对进展并记录你的判断。</p></section>
+<aside class="review-side"><section><h2>近期完成</h2><ul class="ws-mini-list"><li v-for="t in completed.slice().sort((a,b)=>(b.done_at||'').localeCompare(a.done_at||'')).slice(0,4)" :key="t.task_id">{{t.text}}<small class="ws-muted">{{dateKey(t.done_at)||'完成时间未提供'}}</small></li></ul><p v-if="!completed.length" class="ws-muted">还没有已完成任务。</p></section><section class="ws-section"><h2>记录与调整</h2><RouterLink class="ws-text-link" to="/notes">查看个人待办与复盘说明</RouterLink><RouterLink class="ws-text-link" to="/reminders">查看真实提醒</RouterLink><CapabilityGap title="复盘结论回写计划" reason="目前可以记录说明、咨询和保存调整待办；还没有按任务保存结构化归因、复盘状态或直接拆分计划任务的接口。"/></section></aside></div>
+<section class="ws-section review-records"><div class="ws-section-head"><h2>执行与成长记录</h2><RouterLink to="/achievements">成长记录</RouterLink></div><div class="review-record-tools"><label class="information-search">查找记录<input v-model="query" type="search" placeholder="任务、日期或复盘关键词"/></label><label class="ws-field">记录类型<select v-model="filter"><option value="all">全部记录</option><option value="done">任务完成</option><option value="review">个人复盘说明</option><option value="event">系统记录</option></select></label></div><ol class="ws-timeline"><li v-for="r in paged" :key="r.id"><time>{{dateKey(r.date)||'未提供日期'}}</time><div class="ws-timeline__content"><strong>{{r.title}}</strong><DetailPopover :title="r.title" :label="'查看记录：'+r.title" side="right"><template #trigger>记录详情</template><p>{{r.body||'没有补充说明。'}}</p><p class="ws-muted">{{r.label}} · {{r.date?new Date(r.date).toLocaleString('zh-CN'):'时间未提供'}}</p></DetailPopover></div><span class="ws-timeline__state">{{r.label}}</span></li></ol><p v-if="!filtered.length&&!busy" class="ws-empty">没有符合条件的记录。</p><ResultPager v-model:page="page" :total="filtered.length" :size="5" label="复盘记录"/></section></template></div></template>
+<style scoped>.review-overview{display:flex;flex-wrap:wrap;gap:20px;margin:24px 0 32px}.review-overview>button{display:grid;gap:8px;text-align:left;min-width:160px;padding:16px;border-bottom:2px solid var(--c-border);background:transparent;color:var(--c-text)}.review-overview strong{font-size:32px;color:var(--c-primary)}.review-overview span{font-size:var(--fs-12)}.review-reasons{display:flex;flex-wrap:wrap;gap:12px;border:0;margin:20px 0}.review-reasons legend{margin-bottom:12px}.review-reasons label{display:flex;gap:5px;align-items:center;min-height:40px}.review-record-tools{display:flex;flex-wrap:wrap;gap:20px;align-items:end;margin:16px 0}.review-record-tools .information-search{flex:1;min-width:200px}.review-side small{display:block;margin-top:6px}.ws-timeline__content :deep(.detail-trigger){display:block;margin-top:8px}</style>

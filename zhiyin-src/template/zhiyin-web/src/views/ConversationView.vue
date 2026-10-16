@@ -8,6 +8,7 @@ import { PROFILE_FIELDS } from '../data/student'
 import { useStreaming } from '../lib/motion'
 import UiIcon from '../components/UiIcon.vue'
 import InfoSheet from '../components/InfoSheet.vue'
+import CapabilityGap from '../components/CapabilityGap.vue'
 import type { ChatTurn } from '../data/types'
 import { backendDemo } from '../lib/backend-demo'
 import {auth} from '../lib/auth'
@@ -1046,7 +1047,7 @@ onUnmounted(() => {
          所以这里只留 `shape`（实测计算样式见交付说明：类名里不再有 ws-sheet--inspector）。 -->
     <InfoSheet :shape="'sheet'" :open="panel !== null" :title="panel === 'profile' ? '个人画像' : panel === 'sessions' ? '历史对话' : '咨询成果'" @close="panel = null">
       <template v-if="panel === 'profile'"><StatTile label="已知信息" :value="progress.known" :denominator="progress.total" unit="条" :trend="{ label: '还有 ' + progress.gap + ' 项待补充' }" /><p class="ws-muted">可通过咨询继续完善。</p><dl class="ws-stack"><div v-for="f in known" :key="f.key"><dt class="ws-muted">{{ f.label }}</dt><dd>{{ demo.state.profileEdits[f.key] ?? (f.key === 'grade' ? demo.use.scenario.value.grade : f.value) }}</dd></div></dl><RouterLink class="ws-text-link" to="/profile">查看完整档案<UiIcon name="arrow" :size="16" /></RouterLink></template>
-      <template v-else-if="panel === 'sessions'"><p class="ws-muted">按咨询主题查找历史会话，原有对话内容会保留。</p><button v-for="s in backendDemo.state.sessions" :key="s.task_id" class="desk-session" :aria-pressed="demo.state.currentSessionId === s.task_id" :disabled="thinking" @click="selectSession(s.task_id)"><UiIcon name="chat" /><span><strong>{{ s.task_name }}</strong><small>{{ s.stage_label }} · {{ s.status === 'completed' ? '已结束' : s.status === 'paused' ? '已暂停' : '进行中' }}</small></span><UiIcon name="arrow" :size="16" /></button><p v-if="!backendDemo.state.sessions.length" class="ws-empty ws-muted">暂无历史会话。创建咨询后可在此查看。</p></template>
+      <template v-else-if="panel === 'sessions'"><CapabilityGap title="历史引导与推理卡片恢复" reason="历史会话可以读取消息，尚未返回当时完整的引导选项、理论卡片和流程状态。继续对话会以新回复为准。"/><p class="ws-muted">按咨询主题查找历史会话，原有对话内容会保留。</p><button v-for="s in backendDemo.state.sessions" :key="s.task_id" class="desk-session" :aria-pressed="demo.state.currentSessionId === s.task_id" :disabled="thinking" @click="selectSession(s.task_id)"><UiIcon name="chat" /><span><strong>{{ s.task_name }}</strong><small>{{ s.stage_label }} · {{ s.status === 'completed' ? '已结束' : s.status === 'paused' ? '已暂停' : '进行中' }}</small></span><UiIcon name="arrow" :size="16" /></button><p v-if="!backendDemo.state.sessions.length" class="ws-empty ws-muted">暂无历史会话。创建咨询后可在此查看。</p></template>
       <template v-else>
         <section class="ws-section"><h3>画像与相关成果</h3><StatTile label="已知信息" :value="progress.known" :denominator="progress.total" unit="条" /><nav class="ws-related"><RouterLink to="/profile" @click="panel=null">核对个人画像与来源</RouterLink><RouterLink to="/report" @click="panel=null">阅读诊断与依据</RouterLink><RouterLink to="/directions" @click="panel=null">比较方向方案</RouterLink></nav><AssetNotice/></section>
         <!-- 卡片头已经写着「已形成的行动建议」，这块只承担内容，避免重复一个标题 -->

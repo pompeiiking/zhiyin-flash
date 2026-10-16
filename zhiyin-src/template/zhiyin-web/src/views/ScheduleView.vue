@@ -14,6 +14,7 @@ import UiIcon from '../components/UiIcon.vue'
 import { hasCourseTime, courseTimeLabel } from '../lib/academic'
 import InfoSheet from '../components/InfoSheet.vue'
 import DayAdvicePanel from '../components/DayAdvicePanel.vue'
+import ScheduleLoad from '../components/ScheduleLoad.vue'
 import { backendClient } from '../api/backend-client'
 import TimetableAdvice from '../components/TimetableAdvice.vue'
 import Foldable from '../components/Foldable.vue'
@@ -65,11 +66,7 @@ onMounted(()=>{ void loadCalendar() })
 <template>
 <div class="ws-page schedule-page"><PageHeading title="日历与课表" description="关键节点、今日任务和学校课程，各自保留来源。"><template #meta><div class="sched-meta"><span>{{backendDemo.state.academic?.term || '学期未导入'}}</span><span>{{timed.length}} 门课程有节次</span><span v-if="pendingTimeCourses">{{pendingTimeCourses}} 门待补充时间</span></div></template><button class="btn" :disabled="calendarBusy" @click="loadCalendar">{{ calendarBusy?'正在读取…':(readOnce?'更新最新日程':'读取最新日程') }}</button><RouterLink class="btn" to="/academic"><UiIcon name="upload" :size="16" />管理导入资料</RouterLink></PageHeading>
 <p v-if="calendarError" class="ws-field-error" role="alert">{{ calendarError }}</p>
-<!-- ======= ① 结构显形：三周的课程与任务用时对比 =======
-     它是"课多的一周任务排得少"的**可核对版本**：两根横条共用一根刻度，
-     课量长的与任务量长的分别是哪一周，一眼就分得出来。
-     数据全部来自真实课表（节次 + weeks）与真实任务（按阶段计划的时间窗归周）。 -->
-
+<ScheduleLoad :date="selectedDate" @select="selectDate($event);mode='week'"/>
 <div class="sched-split">
 <div class="sched-split__main">
  <section class="c2-profile-stats" aria-label="已保存的日程与课程"><OverviewMetric label="本月节点"><template #value><strong>{{marks.length}}</strong></template></OverviewMetric><OverviewMetric label="有节次的课程"><template #value><strong>{{timed.length}}</strong></template></OverviewMetric><OverviewMetric label="待执行任务"><template #value><strong>{{demo.use.now.value.length}}</strong></template></OverviewMetric></section>

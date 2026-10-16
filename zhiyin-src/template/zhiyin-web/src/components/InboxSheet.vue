@@ -39,6 +39,7 @@ import UiIcon from './UiIcon.vue'
     >
       <button class="btn" @click="demo.closeNotice()">先去处理当前任务</button>
     </EmptyState>
+    <RouterLink class="ws-text-link" to="/reminders" @click="demo.closeNotice()">打开提醒管理与搜索</RouterLink>
   </InfoSheet>
 </template>
 

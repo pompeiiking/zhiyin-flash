@@ -23,6 +23,7 @@ const notesBasisOpen=ref(false)
 const noteQuery = ref('')
 const visibleNotes = computed(()=>allNotes.value.filter(n=>!noteQuery.value.trim()||n.text.toLocaleLowerCase().includes(noteQuery.value.trim().toLocaleLowerCase())))
 const tab = ref<'todo'|'goal'>('todo'), drafts = ref({todo:'',goal:''}), error=ref(''), status=ref('')
+const displayNote=(text:string)=>text.replace(/^【任务复盘:[^】]+】/,'任务复盘 · ')
 const deleting=ref<NoteView|null>(null),busy=ref(false),deleteError=ref('')
 /* 读取态与"忙"分开：busy 也覆盖添加/删除，用它画骨架会把"正在保存"错认成"还没读到" */
 const loading=ref(false)
@@ -86,7 +87,7 @@ onMounted(()=>{ void loadNotes() })
 <section class="c2-note-add" aria-label="添加待办或目标"><form class="desk-note-form" @submit.prevent="add"><label class="sr-only" for="note-kind">记录类型</label><select id="note-kind" v-model="tab"><option value="todo">待办</option><option value="goal">目标</option></select><label class="sr-only" for="desk-note-text">写下一条个人记录</label><input id="desk-note-text" v-model="text" maxlength="200" placeholder="下一件想做的事…"/><button class="btn" type="submit" :disabled="busy" aria-label="添加记录"><UiIcon name="plus" :size="18"/></button></form></section><label class="c2-note-search">查找个人记录<input v-model="noteQuery" type="search" placeholder="输入关键词查找待办或目标…"/></label><p v-if="noteQuery" class="c2-lens-hint" role="status">找到 {{ visibleNotes.length }} 条，共 {{ allNotes.length }} 条。<button class="ws-text-button" @click="noteQuery=''">清空关键词</button></p>
 <StatusBanner :open="!!status" tone="success" :message="status" @dismiss="status=''"/><StatusBanner v-if="error" tone="error" :message="error" retry-label="重试读取" @retry="loadNotes"/>
 <EmptyState v-if="noteQuery && !visibleNotes.length" kind="search-empty" title="没有找到这条记录" description="换一个关键词，或清空关键词查看全部记录。" :next="false"><button class="btn" @click="noteQuery=''">查看全部记录</button></EmptyState><div class="notes-page__records" :aria-busy="loading"><SkeletonBlock v-if="loading" :overlay="allNotes.length>0" variant="list" :lines="4"/>
-<section v-for="group in noteGroups.filter(group=>group.items.length)" :key="group.key" class="c2-note-group"><h3>{{ group.title }}<span>本页 {{ group.items.length }} 条</span></h3><ul><li v-for="item in group.items" :key="item.id" class="desk-record c2-note-row" :class="{'desk-record--done':item.done}"><button class="desk-record__toggle" :aria-label="(item.done?'恢复：':'完成：')+item.text" :aria-pressed="item.done" @click="setDone(item,!item.done)" :disabled="busy"><UiIcon v-if="item.done" name="check" :size="16"/></button><div><p><span class="c2-note-kind">{{ item.kind==='goal'?'目标':'待办' }}</span>{{ item.text }}</p><DetailPopover title="记录信息" :label="'查看记录信息：'+item.text"><template #trigger><time>{{ item.created_at ? new Date(item.created_at).toLocaleDateString('zh-CN') : '日期未提供' }}</time></template><SourceChip source="user_edit" :at="item.created_at"/><p>{{ item.done ? '已完成，可恢复。' : '完成后保留记录，可随时恢复。' }}</p></DetailPopover></div><button class="ws-icon-button" :aria-label="'删除：'+item.text" @click="deleting={...item}"><UiIcon name="trash" :size="17"/></button></li></ul><p v-if="!group.items.length" class="ws-muted">这一组现在没有记录。</p></section></div>
+<section v-for="group in noteGroups.filter(group=>group.items.length)" :key="group.key" class="c2-note-group"><h3>{{ group.title }}<span>本页 {{ group.items.length }} 条</span></h3><ul><li v-for="item in group.items" :key="item.id" class="desk-record c2-note-row" :class="{'desk-record--done':item.done}"><button class="desk-record__toggle" :aria-label="(item.done?'恢复：':'完成：')+displayNote(item.text)" :aria-pressed="item.done" @click="setDone(item,!item.done)" :disabled="busy"><UiIcon v-if="item.done" name="check" :size="16"/></button><div><p><span class="c2-note-kind">{{ item.kind==='goal'?'目标':'待办' }}</span>{{ displayNote(item.text) }}</p><DetailPopover title="记录信息" :label="'查看记录信息：'+displayNote(item.text)"><template #trigger><time>{{ item.created_at ? new Date(item.created_at).toLocaleDateString('zh-CN') : '日期未提供' }}</time></template><SourceChip source="user_edit" :at="item.created_at"/><p>{{ item.done ? '已完成，可恢复。' : '完成后保留记录，可随时恢复。' }}</p></DetailPopover></div><button class="ws-icon-button" :aria-label="'删除：'+displayNote(item.text)" @click="deleting={...item}"><UiIcon name="trash" :size="17"/></button></li></ul><p v-if="!group.items.length" class="ws-muted">这一组现在没有记录。</p></section></div>
 <ResultPager v-model:page="notesPage" :total="visibleNotes.length" label="个人记录"/></section>
 <TodoSuggestions/>
 </div>
@@ -95,17 +96,17 @@ onMounted(()=>{ void loadNotes() })
      靶子这一页的 `.pg-doc__side` 实测 312×604、9 条叶子文本；真实页原来是 0 条。
      下面三段一一对上靶子的三块（下一件会浮上来 / 复盘里会留下什么 / 这一区会跟着勾选更新），
      每一句都取自真实字段：state.notes（backend-demo）、REVIEW_ITEMS、attributionLabel。 -->
-<aside class="journey-action-aside notes-visual-rail"><section><h2>接下来可以做</h2><button v-for="note in [firstPending,nextPending].filter(Boolean)" :key="note!.id" class="information-entry" @click="noteQuery=note!.text"><UiIcon name="notes" :size="19"/><span><strong>{{ note!.text }}</strong><small>{{ note!.kind==='goal'?'个人目标':'个人待办' }}</small></span><UiIcon name="arrow" :size="16"/></button><p v-if="!firstPending" class="ws-muted">当前没有未完成的个人记录。</p></section><button class="ws-text-button" @click="notesBasisOpen=true">记录与复盘说明<UiIcon name="info" :size="16"/></button></aside><InfoSheet :open="notesBasisOpen" shape="panel" title="记录与复盘说明" @close="notesBasisOpen=false">
+<aside class="journey-action-aside notes-visual-rail"><section><h2>接下来可以做</h2><button v-for="note in [firstPending,nextPending].filter(Boolean)" :key="note!.id" class="information-entry" @click="noteQuery=note!.text"><UiIcon name="notes" :size="19"/><span><strong>{{ displayNote(note!.text) }}</strong><small>{{ note!.kind==='goal'?'个人目标':'个人待办' }}</small></span><UiIcon name="arrow" :size="16"/></button><p v-if="!firstPending" class="ws-muted">当前没有未完成的个人记录。</p></section><button class="ws-text-button" @click="notesBasisOpen=true">记录与复盘说明<UiIcon name="info" :size="16"/></button></aside><InfoSheet :open="notesBasisOpen" shape="panel" title="记录与复盘说明" @close="notesBasisOpen=false">
 
   <!-- ① 「下一件会变成哪一条」：靶子这块是 `.nt-side__big` + 两句说明。
        真实页的"下一件"就是这一栏 pending 列表里的**第二条** —— 顺序就是真实列表顺序，
        不是另排的优先级（`data/demo-fixtures.ts:24-26` 的插入顺序：新写的排在最前）。 -->
   <section aria-labelledby="notesNextT">
     <h2 id="notesNextT">下一件会浮上来的是哪一条</h2>
-    <p v-if="nextPending" class="hm-side__d">勾掉现在排在第一的那一条（{{ firstPending?.text }}），接下来浮上来的是：</p>
+    <p v-if="nextPending" class="hm-side__d">勾掉现在排在第一的那一条（{{ displayNote(firstPending?.text||'') }}），接下来浮上来的是：</p>
     <p v-else-if="firstPending" class="hm-side__d">这一栏里没做完的只剩这一条：</p>
     <p v-else class="hm-side__d">这一栏里现在没有没做完的记录。</p>
-    <p v-if="nextUp" class="notes-side__big">{{ nextUp.text }}</p>
+    <p v-if="nextUp" class="notes-side__big">{{ displayNote(nextUp.text) }}</p>
     <p class="hm-side__d">顺序就是你写下来的顺序（新写的排在最前），不是按重要性排的；这一栏里还压着 {{ pending.length }} 条没做。</p>
   </section>
 

@@ -20,19 +20,24 @@ async function load(){if(busy.value)return;busy.value=true;error.value='';try{
  else{backendDemo.setReport(await backendClient.report());const versions=await backendClient.versions('report');backendDemo.setReportMetadata(versions.find(v=>v.version===report.value?.version)??null)}
 }catch(e){if(!(e instanceof BackendError&&e.code===1002))error.value=(e as Error).message}finally{busy.value=false}}
 async function select(id:string){if(saving.value)return;saving.value=true;error.value='';try{backendDemo.setLiveDirections(await backendClient.selectDirection(id));backendDemo.markDirectionChange()}catch(e){error.value=(e as Error).message}finally{saving.value=false}}
+function printReport(){window.print()}
 function historical(doc:ReportFullTextView,meta:AssetVersionView|null){backendDemo.setReport(doc);backendDemo.setReportMetadata(meta);history.value=false}
 onMounted(load)
 watch(directions,()=>{history.value=false;void load()})
 </script>
 <template><div class="ws-page report-page">
-<PageHeading :title="directions?'方向方案':'诊断报告'" :description="directions?'比较目标、依据与风险，再确认自己的方向。':'核对每项判断的依据，查看资料变化与历史版本。'"><button class="btn" :disabled="busy" @click="load">{{busy?'正在读取…':'刷新'}}</button><button class="btn" @click="history=!history">{{history?'返回报告':'版本记录'}}</button></PageHeading>
-<AssetNotice/><StatusBanner v-if="error" tone="error" :message="error" retry-label="重新读取" @retry="load"/><SkeletonBlock v-if="busy" variant="list" :lines="4"/>
+<PageHeading :title="directions?'方向方案':'诊断报告'" :description="directions?'比较目标、依据与风险，再确认自己的方向。':'核对每项判断的依据，查看资料变化与历史版本。'"><button class="btn" :disabled="busy" @click="load">{{busy?'正在读取…':'刷新'}}</button><button class="btn" @click="history=!history">{{history?(directions?'返回方案':'返回报告'):'版本记录'}}</button></PageHeading>
+<div class="ws-inline-actions" style="margin-bottom:16px"><button class="btn" :disabled="busy||(!report&&!plans)" @click="printReport">打印 / 保存 PDF</button></div><AssetNotice/><StatusBanner v-if="error" tone="error" :message="error" retry-label="重新读取" @retry="load"/><SkeletonBlock v-if="busy" variant="list" :lines="4"/>
 <DirectionDetails v-if="directions && plans && !history" :plans="plans" :saving="saving" :error="error" @select="select"/>
 <ReportHistory v-else-if="history" :key="directions?'directions':'report'" :asset-type="directions?'direction_plan':'report'" @open="historical"/>
 <div v-else-if="!directions && report" class="c2-report-layout"><main><FullReportBody :report="report"/></main><aside class="report-next-rail"><ReportSummary/><section><h2>资料有变化？</h2><RouterLink class="btn" to="/chat?topic=更新报告">继续咨询</RouterLink><RouterLink class="ws-text-link" to="/profile">核对个人画像</RouterLink></section></aside></div>
 <EmptyState v-else-if="!busy&&!error" kind="report" :title="directions?'尚未形成方向方案':'尚未生成诊断报告'" description="先通过咨询补充资料，生成后会保存在这里。"><RouterLink class="btn btn--primary" to="/chat">继续咨询</RouterLink></EmptyState>
 </div></template>
 <style scoped>
+.report-page .c2-report-layout > .report-next-rail { grid-column:2; grid-row:1; display:grid; gap:24px; position:sticky; top:20px; padding-top:0; }
+@media(max-width:1279px){.report-page .c2-report-layout{grid-template-columns:minmax(0,1fr)}.report-page .c2-report-layout > .report-next-rail{grid-column:1;grid-row:auto;position:static}}
+
+@media print{.report-page :deep(button),.report-page :deep(.report-next-rail),.report-page :deep(.direction-radio),.report-page :deep(select){display:none!important}.report-page :deep(.c2-report-layout){display:block!important}.report-page :deep(.full-report){width:100%}}
 /* ============================================================================
  * 落点②组织权 · 报告的"看角"
  * ---------------------------------------------------------------------------
