@@ -3,8 +3,6 @@ const MAX_CHARS = 40
 import {PROFILE_TOPICS, profilePriority, exactProfileKeys} from '../lib/profile-organization'
 import {profileLabel} from '../lib/server-copy'
 import { onMounted } from 'vue'
-import ResultPager from '../components/ResultPager.vue'
-import { usePagedItems } from '../lib/paged-items'
 /**
  * 个人画像 · v8
  * ---------------------------------------------------------------------------
@@ -41,7 +39,7 @@ import { usePagedItems } from '../lib/paged-items'
  *      缺的落在 C 段第几张卡），可点的是折叠内的 44px 行——不再有 24px 的可点 chip。
  *   ⑧ 视角切换、子筛选、度量口径折叠、缺口动作、页头按钮统一补到 ≥44px。
  */
-import { computed, nextTick, onBeforeUnmount, onUpdated, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { LayoutGroup, motion } from 'motion-v'
 import { demo } from '../store'
 import { COLLECT_ITEMS, DIRECTION_PLANS, PROFILE_FIELDS, REPORT_SECTIONS, STUDENT } from '../data/student'
@@ -186,6 +184,7 @@ const DEMO_EDGES: DependencyEdgeView[] = (() => {
 const profileTab = ref<'facts' | 'judgments' | 'gaps' | 'sources'>('facts')
 const loading = ref(false)
 const serviceError = ref('')
+const relatedError = ref('')
 const livePanel = computed(() => backendDemo.state.liveWorkspace?.profile_panel)
 /** 是不是"服务这次真的给了档案"。缺口清单、依赖边都以这次读取为准，不用演示数据兜底。 */
 const live = computed(() => backendDemo.state.dataMode === 'service')
@@ -196,6 +195,7 @@ async function loadWorkspace() {
   if (loading.value) return
   loading.value = true
   serviceError.value = ''
+  relatedError.value = ''
   try {
     const data = await backendClient.workspace()
     if (!data?.profile_panel) throw new Error('Incomplete profile')
@@ -203,6 +203,10 @@ async function loadWorkspace() {
     const results=await Promise.allSettled([backendClient.report(),backendClient.directions()])
     if(results[0].status==='fulfilled')backendDemo.setReport(results[0].value)
     if(results[1].status==='fulfilled')backendDemo.setLiveDirections(results[1].value)
+    const unavailable=[]
+    if(results[0].status==='rejected')unavailable.push('分析报告')
+    if(results[1].status==='rejected')unavailable.push('方向方案')
+    if(unavailable.length)relatedError.value=`个人资料已读取，但${unavailable.join('和')}暂时没有更新；下方判断可能不完整。`
   } catch {
     serviceError.value = '最新档案暂时没有取得，请重试。现有内容仍保留。'
   } finally {
@@ -441,33 +445,8 @@ function tweenTo(target: number, duration = 760) {
 
 
 /* ═══════════════════════════════════════════════════════════════════════════
- * 6. 组织权交还用户：三种视角，切换时是重新组织（FLIP）
+ * 6. 全量资料：不设搜索、范围或组织方式筛选，进入页面就按主题完整展示
  * ======================================================================== */
-
-const modes = [
-  { key: 'source', label: '按来源', note: '按"这条是谁给的"归拢' },
-  { key: 'time', label: '按时间', note: '按记录时间归拢，时间未提供的单列' },
-  { key: 'topic', label: '按主题', note: '按"这是哪一类情况"归拢' },
-  { key: 'conf', label: '按可信度', note: '按"这条是否充分"归拢' },
-] as const
-const mode = ref<'topic' | 'source' | 'time' | 'weight' | 'conf'>('topic')
-const focus = ref<string | null>(null)   // 来源视角下只留一类的旧能力
-const confFocus = ref<string | null>(null)
-const anyFocus = computed(() => (mode.value === 'conf' ? confFocus.value : mode.value === 'source' ? focus.value : null))
-
-/** 视角切换 = 这一页"正在发生的组织过程"：换的是分组与顺序，不是列表内容 */
-const profileQuery=ref('')
-const profileScope=ref('career')
-const visible = computed<FieldRow[]>(() => {
-  const rows = known.value.filter(row => (!profileQuery.value.trim() || (row.label+' '+row.value).toLocaleLowerCase().includes(profileQuery.value.trim().toLocaleLowerCase())) && (profileScope.value==='all'||(profileScope.value==='career'?profilePriority(row.key)!==3:profileScope.value==='study'?profilePriority(row.key)===3:!Number.isFinite(row.conf)||row.conf<0.8)))
-    .sort((a,b) => mode.value==='time' ? (b.iso||'').localeCompare(a.iso||'') : mode.value==='conf' ? (Number.isFinite(a.conf)?a.conf:-1)-(Number.isFinite(b.conf)?b.conf:-1) : profilePriority(a.key)-profilePriority(b.key))
-  if (mode.value === 'source' && focus.value) {
-    const group = SOURCE_GROUPS.find((item) => item.key === focus.value)
-    if (group) return rows.filter((row) => group.from.includes(row.desc))
-  }
-  if (mode.value === 'conf' && confFocus.value) return rows.filter((row) => row.confidence.level === confFocus.value)
-  return rows
-})
 
 interface RowGroup {
   key: string
@@ -477,113 +456,13 @@ interface RowGroup {
 }
 
 const groups = computed<RowGroup[]>(() => {
-  const rows = pagedProfile.value
-  if (mode.value === 'time') {
-    const dates = [...new Set(rows.map(row => row.iso?.slice(0, 10) || '时间未提供'))].sort().reverse()
-    return dates.map(date => ({ key: date, title: date, hint: '', rows: rows.filter(row => (row.iso?.slice(0, 10) || '时间未提供') === date) }))
-  }
-  if (mode.value === 'weight') {
-    return [
-      { key: 'many', title: '支持多项判断', hint: '至少两条判断依赖这些信息', rows: rows.filter(row => row.supports >= 2) },
-      { key: 'one', title: '支持单项判断', hint: '依赖关系可以在每条的原始依据里核对', rows: rows.filter(row => row.supports === 1) },
-      { key: 'none', title: '暂未参与判断', hint: '信息仍然保留，不用贡献大小判断它是否值得记录', rows: rows.filter(row => row.supports === 0) },
-    ]
-  }
-  if (mode.value === 'source') {
-    return SOURCE_GROUPS.map((group) => ({ key: group.key, title: group.label, hint: '', rows: rows.filter((row) => group.from.includes(row.desc)) }))
-  }
-  if (mode.value === 'conf') {
-    return CONF_GROUPS.map((group) => ({ key: group.key, title: group.title, hint: group.hint, rows: rows.filter((row) => row.confidence.level === group.key) }))
-  }
+  const rows = [...known.value].sort((a,b) => profilePriority(a.key)-profilePriority(b.key))
   const extra = rows.filter((row) => !TOPICS.some((topic) => topic.keys.includes(row.key))).map((row) => row.key)
   return [
     ...TOPICS.map((topic) => ({ key: topic.key, title: topic.title, hint: '', rows: rows.filter((row) => topic.keys.includes(row.key)) })),
     { key: 'other', title: '其他已记录信息', hint: '', rows: rows.filter((row) => extra.includes(row.key)) },
   ]
 })
-
-const filteredNote = computed(() =>
-  mode.value === 'source' ? `${visible.value.length} 条来自这一类` : mode.value === 'conf' ? `${visible.value.length} 条在这一档` : '',
-)
-
-/* ═══════════════════════════════════════════════════════════════════════════
- * 6.1 重排动画（FLIP）——让"同一批信息被重新组织"这件事被看见
- * ---------------------------------------------------------------------------
- * 换视角时，每个分组和每一行都从旧位置滑到新位置，而不是"啪"地跳过去。
- *
- * 为什么不是 motion-v 的 layout：实测（Playwright，1280×1400，点击后逐帧采样
- * 40 帧）里 motion 组件只被写了 `transform-origin`，`document.getAnimations()`
- * 全程为 0、行元素 transform 始终是 none —— motion-v 2.7.0 的 layout 在这个
- * 环境里不产生任何动画。motion 组件保留在结构里（承载 layout 意图，库修好后
- * 自动生效），可见的重排反馈由这段自己量位置的 FLIP 负责。
- *
- * 时机：这个 Vue 版本里 onBeforeUpdate 触发时 DOM 已经改过了（实测捕获到的
- * 分组签名已经是新值），所以旧位置必须在 pre-flush 的 watch 里量 —— 那才是
- * "数据变了、DOM 还没打补丁"的唯一窗口；新位置在 onUpdated 里量。
- * prefers-reduced-motion 下整段跳过：结构照样重组，只是不位移。
- * ======================================================================== */
-
-let flipState: { rects: Map<string, DOMRect> } | null = null
-let flipActive = false
-let flipTimer = 0
-
-function flipTargets(): HTMLElement[] {
-  // motion 组件上的函数式 ref 只会拿到组件实例，所以直接查 DOM
-  return [...document.querySelectorAll<HTMLElement>('.p7-group, .p7-row')]
-}
-
-/** 每行/每组一个稳定 id —— 重渲染后 DOM 节点会被替换，只能按 key 认，不能按节点认 */
-function flipId(el: HTMLElement, index: number): string {
-  return `${el.classList.contains('p7-group') ? 'g' : 'r'}:${el.dataset.key ?? el.querySelector('.p7-group__head h3')?.textContent ?? index}`
-}
-
-/** 数据已变、DOM 未打补丁：记下每个分组与每一行的旧矩形 */
-function flipBefore() {
-  if (flipActive || reduced()) return
-  const targets = flipTargets()
-  if (!targets.length) return
-  const rects = new Map<string, DOMRect>()
-  targets.forEach((el, index) => rects.set(flipId(el, index), el.getBoundingClientRect()))
-  flipState = { rects }
-}
-
-/** DOM 打完补丁（等一帧让新布局算出来）：放回旧位置，再用 transform 过渡到新位置 */
-function flipAfter() {
-  const state = flipState
-  flipState = null
-  if (!state || reduced()) return
-  requestAnimationFrame(() => {
-    const moves: { el: HTMLElement; from: DOMRect; to: DOMRect }[] = []
-    flipTargets().forEach((el, index) => {
-      const from = state.rects.get(flipId(el, index))
-      if (!from) return
-      const to = el.getBoundingClientRect()
-      if (Math.abs(from.left - to.left) < 1 && Math.abs(from.top - to.top) < 1) return
-      moves.push({ el, from, to })
-    })
-    if (!moves.length) return
-    flipActive = true
-    for (const move of moves) {
-      move.el.style.transition = 'none'
-      move.el.style.transform = `translate(${move.from.left - move.to.left}px, ${move.from.top - move.to.top}px)`
-    }
-    void document.body.offsetWidth
-    requestAnimationFrame(() => {
-      for (const move of moves) {
-        move.el.style.transition = 'transform 300ms cubic-bezier(0.23, 1, 0.32, 1)'
-        move.el.style.transform = 'none'
-      }
-    })
-    window.clearTimeout(flipTimer)
-    flipTimer = window.setTimeout(() => {
-      for (const move of moves) { move.el.style.transition = ''; move.el.style.transform = '' }
-      flipActive = false
-    }, 340)
-  })
-}
-
-// 这个 watch 的 getter 会读 visible（进而读 known），所以只能注册在 known 之后。
-// flush: 'pre' = 回调在组件重渲染**之前**执行，这是唯一能读到旧位置的时机。
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * 7. B 段数据：下游结论 + 它依赖 A 里的哪几条
@@ -699,15 +578,6 @@ const fieldDeps = computed<Record<string, string[]>>(() => {
   return map
 })
 
-/** 反查的可读文本：折叠里那行"撑起的判断"（展开区的跳转行也用它做无障碍名） */
-const depsTextByField = computed<Record<string, string>>(() => {
-  const map: Record<string, string> = {}
-  for (const [key, keys] of Object.entries(fieldDeps.value)) {
-    map[key] = keys.map((conclusionKey) => conclusionMap.value[conclusionKey]?.label ?? conclusionKey).join('、')
-  }
-  return map
-})
-
 /** A 段最终形态：在 rowsBase 上补上"支撑 N 条判断"。关系与 B 段同源，不另算一套。 */
 const reportFields=computed(()=>new Set(edges.value.filter(e=>e.to_asset==='report'||e.to_asset===backendDemo.state.liveReport?.report_id).flatMap(e=>e.via_profile_keys??[])))
 const needsCheck=computed(()=>known.value.filter(row=>!Number.isFinite(row.conf)||row.conf<0.8))
@@ -716,23 +586,15 @@ async function readField(row:FieldRow){openField.value=null;await nextTick();fie
 async function readAnalysis(){openField.value=null;await nextTick();profileTab.value='judgments'}
 const known = computed<FieldRow[]>(() => rowsBase.value.map((row) => ({ ...row, supports: (fieldDeps.value[row.key] ?? []).length })))
 
-const {page:profilePage,paged:pagedProfile}=usePagedItems(visible)
+const priorityConclusions = computed(() => Object.values(conclusionMap.value)
+  .sort((a, b) => Number(b.kind === 'direction') - Number(a.kind === 'direction'))
+  .slice(0, 3))
 
 /** 覆盖度环：进入页面从 0 生长到实际值；reduced-motion 直接给终值 */
 watch(() => tally.value.trust, (value) => tweenTo(value), { immediate: true })
 
-// 重排动画的观察点：getter 读到 visible（进而 known），flush: 'pre' 让它拿到重渲染前的旧位置
-watch(
-  () => [mode.value, focus.value, confFocus.value, visible.value.map((row) => row.key).join('.')].join('||'),
-  () => { flipBefore() },
-  { flush: 'pre' },
-)
-onUpdated(() => {
-  if (flipState) flipAfter()
-})
 onBeforeUnmount(() => {
   cancelAnimationFrame(trustFrame)
-  window.clearTimeout(flipTimer)
   window.clearTimeout(flashTimer)
   window.clearTimeout(gapTimer)
 })
@@ -800,6 +662,8 @@ const gapRows = computed<GapRow[]>(() =>
     }
   }),
 )
+
+const priorityGaps = computed(() => gapRows.value.slice(0, 3))
 
 /** B 段缺口的落点：这里给出"为什么重要"和"去哪补"，补的是 C 段里那条的实话 */
 const gapIndex = computed(() => {
@@ -874,26 +738,13 @@ async function jumpToGap(key: string) {
   gapTimer = window.setTimeout(() => { gapFlash.value = '' }, 1400)
 }
 
-/**
- * B 段 → A 段：滚到那一条并把它展开（这是原来点依赖 chip 的能力，现在落在折叠内的
- * 44px 行上）。视角会过滤掉行，所以找不到时先把视角放回"按主题"再看一次。
- */
+/** B 段 → A 段：滚到全量资料里的对应字段并展开。 */
 async function jumpToField(key: string) {
   profileTab.value = 'facts'
-  profileQuery.value=''
-  mode.value='topic';profileScope.value='all';focus.value=null;confFocus.value=null
   await nextTick()
-  profilePage.value=Math.floor(Math.max(0,visible.value.findIndex(row=>row.key===key))/6)+1
   openField.value = key
   await nextTick()
-  let el = document.querySelector<HTMLElement>(`.p7-row[data-key="${key}"]`)
-  if (!el) {
-    mode.value = 'topic'
-    focus.value = null
-    confFocus.value = null
-    await nextTick()
-    el = document.querySelector<HTMLElement>(`.p7-row[data-key="${key}"]`)
-  }
+  const el = document.querySelector<HTMLElement>(`.p7-row[data-key="${key}"]`)
   el?.scrollIntoView({ block: 'center', behavior: reduced() ? 'instant' : 'smooth' })
 }
 
@@ -947,11 +798,16 @@ async function save() {
 
 const identity = computed(() => {
   const pick = (key: string) => known.value.find((row) => row.key === key)?.value
-  const name = live.value ? pick('name') : STUDENT.name
+  const name = live.value ? pick('name') || demo.state.account : STUDENT.name
   const school = live.value ? pick('school') : demo.state.profileEdits.school ?? STUDENT.school
   const grade = live.value ? pick('grade') : demo.state.profileEdits.grade ?? demo.use.scenario.value.grade
   if (!live.value && demo.state.account === 'fresh') return { name: '新用户', line: '学校与年级待补充' }
   return { name: name || '个人档案', line: [school, pick('major'), grade || pick('degree_level')].filter(Boolean).join(' · ') || '学校与年级待补充' }
+})
+const profileStatement = computed(() => {
+  const first = priorityConclusions.value[0]
+  if (!first) return '资料还在形成中。先补充一段真实经历或一个明确偏好，再开始比较方向。'
+  return `${first.brief || first.full}。因此，当前更适合把“${first.label}”作为优先验证方向，而不是过早定型。`
 })
 function exportProfile(){const url=URL.createObjectURL(new Blob([JSON.stringify({profile:known.value,gaps:gapRows.value,source:live.value?'本次读取的档案':'个人画像'},null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='职引-个人画像.json';a.click();URL.revokeObjectURL(url)}
 onMounted(()=>{ void loadWorkspace() })
@@ -959,9 +815,9 @@ onMounted(()=>{ void loadWorkspace() })
 
 <template>
   <div class="ws-page profile-page p7">
-    <PageHeading title="个人画像" description="查看与核对个人信息，了解这些资料如何影响方向建议。"><template #meta><div class="c2-page-meta"><span v-if="live">已读取的档案</span><span>{{ known.length }} 条已知 · {{ progress.gap }} 条待补充</span><span>{{ new Set(known.map(row=>row.desc)).size }} 个来源</span><span>每条都能追到原始依据</span></div></template>
+    <PageHeading title="个人画像" description="把零散经历整理成可核对、可继续验证的职业探索档案。"><template #meta><div class="c2-page-meta"><span v-if="live">已读取的档案</span><span>{{ known.length }} 条已知 · {{ progress.gap }} 条待补充</span><span>判断可追溯到资料</span></div></template>
+      <RouterLink class="btn btn--primary" to="/chat">{{ progress.gap ? '补充关键信息' : '更新信息' }}<UiIcon name="arrow" :size="16" /></RouterLink>
       <button class="btn" @click="exportProfile"><UiIcon name="download" :size="16"/>导出画像</button>
-      <RouterLink class="btn" to="/chat">{{ progress.gap ? '补充信息' : '更新信息' }}<UiIcon name="arrow" :size="16" /></RouterLink>
     </PageHeading>
 
     <StatusBanner
@@ -973,10 +829,70 @@ onMounted(()=>{ void loadWorkspace() })
       :retrying="loading"
       @retry="loadWorkspace"
     />
+    <StatusBanner
+      v-if="relatedError"
+      tone="warning"
+      size="sm"
+      :message="relatedError"
+      :dismissible="false"
+    />
 
-    <!-- ═══ 活的度量：可信度环从 0 生长到实际值；数字旁边写清是谁算的 ═══ -->
-<section class="profile-identity"><div class="profile-identity__portrait" aria-hidden="true">{{ identity.name.slice(0,1) }}</div><div class="profile-identity__person"><h2>{{ identity.name }}</h2><p>{{ identity.line }}</p></div><DetailPopover title="个人资料概况" label="查看个人资料概况"><p>已记录 {{ known.length }} 项信息，{{ progress.gap }} 项待补充。</p><p>依据充分 {{ confBands[0]?.count ?? 0 }} 项，待核对 {{ confBands[1]?.count ?? 0 }} 项。</p></DetailPopover><div class="profile-identity__coverage"><div><span>个人信息</span><strong>{{ known.length }}<small> / {{ known.length + progress.gap }} 项</small></strong></div><div class="profile-coverage-track" :aria-label="'已记录'+known.length+'项，待补充'+progress.gap+'项'"><i v-for="n in known.length + progress.gap" :key="n" :class="{'is-known':n<=known.length}"/></div></div></section>
-<section v-if="gapRows.length || needsCheck.length" class="profile-attention" aria-label="需要完善的信息"><strong>需要完善</strong><button v-for="gap in gapRows.slice(0,2)" :key="gap.key" type="button" @click="jumpToGap(gap.key)">{{gap.label}}<span>待补充</span><UiIcon name="arrow" :size="14"/></button><button v-if="gapRows.length>2" @click="profileTab='gaps'">全部 {{gapRows.length}} 项待补充</button><button v-if="needsCheck.length" @click="profileScope='check';profileQuery='';focus=null;confFocus=null">{{needsCheck.length}} 项待核对<UiIcon name="arrow" :size="14"/></button></section>
+    <section class="profile-dossier" aria-labelledby="profile-dossier-title">
+      <header class="profile-dossier__header">
+        <div class="profile-dossier__identity">
+          <div class="profile-dossier__portrait" aria-hidden="true">{{ identity.name.slice(0,1) }}</div>
+          <div>
+            <p class="profile-dossier__label">职业探索档案</p>
+            <h2 id="profile-dossier-title">{{ identity.name }}</h2>
+            <p>{{ identity.line }}</p>
+          </div>
+          <DetailPopover title="个人资料概况" label="查看个人资料概况"><p>已记录 {{ known.length }} 项信息，{{ progress.gap }} 项待补充。</p><p>依据充分 {{ confBands[0]?.count ?? 0 }} 项，待核对 {{ confBands[1]?.count ?? 0 }} 项。</p></DetailPopover>
+        </div>
+        <div class="profile-dossier__coverage">
+          <div><span>资料完整度</span><strong>{{ known.length }}<small> / {{ known.length + progress.gap }}</small></strong></div>
+          <div class="profile-dossier__track" :aria-label="'已记录'+known.length+'项，待补充'+progress.gap+'项'"><i v-for="n in known.length + progress.gap" :key="n" :class="{'is-known':n<=known.length}"/></div>
+          <p>{{ progress.gap ? `还差 ${progress.gap} 项关键信息` : '关键信息已基本齐全' }}</p>
+        </div>
+      </header>
+
+      <div class="profile-dossier__statement">
+        <span>当前画像</span>
+        <p>{{ profileStatement }}</p>
+      </div>
+
+      <div class="profile-dossier__body">
+        <section class="profile-directions" aria-labelledby="profile-directions-title">
+          <header>
+            <div><h3 id="profile-directions-title">正在浮现的方向</h3><p>这些是接下来值得验证的假设，不是替你做出的职业定论。</p></div>
+            <button class="ws-text-button" type="button" @click="profileTab='judgments'">查看完整分析<UiIcon name="arrow" :size="14"/></button>
+          </header>
+          <ul v-if="priorityConclusions.length">
+            <li v-for="item in priorityConclusions" :key="item.key">
+              <DetailPopover class="profile-direction" :title="item.label" :label="item.label + '：' + item.brief" side="bottom"><template #trigger>
+                <span class="profile-direction__mark" aria-hidden="true"></span><span><strong>{{ item.label }}</strong><small>{{ item.brief || '这条判断暂时没有摘要。' }}</small></span><UiIcon name="info" :size="16" aria-hidden="true"/>
+              </template><p>{{ item.full || item.brief }}</p><p class="profile-popover-meta">{{ item.section }} · {{ item.deps.length ? item.deps.length + ' 项资料支撑' : '逐项依据待核对' }}</p><p v-if="item.note">判断说明：{{ item.note }}</p><p v-if="item.risk">需要留意：{{ item.risk }}</p><p v-if="item.missingKeys.length">仍缺 {{ item.missingKeys.length }} 项关键资料。</p><button class="ws-text-button" type="button" @click="jumpToConclusion(item.key)">在完整分析中核对</button></DetailPopover>
+            </li>
+          </ul>
+          <p v-else class="profile-focus-empty">当前还没有可展示的方向。补充资料后，再开始比较。</p>
+        </section>
+
+        <aside class="profile-next" aria-labelledby="profile-next-title">
+          <p class="profile-next__label">下一步只做一件事</p>
+          <template v-if="priorityGaps[0]">
+            <h3 id="profile-next-title">{{ priorityGaps[0].label }}</h3>
+            <p>{{ priorityGaps[0].why }}</p>
+            <div class="profile-next__suggestion"><span>可以先这样做</span><strong>{{ priorityGaps[0].next }}</strong></div>
+            <RouterLink class="btn btn--primary" :to="'/chat?gap='+encodeURIComponent(priorityGaps[0].key)+'&label='+encodeURIComponent(priorityGaps[0].label)">去补充这条信息<UiIcon name="arrow" :size="14"/></RouterLink>
+            <button class="ws-text-button" type="button" @click="profileTab='gaps'">查看全部待补充信息</button>
+          </template>
+          <template v-else>
+            <h3 id="profile-next-title">核对已有资料</h3>
+            <p>当前没有明确缺口，可以从标为“待核对”的信息开始确认。</p>
+          </template>
+          <p v-if="needsCheck.length" class="profile-next__check">另有 {{ needsCheck.length }} 项资料需要核对</p>
+        </aside>
+      </div>
+    </section>
 
 
 
@@ -984,43 +900,9 @@ onMounted(()=>{ void loadWorkspace() })
 
     <!-- ═══ A · 我知道什么 ═══ -->
     <section class="p7-block" aria-labelledby="p7-a-title">
-      <h2 id="p7-a-title" class="sr-only">个人信息</h2>
-      <div class="profile-toolbar"><label class="information-search"><span class="sr-only">查找个人信息</span><input v-model="profileQuery" type="search" placeholder="查找全部个人资料…" @input="profileScope='all'"/></label><label class="ws-field">查看<select v-model="profileScope"><option value="career">职业相关信息</option><option value="all">全部个人资料</option><option value="study">学籍与学习背景</option><option value="check">待核对信息</option></select></label><label class="ws-field">组织<select v-model="mode"><option v-for="item in modes" :key="item.key" :value="item.key">{{item.label}}</option></select></label></div><div v-if="mode === 'source' || mode === 'conf'" class="p7-subfilter" data-testid="sub-filter">
-        <span>只看</span>
-        <button
-          class="p7-subchip"
-          :class="{ 'p7-subchip--on': !anyFocus }"
-          type="button"
-          @click="mode === 'conf' ? (confFocus = null) : (focus = null)"
-        >全部</button>
-        <template v-if="mode === 'source'">
-          <button
-            v-for="item in SOURCE_GROUPS"
-            :key="item.key"
-            class="p7-subchip"
-            :class="{ 'p7-subchip--on': focus === item.key }"
-            type="button"
-            @click="focus = focus === item.key ? null : item.key"
-          >{{ item.label }}</button>
-        </template>
-        <template v-else>
-          <button
-            v-for="item in CONF_GROUPS"
-            :key="item.key"
-            class="p7-subchip"
-            :class="{ 'p7-subchip--on': confFocus === item.key }"
-            type="button"
-            @click="confFocus = confFocus === item.key ? null : item.key"
-          >{{ item.title }}</button>
-        </template>
-        <span v-if="filteredNote" class="p7-subfilter__note">{{ filteredNote }}</span>
-      </div>
-        
+      <header class="profile-facts-head"><div><span class="profile-focus-kicker">资料底稿</span><h2 id="p7-a-title">组成这份画像的信息</h2><p>所有字段完整展示；点开一项可核对来源、可信度和关联判断。</p></div><button class="btn" type="button" @click="profileTab='sources'">资料来源<UiIcon name="arrow" :size="14"/></button></header>
 
-      <!-- 第二层：在同一个视角里再收窄（原来那个"来源筛选"并到这里，不再有第二套控件） -->
-
-
-      <!-- 组织方式切换后，分组与顺序都变：这里的 layout 让"重组"被看见 -->
+      <!-- 全量资料按主题展开，不设置搜索、范围或组织方式筛选。 -->
       <LayoutGroup>
         <motion.div class="p7-groups" :layout="true" :layout-dependency="0" :transition="{ duration: 0.32, ease: [0.23, 1, 0.32, 1] }">
           <motion.section
@@ -1071,24 +953,12 @@ onMounted(()=>{ void loadWorkspace() })
                   <span class="p7-row__label">{{ row.label }}</span>
                   <span class="p7-row__main">
                     <span class="p7-row__value" :title="fieldValue(row)">{{ valueParts(row).head }}</span>
+                    <span v-if="valueParts(row).hasHint" class="p7-row__hint">{{ valueParts(row).tail }}</span>
                     <span class="p7-row__meta">
-                      <SourceChip :source="row.src" :at="row.iso || null" />
-                      <ConfidenceBadge :confidence="row.conf" />
-                      <time class="p7-row__time" :datetime="row.iso || undefined">{{ row.noted }}</time>
-                      <span v-if="valueParts(row).hasHint" class="p7-row__hint">{{ valueParts(row).tail }}</span>
-                      <span v-if="row.touched" class="p7-row__edited">本人已更正<template v-if="row.prior">（原：{{ row.prior }}）</template></span>
-                      <!-- 关系状态：不是按钮，是"这一行和判断的关系"。开着的时候它同时表示已钉住 -->
-                      <span
-                        class="p7-support"
-                        :class="{ 'p7-support--on': openField === row.key, 'p7-support--none': !row.supports }"
-                        :title="row.supports ? `用到它的判断：${depsTextByField[row.key]}` : '尚未提供逐条判断的关联依据'"
-                      >
-                        <i class="p7-support__mark" aria-hidden="true" />{{ row.supports ? `支撑 ${row.supports} 条判断` : '逐项关联待核对' }}
-                      </span>
-                      <span v-if="!Number.isFinite(row.conf) || row.conf < 0.8" class="profile-needs-check">待核对</span><span class="p7-row__cue">查看依据<UiIcon name="info" :size="16" /></span>
+                      <span v-if="!Number.isFinite(row.conf) || row.conf < 0.8" class="profile-needs-check">待核对</span><span class="p7-row__cue"><span class="sr-only">查看依据</span><UiIcon name="info" :size="16" /></span>
                     </span>
                   </span>
-                </template><p class="profile-fact-value">{{fieldValue(row).slice(0,240)}}{{fieldValue(row).length>240?'…':''}}</p><p>{{ row.desc }} · {{ row.noted }}</p><ConfidenceBadge :confidence="row.conf" />
+                </template><p class="profile-fact-value">{{fieldValue(row).slice(0,240)}}{{fieldValue(row).length>240?'…':''}}</p><div class="profile-fact-popover-meta"><SourceChip :source="row.src" :at="row.iso || null"/><ConfidenceBadge :confidence="row.conf" /></div><p class="profile-popover-meta">记录时间：{{ row.noted }}</p><p v-if="row.touched" class="profile-popover-meta">本人已更正<template v-if="row.prior">，原内容：{{ row.prior }}</template></p>
                   <div :id="`p7-more-${row.key}`" class="p7-row__more-body">
                     <div class="p7-row__actions">
                       <button class="ws-text-button" type="button" @click="inspectField(row)">深入了解这项信息</button>
@@ -1123,7 +993,7 @@ onMounted(()=>{ void loadWorkspace() })
             </motion.ul>
           </motion.section>
         </motion.div>
-      </LayoutGroup><ResultPager v-model:page="profilePage" :total="visible.length" label="个人信息"/><div v-if="known.length && !visible.length" class="profile-filter-empty"><p>{{profileScope==='check' ? '当前没有待核对信息。' : '当前条件下没有个人信息。'}}</p><button class="ws-text-button" @click="profileScope='all';profileQuery='';focus=null;confFocus=null">查看全部资料</button></div>
+      </LayoutGroup>
 
       <!-- 刷新时的加载态：骨架**盖在仍在 DOM 的内容上**（`SkeletonBlock.vue:21-26`），不摘内容 ——
            原来只有页头按钮的文案从「读取最新档案」变成「正在读取…」，内容区在重新取数的
@@ -1140,7 +1010,6 @@ onMounted(()=>{ void loadWorkspace() })
       </EmptyState>
     </section>
 
-<section class="profile-reading-entries" aria-label="个人资料详情"><button class="information-entry" @click="profileTab='gaps'"><span><strong>待补充信息</strong><small>{{ gapRows.length }} 项信息有待完善</small></span><UiIcon name="arrow" :size="18"/></button><button class="information-entry" @click="profileTab='judgments'"><span><strong>分析与判断</strong><small>查看已有资料支持的结论</small></span><UiIcon name="arrow" :size="18"/></button><button class="information-entry" @click="profileTab='sources'"><span><strong>资料管理</strong><small>核对来源与核验说明</small></span><UiIcon name="arrow" :size="18"/></button></section>
     <!-- ═══ B · 所以判断了什么 ═══ -->
     
 
@@ -1364,7 +1233,7 @@ onMounted(()=>{ void loadWorkspace() })
 </template>
 
 <style scoped>
-.profile-filter-empty{padding:24px 0;color:var(--c-text-2)}.profile-filter-empty p{margin-bottom:8px}.profile-toolbar{display:flex;align-items:center;gap:14px;flex-wrap:wrap}.profile-toolbar .information-search{flex:1;min-width:180px;margin:0}.profile-toolbar .ws-field{display:flex;flex-direction:row;align-items:center;gap:8px;margin:0;white-space:nowrap}.profile-toolbar select{width:auto}.profile-attention{display:flex;align-items:center;flex-wrap:wrap;gap:8px 18px;padding:12px 0;border-bottom:1px solid var(--c-border);font-size:13px}.profile-attention>strong{font-weight:500;color:var(--c-text-2)}.profile-attention button{display:flex;align-items:center;gap:8px;min-height:36px;color:var(--c-primary);background:transparent;border:0}.profile-attention button span{font-size:12px;color:var(--c-text-3)}.profile-fact-value{font-size:15px;line-height:1.75;white-space:pre-wrap;overflow-wrap:anywhere}.profile-association-note p{font-size:13px;color:var(--c-text-3);margin-top:8px}.profile-toolbar+.p7-subfilter{margin-top:10px}@media(max-width:600px){.profile-toolbar{gap:10px}.profile-toolbar .information-search{flex-basis:100%}.profile-toolbar .ws-field{flex:1;font-size:12px}.profile-toolbar select{min-width:0;max-width:100%}.profile-attention{gap:4px 12px}.profile-identity__coverage{display:none}}
+.profile-fact-value{font-size:15px;line-height:1.75;white-space:pre-wrap;overflow-wrap:anywhere}.profile-association-note p{font-size:13px;color:var(--c-text-3);margin-top:8px}@media(max-width:600px){.profile-identity__coverage{display:none}}
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * 用底色 / 描边 / 留白分层，不给所有内容套同一张卡片。
