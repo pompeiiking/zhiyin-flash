@@ -351,3 +351,68 @@ async def test_reply_snapshots_keep_history_and_reject_other_account(service):
     assert history['one']==first and history['two']==second
     with pytest.raises(ResourceNotFound):
         await service.conversation_reply_snapshots('b','task')
+
+@pytest.mark.asyncio
+async def test_stale_task_edit_does_not_overwrite_newer_fields(service):
+    pid = await phase(service)
+    original = TaskEdit(text="原任务", phase_id=pid)
+    plan = await service.edit_task("a", original)
+    tid = plan.phases[0].tasks[0].id
+    await service.edit_task("a", TaskEdit(text="甲改标题", phase_id=pid, expected_task=original.model_dump(exclude={"expected_task", "client_request_id"})), tid)
+    with pytest.raises(InvalidRequest, match="其他页面更新"):
+        await service.edit_task("a", TaskEdit(text="原任务", phase_id=pid, status="waiting", waiting_reason="乙改状态", expected_task=original.model_dump(exclude={"expected_task", "client_request_id"})), tid)
+    current = await service.assets.get_action_plan("a")
+    assert current.phases[0].tasks[0].text == "甲改标题"
+    assert current.phases[0].tasks[0].status == "pending"
+
+@pytest.mark.asyncio
+async def test_create_retry_uses_same_identity_without_duplicate_task(service):
+    pid = await phase(service)
+    body = TaskEdit(text="响应丢失后重试", phase_id=pid, client_request_id="retry-1")
+    first = await service.edit_task("a", body)
+    second = await service.edit_task("a", body)
+    assert len(second.phases[0].tasks) == 1
+    assert first.phases[0].tasks[0].id == second.phases[0].tasks[0].id
+
+@pytest.mark.asyncio
+async def test_lost_edit_response_can_retry_but_changed_retry_is_rejected(service):
+    pid = await phase(service)
+    original = TaskEdit(text="原任务", phase_id=pid)
+    plan = await service.edit_task("a", original)
+    tid = plan.phases[0].tasks[0].id
+    edit = TaskEdit(text="新任务", phase_id=pid, expected_task=original.model_dump(exclude={"expected_task", "client_request_id"}))
+    await service.edit_task("a", edit, tid)
+    replay = await service.edit_task("a", edit, tid)
+    assert replay.phases[0].tasks[0].text == "新任务"
+    with pytest.raises(InvalidRequest):
+        await service.edit_task("a", edit.model_copy(update={"text":"旧页面再次改动"}), tid)
+
+@pytest.mark.asyncio
+async def test_changed_creation_retry_does_not_silently_overwrite(service):
+    pid = await phase(service)
+    body = TaskEdit(text="首次创建", phase_id=pid, client_request_id="same-request")
+    await service.edit_task("a", body)
+    with pytest.raises(InvalidRequest, match="首次创建已保存"):
+        await service.edit_task("a", body.model_copy(update={"text":"重试时改了内容"}))
+
+@pytest.mark.asyncio
+async def test_phase_retry_and_stale_edit_preserve_tasks(service):
+    body = PhaseEdit(name='原阶段', client_request_id='phase-retry')
+    first = await service.edit_phase('a', body)
+    pid = first.phases[0].id
+    await service.edit_task('a', TaskEdit(text='已有任务', phase_id=pid))
+    retried = await service.edit_phase('a', body)
+    assert len(retried.phases) == 1
+    assert len(retried.phases[0].tasks) == 1
+    expected = body.model_dump(exclude={'expected_phase', 'client_request_id'})
+    edit = PhaseEdit(name='甲更新阶段', expected_phase=expected)
+    await service.edit_phase('a', edit, pid)
+    replay = await service.edit_phase('a', edit, pid)
+    assert replay.phases[0].name == '甲更新阶段'
+    with pytest.raises(InvalidRequest, match='其他页面更新'):
+        await service.edit_phase('a', PhaseEdit(name='原阶段', blocking_conditions=['乙输入'], expected_phase=expected), pid)
+    current = await service.assets.get_action_plan('a')
+    assert current.phases[0].name == '甲更新阶段'
+    assert current.phases[0].tasks[0].text == '已有任务'
+    with pytest.raises(InvalidRequest, match='首次创建阶段已保存'):
+        await service.edit_phase('a', body.model_copy(update={'name':'旧重试'}))

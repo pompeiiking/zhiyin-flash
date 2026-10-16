@@ -6258,6 +6258,94 @@
             "title": "Blocking Conditions",
             "type": "array"
           },
+          "client_request_id": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "minLength": 1,
+                "pattern": "^[a-zA-Z0-9_-]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Request Id"
+          },
+          "depends_on": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 30,
+            "title": "Depends On",
+            "type": "array"
+          },
+          "ends_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends At"
+          },
+          "expected_phase": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PhaseValues"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "handoff_requirements": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Handoff Requirements",
+            "type": "array"
+          },
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "starts_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Starts At"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "PhaseEdit",
+        "type": "object"
+      },
+      "PhaseValues": {
+        "additionalProperties": false,
+        "properties": {
+          "blocking_conditions": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Blocking Conditions",
+            "type": "array"
+          },
           "depends_on": {
             "items": {
               "type": "string"
@@ -6308,7 +6396,7 @@
         "required": [
           "name"
         ],
-        "title": "PhaseEdit",
+        "title": "PhaseValues",
         "type": "object"
       },
       "PipelineCardView": {
@@ -7366,6 +7454,20 @@
       "TaskEdit": {
         "additionalProperties": false,
         "properties": {
+          "client_request_id": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "minLength": 1,
+                "pattern": "^[a-zA-Z0-9_-]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Request Id"
+          },
           "due_date": {
             "anyOf": [
               {
@@ -7390,6 +7492,16 @@
               }
             ],
             "title": "Estimated Minutes"
+          },
+          "expected_task": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TaskValues"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "parent_task_id": {
             "anyOf": [
@@ -7588,6 +7700,100 @@
         ],
         "title": "TaskStatus",
         "type": "string"
+      },
+      "TaskValues": {
+        "additionalProperties": false,
+        "properties": {
+          "due_date": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "estimated_minutes": {
+            "anyOf": [
+              {
+                "maximum": 1440.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Minutes"
+          },
+          "parent_task_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Task Id"
+          },
+          "phase_id": {
+            "minLength": 1,
+            "title": "Phase Id",
+            "type": "string"
+          },
+          "progress": {
+            "default": 0,
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Progress",
+            "type": "integer"
+          },
+          "scheduled_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scheduled At"
+          },
+          "status": {
+            "default": "pending",
+            "enum": [
+              "pending",
+              "in_progress",
+              "waiting",
+              "completed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "text": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          },
+          "waiting_reason": {
+            "default": "",
+            "maxLength": 500,
+            "title": "Waiting Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "phase_id"
+        ],
+        "title": "TaskValues",
+        "type": "object"
       },
       "TheoryCardView": {
         "additionalProperties": false,

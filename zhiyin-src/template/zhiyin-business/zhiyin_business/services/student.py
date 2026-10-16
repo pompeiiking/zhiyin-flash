@@ -10,6 +10,8 @@ from zhiyin_kernel.assets import ActionPlan, ActionPhase, ActionTask
 from zhiyin_kernel.enums import AssetType
 from zhiyin_kernel.errors import InvalidRequest, ResourceNotFound
 from zhiyin_business.contracts.student import (
+    TaskValues,
+    PhaseValues,
     Preferences,
     DirectionWeights,
     MeasurementBatch,
@@ -93,6 +95,7 @@ class StudentService:
     async def edit_task(self, user_id, body, task_id=None):
         changed = False
         completed_id = None
+        identity = task_id or (f"task_{uuid5(NAMESPACE_URL, user_id + chr(58) + body.client_request_id).hex}" if body.client_request_id else f"task_{uuid4().hex}")
 
         def change(plan):
             nonlocal changed, completed_id
@@ -103,9 +106,19 @@ class StudentService:
             if phase is None:
                 raise ResourceNotFound("所属阶段不存在")
             tasks = {t.id: t for p in plan.phases for t in p.tasks}
-            old = tasks.get(task_id) if task_id else None
+            old = tasks.get(identity)
             if task_id and old is None:
                 raise ResourceNotFound("行动任务不存在")
+            if old:
+                old_phase = next(p.id for p in plan.phases if any(t.id == identity for t in p.tasks))
+                current = TaskValues(**{key: (old_phase if key == "phase_id" else getattr(old, key)) for key in TaskValues.model_fields})
+                desired = TaskValues.model_validate(body.model_dump(exclude={"expected_task", "client_request_id"}))
+                if current == desired:
+                    return plan
+                if not task_id:
+                    raise InvalidRequest("首次创建已保存，请重新读取任务后编辑；本次重试不会重复创建或覆盖已保存的内容。")
+                if body.expected_task is not None and current != body.expected_task:
+                    raise InvalidRequest("这项任务已在其他页面更新。你的输入仍保留，请重新读取最新任务后核对修改，避免覆盖他人的更新。")
             if body.parent_task_id:
                 parent = tasks.get(body.parent_task_id)
                 if parent is None:
@@ -116,9 +129,9 @@ class StudentService:
                         raise InvalidRequest("拆分关联不能形成循环")
                     seen.add(parent.id)
                     parent = tasks.get(parent.parent_task_id)
-            values = body.model_dump(exclude={"phase_id"})
+            values = body.model_dump(exclude={"phase_id", "expected_task", "client_request_id"})
             values.update(
-                id=task_id or f"task_{uuid4().hex}",
+                id=identity,
                 done=body.status == "completed",
                 done_at=(old.done_at if old and old.done else now())
                 if body.status == "completed"
@@ -144,12 +157,25 @@ class StudentService:
         return plan
 
     async def edit_phase(self, user_id, body, selected_id=None):
+        changed = False
+        identity = selected_id or (f"phase_{uuid5(NAMESPACE_URL, user_id + ':' + body.client_request_id).hex}" if body.client_request_id else f"phase_{uuid4().hex}")
+
         def change(plan):
+            nonlocal changed
             plan = normalize(plan or ActionPlan(id=f"act_{uuid4().hex}"))
             phases = {p.id: p for p in plan.phases}
             if selected_id and selected_id not in phases:
                 raise ResourceNotFound("阶段不存在")
-            identity = selected_id or f"phase_{uuid4().hex}"
+            existing = phases.get(identity)
+            desired = PhaseValues.model_validate(body.model_dump(exclude={"expected_phase", "client_request_id"}))
+            if existing:
+                current = PhaseValues(**{key: getattr(existing, key) for key in PhaseValues.model_fields})
+                if current == desired:
+                    return plan
+                if not selected_id:
+                    raise InvalidRequest("首次创建阶段已保存，请重新读取后编辑；重试不会重复创建或覆盖已有内容。")
+                if body.expected_phase is not None and current != body.expected_phase:
+                    raise InvalidRequest("这个阶段已在其他页面更新。你的输入仍保留，请重新读取最新阶段后核对修改。")
             if any(dep not in phases or dep == identity for dep in body.depends_on):
                 raise InvalidRequest("依赖阶段不存在或指向自身")
             graph = {p.id: p.depends_on for p in plan.phases}
@@ -167,17 +193,19 @@ class StudentService:
                 id=identity,
                 date_range=existing.date_range if existing else "",
                 tasks=existing.tasks if existing else [],
-                **body.model_dump(),
+                **desired.model_dump(),
             )
             plan.phases = (
                 [item if p.id == identity else p for p in plan.phases]
                 if existing
                 else [*plan.phases, item]
             )
+            changed = True
             return plan
 
         plan = await self.assets.update_action_plan(user_id, change)
-        await self._version(user_id, "调整阶段与依赖关系", plan)
+        if changed:
+            await self._version(user_id, "调整阶段与依赖关系", plan)
         return plan
 
     async def _version(self, user_id, description, plan):

@@ -3862,6 +3862,24 @@ export interface components {
     PhaseEdit: {
       /** Blocking Conditions */
       blocking_conditions?: string[];
+      /** Client Request Id */
+      client_request_id?: string | null;
+      /** Depends On */
+      depends_on?: string[];
+      /** Ends At */
+      ends_at?: string | null;
+      expected_phase?: components["schemas"]["PhaseValues"] | null;
+      /** Handoff Requirements */
+      handoff_requirements?: string[];
+      /** Name */
+      name: string;
+      /** Starts At */
+      starts_at?: string | null;
+    };
+    /** PhaseValues */
+    PhaseValues: {
+      /** Blocking Conditions */
+      blocking_conditions?: string[];
       /** Depends On */
       depends_on?: string[];
       /** Ends At */
@@ -4497,10 +4515,13 @@ export interface components {
     };
     /** TaskEdit */
     TaskEdit: {
+      /** Client Request Id */
+      client_request_id?: string | null;
       /** Due Date */
       due_date?: string | null;
       /** Estimated Minutes */
       estimated_minutes?: number | null;
+      expected_task?: components["schemas"]["TaskValues"] | null;
       /** Parent Task Id */
       parent_task_id?: string | null;
       /** Phase Id */
@@ -4593,6 +4614,37 @@ export interface components {
      * @enum {string}
      */
     TaskStatus: "active" | "paused" | "completed";
+    /** TaskValues */
+    TaskValues: {
+      /** Due Date */
+      due_date?: string | null;
+      /** Estimated Minutes */
+      estimated_minutes?: number | null;
+      /** Parent Task Id */
+      parent_task_id?: string | null;
+      /** Phase Id */
+      phase_id: string;
+      /**
+       * Progress
+       * @default 0
+       */
+      progress?: number;
+      /** Scheduled At */
+      scheduled_at?: string | null;
+      /**
+       * Status
+       * @default pending
+       * @enum {string}
+       */
+      status?: "pending" | "in_progress" | "waiting" | "completed";
+      /** Text */
+      text: string;
+      /**
+       * Waiting Reason
+       * @default
+       */
+      waiting_reason?: string;
+    };
     /**
      * TheoryCardView
      * @description 理论卡正文。前端点开理论标签时展示的内容。

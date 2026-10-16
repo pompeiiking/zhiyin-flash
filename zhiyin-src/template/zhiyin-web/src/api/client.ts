@@ -16,5 +16,8 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
     if(response.status!==401&&body.code===1004)window.dispatchEvent(new Event('zhiyin:unauthorized'))
     if(!response.ok||body.code!==0)throw new BackendError(body.message||'请求失败',body.code??response.status,body.trace_id)
     return body.data as T
+  } catch (error) {
+    if(error instanceof BackendError)throw error
+    throw new BackendError(controller.signal.aborted?'请求超时，保存结果尚未确认。请重新读取记录后再决定是否重试。':'未收到完整的服务响应，保存结果尚未确认。请重新读取记录后再决定是否重试。',1007)
   } finally {clearTimeout(timeout)}
 }

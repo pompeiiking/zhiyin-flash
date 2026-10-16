@@ -211,8 +211,10 @@ export type TheoryCardView = {
 }
 
 export type TaskEdit = {
+  "client_request_id"?: (string | null)
   "due_date"?: (string | null)
   "estimated_minutes"?: (number | null)
+  "expected_task"?: (TaskValues | null)
   "parent_task_id"?: (string | null)
   "phase_id": string
   "progress"?: number
@@ -224,8 +226,10 @@ export type TaskEdit = {
 
 export type PhaseEdit = {
   "blocking_conditions"?: Array<string>
+  "client_request_id"?: (string | null)
   "depends_on"?: Array<string>
   "ends_at"?: (string | null)
+  "expected_phase"?: (PhaseValues | null)
   "handoff_requirements"?: Array<string>
   "name": string
   "starts_at"?: (string | null)
@@ -505,6 +509,27 @@ export type TrustBlockView = {
   "code": string
   "expandable_ref"?: string
   "title": string
+}
+
+export type TaskValues = {
+  "due_date"?: (string | null)
+  "estimated_minutes"?: (number | null)
+  "parent_task_id"?: (string | null)
+  "phase_id": string
+  "progress"?: number
+  "scheduled_at"?: (string | null)
+  "status"?: "pending" | "in_progress" | "waiting" | "completed"
+  "text": string
+  "waiting_reason"?: string
+}
+
+export type PhaseValues = {
+  "blocking_conditions"?: Array<string>
+  "depends_on"?: Array<string>
+  "ends_at"?: (string | null)
+  "handoff_requirements"?: Array<string>
+  "name": string
+  "starts_at"?: (string | null)
 }
 
 export type Period = {

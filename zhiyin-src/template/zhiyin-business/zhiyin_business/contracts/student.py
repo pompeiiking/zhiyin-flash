@@ -10,7 +10,7 @@ class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-class TaskEdit(StrictModel):
+class TaskValues(StrictModel):
     text: str = Field(min_length=1, max_length=500)
     phase_id: str = Field(min_length=1)
     status: Literal["pending", "in_progress", "waiting", "completed"] = "pending"
@@ -37,7 +37,12 @@ class TaskEdit(StrictModel):
         return self
 
 
-class PhaseEdit(StrictModel):
+class TaskEdit(TaskValues):
+    expected_task: TaskValues | None = None
+    client_request_id: str | None = Field(default=None, min_length=1, max_length=100, pattern=r"^[a-zA-Z0-9_-]+$")
+
+
+class PhaseValues(StrictModel):
     name: str = Field(min_length=1, max_length=100)
     depends_on: list[str] = Field(default_factory=list, max_length=30)
     starts_at: datetime | None = None
@@ -55,6 +60,11 @@ class PhaseEdit(StrictModel):
         if self.starts_at and self.ends_at and self.starts_at > self.ends_at:
             raise ValueError("结束时间不能早于开始时间")
         return self
+
+
+class PhaseEdit(PhaseValues):
+    expected_phase: PhaseValues | None = None
+    client_request_id: str | None = Field(default=None, min_length=1, max_length=100, pattern=r"^[a-zA-Z0-9_-]+$")
 
 
 class Preferences(StrictModel):

@@ -124,3 +124,8 @@ test('permission denial preserves login across student, developer and streaming 
   assert.deepEqual(app.events,[])
   assert.equal(app.storage.get('zhiyin_token'),'test-token')
 })
+
+test('lost or invalid save response is reported as unconfirmed, not a parser error',async()=>{
+  const app=runtime(async()=>new Response('',{status:502}))
+  await assert.rejects(app.api('/app/plan/action/tasks',{method:'POST',body:'{}'}),e=>e.code===1007&&e.message.includes('保存结果尚未确认'))
+})
