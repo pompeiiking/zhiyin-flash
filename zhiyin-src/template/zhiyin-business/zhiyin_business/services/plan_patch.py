@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 from zhiyin_business.contracts.review import PlanPatch
 from zhiyin_kernel.assets import ActionPlan
@@ -27,18 +28,24 @@ def _hit(task_id: str, text: str, key: str) -> bool:
     return task_id == key or key in (text or "")
 
 
-def _parse_due(value: str) -> Optional[datetime]:
+def _parse_due(value: str, timezone_name: str) -> Optional[datetime]:
     raw = (value or "").strip()
     if not raw:
         return None
     try:
-        return datetime.fromisoformat(raw)
+        parsed = datetime.fromisoformat(raw)
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=ZoneInfo(timezone_name))
+        # 日期代表该日截止，不应在当天零点就成为逾期任务。
+        if len(raw) == 10:
+            parsed = parsed.replace(hour=23, minute=59, second=59, microsecond=999999)
+        return parsed
     except ValueError:
         return None
 
 
 def apply_plan_patch(
-    plan: ActionPlan, patch: Optional[PlanPatch]
+    plan: ActionPlan, patch: Optional[PlanPatch], *, timezone_name: str = "Asia/Shanghai"
 ) -> tuple[ActionPlan, list[str]]:
     """应用复盘调整，返回（新计划, 变更摘要）。
 
@@ -67,7 +74,7 @@ def apply_plan_patch(
             due: Optional[datetime] = None
             for key, value in patch.reschedule_tasks.items():
                 if _hit(task.id, task.text, key):
-                    due = _parse_due(value)
+                    due = _parse_due(value, timezone_name)
                     break
             if due is not None:
                 tasks.append(task.model_copy(update={"due_date": due}))

@@ -2,7 +2,7 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { localDateTime, reviewDraft } from '../lib/form-values.mjs'
 import { studentApi, type Review } from '../api/student-capabilities'
-import type { ReviewEdit } from '../api/backend-types'
+import type { ReviewEdit, TaskValues } from '../api/backend-types'
 import { backendDemo } from '../lib/backend-demo'
 import { backendClient } from '../api/backend-client'
 import { actionRows, dateKey, deadline, taskStatusLabel } from '../lib/action-insights.mjs'
@@ -21,6 +21,15 @@ const result = ref<ReviewEdit['result']>('continue')
 const adjustedText = ref('')
 const adjustedDate = ref('')
 const editing = ref('')
+const requestId = ref('')
+const expectedUpdatedAt = ref<string | null>(null)
+const expectedTask = ref<TaskValues | null>(null)
+function taskSnapshot(): TaskValues | null {
+  const task = selected.value
+  const phase = backendDemo.state.liveAction?.phases?.find(row => (row.tasks ?? []).some(item => item.task_id === task?.task_id))
+  if (!task || !phase?.id) return null
+  return {text: task.text, phase_id: phase.id, status: task.done ? 'completed' : task.status ?? 'pending', progress: task.done ? 100 : task.progress ?? 0, waiting_reason: task.waiting_reason ?? '', due_date: task.due_date ?? null, scheduled_at: task.scheduled_at ?? null, estimated_minutes: task.estimated_minutes ?? null, parent_task_id: task.parent_task_id ?? null}
+}
 const busy = ref(false)
 const error = ref('')
 const status = ref('')
@@ -36,6 +45,9 @@ type LocalReviewDraft = {
   adjustedText: string
   adjustedDate: string
   editing: string
+  requestId: string
+  expectedUpdatedAt: string | null
+  expectedTask: TaskValues | null
 }
 const localDrafts = new Map<string, LocalReviewDraft>()
 
@@ -63,11 +75,17 @@ watch(selectedId, (id, previousId) => {
       adjustedText: adjustedText.value,
       adjustedDate: adjustedDate.value,
       editing: editing.value,
+      requestId: requestId.value,
+      expectedUpdatedAt: expectedUpdatedAt.value,
+      expectedTask: expectedTask.value,
     })
   }
   const draft = reviewDraft(selected.value)
   const localDraft = localDrafts.get(id)
   editing.value = localDraft?.editing ?? ''
+  requestId.value = localDraft?.requestId ?? crypto.randomUUID()
+  expectedUpdatedAt.value = localDraft?.expectedUpdatedAt ?? null
+  expectedTask.value = localDraft?.expectedTask ?? taskSnapshot()
   reason.value = localDraft?.reason ?? ''
   note.value = localDraft?.note ?? ''
   adjustedText.value = localDraft?.adjustedText ?? draft.text
@@ -103,6 +121,9 @@ async function save() {
     const task = selected.value
     const phase = backendDemo.state.liveAction?.phases?.find((row) => (row.tasks ?? []).some((item) => item.task_id === task.task_id))
     const item = await studentApi.saveReview({
+      client_request_id: requestId.value,
+      expected_updated_at: expectedUpdatedAt.value,
+      expected_task: expectedTask.value,
       task_id: task.task_id,
       reason: reason.value,
       note: note.value,
@@ -113,15 +134,16 @@ async function save() {
         status: task.status ?? 'pending',
         progress: task.progress ?? 0,
         waiting_reason: task.waiting_reason ?? '',
-        due_date: adjustedDate.value ? new Date(adjustedDate.value).toISOString() : task.due_date,
+        due_date: adjustedDate.value ? new Date(adjustedDate.value).toISOString() : null,
         scheduled_at: task.scheduled_at,
         estimated_minutes: task.estimated_minutes,
         parent_task_id: task.parent_task_id,
       } : null,
     }, editing.value || undefined)
     editing.value = item.id
+    expectedUpdatedAt.value = item.updated_at
     try {
-      await load()
+      await load(true)
       status.value = result.value === 'continue' ? '复盘已保存，阶段计划没有改变。' : '复盘已保存；确认影响后，可应用到阶段计划。'
     } catch {
       status.value = '复盘已保存，但列表暂未刷新。'
@@ -140,12 +162,12 @@ async function apply(item: Review) {
   status.value = ''
   try {
     await studentApi.applyReview(item.id)
-    backendDemo.setAction(await backendClient.action())
     try {
-      await load()
+      backendDemo.setAction(await backendClient.action())
+      await load(true)
       status.value = item.result === 'complete' ? '任务已标记为完成，阶段计划已更新。' : '任务调整已应用，阶段计划已更新。'
     } catch {
-      status.value = '阶段计划已更新，但复盘列表暂未刷新。'
+      status.value = '任务调整已保存，但页面暂未刷新，请重新读取后查看。'
     }
   } catch (caught) {
     error.value = (caught as Error).message
@@ -158,6 +180,9 @@ async function edit(item: Review) {
   selectedId.value = item.task_id
   await nextTick()
   editing.value = item.id
+  expectedUpdatedAt.value = item.updated_at
+  expectedTask.value = taskSnapshot()
+  requestId.value = crypto.randomUUID()
   reason.value = item.reason
   note.value = item.note ?? ''
   result.value = item.result

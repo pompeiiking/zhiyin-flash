@@ -264,7 +264,13 @@ class StudentService:
         )
         if task is None:
             raise ResourceNotFound("复盘关联的任务不存在")
-        identity = review_id or f"review_{uuid4().hex}"
+        identity = review_id or (f"review_{uuid5(NAMESPACE_URL, user_id + ':' + body.client_request_id).hex}" if body.client_request_id else f"review_{uuid4().hex}")
+        values = body.model_dump(mode="json", exclude={"expected_updated_at", "expected_task", "client_request_id"})
+        current_phase = next(p.id for p in plan.phases if any(t.id == task.id for t in p.tasks))
+        task_snapshot = body.expected_task or TaskValues(**{
+            key: current_phase if key == "phase_id" else getattr(task, key)
+            for key in TaskValues.model_fields
+        })
 
         def change(s):
             records = s.setdefault("reviews", {})
@@ -274,8 +280,16 @@ class StudentService:
                 raise InvalidRequest("这条复盘正在应用，请稍后修订")
             if review_id and previous is None:
                 raise ResourceNotFound("复盘不存在")
+            if previous:
+                if all(previous.get(key) == value for key, value in values.items()) and (body.expected_task is None or previous.get("task_snapshot") == task_snapshot.model_dump(mode="json")):
+                    return s
+                if not review_id:
+                    raise InvalidRequest("首次复盘已保存，请重新读取后修订；本次重试不会重复创建或覆盖内容。")
+                if body.expected_updated_at is not None and datetime.fromisoformat(previous["updated_at"]) != body.expected_updated_at:
+                    raise InvalidRequest("这条复盘已在其他页面更新。你的输入仍保留，请重新读取并核对后再修订。")
             item = {
-                **body.model_dump(mode="json"),
+                **values,
+                "task_snapshot": task_snapshot.model_dump(mode="json"),
                 "id": identity,
                 "task_text": task.text,
                 "updated_at": now().isoformat(),
@@ -316,13 +330,17 @@ class StudentService:
         if review.get("applied_at"):
             return review
         try:
+            snapshot = review.get("task_snapshot")
+            if not snapshot:
+                raise InvalidRequest("这条历史复盘缺少任务原值，请重新读取任务并修订复盘后再应用。")
             if review["result"] == "complete":
-                plan = await self.assets.mark_task_done(user_id, review["task_id"], done=True)
-                await self._version(user_id, "应用复盘：确认任务完成", plan)
-                await self._completed(user_id, review["task_id"])
+                await self.edit_task(user_id, TaskEdit.model_validate({
+                    **snapshot, "status": "completed", "progress": 100,
+                    "expected_task": snapshot,
+                }), review["task_id"])
             elif review["result"] == "adjust" and review.get("adjustment"):
                 await self.edit_task(
-                    user_id, TaskEdit.model_validate(review["adjustment"]), review["task_id"]
+                    user_id, TaskEdit.model_validate({**review["adjustment"], "expected_task": snapshot}), review["task_id"]
                 )
             else:
                 raise InvalidRequest("此复盘没有可应用的任务调整")

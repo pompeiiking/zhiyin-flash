@@ -254,6 +254,9 @@ export type Semester = {
 
 export type ReviewEdit = {
   "adjustment"?: (TaskEdit | null)
+  "client_request_id"?: (string | null)
+  "expected_task"?: (TaskValues | null)
+  "expected_updated_at"?: (string | null)
   "note"?: string
   "reason": string
   "result"?: "continue" | "adjust" | "complete"

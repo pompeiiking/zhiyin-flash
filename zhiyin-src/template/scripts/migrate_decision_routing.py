@@ -10,10 +10,8 @@ ROOT = Path(__file__).resolve().parents[1]
 for package in ROOT.glob('zhiyin-*'):
     sys.path.insert(0, str(package))
 
-from zhiyin_business.policies.decision_routing import DecisionRoutingConfig
-
-
 def migrate(payload):
+    from zhiyin_business.policies.decision_routing import DecisionRoutingConfig
     result = dict(payload)
     values = dict(result['value'])
     for old, new in [('min_confidence', 'confidence_threshold'), ('min_probability', 'probability_threshold')]:

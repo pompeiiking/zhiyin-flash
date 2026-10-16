@@ -416,3 +416,56 @@ async def test_phase_retry_and_stale_edit_preserve_tasks(service):
     assert current.phases[0].tasks[0].text == '已有任务'
     with pytest.raises(InvalidRequest, match='首次创建阶段已保存'):
         await service.edit_phase('a', body.model_copy(update={'name':'旧重试'}))
+
+
+async def test_review_creation_replay_and_changed_retry(service):
+    pid = await phase(service)
+    plan = await service.edit_task('a', TaskEdit(text='原任务', phase_id=pid))
+    body = ReviewEdit(task_id=plan.phases[0].tasks[0].id, reason='时间不足', client_request_id='review-retry')
+    first = await service.save_review('a', body)
+    assert await service.save_review('a', body) == first
+    assert len((await service.reviews('a'))['items']) == 1
+    with pytest.raises(InvalidRequest, match='首次复盘已保存'):
+        await service.save_review('a', body.model_copy(update={'note': '重试修改'}))
+
+
+async def test_review_stale_edit_rejected_and_identical_replay_preserves_history(service):
+    pid = await phase(service)
+    plan = await service.edit_task('a', TaskEdit(text='原任务', phase_id=pid))
+    body = ReviewEdit(task_id=plan.phases[0].tasks[0].id, reason='时间不足')
+    first = await service.save_review('a', body)
+    edit = ReviewEdit(**body.model_dump(exclude={'expected_updated_at', 'note'}), note='甲的新内容', expected_updated_at=first['updated_at'])
+    saved = await service.save_review('a', edit, first['id'])
+    assert await service.save_review('a', edit, first['id']) == saved
+    assert len(saved['history']) == 1
+    with pytest.raises(InvalidRequest, match='其他页面更新'):
+        await service.save_review('a', edit.model_copy(update={'note': '乙的旧表单'}), first['id'])
+    assert (await service.reviews('a'))['items'][0]['note'] == '甲的新内容'
+
+
+@pytest.mark.parametrize('result', ['complete', 'adjust'])
+async def test_review_apply_cannot_overwrite_task_changed_after_review(service, result):
+    pid = await phase(service)
+    plan = await service.edit_task('a', TaskEdit(text='原任务', phase_id=pid))
+    tid = plan.phases[0].tasks[0].id
+    review = await service.save_review('a', ReviewEdit(task_id=tid, reason='时间不足', result=result,
+        adjustment=TaskEdit(text='复盘中的调整', phase_id=pid) if result == 'adjust' else None))
+    await service.edit_task('a', TaskEdit(text='后来更新的任务', phase_id=pid), tid)
+    with pytest.raises(InvalidRequest, match='其他页面更新'):
+        await service.apply_review('a', review['id'])
+    task = (await service.assets.get_action_plan('a')).phases[0].tasks[0]
+    assert task.text == '后来更新的任务' and not task.done
+    assert not (await service.reviews('a'))['items'][0]['applied_at']
+    assert not (await service.state.get('a')).get('review_leases')
+
+
+async def test_legacy_review_requires_reconfirmation_before_apply(service):
+    pid = await phase(service)
+    plan = await service.edit_task('a', TaskEdit(text='原任务', phase_id=pid))
+    review = await service.save_review('a', ReviewEdit(task_id=plan.phases[0].tasks[0].id, reason='完成', result='complete'))
+    def legacy(s):
+        s['reviews'][review['id']].pop('task_snapshot')
+        return s
+    await service.state.update('a', legacy)
+    with pytest.raises(InvalidRequest, match='缺少任务原值'):
+        await service.apply_review('a', review['id'])

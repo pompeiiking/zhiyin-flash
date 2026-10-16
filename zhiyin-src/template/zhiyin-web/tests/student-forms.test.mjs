@@ -16,6 +16,7 @@ function setup(name,api={},props={},plan={phases:[]}){
   const modules={
     vue:{...vue,useId:()=>name,onMounted:()=>{},onBeforeUnmount:()=>{}},
     '../api/student-capabilities':{studentApi:api},
+    '../api/backend-client':{backendClient:{action:async()=>{throw Error('计划读取失败')}}},
     '../lib/form-values.mjs':formValues,
     '../lib/action-insights.mjs':insights,
     '../lib/backend-demo':{backendDemo:{state:vue.reactive({liveAction:plan})}},
@@ -23,7 +24,7 @@ function setup(name,api={},props={},plan={phases:[]}){
     '../lib/paged-items':{usePagedItems:source=>({page:vue.ref(1),paged:source})},
   }
   const exports={}
-  vm.runInNewContext(code,{exports,require:path=>{
+  vm.runInNewContext(code,{exports,crypto:globalThis.crypto,require:path=>{
     if(path in modules)return modules[path]
     if(path.endsWith('.vue')||path==='../api/backend-client')return {}
     throw new Error('Unmocked import '+path)
@@ -116,5 +117,33 @@ test('an applied review can be revised without creating another record and the p
     assert.equal(app.state.selectedReview.value.history[0].note,'原记录')
     assert.equal(app.state.pendingReviews.value.length,0)
     assert.equal(app.state.selectedReview.value.note,'修订内容')
+  }finally{app.stop()}
+})
+
+test('review retry keeps request identity and distinguishes saved write from failed refresh',async()=>{
+  const writes=[];let attempts=0
+  const app=setup('StructuredReview',{saveReview:async(value)=>{writes.push(value);if(++attempts===1)throw Error('响应丢失');return {...value,id:'r',updated_at:'2026-10-17T00:00:00Z'}},reviews:async()=>{throw Error('刷新失败')}},{},{phases:[{id:'p',tasks:[{task_id:'a',text:'任务',due_date:'2026-10-20T10:00:00Z'}]}]})
+  try{
+    app.state.selectedId.value='a';await vue.nextTick()
+    app.state.reason.value='时间不足';app.state.result.value='adjust';app.state.adjustedDate.value=''
+    await app.state.save();await app.state.save()
+    assert.ok(writes[0].client_request_id)
+    assert.equal(writes[0].client_request_id,writes[1].client_request_id)
+    assert.equal(writes[1].adjustment.due_date,null)
+    assert.equal(writes[1].expected_task.text,'任务')
+    assert.equal(app.state.editing.value,'r')
+    assert.match(app.state.status.value,/已保存.*暂未刷新/)
+    assert.equal(app.state.error.value,'刷新失败')
+  }finally{app.stop()}
+})
+
+test('successful review apply is not reported as failed when the following plan read fails',async()=>{
+  let applied=0
+  const app=setup('StructuredReview',{applyReview:async()=>{applied++}})
+  try{
+    await app.state.apply({id:'r',result:'adjust'})
+    assert.equal(applied,1)
+    assert.match(app.state.status.value,/已保存.*暂未刷新/)
+    assert.equal(app.state.error.value,'')
   }finally{app.stop()}
 })

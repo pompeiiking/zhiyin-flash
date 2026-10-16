@@ -4359,6 +4359,11 @@ export interface components {
     /** ReviewEdit */
     ReviewEdit: {
       adjustment?: components["schemas"]["TaskEdit"] | null;
+      /** Client Request Id */
+      client_request_id?: string | null;
+      expected_task?: components["schemas"]["TaskValues"] | null;
+      /** Expected Updated At */
+      expected_updated_at?: string | null;
       /**
        * Note
        * @default
@@ -4410,6 +4415,7 @@ export interface components {
       result?: "continue" | "adjust" | "complete";
       /** Task Id */
       task_id: string;
+      task_snapshot?: components["schemas"]["TaskValues"] | null;
       /** Task Text */
       task_text: string;
       /**

@@ -1,0 +1,3544 @@
+{
+  "files": 588,
+  "lines": 107609,
+  "by_extension": {
+    ".ps1": 2,
+    ".sh": 1,
+    ".py": 398,
+    ".vue": 107,
+    ".html": 3,
+    ".ts": 45,
+    ".mjs": 18,
+    ".css": 14
+  },
+  "items": [
+    {
+      "path": "deploy/deploy.ps1",
+      "lines": 50,
+      "sha256": "6a3fbf197fa56f9a19124d3177bfceae92681af0e480c8ed4843e714b75f2954",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "deploy/litellm/validate-and-start.sh",
+      "lines": 29,
+      "sha256": "7b0c1dafa113bec794043ad5b2ab3c182bddbe06be6686dfa2a2d806384a6a7b",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "deploy/litellm/verify_load_balancing.py",
+      "lines": 77,
+      "sha256": "c8ea7cfe9b6a75b964d3059b0f2e92f94a3af5c5cd005f37780c2cbb06c0cd94",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "deploy/module_bluegreen.py",
+      "lines": 713,
+      "sha256": "58fae4bb553e7e478accafb4ea98db00ae6a3be6ba08e02ff469c9039057d709",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "deploy/module_browser_gate.py",
+      "lines": 472,
+      "sha256": "83a4f39901177e159384379ac22291134da423ae8762288555e64b94e780ac28",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "deploy/module_executor.py",
+      "lines": 379,
+      "sha256": "ec302c25c9ef561f259630f6aa4e9e56274da3e7b7fa045acde12c69e0117b61",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "deploy/module_source_worker.py",
+      "lines": 266,
+      "sha256": "19c53a1cee71d05001a5e9693f17b9b3909917de954e88c2e59b8021edd2bebc",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "deploy/module_workflow_guard.py",
+      "lines": 235,
+      "sha256": "c61ea1cf39421fdc02e423bd3fa40a37b3bb01a56996a148ffdcdc1d160bd66e",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "deploy/package_release.py",
+      "lines": 435,
+      "sha256": "1d06dcd9d3b717db4d28b313937dd455bcedc98c0de14c0be4130faae2233f9b",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "deploy/setup_module_platform.py",
+      "lines": 79,
+      "sha256": "4c36f8b31268ccee8d26b87cf54c8660a7cb3172db8a7271b14af42e806d3ef8",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "deploy/start_module_workers.ps1",
+      "lines": 204,
+      "sha256": "d791c081811436ed3b654021f277e05f0db3b8ea9c968b1a46023bbceee3b57c",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "deploy/verify_platform_candidate.py",
+      "lines": 40,
+      "sha256": "436f8b278a2a18df206536541d55479d3010896cfdba3403a28bf44bb06e4890",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "scripts/acceptance/frontend/analysis-sources.py",
+      "lines": 110,
+      "sha256": "27329c4a63ae65b15dca3cb9640a1100e4aa3dc0c57d584b741a103529a2f11d",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "scripts/acceptance/frontend/frontend-remaining-acceptance.py",
+      "lines": 615,
+      "sha256": "de946488f6c987e5f64632aa754f2a3cb291e82335e1a15991811694276fa4fa",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "scripts/acceptance/frontend/frontend-smoke.py",
+      "lines": 100,
+      "sha256": "802a06649b47420c0a4b80736190e97dd0eae4f0bba2386bfeba09946e120f2c",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "scripts/acceptance/frontend/student-capabilities.py",
+      "lines": 543,
+      "sha256": "a7d8dbaf9d84532d15a12d42fe33e133e170d16656d25383c5c71e8c2d210c08",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "scripts/acceptance/frontend/worker-interfaces.py",
+      "lines": 248,
+      "sha256": "f1d354715e8625c6f20683481196aa841e3d716ab28d4ba2edca2d82022218c1",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "scripts/acceptance/platform/accept_bluegreen_recovery.py",
+      "lines": 538,
+      "sha256": "7c353e8dbfb7ad2a2ae2418c687ffcc1819e15c16d2333309d1e893f5231d9b5",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "scripts/acceptance/platform/accept_developer_browser.py",
+      "lines": 567,
+      "sha256": "89d5a1e0d96886f8487d620ae57e5ac14a7aed93e79a7298d28b5c62b5aae22b",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "scripts/acceptance/platform/accept_developer_concurrency.py",
+      "lines": 332,
+      "sha256": "c0f026ee791b141f1ea5f942e51d8d64a7e8937c3a8de9353fd69adb64281473",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "scripts/acceptance/platform/accept_developer_platform.py",
+      "lines": 276,
+      "sha256": "a827f3b2f77c9c3c3e2c51fb854c55cda5a968bc398a8ef98246d96652f034d8",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "scripts/acceptance/platform/accept_module_classification.py",
+      "lines": 175,
+      "sha256": "4dbe532cd361e28898ec21999e9f36d91cf36621ff96a16008f45804352d2775",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "scripts/acceptance/platform/accept_module_conversation.py",
+      "lines": 51,
+      "sha256": "d1929bb1883f19b389f449e67349b33d7a05f56b76fa64e34968e3590df9a22a",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "scripts/acceptance/platform/accept_module_platform.py",
+      "lines": 201,
+      "sha256": "4229f8ec4551223977b5ef4d06d984fdad82a4778e42377fb3ab97aeeca266e2",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "scripts/acceptance/platform/accept_module_releases.py",
+      "lines": 98,
+      "sha256": "74534a1d50ad052a43703249c83c7799d13c0392a5dd5d27e73c1e98068c8975",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "scripts/acceptance/platform/accept_platform_persistence.py",
+      "lines": 305,
+      "sha256": "9f344908c582e451fcb4f4d76e04f6079af3527a7073650910016d86f73492ba",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "scripts/acceptance/platform/accept_uploaded_module_model.py",
+      "lines": 269,
+      "sha256": "877326a4f0557bef4f5e309a14a491354086683d0952fe8bc57cb78afa84b9ab",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "scripts/acceptance/platform/accept_workflow_browser.py",
+      "lines": 282,
+      "sha256": "d2c010dc01bdd946faec0c292c18c6d12c053fe79ed218034842f80c3eb48400",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "scripts/acceptance/platform/accept_workflow_compatibility.py",
+      "lines": 198,
+      "sha256": "e66811be439df33761bd380179a8fba92e3861c2c4e032c7da792dd605799b9a",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "scripts/acceptance/platform/accept_workflow_publication.py",
+      "lines": 171,
+      "sha256": "ed0a83abb15342d0494d29f9507b534ec1b16ad95069f5eb44ac91274532b91b",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "scripts/acceptance/review_concurrency_smoke.py",
+      "lines": 72,
+      "sha256": "94166b844ff723072fc5b411b95634b424f8a628a9a6a0d096f18655ca1146cf",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "scripts/contracts/frontend-capabilities.py",
+      "lines": 119,
+      "sha256": "e62aff70339438ba34af50eb86628596ae354c48e96d4568bcef9598c60dfced",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "scripts/fixtures/seed-students.py",
+      "lines": 775,
+      "sha256": "d5b30e652e6086837d0cec19b54bcb54a122e1c743e6a2a82a462f5455af1c1e",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "scripts/integrations/kev/kev_config.py",
+      "lines": 174,
+      "sha256": "f0a8deac551524855006f4783ab227b4bcec102b6873131fe288765745dbf597",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "scripts/integrations/kev/kev_smoke.py",
+      "lines": 181,
+      "sha256": "1b62c7c3461654636d0036deb8dcf8ea513b24faa8446ba504937f0e9ad56997",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/scripts/export_openapi.py",
+      "lines": 84,
+      "sha256": "65e3396e587713a9937f7a9aef1e692df8173a611336db0b43c9a7725bc796ff",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/scripts/migrate_db.py",
+      "lines": 519,
+      "sha256": "815ad9ac92259c329555764a86dea37a1e1e8d664332e2989ff3589e222d5ae4",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/scripts/migrate_decision_routing.py",
+      "lines": 59,
+      "sha256": "858d7c035353e1302abb38420c70a3be87efc08f18e60bf74c566fc64f48bd7a",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/scripts/module_admin.py",
+      "lines": 52,
+      "sha256": "2da92a3793e87ffe9da5bc8271bbf9ef5a3eee74ca6e61fea4919e6f6e9478e4",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/scripts/module_cli.py",
+      "lines": 77,
+      "sha256": "9cfc668a37a8d18bae3229a4a2dc5e31a03d56c8adaeafc80b972104c41579cd",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/scripts/module_dataflow_acceptance.py",
+      "lines": 239,
+      "sha256": "5e123da7459067082c223b88d202c9f638880b5f5f82d69524e7a73351ab7d22",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/scripts/module_runtime_acceptance.py",
+      "lines": 108,
+      "sha256": "cec4dae24fd98b00d7297afa46ab0814c9389a261b8d1e485de2c0a3b02c91f0",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/__init__.py",
+      "lines": 1,
+      "sha256": "68d13eeef4b20daf108f8ffc743e1dd0a0ccfbe8e636c2ddcb1b0b23ff6ea1ea",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/conftest.py",
+      "lines": 35,
+      "sha256": "cbee3a644ad3779c8c376c8cece6d5958c12c8c62c26da347a251079335964d9",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/contracts/conftest.py",
+      "lines": 81,
+      "sha256": "7f5128808c134750cdf8d89c714959c247bb283681e841480591a87cedef1d5b",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/contracts/test_gateway_contract.py",
+      "lines": 139,
+      "sha256": "af97931ffe97cfceb1656ac5998a529911aec91887196ca193604ef7395cd5ec",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/contracts/test_repository_contract.py",
+      "lines": 320,
+      "sha256": "864e55e66faff7dd15189b51e46caba487d5a1562ac3cdb74cf37a1c5a2cf159",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/e2e/__init__.py",
+      "lines": 1,
+      "sha256": "d232d5ec079d947f7d1e047f9277a01533e2f7420e88636fd0060a56b554673b",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/e2e/ai_tasks_verify.py",
+      "lines": 113,
+      "sha256": "d2bb1d63d4686bd9e7506536317512363f69c1fff9225a5f8936706ef395137e",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/e2e/api_surface_verify.py",
+      "lines": 148,
+      "sha256": "fb2758c4e55c2f7ad270a750d0edf81b333b8c33817a11ec24fa325f538cf4c7",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/e2e/chart_probe.py",
+      "lines": 165,
+      "sha256": "47e3636271fc49bba3dd4826042148188e5c75b64fc4595a32e4696e45506029",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/e2e/full_path.py",
+      "lines": 1169,
+      "sha256": "c9d5816ec5392b001de0699c8cf7d99c156edc08ac76655f328213c7faf0a6b4",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/e2e/linkage_probe.py",
+      "lines": 293,
+      "sha256": "bd5b2e7b7315e1eddcbfa8b2edba8a3f29f537537dde5853232e38f4ff6ecc7d",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/e2e/loop_verify.py",
+      "lines": 484,
+      "sha256": "c6eb1ef6bec2e2a75668c91a21c4a9c8bb78bdb32df0666844a68193c193edda",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/e2e/make_blind_review.py",
+      "lines": 71,
+      "sha256": "683db5491357b666c581f01be9658121e03bedc4b8cf024124dfda4facad0884",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/e2e/prompt_ab_eval.py",
+      "lines": 308,
+      "sha256": "10e7512858068f0199edbbb52e1b439cd3f257e9f601cda57f3665250cd063a7",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/e2e/prompt_semantic_checks.py",
+      "lines": 82,
+      "sha256": "3b73543aaac9636a64732a849a5c27b96afa03c6edcbb79588a29afde273f39c",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/e2e/test_main_path.py",
+      "lines": 360,
+      "sha256": "04739b636fdcf1a4dc419e3fd013abdd90b8e746f02bcbfb0eea1a81049587ae",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/e2e/topbar_probe.py",
+      "lines": 39,
+      "sha256": "ab762f04e61ddedff6cdb955832eef1bde32ff1a0eb9d14779c48da7c78380e5",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/e2e/voice_probe.py",
+      "lines": 89,
+      "sha256": "54057fa7a34d5957cd1f4b15cdd507ec0e71bcf5145adb72e87406fee7437c3f",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_academic_import.py",
+      "lines": 569,
+      "sha256": "44b4c15040a63949b826a19eb2b7e9b5407c8ff9672f66fea2c825d8a0792362",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_academic_scheduling.py",
+      "lines": 96,
+      "sha256": "8473a025fb275129450704dcb98b8f9551b52260ed1362b1bc5f0e57354b38fe",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_achievements.py",
+      "lines": 137,
+      "sha256": "4e0f7464da16e30fb7ca2fab2f049df5f2396d8b54856a8674b8140ab90027d1",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_ai_config_storage.py",
+      "lines": 152,
+      "sha256": "740c874f4e36232fefcd83a41df3680517e4e8a891e3d625db7940553e0b31ea",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_ai_task_cache.py",
+      "lines": 253,
+      "sha256": "d5c898cd48a216aca31591fe21de9c451c37e994d7ed0d3236ac3c143abd1c6d",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_ai_task_contract_alignment.py",
+      "lines": 98,
+      "sha256": "f07ed3fe71a845501d1a60bd2bf1ed6961d6ceec292b873354fd1c22d2d8e922",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_analysis_source_access.py",
+      "lines": 236,
+      "sha256": "6bb0dd1e57903787579de9c52dca76eb1cc321e9217c9fe9a51e39f08dedcfde",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_api_contract.py",
+      "lines": 109,
+      "sha256": "ad096d4eac00ad797af0172b30871d361b1111ecce974112b300320c80cbe1e5",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_api_prefix.py",
+      "lines": 131,
+      "sha256": "3809957b14f0adab7ca2fb2afcb2167882ffe1382ef33140ce8ab801f333cfe0",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_app.py",
+      "lines": 132,
+      "sha256": "8a7c655ee73b96bbff1b0faa48c21dceb1be8e6207c8d12d4bce5e36d38f4e22",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_architecture.py",
+      "lines": 323,
+      "sha256": "b47303bf45e625b10a9eea874ec1a0d1f6cf3c0307cf8b9320ba9eea53f609ae",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_assembly.py",
+      "lines": 231,
+      "sha256": "54d138141d617524a80914c80d4eaa5a64a211bd2d70880c654c39417b33de63",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_blocked_field_is_disclosed.py",
+      "lines": 211,
+      "sha256": "f47c77a67cfe3c62ba59f0ceffd09b82b883f40d5bdb1993445737907075ea24",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_bluegreen_recovery_acceptance.py",
+      "lines": 166,
+      "sha256": "d2acc840c5867ba88814048216eaf62a1f56f3fe0ee125491464212ce2d0dd00",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_chart_is_never_fake.py",
+      "lines": 167,
+      "sha256": "587841ed553a20478e3c4a1a8e3a47ca74d07f23e9681a9977aeb998c5eed2d4",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_chsi_verification.py",
+      "lines": 145,
+      "sha256": "f1825a355514231ace2d940bf5e7e1739a1e8f14dd7abc5df544acacc5f82dd7",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_collect_writes_profile.py",
+      "lines": 237,
+      "sha256": "3c4689001fc5d94da9ee656cc79cb33273777f381e18eccf7d243a6ab46ef8ca",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_collection_gate.py",
+      "lines": 88,
+      "sha256": "04ae264a5cb944fcfe82536373f1238e01518a9b7eb56cb30a2dfc80f174c79a",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_collection_policy.py",
+      "lines": 365,
+      "sha256": "61dd50c6922dd2b2115bb0fcb52887461a1ab0383ac5db2ff5c9d5847a8be166",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_concurrency_deployment.py",
+      "lines": 114,
+      "sha256": "ed05074cd32f09c679cc51d19273b75be4eca54628f80dd9d26b24ce998dd799",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_container.py",
+      "lines": 254,
+      "sha256": "1e2627a812594fc2a8200c8f4e16bb19d05f4f7cb6d7b936eef288675b925e96",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_conversation_options.py",
+      "lines": 155,
+      "sha256": "73ed06d63080c3bf02e69b95d1e67f1e7cfb1ee8dc71569c0a99ef67041140cb",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_conversation_stream_text.py",
+      "lines": 88,
+      "sha256": "1002a2f319763d4caa00ce5e5a317aa3b2294549a1abfbf9b1aa4805cd04d486",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_data_sources.py",
+      "lines": 609,
+      "sha256": "593698de05c170552413a5fc4571590889faca86a667d51a377cb4de24a37a1e",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_decision_config_migration.py",
+      "lines": 47,
+      "sha256": "8b34a68ad76239e1bd7bfba62ef68b427a0598b30c9e0176c28e315d29c32cec",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_decision_routing.py",
+      "lines": 398,
+      "sha256": "0d9bf226a2def82d59035d0bbe1619472797673c93c22aaca6bcc36038dce501",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_decision_routing_calibration.py",
+      "lines": 69,
+      "sha256": "8deca7a2c5556133b2d499d3cde7e2d0e47e7e11ffba99782f8938578cbc2c59",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_declared_dependencies.py",
+      "lines": 132,
+      "sha256": "ff43e802f8a5f7c023216b14160f9673ff04d7b8b9362b94871a55cd66d46547",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_developer_authorization.py",
+      "lines": 293,
+      "sha256": "bc0200da9a76901ba128acaa8dc48e713ba94d359f09b9d079cdf708aa4bf6a0",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_developer_sources.py",
+      "lines": 106,
+      "sha256": "47357bf1abb575a41a549f7282f05b6ca5ba96f55c780cc0a6bd4df2962978bd",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_docs_alignment.py",
+      "lines": 425,
+      "sha256": "4f67d8941aa60a57fbef3c1b904f89ad3b4913b9d996463dde3e00f86b342692",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_field_length_limit_alignment.py",
+      "lines": 81,
+      "sha256": "5f8a00ba1b1505d280fa50cafdabc81950408460953821fca9abfc60a03d6c99",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_frontend_alignment.py",
+      "lines": 99,
+      "sha256": "457dd96ae874da270bc4fccd9eb9aa9c74e70ad82aded864ed63a761ce993190",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_gate_and_new_field.py",
+      "lines": 249,
+      "sha256": "47513ca2f078b497b71d813a5dca141e811ff77277a235d04d74e1f50aed51a0",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_infrastructure.py",
+      "lines": 708,
+      "sha256": "f4aec3befcf155485548d8ee727f1a764f274b4ca04d7f0bfae578a080c631dd",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_knowledge_gateway_honesty.py",
+      "lines": 152,
+      "sha256": "c961914c9274483a9c90d857d8d9ec2bbdcc85bc0d596358d44de5e12c79f6d3",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_loop_advances_on_real_progress.py",
+      "lines": 271,
+      "sha256": "18c9f015a037b846139e3a47d4a0592e6354aafe05f153a74d2908a119f16c10",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_materials.py",
+      "lines": 265,
+      "sha256": "0cbaa1e0b122693ea0de74caad6b53091b232d30804f73ca04e9ca2060d9b556",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_module_bluegreen.py",
+      "lines": 597,
+      "sha256": "214f800274cc8858a01d15c3daf7db0a926266919b950191d30baf0e183492fc",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_module_browser_gate.py",
+      "lines": 110,
+      "sha256": "3ea3fcaa650fd535a1b8a1f3191c98fe42bb9c40047399229062efb3f25bf5fe",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_module_classification.py",
+      "lines": 390,
+      "sha256": "46ee35fe250668aca38b0dfdc94d4b81c64990dc6934ccfe909c8f7f2eef3824",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_module_dataflows.py",
+      "lines": 408,
+      "sha256": "2501845d6a13015dc0b1d59dcc8ed0ae071c7211845e31da2f8238675b340c96",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_module_platform.py",
+      "lines": 267,
+      "sha256": "b9fd68960b46e2a6ba9bb013da4f15c28e18581a01430d2eef5fe7fc6882bf46",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_module_source_worker.py",
+      "lines": 225,
+      "sha256": "5b987d5d74b59f0556588d93636fac4356c5f6dadf991a658b996bc266c92b0b",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_module_workflow_guard.py",
+      "lines": 134,
+      "sha256": "3d0449122b5aa6075174e3e8e8210f0ebf53e1724595b93919cb74c8295f3c41",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_module_workflow_publication.py",
+      "lines": 149,
+      "sha256": "55bd2d64a2b6fcefd5acabe4e2d397dc2e09c21e4af6528953b67774e2c445b7",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_orchestration.py",
+      "lines": 803,
+      "sha256": "b0b750b1a93b42830c98185448e3af587579eb5d424cd19f0521b2d856ef2d66",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_permission_response.py",
+      "lines": 24,
+      "sha256": "baf39caf1f7fffb347ff82ce7c2d3a161bcbbfe68067e6a0bd08ad7eab8ccae8",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_plan_ids_are_stable.py",
+      "lines": 223,
+      "sha256": "c36e1975344ba19e27db30f21304a365135b447cb286db2a36b5e664678a87d1",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_postgres_event_bus.py",
+      "lines": 245,
+      "sha256": "c20c1ad7085c762e81f12672b983a997d575833d8cd0029e4442feb0cec47f92",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_profile_correction.py",
+      "lines": 180,
+      "sha256": "16dd68396427d1912aa0785b9c05f1615a8ee65d6de3f5152807013c5dec6bb7",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_profile_display_names.py",
+      "lines": 87,
+      "sha256": "bb87a4db45d6a30e0704debef45a11d15aebe5271d6d8ada560b51b79bf0750e",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_profile_read_backfill.py",
+      "lines": 91,
+      "sha256": "8370bf438c4dadfc269d156e22925afe5a5cb2d936958e81c95e5087b2ad64f5",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_read_cache.py",
+      "lines": 256,
+      "sha256": "71ea992088640350f2f234c9b0a7dd443293e3acd7fc041ac628f6a55acb7986",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_registry_copy_consumption.py",
+      "lines": 29,
+      "sha256": "4b63f8c1cc2a38a00a245b1c207d762e563ccab1851edae4ea1bc24bcdf0099d",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_regressions.py",
+      "lines": 339,
+      "sha256": "80e949f41f3409372dc2be60a0a4ad35372ca1bcd968501b56bdd69fe9642c12",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_repeated_message_is_not_re_run.py",
+      "lines": 137,
+      "sha256": "f215d5bbeef3be6c8f70a49e24f6b670bb8a57b270493de6a06132d6423a8482",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_reply_answers_the_user.py",
+      "lines": 203,
+      "sha256": "b44d456d7c12d14df6fdb0d1cd91b34369b1f095fe44e8cb277dd9e2325bf81f",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_reply_is_never_a_canned_line.py",
+      "lines": 146,
+      "sha256": "db839bc8aa406fdfa86449d1adfe3d9a2b92c170de19bb4178a9cd8efa2f450e",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_request_context.py",
+      "lines": 146,
+      "sha256": "a906cfbb908fbb08ffe5550db2f17fc40c1acdd4eea337e6cca165e92f7348b7",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_review_plan_patch.py",
+      "lines": 168,
+      "sha256": "b08a7ef80ebc8288539e7d1054ef7d2283002e55f21e704373af2839dcc3038e",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_review_round_completes.py",
+      "lines": 57,
+      "sha256": "e3d10dc8c1bec3214afb798ed46127ea7ba11cdeb2c9536f6dad22f275286ecf",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_schema_migration.py",
+      "lines": 137,
+      "sha256": "e93d7383e592ebabf6f802d5d30a65565e57dfa5da172ad3690281c8d5e5aa99",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_schema_order.py",
+      "lines": 97,
+      "sha256": "12d23a840a244ede253e16d5c26b7f4e6ec36dd552a1e3c1c5c6946446a5b86a",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_security_gateways.py",
+      "lines": 76,
+      "sha256": "9a60441b539554da86aeb475ea49c906f38bb40795e09369bdcee9b2ef80ebdf",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_settings.py",
+      "lines": 71,
+      "sha256": "cc44bf8921420429ca576ec66fb8b590ccb4d43b0ad05ad750a6fb9231aa0053",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_shell_completeness.py",
+      "lines": 576,
+      "sha256": "f82348d4e874b1269abf18ea631bf9016af782be380ca0c9d8313cf58fe109c3",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_source_authority.py",
+      "lines": 351,
+      "sha256": "c130db48ec6c3501d07626b1c151e5fdd606805e1e27bbf711fe778cae8fa2b5",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_source_authority_coverage.py",
+      "lines": 506,
+      "sha256": "13aa6847d1d30ae5a2bcd59bc29960b5a22a8f7977dd3ce902f3265e5cb923a3",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_stage_contracts.py",
+      "lines": 61,
+      "sha256": "1198b376ecd5c89356fdffe92a2b00aca28afaca6013e6329da85cfde166f066",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_stages_decide_act.py",
+      "lines": 234,
+      "sha256": "82946eea28f838aa45eb6a42684d7a29ab0133918a4a0e8db1574bfc8b20cd54",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_student_capabilities.py",
+      "lines": 471,
+      "sha256": "a80f0640331d125f6d3b3579efca359d9a3e9bc418e3f7309cdff7dcff935e00",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_systemone_decision.py",
+      "lines": 132,
+      "sha256": "0755a30085502a038792af3d2bd2553eb9e8f10da08545fb39bc08c0fa0fc4f8",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_theory_refs_are_real.py",
+      "lines": 63,
+      "sha256": "13dd2df5a34d5168e360dc513947b43058bfb7f7845f8663ec432ab8be409914",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_timeline_is_human.py",
+      "lines": 171,
+      "sha256": "0392bc319653eb9d7d12fe8911bc7ac4c2e1fb1305775c1a5313e336c438d04c",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_tool_modules.py",
+      "lines": 153,
+      "sha256": "43d82f397b0c5622a7fc2bbf284d25f136831c5d21079983e92cba04e1c08f2d",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/tests/test_user_edit_is_not_overwritten.py",
+      "lines": 243,
+      "sha256": "1dbcbda22af07cf4e5058145990d6e67ab67cbbfcd8e587c163e93ecdb93d367",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/__init__.py",
+      "lines": 16,
+      "sha256": "397b5fdd84319793b9b6d7e2a28ca75484b0241c2788d3d47c0508438ea4695a",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/app.py",
+      "lines": 229,
+      "sha256": "3f3125db6d598a4ccc8f84fbf11c94140bcd82c7c5d471c1066a01ebdcaad3e5",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/context.py",
+      "lines": 176,
+      "sha256": "64e89616a92b8f74f996d31f6c5351c350166c7fc5e00f4be4e6923515327d46",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/contract.py",
+      "lines": 110,
+      "sha256": "2631d37b181b71ad8708c6c900ef9d7321e461e5e9adfac4a6688e5a1c6f1f89",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/__init__.py",
+      "lines": 51,
+      "sha256": "8c75b80d57c6e295570153090a8e7ced9b6f834ba340a95e4283eeb755021eb3",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py",
+      "lines": 254,
+      "sha256": "36bfe04c87d954745be929b533d4814d50ed98e83b23081a9b20f9296bf202a5",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/app_controller.py",
+      "lines": 80,
+      "sha256": "e7eb6cdf8b169a0d299c1dcce56bd71f7edf920e82d7766fa14ac9a2f95adaa9",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/asset_controller.py",
+      "lines": 125,
+      "sha256": "7c8f20cf7028f19d759a0ede971498a3260ed576cb5226f4ee3ff6005c7bb1f4",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/auth_controller.py",
+      "lines": 73,
+      "sha256": "1eb7ecd412674e1d2057ea3873603e0e7fc5f56906406be1f651e77fc73ee1a2",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/config_controller.py",
+      "lines": 31,
+      "sha256": "b960f33e35715be51c386a2629142c5313dcd9d4c8704ea4d5ee81a81726bc55",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py",
+      "lines": 164,
+      "sha256": "7174c4882ffb1618c178d60c2cf52e0be3c4d3cb5fcdbc39d302c2812920e5f5",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py",
+      "lines": 159,
+      "sha256": "4946d9cddfa35c04c5abfbf4d9b4c5bb7ec791320b32f42207b55c46562aebf0",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/module_controller.py",
+      "lines": 230,
+      "sha256": "f22cd8b73cd5ec147566d267d1bacba22cd0231e3994e562a3ede1c5e8cf7e1b",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/note_controller.py",
+      "lines": 53,
+      "sha256": "eb2a6d96aa849cdaa3f5dd2199b6f36b001c91e0ef25222ac7f1277f79101262",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/profile_controller.py",
+      "lines": 46,
+      "sha256": "6d708f7c1520588fd5693f00e0e47b5ae3edc710b2fcea9ca70e4a8a3ff2767f",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py",
+      "lines": 190,
+      "sha256": "eef7762d1d923575319dd21042aa3275315f315a79f22fba298803dfa19962dd",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/track_controller.py",
+      "lines": 43,
+      "sha256": "fe313afd46cbd65918607f402dcb4233916992aa29f18650db3f4efe5b3d3c43",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py",
+      "lines": 187,
+      "sha256": "e50864bddcd1e2fc22a6c57eabfa26fc1841283a79769706ad58b03f84d258f1",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/dto/__init__.py",
+      "lines": 96,
+      "sha256": "ded5487479820a61b1baee9b9e82ca64c87433479d541c7912bf82bf9da52320",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/dto/achievement.py",
+      "lines": 45,
+      "sha256": "3357c2f6177c8b44d14c8bc9b03ad1ce1d45a9c3c32a2af097fa7edc3dfd5271",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/dto/asset.py",
+      "lines": 261,
+      "sha256": "de5db13f84ec019a9d26cb4e5967d687436351f4ed5decdbf236d9d0d6a73885",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/dto/bootstrap.py",
+      "lines": 160,
+      "sha256": "a4ac5332a56e1e34f3de2021713a0f879fb7c956bb1a84468c3cc2dfb5657e42",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/dto/common.py",
+      "lines": 161,
+      "sha256": "9a3be00dd04268636cb1e7fc484c11557abd592d13dcc4796326208d7cdc0e6a",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/dto/conversation.py",
+      "lines": 210,
+      "sha256": "08429330b555a51417a4036ba8bdda1d60c2af240896356afdf9038786ffe294",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/dto/mappers.py",
+      "lines": 1039,
+      "sha256": "24310ae71c31e9e4d61f49554d7bf92fc9ffff68095925c2a454119b7f21da60",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/dto/note.py",
+      "lines": 52,
+      "sha256": "3dd1648ca4ebf9446af73e19bf3d7f80066fd90966782ab1f38a3bd6a234576b",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/dto/student.py",
+      "lines": 93,
+      "sha256": "d44d277515da88dbea535467b978e298963b042ae9638fe6b1670f867181d530",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/dto/track.py",
+      "lines": 36,
+      "sha256": "cef3c2ad58026b6742b23f826014fc2478894daa74a149c4269068627d365057",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/dto/workspace.py",
+      "lines": 336,
+      "sha256": "255d61b4a229369fdd8c1c75fd60d6552978fed1ac6b74b22e1fb6404fe94cf4",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/facade/__init__.py",
+      "lines": 17,
+      "sha256": "3bfc12dc6de62cd2948b72a1e0d946bf825b352eb531f114f0e230d1401318ca",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/facade/application.py",
+      "lines": 860,
+      "sha256": "93aaf17e95fbd95e373825ff9ef5dfa688f3e9e7a3a7b8f8244f6310699f6350",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/facade/facade.py",
+      "lines": 340,
+      "sha256": "898bb55d3293577df642f2a5b997c47781a957e5f5b08e4fa0e01d2b3ce9bb2a",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/runtime.py",
+      "lines": 117,
+      "sha256": "6230f3d272cd74f48748390aaf7465342ff603b73da9fcd7cc04aca809245ac6",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-boot/zhiyin_boot/__init__.py",
+      "lines": 48,
+      "sha256": "b5921890aa373aafdc25140bde01e9bb410fd686143f57647f3b103360ae04bc",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-boot/zhiyin_boot/__main__.py",
+      "lines": 267,
+      "sha256": "e29681c67a83922d38563474eb9660f4dfb767ae9f41e3e9a6ccdfbba2ecf698",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-boot/zhiyin_boot/ai_bootstrap.py",
+      "lines": 120,
+      "sha256": "00174f40b6cc71b7a55e1520c0326271d7e3207645ce22b2aa3cb7cacff7a9d1",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-boot/zhiyin_boot/asgi.py",
+      "lines": 70,
+      "sha256": "11f6e5f4a9bf1a67443881ef5638f9758da733026e4e97e26d39aa2adad3bddd",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-boot/zhiyin_boot/container/__init__.py",
+      "lines": 338,
+      "sha256": "427cf68b5b780878014af9b61bd532df31876eddaa621665fd8e48872bced7c2",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-boot/zhiyin_boot/container/gateways.py",
+      "lines": 282,
+      "sha256": "8a10d8d55bf0704a77cd8f75f5e55932c5eb606766657e8b905a8a9212650009",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-boot/zhiyin_boot/container/ports.py",
+      "lines": 119,
+      "sha256": "3d3f2127d9a0c72ed66f77758175812daa8d089b2673d1a150fa74830d64f20f",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-boot/zhiyin_boot/container/repositories.py",
+      "lines": 111,
+      "sha256": "c5798da2df6ad14c1d18f94b66f31e389dc1f183848c8da27815a201dfae3f94",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-boot/zhiyin_boot/container/services.py",
+      "lines": 493,
+      "sha256": "a9bbb520717fc3e8a112311cee1018aad856b71d310b23a0aecf29ff19617a24",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-boot/zhiyin_boot/developer_platform.py",
+      "lines": 36,
+      "sha256": "b3b9a3b93d5e6af54456722ccbe2b6347d90b5350d4323716021e2242f4a4bcb",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-boot/zhiyin_boot/logging_setup.py",
+      "lines": 46,
+      "sha256": "417878f4513de0a1e5ce6d8df8be3883ce9cf2ae5982ae9e8838da94f4b604ca",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-boot/zhiyin_boot/module_platform.py",
+      "lines": 142,
+      "sha256": "b8dbe4633241462000900feac0ac6ea5f792b9e1d5fa8f32360eaa532add24e8",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-boot/zhiyin_boot/registry_bootstrap.py",
+      "lines": 216,
+      "sha256": "56b8d9489233b988c230f43e0a25730d061d2c22953808f9d4917a6e98fccc5b",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-boot/zhiyin_boot/report.py",
+      "lines": 283,
+      "sha256": "6ffaa91bcb0e5d52abb7d4ed3ed87745658491451b1113a3a48a92a29739082a",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-boot/zhiyin_boot/runtime_config.py",
+      "lines": 119,
+      "sha256": "7d47f2499136f036db8660f9565768b19ad328b5a7d58a77b5eda467b1f08e47",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-boot/zhiyin_boot/settings.py",
+      "lines": 256,
+      "sha256": "f687e8932dc4a0c4071f12203cc1590ec2a26704db21c458f089e89d4f072b1f",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-boot/zhiyin_boot/workers.py",
+      "lines": 174,
+      "sha256": "340b1c32fd6a583a0b01ce640f77429b280ec29ce47913a796952d5ac053b1a7",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/__init__.py",
+      "lines": 32,
+      "sha256": "fec244c962c28fb73455ebb8dd907b5d43b70490d330ccab250289d919469fea",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/contracts/__init__.py",
+      "lines": 76,
+      "sha256": "c66bf475e67e6495a47b1b95503ee2cd6c5fa963781a82b534dc246d1f900745",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/contracts/act.py",
+      "lines": 61,
+      "sha256": "17a976887789f86f8942b1687062655b608a02c71433a1444479401c38bd7fd1",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/contracts/ai_tasks.py",
+      "lines": 388,
+      "sha256": "805c5cd78a34d18270fce0091e23714862753fb864853fbc3eac823a630f1139",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/contracts/collect.py",
+      "lines": 95,
+      "sha256": "e25928b2a10c490e46e63e4ad822c61016aa9cd530aaf5c85b5b11e165c1b26b",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/contracts/common.py",
+      "lines": 192,
+      "sha256": "5c1d3d16ba97a21bb1fe8b74258af77c85371a520fe2537c66937f7aec6b5f1b",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/contracts/decide.py",
+      "lines": 63,
+      "sha256": "4f9a607b65a270b2e4fa6248278769455b40de580faf73b7a07a0751b3e82490",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/contracts/diagnose.py",
+      "lines": 78,
+      "sha256": "04a0d096bf4b6a04f68ce661e0e5eb9a0c6112ad2d00623ba0d4caebbd621cc0",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/contracts/review.py",
+      "lines": 98,
+      "sha256": "693a29c97b4148c338e0085e11ea5b465bf04e0d4927441fdb837055eb7b48d6",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/contracts/student.py",
+      "lines": 208,
+      "sha256": "3df0910ca4de707ee2a19201b76a41cc1f53d13d872c0e2f21a75de98501dd48",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/events.py",
+      "lines": 23,
+      "sha256": "80050674a517d3c9e20fae9c0f6029a376bd72de9b21fa69b994ab21e541060c",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/policies/__init__.py",
+      "lines": 70,
+      "sha256": "8827b61553aec0d6ebf0ddadfa4303e93c95a7343a3ed7f8496daefd52f596a5",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/policies/collection.py",
+      "lines": 609,
+      "sha256": "df1412e75964bf8c9854af1e9c10e0c5928c753e9606bb83ac680f5543871186",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/policies/collection_gate.py",
+      "lines": 122,
+      "sha256": "1040d622de0c76c8b17126c1ef266398169c277e477383fff19c2d1e8020c3d8",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/policies/decision_routing.py",
+      "lines": 237,
+      "sha256": "45c542a5c44208eb573ded4058a414381e98efeaaa956089eda9dfdd67c0a5d2",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/policies/handoff.py",
+      "lines": 47,
+      "sha256": "208fb80234d061072b844f3a3f2858effa842fa574bc71e8764abc27474642fa",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/policies/handoff_rules.py",
+      "lines": 62,
+      "sha256": "b2cfa30e9b77c00119cccce2110b80b1900c4d6b4192ab870f8d433fba1b2d84",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/policies/impact.py",
+      "lines": 32,
+      "sha256": "46802c50f73c565a1d45071a4fb66f398a96dc12982811148dc0a33ad39fa6af",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/policies/impact_rules.py",
+      "lines": 30,
+      "sha256": "b00deafad93bd5b991d922107355f0f4a101f7bc185cdf65c2c6a2bab455be97",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/policies/intel_labels.py",
+      "lines": 78,
+      "sha256": "f877b91de3a6d03aca39f712ad12deb962772d152e0d747bb5dd6ad7fd44f255",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/policies/intel_query.py",
+      "lines": 87,
+      "sha256": "a48c95ed03a8b313910103d4e4f8bbd40c42a069b540e0b489d144155d085997",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/policies/intervention.py",
+      "lines": 36,
+      "sha256": "48d31451087648e1091d49fd3a8827dc18610cb9f080244a5480254cd518bdf2",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/policies/intervention_rules.py",
+      "lines": 47,
+      "sha256": "2a0bb84e4b9da5be870103cbd5a4a82d0e63d58884058f6cb2133016e1a5bfd1",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/policies/layout.py",
+      "lines": 156,
+      "sha256": "04c4c34291e3c11f0b5e56dec68e6dcfb56166be79dfb34b4d81d122619353e4",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/policies/progress.py",
+      "lines": 88,
+      "sha256": "3c829f2420a311b3c3a71dee894a099cc9f98a959127b2683497c3e6c81181ae",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/policies/renderers.py",
+      "lines": 145,
+      "sha256": "7b26d849b41585fdeeeb4e6916dd63ff2af86bb5d54a84a067de48ea7213eb99",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/policies/routing.py",
+      "lines": 79,
+      "sha256": "80189c85cf338d256e58f3ae2825086ee18d4a129489b9549d0c830cf7188e53",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/policies/routing_rules.py",
+      "lines": 180,
+      "sha256": "28d9408a8e2c8fe514a954c57052dce45c3d8ab203f0c4c31ea2ecc23d02ca8a",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/policies/teaming.py",
+      "lines": 37,
+      "sha256": "661bf116f7aa51ddc63a51a9c5a362034a9053415ab1df07b0ceb434db1f4693",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/policies/teaming_rules.py",
+      "lines": 40,
+      "sha256": "7bdc80aeba10174babf84719592f14c9f95d627f95ff864341a5f8e3dd75e40b",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/ports/__init__.py",
+      "lines": 52,
+      "sha256": "816a2f7d213ca532b29df5c4bf1f8a5a3fb20b78e02bd42e49079dbca9800a1f",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/ports/academic.py",
+      "lines": 41,
+      "sha256": "589bf619b4c20201a832223f7d6ddff524ec37805ca4d374b53cabed9be10dc0",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/ports/ai_tasks.py",
+      "lines": 49,
+      "sha256": "0c421bd4db1a2c89b15259662fa94574ad0d7f5129ee0330f96164f4a66c9f79",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/ports/blackboard.py",
+      "lines": 465,
+      "sha256": "687cbca01c2532fb2c6698d4d8fe679b3e2d8ca663849df672ffc0d8014e3e19",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/ports/cache.py",
+      "lines": 90,
+      "sha256": "33bcb2b4f539b68a899fd5e4c65659048da3d594bcf09c9f30ee1ee6a5f076b7",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/ports/function.py",
+      "lines": 171,
+      "sha256": "a6af045fd6f0a60c77a2787be42b89ba6fa189f038843c4a7b0ed25dbf05e016",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/ports/identity.py",
+      "lines": 77,
+      "sha256": "7aa67f9201d8ddc0f1e98cd0e0907e5d6ba47d56c3993e212475d744afab11de",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/ports/orchestrator.py",
+      "lines": 192,
+      "sha256": "76acb3d647b512eba5daa9b4c02aca48a2c609b7e873395bf2ca516caab373cb",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/ports/registry.py",
+      "lines": 227,
+      "sha256": "2b7c56172b812fa946ea929f14fba1e59ca61ecec32608ed4c56c29452946fa4",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/ports/workspace.py",
+      "lines": 110,
+      "sha256": "22049ce3f88972dcbea6da90e4ccd16d6d35a2f1a709ff9f6a6fdf619e89bcf3",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/__init__.py",
+      "lines": 84,
+      "sha256": "bbcf7443ba280ec298a6c0999fa582bd3c8823c5b2d4f5a131d2ad0ea91d9c23",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/academic.py",
+      "lines": 256,
+      "sha256": "ae459f0020900c11caa7854bc4266fa822ccb9907649d3d095364fee2b652b45",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/ai_tasks.py",
+      "lines": 1418,
+      "sha256": "4e24e14445c1fa6dfb01a2cfd1e804994d1a92771eb4d01b7ca12b73d029d187",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/analysis_access.py",
+      "lines": 192,
+      "sha256": "0206763945eb8bebb164aa81ce90ff581a9bee65d4825e8c2471c49ebc325970",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/asset.py",
+      "lines": 383,
+      "sha256": "fad23a65228fb6a174f2a15f2d5fa0ded217b50b61c8a1d5fad43e86b3dd58b2",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/asset_content.py",
+      "lines": 187,
+      "sha256": "b0ac2c9afabe925fa219120f2c68e51becc01c06fa63c2d46323c5e8c70a2ccd",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/behavior.py",
+      "lines": 70,
+      "sha256": "88baaeaceb4c1afc5fd84e2c27ccfe80d386f0c4e166e6c1b154e22e2e08ec73",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/developer.py",
+      "lines": 57,
+      "sha256": "d93e72eecbb4b27964de9696e86597c7808ee199b5ee3d91bd07c6469e27f992",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/dynamic_config.py",
+      "lines": 94,
+      "sha256": "1ec4360644b720047c27ac0685db500bef09a860061b019e22ac2aa1b3680a33",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/function.py",
+      "lines": 357,
+      "sha256": "d97d93e79f1a40af155c00982e94a1414077502dc348f2d7a6256067a3744405",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/identity.py",
+      "lines": 106,
+      "sha256": "98bb3b1c63cacd512d237b4344e5c8562d7343d24742be60dc3d93c8ec714dab",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/memory.py",
+      "lines": 175,
+      "sha256": "2d5d951ce74ba916fe73689704edaa970340cc926efbb5f01de9cbfc670203c7",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/module_contracts.py",
+      "lines": 110,
+      "sha256": "d05e978f76773eb1c7eb2f7db620af6bde78413f9ec0c896c723abc1f7729128",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/module_flows.py",
+      "lines": 173,
+      "sha256": "524e23a8f557d9b6cfe3f1895730192e71656e4c5a19c00c7a67b6aed5a34457",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/module_packages.py",
+      "lines": 85,
+      "sha256": "9d4d2430afbf875c05b065bea6f939c2f4c6f4846e40ccb5506b0e941f338285",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/modules.py",
+      "lines": 226,
+      "sha256": "7821d5099c718557a28e593545900fabd0b72d9c441ea63a43b8f92d045a7276",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/note.py",
+      "lines": 73,
+      "sha256": "a5d81a9937204c4f9559cacda0402fc0d1f286941d702d7cf4f73dda21cc155d",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/orchestrator.py",
+      "lines": 1959,
+      "sha256": "872d4e82415acd979b922a8b84041ecbda25e8afa2ca358731a8556bbaaf1560",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/plan_patch.py",
+      "lines": 107,
+      "sha256": "dc99c394db3c933e41e8a56da1184ad9c10e7910bf99c27700deafa31c0a46d5",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/profile.py",
+      "lines": 221,
+      "sha256": "d867ef10432a223a9461d6ae8535137e6712e996d767310c52662dcc26a7cd73",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/read_cache.py",
+      "lines": 171,
+      "sha256": "7e024e46dda17ce67afbed7fa9bdae971710b2c0d3ba8f0ce16619a9a0c4d04e",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/registry.py",
+      "lines": 160,
+      "sha256": "e225f1f660843c63139924041854e86c70e0becdff4a1348267ea010faa21d96",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/student.py",
+      "lines": 762,
+      "sha256": "4ca72b681b3559f5206fb427cd8817e08eb2e951088b80847312c64769a0c2ef",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/workspace.py",
+      "lines": 403,
+      "sha256": "28032fde6f8986309a88629a5085f515ec8c26ae9c0dafac25d93db63b480727",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/workers/__init__.py",
+      "lines": 35,
+      "sha256": "bbddc0cf78b5b80ca1bb86bae3903a2387dcc7a45adeb7059bd2a33ab7671a9e",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/workers/active_event.py",
+      "lines": 196,
+      "sha256": "e3a2d2429311ea45137037ed454971e7389cafd9329dd25139de235e36f17c56",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/workers/impact.py",
+      "lines": 122,
+      "sha256": "2f962fa0f5035fcfc7422538d1d53a37b8561cd4e1205da8a763c773d35656c0",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/__init__.py",
+      "lines": 10,
+      "sha256": "df252dbc79cb3afef42723b9031f0f9735d54f0a88a596620d5db85e9b8a57c8",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/errors.py",
+      "lines": 59,
+      "sha256": "04bfb8b0d865f0b6476361da5d9d9bebaa6f476eb70b1060720f0e7bf98796df",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/gateways/__init__.py",
+      "lines": 109,
+      "sha256": "a34962550a707977b09e679e5672c509ff68626cdd0730fd9999596295fdbe1b",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/gateways/academic.py",
+      "lines": 185,
+      "sha256": "9d26cd2a44be2136b1dcd291406724ae03c2d5ea069a1e6a1d6b3d938bc40b83",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/gateways/ai.py",
+      "lines": 133,
+      "sha256": "49e6b7fa012e035dc47257a97cbaa7fe97a8fc12b154361c624fab3b9219f98f",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/gateways/cache.py",
+      "lines": 48,
+      "sha256": "3251eae4b92ffba2962bdfe230f66abefabf829cea351d0a335a6ce88c25b6ad",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/gateways/chsi.py",
+      "lines": 154,
+      "sha256": "da5ebeb06370b98354a236e2377c6aac3982c269da94db2b741ca82c87dde437",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/gateways/datasource.py",
+      "lines": 62,
+      "sha256": "f469621319dba7c2fcaf3461e976258862b3a8243fe9dc70c2c2bc7c7a97ec61",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/gateways/decision.py",
+      "lines": 86,
+      "sha256": "1b04a7edd701e911e5225483aec4ab22a23fbb378b16cce6bbeab527160f8d0c",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/gateways/documents.py",
+      "lines": 51,
+      "sha256": "dd1ada6a10b792298ab87efa17e7407d6ba4beedcdf9b2e437c5e526d22c6381",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/gateways/feature_flag.py",
+      "lines": 35,
+      "sha256": "f57f1b5111924e85b21a85b8bbe847acc01e6b02ed3ca991520f2c28e53a7207",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/gateways/messaging.py",
+      "lines": 92,
+      "sha256": "a1a0147ba589135b4bb80576aab9f89eace5e7f1d8fff9b15afef75c5b9a4328",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/gateways/security.py",
+      "lines": 105,
+      "sha256": "3fa37b5df09fd72bca541ed8f46c2781c33198725005bbdea503ca6acec058bf",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/gateways/storage.py",
+      "lines": 60,
+      "sha256": "324d7dde752eb6e8edd87ac09371f7809a389729e0342d3a224761fb6886f7e8",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/gateways/vector.py",
+      "lines": 86,
+      "sha256": "a38cde984837d322986d854a9f92f9e3f339d570155825466213e0d647aa95bd",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/repositories/__init__.py",
+      "lines": 47,
+      "sha256": "ac6c4e5a0a4922231ca9efa9c65569fb76e702449637506f412bb502c1b8f496",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/repositories/academic.py",
+      "lines": 29,
+      "sha256": "96bb05a0c4694007d9d988fe43e1fd4b6a090195970d0837a05d05a4fc4b91dc",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/repositories/ai_tasks.py",
+      "lines": 42,
+      "sha256": "a0d46e1055b4456396f056b71832a74acaba0d61404117e3b2bc904f7ccd8f42",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/repositories/asset.py",
+      "lines": 102,
+      "sha256": "ca90c3bfc812800fb9505ce80f313b52a716936530814b3ca35834edce31f702",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/repositories/behavior.py",
+      "lines": 43,
+      "sha256": "7e0ec6c8080baccbdf35614b1d8706b85814401b8cdd8476d752e4e46b9a3513",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/repositories/developer.py",
+      "lines": 18,
+      "sha256": "372cc77d36fc9684c13e2997af1810829532b3e4ad691f8100fb73731a9a5a08",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/repositories/function.py",
+      "lines": 96,
+      "sha256": "181fc4de1a19b49a007bc25be9cfc16b73c38c51a2620f914a625c9dfda8ee90",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/repositories/identity.py",
+      "lines": 30,
+      "sha256": "ad5d3974bcf7252073810a31bd35b86828a8164db61e2f019125f541235b6972",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/repositories/memory.py",
+      "lines": 56,
+      "sha256": "b0f94e4bfb1a7d5df40f862bcd5416768bf260c8219b5f0b82ae1f3e8abe6573",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/repositories/module_flows.py",
+      "lines": 15,
+      "sha256": "890fb3ab9364250132498cd5a4079b940f35d461186cf6e613b0a1bcd94b6e9e",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/repositories/modules.py",
+      "lines": 15,
+      "sha256": "a6a2dc795edf7e0676004b3437ff60bd66b93c0f0f27f241c4e590dcbe4c7fa7",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/repositories/note.py",
+      "lines": 28,
+      "sha256": "64411c1110e0aad36473e892f52ce4fa4a2584e79f494395e23afc4a5f675d3d",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/repositories/profile.py",
+      "lines": 52,
+      "sha256": "d80baaad9cb8e1589e8b2035ac6b6a08f694428c510671b37ffbae0475703b0e",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/repositories/registry.py",
+      "lines": 183,
+      "sha256": "82cd749a55a0437c983c864a546e65ac76d8dd7f82fbc120050e7409d6a3c79a",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/repositories/session.py",
+      "lines": 44,
+      "sha256": "c03a71054ae15350ff9672711de098e4a54700619b0613187395f6d6e7bcf0b1",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/repositories/student.py",
+      "lines": 12,
+      "sha256": "cd557d1a29f349087f522305843807321fc458c979a0b0991e8c00e3b61183f1",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/__init__.py",
+      "lines": 19,
+      "sha256": "e6e3c479b9a90a4006386649611ce2f588df59b9cb7d61b5223f93ea1de1ad04",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/academic/__init__.py",
+      "lines": 15,
+      "sha256": "3f880d6857bf0c6af267d065c44143ab15f1d4f145b522afed110489c45a84b1",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/academic/importer.py",
+      "lines": 207,
+      "sha256": "d9eca4f2301f1cc61b056be57e1f8f3bbbda908c038f312b3c6844c6bdc7ff07",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/academic/parsers.py",
+      "lines": 965,
+      "sha256": "41eeba6bf59b3e4aa3844d238a19771d2aab22c195e3de128e31409066ba7acb",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/ai/__init__.py",
+      "lines": 9,
+      "sha256": "ac809bf711c955e31257ce3e5d13c8123e3665eef5a11e917de40e3af3f06bc4",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/ai/agno_runtime.py",
+      "lines": 82,
+      "sha256": "1a8f143dc72147e77570f71a9d8453710357a7e8a13c77538c55862e2d39f58f",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/ai/deepseek.py",
+      "lines": 27,
+      "sha256": "acf1fb6de892a2757e21cf4b4c2ed9929038a3e8ac98f4f592b8dd494eab0b8e",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/ai/doubao.py",
+      "lines": 26,
+      "sha256": "10454aaa255c22a04fee29da4eee92af68c9bd33f1c0bbc118bc27ab4a3ae8c0",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/ai/ollama.py",
+      "lines": 45,
+      "sha256": "1cb5baf319dee1fba402bc9814985960cba8374db5c2a7d41ffcc1ee6e38222d",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/ai/openai_compat.py",
+      "lines": 215,
+      "sha256": "de0c7341b40524f48ade7d582b92a87a7ad46321fb070fc0b023df8d514e2bd7",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/ai/routed.py",
+      "lines": 117,
+      "sha256": "ac036b0ea7fd5206adbc61f9a4abecef712302b998d173dbbbe3dcde96461e28",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/ai/router.py",
+      "lines": 63,
+      "sha256": "a88ccc40b295665ba150781f473d02e024c70fb77e7a6ea0910f44a07f9f9812",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/ai/systemone.py",
+      "lines": 82,
+      "sha256": "bdfde4dfb094166cfad6565ad966f77b033fbc9736b1864bc64722c8c1cb9b84",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/ai/tools.py",
+      "lines": 588,
+      "sha256": "892fb7ddd0ae1d6a95e30ad448d14a6a10ee8df37f33e01b9f946839bbc7b5fa",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/auth/__init__.py",
+      "lines": 8,
+      "sha256": "696efb57b5b6ba03d9ed08d16579d94467884f67b7693f77915aa655dc59702c",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/auth/gateway.py",
+      "lines": 272,
+      "sha256": "d868f4561fbd843c3be08baf6cf06990637e2ca38afb567beea9e10891119218",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/chsi/__init__.py",
+      "lines": 13,
+      "sha256": "b240d1281bd3d1318fb639c2e6b3b5333ca38401473183f5b2987740c3b95886",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/chsi/client.py",
+      "lines": 290,
+      "sha256": "837b5d0615bf44e87742d2941bcdd36de11a102fccbddb107e61e75e6d7a195a",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/chsi/gateway.py",
+      "lines": 78,
+      "sha256": "4d55fc83f23d26cba7ea287d8b61636970c27e6be07130848d51a9d0cf2fe34e",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/local/__init__.py",
+      "lines": 18,
+      "sha256": "a06312a65f4e1e8efff5b0f3fef9b8c1283e31480f849bac09da9aec7ea173de",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/local/asset_documents.py",
+      "lines": 43,
+      "sha256": "631484f5b3ee7584d589ec035e0f84be703d277e4eef036258ade2c059a5a687",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/local/auth.py",
+      "lines": 62,
+      "sha256": "ecd1d522df3a04081b21b2b8470daca4a159ac26a4dca0f9e69c7d5eeb178cee",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/local/cache.py",
+      "lines": 60,
+      "sha256": "daf8dc072d61a83d8755a2874b1cbe3103c63963df34784e46bbcc2c11c86b39",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/local/embedding.py",
+      "lines": 46,
+      "sha256": "b473f19029b80eddc3d6ca4b62f2e3068013b6126b3cec3e33044d33fd61bacf",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/local/feature_flag.py",
+      "lines": 67,
+      "sha256": "c51d222ca2639c6214a5a3c15ca104441e2b4b9752b7709dc0e99850c84e41df",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/local/knowledge.py",
+      "lines": 163,
+      "sha256": "fd7f1e60d51154dd7654b72e5770e0154936fbbe7eea28b399c19b865ff032c7",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/local/messaging.py",
+      "lines": 219,
+      "sha256": "18d8895b890d7bf95838c77e87bb04f8da60c4425e2ae814e37d994f7adf3135",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/local/object_store.py",
+      "lines": 113,
+      "sha256": "f453c74d64724f608b03817671315a19be1a4c3c84936d24fcec3395b2541573",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/local/repository.py",
+      "lines": 1007,
+      "sha256": "385ce622a63088e2c6e5be3650dc7925c6aa329b02948974f497b7a1cf99bc64",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/local/security.py",
+      "lines": 44,
+      "sha256": "32b9b7be78fe52622fa6ce2efab753ddb4f018e46b0a82525d892bb38de32dd4",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/local/student.py",
+      "lines": 20,
+      "sha256": "a41bf04de8f9f29f8f1865d3c60c3faa99f5888781fe38cb258cdb3dd4d63a13",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/local/vector_store.py",
+      "lines": 104,
+      "sha256": "df9c0004383c2daf11cef14e615ddd7eb076e2c5b1445fc55c894aa6bdaaac96",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/postgres/__init__.py",
+      "lines": 9,
+      "sha256": "37418c026c61284ab6e3aa9e4ee2089a5e0c40c9184c1edb183694a239bf40b2",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/postgres/ai_config.py",
+      "lines": 319,
+      "sha256": "8c09a5335ec788d210f2b32e8b54f133152b40bd70bdc0cee804be9cb0d5838b",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/postgres/database.py",
+      "lines": 128,
+      "sha256": "ab5e26f4d26a6d9a786b053272ae924b7fd8d66c186de0c3857e9c11b8e52475",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/postgres/developer.py",
+      "lines": 234,
+      "sha256": "8f2da0c502e68872d55f23a4cc87300a2577c5050539ae54fdeab182d0bbf5cc",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/postgres/feature_flag.py",
+      "lines": 110,
+      "sha256": "25c7b61c50fcc30bc9b3514647241848a8cb97df0be1d53fcbf5ed49cbc55828",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/postgres/messaging.py",
+      "lines": 221,
+      "sha256": "622c3850f393880b80a9f26f04dfa11dc804eb7f8b9db5c920cbc32f3a901108",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/postgres/module_flows.py",
+      "lines": 112,
+      "sha256": "e4a89960a41df3f5f78a23e7e279609e876a4dde379f68cf04af7ce5c6c5d749",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/postgres/modules.py",
+      "lines": 123,
+      "sha256": "03f8662393b49784e522fe2dabc6dec8a54be3a00dbccd31409ddc68ed172d0d",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/postgres/registry.py",
+      "lines": 653,
+      "sha256": "27fa56adcddfba4cb229c4ba66b3255250d7f9cba20dd25a561febc650846d69",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/postgres/repository.py",
+      "lines": 1464,
+      "sha256": "57b8f36fa450ae87f00ab187f788f83fb4a1b80b404389ce9f427cc0bffbc45d",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/postgres/runtime_config.py",
+      "lines": 76,
+      "sha256": "fc6b9688b284617ee5f0d03c092675c4ceca25d84607c46fc831e2e15566c273",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/postgres/scheduler.py",
+      "lines": 197,
+      "sha256": "97449a9245017ac25ca3b3bdbf5f55f01d749cacb1217a3125c4c8c44174a01c",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/postgres/schema/__init__.py",
+      "lines": 40,
+      "sha256": "92aa0b3089e21450d85f570a19fd18b64407bb574c113588eb4b43b24d4058be",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/postgres/schema/business.py",
+      "lines": 221,
+      "sha256": "ee51258e8ee586007e491d4d097d9d7e4110a57a13d8d428f35447883de8b0e8",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/postgres/schema/developer.py",
+      "lines": 38,
+      "sha256": "bddfa1701ab6cb7fa90f9b6b749b29e757bc99c5a611239c1d435dc88ea8ba8c",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/postgres/schema/infrastructure.py",
+      "lines": 152,
+      "sha256": "88819912655caf27e157fd282e6e39221809c1135b9e129d307751c685e18382",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/postgres/schema/migrations.py",
+      "lines": 53,
+      "sha256": "5c4739db91b7002fb24db32f28b6405591800781e2fe95e027bdd7fda7335272",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/postgres/schema/module_flows.py",
+      "lines": 25,
+      "sha256": "eb1baa133be72b53ae36c892aff18a1d1a5c2fc4e25512b48e4739a2b0ca77ef",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/postgres/schema/modules.py",
+      "lines": 25,
+      "sha256": "bd27594016117944b1c4fffc797a1d185f5b173731642c60c32d99a1a9d4a440",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/postgres/schema/orchestration.py",
+      "lines": 58,
+      "sha256": "c131135239715a8b3856231035aef70410d3fb240730f7fd7e7292ba769adfc8",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/postgres/schema/vector.py",
+      "lines": 20,
+      "sha256": "23f9ac27dc3a68df610bec1720d617299a582636e18479e61987b7c4a8412eb2",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/postgres/student.py",
+      "lines": 33,
+      "sha256": "64060987a4d859480a917ca6abf8eaf85b987b2bd55cb9a96f5b92465a733348",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/postgres/vector.py",
+      "lines": 163,
+      "sha256": "fc61850fae03fcbad4536f46fbf3895c366b148fe390cf82c274d295dd492361",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/postgres/vector_sync_state.py",
+      "lines": 50,
+      "sha256": "1ea63367795bf7bc222482d0e88923354a74c636e042daecdaec00cb145761f4",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/rag/__init__.py",
+      "lines": 23,
+      "sha256": "f1c1398c0166f959da8dcce2b92107e86fa68f73108294d243504e9e78d9e49f",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/rag/documents.py",
+      "lines": 70,
+      "sha256": "99752df0916f435fb89a4b6edfcd8088d77a33de85fdf06ee471d1be0c217e26",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/rag/knowledge.py",
+      "lines": 94,
+      "sha256": "4bb2fcd865f3736ace8cc6dec171bfc24a85c8865bc93f10f9ded49890d24651",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/rag/pipeline.py",
+      "lines": 188,
+      "sha256": "2b9fafc8e29e3c1bbfbec7eb614b33a797561293c4d0e83569770181b8c1fa27",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/rag/search.py",
+      "lines": 83,
+      "sha256": "4680975e6e247e3e83532e7b2c18b8791b6b9c79c6bacf6fe58b13acc888faf9",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/redis/__init__.py",
+      "lines": 8,
+      "sha256": "ae480352cafbb42941abcd8927f187888c3b6485ed85e5f0d5558969e38b9bba",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/redis/cache.py",
+      "lines": 91,
+      "sha256": "5aa796569bf287829fbd0d065f6f340813d95df60bf6da1a4b6b8100aed927da",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/redis/rate_limit.py",
+      "lines": 116,
+      "sha256": "1ada2eb55d584056b3aed2a8d33e609e42edd578aeee6a998ec7db50224021ff",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/search/__init__.py",
+      "lines": 20,
+      "sha256": "d7c6899c8d5f36dbd9dfd7929737f9d2478b4178f7f2680bbf01bd383a6e551c",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/search/web.py",
+      "lines": 88,
+      "sha256": "272c76849412fb1fe95aa0e420aa779a9ad36a967331cd2829687eb7d592937b",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/security/__init__.py",
+      "lines": 13,
+      "sha256": "665d986d8ff32cb17fada5924851818e9e2d19908ec8497c1e2330a93e717127",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/security/crypto.py",
+      "lines": 119,
+      "sha256": "12001cf55e15302c510ddbe5c15c9cd5f9c2e890db83139f4658dfd09a4611e3",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/textfile.py",
+      "lines": 119,
+      "sha256": "80e57ec0a8b5da153a6ee45a8c28841125ef7b37c7fda1ebe959086cbe83565d",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/workers/__init__.py",
+      "lines": 37,
+      "sha256": "20d74a9a86d258a1822b8f0a1b4d3e5810dea1261b07786088fceff0664a8311",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/workers/vector_sync.py",
+      "lines": 82,
+      "sha256": "c1448f137453ff37126b569c0b04702be662a126e6c55fee60ee414848ac58c5",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/xuezhi/__init__.py",
+      "lines": 9,
+      "sha256": "a13db54a96a63ac47b044f1cbf4ebbcb27e8c0773f5553180acd57fb75f75b74",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/xuezhi/client.py",
+      "lines": 189,
+      "sha256": "4f7c71a472553468bc1bc36438067e44c38a40939eee3a0bc9de21ff659e7580",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/xuezhi/gateway.py",
+      "lines": 286,
+      "sha256": "16a640cb0a8544389b327a8485d4dca6277e619b7b35f8f536f6b80fd23ce746",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/xuezhi/parsing.py",
+      "lines": 173,
+      "sha256": "fa0d4d12e828c2329e4048bda4c3744fea3c2afede2e716503cd9c343624a2a3",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-kernel/zhiyin_kernel/__init__.py",
+      "lines": 160,
+      "sha256": "af551c66a988b01977d300ed6679fd593ac4425c133210cb414cdd36e73e0967",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-kernel/zhiyin_kernel/assets.py",
+      "lines": 238,
+      "sha256": "3f3c3310db0b1d7ef61521bb82304cd4e4f164919af7fe03f1238737effcaaa8",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-kernel/zhiyin_kernel/blackboard.py",
+      "lines": 199,
+      "sha256": "3fa97bbd519f7c02c55a0ab09dbdcdfe30ce14b3deb50b0a02554e34c0508a0e",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-kernel/zhiyin_kernel/developer.py",
+      "lines": 88,
+      "sha256": "a197d693e3ea5bf53f978c8892cce6e71204ca76dbd385de8938a00dd04bfccf",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-kernel/zhiyin_kernel/dynamic_config.py",
+      "lines": 69,
+      "sha256": "94cef698047b3063d4644e5e1a4a5bef643b5cf4cc73b14d1e48aab1d43e85f3",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-kernel/zhiyin_kernel/dynamic_content.py",
+      "lines": 112,
+      "sha256": "811d28af2d6650bbfab9e7b5719f9a018887e86f60ad457a62d99ed0e28ec44c",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-kernel/zhiyin_kernel/enums.py",
+      "lines": 148,
+      "sha256": "5a4cb3c81216fd25d83d6ec7394a46700bcfecbef535c14100ead618f2e9cdc2",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-kernel/zhiyin_kernel/errors.py",
+      "lines": 75,
+      "sha256": "1093a5470e15e96272bd55f687cec5767077a3ee047dbdf54583ab07cb6a5e66",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-kernel/zhiyin_kernel/identity.py",
+      "lines": 53,
+      "sha256": "8c5cf4111c25265460ed2bc2adae6cb1a05e2a3df777aeacdfef627d392e83c0",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-kernel/zhiyin_kernel/modules.py",
+      "lines": 245,
+      "sha256": "a09b3b242de638bbf4fbb2c225990bf0be3df9721f70050180ae0615aace1ada",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-kernel/zhiyin_kernel/registry.py",
+      "lines": 475,
+      "sha256": "8f50f3da2b601d8ee908eb50b563be2115d43d482f6452defa7e756e108314ae",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-kernel/zhiyin_kernel/streaming.py",
+      "lines": 25,
+      "sha256": "d3e7feb0ad87d3f38d3644f4c63d5e5731ac6ac288622501fae361738ca5135a",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-kernel/zhiyin_kernel/worker.py",
+      "lines": 48,
+      "sha256": "80bb74b5a48da851df432bed0ae1b32187234ef7563e2873540dca26431b9a84",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-modules/conftest.py",
+      "lines": 8,
+      "sha256": "eba51b83a98c138a90df7dff18d58ecddf2c2980d8645ccd95ae1d0397f0cc9a",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-modules/zhiyin_modules/__init__.py",
+      "lines": 127,
+      "sha256": "1dd8326b422543d30040aae5d447981d1fce29c7bf710e4f4d571a2860d2f6c9",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-modules/zhiyin_modules/achievements/Card.vue",
+      "lines": 11,
+      "sha256": "cfd1b5df1376ea6d36527f36ace512334eb2ab153f43ac4a7141bb81fb8dbb27",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-modules/zhiyin_modules/achievements/Detail.vue",
+      "lines": 13,
+      "sha256": "a81d29c497f1e1a9218fdf811ab08b78f53dcc626f7829a0ccbdafdaee547c66",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-modules/zhiyin_modules/achievements/backend.py",
+      "lines": 16,
+      "sha256": "073ecca5391261ffaab81bfe7df626c5cf3eb63b0646c3a75cd14b8b3ee8ac08",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-modules/zhiyin_modules/achievements/test_module.py",
+      "lines": 10,
+      "sha256": "0de3c764f193a0dcdd10d2ac9011f63f203b1cee03a2efd6ff8075760bfbdf9f",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-modules/zhiyin_modules/action_progress/Card.vue",
+      "lines": 18,
+      "sha256": "1ba20684d85a1989d3bbf1812c39264cec517894b4efb42c92cd79818e47a2f2",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-modules/zhiyin_modules/action_progress/Detail.vue",
+      "lines": 17,
+      "sha256": "61d164cebbc0bfcd8018407ae7d2aca9ca20c24f1aa01778b41ed567cb5db1d4",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-modules/zhiyin_modules/action_progress/backend.py",
+      "lines": 36,
+      "sha256": "bba2b5a1e0e897866044056ecc2a6e5ecbfbb50761a210bd604910cb2bc7d90c",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-modules/zhiyin_modules/action_progress/test_module.py",
+      "lines": 11,
+      "sha256": "70b540a10fbf38d111485b42ef2e09ae8786c657e023e94857cf3c7ea7072ef8",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-modules/zhiyin_modules/plan_progress_skill/backend.py",
+      "lines": 45,
+      "sha256": "264645321108a78d09c203b82c8e69e53375db6c582a49737845dd882ccb6b5d",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-modules/zhiyin_modules/plan_progress_skill/test_module.py",
+      "lines": 60,
+      "sha256": "0491aa6a48c966cfc1471b95b9cfc2c658d2de5084d3b4a6870974e6473cfc4f",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-orchestration/zhiyin_orchestration/__init__.py",
+      "lines": 87,
+      "sha256": "94c0d27421aa762fcb91d832dc120df261ed00d194d31cdf9c6722757275b05c",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-orchestration/zhiyin_orchestration/agent.py",
+      "lines": 84,
+      "sha256": "7051dc74def7083e2c5b95cf29b3fbb64835dd40fe811eccd3bee81a4bf9fc7f",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-orchestration/zhiyin_orchestration/datasource.py",
+      "lines": 30,
+      "sha256": "c11ed60ce2a2a3e9d0f719d3f0a2c8d49654f37ba8698692ebb1fb3f77a7bfce",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-orchestration/zhiyin_orchestration/errors.py",
+      "lines": 41,
+      "sha256": "cfbb16b8c414080c400eb0f8111fa56f30c51851a76e5c27a3fb076d7dbcb785",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-orchestration/zhiyin_orchestration/event.py",
+      "lines": 50,
+      "sha256": "c4020b4e7001835c5ca420d1fbe95b1cfbdd3dd42b4fa9b4651922d533147456",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-orchestration/zhiyin_orchestration/impl/__init__.py",
+      "lines": 28,
+      "sha256": "30d5dc4349c8f13ccc3b819f9e06b48cf652e801e4dc3f971b06f67beaf365ee",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-orchestration/zhiyin_orchestration/impl/_shared.py",
+      "lines": 93,
+      "sha256": "0b7e7b08cc1652677044046ab1832e968dc2ecac7783b156e14ccde8bbb65d19",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-orchestration/zhiyin_orchestration/impl/agno_engine.py",
+      "lines": 632,
+      "sha256": "e72b9f80b126dd039dd0e673c5438cab5074a5b23b9b74067e34e6aca6fb00a6",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-orchestration/zhiyin_orchestration/impl/datasource.py",
+      "lines": 23,
+      "sha256": "f4ffaf3a62d93ea48799885205d4e0e3b07ed15b6517d9442335de6f66063dce",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-orchestration/zhiyin_orchestration/impl/event_bus.py",
+      "lines": 81,
+      "sha256": "780b01bba21f817ba33b23297adb1115f3da2d9d212c28ebfead8512d1108490",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-orchestration/zhiyin_orchestration/impl/notifier.py",
+      "lines": 32,
+      "sha256": "432c03cef176b9ccbcaabc12c2d2cbe5ec8f853cf393d7996c4584c18fcbdc81",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-orchestration/zhiyin_orchestration/impl/scheduler.py",
+      "lines": 96,
+      "sha256": "745cf762c5efc7b50064176099b4d9f8e8c20f06d0f4358c00a9286fc00eb874",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-orchestration/zhiyin_orchestration/impl/schema.py",
+      "lines": 89,
+      "sha256": "3a044dd6fc68cfeb5176b26904e2666083f6e6e8ba3b9b30ecb4cc0bf61a2c01",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-orchestration/zhiyin_orchestration/impl/state_store.py",
+      "lines": 45,
+      "sha256": "372aedb9791c249b01215877f8583c3e401d0cfa63d7a125d7588b266664d58d",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-orchestration/zhiyin_orchestration/impl/stream_text.py",
+      "lines": 65,
+      "sha256": "51bcf425dbbf1de430e71d207cfe78f04f652d08257d30cc7d19c5df4a0e12f7",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-orchestration/zhiyin_orchestration/impl/workflow_engine.py",
+      "lines": 94,
+      "sha256": "26dda08ee2bfe4f2a3073a476ee191890a9b1bb2d6b85124171d20f20a247bf7",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-orchestration/zhiyin_orchestration/notify.py",
+      "lines": 48,
+      "sha256": "63aeff58ee421abb16950f7c44e8c0c1f9027a9d32a5fe6a586831c158f49155",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-orchestration/zhiyin_orchestration/schedule.py",
+      "lines": 47,
+      "sha256": "f26e2e93fdf218702c2f4f742f86577c757e2272ddb4afe06210489443a72f31",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-orchestration/zhiyin_orchestration/state.py",
+      "lines": 47,
+      "sha256": "ebf41077ed9fc0225cd24b6b40ed1d8dcece4bba4df40f00f5bbfe8fd0493d82",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-orchestration/zhiyin_orchestration/workflow.py",
+      "lines": 56,
+      "sha256": "c3d4d3f422924f9de47351967cc1eb0956b8817176489e1e32371ed1b01f03dc",
+      "check": "AST parsed + Ruff"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/chat-review.html",
+      "lines": 2,
+      "sha256": "8ba0b22531b8b12c3cedb00fe6e9fa537c5683799617c18f37223f07723f6fed",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/env.d.ts",
+      "lines": 7,
+      "sha256": "e49a925d6f07f8cafb374ef2de5c01a61a5ce8b0d998e1077e011c48e87b6265",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/index.html",
+      "lines": 139,
+      "sha256": "80b37502c2856f7d30f8014fa2601c77e29ea745eeaf43ab13568436d9210071",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/public/health.html",
+      "lines": 88,
+      "sha256": "ff57092aa28d730e31b1a2309f88c632e4fddb03705ebdcf93db8a6e4754026f",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/scripts/check-backend.mjs",
+      "lines": 14,
+      "sha256": "3d043053fc9bad951fc8c54f797ea15da8ece47cab15ffcc275de42d78200d42",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/scripts/sync-backend-types.mjs",
+      "lines": 56,
+      "sha256": "ac706c7db39eaa9f26d8b72475c25613c31d0286c253baac964bf3e3d1382c9e",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/App.vue",
+      "lines": 267,
+      "sha256": "33909ec75cfd5cab281d961b4ce20c3e137f08ee1687d2c201c4ad3278428555",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/api/ai-types.ts",
+      "lines": 72,
+      "sha256": "2f3e1efce85ed7e7cb24ee4a5d96e3511c82c24992b00e624366a4aeb52fccff",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/api/backend-client.ts",
+      "lines": 79,
+      "sha256": "de48c62824d5fa7b6f561afd2f41acbb70ae088c803ab62db2f6e584c4f19296",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/api/backend-stream.ts",
+      "lines": 74,
+      "sha256": "9ab561eb84db9a0abae2c7696f42de04e73a7f6e1c1d013165faaa0b16f76672",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/api/backend-types.ts",
+      "lines": 663,
+      "sha256": "1b459cf111ed3dbac12becbe0680d4e0d4067b272cdcca64e56b8a2284cae2d3",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/api/client.ts",
+      "lines": 23,
+      "sha256": "4eb669e60abed51f1d99bfb6ac1db7db4328a09ab348ed4260a54afd5cfc9062",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts",
+      "lines": 27,
+      "sha256": "3d80bbad9b5616d8698f09081301d319053006a3f2c6eb717464d4500a084eca",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/api/types.ts",
+      "lines": 7316,
+      "sha256": "cf01bde38d51e6276f8d5ed2a43c32bbd99e61682bdf46f932a04d3cfe02a5ad",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/api/validate-ai.ts",
+      "lines": 21,
+      "sha256": "56e7ff821a7dda44d227211b1cce3b698a79353f099096ed0fbca9fd92f0b53b",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/AcademicImportSheet.vue",
+      "lines": 120,
+      "sha256": "71ea06d424bc1e7b82fd7faa7f8ac24ab6a11f804ec94f6498eae4ce070ac2d2",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/AcademicVerification.vue",
+      "lines": 16,
+      "sha256": "4faf20e8d06df759aff6957f825c242d87728fdb1a54996e9f7d2238d748bfdc",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/AccountPreferences.vue",
+      "lines": 12,
+      "sha256": "864ffce15e229b98a9bbe5c3b3d72bc60895b8978bb4712ba8b1e243758a70fc",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/AchievementsSection.vue",
+      "lines": 207,
+      "sha256": "f430e1d543f53f6dd6027a10622ba81962ae356671575e3d7d72f2ccbfc09b74",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/ActionPlanNav.vue",
+      "lines": 5,
+      "sha256": "a658905d188ab174a13be9d5e14f9611146433a6fb07388197b39d98b3aed6c6",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/ActionTaskRow.vue",
+      "lines": 55,
+      "sha256": "ffbf39f2a769c216d4c431c7aeecdca3b8f2714f2ac2cebde89fca95552e1808",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/AgentAvatar.vue",
+      "lines": 5,
+      "sha256": "a60f8e45e14ccdc7b6d00dfe2dd8d7aab23d442a2dc431350093ed9709204083",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/AiResultMeta.vue",
+      "lines": 173,
+      "sha256": "dfd47706e1830e2239c912732e4780c1e6ef68ae4c903f08909ec9ec4a8478ca",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/AiStatus.vue",
+      "lines": 64,
+      "sha256": "05d668a2031f390bddd1bda41a612218142b67ad758c57798ce300bd65ecb3f5",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/AssetNotice.vue",
+      "lines": 8,
+      "sha256": "e0fcd6b1170814fe374761f543792a7d33f25245f109005106d742493a6c9c8d",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/AuthLayer.vue",
+      "lines": 129,
+      "sha256": "dddcd52dd4a8839182be89253676e2b5af1274ade101ceeec50cd195e458422d",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/CapabilityGap.vue",
+      "lines": 5,
+      "sha256": "52ab64b63d4430c4c166cfdaa4001fb0805a9580165eefa79daf9acfcd3baeb9",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/CareSheet.vue",
+      "lines": 27,
+      "sha256": "de3c5cf0d994b39767e15885bcb43cd3a279c06f6b42e3d3216b02fa02439c76",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/CareerMatchPanel.vue",
+      "lines": 138,
+      "sha256": "cb5d0522f61c80f57889fe91eec69839c41b0a784ccef461188949e55fe97584",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/CodeSnippet.vue",
+      "lines": 34,
+      "sha256": "563cc04cae2ac06d346e04af4b21123b665194937db5669ed3cd52a4b6359d8d",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/CommandMenu.vue",
+      "lines": 46,
+      "sha256": "fd6a7b887ed24273d48a140bc4ad9a53d8e9e748573b587addbb0606b55c6e2b",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/ConfidenceBadge.vue",
+      "lines": 239,
+      "sha256": "27bb9c044d144700f4c3ca0c56bccb6a755569d16d204b99983f8915ce9b25fc",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/ConversationProfile.vue",
+      "lines": 49,
+      "sha256": "54fb6c60bc0490968ab07298a4c88f183ecc11b9741208e61877d2fc2ad27707",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/DayAdvicePanel.vue",
+      "lines": 12,
+      "sha256": "aad278ad1cea35050583228b0abf910c5c72da3611661f95a92bd78beab19577",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/DesktopSidebar.vue",
+      "lines": 150,
+      "sha256": "3f5858bf5cfe796c66baeeb68c42dfe145bfa8092a4ae99a4802e5f8f03bed6d",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/DetailPopover.vue",
+      "lines": 55,
+      "sha256": "ab087cc7e4853d5015c7cb7ae70e62e19cc10c89a2e669d940fa52736fade65e",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/DirectionCompare.vue",
+      "lines": 6,
+      "sha256": "f402beb0bb78175f9628e5f360194d0f63c4a3fc4917b57b719a1336f6c4ee3c",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/DirectionScoring.vue",
+      "lines": 109,
+      "sha256": "b82ffb2c853a78d2859f9000c717f9e6a71457ae9c3cf086901b21a7ce118f07",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/EmptyState.vue",
+      "lines": 389,
+      "sha256": "5651416f4ad26d65d541676f291ee3c9fc4ede7e0938b63a346da283d38137bd",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/EvidenceList.vue",
+      "lines": 51,
+      "sha256": "3fd14afa0a60b9ee61d62f5dcf33626cea087466e1690dc02799f794d1412216",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/Foldable.vue",
+      "lines": 314,
+      "sha256": "e2a52bf84ebf9c290c8ed1748967ca4a13aa72139301420aba79f19a46d27d1e",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/FullReportBody.vue",
+      "lines": 309,
+      "sha256": "638f1853072bfa9a991700caaccbeea6a9fec4fa8744b543f309dbab1f3eefde",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/InboxSheet.vue",
+      "lines": 48,
+      "sha256": "e06b1a00b3763b35258d550a6145bdba31b4df4faa965554c8940e928daf7ef8",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/InfoSheet.vue",
+      "lines": 447,
+      "sha256": "f57ce5cf193c9766b0d5669f5b4a457ac98e9b07be10637aa6df9eef18786bd0",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/IntelArticle.vue",
+      "lines": 88,
+      "sha256": "bde70014fb9bdd4d21a53591dd78555624578fb3f821d3bc7833ddfb0772d7a4",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/LiveActionPlan.vue",
+      "lines": 254,
+      "sha256": "123593b40200dbd10a5098e108e6e37f26ca720279b4ba253b738f2952f37ab9",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/LiveDirectionCompare.vue",
+      "lines": 223,
+      "sha256": "de56516e272a6883ff654ffb2563db38923a70e00259d5ddc94eaf26511259e3",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/MeasurementPanel.vue",
+      "lines": 25,
+      "sha256": "54f00ca5fd72dd197c332d31aea292855e2e1ca4b5a6a60e2c68619d2e82e9be",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/ModuleCatalog.vue",
+      "lines": 249,
+      "sha256": "2877c0057e5b645441f0f588a9de0b51ccdf4bf2f6097ada65dfba40d891ad55",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/NotificationCenter.vue",
+      "lines": 21,
+      "sha256": "5788a19f9f98227e478f6147c783ddec8550ed0b3a8abae72f5a44b458a7cb09",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/OverviewMetric.vue",
+      "lines": 5,
+      "sha256": "7b509a0ba2bedf811a4eed5451a1ac5813764f1f234210ac98c79cf9bf759df1",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/PageHeading.vue",
+      "lines": 10,
+      "sha256": "332e84ba6a4bdc1ceebc882bd6e1c1b133bd773264e328a317a9b5a747b13b3b",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/PanelTabs.vue",
+      "lines": 11,
+      "sha256": "95449e85d5f9930093e5bef4f1c8f329d196563b2b946631ef800c26ad3d4618",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/PhaseEditor.vue",
+      "lines": 71,
+      "sha256": "e8dfa929332be9094aa180f6ef5ed1ff6fe46cdd79d1fdc77ad38a15b2972aa2",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/PortalExample.vue",
+      "lines": 98,
+      "sha256": "7b8ab68f497fb66af94ed9aa116f77ba7b3faf994ebc5d409e296079ff38d48e",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/ProfileInsights.vue",
+      "lines": 54,
+      "sha256": "61e7b24db742e74b114613431d101177a0536031fddb115f416a281278641668",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/ProfileResizer.vue",
+      "lines": 42,
+      "sha256": "549b51681b76bcf234baae54e46dade3536282c19196e82c256b8f98c247aee5",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/PublishedTools.vue",
+      "lines": 757,
+      "sha256": "f2e5f0b7b3e0b922795195f34ba5197ce8007df456fde70043f2759d8d683f7e",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/ReadableText.vue",
+      "lines": 34,
+      "sha256": "e77433d0bab1a2c97b04465ba5c982262358f964d1cfbc3bb1311583e0b7946f",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/RenderableBlock.vue",
+      "lines": 149,
+      "sha256": "f3b2455823bc4b80ff56f86bbe595a9b1c921519786850abd2e906c6e6862f5a",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/ReportHistory.vue",
+      "lines": 70,
+      "sha256": "fc4e2963620f385cca7a34d326ea982eeb0626ae96d470e0c3747b708d4713d8",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/ReportSummary.vue",
+      "lines": 7,
+      "sha256": "6b27779ab3cfad50f1b864c967c4f2f988f2011005b23c63f4a6af2c59bac487",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/ResultPager.vue",
+      "lines": 18,
+      "sha256": "6e70a0ed26931e5cc2494d24e101af4917e639440fb4533dddf60b0a41e4a058",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/RobotAvatar.vue",
+      "lines": 60,
+      "sha256": "1b833903cc2447522813417144615ba0d767c1ed489ca3ccee16af5e5d31c23f",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/ScheduleCapacity.vue",
+      "lines": 21,
+      "sha256": "6030184ec2de7ea94e27b7c5f9b9fc40599caf18ac7bc354291e080b281be925",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/ScheduleLoad.vue",
+      "lines": 27,
+      "sha256": "1247859773a94903a46b256107619e3576e4054e98127fb9f7800ef781c660dd",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/SegMeter.vue",
+      "lines": 85,
+      "sha256": "08aaa76e94598bd01992d0fb317a0451288f7c95ce55d73e26ea5714c6748e39",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/SegmentedChoice.vue",
+      "lines": 29,
+      "sha256": "6c14538bc5e2dd113565dbefd8246694d1a05f27185ec4a6a9f4644a3b84c856",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/SkeletonBlock.vue",
+      "lines": 363,
+      "sha256": "d83e92ac11c167b9c9a3690fc77a222fc89205bab49c746d13ace55622ecc6c0",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/SkinSwitcher.vue",
+      "lines": 311,
+      "sha256": "d1007de36bead8fc6d33bb0a761f9015da59831f4f58f6e3132fc93efed2e365",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/SourceChip.vue",
+      "lines": 444,
+      "sha256": "d418ddc8f9eef8d0aa2f261d2c8d6ad93cbef811fc6c9c132f84734c83e76845",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/StatTile.vue",
+      "lines": 296,
+      "sha256": "e0db1734ad14c9ad006b5d98ddefc06fa8839b1277775eb5dd3baa5a6af399c3",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/StatusBanner.vue",
+      "lines": 413,
+      "sha256": "f0ecdd2f4a8736f7b8887f77f4ed4b9b200c51ac7e45ca04c8991ab9473ac908",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/StructuredFacts.vue",
+      "lines": 6,
+      "sha256": "2360f6378576d43f0588827f67b65dd2416f09898a2d9f2751083324dd52663a",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/StructuredReview.vue",
+      "lines": 495,
+      "sha256": "d487caf3783e99f9dd3b4e1b1d5684f821b9b6805753c5b7ab735854fb5efad3",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/TaskBrief.vue",
+      "lines": 92,
+      "sha256": "8bd6f0c2c84982177a347e9f6817651dfd0ed0b8bba3173ee60e93e229158887",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/TaskEditor.vue",
+      "lines": 21,
+      "sha256": "6453a97abb6f018928f47e726b136bf251c5483efe62e6223315179ec409c9fb",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/TaskList.vue",
+      "lines": 53,
+      "sha256": "e2f06686812cd8cb361b3cff0e8dd1f430609ed1493cba84adcd30e5f8c51055",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/TaskProgressMap.vue",
+      "lines": 10,
+      "sha256": "89de1d0ecc77ef02ca4228a4db0b14a9d78da53a6a63b4d570117691e22c2f3d",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/TimetableAdvice.vue",
+      "lines": 24,
+      "sha256": "c3f6fc24d99ad3a4a83f276b07b8c1eb5109d7d0d9f133a4c3e5c6973c2dc394",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/TodayTaskRow.vue",
+      "lines": 107,
+      "sha256": "a0cffd456021d42e00dd08454d871ff1c710cd99c324acf0b85a02d512949157",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/TodoSuggestions.vue",
+      "lines": 66,
+      "sha256": "7c19b692b34274b8bf49f75fb73dec94a6eec273518f8cc2e5e68e0c85f85027",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/UiIcon.vue",
+      "lines": 16,
+      "sha256": "73428d0438f1a4afdc5eed22cfdab9c347d57aabb8c1013b842337ae13a8f30f",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/WeightedDirectionCompare.vue",
+      "lines": 98,
+      "sha256": "22f7e7f473af7c9b5f38238d95c43e21eadf2a598f41819c04ddaa225457fe33",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/WorkflowRunner.vue",
+      "lines": 21,
+      "sha256": "6f91ecf16340a66e72f93b28b958cc568c165ff1a6aba504b2fcb01e4156160d",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/WorkspaceHeader.vue",
+      "lines": 218,
+      "sha256": "0a1c230e1a97651bdeb474291460edc5a4cde6244e4664dd3caf6e943c804f87",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/WorkspaceMotif.vue",
+      "lines": 19,
+      "sha256": "2f19d00957fa046668c56c16a5f2c9d38e4a87c712c53e444be08f4952480a3f",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/WorkspaceNav.vue",
+      "lines": 93,
+      "sha256": "9c2209667c0780f2ce481d193d72c5499b37056cb0c58b3f366ce675a99c8ca8",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/charts/MeterRow.vue",
+      "lines": 583,
+      "sha256": "f9733df19b163cdbcc5d5fb0d403c552a5f35b25f73e4388ef816df9a43ea810",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/charts/QuadrantChart.vue",
+      "lines": 177,
+      "sha256": "0db28ca4a356da20c3c62bb3a9527f02b297da75194a1becf5d522eb6d0dcb56",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/charts/RadarChart.vue",
+      "lines": 136,
+      "sha256": "b73d408e8eff35aa324650f360334f94a6dbfc6c91bcb21361f6a12504ead6ee",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/charts/TrendLine.vue",
+      "lines": 98,
+      "sha256": "aebe2ad9ab429dff80b0d2d3e87458d850f38b389fbe0ea48074301ee7c951c6",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/components/console/Bubble.vue",
+      "lines": 321,
+      "sha256": "f17c34b6581e0fd6f4ccc92248b65853e77d9e50cc292f6c47b0a17c49d28ede",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/data/copy.ts",
+      "lines": 45,
+      "sha256": "e8c9f69c369c40b2da01e4bf67d9adc6b2cff9936997076c4c8f097e360bc892",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/data/phase-tasks.ts",
+      "lines": 7,
+      "sha256": "4a249853800e2b9f1c9e7ac2272a656fd8e4f1d34ad0cf2f81a0e1dc69004190",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/data/scenarios.ts",
+      "lines": 176,
+      "sha256": "de95daa12a6ada9495b7f99238593d01a8bf3abbec33256c2d92062114b80e37",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/data/student.ts",
+      "lines": 31,
+      "sha256": "269dd3b92aa893cf4e798290484a3711230e579add040c95682a701cf03dc438",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/data/types.ts",
+      "lines": 198,
+      "sha256": "554b361b38f7e6cf38f9b2a4281f5ac982a8a994f4c582b1894cf5a3993ccc77",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/design-review/chat/ChatReview.vue",
+      "lines": 195,
+      "sha256": "0f1662d468d9322df7bb00ba33008f14a963f4299814ec31804f18b0d5b9d1ae",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/design-review/chat/main.ts",
+      "lines": 5,
+      "sha256": "f018825af2e1ff551f6246d801a8a207134c4ce5ee5c392d43481ad49e022530",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/design-review/chat/review.css",
+      "lines": 21,
+      "sha256": "9e8606e2304283095883430f3f407640d008beb4d0a4d7a0095ad21e65ad1774",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/developer/GettingStarted.vue",
+      "lines": 31,
+      "sha256": "ce49722ed196e4aa5ae3b3fe5d94037b9c3de9596025a4623938b70270314aa8",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/developer/ProjectsVersions.vue",
+      "lines": 139,
+      "sha256": "6e40a4761e2bd2c54f34f48d867e836e21c5d0724dfe44c5ef0682b3cc1574f8",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/developer/Workflows.vue",
+      "lines": 86,
+      "sha256": "e897750d6d916bfbf2a38d07cd2e3949b23d02ca28b0d87169379dcc9082844b",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/developer/client.ts",
+      "lines": 74,
+      "sha256": "8aad69a704cdaa65e79d270ee861d94ca8af02cd591f8792773be08983eb4578",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/developer/developer.css",
+      "lines": 2,
+      "sha256": "3d289176397d0b60b19bfce0ac01fb4070bc5daabb168a787c61e6cc6d52d8d7",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/lib/academic-parser.ts",
+      "lines": 77,
+      "sha256": "3b9f35e5605ec313e00f7f091bd4d59fbecac5b9a1303a51e7fd02daf010f159",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/lib/academic.ts",
+      "lines": 12,
+      "sha256": "7bc9408ecd608ad05c76d79c7fb363b0450629e0b9c1d2511ceacdc75d5de1e0",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/lib/action-insights.mjs",
+      "lines": 42,
+      "sha256": "d56b0700b4644154d706c9107b06b469340970d916a0e29d0d5d1b0877259bc8",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/lib/agents.ts",
+      "lines": 217,
+      "sha256": "0f80206baa6d8713f901308330d88b230e79bc7d17bfde3030d3ce14d237f3b4",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/lib/auth.ts",
+      "lines": 45,
+      "sha256": "dd926c58a1f1ff5ad7341f57882e9e8969bc8bdbd32780955f598da56cbb8ae0",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/lib/backend-demo.ts",
+      "lines": 101,
+      "sha256": "055ce9361c693eba400fadb8c845622757f34c35a90f8d4f9f577aea04802548",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/lib/consultant.ts",
+      "lines": 51,
+      "sha256": "004769e1256431c44130a570ace2d2244bcc5729bcd76003e96a71ed1505d2ed",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/lib/conversation-turns.ts",
+      "lines": 44,
+      "sha256": "00ea9bc2131372903233e3cc2e7793ba1692446a3dcd5bc9635c17e880a5b2de",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/lib/direction-comparison.ts",
+      "lines": 18,
+      "sha256": "912f7994e7db06701f7617a9974e82ffaa7ea6a1b9ddb1ad744c6e66f5920ea1",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/lib/form-values.mjs",
+      "lines": 18,
+      "sha256": "6397c591082b00b83030a363634cc838838bce5619206ba33832c62aad3b7608",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/lib/growth-records.ts",
+      "lines": 57,
+      "sha256": "640d222f3d7ad114c1a6de48fc5ff749da50bf0aa781f37829e6eb6c60e105ef",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/lib/layout.ts",
+      "lines": 31,
+      "sha256": "db2e6ae4f198a979f2d412ea4781f87ab5bf8ea268f6fb3e59575594c82c3ab2",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/lib/motion.ts",
+      "lines": 96,
+      "sha256": "da2210fb2910381687fd951ae8b88eec634f3dcc242a5f1ac19c37d84f002791",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/lib/paged-items.ts",
+      "lines": 16,
+      "sha256": "ec1ac7e12afbfaf255b1a9355fa572b4be4a968627aed6ff837539b49faffd06",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/lib/presentation.ts",
+      "lines": 4,
+      "sha256": "bef70aca6469c1d62237bda4d2621a1f33ac46fa72725196f6af97c1b49beeaa",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/lib/profile-organization.ts",
+      "lines": 16,
+      "sha256": "62af066eecad6ed950a5402ae7e8e61f7cb2e7eb1675972aa373e1ce0f86e138",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/lib/scroll-fade.ts",
+      "lines": 24,
+      "sha256": "5633e9b0d8b6e22a04933b42dd5b2e005390b51c451e6ca1d8d1234ed78e78de",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/lib/scroll-intent.ts",
+      "lines": 18,
+      "sha256": "fc8a4fc912e5e8776719243a62fd4707c56cf2f7fcfe7e3027c19e00d7ef2b02",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/lib/server-copy.ts",
+      "lines": 3,
+      "sha256": "abd108452d2624dcbf3d8692de5e677728c674695c9bcc10ef3d63d134e4b1cb",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/lib/session-cache.ts",
+      "lines": 20,
+      "sha256": "d951f92c84f88fa1938228c23bef5334615e9d510d6ca84f837f5926be2c75db",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/lib/system-data.ts",
+      "lines": 72,
+      "sha256": "95efd459e84e473574e7eafcf38426d9a28fa5524654717057f9970a2eb1901f",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/lib/theme.ts",
+      "lines": 219,
+      "sha256": "ab2549344f21f93ebea8a1d05c6633ffa6e3427cbc621c16c33d0aab32c10779",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/lib/use-ai-task.ts",
+      "lines": 31,
+      "sha256": "063dec00c5a9b6e0f28edab001daa35ca5dad0f49faf02bcc214327bc3ff650d",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/lib/use-conversation-scroll.ts",
+      "lines": 48,
+      "sha256": "9bd31cbfbbb519c66528f57e9a78444f28a8b113ba48253218032877110c9934",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/lib/workspace-nav.ts",
+      "lines": 175,
+      "sha256": "92f3cd2a62b251d463134ebd62a0e6e3021b3e17bf924de351d5517a537ebf47",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/main.ts",
+      "lines": 77,
+      "sha256": "1a3040803ef13bb76cde59fedecf0bb8aa36586d4151a8efe9f78375774dd3ce",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/modules/ModuleContent.vue",
+      "lines": 22,
+      "sha256": "4b6491474ad49e55f94082608964bbc080c8aeb9bcd585c06164b6808ebfab9d",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/modules/ModuleHost.vue",
+      "lines": 89,
+      "sha256": "8018212482ad1110fef17eee4843945783591f3a5b2fd890eee491f98a32af3a",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/modules/ModuleRenderable.vue",
+      "lines": 13,
+      "sha256": "58d4529c5ec6d28df1663bcdfd9175221696a53f0af5f268595d7889cc5ef5f6",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/modules/client.ts",
+      "lines": 15,
+      "sha256": "d21f46fbc7a0a760a83f126cc82e6845c4f3dbcee7e68f74747026e642096e58",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/modules/registry.ts",
+      "lines": 14,
+      "sha256": "fe8548f568ccb6eb1a3be94dad25c615812a142e23b29915794fc6c658f07e75",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/router.ts",
+      "lines": 141,
+      "sha256": "754eab094a9161a851e3ecdb66e0e812a48a6821c43172dbeee78f522a4b0c7b",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/store.ts",
+      "lines": 427,
+      "sha256": "dd7f5839647821ea45cf5fbff38593fb04208a89ca3a0218cdcd6b403a377043",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/styles/base.css",
+      "lines": 1761,
+      "sha256": "28326599e524b03e9aa17ee4e68043815fd4adde50798998d6e4e5c62708f687",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/styles/c2-fidelity.css",
+      "lines": 513,
+      "sha256": "6a5e7cc846072583f6fb7d5ae5e18aa805c6673ffd7ff5ad175a8c4cf7e03e9e",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/styles/conversation.css",
+      "lines": 246,
+      "sha256": "9cc4587c79df09948b7bf41687c4caf1f404fd5ebd4acc0517a59e5182a610d5",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/styles/dialogue.css",
+      "lines": 1039,
+      "sha256": "f7832b240bf5447d53835bcb66e0e99ac8e8f02310e4c48e22c086b14014b85f",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/styles/experience.css",
+      "lines": 161,
+      "sha256": "7b499ec3df5b8a64f29b3e721e47679a79ee00cf33903f6e50c23d2ea0c0d443",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/styles/journey.css",
+      "lines": 184,
+      "sha256": "7315a3c737d4785a75d52ac5e99fb67a597975a0961f5eb643bfd863fb290a44",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/styles/product-interactions.css",
+      "lines": 49,
+      "sha256": "4ba26dda7c81b3ef4bdca999188b646bb6a802e4572bbc43fc81a332aa4d98dd",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/styles/redesign.css",
+      "lines": 413,
+      "sha256": "0e8271c2698057f2a956eb0411d72d1006447a4a820c95fe93b286db77d44e1d",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/styles/refinement.css",
+      "lines": 110,
+      "sha256": "86a985b542c6f8eb2719d21d96c5a78f3a191597b5b650842e8fcec0a820f204",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/styles/tokens.css",
+      "lines": 702,
+      "sha256": "f1fcd578b393ccc4bcdf31f4c4be1169866eb4a8fb163cee78fb44af562fff24",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/styles/workspace-modern.css",
+      "lines": 1051,
+      "sha256": "2afb68e8f17efa8d03aeb586fb23f98a181756e2e18ee274ba18fda311a3fb7b",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/styles/workspace.css",
+      "lines": 876,
+      "sha256": "bfcfb024942fbac5d3788a70cda27294ed6ac47d431dd76879f0042779a9a409",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/views/AssessmentView.vue",
+      "lines": 122,
+      "sha256": "92bb0b99ae1d3d90c734d85af428241c51625dbf56109dbebc6048c61dc7dc0f",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/views/ConversationView.vue",
+      "lines": 252,
+      "sha256": "97daa80e82477b1c6e3f12343c036bf93f1d1e938446a1f3e1c698cd52ac8718",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/views/DeveloperView.vue",
+      "lines": 174,
+      "sha256": "ce28eae35fa480c2d37e12e70073688d0e5072414e585793409221bdd49716f4",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/views/DirectionsView.vue",
+      "lines": 126,
+      "sha256": "e635da53a5586168220cb108f496b0d389ebe0433af8ecf7dd1636c858ce9a41",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/views/GradesView.vue",
+      "lines": 1194,
+      "sha256": "f6df95f06812bd926f836fa7fa7061414f5fb8db57c9df6580f88578e3a6c9fa",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/views/IntelView.vue",
+      "lines": 348,
+      "sha256": "106e2911a625ed6eb889f87c7e04d0633d93a86f6da840ee279c374740cea2a7",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/views/NotFoundView.vue",
+      "lines": 205,
+      "sha256": "2ff33c17ea4e2c453a68891de2ee875eeef387f8a8f048a3565f97c028aecee5",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/views/NotesView.vue",
+      "lines": 449,
+      "sha256": "97f75abf80752e27e38f0c23bb0cbb91b1682f75274afabf2ab3593f285a31b4",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/views/PortalClassicView.vue",
+      "lines": 588,
+      "sha256": "5258755933a928183c493ae376bd7ec717cf71bf5672eea04d54a33c68e0248f",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/views/PortalView.vue",
+      "lines": 7,
+      "sha256": "45f6ce4fb3f2a18eddfff5d63e27d0627848ce8bc7ca8b9dd0a2d3611fceb747",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/views/ReflectionView.vue",
+      "lines": 275,
+      "sha256": "3ca38679fc93b0391d8cdd46f5beefb7cf47e0844208a604bf1a1faf998d9fe6",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/views/RoadmapView.vue",
+      "lines": 6,
+      "sha256": "140e665757287849016a131da1c414a73279512ac7c4619f5b2547f27987daff",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/views/ScheduleView.vue",
+      "lines": 372,
+      "sha256": "8074015b8045557430aacbb66c3e4a38e83c029daa9b1e310536d84144dbbff1",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/views/StudentView.vue",
+      "lines": 1627,
+      "sha256": "b6c72f4e4e97c010def651e1eebefc5b8fbe1219b347f2ce89a2461b332398eb",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/views/SystemView.vue",
+      "lines": 33,
+      "sha256": "18cc3395d80eafb7081ef48931db9caa95b91be95583d86ec20126b026ae3de0",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/views/TodayView.vue",
+      "lines": 312,
+      "sha256": "c0d7e172f182a1991eb991b1d4964c363b2e64dd02c63f3767f91fcea934e29d",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/src/views/ToolsView.vue",
+      "lines": 36,
+      "sha256": "a7460c612c5a139c12191c2b6b64dec2e230aeadff05f438919aa226ecd6c79c",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/tests/academic-import.test.mjs",
+      "lines": 33,
+      "sha256": "a4dfae3a29010d7b2c147ea9cb7a8d1c3387bb0d6da53f6165064420323b5495",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/tests/action-insights.test.mjs",
+      "lines": 62,
+      "sha256": "8edee0dab23c50ce14faa4091bed335481909f48daf083917ebebd1886609955",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/tests/conversation-turns.test.mjs",
+      "lines": 32,
+      "sha256": "3db0175f20b25ce024e7d43b21d688fb7481e5653b545d1ff40b9a983f9596af",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/tests/form-values.test.mjs",
+      "lines": 23,
+      "sha256": "2f3b0d9de1a1a6f2288fae1ded784ba8f3a14e90b2a415e0ddfb8f5e13fdc897",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/tests/intel-refresh.test.mjs",
+      "lines": 42,
+      "sha256": "6c1f70b8b79efef04969bb60047bf8f5b41dbffffb4ee1ad9f8b783e5f9004b9",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/tests/notification-sync.test.mjs",
+      "lines": 16,
+      "sha256": "7cb3c0ac00bcb5ed2fd25575aa94bbfc1879ade5065abd6974a5a5fb7e7cd1fa",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/tests/pagination.test.mjs",
+      "lines": 22,
+      "sha256": "158eb80dbbe7e1f0ffd0704b1785c012657543cea5d14ca030ea660c7e4dcd24",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/tests/phase-editor.test.mjs",
+      "lines": 27,
+      "sha256": "942a5058bc673a9359f12a424c2739aa91eb66f16eb0cbb0e82cec2f890a0546",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/tests/profile-organization.test.mjs",
+      "lines": 39,
+      "sha256": "6f4d519dedfec14ebf6a945751a83dbca14a18123cd985ebd88da3d7e003692c",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/tests/scroll-intent.test.mjs",
+      "lines": 34,
+      "sha256": "4bbcbfe791aca4a66b3f12c9c84c3dd37a0e35189fe92e53229bb2bbc30ad2db",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/tests/student-forms.test.mjs",
+      "lines": 149,
+      "sha256": "e2e70d9f9463c688dbb828c44297ddbf227247272d75841289e0246008a545e1",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/tests/task-editor.test.mjs",
+      "lines": 26,
+      "sha256": "1e74b71702c247aac48a1446d5117e7a3820dbf393a7f47d5de29fb19f385165",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/tests/transport.test.mjs",
+      "lines": 131,
+      "sha256": "3fd62575cd4040fa8f0116c5fb38e16a61c6bf63b0e39a6cb59ca520c392a41d",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/tests/workspace-navigation.test.mjs",
+      "lines": 69,
+      "sha256": "fb5055e7ee64ba637dd5eddeda06304c36fa85decd179cec07992265c2185103",
+      "check": "source inventory; see coverage notes"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-web/vite.config.ts",
+      "lines": 26,
+      "sha256": "dd051ff3a9ca7768be318a6c89f2148948c1615f5c948e37bcb9f477e95762d6",
+      "check": "source inventory; see coverage notes"
+    }
+  ]
+}

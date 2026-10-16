@@ -7112,6 +7112,42 @@
               }
             ]
           },
+          "client_request_id": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "minLength": 1,
+                "pattern": "^[a-zA-Z0-9_-]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Request Id"
+          },
+          "expected_task": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TaskValues"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expected_updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Updated At"
+          },
           "note": {
             "default": "",
             "maxLength": 3000,
@@ -7232,6 +7268,16 @@
           "task_id": {
             "title": "Task Id",
             "type": "string"
+          },
+          "task_snapshot": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TaskValues"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "task_text": {
             "title": "Task Text",

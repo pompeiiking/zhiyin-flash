@@ -4,7 +4,8 @@ from datetime import datetime
 from typing import Literal
 from pydantic import BaseModel, Field
 from zhiyin_business.contracts.student import (
-    ReviewEdit,
+    ReviewValues,
+    TaskValues,
     MeasurementBatch,
     Measurement,
     DirectionWeights,
@@ -24,12 +25,13 @@ class NotificationStateView(BaseModel):
     snoozed_until: str | None = None
 
 
-class ReviewRecordView(ReviewEdit):
+class ReviewRecordView(ReviewValues):
     id: str
     task_text: str
     updated_at: datetime
     applied_at: datetime | None = None
     history: list[dict] = Field(default_factory=list)
+    task_snapshot: TaskValues | None = None
 
 
 class ReviewListView(BaseModel):

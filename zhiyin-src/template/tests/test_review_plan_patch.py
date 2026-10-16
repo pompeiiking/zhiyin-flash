@@ -76,6 +76,22 @@ def test_reschedule_task_sets_due_date() -> None:
     assert any("2026-10-17" in line for line in summary)
 
 
+def test_review_date_is_timezone_aware_and_can_be_edited_manually():
+    from zhiyin_business.contracts.student import TaskEdit
+    updated, _ = apply_plan_patch(_plan(), PlanPatch(reschedule_tasks={'task_b': '2026-10-17'}), timezone_name='America/New_York')
+    task = next(t for p in updated.phases for t in p.tasks if t.id == 'task_b')
+    assert task.due_date.hour == 23 and task.due_date.minute == 59
+    assert task.due_date.utcoffset().total_seconds() == -4 * 3600
+    body = TaskEdit(text=task.text, phase_id='p', due_date=task.due_date)
+    assert body.due_date == task.due_date
+
+
+def test_review_timestamp_preserves_explicit_offset():
+    updated, _ = apply_plan_patch(_plan(), PlanPatch(reschedule_tasks={'task_b': '2026-10-17T09:30:00+02:00'}))
+    task = next(t for p in updated.phases for t in p.tasks if t.id == 'task_b')
+    assert task.due_date.hour == 9 and task.due_date.utcoffset().total_seconds() == 7200
+
+
 def test_unparsable_date_leaves_task_alone() -> None:
     updated, summary = apply_plan_patch(
         _plan(), PlanPatch(reschedule_tasks={"task_b": "下周四晚上"})

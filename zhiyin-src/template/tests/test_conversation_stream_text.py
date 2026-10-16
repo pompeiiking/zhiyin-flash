@@ -18,7 +18,8 @@ class StreamTextTests(unittest.TestCase):
     def test_no_string(self):
         self.assertEqual(partial_root_string('{"conclusion":null,"private":"secret"}', 'conclusion'), '')
 
-if __name__ == '__main__': unittest.main()
+if __name__ == '__main__':
+    unittest.main()
 
 async def test_agno_stream_emits_before_model_finishes():
     import json
@@ -43,7 +44,8 @@ async def test_agno_stream_emits_before_model_finishes():
     assert all('不得展示' not in f.get('text', '') for f in frames)
 
 async def test_stream_controller_isolates_concurrent_users(monkeypatch):
-    import asyncio, json
+    import asyncio
+    import json
     from types import SimpleNamespace
     from zhiyin_api.controllers import conversation_controller as controller
     from zhiyin_api.dto.conversation import MessageRequest
@@ -65,7 +67,6 @@ async def test_stream_controller_isolates_concurrent_users(monkeypatch):
 
 async def test_stream_controller_disconnect_cancels_model(monkeypatch):
     import asyncio
-    from types import SimpleNamespace
     from zhiyin_api.controllers import conversation_controller as controller
     from zhiyin_api.dto.conversation import MessageRequest
     from zhiyin_kernel.streaming import emit_progress
@@ -77,7 +78,8 @@ async def test_stream_controller_disconnect_cancels_model(monkeypatch):
             try:
                 emit_progress({'text':'partial'})
                 await asyncio.Event().wait()
-            finally: cancelled.set()
+            finally:
+                cancelled.set()
     monkeypatch.setattr(controller, 'get_facade', lambda: Facade())
     response = await controller.stream_message(None, MessageRequest(task_id='a',message='test'))
     await anext(response.body_iterator)

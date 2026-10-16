@@ -1337,7 +1337,11 @@ class DefaultOrchestrator(Orchestrator):
             logger.info("复盘要求调整计划，但当前没有行动计划，未落库")
             return
 
-        updated, summary = apply_plan_patch(plan, output.plan_patch)
+        from zhiyin_business.contracts.student import Preferences
+
+        state = await self._student_state.get(user_id) if self._student_state is not None else {}
+        preferences = Preferences.model_validate(state.get("preferences", {}))
+        updated, summary = apply_plan_patch(plan, output.plan_patch, timezone_name=preferences.timezone)
         if not summary:
             logger.info("复盘给出的计划调整没有命中任何任务，未落库")
             return

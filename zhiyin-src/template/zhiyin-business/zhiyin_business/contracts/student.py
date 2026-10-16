@@ -121,7 +121,7 @@ class Semester(StrictModel):
         return self
 
 
-class ReviewEdit(StrictModel):
+class ReviewValues(StrictModel):
     task_id: str
     reason: str = Field(min_length=1, max_length=100)
     note: str = Field(default="", max_length=3000)
@@ -135,6 +135,12 @@ class ReviewEdit(StrictModel):
         if self.result == "adjust" and self.adjustment is None:
             raise ValueError("调整任务时请提供调整内容")
         return self
+
+
+class ReviewEdit(ReviewValues):
+    expected_updated_at: datetime | None = None
+    expected_task: TaskValues | None = None
+    client_request_id: str | None = Field(default=None, min_length=1, max_length=100, pattern=r"^[a-zA-Z0-9_-]+$")
 
 
 class NotificationEdit(StrictModel):
