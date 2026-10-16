@@ -39,7 +39,7 @@
 .consult-speaker {display:flex;align-items:center;gap:8px;font-size:12px;color:var(--c-text-3);margin:1px 0 9px;}
 .consult-speaker b {font:inherit;}
 .consult-speaker small {padding:2px 6px;border-radius:5px;background:var(--c-primary-weak);color:var(--c-primary);font-size:10px;}
-.consult-answer-copy {padding:0;background:transparent;}
+.consult-turn--latest .consult-answer-copy {padding:14px 16px 12px;border:1px solid color-mix(in srgb,var(--c-primary) 9%,var(--c-border));border-radius:12px;background:color-mix(in srgb,var(--c-primary-weak) 28%,var(--c-surface));}
 .consult-turn--latest .consult-evidence,.consult-turn--latest .consult-copy {color:var(--c-primary);}
 .consult-prose,.consult-guide {font-size:15px;line-height:1.8;overflow-wrap:anywhere;}
 .consult-prose--lead {font-size:19px;font-weight:500;line-height:1.65;}
