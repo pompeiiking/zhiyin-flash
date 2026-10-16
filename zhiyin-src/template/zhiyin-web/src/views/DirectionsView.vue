@@ -28,7 +28,7 @@ function setHistory(open:boolean){const query={...route.query};delete query.focu
 onMounted(load)
 </script>
 <template><div class="ws-page report-page">
-<PageHeading title="方向方案" description="把三个可能的未来看清楚，用一次真实尝试替代仓促决定。"><button class="btn" :disabled="busy" @click="load">{{busy?'正在读取…':'刷新方向'}}</button><button class="ws-text-button" @click="setHistory(!history)">{{history?'返回方案':'版本记录'}}</button><button class="ws-text-button" :disabled="busy||!plans" @click="printReport">打印方案</button></PageHeading>
+<PageHeading title="方向方案" description="把不同方向的可能性看清楚，用一次真实尝试替代仓促决定。"><button class="btn" :disabled="busy" @click="load">{{busy?'正在读取…':'刷新方向'}}</button><button class="ws-text-button" @click="setHistory(!history)">{{history?'返回方案':'版本记录'}}</button><button class="ws-text-button" :disabled="busy||!plans" @click="printReport">打印方案</button></PageHeading>
 <StatusBanner v-if="error" tone="error" :message="error" retry-label="重新读取" @retry="load"/><SkeletonBlock v-if="busy" variant="list" :lines="4"/>
 <DirectionDetails v-if="plans && !history" :plans="plans" :saving="saving" :impact="impact" :selection-changed="selectionChanged" @select="select"/>
 <ReportHistory v-else-if="history" asset-type="direction_plan"/>

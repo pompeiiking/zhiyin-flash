@@ -11,7 +11,7 @@ const notices=ref<Notice[]>([]),query=ref(''),filter=ref('pending'),busy=ref(fal
 const snooze=ref<Record<string,string>>({}),snoozeError=ref<Record<string,string>>({})
 const tabs=[{key:'pending',label:'未读提醒'},{key:'read',label:'已读历史'},{key:'later',label:'稍后处理'},{key:'done',label:'已处理'}]
 const filtered=computed(()=>notices.value.filter(n=>n.status===filter.value&&[n.title,n.body,dateKey(n.occurred_at)].join(' ').includes(query.value.trim())))
-const {page,paged}=usePagedItems(filtered,5)
+const {page,paged}=usePagedItems(filtered,5,()=>[query.value,filter.value])
 const actionRoute=(n:Notice)=>n.action?.kind==='intel'?'/intel':''
 async function load(){busy.value=true;error.value='';try{notices.value=await studentApi.notifications();await refreshNotifications(notices.value)}catch(e){error.value=(e as Error).message}finally{busy.value=false}}
 async function change(n:Notice,state:'pending'|'read'|'later'|'done'){if(busy.value)return;status.value='';snoozeError.value[n.id]='';if(state==='later'&&(!snooze.value[n.id]||!Number.isFinite(new Date(snooze.value[n.id]).getTime())||new Date(snooze.value[n.id]).getTime()<=Date.now())){snoozeError.value[n.id]='请选择未来的提醒时间。';return}busy.value=true;error.value='';try{const updated=await studentApi.notification(n.id,{status:state,snoozed_until:state==='later'&&snooze.value[n.id]?new Date(snooze.value[n.id]).toISOString():null});notices.value=notices.value.map(v=>v.id===n.id?updated:v);status.value='提醒状态已保存。';await refreshNotifications(notices.value)}catch(e){error.value=(e as Error).message}finally{busy.value=false}}

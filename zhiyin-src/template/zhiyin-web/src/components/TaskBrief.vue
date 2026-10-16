@@ -54,7 +54,7 @@ function run() { void task.run('brief') }
       </ul>
       <p v-if="result.data.ifYouSkip" class="ws-section">{{ result.data.ifYouSkip }}</p>
       <ul class="ws-mini-list">
-        <li v-for="p in next" :key="p.id"><RouterLink class="ws-text-link" :to="'/chat?gap='+encodeURIComponent(p.id)">{{ p.label }}</RouterLink><p>{{ p.why }}</p></li>
+        <li v-for="p in next" :key="p.id"><RouterLink class="ws-text-link" :to="'/chat?question='+encodeURIComponent(p.label+'。'+p.why)">{{ p.label }}</RouterLink><p>{{ p.why }}</p></li>
       </ul>
       <ul v-if="result.data.changed?.length" class="ws-mini-list">
         <li v-for="p in result.data.changed" :key="p.text">{{ p.text }} · {{ p.at }}</li>

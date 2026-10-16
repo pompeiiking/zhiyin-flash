@@ -208,3 +208,46 @@ async def test_brief_cache_round_trip_keeps_public_aliases_and_rejects_invalid_n
         BriefToday.model_validate(invalid["data"])
     await repo.put("u", "brief.today", invalid)
     assert await service._load_cached("u", "brief.today") is None
+
+@pytest.mark.asyncio
+async def test_brief_includes_selected_direction_plan_and_note_evidence_boundaries():
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+    from zhiyin_business.services.ai_tasks import AiTaskService
+    from zhiyin_kernel.assets import DirectionPlan, ActionPlan, ActionPhase, ActionTask
+    assets=SimpleNamespace(
+        list_direction_plans=AsyncMock(return_value=[DirectionPlan(id='d',role='main',name='技术支持',selected=True,target_desc='',fit_reason='',main_risk='')]),
+        get_action_plan=AsyncMock(return_value=ActionPlan(id='p',phases=[ActionPhase(name='准备',date_range='',tasks=[ActionTask(id='t',text='整理项目',done=False)])])))
+    service=AiTaskService(profiles=None,behaviors=SimpleNamespace(recent=AsyncMock(return_value=[])),assets=assets,chsi=None,registry=None)
+    service._note_texts=AsyncMock(return_value=['想做一次接口测试'])
+    service._generate=AsyncMock(return_value=None)
+    await service._brief('u',None,'',by='career')
+    args=service._generate.call_args.kwargs
+    assert '技术支持（已选择）' in args['context_text']
+    assert '整理项目（待完成）' in args['context_text']
+    assert '不是已经完成的经历' in args['context_text']
+    assert {'方向方案','行动计划','个人待办与目标'} <= {c.source for c in args['citations']}
+
+@pytest.mark.asyncio
+async def test_brief_asset_version_changes_invalidate_daily_context_cache():
+    from zhiyin_infrastructure.local.repository import InMemoryAiTaskResultRepository
+    repo=InMemoryAiTaskResultRepository()
+    await repo.put('u','brief.today|context-v2:2026-10-17|sources-v1:record',{'k':'old'})
+    await _bare_service(repo).invalidate_for_event('u','asset_version_changed')
+    assert await repo.get('u','brief.today|context-v2:2026-10-17|sources-v1:record') is None
+
+@pytest.mark.asyncio
+async def test_dimension_never_turns_record_confidence_into_ability_scores():
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+    from zhiyin_business.services.ai_tasks import AiTaskService
+    service=AiTaskService(profiles=None,behaviors=None,assets=None,chsi=None,registry=None)
+    service._engine=SimpleNamespace(invoke=AsyncMock(return_value=SimpleNamespace(valid=True,structured={
+        'id':'major','name':'专业','conclusion':'记录已确认','reading':'仅是自填资料',
+        'score':1,'bench':0.6,'delta':0,'trend':[],'next':'核对岗位要求'})))
+    service._display_name=AsyncMock(return_value='职业顾问')
+    result=await service._generate('u','dim',context_text='记录可信度1，无测评结果',citations=[],rationale='')
+    assert result.data.score is None
+    assert result.data.bench is None
+    assert result.data.delta is None
+    assert result.data.trend == []

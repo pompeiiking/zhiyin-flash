@@ -89,7 +89,7 @@ const filtered = computed(() => records.value.filter((record) =>
   (filter.value === 'all' || record.kind === filter.value)
   && [record.title, record.body, record.date].join(' ').includes(query.value.trim()),
 ))
-const { page, paged } = usePagedItems(filtered, 5)
+const { page, paged } = usePagedItems(filtered, 5, () => [query.value, filter.value])
 
 function selectRelativeTask(offset: number) {
   const next = focusTaskPool.value[focusIndex.value + offset]

@@ -45,7 +45,7 @@ const timeFact=computed(()=>workspace.value?.profile_panel?.fields?.find(field=>
 const filtered=computed(()=>tasks.value.filter(task=>(selected.value<0||task.phaseIndex===selected.value)
   &&actionStatusMatches(task,filter.value)
   &&[task.text,task.phase,dateKey(task.due_date)].join(' ').toLowerCase().includes(query.value.trim().toLowerCase())))
-const {page,paged}=usePagedItems(filtered,6)
+const {page,paged}=usePagedItems(filtered,6,()=>[selected.value,query.value,filter.value])
 
 const filters=[
   {id:'pending',label:'待执行'},

@@ -255,3 +255,17 @@ async def test_claiming_a_gap_is_recorded_and_moves_the_loop_forward() -> None:
     assert result.stage is LoopStage.DECIDE, (
         "认领了差距却还在原地：闭环又回到「只能靠关键词推进」了"
     )
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("message", ["更新报告", "请重新生成诊断报告", "更新诊断报告", "重新诊断"])
+async def test_report_refresh_returns_from_review_to_diagnose(message: str) -> None:
+    from zhiyin_business.policies.routing_rules import KeywordIntentPolicy, RuleStagePolicy
+    from zhiyin_business.ports.orchestrator import IntentType
+
+    container = _container()
+    board = _board([AssetType.REPORT, AssetType.ACTION_PLAN], [BehaviorEventType.TASK_DONE], stage=LoopStage.REVIEW)
+    intent = await KeywordIntentPolicy(container.registry_service).classify(message=message, blackboard=board)
+    assert intent is IntentType.VERIFY_DIRECTION
+    decision = await RuleStagePolicy(container.registry_service).decide(blackboard=board, intent=intent, message=message)
+    assert decision.stage is LoopStage.DIAGNOSE
+    assert decision.source == "intent"

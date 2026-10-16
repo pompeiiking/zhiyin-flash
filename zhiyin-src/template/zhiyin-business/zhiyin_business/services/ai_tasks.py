@@ -10,7 +10,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from datetime import date, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, AsyncIterator, Optional
 
 from pydantic import BaseModel
@@ -94,6 +94,7 @@ _TASK_OWNER: dict[str, str] = {
 _TASK_INPUTS: dict[str, tuple[str, ...]] = {
     # 今日简报：画像 + 最近的行动 + 他自己写下的话
     "brief.today": (
+        "asset_version_changed",
         "profile_field_updated",
         "asset_state_changed",
         "note_changed",
@@ -380,6 +381,10 @@ class AiTaskService:
                 f"{key} 的产出不符合契约：{result.errors[:3]}"
             )
         data = contract.model_validate(result.structured)
+        if key == "dim":
+            # This task only receives field provenance/confidence, never a measurement
+            # or a benchmark series. Do not present those as ability scores.
+            data = data.model_copy(update={"score": None, "bench": None, "delta": None, "trend": []})
         if key == "plan.todos":
             # 模型按对象输出（见 TodoSuggestions 的说明），对外下发的是数组
             data = data.items
@@ -453,6 +458,10 @@ class AiTaskService:
         started = time.perf_counter()
         head = key.split(".")[0]
         cache_key = f"{key}.{arg}" if arg else key
+        if key == "dim":
+            cache_key += "|evidence-v2"
+        if key == "brief.today":
+            cache_key += "|context-v3:" + datetime.now(timezone(timedelta(hours=8))).date().isoformat()
         from zhiyin_business.services.analysis_access import current_scope
         scope = current_scope(user_id)
         if scope is not None:
@@ -605,21 +614,41 @@ class AiTaskService:
                     at=recent[0].occurred_at.strftime("%m-%d"),
                 )
             )
+        directions = await self._assets.list_direction_plans(user_id) if self._assets else []
+        plan = await self._assets.get_action_plan(user_id) if self._assets else None
+        if directions:
+            citations.append(Citation(source="方向方案", detail="；".join(
+                f"{item.name}（{'已选择' if item.selected else '未选择'}）" for item in directions), confidence=0.9))
+        if plan:
+            citations.append(Citation(source="行动计划", detail=f"{len(plan.phases)} 个阶段", confidence=0.9))
+        if notes:
+            citations.append(Citation(source="个人待办与目标", detail="用户写下的安排，不等于已完成的经历", confidence=0.9))
         context = self._context(
+            ("当前日期", [datetime.now(timezone(timedelta(hours=8))).date().isoformat()]),
+            ("事实边界", ["待办、目标是用户意向，不是已经完成的经历；不能据此推断能力。行为日期不得套用到没有日期的笔记。",
+                          "当前方向以已选择的方案为准。旧笔记说尚未选择时应指出时间或口径差异，不能覆盖当前选择。",
+                          "标明验收、测试夹具的记录用于软件验证，不作为真实职业经历或职业推荐依据。"]),
+            ("当前方向", [f"{item.name}（{'已选择' if item.selected else '未选择'}）：{item.target_desc}；风险：{item.main_risk}" for item in directions]),
+            ("当前行动计划", [f"{phase.name}：{task.text}（{'已完成' if task.done else '待完成'}）" for phase in (plan.phases if plan else []) for task in phase.tasks]),
             ("我已经知道的", self._profile_lines(profile)),
             ("还缺的", self._gap_lines(profile)),
             (
                 "他最近做过的事",
                 [f"{b.occurred_at.strftime('%m-%d')} {b.event_type.value}" for b in recent],
             ),
-            ("他自己写下的", notes),
+            ("个人笔记（可能过期，不能覆盖当前结构化方向）", notes),
+            ("本次必须核对的结论", [
+                "已选择方向为：" + "；".join(item.name for item in directions if item.selected) + "。必须围绕这项已选择方向说明待验证事项，不能说方向为空、还没定或尚未选择。"
+                if any(item.selected for item in directions) else "当前允许使用的方案中未见已选择方向，不代表用户从未提供。",
+                "changed 只列输入中明确提供日期的字段变更。行为日志的日期不能作为方向选择或笔记创建日期；缺少对应日期时 changed 留空。",
+            ]),
         )
         return await self._generate(
             user_id,
             "brief.today",
             context_text=context,
             citations=citations,
-            rationale="今天的事 = 画像里最卡方向的那条缺口 + 最近变过的字段。",
+            rationale="结合当前方向、行动计划和画像缺口；个人待办与目标只作为意向，不等同已完成经历。",
         )
 
     async def _portrait(
@@ -836,7 +865,7 @@ class AiTaskService:
                     f"字段：{dim_id}",
                     f"值：{_value_text(field.value)}",
                     f"把握程度：{score:.2f}",
-                    "决策线：0.60（低于它只能给备选建议）",
+                    "把握程度仅指这条记录的可信度，不是能力评分或岗位匹配度；未提供测评分数、岗位基准或历史走势，score、bench、delta 必须为 null，trend 为空数组。",
                     f"来源：{_source_text(field.source)}",
                     f"更新于：{field.updated_at.strftime('%Y-%m-%d')}",
                 ],

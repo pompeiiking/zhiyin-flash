@@ -2,6 +2,21 @@
   "_note": "职引 · 编排判定规则。属动态资源：改本文件不需要发版。落库为 biz_registry_item 的 routing_rules 类别。两类：kind=intent（用户说了哪些词算哪种意图）、kind=stage（哪种意图进哪一步）。sort_order 越小越先判定；同一序号按 id 稳定排序。未命中任何规则时的行为不在这张表里——它是策略（退回当前环节交给模型，连环节都没有才澄清追问），属于代码。",
   "items": [
     {
+      "id": "intent.refresh_report",
+      "kind": "intent",
+      "sort_order": 5,
+      "match": [
+        "更新报告",
+        "重新生成诊断报告",
+        "更新诊断报告",
+        "重新诊断"
+      ],
+      "intent": "verify_direction",
+      "stage": "",
+      "status": "enabled",
+      "note": "报告页继续咨询及明确重算请求回到诊断环节，不能仅回复已转交却未生成报告。"
+    },
+    {
       "id": "intent.confused",
       "kind": "intent",
       "sort_order": 10,

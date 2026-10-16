@@ -74,7 +74,7 @@ function values(plan: DeepReadonly<DirectionPlanView>, criterion: Criterion): re
       <section class="route-workbench" aria-label="方向探索工作台">
         <section class="route-index" aria-label="路线总览">
           <header>
-            <h2>三种可能</h2>
+            <h2>方向概览</h2>
             <p>先看清每条路，再决定把精力放在哪里。</p>
           </header>
 

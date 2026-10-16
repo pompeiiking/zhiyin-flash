@@ -55,7 +55,7 @@ const visibleNotes = computed(() => {
   const ordered = [...pending.value, ...completed.value]
   return query ? ordered.filter((note) => note.text.toLocaleLowerCase().includes(query)) : ordered
 })
-const { page: notesPage, paged: pagedNotes } = usePagedItems(visibleNotes)
+const { page: notesPage, paged: pagedNotes } = usePagedItems(visibleNotes, 6, () => [scope.value, noteQuery.value])
 const noteGroups = computed(() => [
   { key: 'pending', title: '待完成', items: pagedNotes.value.filter((note) => !note.done) },
   { key: 'done', title: '已完成', items: pagedNotes.value.filter((note) => note.done) },
@@ -315,7 +315,7 @@ onMounted(() => { void loadNotes() })
       </aside>
     </div>
 
-    <nav class="ws-related"><RouterLink to="/chat">和顾问讨论这些安排<UiIcon name="chat" :size="16" /></RouterLink></nav>
+    <nav class="ws-related"><RouterLink  :to="{ path: '/chat', query: { question: '我想讨论当前' + scopeLabel + '的安排：' + pending.slice(0, 5).map(item => item.text).join('；') } }">和顾问讨论这些安排<UiIcon name="chat" :size="16" /></RouterLink></nav>
 
     <InfoSheet :open="deleting !== null" shape="dialog" title="删除这条记录？" @close="!deletingBusy && (deleting = null)">
       <p>{{ deleting?.text }}</p>

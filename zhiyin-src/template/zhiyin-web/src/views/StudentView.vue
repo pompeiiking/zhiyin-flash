@@ -811,9 +811,12 @@ const identity = computed(() => {
   return { name: name || '个人档案', line: [school, pick('major'), grade || pick('degree_level')].filter(Boolean).join(' · ') || '学校与年级待补充' }
 })
 const profileStatement = computed(() => {
+  const directions = backendDemo.state.liveDirections
+  const selected = directions?.plans?.find(plan => plan.id === directions.selected_id || plan.selected)
+  if (selected) return `已选择“${selected.name}”作为当前验证方向。${selected.main_risk || '适合程度仍需结合具体经历与岗位要求核对。'}`
   const first = priorityConclusions.value[0]
   if (!first) return '资料还在形成中。先补充一段真实经历或一个明确偏好，再开始比较方向。'
-  return `${first.brief || first.full}。因此，当前更适合把“${first.label}”作为优先验证方向，而不是过早定型。`
+  return `${first.label}：${first.brief || first.full}。这是已有分析线索，尚不代表已选择该方向。`
 })
 const enrollmentRows = computed(() => {
   const pick = (...keys: string[]) => known.value.find((row) => keys.includes(row.key))

@@ -142,3 +142,14 @@ async def test_typed_message_carries_no_chosen_option(container: Container) -> N
     prompt_vars = await _prompt_vars(container)
 
     assert "chosen_option" not in prompt_vars
+
+@pytest.mark.asyncio
+async def test_generation_receives_evidence_boundaries_for_personal_and_market_claims(container):
+    variables = await _prompt_vars(container)
+    rules = '\n'.join(variables['evidence_constraints'])
+    assert '专业名称不能推出学历层次' in rules
+    assert '旧报告、旧建议和模型推断不能反过来证明事实' in rules
+    assert '校友案例、理论方法不是目标岗位职责或招聘门槛' in rules
+    assert '结构化报告中同样遵守' in rules
+
+    assert '不能引用约束本身作为依据' in rules

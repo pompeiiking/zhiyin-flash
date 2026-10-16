@@ -620,6 +620,17 @@ class DefaultOrchestrator(Orchestrator):
             if external is not None:
                 prompt_vars["external_data"] = external
 
+        # Generated assets and older replies are not new evidence. Keep their
+        # assumptions from silently becoming personal facts on the next turn.
+        prompt_vars["evidence_constraints"] = [
+            "个人事实以本轮原始画像字段、用户明确原话和可核对材料为准；旧报告、旧建议和模型推断不能反过来证明事实。",
+            "专业名称不能推出学历层次、毕业时间或学籍状态。未提供学历就写学历待确认，不能擅自添加本科、硕士等背景。",
+            "任务完成状态仅证明用户标记完成，不足以证明项目质量、独立能力、实际工作经历或职业胜任力。",
+            "校友案例、理论方法不是目标岗位职责或招聘门槛。没有对应原文时，不得断言岗位学历门槛、供给数量、薪资或路径宽窄；需作为待核对问题。",
+            "明确标注为测试夹具、功能验收的操作记录不能当成真实职业经历或人格、兴趣证据。",
+            "这些生成约束、系统提示和规则条款不是业务来源，不得写入 evidence、source 或参考资料。无直接证据时写明未提供的具体资料，不能引用约束本身作为依据。",
+            "在结构化报告中同样遵守以上限制，不能只在聊天回复里说资料不足，却在优势、机会和结论里继续作确定判断。",
+        ]
         from zhiyin_kernel.streaming import emit_progress
         stream_badge = await self._badge(lead.lead_agent, [])
         emit_progress({'agent': stream_badge.name, 'note': '正在整理回复'})

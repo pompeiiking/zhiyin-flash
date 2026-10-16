@@ -158,15 +158,25 @@ watch(() => demo.state.currentSessionId, (_id, previous) => {
  const data = backendDemo.getDraft(demo.state.currentSessionId); draft.value = data.text; attached.value = data.materials.map(m => ({ ...m }))
  selectedOption.value = null; failedRequest = null; pending.value = null; requestError.value = ''; uploadError.value = ''; stopped.value = false; choosingTopic.value = false; followTail.value = true; void bottom(true)
 }, { flush:'sync' })
-watch(() => route.query.new, value => { if (typeof value === 'string') chooseTopic() })
+function applyConsultationContext() {
+ if (typeof route.query.new === 'string') { chooseTopic(); return }
+ const query = route.query
+ const text = typeof query.question === 'string' ? query.question
+  : typeof query.topic === 'string' ? '我想讨论：' + query.topic
+  : typeof query.label === 'string' ? '我想补充' + query.label + '：' : ''
+ if (!text) return
+ // Preserve an unfinished draft when arriving from another page.
+ fill(draft.value.trim() && draft.value.trim() !== text ? draft.value.trim() + '\n\n' + text : text)
+ remember()
+ const rest = { ...query }; for (const key of ['question', 'topic', 'label', 'gap']) delete rest[key]
+ void router.replace({ path: route.path, query: rest })
+}
+watch(() => route.query, applyConsultationContext)
 onMounted(() => {
  void nextTick(resizeInput)
  if (demo.state.currentSessionId && !systemData.busy) void resume(demo.state.currentSessionId)
  void refreshProfile()
- if (typeof route.query.new === 'string') chooseTopic()
- else if (typeof route.query.question === 'string') fill(route.query.question)
- else if (typeof route.query.topic === 'string') fill('我想讨论：' + route.query.topic)
- else if (typeof route.query.label === 'string') fill('我想补充' + route.query.label + '：')
+ applyConsultationContext()
  void bottom(true)
 })
 onUnmounted(() => { disposed = true; clearInterval(waitTimer); clearTimeout(copyTimer); remember(); serial++; controller?.abort(); demo.setChatBusy(false) })
@@ -201,9 +211,9 @@ onUnmounted(() => { disposed = true; clearInterval(waitTimer); clearTimeout(copy
        <ReadableText v-if="turn.guideText" :text="turn.guideText" class="consult-guide" />
       </div>
       <div class="consult-references">
-        <DetailPopover v-if="evidenceCount(turn)" title="为什么这样建议" side="top" class="consult-evidence" @update:model-value="open => open && turn.theory_refs?.forEach(r => theory(r.theory_id))"><template #trigger><UiIcon name="shield" :size="15" /><span>查看线索</span><small>{{ evidenceCount(turn) }}</small></template>
-         <div v-for="r in turn.intel_refs" :key="r.id" class="consult-source"><strong>{{ r.title || '资料来源' }}</strong><p v-if="r.source_name">{{ r.source_name }}</p><a v-if="safeLink(r.source_url)" :href="safeLink(r.source_url)" target="_blank" rel="noopener noreferrer">查看原始资料</a></div>
-         <div v-for="r in turn.theory_refs" :key="r.theory_id" class="consult-source"><strong>{{ r.name }}</strong><p v-if="theoryCards[r.theory_id]">{{ theoryCards[r.theory_id].summary || '暂无详细方法说明。' }}</p><p v-else-if="theoryLoading[r.theory_id]" role="status">正在读取方法说明…</p><button v-else @click="theory(r.theory_id)">重新读取方法说明</button><p v-if="theoryErrors[r.theory_id]" role="alert">{{ theoryErrors[r.theory_id] }}</p></div>
+        <DetailPopover v-if="evidenceCount(turn)" title="本轮参考资料" side="top" class="consult-evidence" @update:model-value="open => open && turn.theory_refs?.forEach(r => theory(r.theory_id))"><template #trigger><UiIcon name="shield" :size="15" /><span>查看线索</span><small>{{ evidenceCount(turn) }}</small></template>
+         <p class="ws-muted">以下为本轮检索资料与参考方法，不代表每项资料均能直接支持当前结论；是否适用请结合回复中的限制说明核对。</p><h3 v-if="turn.intel_refs?.length">检索资料</h3><div v-for="r in turn.intel_refs" :key="r.id" class="consult-source"><strong>{{ r.title || '资料来源' }}</strong><p v-if="r.source_name">{{ r.source_name }}</p><a v-if="safeLink(r.source_url)" :href="safeLink(r.source_url)" target="_blank" rel="noopener noreferrer">查看原始资料</a></div>
+         <h3 v-if="turn.theory_refs?.length">参考方法</h3><div v-for="r in turn.theory_refs" :key="r.theory_id" class="consult-source"><strong>{{ r.name }}</strong><p v-if="theoryCards[r.theory_id]">{{ theoryCards[r.theory_id].summary || '暂无详细方法说明。' }}</p><p v-else-if="theoryLoading[r.theory_id]" role="status">正在读取方法说明…</p><button v-else @click="theory(r.theory_id)">重新读取方法说明</button><p v-if="theoryErrors[r.theory_id]" role="alert">{{ theoryErrors[r.theory_id] }}</p></div>
         </DetailPopover>
       <DetailPopover v-if="turn.pipelineCards?.length || turn.changedAssets?.length" title="本轮处理记录" side="top" class="consult-evidence"><template #trigger><UiIcon name="check" :size="15" /><span>处理记录</span></template>
         <div v-if="turn.pipelineCards?.length || turn.changedAssets?.length" class="consult-turn-status" aria-label="本轮处理结果"><span v-for="card in turn.pipelineCards" :key="card.stage" :data-status="card.status"><UiIcon :name="card.status === 'done' ? 'check' : 'review'" :size="15" />{{ stageLabel(card.stage) }}</span><span v-for="asset in turn.changedAssets" :key="asset.asset_id"><UiIcon name="report" :size="15" />已更新{{ assetLabel(asset.asset_type) }} · 第 {{ asset.version }} 版</span></div>

@@ -118,7 +118,8 @@ function sectionLead(section: ReportSectionView) {
 function chapterLabel(index: number) { return ['第一章', '第二章', '第三章', '第四章'][index] ?? `第 ${index + 1} 章` }
 function itemId(item: ReportDimensionItemView) { return `finding-${item.index}` }
 function isPending(item: ReportDimensionItemView) { return !item.evidence?.trim() || /待|缺|不足|未知/.test(item.tag || '') }
-function confidenceText(item: ReportDimensionItemView) { return isPending(item) ? '仍需验证' : '已有资料支撑' }
+function evidenceText(value?: string | null) { return (value || '').replace(/\b[a-z]+(?:_[a-z]+)+\b/g, key => profileLabel(key, key)) }
+function confidenceText(item: ReportDimensionItemView) { return isPending(item) ? '仍需验证' : '已附依据 · 待核对' }
 function sectionDomId(id: string) { return `report-section-${id.replace(/[^a-zA-Z0-9_-]/g, '-')}` }
 function askLink(item: ReportDimensionItemView) {
   return '/chat?question=' + encodeURIComponent(`我想核对第${props.report.version}版报告中的「${item.name}」：${item.conclusion}${item.evidence ? `；依据：${item.evidence}` : '；目前没有提供依据'}`)
@@ -187,13 +188,13 @@ onBeforeUnmount(() => observer?.disconnect())
           <div v-else class="article-prose article-prose--lead">
             <p>这不是一份资料清单，而是对你当前状态的一次解释：系统把个人画像、咨询记录、学业资料和已经形成的诊断结论放到同一个语境里，寻找稳定优势、现实差距与最值得验证的假设。</p>
             <p v-if="report.sections?.[0]?.items?.[0]">目前最先浮现的线索，是关于<strong>{{ report.sections[0].items[0].name }}</strong>的判断：{{ report.sections[0].items[0].conclusion }}</p>
-            <p>全文共形成 {{ all.length }} 项判断，其中 {{ supportedCount }} 项已有记录支撑，{{ pendingItems.length }} 项仍需要新的行动或资料来验证。没有依据的部分会明确保留为假设，不会写成定论。</p>
+            <p>全文共形成 {{ all.length }} 项判断，其中 {{ supportedCount }} 项附有依据说明，{{ pendingItems.length }} 项仍需要新的行动或资料来验证。没有依据的部分会明确保留为假设，不会写成定论。</p>
           </div>
           <div v-if="executiveFindings.length" class="executive-findings" aria-label="报告核心结论">
             <p class="executive-findings__title">核心结论</p>
             <article v-for="(finding, index) in executiveFindings" :key="finding.item.index">
               <span aria-hidden="true">0{{ index + 1 }}</span>
-              <p><DetailPopover :title="finding.item.name + ' · 判断依据'" :label="'查看“' + finding.item.name + '”的判断依据'" side="right" class="article-evidence-link article-evidence-link--summary"><template #trigger>{{ finding.item.name }}</template><p class="evidence-popover__label">{{ finding.item.evidence?.trim() ? '支撑这项判断的记录' : '当前还缺少什么' }}</p><p class="evidence-popover__quote">{{ finding.item.evidence || '这项判断暂时没有可核对的记录，因此只能作为待验证假设。' }}</p><dl class="evidence-popover__facts"><div><dt>判断状态</dt><dd>{{ confidenceText(finding.item) }}</dd></div><div><dt>所在章节</dt><dd>{{ sectionTitle(finding.section) }}</dd></div><div><dt>报告版本</dt><dd>第 {{ report.version }} 版 · {{ reportDate(report.generated_at) }}</dd></div></dl><RouterLink class="btn btn--primary evidence-popover__action" :to="askLink(finding.item)">带着这条去核对</RouterLink></DetailPopover><strong>{{ finding.item.conclusion }}</strong></p>
+              <p><DetailPopover :title="finding.item.name + ' · 判断依据'" :label="'查看“' + finding.item.name + '”的判断依据'" side="right" class="article-evidence-link article-evidence-link--summary"><template #trigger>{{ finding.item.name }}</template><p class="evidence-popover__label">{{ finding.item.evidence?.trim() ? '支撑这项判断的记录' : '当前还缺少什么' }}</p><p class="evidence-popover__quote">{{ evidenceText(finding.item.evidence) || '这项判断暂时没有可核对的记录，因此只能作为待验证假设。' }}</p><dl class="evidence-popover__facts"><div><dt>判断状态</dt><dd>{{ confidenceText(finding.item) }}</dd></div><div><dt>所在章节</dt><dd>{{ sectionTitle(finding.section) }}</dd></div><div><dt>报告版本</dt><dd>第 {{ report.version }} 版 · {{ reportDate(report.generated_at) }}</dd></div></dl><RouterLink class="btn btn--primary evidence-popover__action" :to="askLink(finding.item)">带着这条去核对</RouterLink></DetailPopover><strong>{{ finding.item.conclusion }}</strong></p>
             </article>
           </div>
           <AiStatus :busy="ai.busy.value" :error="ai.error.value" :progress="ai.progress.value" @cancel="ai.cancel" @retry="ai.run('reportSummary')" />
@@ -230,7 +231,7 @@ onBeforeUnmount(() => observer?.disconnect())
                 <DetailPopover :title="item.name + ' · 判断依据'" :label="'查看“' + item.name + '”的判断依据'" side="right" class="article-evidence-link">
                   <template #trigger>{{ item.name }}</template>
                   <p class="evidence-popover__label">{{ item.evidence?.trim() ? '支撑这项判断的记录' : '当前还缺少什么' }}</p>
-                  <p class="evidence-popover__quote">{{ item.evidence || '这项判断暂时没有可核对的记录，因此只能作为待验证假设。' }}</p>
+                  <p class="evidence-popover__quote">{{ evidenceText(item.evidence) || '这项判断暂时没有可核对的记录，因此只能作为待验证假设。' }}</p>
                   <dl class="evidence-popover__facts"><div><dt>判断状态</dt><dd>{{ confidenceText(item) }}</dd></div><div><dt>所在章节</dt><dd>{{ sectionTitle(section) }}</dd></div><div><dt>报告版本</dt><dd>第 {{ report.version }} 版 · {{ reportDate(report.generated_at) }}</dd></div></dl>
                   <RouterLink class="btn btn--primary evidence-popover__action" :to="askLink(item)">带着这条去核对</RouterLink>
                 </DetailPopover>
