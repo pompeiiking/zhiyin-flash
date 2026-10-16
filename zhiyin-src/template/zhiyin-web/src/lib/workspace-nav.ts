@@ -57,7 +57,7 @@ export const WORKSPACE_GROUPS: NavGroup[] = [
     icon: 'directions',
     items: [
       { key: 'directions', label: '方向方案', to: '/directions', icon: 'directions', paths: ['/directions'], hint: '主攻、平行与保底的选择' },
-      { key: 'intel', label: '岗位资讯', to: '/intel', icon: 'compass', paths: ['/intel'], hint: '带来源的岗位事实与匹配' },
+      { key: 'intel', label: '职业探索', to: '/intel', icon: 'compass', paths: ['/intel'], hint: '从专业出发了解职业方向与真实去向' },
     ],
   },
   {
