@@ -77,7 +77,7 @@ export const WORKSPACE_GROUPS: NavGroup[] = [
     icon: 'review',
     items: [
       { key: 'review', label: '复盘记录', to: '/review', icon: 'review', paths: ['/review'], hint: '做过的事与调整' },
-      { key: 'achievements', label: '成长记录', to: '/achievements', icon: 'trophy', paths: ['/achievements'], hint: '已解锁与未解锁的完成记录' },
+      { key: 'achievements', label: '完成记录', to: '/achievements', icon: 'trophy', paths: ['/achievements'], hint: '已完成、下一步与形成条件' },
     ],
   },
 ]
