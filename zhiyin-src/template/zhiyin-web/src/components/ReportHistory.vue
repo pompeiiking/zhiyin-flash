@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import {studentApi} from '../api/student-capabilities'
+import DetailPopover from './DetailPopover.vue'
 import { onMounted } from 'vue'
 import { ref } from 'vue'
 import { backendClient } from '../api/backend-client'
@@ -8,6 +10,8 @@ import EmptyState from './EmptyState.vue'
 import StatTile from './StatTile.vue'
 const props = withDefaults(defineProps<{assetType?: 'report'|'direction_plan'|'action_plan'}>(),{assetType:'report'})
 defineEmits<{ open: [report: ReportFullTextView, metadata: AssetVersionView | null] }>()
+const historical=ref<{version:number;content:any}|null>(null)
+async function readSnapshot(version:number){error.value='';try{historical.value=await studentApi.snapshot(props.assetType,version)}catch(e){error.value=(e as Error).message}}
 const versions = ref<AssetVersionView[] | null>(null), busy = ref(false), error = ref(''), reading = ref<number | null>(null)
 async function load() {
   if (busy.value) return
@@ -43,6 +47,7 @@ onMounted(()=>{ void load() })
       <p class="ws-section">{{ v.diff_from_previous || '本版没有提供差异摘要。' }}</p>
       <p v-if="v.depends_on_profile_keys?.length" class="ws-muted">依赖的个人信息：{{ v.depends_on_profile_keys.join('、') }}</p>
       <button v-if="assetType==='report'" class="btn ws-section" :disabled="reading!==null" @click="read(v.version,$emit)">{{ reading===v.version?'正在读取…':'阅读第'+v.version+'版完整正文' }}</button>
+      <DetailPopover v-if="assetType!=='report'" :title="'第 '+v.version+' 版正文'" side="right" @update:model-value="open=>open&&readSnapshot(v.version)"><template #trigger>阅读历史正文</template><template v-if="historical?.version===v.version"><template v-if="assetType==='action_plan'"><section v-for="p in historical.content.phases" :key="p.id||p.name"><h3>{{p.name}}</h3><p v-for="t in p.tasks" :key="t.id">{{t.done?'✓':'○'}} {{t.text}}</p></section></template><template v-else><section v-for="p in historical.content" :key="p.id"><h3>{{p.name}}</h3><p>{{p.target_desc}}</p><p>{{p.fit_reason}}</p><p>{{p.main_risk}}</p></section></template></template><p v-else>请点击读取历史正文；缺少快照时会在版本列表显示原因。</p></DetailPopover>
     </article>
     <EmptyState v-if="!versions.length" kind="report" size="sm" title="尚无已保存的资产版本" description="生成第一版后，这里会按版本列出生成时间、依赖信息与更新状态。" />
   </template>

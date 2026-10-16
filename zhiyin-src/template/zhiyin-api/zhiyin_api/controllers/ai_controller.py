@@ -59,6 +59,7 @@ _ERROR_CODE: dict[str, ErrorCode] = {
     "NOT_FOUND": ErrorCode.NOT_FOUND,
     "CONFLICT": ErrorCode.CONFLICT,
     "VALIDATION": ErrorCode.INVALID_PARAM,
+    "INVALID_PARAM": ErrorCode.INVALID_PARAM,
 }
 
 
@@ -128,6 +129,8 @@ async def _stream(request: Request, key: str, arg: str = "") -> Response:
     try:
         facade = get_facade()
         user_id = await facade.resolve_user_id(request)
+        if key not in {"bind.chsi", "bind.academic"}:
+            await facade.check_analysis_consent(user_id)
     except FacadeNotConfiguredError as exc:
         return _envelope(
             ErrorCode.DEPENDENCY_UNAVAILABLE,
@@ -135,9 +138,7 @@ async def _stream(request: Request, key: str, arg: str = "") -> Response:
             503,
         )
     except PermissionError as exc:
-        return _envelope(
-            ErrorCode.UNAUTHORIZED, _user_message(exc, ErrorCode.UNAUTHORIZED), 401
-        )
+        return _envelope(ErrorCode.UNAUTHORIZED, _user_message(exc, ErrorCode.UNAUTHORIZED), 401)
     except LookupError as exc:
         return _envelope(ErrorCode.NOT_FOUND, _user_message(exc, ErrorCode.NOT_FOUND), 404)
     except Exception as exc:  # noqa: BLE001 - 流外失败同样必须走信封
@@ -146,7 +147,12 @@ async def _stream(request: Request, key: str, arg: str = "") -> Response:
         return _envelope(
             code,
             _user_message(exc, code),
-            503 if code is ErrorCode.DEPENDENCY_UNAVAILABLE else 500,
+            {
+                ErrorCode.INVALID_PARAM: 400,
+                ErrorCode.NOT_FOUND: 404,
+                ErrorCode.CONFLICT: 409,
+                ErrorCode.DEPENDENCY_UNAVAILABLE: 503,
+            }.get(code, 500),
         )
     return _sse(_frames(facade, user_id, key, arg))
 

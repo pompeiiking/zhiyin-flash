@@ -125,7 +125,13 @@ def test_charts_coming_from_the_model_are_validated_too() -> None:
 
 
 APPLICATION = TEMPLATE_ROOT / "zhiyin-api" / "zhiyin_api" / "facade" / "application.py"
-REVIEW_OVERLAY = TEMPLATE_ROOT.parents[1] / "zhiyin-src/template/zhiyin-web" / "src" / "views" / "ReflectionView.vue"
+REVIEW_OVERLAY = (
+    TEMPLATE_ROOT.parents[1]
+    / "zhiyin-src/template/zhiyin-web"
+    / "src"
+    / "views"
+    / "ReflectionView.vue"
+)
 
 
 def test_every_frontend_event_says_whether_it_belongs_on_the_timeline() -> None:
@@ -160,5 +166,5 @@ def test_usage_telemetry_never_reaches_the_review_timeline() -> None:
 def test_review_timeline_is_paginated_and_uses_backend_labels() -> None:
     source = REVIEW_OVERLAY.read_text(encoding="utf-8")
     assert "usePagedItems" in source and "ResultPager" in source
-    assert "what:e.title" in source
+    assert "title:e.title" in source
     assert "e.type==='milestone_done'" in source

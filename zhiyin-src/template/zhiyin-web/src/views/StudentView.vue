@@ -230,8 +230,8 @@ const edges = computed<readonly ReadonlyEdge[]>(() => {
 const depsFromContract = computed(() => edges.value !== DEMO_EDGES)
 const depsSourceNote = computed(() =>
   depsFromContract.value
-    ? '依赖关系来自后端契约的 dependencies（每条边带 via_profile_keys）。'
-    : '依赖关系取自当前资料对应表：本地资料里没有 dependencies，所以按字段与结论的对应关系标出。',
+    ? '关联关系来自已保存的资料记录，具体证据仍需逐项核对。'
+    : '当前按资料与判断的对应关系整理，尚未提供逐项关联记录。',
 )
 
 /** 资产 id 的写法在不同实现里有差异，这里按"能对上就用"的顺序收窄，不做语义猜测 */
@@ -849,6 +849,8 @@ function bindConclusion(key: string, el: Element | null) {
 const flashId = ref('')
 let flashTimer = 0
 async function jumpToConclusion(key: string) {
+  openField.value = null
+  await nextTick()
   profileTab.value = 'judgments'
   await nextTick()
   conclusionEls.get(key)?.scrollIntoView({ block: 'center', behavior: reduced() ? 'instant' : 'smooth' })
@@ -905,7 +907,14 @@ function fieldValue(row: FieldRow) {
   return demo.state.profileEdits[row.key] ?? (row.key === 'grade' ? demo.use.scenario.value.grade + '（在读）' : row.value)
 }
 
+async function inspectField(row: FieldRow) {
+  openField.value = null
+  await nextTick()
+  insights.value?.inspect(row.key, row.label)
+}
+
 function edit(row: FieldRow) {
+  openField.value = null
   correction.value = row
   value.value = fieldValue(row)
   correctionError.value = ''
@@ -1053,6 +1062,10 @@ onMounted(()=>{ void loadWorkspace() })
                   </span>
                 </template><p>{{ row.desc }} · {{ row.noted }}</p><ConfidenceBadge :confidence="row.conf" />
                   <div :id="`p7-more-${row.key}`" class="p7-row__more-body">
+                    <div class="p7-row__actions">
+                      <button class="ws-text-button" type="button" @click="inspectField(row)">深入了解这项信息</button>
+                      <button class="ws-text-button" type="button" @click="edit(row)">更正信息<UiIcon name="arrow" :size="14" /></button>
+                    </div>
                     <template v-if="row.evidence.length">
                       <p class="p7-facts__title">原始证据</p>
                       <ul class="ws-mini-list p7-evidence">
@@ -1062,22 +1075,19 @@ onMounted(()=>{ void loadWorkspace() })
                     <p v-else class="p7-evidence__none">这条没有附原始证据，只有来源与时间。</p>
 
                     <!-- 关系本身在折叠内可点：跳到 B 段那条判断（≥44px 的行，不再是 24px 的 chip） -->
-                    <p class="p7-facts__title">该信息支持的判断</p>
+                    <p class="p7-facts__title">关联判断 <span class="ws-muted">{{ fieldDeps[row.key]?.length || 0 }} 条</span></p>
                     <ul v-if="fieldDeps[row.key]?.length" class="p7-links">
-                      <li v-for="key in fieldDeps[row.key]" :key="key">
+                      <li v-for="key in fieldDeps[row.key].slice(0, 3)" :key="key">
                         <button class="p7-link" type="button" @click="jumpToConclusion(key)">
                           <span class="p7-link__label">{{ conclusionMap[key]?.label ?? key }}</span>
                           <span class="p7-link__value" :title="conclusionMap[key]?.brief">{{ conclusionMap[key]?.brief }}</span>
-                          <span class="p7-link__go">查看判断<UiIcon name="arrow" :size="14" /></span>
+                          <span class="p7-link__go" aria-hidden="true"><UiIcon name="arrow" :size="14" /></span>
                         </button>
                       </li>
                     </ul>
-                    <p v-else class="p7-evidence__none">暂时还没有判断用到它。</p>
+                    <p v-else class="p7-evidence__none">暂时还没有判断用到它。</p><button v-if="fieldDeps[row.key]?.length > 3" class="ws-text-button" @click="jumpToConclusion(fieldDeps[row.key][0])">查看全部分析与判断<UiIcon name="arrow" :size="14" /></button>
 
-                    <div class="p7-row__actions">
-                      <button class="ws-text-button" type="button" @click="insights?.inspect(row.key, row.label)">深入了解这项信息</button>
-                      <button class="ws-text-button" type="button" @click="edit(row)">更正信息<UiIcon name="arrow" :size="14" /></button>
-                    </div>
+
                   </div>
                 </DetailPopover>
               </motion.li>
@@ -1138,7 +1148,7 @@ onMounted(()=>{ void loadWorkspace() })
         />
       </header>
 
-      <p class="p7-deps-note"><strong>关系怎么来：</strong>{{ depsSourceNote }}<template v-if="depsMixed">极少数判断在契约里找不到对应的边，那几条用了资料对应表，已分开标注。</template></p>
+      <p class="p7-deps-note"><strong>关系怎么来：</strong>{{ depsSourceNote }}<template v-if="depsMixed">部分关联尚未核实，已单独标注。</template></p>
 
       <ul class="p7-concls">
         <li
@@ -1178,7 +1188,7 @@ onMounted(()=>{ void loadWorkspace() })
           </div>
 
           <div class="p7-concl__deps">
-            <span class="p7-concl__deps-label">靠 A 的</span>
+            <span class="p7-concl__deps-label">关联资料</span>
             <!-- 折叠外只讲关系这一件事：哪几条、缺哪几条、缺的落在 C 段第几张卡。
                  可点的动作在下面的展开区（≥44px 行），所以这里不再有 24px 的可点 chip。 -->
             <ul class="p7-deps__list">
@@ -1213,7 +1223,7 @@ onMounted(()=>{ void loadWorkspace() })
             </template>
 
             <!-- 逐条依赖：这里才是可点的动作，每条一行 ≥44px；缺的直接落到 C 段那张卡 -->
-            <p class="p7-concl__more-label">它靠 A 的这几条</p>
+            <p class="p7-concl__more-label">相关资料</p>
             <ul v-if="item.deps.length" class="p7-links">
               <li v-for="dep in item.deps" :key="dep.key">
                 <button

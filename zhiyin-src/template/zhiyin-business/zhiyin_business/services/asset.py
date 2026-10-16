@@ -25,14 +25,14 @@ class DefaultAssetService(AssetService):
         assets: AssetRepository,
         event_bus: EventBus,
         impact_policy: ImpactPolicy,
+        student_state=None,
     ) -> None:
+        self._student_state = student_state
         self._assets = assets
         self._event_bus = event_bus
         self._impact_policy = impact_policy
 
-    async def list_versions(
-        self, user_id: str, asset_type: AssetType
-    ) -> list[AssetVersion]:
+    async def list_versions(self, user_id: str, asset_type: AssetType) -> list[AssetVersion]:
         return await self._assets.list_versions(user_id, asset_type)
 
     async def get_latest_version(
@@ -81,9 +81,7 @@ class DefaultAssetService(AssetService):
                     candidates.append(latest)
             affected = candidates
         else:
-            candidates = await self._assets.list_affected_assets(
-                user_id, changed_profile_keys
-            )
+            candidates = await self._assets.list_affected_assets(user_id, changed_profile_keys)
             affected = [
                 item
                 for item in candidates
@@ -106,7 +104,7 @@ class DefaultAssetService(AssetService):
         return changed
 
     async def save_version(
-        self, user_id: str, draft: AssetUpdateDraft
+        self, user_id: str, draft: AssetUpdateDraft, *, snapshot_content=None, analysis_sources=None
     ) -> AssetVersion:
         latest = await self._assets.get_latest_version(user_id, draft.asset_type)
         version = await self._assets.save_version(
@@ -120,6 +118,7 @@ class DefaultAssetService(AssetService):
                 diff_from_previous=draft.diff_from_previous,
             )
         )
+        await self._save_snapshot(user_id, version, snapshot_content, analysis_sources)
         await self._event_bus.publish(
             DomainEvent(
                 event_id=f"asset-{version.id}",
@@ -136,9 +135,40 @@ class DefaultAssetService(AssetService):
         )
         return version
 
-    async def get_report(
-        self, user_id: str, version: Optional[int] = None
-    ) -> Optional[Report]:
+    async def _save_snapshot(self, user_id, version, snapshot_content=None, analysis_sources=None):
+        if self._student_state is None:
+            return
+        if snapshot_content is not None:
+            content = snapshot_content
+        elif version.asset_type == AssetType.DIRECTION_PLAN:
+            content = [
+                p.model_dump(mode="json") for p in await self._assets.list_direction_plans(user_id)
+            ]
+        elif version.asset_type == AssetType.ACTION_PLAN:
+            plan = await self._assets.get_action_plan(user_id)
+            content = plan.model_dump(mode="json") if plan else None
+        else:
+            return
+
+        def change(s):
+            s.setdefault("asset_snapshots", {})[f"{version.asset_type.value}:{version.version}"] = {
+                "asset_type": version.asset_type.value,
+                "version": version.version,
+                "created_at": version.created_at.isoformat(),
+                "content": content,
+            }
+            return s
+
+        await self._student_state.update(user_id, change)
+        from zhiyin_business.services.analysis_access import current_scope
+        scope = current_scope(user_id)
+        if scope is not None and snapshot_content is not None:
+            kind = {AssetType.REPORT: "report", AssetType.DIRECTION_PLAN: "directions",
+                    AssetType.ACTION_PLAN: "plan"}[version.asset_type]
+            await scope.record(kind, content, sources=analysis_sources)
+            await scope.record("version", version, sources=analysis_sources)
+
+    async def get_report(self, user_id: str, version: Optional[int] = None) -> Optional[Report]:
         return await self._assets.get_report(user_id, version)
 
     # ---------- 写侧：环节产出 → 资产正文 ----------
@@ -156,9 +186,8 @@ class DefaultAssetService(AssetService):
         diff_from_previous: Optional[str] = None,
     ) -> AssetVersion:
         version = await self._next_version(user_id, AssetType.REPORT)
-        await self._assets.save_report(
-            report.model_copy(update={"user_id": user_id, "version": version})
-        )
+        saved = report.model_copy(update={"user_id": user_id, "version": version})
+        await self._assets.save_report(saved)
         return await self.save_version(
             user_id,
             AssetUpdateDraft(
@@ -167,6 +196,7 @@ class DefaultAssetService(AssetService):
                 diff_from_previous=diff_from_previous,
                 reason="环节产出",
             ),
+            snapshot_content=saved.model_dump(mode="json"),
         )
 
     async def save_direction_plans(
@@ -186,6 +216,7 @@ class DefaultAssetService(AssetService):
                 diff_from_previous=diff_from_previous,
                 reason="环节产出",
             ),
+            snapshot_content=[p.model_dump(mode="json") for p in plans],
         )
 
     async def save_action_plan(
@@ -197,6 +228,12 @@ class DefaultAssetService(AssetService):
         diff_from_previous: Optional[str] = None,
     ) -> AssetVersion:
         previous = await self._assets.get_action_plan(user_id)
+        from zhiyin_business.services.analysis_access import ALL_SOURCES, current_scope
+        scope = current_scope(user_id)
+        # Preserved phase/task metadata can itself contain old derived text.
+        # Keep that user data, but do not falsely label the merged plan as clean.
+        analysis_sources = (ALL_SOURCES if scope and previous is not None
+                            and not scope.allows("plan", previous) else None)
         merged = self._inherit_task_state(previous, plan)
         if previous is not None:
             merged = merged.model_copy(update={"id": previous.id})
@@ -216,6 +253,8 @@ class DefaultAssetService(AssetService):
                 diff_from_previous=diff_from_previous,
                 reason="环节产出",
             ),
+            snapshot_content=merged.model_dump(mode="json"),
+            analysis_sources=analysis_sources,
         )
 
     @staticmethod
@@ -231,10 +270,7 @@ class DefaultAssetService(AssetService):
         if previous is None:
             return plan
         previous_tasks = {
-            task.id: task
-            for phase in previous.phases
-            for task in phase.tasks
-            if task.id
+            task.id: task for phase in previous.phases for task in phase.tasks if task.id
         }
         # 旧计划可能使用随机 id 或旧的位置哈希。只有两侧都唯一的同名任务
         # 才能按文字对齐；重复任务必须按 id，避免把另一件事误标为完成。
@@ -243,8 +279,7 @@ class DefaultAssetService(AssetService):
             for task in phase.tasks:
                 previous_by_text[(phase.name.strip(), task.text.strip())].append(task)
         new_counts = Counter(
-            (phase.name.strip(), task.text.strip())
-            for phase in plan.phases for task in phase.tasks
+            (phase.name.strip(), task.text.strip()) for phase in plan.phases for task in phase.tasks
         )
         phases = []
         changed = False
@@ -258,6 +293,19 @@ class DefaultAssetService(AssetService):
                     old = candidates[0]
                 updates = {}
                 if old is not None:
+                    updates.update(
+                        {
+                            key: getattr(old, key)
+                            for key in (
+                                "status",
+                                "progress",
+                                "waiting_reason",
+                                "scheduled_at",
+                                "estimated_minutes",
+                                "parent_task_id",
+                            )
+                        }
+                    )
                     if old.id and old.id != task.id:
                         updates["id"] = old.id
                     if old.done:
@@ -267,7 +315,32 @@ class DefaultAssetService(AssetService):
                     changed = True
                 else:
                     tasks.append(task)
-            phases.append(phase.model_copy(update={"tasks": tasks}))
+            old_phase = next(
+                (
+                    p
+                    for p in previous.phases
+                    if (phase.id and p.id == phase.id) or p.name == phase.name
+                ),
+                None,
+            )
+            metadata = (
+                {
+                    k: getattr(old_phase, k)
+                    for k in (
+                        "id",
+                        "depends_on",
+                        "starts_at",
+                        "ends_at",
+                        "blocking_conditions",
+                        "handoff_requirements",
+                    )
+                }
+                if old_phase
+                else {}
+            )
+            if metadata:
+                changed = True
+            phases.append(phase.model_copy(update={**metadata, "tasks": tasks}))
         return plan.model_copy(update={"phases": phases}) if changed else plan
 
     async def _next_version(self, user_id: str, asset_type: AssetType) -> int:

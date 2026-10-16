@@ -355,9 +355,7 @@ class PostgresProfileRepository(ProfileRepository):
                 _new_id("prf"),
                 now,
             )
-            await connection.execute(
-                "DELETE FROM biz_profile_gap WHERE user_id = $1", user_id
-            )
+            await connection.execute("DELETE FROM biz_profile_gap WHERE user_id = $1", user_id)
             for gap in gaps:
                 await connection.execute(
                     """
@@ -559,7 +557,9 @@ class PostgresConversationTurnRepository(ConversationTurnRepository):
                 agent_id=row["agent_id"],
                 client_msg_id=row["client_msg_id"],
                 created_at=row["created_at"],
-                renderables=json.loads(row["renderables"]) if isinstance(row["renderables"], str) else row["renderables"],
+                renderables=json.loads(row["renderables"])
+                if isinstance(row["renderables"], str)
+                else row["renderables"],
             )
             if row
             else None
@@ -592,7 +592,9 @@ class PostgresConversationTurnRepository(ConversationTurnRepository):
                 agent_id=row["agent_id"],
                 client_msg_id=row["client_msg_id"],
                 created_at=row["created_at"],
-                renderables=json.loads(row["renderables"]) if isinstance(row["renderables"], str) else row["renderables"],
+                renderables=json.loads(row["renderables"])
+                if isinstance(row["renderables"], str)
+                else row["renderables"],
             )
             for row in rows
         ]
@@ -704,9 +706,7 @@ class PostgresAcademicSnapshotRepository(AcademicSnapshotRepository):
         return stored
 
     async def delete(self, user_id: str) -> None:
-        await self._db.execute(
-            "DELETE FROM biz_academic_snapshot WHERE user_id = $1", user_id
-        )
+        await self._db.execute("DELETE FROM biz_academic_snapshot WHERE user_id = $1", user_id)
 
 
 class PostgresAssetRepository(AssetRepository):
@@ -815,9 +815,7 @@ class PostgresAssetRepository(AssetRepository):
             if row is None:
                 return None
             latest = _load(AssetVersion, row["payload"])
-            marker = latest.model_copy(
-                update={"needs_recompute": True, "recompute_reason": reason}
-            )
+            marker = latest.model_copy(update={"needs_recompute": True, "recompute_reason": reason})
             # 原地更新**这一版**的 payload：不加行、不升版，正文一个字不动。
             await connection.execute(
                 """
@@ -831,9 +829,7 @@ class PostgresAssetRepository(AssetRepository):
             )
         return marker
 
-    async def get_report(
-        self, user_id: str, version: Optional[int] = None
-    ) -> Optional[Report]:
+    async def get_report(self, user_id: str, version: Optional[int] = None) -> Optional[Report]:
         if version is None:
             row = await self._db.fetchrow(
                 """
@@ -872,12 +868,8 @@ class PostgresAssetRepository(AssetRepository):
                 stored.user_id,
             )
             if latest is not None:
-                stored.version = max(
-                    stored.version, _load(Report, latest["payload"]).version + 1
-                )
-            await self._put_content(
-                stored.user_id, "report", stored.version, stored, connection
-            )
+                stored.version = max(stored.version, _load(Report, latest["payload"]).version + 1)
+            await self._put_content(stored.user_id, "report", stored.version, stored, connection)
         return stored
 
     async def list_direction_plans(self, user_id: str) -> list[DirectionPlan]:
@@ -891,9 +883,7 @@ class PostgresAssetRepository(AssetRepository):
         )
         return [_load(DirectionPlan, row["payload"]) for row in rows]
 
-    async def save_direction_plans(
-        self, user_id: str, plans: list[DirectionPlan]
-    ) -> None:
+    async def save_direction_plans(self, user_id: str, plans: list[DirectionPlan]) -> None:
         async with self._db.transaction() as connection:
             await self._delete_content(user_id, "direction_plan", connection)
             for sort_order, plan in enumerate(plans):
@@ -901,7 +891,11 @@ class PostgresAssetRepository(AssetRepository):
                 if not stored.id:
                     stored.id = _new_id("plan")
                 await self._put_content(
-                    user_id, "direction_plan", 0, stored, connection,
+                    user_id,
+                    "direction_plan",
+                    0,
+                    stored,
+                    connection,
                     sort_order=sort_order,
                 )
 
@@ -939,26 +933,40 @@ class PostgresAssetRepository(AssetRepository):
         if not stored.id:
             stored.id = _new_id("act")
         async with self._db.transaction() as connection:
+            await _lock(connection, f"action_plan:{user_id}")
             await self._delete_content(user_id, "action_plan", connection)
             await self._put_content(user_id, "action_plan", 0, stored, connection)
         return stored
 
-    async def mark_task_done(
-        self, user_id: str, task_id: str, *, done: bool = True
-    ) -> ActionPlan:
-        plan = await self.get_action_plan(user_id)
-        if plan is None:
-            raise ResourceNotFound(f"行动计划不存在：{user_id}")
-        for phase in plan.phases:
-            for task in phase.tasks:
-                # 优先按任务 id 定位（新数据）；老数据没有 id，回落到
-                # 「阶段名:任务文本」与"裸任务文本"两种历史口径。
-                if task_id in {task.id, f"{phase.name}:{task.text}", task.text}:
-                    task.done = done
-                    task.done_at = _now() if done else None
-                    await self.save_action_plan(user_id, plan)
-                    return plan
-        raise ResourceNotFound(f"行动任务不存在：{task_id}")
+    async def update_action_plan(self, user_id, change):
+        async with self._db.transaction() as connection:
+            await _lock(connection, f"action_plan:{user_id}")
+            row = await connection.fetchrow(
+                "SELECT payload FROM biz_asset_content WHERE user_id=$1 AND asset_type='action_plan' ORDER BY created_at DESC LIMIT 1 FOR UPDATE",
+                user_id,
+            )
+            plan = _load(ActionPlan, row["payload"]) if row else None
+            stored = change(plan)
+            await self._delete_content(user_id, "action_plan", connection)
+            await self._put_content(user_id, "action_plan", 0, stored, connection)
+            return stored
+
+    async def mark_task_done(self, user_id: str, task_id: str, *, done: bool = True) -> ActionPlan:
+        def change(plan):
+            if plan is None:
+                raise ResourceNotFound("行动计划不存在")
+            for phase in plan.phases:
+                for task in phase.tasks:
+                    if task_id in {task.id, f"{phase.name}:{task.text}", task.text}:
+                        task.done = done
+                        task.done_at = _now() if done else None
+                        task.status = "completed" if done else "pending"
+                        task.progress = 100 if done else 0
+                        task.waiting_reason = ""
+                        return plan
+            raise ResourceNotFound("行动任务不存在")
+
+        return await self.update_action_plan(user_id, change)
 
     async def _put_content(
         self,
@@ -988,9 +996,7 @@ class PostgresAssetRepository(AssetRepository):
             _dump(model),
         )
 
-    async def _delete_content(
-        self, user_id: str, asset_type: str, connection: Any = None
-    ) -> None:
+    async def _delete_content(self, user_id: str, asset_type: str, connection: Any = None) -> None:
         executor = connection or self._db
         await executor.execute(
             "DELETE FROM biz_asset_content WHERE user_id = $1 AND asset_type = $2",
@@ -1061,9 +1067,7 @@ class PostgresTaskSessionRepository(TaskSessionRepository):
         )
         return stored
 
-    async def update_stage(
-        self, session_id: str, stage: LoopStage, lead_agent: str
-    ) -> TaskSession:
+    async def update_stage(self, session_id: str, stage: LoopStage, lead_agent: str) -> TaskSession:
         async with self._db.transaction() as connection:
             await _lock(connection, f"session:{session_id}")
             row = await connection.fetchrow(
@@ -1122,9 +1126,7 @@ class PostgresUserRepository(UserRepository):
         self._db = database
 
     async def get_by_id(self, user_id: str) -> Optional[UserAccount]:
-        row = await self._db.fetchrow(
-            "SELECT payload FROM biz_user_account WHERE id = $1", user_id
-        )
+        row = await self._db.fetchrow("SELECT payload FROM biz_user_account WHERE id = $1", user_id)
         return _load(UserAccount, row["payload"]) if row else None
 
     async def get_by_phone(self, phone: str) -> Optional[UserAccount]:
@@ -1156,7 +1158,8 @@ class PostgresUserRepository(UserRepository):
         # is revoking permissions. Update only the timestamp atomically.
         updated = await self._db.fetchval(
             "UPDATE biz_user_account SET payload=jsonb_set(payload,'{last_login_at}',$2::jsonb) WHERE id=$1 RETURNING id",
-            user_id, json.dumps(at.isoformat()),
+            user_id,
+            json.dumps(at.isoformat()),
         )
         if updated is None:
             raise ResourceNotFound(f"用户不存在：{user_id}")
@@ -1303,13 +1306,52 @@ class PostgresNotificationRepository(NotificationRepository):
     def __init__(self, database: PostgresDatabase) -> None:
         self._db = database
 
+    async def list_all(self, user_id):
+        rows = await self._db.fetch(
+            "SELECT * FROM orc_notification WHERE user_id=$1 ORDER BY created_at DESC", user_id
+        )
+        result = []
+        for row in rows:
+            state = row["processing_status"]
+            if state == "later" and row["snoozed_until"] and row["snoozed_until"] <= _now():
+                state = "pending"
+            elif state == "pending" and row["status"] == "read":
+                state = "read"
+            result.append(
+                dict(
+                    id=row["id"],
+                    title=row["title"],
+                    body=row["body"],
+                    occurred_at=(row["sent_at"] or row["created_at"]).isoformat(),
+                    channel=row["channel"],
+                    action=_load_value(row["action"]) if row["action"] else None,
+                    related_task_id=row["related_task_id"],
+                    status=state,
+                    snoozed_until=row["snoozed_until"].isoformat()
+                    if row["snoozed_until"]
+                    else None,
+                )
+            )
+        return result
+
+    async def set_state(self, user_id, message_id, status, snoozed_until=None):
+        result = await self._db.execute(
+            "UPDATE orc_notification SET processing_status=$3, snoozed_until=$4, status=$5 WHERE user_id=$1 AND id=$2",
+            user_id,
+            message_id,
+            status,
+            snoozed_until if status == "later" else None,
+            "read" if status in {"read", "done"} else "sent",
+        )
+        return _affected(result) > 0
+
     async def list_pending(self, user_id: str) -> list[dict]:
         rows = await self._db.fetch(
             """
             SELECT id, user_id, channel, status, title, body, action,
                    related_task_id, created_at, sent_at
             FROM orc_notification
-            WHERE user_id = $1 AND status <> 'read'
+            WHERE user_id = $1 AND status <> 'read' AND (processing_status = 'pending' OR (processing_status = 'later' AND snoozed_until <= NOW()))
             ORDER BY created_at DESC
             LIMIT 20
             """,

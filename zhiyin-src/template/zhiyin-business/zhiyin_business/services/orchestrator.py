@@ -52,11 +52,12 @@ from zhiyin_kernel.assets import GapClaim
 from zhiyin_kernel import dynamic_config
 from zhiyin_business.policies.collection import may_override_user_edit
 from zhiyin_business.policies.collection_gate import CollectionGate, evaluate_gate
-from zhiyin_kernel.errors import ResourceNotFound
+from zhiyin_kernel.errors import InvalidRequest, ResourceNotFound
 from zhiyin_kernel.enums import (
     AssetType,
     AxisAStage,
     BehaviorEventType,
+    ProfileSource,
     LoopStage,
     TaskStatus,
 )
@@ -146,7 +147,9 @@ class DefaultOrchestrator(Orchestrator):
         functions: FunctionService | None = None,
         data_sources: ExternalDataSource | None = None,
         read_cache: Any = None,
+        student_state=None,
     ) -> None:
+        self._student_state = student_state
         self._profiles = profiles
         self._behaviors = behaviors
         self._memories = memories
@@ -405,6 +408,17 @@ class DefaultOrchestrator(Orchestrator):
         return session
 
     async def handle_message(self, request: TurnRequest) -> TurnResult:
+        from zhiyin_business.services.analysis_access import activate, load_scope
+
+        scope = await load_scope(self._student_state, request.user_id)
+        if "material" not in scope.sources and (request.attachment_text or request.attachment_name):
+            error = InvalidRequest("上传材料参与分析已关闭，请移除附件后发送，或在资料偏好中开启。")
+            error.user_facing = True
+            raise error
+        with activate(scope):
+            return await self._handle_message(request)
+
+    async def _handle_message(self, request: TurnRequest) -> TurnResult:
         session = await self._sessions.get(request.task_id)
         if session is None:
             session = await self._sessions.create(
@@ -535,6 +549,13 @@ class DefaultOrchestrator(Orchestrator):
             "task_id": request.task_id,
             "intent": intent.value,
         }
+        from zhiyin_business.services.analysis_access import current_scope
+        scope = current_scope(request.user_id)
+        if scope and scope.restricted:
+            prompt_vars["analysis_sources"] = {
+                "allowed": sorted(scope.sources),
+                "note": "仅使用本轮上下文；未提供的旧摘要和推导资料已按用户设置排除，不能据此断言用户从未提供。",
+            }
         # 共享状态中虽有画像，模型在长上下文里仍曾说“没拿到你的画像”。
         # 把已存字段提到本轮输入的显眼位置，避免把“缺岗位要求”误说成“没有画像”。
         if blackboard.profile is not None and blackboard.profile.fields:
@@ -1034,6 +1055,8 @@ class DefaultOrchestrator(Orchestrator):
         written: list[str] = []
         blocked_by_user_edit: list[str] = []
         for update in output.field_updates:
+            if update.source in {ProfileSource.RECORD, ProfileSource.USER_EDIT}:
+                update = update.model_copy(update={"source": ProfileSource.CONVERSATION})
             key = self._normalize_profile_key(update.key)
             # **字段门禁**：画像只有一份固定词表（动态资源的采集规则）。
             # 不在表里的键一律不写 —— 放进去的代价不是"多一条记录"，

@@ -1,0 +1,339 @@
+from datetime import date, datetime, timedelta, timezone
+from unittest.mock import AsyncMock
+from zipfile import ZipFile
+from io import BytesIO
+
+import pytest
+from pydantic import ValidationError
+from zhiyin_business.services.asset import DefaultAssetService
+from zhiyin_business.services.student import StudentService
+from zhiyin_infrastructure.local.repository import (
+    InMemoryAssetRepository,
+    InMemoryNotificationRepository,
+    InMemoryAcademicSnapshotRepository,
+    InMemoryTaskSessionRepository,
+)
+from zhiyin_infrastructure.local.student import InMemoryStudentStateRepository
+from zhiyin_infrastructure.local.asset_documents import render_asset_document
+from zhiyin_kernel.assets import DirectionPlan
+from zhiyin_kernel.enums import PlanRole
+from zhiyin_kernel.errors import InvalidRequest, ResourceNotFound
+from zhiyin_business.contracts.student import (
+    TaskEdit,
+    PhaseEdit,
+    Preferences,
+    Semester,
+    ReviewEdit,
+    NotificationEdit,
+    MeasurementBatch,
+    Measurement,
+    DirectionWeights,
+)
+from zhiyin_data_sdk.gateways.academic import AcademicSnapshot, CourseEntry
+
+
+@pytest.fixture
+def service():
+    state = InMemoryStudentStateRepository()
+    assets = InMemoryAssetRepository()
+    asset_service = DefaultAssetService(assets, AsyncMock(), None, student_state=state)
+    return StudentService(
+        state=state,
+        assets=assets,
+        asset_service=asset_service,
+        notifications=InMemoryNotificationRepository(),
+        academic=InMemoryAcademicSnapshotRepository(),
+        sessions=InMemoryTaskSessionRepository(),
+    )
+
+
+async def phase(service):
+    plan = await service.edit_phase("a", PhaseEdit(name="本周"))
+    return plan.phases[0].id
+
+
+@pytest.mark.asyncio
+async def test_task_edit_split_state_and_account_isolation(service):
+    pid = await phase(service)
+    body = TaskEdit(
+        text="整理项目",
+        phase_id=pid,
+        status="in_progress",
+        progress=40,
+        estimated_minutes=35,
+        scheduled_at=datetime.now(timezone.utc),
+    )
+    plan = await service.edit_task("a", body)
+    tid = plan.phases[0].tasks[0].id
+    assert plan.phases[0].tasks[0].progress == 40
+    with pytest.raises(ResourceNotFound):
+        await service.edit_task("b", body, tid)
+    split = await service.edit_task(
+        "a", TaskEdit(text="整理第一个项目", phase_id=pid, parent_task_id=tid)
+    )
+    child = split.phases[0].tasks[-1]
+    assert child.parent_task_id == tid
+    with pytest.raises(InvalidRequest):
+        await service.edit_task("a", body.model_copy(update={"parent_task_id": child.id}), tid)
+    plan = await service.assets.mark_task_done("a", tid, done=True)
+    assert next(t for t in plan.phases[0].tasks if t.id == tid).status == "completed"
+    plan = await service.assets.mark_task_done("a", tid, done=False)
+    assert next(t for t in plan.phases[0].tasks if t.id == tid).progress == 0
+
+
+@pytest.mark.asyncio
+async def test_phase_cycles_rejected_and_history_is_exact(service):
+    first = await phase(service)
+    plan = await service.edit_phase("a", PhaseEdit(name="下周", depends_on=[first]))
+    second = plan.phases[-1].id
+    with pytest.raises(InvalidRequest):
+        await service.edit_phase("a", PhaseEdit(name="本周", depends_on=[second]), first)
+    old = await service.snapshot("a", "action_plan", 1)
+    assert len(old["content"]["phases"]) == 1
+    with pytest.raises(ResourceNotFound):
+        await service.snapshot("b", "action_plan", 1)
+    with pytest.raises(ResourceNotFound):
+        await service.snapshot("a", "action_plan", 999)
+
+
+@pytest.mark.asyncio
+async def test_notifications_full_history_snooze_restore(service):
+    service.notifications.add("a", {"id": "n1", "title": "任务提醒"})
+    later = NotificationEdit(
+        status="later", snoozed_until=datetime.now(timezone.utc) + timedelta(hours=1)
+    )
+    assert (await service.change_notification("a", "n1", later))["status"] == "later"
+    assert await service.notifications.list_pending("a") == []
+    await service.change_notification("a", "n1", NotificationEdit(status="done"))
+    assert (await service.list_notifications("a"))[0]["status"] == "done"
+    await service.change_notification("a", "n1", NotificationEdit(status="pending"))
+    assert len(await service.notifications.list_pending("a")) == 1
+    with pytest.raises(ResourceNotFound):
+        await service.change_notification("b", "n1", NotificationEdit(status="done"))
+    with pytest.raises(InvalidRequest):
+        await service.change_notification(
+            "a",
+            "n1",
+            later.model_copy(
+                update={"snoozed_until": datetime.now(timezone.utc) - timedelta(hours=1)}
+            ),
+        )
+
+
+@pytest.mark.asyncio
+async def test_reviews_apply_and_readback(service):
+    pid = await phase(service)
+    plan = await service.edit_task("a", TaskEdit(text="任务", phase_id=pid))
+    tid = plan.phases[0].tasks[0].id
+    review = await service.save_review(
+        "a", ReviewEdit(task_id=tid, reason="达到预期", note="已检查成果", result="complete")
+    )
+    assert not (await service.assets.get_action_plan("a")).phases[0].tasks[0].done
+    await service.apply_review("a", review["id"])
+    assert (await service.assets.get_action_plan("a")).phases[0].tasks[0].done
+    assert (await service.reviews("a"))["reasons"] == {"达到预期": 1}
+    assert await service.apply_review("a", review["id"]) == (await service.reviews("a"))["items"][0]
+    assert (await service.reviews("b"))["items"] == []
+
+
+@pytest.mark.asyncio
+async def test_preferences_persist_and_actually_gate_analysis(service):
+    await service.save_preferences(
+        "a", Preferences(proactive_reminders=False, academic_analysis=False)
+    )
+    assert not await service.can_notify("a")
+    assert (await service.preferences("b")).academic_analysis
+    assert not (await service.require_analysis_consent("a")).academic_analysis
+    await service.require_analysis_consent("b")
+
+
+@pytest.mark.asyncio
+async def test_workload_uses_real_clock_and_overlaps(service):
+    pid = await phase(service)
+    await service.edit_task(
+        "a",
+        TaskEdit(
+            text="练习",
+            phase_id=pid,
+            scheduled_at=datetime(2026, 10, 19, 0, 30, tzinfo=timezone.utc),
+            estimated_minutes=60,
+        ),
+    )
+    await service.academic.upsert(
+        "a",
+        AcademicSnapshot(
+            courses=[
+                CourseEntry(name="数据库", weekday=1, start_period=1, end_period=1, weeks="1-2周")
+            ]
+        ),
+    )
+    await service.semester(
+        "a",
+        Semester(
+            first_monday=date(2026, 10, 19),
+            periods=[{"number": 1, "start": "08:00", "end": "09:00"}],
+            weekly_available_minutes=300,
+        ),
+    )
+    data = await service.workload("a", date(2026, 10, 19))
+    assert data["weeks"][0]["course_minutes"] == 60
+    assert data["weeks"][0]["task_minutes"] == 60
+    assert data["weeks"][0]["remaining_minutes"] == 240
+    assert len(data["conflicts"]) == 1
+
+
+@pytest.mark.asyncio
+async def test_weighted_comparison_requires_complete_evidence(service):
+    plan = DirectionPlan(
+        id="direction",
+        role=PlanRole.MAIN,
+        name="方向",
+        target_desc="目标",
+        fit_reason="依据",
+        main_risk="风险",
+    )
+    await service.asset_service.save_direction_plans("a", [plan])
+    assert (await service.compare("a"))["plans"][0]["score"] is None
+    entries = [
+        Measurement(
+            key=k,
+            label=k,
+            value=80,
+            source="本人保存的测评结果",
+            method="同一量表",
+            measured_at=datetime.now(timezone.utc),
+        )
+        for k in ("major", "jobs", "salary", "stability", "location")
+    ]
+    await service.save_measurements(
+        "a",
+        MeasurementBatch(
+            asset_type="direction_plan", version=1, subject_id="direction", measurements=entries
+        ),
+    )
+    assert (await service.compare("a"))["plans"][0]["score"] == 0.8
+    assert (await service.compare("b"))["plans"] == []
+    with pytest.raises(ValidationError):
+        DirectionWeights(major=0, jobs=0, salary=0, stability=0, location=0)
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"text": "x", "phase_id": "p", "status": "waiting"},
+        {"text": "x", "phase_id": "p", "progress": 100},
+        {"text": "x", "phase_id": "p", "estimated_minutes": -1},
+        {"text": "x", "phase_id": "p", "scheduled_at": "2026-10-19T10:00:00"},
+    ],
+)
+def test_task_validation(body):
+    with pytest.raises(ValidationError):
+        TaskEdit(**body)
+
+
+def test_document_export_has_real_content():
+    doc = render_asset_document("行动计划", ["完成项目 <复盘> & 归档"], "docx")
+    with ZipFile(BytesIO(doc)) as z:
+        assert "完成项目 &lt;复盘&gt; &amp; 归档" in z.read("word/document.xml").decode()
+    pdf = render_asset_document("行动计划", ["完成项目复盘"], "pdf")
+    assert pdf.startswith(b"%PDF-") and len(pdf) > 1000
+
+
+def test_import_preserves_explicit_period_numbers():
+    from zhiyin_infrastructure.academic.parsers import parse_json_courses
+
+    _, courses = parse_json_courses(
+        [{"name": "课程", "weekday": 1, "start_period": 1, "end_period": 2, "weeks": "1-16"}]
+    )
+    assert (courses[0].start_period, courses[0].end_period) == (1, 2)
+
+
+def test_http_roundtrip_download_and_ownership(tmp_path):
+    from pathlib import Path
+    from fastapi.testclient import TestClient
+    from zhiyin_boot import Settings, build_container, wire_application
+
+    root = Path(__file__).resolve().parents[1]
+    container = build_container(
+        Settings(
+            env="test",
+            local_registry_dir=str(root / "data/registry"),
+            local_object_dir=str(tmp_path),
+            use_remote_llm=True,
+            llm_api_key="sk-test",
+            llm_base_url="https://example.invalid",
+            llm_model="test",
+        )
+    )
+
+    # Unit boundary: real HTTP/DTO/service/storage, deterministic identity. JWT is covered by the Docker acceptance.
+    async def resolve_identity(request):
+        return request.headers["Authorization"].removeprefix("Bearer ")
+
+    container.facade.resolve_user_id = resolve_identity
+    with TestClient(wire_application(container)) as client:
+
+        def call(method, path, body=None, code=200):
+            response = client.request(method, "/api/v1/app" + path, json=body)
+            assert response.status_code == code, response.text
+            return response.json().get("data")
+
+        client.headers["Authorization"] = "Bearer capability_http"
+        plan = call("POST", "/plan/action/phases", {"name": "行动阶段"})
+        pid = plan["phases"][0]["id"]
+        plan = call(
+            "POST",
+            "/plan/action/tasks",
+            {
+                "text": "准备复盘",
+                "phase_id": pid,
+                "status": "waiting",
+                "waiting_reason": "等待反馈",
+            },
+        )
+        tid = plan["phases"][0]["tasks"][0]["task_id"]
+        assert plan["next_task"] is None
+        assert call("GET", "/plan/action")["phases"][0]["tasks"][0]["status"] == "waiting"
+        review = call(
+            "POST", "/reviews", {"task_id": tid, "reason": "达到预期", "result": "complete"}
+        )
+        assert call("POST", f"/reviews/{review['id']}/apply")["applied_at"]
+        exported = call("POST", "/assets/export", {"asset_type": "action_plan", "format": "docx"})
+        assert exported["available"]
+        path = "/api/v1/app/assets/download/" + exported["object_key"]
+        response = client.get(path)
+        assert response.status_code == 200
+        assert "已完成" in ZipFile(BytesIO(response.content)).read("word/document.xml").decode()
+        client.headers["Authorization"] = "Bearer capability_other"
+        assert client.get(path).status_code == 404
+        assert call("GET", "/reviews")["items"] == []
+        call("PUT", f"/plan/action/tasks/{tid}", {"text": "越权", "phase_id": pid}, 404)
+        call("PUT", "/preferences", {"material_analysis": False})
+        from zhiyin_orchestration import AgentResult
+        container.ai_task_service._engine = AsyncMock()
+        container.ai_task_service._engine.invoke.return_value = AgentResult(
+            agent_id="career_advisor", valid=True, structured={"headline": "仍可分析"})
+        allowed = client.post("/api/v1/app/brief/today")
+        assert allowed.status_code == 200
+        assert '"result"' in allowed.text and '"error"' not in allowed.text
+
+
+@pytest.mark.asyncio
+async def test_retry_does_not_replace_newer_session_snapshot(service):
+    await service.store_session_snapshot("a", "task", {"guide": "first"}, "one")
+    await service.store_session_snapshot("a", "task", {"guide": "second"}, "two")
+    await service.store_session_snapshot("a", "task", {"guide": "first"}, "one")
+    assert (await service.state.get("a"))["session_snapshots"]["task"]["guide"] == "second"
+
+
+@pytest.mark.asyncio
+async def test_repeated_identical_task_edit_does_not_create_versions(service):
+    from zhiyin_kernel.enums import AssetType
+
+    pid = await phase(service)
+    body = TaskEdit(text="任务", phase_id=pid)
+    plan = await service.edit_task("a", body)
+    before = await service.assets.get_latest_version("a", AssetType.ACTION_PLAN)
+    await service.edit_task("a", body, plan.phases[0].tasks[0].id)
+    after = await service.assets.get_latest_version("a", AssetType.ACTION_PLAN)
+    assert before.version == after.version

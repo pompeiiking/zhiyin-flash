@@ -18,7 +18,10 @@ from zhiyin_api.controllers.module_controller import router as module_router
 from zhiyin_api.controllers.developer_controller import router as developer_router
 
 # 全部路由清单：供 zhiyin-boot 统一挂载
+from zhiyin_api.controllers.student_controller import router as student_router
+
 ROUTERS = [
+    student_router,
     app_router,
     conversation_router,
     workspace_router,

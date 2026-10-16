@@ -26,6 +26,8 @@ from __future__ import annotations
 
 MIGRATION_SQL = "\n".join(
     [
+        "ALTER TABLE orc_notification ADD COLUMN IF NOT EXISTS processing_status TEXT NOT NULL DEFAULT 'pending';",
+        "ALTER TABLE orc_notification ADD COLUMN IF NOT EXISTS snoozed_until TIMESTAMPTZ;",
         # 2026-09-22 —— 行动环节排期要能回指"这件事对应哪条待办原文"，
         # 课表节点因此多了一列。老库建于它之前，缺列会让应用起不来。
         "ALTER TABLE biz_calendar_node "
@@ -33,10 +35,8 @@ MIGRATION_SQL = "\n".join(
         # 2026-09-22 —— 画像里直接显示英文字段键（`interest_direction`）：
         # 字段键是模型自己起的，界面没有中文名只能把键摆出来。名字必须跟着数据存，
         # 所以这两个字段各加一列；老库里已有的是空串，界面回落到动态资源里的对照表。
-        "ALTER TABLE biz_profile_field "
-        "ADD COLUMN IF NOT EXISTS label TEXT NOT NULL DEFAULT '';",
-        "ALTER TABLE biz_profile_gap "
-        "ADD COLUMN IF NOT EXISTS label TEXT NOT NULL DEFAULT '';",
+        "ALTER TABLE biz_profile_field ADD COLUMN IF NOT EXISTS label TEXT NOT NULL DEFAULT '';",
+        "ALTER TABLE biz_profile_gap ADD COLUMN IF NOT EXISTS label TEXT NOT NULL DEFAULT '';",
         # 2026-09-23 —— 幂等：前端每条消息都带一个 client_msg_id，而这条链路上
         # 从来没有人读它。双击一次发送就是两条轮次 + 两次模型调用（记录翻倍、
         # 钱也翻倍）。补一列把它存下来，重复消息直接返回上一次的原文。

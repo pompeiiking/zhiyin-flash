@@ -76,18 +76,26 @@ html[data-theme='dark'] .app.app--workspace {
 .detail-trigger:hover,.detail-trigger[aria-expanded='true'] { color: var(--c-primary); background: var(--c-primary-weak); }
 .detail-trigger:focus-visible { outline: 2px solid var(--c-primary); outline-offset: 3px; }
 .detail-popover {
-  z-index: 150; width: min(384px,calc(100vw - 32px)); max-height: min(580px,var(--reka-popover-content-available-height)); overflow: auto;
-  padding: 20px; border: 0; border-radius: 12px; background: #fff; color: #20252d;
+  z-index: 150; width: min(384px,calc(100vw - 32px)); max-height: min(580px,var(--reka-popover-content-available-height)); overflow: hidden;
+  display: flex; flex-direction: column;
+  padding: 20px; border: 1px solid var(--c-border); border-radius: 12px; background: var(--c-surface); color: var(--c-text);
+  overscroll-behavior: contain; overflow-wrap: anywhere;
   box-shadow: 0 12px 48px -8px #1c263033; transform-origin: var(--reka-popover-content-transform-origin);
   font: 14px/1.75 'PingFang SC','Noto Sans CJK SC','Microsoft YaHei UI',sans-serif;
 }
 html[data-theme='dark'] .detail-popover { background: #252931; color: #edf0f5; --c-text: #edf0f5; --c-text-2: #c2cad7; --c-text-3: #a3adbc; --c-border: #414955; --c-surface: #252931; }
-.detail-popover > header { display: flex; align-items: start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.detail-popover > header { display: flex; flex: none; align-items: start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
 .detail-popover > header h2 { font-size: 16px; font-weight: 600; padding-top: 7px; }
 .detail-popover__close { display: grid; place-items: center; width: 36px; height: 36px; flex: none; border-radius: 6px; background: transparent; color: inherit; cursor: pointer; }
 .detail-popover__close:hover { background: #858b981a; }
 .detail-popover__body p + p { margin-top: 12px; }
 .detail-popover__body .btn { border-radius: 8px; }
+.detail-popover__body { min-width: 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 2px; }
+.detail-popover__body .ws-field { margin-top: 0; min-width: 0; }
+.detail-popover__body :is(input,select,textarea) { min-width: 0; max-width: 100%; color: var(--c-text); }
+.detail-popover__body fieldset { min-width: 0; }
+.detail-popover__body :is(.ws-section-head,.ws-inline-actions) { flex-wrap: wrap; }
+.detail-popover__body .ws-field input[type='range'] { padding: 0; accent-color: var(--c-primary); }
 .detail-popover__body .ws-heading__meta { margin-top: 16px; }
 .detail-popover__body .p7-row__more-body { padding: 0; }
 .detail-popover__body .p7-row__actions { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 16px; }
@@ -254,9 +262,10 @@ html[data-theme='dark'] .detail-popover { background: #252931; color: #edf0f5; -
 .app.app--workspace .profile-needs-check { color: var(--c-text-2); font-size: 12px; }
 .app.app--workspace .profile-organize { padding: 4px 12px; min-height: 40px; gap: 8px; background: var(--c-surface-2); color: var(--c-text-2); }
 .detail-popover .detail-popover__body .p7-row__more-body { background: transparent; padding: 0; margin: 12px 0 0; border: 0; border-radius: 0; box-shadow: none; }
-.detail-popover .detail-popover__body .p7-link { display: grid; grid-template-columns: minmax(0,1fr); width: 100%; }
+.detail-popover .detail-popover__body .p7-link { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 2px 10px; width: 100%; padding: 10px 4px; border: 0; border-radius: 0; box-shadow: none; border-bottom: 1px solid var(--c-border); }
+.detail-popover .p7-link__label,.detail-popover .p7-link__value { grid-column: 1; }
 .detail-popover .detail-popover__body .p7-link__value,.detail-popover .detail-popover__body .p7-link__label { white-space: normal; overflow: visible; text-overflow: clip; max-width: none; }
-.detail-popover .p7-link__go { margin-top: 4px; }
+.detail-popover .p7-link__go { grid-column: 2; grid-row: 1 / 3; align-self: center; margin: 0; font-size: 0; }
 .detail-popover .p7-modes { display: block; }
 .detail-popover .p7-modes__label { display: none; }
 .detail-popover .p7-modes__set { display: flex; flex-wrap: wrap; gap: 8px; }

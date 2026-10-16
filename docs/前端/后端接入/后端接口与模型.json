@@ -155,6 +155,52 @@
       "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
     },
     {
+      "id": "GET /api/v1/app/assets/download/{export_id}",
+      "method": "GET",
+      "path": "/api/v1/app/assets/download/{export_id}",
+      "capability": "Download Asset",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:35",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [
+        {
+          "in": "path",
+          "name": "export_id",
+          "required": true,
+          "schema": {
+            "title": "Export Id",
+            "type": "string"
+          }
+        }
+      ],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {}
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+      ],
+      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
+    },
+    {
       "id": "POST /api/v1/app/assets/export",
       "method": "POST",
       "path": "/api/v1/app/assets/export",
@@ -199,7 +245,7 @@
       "frontend": [
         "zhiyin-src/template/zhiyin-web/src/views/SystemView.vue"
       ],
-      "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json；服务边界：第一期仅预留导出入口，已显示原因，未产生下载文件"
+      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
     },
     {
       "id": "GET /api/v1/app/assets/{asset_type}/versions",
@@ -248,6 +294,63 @@
         "zhiyin-src/template/zhiyin-web/src/views/AssessmentView.vue"
       ],
       "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+    },
+    {
+      "id": "GET /api/v1/app/assets/{asset_type}/versions/{version}/content",
+      "method": "GET",
+      "path": "/api/v1/app/assets/{asset_type}/versions/{version}/content",
+      "capability": "Asset Snapshot",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:132",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [
+        {
+          "in": "path",
+          "name": "asset_type",
+          "required": true,
+          "schema": {
+            "title": "Asset Type",
+            "type": "string"
+          }
+        },
+        {
+          "in": "path",
+          "name": "version",
+          "required": true,
+          "schema": {
+            "title": "Version",
+            "type": "integer"
+          }
+        }
+      ],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_AssetSnapshotView_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+      ],
+      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
     },
     {
       "id": "POST /api/v1/app/auth/login",
@@ -408,7 +511,7 @@
       "method": "POST",
       "path": "/api/v1/app/brief/today",
       "capability": "今日简报：今天为什么是这两件事。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py:155",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py:161",
       "scope": "学生端",
       "stream": true,
       "parameters": [],
@@ -464,7 +567,7 @@
       "method": "POST",
       "path": "/api/v1/app/chsi/bind",
       "capability": "学信网绑定管线：核验在线验证码 → 读学籍 → 写画像。  请求体 `arg` 是用户在学信档案申请到的**在线验证码**。 不接收、也不要求用户的学信网账号密码 —— 那条路既不合法，也不必要。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py:210",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py:216",
       "scope": "学生端",
       "stream": true,
       "parameters": [],
@@ -589,7 +692,7 @@
       "method": "POST",
       "path": "/api/v1/app/day/{day}/advice",
       "capability": "「这一天的建议」：日历里点开某一天时生成（`day` 是 YYYY-MM-DD）。  日历上其余的东西都是事实（那天有哪几门课、哪个节点到期、哪件事该做完）， 前端直接读；这一条是那一天**怎么用**的建议，要模型下判断。  请求体里的 `arg` 是客户端的时区偏移（分钟，东为正）—— \"那一天\"是用户 手表上的那一天，不带这个偏移，傍晚以后的事会被算到前一天。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py:178",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py:184",
       "scope": "学生端",
       "stream": true,
       "parameters": [
@@ -636,7 +739,7 @@
       "method": "POST",
       "path": "/api/v1/app/dimensions/{dimension_id}",
       "capability": "维度解读（点开才生成，后端缓存）。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py:161",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py:167",
       "scope": "学生端",
       "stream": true,
       "parameters": [
@@ -684,7 +787,7 @@
       "method": "POST",
       "path": "/api/v1/app/gaps/{gap_key}/clarify",
       "capability": "缺口追问话术。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py:198",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py:204",
       "scope": "学生端",
       "stream": true,
       "parameters": [
@@ -833,7 +936,7 @@
       "method": "POST",
       "path": "/api/v1/app/match/careers",
       "capability": "学职网匹配：矩阵 + 排名 + 推荐。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py:239",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py:245",
       "scope": "学生端",
       "stream": true,
       "parameters": [],
@@ -854,6 +957,81 @@
         "zhiyin-src/template/zhiyin-web/src/components/CareerMatchPanel.vue"
       ],
       "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+    },
+    {
+      "id": "GET /api/v1/app/measurements",
+      "method": "GET",
+      "path": "/api/v1/app/measurements",
+      "capability": "Measurements",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:146",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_MeasurementListView_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+      ],
+      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
+    },
+    {
+      "id": "POST /api/v1/app/measurements",
+      "method": "POST",
+      "path": "/api/v1/app/measurements",
+      "capability": "Save Measurements",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:152",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [],
+      "request": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/MeasurementBatch"
+            }
+          }
+        },
+        "required": true
+      },
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_MeasurementRecordView_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+      ],
+      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
     },
     {
       "id": "GET /api/v1/app/modules",
@@ -1262,6 +1440,34 @@
       "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
     },
     {
+      "id": "GET /api/v1/app/notifications",
+      "method": "GET",
+      "path": "/api/v1/app/notifications",
+      "capability": "Notifications",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:93",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_list_NotificationStateView__"
+              }
+            }
+          },
+          "description": "Successful Response"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+      ],
+      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
+    },
+    {
       "id": "GET /api/v1/app/notifications/pending",
       "method": "GET",
       "path": "/api/v1/app/notifications/pending",
@@ -1288,6 +1494,63 @@
         "zhiyin-src/template/zhiyin-web/src/lib/system-data.ts"
       ],
       "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+    },
+    {
+      "id": "PATCH /api/v1/app/notifications/{message_id}",
+      "method": "PATCH",
+      "path": "/api/v1/app/notifications/{message_id}",
+      "capability": "Notification State",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:99",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [
+        {
+          "in": "path",
+          "name": "message_id",
+          "required": true,
+          "schema": {
+            "title": "Message Id",
+            "type": "string"
+          }
+        }
+      ],
+      "request": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/NotificationEdit"
+            }
+          }
+        },
+        "required": true
+      },
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_NotificationStateView_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+      ],
+      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
     },
     {
       "id": "POST /api/v1/app/notifications/{message_id}/read",
@@ -1382,6 +1645,110 @@
       "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
     },
     {
+      "id": "POST /api/v1/app/plan/action/phases",
+      "method": "POST",
+      "path": "/api/v1/app/plan/action/phases",
+      "capability": "Create Phase",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:81",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [],
+      "request": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/PhaseEdit"
+            }
+          }
+        },
+        "required": true
+      },
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_ActionPlanView_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+      ],
+      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
+    },
+    {
+      "id": "PUT /api/v1/app/plan/action/phases/{phase_id}",
+      "method": "PUT",
+      "path": "/api/v1/app/plan/action/phases/{phase_id}",
+      "capability": "Edit Phase",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:87",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [
+        {
+          "in": "path",
+          "name": "phase_id",
+          "required": true,
+          "schema": {
+            "title": "Phase Id",
+            "type": "string"
+          }
+        }
+      ],
+      "request": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/PhaseEdit"
+            }
+          }
+        },
+        "required": true
+      },
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_ActionPlanView_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+      ],
+      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
+    },
+    {
       "id": "PATCH /api/v1/app/plan/action/tasks",
       "method": "PATCH",
       "path": "/api/v1/app/plan/action/tasks",
@@ -1430,6 +1797,213 @@
         "zhiyin-src/template/zhiyin-web/src/views/TodayView.vue"
       ],
       "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+    },
+    {
+      "id": "POST /api/v1/app/plan/action/tasks",
+      "method": "POST",
+      "path": "/api/v1/app/plan/action/tasks",
+      "capability": "Create Task",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:69",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [],
+      "request": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/TaskEdit"
+            }
+          }
+        },
+        "required": true
+      },
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_ActionPlanView_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+      ],
+      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
+    },
+    {
+      "id": "PUT /api/v1/app/plan/action/tasks/{task_id}",
+      "method": "PUT",
+      "path": "/api/v1/app/plan/action/tasks/{task_id}",
+      "capability": "Edit Task",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:75",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [
+        {
+          "in": "path",
+          "name": "task_id",
+          "required": true,
+          "schema": {
+            "title": "Task Id",
+            "type": "string"
+          }
+        }
+      ],
+      "request": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/TaskEdit"
+            }
+          }
+        },
+        "required": true
+      },
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_ActionPlanView_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+      ],
+      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
+    },
+    {
+      "id": "GET /api/v1/app/plan/direction-comparison",
+      "method": "GET",
+      "path": "/api/v1/app/plan/direction-comparison",
+      "capability": "Comparison",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:170",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_DirectionComparisonView_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+      ],
+      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
+    },
+    {
+      "id": "GET /api/v1/app/plan/direction-weights",
+      "method": "GET",
+      "path": "/api/v1/app/plan/direction-weights",
+      "capability": "Weights",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:158",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_DirectionWeights_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+      ],
+      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
+    },
+    {
+      "id": "PUT /api/v1/app/plan/direction-weights",
+      "method": "PUT",
+      "path": "/api/v1/app/plan/direction-weights",
+      "capability": "Save Weights",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:164",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [],
+      "request": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/DirectionWeights"
+            }
+          }
+        },
+        "required": true
+      },
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_DirectionWeights_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+      ],
+      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
     },
     {
       "id": "GET /api/v1/app/plan/directions",
@@ -1517,7 +2091,7 @@
       "method": "POST",
       "path": "/api/v1/app/plan/timetable",
       "capability": "课表 → 可投入时间。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py:227",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py:233",
       "scope": "学生端",
       "stream": true,
       "parameters": [],
@@ -1544,7 +2118,7 @@
       "method": "POST",
       "path": "/api/v1/app/plan/todos/suggestions",
       "capability": "待办建议（可采纳 / 可否决，回流画像）。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py:233",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py:239",
       "scope": "学生端",
       "stream": true,
       "parameters": [],
@@ -1601,7 +2175,7 @@
       "method": "POST",
       "path": "/api/v1/app/portrait/analysis",
       "capability": "「对你的分析」：整份画像合起来的一段判断（打开画像时生成）。  与「维度解读」的分工：那一条回答\"这条字段是什么、凭什么\"， 这一条回答\"这些合起来说明我现在是个什么处境\"。两件都要有 —— 只有前者的时候，画像看起来就是一张信息标签表。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py:167",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py:173",
       "scope": "学生端",
       "stream": true,
       "parameters": [],
@@ -1622,6 +2196,81 @@
         "zhiyin-src/template/zhiyin-web/src/components/ProfileInsights.vue"
       ],
       "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+    },
+    {
+      "id": "GET /api/v1/app/preferences",
+      "method": "GET",
+      "path": "/api/v1/app/preferences",
+      "capability": "Preferences",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:57",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_Preferences_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+      ],
+      "verification": "2026-10-16 当前 Docker HTTP/PostgreSQL/JWT 联调通过；来源关闭后仍可生成，四种组合、缓存隔离、派生信息过滤、数据库回读及普通读取保留共 21 项通过。见 资料来源过滤验收结果.json。"
+    },
+    {
+      "id": "PUT /api/v1/app/preferences",
+      "method": "PUT",
+      "path": "/api/v1/app/preferences",
+      "capability": "Save Preferences",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:63",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [],
+      "request": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Preferences"
+            }
+          }
+        },
+        "required": true
+      },
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_Preferences_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+      ],
+      "verification": "2026-10-16 当前 Docker HTTP/PostgreSQL/JWT 联调通过；来源关闭后仍可生成，四种组合、缓存隔离、派生信息过滤、数据库回读及普通读取保留共 21 项通过。见 资料来源过滤验收结果.json。"
     },
     {
       "id": "POST /api/v1/app/profile/fields/{key}",
@@ -1752,7 +2401,7 @@
       "method": "POST",
       "path": "/api/v1/app/report/summary",
       "capability": "整份报告的结论段。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py:204",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py:210",
       "scope": "学生端",
       "stream": true,
       "parameters": [],
@@ -1773,6 +2422,310 @@
         "zhiyin-src/template/zhiyin-web/src/components/ReportSummary.vue"
       ],
       "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+    },
+    {
+      "id": "GET /api/v1/app/reviews",
+      "method": "GET",
+      "path": "/api/v1/app/reviews",
+      "capability": "Reviews",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:105",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_ReviewListView_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+      ],
+      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
+    },
+    {
+      "id": "POST /api/v1/app/reviews",
+      "method": "POST",
+      "path": "/api/v1/app/reviews",
+      "capability": "Create Review",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:111",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [],
+      "request": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ReviewEdit"
+            }
+          }
+        },
+        "required": true
+      },
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_ReviewRecordView_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+      ],
+      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
+    },
+    {
+      "id": "PUT /api/v1/app/reviews/{review_id}",
+      "method": "PUT",
+      "path": "/api/v1/app/reviews/{review_id}",
+      "capability": "Edit Review",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:117",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [
+        {
+          "in": "path",
+          "name": "review_id",
+          "required": true,
+          "schema": {
+            "title": "Review Id",
+            "type": "string"
+          }
+        }
+      ],
+      "request": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ReviewEdit"
+            }
+          }
+        },
+        "required": true
+      },
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_ReviewRecordView_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+      ],
+      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
+    },
+    {
+      "id": "POST /api/v1/app/reviews/{review_id}/apply",
+      "method": "POST",
+      "path": "/api/v1/app/reviews/{review_id}/apply",
+      "capability": "Apply Review",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:123",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [
+        {
+          "in": "path",
+          "name": "review_id",
+          "required": true,
+          "schema": {
+            "title": "Review Id",
+            "type": "string"
+          }
+        }
+      ],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_ReviewRecordView_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+      ],
+      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
+    },
+    {
+      "id": "GET /api/v1/app/schedule/semester",
+      "method": "GET",
+      "path": "/api/v1/app/schedule/semester",
+      "capability": "Semester",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:176",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_Union_Semester__NoneType__"
+              }
+            }
+          },
+          "description": "Successful Response"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+      ],
+      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
+    },
+    {
+      "id": "PUT /api/v1/app/schedule/semester",
+      "method": "PUT",
+      "path": "/api/v1/app/schedule/semester",
+      "capability": "Save Semester",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:182",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [],
+      "request": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Semester"
+            }
+          }
+        },
+        "required": true
+      },
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_Semester_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+      ],
+      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
+    },
+    {
+      "id": "GET /api/v1/app/schedule/workload",
+      "method": "GET",
+      "path": "/api/v1/app/schedule/workload",
+      "capability": "Workload",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:188",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [
+        {
+          "in": "query",
+          "name": "start",
+          "required": true,
+          "schema": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          }
+        }
+      ],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_WorkloadView_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+      ],
+      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
     },
     {
       "id": "GET /api/v1/app/sessions",
@@ -1802,6 +2755,54 @@
         "zhiyin-src/template/zhiyin-web/src/views/ConversationView.vue"
       ],
       "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+    },
+    {
+      "id": "GET /api/v1/app/sessions/{task_id}/snapshot",
+      "method": "GET",
+      "path": "/api/v1/app/sessions/{task_id}/snapshot",
+      "capability": "Session Snapshot",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:140",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [
+        {
+          "in": "path",
+          "name": "task_id",
+          "required": true,
+          "schema": {
+            "title": "Task Id",
+            "type": "string"
+          }
+        }
+      ],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_Union_ConversationTurnView__NoneType__"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+      ],
+      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
     },
     {
       "id": "GET /api/v1/app/sessions/{task_id}/turns",
@@ -2167,7 +3168,7 @@
       },
       "status": "服务间接口，不应从浏览器调用",
       "frontend": [],
-      "verification": "未联调"
+      "verification": "隔离协议联调通过。并发领取唯一、过期接管生成新租约、终态不再领取；全部验证无凭证、错误凭证和管理员 JWT 拒绝。见 服务间接口验收结果.json；不代表实际发布成功。"
     },
     {
       "id": "GET /api/v1/developer/executor/configuration",
@@ -2193,7 +3194,7 @@
       },
       "status": "服务间接口，不应从浏览器调用",
       "frontend": [],
-      "verification": "未联调"
+      "verification": "隔离协议联调通过。读取实际装配的模块策略；全部验证无凭证、错误凭证和管理员 JWT 拒绝。见 服务间接口验收结果.json；不代表实际发布成功。"
     },
     {
       "id": "POST /api/v1/developer/executor/{job_id}",
@@ -2248,7 +3249,7 @@
       },
       "status": "服务间接口，不应从浏览器调用",
       "frontend": [],
-      "verification": "未联调"
+      "verification": "隔离协议联调通过。有效租约进度/失败回写；错误、过期、替换租约与终态改写拒绝；全部验证无凭证、错误凭证和管理员 JWT 拒绝。见 服务间接口验收结果.json；不代表实际发布成功。"
     },
     {
       "id": "GET /api/v1/developer/executor/{job_id}/authorization",
@@ -2294,7 +3295,7 @@
       },
       "status": "服务间接口，不应从浏览器调用",
       "frontend": [],
-      "verification": "未联调"
+      "verification": "隔离协议联调通过。固定提交授权查询、未知任务拒绝；版本关联授权与实际部署仍待完整发布验收；全部验证无凭证、错误凭证和管理员 JWT 拒绝。见 服务间接口验收结果.json；不代表实际发布成功。"
     },
     {
       "id": "POST /api/v1/developer/source-worker/claim",
@@ -2320,7 +3321,7 @@
       },
       "status": "服务间接口，不应从浏览器调用",
       "frontend": [],
-      "verification": "未联调"
+      "verification": "隔离协议联调通过。未授权项目不领取、并发唯一领取、过期接管、重试再次领取；全部验证无凭证、错误凭证和管理员 JWT 拒绝。见 服务间接口验收结果.json；不代表实际发布成功。"
     },
     {
       "id": "POST /api/v1/developer/source-worker/heartbeat",
@@ -2365,7 +3366,7 @@
       },
       "status": "服务间接口，不应从浏览器调用",
       "frontend": [],
-      "verification": "未联调"
+      "verification": "隔离协议联调通过。心跳持久化并由管理端回读健康状态；全部验证无凭证、错误凭证和管理员 JWT 拒绝。见 服务间接口验收结果.json；不代表实际发布成功。"
     },
     {
       "id": "GET /api/v1/developer/source-worker/ready",
@@ -2391,7 +3392,7 @@
       },
       "status": "服务间接口，不应从浏览器调用",
       "frontend": [],
-      "verification": "未联调"
+      "verification": "隔离协议联调通过。查询通过，失败候选不进入就绪队列；未验证真实成功候选入队；全部验证无凭证、错误凭证和管理员 JWT 拒绝。见 服务间接口验收结果.json；不代表实际发布成功。"
     },
     {
       "id": "GET /api/v1/developer/source-worker/versions/{version_id}",
@@ -2437,7 +3438,7 @@
       },
       "status": "服务间接口，不应从浏览器调用",
       "frontend": [],
-      "verification": "未联调"
+      "verification": "隔离协议联调通过。实际上传版本回读、不暴露租约、缺失版本拒绝；全部验证无凭证、错误凭证和管理员 JWT 拒绝。见 服务间接口验收结果.json；不代表实际发布成功。"
     },
     {
       "id": "POST /api/v1/developer/source-worker/versions/{version_id}",
@@ -2492,7 +3493,7 @@
       },
       "status": "服务间接口，不应从浏览器调用",
       "frontend": [],
-      "verification": "未联调"
+      "verification": "隔离协议联调通过。进度/失败回写；过期、替换、错误租约和撤销授权拒绝；终态不可改写；全部验证无凭证、错误凭证和管理员 JWT 拒绝。见 服务间接口验收结果.json；不代表实际发布成功。"
     },
     {
       "id": "GET /api/v1/developer/source-worker/versions/{version_id}/package",
@@ -2531,7 +3532,7 @@
       },
       "status": "服务间接口，不应从浏览器调用",
       "frontend": [],
-      "verification": "未联调"
+      "verification": "隔离协议联调通过。真实上传包下载逐字节一致，规范化源码摘要一致；全部验证无凭证、错误凭证和管理员 JWT 拒绝。见 服务间接口验收结果.json；不代表实际发布成功。"
     },
     {
       "id": "POST /api/v1/developer/source-worker/versions/{version_id}/release",
@@ -2577,7 +3578,7 @@
       },
       "status": "服务间接口，不应从浏览器调用",
       "frontend": [],
-      "verification": "未联调"
+      "verification": "环境阻塞（拒绝路径通过）。仅通过自动发布禁用与失败候选缺少完整门禁证据的拒绝路径；真实构建、数据流、浏览器与部署正向验收仍待完成；全部验证无凭证、错误凭证和管理员 JWT 拒绝。见 服务间接口验收结果.json；不代表实际发布成功。"
     },
     {
       "id": "POST /api/v1/developer/source-worker/versions/{version_id}/retry",
@@ -2623,7 +3624,7 @@
       },
       "status": "服务间接口，不应从浏览器调用",
       "frontend": [],
-      "verification": "未联调"
+      "verification": "隔离协议联调通过。失败版本重入队、保留上次失败报告并清空候选提交；全部验证无凭证、错误凭证和管理员 JWT 拒绝。见 服务间接口验收结果.json；不代表实际发布成功。"
     },
     {
       "id": "POST /api/v1/app/config/reload",
@@ -4213,18 +5214,158 @@
       "title": "AchievementView",
       "type": "object"
     },
-    "ActionPhaseView": {
+    "ActionPhase": {
       "additionalProperties": false,
-      "description": "行动阶段：一段时间的里程碑与它下面的任务。",
+      "description": "行动阶段。",
       "properties": {
+        "blocking_conditions": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Blocking Conditions",
+          "type": "array"
+        },
         "date_range": {
-          "default": "",
           "title": "Date Range",
+          "type": "string"
+        },
+        "depends_on": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Depends On",
+          "type": "array"
+        },
+        "ends_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Ends At"
+        },
+        "handoff_requirements": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Handoff Requirements",
+          "type": "array"
+        },
+        "id": {
+          "default": "",
+          "title": "Id",
           "type": "string"
         },
         "name": {
           "title": "Name",
           "type": "string"
+        },
+        "starts_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Starts At"
+        },
+        "tag": {
+          "default": "",
+          "description": "阶段标签，如秋招投递/笔试冲刺",
+          "title": "Tag",
+          "type": "string"
+        },
+        "tasks": {
+          "items": {
+            "$ref": "#/components/schemas/ActionTask"
+          },
+          "title": "Tasks",
+          "type": "array"
+        }
+      },
+      "required": [
+        "name",
+        "date_range"
+      ],
+      "title": "ActionPhase",
+      "type": "object"
+    },
+    "ActionPhaseView": {
+      "additionalProperties": false,
+      "description": "行动阶段：一段时间的里程碑与它下面的任务。",
+      "properties": {
+        "blocked_by": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Blocked By",
+          "type": "array"
+        },
+        "blocking_conditions": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Blocking Conditions",
+          "type": "array"
+        },
+        "date_range": {
+          "default": "",
+          "title": "Date Range",
+          "type": "string"
+        },
+        "depends_on": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Depends On",
+          "type": "array"
+        },
+        "ends_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Ends At"
+        },
+        "handoff_requirements": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Handoff Requirements",
+          "type": "array"
+        },
+        "id": {
+          "default": "",
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "starts_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Starts At"
         },
         "tag": {
           "default": "",
@@ -4243,6 +5384,57 @@
         "name"
       ],
       "title": "ActionPhaseView",
+      "type": "object"
+    },
+    "ActionPlan": {
+      "additionalProperties": false,
+      "description": "行动计划。",
+      "properties": {
+        "exported_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Exported At"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "phases": {
+          "items": {
+            "$ref": "#/components/schemas/ActionPhase"
+          },
+          "title": "Phases",
+          "type": "array"
+        },
+        "plan_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "关联的方向方案 id",
+          "title": "Plan Id"
+        },
+        "reminders_synced": {
+          "default": false,
+          "title": "Reminders Synced",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "ActionPlan",
       "type": "object"
     },
     "ActionPlanView": {
@@ -4311,6 +5503,115 @@
       "title": "ActionPlanView",
       "type": "object"
     },
+    "ActionTask": {
+      "additionalProperties": false,
+      "description": "行动任务。颗粒度要求\"今天/本周勾得掉\"。",
+      "properties": {
+        "done": {
+          "default": false,
+          "title": "Done",
+          "type": "boolean"
+        },
+        "done_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Done At"
+        },
+        "due_date": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Due Date"
+        },
+        "estimated_minutes": {
+          "anyOf": [
+            {
+              "maximum": 1440.0,
+              "minimum": 1.0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Estimated Minutes"
+        },
+        "id": {
+          "default": "",
+          "description": "任务标识。勾选 / 取消按它定位 —— 用任务文本当标识时，同一阶段里两条同名任务会互相顶掉。老数据没有这一列，仓储侧保留「阶段名:任务文本」作为回落口径。",
+          "title": "Id",
+          "type": "string"
+        },
+        "parent_task_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Parent Task Id"
+        },
+        "progress": {
+          "default": 0,
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "title": "Progress",
+          "type": "integer"
+        },
+        "scheduled_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Scheduled At"
+        },
+        "status": {
+          "default": "pending",
+          "enum": [
+            "pending",
+            "in_progress",
+            "waiting",
+            "completed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "waiting_reason": {
+          "default": "",
+          "title": "Waiting Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "title": "ActionTask",
+      "type": "object"
+    },
     "ActionTaskDoneRequest": {
       "additionalProperties": false,
       "description": "勾掉 / 取消勾选一个行动任务。",
@@ -4364,10 +5665,60 @@
           ],
           "title": "Due Date"
         },
+        "estimated_minutes": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Estimated Minutes"
+        },
+        "parent_task_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Parent Task Id"
+        },
         "phase": {
           "default": "",
           "description": "所属阶段名",
           "title": "Phase",
+          "type": "string"
+        },
+        "progress": {
+          "default": 0,
+          "title": "Progress",
+          "type": "integer"
+        },
+        "scheduled_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Scheduled At"
+        },
+        "status": {
+          "default": "pending",
+          "enum": [
+            "pending",
+            "in_progress",
+            "waiting",
+            "completed"
+          ],
+          "title": "Status",
           "type": "string"
         },
         "task_id": {
@@ -4377,6 +5728,11 @@
         },
         "text": {
           "title": "Text",
+          "type": "string"
+        },
+        "waiting_reason": {
+          "default": "",
+          "title": "Waiting Reason",
           "type": "string"
         }
       },
@@ -4541,6 +5897,37 @@
         }
       },
       "title": "ApiResponse[ActionPlanView]",
+      "type": "object"
+    },
+    "ApiResponse_AssetSnapshotView_": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "$ref": "#/components/schemas/ErrorCode",
+          "default": 0
+        },
+        "data": {
+          "anyOf": [
+            {
+              "$ref": "#/components/schemas/AssetSnapshotView"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "message": {
+          "default": "ok",
+          "title": "Message",
+          "type": "string"
+        },
+        "trace_id": {
+          "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+          "title": "Trace Id",
+          "type": "string"
+        }
+      },
+      "title": "ApiResponse[AssetSnapshotView]",
       "type": "object"
     },
     "ApiResponse_BootstrapView_": {
@@ -4729,6 +6116,37 @@
       "title": "ApiResponse[DeveloperVersionView]",
       "type": "object"
     },
+    "ApiResponse_DirectionComparisonView_": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "$ref": "#/components/schemas/ErrorCode",
+          "default": 0
+        },
+        "data": {
+          "anyOf": [
+            {
+              "$ref": "#/components/schemas/DirectionComparisonView"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "message": {
+          "default": "ok",
+          "title": "Message",
+          "type": "string"
+        },
+        "trace_id": {
+          "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+          "title": "Trace Id",
+          "type": "string"
+        }
+      },
+      "title": "ApiResponse[DirectionComparisonView]",
+      "type": "object"
+    },
     "ApiResponse_DirectionPlanListView_": {
       "additionalProperties": false,
       "properties": {
@@ -4758,6 +6176,37 @@
         }
       },
       "title": "ApiResponse[DirectionPlanListView]",
+      "type": "object"
+    },
+    "ApiResponse_DirectionWeights_": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "$ref": "#/components/schemas/ErrorCode",
+          "default": 0
+        },
+        "data": {
+          "anyOf": [
+            {
+              "$ref": "#/components/schemas/DirectionWeights"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "message": {
+          "default": "ok",
+          "title": "Message",
+          "type": "string"
+        },
+        "trace_id": {
+          "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+          "title": "Trace Id",
+          "type": "string"
+        }
+      },
+      "title": "ApiResponse[DirectionWeights]",
       "type": "object"
     },
     "ApiResponse_ExportResultView_": {
@@ -4851,6 +6300,68 @@
         }
       },
       "title": "ApiResponse[LoginResult]",
+      "type": "object"
+    },
+    "ApiResponse_MeasurementListView_": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "$ref": "#/components/schemas/ErrorCode",
+          "default": 0
+        },
+        "data": {
+          "anyOf": [
+            {
+              "$ref": "#/components/schemas/MeasurementListView"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "message": {
+          "default": "ok",
+          "title": "Message",
+          "type": "string"
+        },
+        "trace_id": {
+          "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+          "title": "Trace Id",
+          "type": "string"
+        }
+      },
+      "title": "ApiResponse[MeasurementListView]",
+      "type": "object"
+    },
+    "ApiResponse_MeasurementRecordView_": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "$ref": "#/components/schemas/ErrorCode",
+          "default": 0
+        },
+        "data": {
+          "anyOf": [
+            {
+              "$ref": "#/components/schemas/MeasurementRecordView"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "message": {
+          "default": "ok",
+          "title": "Message",
+          "type": "string"
+        },
+        "trace_id": {
+          "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+          "title": "Trace Id",
+          "type": "string"
+        }
+      },
+      "title": "ApiResponse[MeasurementRecordView]",
       "type": "object"
     },
     "ApiResponse_ModuleDeveloperContext_": {
@@ -5070,6 +6581,37 @@
       "title": "ApiResponse[NoteView]",
       "type": "object"
     },
+    "ApiResponse_NotificationStateView_": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "$ref": "#/components/schemas/ErrorCode",
+          "default": 0
+        },
+        "data": {
+          "anyOf": [
+            {
+              "$ref": "#/components/schemas/NotificationStateView"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "message": {
+          "default": "ok",
+          "title": "Message",
+          "type": "string"
+        },
+        "trace_id": {
+          "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+          "title": "Trace Id",
+          "type": "string"
+        }
+      },
+      "title": "ApiResponse[NotificationStateView]",
+      "type": "object"
+    },
     "ApiResponse_PortalView_": {
       "additionalProperties": false,
       "properties": {
@@ -5099,6 +6641,37 @@
         }
       },
       "title": "ApiResponse[PortalView]",
+      "type": "object"
+    },
+    "ApiResponse_Preferences_": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "$ref": "#/components/schemas/ErrorCode",
+          "default": 0
+        },
+        "data": {
+          "anyOf": [
+            {
+              "$ref": "#/components/schemas/Preferences"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "message": {
+          "default": "ok",
+          "title": "Message",
+          "type": "string"
+        },
+        "trace_id": {
+          "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+          "title": "Trace Id",
+          "type": "string"
+        }
+      },
+      "title": "ApiResponse[Preferences]",
       "type": "object"
     },
     "ApiResponse_ProfileFieldView_": {
@@ -5192,6 +6765,99 @@
         }
       },
       "title": "ApiResponse[ReportFullTextView]",
+      "type": "object"
+    },
+    "ApiResponse_ReviewListView_": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "$ref": "#/components/schemas/ErrorCode",
+          "default": 0
+        },
+        "data": {
+          "anyOf": [
+            {
+              "$ref": "#/components/schemas/ReviewListView"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "message": {
+          "default": "ok",
+          "title": "Message",
+          "type": "string"
+        },
+        "trace_id": {
+          "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+          "title": "Trace Id",
+          "type": "string"
+        }
+      },
+      "title": "ApiResponse[ReviewListView]",
+      "type": "object"
+    },
+    "ApiResponse_ReviewRecordView_": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "$ref": "#/components/schemas/ErrorCode",
+          "default": 0
+        },
+        "data": {
+          "anyOf": [
+            {
+              "$ref": "#/components/schemas/ReviewRecordView"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "message": {
+          "default": "ok",
+          "title": "Message",
+          "type": "string"
+        },
+        "trace_id": {
+          "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+          "title": "Trace Id",
+          "type": "string"
+        }
+      },
+      "title": "ApiResponse[ReviewRecordView]",
+      "type": "object"
+    },
+    "ApiResponse_Semester_": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "$ref": "#/components/schemas/ErrorCode",
+          "default": 0
+        },
+        "data": {
+          "anyOf": [
+            {
+              "$ref": "#/components/schemas/Semester"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "message": {
+          "default": "ok",
+          "title": "Message",
+          "type": "string"
+        },
+        "trace_id": {
+          "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+          "title": "Trace Id",
+          "type": "string"
+        }
+      },
+      "title": "ApiResponse[Semester]",
       "type": "object"
     },
     "ApiResponse_SessionListView_": {
@@ -5318,6 +6984,37 @@
       "title": "ApiResponse[TrackEventAck]",
       "type": "object"
     },
+    "ApiResponse_Union_ConversationTurnView__NoneType__": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "$ref": "#/components/schemas/ErrorCode",
+          "default": 0
+        },
+        "data": {
+          "anyOf": [
+            {
+              "$ref": "#/components/schemas/ConversationTurnView"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "message": {
+          "default": "ok",
+          "title": "Message",
+          "type": "string"
+        },
+        "trace_id": {
+          "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+          "title": "Trace Id",
+          "type": "string"
+        }
+      },
+      "title": "ApiResponse[Union[ConversationTurnView, NoneType]]",
+      "type": "object"
+    },
     "ApiResponse_Union_ReleaseJob__NoneType__": {
       "additionalProperties": false,
       "properties": {
@@ -5347,6 +7044,37 @@
         }
       },
       "title": "ApiResponse[Union[ReleaseJob, NoneType]]",
+      "type": "object"
+    },
+    "ApiResponse_Union_Semester__NoneType__": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "$ref": "#/components/schemas/ErrorCode",
+          "default": 0
+        },
+        "data": {
+          "anyOf": [
+            {
+              "$ref": "#/components/schemas/Semester"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "message": {
+          "default": "ok",
+          "title": "Message",
+          "type": "string"
+        },
+        "trace_id": {
+          "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+          "title": "Trace Id",
+          "type": "string"
+        }
+      },
+      "title": "ApiResponse[Union[Semester, NoneType]]",
       "type": "object"
     },
     "ApiResponse_Union_dict__NoneType__": {
@@ -5380,6 +7108,37 @@
         }
       },
       "title": "ApiResponse[Union[dict, NoneType]]",
+      "type": "object"
+    },
+    "ApiResponse_WorkloadView_": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "$ref": "#/components/schemas/ErrorCode",
+          "default": 0
+        },
+        "data": {
+          "anyOf": [
+            {
+              "$ref": "#/components/schemas/WorkloadView"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "message": {
+          "default": "ok",
+          "title": "Message",
+          "type": "string"
+        },
+        "trace_id": {
+          "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+          "title": "Trace Id",
+          "type": "string"
+        }
+      },
+      "title": "ApiResponse[WorkloadView]",
       "type": "object"
     },
     "ApiResponse_WorkspacePageView_": {
@@ -5831,6 +7590,41 @@
       "title": "ApiResponse[list[NoteView]]",
       "type": "object"
     },
+    "ApiResponse_list_NotificationStateView__": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "$ref": "#/components/schemas/ErrorCode",
+          "default": 0
+        },
+        "data": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/components/schemas/NotificationStateView"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Data"
+        },
+        "message": {
+          "default": "ok",
+          "title": "Message",
+          "type": "string"
+        },
+        "trace_id": {
+          "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+          "title": "Trace Id",
+          "type": "string"
+        }
+      },
+      "title": "ApiResponse[list[NotificationStateView]]",
+      "type": "object"
+    },
     "ApiResponse_list_ReleaseJob__": {
       "additionalProperties": false,
       "properties": {
@@ -5935,6 +7729,52 @@
         }
       },
       "title": "ApiResponse[list[dict]]",
+      "type": "object"
+    },
+    "AssetSnapshotView": {
+      "properties": {
+        "asset_type": {
+          "enum": [
+            "direction_plan",
+            "action_plan"
+          ],
+          "title": "Asset Type",
+          "type": "string"
+        },
+        "content": {
+          "anyOf": [
+            {
+              "$ref": "#/components/schemas/ActionPlan"
+            },
+            {
+              "items": {
+                "$ref": "#/components/schemas/DirectionPlan"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Content"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "version": {
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "asset_type",
+        "version",
+        "created_at",
+        "content"
+      ],
+      "title": "AssetSnapshotView",
       "type": "object"
     },
     "AssetType": {
@@ -7102,6 +8942,146 @@
       "title": "DeveloperWorkerUpdate",
       "type": "object"
     },
+    "DirectionComparisonView": {
+      "properties": {
+        "method": {
+          "title": "Method",
+          "type": "string"
+        },
+        "plans": {
+          "items": {
+            "$ref": "#/components/schemas/DirectionScoreView"
+          },
+          "title": "Plans",
+          "type": "array"
+        },
+        "version": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Version"
+        },
+        "weights": {
+          "$ref": "#/components/schemas/DirectionWeights"
+        }
+      },
+      "required": [
+        "weights",
+        "plans",
+        "method"
+      ],
+      "title": "DirectionComparisonView",
+      "type": "object"
+    },
+    "DirectionPlan": {
+      "additionalProperties": false,
+      "description": "方向方案。主攻/平行/保底三套，选择可撤回。",
+      "properties": {
+        "fit_reason": {
+          "description": "契合依据",
+          "title": "Fit Reason",
+          "type": "string"
+        },
+        "gaps": {
+          "items": {
+            "$ref": "#/components/schemas/PlanGap"
+          },
+          "title": "Gaps",
+          "type": "array"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "main_risk": {
+          "description": "主要风险",
+          "title": "Main Risk",
+          "type": "string"
+        },
+        "match_method": {
+          "default": "",
+          "description": "匹配度口径（同一批方案共用一句），如「三叶草契合度 × 可达性」",
+          "title": "Match Method",
+          "type": "string"
+        },
+        "match_score": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "有可追溯依据时的匹配度；缺依据为 null",
+          "title": "Match Score"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "report_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "关联的诊断报告 id",
+          "title": "Report Id"
+        },
+        "revocable": {
+          "default": true,
+          "description": "可撤回，恒为 True",
+          "title": "Revocable",
+          "type": "boolean"
+        },
+        "role": {
+          "$ref": "#/components/schemas/PlanRole"
+        },
+        "selected": {
+          "default": false,
+          "title": "Selected",
+          "type": "boolean"
+        },
+        "selected_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Selected At"
+        },
+        "target_desc": {
+          "description": "目标描述",
+          "title": "Target Desc",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "role",
+        "name",
+        "target_desc",
+        "fit_reason",
+        "main_risk"
+      ],
+      "title": "DirectionPlan",
+      "type": "object"
+    },
     "DirectionPlanListView": {
       "additionalProperties": false,
       "description": "三套方案 + \"现在选的是哪一套\"。\n\n`selected_id` 单独给一份，是因为前端要用它做高亮：只靠 plans[].selected 也能算，\n但\"当前选择\"在产品口径里是一个独立事实（可撤回、可对比），\n让它显式存在，界面上就不会出现\"两套都亮着\"这种状态。",
@@ -7220,6 +9200,115 @@
         "name"
       ],
       "title": "DirectionPlanView",
+      "type": "object"
+    },
+    "DirectionScoreView": {
+      "properties": {
+        "feasibility": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Feasibility"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "measurements": {
+          "items": {
+            "$ref": "#/components/schemas/Measurement"
+          },
+          "title": "Measurements",
+          "type": "array"
+        },
+        "missing": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Missing",
+          "type": "array"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "opportunity": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Opportunity"
+        },
+        "score": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Score"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "missing",
+        "measurements"
+      ],
+      "title": "DirectionScoreView",
+      "type": "object"
+    },
+    "DirectionWeights": {
+      "additionalProperties": false,
+      "properties": {
+        "jobs": {
+          "default": 1,
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "title": "Jobs",
+          "type": "number"
+        },
+        "location": {
+          "default": 1,
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "title": "Location",
+          "type": "number"
+        },
+        "major": {
+          "default": 1,
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "title": "Major",
+          "type": "number"
+        },
+        "salary": {
+          "default": 1,
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "title": "Salary",
+          "type": "number"
+        },
+        "stability": {
+          "default": 1,
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "title": "Stability",
+          "type": "number"
+        }
+      },
+      "title": "DirectionWeights",
       "type": "object"
     },
     "DisclosureView": {
@@ -7715,6 +9804,195 @@
       ],
       "title": "LoopStage",
       "type": "string"
+    },
+    "Measurement": {
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Key",
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "maximum": {
+          "default": 100,
+          "title": "Maximum",
+          "type": "number"
+        },
+        "measured_at": {
+          "format": "date-time",
+          "title": "Measured At",
+          "type": "string"
+        },
+        "method": {
+          "maxLength": 300,
+          "minLength": 1,
+          "title": "Method",
+          "type": "string"
+        },
+        "minimum": {
+          "default": 0,
+          "title": "Minimum",
+          "type": "number"
+        },
+        "origin": {
+          "default": "self_report",
+          "enum": [
+            "self_report",
+            "assessment",
+            "external"
+          ],
+          "title": "Origin",
+          "type": "string"
+        },
+        "source": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Source",
+          "type": "string"
+        },
+        "threshold": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Threshold"
+        },
+        "value": {
+          "title": "Value",
+          "type": "number"
+        }
+      },
+      "required": [
+        "key",
+        "label",
+        "value",
+        "source",
+        "method",
+        "measured_at"
+      ],
+      "title": "Measurement",
+      "type": "object"
+    },
+    "MeasurementBatch": {
+      "additionalProperties": false,
+      "properties": {
+        "asset_type": {
+          "enum": [
+            "report",
+            "direction_plan"
+          ],
+          "title": "Asset Type",
+          "type": "string"
+        },
+        "measurements": {
+          "items": {
+            "$ref": "#/components/schemas/Measurement"
+          },
+          "maxItems": 30,
+          "minItems": 1,
+          "title": "Measurements",
+          "type": "array"
+        },
+        "subject_id": {
+          "minLength": 1,
+          "title": "Subject Id",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1.0,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "asset_type",
+        "version",
+        "subject_id",
+        "measurements"
+      ],
+      "title": "MeasurementBatch",
+      "type": "object"
+    },
+    "MeasurementListView": {
+      "properties": {
+        "history": {
+          "items": {
+            "$ref": "#/components/schemas/MeasurementRecordView"
+          },
+          "title": "History",
+          "type": "array"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/components/schemas/MeasurementRecordView"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "items",
+        "history"
+      ],
+      "title": "MeasurementListView",
+      "type": "object"
+    },
+    "MeasurementRecordView": {
+      "additionalProperties": false,
+      "properties": {
+        "asset_type": {
+          "enum": [
+            "report",
+            "direction_plan"
+          ],
+          "title": "Asset Type",
+          "type": "string"
+        },
+        "measurements": {
+          "items": {
+            "$ref": "#/components/schemas/Measurement"
+          },
+          "maxItems": 30,
+          "minItems": 1,
+          "title": "Measurements",
+          "type": "array"
+        },
+        "recorded_at": {
+          "format": "date-time",
+          "title": "Recorded At",
+          "type": "string"
+        },
+        "subject_id": {
+          "minLength": 1,
+          "title": "Subject Id",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1.0,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "asset_type",
+        "version",
+        "subject_id",
+        "measurements",
+        "recorded_at"
+      ],
+      "title": "MeasurementRecordView",
+      "type": "object"
     },
     "MenuView": {
       "additionalProperties": false,
@@ -8718,6 +10996,214 @@
       "title": "NoteView",
       "type": "object"
     },
+    "NotificationEdit": {
+      "additionalProperties": false,
+      "properties": {
+        "snoozed_until": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Snoozed Until"
+        },
+        "status": {
+          "enum": [
+            "pending",
+            "read",
+            "later",
+            "done"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "title": "NotificationEdit",
+      "type": "object"
+    },
+    "NotificationStateView": {
+      "properties": {
+        "action": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Action"
+        },
+        "body": {
+          "default": "",
+          "title": "Body",
+          "type": "string"
+        },
+        "channel": {
+          "default": "",
+          "title": "Channel",
+          "type": "string"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "occurred_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Occurred At"
+        },
+        "related_task_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Related Task Id"
+        },
+        "snoozed_until": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Snoozed Until"
+        },
+        "status": {
+          "enum": [
+            "pending",
+            "read",
+            "later",
+            "done"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "status"
+      ],
+      "title": "NotificationStateView",
+      "type": "object"
+    },
+    "Period": {
+      "additionalProperties": false,
+      "properties": {
+        "end": {
+          "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$",
+          "title": "End",
+          "type": "string"
+        },
+        "number": {
+          "maximum": 30.0,
+          "minimum": 1.0,
+          "title": "Number",
+          "type": "integer"
+        },
+        "start": {
+          "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$",
+          "title": "Start",
+          "type": "string"
+        }
+      },
+      "required": [
+        "number",
+        "start",
+        "end"
+      ],
+      "title": "Period",
+      "type": "object"
+    },
+    "PhaseEdit": {
+      "additionalProperties": false,
+      "properties": {
+        "blocking_conditions": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Blocking Conditions",
+          "type": "array"
+        },
+        "depends_on": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 30,
+          "title": "Depends On",
+          "type": "array"
+        },
+        "ends_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Ends At"
+        },
+        "handoff_requirements": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Handoff Requirements",
+          "type": "array"
+        },
+        "name": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "starts_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Starts At"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "PhaseEdit",
+      "type": "object"
+    },
     "PipelineCardView": {
       "additionalProperties": false,
       "description": "右栏管线卡（①-⑤ 每环节一卡）。\n\n三态：当前产出 / 可展开理论模型 / 可展开评价状态。",
@@ -8785,6 +11271,31 @@
         "title"
       ],
       "title": "PipelineCardView",
+      "type": "object"
+    },
+    "PlanGap": {
+      "additionalProperties": false,
+      "description": "方案内的差距条目：要求 − 现状 = 差距 + 补齐建议。",
+      "properties": {
+        "current_state": {
+          "title": "Current State",
+          "type": "string"
+        },
+        "requirement": {
+          "title": "Requirement",
+          "type": "string"
+        },
+        "suggestion": {
+          "title": "Suggestion",
+          "type": "string"
+        }
+      },
+      "required": [
+        "requirement",
+        "current_state",
+        "suggestion"
+      ],
+      "title": "PlanGap",
       "type": "object"
     },
     "PlanGapView": {
@@ -8880,6 +11391,57 @@
         }
       },
       "title": "PortalView",
+      "type": "object"
+    },
+    "Preferences": {
+      "additionalProperties": false,
+      "properties": {
+        "academic_analysis": {
+          "default": true,
+          "title": "Academic Analysis",
+          "type": "boolean"
+        },
+        "material_analysis": {
+          "default": true,
+          "title": "Material Analysis",
+          "type": "boolean"
+        },
+        "proactive_reminders": {
+          "default": true,
+          "title": "Proactive Reminders",
+          "type": "boolean"
+        },
+        "quiet_end": {
+          "anyOf": [
+            {
+              "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Quiet End"
+        },
+        "quiet_start": {
+          "anyOf": [
+            {
+              "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Quiet Start"
+        },
+        "timezone": {
+          "default": "Asia/Shanghai",
+          "title": "Timezone",
+          "type": "string"
+        }
+      },
+      "title": "Preferences",
       "type": "object"
     },
     "ProfileFieldUpdateRequest": {
@@ -9342,6 +11904,160 @@
       "title": "ReportTocItemView",
       "type": "object"
     },
+    "ReviewEdit": {
+      "additionalProperties": false,
+      "properties": {
+        "adjustment": {
+          "anyOf": [
+            {
+              "$ref": "#/components/schemas/TaskEdit"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "note": {
+          "default": "",
+          "maxLength": 3000,
+          "title": "Note",
+          "type": "string"
+        },
+        "reason": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        },
+        "result": {
+          "default": "continue",
+          "enum": [
+            "continue",
+            "adjust",
+            "complete"
+          ],
+          "title": "Result",
+          "type": "string"
+        },
+        "task_id": {
+          "title": "Task Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "task_id",
+        "reason"
+      ],
+      "title": "ReviewEdit",
+      "type": "object"
+    },
+    "ReviewListView": {
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/components/schemas/ReviewRecordView"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "reasons": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "Reasons",
+          "type": "object"
+        }
+      },
+      "required": [
+        "items",
+        "reasons"
+      ],
+      "title": "ReviewListView",
+      "type": "object"
+    },
+    "ReviewRecordView": {
+      "additionalProperties": false,
+      "properties": {
+        "adjustment": {
+          "anyOf": [
+            {
+              "$ref": "#/components/schemas/TaskEdit"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "applied_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Applied At"
+        },
+        "history": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "History",
+          "type": "array"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "note": {
+          "default": "",
+          "maxLength": 3000,
+          "title": "Note",
+          "type": "string"
+        },
+        "reason": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        },
+        "result": {
+          "default": "continue",
+          "enum": [
+            "continue",
+            "adjust",
+            "complete"
+          ],
+          "title": "Result",
+          "type": "string"
+        },
+        "task_id": {
+          "title": "Task Id",
+          "type": "string"
+        },
+        "task_text": {
+          "title": "Task Text",
+          "type": "string"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "task_id",
+        "reason",
+        "id",
+        "task_text",
+        "updated_at"
+      ],
+      "title": "ReviewRecordView",
+      "type": "object"
+    },
     "RouteView": {
       "additionalProperties": false,
       "description": "前端路由。",
@@ -9371,6 +12087,80 @@
         "page_code"
       ],
       "title": "RouteView",
+      "type": "object"
+    },
+    "ScheduleConflictView": {
+      "properties": {
+        "at": {
+          "format": "date-time",
+          "title": "At",
+          "type": "string"
+        },
+        "first": {
+          "title": "First",
+          "type": "string"
+        },
+        "second": {
+          "title": "Second",
+          "type": "string"
+        }
+      },
+      "required": [
+        "first",
+        "second",
+        "at"
+      ],
+      "title": "ScheduleConflictView",
+      "type": "object"
+    },
+    "Semester": {
+      "additionalProperties": false,
+      "properties": {
+        "first_monday": {
+          "format": "date",
+          "title": "First Monday",
+          "type": "string"
+        },
+        "periods": {
+          "items": {
+            "$ref": "#/components/schemas/Period"
+          },
+          "maxItems": 30,
+          "minItems": 1,
+          "title": "Periods",
+          "type": "array"
+        },
+        "timezone": {
+          "default": "Asia/Shanghai",
+          "title": "Timezone",
+          "type": "string"
+        },
+        "weekly_available_minutes": {
+          "anyOf": [
+            {
+              "maximum": 10080.0,
+              "minimum": 0.0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Weekly Available Minutes"
+        },
+        "weeks": {
+          "default": 20,
+          "maximum": 53.0,
+          "minimum": 1.0,
+          "title": "Weeks",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "first_monday",
+        "periods"
+      ],
+      "title": "Semester",
       "type": "object"
     },
     "SessionListView": {
@@ -9464,6 +12254,100 @@
         "title"
       ],
       "title": "StagePanelView",
+      "type": "object"
+    },
+    "TaskEdit": {
+      "additionalProperties": false,
+      "properties": {
+        "due_date": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Due Date"
+        },
+        "estimated_minutes": {
+          "anyOf": [
+            {
+              "maximum": 1440.0,
+              "minimum": 1.0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Estimated Minutes"
+        },
+        "parent_task_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Parent Task Id"
+        },
+        "phase_id": {
+          "minLength": 1,
+          "title": "Phase Id",
+          "type": "string"
+        },
+        "progress": {
+          "default": 0,
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "title": "Progress",
+          "type": "integer"
+        },
+        "scheduled_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Scheduled At"
+        },
+        "status": {
+          "default": "pending",
+          "enum": [
+            "pending",
+            "in_progress",
+            "waiting",
+            "completed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "waiting_reason": {
+          "default": "",
+          "maxLength": 500,
+          "title": "Waiting Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text",
+        "phase_id"
+      ],
+      "title": "TaskEdit",
       "type": "object"
     },
     "TaskEnterRequest": {
@@ -9871,6 +12755,88 @@
         "type"
       ],
       "title": "ValidationError",
+      "type": "object"
+    },
+    "WorkloadView": {
+      "properties": {
+        "capacity_method": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Capacity Method"
+        },
+        "configured": {
+          "title": "Configured",
+          "type": "boolean"
+        },
+        "conflicts": {
+          "items": {
+            "$ref": "#/components/schemas/ScheduleConflictView"
+          },
+          "title": "Conflicts",
+          "type": "array"
+        },
+        "missing": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Missing",
+          "type": "array"
+        },
+        "weeks": {
+          "items": {
+            "$ref": "#/components/schemas/WorkloadWeekView"
+          },
+          "title": "Weeks",
+          "type": "array"
+        }
+      },
+      "required": [
+        "configured",
+        "weeks",
+        "conflicts",
+        "missing"
+      ],
+      "title": "WorkloadView",
+      "type": "object"
+    },
+    "WorkloadWeekView": {
+      "properties": {
+        "course_minutes": {
+          "title": "Course Minutes",
+          "type": "number"
+        },
+        "remaining_minutes": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Remaining Minutes"
+        },
+        "start": {
+          "title": "Start",
+          "type": "string"
+        },
+        "task_minutes": {
+          "title": "Task Minutes",
+          "type": "number"
+        }
+      },
+      "required": [
+        "start",
+        "course_minutes",
+        "task_minutes"
+      ],
+      "title": "WorkloadWeekView",
       "type": "object"
     },
     "WorkspacePageView": {

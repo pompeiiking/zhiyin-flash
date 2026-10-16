@@ -25,7 +25,9 @@ class AssetRepository(ABC):
     # ---------- 版本 ----------
 
     @abstractmethod
-    async def get_latest_version(self, user_id: str, asset_type: AssetType) -> Optional[AssetVersion]:
+    async def get_latest_version(
+        self, user_id: str, asset_type: AssetType
+    ) -> Optional[AssetVersion]:
         """取某类资产的最新版本记录。"""
 
     @abstractmethod
@@ -78,6 +80,9 @@ class AssetRepository(ABC):
     async def select_direction_plan(self, user_id: str, plan_id: str) -> DirectionPlan:
         """做出可撤回的选择。"""
 
+    async def update_action_plan(self, user_id, change):
+        raise NotImplementedError
+
     # ---------- 行动计划 ----------
 
     @abstractmethod
@@ -89,9 +94,7 @@ class AssetRepository(ABC):
         """保存行动计划。"""
 
     @abstractmethod
-    async def mark_task_done(
-        self, user_id: str, task_id: str, *, done: bool = True
-    ) -> ActionPlan:
+    async def mark_task_done(self, user_id: str, task_id: str, *, done: bool = True) -> ActionPlan:
         """勾掉 / 取消勾选一个任务，返回更新后的计划。
 
         `done=False` 是"勾错了要撤回"。只支持单向勾选的话，用户点错一次就再也

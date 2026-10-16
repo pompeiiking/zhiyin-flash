@@ -6,6 +6,7 @@ const source = resolve(root, '../contracts/openapi.json')
 const spec = JSON.parse(readFileSync(source, 'utf8'))
 const schemas = spec.components.schemas
 const queue = ['NoteView', 'NoteCreateRequest', 'NoteDoneRequest', 'AcademicPanelView', 'AcademicImportRequest', 'AcademicImportAck', 'ConversationMaterialView', 'TaskSessionView', 'SessionListView', 'MessageRequest', 'GuideOptionView', 'ConversationTurnView', 'ProfileFieldView', 'IntelListView', 'IntelItemView', 'CalendarNodeView', 'AchievementListView', 'ActionPlanView', 'ActionTaskDoneRequest', 'DirectionPlanListView', 'ReportFullTextView', 'AssetVersionView', 'TrackEventView', 'BootstrapView', 'TheoryCardView']
+queue.push("TaskEdit", "PhaseEdit", "Preferences", "Semester", "ReviewEdit", "NotificationEdit", "MeasurementBatch", "DirectionWeights")
 const seen = new Set()
 queue.push('WorkspacePageView', 'ExportResultView', 'LoginResult', 'AuthRequest', 'CoachNotificationView', 'PortalView')
 function type(s = {}) {

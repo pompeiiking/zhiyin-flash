@@ -138,6 +138,12 @@ class ActionTask(BaseModel):
     due_date: Optional[datetime] = None
     done: bool = False
     done_at: Optional[datetime] = None
+    status: Literal["pending", "in_progress", "waiting", "completed"] = "pending"
+    progress: int = Field(default=0, ge=0, le=100)
+    waiting_reason: str = ""
+    scheduled_at: Optional[datetime] = None
+    estimated_minutes: int | None = Field(default=None, ge=1, le=1440)
+    parent_task_id: str | None = None
 
 
 class ActionPhase(BaseModel):
@@ -149,6 +155,12 @@ class ActionPhase(BaseModel):
     date_range: str
     tag: str = Field(default="", description="阶段标签，如秋招投递/笔试冲刺")
     tasks: list[ActionTask] = Field(default_factory=list)
+    id: str = ""
+    depends_on: list[str] = Field(default_factory=list)
+    starts_at: Optional[datetime] = None
+    ends_at: Optional[datetime] = None
+    blocking_conditions: list[str] = Field(default_factory=list)
+    handoff_requirements: list[str] = Field(default_factory=list)
 
 
 class ActionPlan(BaseModel):
@@ -175,9 +187,7 @@ class TrackEvent(BaseModel):
 
     id: str
     user_id: str
-    type: Literal[
-        "milestone_done", "reminder", "warning", "semester_review", "coach_message"
-    ]
+    type: Literal["milestone_done", "reminder", "warning", "semester_review", "coach_message"]
     title: str
     detail: str = ""
     occurred_at: Optional[datetime] = None

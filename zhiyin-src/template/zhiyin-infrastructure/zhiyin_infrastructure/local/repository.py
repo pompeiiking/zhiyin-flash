@@ -149,11 +149,7 @@ class InMemoryProfileRepository(ProfileRepository):
         if profile is None:
             return []
         wanted = set(keys) if keys else None
-        return [
-            _snapshot(item)
-            for item in profile.fields
-            if wanted is None or item.key in wanted
-        ]
+        return [_snapshot(item) for item in profile.fields if wanted is None or item.key in wanted]
 
     async def list_gaps(self, user_id: str) -> list[ProfileGap]:
         profile = self._profiles.get(user_id)
@@ -168,9 +164,7 @@ class InMemoryProfileRepository(ProfileRepository):
     def _ensure(self, user_id: str) -> Profile:
         profile = self._profiles.get(user_id)
         if profile is None:
-            profile = Profile(
-                id=_new_id("prf"), user_id=user_id, updated_at=_now()
-            )
+            profile = Profile(id=_new_id("prf"), user_id=user_id, updated_at=_now())
             self._profiles[user_id] = profile
         return profile
 
@@ -239,9 +233,7 @@ class InMemoryConversationMemoryRepository(ConversationMemoryRepository):
         return _snapshot(stored)
 
     async def list_by_user(self, user_id: str) -> list[ConversationMemory]:
-        items = [
-            memory for (uid, _), memory in self._memories.items() if uid == user_id
-        ]
+        items = [memory for (uid, _), memory in self._memories.items() if uid == user_id]
         items.sort(key=lambda item: item.last_active_at, reverse=True)
         return [_snapshot(item) for item in items]
 
@@ -377,9 +369,7 @@ class InMemoryAssetRepository(AssetRepository):
                 latest_by_type[item.asset_type] = item
 
         affected = [
-            item
-            for item in latest_by_type.values()
-            if changed & set(item.depends_on_profile_keys)
+            item for item in latest_by_type.values() if changed & set(item.depends_on_profile_keys)
         ]
         affected.sort(key=lambda item: (item.asset_type.value, item.version))
         return [_snapshot(item) for item in affected]
@@ -392,9 +382,7 @@ class InMemoryAssetRepository(AssetRepository):
             return None
         latest = matched[-1]
         # 原地改最新那一版：不追加版本、不动正文，只把"这版是旧的"如实记下来。
-        marker = latest.model_copy(
-            update={"needs_recompute": True, "recompute_reason": reason}
-        )
+        marker = latest.model_copy(update={"needs_recompute": True, "recompute_reason": reason})
         # 按**身份**替换，不按 `==`：Pydantic 的相等是按字段比，两条内容一样的
         # 版本会互相顶掉（旧版被改新、新版原样留着），这种错不报错、只错数据。
         for index, item in enumerate(self._versions):
@@ -476,9 +464,14 @@ class InMemoryAssetRepository(AssetRepository):
         self._action_plans[user_id] = stored
         return _snapshot(stored)
 
-    async def mark_task_done(
-        self, user_id: str, task_id: str, *, done: bool = True
-    ) -> ActionPlan:
+    async def update_action_plan(self, user_id, change):
+        # No await between reading and replacing the in-memory value.
+        plan = self._action_plans.get(user_id)
+        updated = change(_snapshot(plan) if plan else None)
+        self._action_plans[user_id] = _snapshot(updated)
+        return _snapshot(updated)
+
+    async def mark_task_done(self, user_id: str, task_id: str, *, done: bool = True) -> ActionPlan:
         plan = self._action_plans.get(user_id)
         if plan is None:
             raise ResourceNotFound(f"行动计划不存在：{user_id}")
@@ -489,6 +482,9 @@ class InMemoryAssetRepository(AssetRepository):
                 if task_id in {task.id, _task_key(phase.name, task.text), task.text}:
                     task.done = done
                     task.done_at = _now() if done else None
+                    task.status = "completed" if done else "pending"
+                    task.progress = 100 if done else 0
+                    task.waiting_reason = ""
                     return _snapshot(plan)
         raise ResourceNotFound(f"行动任务不存在：{task_id}")
 
@@ -547,9 +543,7 @@ class InMemoryTaskSessionRepository(TaskSessionRepository):
         self._sessions[stored.id] = stored
         return _snapshot(stored)
 
-    async def update_stage(
-        self, session_id: str, stage: LoopStage, lead_agent: str
-    ) -> TaskSession:
+    async def update_stage(self, session_id: str, stage: LoopStage, lead_agent: str) -> TaskSession:
         session = self._require(session_id)
         session.loop_stage = stage
         session.lead_agent = lead_agent
@@ -597,6 +591,7 @@ class InMemoryUserRepository(UserRepository):
         if user is None:
             raise ResourceNotFound(f"用户不存在：{user_id}")
         user.last_login_at = at
+
 
 class LocalJsonRegistryRepository(RegistryRepository):
     """动态资源：第一期读本地 JSON。
@@ -671,9 +666,7 @@ class LocalJsonRegistryRepository(RegistryRepository):
                 return TheoryCard.model_validate(raw)
         return None
 
-    async def list_theory_cards(
-        self, theory_ids: Optional[list[str]] = None
-    ) -> list[TheoryCard]:
+    async def list_theory_cards(self, theory_ids: Optional[list[str]] = None) -> list[TheoryCard]:
         wanted = set(theory_ids) if theory_ids else None
         cards = [TheoryCard.model_validate(raw) for raw in self._load("theory_cards")]
         if wanted is None:
@@ -805,12 +798,8 @@ class LocalJsonRegistryRepository(RegistryRepository):
         items.sort(key=lambda item: item.sort_order)
         return items
 
-    async def list_routing_rules(
-        self, kind: Optional[str] = None
-    ) -> list[RoutingRuleSpec]:
-        items = [
-            RoutingRuleSpec.model_validate(raw) for raw in self._load("routing_rules")
-        ]
+    async def list_routing_rules(self, kind: Optional[str] = None) -> list[RoutingRuleSpec]:
+        items = [RoutingRuleSpec.model_validate(raw) for raw in self._load("routing_rules")]
         items = [item for item in items if item.status == "enabled"]
         if kind is not None:
             items = [item for item in items if item.kind == kind]
@@ -924,14 +913,44 @@ class InMemoryNotificationRepository(NotificationRepository):
         """原始列表（含已读）。调试与单测用，业务读侧请走 `list_pending`。"""
         return self._messages.get(user_id, ())
 
+    async def list_all(self, user_id):
+        result = []
+        for item in self._messages.get(user_id, ()):
+            value = dict(item)
+            state = value.get("status", "read" if value.get("read_at") else "pending")
+            if (
+                state == "later"
+                and value.get("snoozed_until")
+                and datetime.fromisoformat(value["snoozed_until"]) <= _now()
+            ):
+                state = "pending"
+            value["status"] = state
+            result.append(value)
+        return list(reversed(result))
+
+    async def set_state(self, user_id, message_id, status, snoozed_until=None):
+        for item in self._messages.get(user_id, ()):
+            if item.get("id") == message_id:
+                item.update(
+                    status=status,
+                    snoozed_until=snoozed_until.isoformat()
+                    if snoozed_until and status == "later"
+                    else None,
+                    read_at=_now().isoformat() if status in {"read", "done"} else None,
+                )
+                return True
+        return False
+
     async def list_pending(self, user_id: str) -> list[dict]:
-        return [dict(item) for item in self._messages.get(user_id, ()) if not item.get("read_at")]
+        return [item for item in await self.list_all(user_id) if item["status"] == "pending"]
 
     async def mark_read(self, user_id: str, message_id: str) -> int:
         changed = 0
         for item in self._messages.get(user_id, ()):
             if item.get("id") == message_id and not item.get("read_at"):
                 item["read_at"] = _now().isoformat()
+                if item.get("status", "pending") == "pending":
+                    item["status"] = "read"
                 changed += 1
         return changed
 
@@ -947,8 +966,7 @@ class InMemoryNotificationRepository(NotificationRepository):
         return sum(
             1
             for item in self._messages.get(user_id, ())
-            if item.get("occurred_at")
-            and datetime.fromisoformat(str(item["occurred_at"])) >= since
+            if item.get("occurred_at") and datetime.fromisoformat(str(item["occurred_at"])) >= since
         )
 
 

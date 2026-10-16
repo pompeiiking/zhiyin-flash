@@ -235,7 +235,9 @@ class AiTaskService:
         functions: Any = None,
         engine: Optional[AgentEngine] = None,
         results: Optional[AiTaskResultRepository] = None,
+        student_state=None,
     ) -> None:
+        self._student_state = student_state
         self._profiles = profiles
         self._behaviors = behaviors
         self._assets = assets
@@ -352,6 +354,11 @@ class AiTaskService:
         if self._engine is None:
             raise MissingConfigError(f"智能体引擎未装配，{key} 无法生成内容")
         agent_id, prompt_code, contract, uses_tools = spec
+        from zhiyin_business.services.analysis_access import current_scope
+        scope = current_scope(user_id)
+        if scope is not None and scope.restricted:
+            context_text = ("按资料偏好，仅使用以下允许的事实。未提供的旧摘要和推导结果已排除；"
+                            "不能据此断言用户从未提供资料。\n" + context_text)
         result = await self._engine.invoke(
             AgentRequest(
                 agent_id=agent_id,
@@ -418,10 +425,32 @@ class AiTaskService:
         ]
 
     async def stream(self, user_id: str, key: str, arg: str = "") -> AsyncIterator[dict]:
+        from zhiyin_business.services.analysis_access import activate, load_scope
+
+        # Imports remain available. Never leave a ContextVar set across a yield.
+        scope = None if key.startswith("bind.") else await load_scope(self._student_state, user_id)
+        iterator = self._stream(user_id, key, arg)
+        try:
+            while True:
+                with activate(scope):
+                    try:
+                        frame = await anext(iterator)
+                    except StopAsyncIteration:
+                        break
+                yield frame
+        finally:
+            with activate(scope):
+                await iterator.aclose()
+
+    async def _stream(self, user_id: str, key: str, arg: str = "") -> AsyncIterator[dict]:
         """执行一个 AI 任务：yield 进度帧，最后 yield {"result": ...} 终帧。"""
         started = time.perf_counter()
         head = key.split(".")[0]
         cache_key = f"{key}.{arg}" if arg else key
+        from zhiyin_business.services.analysis_access import current_scope
+        scope = current_scope(user_id)
+        if scope is not None:
+            cache_key += "|sources-v1:" + ",".join(sorted(scope.sources))
         cacheable = head not in _SIDE_EFFECTING_HEADS
 
         if cacheable:

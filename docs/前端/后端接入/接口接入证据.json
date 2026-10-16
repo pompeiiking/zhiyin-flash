@@ -37,7 +37,7 @@
     "frontend": [
       "zhiyin-src/template/zhiyin-web/src/views/SystemView.vue"
     ],
-    "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json；服务边界：第一期仅预留导出入口，已显示原因，未产生下载文件"
+    "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
   },
   "GET /api/v1/app/assets/{asset_type}/versions": {
     "status": "联调通过",
@@ -669,5 +669,226 @@
       "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
     ],
     "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+  },
+  "GET /api/v1/app/assets/download/{export_id}": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+    ],
+    "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
+  },
+  "GET /api/v1/app/preferences": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+    ],
+    "verification": "2026-10-16 当前 Docker HTTP/PostgreSQL/JWT 联调通过；来源关闭后仍可生成，四种组合、缓存隔离、派生信息过滤、数据库回读及普通读取保留共 21 项通过。见 资料来源过滤验收结果.json。"
+  },
+  "PUT /api/v1/app/preferences": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+    ],
+    "verification": "2026-10-16 当前 Docker HTTP/PostgreSQL/JWT 联调通过；来源关闭后仍可生成，四种组合、缓存隔离、派生信息过滤、数据库回读及普通读取保留共 21 项通过。见 资料来源过滤验收结果.json。"
+  },
+  "POST /api/v1/app/plan/action/tasks": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+    ],
+    "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
+  },
+  "PUT /api/v1/app/plan/action/tasks/{task_id}": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+    ],
+    "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
+  },
+  "POST /api/v1/app/plan/action/phases": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+    ],
+    "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
+  },
+  "PUT /api/v1/app/plan/action/phases/{phase_id}": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+    ],
+    "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
+  },
+  "GET /api/v1/app/notifications": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+    ],
+    "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
+  },
+  "PATCH /api/v1/app/notifications/{message_id}": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+    ],
+    "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
+  },
+  "GET /api/v1/app/reviews": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+    ],
+    "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
+  },
+  "POST /api/v1/app/reviews": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+    ],
+    "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
+  },
+  "PUT /api/v1/app/reviews/{review_id}": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+    ],
+    "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
+  },
+  "POST /api/v1/app/reviews/{review_id}/apply": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+    ],
+    "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
+  },
+  "GET /api/v1/app/assets/{asset_type}/versions/{version}/content": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+    ],
+    "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
+  },
+  "GET /api/v1/app/sessions/{task_id}/snapshot": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+    ],
+    "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
+  },
+  "GET /api/v1/app/measurements": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+    ],
+    "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
+  },
+  "POST /api/v1/app/measurements": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+    ],
+    "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
+  },
+  "GET /api/v1/app/plan/direction-weights": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+    ],
+    "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
+  },
+  "PUT /api/v1/app/plan/direction-weights": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+    ],
+    "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
+  },
+  "GET /api/v1/app/plan/direction-comparison": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+    ],
+    "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
+  },
+  "GET /api/v1/app/schedule/semester": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+    ],
+    "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
+  },
+  "PUT /api/v1/app/schedule/semester": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+    ],
+    "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
+  },
+  "GET /api/v1/app/schedule/workload": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+    ],
+    "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
+  },
+  "POST /api/v1/developer/executor/claim": {
+    "status": "服务间接口，不应从浏览器调用",
+    "frontend": [],
+    "verification": "隔离协议联调通过。并发领取唯一、过期接管生成新租约、终态不再领取；全部验证无凭证、错误凭证和管理员 JWT 拒绝。见 服务间接口验收结果.json；不代表实际发布成功。"
+  },
+  "GET /api/v1/developer/executor/configuration": {
+    "status": "服务间接口，不应从浏览器调用",
+    "frontend": [],
+    "verification": "隔离协议联调通过。读取实际装配的模块策略；全部验证无凭证、错误凭证和管理员 JWT 拒绝。见 服务间接口验收结果.json；不代表实际发布成功。"
+  },
+  "POST /api/v1/developer/executor/{job_id}": {
+    "status": "服务间接口，不应从浏览器调用",
+    "frontend": [],
+    "verification": "隔离协议联调通过。有效租约进度/失败回写；错误、过期、替换租约与终态改写拒绝；全部验证无凭证、错误凭证和管理员 JWT 拒绝。见 服务间接口验收结果.json；不代表实际发布成功。"
+  },
+  "GET /api/v1/developer/executor/{job_id}/authorization": {
+    "status": "服务间接口，不应从浏览器调用",
+    "frontend": [],
+    "verification": "隔离协议联调通过。固定提交授权查询、未知任务拒绝；版本关联授权与实际部署仍待完整发布验收；全部验证无凭证、错误凭证和管理员 JWT 拒绝。见 服务间接口验收结果.json；不代表实际发布成功。"
+  },
+  "POST /api/v1/developer/source-worker/claim": {
+    "status": "服务间接口，不应从浏览器调用",
+    "frontend": [],
+    "verification": "隔离协议联调通过。未授权项目不领取、并发唯一领取、过期接管、重试再次领取；全部验证无凭证、错误凭证和管理员 JWT 拒绝。见 服务间接口验收结果.json；不代表实际发布成功。"
+  },
+  "POST /api/v1/developer/source-worker/heartbeat": {
+    "status": "服务间接口，不应从浏览器调用",
+    "frontend": [],
+    "verification": "隔离协议联调通过。心跳持久化并由管理端回读健康状态；全部验证无凭证、错误凭证和管理员 JWT 拒绝。见 服务间接口验收结果.json；不代表实际发布成功。"
+  },
+  "GET /api/v1/developer/source-worker/ready": {
+    "status": "服务间接口，不应从浏览器调用",
+    "frontend": [],
+    "verification": "隔离协议联调通过。查询通过，失败候选不进入就绪队列；未验证真实成功候选入队；全部验证无凭证、错误凭证和管理员 JWT 拒绝。见 服务间接口验收结果.json；不代表实际发布成功。"
+  },
+  "GET /api/v1/developer/source-worker/versions/{version_id}": {
+    "status": "服务间接口，不应从浏览器调用",
+    "frontend": [],
+    "verification": "隔离协议联调通过。实际上传版本回读、不暴露租约、缺失版本拒绝；全部验证无凭证、错误凭证和管理员 JWT 拒绝。见 服务间接口验收结果.json；不代表实际发布成功。"
+  },
+  "POST /api/v1/developer/source-worker/versions/{version_id}": {
+    "status": "服务间接口，不应从浏览器调用",
+    "frontend": [],
+    "verification": "隔离协议联调通过。进度/失败回写；过期、替换、错误租约和撤销授权拒绝；终态不可改写；全部验证无凭证、错误凭证和管理员 JWT 拒绝。见 服务间接口验收结果.json；不代表实际发布成功。"
+  },
+  "GET /api/v1/developer/source-worker/versions/{version_id}/package": {
+    "status": "服务间接口，不应从浏览器调用",
+    "frontend": [],
+    "verification": "隔离协议联调通过。真实上传包下载逐字节一致，规范化源码摘要一致；全部验证无凭证、错误凭证和管理员 JWT 拒绝。见 服务间接口验收结果.json；不代表实际发布成功。"
+  },
+  "POST /api/v1/developer/source-worker/versions/{version_id}/release": {
+    "status": "服务间接口，不应从浏览器调用",
+    "frontend": [],
+    "verification": "环境阻塞（拒绝路径通过）。仅通过自动发布禁用与失败候选缺少完整门禁证据的拒绝路径；真实构建、数据流、浏览器与部署正向验收仍待完成；全部验证无凭证、错误凭证和管理员 JWT 拒绝。见 服务间接口验收结果.json；不代表实际发布成功。"
+  },
+  "POST /api/v1/developer/source-worker/versions/{version_id}/retry": {
+    "status": "服务间接口，不应从浏览器调用",
+    "frontend": [],
+    "verification": "隔离协议联调通过。失败版本重入队、保留上次失败报告并清空候选提交；全部验证无凭证、错误凭证和管理员 JWT 拒绝。见 服务间接口验收结果.json；不代表实际发布成功。"
   }
 }

@@ -1,0 +1,90 @@
+{
+  "at": "2026-10-16T06:35:37.366986+00:00",
+  "environment": "local Docker PostgreSQL + HTTP/JWT + configured real model",
+  "cases": [
+    {
+      "name": "academic=False,material=True: persisted source filter",
+      "passed": true
+    },
+    {
+      "name": "academic=False,material=True: legacy summary excluded",
+      "passed": true
+    },
+    {
+      "name": "academic=False,material=True: real model terminal result",
+      "passed": true
+    },
+    {
+      "name": "academic=False,material=True: same-scope cache",
+      "passed": true
+    },
+    {
+      "name": "academic=True,material=False: persisted source filter",
+      "passed": true
+    },
+    {
+      "name": "academic=True,material=False: legacy summary excluded",
+      "passed": true
+    },
+    {
+      "name": "academic=True,material=False: real model terminal result",
+      "passed": true
+    },
+    {
+      "name": "academic=True,material=False: same-scope cache",
+      "passed": true
+    },
+    {
+      "name": "academic=False,material=False: persisted source filter",
+      "passed": true
+    },
+    {
+      "name": "academic=False,material=False: legacy summary excluded",
+      "passed": true
+    },
+    {
+      "name": "academic=False,material=False: real model terminal result",
+      "passed": true
+    },
+    {
+      "name": "academic=False,material=False: same-scope cache",
+      "passed": true
+    },
+    {
+      "name": "academic=True,material=True: persisted source filter",
+      "passed": true
+    },
+    {
+      "name": "academic=True,material=True: real model terminal result",
+      "passed": true
+    },
+    {
+      "name": "academic=True,material=True: same-scope cache",
+      "passed": true
+    },
+    {
+      "name": "derived profile provenance persists",
+      "passed": true
+    },
+    {
+      "name": "disabling material excludes its new derivation",
+      "passed": true
+    },
+    {
+      "name": "disabled attachment rejected before reading",
+      "passed": true
+    },
+    {
+      "name": "both sources disabled: real conversation works",
+      "passed": true
+    },
+    {
+      "name": "new restricted turns remain usable after database reload",
+      "passed": true
+    },
+    {
+      "name": "ordinary reads preserve original profile and history",
+      "passed": true
+    }
+  ]
+}

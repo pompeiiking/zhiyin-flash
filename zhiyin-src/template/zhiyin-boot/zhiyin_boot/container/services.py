@@ -180,6 +180,7 @@ def _product_modules(container=None) -> tuple[Any, ...]:
     if container is None:
         return ()
     from zhiyin_boot.module_platform import product_tools
+
     return product_tools(container)
 
 
@@ -213,14 +214,18 @@ def build_services(container: "Container") -> None:
         DefaultWorkspaceService,
     )
 
+    from zhiyin_business.services.analysis_access import guarded
+
     if container.profiles is not None and container.event_bus_primitive is not None:
         container.profile_service = DefaultProfileService(
             container.profiles, container.event_bus_primitive
         )
+        container.profile_service = guarded(container.profile_service, "profile")
     if container.behaviors is not None and container.event_bus_primitive is not None:
         container.behavior_service = DefaultBehaviorService(
             container.behaviors, container.event_bus_primitive
         )
+        container.behavior_service = guarded(container.behavior_service, "behavior")
     if container.memories is not None:
         # 逐轮原文与累积摘要一起交给记忆服务：摘要给模型续接，原文给会话历史。
         # 文档抽取与对象存储也给它：**用户带上来的材料**归这里收
@@ -231,6 +236,7 @@ def build_services(container: "Container") -> None:
             container.documents,
             container.object_store,
         )
+        container.memory_service = guarded(container.memory_service, "memory")
     if container.notes is not None:
         container.note_service = DefaultUserNoteService(container.notes)
     if container.academic_records is not None:
@@ -239,12 +245,15 @@ def build_services(container: "Container") -> None:
             container.academic,
             container.profile_service,
         )
+        container.academic_service = guarded(container.academic_service, "academic")
     if container.assets is not None and container.event_bus_primitive is not None:
         container.asset_service = DefaultAssetService(
             container.assets,
             container.event_bus_primitive,
             DependencyImpactPolicy(),
+            student_state=container.student_state,
         )
+        container.asset_service = guarded(container.asset_service, "asset")
     if container.registry is not None and container.feature_flags is not None:
         container.registry_service = DefaultRegistryService(
             container.registry, container.feature_flags
@@ -257,9 +266,7 @@ def build_services(container: "Container") -> None:
 
         container.read_cache = DefaultReadCacheService(container.cache)
     if container.auth is not None and container.users is not None:
-        container.identity_service = DefaultIdentityService(
-            container.auth, container.users
-        )
+        container.identity_service = DefaultIdentityService(container.auth, container.users)
 
     # 功能块服务要在编排器**之前**建：④ 行动产出的关键节点由它写进日历
     # （规划师写入、教练读取），顺序反了编排器就拿不到它。
@@ -291,6 +298,7 @@ def build_services(container: "Container") -> None:
             # 才真的落到实现上（学职平台 + 公开网页）。
             web_search=container.web_search,
         )
+        container.function_service = guarded(container.function_service, "function")
 
     dependencies = (
         container.profile_service,
@@ -299,9 +307,7 @@ def build_services(container: "Container") -> None:
         container.asset_service,
         container.registry_service,
     )
-    if container.agent_engine is not None and all(
-        item is not None for item in dependencies
-    ):
+    if container.agent_engine is not None and all(item is not None for item in dependencies):
         keyword_intent_policy = KeywordIntentPolicy(container.registry_service)
         intent_policy = keyword_intent_policy
         if container.decision is not None:
@@ -328,6 +334,7 @@ def build_services(container: "Container") -> None:
             read_cache=container.read_cache,
             functions=container.function_service,
             data_sources=container.data_sources,
+            student_state=container.student_state,
         )
 
     # ---- 读侧聚合：工作台 + 功能块 ----
@@ -364,6 +371,7 @@ def build_services(container: "Container") -> None:
             # 不退回拼一段看起来像样的文案 —— 那种做法已经删干净了。
             engine=container.agent_engine,
             results=container.ai_task_results,
+            student_state=container.student_state,
         )
 
     # ---- BFF 门面（前端联调的唯一入口）----
@@ -381,7 +389,24 @@ def build_services(container: "Container") -> None:
     if all(item is not None for item in facade_deps):
         from zhiyin_api.facade.application import DefaultApplicationFacade
 
+        from zhiyin_business.services.student import StudentService
+        from zhiyin_infrastructure.local.asset_documents import render_asset_document
+
+        container.student_service = StudentService(
+            state=container.student_state,
+            assets=container.assets,
+            asset_service=container.asset_service,
+            notifications=container.notifications,
+            academic=container.academic_records,
+            sessions=container.sessions,
+            object_store=container.object_store,
+            document_renderer=render_asset_document,
+            behaviors=container.behavior_service,
+            read_cache=container.read_cache,
+            ai_tasks=container.ai_task_service,
+        )
         container.facade = DefaultApplicationFacade(
+            student=container.student_service,
             identity=container.identity_service,
             registry=container.registry_service,
             orchestrator=container.orchestrator,
@@ -448,22 +473,19 @@ def build_workers(container: "Container") -> None:
 
         container.workers.append(
             ActiveEventWorker(
+                student=container.student_service,
                 behaviors=container.behavior_service,
                 policy_factory=lambda value: ThresholdInterventionPolicy(
                     stall_threshold_days=int(value.get("stall_threshold_days", 3)),
                     cooldown_hours=int(value.get("cooldown_hours", 48)),
-                    max_notifications_per_window=int(
-                        value.get("max_notifications_per_window", 2)
-                    ),
+                    max_notifications_per_window=int(value.get("max_notifications_per_window", 2)),
                     window_days=int(value.get("window_days", 7)),
                 ),
                 registry=container.registry,
                 notifications=container.notifications,
                 scheduler=container.scheduler_primitive,
                 notifier=container.notifier_primitive,
-                user_provider=lambda: list(
-                    getattr(container.users, "_users", {}).keys()
-                ),
+                user_provider=lambda: list(getattr(container.users, "_users", {}).keys()),
             )
         )
 

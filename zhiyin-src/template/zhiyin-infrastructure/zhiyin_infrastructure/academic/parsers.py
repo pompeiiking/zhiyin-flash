@@ -548,6 +548,13 @@ def _course_from_json_row(row: dict[str, Any]) -> Optional[CourseEntry]:
     if not name:
         return None
     start, end = parse_periods(_pick_json(row, _COURSE_JSON_KEYS["period"]))
+    # Accept our own CourseEntry JSON shape as well as school-export labels.
+    # A round trip through the API must not silently lose explicit period numbers.
+    if not start:
+        first = _pick_json(row, ("start_period",))
+        last = _pick_json(row, ("end_period",))
+        if first.isdigit() and last.isdigit() and 1 <= int(first) <= int(last) <= 30:
+            start, end = int(first), int(last)
     return CourseEntry(
         name=name,
         teacher=_pick_json(row, _COURSE_JSON_KEYS["teacher"]),

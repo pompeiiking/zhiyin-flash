@@ -81,13 +81,9 @@ class ReportFullTextView(BaseModel):
     sections: list[ReportSectionView] = Field(
         default_factory=list, description="按分组切开的 15 维正文"
     )
-    verdict: dict[str, Any] = Field(
-        default_factory=dict, description="综合结论 {title, summary}"
-    )
+    verdict: dict[str, Any] = Field(default_factory=dict, description="综合结论 {title, summary}")
     swot: dict[str, Any] = Field(default_factory=dict, description="SWOT 四象限")
-    methodologies: list[str] = Field(
-        default_factory=list, description="本次使用的理论模型名"
-    )
+    methodologies: list[str] = Field(default_factory=list, description="本次使用的理论模型名")
     sources: list[str] = Field(default_factory=list, description="事实来源清单")
 
 
@@ -150,6 +146,12 @@ class ActionTaskView(BaseModel):
     due_date: Optional[datetime] = None
     done: bool = False
     done_at: Optional[datetime] = None
+    status: Literal["pending", "in_progress", "waiting", "completed"] = "pending"
+    progress: int = 0
+    waiting_reason: str = ""
+    scheduled_at: Optional[datetime] = None
+    estimated_minutes: int | None = None
+    parent_task_id: str | None = None
 
 
 class ActionPhaseView(BaseModel):
@@ -161,6 +163,13 @@ class ActionPhaseView(BaseModel):
     date_range: str = ""
     tag: str = ""
     tasks: list[ActionTaskView] = Field(default_factory=list)
+    blocked_by: list[str] = Field(default_factory=list)
+    id: str = ""
+    depends_on: list[str] = Field(default_factory=list)
+    starts_at: Optional[datetime] = None
+    ends_at: Optional[datetime] = None
+    blocking_conditions: list[str] = Field(default_factory=list)
+    handoff_requirements: list[str] = Field(default_factory=list)
 
 
 class ActionPlanView(BaseModel):
@@ -220,9 +229,7 @@ class TrackEventView(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     id: str
-    type: Literal[
-        "milestone_done", "reminder", "warning", "semester_review", "coach_message"
-    ]
+    type: Literal["milestone_done", "reminder", "warning", "semester_review", "coach_message"]
     title: str
     detail: str = ""
     occurred_at: Optional[datetime] = None

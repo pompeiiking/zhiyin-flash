@@ -70,6 +70,9 @@ class ApplicationFacade(ABC):
 
     # ---------- 身份 ----------
 
+    async def check_analysis_consent(self, user_id: str) -> None:
+        return None
+
     @abstractmethod
     async def resolve_user_id(self, request: Request) -> str:
         """解析当前用户。
@@ -124,9 +127,7 @@ class ApplicationFacade(ABC):
         """进入任务：判定环节 → 选主理 → 建会话或续接。"""
 
     @abstractmethod
-    async def send_message(
-        self, user_id: str, body: MessageRequest
-    ) -> ConversationTurnView:
+    async def send_message(self, user_id: str, body: MessageRequest) -> ConversationTurnView:
         """处理一轮消息，返回最短结论 + 告知 + 引导 + 管线卡。"""
 
     @abstractmethod
@@ -170,9 +171,7 @@ class ApplicationFacade(ABC):
         """三套方向方案（主攻 / 平行 / 保底）。没有方案时返回空列表。"""
 
     @abstractmethod
-    async def select_direction_plan(
-        self, user_id: str, option_id: str
-    ) -> DirectionPlanListView:
+    async def select_direction_plan(self, user_id: str, option_id: str) -> DirectionPlanListView:
         """选中一套方案（可撤回：再选另一套就是撤回），返回更新后的全量方案。"""
 
     @abstractmethod
@@ -184,9 +183,7 @@ class ApplicationFacade(ABC):
         """关键节点日历（规划师写入、教练读取）。此前只有写、没有读。"""
 
     @abstractmethod
-    async def list_track_events(
-        self, user_id: str, *, limit: int = 50
-    ) -> list[TrackEventView]:
+    async def list_track_events(self, user_id: str, *, limit: int = 50) -> list[TrackEventView]:
         """跟踪时间线（复盘环节的载体）。此前同样只有写、没有读。"""
 
     @abstractmethod
@@ -224,9 +221,7 @@ class ApplicationFacade(ABC):
     # ---------- 埋点 ----------
 
     @abstractmethod
-    async def track_event(
-        self, user_id: str, body: TrackEventRequest
-    ) -> TrackEventAck:
+    async def track_event(self, user_id: str, body: TrackEventRequest) -> TrackEventAck:
         """接收前端埋点上报。
 
         实现要求：先经 `RegistryService.list_track_events()` 校验事件属于

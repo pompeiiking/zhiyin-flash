@@ -1,0 +1,67 @@
+{
+  "at": "2026-10-16T06:35:36.951690+00:00",
+  "environment": "local Docker HTTP + PostgreSQL + JWT; fresh QA accounts only",
+  "cases": [
+    {
+      "endpoint": "POST /api/v1/app/auth/login",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "GET /api/v1/app/preferences",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "GET /api/v1/app/plan/action",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "GET /api/v1/app/reviews",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "GET /api/v1/app/measurements",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "GET /api/v1/app/schedule/semester",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "GET /api/v1/app/notifications",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "GET /api/v1/app/assets/download/{export_id}",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "GET /api/v1/app/assets/download/{export_id}",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "GET /api/v1/app/sessions/{task_id}/snapshot",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    }
+  ],
+  "restart_readback": true
+}

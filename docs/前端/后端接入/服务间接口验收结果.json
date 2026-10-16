@@ -1,0 +1,742 @@
+{
+  "at": "2026-10-16T06:47:08.907284+00:00",
+  "environment": "isolated PostgreSQL + real HTTP; protocol fault injection only",
+  "results": {
+    "POST /api/v1/developer/executor/claim": {
+      "cases": [
+        {
+          "label": "anonymous cannot use machine credentials",
+          "positive": false,
+          "passed": true,
+          "http": 401,
+          "code": 1004,
+          "message": "执行器凭据无效"
+        },
+        {
+          "label": "invalid cannot use machine credentials",
+          "positive": false,
+          "passed": true,
+          "http": 401,
+          "code": 1004,
+          "message": "执行器凭据无效"
+        },
+        {
+          "label": "admin cannot use machine credentials",
+          "positive": false,
+          "passed": true,
+          "http": 401,
+          "code": 1004,
+          "message": "执行器凭据无效"
+        },
+        {
+          "label": "concurrent executor claim",
+          "positive": true,
+          "passed": true,
+          "http": 200,
+          "code": 0
+        },
+        {
+          "label": "concurrent executor claim",
+          "positive": true,
+          "passed": true,
+          "http": 200,
+          "code": 0
+        },
+        {
+          "label": "expired executor resumes with new lease",
+          "positive": true,
+          "passed": true,
+          "http": 200,
+          "code": 0
+        },
+        {
+          "label": "completed executor job not reclaimed",
+          "positive": true,
+          "passed": true,
+          "http": 200,
+          "code": 0
+        }
+      ]
+    },
+    "GET /api/v1/developer/executor/configuration": {
+      "cases": [
+        {
+          "label": "anonymous cannot use machine credentials",
+          "positive": false,
+          "passed": true,
+          "http": 401,
+          "code": 1004,
+          "message": "执行器凭据无效"
+        },
+        {
+          "label": "invalid cannot use machine credentials",
+          "positive": false,
+          "passed": true,
+          "http": 401,
+          "code": 1004,
+          "message": "执行器凭据无效"
+        },
+        {
+          "label": "admin cannot use machine credentials",
+          "positive": false,
+          "passed": true,
+          "http": 401,
+          "code": 1004,
+          "message": "执行器凭据无效"
+        },
+        {
+          "label": "read real module policies",
+          "positive": true,
+          "passed": true,
+          "http": 200,
+          "code": 0
+        }
+      ]
+    },
+    "POST /api/v1/developer/executor/{job_id}": {
+      "cases": [
+        {
+          "label": "anonymous cannot use machine credentials",
+          "positive": false,
+          "passed": true,
+          "http": 401,
+          "code": 1004,
+          "message": "执行器凭据无效"
+        },
+        {
+          "label": "invalid cannot use machine credentials",
+          "positive": false,
+          "passed": true,
+          "http": 401,
+          "code": 1004,
+          "message": "执行器凭据无效"
+        },
+        {
+          "label": "admin cannot use machine credentials",
+          "positive": false,
+          "passed": true,
+          "http": 401,
+          "code": 1004,
+          "message": "执行器凭据无效"
+        },
+        {
+          "label": "wrong executor lease rejected",
+          "positive": false,
+          "passed": true,
+          "http": 409,
+          "code": 1003,
+          "message": "执行租约已失效，停止当前操作并重新核对环境"
+        },
+        {
+          "label": "executor progress persisted",
+          "positive": true,
+          "passed": true,
+          "http": 200,
+          "code": 0
+        },
+        {
+          "label": "expired executor lease rejected",
+          "positive": false,
+          "passed": true,
+          "http": 409,
+          "code": 1003,
+          "message": "执行租约已失效，停止当前操作并重新核对环境"
+        },
+        {
+          "label": "replaced executor lease rejected",
+          "positive": false,
+          "passed": true,
+          "http": 409,
+          "code": 1003,
+          "message": "执行租约已失效，停止当前操作并重新核对环境"
+        },
+        {
+          "label": "executor failure recorded",
+          "positive": true,
+          "passed": true,
+          "http": 200,
+          "code": 0
+        },
+        {
+          "label": "terminal executor result cannot be rewritten",
+          "positive": false,
+          "passed": true,
+          "http": 409,
+          "code": 1003,
+          "message": "执行租约已失效，停止当前操作并重新核对环境"
+        }
+      ]
+    },
+    "GET /api/v1/developer/executor/{job_id}/authorization": {
+      "cases": [
+        {
+          "label": "anonymous cannot use machine credentials",
+          "positive": false,
+          "passed": true,
+          "http": 401,
+          "code": 1004,
+          "message": "执行器凭据无效"
+        },
+        {
+          "label": "invalid cannot use machine credentials",
+          "positive": false,
+          "passed": true,
+          "http": 401,
+          "code": 1004,
+          "message": "执行器凭据无效"
+        },
+        {
+          "label": "admin cannot use machine credentials",
+          "positive": false,
+          "passed": true,
+          "http": 401,
+          "code": 1004,
+          "message": "执行器凭据无效"
+        },
+        {
+          "label": "fixed-commit authorization readable",
+          "positive": true,
+          "passed": true,
+          "http": 200,
+          "code": 0
+        },
+        {
+          "label": "unknown executor job rejected",
+          "positive": false,
+          "passed": true,
+          "http": 404,
+          "code": 1002,
+          "message": "发布任务不存在"
+        }
+      ]
+    },
+    "POST /api/v1/developer/source-worker/claim": {
+      "cases": [
+        {
+          "label": "anonymous cannot use machine credentials",
+          "positive": false,
+          "passed": true,
+          "http": 401,
+          "code": 1004,
+          "message": "执行器凭据无效"
+        },
+        {
+          "label": "invalid cannot use machine credentials",
+          "positive": false,
+          "passed": true,
+          "http": 401,
+          "code": 1004,
+          "message": "执行器凭据无效"
+        },
+        {
+          "label": "admin cannot use machine credentials",
+          "positive": false,
+          "passed": true,
+          "http": 401,
+          "code": 1004,
+          "message": "执行器凭据无效"
+        },
+        {
+          "label": "untrusted source cannot be claimed",
+          "positive": true,
+          "passed": true,
+          "http": 200,
+          "code": 0
+        },
+        {
+          "label": "concurrent source claim",
+          "positive": true,
+          "passed": true,
+          "http": 200,
+          "code": 0
+        },
+        {
+          "label": "concurrent source claim",
+          "positive": true,
+          "passed": true,
+          "http": 200,
+          "code": 0
+        },
+        {
+          "label": "expired source job reclaimed",
+          "positive": true,
+          "passed": true,
+          "http": 200,
+          "code": 0
+        },
+        {
+          "label": "retry is claimable",
+          "positive": true,
+          "passed": true,
+          "http": 200,
+          "code": 0
+        }
+      ]
+    },
+    "POST /api/v1/developer/source-worker/heartbeat": {
+      "cases": [
+        {
+          "label": "anonymous cannot use machine credentials",
+          "positive": false,
+          "passed": true,
+          "http": 401,
+          "code": 1004,
+          "message": "执行器凭据无效"
+        },
+        {
+          "label": "invalid cannot use machine credentials",
+          "positive": false,
+          "passed": true,
+          "http": 401,
+          "code": 1004,
+          "message": "执行器凭据无效"
+        },
+        {
+          "label": "admin cannot use machine credentials",
+          "positive": false,
+          "passed": true,
+          "http": 401,
+          "code": 1004,
+          "message": "执行器凭据无效"
+        },
+        {
+          "label": "persist worker heartbeat",
+          "positive": true,
+          "passed": true,
+          "http": 200,
+          "code": 0
+        }
+      ]
+    },
+    "GET /api/v1/developer/source-worker/ready": {
+      "cases": [
+        {
+          "label": "anonymous cannot use machine credentials",
+          "positive": false,
+          "passed": true,
+          "http": 401,
+          "code": 1004,
+          "message": "执行器凭据无效"
+        },
+        {
+          "label": "invalid cannot use machine credentials",
+          "positive": false,
+          "passed": true,
+          "http": 401,
+          "code": 1004,
+          "message": "执行器凭据无效"
+        },
+        {
+          "label": "admin cannot use machine credentials",
+          "positive": false,
+          "passed": true,
+          "http": 401,
+          "code": 1004,
+          "message": "执行器凭据无效"
+        },
+        {
+          "label": "failed candidate excluded from ready queue",
+          "positive": true,
+          "passed": true,
+          "http": 200,
+          "code": 0
+        }
+      ]
+    },
+    "GET /api/v1/developer/source-worker/versions/{version_id}": {
+      "cases": [
+        {
+          "label": "anonymous cannot use machine credentials",
+          "positive": false,
+          "passed": true,
+          "http": 401,
+          "code": 1004,
+          "message": "执行器凭据无效"
+        },
+        {
+          "label": "invalid cannot use machine credentials",
+          "positive": false,
+          "passed": true,
+          "http": 401,
+          "code": 1004,
+          "message": "执行器凭据无效"
+        },
+        {
+          "label": "admin cannot use machine credentials",
+          "positive": false,
+          "passed": true,
+          "http": 401,
+          "code": 1004,
+          "message": "执行器凭据无效"
+        },
+        {
+          "label": "read claimed version without exposing lease",
+          "positive": true,
+          "passed": true,
+          "http": 200,
+          "code": 0
+        },
+        {
+          "label": "missing source version rejected",
+          "positive": false,
+          "passed": true,
+          "http": 404,
+          "code": 1002,
+          "message": "模块版本不存在"
+        }
+      ]
+    },
+    "POST /api/v1/developer/source-worker/versions/{version_id}": {
+      "cases": [
+        {
+          "label": "anonymous cannot use machine credentials",
+          "positive": false,
+          "passed": true,
+          "http": 401,
+          "code": 1004,
+          "message": "执行器凭据无效"
+        },
+        {
+          "label": "invalid cannot use machine credentials",
+          "positive": false,
+          "passed": true,
+          "http": 401,
+          "code": 1004,
+          "message": "执行器凭据无效"
+        },
+        {
+          "label": "admin cannot use machine credentials",
+          "positive": false,
+          "passed": true,
+          "http": 401,
+          "code": 1004,
+          "message": "执行器凭据无效"
+        },
+        {
+          "label": "wrong source lease rejected",
+          "positive": false,
+          "passed": true,
+          "http": 409,
+          "code": 1003,
+          "message": "验收租约已失效或项目信任已撤销，执行器必须停止"
+        },
+        {
+          "label": "valid source lease progress persisted",
+          "positive": true,
+          "passed": true,
+          "http": 200,
+          "code": 0
+        },
+        {
+          "label": "expired source lease rejected",
+          "positive": false,
+          "passed": true,
+          "http": 409,
+          "code": 1003,
+          "message": "验收租约已失效或项目信任已撤销，执行器必须停止"
+        },
+        {
+          "label": "replaced source lease rejected",
+          "positive": false,
+          "passed": true,
+          "http": 409,
+          "code": 1003,
+          "message": "验收租约已失效或项目信任已撤销，执行器必须停止"
+        },
+        {
+          "label": "revoked source authorization rejects update",
+          "positive": false,
+          "passed": true,
+          "http": 409,
+          "code": 1003,
+          "message": "验收租约已失效或项目信任已撤销，执行器必须停止"
+        },
+        {
+          "label": "source failure recorded",
+          "positive": true,
+          "passed": true,
+          "http": 200,
+          "code": 0
+        },
+        {
+          "label": "terminal source result immutable",
+          "positive": false,
+          "passed": true,
+          "http": 409,
+          "code": 1003,
+          "message": "验收租约已失效或项目信任已撤销，执行器必须停止"
+        },
+        {
+          "label": "finish retried protocol failure",
+          "positive": true,
+          "passed": true,
+          "http": 200,
+          "code": 0
+        }
+      ]
+    },
+    "GET /api/v1/developer/source-worker/versions/{version_id}/package": {
+      "cases": [
+        {
+          "label": "anonymous cannot use machine credentials",
+          "positive": false,
+          "passed": true,
+          "http": 401,
+          "code": 1004,
+          "message": "执行器凭据无效"
+        },
+        {
+          "label": "invalid cannot use machine credentials",
+          "positive": false,
+          "passed": true,
+          "http": 401,
+          "code": 1004,
+          "message": "执行器凭据无效"
+        },
+        {
+          "label": "admin cannot use machine credentials",
+          "positive": false,
+          "passed": true,
+          "http": 401,
+          "code": 1004,
+          "message": "执行器凭据无效"
+        },
+        {
+          "label": "source download matches immutable digest",
+          "positive": true,
+          "passed": true,
+          "http": 200,
+          "code": null
+        }
+      ]
+    },
+    "POST /api/v1/developer/source-worker/versions/{version_id}/release": {
+      "cases": [
+        {
+          "label": "anonymous cannot use machine credentials",
+          "positive": false,
+          "passed": true,
+          "http": 401,
+          "code": 1004,
+          "message": "执行器凭据无效"
+        },
+        {
+          "label": "invalid cannot use machine credentials",
+          "positive": false,
+          "passed": true,
+          "http": 401,
+          "code": 1004,
+          "message": "执行器凭据无效"
+        },
+        {
+          "label": "admin cannot use machine credentials",
+          "positive": false,
+          "passed": true,
+          "http": 401,
+          "code": 1004,
+          "message": "执行器凭据无效"
+        },
+        {
+          "label": "automatic release disabled rejects publication",
+          "positive": false,
+          "passed": true,
+          "http": 401,
+          "code": 1004,
+          "message": "此版本不适用自动发布策略"
+        },
+        {
+          "label": "failed candidate cannot pass release gates",
+          "positive": false,
+          "passed": true,
+          "http": 422,
+          "code": 1001,
+          "message": "必须通过契约、测试、构建和真实数据流验收后才能发布"
+        }
+      ]
+    },
+    "POST /api/v1/developer/source-worker/versions/{version_id}/retry": {
+      "cases": [
+        {
+          "label": "anonymous cannot use machine credentials",
+          "positive": false,
+          "passed": true,
+          "http": 401,
+          "code": 1004,
+          "message": "执行器凭据无效"
+        },
+        {
+          "label": "invalid cannot use machine credentials",
+          "positive": false,
+          "passed": true,
+          "http": 401,
+          "code": 1004,
+          "message": "执行器凭据无效"
+        },
+        {
+          "label": "admin cannot use machine credentials",
+          "positive": false,
+          "passed": true,
+          "http": 401,
+          "code": 1004,
+          "message": "执行器凭据无效"
+        },
+        {
+          "label": "retry retains failed attempt",
+          "positive": true,
+          "passed": true,
+          "http": 200,
+          "code": 0
+        }
+      ]
+    },
+    "GET /api/v1/developer/platform-status": {
+      "cases": [
+        {
+          "label": "heartbeat visible to management",
+          "positive": true,
+          "passed": true,
+          "http": 200,
+          "code": 0
+        }
+      ]
+    },
+    "POST /api/v1/developer/projects": {
+      "cases": [
+        {
+          "label": "create isolated project",
+          "positive": true,
+          "passed": true,
+          "http": 200,
+          "code": 0
+        }
+      ]
+    },
+    "GET /api/v1/developer/templates": {
+      "cases": [
+        {
+          "label": "download real module template",
+          "positive": true,
+          "passed": true,
+          "http": 200,
+          "code": null
+        }
+      ]
+    },
+    "POST /api/v1/developer/projects/{project_id}/versions": {
+      "cases": [
+        {
+          "label": "upload immutable source archive",
+          "positive": true,
+          "passed": true,
+          "http": 200,
+          "code": 0
+        }
+      ]
+    },
+    "GET /api/v1/developer/projects": {
+      "cases": [
+        {
+          "label": "read project revision",
+          "positive": true,
+          "passed": true,
+          "http": 200,
+          "code": 0
+        },
+        {
+          "label": "read project revision",
+          "positive": true,
+          "passed": true,
+          "http": 200,
+          "code": 0
+        },
+        {
+          "label": "read project revision",
+          "positive": true,
+          "passed": true,
+          "http": 200,
+          "code": 0
+        },
+        {
+          "label": "read project revision",
+          "positive": true,
+          "passed": true,
+          "http": 200,
+          "code": 0
+        }
+      ]
+    },
+    "PUT /api/v1/developer/projects/{project_id}": {
+      "cases": [
+        {
+          "label": "configure project authorization",
+          "positive": true,
+          "passed": true,
+          "http": 200,
+          "code": 0
+        },
+        {
+          "label": "configure project authorization",
+          "positive": true,
+          "passed": true,
+          "http": 200,
+          "code": 0
+        },
+        {
+          "label": "configure project authorization",
+          "positive": true,
+          "passed": true,
+          "http": 200,
+          "code": 0
+        },
+        {
+          "label": "configure project authorization",
+          "positive": true,
+          "passed": true,
+          "http": 200,
+          "code": 0
+        }
+      ]
+    },
+    "POST /api/v1/developer/releases": {
+      "cases": [
+        {
+          "label": "request isolated check job",
+          "positive": true,
+          "passed": true,
+          "http": 200,
+          "code": 0
+        }
+      ]
+    },
+    "POST /api/v1/developer/releases/{job_id}/approve": {
+      "cases": [
+        {
+          "label": "approve isolated check job",
+          "positive": true,
+          "passed": true,
+          "http": 200,
+          "code": 0
+        }
+      ]
+    },
+    "GET /api/v1/developer/releases": {
+      "cases": [
+        {
+          "label": "management never receives live executor lease",
+          "positive": true,
+          "passed": true,
+          "http": 200,
+          "code": 0
+        }
+      ]
+    }
+  },
+  "passed": true,
+  "limitations": [
+    "No source worker build or deployment executor process is started.",
+    "No successful build/dataflow/browser/deployment receipts are fabricated.",
+    "Automatic release is verified for denial only; real release remains pending.",
+    "Lease expiry is advanced in PostgreSQL for this run's own records only."
+  ],
+  "case_count": 85
+}

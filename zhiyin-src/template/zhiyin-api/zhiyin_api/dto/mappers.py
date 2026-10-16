@@ -10,6 +10,7 @@ Mapper 把 None 原样透传成 `None`（前端据此决定是否渲染告知行
 """
 
 from __future__ import annotations
+from uuid import uuid5, NAMESPACE_URL
 
 from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence
 
@@ -131,6 +132,7 @@ _STAGE_ORDER: list[LoopStage] = [
     LoopStage.ACT,
     LoopStage.REVIEW,
 ]
+
 
 def _stage_specs() -> list[Any]:
     """从**快照**取环节口径 —— 进程内唯一来源，改库后由重载统一替换。
@@ -421,7 +423,9 @@ def behavior_guide_view(guide: BehaviorGuide) -> BehaviorGuideView:
             GuideOptionView(option_id=o.option_id, label=o.label, value=o.value)
             for o in guide.options
         ],
-        task=GuideTaskView(task_id=guide.task.task_id, text=guide.task.text, due_date=guide.task.due_date)
+        task=GuideTaskView(
+            task_id=guide.task.task_id, text=guide.task.text, due_date=guide.task.due_date
+        )
         if guide.task is not None
         else None,
         reminder=GuideReminderView(
@@ -451,10 +455,7 @@ def pipeline_cards(
     """右栏 ①-⑤ 管线卡（三态：当前产出 / 理论模型 / 评价状态）。"""
     order = _stage_order()
     current_index = order.index(session.loop_stage) if session.loop_stage in order else 0
-    latest_by_type = {
-        version.asset_type.value: version
-        for version in asset_versions
-    }
+    latest_by_type = {version.asset_type.value: version for version in asset_versions}
     cards: list[PipelineCardView] = []
     for index, stage in enumerate(order):
         if stage == session.loop_stage:
@@ -568,9 +569,7 @@ def workspace_page_view(view: WorkspaceView) -> WorkspacePageView:
         ],
         updated_at=profile.updated_at if profile else None,
     )
-    coach_messages = [
-        event.model_dump(mode="json") for event in view.track_events
-    ]
+    coach_messages = [event.model_dump(mode="json") for event in view.track_events]
     # 采集动线：业务层已经把"缺什么、去哪取、为什么"算好了，这里只搬形状。
     # api 层不再判断任何采集口径 —— 那些规则只在 policies/collection.py 一处。
     collection = view.collection
@@ -579,9 +578,7 @@ def workspace_page_view(view: WorkspaceView) -> WorkspacePageView:
         by_source=dict(collection.by_source) if collection else {},
         blocked=list(collection.blocked) if collection else [],
         next_source=(
-            collection.next_source().value
-            if collection and collection.next_source()
-            else None
+            collection.next_source().value if collection and collection.next_source() else None
         ),
         items=[
             CollectionItemView(
@@ -729,9 +726,7 @@ def report_full_text_view(
     if report is None:
         from datetime import datetime, timezone
 
-        return ReportFullTextView(
-            report_id="", version=0, generated_at=datetime.now(timezone.utc)
-        )
+        return ReportFullTextView(report_id="", version=0, generated_at=datetime.now(timezone.utc))
     labels = dict(group_labels or {})
     toc: list[ReportTocItemView] = []
     sections: list[ReportSectionView] = []
@@ -840,7 +835,13 @@ def action_plan_view(plan: ActionPlan | None) -> ActionPlanView:
 
     phases: list[ActionPhaseView] = []
     first_open: ActionTaskView | None = None
+    phase_states = {
+        p.id or uuid5(NAMESPACE_URL, f"{plan.id}:{p.name}").hex: bool(p.tasks)
+        and all(t.done for t in p.tasks)
+        for p in plan.phases
+    }
     for phase in plan.phases:
+        blocked = [dep for dep in phase.depends_on if not phase_states.get(dep, False)]
         tasks: list[ActionTaskView] = []
         for task in phase.tasks:
             view = ActionTaskView(
@@ -851,14 +852,27 @@ def action_plan_view(plan: ActionPlan | None) -> ActionPlanView:
                 due_date=task.due_date,
                 done=task.done,
                 done_at=task.done_at,
+                status="completed" if task.done else task.status,
+                progress=100 if task.done else task.progress,
+                waiting_reason=task.waiting_reason,
+                scheduled_at=task.scheduled_at,
+                estimated_minutes=task.estimated_minutes,
+                parent_task_id=task.parent_task_id,
             )
             tasks.append(view)
-            if first_open is None and not task.done:
+            if first_open is None and not task.done and task.status != "waiting" and not blocked:
                 first_open = view
         phases.append(
             ActionPhaseView(
                 name=phase.name,
                 date_range=phase.date_range,
+                id=phase.id or uuid5(NAMESPACE_URL, f"{plan.id}:{phase.name}").hex,
+                blocked_by=blocked,
+                depends_on=phase.depends_on,
+                starts_at=phase.starts_at,
+                ends_at=phase.ends_at,
+                blocking_conditions=phase.blocking_conditions,
+                handoff_requirements=phase.handoff_requirements,
                 tag=phase.tag,
                 tasks=tasks,
             )
@@ -986,8 +1000,10 @@ def coach_notification_view(item: Mapping[str, Any]) -> CoachNotificationView:
     )
 
 
-def export_result_view(result: ExportResult) -> ExportResultView:
-    """导出结果。第一期 `available` 恒 False（占位）。"""
+def export_result_view(result: ExportResult | dict) -> ExportResultView:
+    """真实文件生成回执；仍兼容未装配文件服务的受限环境。"""
+    if isinstance(result, dict):
+        return ExportResultView.model_validate(result)
     return ExportResultView(
         available=result.available,
         message=result.message,

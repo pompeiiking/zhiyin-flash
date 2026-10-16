@@ -25,6 +25,7 @@ services:
       # 挂**目录**而不是单个文件：文件不存在时 docker 会静默建出一个同名目录，
       # 那时候报的错会指向"打不开文件"，与真正的原因（文件没随包发出去）差得很远。
       - ./deploy:/migration:ro
+      - zhiyin_objects:/app/data/objects
     ports:
       - "8000:8000"
     restart: unless-stopped
@@ -95,6 +96,7 @@ services:
       - zhiyin-flash-net
 
 volumes:
+  zhiyin_objects:
   zhiyin-redis-data:
   zhiyin-postgres-data:
 

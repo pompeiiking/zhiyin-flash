@@ -210,3 +210,12 @@ DELETE FROM biz_registry_item WHERE kind IN ('prompts', 'routing_rules');
 """
 
 __all__ = ["DDL"]
+
+# 账号偏好、结构化复盘、测量和快照统一按账号原子更新。
+DDL += """
+CREATE TABLE IF NOT EXISTS biz_student_state (
+    user_id TEXT PRIMARY KEY,
+    payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+"""

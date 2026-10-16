@@ -57,6 +57,14 @@ class NotificationRepository(ABC):
     于是"库里明明写了通知，前端却什么都读不到"。
     """
 
+    async def list_all(self, user_id: str) -> list[dict]:
+        raise NotImplementedError
+
+    async def set_state(
+        self, user_id: str, message_id: str, status: str, snoozed_until=None
+    ) -> bool:
+        raise NotImplementedError
+
     @abstractmethod
     async def list_pending(self, user_id: str) -> list[dict]:
         """取出该用户未读的通知（按创建时间倒序）。"""

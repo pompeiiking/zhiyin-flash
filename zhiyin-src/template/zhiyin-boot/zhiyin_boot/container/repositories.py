@@ -30,7 +30,10 @@ def build_repositories(settings: Settings) -> dict[str, Any]:
         LocalJsonRegistryRepository,
     )
 
+    from zhiyin_infrastructure.local.student import InMemoryStudentStateRepository
+
     if settings.use_postgres:
+        from zhiyin_infrastructure.postgres.student import PostgresStudentStateRepository
         from zhiyin_infrastructure.postgres.database import get_database
         from zhiyin_infrastructure.postgres.repository import (
             PostgresAiTaskResultRepository,
@@ -51,15 +54,14 @@ def build_repositories(settings: Settings) -> dict[str, Any]:
 
         database = get_database(settings.postgres_dsn)
         return {
+            "student_state": PostgresStudentStateRepository(database),
             "profiles": PostgresProfileRepository(database),
             "behaviors": PostgresBehaviorRepository(database),
             "memories": PostgresConversationMemoryRepository(database),
             "turns": PostgresConversationTurnRepository(database),
             "assets": PostgresAssetRepository(database),
             "sessions": PostgresTaskSessionRepository(database),
-            "registry": PostgresRegistryRepository(
-                database, settings.local_registry_dir
-            ),
+            "registry": PostgresRegistryRepository(database, settings.local_registry_dir),
             "users": PostgresUserRepository(database),
             "notes": PostgresUserNoteRepository(database),
             "academic_records": PostgresAcademicSnapshotRepository(database),
@@ -71,6 +73,7 @@ def build_repositories(settings: Settings) -> dict[str, Any]:
         }
 
     return {
+        "student_state": InMemoryStudentStateRepository(),
         "profiles": InMemoryProfileRepository(),
         "behaviors": InMemoryBehaviorRepository(),
         "memories": InMemoryConversationMemoryRepository(),

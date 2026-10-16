@@ -320,18 +320,158 @@
         "title": "AchievementView",
         "type": "object"
       },
-      "ActionPhaseView": {
+      "ActionPhase": {
         "additionalProperties": false,
-        "description": "行动阶段：一段时间的里程碑与它下面的任务。",
+        "description": "行动阶段。",
         "properties": {
+          "blocking_conditions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Blocking Conditions",
+            "type": "array"
+          },
           "date_range": {
-            "default": "",
             "title": "Date Range",
+            "type": "string"
+          },
+          "depends_on": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Depends On",
+            "type": "array"
+          },
+          "ends_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends At"
+          },
+          "handoff_requirements": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Handoff Requirements",
+            "type": "array"
+          },
+          "id": {
+            "default": "",
+            "title": "Id",
             "type": "string"
           },
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "starts_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Starts At"
+          },
+          "tag": {
+            "default": "",
+            "description": "阶段标签，如秋招投递/笔试冲刺",
+            "title": "Tag",
+            "type": "string"
+          },
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/ActionTask"
+            },
+            "title": "Tasks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "name",
+          "date_range"
+        ],
+        "title": "ActionPhase",
+        "type": "object"
+      },
+      "ActionPhaseView": {
+        "additionalProperties": false,
+        "description": "行动阶段：一段时间的里程碑与它下面的任务。",
+        "properties": {
+          "blocked_by": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Blocked By",
+            "type": "array"
+          },
+          "blocking_conditions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Blocking Conditions",
+            "type": "array"
+          },
+          "date_range": {
+            "default": "",
+            "title": "Date Range",
+            "type": "string"
+          },
+          "depends_on": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Depends On",
+            "type": "array"
+          },
+          "ends_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends At"
+          },
+          "handoff_requirements": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Handoff Requirements",
+            "type": "array"
+          },
+          "id": {
+            "default": "",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "starts_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Starts At"
           },
           "tag": {
             "default": "",
@@ -350,6 +490,57 @@
           "name"
         ],
         "title": "ActionPhaseView",
+        "type": "object"
+      },
+      "ActionPlan": {
+        "additionalProperties": false,
+        "description": "行动计划。",
+        "properties": {
+          "exported_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exported At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "phases": {
+            "items": {
+              "$ref": "#/components/schemas/ActionPhase"
+            },
+            "title": "Phases",
+            "type": "array"
+          },
+          "plan_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "关联的方向方案 id",
+            "title": "Plan Id"
+          },
+          "reminders_synced": {
+            "default": false,
+            "title": "Reminders Synced",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "ActionPlan",
         "type": "object"
       },
       "ActionPlanView": {
@@ -418,6 +609,115 @@
         "title": "ActionPlanView",
         "type": "object"
       },
+      "ActionTask": {
+        "additionalProperties": false,
+        "description": "行动任务。颗粒度要求\"今天/本周勾得掉\"。",
+        "properties": {
+          "done": {
+            "default": false,
+            "title": "Done",
+            "type": "boolean"
+          },
+          "done_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Done At"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "estimated_minutes": {
+            "anyOf": [
+              {
+                "maximum": 1440.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Minutes"
+          },
+          "id": {
+            "default": "",
+            "description": "任务标识。勾选 / 取消按它定位 —— 用任务文本当标识时，同一阶段里两条同名任务会互相顶掉。老数据没有这一列，仓储侧保留「阶段名:任务文本」作为回落口径。",
+            "title": "Id",
+            "type": "string"
+          },
+          "parent_task_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Task Id"
+          },
+          "progress": {
+            "default": 0,
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Progress",
+            "type": "integer"
+          },
+          "scheduled_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scheduled At"
+          },
+          "status": {
+            "default": "pending",
+            "enum": [
+              "pending",
+              "in_progress",
+              "waiting",
+              "completed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "waiting_reason": {
+            "default": "",
+            "title": "Waiting Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "ActionTask",
+        "type": "object"
+      },
       "ActionTaskDoneRequest": {
         "additionalProperties": false,
         "description": "勾掉 / 取消勾选一个行动任务。",
@@ -471,10 +771,60 @@
             ],
             "title": "Due Date"
           },
+          "estimated_minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Minutes"
+          },
+          "parent_task_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Task Id"
+          },
           "phase": {
             "default": "",
             "description": "所属阶段名",
             "title": "Phase",
+            "type": "string"
+          },
+          "progress": {
+            "default": 0,
+            "title": "Progress",
+            "type": "integer"
+          },
+          "scheduled_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scheduled At"
+          },
+          "status": {
+            "default": "pending",
+            "enum": [
+              "pending",
+              "in_progress",
+              "waiting",
+              "completed"
+            ],
+            "title": "Status",
             "type": "string"
           },
           "task_id": {
@@ -484,6 +834,11 @@
           },
           "text": {
             "title": "Text",
+            "type": "string"
+          },
+          "waiting_reason": {
+            "default": "",
+            "title": "Waiting Reason",
             "type": "string"
           }
         },
@@ -648,6 +1003,37 @@
           }
         },
         "title": "ApiResponse[ActionPlanView]",
+        "type": "object"
+      },
+      "ApiResponse_AssetSnapshotView_": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode",
+            "default": 0
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AssetSnapshotView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "default": "ok",
+            "title": "Message",
+            "type": "string"
+          },
+          "trace_id": {
+            "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "title": "ApiResponse[AssetSnapshotView]",
         "type": "object"
       },
       "ApiResponse_BootstrapView_": {
@@ -836,6 +1222,37 @@
         "title": "ApiResponse[DeveloperVersionView]",
         "type": "object"
       },
+      "ApiResponse_DirectionComparisonView_": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode",
+            "default": 0
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DirectionComparisonView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "default": "ok",
+            "title": "Message",
+            "type": "string"
+          },
+          "trace_id": {
+            "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "title": "ApiResponse[DirectionComparisonView]",
+        "type": "object"
+      },
       "ApiResponse_DirectionPlanListView_": {
         "additionalProperties": false,
         "properties": {
@@ -865,6 +1282,37 @@
           }
         },
         "title": "ApiResponse[DirectionPlanListView]",
+        "type": "object"
+      },
+      "ApiResponse_DirectionWeights_": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode",
+            "default": 0
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DirectionWeights"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "default": "ok",
+            "title": "Message",
+            "type": "string"
+          },
+          "trace_id": {
+            "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "title": "ApiResponse[DirectionWeights]",
         "type": "object"
       },
       "ApiResponse_ExportResultView_": {
@@ -958,6 +1406,68 @@
           }
         },
         "title": "ApiResponse[LoginResult]",
+        "type": "object"
+      },
+      "ApiResponse_MeasurementListView_": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode",
+            "default": 0
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MeasurementListView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "default": "ok",
+            "title": "Message",
+            "type": "string"
+          },
+          "trace_id": {
+            "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "title": "ApiResponse[MeasurementListView]",
+        "type": "object"
+      },
+      "ApiResponse_MeasurementRecordView_": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode",
+            "default": 0
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MeasurementRecordView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "default": "ok",
+            "title": "Message",
+            "type": "string"
+          },
+          "trace_id": {
+            "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "title": "ApiResponse[MeasurementRecordView]",
         "type": "object"
       },
       "ApiResponse_ModuleDeveloperContext_": {
@@ -1177,6 +1687,37 @@
         "title": "ApiResponse[NoteView]",
         "type": "object"
       },
+      "ApiResponse_NotificationStateView_": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode",
+            "default": 0
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NotificationStateView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "default": "ok",
+            "title": "Message",
+            "type": "string"
+          },
+          "trace_id": {
+            "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "title": "ApiResponse[NotificationStateView]",
+        "type": "object"
+      },
       "ApiResponse_PortalView_": {
         "additionalProperties": false,
         "properties": {
@@ -1206,6 +1747,37 @@
           }
         },
         "title": "ApiResponse[PortalView]",
+        "type": "object"
+      },
+      "ApiResponse_Preferences_": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode",
+            "default": 0
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Preferences"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "default": "ok",
+            "title": "Message",
+            "type": "string"
+          },
+          "trace_id": {
+            "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "title": "ApiResponse[Preferences]",
         "type": "object"
       },
       "ApiResponse_ProfileFieldView_": {
@@ -1299,6 +1871,99 @@
           }
         },
         "title": "ApiResponse[ReportFullTextView]",
+        "type": "object"
+      },
+      "ApiResponse_ReviewListView_": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode",
+            "default": 0
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReviewListView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "default": "ok",
+            "title": "Message",
+            "type": "string"
+          },
+          "trace_id": {
+            "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "title": "ApiResponse[ReviewListView]",
+        "type": "object"
+      },
+      "ApiResponse_ReviewRecordView_": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode",
+            "default": 0
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReviewRecordView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "default": "ok",
+            "title": "Message",
+            "type": "string"
+          },
+          "trace_id": {
+            "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "title": "ApiResponse[ReviewRecordView]",
+        "type": "object"
+      },
+      "ApiResponse_Semester_": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode",
+            "default": 0
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Semester"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "default": "ok",
+            "title": "Message",
+            "type": "string"
+          },
+          "trace_id": {
+            "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "title": "ApiResponse[Semester]",
         "type": "object"
       },
       "ApiResponse_SessionListView_": {
@@ -1425,6 +2090,37 @@
         "title": "ApiResponse[TrackEventAck]",
         "type": "object"
       },
+      "ApiResponse_Union_ConversationTurnView__NoneType__": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode",
+            "default": 0
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConversationTurnView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "default": "ok",
+            "title": "Message",
+            "type": "string"
+          },
+          "trace_id": {
+            "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "title": "ApiResponse[Union[ConversationTurnView, NoneType]]",
+        "type": "object"
+      },
       "ApiResponse_Union_ReleaseJob__NoneType__": {
         "additionalProperties": false,
         "properties": {
@@ -1454,6 +2150,37 @@
           }
         },
         "title": "ApiResponse[Union[ReleaseJob, NoneType]]",
+        "type": "object"
+      },
+      "ApiResponse_Union_Semester__NoneType__": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode",
+            "default": 0
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Semester"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "default": "ok",
+            "title": "Message",
+            "type": "string"
+          },
+          "trace_id": {
+            "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "title": "ApiResponse[Union[Semester, NoneType]]",
         "type": "object"
       },
       "ApiResponse_Union_dict__NoneType__": {
@@ -1487,6 +2214,37 @@
           }
         },
         "title": "ApiResponse[Union[dict, NoneType]]",
+        "type": "object"
+      },
+      "ApiResponse_WorkloadView_": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode",
+            "default": 0
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkloadView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "default": "ok",
+            "title": "Message",
+            "type": "string"
+          },
+          "trace_id": {
+            "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "title": "ApiResponse[WorkloadView]",
         "type": "object"
       },
       "ApiResponse_WorkspacePageView_": {
@@ -1938,6 +2696,41 @@
         "title": "ApiResponse[list[NoteView]]",
         "type": "object"
       },
+      "ApiResponse_list_NotificationStateView__": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode",
+            "default": 0
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/NotificationStateView"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "message": {
+            "default": "ok",
+            "title": "Message",
+            "type": "string"
+          },
+          "trace_id": {
+            "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "title": "ApiResponse[list[NotificationStateView]]",
+        "type": "object"
+      },
       "ApiResponse_list_ReleaseJob__": {
         "additionalProperties": false,
         "properties": {
@@ -2042,6 +2835,52 @@
           }
         },
         "title": "ApiResponse[list[dict]]",
+        "type": "object"
+      },
+      "AssetSnapshotView": {
+        "properties": {
+          "asset_type": {
+            "enum": [
+              "direction_plan",
+              "action_plan"
+            ],
+            "title": "Asset Type",
+            "type": "string"
+          },
+          "content": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ActionPlan"
+              },
+              {
+                "items": {
+                  "$ref": "#/components/schemas/DirectionPlan"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "asset_type",
+          "version",
+          "created_at",
+          "content"
+        ],
+        "title": "AssetSnapshotView",
         "type": "object"
       },
       "AssetType": {
@@ -3209,6 +4048,146 @@
         "title": "DeveloperWorkerUpdate",
         "type": "object"
       },
+      "DirectionComparisonView": {
+        "properties": {
+          "method": {
+            "title": "Method",
+            "type": "string"
+          },
+          "plans": {
+            "items": {
+              "$ref": "#/components/schemas/DirectionScoreView"
+            },
+            "title": "Plans",
+            "type": "array"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          },
+          "weights": {
+            "$ref": "#/components/schemas/DirectionWeights"
+          }
+        },
+        "required": [
+          "weights",
+          "plans",
+          "method"
+        ],
+        "title": "DirectionComparisonView",
+        "type": "object"
+      },
+      "DirectionPlan": {
+        "additionalProperties": false,
+        "description": "方向方案。主攻/平行/保底三套，选择可撤回。",
+        "properties": {
+          "fit_reason": {
+            "description": "契合依据",
+            "title": "Fit Reason",
+            "type": "string"
+          },
+          "gaps": {
+            "items": {
+              "$ref": "#/components/schemas/PlanGap"
+            },
+            "title": "Gaps",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "main_risk": {
+            "description": "主要风险",
+            "title": "Main Risk",
+            "type": "string"
+          },
+          "match_method": {
+            "default": "",
+            "description": "匹配度口径（同一批方案共用一句），如「三叶草契合度 × 可达性」",
+            "title": "Match Method",
+            "type": "string"
+          },
+          "match_score": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "有可追溯依据时的匹配度；缺依据为 null",
+            "title": "Match Score"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "report_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "关联的诊断报告 id",
+            "title": "Report Id"
+          },
+          "revocable": {
+            "default": true,
+            "description": "可撤回，恒为 True",
+            "title": "Revocable",
+            "type": "boolean"
+          },
+          "role": {
+            "$ref": "#/components/schemas/PlanRole"
+          },
+          "selected": {
+            "default": false,
+            "title": "Selected",
+            "type": "boolean"
+          },
+          "selected_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selected At"
+          },
+          "target_desc": {
+            "description": "目标描述",
+            "title": "Target Desc",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "role",
+          "name",
+          "target_desc",
+          "fit_reason",
+          "main_risk"
+        ],
+        "title": "DirectionPlan",
+        "type": "object"
+      },
       "DirectionPlanListView": {
         "additionalProperties": false,
         "description": "三套方案 + \"现在选的是哪一套\"。\n\n`selected_id` 单独给一份，是因为前端要用它做高亮：只靠 plans[].selected 也能算，\n但\"当前选择\"在产品口径里是一个独立事实（可撤回、可对比），\n让它显式存在，界面上就不会出现\"两套都亮着\"这种状态。",
@@ -3327,6 +4306,115 @@
           "name"
         ],
         "title": "DirectionPlanView",
+        "type": "object"
+      },
+      "DirectionScoreView": {
+        "properties": {
+          "feasibility": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Feasibility"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "measurements": {
+            "items": {
+              "$ref": "#/components/schemas/Measurement"
+            },
+            "title": "Measurements",
+            "type": "array"
+          },
+          "missing": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "opportunity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opportunity"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "missing",
+          "measurements"
+        ],
+        "title": "DirectionScoreView",
+        "type": "object"
+      },
+      "DirectionWeights": {
+        "additionalProperties": false,
+        "properties": {
+          "jobs": {
+            "default": 1,
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Jobs",
+            "type": "number"
+          },
+          "location": {
+            "default": 1,
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Location",
+            "type": "number"
+          },
+          "major": {
+            "default": 1,
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Major",
+            "type": "number"
+          },
+          "salary": {
+            "default": 1,
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Salary",
+            "type": "number"
+          },
+          "stability": {
+            "default": 1,
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Stability",
+            "type": "number"
+          }
+        },
+        "title": "DirectionWeights",
         "type": "object"
       },
       "DisclosureView": {
@@ -3822,6 +4910,195 @@
         ],
         "title": "LoopStage",
         "type": "string"
+      },
+      "Measurement": {
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          },
+          "maximum": {
+            "default": 100,
+            "title": "Maximum",
+            "type": "number"
+          },
+          "measured_at": {
+            "format": "date-time",
+            "title": "Measured At",
+            "type": "string"
+          },
+          "method": {
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Method",
+            "type": "string"
+          },
+          "minimum": {
+            "default": 0,
+            "title": "Minimum",
+            "type": "number"
+          },
+          "origin": {
+            "default": "self_report",
+            "enum": [
+              "self_report",
+              "assessment",
+              "external"
+            ],
+            "title": "Origin",
+            "type": "string"
+          },
+          "source": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Source",
+            "type": "string"
+          },
+          "threshold": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "value",
+          "source",
+          "method",
+          "measured_at"
+        ],
+        "title": "Measurement",
+        "type": "object"
+      },
+      "MeasurementBatch": {
+        "additionalProperties": false,
+        "properties": {
+          "asset_type": {
+            "enum": [
+              "report",
+              "direction_plan"
+            ],
+            "title": "Asset Type",
+            "type": "string"
+          },
+          "measurements": {
+            "items": {
+              "$ref": "#/components/schemas/Measurement"
+            },
+            "maxItems": 30,
+            "minItems": 1,
+            "title": "Measurements",
+            "type": "array"
+          },
+          "subject_id": {
+            "minLength": 1,
+            "title": "Subject Id",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "asset_type",
+          "version",
+          "subject_id",
+          "measurements"
+        ],
+        "title": "MeasurementBatch",
+        "type": "object"
+      },
+      "MeasurementListView": {
+        "properties": {
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/MeasurementRecordView"
+            },
+            "title": "History",
+            "type": "array"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/MeasurementRecordView"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items",
+          "history"
+        ],
+        "title": "MeasurementListView",
+        "type": "object"
+      },
+      "MeasurementRecordView": {
+        "additionalProperties": false,
+        "properties": {
+          "asset_type": {
+            "enum": [
+              "report",
+              "direction_plan"
+            ],
+            "title": "Asset Type",
+            "type": "string"
+          },
+          "measurements": {
+            "items": {
+              "$ref": "#/components/schemas/Measurement"
+            },
+            "maxItems": 30,
+            "minItems": 1,
+            "title": "Measurements",
+            "type": "array"
+          },
+          "recorded_at": {
+            "format": "date-time",
+            "title": "Recorded At",
+            "type": "string"
+          },
+          "subject_id": {
+            "minLength": 1,
+            "title": "Subject Id",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "asset_type",
+          "version",
+          "subject_id",
+          "measurements",
+          "recorded_at"
+        ],
+        "title": "MeasurementRecordView",
+        "type": "object"
       },
       "MenuView": {
         "additionalProperties": false,
@@ -4825,6 +6102,214 @@
         "title": "NoteView",
         "type": "object"
       },
+      "NotificationEdit": {
+        "additionalProperties": false,
+        "properties": {
+          "snoozed_until": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snoozed Until"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "read",
+              "later",
+              "done"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "NotificationEdit",
+        "type": "object"
+      },
+      "NotificationStateView": {
+        "properties": {
+          "action": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action"
+          },
+          "body": {
+            "default": "",
+            "title": "Body",
+            "type": "string"
+          },
+          "channel": {
+            "default": "",
+            "title": "Channel",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "occurred_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Occurred At"
+          },
+          "related_task_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Related Task Id"
+          },
+          "snoozed_until": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snoozed Until"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "read",
+              "later",
+              "done"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "status"
+        ],
+        "title": "NotificationStateView",
+        "type": "object"
+      },
+      "Period": {
+        "additionalProperties": false,
+        "properties": {
+          "end": {
+            "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$",
+            "title": "End",
+            "type": "string"
+          },
+          "number": {
+            "maximum": 30.0,
+            "minimum": 1.0,
+            "title": "Number",
+            "type": "integer"
+          },
+          "start": {
+            "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$",
+            "title": "Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "number",
+          "start",
+          "end"
+        ],
+        "title": "Period",
+        "type": "object"
+      },
+      "PhaseEdit": {
+        "additionalProperties": false,
+        "properties": {
+          "blocking_conditions": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Blocking Conditions",
+            "type": "array"
+          },
+          "depends_on": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 30,
+            "title": "Depends On",
+            "type": "array"
+          },
+          "ends_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends At"
+          },
+          "handoff_requirements": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Handoff Requirements",
+            "type": "array"
+          },
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "starts_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Starts At"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "PhaseEdit",
+        "type": "object"
+      },
       "PipelineCardView": {
         "additionalProperties": false,
         "description": "右栏管线卡（①-⑤ 每环节一卡）。\n\n三态：当前产出 / 可展开理论模型 / 可展开评价状态。",
@@ -4892,6 +6377,31 @@
           "title"
         ],
         "title": "PipelineCardView",
+        "type": "object"
+      },
+      "PlanGap": {
+        "additionalProperties": false,
+        "description": "方案内的差距条目：要求 − 现状 = 差距 + 补齐建议。",
+        "properties": {
+          "current_state": {
+            "title": "Current State",
+            "type": "string"
+          },
+          "requirement": {
+            "title": "Requirement",
+            "type": "string"
+          },
+          "suggestion": {
+            "title": "Suggestion",
+            "type": "string"
+          }
+        },
+        "required": [
+          "requirement",
+          "current_state",
+          "suggestion"
+        ],
+        "title": "PlanGap",
         "type": "object"
       },
       "PlanGapView": {
@@ -4987,6 +6497,57 @@
           }
         },
         "title": "PortalView",
+        "type": "object"
+      },
+      "Preferences": {
+        "additionalProperties": false,
+        "properties": {
+          "academic_analysis": {
+            "default": true,
+            "title": "Academic Analysis",
+            "type": "boolean"
+          },
+          "material_analysis": {
+            "default": true,
+            "title": "Material Analysis",
+            "type": "boolean"
+          },
+          "proactive_reminders": {
+            "default": true,
+            "title": "Proactive Reminders",
+            "type": "boolean"
+          },
+          "quiet_end": {
+            "anyOf": [
+              {
+                "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quiet End"
+          },
+          "quiet_start": {
+            "anyOf": [
+              {
+                "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quiet Start"
+          },
+          "timezone": {
+            "default": "Asia/Shanghai",
+            "title": "Timezone",
+            "type": "string"
+          }
+        },
+        "title": "Preferences",
         "type": "object"
       },
       "ProfileFieldUpdateRequest": {
@@ -5449,6 +7010,160 @@
         "title": "ReportTocItemView",
         "type": "object"
       },
+      "ReviewEdit": {
+        "additionalProperties": false,
+        "properties": {
+          "adjustment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TaskEdit"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "note": {
+            "default": "",
+            "maxLength": 3000,
+            "title": "Note",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "result": {
+            "default": "continue",
+            "enum": [
+              "continue",
+              "adjust",
+              "complete"
+            ],
+            "title": "Result",
+            "type": "string"
+          },
+          "task_id": {
+            "title": "Task Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id",
+          "reason"
+        ],
+        "title": "ReviewEdit",
+        "type": "object"
+      },
+      "ReviewListView": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewRecordView"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "reasons": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Reasons",
+            "type": "object"
+          }
+        },
+        "required": [
+          "items",
+          "reasons"
+        ],
+        "title": "ReviewListView",
+        "type": "object"
+      },
+      "ReviewRecordView": {
+        "additionalProperties": false,
+        "properties": {
+          "adjustment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TaskEdit"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "applied_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Applied At"
+          },
+          "history": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "History",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "note": {
+            "default": "",
+            "maxLength": 3000,
+            "title": "Note",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "result": {
+            "default": "continue",
+            "enum": [
+              "continue",
+              "adjust",
+              "complete"
+            ],
+            "title": "Result",
+            "type": "string"
+          },
+          "task_id": {
+            "title": "Task Id",
+            "type": "string"
+          },
+          "task_text": {
+            "title": "Task Text",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id",
+          "reason",
+          "id",
+          "task_text",
+          "updated_at"
+        ],
+        "title": "ReviewRecordView",
+        "type": "object"
+      },
       "RouteView": {
         "additionalProperties": false,
         "description": "前端路由。",
@@ -5478,6 +7193,80 @@
           "page_code"
         ],
         "title": "RouteView",
+        "type": "object"
+      },
+      "ScheduleConflictView": {
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "first": {
+            "title": "First",
+            "type": "string"
+          },
+          "second": {
+            "title": "Second",
+            "type": "string"
+          }
+        },
+        "required": [
+          "first",
+          "second",
+          "at"
+        ],
+        "title": "ScheduleConflictView",
+        "type": "object"
+      },
+      "Semester": {
+        "additionalProperties": false,
+        "properties": {
+          "first_monday": {
+            "format": "date",
+            "title": "First Monday",
+            "type": "string"
+          },
+          "periods": {
+            "items": {
+              "$ref": "#/components/schemas/Period"
+            },
+            "maxItems": 30,
+            "minItems": 1,
+            "title": "Periods",
+            "type": "array"
+          },
+          "timezone": {
+            "default": "Asia/Shanghai",
+            "title": "Timezone",
+            "type": "string"
+          },
+          "weekly_available_minutes": {
+            "anyOf": [
+              {
+                "maximum": 10080.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weekly Available Minutes"
+          },
+          "weeks": {
+            "default": 20,
+            "maximum": 53.0,
+            "minimum": 1.0,
+            "title": "Weeks",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "first_monday",
+          "periods"
+        ],
+        "title": "Semester",
         "type": "object"
       },
       "SessionListView": {
@@ -5571,6 +7360,100 @@
           "title"
         ],
         "title": "StagePanelView",
+        "type": "object"
+      },
+      "TaskEdit": {
+        "additionalProperties": false,
+        "properties": {
+          "due_date": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "estimated_minutes": {
+            "anyOf": [
+              {
+                "maximum": 1440.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Minutes"
+          },
+          "parent_task_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Task Id"
+          },
+          "phase_id": {
+            "minLength": 1,
+            "title": "Phase Id",
+            "type": "string"
+          },
+          "progress": {
+            "default": 0,
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Progress",
+            "type": "integer"
+          },
+          "scheduled_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scheduled At"
+          },
+          "status": {
+            "default": "pending",
+            "enum": [
+              "pending",
+              "in_progress",
+              "waiting",
+              "completed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "text": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          },
+          "waiting_reason": {
+            "default": "",
+            "maxLength": 500,
+            "title": "Waiting Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "phase_id"
+        ],
+        "title": "TaskEdit",
         "type": "object"
       },
       "TaskEnterRequest": {
@@ -5980,6 +7863,88 @@
         "title": "ValidationError",
         "type": "object"
       },
+      "WorkloadView": {
+        "properties": {
+          "capacity_method": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capacity Method"
+          },
+          "configured": {
+            "title": "Configured",
+            "type": "boolean"
+          },
+          "conflicts": {
+            "items": {
+              "$ref": "#/components/schemas/ScheduleConflictView"
+            },
+            "title": "Conflicts",
+            "type": "array"
+          },
+          "missing": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing",
+            "type": "array"
+          },
+          "weeks": {
+            "items": {
+              "$ref": "#/components/schemas/WorkloadWeekView"
+            },
+            "title": "Weeks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "configured",
+          "weeks",
+          "conflicts",
+          "missing"
+        ],
+        "title": "WorkloadView",
+        "type": "object"
+      },
+      "WorkloadWeekView": {
+        "properties": {
+          "course_minutes": {
+            "title": "Course Minutes",
+            "type": "number"
+          },
+          "remaining_minutes": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remaining Minutes"
+          },
+          "start": {
+            "title": "Start",
+            "type": "string"
+          },
+          "task_minutes": {
+            "title": "Task Minutes",
+            "type": "number"
+          }
+        },
+        "required": [
+          "start",
+          "course_minutes",
+          "task_minutes"
+        ],
+        "title": "WorkloadWeekView",
+        "type": "object"
+      },
       "WorkspacePageView": {
         "additionalProperties": false,
         "description": "工作台聚合视图。",
@@ -6221,6 +8186,46 @@
         ]
       }
     },
+    "/api/v1/app/assets/download/{export_id}": {
+      "get": {
+        "operationId": "download_asset_api_v1_app_assets_download__export_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "export_id",
+            "required": true,
+            "schema": {
+              "title": "Export Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Download Asset",
+        "tags": [
+          "student-capabilities"
+        ]
+      }
+    },
     "/api/v1/app/assets/export": {
       "post": {
         "description": "导出资产。第一期仅预留入口，available 恒 False。",
@@ -6302,6 +8307,57 @@
         "summary": "List Asset Versions",
         "tags": [
           "asset"
+        ]
+      }
+    },
+    "/api/v1/app/assets/{asset_type}/versions/{version}/content": {
+      "get": {
+        "operationId": "asset_snapshot_api_v1_app_assets__asset_type__versions__version__content_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "asset_type",
+            "required": true,
+            "schema": {
+              "title": "Asset Type",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "title": "Version",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_AssetSnapshotView_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Asset Snapshot",
+        "tags": [
+          "student-capabilities"
         ]
       }
     },
@@ -6832,6 +8888,66 @@
         ]
       }
     },
+    "/api/v1/app/measurements": {
+      "get": {
+        "operationId": "measurements_api_v1_app_measurements_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_MeasurementListView_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Measurements",
+        "tags": [
+          "student-capabilities"
+        ]
+      },
+      "post": {
+        "operationId": "save_measurements_api_v1_app_measurements_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MeasurementBatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_MeasurementRecordView_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Measurements",
+        "tags": [
+          "student-capabilities"
+        ]
+      }
+    },
     "/api/v1/app/modules": {
       "get": {
         "operationId": "user_modules_api_v1_app_modules_get",
@@ -7181,6 +9297,27 @@
         ]
       }
     },
+    "/api/v1/app/notifications": {
+      "get": {
+        "operationId": "notifications_api_v1_app_notifications_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_list_NotificationStateView__"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Notifications",
+        "tags": [
+          "student-capabilities"
+        ]
+      }
+    },
     "/api/v1/app/notifications/pending": {
       "get": {
         "description": "教练主动介入通知出队（前端浮窗轮询消费）。",
@@ -7200,6 +9337,58 @@
         "summary": "List Pending Notifications",
         "tags": [
           "app"
+        ]
+      }
+    },
+    "/api/v1/app/notifications/{message_id}": {
+      "patch": {
+        "operationId": "notification_state_api_v1_app_notifications__message_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "message_id",
+            "required": true,
+            "schema": {
+              "title": "Message Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationEdit"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_NotificationStateView_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Notification State",
+        "tags": [
+          "student-capabilities"
         ]
       }
     },
@@ -7268,6 +9457,99 @@
         ]
       }
     },
+    "/api/v1/app/plan/action/phases": {
+      "post": {
+        "operationId": "create_phase_api_v1_app_plan_action_phases_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhaseEdit"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_ActionPlanView_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Phase",
+        "tags": [
+          "student-capabilities"
+        ]
+      }
+    },
+    "/api/v1/app/plan/action/phases/{phase_id}": {
+      "put": {
+        "operationId": "edit_phase_api_v1_app_plan_action_phases__phase_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "phase_id",
+            "required": true,
+            "schema": {
+              "title": "Phase Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhaseEdit"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_ActionPlanView_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Edit Phase",
+        "tags": [
+          "student-capabilities"
+        ]
+      }
+    },
     "/api/v1/app/plan/action/tasks": {
       "patch": {
         "description": "勾掉 / 取消勾选一个行动任务。\n\n`done=false` 是\"勾错了要撤回\"：只支持单向勾选的话，用户点错一次就再也回不去。",
@@ -7307,6 +9589,178 @@
         "summary": "Set Action Task Done",
         "tags": [
           "asset"
+        ]
+      },
+      "post": {
+        "operationId": "create_task_api_v1_app_plan_action_tasks_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskEdit"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_ActionPlanView_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Task",
+        "tags": [
+          "student-capabilities"
+        ]
+      }
+    },
+    "/api/v1/app/plan/action/tasks/{task_id}": {
+      "put": {
+        "operationId": "edit_task_api_v1_app_plan_action_tasks__task_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskEdit"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_ActionPlanView_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Edit Task",
+        "tags": [
+          "student-capabilities"
+        ]
+      }
+    },
+    "/api/v1/app/plan/direction-comparison": {
+      "get": {
+        "operationId": "comparison_api_v1_app_plan_direction_comparison_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_DirectionComparisonView_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Comparison",
+        "tags": [
+          "student-capabilities"
+        ]
+      }
+    },
+    "/api/v1/app/plan/direction-weights": {
+      "get": {
+        "operationId": "weights_api_v1_app_plan_direction_weights_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_DirectionWeights_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Weights",
+        "tags": [
+          "student-capabilities"
+        ]
+      },
+      "put": {
+        "operationId": "save_weights_api_v1_app_plan_direction_weights_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DirectionWeights"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_DirectionWeights_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Weights",
+        "tags": [
+          "student-capabilities"
         ]
       }
     },
@@ -7457,6 +9911,66 @@
         ]
       }
     },
+    "/api/v1/app/preferences": {
+      "get": {
+        "operationId": "preferences_api_v1_app_preferences_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_Preferences_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Preferences",
+        "tags": [
+          "student-capabilities"
+        ]
+      },
+      "put": {
+        "operationId": "save_preferences_api_v1_app_preferences_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Preferences"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_Preferences_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Preferences",
+        "tags": [
+          "student-capabilities"
+        ]
+      }
+    },
     "/api/v1/app/profile/fields/{key}": {
       "post": {
         "description": "更正一条画像字段，返回更正后的那一条。\n\n回包给的是**服务端存下来的那一条**，不是把请求里的值原样弹回去：\n界面据此做乐观更新与回滚，刷新之后看到的是同一份事实。",
@@ -7580,6 +10094,263 @@
         ]
       }
     },
+    "/api/v1/app/reviews": {
+      "get": {
+        "operationId": "reviews_api_v1_app_reviews_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_ReviewListView_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Reviews",
+        "tags": [
+          "student-capabilities"
+        ]
+      },
+      "post": {
+        "operationId": "create_review_api_v1_app_reviews_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewEdit"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_ReviewRecordView_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Review",
+        "tags": [
+          "student-capabilities"
+        ]
+      }
+    },
+    "/api/v1/app/reviews/{review_id}": {
+      "put": {
+        "operationId": "edit_review_api_v1_app_reviews__review_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "review_id",
+            "required": true,
+            "schema": {
+              "title": "Review Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewEdit"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_ReviewRecordView_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Edit Review",
+        "tags": [
+          "student-capabilities"
+        ]
+      }
+    },
+    "/api/v1/app/reviews/{review_id}/apply": {
+      "post": {
+        "operationId": "apply_review_api_v1_app_reviews__review_id__apply_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "review_id",
+            "required": true,
+            "schema": {
+              "title": "Review Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_ReviewRecordView_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Apply Review",
+        "tags": [
+          "student-capabilities"
+        ]
+      }
+    },
+    "/api/v1/app/schedule/semester": {
+      "get": {
+        "operationId": "semester_api_v1_app_schedule_semester_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_Union_Semester__NoneType__"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Semester",
+        "tags": [
+          "student-capabilities"
+        ]
+      },
+      "put": {
+        "operationId": "save_semester_api_v1_app_schedule_semester_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Semester"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_Semester_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Semester",
+        "tags": [
+          "student-capabilities"
+        ]
+      }
+    },
+    "/api/v1/app/schedule/workload": {
+      "get": {
+        "operationId": "workload_api_v1_app_schedule_workload_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "start",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Start",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_WorkloadView_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Workload",
+        "tags": [
+          "student-capabilities"
+        ]
+      }
+    },
     "/api/v1/app/sessions": {
       "get": {
         "description": "左栏会话列表（并行任务会话，按任务/环节命名）。",
@@ -7599,6 +10370,48 @@
         "summary": "List Sessions",
         "tags": [
           "conversation"
+        ]
+      }
+    },
+    "/api/v1/app/sessions/{task_id}/snapshot": {
+      "get": {
+        "operationId": "session_snapshot_api_v1_app_sessions__task_id__snapshot_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_Union_ConversationTurnView__NoneType__"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Session Snapshot",
+        "tags": [
+          "student-capabilities"
         ]
       }
     },

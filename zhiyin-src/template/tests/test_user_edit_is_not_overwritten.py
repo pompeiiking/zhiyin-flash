@@ -159,11 +159,16 @@ async def test_the_authoritative_record_still_overwrites() -> None:
         user, _collect_payload("major", "专业", _MODEL_WORDS, ProfileSource.RECORD)
     )
 
+    # The model's source label is not institutional verification.
+    assert (await _profile_field(container, user, "major")).value == _HIS_WORDS
+    assert result.blocked_by_user_edit == ("major",)
+    # Actual import/verification services use the profile write boundary directly.
+    await container.profile_service.update_field(
+        user, "major", _MODEL_WORDS, confidence=1, source="record", label="专业")
+
     after = await _profile_field(container, user, "major")
     assert after.value == _MODEL_WORDS
     assert after.source is ProfileSource.RECORD
-    assert result.written == ("major",)
-    assert result.blocked_by_user_edit == ()
 
 
 @pytest.mark.asyncio

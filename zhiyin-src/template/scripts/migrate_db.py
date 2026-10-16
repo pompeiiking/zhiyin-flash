@@ -80,6 +80,7 @@ CONFIG_TABLES: tuple[str, ...] = (
 
 #: `--include-users` 时一并迁移：用户进度与资产
 USER_TABLES: tuple[str, ...] = (
+    "biz_student_state",
     "biz_user_account",
     "infra_auth_credential",
     "biz_profile",
@@ -310,9 +311,7 @@ async def export(dsn: str, out: Path, tables: Iterable[str], *, redact: bool) ->
             names = [column["name"] for column in columns]
             families = {column["name"]: column["family"] for column in columns}
             rows = await connection.fetch(f"SELECT {', '.join(names)} FROM {table}")
-            data = [
-                [encode_value(row[name], families[name]) for name in names] for row in rows
-            ]
+            data = [[encode_value(row[name], families[name]) for name in names] for row in rows]
             if redact and table == "infra_ai_provider":
                 index = names.index("config") if "config" in names else -1
                 if index >= 0:
@@ -486,9 +485,7 @@ def main(argv: Optional[list[str]] = None) -> int:
             # 这里刻意用 ASCII：Windows 控制台默认 GBK，emoji 会让 print 直接抛
             # UnicodeEncodeError —— 文件明明已经写好了，命令却以非 0 退出，
             # 用脚本串起来时会误判成"导出失败"（2026-09-22 实测踩到）。
-            print(
-                "注意：迁移文件里含模型密钥（infra_ai_provider.config.api_key），别把它发给外部"
-            )
+            print("注意：迁移文件里含模型密钥（infra_ai_provider.config.api_key），别把它发给外部")
         payload = asyncio.run(export(args.dsn, args.out, tables, redact=args.redact_secrets))
         print(f"完成：{sum(len(t['rows']) for t in payload['tables'].values())} 行 → {args.out}")
         return 0

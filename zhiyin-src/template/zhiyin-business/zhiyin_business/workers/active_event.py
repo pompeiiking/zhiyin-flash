@@ -63,6 +63,7 @@ class ActiveEventWorker(Worker):
         scheduler: Scheduler,
         notifier: Notifier,
         user_provider: UserProvider | None = None,
+        student=None,
     ) -> None:
         """`policy_factory` 每轮用动态资源里最新的参数构造规则实例——
         调阈值不需要发版，也不需要重启 Worker。"""
@@ -75,6 +76,7 @@ class ActiveEventWorker(Worker):
         self._scheduler = scheduler
         self._notifier = notifier
         self._user_provider = user_provider
+        self._student = student
         # 冷却与窗口内打扰计数**不再自己记**：从通知历史上算。
         # 进程内字典在多实例下会各记一份，同一个用户被提醒多次 ——
         # 而"不打扰"是这套产品最重要的克制（见 NotificationRepository 的说明）。
@@ -98,6 +100,8 @@ class ActiveEventWorker(Worker):
 
         triggered = 0
         for user_id in user_ids:
+            if self._student is not None and not await self._student.can_notify(user_id):
+                continue
             days_inactive = await self._days_inactive(user_id)
             if days_inactive is None:
                 continue
@@ -173,11 +177,7 @@ class ActiveEventWorker(Worker):
             logger.warning("读取行为历史失败，停滞信号按未记录处理", exc_info=True)
             return False
         last_action_at = max(
-            (
-                event.occurred_at
-                for event in events
-                if event.event_type in _ACTION_EVENTS
-            ),
+            (event.occurred_at for event in events if event.event_type in _ACTION_EVENTS),
             default=None,
         )
         last_stall_at = max(

@@ -210,6 +210,72 @@ export type TheoryCardView = {
   "summary"?: string
 }
 
+export type TaskEdit = {
+  "due_date"?: (string | null)
+  "estimated_minutes"?: (number | null)
+  "parent_task_id"?: (string | null)
+  "phase_id": string
+  "progress"?: number
+  "scheduled_at"?: (string | null)
+  "status"?: "pending" | "in_progress" | "waiting" | "completed"
+  "text": string
+  "waiting_reason"?: string
+}
+
+export type PhaseEdit = {
+  "blocking_conditions"?: Array<string>
+  "depends_on"?: Array<string>
+  "ends_at"?: (string | null)
+  "handoff_requirements"?: Array<string>
+  "name": string
+  "starts_at"?: (string | null)
+}
+
+export type Preferences = {
+  "academic_analysis"?: boolean
+  "material_analysis"?: boolean
+  "proactive_reminders"?: boolean
+  "quiet_end"?: (string | null)
+  "quiet_start"?: (string | null)
+  "timezone"?: string
+}
+
+export type Semester = {
+  "first_monday": string
+  "periods": Array<Period>
+  "timezone"?: string
+  "weekly_available_minutes"?: (number | null)
+  "weeks"?: number
+}
+
+export type ReviewEdit = {
+  "adjustment"?: (TaskEdit | null)
+  "note"?: string
+  "reason": string
+  "result"?: "continue" | "adjust" | "complete"
+  "task_id": string
+}
+
+export type NotificationEdit = {
+  "snoozed_until"?: (string | null)
+  "status": "pending" | "read" | "later" | "done"
+}
+
+export type MeasurementBatch = {
+  "asset_type": "report" | "direction_plan"
+  "measurements": Array<Measurement>
+  "subject_id": string
+  "version": number
+}
+
+export type DirectionWeights = {
+  "jobs"?: number
+  "location"?: number
+  "major"?: number
+  "salary"?: number
+  "stability"?: number
+}
+
 export type WorkspacePageView = {
   "academic_panel"?: (AcademicPanelView | null)
   "action_panel"?: (StagePanelView | null)
@@ -344,14 +410,27 @@ export type ActionTaskView = {
   "done"?: boolean
   "done_at"?: (string | null)
   "due_date"?: (string | null)
+  "estimated_minutes"?: (number | null)
+  "parent_task_id"?: (string | null)
   "phase"?: string
+  "progress"?: number
+  "scheduled_at"?: (string | null)
+  "status"?: "pending" | "in_progress" | "waiting" | "completed"
   "task_id": string
   "text": string
+  "waiting_reason"?: string
 }
 
 export type ActionPhaseView = {
+  "blocked_by"?: Array<string>
+  "blocking_conditions"?: Array<string>
   "date_range"?: string
+  "depends_on"?: Array<string>
+  "ends_at"?: (string | null)
+  "handoff_requirements"?: Array<string>
+  "id"?: string
   "name": string
+  "starts_at"?: (string | null)
   "tag"?: string
   "tasks"?: Array<ActionTaskView>
 }
@@ -426,6 +505,25 @@ export type TrustBlockView = {
   "code": string
   "expandable_ref"?: string
   "title": string
+}
+
+export type Period = {
+  "end": string
+  "number": number
+  "start": string
+}
+
+export type Measurement = {
+  "key": string
+  "label": string
+  "maximum"?: number
+  "measured_at": string
+  "method": string
+  "minimum"?: number
+  "origin"?: "self_report" | "assessment" | "external"
+  "source": string
+  "threshold"?: (number | null)
+  "value": number
 }
 
 export type StagePanelView = {

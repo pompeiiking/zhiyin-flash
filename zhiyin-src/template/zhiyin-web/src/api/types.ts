@@ -51,6 +51,10 @@ export interface paths {
      */
     get: operations["list_achievements_api_v1_app_achievements_get"];
   };
+  "/api/v1/app/assets/download/{export_id}": {
+    /** Download Asset */
+    get: operations["download_asset_api_v1_app_assets_download__export_id__get"];
+  };
   "/api/v1/app/assets/export": {
     /**
      * Export Asset
@@ -64,6 +68,10 @@ export interface paths {
      * @description 资产历史版本列表，含 depends_on 与 diff。
      */
     get: operations["list_asset_versions_api_v1_app_assets__asset_type__versions_get"];
+  };
+  "/api/v1/app/assets/{asset_type}/versions/{version}/content": {
+    /** Asset Snapshot */
+    get: operations["asset_snapshot_api_v1_app_assets__asset_type__versions__version__content_get"];
   };
   "/api/v1/app/auth/login": {
     /**
@@ -209,6 +217,12 @@ export interface paths {
      */
     post: operations["match_careers_api_v1_app_match_careers_post"];
   };
+  "/api/v1/app/measurements": {
+    /** Measurements */
+    get: operations["measurements_api_v1_app_measurements_get"];
+    /** Save Measurements */
+    post: operations["save_measurements_api_v1_app_measurements_post"];
+  };
   "/api/v1/app/modules": {
     /** User Modules */
     get: operations["user_modules_api_v1_app_modules_get"];
@@ -249,12 +263,20 @@ export interface paths {
      */
     patch: operations["set_note_done_api_v1_app_notes__note_id__patch"];
   };
+  "/api/v1/app/notifications": {
+    /** Notifications */
+    get: operations["notifications_api_v1_app_notifications_get"];
+  };
   "/api/v1/app/notifications/pending": {
     /**
      * List Pending Notifications
      * @description 教练主动介入通知出队（前端浮窗轮询消费）。
      */
     get: operations["list_pending_notifications_api_v1_app_notifications_pending_get"];
+  };
+  "/api/v1/app/notifications/{message_id}": {
+    /** Notification State */
+    patch: operations["notification_state_api_v1_app_notifications__message_id__patch"];
   };
   "/api/v1/app/notifications/{message_id}/read": {
     /**
@@ -273,7 +295,17 @@ export interface paths {
      */
     get: operations["get_action_plan_api_v1_app_plan_action_get"];
   };
+  "/api/v1/app/plan/action/phases": {
+    /** Create Phase */
+    post: operations["create_phase_api_v1_app_plan_action_phases_post"];
+  };
+  "/api/v1/app/plan/action/phases/{phase_id}": {
+    /** Edit Phase */
+    put: operations["edit_phase_api_v1_app_plan_action_phases__phase_id__put"];
+  };
   "/api/v1/app/plan/action/tasks": {
+    /** Create Task */
+    post: operations["create_task_api_v1_app_plan_action_tasks_post"];
     /**
      * Set Action Task Done
      * @description 勾掉 / 取消勾选一个行动任务。
@@ -281,6 +313,20 @@ export interface paths {
      * `done=false` 是"勾错了要撤回"：只支持单向勾选的话，用户点错一次就再也回不去。
      */
     patch: operations["set_action_task_done_api_v1_app_plan_action_tasks_patch"];
+  };
+  "/api/v1/app/plan/action/tasks/{task_id}": {
+    /** Edit Task */
+    put: operations["edit_task_api_v1_app_plan_action_tasks__task_id__put"];
+  };
+  "/api/v1/app/plan/direction-comparison": {
+    /** Comparison */
+    get: operations["comparison_api_v1_app_plan_direction_comparison_get"];
+  };
+  "/api/v1/app/plan/direction-weights": {
+    /** Weights */
+    get: operations["weights_api_v1_app_plan_direction_weights_get"];
+    /** Save Weights */
+    put: operations["save_weights_api_v1_app_plan_direction_weights_put"];
   };
   "/api/v1/app/plan/directions": {
     /**
@@ -338,6 +384,12 @@ export interface paths {
      */
     post: operations["portrait_analysis_api_v1_app_portrait_analysis_post"];
   };
+  "/api/v1/app/preferences": {
+    /** Preferences */
+    get: operations["preferences_api_v1_app_preferences_get"];
+    /** Save Preferences */
+    put: operations["save_preferences_api_v1_app_preferences_put"];
+  };
   "/api/v1/app/profile/fields/{key}": {
     /**
      * Update Profile Field
@@ -362,12 +414,40 @@ export interface paths {
      */
     post: operations["report_summary_api_v1_app_report_summary_post"];
   };
+  "/api/v1/app/reviews": {
+    /** Reviews */
+    get: operations["reviews_api_v1_app_reviews_get"];
+    /** Create Review */
+    post: operations["create_review_api_v1_app_reviews_post"];
+  };
+  "/api/v1/app/reviews/{review_id}": {
+    /** Edit Review */
+    put: operations["edit_review_api_v1_app_reviews__review_id__put"];
+  };
+  "/api/v1/app/reviews/{review_id}/apply": {
+    /** Apply Review */
+    post: operations["apply_review_api_v1_app_reviews__review_id__apply_post"];
+  };
+  "/api/v1/app/schedule/semester": {
+    /** Semester */
+    get: operations["semester_api_v1_app_schedule_semester_get"];
+    /** Save Semester */
+    put: operations["save_semester_api_v1_app_schedule_semester_put"];
+  };
+  "/api/v1/app/schedule/workload": {
+    /** Workload */
+    get: operations["workload_api_v1_app_schedule_workload_get"];
+  };
   "/api/v1/app/sessions": {
     /**
      * List Sessions
      * @description 左栏会话列表（并行任务会话，按任务/环节命名）。
      */
     get: operations["list_sessions_api_v1_app_sessions_get"];
+  };
+  "/api/v1/app/sessions/{task_id}/snapshot": {
+    /** Session Snapshot */
+    get: operations["session_snapshot_api_v1_app_sessions__task_id__snapshot_get"];
   };
   "/api/v1/app/sessions/{task_id}/turns": {
     /**
@@ -847,17 +927,67 @@ export interface components {
       unlocked_at?: string | null;
     };
     /**
+     * ActionPhase
+     * @description 行动阶段。
+     */
+    ActionPhase: {
+      /** Blocking Conditions */
+      blocking_conditions?: string[];
+      /** Date Range */
+      date_range: string;
+      /** Depends On */
+      depends_on?: string[];
+      /** Ends At */
+      ends_at?: string | null;
+      /** Handoff Requirements */
+      handoff_requirements?: string[];
+      /**
+       * Id
+       * @default
+       */
+      id?: string;
+      /** Name */
+      name: string;
+      /** Starts At */
+      starts_at?: string | null;
+      /**
+       * Tag
+       * @description 阶段标签，如秋招投递/笔试冲刺
+       * @default
+       */
+      tag?: string;
+      /** Tasks */
+      tasks?: components["schemas"]["ActionTask"][];
+    };
+    /**
      * ActionPhaseView
      * @description 行动阶段：一段时间的里程碑与它下面的任务。
      */
     ActionPhaseView: {
+      /** Blocked By */
+      blocked_by?: string[];
+      /** Blocking Conditions */
+      blocking_conditions?: string[];
       /**
        * Date Range
        * @default
        */
       date_range?: string;
+      /** Depends On */
+      depends_on?: string[];
+      /** Ends At */
+      ends_at?: string | null;
+      /** Handoff Requirements */
+      handoff_requirements?: string[];
+      /**
+       * Id
+       * @default
+       */
+      id?: string;
       /** Name */
       name: string;
+      /** Starts At */
+      starts_at?: string | null;
       /**
        * Tag
        * @default
@@ -865,6 +995,28 @@ export interface components {
       tag?: string;
       /** Tasks */
       tasks?: components["schemas"]["ActionTaskView"][];
+    };
+    /**
+     * ActionPlan
+     * @description 行动计划。
+     */
+    ActionPlan: {
+      /** Exported At */
+      exported_at?: string | null;
+      /** Id */
+      id: string;
+      /** Phases */
+      phases?: components["schemas"]["ActionPhase"][];
+      /**
+       * Plan Id
+       * @description 关联的方向方案 id
+       */
+      plan_id?: string | null;
+      /**
+       * Reminders Synced
+       * @default false
+       */
+      reminders_synced?: boolean;
     };
     /**
      * ActionPlanView
@@ -903,6 +1055,51 @@ export interface components {
       reminders_synced?: boolean;
     };
     /**
+     * ActionTask
+     * @description 行动任务。颗粒度要求"今天/本周勾得掉"。
+     */
+    ActionTask: {
+      /**
+       * Done
+       * @default false
+       */
+      done?: boolean;
+      /** Done At */
+      done_at?: string | null;
+      /** Due Date */
+      due_date?: string | null;
+      /** Estimated Minutes */
+      estimated_minutes?: number | null;
+      /**
+       * Id
+       * @description 任务标识。勾选 / 取消按它定位 —— 用任务文本当标识时，同一阶段里两条同名任务会互相顶掉。老数据没有这一列，仓储侧保留「阶段名:任务文本」作为回落口径。
+       * @default
+       */
+      id?: string;
+      /** Parent Task Id */
+      parent_task_id?: string | null;
+      /**
+       * Progress
+       * @default 0
+       */
+      progress?: number;
+      /** Scheduled At */
+      scheduled_at?: string | null;
+      /**
+       * Status
+       * @default pending
+       * @enum {string}
+       */
+      status?: "pending" | "in_progress" | "waiting" | "completed";
+      /** Text */
+      text: string;
+      /**
+       * Waiting Reason
+       * @default
+       */
+      waiting_reason?: string;
+    };
+    /**
      * ActionTaskDoneRequest
      * @description 勾掉 / 取消勾选一个行动任务。
      */
@@ -929,6 +1126,10 @@ export interface components {
       done_at?: string | null;
       /** Due Date */
       due_date?: string | null;
+      /** Estimated Minutes */
+      estimated_minutes?: number | null;
+      /** Parent Task Id */
+      parent_task_id?: string | null;
       /**
        * Phase
        * @description 所属阶段名
@@ -936,12 +1137,30 @@ export interface components {
        */
       phase?: string;
       /**
+       * Progress
+       * @default 0
+       */
+      progress?: number;
+      /** Scheduled At */
+      scheduled_at?: string | null;
+      /**
+       * Status
+       * @default pending
+       * @enum {string}
+       */
+      status?: "pending" | "in_progress" | "waiting" | "completed";
+      /**
        * Task Id
        * @description 勾选时回传的标识（阶段名:任务文本）
        */
       task_id: string;
       /** Text */
       text: string;
+      /**
+       * Waiting Reason
+       * @default
+       */
+      waiting_reason?: string;
     };
     /**
      * AgentBadgeView
@@ -1013,6 +1232,22 @@ export interface components {
       /** @default 0 */
       code?: components["schemas"]["ErrorCode"];
       data?: components["schemas"]["ActionPlanView"] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
+    /** ApiResponse[AssetSnapshotView] */
+    ApiResponse_AssetSnapshotView_: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      data?: components["schemas"]["AssetSnapshotView"] | null;
       /**
        * Message
        * @default ok
@@ -1120,11 +1355,43 @@ export interface components {
        */
       trace_id?: string;
     };
+    /** ApiResponse[DirectionComparisonView] */
+    ApiResponse_DirectionComparisonView_: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      data?: components["schemas"]["DirectionComparisonView"] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
     /** ApiResponse[DirectionPlanListView] */
     ApiResponse_DirectionPlanListView_: {
       /** @default 0 */
       code?: components["schemas"]["ErrorCode"];
       data?: components["schemas"]["DirectionPlanListView"] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
+    /** ApiResponse[DirectionWeights] */
+    ApiResponse_DirectionWeights_: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      data?: components["schemas"]["DirectionWeights"] | null;
       /**
        * Message
        * @default ok
@@ -1173,6 +1440,38 @@ export interface components {
       /** @default 0 */
       code?: components["schemas"]["ErrorCode"];
       data?: components["schemas"]["LoginResult"] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
+    /** ApiResponse[MeasurementListView] */
+    ApiResponse_MeasurementListView_: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      data?: components["schemas"]["MeasurementListView"] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
+    /** ApiResponse[MeasurementRecordView] */
+    ApiResponse_MeasurementRecordView_: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      data?: components["schemas"]["MeasurementRecordView"] | null;
       /**
        * Message
        * @default ok
@@ -1296,11 +1595,43 @@ export interface components {
        */
       trace_id?: string;
     };
+    /** ApiResponse[NotificationStateView] */
+    ApiResponse_NotificationStateView_: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      data?: components["schemas"]["NotificationStateView"] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
     /** ApiResponse[PortalView] */
     ApiResponse_PortalView_: {
       /** @default 0 */
       code?: components["schemas"]["ErrorCode"];
       data?: components["schemas"]["PortalView"] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
+    /** ApiResponse[Preferences] */
+    ApiResponse_Preferences_: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      data?: components["schemas"]["Preferences"] | null;
       /**
        * Message
        * @default ok
@@ -1349,6 +1680,54 @@ export interface components {
       /** @default 0 */
       code?: components["schemas"]["ErrorCode"];
       data?: components["schemas"]["ReportFullTextView"] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
+    /** ApiResponse[ReviewListView] */
+    ApiResponse_ReviewListView_: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      data?: components["schemas"]["ReviewListView"] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
+    /** ApiResponse[ReviewRecordView] */
+    ApiResponse_ReviewRecordView_: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      data?: components["schemas"]["ReviewRecordView"] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
+    /** ApiResponse[Semester] */
+    ApiResponse_Semester_: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      data?: components["schemas"]["Semester"] | null;
       /**
        * Message
        * @default ok
@@ -1424,11 +1803,43 @@ export interface components {
        */
       trace_id?: string;
     };
+    /** ApiResponse[Union[ConversationTurnView, NoneType]] */
+    ApiResponse_Union_ConversationTurnView__NoneType__: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      data?: components["schemas"]["ConversationTurnView"] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
     /** ApiResponse[Union[ReleaseJob, NoneType]] */
     ApiResponse_Union_ReleaseJob__NoneType__: {
       /** @default 0 */
       code?: components["schemas"]["ErrorCode"];
       data?: components["schemas"]["ReleaseJob"] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
+    /** ApiResponse[Union[Semester, NoneType]] */
+    ApiResponse_Union_Semester__NoneType__: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      data?: components["schemas"]["Semester"] | null;
       /**
        * Message
        * @default ok
@@ -1448,6 +1859,22 @@ export interface components {
       data?: {
         [key: string]: unknown;
       } | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
+    /** ApiResponse[WorkloadView] */
+    ApiResponse_WorkloadView_: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      data?: components["schemas"]["WorkloadView"] | null;
       /**
        * Message
        * @default ok
@@ -1681,6 +2108,23 @@ export interface components {
        */
       trace_id?: string;
     };
+    /** ApiResponse[list[NotificationStateView]] */
+    ApiResponse_list_NotificationStateView__: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      /** Data */
+      data?: components["schemas"]["NotificationStateView"][] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
     /** ApiResponse[list[ReleaseJob]] */
     ApiResponse_list_ReleaseJob__: {
       /** @default 0 */
@@ -1733,6 +2177,23 @@ export interface components {
        * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
        */
       trace_id?: string;
+    };
+    /** AssetSnapshotView */
+    AssetSnapshotView: {
+      /**
+       * Asset Type
+       * @enum {string}
+       */
+      asset_type: "direction_plan" | "action_plan";
+      /** Content */
+      content: components["schemas"]["ActionPlan"] | components["schemas"]["DirectionPlan"][] | null;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /** Version */
+      version: number;
     };
     /**
      * AssetType
@@ -2330,6 +2791,73 @@ export interface components {
       /** Status */
       status?: ("passed" | "failed") | null;
     };
+    /** DirectionComparisonView */
+    DirectionComparisonView: {
+      /** Method */
+      method: string;
+      /** Plans */
+      plans: components["schemas"]["DirectionScoreView"][];
+      /** Version */
+      version?: number | null;
+      weights: components["schemas"]["DirectionWeights"];
+    };
+    /**
+     * DirectionPlan
+     * @description 方向方案。主攻/平行/保底三套，选择可撤回。
+     */
+    DirectionPlan: {
+      /**
+       * Fit Reason
+       * @description 契合依据
+       */
+      fit_reason: string;
+      /** Gaps */
+      gaps?: components["schemas"]["PlanGap"][];
+      /** Id */
+      id: string;
+      /**
+       * Main Risk
+       * @description 主要风险
+       */
+      main_risk: string;
+      /**
+       * Match Method
+       * @description 匹配度口径（同一批方案共用一句），如「三叶草契合度 × 可达性」
+       * @default
+       */
+      match_method?: string;
+      /**
+       * Match Score
+       * @description 有可追溯依据时的匹配度；缺依据为 null
+       */
+      match_score?: number | null;
+      /** Name */
+      name: string;
+      /**
+       * Report Id
+       * @description 关联的诊断报告 id
+       */
+      report_id?: string | null;
+      /**
+       * Revocable
+       * @description 可撤回，恒为 True
+       * @default true
+       */
+      revocable?: boolean;
+      role: components["schemas"]["PlanRole"];
+      /**
+       * Selected
+       * @default false
+       */
+      selected?: boolean;
+      /** Selected At */
+      selected_at?: string | null;
+      /**
+       * Target Desc
+       * @description 目标描述
+       */
+      target_desc: string;
+    };
     /**
      * DirectionPlanListView
      * @description 三套方案 + "现在选的是哪一套"。
@@ -2400,6 +2928,51 @@ export interface components {
        * @default
        */
       target_desc?: string;
+    };
+    /** DirectionScoreView */
+    DirectionScoreView: {
+      /** Feasibility */
+      feasibility?: number | null;
+      /** Id */
+      id: string;
+      /** Measurements */
+      measurements: components["schemas"]["Measurement"][];
+      /** Missing */
+      missing: string[];
+      /** Name */
+      name: string;
+      /** Opportunity */
+      opportunity?: number | null;
+      /** Score */
+      score?: number | null;
+    };
+    /** DirectionWeights */
+    DirectionWeights: {
+      /**
+       * Jobs
+       * @default 1
+       */
+      jobs?: number;
+      /**
+       * Location
+       * @default 1
+       */
+      location?: number;
+      /**
+       * Major
+       * @default 1
+       */
+      major?: number;
+      /**
+       * Salary
+       * @default 1
+       */
+      salary?: number;
+      /**
+       * Stability
+       * @default 1
+       */
+      stability?: number;
     };
     /**
      * DisclosureView
@@ -2673,6 +3246,82 @@ export interface components {
      * @enum {string}
      */
     LoopStage: "collect" | "diagnose" | "decide" | "act" | "review";
+    /** Measurement */
+    Measurement: {
+      /** Key */
+      key: string;
+      /** Label */
+      label: string;
+      /**
+       * Maximum
+       * @default 100
+       */
+      maximum?: number;
+      /**
+       * Measured At
+       * Format: date-time
+       */
+      measured_at: string;
+      /** Method */
+      method: string;
+      /**
+       * Minimum
+       * @default 0
+       */
+      minimum?: number;
+      /**
+       * Origin
+       * @default self_report
+       * @enum {string}
+       */
+      origin?: "self_report" | "assessment" | "external";
+      /** Source */
+      source: string;
+      /** Threshold */
+      threshold?: number | null;
+      /** Value */
+      value: number;
+    };
+    /** MeasurementBatch */
+    MeasurementBatch: {
+      /**
+       * Asset Type
+       * @enum {string}
+       */
+      asset_type: "report" | "direction_plan";
+      /** Measurements */
+      measurements: components["schemas"]["Measurement"][];
+      /** Subject Id */
+      subject_id: string;
+      /** Version */
+      version: number;
+    };
+    /** MeasurementListView */
+    MeasurementListView: {
+      /** History */
+      history: components["schemas"]["MeasurementRecordView"][];
+      /** Items */
+      items: components["schemas"]["MeasurementRecordView"][];
+    };
+    /** MeasurementRecordView */
+    MeasurementRecordView: {
+      /**
+       * Asset Type
+       * @enum {string}
+       */
+      asset_type: "report" | "direction_plan";
+      /** Measurements */
+      measurements: components["schemas"]["Measurement"][];
+      /**
+       * Recorded At
+       * Format: date-time
+       */
+      recorded_at: string;
+      /** Subject Id */
+      subject_id: string;
+      /** Version */
+      version: number;
+    };
     /**
      * MenuView
      * @description 顶层导航项。仅"首页 / 核心对话页 / 智能工作台"三条主线。
@@ -3137,6 +3786,72 @@ export interface components {
        */
       text: string;
     };
+    /** NotificationEdit */
+    NotificationEdit: {
+      /** Snoozed Until */
+      snoozed_until?: string | null;
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: "pending" | "read" | "later" | "done";
+    };
+    /** NotificationStateView */
+    NotificationStateView: {
+      /** Action */
+      action?: {
+        [key: string]: unknown;
+      } | null;
+      /**
+       * Body
+       * @default
+       */
+      body?: string;
+      /**
+       * Channel
+       * @default
+       */
+      channel?: string;
+      /** Id */
+      id: string;
+      /** Occurred At */
+      occurred_at?: string | null;
+      /** Related Task Id */
+      related_task_id?: string | null;
+      /** Snoozed Until */
+      snoozed_until?: string | null;
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: "pending" | "read" | "later" | "done";
+      /** Title */
+      title: string;
+    };
+    /** Period */
+    Period: {
+      /** End */
+      end: string;
+      /** Number */
+      number: number;
+      /** Start */
+      start: string;
+    };
+    /** PhaseEdit */
+    PhaseEdit: {
+      /** Blocking Conditions */
+      blocking_conditions?: string[];
+      /** Depends On */
+      depends_on?: string[];
+      /** Ends At */
+      ends_at?: string | null;
+      /** Handoff Requirements */
+      handoff_requirements?: string[];
+      /** Name */
+      name: string;
+      /** Starts At */
+      starts_at?: string | null;
+    };
     /**
      * PipelineCardView
      * @description 右栏管线卡（①-⑤ 每环节一卡）。
@@ -3178,6 +3893,18 @@ export interface components {
       theory_models?: components["schemas"]["TheoryRefView"][];
       /** Title */
       title: string;
+    };
+    /**
+     * PlanGap
+     * @description 方案内的差距条目：要求 − 现状 = 差距 + 补齐建议。
+     */
+    PlanGap: {
+      /** Current State */
+      current_state: string;
+      /** Requirement */
+      requirement: string;
+      /** Suggestion */
+      suggestion: string;
     };
     /**
      * PlanGapView
@@ -3248,6 +3975,33 @@ export interface components {
       task_entries?: components["schemas"]["TaskEntryView"][];
       /** Trust Blocks */
       trust_blocks?: components["schemas"]["TrustBlockView"][];
+    };
+    /** Preferences */
+    Preferences: {
+      /**
+       * Academic Analysis
+       * @default true
+       */
+      academic_analysis?: boolean;
+      /**
+       * Material Analysis
+       * @default true
+       */
+      material_analysis?: boolean;
+      /**
+       * Proactive Reminders
+       * @default true
+       */
+      proactive_reminders?: boolean;
+      /** Quiet End */
+      quiet_end?: string | null;
+      /** Quiet Start */
+      quiet_start?: string | null;
+      /**
+       * Timezone
+       * @default Asia/Shanghai
+       */
+      timezone?: string;
     };
     /**
      * ProfileFieldUpdateRequest
@@ -3563,6 +4317,68 @@ export interface components {
       /** Title */
       title: string;
     };
+    /** ReviewEdit */
+    ReviewEdit: {
+      adjustment?: components["schemas"]["TaskEdit"] | null;
+      /**
+       * Note
+       * @default
+       */
+      note?: string;
+      /** Reason */
+      reason: string;
+      /**
+       * Result
+       * @default continue
+       * @enum {string}
+       */
+      result?: "continue" | "adjust" | "complete";
+      /** Task Id */
+      task_id: string;
+    };
+    /** ReviewListView */
+    ReviewListView: {
+      /** Items */
+      items: components["schemas"]["ReviewRecordView"][];
+      /** Reasons */
+      reasons: {
+        [key: string]: number;
+      };
+    };
+    /** ReviewRecordView */
+    ReviewRecordView: {
+      adjustment?: components["schemas"]["TaskEdit"] | null;
+      /** Applied At */
+      applied_at?: string | null;
+      /** History */
+      history?: {
+          [key: string]: unknown;
+        }[];
+      /** Id */
+      id: string;
+      /**
+       * Note
+       * @default
+       */
+      note?: string;
+      /** Reason */
+      reason: string;
+      /**
+       * Result
+       * @default continue
+       * @enum {string}
+       */
+      result?: "continue" | "adjust" | "complete";
+      /** Task Id */
+      task_id: string;
+      /** Task Text */
+      task_text: string;
+      /**
+       * Updated At
+       * Format: date-time
+       */
+      updated_at: string;
+    };
     /**
      * RouteView
      * @description 前端路由。
@@ -3585,6 +4401,40 @@ export interface components {
        * @default 0
        */
       sort_order?: number;
+    };
+    /** ScheduleConflictView */
+    ScheduleConflictView: {
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      /** First */
+      first: string;
+      /** Second */
+      second: string;
+    };
+    /** Semester */
+    Semester: {
+      /**
+       * First Monday
+       * Format: date
+       */
+      first_monday: string;
+      /** Periods */
+      periods: components["schemas"]["Period"][];
+      /**
+       * Timezone
+       * @default Asia/Shanghai
+       */
+      timezone?: string;
+      /** Weekly Available Minutes */
+      weekly_available_minutes?: number | null;
+      /**
+       * Weeks
+       * @default 20
+       */
+      weeks?: number;
     };
     /**
      * SessionListView
@@ -3623,6 +4473,37 @@ export interface components {
       updated_at?: string | null;
       /** Version */
       version?: number | null;
+    };
+    /** TaskEdit */
+    TaskEdit: {
+      /** Due Date */
+      due_date?: string | null;
+      /** Estimated Minutes */
+      estimated_minutes?: number | null;
+      /** Parent Task Id */
+      parent_task_id?: string | null;
+      /** Phase Id */
+      phase_id: string;
+      /**
+       * Progress
+       * @default 0
+       */
+      progress?: number;
+      /** Scheduled At */
+      scheduled_at?: string | null;
+      /**
+       * Status
+       * @default pending
+       * @enum {string}
+       */
+      status?: "pending" | "in_progress" | "waiting" | "completed";
+      /** Text */
+      text: string;
+      /**
+       * Waiting Reason
+       * @default
+       */
+      waiting_reason?: string;
     };
     /**
      * TaskEnterRequest
@@ -3852,6 +4733,30 @@ export interface components {
       /** Error Type */
       type: string;
     };
+    /** WorkloadView */
+    WorkloadView: {
+      /** Capacity Method */
+      capacity_method?: string | null;
+      /** Configured */
+      configured: boolean;
+      /** Conflicts */
+      conflicts: components["schemas"]["ScheduleConflictView"][];
+      /** Missing */
+      missing: string[];
+      /** Weeks */
+      weeks: components["schemas"]["WorkloadWeekView"][];
+    };
+    /** WorkloadWeekView */
+    WorkloadWeekView: {
+      /** Course Minutes */
+      course_minutes: number;
+      /** Remaining Minutes */
+      remaining_minutes?: number | null;
+      /** Start */
+      start: string;
+      /** Task Minutes */
+      task_minutes: number;
+    };
     /**
      * WorkspacePageView
      * @description 工作台聚合视图。
@@ -4000,6 +4905,28 @@ export interface operations {
       };
     };
   };
+  /** Download Asset */
+  download_asset_api_v1_app_assets_download__export_id__get: {
+    parameters: {
+      path: {
+        export_id: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   /**
    * Export Asset
    * @description 导出资产。第一期仅预留入口，available 恒 False。
@@ -4040,6 +4967,29 @@ export interface operations {
       200: {
         content: {
           "application/json": components["schemas"]["ApiResponse_list_AssetVersionView__"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Asset Snapshot */
+  asset_snapshot_api_v1_app_assets__asset_type__versions__version__content_get: {
+    parameters: {
+      path: {
+        asset_type: string;
+        version: number;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_AssetSnapshotView_"];
         };
       };
       /** @description Validation Error */
@@ -4405,6 +5355,39 @@ export interface operations {
       };
     };
   };
+  /** Measurements */
+  measurements_api_v1_app_measurements_get: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_MeasurementListView_"];
+        };
+      };
+    };
+  };
+  /** Save Measurements */
+  save_measurements_api_v1_app_measurements_post: {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["MeasurementBatch"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_MeasurementRecordView_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   /** User Modules */
   user_modules_api_v1_app_modules_get: {
     parameters: {
@@ -4597,6 +5580,17 @@ export interface operations {
       };
     };
   };
+  /** Notifications */
+  notifications_api_v1_app_notifications_get: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_list_NotificationStateView__"];
+        };
+      };
+    };
+  };
   /**
    * List Pending Notifications
    * @description 教练主动介入通知出队（前端浮窗轮询消费）。
@@ -4607,6 +5601,33 @@ export interface operations {
       200: {
         content: {
           "application/json": components["schemas"]["ApiResponse_list_CoachNotificationView__"];
+        };
+      };
+    };
+  };
+  /** Notification State */
+  notification_state_api_v1_app_notifications__message_id__patch: {
+    parameters: {
+      path: {
+        message_id: string;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["NotificationEdit"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_NotificationStateView_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -4653,6 +5674,77 @@ export interface operations {
       };
     };
   };
+  /** Create Phase */
+  create_phase_api_v1_app_plan_action_phases_post: {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PhaseEdit"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_ActionPlanView_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Edit Phase */
+  edit_phase_api_v1_app_plan_action_phases__phase_id__put: {
+    parameters: {
+      path: {
+        phase_id: string;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PhaseEdit"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_ActionPlanView_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Create Task */
+  create_task_api_v1_app_plan_action_tasks_post: {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TaskEdit"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_ActionPlanView_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   /**
    * Set Action Task Done
    * @description 勾掉 / 取消勾选一个行动任务。
@@ -4670,6 +5762,77 @@ export interface operations {
       200: {
         content: {
           "application/json": components["schemas"]["ApiResponse_ActionPlanView_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Edit Task */
+  edit_task_api_v1_app_plan_action_tasks__task_id__put: {
+    parameters: {
+      path: {
+        task_id: string;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TaskEdit"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_ActionPlanView_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Comparison */
+  comparison_api_v1_app_plan_direction_comparison_get: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_DirectionComparisonView_"];
+        };
+      };
+    };
+  };
+  /** Weights */
+  weights_api_v1_app_plan_direction_weights_get: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_DirectionWeights_"];
+        };
+      };
+    };
+  };
+  /** Save Weights */
+  save_weights_api_v1_app_plan_direction_weights_put: {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["DirectionWeights"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_DirectionWeights_"];
         };
       };
       /** @description Validation Error */
@@ -4789,6 +5952,39 @@ export interface operations {
       };
     };
   };
+  /** Preferences */
+  preferences_api_v1_app_preferences_get: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_Preferences_"];
+        };
+      };
+    };
+  };
+  /** Save Preferences */
+  save_preferences_api_v1_app_preferences_put: {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["Preferences"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_Preferences_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   /**
    * Update Profile Field
    * @description 更正一条画像字段，返回更正后的那一条。
@@ -4861,6 +6057,143 @@ export interface operations {
       };
     };
   };
+  /** Reviews */
+  reviews_api_v1_app_reviews_get: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_ReviewListView_"];
+        };
+      };
+    };
+  };
+  /** Create Review */
+  create_review_api_v1_app_reviews_post: {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ReviewEdit"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_ReviewRecordView_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Edit Review */
+  edit_review_api_v1_app_reviews__review_id__put: {
+    parameters: {
+      path: {
+        review_id: string;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ReviewEdit"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_ReviewRecordView_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Apply Review */
+  apply_review_api_v1_app_reviews__review_id__apply_post: {
+    parameters: {
+      path: {
+        review_id: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_ReviewRecordView_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Semester */
+  semester_api_v1_app_schedule_semester_get: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_Union_Semester__NoneType__"];
+        };
+      };
+    };
+  };
+  /** Save Semester */
+  save_semester_api_v1_app_schedule_semester_put: {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["Semester"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_Semester_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Workload */
+  workload_api_v1_app_schedule_workload_get: {
+    parameters: {
+      query: {
+        start: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_WorkloadView_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   /**
    * List Sessions
    * @description 左栏会话列表（并行任务会话，按任务/环节命名）。
@@ -4871,6 +6204,28 @@ export interface operations {
       200: {
         content: {
           "application/json": components["schemas"]["ApiResponse_SessionListView_"];
+        };
+      };
+    };
+  };
+  /** Session Snapshot */
+  session_snapshot_api_v1_app_sessions__task_id__snapshot_get: {
+    parameters: {
+      path: {
+        task_id: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_Union_ConversationTurnView__NoneType__"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };

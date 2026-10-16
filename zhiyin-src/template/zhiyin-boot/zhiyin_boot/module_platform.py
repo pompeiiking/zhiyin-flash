@@ -54,11 +54,19 @@ def product_tools(container):
                 # Record the attempt before permission checks or execution. A
                 # revoked/failed read must never become a stage asset write.
                 deps.setdefault("module_attempts", []).append(mid)
+                from zhiyin_business.services.analysis_access import current_scope
+                scope = current_scope(run_context.user_id)
                 service = container.extra.get("module_platform")
                 if service is None:
                     raise InvalidRequest("模块平台尚未装配")
-                value = await service.tool(mid, run_context.user_id, deps.get("module_agent_id", ""), input)
                 manifest = service.definition(mid).manifest
+                if scope is not None and scope.restricted and not set(manifest.reads) <= {
+                    "plan.read", "direction.read", "calendar.read", "achievements.read",
+                }:
+                    # The four built-in readers below use guarded business reads.
+                    # Future capabilities need the same boundary before AI access.
+                    return json.dumps({"available": False, "reason": "该模块的数据来源尚不能按当前资料偏好筛选；可在对应页面查看。"}, ensure_ascii=False)
+                value = await service.tool(mid, run_context.user_id, deps.get("module_agent_id", ""), input)
                 deps.setdefault("module_results", []).append({"module_id": mid, "title": manifest.name,
                     "result": value.model_dump()})
                 if manifest.conversation:

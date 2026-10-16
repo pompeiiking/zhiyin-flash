@@ -114,6 +114,7 @@ class DefaultApplicationFacade(ApplicationFacade):
         memories: Optional[ConversationMemoryService] = None,
         read_cache: Optional[ReadCacheService] = None,
         profiles: Optional[ProfileService] = None,
+        student=None,
     ) -> None:
         """构造依赖由 boot 注入。
 
@@ -125,6 +126,7 @@ class DefaultApplicationFacade(ApplicationFacade):
         分别走 `Orchestrator` 与 `WorkspaceService` / `AssetService` /
         `FunctionService`。
         """
+        self._student = student
         self._identity = identity
         self._registry = registry
         self._orchestrator = orchestrator
@@ -148,6 +150,15 @@ class DefaultApplicationFacade(ApplicationFacade):
         # 画像的写侧：用户手动更正那一条要走它。**不能**经工作台服务代写 ——
         # 那个服务的契约是读侧（"本类不写任何状态、不发任何事件"）。
         self._profiles = profiles
+
+    async def check_analysis_consent(self, user_id):
+        if self._student is not None:
+            await self._student.require_analysis_consent(user_id)
+
+    def student_capabilities(self):
+        if self._student is None:
+            raise InvalidRequest("学生交互服务尚未装配")
+        return self._student
 
     # ---------- 身份 ----------
 
@@ -313,12 +324,13 @@ class DefaultApplicationFacade(ApplicationFacade):
             lead_agent_name=agent.name if agent else "",
         )
 
-    async def send_message(
-        self, user_id: str, body: MessageRequest
-    ) -> ConversationTurnView:
+    async def send_message(self, user_id: str, body: MessageRequest) -> ConversationTurnView:
         # 材料正文在这一层取出来拼给编排器：**只有模型输入会用到它**，
         # 落库与显示的仍是 body.message（那一句"我传了一份材料：简历.txt"）。
         # 取不到（id 过期 / 不是他的）时按用户能懂的方式说，不把这一轮吞掉。
+        await self.check_analysis_consent(user_id)
+        if body.material_ids and self._student is not None:
+            await self._student.require_material_analysis(user_id)
         material_name, material_text = await self._load_materials(user_id, body.material_ids)
         turn = await self._orchestrator.handle_message(
             TurnRequest(
@@ -343,7 +355,12 @@ class DefaultApplicationFacade(ApplicationFacade):
         # 大多数轮次只是聊天，清一次产出的代价是下一次打开真的重算一遍。
         if turn.asset_versions:
             await self._invalidate_user(user_id, "asset_version_changed")
-        return mappers.conversation_turn_view(turn)
+        view = mappers.conversation_turn_view(turn)
+        if self._student is not None:
+            await self._student.store_session_snapshot(
+                user_id, view.task_id, view.model_dump(mode="json"), body.client_msg_id
+            )
+        return view
 
     async def upload_material(
         self, user_id: str, *, name: str, data: bytes
@@ -431,9 +448,7 @@ class DefaultApplicationFacade(ApplicationFacade):
             model=ReportFullTextView,
         )
 
-    async def _load_report(
-        self, user_id: str, version: Optional[int]
-    ) -> ReportFullTextView:
+    async def _load_report(self, user_id: str, version: Optional[int]) -> ReportFullTextView:
         data = await self._function.get_report_full_text(user_id, version)
         # 尚无报告资产时 Mapper 返回空正文，前端据此渲染"报告未生成"空态。
         return mappers.report_full_text_view(
@@ -447,9 +462,7 @@ class DefaultApplicationFacade(ApplicationFacade):
         plans = await self._assets.list_direction_plans(user_id)
         return mappers.direction_plan_list_view(plans)
 
-    async def select_direction_plan(
-        self, user_id: str, option_id: str
-    ) -> DirectionPlanListView:
+    async def select_direction_plan(self, user_id: str, option_id: str) -> DirectionPlanListView:
         """选中一套方案：状态变更 + 行为日志，返回更新后的全量方案。
 
         返回全量而不是被选中的那一套：界面上三套卡要一起重绘（一套亮、两套灭），
@@ -491,9 +504,7 @@ class DefaultApplicationFacade(ApplicationFacade):
         nodes = await self._function.list_calendar_nodes(user_id)
         return [mappers.calendar_node_view(node) for node in nodes]
 
-    async def list_track_events(
-        self, user_id: str, *, limit: int = 50
-    ) -> list[TrackEventView]:
+    async def list_track_events(self, user_id: str, *, limit: int = 50) -> list[TrackEventView]:
         """跟踪时间线：⑤ 复盘环节的载体。
 
         它是"这段时间发生过什么"的事实清单（里程碑、提醒、警告、教练消息），
@@ -506,9 +517,7 @@ class DefaultApplicationFacade(ApplicationFacade):
         self, user_id: str, body: ActionTaskDoneRequest
     ) -> ActionPlanView:
         """勾掉 / 取消勾选一个任务：状态变更 + 行为日志，返回更新后的计划。"""
-        plan = await self._assets.mark_action_task_done(
-            user_id, body.task_id, done=body.done
-        )
+        plan = await self._assets.mark_action_task_done(user_id, body.task_id, done=body.done)
         # 只有"真的勾掉"才记行为：`done=false` 是**纠正误点**，不是一条行为信号。
         # 之前这里把取消勾选记成了 TASK_STALL（任务停滞）—— 语义完全相反，
         # 而停滞判定会读行为日志，等于让"点错了"去喂养"他卡住了"的判断。
@@ -572,9 +581,7 @@ class DefaultApplicationFacade(ApplicationFacade):
         文案不在这一层：规则 code 由前端按 `badge.<code>.label` / `.how`
         从文案包取（`/app/bootstrap` 下发），改名字不发版、也不用改接口。
         """
-        return mappers.achievement_list_view(
-            await self._function.list_achievements(user_id)
-        )
+        return mappers.achievement_list_view(await self._function.list_achievements(user_id))
 
     async def _report_group_labels(self) -> dict[str, str]:
         """15 维分组的展示名：分组标识 → 文案。
@@ -584,14 +591,14 @@ class DefaultApplicationFacade(ApplicationFacade):
         取不到就返回空字典，由 Mapper 回落到分组标识。
         """
         bundle = await self._registry.get_copy_bundle()
-        return {
-            key: bundle[code] for key, code in _REPORT_GROUP_COPY.items() if code in bundle
-        }
+        return {key: bundle[code] for key, code in _REPORT_GROUP_COPY.items() if code in bundle}
 
     async def export_asset(self, user_id: str, body: ExportRequest) -> ExportResultView:
-        result = await self._function.export_asset(
-            user_id, body.asset_type.value, body.format
-        )
+        if self._student is not None:
+            return mappers.export_result_view(
+                await self._student.export(user_id, body.asset_type.value, body.format)
+            )
+        result = await self._function.export_asset(user_id, body.asset_type.value, body.format)
         return mappers.export_result_view(result)
 
     async def get_external_intel(
@@ -624,6 +631,8 @@ class DefaultApplicationFacade(ApplicationFacade):
 
     async def list_pending_notifications(self, user_id: str) -> list[CoachNotificationView]:
         """未读教练通知（前端浮窗轮询）。形状翻译交给 mapper，Facade 不拼字段。"""
+        if self._student is not None and not await self._student.can_notify(user_id):
+            return []
         items = await self._function.list_pending_notifications(user_id)
         return [mappers.coach_notification_view(item) for item in items]
 
@@ -646,9 +655,7 @@ class DefaultApplicationFacade(ApplicationFacade):
 
     # ---------- 埋点 ----------
 
-    async def track_event(
-        self, user_id: str, body: TrackEventRequest
-    ) -> TrackEventAck:
+    async def track_event(self, user_id: str, body: TrackEventRequest) -> TrackEventAck:
         """先经 Registry 校验事件属于 frontend 通道，再交功能块服务落时间线。"""
         events = {spec.code: spec for spec in await self._registry.list_track_events()}
         spec = events.get(body.event)
@@ -750,7 +757,9 @@ class DefaultApplicationFacade(ApplicationFacade):
 
     async def list_notes(self, user_id: str) -> list[NoteView]:
         """他写下的全部内容。"""
-        return [mappers.note_view(note) for note in await self._require_notes().list_by_user(user_id)]
+        return [
+            mappers.note_view(note) for note in await self._require_notes().list_by_user(user_id)
+        ]
 
     async def add_note(self, user_id: str, body: NoteCreateRequest) -> NoteView:
         """写一条。
@@ -762,9 +771,7 @@ class DefaultApplicationFacade(ApplicationFacade):
         await self._invalidate_user(user_id, "note_changed")
         return mappers.note_view(note)
 
-    async def set_note_done(
-        self, user_id: str, note_id: str, body: NoteDoneRequest
-    ) -> NoteView:
+    async def set_note_done(self, user_id: str, note_id: str, body: NoteDoneRequest) -> NoteView:
         """勾掉 / 取消勾掉。"""
         note = await self._require_notes().set_done(user_id, note_id, body.done)
         if note is None:

@@ -38,6 +38,7 @@ from zhiyin_boot.workers import run_until_cancelled
 
 logger = logging.getLogger(__name__)
 
+
 @dataclass
 class Container:
     """运行时依赖容器。
@@ -91,6 +92,8 @@ class Container:
     track_events: Optional[Any] = None
     notifications: Optional[Any] = None
     ai_task_results: Optional[Any] = None
+    student_state: Optional[Any] = None
+    student_service: Optional[Any] = None
 
     # ---- 动态资源 ----
     feature_flags: Any = None
@@ -198,8 +201,10 @@ def build_container(settings: Optional[Settings] = None) -> Container:
     )
     build_services(container)
     from zhiyin_boot.module_platform import build_platform
+
     build_platform(container)
     from zhiyin_boot.developer_platform import build_developer_platform
+
     build_developer_platform(container)
     build_workers(container)
 
@@ -237,9 +242,7 @@ def wire_application(container: Optional[Container] = None) -> Any:
     report = describe_assembly(container)
     configure_runtime(report)
     # 读缓存自述接进 `/healthz`：装了就报策略与命中率，没装就报空。
-    configure_cache_probe(
-        container.read_cache.stats if container.read_cache is not None else None
-    )
+    configure_cache_probe(container.read_cache.stats if container.read_cache is not None else None)
 
     if container.facade is not None:
         configure_facade(container.facade)
@@ -279,9 +282,7 @@ def wire_application(container: Optional[Container] = None) -> Any:
 
             interval = container.settings.worker_interval_s
             for worker in container.workers:
-                tasks.append(
-                    asyncio.create_task(run_until_cancelled(worker, interval, stop))
-                )
+                tasks.append(asyncio.create_task(run_until_cancelled(worker, interval, stop)))
 
         # 开发者模块平台（tao 分支带来的那一步，不能丢：它注册模块与路由）。
         # 与上面的后台 worker 开关**无关** —— 它不启轮询，所以放在 if 外面；
@@ -307,9 +308,7 @@ def wire_application(container: Optional[Container] = None) -> Any:
                 if callable(stop_event_polling):
                     await stop_event_polling()
             for closable in reversed(container.extra.get("closables", [])):
-                close = getattr(closable, "aclose", None) or getattr(
-                    closable, "close", None
-                )
+                close = getattr(closable, "aclose", None) or getattr(closable, "close", None)
                 if not callable(close):
                     continue
                 try:
