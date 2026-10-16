@@ -48,7 +48,7 @@ export const WORKSPACE_GROUPS: NavGroup[] = [
     items: [
       { key: 'profile', label: '个人画像', to: '/profile', icon: 'profile', paths: ['/profile'], hint: '已有的信息、来源与待补充项' },
       { key: 'academic', label: '学籍与资料', to: '/academic', icon: 'academic', paths: ['/academic'], hint: '课表、成绩与资料导入' },
-      { key: 'report', label: '诊断报告', to: '/report', icon: 'report', paths: ['/report'], hint: '结论、依据与历史版本' },
+      { key: 'report', label: '你的报告', to: '/report', icon: 'report', paths: ['/report'], hint: '结论、依据与历史版本' },
     ],
   },
   {

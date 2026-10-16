@@ -50,7 +50,7 @@ export const router = createRouter({
       path: '/report',
       name: 'report',
       component: () => import('./views/AssessmentView.vue'),
-      meta: { title: '诊断报告', step: 'report' },
+      meta: { title: '你的报告', step: 'report' },
     },
     {
       path: '/plan',

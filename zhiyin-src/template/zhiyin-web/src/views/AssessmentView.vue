@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import {computed,onMounted,ref,watch} from 'vue'
-import {useRoute} from 'vue-router'
-import {backendClient,BackendError} from '../api/backend-client'
-import {backendDemo} from '../lib/backend-demo'
-import type {ReportFullTextView,AssetVersionView} from '../api/backend-types'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { backendClient, BackendError } from '../api/backend-client'
+import { backendDemo } from '../lib/backend-demo'
+import type { ReportFullTextView, AssetVersionView, WorkspacePageView } from '../api/backend-types'
 import PageHeading from '../components/PageHeading.vue'
 import FullReportBody from '../components/FullReportBody.vue'
 import DirectionDetails from '../components/LiveDirectionCompare.vue'
@@ -12,114 +12,127 @@ import AssetNotice from '../components/AssetNotice.vue'
 import EmptyState from '../components/EmptyState.vue'
 import SkeletonBlock from '../components/SkeletonBlock.vue'
 import StatusBanner from '../components/StatusBanner.vue'
-import ReportSummary from '../components/ReportSummary.vue'
-const route=useRoute(),busy=ref(false),saving=ref(false),error=ref(''),history=ref(route.query.focus==='versions')
-const directions=computed(()=>route.path==='/directions'), report=computed(()=>backendDemo.state.liveReport),plans=computed(()=>backendDemo.state.liveDirections)
-async function load(){if(busy.value)return;busy.value=true;error.value='';try{
- if(directions.value)backendDemo.setLiveDirections(await backendClient.directions())
- else{backendDemo.setReport(await backendClient.report());const versions=await backendClient.versions('report');backendDemo.setReportMetadata(versions.find(v=>v.version===report.value?.version)??null)}
-}catch(e){if(!(e instanceof BackendError&&e.code===1002))error.value=(e as Error).message}finally{busy.value=false}}
-async function select(id:string){if(saving.value)return;saving.value=true;error.value='';try{backendDemo.setLiveDirections(await backendClient.selectDirection(id));backendDemo.markDirectionChange()}catch(e){error.value=(e as Error).message}finally{saving.value=false}}
-function printReport(){window.print()}
-function historical(doc:ReportFullTextView,meta:AssetVersionView|null){backendDemo.setReport(doc);backendDemo.setReportMetadata(meta);history.value=false}
+
+const route = useRoute()
+const busy = ref(false)
+const saving = ref(false)
+const error = ref('')
+const history = ref(route.query.focus === 'versions')
+const viewedReport = ref<ReportFullTextView | null>(null)
+const viewedMetadata = ref<AssetVersionView | null>(null)
+const profileError = ref('')
+const directions = computed(() => route.path === '/directions')
+const report = computed(() => viewedReport.value)
+const plans = computed(() => backendDemo.state.liveDirections)
+const workspace = ref<WorkspacePageView | null>(null)
+const reportItems = computed(() => report.value?.sections?.flatMap((section) => section.items ?? []) ?? [])
+const pendingCount = computed(() => reportItems.value.filter((item) => !item.evidence?.trim() || /待|缺|不足|未知/.test(item.tag || '')).length)
+const latestVersion = computed(() => backendDemo.state.liveReport?.version ?? null)
+const historicalView = computed(() => !!report.value && latestVersion.value !== null && report.value.version !== latestVersion.value)
+const reportState = computed(() => historicalView.value ? '历史版本' : viewedMetadata.value?.needs_recompute ? '待重新核对' : '当前版本')
+const reportStateDetail = computed(() => historicalView.value ? '正在阅读旧版内容，不会替换当前报告。' : viewedMetadata.value?.needs_recompute ? '个人资料已有变化，本版结论尚未随之更新。' : '这是当前保存的最新报告。')
+
+function reportText(value: unknown): string {
+  if (value === null || value === undefined) return ''
+  if (Array.isArray(value)) return value.map(reportText).filter(Boolean).join('；')
+  if (typeof value === 'object') return Object.values(value).map(reportText).filter(Boolean).join('；')
+  return String(value)
+}
+const reportDate = (value: string) => new Intl.DateTimeFormat('zh-CN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
+
+async function load() {
+  if (busy.value) return
+  busy.value = true
+  error.value = ''
+  profileError.value = ''
+  try {
+    if (directions.value) backendDemo.setLiveDirections(await backendClient.directions())
+    else {
+      const [current, versions, workspaceResult] = await Promise.all([
+        backendClient.report(),
+        backendClient.versions('report'),
+        backendClient.workspace().catch(() => null),
+      ])
+      const metadata = versions.find((item) => item.version === current.version) ?? null
+      if (workspaceResult) { backendDemo.setWorkspace(workspaceResult); workspace.value = workspaceResult }
+      else if (!workspace.value) profileError.value = '个人档案暂时没有读取到，诊断正文仍可继续查看。'
+      backendDemo.setReport(current)
+      backendDemo.setReportMetadata(metadata)
+      viewedReport.value = current
+      viewedMetadata.value = metadata
+    }
+  } catch (caught) {
+    if (!(caught instanceof BackendError && caught.code === 1002)) error.value = (caught as Error).message
+  } finally { busy.value = false }
+}
+async function select(id: string) {
+  if (saving.value) return
+  saving.value = true
+  error.value = ''
+  try { backendDemo.setLiveDirections(await backendClient.selectDirection(id)); backendDemo.markDirectionChange() }
+  catch (caught) { error.value = (caught as Error).message }
+  finally { saving.value = false }
+}
+function printReport() { window.print() }
+function historical(document: ReportFullTextView, metadata: AssetVersionView | null) { viewedReport.value = document; viewedMetadata.value = metadata; history.value = false }
 onMounted(load)
-watch(directions,()=>{history.value=false;void load()})
+watch(directions, () => { history.value = false; void load() })
 </script>
-<template><div class="ws-page report-page">
-<PageHeading :title="directions?'方向方案':'诊断报告'" :description="directions?'比较目标、依据与风险，再确认自己的方向。':'核对每项判断的依据，查看资料变化与历史版本。'"><button class="btn" :disabled="busy" @click="load">{{busy?'正在读取…':'刷新'}}</button><button class="btn" @click="history=!history">{{history?(directions?'返回方案':'返回报告'):'版本记录'}}</button><button class="btn" :disabled="busy||(directions?!plans:!report)" @click="printReport">打印 / 保存 PDF</button></PageHeading>
-<AssetNotice/><StatusBanner v-if="error" tone="error" :message="error" retry-label="重新读取" @retry="load"/><SkeletonBlock v-if="busy" variant="list" :lines="4"/>
-<DirectionDetails v-if="directions && plans && !history" :plans="plans" :saving="saving" :error="error" @select="select"/>
-<ReportHistory v-else-if="history" :key="directions?'directions':'report'" :asset-type="directions?'direction_plan':'report'" @open="historical"/>
-<div v-else-if="!directions && report" class="c2-report-layout"><main><FullReportBody :report="report"/></main><aside class="report-next-rail"><ReportSummary/><section><h2>资料有变化？</h2><RouterLink class="btn" to="/chat?topic=更新报告">继续咨询</RouterLink><RouterLink class="ws-text-link" to="/profile">核对个人画像</RouterLink></section></aside></div>
-<EmptyState v-else-if="!busy&&!error" kind="report" :title="directions?'尚未形成方向方案':'尚未生成诊断报告'" description="先通过咨询补充资料，生成后会保存在这里。"><RouterLink class="btn btn--primary" to="/chat">继续咨询</RouterLink></EmptyState>
-</div></template>
+
+<template>
+  <div class="ws-page report-page">
+    <PageHeading :title="directions ? '方向方案' : '你的报告'" :description="directions ? '比较目标、依据与风险，再确认自己的方向。' : '先看判断、差距和下一步；需要时再点开依据与资料。'">
+      <template v-if="directions">
+        <button class="btn" :disabled="busy" @click="load">{{ busy ? '正在读取…' : '刷新' }}</button><button class="btn" @click="history = !history">{{ history ? '返回方案' : '版本记录' }}</button><button class="btn" :disabled="busy || !plans" @click="printReport">打印 / 保存 PDF</button>
+      </template>
+      <button v-else-if="history" class="btn" @click="history = false">返回报告</button>
+      <template v-else-if="report">
+        <button class="ws-text-button" :disabled="busy" @click="load">{{ busy ? '正在读取…' : historicalView ? '回到最新版' : '重新读取' }}</button><button class="ws-text-button" @click="history = true">版本记录</button><button class="ws-text-button" :disabled="busy" @click="printReport">打印</button>
+      </template>
+    </PageHeading>
+
+    <AssetNotice />
+    <StatusBanner v-if="error" tone="error" :message="error" retry-label="重新读取" @retry="load" />
+    <SkeletonBlock v-if="busy" variant="list" :lines="4" />
+    <DirectionDetails v-if="directions && plans && !history" :plans="plans" :saving="saving" :error="error" @select="select" />
+    <ReportHistory v-else-if="history" :key="directions ? 'directions' : 'report'" :asset-type="directions ? 'direction_plan' : 'report'" @open="historical" />
+
+    <div v-else-if="!directions && report" class="report-article-shell">
+      <div class="report-masthead-grid">
+        <header class="report-masthead" :class="{ 'report-masthead--attention': viewedMetadata?.needs_recompute, 'report-masthead--historical': historicalView }">
+          <div class="report-cover__topline"><span>职引 · 个人发展诊断</span><strong>{{ reportState }}</strong></div>
+          <div class="report-cover__title">
+            <div><p>Personal development assessment</p><h2>个人发展诊断报告</h2></div>
+            <div class="report-cover__edition"><span>REPORT</span><strong>V{{ report.version }}</strong></div>
+          </div>
+          <p class="report-cover__verdict">{{ reportText(report.verdict) || '本版暂未提供总体判断。' }}</p>
+          <div class="report-cover__footer">
+            <div><span>报告状态</span><strong>{{ reportStateDetail }}</strong></div>
+            <div><span>形成时间</span><time :datetime="report.generated_at">{{ reportDate(report.generated_at) }}</time></div>
+            <div><span>诊断范围</span><strong>{{ reportItems.length }} 项判断</strong></div>
+            <div><span>待验证</span><strong>{{ pendingCount }} 项</strong></div>
+          </div>
+        </header>
+      </div>
+
+      <FullReportBody :key="`report-${report.version}-${historicalView ? 'history' : 'latest'}`" :report="report" :workspace="workspace" :profile-error="profileError" :allow-ai-summary="!historicalView">
+        <footer class="report-reading-footer">
+          <section class="report-next-step">
+            <h2>报告需要更新时</h2>
+            <p>先核对个人资料，再带着发生的变化继续咨询。新版报告会另存为新版本，不覆盖这里的阅读记录。</p>
+            <div><RouterLink class="btn btn--primary" to="/chat?topic=更新报告">带着变化继续咨询</RouterLink><RouterLink class="ws-text-link" to="/profile">核对个人画像</RouterLink></div>
+          </section>
+        </footer>
+      </FullReportBody>
+    </div>
+
+    <EmptyState v-else-if="!busy && !error" kind="report" :title="directions ? '尚未形成方向方案' : '尚未生成报告'" description="先通过咨询补充资料，生成后会保存在这里。"><RouterLink class="btn btn--primary" to="/chat">继续咨询</RouterLink></EmptyState>
+  </div>
+</template>
+
 <style scoped>
-.report-page .c2-report-layout > .report-next-rail { grid-column:2; grid-row:1; display:grid; gap:24px; position:sticky; top:20px; padding-top:0; }
-@media(max-width:1279px){.report-page .c2-report-layout{grid-template-columns:minmax(0,1fr)}.report-page .c2-report-layout > .report-next-rail{grid-column:1;grid-row:auto;position:static}}
-
-@media print{.report-page :deep(button),.report-page :deep(.report-next-rail),.report-page :deep(.direction-radio),.report-page :deep(select){display:none!important}.report-page :deep(.c2-report-layout){display:block!important}.report-page :deep(.full-report){width:100%}}
-/* ============================================================================
- * 落点②组织权 · 报告的"看角"
- * ---------------------------------------------------------------------------
- * 分组头带**条数**：换轴时条目被搬动、条数跟着变，这是"真的重组"唯一可核对的证据。
- * 计数徽标的形状沿用 Foldable 的 .fold__count（同一门编号语言），但类名不同 ——
- * 它是"分组有几条"，不是"折叠里有几条"，将来要分开改的时候不该互相牵制。
- * ==========================================================================*/
-.report-views { margin-top: var(--sp-7); }
-.report-views .ws-section-head p { margin-top: var(--sp-2); }
-
-/* toc 里那一格条数。toc 常驻之后，三条轴的分组名不一样、条数也不一样 ——
-   把条数摆在条目上是"点进去之后会看到什么"的预告（与分组头的徽标同一门编号语言，
-   但类名不同：这条是"toc 条目上的计数"，将来分开改时不该互相牵制）。
-   toc 本体（.report-toc）在 redesign.css，是全局零件，这里不重新声明它。 */
-.report-toc__count {
-  margin-left: var(--sp-2);
-  padding: 0 var(--sp-2);
-  border: var(--bw-1) solid var(--c-border);
-  border-radius: var(--r-pill);
-  font-size: var(--fs-12);
-  font-weight: var(--fw-regular);
-  font-variant-numeric: tabular-nums;
-  color: var(--c-text-3);
-}
-
-.report-chapter__count {
-  margin-left: var(--sp-3);
-  padding: 0 var(--sp-2);
-  border: var(--bw-1) solid var(--c-border);
-  border-radius: var(--r-pill);
-  font-size: var(--fs-12);
-  font-weight: var(--fw-regular);
-  font-variant-numeric: tabular-nums;
-  color: var(--c-text-3);
-  vertical-align: 2px;
-}
-
-.report-chapter__note {
-  margin-bottom: var(--sp-4);
-  font-size: var(--fs-14);
-  line-height: var(--lh-normal);
-  color: var(--c-text-3);
-}
-
-/* 换轴之后，"它原本在哪个分区"必须还在 —— 否则用户会以为分区被删了 */
-.report-dimension__from {
-  margin-top: var(--sp-2);
-  font-size: var(--fs-12);
-  color: var(--c-text-3);
-}
-
-/* ============================================================================
- * 「能力画像与门槛对照」那个 24px —— 实测出来的**真实机制**，不是猜的
- * ---------------------------------------------------------------------------
- * 结论：它 24px **不是任何 CSS 规则设的**，而是**一条规则都没有**给它字号，
- * 于是浏览器 UA 的 `h2 { font-size: 1.5em }` 生效：1.5 × 父元素 .fold__static-head
- * 的 16px = 24px。实测证据（Chromium 内遍历 document.styleSheets，
- * 列出所有"影响 font-size 且提到 fold"的规则）：
- *   `.fold--section .fold__body h2/h3 → var(--fs-16)`  hit=false
- *   `.fold__static-head → var(--fs-16)`               hit=false（它是**父元素**的规则，不是这个 h2 的）
- *   命中数 = 0；computed 24px；父元素 computed 16px。
- * 为什么 base.css / Foldable.vue 那条 16px 管不到它：那条是
- * `.fold--section .fold__body h2, .fold--section .fold__body h3`，
- * 而这个 h2 是调用方塞进 Foldable `#title` **插槽**的，落在 `.fold__static-head`
- * 里面，**不在 `.fold__body` 里面**（Foldable.vue:174 vs :191）——
- * 父类 .fold--section 是对的，子类不是。
- *
- * 修法不是给字号打一个补丁，而是把插槽收回去：改用 `title-level="2"`，
- * 让 Foldable 直接把标题渲染成 `<h2 class="fold__static-head">`。
- * 顺带消掉原来那条 `<h3 class="fold__static-head"><h2>…</h2></h3>`（标题套标题，
- * 读屏会念两级）—— 也就是说，这条 24px 的成因和那条非法嵌套是同一件事。
- *
- * 档位取 20：它与 `.report-chapter > h2`（20px）、`#report-full > h2`（20px）是同级，
- * 共用一套章节标题。16px 是眉标档（`.report-key-evidence h2`），这一段不是眉标。
- * 选择器写到 `h2.fold__static-head`（特异度 0,2,1）是为了稳赢组件侧那条
- * `.fold__static-head[data-v-*]`（0,2,0），不靠样式加载顺序。
- * ==========================================================================*/
-.report-block :deep(h2.fold__static-head) {
-  font-size: var(--fs-20);
-  font-weight: var(--fw-semibold);
-  /* base.css 的 :where(.fold__static-head){letter-spacing:0} 特异度为 0，这里盖得住；
-     20px 用 -0.01em 是 CRAFT-BRIEF 4.1 允许的那一档。 */
-  letter-spacing: -0.01em;
-}
+.report-article-shell{width:100%;max-width:860px;margin:20px auto 42px;border:1px solid #cfd8e3;border-top:6px solid #0969da;background:#fff;box-shadow:0 20px 54px rgba(24,44,68,.08)}.report-masthead-grid{display:grid;grid-template-columns:minmax(0,760px) 44px;justify-content:center;gap:54px}.report-masthead{grid-column:1 / -1;position:relative;margin:0;padding:34px 38px 42px;border:0;border-bottom:1px solid #dfe5ec;background:#fff;font-family:"Noto Serif SC","Source Han Serif SC","Songti SC",STSong,serif}.report-masthead--attention{box-shadow:inset 4px 0 0 var(--c-attention)}.report-cover__topline{display:flex;align-items:center;justify-content:space-between;gap:18px;padding-bottom:16px;border-bottom:1px solid #dfe5ec;color:#5b6978;font-family:var(--font-sans,"Microsoft YaHei",sans-serif);font-size:12px}.report-cover__topline strong{color:#0969da;font-weight:650}.report-masthead--attention .report-cover__topline strong{color:var(--c-attention-strong)}.report-masthead--historical .report-cover__topline strong{color:var(--c-text-2)}.report-cover__title{display:flex;align-items:end;justify-content:space-between;gap:26px;padding:44px 0 36px}.report-cover__title p{margin-bottom:8px;color:#7a8794;font-family:var(--font-sans,"Microsoft YaHei",sans-serif);font-size:11px;letter-spacing:.08em;text-transform:uppercase}.report-cover__title h2{font-size:clamp(36px,5vw,54px);font-weight:700;line-height:1.12;letter-spacing:.04em}.report-cover__edition{flex:none;width:92px;padding-left:18px;border-left:1px solid #cfd8e3;font-family:var(--font-sans,"Microsoft YaHei",sans-serif)}.report-cover__edition span{display:block;color:#7a8794;font-size:10px;letter-spacing:.08em}.report-cover__edition strong{display:block;margin-top:4px;color:#0969da;font-size:26px;line-height:1}.report-cover__verdict{max-width:29em;margin:0 0 42px;padding-left:20px;border-left:4px solid #0969da;font-size:22px;font-weight:600;line-height:1.8}.report-cover__footer{display:grid;grid-template-columns:1.6fr 1.2fr .8fr .7fr;gap:0;border-top:1px solid #cfd8e3;font-family:var(--font-sans,"Microsoft YaHei",sans-serif)}.report-cover__footer>div{padding:16px 14px 0 0}.report-cover__footer>div+div{padding-left:14px;border-left:1px solid #dfe5ec}.report-cover__footer span{display:block;margin-bottom:5px;color:#7a8794;font-size:11px}.report-cover__footer strong,.report-cover__footer time{display:block;color:#26384a;font-size:12px;font-weight:600;line-height:1.55}.report-reading-footer{padding:58px 0 20px;border-top:1px solid var(--c-border)}.report-reading-footer h2{margin-bottom:12px;font-size:var(--fs-18)}.report-next-step p{max-width:58ch;color:var(--c-text-2);font-size:var(--fs-14);line-height:1.8}.report-next-step>div{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin-top:18px}
+@media(max-width:980px){.report-masthead-grid{grid-template-columns:minmax(0,1fr) 44px;gap:20px}}
+@media(max-width:767px){.report-article-shell{margin:12px auto 28px;border-right:0;border-left:0;box-shadow:none}.report-masthead-grid{display:block}.report-masthead{padding:24px 20px 30px}.report-cover__title{align-items:flex-start;padding:32px 0 26px}.report-cover__title h2{font-size:34px;letter-spacing:.02em}.report-cover__edition{width:66px;padding-left:12px}.report-cover__edition strong{font-size:21px}.report-cover__verdict{margin-bottom:30px;padding-left:14px;font-size:19px;line-height:1.75}.report-cover__footer{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 0}.report-cover__footer>div:nth-child(3){padding-left:0;border-left:0}.report-reading-footer{padding-top:42px}}
+@media print{.report-page :deep(button),.report-page :deep(.direction-radio),.report-page :deep(select),.report-reading-footer{display:none!important}.report-masthead-grid{display:block}.report-masthead{padding-bottom:30px}}
 </style>
