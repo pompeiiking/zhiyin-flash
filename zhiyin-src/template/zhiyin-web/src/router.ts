@@ -69,7 +69,7 @@ export const router = createRouter({
     { path: '/grades', name: 'grades', component: () => import('./views/GradesView.vue'), meta: { title: '我的成绩', step: 'know' } },
     { path: '/schedule', name: 'schedule', component: () => import('./views/ScheduleView.vue'), meta: { title: '日历与课表' } },
     { path: '/notes', name: 'notes', component: () => import('./views/NotesView.vue'), meta: { title: '待办与目标' } },
-    { path: '/intel', name: 'intel', component: () => import('./views/IntelView.vue'), meta: { title: '岗位资讯' } },
+    { path: '/intel', name: 'intel', component: () => import('./views/IntelView.vue'), meta: { title: '职业探索' } },
     { path: '/tools', name: 'tools', component: () => import('./views/ToolsView.vue'), meta: { title: '应用工具' } },
     ...['settings','reminders','guide','achievements'].map(name => ({path:'/' + name,name,component:() => import('./views/SystemView.vue'),meta:{title:({settings:'账号设置',reminders:'提醒',guide:'使用指南',gallery:'通用组件与状态',login:'登录',achievements:'成长记录'} as Record<string,string>)[name]}})),
     { path: '/notfound', name: 'notfound', component: () => import('./views/NotFoundView.vue'), meta: { title: '异常页' } },

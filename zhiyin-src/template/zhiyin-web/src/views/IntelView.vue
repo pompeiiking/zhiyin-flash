@@ -1,70 +1,336 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
-import { computed, ref, nextTick } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { backendDemo } from '../lib/backend-demo'
 import { backendClient } from '../api/backend-client'
 import type { IntelItemView } from '../api/backend-types'
-import PageHeading from '../components/PageHeading.vue'
 import UiIcon from '../components/UiIcon.vue'
 import InfoSheet from '../components/InfoSheet.vue'
-import DetailPopover from '../components/DetailPopover.vue'
 import IntelArticle from '../components/IntelArticle.vue'
 import CareerMatchPanel from '../components/CareerMatchPanel.vue'
 import StatusBanner from '../components/StatusBanner.vue'
 import EmptyState from '../components/EmptyState.vue'
-import ResultPager from '../components/ResultPager.vue'
-import { usePagedItems } from '../lib/paged-items'
-const query=ref(''),remoteQuery=ref(''),kind=ref('all'),status=ref(''),error=ref(''),busy=ref(false),matchOpen=ref(false),retrieveOpen=ref(false)
-const selectedId=ref(''),reading=ref<IntelItemView|null>(null)
-const items=computed(()=>backendDemo.state.intel.filter(i=>(kind.value==='all'||i.kind===kind.value)&&((i.title??'')+' '+(i.text??'')).includes(query.value.trim())))
-const {page,paged}=usePagedItems(items,6)
-const selected=computed(()=>paged.value.find(i=>i.id===selectedId.value)??paged.value[0]??null)
-const kinds=computed(()=>[...new Map(backendDemo.state.intel.map(i=>[i.kind??'other',i.kind_label??'其他资讯'])).entries()])
-function select(item:IntelItemView){selectedId.value=item.id;if(window.matchMedia('(max-width: 900px)').matches)reading.value={...item}}
-function clearFilter(){query.value='';kind.value='all'}
-function facts(q:string){query.value=q;kind.value='all';matchOpen.value=false}
-async function read(id:string){const item=backendDemo.state.intel.find(i=>i.id===id);if(!item)return;clearFilter();await nextTick();page.value=Math.floor(items.value.findIndex(i=>i.id===id)/6)+1;select(item);matchOpen.value=false}
-async function load(refresh=false){if(busy.value)return;busy.value=true;error.value='';try{const result=refresh?await backendClient.refreshIntel(remoteQuery.value.trim()):await backendClient.intel(remoteQuery.value.trim());if(!result||!Array.isArray(result.items))throw new Error('Incomplete intel');backendDemo.setIntel(result.items);clearFilter();status.value='已读取 '+result.items.length+' 条资讯';retrieveOpen.value=false}catch{error.value='资讯没有读取成功，请重试。现有条目与筛选仍保留。'}finally{busy.value=false}}
-const VERIFY:Record<string,{title:string;detail:string}[]> = {
-  career:[
-    {title:'核对来源与发布日',detail:'职业探索笔记帮助准备问题；申请岗位需要核对招聘方原始公告与有效期。'},
-    {title:'核对学历与专业门槛',detail:'逐项核对学历、专业与实践条件，区分必须满足的要求与优先条件。'},
-    {title:'核对职责、地点、待遇与期限',detail:'本条没有给出地点、待遇、招聘期限与投递方式；这些必须来自真实招聘来源才可用于选择。'},
-  ],
-  industry:[
-    {title:'核对两类的真实职责描述',detail:'用两个当前开放岗位的职责说明逐条比较，保留来源与发布日期。'},
-    {title:'核对结论的适用范围',detail:'这条讲的是工作方式的差别，不构成"哪类更有前景"的判断。'},
-  ],
-  education:[
-    {title:'核对需要的材料',detail:'学籍核验需要本人授权的在线验证码；本人整理的资料不等于核验通过。'},
-    {title:'核对更新时间',detail:'学校、专业、年级与更新时间缺一项就无法判断这条资料还算不算数。'},
-  ],
-  campus:[
-    {title:'核对时间、地点与报名方式',detail:'参与活动前，请向学校核对最新时间、地点与报名方式。'},
-    {title:'核对参与门槛',detail:'部分活动需要先完成安全培训或年级限制，原文没有给出。'},
-  ],
-  guide:[
-    {title:'核对适用范围',detail:'这是通用写法，不针对某个岗位；套用前先确认岗位要求的表达习惯。'},
-    {title:'回填到自己的材料',detail:'缺数据的地方保留待补充，不要用推测数字补满。'},
-  ],
-}
-function verifyPoints(item?:IntelItemView|null){return VERIFY[item?.kind??'']??[{title:'核对来源与时间',detail:'确认这条来自哪个来源、什么时候读取，再决定要不要用它。'}]}
+import SkeletonBlock from '../components/SkeletonBlock.vue'
 
-onMounted(()=>{ void load() })
+type CareerMatchHandle = { run: () => void }
+
+const query = ref('')
+const error = ref('')
+const busy = ref(false)
+const loaded = ref(false)
+const matchOpen = ref(false)
+const reading = ref<IntelItemView | null>(null)
+const selectedId = ref('')
+const matchPanel = ref<CareerMatchHandle | null>(null)
+
+const allItems = computed(() => backendDemo.state.intel)
+const majorItems = computed(() => allItems.value.filter((item) => item.kind === 'speciality'))
+const major = computed(() => majorItems.value[0] ?? null)
+const explorableItems = computed(() => allItems.value.filter((item) => item.kind !== 'speciality'))
+
+const filteredItems = computed(() => {
+  const keyword = query.value.trim().toLocaleLowerCase('zh-CN')
+  if (!keyword) return explorableItems.value
+  return explorableItems.value.filter((item) => {
+    const fields = [item.title, displayKind(item)]
+    return fields.filter(Boolean).join(' ').toLocaleLowerCase('zh-CN').includes(keyword)
+  })
+})
+
+const careerItems = computed(() => filteredItems.value.filter((item) => item.kind === 'occupation'))
+const caseItems = computed(() => filteredItems.value.filter((item) => item.kind === 'career_case'))
+const otherItems = computed(() => filteredItems.value.filter((item) => !['occupation', 'career_case'].includes(item.kind ?? '')))
+const selected = computed(() => {
+  const visible = [...careerItems.value, ...caseItems.value, ...otherItems.value]
+  const current = allItems.value.find((item) => item.id === selectedId.value)
+  if (!query.value.trim() && current?.kind === 'speciality') return current
+  return visible.find((item) => item.id === selectedId.value) ?? visible[0] ?? current ?? major.value
+})
+const initialLoading = computed(() => busy.value && !loaded.value && !allItems.value.length)
+
+function displayKind(item: IntelItemView) {
+  const labels: Record<string, string> = {
+    speciality: '专业信息',
+    occupation: '职业方向',
+    career_case: '校友去向',
+    job_requirement: '岗位要求',
+    industry: '行业情况',
+  }
+  return labels[item.kind ?? ''] ?? item.kind_label ?? '参考资料'
+}
+
+function majorExcerpt(item: IntelItemView | null) {
+  if (!item?.text) return '查看培养方向、毕业去向和对口职业。'
+  const intro = item.text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .find((line) => line.startsWith('简介：'))
+    ?.replace(/^简介：/, '')
+  const text = intro || item.text.replace(/^专业：[^\r\n]+/, '').trim()
+  return text.length > 112 ? `${text.slice(0, 112)}…` : text
+}
+
+function selectItem(item: IntelItemView) {
+  selectedId.value = item.id
+  if (window.matchMedia('(max-width: 900px)').matches) reading.value = { ...item }
+}
+
+async function startMatch() {
+  matchOpen.value = true
+  await nextTick()
+  matchPanel.value?.run()
+}
+
+async function load() {
+  if (busy.value) return
+  busy.value = true
+  error.value = ''
+  try {
+    const result = await backendClient.intel('')
+    if (!result || !Array.isArray(result.items)) throw new Error('Incomplete intel')
+    backendDemo.setIntel(result.items)
+    if (!result.items.some((item) => item.id === selectedId.value)) {
+      selectedId.value = result.items.find((item) => item.kind === 'occupation')?.id ?? result.items[0]?.id ?? ''
+    }
+  } catch {
+    error.value = '职业资料没有读取成功。可以稍后重试，画像匹配仍可单独发起。'
+  } finally {
+    busy.value = false
+    loaded.value = true
+  }
+}
+
+onMounted(() => { void load() })
 </script>
+
 <template>
-<div class="ws-page intel-page intelligence-workspace">
-<PageHeading title="岗位资讯" description="查找方向相关资讯，核对岗位条件与来源。"><button class="btn" @click="matchOpen=true">职业匹配</button><button class="btn btn--primary" @click="retrieveOpen=true"><UiIcon name="search" :size="16"/>检索资讯</button></PageHeading>
-<StatusBanner v-if="error" tone="error" :message="error" retry-label="重试" @retry="load()"/>
-<StatusBanner v-if="status" tone="success" :message="status" @dismiss="status=''"/>
-<div class="intelligence-toolbar"><label class="intelligence-search"><UiIcon name="search" :size="18"/><input v-model="query" aria-label="查找资讯" placeholder="搜索岗位、方向或关键词"/></label><DetailPopover title="资讯类别" label="打开资讯筛选与排序"><template #trigger><UiIcon name="settings" :size="16"/>{{ kind==='all'?'全部类别':kinds.find(k=>k[0]===kind)?.[1] }}</template><div class="intelligence-filters"><button :aria-pressed="kind==='all'" @click="kind='all'">全部类别 <span>{{ backendDemo.state.intel.length }}</span></button><button v-for="[key,label] in kinds" :key="key" :aria-pressed="kind===key" @click="kind=key">{{ label }} <span>{{ backendDemo.state.intel.filter(i=>i.kind===key).length }}</span></button></div></DetailPopover><button v-if="query||kind!=='all'" class="ws-text-button" @click="clearFilter">清空筛选</button><span class="intelligence-total">{{ items.length }} 条资讯</span></div>
-<div v-if="items.length" class="intelligence-body">
-<section class="intelligence-results" aria-label="资讯列表"><div class="intelligence-results__scroll"><button v-for="item in paged" :key="item.id" class="intelligence-result" :class="{'is-selected':selected?.id===item.id}" :aria-pressed="selected?.id===item.id" @click="select(item)"><span class="intelligence-result__kind">{{ item.kind_label || '资讯' }}</span><strong>{{ item.title || '资讯正文' }}</strong><span class="intelligence-result__preview">{{ item.text }}</span><span class="intelligence-result__foot"><span>{{ item.source_name || '来源待核对' }}</span><time>{{ item.fetched_at?.slice(5,10) || '日期待补充' }}</time></span></button></div><ResultPager v-model:page="page" :total="items.length" :size="6" label="资讯"/></section>
-<section class="intelligence-detail" aria-label="资讯详情"><IntelArticle v-if="selected" :item="selected" :checks="verifyPoints(selected)"/></section>
-</div>
-<EmptyState v-else kind="intel" title="没有匹配的资讯" description="调整关键词或类别，或检索新的资讯。" :next="false"><button class="btn" @click="clearFilter">清空筛选</button></EmptyState>
-<InfoSheet :open="reading!==null" shape="sheet" :title="reading?.title || '资讯详情'" @close="reading=null"><IntelArticle v-if="reading" :item="reading" :checks="verifyPoints(reading)"/></InfoSheet>
-<InfoSheet :open="retrieveOpen" title="检索资讯" @close="retrieveOpen=false"><form class="remote-search" @submit.prevent="load()"><label class="ws-field">职业、方向或关键词<input v-model="remoteQuery" maxlength="200" placeholder="输入想了解的方向"/></label><button class="btn btn--primary" :disabled="busy">{{ busy?'正在读取…':'检索' }}</button><button class="btn" type="button" :disabled="busy" @click="load(true)">刷新资讯</button></form><p class="ws-muted">检索失败时保留当前资讯；每条内容保留各自来源。</p></InfoSheet>
-<InfoSheet :open="matchOpen" shape="panel" title="职业匹配" @close="matchOpen=false"><CareerMatchPanel :facts="backendDemo.state.intel" @read="read" @facts="facts"/></InfoSheet>
-</div>
+  <div class="ws-page intel-page">
+    <StatusBanner v-if="error" tone="error" :message="error" retry-label="重新读取" :retrying="busy" @retry="load" @dismiss="error = ''" />
+
+    <div v-if="initialLoading" class="intel-loading" role="status" aria-label="正在读取职业资料">
+      <SkeletonBlock variant="list" :lines="6" />
+    </div>
+
+    <template v-else-if="allItems.length">
+      <section class="intel-command" aria-labelledby="intel-page-title">
+        <div class="intel-command__title">
+          <h1 id="intel-page-title">职业探索</h1>
+          <p>从所学专业出发，了解相关职业，再用真实去向帮助自己做选择。</p>
+        </div>
+        <label class="intel-search">
+          <UiIcon name="search" :size="17" />
+          <input v-model="query" name="intel-search" autocomplete="off" aria-label="搜索职业方向或校友去向" placeholder="搜索职业方向或校友去向…" />
+          <button v-if="query" type="button" aria-label="清空搜索" @click="query = ''">清空</button>
+        </label>
+      </section>
+
+      <section class="intel-route" aria-label="从专业到职业的探索路径">
+        <article v-if="major" class="intel-origin">
+          <div class="intel-origin__mark" aria-hidden="true"><UiIcon name="profile" :size="20" /></div>
+          <div class="intel-origin__copy">
+            <span>你的专业起点</span>
+            <h2>{{ major.title }}</h2>
+            <p>{{ majorExcerpt(major) }}</p>
+            <button type="button" @click="selectItem(major)">查看专业信息</button>
+          </div>
+        </article>
+
+        <div class="intel-route__steps" aria-label="探索关系">
+          <span><strong>{{ major ? 1 : 0 }}</strong> 个专业起点</span>
+          <i aria-hidden="true"></i>
+          <span><strong>{{ allItems.filter((item) => item.kind === 'occupation').length }}</strong> 个相关职业</span>
+          <i aria-hidden="true"></i>
+          <span><strong>{{ allItems.filter((item) => item.kind === 'career_case').length }}</strong> 个校友去向</span>
+        </div>
+
+        <aside class="intel-match-prompt" aria-labelledby="intel-match-title">
+          <div>
+            <h2 id="intel-match-title">哪些方向更适合你？</h2>
+            <p>使用当前画像比较职业要求和已有能力。</p>
+          </div>
+          <button class="btn btn--primary" type="button" data-sheet-trigger @click="startMatch">用画像比较</button>
+          <small><UiIcon name="info" :size="13" />仅在点击后运行</small>
+        </aside>
+      </section>
+
+      <div class="intel-workbench">
+        <section class="intel-list-pane" :aria-busy="busy" aria-labelledby="intel-results-title">
+          <header class="intel-list-pane__head">
+            <div>
+              <h2 id="intel-results-title">{{ query ? '搜索结果' : '相关职业方向' }}</h2>
+              <p>{{ query ? `找到 ${filteredItems.length} 条相关资料` : '先了解工作本身，再决定是否深入' }}</p>
+            </div>
+            <span v-if="!query">{{ careerItems.length }} 个方向</span>
+          </header>
+
+          <div v-if="filteredItems.length" class="intel-result-groups">
+            <section v-if="careerItems.length" class="intel-result-group" aria-labelledby="career-direction-title">
+              <h3 v-if="query" id="career-direction-title">职业方向</h3>
+              <div class="intel-result-list">
+                <button
+                  v-for="(item, index) in careerItems"
+                  :key="item.id"
+                  class="intel-result-card"
+                  :class="{ 'is-selected': selected?.id === item.id }"
+                  type="button"
+                  :aria-pressed="selected?.id === item.id"
+                  @click="selectItem(item)"
+                >
+                  <span class="intel-result-card__index" aria-hidden="true">{{ String(index + 1).padStart(2, '0') }}</span>
+                  <span class="intel-result-card__copy">
+                    <strong>{{ item.title || '未命名职业方向' }}</strong>
+                    <small>{{ item.source_name || '来源待补充' }}</small>
+                  </span>
+                  <UiIcon name="arrow" :size="16" />
+                </button>
+              </div>
+            </section>
+
+            <section v-if="caseItems.length" class="intel-result-group intel-result-group--cases" aria-labelledby="career-case-title">
+              <header>
+                <h3 id="career-case-title">校友怎么走</h3>
+                <span>{{ caseItems.length }} 个参考</span>
+              </header>
+              <p>看见真实路径，但不把个例当作唯一答案。</p>
+              <div class="intel-case-list">
+                <button
+                  v-for="item in caseItems"
+                  :key="item.id"
+                  class="intel-case-row"
+                  :class="{ 'is-selected': selected?.id === item.id }"
+                  type="button"
+                  :aria-pressed="selected?.id === item.id"
+                  @click="selectItem(item)"
+                >
+                  <UiIcon name="profile" :size="16" />
+                  <span><strong>{{ item.title || '未命名校友去向' }}</strong><small>{{ item.source_name || '来源待补充' }}</small></span>
+                  <UiIcon name="arrow" :size="15" />
+                </button>
+              </div>
+            </section>
+
+            <section v-if="otherItems.length" class="intel-result-group intel-result-group--cases" aria-labelledby="other-reference-title">
+              <header><h3 id="other-reference-title">其他参考</h3><span>{{ otherItems.length }} 条</span></header>
+              <div class="intel-case-list">
+                <button v-for="item in otherItems" :key="item.id" class="intel-case-row" :class="{ 'is-selected': selected?.id === item.id }" type="button" :aria-pressed="selected?.id === item.id" @click="selectItem(item)">
+                  <UiIcon name="document" :size="16" />
+                  <span><strong>{{ item.title || '未命名参考资料' }}</strong><small>{{ displayKind(item) }}</small></span>
+                  <UiIcon name="arrow" :size="15" />
+                </button>
+              </div>
+            </section>
+          </div>
+
+          <EmptyState v-else kind="search-empty" size="sm" title="没有找到相关方向" description="换一个职业名称或清空搜索。" :next="false">
+            <button class="btn" type="button" @click="query = ''">清空搜索</button>
+          </EmptyState>
+        </section>
+
+        <section v-if="selected" class="intel-detail-card" aria-label="职业探索详情">
+          <IntelArticle :item="selected" />
+        </section>
+      </div>
+    </template>
+
+    <EmptyState v-else kind="intel" title="还没有职业资料" description="当前没有可浏览的方向，你仍可以主动发起画像匹配。" :next="false">
+      <button class="btn btn--primary" type="button" data-sheet-trigger @click="startMatch">开始画像匹配</button>
+    </EmptyState>
+
+    <InfoSheet :open="reading !== null" shape="sheet" :title="reading ? displayKind(reading) : '职业详情'" @close="reading = null">
+      <IntelArticle v-if="reading" :item="reading" />
+    </InfoSheet>
+
+    <InfoSheet :open="matchOpen" shape="panel" title="画像岗位匹配" description="本次匹配由你主动发起，不会自动重复运行。" @close="matchOpen = false">
+      <CareerMatchPanel ref="matchPanel" />
+    </InfoSheet>
+  </div>
 </template>
+
+<style scoped>
+.intel-page { width: 100%; min-width: 0; padding-bottom: 48px; }
+.intel-loading { padding: 20px; border: 1px solid var(--c-border); border-radius: 16px; background: var(--c-surface); }
+
+.intel-command { display: flex; align-items: end; justify-content: space-between; gap: 28px; margin-bottom: 14px; padding: 8px 2px 12px; }
+.intel-command__title h1 { font-size: 24px; font-weight: 720; line-height: 1.35; }
+.intel-command__title p { max-width: 52em; margin-top: 5px; color: var(--c-text-3); font-size: 12px; line-height: 1.6; }
+.intel-search { display: flex; flex: 0 1 360px; align-items: center; gap: 8px; min-width: 260px; min-height: 40px; padding: 0 11px; border: 1px solid var(--c-border); border-radius: 10px; background: var(--c-surface); color: var(--c-text-3); box-shadow: var(--e-1); }
+.intel-search:focus-within { border-color: var(--c-primary); box-shadow: 0 0 0 3px var(--c-primary-weak); }
+.intel-search input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--c-text); font-size: 12px; }
+.intel-search button { flex: none; color: var(--c-primary); font-size: 11px; }
+
+.intel-route { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(250px, .75fr); gap: 0 14px; margin-bottom: 14px; }
+.intel-origin { display: grid; grid-template-columns: 42px minmax(0, 1fr); gap: 13px; padding: 17px 18px; border: 1px solid var(--c-primary-border); border-radius: 13px 13px 0 0; background: linear-gradient(120deg, var(--c-primary-weak-2), var(--c-surface) 70%); }
+.intel-origin__mark { display: grid; width: 42px; height: 42px; place-items: center; border-radius: 11px; background: var(--c-primary); color: white; }
+.intel-origin__copy > span { color: var(--c-primary); font-size: 11px; font-weight: 650; }
+.intel-origin__copy h2 { margin-top: 3px; font-size: 18px; font-weight: 720; }
+.intel-origin__copy p { display: -webkit-box; overflow: hidden; max-width: 64em; margin-top: 7px; color: var(--c-text-2); font-size: 12px; line-height: 1.7; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.intel-origin__copy button { margin-top: 9px; color: var(--c-primary); font-size: 11px; font-weight: 650; }
+.intel-route__steps { display: flex; grid-column: 1; align-items: center; justify-content: center; gap: 12px; min-height: 42px; padding: 0 14px; border: 1px solid var(--c-primary-border); border-top: 0; border-radius: 0 0 13px 13px; background: var(--c-surface); color: var(--c-text-3); font-size: 11px; }
+.intel-route__steps span { white-space: nowrap; }
+.intel-route__steps strong { color: var(--c-primary); font-size: 13px; }
+.intel-route__steps i { width: 30px; height: 1px; background: var(--c-primary-border); }
+.intel-match-prompt { display: grid; grid-row: 1 / span 2; grid-column: 2; align-content: center; justify-items: start; padding: 18px; border: 1px solid var(--c-border); border-radius: 13px; background: var(--c-surface); box-shadow: var(--e-1); }
+.intel-match-prompt h2 { font-size: 15px; font-weight: 720; }
+.intel-match-prompt p { margin-top: 5px; color: var(--c-text-3); font-size: 11px; line-height: 1.6; }
+.intel-match-prompt .btn { min-height: 36px; margin-top: 15px; }
+.intel-match-prompt small { display: flex; align-items: center; gap: 4px; margin-top: 9px; color: var(--c-text-3); font-size: 10px; }
+
+.intel-workbench { display: grid; grid-template-columns: minmax(290px, 340px) minmax(0, 1fr); align-items: start; gap: 14px; }
+.intel-list-pane { overflow: hidden; border: 1px solid var(--c-border); border-radius: 12px; background: var(--c-surface); box-shadow: var(--e-1); }
+.intel-list-pane__head { display: flex; align-items: center; justify-content: space-between; min-height: 66px; padding: 0 14px; border-bottom: 1px solid var(--c-border); }
+.intel-list-pane__head h2 { font-size: 15px; font-weight: 720; }
+.intel-list-pane__head p { margin-top: 3px; color: var(--c-text-3); font-size: 10px; }
+.intel-list-pane__head > span { flex: none; color: var(--c-primary); font-size: 11px; }
+.intel-result-groups { padding: 8px; }
+.intel-result-group > h3 { padding: 5px 4px 8px; color: var(--c-text-2); font-size: 11px; font-weight: 650; }
+.intel-result-list { display: grid; gap: 6px; }
+.intel-result-card { display: grid; grid-template-columns: 28px minmax(0, 1fr) 18px; align-items: center; gap: 8px; width: 100%; height: 64px; padding: 9px 10px; border: 1px solid transparent; border-radius: 9px; background: var(--c-surface); color: var(--c-text-3); text-align: left; transition: border-color 150ms ease, background-color 150ms ease; }
+.intel-result-card:hover { background: var(--c-surface-2); }
+.intel-result-card.is-selected { border-color: var(--c-primary-border); background: var(--c-primary-weak-2); color: var(--c-primary); }
+.intel-result-card__index { color: var(--c-text-3); font-size: 11px; font-variant-numeric: tabular-nums; }
+.intel-result-card__copy { display: grid; min-width: 0; }
+.intel-result-card__copy strong { overflow: hidden; color: var(--c-text); font-size: 13px; font-weight: 680; line-height: 1.45; text-overflow: ellipsis; white-space: nowrap; }
+.intel-result-card__copy small { overflow: hidden; margin-top: 3px; color: var(--c-text-3); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.intel-result-group--cases { margin-top: 14px; padding-top: 13px; border-top: 1px solid var(--c-border); }
+.intel-result-group--cases > header { display: flex; align-items: center; justify-content: space-between; padding: 0 4px; }
+.intel-result-group--cases h3 { font-size: 12px; font-weight: 700; }
+.intel-result-group--cases header span, .intel-result-group--cases > p { color: var(--c-text-3); font-size: 10px; }
+.intel-result-group--cases > p { margin: 4px 4px 8px; line-height: 1.5; }
+.intel-case-list { display: grid; gap: 4px; }
+.intel-case-row { display: grid; grid-template-columns: 20px minmax(0, 1fr) 16px; align-items: center; gap: 7px; width: 100%; height: 52px; padding: 7px 8px; border: 1px solid transparent; border-radius: 8px; color: var(--c-text-3); text-align: left; }
+.intel-case-row:hover { background: var(--c-surface-2); }
+.intel-case-row.is-selected { border-color: var(--c-primary-border); background: var(--c-primary-weak-2); color: var(--c-primary); }
+.intel-case-row > span { display: grid; min-width: 0; }
+.intel-case-row strong { overflow: hidden; color: var(--c-text); font-size: 11px; font-weight: 650; line-height: 1.4; text-overflow: ellipsis; white-space: nowrap; }
+.intel-case-row small { margin-top: 2px; color: var(--c-text-3); font-size: 9px; }
+
+.intel-detail-card { min-width: 0; min-height: 680px; padding: 24px 20px 32px; border: 1px solid var(--c-border); border-radius: 12px; background: var(--c-surface); box-shadow: var(--e-1); }
+
+@media (max-width: 1040px) {
+  .intel-route { grid-template-columns: 1fr; gap: 10px; }
+  .intel-match-prompt { grid-row: auto; grid-column: 1; grid-template-columns: 1fr auto; align-items: center; }
+  .intel-match-prompt .btn { grid-row: 1 / span 2; grid-column: 2; margin: 0 0 0 18px; }
+  .intel-match-prompt small { margin-top: 5px; }
+}
+
+@media (max-width: 900px) {
+  .intel-command { align-items: stretch; flex-direction: column; gap: 13px; }
+  .intel-search { flex-basis: auto; width: 100%; }
+  .intel-workbench { display: block; }
+  .intel-detail-card { display: none; }
+}
+
+@media (max-width: 640px) {
+  .intel-page { padding-bottom: 92px; }
+  .intel-command { padding-inline: 2px; }
+  .intel-command__title h1 { font-size: 22px; }
+  .intel-search { min-width: 0; }
+  .intel-route { margin-inline: -4px; }
+  .intel-origin { grid-template-columns: 36px minmax(0, 1fr); padding: 15px 14px; }
+  .intel-origin__mark { width: 36px; height: 36px; }
+  .intel-route__steps { justify-content: flex-start; gap: 7px; overflow-x: auto; }
+  .intel-route__steps i { width: 14px; }
+  .intel-match-prompt { display: flex; align-items: flex-start; flex-direction: column; }
+  .intel-match-prompt .btn { width: 100%; margin: 13px 0 0; }
+  .intel-list-pane { margin-inline: -4px; }
+}
+</style>
