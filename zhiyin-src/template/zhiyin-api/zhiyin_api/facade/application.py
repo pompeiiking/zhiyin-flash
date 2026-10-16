@@ -696,6 +696,22 @@ class DefaultApplicationFacade(ApplicationFacade):
         await self._invalidate_user(user_id, "academic_changed")
         return AcademicRevokeAck(revoked=True)
 
+    async def revoke_academic_courses(self, user_id: str) -> AcademicRevokeAck:
+        """撤回课程数据，不碰成绩记录。"""
+        if self._academic is None:
+            return AcademicRevokeAck(revoked=False)
+        await self._academic.revoke_courses(user_id)
+        await self._invalidate_user(user_id, "academic_changed")
+        return AcademicRevokeAck(revoked=True)
+
+    async def revoke_academic_grades(self, user_id: str) -> AcademicRevokeAck:
+        """撤回成绩数据，不碰课表。"""
+        if self._academic is None:
+            return AcademicRevokeAck(revoked=False)
+        await self._academic.revoke_grades(user_id)
+        await self._invalidate_user(user_id, "academic_changed")
+        return AcademicRevokeAck(revoked=True)
+
     async def import_academic(
         self, user_id: str, body: "AcademicImportRequest"
     ) -> "AcademicImportAck":

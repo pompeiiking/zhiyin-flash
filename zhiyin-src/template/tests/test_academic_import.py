@@ -448,6 +448,40 @@ async def test_importing_only_grades_does_not_claim_a_timetable() -> None:
 
 
 @pytest.mark.asyncio
+async def test_updating_one_academic_record_keeps_the_other() -> None:
+    """课表和成绩在产品里分属两页，单独更新时不能把另一页的数据清空。"""
+    snapshots = InMemoryAcademicSnapshotRepository()
+    service = DefaultAcademicService(snapshots, _importer(), _Profile())
+    await service.import_("u1", courses_raw=COURSE_TABLE, grades_raw=GRADE_TABLE)
+
+    await service.import_(
+        "u1",
+        courses_raw="课程名称\t星期\t开始节次\t结束节次\n大学英语\t4\t3\t4",
+    )
+    stored = await service.get("u1")
+    assert stored is not None
+    assert [course.name for course in stored.courses] == ["大学英语"]
+    assert [grade.name for grade in stored.grades] == ["高等数学"]
+
+
+@pytest.mark.asyncio
+async def test_revoke_courses_and_grades_are_independent() -> None:
+    snapshots = InMemoryAcademicSnapshotRepository()
+    profile = _Profile()
+    service = DefaultAcademicService(snapshots, _importer(), profile)
+    await service.import_("u1", courses_raw=COURSE_TABLE, grades_raw=GRADE_TABLE)
+
+    await service.revoke_courses("u1")
+    stored = await service.get("u1")
+    assert stored is not None and not stored.courses and len(stored.grades) == 1
+    assert "courses" in profile.dropped and "scores" in profile.fields
+
+    await service.revoke_grades("u1")
+    assert await service.get("u1") is None
+    assert "scores" in profile.dropped
+
+
+@pytest.mark.asyncio
 async def test_importing_a_file_lands_the_same_snapshot_as_pasting_it() -> None:
     """文件入口与粘贴入口必须是**同一个结果**：同一份数据，两处读出来不一样
     就是"换个入口结果变了"，用户无从判断哪个才对。"""

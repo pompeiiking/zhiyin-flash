@@ -67,6 +67,8 @@ export const backendClient = {
   academic: (body: AcademicImportRequest) => request<AcademicImportAck>('academicImport', { body }),
   academicFile: (form: FormData) => request<AcademicImportAck>('academicFile', { form, timeout: 60_000 }),
   revokeAcademic: () => request<{ revoked: boolean }>('academicRevoke'),
+  revokeAcademicCourses: () => request<{ revoked: boolean }>('academicCoursesRevoke'),
+  revokeAcademicGrades: () => request<{ revoked: boolean }>('academicGradesRevoke'),
   intel: (q = '') => request<IntelListView>('intel', { query: { q } }),
   refreshIntel: (q = '') => request<IntelListView>('intelRefresh', { query: { q } }),
   events: () => request<TrackEventView[]>('trackEvents'),

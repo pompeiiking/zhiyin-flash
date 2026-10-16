@@ -58,6 +58,7 @@ import StatTile from '../components/StatTile.vue'
 import StatusBanner from '../components/StatusBanner.vue'
 import ConfidenceBadge from '../components/ConfidenceBadge.vue'
 import ProfileInsights from '../components/ProfileInsights.vue'
+import AcademicVerification from '../components/AcademicVerification.vue'
 import { backendDemo } from '../lib/backend-demo'
 import { backendClient } from '../api/backend-client'
 import type { DependencyEdgeView, ProfileFieldView, ProfileSource } from '../api/backend-types'
@@ -184,6 +185,8 @@ const DEMO_EDGES: DependencyEdgeView[] = (() => {
  * ======================================================================== */
 
 const profileTab = ref<'facts' | 'judgments' | 'gaps' | 'sources'>('facts')
+const verificationOpen = ref(false)
+const isVerified = computed(() => backendDemo.chsiVerified.value)
 const loading = ref(false)
 const serviceError = ref('')
 const livePanel = computed(() => backendDemo.state.liveWorkspace?.profile_panel)
@@ -953,6 +956,15 @@ const identity = computed(() => {
   if (!live.value && demo.state.account === 'fresh') return { name: '新用户', line: '学校与年级待补充' }
   return { name: name || '个人档案', line: [school, pick('major'), grade || pick('degree_level')].filter(Boolean).join(' · ') || '学校与年级待补充' }
 })
+const enrollmentRows = computed(() => {
+  const pick = (...keys: string[]) => known.value.find((row) => keys.includes(row.key))
+  return [
+    { label: '学校', row: pick('school', 'university') },
+    { label: '专业', row: pick('major', 'major_name') },
+    { label: '年级 / 学历', row: pick('grade', 'degree_level', 'education') },
+    { label: '在读状态', row: pick('student_status', 'enrollment_status', 'study_status') },
+  ].map(item => ({ ...item, value: item.row ? fieldValue(item.row) : '待补充' }))
+})
 function exportProfile(){const url=URL.createObjectURL(new Blob([JSON.stringify({profile:known.value,gaps:gapRows.value,source:live.value?'本次读取的档案':'个人画像'},null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='职引-个人画像.json';a.click();URL.revokeObjectURL(url)}
 onMounted(()=>{ void loadWorkspace() })
 </script>
@@ -976,6 +988,7 @@ onMounted(()=>{ void loadWorkspace() })
 
     <!-- ═══ 活的度量：可信度环从 0 生长到实际值；数字旁边写清是谁算的 ═══ -->
 <section class="profile-identity"><div class="profile-identity__portrait" aria-hidden="true">{{ identity.name.slice(0,1) }}</div><div class="profile-identity__person"><h2>{{ identity.name }}</h2><p>{{ identity.line }}</p></div><DetailPopover title="个人资料概况" label="查看个人资料概况"><p>已记录 {{ known.length }} 项信息，{{ progress.gap }} 项待补充。</p><p>依据充分 {{ confBands[0]?.count ?? 0 }} 项，待核对 {{ confBands[1]?.count ?? 0 }} 项。</p></DetailPopover><div class="profile-identity__coverage"><div><span>个人信息</span><strong>{{ known.length }}<small> / {{ known.length + progress.gap }} 项</small></strong></div><div class="profile-coverage-track" :aria-label="'已记录'+known.length+'项，待补充'+progress.gap+'项'"><i v-for="n in known.length + progress.gap" :key="n" :class="{'is-known':n<=known.length}"/></div></div></section>
+<section class="enrollment" aria-labelledby="enrollment-title"><header><div><span class="enrollment__eyebrow">学校档案</span><h2 id="enrollment-title">学籍信息</h2><p>学校、专业与在读状态属于个人身份资料，不再和课表、成绩放在同一个入口。</p></div><button class="btn" @click="verificationOpen=true"><UiIcon name="shield" :size="16" />{{ isVerified ? '重新核验' : '核验学籍' }}</button></header><dl><div v-for="item in enrollmentRows" :key="item.label"><dt>{{item.label}}</dt><dd :class="{'is-missing':item.value==='待补充'}">{{item.value}}</dd></div></dl><footer><span :class="['enrollment__state', isVerified ? 'is-verified' : '']"><i />{{ isVerified ? '已包含学信来源' : '尚未完成学信核验' }}</span><button class="ws-text-button" @click="profileScope='study';profileQuery='';focus=null;confFocus=null">查看全部学习背景<UiIcon name="arrow" :size="14" /></button></footer></section>
 <section v-if="gapRows.length || needsCheck.length" class="profile-attention" aria-label="需要完善的信息"><strong>需要完善</strong><button v-for="gap in gapRows.slice(0,2)" :key="gap.key" type="button" @click="jumpToGap(gap.key)">{{gap.label}}<span>待补充</span><UiIcon name="arrow" :size="14"/></button><button v-if="gapRows.length>2" @click="profileTab='gaps'">全部 {{gapRows.length}} 项待补充</button><button v-if="needsCheck.length" @click="profileScope='check';profileQuery='';focus=null;confFocus=null">{{needsCheck.length}} 项待核对<UiIcon name="arrow" :size="14"/></button></section>
 
 
@@ -1339,8 +1352,9 @@ onMounted(()=>{ void loadWorkspace() })
         </section>
         <section>
           <h3>学校资料</h3>
-          <p>学籍核验只需在线验证码，不需要账号密码。课表来自教务资料，空课时段不直接代表可用时间。</p>
-          <RouterLink class="ws-text-link" to="/academic">管理学籍与资料<UiIcon name="arrow" :size="16" /></RouterLink>
+          <p>学籍核验只需在线验证码，不需要账号密码。课表和成绩分别在对应页面管理。</p>
+          <button class="ws-text-button" @click="verificationOpen=true">核验学籍<UiIcon name="shield" :size="16" /></button>
+          <RouterLink class="ws-text-link" to="/grades">查看我的成绩<UiIcon name="arrow" :size="16" /></RouterLink>
         </section>
       </div>
     </Foldable><aside class="c2-profile-side" aria-label="画像操作与来源">
@@ -1348,6 +1362,7 @@ onMounted(()=>{ void loadWorkspace() })
       <section><h2>这 {{ known.length }} 条从哪里来</h2><div v-for="source in SOURCE_GROUPS" :key="source.key" class="c2-source-row"><span>{{ source.label }}</span><span class="c2-source-track" role="meter" :aria-label="source.label" :aria-valuenow="known.filter(row => source.from.includes(row.desc)).length" :aria-valuemax="Math.max(1, known.length)" aria-valuemin="0"><i :style="{width: known.filter(row => source.from.includes(row.desc)).length / Math.max(1, known.length) * 100 + '%'}" /></span><b>{{ known.filter(row => source.from.includes(row.desc)).length }}</b></div></section>
       <section><h2>{{ identity.name }}</h2><p>{{ identity.line }}</p><p>整体可信度 {{ Math.round(trustShown) }}% · 覆盖 {{ known.length }} / {{ tally.total }}</p><Foldable variant="inline" title="查看计算依据"><p>{{ trustOrigin }}。{{ statusLine }}</p><p>{{ coverageNote }}</p></Foldable></section>
     </aside></InfoSheet>
+    <InfoSheet :open="verificationOpen" shape="panel" title="核验学籍信息" @close="verificationOpen=false"><AcademicVerification /></InfoSheet>
     <!-- 更正是一条信息的小表单（`text` + 两个按钮），不是"从一行钻进去看细节"。
          所以 shape 是 dialog（缺省也是它，这里写出来是为了让形态是**显式**的）。 -->
     <InfoSheet shape="dialog" :open="correction !== null" :title="'更正' + (correction?.label ?? '信息')" @close="correction = null">
@@ -1364,7 +1379,9 @@ onMounted(()=>{ void loadWorkspace() })
 </template>
 
 <style scoped>
+.enrollment{margin:18px 0 24px;padding:22px 24px;border:1px solid var(--c-border);border-radius:var(--r-lg);background:var(--c-surface)}.enrollment header{display:flex;align-items:start;justify-content:space-between;gap:24px}.enrollment__eyebrow{font-size:var(--fs-12);font-weight:var(--fw-semibold);color:var(--c-primary)}.enrollment h2{margin-top:3px;font-size:var(--fs-18);font-weight:var(--fw-semibold)}.enrollment header p{max-width:64ch;margin-top:5px;font-size:var(--fs-13);line-height:1.7;color:var(--c-text-2)}.enrollment dl{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin-top:20px;border-top:1px solid var(--c-border);border-bottom:1px solid var(--c-border)}.enrollment dl>div{padding:15px 16px}.enrollment dl>div+div{border-left:1px solid var(--c-border)}.enrollment dt{font-size:var(--fs-12);color:var(--c-text-3)}.enrollment dd{margin-top:6px;font-size:var(--fs-14);font-weight:var(--fw-medium);color:var(--c-text)}.enrollment dd.is-missing{font-weight:var(--fw-regular);color:var(--c-text-3)}.enrollment footer{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-top:14px}.enrollment__state{display:flex;align-items:center;gap:7px;font-size:var(--fs-12);color:var(--c-text-3)}.enrollment__state i{width:7px;height:7px;border-radius:50%;background:var(--c-border-strong)}.enrollment__state.is-verified{color:var(--c-primary)}.enrollment__state.is-verified i{background:var(--c-primary)}
 .profile-filter-empty{padding:24px 0;color:var(--c-text-2)}.profile-filter-empty p{margin-bottom:8px}.profile-toolbar{display:flex;align-items:center;gap:14px;flex-wrap:wrap}.profile-toolbar .information-search{flex:1;min-width:180px;margin:0}.profile-toolbar .ws-field{display:flex;flex-direction:row;align-items:center;gap:8px;margin:0;white-space:nowrap}.profile-toolbar select{width:auto}.profile-attention{display:flex;align-items:center;flex-wrap:wrap;gap:8px 18px;padding:12px 0;border-bottom:1px solid var(--c-border);font-size:13px}.profile-attention>strong{font-weight:500;color:var(--c-text-2)}.profile-attention button{display:flex;align-items:center;gap:8px;min-height:36px;color:var(--c-primary);background:transparent;border:0}.profile-attention button span{font-size:12px;color:var(--c-text-3)}.profile-fact-value{font-size:15px;line-height:1.75;white-space:pre-wrap;overflow-wrap:anywhere}.profile-association-note p{font-size:13px;color:var(--c-text-3);margin-top:8px}.profile-toolbar+.p7-subfilter{margin-top:10px}@media(max-width:600px){.profile-toolbar{gap:10px}.profile-toolbar .information-search{flex-basis:100%}.profile-toolbar .ws-field{flex:1;font-size:12px}.profile-toolbar select{min-width:0;max-width:100%}.profile-attention{gap:4px 12px}.profile-identity__coverage{display:none}}
+@media(max-width:760px){.enrollment{padding:18px}.enrollment header{flex-direction:column}.enrollment header .btn{width:100%}.enrollment dl{grid-template-columns:1fr 1fr}.enrollment dl>div:nth-child(3){border-left:0;border-top:1px solid var(--c-border)}.enrollment dl>div:nth-child(4){border-top:1px solid var(--c-border)}.enrollment footer{align-items:flex-start;flex-direction:column}}
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * 用底色 / 描边 / 留白分层，不给所有内容套同一张卡片。

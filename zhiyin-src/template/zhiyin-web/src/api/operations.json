@@ -85,22 +85,32 @@
   "academicImport": {
     "method": "POST",
     "path": "/app/academic/import",
-    "surface": "/academic"
+    "surface": "/grades"
   },
   "academicFile": {
     "method": "POST",
     "path": "/app/academic/import/file",
-    "surface": "/academic"
+    "surface": "/grades"
   },
   "academicRevoke": {
     "method": "DELETE",
     "path": "/app/academic",
-    "surface": "/academic"
+    "surface": "/grades"
+  },
+  "academicCoursesRevoke": {
+    "method": "DELETE",
+    "path": "/app/academic/courses",
+    "surface": "/schedule"
+  },
+  "academicGradesRevoke": {
+    "method": "DELETE",
+    "path": "/app/academic/grades",
+    "surface": "/grades"
   },
   "chsi": {
     "method": "POST",
     "path": "/app/chsi/bind",
-    "surface": "/academic",
+    "surface": "/profile",
     "stream": true
   },
   "report": {

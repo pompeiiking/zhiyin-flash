@@ -236,6 +236,14 @@ class ApplicationFacade(ABC):
         """清空导入的课表与成绩（画像里那两条摘要一起删）。"""
 
     @abstractmethod
+    async def revoke_academic_courses(self, user_id: str) -> "AcademicRevokeAck":
+        """只清空课表，保留成绩。"""
+
+    @abstractmethod
+    async def revoke_academic_grades(self, user_id: str) -> "AcademicRevokeAck":
+        """只清空成绩，保留课表。"""
+
+    @abstractmethod
     async def import_academic(
         self, user_id: str, body: "AcademicImportRequest"
     ) -> "AcademicImportAck":

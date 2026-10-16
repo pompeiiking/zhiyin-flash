@@ -24,9 +24,67 @@
       },
       "status": "联调通过",
       "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/views/AcademicView.vue"
+        "zhiyin-src/template/zhiyin-web/src/api/backend-client.ts"
       ],
       "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+    },
+    {
+      "id": "DELETE /api/v1/app/academic/courses",
+      "method": "DELETE",
+      "path": "/api/v1/app/academic/courses",
+      "capability": "只清空课表；成绩单由「我的成绩」独立管理。",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py:123",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_AcademicRevokeAck_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        }
+      },
+      "status": "前端已连接",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/api/backend-client.ts",
+        "zhiyin-src/template/zhiyin-web/src/views/ScheduleView.vue"
+      ],
+      "verification": "课表与成绩分离后新增；单元测试与前端构建通过，待独立 HTTP 联调。"
+    },
+    {
+      "id": "DELETE /api/v1/app/academic/grades",
+      "method": "DELETE",
+      "path": "/api/v1/app/academic/grades",
+      "capability": "只清空成绩；课程仍保留在「日历与课表」。",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py:131",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_AcademicRevokeAck_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        }
+      },
+      "status": "前端已连接",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/api/backend-client.ts",
+        "zhiyin-src/template/zhiyin-web/src/views/GradesView.vue"
+      ],
+      "verification": "课表与成绩分离后新增；单元测试与前端构建通过，待独立 HTTP 联调。"
     },
     {
       "id": "POST /api/v1/app/academic/import",
@@ -71,7 +129,9 @@
       },
       "status": "联调通过",
       "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/views/AcademicView.vue"
+        "zhiyin-src/template/zhiyin-web/src/components/AcademicImportSheet.vue",
+        "zhiyin-src/template/zhiyin-web/src/views/GradesView.vue",
+        "zhiyin-src/template/zhiyin-web/src/views/ScheduleView.vue"
       ],
       "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
     },
@@ -117,7 +177,7 @@
       },
       "status": "联调通过",
       "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/views/AcademicView.vue"
+        "zhiyin-src/template/zhiyin-web/src/api/backend-client.ts"
       ],
       "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
     },
@@ -126,7 +186,7 @@
       "method": "GET",
       "path": "/api/v1/app/achievements",
       "capability": "完成记录：这个人做到过的那几件事（界面上叫「完成记录」，不叫成就）。  要登录：它读的是**你自己的**行为日志，没有别人能看的版本。 返回的是全部规则 + 其中拿到几枚（没拿到的也返回，界面上要能说\"还差哪几件\"）。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py:137",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py:153",
       "scope": "学生端",
       "stream": false,
       "parameters": [],
@@ -594,7 +654,7 @@
       "method": "POST",
       "path": "/api/v1/app/conversation/material",
       "capability": "交一份材料（multipart 上传）。  为什么材料要**上传**而不是在浏览器里读成文本再塞进消息：  · 编码（教务/办公软件导出的 GBK 文本）与二进制格式都由服务端统一处理，   浏览器那一侧不做第二份解码实现； · 正文不进对话气泡 —— 回执只有\"它是什么\"，正文留在服务端、只在用到它的   那一轮进模型输入。  读不出来的原因（Excel / 空文件）由文档抽取重载成一句用户能照做的话， 这一层只负责限大小。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py:85",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py:134",
       "scope": "学生端",
       "stream": false,
       "parameters": [],
@@ -642,7 +702,7 @@
       "method": "POST",
       "path": "/api/v1/app/conversation/message",
       "capability": "发送一轮消息，返回最短结论 + 显式告知 + 行为引导 + 管线卡。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py:66",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py:71",
       "scope": "学生端",
       "stream": false,
       "parameters": [],
@@ -686,6 +746,47 @@
         "zhiyin-src/template/zhiyin-web/src/views/DeveloperView.vue"
       ],
       "verification": "已连接；浏览器向真实模型发送咨询并收到回复，刷新和 Docker 构建均能读回历史"
+    },
+    {
+      "id": "POST /api/v1/app/conversation/message/stream",
+      "method": "POST",
+      "path": "/api/v1/app/conversation/message/stream",
+      "capability": "Model text arrives incrementally; cards are released only after persistence.",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py:81",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [],
+      "request": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/MessageRequest"
+            }
+          }
+        },
+        "required": true
+      },
+      "responses": {
+        "200": {
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "前端已连接",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/views/ConversationView.vue",
+        "zhiyin-src/template/zhiyin-web/src/api/backend-stream.ts"
+      ],
+      "verification": "前端流式传输测试通过。"
     },
     {
       "id": "POST /api/v1/app/day/{day}/advice",
@@ -834,7 +935,7 @@
       "method": "GET",
       "path": "/api/v1/app/intel",
       "capability": "外部情报：公开事实（学职平台 + 通用网络检索）。  **不要求登录**：登了录就按你的画像收窄，没登录就按 `?q=` 或平台通用数据取。 每条都带来源链接 —— 这类信息\"凭什么这么说\"就是那个链接， 所以取不到来源的条目在服务层就被丢掉了，不会返回。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py:149",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py:165",
       "scope": "学生端",
       "stream": false,
       "parameters": [
@@ -887,7 +988,7 @@
       "method": "POST",
       "path": "/api/v1/app/intel/refresh",
       "capability": "现在去取一次（用户主动点）。同样**不要求登录**。  只在这条路上推通知：后台顺带取到的东西不弹 —— 浮窗要留给\"值得打断他\"的事，而\"他自己刚点的\"就是值得回一句的事。 （未登录时没有收件人，自然也不推。）",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py:162",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py:178",
       "scope": "学生端",
       "stream": false,
       "parameters": [
@@ -2732,7 +2833,7 @@
       "method": "GET",
       "path": "/api/v1/app/sessions",
       "capability": "左栏会话列表（并行任务会话，按任务/环节命名）。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py:28",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py:33",
       "scope": "学生端",
       "stream": false,
       "parameters": [],
@@ -2809,7 +2910,7 @@
       "method": "GET",
       "path": "/api/v1/app/sessions/{task_id}/turns",
       "capability": "一条会话的逐轮原文。  会话列表点进去要能看见\"这条会话发生过什么\" —— 此前只有一张清单， 因为逐轮原文压根没落库（库里只有累积摘要）。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py:39",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py:44",
       "scope": "学生端",
       "stream": false,
       "parameters": [
@@ -2867,7 +2968,7 @@
       "method": "POST",
       "path": "/api/v1/app/task/enter",
       "capability": "从首页任务入口进入微循环。  编排器判定目标环节与主理；已存在进行中的同一任务时执行\"续接\"而非重建。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py:53",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py:58",
       "scope": "学生端",
       "stream": false,
       "parameters": [],
@@ -3137,7 +3238,7 @@
       "frontend": [
         "zhiyin-src/template/zhiyin-web/src/components/AcademicVerification.vue",
         "zhiyin-src/template/zhiyin-web/src/lib/system-data.ts",
-        "zhiyin-src/template/zhiyin-web/src/views/AcademicView.vue",
+        "zhiyin-src/template/zhiyin-web/src/views/GradesView.vue",
         "zhiyin-src/template/zhiyin-web/src/views/ScheduleView.vue",
         "zhiyin-src/template/zhiyin-web/src/views/StudentView.vue",
         "zhiyin-src/template/zhiyin-web/src/views/ToolsView.vue"

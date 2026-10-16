@@ -343,6 +343,14 @@ class AcademicService(ABC):
     async def revoke(self, user_id: str) -> None:
         """清空导入：课表成绩与画像摘要一起删掉，这条重新变回待办。"""
 
+    @abstractmethod
+    async def revoke_courses(self, user_id: str) -> None:
+        """只清空课表与课程画像摘要，保留已经导入的成绩。"""
+
+    @abstractmethod
+    async def revoke_grades(self, user_id: str) -> None:
+        """只清空成绩与成绩画像摘要，保留已经导入的课表。"""
+
 
 class AssetService(ABC):
     """资产版本与影响面（R-BIZ-012）。

@@ -63,10 +63,12 @@ class DefaultAcademicService(AcademicService):
     ) -> AcademicImportResult:
         courses_text = (courses_raw or "").strip()
         grades_text = (grades_raw or "").strip()
-        source = ""
-        parsed_term = term.strip()
-        courses = []
-        grades = []
+        existing = await self._snapshots.get(user_id)
+        source = existing.source if existing else ""
+        parsed_term = term.strip() or (existing.term if existing else "")
+        courses = list(existing.courses) if existing else []
+        grades = list(existing.grades) if existing else []
+        updated: set[str] = set()
         try:
             if not courses_text and not grades_text:
                 raise AcademicImportError(
@@ -78,10 +80,13 @@ class DefaultAcademicService(AcademicService):
                 source = parsed.source
                 parsed_term = parsed_term or parsed.term
                 courses = parsed.courses
+                updated.add("courses")
             if grades_text:
                 grade_parsed = self._importer.parse_grades(grades_text)
-                source = source or grade_parsed.source
+                if not courses_text:
+                    source = grade_parsed.source
                 grades = grade_parsed.grades
+                updated.add("scores")
         except AcademicImportError as exc:
             # "这份原文我读不出来"是**用户能自己修的事**（换个复制方式、连表头一起复制），
             # 不是服务器故障。原样往上抛的话 api 层没有对应的处理器，用户看到的是 500 ——
@@ -91,7 +96,7 @@ class DefaultAcademicService(AcademicService):
 
         notes = _notes_for(courses)
         snapshot = AcademicSnapshot(
-            school=school.strip(),
+            school=school.strip() or (existing.school if existing else ""),
             source=source,
             term=parsed_term,
             courses=courses,
@@ -100,7 +105,7 @@ class DefaultAcademicService(AcademicService):
             note="；".join(notes),
         )
         saved = await self._snapshots.upsert(user_id, snapshot)
-        wrote = await self._write_summaries(user_id, saved)
+        wrote = await self._write_summaries(user_id, saved, updated)
         return AcademicImportResult(
             school=saved.school,
             source=saved.source,
@@ -168,7 +173,32 @@ class DefaultAcademicService(AcademicService):
         for key in _PROFILE_LABEL:
             await self._profiles.drop_field(user_id, key)
 
-    async def _write_summaries(self, user_id: str, snapshot: AcademicSnapshot) -> list[str]:
+    async def revoke_courses(self, user_id: str) -> None:
+        """只撤回课程；成绩属于另一块用户资料，不能被顺带删除。"""
+        await self._revoke_part(user_id, "courses")
+
+    async def revoke_grades(self, user_id: str) -> None:
+        """只撤回成绩；课表仍继续服务日历与时间安排。"""
+        await self._revoke_part(user_id, "scores")
+
+    async def _revoke_part(self, user_id: str, key: str) -> None:
+        snapshot = await self._snapshots.get(user_id)
+        if snapshot is not None:
+            courses = [] if key == "courses" else list(snapshot.courses)
+            grades = [] if key == "scores" else list(snapshot.grades)
+            if courses or grades:
+                update = {"courses": courses, "grades": grades}
+                if key == "courses":
+                    update["note"] = ""
+                await self._snapshots.upsert(user_id, snapshot.model_copy(update=update))
+            else:
+                await self._snapshots.delete(user_id)
+        if self._profiles is not None:
+            await self._profiles.drop_field(user_id, key)
+
+    async def _write_summaries(
+        self, user_id: str, snapshot: AcademicSnapshot, updated: set[str]
+    ) -> list[str]:
         """把"拿到了什么、什么时候拿的"写成画像里的一句话。"""
         if self._profiles is None:
             return []
@@ -177,7 +207,7 @@ class DefaultAcademicService(AcademicService):
             ("courses", _summary("门课", snapshot.term, len(snapshot.courses), snapshot.imported_at)),
             ("scores", _summary("门成绩", snapshot.term, len(snapshot.grades), snapshot.imported_at)),
         ):
-            if not summary:
+            if key not in updated or not summary:
                 continue
             await self._profiles.update_field(
                 user_id,
