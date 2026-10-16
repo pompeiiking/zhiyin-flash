@@ -57,6 +57,12 @@ const bars = computed<{ title: string; unit: string; points: BarsPoint[]; max: n
   }
 })
 
+const flatFullScale = computed(() => {
+  const chart = bars.value
+  return !!chart && chart.points.length >= 3 && chart.ratio
+    && chart.points.every((point) => Math.abs(point.value - 1) < Number.EPSILON)
+})
+
 /** 条宽：按本组最大值成比例；最小留 2% 让"很小"也看得见 */
 const width = (value: number, max: number) =>
   `${Math.max(2, Math.min(100, (value / Math.max(max, Number.EPSILON)) * 100))}%`
@@ -94,7 +100,11 @@ const numberText = (value: number, unit: string, ratio: boolean) =>
 
 <template>
   <ModuleRenderable v-if="item.kind.startsWith('module.')" :kind="item.kind" :payload="item.payload || {}" />
-  <figure v-if="bars" class="rb">
+  <aside v-if="flatFullScale" class="rb rb--notice" role="note">
+    <strong>这些项目目前都是已确认记录</strong>
+    <p>数值相同，无法比较差异，因此不再显示一排 100% 的进度条。这里的 100% 不代表兴趣、能力或经历已经被完全验证。</p>
+  </aside>
+  <figure v-else-if="bars" class="rb">
     <figcaption class="label rb__k">{{ bars.title }}</figcaption>
     <ul class="rb__rows">
       <li v-for="point in (expanded ? bars.points : bars.points.slice(0, 6))" :key="point.label">
@@ -110,6 +120,9 @@ const numberText = (value: number, unit: string, ratio: boolean) =>
 <style scoped>
 /* 横条 + 数值：窄也放得下，因为它本来就是"比较"用的 */
 .rb { margin: 12px 0; padding:16px; display: grid; gap: 14px; border:1px solid var(--c-border);border-radius:14px;background:var(--c-surface); }
+.rb--notice { gap:6px; background:var(--c-surface-2); color:var(--c-text-2); font-size:13px; line-height:1.7; }
+.rb--notice strong { color:var(--c-text); font-weight:600; }
+.rb--notice p { margin:0; }
 .rb__k { color: var(--c-text-2);font-size:13px;line-height:1.65; }
 .rb__rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
 /*

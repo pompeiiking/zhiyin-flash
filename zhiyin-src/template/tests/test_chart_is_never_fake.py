@@ -69,7 +69,7 @@ def test_explicit_chart_request_uses_only_saved_profile_values() -> None:
     assert _renderables_for_turn([], LoopStage.ACT, {}, message="你好", profile=profile) == []
     assert _renderables_for_turn([], LoopStage.ACT, {}, message="给我画个图") == []
     assert _chart_reply_text(charts) == "图表已生成，展示已存记录中的专业、兴趣。这张图只呈现这些记录，不代表职业匹配结论。"
-    assert _chart_reply_text([]) == "目前没有足够的可用数据生成图表；补充记录后可以再看。"
+    assert _chart_reply_text([]) == "目前没有足够的可比较数据生成图表；补充或核对记录后可以再看。"
 
 
 def test_default_chart_rejects_model_score_outside_ratio_range() -> None:
@@ -85,8 +85,32 @@ def test_unknown_direction_scores_do_not_become_zero_bars() -> None:
 def test_chart_intent_does_not_match_project_description() -> None:
     assert _asks_for_chart("能不能给我画个图，让我看看现在各项情况把握得怎么样？")
     assert _asks_for_chart("请用图表展示这几项")
+    assert not _asks_for_chart("请只用两句话解释，不创建报告，也不要生成图表。")
+    assert not _asks_for_chart("不用图表，直接说明结论")
     assert not _asks_for_chart("我做过一个数据可视化的大屏")
     assert not _asks_for_chart("我做过一个图表项目")
+
+
+def test_explicit_chart_refusal_drops_a_model_chart() -> None:
+    model_chart = validate_renderables(
+        [_bars([{"label": "专业", "value": 0.9}, {"label": "兴趣", "value": 0.6}])]
+    )[0]
+    assert _renderables_for_turn(
+        [model_chart], LoopStage.DIAGNOSE, {}, message="不要生成图表，只用文字回答"
+    ) == []
+
+
+def test_uniform_full_scale_profile_chart_is_not_shown_as_certain() -> None:
+    full = validate_renderables(
+        [_bars([
+            {"label": "专业", "value": 1.0},
+            {"label": "兴趣", "value": 1.0},
+            {"label": "能力自评", "value": 1.0},
+        ])]
+    )[0]
+    assert _renderables_for_turn(
+        [full], LoopStage.DIAGNOSE, {}, message="请展示画像图表"
+    ) == []
 
 
 def test_direction_contract_can_represent_unknown_match_score() -> None:

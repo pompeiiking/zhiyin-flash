@@ -1626,7 +1626,13 @@ def _renderables_for_turn(
       · ③ 决策 —— 三套方案的匹配度（"三套差多少"比三行字清楚）。
     取不到就不补：宁可没有图，也不要拿编出来的数字画一张。
     """
-    kept = validate_renderables([item.model_dump(mode="json") for item in from_model])
+    kept = _without_uninformative_full_scale_bars(
+        validate_renderables([item.model_dump(mode="json") for item in from_model])
+    )
+    # 否定意图优先于关键词命中，也优先于模型已经调用过的画图工具。
+    # 否则“不要生成图表”既会命中“生成图表”，模型误调工具后还会把图原样带出去。
+    if _forbids_chart(message):
+        return [item for item in kept if item.kind != "bars_chart"]
     if any(item.kind == "bars_chart" for item in kept):
         return kept
     if _asks_for_chart(message):
@@ -1641,24 +1647,60 @@ def _renderables_for_turn(
         ]
         if len(points) >= 2:
             kept.extend(
-                validate_renderables(
+                _without_uninformative_full_scale_bars(validate_renderables(
                     [{
                         "kind": "bars_chart",
                         "title": "这几项你现在各有多少把握",
                         "payload": {"unit": "%", "points": points[:8]},
                     }]
-                )
+                ))
             )
             if any(item.kind == "bars_chart" for item in kept):
                 return kept
+        # 用户明确要图时，没有可比较的数据就如实说画不出来；不要再拿当前环节的
+        # 默认图替代，否则看起来像回答了请求，实际比较的是另一组东西。
+        return kept
     fallback = _default_bars(stage, structured)
     if fallback is not None:
-        kept.extend(validate_renderables([fallback.model_dump(mode="json")]))
+        kept.extend(_without_uninformative_full_scale_bars(
+            validate_renderables([fallback.model_dump(mode="json")])
+        ))
     return kept
+
+
+def _without_uninformative_full_scale_bars(items: list[Renderable]) -> list[Renderable]:
+    """去掉三项以上全部为 100% 的柱状图。
+
+    画像里的 ``confidence=1`` 对本人更正字段表示“这句话确由本人确认”，并不等于
+    兴趣、能力或经历已经被客观验证到 100%。把一长串这样的值画成满格条既没有
+    比较信息，也容易被理解成确定性结论；保留原始字段，但不把它伪装成有区分度的图。
+    """
+    result: list[Renderable] = []
+    for item in items:
+        points = item.payload.get("points") if item.kind == "bars_chart" else None
+        values = [point.get("value") for point in points or [] if isinstance(point, dict)]
+        if len(values) >= 3:
+            try:
+                if all(abs(float(value) - 1.0) < 1e-9 for value in values):
+                    continue
+            except (TypeError, ValueError):
+                pass
+        result.append(item)
+    return result
+
+
+def _forbids_chart(message: str) -> bool:
+    text = message.strip()
+    return bool(re.search(
+        r"(?:不要|不想|不需要|无需|不用|别|禁止|避免).{0,8}(?:图表|柱状图|可视化|画图)",
+        text,
+    ))
 
 
 def _asks_for_chart(message: str) -> bool:
     text = message.strip()
+    if _forbids_chart(text):
+        return False
     return any(word in text for word in (
         "画个图", "画张图", "画一个图", "画图", "给我一张图",
         "生成图表", "做个图表", "做张图表", "看图表", "看看图表",
@@ -1676,7 +1718,7 @@ def _chart_reply_text(renderables: list[Renderable]) -> str:
         if isinstance(point, dict) and str(point.get("label") or "").strip()
     ))
     if not labels:
-        return "目前没有足够的可用数据生成图表；补充记录后可以再看。"
+        return "目前没有足够的可比较数据生成图表；补充或核对记录后可以再看。"
     shown = "、".join(labels[:4])
     suffix = f"等 {len(labels)} 项" if len(labels) > 4 else ""
     return f"图表已生成，展示已存记录中的{shown}{suffix}。这张图只呈现这些记录，不代表职业匹配结论。"

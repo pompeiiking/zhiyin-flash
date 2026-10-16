@@ -12,7 +12,7 @@ import { skin } from './lib/theme'
 import { INTERVENTION } from './data/student'
 import DesktopSidebar from './components/DesktopSidebar.vue'
 import { useNavigationLayout } from './lib/layout'
-import { loadShell, newSession, systemData, refreshNotifications } from './lib/system-data'
+import { loadShell, systemData, refreshNotifications } from './lib/system-data'
 import { auth } from './lib/auth'
 import { toast } from './store'
 import { routeLoadError, retryRoute } from './router'
@@ -54,7 +54,7 @@ async function expandSidebar() {
   sidebar.value?.focusCollapse()
 }
 async function newChat() {
- try { await newSession(); await router.push('/chat') } catch(e) { toast((e as Error).message) }
+ try { await router.push({ path:'/chat', query:{ new:String(Date.now()) } }) } catch(e) { toast((e as Error).message) }
 }
 
 /**

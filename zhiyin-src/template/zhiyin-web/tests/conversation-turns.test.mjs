@@ -22,6 +22,11 @@ test('distinct speaker is not silently merged; missing cards stay absent',()=>{
 })
 test('text hierarchy preserves complete sentences and all source content',()=>{
  const text='这是需要完整保留的第一句话。后面还有详细说明。'
- const parts=answerParts(text);assert.equal(parts.lead+parts.body,text)
+ const parts=answerParts(text);assert.equal(parts.lead,'');assert.equal(parts.body,text)
  const long='没有标点'.repeat(40);assert.equal(answerParts(long).body,long)
+})
+test('pipeline and asset status stay attached to the latest answer',()=>{
+ const result=withGuide([{id:'1',from:'host',speaker:'顾问',text:'结论'}],{badge,guide:{kind:'question'},pipeline_cards:[{stage:'collect',title:'了解情况',status:'done'}],changed_assets:[{asset_id:'a',asset_type:'profile',created_at:'2026-01-01',version:2}]},'g')
+ assert.equal(result[0].pipelineCards[0].title,'了解情况')
+ assert.equal(result[0].changedAssets[0].version,2)
 })

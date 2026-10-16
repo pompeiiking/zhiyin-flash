@@ -61,6 +61,11 @@
   <script>
     (function () {
       var shown = false
+      function isBenignBrowserNotice(message) {
+        return /ResizeObserver loop (limit exceeded|completed with undelivered notifications)/i.test(
+          String(message || ''),
+        )
+      }
       function show(detail) {
         if (shown) return
         shown = true
@@ -84,7 +89,9 @@
           if (e && e.target && e.target !== window && e.target.tagName) {
             show('资源加载失败：' + (e.target.src || e.target.href || e.target.tagName))
           } else {
-            show('运行时错误：' + ((e && e.error && e.error.message) || (e && e.message) || '未知'))
+            var message = (e && e.error && e.error.message) || (e && e.message) || '未知'
+            if (isBenignBrowserNotice(message)) return
+            show('运行时错误：' + message)
           }
         },
         true,

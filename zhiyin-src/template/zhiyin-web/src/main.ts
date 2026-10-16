@@ -30,6 +30,11 @@ const app = createApp(App)
  */
 const FALLBACK_ID = 'boot-error'
 
+function isBenignBrowserNotice(reason: unknown): boolean {
+  const message = reason instanceof Error ? reason.message : String(reason ?? '')
+  return /ResizeObserver loop (limit exceeded|completed with undelivered notifications)/i.test(message)
+}
+
 function showFatal(reason: unknown): void {
   if (document.getElementById(FALLBACK_ID)) return
   const box = document.createElement('div')
@@ -60,7 +65,11 @@ app.config.errorHandler = (err) => {
   console.error('[vue]', err)
   showFatal(err)
 }
-window.addEventListener('error', (e) => showFatal(e.error ?? e.message))
+window.addEventListener('error', (e) => {
+  const reason = e.error ?? e.message
+  if (isBenignBrowserNotice(reason)) return
+  showFatal(reason)
+})
 window.addEventListener('unhandledrejection', (e) => showFatal(e.reason))
 
 app.use(router)

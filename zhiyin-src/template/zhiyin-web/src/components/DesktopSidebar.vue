@@ -49,7 +49,7 @@ function sessionDate(date?: string | null) { return date ? new Date(date).toLoca
     <div class="desk-brand-row"><RouterLink class="desk-brand" to="/chat" aria-label="职引，回到对话"><span class="hf-mark" aria-hidden="true">职</span><div class="hf-names"><strong>职引</strong><span>陪你走完这一段</span></div></RouterLink><button ref="collapseButton" class="ws-icon-button desk-collapse" aria-label="收起侧栏" title="收起侧栏" aria-controls="student-desktop-sidebar" aria-expanded="true" @click="$emit('collapse')"><UiIcon name="sidebar" :size="19" /></button></div>
 
     <div class="desk-scroll">
-    <nav class="desk-nav" aria-label="学生空间导航"><div class="c2-chat-group-head"><h2>对话</h2><button class="c2-new-consult" aria-label="新建咨询" title="新建咨询" :disabled="demo.state.chatBusy" @click="$emit('newChat')"><UiIcon name="plus" :size="18" /></button></div>
+    <nav class="desk-nav" aria-label="学生空间导航"><div class="c2-chat-group-head"><h2>对话</h2><button class="c2-new-consult" aria-label="选择咨询主题" title="选择咨询主题" :disabled="demo.state.chatBusy" @click="$emit('newChat')"><UiIcon name="plus" :size="18" /></button></div>
       <RouterLink :to="WORKSPACE_PRIMARY.to" class="desk-link desk-link--conversation" :aria-current="isNavActive(WORKSPACE_PRIMARY, route) ? 'page' : undefined"><UiIcon :name="WORKSPACE_PRIMARY.icon" :size="20" /><span class="hf-label">{{ WORKSPACE_PRIMARY.label }}</span><span class="hf-tail" v-if="sessionCount || chatActive"><span v-if="sessionCount" class="hf-badge" :title="'共 ' + sessionCount + ' 段咨询'">{{ sessionCount }}</span><span v-if="chatActive" class="desk-link__dot" /></span></RouterLink>
       <section v-for="group in WORKSPACE_GROUPS" :key="group.key" class="c2-nav-group">
         <h2>{{ group.label }}</h2>
