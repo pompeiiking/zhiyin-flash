@@ -47,7 +47,7 @@ export const WORKSPACE_GROUPS: NavGroup[] = [
     icon: 'profile',
     items: [
       { key: 'profile', label: '个人画像', to: '/profile', icon: 'profile', paths: ['/profile'], hint: '已有的信息、来源与待补充项' },
-      { key: 'academic', label: '学籍与资料', to: '/academic', icon: 'academic', paths: ['/academic'], hint: '课表、成绩与资料导入' },
+      { key: 'grades', label: '我的成绩', to: '/grades', icon: 'academic', paths: ['/grades'], hint: '按学期查看与更新成绩' },
       { key: 'report', label: '诊断报告', to: '/report', icon: 'report', paths: ['/report'], hint: '结论、依据与历史版本' },
     ],
   },

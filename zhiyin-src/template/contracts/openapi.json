@@ -8081,6 +8081,50 @@
         ]
       }
     },
+    "/api/v1/app/academic/courses": {
+      "delete": {
+        "description": "只清空课表；成绩单由「我的成绩」独立管理。",
+        "operationId": "revoke_academic_courses_api_v1_app_academic_courses_delete",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_AcademicRevokeAck_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Revoke Academic Courses",
+        "tags": [
+          "workspace"
+        ]
+      }
+    },
+    "/api/v1/app/academic/grades": {
+      "delete": {
+        "description": "只清空成绩；课程仍保留在「日历与课表」。",
+        "operationId": "revoke_academic_grades_api_v1_app_academic_grades_delete",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_AcademicRevokeAck_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Revoke Academic Grades",
+        "tags": [
+          "workspace"
+        ]
+      }
+    },
     "/api/v1/app/academic/import": {
       "post": {
         "description": "导入课表与成绩单（学生自己贴原文）。\n\n这条路是产品有意选的：不做替学生登录学校系统，也不经手他校内账号的密码。\n用户的体验压在解析上 —— 贴进来的东西读不出来时，回执要说清楚**改哪里**。",

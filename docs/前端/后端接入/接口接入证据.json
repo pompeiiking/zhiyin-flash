@@ -2,23 +2,49 @@
   "DELETE /api/v1/app/academic": {
     "status": "联调通过",
     "frontend": [
-      "zhiyin-src/template/zhiyin-web/src/views/AcademicView.vue"
+      "zhiyin-src/template/zhiyin-web/src/api/backend-client.ts"
     ],
     "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+  },
+  "DELETE /api/v1/app/academic/courses": {
+    "status": "前端已连接",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/api/backend-client.ts",
+      "zhiyin-src/template/zhiyin-web/src/views/ScheduleView.vue"
+    ],
+    "verification": "课表与成绩分离后新增；单元测试与前端构建通过，待独立 HTTP 联调。"
+  },
+  "DELETE /api/v1/app/academic/grades": {
+    "status": "前端已连接",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/api/backend-client.ts",
+      "zhiyin-src/template/zhiyin-web/src/views/GradesView.vue"
+    ],
+    "verification": "课表与成绩分离后新增；单元测试与前端构建通过，待独立 HTTP 联调。"
   },
   "POST /api/v1/app/academic/import": {
     "status": "联调通过",
     "frontend": [
-      "zhiyin-src/template/zhiyin-web/src/views/AcademicView.vue"
+      "zhiyin-src/template/zhiyin-web/src/components/AcademicImportSheet.vue",
+      "zhiyin-src/template/zhiyin-web/src/views/GradesView.vue",
+      "zhiyin-src/template/zhiyin-web/src/views/ScheduleView.vue"
     ],
     "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
   },
   "POST /api/v1/app/academic/import/file": {
     "status": "联调通过",
     "frontend": [
-      "zhiyin-src/template/zhiyin-web/src/views/AcademicView.vue"
+      "zhiyin-src/template/zhiyin-web/src/api/backend-client.ts"
     ],
     "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+  },
+  "POST /api/v1/app/conversation/message/stream": {
+    "status": "前端已连接",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/views/ConversationView.vue",
+      "zhiyin-src/template/zhiyin-web/src/api/backend-stream.ts"
+    ],
+    "verification": "前端流式传输测试通过。"
   },
   "GET /api/v1/app/achievements": {
     "status": "联调通过",
@@ -428,7 +454,7 @@
     "frontend": [
       "zhiyin-src/template/zhiyin-web/src/components/AcademicVerification.vue",
       "zhiyin-src/template/zhiyin-web/src/lib/system-data.ts",
-      "zhiyin-src/template/zhiyin-web/src/views/AcademicView.vue",
+      "zhiyin-src/template/zhiyin-web/src/views/GradesView.vue",
       "zhiyin-src/template/zhiyin-web/src/views/ScheduleView.vue",
       "zhiyin-src/template/zhiyin-web/src/views/StudentView.vue",
       "zhiyin-src/template/zhiyin-web/src/views/ToolsView.vue"

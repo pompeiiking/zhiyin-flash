@@ -119,6 +119,22 @@ async def revoke_academic(request: Request) -> ApiResponse[AcademicRevokeAck]:
     return ApiResponse(data=await facade.revoke_academic(user_id))
 
 
+@router.delete("/app/academic/courses", response_model=ApiResponse[AcademicRevokeAck])
+async def revoke_academic_courses(request: Request) -> ApiResponse[AcademicRevokeAck]:
+    """只清空课表；成绩单由「我的成绩」独立管理。"""
+    facade = get_facade()
+    user_id = await facade.resolve_user_id(request)
+    return ApiResponse(data=await facade.revoke_academic_courses(user_id))
+
+
+@router.delete("/app/academic/grades", response_model=ApiResponse[AcademicRevokeAck])
+async def revoke_academic_grades(request: Request) -> ApiResponse[AcademicRevokeAck]:
+    """只清空成绩；课程仍保留在「日历与课表」。"""
+    facade = get_facade()
+    user_id = await facade.resolve_user_id(request)
+    return ApiResponse(data=await facade.revoke_academic_grades(user_id))
+
+
 async def _optional_user(request: Request) -> str | None:
     """**尽力**认人：认得出就个性化，认不出就按公开取数。
 

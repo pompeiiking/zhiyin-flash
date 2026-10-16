@@ -75,6 +75,16 @@ export const backendDemo = {
     state.academic = { courses, grades, school, term, source: '本人导入的表格快照', imported_at: now(), note: '本次已核对表格或JSON数据；未经正式学籍核验。' }
   },
   revokeAcademic() { state.academic = null; if(state.liveWorkspace)state.liveWorkspace.academic_panel=null },
+  revokeAcademicCourses() {
+    if (!state.academic) return
+    state.academic = state.academic.grades?.length ? { ...state.academic, courses: [], note: '' } : null
+    if (state.liveWorkspace) state.liveWorkspace.academic_panel = state.academic
+  },
+  revokeAcademicGrades() {
+    if (!state.academic) return
+    state.academic = state.academic.courses?.length ? { ...state.academic, grades: [] } : null
+    if (state.liveWorkspace) state.liveWorkspace.academic_panel = state.academic
+  },
   recordMaterial(file: File) {
     if (!file.size) throw new Error('这个文件是空的，请换一份。')
     if (file.size > 2_000_000) throw new Error('材料需小于 2MB，请截取相关的部分。')
