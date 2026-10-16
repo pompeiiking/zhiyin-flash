@@ -19,19 +19,19 @@ results = {}
 client = httpx.Client(base_url=args.base, timeout=120)
 
 
-def call(key, *, params=None, **kwargs):
+def call(key, *, params=None, expected=200, **kwargs):
     op = ops[key]
     path = op['path']
     for k, v in (params or {}).items():
         path = path.replace('{'+k+'}', str(v))
     resp = client.request(op['method'], '/api/v1'+path, **kwargs)
     body = resp.json()
-    entry = {'http':resp.status_code, 'code':body.get('code'), 'message':body.get('message'), 'ok':resp.is_success and body.get('code') == 0}
+    entry = {'http':resp.status_code, 'expected':expected, 'code':body.get('code'), 'message':body.get('message'), 'ok':resp.status_code == expected and (body.get('code') == 0 if expected < 400 else body.get('code') != 0)}
     results[op['method']+' /api/v1'+op['path']] = entry
     print(key, resp.status_code, body.get('code'), flush=True)
     if not entry['ok']:
         return None
-    return body['data']
+    return body.get('data')
 
 
 try:
@@ -64,9 +64,15 @@ try:
     session=call('enterTask',json={'task_code':boot['task_entries'][0]['code']})
     call('sessionTurns',params={'task_id':session['task_id']})
     call('track',json={'event':'diagnosis_view','payload':{},'client_event_id':str(uuid.uuid4())})
+    report_versions = []
     for kind in ['report','direction_plan','action_plan']:
-        call('versions',params={'asset_type':kind})
-    export=call('export',json={'asset_type':'report','format':'pdf'})
+        versions = call('versions',params={'asset_type':kind})
+        if kind == 'report':
+            report_versions = versions
+    # A fresh account has no report asset: refusal is correct, not a fabricated export.
+    export=call('export',expected=200 if report_versions else 404,json={'asset_type':'report','format':'pdf'})
+    if not report_versions:
+        results['POST /api/v1/app/assets/export']['scope']='拒绝导出不存在的报告；有资料时的文件内容由 student-capabilities 验证'
     if export and not export.get('available'):
         results['POST /api/v1/app/assets/export']['limitation']=export.get('reason') or export.get('message') or 'available=false'
     # No real academic verification code is used in automated testing.

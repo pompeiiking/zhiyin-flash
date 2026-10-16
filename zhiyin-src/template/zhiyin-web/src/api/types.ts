@@ -15,6 +15,20 @@ export interface paths {
      */
     delete: operations["revoke_academic_api_v1_app_academic_delete"];
   };
+  "/api/v1/app/academic/courses": {
+    /**
+     * Revoke Academic Courses
+     * @description 只清空课表；成绩单由「我的成绩」独立管理。
+     */
+    delete: operations["revoke_academic_courses_api_v1_app_academic_courses_delete"];
+  };
+  "/api/v1/app/academic/grades": {
+    /**
+     * Revoke Academic Grades
+     * @description 只清空成绩；课程仍保留在「日历与课表」。
+     */
+    delete: operations["revoke_academic_grades_api_v1_app_academic_grades_delete"];
+  };
   "/api/v1/app/academic/import": {
     /**
      * Import Academic
@@ -160,6 +174,13 @@ export interface paths {
      * @description 发送一轮消息，返回最短结论 + 显式告知 + 行为引导 + 管线卡。
      */
     post: operations["send_message_api_v1_app_conversation_message_post"];
+  };
+  "/api/v1/app/conversation/message/stream": {
+    /**
+     * Stream Message
+     * @description Model text arrives incrementally; cards are released only after persistence.
+     */
+    post: operations["stream_message_api_v1_app_conversation_message_stream_post"];
   };
   "/api/v1/app/day/{day}/advice": {
     /**
@@ -2998,7 +3019,7 @@ export interface components {
      * @description 统一错误码。前端据此提示，不解析后端文案。
      * @enum {integer}
      */
-    ErrorCode: 0 | 1001 | 1002 | 1003 | 1004 | 1005 | 1006 | 1007 | 1999;
+    ErrorCode: 0 | 1001 | 1002 | 1003 | 1004 | 1005 | 1006 | 1007 | 1008 | 1999;
     /** ExecutorUpdate */
     ExecutorUpdate: {
       /** Event */
@@ -4827,6 +4848,34 @@ export interface operations {
     };
   };
   /**
+   * Revoke Academic Courses
+   * @description 只清空课表；成绩单由「我的成绩」独立管理。
+   */
+  revoke_academic_courses_api_v1_app_academic_courses_delete: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_AcademicRevokeAck_"];
+        };
+      };
+    };
+  };
+  /**
+   * Revoke Academic Grades
+   * @description 只清空成绩；课程仍保留在「日历与课表」。
+   */
+  revoke_academic_grades_api_v1_app_academic_grades_delete: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_AcademicRevokeAck_"];
+        };
+      };
+    };
+  };
+  /**
    * Import Academic
    * @description 导入课表与成绩单（学生自己贴原文）。
    *
@@ -5193,6 +5242,29 @@ export interface operations {
         content: {
           "application/json": components["schemas"]["ApiResponse_ConversationTurnView_"];
         };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /**
+   * Stream Message
+   * @description Model text arrives incrementally; cards are released only after persistence.
+   */
+  stream_message_api_v1_app_conversation_message_stream_post: {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["MessageRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: never;
       };
       /** @description Validation Error */
       422: {

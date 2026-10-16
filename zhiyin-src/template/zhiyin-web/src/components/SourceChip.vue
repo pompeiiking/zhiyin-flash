@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { dateKey } from '../lib/action-insights.mjs'
 import type { ProfileSource } from '../api/backend-types'
 
 /* =============================================================================
@@ -199,17 +200,9 @@ const hint = computed(() =>
     : `${meta.value.label} · ${meta.value.why}`,
 )
 
-/**
- * 时间**只做去掉噪音**，不做本地化推算：
- * 后端给的是哪一天，就印哪一天。日期里的 `T` 后面是时刻，与"哪次说的"无关，
- * 印出来只会让一行里多出 8 个不参与判断的字符（CRAFT-BRIEF §4.2 规则 3：日期写
- * 2026-10-14 而不是 2026/10/14，等宽下字符数一致，列表不抖）。
- * 解析不出来时**原样显示**，不静默吞掉 —— 宁可见到脏数据，也不要"来源没有时间"
- * 这种假象。
- */
+/** 日期值保持原样，带时区的时间戳按浏览器本地日期展示，与记录列表一致。 */
 function displayAt(raw: string): string {
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(raw)
-  return m ? `${m[1]}-${m[2]}-${m[3]}` : raw
+  return dateKey(raw) || raw
 }
 </script>
 

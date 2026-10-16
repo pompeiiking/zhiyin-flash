@@ -8,7 +8,7 @@ from jsonschema.exceptions import ValidationError as JsonSchemaValidationError
 from pydantic import ValidationError
 
 from zhiyin_data_sdk.repositories.modules import ModuleRepository
-from zhiyin_kernel.errors import AccessDenied, DuplicateResource, InvalidRequest, KernelError, ResourceNotFound
+from zhiyin_kernel.errors import Forbidden, DuplicateResource, InvalidRequest, KernelError, ResourceNotFound
 from zhiyin_kernel.modules import ModuleContext, ModulePolicy, ModuleResult, ModuleView
 from zhiyin_business.services.module_contracts import validate_contract
 
@@ -41,7 +41,7 @@ class ModulePlatform:
     async def require(self, token: str, *, admin=False):
         user = await self.user(token)
         if user.role.value not in ({"admin"} if admin else {"admin", "developer"}):
-            raise AccessDenied("需要管理员权限" if admin else "需要开发者权限")
+            raise Forbidden("需要管理员权限" if admin else "需要开发者权限")
         return user
 
     def definition(self, module_id):
@@ -74,7 +74,7 @@ class ModulePlatform:
     async def enabled_policy(self, module_id):
         policy, blocked_by = await self.availability(module_id)
         if not policy.enabled or blocked_by:
-            raise AccessDenied("模块或所属父模块已停用")
+            raise Forbidden("模块或所属父模块已停用")
         return policy
 
     async def listing(self, *, enabled_only=False, applications_only=False):
@@ -123,14 +123,14 @@ class ModulePlatform:
         if mode == "live":
             await self.enabled_policy(module_id)
         if mode == "fixture" and not preview:
-            raise AccessDenied("模拟数据只用于开发预览")
+            raise Forbidden("模拟数据只用于开发预览")
         fixtures = definition.fixture(fixture) if mode == "fixture" else {}
         if "error" in fixtures:
             raise InvalidRequest(fixtures["error"])
 
         async def reader(capability):
             if capability not in definition.manifest.reads:
-                raise AccessDenied("模块未声明该数据能力")
+                raise Forbidden("模块未声明该数据能力")
             if mode == "fixture":
                 value = copy.deepcopy(fixtures[capability])
                 contract = next((item for item in self.capabilities if item.id == capability), None)
@@ -140,11 +140,11 @@ class ModulePlatform:
                 return value
             latest = await self.enabled_policy(module_id)
             if capability not in latest.reads:
-                raise AccessDenied("模块未获授权或已停用")
+                raise Forbidden("模块未获授权或已停用")
             value = await self.readers[capability](user_id)
             latest = await self.enabled_policy(module_id)
             if capability not in latest.reads:
-                raise AccessDenied("模块数据授权已撤销")
+                raise Forbidden("模块数据授权已撤销")
             value = value.model_dump(mode="json") if hasattr(value, "model_dump") else value
             contract = next((item for item in self.capabilities if item.id == capability), None)
             if contract:
@@ -175,7 +175,7 @@ class ModulePlatform:
         definition = self.verify_version(module_id, expected_version)
         policy = await self.enabled_policy(module_id)
         if action not in policy.actions or action not in definition.manifest.actions:
-            raise AccessDenied("模块未获准执行该操作")
+            raise Forbidden("模块未获准执行该操作")
         if {"user_id", "account", "actor"} & payload.keys():
             raise InvalidRequest("用户身份由平台注入")
         contract = next((capability for capability in self.capabilities if capability.id == action), None)
@@ -200,10 +200,10 @@ class ModulePlatform:
         manifest = self.definition(module_id).manifest
         policy = await self.enabled_policy(module_id)
         if not user_id or not manifest.tool or agent_id not in policy.agents:
-            raise AccessDenied("当前智能体未获得模块授权")
+            raise Forbidden("当前智能体未获得模块授权")
         result = await self.invoke(module_id, user_id, inputs)
         if agent_id not in (await self.enabled_policy(module_id)).agents:
-            raise AccessDenied("当前智能体的模块授权已撤销")
+            raise Forbidden("当前智能体的模块授权已撤销")
         return result
 
     async def check(self, actor):
@@ -222,5 +222,5 @@ class ModulePlatform:
 
     async def request_release(self, actor, body):
         if self.environment != "workbench":
-            raise AccessDenied("发布管理只在开发工作台启用")
+            raise Forbidden("发布管理只在开发工作台启用")
         return await self.repository.create_job(actor, body.model_dump())

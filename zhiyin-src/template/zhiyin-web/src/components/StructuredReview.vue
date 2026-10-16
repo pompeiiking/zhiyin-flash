@@ -5,7 +5,7 @@ import { studentApi, type Review } from '../api/student-capabilities'
 import type { ReviewEdit } from '../api/backend-types'
 import { backendDemo } from '../lib/backend-demo'
 import { backendClient } from '../api/backend-client'
-import { actionRows, dateKey, deadline } from '../lib/action-insights.mjs'
+import { actionRows, dateKey, deadline, taskStatusLabel } from '../lib/action-insights.mjs'
 import DetailPopover from './DetailPopover.vue'
 import StatusBanner from './StatusBanner.vue'
 
@@ -188,7 +188,7 @@ onMounted(() => { void load() })
                 <select v-model="selectedId" name="review-task" autocomplete="off" required>
                   <option value="">选择一项任务</option>
                   <option v-for="task in tasks" :key="task.task_id" :value="task.task_id">
-                    {{ task.done ? '已完成' : deadline(task.due_date).overdue ? '已逾期' : '进行中' }} · {{ task.text }}
+                    {{ taskStatusLabel(task) }}{{ !task.done && deadline(task.due_date).overdue ? ' · 已逾期' : '' }} · {{ task.text }}
                   </option>
                 </select>
               </label>

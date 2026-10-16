@@ -250,13 +250,16 @@ def test_workflow_http_roles_publishing_and_user_identity(platform):
     with TestClient(app) as client:
         def headers(role):
             return {"Authorization": f"Bearer {role}"}
-        assert client.get("/api/v1/developer/capabilities", headers=headers("student")).status_code == 401
+        denied = client.get("/api/v1/developer/capabilities", headers=headers("student"))
+        assert denied.status_code == 403
+        assert denied.json()["code"] == 1008
+        assert client.get("/api/v1/developer/capabilities").status_code == 401
         assert client.get("/api/v1/developer/capabilities", headers=headers("dev")).status_code == 200
         value = client.post("/api/v1/developer/workflows", headers=headers("dev"), json=draft().model_dump())
         assert value.status_code == 200 and value.json()["data"]["owner"] == "dev"
         body = {"mode": "live", "request_id": "student_001"}
         assert client.post("/api/v1/app/workflows/test_flow/run", headers=headers("student"), json=body).status_code == 404
-        assert client.post("/api/v1/developer/workflows/test_flow/publish", headers=headers("student"), json={"expected_revision": 1}).status_code == 401
+        assert client.post("/api/v1/developer/workflows/test_flow/publish", headers=headers("student"), json={"expected_revision": 1}).status_code == 403
         assert client.post("/api/v1/developer/workflows/test_flow/publish", headers=headers("dev"), json={"expected_revision": 1}).status_code == 200
         result = client.post("/api/v1/app/workflows/test_flow/run", headers=headers("student"), json=body)
         assert result.status_code == 200
@@ -304,14 +307,14 @@ def test_unpublish_http_owner_admin_role_and_revision_checks(platform):
         assert call("", "dev", draft().model_dump()).status_code == 200
         assert call("/test_flow/publish", "dev", {"expected_revision": 1}).status_code == 200
         for actor in ("student", "other"):
-            assert call("/test_flow/unpublish", actor, {"expected_revision": 1}).status_code == 401
+            assert call("/test_flow/unpublish", actor, {"expected_revision": 1}).status_code == 403
         assert call("/test_flow/unpublish", "dev", {"expected_revision": 2}).status_code == 409
         assert call("/test_flow/unpublish", "dev", {"expected_revision": 0}).status_code == 422
         assert call("/test_flow/unpublish", "dev", {"expected_revision": 1}).json()["data"]["published_revision"] is None
         assert call("/test_flow/publish", "dev", {"expected_revision": 1}).status_code == 200
         assert call("/test_flow/unpublish", "admin", {"expected_revision": 1}).json()["data"]["published_revision"] is None
         platform.test_roles["dev"] = platform.test_roles["student"]
-        assert call("/test_flow/unpublish", "dev", {"expected_revision": 1}).status_code == 401
+        assert call("/test_flow/unpublish", "dev", {"expected_revision": 1}).status_code == 403
 
 
 def test_skill_preview_reports_business_input_mismatch_with_module_and_field(platform):

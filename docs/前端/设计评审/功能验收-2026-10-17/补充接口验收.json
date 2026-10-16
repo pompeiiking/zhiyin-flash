@@ -1,0 +1,493 @@
+[
+  {
+    "method": "GET",
+    "path": "/app/bootstrap",
+    "http": 200,
+    "code": 0,
+    "passed": true,
+    "message": ""
+  },
+  {
+    "method": "GET",
+    "path": "/app/portal",
+    "http": 200,
+    "code": 0,
+    "passed": true,
+    "message": ""
+  },
+  {
+    "method": "GET",
+    "path": "/app/workspace",
+    "http": 200,
+    "code": 0,
+    "passed": true,
+    "message": ""
+  },
+  {
+    "method": "GET",
+    "path": "/app/sessions",
+    "http": 200,
+    "code": 0,
+    "passed": true,
+    "message": ""
+  },
+  {
+    "method": "GET",
+    "path": "/app/notes",
+    "http": 200,
+    "code": 0,
+    "passed": true,
+    "message": ""
+  },
+  {
+    "method": "GET",
+    "path": "/app/plan/action",
+    "http": 200,
+    "code": 0,
+    "passed": true,
+    "message": ""
+  },
+  {
+    "method": "GET",
+    "path": "/app/plan/directions",
+    "http": 200,
+    "code": 0,
+    "passed": true,
+    "message": ""
+  },
+  {
+    "method": "GET",
+    "path": "/app/calendar",
+    "http": 200,
+    "code": 0,
+    "passed": true,
+    "message": ""
+  },
+  {
+    "method": "GET",
+    "path": "/app/achievements",
+    "http": 200,
+    "code": 0,
+    "passed": true,
+    "message": ""
+  },
+  {
+    "method": "GET",
+    "path": "/app/track/events",
+    "http": 200,
+    "code": 0,
+    "passed": true,
+    "message": ""
+  },
+  {
+    "method": "GET",
+    "path": "/app/notifications",
+    "http": 200,
+    "code": 0,
+    "passed": true,
+    "message": ""
+  },
+  {
+    "method": "GET",
+    "path": "/app/modules",
+    "http": 200,
+    "code": 0,
+    "passed": true,
+    "message": ""
+  },
+  {
+    "method": "GET",
+    "path": "/app/intel",
+    "http": 200,
+    "code": 0,
+    "passed": true,
+    "message": ""
+  },
+  {
+    "method": "GET",
+    "path": "/app/report/full-text",
+    "http": 200,
+    "code": 0,
+    "passed": true,
+    "message": ""
+  },
+  {
+    "method": "GET",
+    "path": "/app/preferences",
+    "http": 200,
+    "code": 0,
+    "passed": true,
+    "message": ""
+  },
+  {
+    "method": "GET",
+    "path": "/app/measurements",
+    "http": 200,
+    "code": 0,
+    "passed": true,
+    "message": ""
+  },
+  {
+    "method": "GET",
+    "path": "/app/plan/direction-comparison",
+    "http": 200,
+    "code": 0,
+    "passed": true,
+    "message": ""
+  },
+  {
+    "method": "GET",
+    "path": "/app/plan/direction-weights",
+    "http": 200,
+    "code": 0,
+    "passed": true,
+    "message": ""
+  },
+  {
+    "method": "GET",
+    "path": "/app/reviews",
+    "http": 200,
+    "code": 0,
+    "passed": true,
+    "message": ""
+  },
+  {
+    "method": "GET",
+    "path": "/app/schedule/semester",
+    "http": 200,
+    "code": 0,
+    "passed": true,
+    "message": ""
+  },
+  {
+    "method": "POST",
+    "path": "/app/notes",
+    "http": 200,
+    "code": 0,
+    "passed": true,
+    "message": ""
+  },
+  {
+    "method": "PATCH",
+    "path": "/app/notes/note_2ba87205e249",
+    "http": 200,
+    "code": 0,
+    "passed": true,
+    "message": ""
+  },
+  {
+    "method": "GET",
+    "path": "/app/notes",
+    "http": 200,
+    "code": 0,
+    "passed": true,
+    "message": ""
+  },
+  {
+    "method": "PATCH",
+    "path": "/app/notes/note_2ba87205e249",
+    "http": 200,
+    "code": 0,
+    "passed": true,
+    "message": ""
+  },
+  {
+    "method": "GET",
+    "path": "/app/notes",
+    "http": 200,
+    "code": 0,
+    "passed": true,
+    "message": ""
+  },
+  {
+    "method": "DELETE",
+    "path": "/app/notes/note_2ba87205e249",
+    "http": 200,
+    "code": 0,
+    "passed": true,
+    "message": ""
+  },
+  {
+    "method": "GET",
+    "path": "/app/notes",
+    "http": 200,
+    "code": 0,
+    "passed": true,
+    "message": ""
+  },
+  {
+    "method": "POST",
+    "path": "/app/notes",
+    "http": 200,
+    "code": 0,
+    "passed": true,
+    "message": ""
+  },
+  {
+    "method": "PATCH",
+    "path": "/app/notes/note_dd09651a7a76",
+    "http": 200,
+    "code": 0,
+    "passed": true,
+    "message": ""
+  },
+  {
+    "method": "GET",
+    "path": "/app/notes",
+    "http": 200,
+    "code": 0,
+    "passed": true,
+    "message": ""
+  },
+  {
+    "method": "PATCH",
+    "path": "/app/notes/note_dd09651a7a76",
+    "http": 200,
+    "code": 0,
+    "passed": true,
+    "message": ""
+  },
+  {
+    "method": "GET",
+    "path": "/app/notes",
+    "http": 200,
+    "code": 0,
+    "passed": true,
+    "message": ""
+  },
+  {
+    "method": "DELETE",
+    "path": "/app/notes/note_dd09651a7a76",
+    "http": 200,
+    "code": 0,
+    "passed": true,
+    "message": ""
+  },
+  {
+    "method": "GET",
+    "path": "/app/notes",
+    "http": 200,
+    "code": 0,
+    "passed": true,
+    "message": ""
+  },
+  {
+    "method": "POST",
+    "path": "/app/profile/fields/major",
+    "http": 200,
+    "code": 0,
+    "passed": true,
+    "message": ""
+  },
+  {
+    "method": "GET",
+    "path": "/app/workspace",
+    "http": 200,
+    "code": 0,
+    "passed": true,
+    "message": ""
+  },
+  {
+    "method": "POST",
+    "path": "/app/academic/import",
+    "http": 200,
+    "code": 0,
+    "passed": true,
+    "message": ""
+  },
+  {
+    "method": "DELETE",
+    "path": "/app/academic/grades",
+    "http": 404,
+    "code": null,
+    "passed": false,
+    "message": null
+  },
+  {
+    "method": "GET",
+    "path": "/app/workspace",
+    "http": 200,
+    "code": 0,
+    "passed": true,
+    "message": ""
+  },
+  {
+    "path": "grades revoke preserves courses",
+    "passed": false
+  },
+  {
+    "method": "POST",
+    "path": "/app/academic/import",
+    "http": 200,
+    "code": 0,
+    "passed": true,
+    "message": ""
+  },
+  {
+    "method": "DELETE",
+    "path": "/app/academic/courses",
+    "http": 404,
+    "code": null,
+    "passed": false,
+    "message": null
+  },
+  {
+    "method": "GET",
+    "path": "/app/workspace",
+    "http": 200,
+    "code": 0,
+    "passed": true,
+    "message": ""
+  },
+  {
+    "path": "courses revoke preserves grades",
+    "passed": false
+  },
+  {
+    "method": "POST",
+    "path": "/app/academic/import",
+    "http": 200,
+    "code": 0,
+    "passed": true,
+    "message": ""
+  },
+  {
+    "path": "/app/conversation/material",
+    "http": 200,
+    "passed": true
+  },
+  {
+    "method": "GET",
+    "path": "/app/plan/directions",
+    "http": 200,
+    "code": 0,
+    "passed": true,
+    "message": ""
+  },
+  {
+    "method": "POST",
+    "path": "/app/plan/directions/dir_7037406dfc/select",
+    "http": 200,
+    "code": 0,
+    "passed": true,
+    "message": ""
+  },
+  {
+    "method": "GET",
+    "path": "/developer/context",
+    "http": 401,
+    "code": 1004,
+    "passed": true,
+    "message": ""
+  },
+  {
+    "method": "GET",
+    "path": "/app/bootstrap",
+    "http": 200,
+    "code": 0,
+    "passed": true,
+    "message": ""
+  },
+  {
+    "path": "conversation/message/stream",
+    "http": 200,
+    "passed": true,
+    "frames": 49,
+    "text_frames": 46,
+    "first_frame_s": 0.01,
+    "last_frame_s": 8.35,
+    "errors": []
+  },
+  {
+    "method": "GET",
+    "path": "/app/sessions/task-bc19d0e779c5/turns",
+    "http": 200,
+    "code": 0,
+    "passed": true,
+    "message": ""
+  },
+  {
+    "method": "GET",
+    "path": "/app/sessions/task-bc19d0e779c5/snapshot",
+    "http": 200,
+    "code": 0,
+    "passed": true,
+    "message": ""
+  },
+  {
+    "path": "report/summary",
+    "http": 200,
+    "passed": true,
+    "frames": 4,
+    "text_frames": 0,
+    "first_frame_s": 0.01,
+    "last_frame_s": 9.02,
+    "errors": []
+  },
+  {
+    "path": "portrait/analysis",
+    "http": 200,
+    "passed": true,
+    "frames": 4,
+    "text_frames": 0,
+    "first_frame_s": 0.01,
+    "last_frame_s": 12.72,
+    "errors": []
+  },
+  {
+    "path": "plan/todos/suggestions",
+    "http": 200,
+    "passed": true,
+    "frames": 4,
+    "text_frames": 0,
+    "first_frame_s": 0.01,
+    "last_frame_s": 8.72,
+    "errors": []
+  },
+  {
+    "path": "plan/timetable",
+    "http": 200,
+    "passed": true,
+    "frames": 4,
+    "text_frames": 0,
+    "first_frame_s": 0.01,
+    "last_frame_s": 12.81,
+    "errors": []
+  },
+  {
+    "path": "day/2026-10-16/advice",
+    "http": 200,
+    "passed": true,
+    "frames": 4,
+    "text_frames": 0,
+    "first_frame_s": 0.01,
+    "last_frame_s": 7.5,
+    "errors": []
+  },
+  {
+    "path": "match/careers",
+    "http": 200,
+    "passed": true,
+    "frames": 4,
+    "text_frames": 0,
+    "first_frame_s": 0.01,
+    "last_frame_s": 18.31,
+    "errors": []
+  },
+  {
+    "method": "POST",
+    "path": "/app/auth/logout",
+    "http": 200,
+    "code": 0,
+    "passed": true,
+    "message": ""
+  },
+  {
+    "method": "GET",
+    "path": "/app/bootstrap",
+    "http": 401,
+    "code": 1004,
+    "passed": true,
+    "message": ""
+  }
+]

@@ -22,6 +22,10 @@ export function actionStatusMatches(task, filter) {
   if (filter === 'pending') return !task.status || task.status === 'pending'
   return task.status === filter
 }
+export function taskStatusLabel(task) {
+  if (task.done) return '已完成'
+  return { pending: '未开始', in_progress: '进行中', waiting: '等待中', completed: '已完成' }[task.status || 'pending'] ?? '状态待确认'
+}
 export function taskGroup(task, now = new Date()) {
   if (task.done) return 'done'
   const due = deadline(task.due_date, now)

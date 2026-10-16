@@ -1,0 +1,261 @@
+{
+  "at": "2026-10-16T17:48:35.040476+00:00",
+  "base": "http://127.0.0.1:5287",
+  "isolated_test_account": true,
+  "results": {
+    "POST /api/v1/app/auth/register": {
+      "http": 200,
+      "expected": 200,
+      "code": 0,
+      "message": "ok",
+      "ok": true
+    },
+    "POST /api/v1/app/auth/login": {
+      "http": 200,
+      "expected": 200,
+      "code": 0,
+      "message": "ok",
+      "ok": true
+    },
+    "GET /api/v1/app/bootstrap": {
+      "http": 200,
+      "expected": 200,
+      "code": 0,
+      "message": "ok",
+      "ok": true
+    },
+    "GET /api/v1/app/portal": {
+      "http": 200,
+      "expected": 200,
+      "code": 0,
+      "message": "ok",
+      "ok": true
+    },
+    "GET /api/v1/app/sessions": {
+      "http": 200,
+      "expected": 200,
+      "code": 0,
+      "message": "ok",
+      "ok": true
+    },
+    "GET /api/v1/app/workspace": {
+      "http": 200,
+      "expected": 200,
+      "code": 0,
+      "message": "ok",
+      "ok": true
+    },
+    "GET /api/v1/app/notes": {
+      "http": 200,
+      "expected": 200,
+      "code": 0,
+      "message": "ok",
+      "ok": true
+    },
+    "GET /api/v1/app/plan/action": {
+      "http": 200,
+      "expected": 200,
+      "code": 0,
+      "message": "ok",
+      "ok": true
+    },
+    "GET /api/v1/app/plan/directions": {
+      "http": 200,
+      "expected": 200,
+      "code": 0,
+      "message": "ok",
+      "ok": true
+    },
+    "GET /api/v1/app/calendar": {
+      "http": 200,
+      "expected": 200,
+      "code": 0,
+      "message": "ok",
+      "ok": true
+    },
+    "GET /api/v1/app/achievements": {
+      "http": 200,
+      "expected": 200,
+      "code": 0,
+      "message": "ok",
+      "ok": true
+    },
+    "GET /api/v1/app/track/events": {
+      "http": 200,
+      "expected": 200,
+      "code": 0,
+      "message": "ok",
+      "ok": true
+    },
+    "GET /api/v1/app/notifications/pending": {
+      "http": 200,
+      "expected": 200,
+      "code": 0,
+      "message": "ok",
+      "ok": true
+    },
+    "GET /api/v1/app/modules": {
+      "http": 200,
+      "expected": 200,
+      "code": 0,
+      "message": "ok",
+      "ok": true
+    },
+    "GET /api/v1/app/intel": {
+      "http": 200,
+      "expected": 200,
+      "code": 0,
+      "message": "ok",
+      "ok": true
+    },
+    "GET /api/v1/app/report/full-text": {
+      "http": 200,
+      "expected": 200,
+      "code": 0,
+      "message": "ok",
+      "ok": true
+    },
+    "POST /api/v1/app/notes": {
+      "http": 200,
+      "expected": 200,
+      "code": 0,
+      "message": "ok",
+      "ok": true
+    },
+    "PATCH /api/v1/app/notes/{note_id}": {
+      "http": 200,
+      "expected": 200,
+      "code": 0,
+      "message": "ok",
+      "ok": true
+    },
+    "DELETE /api/v1/app/notes/{note_id}": {
+      "http": 200,
+      "expected": 200,
+      "code": 0,
+      "message": "ok",
+      "ok": true
+    },
+    "POST /api/v1/app/profile/fields/{key}": {
+      "http": 200,
+      "expected": 200,
+      "code": 0,
+      "message": "ok",
+      "ok": true
+    },
+    "POST /api/v1/app/academic/import": {
+      "http": 200,
+      "expected": 200,
+      "code": 0,
+      "message": "ok",
+      "ok": true
+    },
+    "POST /api/v1/app/academic/import/file": {
+      "http": 200,
+      "expected": 200,
+      "code": 0,
+      "message": "ok",
+      "ok": true
+    },
+    "DELETE /api/v1/app/academic": {
+      "http": 200,
+      "expected": 200,
+      "code": 0,
+      "message": "ok",
+      "ok": true
+    },
+    "POST /api/v1/app/conversation/material": {
+      "http": 200,
+      "expected": 200,
+      "code": 0,
+      "message": "ok",
+      "ok": true
+    },
+    "POST /api/v1/app/task/enter": {
+      "http": 200,
+      "expected": 200,
+      "code": 0,
+      "message": "ok",
+      "ok": true
+    },
+    "GET /api/v1/app/sessions/{task_id}/turns": {
+      "http": 200,
+      "expected": 200,
+      "code": 0,
+      "message": "ok",
+      "ok": true
+    },
+    "POST /api/v1/app/track": {
+      "http": 200,
+      "expected": 200,
+      "code": 0,
+      "message": "ok",
+      "ok": true
+    },
+    "GET /api/v1/app/assets/{asset_type}/versions": {
+      "http": 200,
+      "expected": 200,
+      "code": 0,
+      "message": "ok",
+      "ok": true
+    },
+    "POST /api/v1/app/assets/export": {
+      "http": 404,
+      "expected": 404,
+      "code": 1002,
+      "message": "还没有可导出的报告",
+      "ok": true,
+      "scope": "拒绝导出不存在的报告；有资料时的文件内容由 student-capabilities 验证"
+    },
+    "POST /api/v1/app/brief/today": {
+      "http": 200,
+      "ok": true,
+      "frames": 4,
+      "error": null
+    },
+    "POST /api/v1/app/portrait/analysis": {
+      "http": 200,
+      "ok": true,
+      "frames": 4,
+      "error": null
+    },
+    "POST /api/v1/app/plan/todos/suggestions": {
+      "http": 200,
+      "ok": true,
+      "frames": 4,
+      "error": null
+    },
+    "POST /api/v1/app/report/summary": {
+      "http": 200,
+      "ok": true,
+      "frames": 4,
+      "error": null
+    },
+    "POST /api/v1/app/plan/timetable": {
+      "http": 200,
+      "ok": true,
+      "frames": 4,
+      "error": null
+    },
+    "POST /api/v1/app/match/careers": {
+      "http": 200,
+      "ok": true,
+      "frames": 4,
+      "error": null
+    },
+    "POST /api/v1/app/day/{day}/advice": {
+      "http": 200,
+      "ok": true,
+      "frames": 4,
+      "error": null
+    },
+    "POST /api/v1/app/auth/logout": {
+      "http": 200,
+      "expected": 200,
+      "code": 0,
+      "message": "ok",
+      "ok": true,
+      "revocation_verified": true
+    }
+  }
+}

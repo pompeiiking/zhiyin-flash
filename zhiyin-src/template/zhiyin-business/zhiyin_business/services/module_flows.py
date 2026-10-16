@@ -6,7 +6,7 @@ import hashlib
 import json
 
 from zhiyin_data_sdk.repositories.module_flows import ModuleFlowRepository
-from zhiyin_kernel.errors import AccessDenied, DuplicateResource, InvalidRequest
+from zhiyin_kernel.errors import Forbidden, DuplicateResource, InvalidRequest
 from zhiyin_kernel.modules import ModuleFlowDefinition, ModuleFlowDraft, ModuleFlowRunRequest
 from zhiyin_business.services.module_contracts import resolve_binding, schema_at_path, validate_bindings, validate_contract
 
@@ -81,7 +81,7 @@ class ModuleFlowService:
         if draft.expected_revision:
             current = await self.repository.get(draft.id)
             if current["owner"] != actor and not admin:
-                raise AccessDenied("只能修改自己创建的工作流")
+                raise Forbidden("只能修改自己创建的工作流")
         definition = self.validate(ModuleFlowDefinition(input_schema=draft.input_schema, nodes=draft.nodes))
         value = draft.model_dump()
         value.update(definition.model_dump())
@@ -90,14 +90,14 @@ class ModuleFlowService:
     async def publish(self, workflow_id, revision, actor, *, admin=False):
         current = await self.repository.get(workflow_id)
         if current["owner"] != actor and not admin:
-            raise AccessDenied("只能发布自己创建的工作流")
+            raise Forbidden("只能发布自己创建的工作流")
         definition = self.validate(ModuleFlowDefinition.model_validate(current["definition"]), pin=True)
         return await self.repository.publish(workflow_id, revision, definition.model_dump(), actor)
 
     async def unpublish(self, workflow_id, revision, actor, *, admin=False):
         current = await self.repository.get(workflow_id)
         if current["owner"] != actor and not admin:
-            raise AccessDenied("只能暂停自己创建的工作流")
+            raise Forbidden("只能暂停自己创建的工作流")
         # A stale or missing module is precisely why an owner may need to pause
         # publication; removing the public pointer never invokes its code.
         return await self.repository.unpublish(workflow_id, revision, actor)
@@ -105,16 +105,16 @@ class ModuleFlowService:
     async def run(self, workflow_id, user_id, body: ModuleFlowRunRequest, *, published=False, admin=False):
         current = await self.repository.get(workflow_id, published=published)
         if not published and current["owner"] != user_id and not admin:
-            raise AccessDenied("只能调试自己创建的工作流")
+            raise Forbidden("只能调试自己创建的工作流")
         if body.expected_revision is not None and body.expected_revision != current["revision"]:
             raise DuplicateResource("工作流版本已变化")
         definition = self.validate(ModuleFlowDefinition.model_validate(current["definition"]), pin=True)
         validate_contract(definition.input_schema, body.input, "workflow.input")
         writes = any(node.operation == "action" for node in definition.nodes)
         if writes and (body.mode != "live" or not body.confirm_actions):
-            raise AccessDenied("业务操作需要真实数据模式，并明确确认 confirm_actions")
+            raise Forbidden("业务操作需要真实数据模式，并明确确认 confirm_actions")
         if published and body.mode != "live":
-            raise AccessDenied("用户工作流只允许真实数据模式")
+            raise Forbidden("用户工作流只允许真实数据模式")
         if body.mode == "live":
             # Check current policy even for a duplicate request whose persisted
             # receipt would otherwise bypass the module execution checks.
@@ -122,9 +122,9 @@ class ModuleFlowService:
                 policy = await self.platform.enabled_policy(node.module_id)
                 manifest = self.platform.definition(node.module_id).manifest
                 if set(manifest.reads) - set(policy.reads):
-                    raise AccessDenied("工作流模块的数据授权已撤销")
+                    raise Forbidden("工作流模块的数据授权已撤销")
                 if node.operation == "action" and node.action not in policy.actions:
-                    raise AccessDenied("工作流模块的业务操作授权已撤销")
+                    raise Forbidden("工作流模块的业务操作授权已撤销")
         digest = hashlib.sha256(json.dumps({"revision": current["revision"], "definition": definition.model_dump(),
             "request": body.model_dump(exclude={"request_id"})}, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
         run, created = await self.repository.begin_run(workflow_id, current["revision"], user_id, body.request_id, digest, body.mode)

@@ -35,6 +35,7 @@ class ErrorCode(IntEnum):
     GUEST_LIMIT = 1005            # 游客采集超过 2 问
     STAGE_UNCERTAIN = 1006        # 环节判定不确定，已回落澄清追问
     DEPENDENCY_UNAVAILABLE = 1007 # 模型 / 知识库不可用（已降级）
+    FORBIDDEN = 1008             # 身份有效，但无权操作；保留登录状态
     INTERNAL = 1999
 
 

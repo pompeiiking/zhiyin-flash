@@ -10,7 +10,7 @@ def test_profile_and_badge_copies_are_consumed():
     source = (WEB / "lib/server-copy.ts").read_text(encoding="utf-8")
     assert "profile.field.${key}" in source and "badge.${key}.${part}" in source
     assert "profileLabel(field.key" in (WEB / "views/StudentView.vue").read_text(encoding="utf-8")
-    assert "badgeCopy(r.key" in (WEB / "lib/growth-records.ts").read_text(encoding="utf-8")
+    assert "badgeCopy(record.key" in (WEB / "lib/growth-records.ts").read_text(encoding="utf-8")
 
 
 def test_portal_keeps_the_selected_classic_intro():

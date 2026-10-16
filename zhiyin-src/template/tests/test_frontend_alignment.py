@@ -76,12 +76,16 @@ def test_single_frontend_preserves_classic_portal_and_brands():
 
 def test_chat_preserves_retry_identity_and_real_task_ids():
     chat = (WEB / "src/views/ConversationView.vue").read_text(encoding="utf-8")
+    chat = "".join(chat.split())
     for code in [
         "client_msg_id:crypto.randomUUID()",
-        "retryRequest.task_id===sessionId",
-        "messageController?.abort()",
-        "completeGuide(t.guideTask.task_id)",
-        "backendClient.actionDone({task_id:taskId",
+        "retry&&failedRequest?failedRequest:",
+        "demo.state.currentSessionId!==sessionId",
+        "watch(()=>demo.state.currentSessionId,",
+        "selectedOption.value=null;failedRequest=null;pending.value=null",
+        "controller?.abort()",
+        "toggleTask(turn.guideTask.task_id)",
+        "backendClient.actionDone({task_id:id",
     ]:
         assert code in chat
 

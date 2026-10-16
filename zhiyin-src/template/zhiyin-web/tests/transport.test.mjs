@@ -116,3 +116,11 @@ test('chat SSE preserves request identity and delivers partial UTF8 text before 
  push.enqueue(new TextEncoder().encode('data: {"result":{"task_id":"real-session"}}\n\n'));push.close()
  assert.equal((await pending).task_id,'real-session')
 })
+test('permission denial preserves login across student, developer and streaming transports',async()=>{
+  const app=runtime(async()=>json(null,1008,403))
+  await assert.rejects(app.backendClient.workspace())
+  await assert.rejects(app.api('/developer/context'))
+  await assert.rejects(app.streamBackend('portraitAnalysis',{}))
+  assert.deepEqual(app.events,[])
+  assert.equal(app.storage.get('zhiyin_token'),'test-token')
+})

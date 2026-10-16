@@ -18,14 +18,14 @@ const tools = computed(() => [
  {id:'import',name:'成绩导入',step:1,reads:'本人提供的成绩单',writes:(backendDemo.state.academic?.grades?.length??0)+' 条成绩，按学期核对导入记录',when:'资料更新时，重新核对导入快照',to:'/grades',state:backendDemo.state.academic?.grades?.length?'已有资料':'等待资料'},
  {id:'profile',name:'画像分析',step:2,reads:'已核对的学校资料、对话与本人更正',writes:'已有信息、缺口与判断的依赖关系',when:'先补资料，再核对每条判断',to:'/profile',state:profileCount.value?'已有画像':'等待资料'},
  {id:'directions',name:'方向对比',step:2,reads:'个人画像和岗位要求笔记',writes:directionCount.value+' 条方向方案，可逐项核对目标、依据与风险',when:'需要比较方向、调整看重程度时',to:'/directions',state:directionCount.value?'可比较':'等待方案'},
- {id:'tasks',name:'任务建议',step:3,reads:'已选方向与报告中的差距',writes:demo.use.now.value.length+' 件现在可以动手的任务',when:'把判断拆成今天做得完的小事',to:'/home',state:demo.use.now.value.length?'可执行':taskCount.value?'已全部完成':'暂未形成'},
+ {id:'tasks',name:'任务建议',step:3,reads:'已选方向与报告中的差距',writes:demo.use.now.value.length+' 件未完成任务',when:'把判断拆成今天做得完的小事',to:'/home',state:demo.use.now.value.length?'待处理':taskCount.value?'已全部完成':'暂未形成'},
  {id:'schedule',name:'课表导入与日历',step:3,reads:'课程占用、任务时长与截止节点',writes:'任务、课程与空档，放在同一时间刻度上',when:'课表或计划变化后重新看一周',to:'/schedule',state:backendDemo.state.academic?'可查看':'等待课表'},
 ])
 const groups=computed(()=>axis.value==='state' ? [true,false].map(ready=>({key:String(ready),title:ready?'可以使用':'需要先补充资料',items:tools.value.filter(t=>/等待|暂未/.test(t.state)!==ready)})) : [1,2,3].map(step=>({key:String(step),title:['','资料管理','分析与比较','行动安排'][step],items:tools.value.filter(t=>t.step===step)})))
 const steps=computed(()=>[
  {title:'把学校那边的记录接进来',name:'第一步 · 取资料',detail:'学籍核验、成绩与课表导入。先做这一步，判断才有得可用。',output:(backendDemo.state.academic?.grades?.length??0)+' 条成绩与 '+(backendDemo.state.academic?.courses?.length??0)+' 门课程',next:'被第 2 步读'},
  {title:'从资料里得出判断，并标上把握度',name:'第二步 · 看出东西',detail:'画像分析给出结论、缺口与下一步；方向对比用同一把尺子比较三个方向。',output:profileCount.value+' 项画像字段 · '+directionCount.value+' 条方向',next:'被第 3 步读'},
- {title:'把判断拆成今天做得完的小事',name:'第三步 · 变成动作',detail:'任务建议写进计划，周时间表把课程与任务放进具体时段。选择与完成由你确认。',output:demo.use.now.value.length+' 件待执行 · '+demo.use.done.value.length+' 件已完成',next:'等你确认'},
+ {title:'把判断拆成今天做得完的小事',name:'第三步 · 变成动作',detail:'任务建议写进计划，周时间表把课程与任务放进具体时段。选择与完成由你确认。',output:demo.use.now.value.length+' 件未完成 · '+demo.use.done.value.length+' 件已完成',next:'等你确认'},
  {title:'用完一轮，资料池该长一条',name:'第四步 · 回到资料',detail:'完成记录与复盘保留实际发生的事，下一次判断还能追到这些依据。',output:demo.use.done.value.length+' 件完成记录',next:'回到画像与复盘'},
 ])
 async function reload(user=true){ if(busy.value)return;busy.value=true;error.value='';try {const [workspace,report,directions,action]=await Promise.all([backendClient.workspace(),backendClient.report(),backendClient.directions(),backendClient.action()]);backendDemo.setWorkspace(workspace);backendDemo.setReport(report);backendDemo.setLiveDirections(directions);backendDemo.setAction(action);if(user)status.value='已重新读取画像、报告与方向。本人授权、资料导入和任务确认仍需你操作。'}catch{error.value='部分资料没有重新读到。原资料仍保留，请重试。'}finally{busy.value=false}}

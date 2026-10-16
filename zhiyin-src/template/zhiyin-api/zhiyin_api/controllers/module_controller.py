@@ -9,7 +9,7 @@ from fastapi import APIRouter, Request
 from pydantic import BaseModel, ConfigDict, Field
 
 from zhiyin_api.dto.common import ApiResponse
-from zhiyin_kernel.errors import AccessDenied
+from zhiyin_kernel.errors import AccessDenied, Forbidden
 from zhiyin_kernel.modules import (ModuleAction, ModuleDeveloperContext, ModulePolicy, ModulePreview, ModuleResult,
                                    ModuleView, ReleaseJob, ReleaseRequest, ModuleInvoke, ModuleCapability,
                                    ModuleFlowDraft, ModuleFlowPublish, ModuleFlowView, ModuleFlowRunRequest, ModuleFlowRun)
@@ -110,7 +110,7 @@ async def preview_workflow(request: Request, workflow_id: str, body: ModuleFlowR
     service = platform(request)
     user = await service.require(token(request))
     if body.mode == "live" and service.environment not in {"workbench", "staging", "candidate", "integration"}:
-        raise AccessDenied("真实调试仅在隔离测试环境开放")
+        raise Forbidden("真实调试仅在隔离测试环境开放")
     return ApiResponse(data=await service.flows.run(workflow_id, user.id, body, admin=user.role.value == "admin"))
 
 
@@ -151,7 +151,7 @@ async def preview_module(request: Request, module_id: str, body: ModulePreview):
     service = platform(request)
     user = await service.require(token(request))
     if body.mode == "live" and service.environment not in {"workbench", "staging"}:
-        raise AccessDenied("真实预览仅在隔离测试环境开放")
+        raise Forbidden("真实预览仅在隔离测试环境开放")
     return ApiResponse(data=await service.invoke(module_id, user.id, body.input, expected_version=body.expected_version,
         mode=body.mode, fixture=body.fixture, preview=True))
 
@@ -189,7 +189,7 @@ async def approve_release(request: Request, job_id: str):
     service = platform(request)
     user = await service.require(token(request), admin=True)
     if service.environment != "workbench":
-        raise AccessDenied("只能从开发工作台发布")
+        raise Forbidden("只能从开发工作台发布")
     return ApiResponse(data=public_job(await service.repository.approve(job_id, user.id)))
 
 
@@ -199,7 +199,7 @@ def executor(request):
         raise AccessDenied("执行器凭据无效")
     service = platform(request)
     if service.environment != "workbench":
-        raise AccessDenied("该环境不接收发布执行器")
+        raise Forbidden("该环境不接收发布执行器")
     return service
 
 

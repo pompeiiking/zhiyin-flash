@@ -22,7 +22,7 @@ if __name__ == '__main__': unittest.main()
 
 async def test_agno_stream_emits_before_model_finishes():
     import json
-    from test_orchestration import _StubModel, _PromptRegistry
+    from tests.test_orchestration import _StubModel, _PromptRegistry
     from agno.models.response import ModelResponse
     from zhiyin_orchestration.impl.agno_engine import AgnoAgentEngine
     from zhiyin_orchestration.agent import AgentRequest

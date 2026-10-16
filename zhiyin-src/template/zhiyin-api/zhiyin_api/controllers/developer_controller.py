@@ -142,8 +142,8 @@ async def worker_release(request: Request, version_id: str):
     version = await repository.version(version_id)
     project = await repository.project(version["project_id"])
     if not project["auto_deploy"] or version["channel"] != "main":
-        from zhiyin_kernel.errors import AccessDenied
-        raise AccessDenied("此版本不适用自动发布策略")
+        from zhiyin_kernel.errors import Forbidden
+        raise Forbidden("此版本不适用自动发布策略")
     status = await repository.status()
     return ApiResponse(data=public_job(await repository.release(version_id, "source-worker", status["environment"]["revision"], internal_worker=True)))
 

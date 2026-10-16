@@ -17,6 +17,9 @@ const query = ref('')
 const error = ref('')
 const busy = ref(false)
 const loaded = ref(false)
+const refreshing = ref(false)
+const lastRefresh = ref(false)
+const status = ref('')
 const matchOpen = ref(false)
 const reading = ref<IntelItemView | null>(null)
 const selectedId = ref('')
@@ -80,21 +83,26 @@ async function startMatch() {
   matchPanel.value?.run()
 }
 
-async function load() {
+async function load(refresh = false) {
   if (busy.value) return
   busy.value = true
+  refreshing.value = refresh
+  lastRefresh.value = refresh
   error.value = ''
+  status.value = ''
   try {
-    const result = await backendClient.intel('')
+    const result = await (refresh ? backendClient.refreshIntel('') : backendClient.intel(''))
     if (!result || !Array.isArray(result.items)) throw new Error('Incomplete intel')
     backendDemo.setIntel(result.items)
+    if (refresh) status.value = result.items.length ? `已重新获取 ${result.items.length} 条职业资料。` : '本次未获取到职业资料，可稍后重试或使用画像匹配。'
     if (!result.items.some((item) => item.id === selectedId.value)) {
       selectedId.value = result.items.find((item) => item.kind === 'occupation')?.id ?? result.items[0]?.id ?? ''
     }
   } catch {
-    error.value = '职业资料没有读取成功。可以稍后重试，画像匹配仍可单独发起。'
+    error.value = refresh ? '职业资料更新失败，已读取的内容仍保留，请稍后重试。' : '职业资料没有读取成功。可以稍后重试，画像匹配仍可单独发起。'
   } finally {
     busy.value = false
+    refreshing.value = false
     loaded.value = true
   }
 }
@@ -104,7 +112,10 @@ onMounted(() => { void load() })
 
 <template>
   <div class="ws-page intel-page">
-    <StatusBanner v-if="error" tone="error" :message="error" retry-label="重新读取" :retrying="busy" @retry="load" @dismiss="error = ''" />
+    <StatusBanner v-if="error" tone="error" :message="error" :retry-label="lastRefresh ? '重试更新' : '重新读取'" :retrying="busy" @retry="load(lastRefresh)" @dismiss="error = ''" />
+
+    <StatusBanner v-if="status" tone="info" :message="status" @dismiss="status = ''" />
+    <div class="intel-refresh"><button class="btn" type="button" :disabled="busy" @click="load(true)">{{ refreshing ? '正在更新资料…' : '更新职业资料' }}</button></div>
 
     <div v-if="initialLoading" class="intel-loading" role="status" aria-label="正在读取职业资料">
       <SkeletonBlock variant="list" :lines="6" />
@@ -231,7 +242,7 @@ onMounted(() => { void load() })
       </div>
     </template>
 
-    <EmptyState v-else kind="intel" title="还没有职业资料" description="当前没有可浏览的方向，你仍可以主动发起画像匹配。" :next="false">
+    <EmptyState v-else kind="intel" title="还没有职业资料" description="可更新职业资料，或使用当前画像发起职业匹配。" :next="false">
       <button class="btn btn--primary" type="button" data-sheet-trigger @click="startMatch">开始画像匹配</button>
     </EmptyState>
 
@@ -246,6 +257,7 @@ onMounted(() => { void load() })
 </template>
 
 <style scoped>
+.intel-refresh { display: flex; justify-content: flex-end; margin-bottom: 12px; }
 .intel-page { width: 100%; min-width: 0; padding-bottom: 48px; }
 .intel-loading { padding: 20px; border: 1px solid var(--c-border); border-radius: 16px; background: var(--c-surface); }
 

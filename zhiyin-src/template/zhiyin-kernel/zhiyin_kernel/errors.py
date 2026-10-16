@@ -42,9 +42,15 @@ class ResourceNotFound(KernelError, LookupError):
 
 
 class AccessDenied(KernelError, PermissionError):
-    """未认证或无权访问（包括「令牌无效 / 已撤销 / 已过期」）。"""
+    """未认证（包括「令牌无效 / 已撤销 / 已过期」）。"""
 
     code = "UNAUTHORIZED"
+
+
+class Forbidden(AccessDenied):
+    """身份有效，但没有访问或操作权限；不得清除登录会话。"""
+
+    code = "FORBIDDEN"
 
 
 class InvalidRequest(KernelError, ValueError):
@@ -61,6 +67,7 @@ class DuplicateResource(KernelError, ValueError):
 
 __all__ = [
     "AccessDenied",
+    "Forbidden",
     "DuplicateResource",
     "InvalidRequest",
     "KernelError",

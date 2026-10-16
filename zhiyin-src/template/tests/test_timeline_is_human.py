@@ -166,5 +166,6 @@ def test_usage_telemetry_never_reaches_the_review_timeline() -> None:
 def test_review_timeline_is_paginated_and_uses_backend_labels() -> None:
     source = REVIEW_OVERLAY.read_text(encoding="utf-8")
     assert "usePagedItems" in source and "ResultPager" in source
-    assert "title:e.title" in source
-    assert "e.type==='milestone_done'" in source
+    compact = "".join(source.split())
+    assert "title:event.title" in compact
+    assert "event.type==='milestone_done'" in compact

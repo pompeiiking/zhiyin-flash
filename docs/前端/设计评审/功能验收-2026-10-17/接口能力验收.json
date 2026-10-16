@@ -1,0 +1,374 @@
+{
+  "at": "2026-10-16T16:57:42.306031+00:00",
+  "environment": "local Docker HTTP + PostgreSQL + JWT; fresh QA accounts only",
+  "cases": [
+    {
+      "endpoint": "POST /api/v1/app/auth/login",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "POST /api/v1/app/auth/login",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "GET /api/v1/app/preferences",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "PUT /api/v1/app/preferences",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "GET /api/v1/app/preferences",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "POST /api/v1/app/plan/action/phases",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "POST /api/v1/app/plan/action/phases",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "PUT /api/v1/app/plan/action/phases/{phase_id}",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "PUT /api/v1/app/plan/action/phases/{phase_id}",
+      "http": 422,
+      "expected": 422,
+      "passed": true
+    },
+    {
+      "endpoint": "POST /api/v1/app/plan/action/tasks",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "POST /api/v1/app/plan/action/tasks",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "POST /api/v1/app/plan/action/tasks",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "GET /api/v1/app/plan/action",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "GET /api/v1/app/assets/action_plan/versions",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "GET /api/v1/app/assets/{asset_type}/versions/{version}/content",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "PUT /api/v1/app/plan/action/tasks/{task_id}",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "GET /api/v1/app/assets/{asset_type}/versions/{version}/content",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "PUT /api/v1/app/plan/action/tasks/{task_id}",
+      "http": 404,
+      "expected": 404,
+      "passed": true
+    },
+    {
+      "endpoint": "GET /api/v1/app/assets/{asset_type}/versions/{version}/content",
+      "http": 404,
+      "expected": 404,
+      "passed": true
+    },
+    {
+      "endpoint": "POST /api/v1/app/reviews",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "PUT /api/v1/app/reviews/{review_id}",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "POST /api/v1/app/reviews/{review_id}/apply",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "POST /api/v1/app/reviews/{review_id}/apply",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "GET /api/v1/app/reviews",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "POST /api/v1/app/reviews/{review_id}/apply",
+      "http": 404,
+      "expected": 404,
+      "passed": true
+    },
+    {
+      "endpoint": "GET /api/v1/app/notifications",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "PATCH /api/v1/app/notifications/{message_id}",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "PATCH /api/v1/app/notifications/{message_id}",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "PATCH /api/v1/app/notifications/{message_id}",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "PATCH /api/v1/app/notifications/{message_id}",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "PATCH /api/v1/app/notifications/{message_id}",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "GET /api/v1/app/notifications/pending",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "PATCH /api/v1/app/notifications/{message_id}",
+      "http": 404,
+      "expected": 404,
+      "passed": true
+    },
+    {
+      "endpoint": "POST /api/v1/app/academic/import",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "GET /api/v1/app/schedule/semester",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "PUT /api/v1/app/schedule/semester",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "GET /api/v1/app/schedule/workload",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "GET /api/v1/app/plan/direction-weights",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "PUT /api/v1/app/plan/direction-weights",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "GET /api/v1/app/plan/direction-comparison",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "POST /api/v1/app/measurements",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "GET /api/v1/app/plan/direction-comparison",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "POST /api/v1/app/measurements",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "POST /api/v1/app/measurements",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "GET /api/v1/app/measurements",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "POST /api/v1/app/measurements",
+      "http": 404,
+      "expected": 404,
+      "passed": true
+    },
+    {
+      "endpoint": "POST /api/v1/app/assets/export",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "GET /api/v1/app/assets/download/{export_id}",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "GET /api/v1/app/assets/download/{export_id}",
+      "http": 404,
+      "expected": 404,
+      "passed": true
+    },
+    {
+      "endpoint": "POST /api/v1/app/assets/export",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "GET /api/v1/app/assets/download/{export_id}",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "GET /api/v1/app/assets/download/{export_id}",
+      "http": 404,
+      "expected": 404,
+      "passed": true
+    },
+    {
+      "endpoint": "PUT /api/v1/app/preferences",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "POST /api/v1/app/brief/today",
+      "http": 200,
+      "expected": 200,
+      "passed": true,
+      "detail": "关闭上传材料来源后，使用其余允许的资料生成简报"
+    },
+    {
+      "endpoint": "PUT /api/v1/app/preferences",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "GET /api/v1/app/bootstrap",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "POST /api/v1/app/task/enter",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "GET /api/v1/app/sessions/{task_id}/snapshot",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "GET /api/v1/app/sessions/{task_id}/snapshot",
+      "http": 404,
+      "expected": 404,
+      "passed": true
+    },
+    {
+      "endpoint": "POST /api/v1/app/conversation/message",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "GET /api/v1/app/sessions/{task_id}/snapshot",
+      "http": 200,
+      "expected": 200,
+      "passed": true
+    }
+  ],
+  "model_snapshot_roundtrip": true
+}

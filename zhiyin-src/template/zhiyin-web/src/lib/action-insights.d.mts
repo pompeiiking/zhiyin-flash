@@ -5,5 +5,6 @@ export function dateKey(value?:string|null):string
 export function deadline(value?:string|null,now?:Date):{label:string;days:number|null;overdue:boolean}
 export function actionRows(plan?:DeepReadonly<ActionPlanView>|null):ActionRow[]
 export function actionStatusMatches(task:DeepReadonly<ActionTaskView>,filter:string):boolean
+export function taskStatusLabel(task:DeepReadonly<ActionTaskView>):string
 export function taskGroup(task:ActionTaskView,now?:Date):'done'|'undated'|'overdue'|'today'|'upcoming'
 export function directionRanking<T extends DeepReadonly<DirectionPlanView>>(plans:readonly T[],order:string):T[]

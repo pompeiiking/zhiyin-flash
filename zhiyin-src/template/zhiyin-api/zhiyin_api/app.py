@@ -44,6 +44,7 @@ from zhiyin_api.dto.common import ApiResponse, ErrorCode
 from zhiyin_api.runtime import cache_snapshot, get_runtime
 from zhiyin_kernel.errors import (
     AccessDenied,
+    Forbidden,
     DuplicateResource,
     InvalidRequest,
     KernelError,
@@ -169,6 +170,10 @@ def _install_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(ResourceNotFound)
     async def _not_found(_: Request, exc: ResourceNotFound) -> JSONResponse:
         return _envelope(ErrorCode.NOT_FOUND, str(exc), 404)
+
+    @app.exception_handler(Forbidden)
+    async def _forbidden(_: Request, exc: Forbidden) -> JSONResponse:
+        return _envelope(ErrorCode.FORBIDDEN, str(exc), 403)
 
     @app.exception_handler(AccessDenied)
     async def _unauthorized(_: Request, exc: AccessDenied) -> JSONResponse:

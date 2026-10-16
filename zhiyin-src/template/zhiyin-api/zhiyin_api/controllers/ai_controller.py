@@ -60,6 +60,8 @@ _ERROR_CODE: dict[str, ErrorCode] = {
     "CONFLICT": ErrorCode.CONFLICT,
     "VALIDATION": ErrorCode.INVALID_PARAM,
     "INVALID_PARAM": ErrorCode.INVALID_PARAM,
+    "UNAUTHORIZED": ErrorCode.UNAUTHORIZED,
+    "FORBIDDEN": ErrorCode.FORBIDDEN,
 }
 
 
@@ -82,6 +84,7 @@ _USER_MESSAGE: dict[ErrorCode, str] = {
     ErrorCode.NOT_FOUND: "这一条现在还没有可看的内容。",
     ErrorCode.CONFLICT: "刚才已经提交过一次了，稍等一下再看。",
     ErrorCode.UNAUTHORIZED: "登录状态过期了，重新登录后再试。",
+    ErrorCode.FORBIDDEN: "当前账号没有此操作的权限。",
     ErrorCode.GUEST_LIMIT: "先登录再继续 —— 游客能问的次数用完了。",
     ErrorCode.STAGE_UNCERTAIN: "还没判断出你现在处在哪一步，再多说一句。",
     ErrorCode.DEPENDENCY_UNAVAILABLE: "这一步暂时算不了，请稍后再试。",
@@ -138,7 +141,8 @@ async def _stream(request: Request, key: str, arg: str = "") -> Response:
             503,
         )
     except PermissionError as exc:
-        return _envelope(ErrorCode.UNAUTHORIZED, _user_message(exc, ErrorCode.UNAUTHORIZED), 401)
+        code = _code_of(exc, default=ErrorCode.UNAUTHORIZED)
+        return _envelope(code, _user_message(exc, code), 403 if code == ErrorCode.FORBIDDEN else 401)
     except LookupError as exc:
         return _envelope(ErrorCode.NOT_FOUND, _user_message(exc, ErrorCode.NOT_FOUND), 404)
     except Exception as exc:  # noqa: BLE001 - 流外失败同样必须走信封

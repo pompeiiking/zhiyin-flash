@@ -45,3 +45,18 @@ test('rank only valid backend scores; unknown values remain unknown and inputs r
   assert.equal(plans[0].match_score,null)
   assert.deepEqual(directionRanking(plans,'original'),plans)
 })
+import { taskStatusLabel } from '../src/lib/action-insights.mjs'
+test('review preserves pending and waiting states independently of deadlines', () => {
+  assert.equal(taskStatusLabel({status:'pending',due_date:'2000-01-01'}), '未开始')
+  assert.equal(taskStatusLabel({status:'waiting'}), '等待中')
+  assert.equal(taskStatusLabel({status:'in_progress'}), '进行中')
+  assert.equal(taskStatusLabel({status:'completed'}), '已完成')
+  assert.equal(taskStatusLabel({done:true,status:'waiting'}), '已完成')
+  assert.equal(taskStatusLabel({}), '未开始')
+})
+test('timestamps use local calendar dates while date-only values remain unchanged', () => {
+  const local = new Date(2026, 9, 17, 0, 30)
+  assert.equal(dateKey(local.toISOString()), '2026-10-17')
+  assert.equal(dateKey('2026-10-17'), '2026-10-17')
+  assert.equal(dateKey('invalid'), '')
+})

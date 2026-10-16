@@ -1,0 +1,162 @@
+[
+  {
+    "page": "profile",
+    "size": {
+      "width": 390,
+      "height": 844
+    },
+    "scroll": 380,
+    "viewport": 380,
+    "signals": [
+      "    - paragraph: 当前未列出待补充项"
+    ]
+  },
+  {
+    "page": "tools",
+    "size": {
+      "width": 390,
+      "height": 844
+    },
+    "scroll": 380,
+    "viewport": 380,
+    "signals": [
+      "    - paragraph: 3 件未完成任务"
+    ]
+  },
+  {
+    "page": "intel",
+    "size": {
+      "width": 390,
+      "height": 844
+    },
+    "scroll": 380,
+    "viewport": 380,
+    "signals": [
+      "  - button \"更新职业资料\""
+    ]
+  },
+  {
+    "page": "grades",
+    "size": {
+      "width": 390,
+      "height": 844
+    },
+    "scroll": 390,
+    "viewport": 390,
+    "signals": []
+  },
+  {
+    "page": "schedule",
+    "size": {
+      "width": 390,
+      "height": 844
+    },
+    "scroll": 380,
+    "viewport": 380,
+    "signals": []
+  },
+  {
+    "page": "notes",
+    "size": {
+      "width": 390,
+      "height": 844
+    },
+    "scroll": 380,
+    "viewport": 380,
+    "signals": []
+  },
+  {
+    "page": "review",
+    "size": {
+      "width": 390,
+      "height": 844
+    },
+    "scroll": 380,
+    "viewport": 380,
+    "signals": [
+      "        - option \"未开始 · 项目第二步\"",
+      "        - option \"未开始 · 功能验收：浏览器任务安排\"",
+      "        - option \"未开始 · 提交成果\""
+    ]
+  },
+  {
+    "page": "profile",
+    "size": {
+      "width": 1280,
+      "height": 800
+    },
+    "scroll": 1281,
+    "viewport": 1281,
+    "signals": [
+      "    - paragraph: 当前未列出待补充项"
+    ]
+  },
+  {
+    "page": "tools",
+    "size": {
+      "width": 1280,
+      "height": 800
+    },
+    "scroll": 1281,
+    "viewport": 1281,
+    "signals": [
+      "    - paragraph: 3 件未完成任务"
+    ]
+  },
+  {
+    "page": "intel",
+    "size": {
+      "width": 1280,
+      "height": 800
+    },
+    "scroll": 1281,
+    "viewport": 1281,
+    "signals": [
+      "  - button \"更新职业资料\""
+    ]
+  },
+  {
+    "page": "grades",
+    "size": {
+      "width": 1280,
+      "height": 800
+    },
+    "scroll": 1281,
+    "viewport": 1281,
+    "signals": []
+  },
+  {
+    "page": "schedule",
+    "size": {
+      "width": 1280,
+      "height": 800
+    },
+    "scroll": 1281,
+    "viewport": 1281,
+    "signals": []
+  },
+  {
+    "page": "notes",
+    "size": {
+      "width": 1280,
+      "height": 800
+    },
+    "scroll": 1281,
+    "viewport": 1281,
+    "signals": []
+  },
+  {
+    "page": "review",
+    "size": {
+      "width": 1280,
+      "height": 800
+    },
+    "scroll": 1281,
+    "viewport": 1281,
+    "signals": [
+      "        - option \"未开始 · 项目第二步\"",
+      "        - option \"未开始 · 功能验收：浏览器任务安排\"",
+      "        - option \"未开始 · 提交成果\""
+    ]
+  }
+]

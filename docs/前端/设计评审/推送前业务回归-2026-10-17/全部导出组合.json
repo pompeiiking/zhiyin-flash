@@ -1,0 +1,41 @@
+{
+  "cases": [
+    {
+      "asset": "report",
+      "format": "pdf",
+      "bytes": 2782,
+      "passed": true
+    },
+    {
+      "asset": "report",
+      "format": "docx",
+      "bytes": 1174,
+      "passed": true
+    },
+    {
+      "asset": "direction_plan",
+      "format": "pdf",
+      "bytes": 2566,
+      "passed": true
+    },
+    {
+      "asset": "direction_plan",
+      "format": "docx",
+      "bytes": 1081,
+      "passed": true
+    },
+    {
+      "asset": "action_plan",
+      "format": "pdf",
+      "bytes": 2817,
+      "passed": true
+    },
+    {
+      "asset": "action_plan",
+      "format": "docx",
+      "bytes": 1231,
+      "passed": true
+    }
+  ],
+  "passed": true
+}

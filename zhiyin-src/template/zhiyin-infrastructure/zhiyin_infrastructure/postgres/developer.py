@@ -7,7 +7,7 @@ from uuid import uuid4
 import asyncpg
 
 from zhiyin_infrastructure.postgres.modules import _job, _json
-from zhiyin_kernel.errors import AccessDenied, DuplicateResource, InvalidRequest, ResourceNotFound
+from zhiyin_kernel.errors import Forbidden, DuplicateResource, InvalidRequest, ResourceNotFound
 
 
 def _project(row):
@@ -39,7 +39,7 @@ async def _actor_role(conn, actor):
     row = await conn.fetchrow("SELECT payload FROM biz_user_account WHERE id=$1 FOR SHARE", actor)
     role = _json(row["payload"]).get("role") if row else None
     if role not in {"developer", "admin"}:
-        raise AccessDenied("开发者或管理员权限已撤销")
+        raise Forbidden("开发者或管理员权限已撤销")
     return role
 
 
@@ -53,7 +53,7 @@ async def _authorize_project(conn, project, actor, *, manage=False, internal_wor
         return role
     if not manage and actor in _json(project["members"]):
         return role
-    raise AccessDenied("没有这个模块项目的管理权限" if manage else "不是此项目的开发成员")
+    raise Forbidden("没有这个模块项目的管理权限" if manage else "不是此项目的开发成员")
 
 
 class PostgresDeveloperRepository:
@@ -79,7 +79,7 @@ class PostgresDeveloperRepository:
             project = await conn.fetchrow("SELECT * FROM biz_developer_project WHERE id=$1 FOR UPDATE", project_id)
             role = await _authorize_project(conn, project, actor, manage=True)
             if role != "admin" and (body["trusted"] != project["trusted"] or body["auto_deploy"] != project["auto_deploy"]):
-                raise AccessDenied("项目信任和自动发布策略由管理员配置")
+                raise Forbidden("项目信任和自动发布策略由管理员配置")
             if body["auto_deploy"] and not body["trusted"]:
                 raise InvalidRequest("启用自动发布前必须授权项目运行")
             for member in sorted(set(body["members"])):
@@ -186,9 +186,9 @@ class PostgresDeveloperRepository:
                 project = await conn.fetchrow("SELECT * FROM biz_developer_project WHERE id=$1 FOR SHARE", row["project_id"])
                 await _authorize_project(conn, project, actor, internal_worker=internal_worker)
                 if not project["trusted"]:
-                    raise AccessDenied("项目尚未取得运行授权")
+                    raise Forbidden("项目尚未取得运行授权")
                 if internal_worker and (not project["auto_deploy"] or row["channel"] != "main"):
-                    raise AccessDenied("自动发布策略已撤销或版本不属于 main 渠道")
+                    raise Forbidden("自动发布策略已撤销或版本不属于 main 渠道")
                 if row["release_job_id"]:
                     return _job(await conn.fetchrow("SELECT * FROM biz_module_release WHERE id=$1", row["release_job_id"]))
                 report = _json(row["report"])

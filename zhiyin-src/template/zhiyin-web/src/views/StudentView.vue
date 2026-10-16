@@ -830,7 +830,7 @@ onMounted(()=>{ void loadWorkspace() })
 
 <template>
   <div class="ws-page profile-page p7">
-    <PageHeading title="个人画像" description="把零散经历整理成可核对、可继续验证的职业探索档案。"><template #meta><div class="c2-page-meta"><span v-if="live">已读取的档案</span><span>{{ known.length }} 条已知 · {{ progress.gap }} 条待补充</span><span>判断可追溯到资料</span></div></template>
+    <PageHeading title="个人画像" description="把零散经历整理成可核对、可继续验证的职业探索档案。"><template #meta><div class="c2-page-meta"><span v-if="live">{{ livePanel ? '已读取的档案' : loading ? '正在读取档案' : '尚未读取档案' }}</span><span>{{ known.length }} 条已知 · {{ progress.gap }} 条待补充</span><span>判断可追溯到资料</span></div></template>
       <RouterLink class="btn btn--primary" to="/chat">{{ progress.gap ? '补充关键信息' : '更新信息' }}<UiIcon name="arrow" :size="16" /></RouterLink>
       <button class="btn" @click="exportProfile"><UiIcon name="download" :size="16"/>导出画像</button>
     </PageHeading>
@@ -866,7 +866,7 @@ onMounted(()=>{ void loadWorkspace() })
         <div class="profile-dossier__coverage">
           <div><span>资料完整度</span><strong>{{ known.length }}<small> / {{ known.length + progress.gap }}</small></strong></div>
           <div class="profile-dossier__track" :aria-label="'已记录'+known.length+'项，待补充'+progress.gap+'项'"><i v-for="n in known.length + progress.gap" :key="n" :class="{'is-known':n<=known.length}"/></div>
-          <p>{{ progress.gap ? `还差 ${progress.gap} 项关键信息` : '关键信息已基本齐全' }}</p>
+          <p>{{ loading && !livePanel ? '正在读取资料…' : serviceError ? '资料读取失败，请重试核对' : !livePanel ? '尚未读取资料' : !known.length && !progress.gap ? '暂无个人资料，可从咨询开始补充' : progress.gap ? `还差 ${progress.gap} 项关键信息` : '当前未列出待补充项' }}</p>
         </div>
       </header>
 
@@ -901,8 +901,9 @@ onMounted(()=>{ void loadWorkspace() })
             <button class="ws-text-button" type="button" @click="profileTab='gaps'">查看全部待补充信息</button>
           </template>
           <template v-else>
-            <h3 id="profile-next-title">核对已有资料</h3>
-            <p>当前没有明确缺口，可以从标为“待核对”的信息开始确认。</p>
+            <h3 id="profile-next-title">{{ known.length ? '核对已有资料' : '补充个人资料' }}</h3>
+            <p>{{ known.length ? '当前没有明确缺口，可以从标为“待核对”的信息开始确认。' : '先补充所学专业或一段经历，帮助系统了解你的情况。' }}</p>
+            <RouterLink v-if="!known.length" class="ws-text-link" to="/chat">开始补充<UiIcon name="arrow" :size="14" /></RouterLink>
           </template>
           <p v-if="needsCheck.length" class="profile-next__check">另有 {{ needsCheck.length }} 项资料需要核对</p>
         </aside>

@@ -1,0 +1,92 @@
+[
+  {
+    "route": "profile",
+    "alerts": [],
+    "scrollWidth": 380,
+    "width": 380
+  },
+  {
+    "route": "grades",
+    "alerts": [],
+    "scrollWidth": 380,
+    "width": 380
+  },
+  {
+    "route": "report",
+    "alerts": [],
+    "scrollWidth": 380,
+    "width": 380
+  },
+  {
+    "route": "directions",
+    "alerts": [],
+    "scrollWidth": 380,
+    "width": 380
+  },
+  {
+    "route": "intel",
+    "empty": true,
+    "scrollWidth": 390,
+    "width": 390
+  },
+  {
+    "route": "home",
+    "alerts": [],
+    "scrollWidth": 380,
+    "width": 380
+  },
+  {
+    "route": "plan",
+    "alerts": [],
+    "scrollWidth": 380,
+    "width": 380
+  },
+  {
+    "route": "schedule",
+    "alerts": [],
+    "scrollWidth": 380,
+    "width": 380
+  },
+  {
+    "route": "notes",
+    "alerts": [],
+    "scrollWidth": 380,
+    "width": 380
+  },
+  {
+    "route": "review",
+    "alerts": [],
+    "scrollWidth": 380,
+    "width": 380
+  },
+  {
+    "route": "achievements",
+    "alerts": [],
+    "scrollWidth": 380,
+    "width": 380
+  },
+  {
+    "route": "tools",
+    "alerts": [],
+    "scrollWidth": 380,
+    "width": 380
+  },
+  {
+    "route": "settings",
+    "alerts": [],
+    "scrollWidth": 380,
+    "width": 380
+  },
+  {
+    "route": "reminders",
+    "alerts": [],
+    "scrollWidth": 390,
+    "width": 390
+  },
+  {
+    "route": "guide",
+    "alerts": [],
+    "scrollWidth": 390,
+    "width": 390
+  }
+]

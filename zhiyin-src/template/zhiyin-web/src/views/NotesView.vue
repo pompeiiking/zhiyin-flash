@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { dateKey } from '../lib/action-insights.mjs'
 import DetailPopover from '../components/DetailPopover.vue'
 import ResultPager from '../components/ResultPager.vue'
 import { usePagedItems } from '../lib/paged-items'
@@ -269,7 +270,7 @@ onMounted(() => { void loadNotes() })
                   <div class="notes-record__body">
                     <p>{{ displayNote(item.text) }}</p>
                     <DetailPopover title="记录信息" :label="'查看记录信息：' + displayNote(item.text)" side="bottom">
-                      <template #trigger><time>{{ item.created_at ? new Date(item.created_at).toLocaleDateString('zh-CN') : '日期未提供' }}</time></template>
+                      <template #trigger><time>{{ dateKey(item.created_at) || '日期未提供' }}</time></template>
                       <SourceChip source="user_edit" :at="item.created_at" />
                       <p>{{ item.done ? '已完成，可恢复为待完成。' : '完成后仍会保留，可随时恢复。' }}</p>
                     </DetailPopover>
