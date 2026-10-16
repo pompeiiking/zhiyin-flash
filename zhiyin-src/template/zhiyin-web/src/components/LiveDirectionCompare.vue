@@ -78,7 +78,7 @@ function values(plan: DeepReadonly<DirectionPlanView>, criterion: Criterion): re
             <p>先看清每条路，再决定把精力放在哪里。</p>
           </header>
 
-          <nav class="route-list" aria-label="切换查看三个方向">
+          <nav class="route-list" aria-label="切换查看已有方向">
             <button
               v-for="plan in orderedPlans"
               :key="plan.id"
@@ -97,7 +97,7 @@ function values(plan: DeepReadonly<DirectionPlanView>, criterion: Criterion): re
             </button>
           </nav>
 
-          <button class="route-index__compare" type="button" @click="compareView = 'content'; comparisonOpen = true">横向比较三个方向</button>
+          <button class="route-index__compare" type="button" @click="compareView = 'content'; comparisonOpen = true">横向比较已有方向</button>
         </section>
 
         <article v-if="activePlan" class="route-sheet">
@@ -182,7 +182,7 @@ function values(plan: DeepReadonly<DirectionPlanView>, criterion: Criterion): re
 
       <nav class="ws-related" aria-label="方向方案相关页面"><RouterLink to="/report?focus=versions">核对报告更新状态</RouterLink><RouterLink to="/plan">查看阶段计划</RouterLink></nav>
 
-      <InfoSheet :open="comparisonOpen" shape="panel" title="比较三个方向" description="先看路线本身的差异；仍然难选时，再用个人偏好复核。" @close="comparisonOpen = false">
+      <InfoSheet :open="comparisonOpen" shape="panel" title="比较已有方向" description="先看路线本身的差异；仍然难选时，再用个人偏好复核。" @close="comparisonOpen = false">
         <nav class="compare-view-tabs" role="tablist" aria-label="比较方式">
           <button type="button" role="tab" :aria-selected="compareView === 'content'" @click="compareView = 'content'"><strong>内容对照</strong><span>目标、门槛与风险</span></button>
           <button type="button" role="tab" :aria-selected="compareView === 'preference'" @click="compareView = 'preference'"><strong>偏好复核</strong><span>专业、机会与地点</span></button>

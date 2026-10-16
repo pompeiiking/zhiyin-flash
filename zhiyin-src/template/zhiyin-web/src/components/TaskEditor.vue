@@ -5,13 +5,13 @@ import {studentApi} from '../api/student-capabilities'
 import type {ActionTaskView,TaskEdit} from '../api/backend-types'
 import {backendDemo} from '../lib/backend-demo'
 import DetailPopover from './DetailPopover.vue'
-const props=defineProps<{task?:ActionTaskView;split?:boolean;triggerText?:string}>()
+const props=defineProps<{task?:ActionTaskView;split?:boolean;triggerText?:string;phaseId?:string}>()
 const savedId=ref('')
 const open=ref(false),busy=ref(false),error=ref(''),status=ref('')
 const phases=computed(()=>backendDemo.state.liveAction?.phases??[])
 const localTime=localDateTime
 const text=ref(''),phase=ref(''),state=ref<TaskEdit['status']>('pending'),progress=ref(0),reason=ref(''),due=ref(''),schedule=ref(''),minutes=ref<number|undefined>()
-watch(open,v=>{if(!v)return;savedId.value='';const t=props.task;text.value=props.split?'':t?.text??'';phase.value=phases.value.find(p=>(p.tasks??[]).some(row=>row.task_id===t?.task_id))?.id??phases.value[0]?.id??'';state.value=props.split?'pending':t?.done?'completed':t?.status??'pending';progress.value=props.split?0:t?.progress??0;reason.value=props.split?'':t?.waiting_reason??'';due.value=localTime(t?.due_date);schedule.value=props.split?'':localTime(t?.scheduled_at);minutes.value=props.split?undefined:t?.estimated_minutes??undefined;error.value='';status.value=''})
+watch(open,v=>{if(!v)return;savedId.value='';const t=props.task;text.value=props.split?'':t?.text??'';phase.value=phases.value.find(p=>(p.tasks??[]).some(row=>row.task_id===t?.task_id))?.id??phases.value.find(p=>p.id===props.phaseId)?.id??phases.value[0]?.id??'';state.value=props.split?'pending':t?.done?'completed':t?.status??'pending';progress.value=props.split?0:t?.progress??0;reason.value=props.split?'':t?.waiting_reason??'';due.value=localTime(t?.due_date);schedule.value=props.split?'':localTime(t?.scheduled_at);minutes.value=props.split?undefined:t?.estimated_minutes??undefined;error.value='';status.value=''})
 watch(state,(value,previous)=>{if(value!=='completed'&&previous==='completed')progress.value=0})
 async function save(){if(busy.value)return;busy.value=true;error.value='';status.value='';try{const oldIds=new Set(phases.value.flatMap(p=>(p.tasks??[]).map(t=>t.task_id)));const plan=await studentApi.saveTask({text:text.value.trim(),phase_id:phase.value,status:state.value,progress:state.value==='completed'?100:progress.value,waiting_reason:reason.value,due_date:due.value?new Date(due.value).toISOString():null,scheduled_at:schedule.value?new Date(schedule.value).toISOString():null,estimated_minutes:minutes.value||null,parent_task_id:props.split?props.task?.task_id:props.task?.parent_task_id},savedId.value||(props.split?undefined:props.task?.task_id));savedId.value=savedId.value||(props.split?undefined:props.task?.task_id)||(plan.phases??[]).flatMap(p=>p.tasks??[]).find(t=>!oldIds.has(t.task_id))?.task_id||'';backendDemo.setAction(plan);status.value='已保存到阶段计划。'}catch(e){error.value=(e as Error).message}finally{busy.value=false}}
 </script>

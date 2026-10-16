@@ -1,4 +1,46 @@
 import type { AcademicCourseView, AcademicGradeView } from '../api/backend-types'
+type Kind = 'courses' | 'grades'
+
+export function decodeAcademicFile(bytes: ArrayBuffer): string {
+  const prefix = new Uint8Array(bytes, 0, Math.min(bytes.byteLength, 2))
+  if (prefix[0] === 255 && prefix[1] === 254) return new TextDecoder('utf-16le', { fatal: true }).decode(bytes)
+  if (prefix[0] === 254 && prefix[1] === 255) return new TextDecoder('utf-16be', { fatal: true }).decode(bytes)
+  try { return new TextDecoder('utf-8', { fatal: true }).decode(bytes) }
+  catch { return new TextDecoder('gb18030', { fatal: true }).decode(bytes) }
+}
+
+export function parseAcademicSource(source: string, kind: Kind): (AcademicCourseView | AcademicGradeView)[] {
+  const text = source.replace(/^\uFEFF/, '').trim()
+  let list: unknown
+  if (/^[\[{]/.test(text)) {
+    const parsed: unknown = JSON.parse(text)
+    list = Array.isArray(parsed) ? parsed : parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>)[kind] : null
+  } else list = parseAcademicTable(text, kind)
+  if (!Array.isArray(list) || !list.length) throw new Error('没有可导入的课程记录，请在表头下添加数据。')
+  const textKeys = kind === 'courses' ? ['name', 'teacher', 'weeks', 'place', 'credit', 'category'] : ['name', 'term', 'credit', 'score', 'point', 'category', 'kind']
+  return list.map((item, index) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item) || typeof item.name !== 'string' || !item.name.trim()) throw new Error(`第 ${index + 1} 条记录需要课程名称 name。`)
+    const row: Record<string, string | number> = {}
+    for (const key of textKeys) {
+      const value = item[key]
+      if (value == null) continue
+      if (typeof value !== 'string' && (typeof value !== 'number' || !Number.isFinite(value))) throw new Error(`第 ${index + 1} 条记录的 ${key} 应为文字或数值。`)
+      row[key] = String(value).trim()
+    }
+    if (kind === 'courses') {
+      for (const key of ['weekday', 'start_period', 'end_period']) {
+        const value = item[key]
+        if (value == null || value === '') continue
+        if (!['string','number'].includes(typeof value)) throw new Error(`第 ${index + 1} 条记录的 ${key} 应为整数。`)
+        const n = Number(value)
+        if (!Number.isInteger(n) || n < 0 || (key === 'weekday' && n > 7)) throw new Error(`第 ${index + 1} 条记录的星期或节次无效。`)
+        row[key] = n
+      }
+      if (Number(row.start_period) > 0 && Number(row.end_period) > 0 && Number(row.start_period) > Number(row.end_period)) throw new Error(`第 ${index + 1} 条记录结束节次不能早于开始节次。`)
+    }
+    return row as unknown as AcademicCourseView | AcademicGradeView
+  })
+}
 // Parse copied/exported tables locally so users can check every row before replacing a snapshot.
 function table(source: string): string[][] {
   const delimiter = source.split(/\r?\n/)[0]?.includes('\t') ? '\t' : ','

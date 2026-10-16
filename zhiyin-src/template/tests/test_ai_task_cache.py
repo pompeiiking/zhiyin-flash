@@ -180,3 +180,31 @@ def test_every_cacheable_task_declares_what_it_depends_on() -> None:
     assert set(_TASK_INPUTS) <= cacheable, (
         f"作废表里有接口层不再产出的 key：{sorted(set(_TASK_INPUTS) - cacheable)}"
     )
+
+
+@pytest.mark.asyncio
+async def test_brief_cache_round_trip_keeps_public_aliases_and_rejects_invalid_nested_data():
+    from pydantic import ValidationError
+    from zhiyin_business.contracts.ai_tasks import AiMeta, AiResultEnvelope, BriefToday
+    from zhiyin_infrastructure.local.repository import InMemoryAiTaskResultRepository
+
+    repo = InMemoryAiTaskResultRepository()
+    service = _bare_service(repo)
+    data = BriefToday(headline="先做当前任务", because=[{"text": "任务已确认", "from": "阶段计划"}], changed=[], ifYouSkip="进度会延后", next=[])
+    envelope = AiResultEnvelope(data=data, meta=AiMeta(by="顾问"))
+    await service._store_cached("u", "brief.today|sources-v1:record", envelope)
+    cached = await service._load_cached("u", "brief.today|sources-v1:record")
+    output = cached.model_dump(by_alias=True)["data"]
+    assert output["ifYouSkip"] == "进度会延后"
+    assert output["because"][0]["from"] == "阶段计划"
+    assert cached.meta.cached is True
+    # 兼容旧版合法缓存的 Python 字段名，不丢失原内容。
+    await repo.put("u", "brief.today", envelope.model_dump())
+    legacy = await service._load_cached("u", "brief.today")
+    assert legacy.model_dump(by_alias=True)["data"]["ifYouSkip"] == "进度会延后"
+    invalid = envelope.model_dump(by_alias=True)
+    invalid["data"]["because"] = [{"内容": "说明", "来源": "计划"}]
+    with pytest.raises(ValidationError):
+        BriefToday.model_validate(invalid["data"])
+    await repo.put("u", "brief.today", invalid)
+    assert await service._load_cached("u", "brief.today") is None

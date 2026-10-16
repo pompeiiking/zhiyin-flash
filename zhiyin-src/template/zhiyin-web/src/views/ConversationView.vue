@@ -40,6 +40,7 @@ const profileMax = computed(() => Math.min(440, Math.max(260, navigation.width.v
 const pending = ref<{ text: string; agent: string; note: string } | null>(null)
 const copiedTurn = ref('')
 let copyTimer: ReturnType<typeof setTimeout> | undefined
+const uploadError = ref('')
 const requestError = ref(''), profileError = ref(''), guideSaving = ref('')
 const profileOpen = ref(false), historyOpen = ref(false), profileLoading = ref(false)
 const choosingTopic = ref(false)
@@ -84,10 +85,10 @@ async function start(code: string, label: string) { await create(code); if (!req
 async function upload(event: Event) { await uploadFiles(Array.from((event.target as HTMLInputElement).files ?? [])) }
 async function uploadFiles(files: File[]) {
  if (!files.length || uploading.value || thinking.value) return
- uploading.value = true; requestError.value = ''
+ uploading.value = true; uploadError.value = ''
  const sessionId = demo.state.currentSessionId
  try { for (const file of files) { const material = await backendClient.material(file); if (disposed || sessionId !== demo.state.currentSessionId) return; attached.value.push({ id: material.material_id, name: material.name || file.name }) } }
- catch (e) { requestError.value = (e as Error).message }
+ catch (e) { if (!disposed && sessionId === demo.state.currentSessionId) uploadError.value = (e as Error).message }
  finally { uploading.value = false; if (fileInput.value) fileInput.value.value = '' }
 }
 function dragOver(event: DragEvent) {
@@ -155,7 +156,7 @@ watch([draft, attached], () => { remember(); void nextTick(resizeInput) }, { dee
 watch(() => demo.state.currentSessionId, (_id, previous) => {
  backendDemo.saveDraft(previous, draft.value, attached.value, flow.value?.scrollTop ?? null)
  const data = backendDemo.getDraft(demo.state.currentSessionId); draft.value = data.text; attached.value = data.materials.map(m => ({ ...m }))
- selectedOption.value = null; failedRequest = null; pending.value = null; requestError.value = ''; stopped.value = false; choosingTopic.value = false; followTail.value = true; void bottom(true)
+ selectedOption.value = null; failedRequest = null; pending.value = null; requestError.value = ''; uploadError.value = ''; stopped.value = false; choosingTopic.value = false; followTail.value = true; void bottom(true)
 }, { flush:'sync' })
 watch(() => route.query.new, value => { if (typeof value === 'string') chooseTopic() })
 onMounted(() => {
@@ -217,6 +218,7 @@ onUnmounted(() => { disposed = true; clearInterval(waitTimer); clearTimeout(copy
      </div></template>
     </article>
     <article v-if="pending" class="consult-turn consult-turn--host consult-pending" aria-label="当前回复"><AgentAvatar :agent="agentKeyOf(pending.agent)" :size="38" :state="thinking ? pending.text ? 'speaking' : 'thinking' : 'idle'" /><div class="consult-answer"><span class="consult-speaker">{{ consultantLabel(pending.agent) }}</span><ReadableText v-if="pending.text" :text="pending.text" class="consult-prose" /><div v-else-if="thinking" class="consult-wait" role="status"><span class="consult-wait-orbit" aria-hidden="true"><i /><i /><i /></span><div><p>{{ pending.note }}</p><small>正在接收回复<span v-if="elapsed >= 3"> · {{ elapsed }} 秒</span></small></div></div><span v-if="thinking && pending.text" class="consult-cursor" aria-label="正在回复" /><small v-if="!thinking">{{ stopped ? '接收已停止' : '回复未完成' }}</small></div></article>
+    <div v-if="uploadError" class="consult-error" role="alert"><p>{{ uploadError }}</p><button :disabled="uploading || thinking" @click="fileInput?.click()">重新选择材料</button><button @click="uploadError = ''">关闭上传提示</button></div>
     <div v-if="requestError" class="consult-error" role="alert"><p>{{ requestError }}</p><button v-if="failedRequest && !stopped" @click="send(true)">重新尝试</button><button :disabled="thinking" @click="resume(demo.state.currentSessionId)">重新读取会话</button></div>
    </div>
   </div>

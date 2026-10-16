@@ -387,6 +387,13 @@ def test_binary_office_files_are_refused_with_the_next_step() -> None:
     assert "另存为 CSV" in str(excinfo.value)
 
 
+def test_document_rejection_guidance_matches_the_file_type() -> None:
+    for name in ("材料.pdf", "材料.docx"):
+        assert "TXT" in unsupported_reason(name)
+        assert "Excel" not in unsupported_reason(name)
+    assert "解压" in unsupported_reason("材料.zip")
+
+
 def test_an_empty_file_says_it_is_empty() -> None:
     importer = _importer()
     with pytest.raises(AcademicImportError) as excinfo:

@@ -14,7 +14,7 @@ function statusLabel(task:ActionTaskView){
   return '待执行'
 }
 function closeMenu(event:MouseEvent){
-  if(event.target instanceof Element&&event.target.closest('button,a'))(event.currentTarget as Element).closest('details')?.removeAttribute('open')
+  if(event.target instanceof Element&&event.target.closest('button,a')&&!event.target.closest('[aria-haspopup="dialog"]'))(event.currentTarget as Element).closest('details')?.removeAttribute('open')
 }
 </script>
 

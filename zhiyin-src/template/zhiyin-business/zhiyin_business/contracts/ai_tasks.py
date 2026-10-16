@@ -68,12 +68,26 @@ class BriefNext(BaseModel):
     why: str
 
 
-class BriefToday(BaseModel):
+class BriefReason(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    text: str
+    from_: str = Field(alias="from")
+
+
+class BriefChange(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    text: str
+    at: str
+
+
+class BriefToday(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
     headline: str
-    because: list[dict[str, str]] = Field(default_factory=list)  # {text, from}
-    changed: list[dict[str, str]] = Field(default_factory=list)  # {text, at}
+    because: list[BriefReason] = Field(default_factory=list)
+    changed: list[BriefChange] = Field(default_factory=list)
     if_you_skip: str = Field(default="", alias="ifYouSkip")
     next: list[BriefNext] = Field(default_factory=list)
 

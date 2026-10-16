@@ -94,7 +94,7 @@ function selectAll(){
   filter.value='pending'
 }
 function closeStageMenu(event:MouseEvent){
-  if(event.target instanceof Element&&event.target.closest('button,a')){
+  if(event.target instanceof Element&&event.target.closest('button,a')&&!event.target.closest('[aria-haspopup="dialog"]')){
     (event.currentTarget as Element).closest('details')?.removeAttribute('open')
   }
 }
@@ -202,7 +202,7 @@ onBeforeUnmount(()=>{if(statusTimer)clearTimeout(statusTimer)})
               <span v-else>{{doneCount}} 项已完成，还有 {{tasks.length-doneCount}} 项待推进</span>
             </div>
             <div class="plan-stage-actions">
-              <TaskEditor/>
+              <TaskEditor :phase-id="selected>=0 ? inspectedPhase?.id : undefined"/>
               <details v-if="selected>=0&&inspectedPhase" class="plan-stage-menu" name="stage-actions">
                 <summary>阶段操作</summary>
                 <div class="plan-stage-menu-panel" @click="closeStageMenu">

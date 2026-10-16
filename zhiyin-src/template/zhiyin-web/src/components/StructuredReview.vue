@@ -8,6 +8,8 @@ import { backendClient } from '../api/backend-client'
 import { actionRows, dateKey, deadline, taskStatusLabel } from '../lib/action-insights.mjs'
 import DetailPopover from './DetailPopover.vue'
 import StatusBanner from './StatusBanner.vue'
+import ResultPager from './ResultPager.vue'
+import { usePagedItems } from '../lib/paged-items'
 
 const props = defineProps<{ taskId?: string; loadingTasks?: boolean }>()
 const emit = defineEmits<{ loaded: [items: Review[]]; selectedTask: [id: string] }>()
@@ -40,6 +42,8 @@ const localDrafts = new Map<string, LocalReviewDraft>()
 const selected = computed(() => tasks.value.find((task) => task.task_id === selectedId.value))
 const selectedReview = computed(() => items.value.find((item) => item.task_id === selectedId.value))
 const pendingReviews = computed(() => items.value.filter((item) => item.result !== 'continue' && !item.applied_at))
+
+const { page: pendingPage, paged: pagedPending } = usePagedItems(pendingReviews, 5)
 
 const outcomeCopy = computed(() => {
   if (result.value === 'adjust') return '先保存这次判断，再确认应用。应用后会修改阶段计划中的任务内容或截止时间。'
@@ -183,6 +187,13 @@ onMounted(() => { void load() })
             <div class="review-editor__topline">
               <span class="review-editor__mode">{{ editing ? '正在修订' : '本次复盘' }}</span>
               <span v-if="selectedReview" class="review-editor__saved">已有记录</span>
+              <button v-if="selectedReview && !editing" type="button" class="btn btn--sm" @click="edit(selectedReview)">修订已有复盘</button>
+              <DetailPopover v-if="selectedReview" title="当前任务的复盘记录" side="right">
+                <template #trigger>查看已有记录</template>
+                <p>{{ reviewState(selectedReview) }} · {{ formatDateTime(selectedReview.updated_at) }}</p>
+                <p>{{ selectedReview.reason }} · {{ selectedReview.note || '没有补充说明' }}</p>
+                <p v-for="(version, index) in selectedReview.history" :key="index">修订前：{{ version.reason }} · {{ version.note || '没有补充说明' }}</p>
+              </DetailPopover>
               <label class="review-task-switcher">
                 <span>切换任务</span>
                 <select v-model="selectedId" name="review-task" autocomplete="off" required>
@@ -323,7 +334,7 @@ onMounted(() => { void load() })
 
       <p v-if="loading" class="saved-reviews__loading" role="status">正在读取复盘…</p>
       <div v-else class="saved-reviews__list">
-        <article v-for="item in pendingReviews.slice(0, 5)" :key="item.id" class="review-entry">
+        <article v-for="item in pagedPending" :key="item.id" class="review-entry">
           <div class="review-entry__head">
             <div>
               <h3>{{ item.task_text }}</h3>
@@ -354,6 +365,7 @@ onMounted(() => { void load() })
           </div>
         </article>
       </div>
+      <ResultPager v-model:page="pendingPage" :total="pendingReviews.length" :size="5" label="待确认复盘" />
     </section>
   </section>
 </template>

@@ -1,0 +1,336 @@
+{
+  "academicImports": [
+    {
+      "size": "desktop",
+      "kind": "grades",
+      "format": "csv",
+      "saved": true
+    },
+    {
+      "size": "desktop",
+      "kind": "grades",
+      "format": "tsv",
+      "saved": true
+    },
+    {
+      "size": "desktop",
+      "kind": "grades",
+      "format": "txt",
+      "saved": true
+    },
+    {
+      "size": "mobile",
+      "kind": "grades",
+      "format": "json",
+      "saved": true
+    },
+    {
+      "size": "mobile",
+      "kind": "grades",
+      "format": "csv",
+      "saved": true
+    },
+    {
+      "size": "mobile",
+      "kind": "grades",
+      "format": "tsv",
+      "saved": true
+    },
+    {
+      "size": "mobile",
+      "kind": "grades",
+      "format": "txt",
+      "saved": true
+    },
+    {
+      "size": "mobile",
+      "kind": "courses",
+      "format": "json",
+      "saved": true
+    },
+    {
+      "size": "mobile",
+      "kind": "courses",
+      "format": "csv",
+      "saved": true
+    },
+    {
+      "size": "mobile",
+      "kind": "courses",
+      "format": "tsv",
+      "saved": true
+    },
+    {
+      "size": "mobile",
+      "kind": "courses",
+      "format": "txt",
+      "saved": true
+    },
+    {
+      "size": "desktop",
+      "kind": "courses",
+      "format": "json",
+      "saved": true
+    },
+    {
+      "size": "desktop",
+      "kind": "courses",
+      "format": "csv",
+      "saved": true
+    },
+    {
+      "size": "desktop",
+      "kind": "courses",
+      "format": "tsv",
+      "saved": true
+    },
+    {
+      "size": "desktop",
+      "kind": "courses",
+      "format": "txt",
+      "saved": true
+    }
+  ],
+  "materialUploads": [
+    {
+      "size": "mobile",
+      "format": "txt",
+      "uploaded": true,
+      "removed": true
+    },
+    {
+      "size": "mobile",
+      "format": "md",
+      "uploaded": true,
+      "removed": true
+    },
+    {
+      "size": "mobile",
+      "format": "csv",
+      "uploaded": true,
+      "removed": true
+    },
+    {
+      "size": "mobile",
+      "format": "tsv",
+      "uploaded": true,
+      "removed": true
+    },
+    {
+      "size": "mobile",
+      "format": "json",
+      "uploaded": true,
+      "removed": true
+    },
+    {
+      "size": "mobile",
+      "format": "html",
+      "uploaded": true,
+      "removed": true
+    },
+    {
+      "size": "mobile",
+      "file": "empty.csv",
+      "error": "+\t\t\t\t\t49 text 「empty.csv」是空的，换一份再试。"
+    },
+    {
+      "size": "mobile",
+      "file": "oversize.txt",
+      "error": "~\t\t\t\t\t49 text 「oversize.txt」超过 2MB —— 对话里交的材料请截取相关的那一段，或者只传这件事用得上的部分。"
+    },
+    {
+      "size": "mobile",
+      "file": "unsupported.pdf",
+      "error": "~\t\t\t\t\t49 text 「PDF」（.pdf）是二进制文件，我读不了 —— 在 Excel 里「另存为 CSV」再传，或者把表格连表头一起选中、复制粘贴进来。"
+    },
+    {
+      "size": "mobile",
+      "file": "unsupported.docx",
+      "error": "~\t\t\t\t\t49 text 「Word 文档」（.docx）是二进制文件，我读不了 —— 在 Excel 里「另存为 CSV」再传，或者把表格连表头一起选中、复制粘贴进来。"
+    },
+    {
+      "size": "mobile",
+      "file": "unsupported.xlsx",
+      "error": "~\t\t\t\t\t49 text 「Excel 工作簿」（.xlsx）是二进制文件，我读不了 —— 在 Excel 里「另存为 CSV」再传，或者把表格连表头一起选中、复制粘贴进来。"
+    },
+    {
+      "size": "mobile",
+      "file": "unsupported.zip",
+      "error": "~\t\t\t\t\t49 text 「压缩包」（.zip）是二进制文件，我读不了 —— 在 Excel 里「另存为 CSV」再传，或者把表格连表头一起选中、复制粘贴进来。"
+    },
+    {
+      "size": "desktop",
+      "format": "txt",
+      "uploaded": true,
+      "removed": true
+    },
+    {
+      "size": "desktop",
+      "format": "md",
+      "uploaded": true,
+      "removed": true
+    },
+    {
+      "size": "desktop",
+      "format": "csv",
+      "uploaded": true,
+      "removed": true
+    },
+    {
+      "size": "desktop",
+      "format": "tsv",
+      "uploaded": true,
+      "removed": true
+    },
+    {
+      "size": "desktop",
+      "format": "json",
+      "uploaded": true,
+      "removed": true
+    },
+    {
+      "size": "desktop",
+      "format": "html",
+      "uploaded": true,
+      "removed": true
+    }
+  ],
+  "exports": [
+    {
+      "size": "desktop",
+      "asset": "report",
+      "format": "pdf",
+      "bytes": 2782,
+      "passed": true
+    },
+    {
+      "size": "desktop",
+      "asset": "report",
+      "format": "docx",
+      "bytes": 1174,
+      "passed": true
+    },
+    {
+      "size": "desktop",
+      "asset": "direction_plan",
+      "format": "pdf",
+      "bytes": 2566,
+      "passed": true
+    },
+    {
+      "size": "desktop",
+      "asset": "direction_plan",
+      "format": "docx",
+      "bytes": 1081,
+      "passed": true
+    },
+    {
+      "size": "desktop",
+      "asset": "action_plan",
+      "format": "pdf",
+      "bytes": 3047,
+      "passed": true
+    },
+    {
+      "size": "desktop",
+      "asset": "action_plan",
+      "format": "docx",
+      "bytes": 1385,
+      "passed": true
+    },
+    {
+      "size": "mobile",
+      "asset": "report",
+      "format": "pdf",
+      "bytes": 2782,
+      "passed": true
+    },
+    {
+      "size": "mobile",
+      "asset": "report",
+      "format": "docx",
+      "bytes": 1174,
+      "passed": true
+    },
+    {
+      "size": "mobile",
+      "asset": "direction_plan",
+      "format": "pdf",
+      "bytes": 2566,
+      "passed": true
+    },
+    {
+      "size": "mobile",
+      "asset": "direction_plan",
+      "format": "docx",
+      "bytes": 1081,
+      "passed": true
+    },
+    {
+      "size": "mobile",
+      "asset": "action_plan",
+      "format": "pdf",
+      "bytes": 3047,
+      "passed": true
+    },
+    {
+      "size": "mobile",
+      "asset": "action_plan",
+      "format": "docx",
+      "bytes": 1385,
+      "passed": true
+    }
+  ],
+  "invalidInitial": [
+    {
+      "file": "empty.csv",
+      "state": "\t\t\t\t4 text 更新成绩\n\t\t\t5 button 关闭面板\n\t\t\t7 text 只会替换当前成绩，不会改动日历中的课程。保存前可逐条预览。\n\t\t\t\t9 text 学校\n\t\t\t\t10 text field (settable) 学校, Value: 河北大学\n\t\t\t\t12 text 学期\n\t\t\t\t13 text field (settable) 学期, Value: 2026-2027-1\n\t\t\t\t15 text 粘贴成绩表格\n\t\t\t\t16 text entry area (settable) 粘贴成绩表格\n\t\t\t\t18 text 或选择文件\n\t\t\t\t19 button 或选择文件 empty.csv\n\t\t\t\t23 text empty.csv\n\t\t\t\t25 text 请粘贴成绩，或选择一份文件。\n\t\t\t\t26 button 重试\n\t\t\t\t27 button 关闭这条提示\n\t\t\t21 button 预览识别结果\n\t\t\t22 button 取消"
+    },
+    {
+      "file": "header.csv",
+      "state": "\t\t\t\t4 text 更新成绩\n\t\t\t5 button 关闭面板\n\t\t\t7 text 0\n\t\t\t8 text 条成绩\n\t\t\t9 text 河北大学 · 2026-2027-1\n\t\t\t\t\t\t13 text 课程\n\t\t\t\t\t\t15 text 成绩\n\t\t\t\t\t\t17 text 学分 / 绩点\n\t\t\t18 button 确认替换成绩\n\t\t\t19 button 返回修改"
+    },
+    {
+      "file": "broken.csv",
+      "state": "\t\t\t\t4 text 更新成绩\n\t\t\t5 button 关闭面板\n\t\t\t7 text 只会替换当前成绩，不会改动日历中的课程。保存前可逐条预览。\n\t\t\t\t9 text 学校\n\t\t\t\t10 text field (settable) 学校, Value: 河北大学\n\t\t\t\t12 text 学期\n\t\t\t\t13 text field (settable) 学期, Value: 2026-2027-1\n\t\t\t\t15 text 粘贴成绩表格\n\t\t\t\t16 text entry area (settable) 粘贴成绩表格\n\t\t\t\t18 text 或选择文件\n\t\t\t\t19 button 或选择文件 broken.csv\n\t\t\t\t23 text broken.csv\n\t\t\t\t25 text 表格中的引号没有成对结束，请检查导出内容。\n\t\t\t\t26 button 重试\n\t\t\t\t27 button 关闭这条提示\n\t\t\t21 button 预览识别结果\n\t\t\t22 button 取消"
+    },
+    {
+      "file": "invalid.json",
+      "state": "\t\t\t\t4 text 更新成绩\n\t\t\t5 button 关闭面板\n\t\t\t7 text 1\n\t\t\t8 text 条成绩\n\t\t\t9 text 河北大学 · 2026-2027-1\n\t\t\t\t\t\t13 text 课程\n\t\t\t\t\t\t15 text 成绩\n\t\t\t\t\t\t17 text 学分 / 绩点\n\t\t\t\t\t\t20 text 非法成绩\n\t\t\t\t\t\t22 text { \"x\": 1 }\n\t\t\t\t\t\t24 text — / —\n\t\t\t25 button 确认替换成绩\n\t\t\t26 button 返回修改"
+    },
+    {
+      "file": "oversize.txt",
+      "state": "\t\t\t\t4 text 更新成绩\n\t\t\t5 button 关闭面板\n\t\t\t7 text 只会替换当前成绩，不会改动日历中的课程。保存前可逐条预览。\n\t\t\t\t9 text 学校\n\t\t\t\t10 text field (settable) 学校, Value: 河北大学\n\t\t\t\t12 text 学期\n\t\t\t\t13 text field (settable) 学期, Value: 2026-2027-1\n\t\t\t\t15 text 粘贴成绩表格\n\t\t\t\t16 text entry area (settable) 粘贴成绩表格\n\t\t\t\t18 text 或选择文件\n\t\t\t\t19 button 或选择文件 oversize.txt\n\t\t\t\t23 text oversize.txt\n\t\t\t\t25 text 文件需小于 2MB。\n\t\t\t\t26 button 重试\n\t\t\t\t27 button 关闭这条提示\n\t\t\t21 button 预览识别结果\n\t\t\t22 button 取消\nThe focused UI element is 21 button 预览识别结果"
+    },
+    {
+      "file": "unsupported.xlsx",
+      "state": "\t\t\t\t4 text 更新成绩\n\t\t\t5 button 关闭面板\n\t\t\t7 text 只会替换当前成绩，不会改动日历中的课程。保存前可逐条预览。\n\t\t\t\t9 text 学校\n\t\t\t\t10 text field (settable) 学校, Value: 河北大学\n\t\t\t\t12 text 学期\n\t\t\t\t13 text field (settable) 学期, Value: 2026-2027-1\n\t\t\t\t15 text 粘贴成绩表格\n\t\t\t\t16 text entry area (settable) 粘贴成绩表格\n\t\t\t\t18 text 或选择文件\n\t\t\t\t19 button 或选择文件 unsupported.xlsx\n\t\t\t\t23 text unsupported.xlsx\n\t\t\t\t25 text 请选择 JSON、CSV、TSV 或 TXT 文件。\n\t\t\t\t26 button 重试\n\t\t\t\t27 button 关闭这条提示\n\t\t\t21 button 预览识别结果\n\t\t\t22 button 取消\nThe focused UI element is 21 button 预览识别结果"
+    },
+    {
+      "file": "gbk.csv",
+      "state": "\t\t\t\t4 text 更新成绩\n\t\t\t5 button 关闭面板\n\t\t\t7 text 只会替换当前成绩，不会改动日历中的课程。保存前可逐条预览。\n\t\t\t\t9 text 学校\n\t\t\t\t10 text field (settable) 学校, Value: 河北大学\n\t\t\t\t12 text 学期\n\t\t\t\t13 text field (settable) 学期, Value: 2026-2027-1\n\t\t\t\t15 text 粘贴成绩表格\n\t\t\t\t16 text entry area (settable) 粘贴成绩表格\n\t\t\t\t18 text 或选择文件\n\t\t\t\t19 button 或选择文件 gbk.csv\n\t\t\t\t23 text gbk.csv\n\t\t\t\t25 text 表格第一行需要“课程名称”列。可以从教务表格复制含表头的内容。\n\t\t\t\t26 button 重试\n\t\t\t\t27 button 关闭这条提示\n\t\t\t21 button 预览识别结果\n\t\t\t22 button 取消"
+    }
+  ],
+  "invalidAfter": [
+    {
+      "size": "mobile",
+      "file": "header.csv",
+      "state": "Browser tab: 8, Title: \"职引 · 大学生生涯规划与就业指导智能支撑平台\", URL: \"http://127.0.0.1:5287/#/grades\".\n1 AXWebArea 职引 · 大学生生涯规划与就业指导智能支撑平台, URL: 127.0.0.1:5287/#/grades\n\t2 container 更新成绩\n\t\t3 container\n\t\t\t4 heading 更新成绩, Value: 2\n\t\t\t\t5 text 更新成绩\n\t\t\t6 button 关闭面板\n\t\t7 container info-sheet-body-l74g37\n\t\t\t8 text 只会替换当前成绩，不会改动日历中的课程。保存前可逐条预览。\n\t\t\t9 container\n\t\t\t\t10 text 学校\n\t\t\t\t11 text field (settable) 学校, Value: 河北大学\n\t\t\t12 container\n\t\t\t\t13 text 学期\n\t\t\t\t14 text field (settable) 学期, Value: 2026-2027-1\n\t\t\t15 container\n\t\t\t\t16 text 粘贴成绩表格\n\t\t\t\t17 text entry area (settable) 粘贴成绩表格\n\t\t\t18 container\n\t\t\t\t19 text 或选择文件\n\t\t\t\t20 button 或选择文件 header.csv\n\t\t\t\t24 text header.csv\n\t\t\t25 button 移除所选文件\n\t\t\t26 container\n\t\t\t\t27 text 没有可导入的课程记录，请在表头下添加数据。\n\t\t\t\t28 button 重试\n\t\t\t\t29 button 关闭这条提示\n\t\t\t22 button 预览识别结果\n\t\t\t23 button 取消\n\nThe focused UI element is 1 AXWebArea 职引 · 大学生生涯规划与就业指导智能支撑平台, URL: 127.0.0.1:5287/#/grades"
+    },
+    {
+      "size": "mobile",
+      "file": "invalid.json",
+      "state": "Browser tab: 8, Title: \"职引 · 大学生生涯规划与就业指导智能支撑平台\", URL: \"http://127.0.0.1:5287/#/grades\".\n1 AXWebArea 职引 · 大学生生涯规划与就业指导智能支撑平台, URL: 127.0.0.1:5287/#/grades\n\t2 container 更新成绩\n\t\t3 container\n\t\t\t4 heading 更新成绩, Value: 2\n\t\t\t\t5 text 更新成绩\n\t\t\t6 button 关闭面板\n\t\t7 container info-sheet-body-l74g37\n\t\t\t8 text 只会替换当前成绩，不会改动日历中的课程。保存前可逐条预览。\n\t\t\t9 container\n\t\t\t\t10 text 学校\n\t\t\t\t11 text field (settable) 学校, Value: 河北大学\n\t\t\t12 container\n\t\t\t\t13 text 学期\n\t\t\t\t14 text field (settable) 学期, Value: 2026-2027-1\n\t\t\t15 container\n\t\t\t\t16 text 粘贴成绩表格\n\t\t\t\t17 text entry area (settable) 粘贴成绩表格\n\t\t\t18 container\n\t\t\t\t19 text 或选择文件\n\t\t\t\t20 button 或选择文件 invalid.json\n\t\t\t\t24 text invalid.json\n\t\t\t25 button 移除所选文件\n\t\t\t26 container\n\t\t\t\t27 text 第 1 条记录的 score 应为文字或数值。\n\t\t\t\t28 button 重试\n\t\t\t\t29 button 关闭这条提示\n\t\t\t22 button 预览识别结果\n\t\t\t23 button 取消\n\nThe focused UI element is 1 AXWebArea 职引 · 大学生生涯规划与就业指导智能支撑平台, URL: 127.0.0.1:5287/#/grades"
+    },
+    {
+      "size": "mobile",
+      "file": "oversize.txt",
+      "state": "Browser tab: 8, Title: \"职引 · 大学生生涯规划与就业指导智能支撑平台\", URL: \"http://127.0.0.1:5287/#/grades\".\n1 AXWebArea 职引 · 大学生生涯规划与就业指导智能支撑平台, URL: 127.0.0.1:5287/#/grades\n\t2 container 更新成绩\n\t\t3 container\n\t\t\t4 heading 更新成绩, Value: 2\n\t\t\t\t5 text 更新成绩\n\t\t\t6 button 关闭面板\n\t\t7 container info-sheet-body-l74g37\n\t\t\t8 text 只会替换当前成绩，不会改动日历中的课程。保存前可逐条预览。\n\t\t\t9 container\n\t\t\t\t10 text 学校\n\t\t\t\t11 text field (settable) 学校, Value: 河北大学\n\t\t\t12 container\n\t\t\t\t13 text 学期\n\t\t\t\t14 text field (settable) 学期, Value: 2026-2027-1\n\t\t\t15 container\n\t\t\t\t16 text 粘贴成绩表格\n\t\t\t\t17 text entry area (settable) 粘贴成绩表格\n\t\t\t18 container\n\t\t\t\t19 text 或选择文件\n\t\t\t\t20 button 或选择文件 oversize.txt\n\t\t\t\t30 text oversize.txt\n\t\t\t31 button 移除所选文件\n\t\t\t26 container\n\t\t\t\t27 text 文件需小于 2MB。\n\t\t\t\t28 button 重试\n\t\t\t\t29 button 关闭这条提示\n\t\t\t22 button 预览识别结果\n\t\t\t23 button 取消\n\nThe focused UI element is 22 button 预览识别结果"
+    },
+    {
+      "size": "mobile",
+      "file": "unsupported.xlsx",
+      "state": "Browser tab: 8, Title: \"职引 · 大学生生涯规划与就业指导智能支撑平台\", URL: \"http://127.0.0.1:5287/#/grades\".\n1 AXWebArea 职引 · 大学生生涯规划与就业指导智能支撑平台, URL: 127.0.0.1:5287/#/grades\n\t2 container 更新成绩\n\t\t3 container\n\t\t\t4 heading 更新成绩, Value: 2\n\t\t\t\t5 text 更新成绩\n\t\t\t6 button 关闭面板\n\t\t7 container info-sheet-body-l74g37\n\t\t\t8 text 只会替换当前成绩，不会改动日历中的课程。保存前可逐条预览。\n\t\t\t9 container\n\t\t\t\t10 text 学校\n\t\t\t\t11 text field (settable) 学校, Value: 河北大学\n\t\t\t12 container\n\t\t\t\t13 text 学期\n\t\t\t\t14 text field (settable) 学期, Value: 2026-2027-1\n\t\t\t15 container\n\t\t\t\t16 text 粘贴成绩表格\n\t\t\t\t17 text entry area (settable) 粘贴成绩表格\n\t\t\t18 container\n\t\t\t\t19 text 或选择文件\n\t\t\t\t20 button 或选择文件 unsupported.xlsx\n\t\t\t\t30 text unsupported.xlsx\n\t\t\t31 button 移除所选文件\n\t\t\t26 container\n\t\t\t\t27 text 请选择 JSON、CSV、TSV 或 TXT 文件。\n\t\t\t\t28 button 重试\n\t\t\t\t29 button 关闭这条提示\n\t\t\t22 button 预览识别结果\n\t\t\t23 button 取消\n\nThe focused UI element is 22 button 预览识别结果"
+    }
+  ]
+}

@@ -188,7 +188,7 @@ onMounted(() => { centerTodayCourse(); void loadCalendar() })
       <button class="btn" @click="courseImportOpen=true"><UiIcon name="upload" :size="16" aria-hidden="true" />{{ backendDemo.state.academic?.courses?.length ? "更新课表" : "导入课表" }}</button>
     </PageHeading>
 
-    <StatusBanner v-if="academicStatus" tone="success" size="sm" :message="academicStatus" @dismiss="academicStatus=''"/><StatusBanner v-if="academicError" tone="error" size="sm" :message="academicError" @dismiss="academicError=''"/>
+    <StatusBanner v-if="academicStatus" tone="success" size="sm" :message="academicStatus" @dismiss="academicStatus=''"/><StatusBanner :retryable="false" v-if="academicError" tone="error" size="sm" :message="academicError" @dismiss="academicError=''"/>
     <p v-if="calendarError" class="ws-field-error" role="alert">{{ calendarError }}</p>
 
     <section class="schedule-surface" :aria-busy="calendarBusy">
@@ -269,7 +269,7 @@ onMounted(() => { centerTodayCourse(); void loadCalendar() })
       <StatusBanner v-if="untimedCourses.length" tone="warning" :message="`有 ${untimedCourses.length} 门课程缺少星期或节次，没有排进课表。`" />
       <Foldable v-if="untimedCourses.length" title="时间待补充的课程" variant="section" :count="untimedCourses.length"><ul class="ws-mini-list"><li v-for="(course, index) in untimedCourses" :key="`${course.name}-${index}`">{{ course.name }} · {{ courseTimeLabel(course) }}</li></ul></Foldable>
     </section>
-    <InfoSheet :open="capacityOpen" shape="panel" title="课表检查" description="核对所选日期前后三周的课程、任务和时间重叠。" @close="capacityOpen=false"><ScheduleCapacity :date="selectedDate" /></InfoSheet>
+    <InfoSheet :open="capacityOpen" shape="panel" title="课表检查" description="核对所选日期前后三周的课程、任务和时间重叠。" @close="capacityOpen=false"><ScheduleCapacity v-if="capacityOpen" :date="selectedDate" /></InfoSheet>
     <StatusBanner v-if="calendarEntries.some(node => !nodeDate(node.due_at))" tone="warning" :message="`有 ${calendarEntries.filter(node => !nodeDate(node.due_at)).length} 条事项缺少日期，没有显示在日历中。`" />
     <Foldable v-if="calendarEntries.some(node => !nodeDate(node.due_at))" title="日期待补充的事项" variant="section" :count="calendarEntries.filter(node => !nodeDate(node.due_at)).length"><ul class="ws-mini-list"><li v-for="node in calendarEntries.filter(item => !nodeDate(item.due_at))" :key="node.node_id">{{ node.title }}</li></ul></Foldable>
     <Foldable v-if="undatedTasks.length" title="尚未排期的计划任务" variant="section" :count="undatedTasks.length"><ul class="ws-mini-list"><li v-for="task in undatedTasks" :key="task.task_id">{{ task.text }} <TaskEditor :task="task" /></li></ul></Foldable>

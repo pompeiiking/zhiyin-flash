@@ -527,6 +527,10 @@ class AiTaskService:
             return None
         try:
             envelope = AiResultEnvelope.model_validate(payload)
+            if cache_key.split("|")[0] == "brief.today":
+                # 旧缓存可能只通过了外层校验，或者使用 Python 字段名。
+                # 重新验证正文并恢复模型，确保 SSE 以公开别名序列化。
+                envelope.data = BriefToday.model_validate(envelope.data)
         except Exception:  # noqa: BLE001
             # 存坏的一条（老版本形状）不该让这个任务永久失败：当作没缓存，重算一次。
             _log.warning("AI 任务缓存形状不兼容，已忽略：key=%s", cache_key)
@@ -542,7 +546,7 @@ class AiTaskService:
         if self._results is None:
             return
         try:
-            await self._results.put(user_id, cache_key, envelope.model_dump(mode="json"))
+            await self._results.put(user_id, cache_key, envelope.model_dump(mode="json", by_alias=True))
         except Exception:  # noqa: BLE001
             _log.exception("AI 任务产出写入失败（本次结果仍会返回）：key=%s", cache_key)
 

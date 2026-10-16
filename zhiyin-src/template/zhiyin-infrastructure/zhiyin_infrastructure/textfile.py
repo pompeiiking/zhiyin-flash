@@ -81,10 +81,13 @@ def unsupported_reason(filename: str) -> str:
     label = _BINARY_SUFFIXES.get(suffix)
     if not label:
         return ""
-    return (
-        f"「{label}」（{suffix}）是二进制文件，我读不了 —— "
-        "在 Excel 里「另存为 CSV」再传，或者把表格连表头一起选中、复制粘贴进来。"
-    )
+    if suffix in {".xlsx", ".xls", ".xlsm"}:
+        guidance = "请在 Excel 中另存为 CSV 后上传，或复制包含表头的表格内容。"
+    elif suffix in {".pdf", ".doc", ".docx"}:
+        guidance = "请复制需要分析的文字，保存为 TXT 后上传；扫描件需先识别为文字。"
+    else:
+        guidance = "请先解压，再选择其中的 TXT、CSV 等文本文件上传。"
+    return f"暂不支持直接读取{label}（{suffix}）。{guidance}"
 
 
 class LocalTextExtractor(DocumentTextGateway):

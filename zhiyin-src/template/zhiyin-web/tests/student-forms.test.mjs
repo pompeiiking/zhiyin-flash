@@ -103,3 +103,18 @@ test('a reminder cannot be snoozed into the past and uses its own date draft',as
     assert.equal(new Date(writes[0].value.snoozed_until).getFullYear(),2099)
   }finally{app.stop()}
 })
+
+
+test('an applied review can be revised without creating another record and the prior version remains',async()=>{
+  const previous={id:'r',task_id:'a',task_text:'任务 A',reason:'达到预期',note:'原记录',result:'complete',history:[],applied_at:'2026-10-16T09:00:00Z'}
+  let current=previous;const writes=[]
+  const app=setup('StructuredReview',{reviews:async()=>({items:[current]}),saveReview:async(value,id)=>{writes.push({value,id});current={...value,id,task_text:'任务 A',applied_at:null,history:[previous]};return current}}, {},{phases:[{id:'p',tasks:[{task_id:'a',text:'任务 A',done:true}]}]})
+  try{
+    await app.state.load();await app.state.edit(previous)
+    app.state.note.value='修订内容';app.state.result.value='continue';await app.state.save()
+    assert.equal(writes[0].id,'r');assert.equal(writes[0].value.note,'修订内容')
+    assert.equal(app.state.selectedReview.value.history[0].note,'原记录')
+    assert.equal(app.state.pendingReviews.value.length,0)
+    assert.equal(app.state.selectedReview.value.note,'修订内容')
+  }finally{app.stop()}
+})

@@ -1,4 +1,4 @@
-import {studentApi} from '../api/student-capabilities'
+import {studentApi,type Notice} from '../api/student-capabilities'
 import { mapMessage, withGuide } from './conversation-turns'
 export { mapMessage } from './conversation-turns'
 import type {ConversationTurnView} from '../api/backend-types'
@@ -39,9 +39,9 @@ export async function newSession(taskCode?: string) {
   } catch(e) { systemData.error = (e as Error).message; throw e }
   finally { systemData.busy = false }
 }
-export async function refreshNotifications() {
-  const notices = await backendClient.notifications()
-  demo.setNotices(notices.map(n => ({ id:n.id, title:n.title, body:n.body ?? '', kind:'提醒', action:'标为已读', secondary:'关闭', queued:0 })))
+export async function refreshNotifications(current?: Notice[]) {
+  const notices = current ?? await studentApi.notifications()
+  demo.setNotices(notices.filter(n => n.status === 'pending').map(n => ({ id:n.id, title:n.title, body:n.body ?? '', kind:'提醒', action:'标为已读', secondary:'关闭', queued:0 })))
 }
 export async function loadShell() {
   systemData.error = ''

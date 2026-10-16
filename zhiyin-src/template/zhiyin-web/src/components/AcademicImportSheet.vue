@@ -2,7 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import type { AcademicCourseView, AcademicGradeView } from '../api/backend-types'
 import { backendClient } from '../api/backend-client'
-import { parseAcademicTable } from '../lib/academic-parser'
+import { decodeAcademicFile, parseAcademicSource } from '../lib/academic-parser'
 import InfoSheet from './InfoSheet.vue'
 import StatusBanner from './StatusBanner.vue'
 
@@ -14,6 +14,7 @@ const emit = defineEmits<{ close: []; saved: [message: string] }>()
 
 const raw = ref('')
 const file = ref<File | null>(null)
+const fileInput = ref<HTMLInputElement | null>(null)
 const school = ref('')
 const term = ref('')
 const rows = ref<Row[]>([])
@@ -41,16 +42,9 @@ function selectFile(event: Event) {
   file.value = (event.target as HTMLInputElement).files?.[0] ?? null
 }
 
-function parseJson(source: string): Row[] {
-  const parsed: unknown = JSON.parse(source)
-  const list = Array.isArray(parsed) ? parsed : parsed && typeof parsed === 'object'
-    ? (parsed as Record<string, unknown>)[props.kind]
-    : null
-  if (!Array.isArray(list) || !list.length) throw new Error(`JSON 中需要非空的 ${props.kind} 数组。`)
-  if (list.some(item => !item || typeof item !== 'object' || typeof item.name !== 'string' || !item.name.trim())) {
-    throw new Error('每条记录都需要课程名称 name。')
-  }
-  return list as Row[]
+function clearFile() {
+  file.value = null
+  if (fileInput.value) fileInput.value.value = ''
 }
 
 async function preview() {
@@ -62,14 +56,13 @@ async function preview() {
     if (file.value) {
       if (file.value.size > 2_000_000) throw new Error('文件需小于 2MB。')
       if (!/\.(json|csv|tsv|txt)$/i.test(file.value.name)) throw new Error('请选择 JSON、CSV、TSV 或 TXT 文件。')
-      source = await file.value.text()
+      source = decodeAcademicFile(await file.value.arrayBuffer())
     }
     if (!source.trim()) throw new Error(`请粘贴${noun.value}，或选择一份文件。`)
     if (source.length > 200_000) throw new Error('内容最多 20 万字，请去掉无关部分。')
-    rows.value = /^\s*[\[{]/.test(source)
-      ? parseJson(source)
-      : parseAcademicTable(source, props.kind)
+    rows.value = parseAcademicSource(source, props.kind)
     raw.value = source
+    clearFile()
     stage.value = 'review'
   } catch (cause) {
     error.value = cause instanceof SyntaxError ? 'JSON 格式不完整，请检查括号和引号。' : (cause as Error).message
@@ -108,16 +101,16 @@ async function save() {
         <label class="ws-field">学期<input v-model="term" maxlength="40" placeholder="例如：2026-2027-1" /></label>
       </div>
       <label class="ws-field">粘贴{{ noun }}表格<textarea v-model="raw" rows="9" maxlength="200000" :placeholder="example" /></label>
-      <label class="import-file"><span>或选择文件</span><input type="file" accept=".json,.csv,.tsv,.txt,text/plain,text/csv,application/json" @change="selectFile" /><small>{{ file?.name || '支持 JSON、CSV、TSV、TXT，最大 2MB' }}</small></label>
-      <StatusBanner v-if="error" tone="error" size="sm" :message="error" />
+      <label class="import-file"><span>或选择文件</span><input ref="fileInput" type="file" accept=".json,.csv,.tsv,.txt,text/plain,text/csv,application/json" @change="selectFile" /><small>{{ file?.name || '支持 JSON、CSV、TSV、TXT，最大 2MB' }}</small></label><button v-if="file" class="ws-text-button" type="button" @click="clearFile">移除所选文件</button>
+      <StatusBanner v-if="error" tone="error" size="sm" :message="error" :retrying="busy" @retry="preview" @dismiss="error = ''" />
       <div class="ws-inline-actions"><button class="btn btn--primary" type="button" :disabled="busy" @click="preview">{{ busy ? '正在读取…' : '预览识别结果' }}</button><button class="btn" type="button" @click="emit('close')">取消</button></div>
     </template>
     <template v-else>
       <div class="import-review-head"><div><strong>{{ rows.length }}</strong><span>{{ kind === 'courses' ? '门课程' : '条成绩' }}</span></div><p>{{ school }} · {{ term }}</p></div>
       <div class="import-table-wrap"><table><thead><tr><th>课程</th><th v-if="kind === 'courses'">时间</th><th v-if="kind === 'courses'">地点</th><th v-if="kind === 'grades'">成绩</th><th v-if="kind === 'grades'">学分 / 绩点</th></tr></thead><tbody><tr v-for="(row, index) in rows.slice(0, 20)" :key="row.name + index"><td>{{ row.name }}</td><template v-if="kind === 'courses'"><td>{{ (row as AcademicCourseView).weekday ? `周${'一二三四五六日'[(row as AcademicCourseView).weekday! - 1]} · ${(row as AcademicCourseView).start_period || '?'}–${(row as AcademicCourseView).end_period || '?'} 节` : '待补充' }}</td><td>{{ (row as AcademicCourseView).place || '—' }}</td></template><template v-else><td class="import-score">{{ (row as AcademicGradeView).score || '—' }}</td><td>{{ (row as AcademicGradeView).credit || '—' }} / {{ (row as AcademicGradeView).point || '—' }}</td></template></tr></tbody></table></div>
       <p v-if="rows.length > 20" class="ws-muted">这里只预览前 20 条，其余 {{ rows.length - 20 }} 条会一起保存。</p>
-      <StatusBanner v-if="error" tone="error" size="sm" :message="error" />
-      <div class="ws-inline-actions"><button class="btn btn--primary" type="button" :disabled="busy" @click="save">{{ busy ? '正在保存…' : `确认替换${noun}` }}</button><button class="btn" type="button" :disabled="busy" @click="stage='edit'">返回修改</button></div>
+      <StatusBanner v-if="error" tone="error" size="sm" :message="error" :retrying="busy" @retry="save" @dismiss="error = ''" />
+      <div class="ws-inline-actions"><button class="btn btn--primary" type="button" :disabled="busy || !rows.length" @click="save">{{ busy ? '正在保存…' : `确认替换${noun}` }}</button><button class="btn" type="button" :disabled="busy" @click="stage='edit'">返回修改</button></div>
     </template>
   </InfoSheet>
 </template>

@@ -10,7 +10,7 @@
  *   success  | 1px 灰          | 中性面        | 描边圆 ✓        | 次级文字      | 无    | status | 4s 自动 + 可关
  *   info     | 2px 蓝          | 极浅蓝        | 描边圆 i        | 次级文字      | 可选  | status | 只能手动关
  *   warning  | 2px 红          | 极浅红        | 描边三角 !      | 注意红（重）  | 无    | status | 只能手动关
- *   error    | 3px 红（最重）  | 极浅红        | **实心**红圆 !  | 注意红（重）  | 必有重试 | alert  | 只能手动关
+ *   error    | 3px 红（最重）  | 极浅红        | **实心**红圆 !  | 注意红（重）  | 默认重试 | alert  | 只能手动关
  *
  * 六个维度里只有三个是颜色，其余是线宽、图标形状（描边/实心）、动作位、读屏角色与消失策略。
  * 红主色皮肤（data-accent=red）下 info 与 attention 同为红相，靠的就是这组非颜色差异区分。
@@ -28,7 +28,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
  * 1. **成功的反馈不该常驻。** `success` 默认 4s 自动消失（可关掉），其余三态必须由人来关 ——
  *    需要你处理的错误不该自己溜走。鼠标悬停或键盘焦点进入时倒计时暂停（WCAG 2.2.1）。
  * 2. **错误态必须有动作位。** 只报错不给下一步，等于把问题丢回给用户；
- *    默认给一个「重试」，`retrying` 期间它自己进入"正在重试…"状态。
+ *    默认给一个「重试」，无重试操作时调用方显式关闭；`retrying` 期间显示"正在重试…"。
  * 3. **不做入场动画以外的任何动效。** 这条状态条唯一的动效是"出现/消失"（150ms 透明度），
  *    它传达的是"这里多了一条信息 / 这条信息结束了"；reduced-motion 下连这一条也去掉。
  *    浮层形态由 InfoSheet 负责，这里只保证"放在白底、灰底、浮层里都读得清"（floating）。
@@ -44,7 +44,7 @@ const props = withDefaults(
     dismissible?: boolean
     /** 毫秒；0 = 不自动消失。不给就按 tone 定：success 4000，其余 0 */
     autoDismiss?: number
-    /** 错误态的重试按钮：**错误态一定有**（只报错不给下一步等于把问题丢回用户）；
+    /** 错误态默认展示重试；没有对应处理函数时应显式设为 false；
      *  其余三态想给动作位就显式打开 */
     retryable?: boolean
     retryLabel?: string
@@ -61,7 +61,7 @@ const props = withDefaults(
   {
     tone: 'info',
     dismissible: true,
-    retryable: false,
+    retryable: undefined,
     retrying: false,
     size: 'md',
     floating: false,
@@ -78,7 +78,7 @@ const closed = ref(false)
 
 const visible = computed(() => props.open && !closed.value)
 /** 错误态必须有动作位；其余三态由调用方显式打开 */
-const showRetry = computed(() => props.tone === 'error' || props.retryable)
+const showRetry = computed(() => props.retryable ?? props.tone === 'error')
 const resolvedAutoDismiss = computed(() => props.autoDismiss ?? (props.tone === 'success' ? 4000 : 0))
 /** 错误态打断读屏（alert），其余排到当前朗读之后（status） */
 const role = computed(() => (props.tone === 'error' ? 'alert' : 'status'))
