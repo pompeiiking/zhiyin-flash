@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {actionRows,dateKey,deadline,taskGroup,directionRanking} from '../src/lib/action-insights.mjs'
+import {actionRows,actionStatusMatches,dateKey,deadline,taskGroup,directionRanking} from '../src/lib/action-insights.mjs'
 
 test('deadline treats the whole due date as today, not overdue at midnight',()=>{
   const now=new Date(2026,9,16,22,50)
@@ -23,6 +23,20 @@ test('phase membership is explicit and input objects are not mutated',()=>{
   assert.deepEqual(actionRows(plan),[{...task,phase:'第一阶段',phaseIndex:0}])
   assert.equal('phase' in task,false)
   assert.deepEqual(actionRows(null),[])
+})
+test('task status filters are mutually exclusive',()=>{
+  const pending={done:false,status:'pending'}
+  const progress={done:false,status:'in_progress'}
+  const waiting={done:false,status:'waiting'}
+  const done={done:true,status:'completed'}
+  assert.equal(actionStatusMatches(pending,'pending'),true)
+  assert.equal(actionStatusMatches(progress,'pending'),false)
+  assert.equal(actionStatusMatches(waiting,'pending'),false)
+  assert.equal(actionStatusMatches(progress,'in_progress'),true)
+  assert.equal(actionStatusMatches(waiting,'waiting'),true)
+  assert.equal(actionStatusMatches(done,'done'),true)
+  assert.equal(actionStatusMatches(done,'all'),true)
+  assert.equal(actionStatusMatches(done,'pending'),false)
 })
 test('rank only valid backend scores; unknown values remain unknown and inputs remain unchanged',()=>{
   const plans=[{id:'unknown',match_score:null},{id:'zero',match_score:0},{id:'high',match_score:.8},{id:'invalid',match_score:90}]
