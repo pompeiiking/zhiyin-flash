@@ -1,46 +1,312 @@
 <script setup lang="ts">
-import {computed,onMounted,ref} from 'vue'
-import {backendClient} from '../api/backend-client'
-import {backendDemo} from '../lib/backend-demo'
-import {actionRows,dateKey,deadline,taskGroup} from '../lib/action-insights.mjs'
-import {usePagedItems} from '../lib/paged-items'
-import type {ActionTaskView} from '../api/backend-types'
+import { computed, onMounted, ref } from 'vue'
+import { backendClient } from '../api/backend-client'
+import { backendDemo } from '../lib/backend-demo'
+import { actionRows, dateKey, deadline } from '../lib/action-insights.mjs'
+import type { ActionTaskView } from '../api/backend-types'
 import PageHeading from '../components/PageHeading.vue'
 import AssetNotice from '../components/AssetNotice.vue'
 import TaskBrief from '../components/TaskBrief.vue'
 import DetailPopover from '../components/DetailPopover.vue'
 import StatusBanner from '../components/StatusBanner.vue'
 import TaskEditor from '../components/TaskEditor.vue'
-import ActionTaskRow from '../components/ActionTaskRow.vue'
-import ResultPager from '../components/ResultPager.vue'
-import InfoSheet from '../components/InfoSheet.vue'
-const plan=computed(()=>backendDemo.state.liveAction),tasks=computed(()=>actionRows(plan.value))
-const doneCount=computed(()=>tasks.value.filter(t=>t.done).length)
-const pending=computed(()=>tasks.value.filter(t=>!t.done))
-const next=computed(()=>tasks.value.find(t=>t.task_id===plan.value?.next_task?.task_id&&!t.done)??pending.value.find(t=>t.status!=='waiting'&&!plan.value?.phases?.find(p=>p.name===t.phase)?.blocked_by?.length))
-const busy=ref(false),saving=ref(false),error=ref(''),status=ref(''),lastDone=ref<ActionTaskView|null>(null),query=ref(''),group=ref('pending')
-const groups=[{key:'pending',label:'待执行'},{key:'waiting',label:'等待中'},{key:'in_progress',label:'进行中'},{key:'scheduled',label:'今天安排'},{key:'today',label:'今天截止'},{key:'overdue',label:'已过截止日'},{key:'upcoming',label:'后续安排'},{key:'undated',label:'未设日期'},{key:'done',label:'已完成'}]
-const matches=(t:ActionTaskView,key:string)=>key==='pending'?!t.done:key==='scheduled'?(!t.done&&dateKey(t.scheduled_at)===dateKey(new Date().toISOString())):key==='waiting'||key==='in_progress'?(!t.done&&t.status===key):taskGroup(t)===key
-const filtered=computed(()=>tasks.value.filter(t=>matches(t,group.value)&&[t.text,t.phase,t.due_date].join(' ').includes(query.value.trim())))
-const {page,paged}=usePagedItems(filtered,5)
-const addOpen=ref(false),note=ref(''),noteBusy=ref(false),noteError=ref('')
-const timeFact=computed(()=>backendDemo.state.liveWorkspace?.profile_panel?.fields?.find(f=>f.key==='time'||f.key==='weekly_hours'))
-async function load(){if(busy.value)return;busy.value=true;error.value='';try{const [action,workspace]=await Promise.all([backendClient.action(),backendClient.workspace()]);backendDemo.setAction(action);backendDemo.setWorkspace(workspace)}catch(e){error.value=(e as Error).message}finally{busy.value=false}}
-async function finish(task:ActionTaskView){if(busy.value)return;busy.value=true;saving.value=true;error.value='';try{backendDemo.setAction(await backendClient.actionDone({task_id:task.task_id,done:!task.done}));lastDone.value=task.done?null:{...task,done:true};status.value=task.done?'任务已恢复。':'完成状态已保存。'}catch(e){error.value=(e as Error).message}finally{busy.value=false;saving.value=false}}
-async function addNote(){if(noteBusy.value||!note.value.trim())return;noteBusy.value=true;noteError.value='';try{backendDemo.upsertNote(await backendClient.addNote({kind:'todo',text:note.value.trim()}));note.value='';addOpen.value=false;status.value='个人待办已保存到账号；尚未排入行动计划。'}catch(e){noteError.value=(e as Error).message}finally{noteBusy.value=false}}
+import TodayTaskRow from '../components/TodayTaskRow.vue'
+
+const plan = computed(() => backendDemo.state.liveAction)
+const tasks = computed(() => actionRows(plan.value) as ActionTaskView[])
+const doneCount = computed(() => tasks.value.filter(task => task.done).length)
+const activeTasks = computed(() => tasks.value.filter(task => !task.done))
+const today = computed(() => dateKey(new Date().toISOString()))
+const todayDate = new Date()
+const todayDay = String(todayDate.getDate()).padStart(2, '0')
+const todayMonth = todayDate.toLocaleDateString('zh-CN', { month: 'short' })
+const todayWeekday = todayDate.toLocaleDateString('zh-CN', { weekday: 'short' })
+
+const busy = ref(false)
+const savingId = ref('')
+const error = ref('')
+const arrangementError = ref('')
+const lastDone = ref<ActionTaskView | null>(null)
+const suggestionsOpen = ref(false)
+
+const phaseByTask = computed(() => new Map(
+  (plan.value?.phases ?? []).flatMap(phase => (phase.tasks ?? []).map(task => [task.task_id, phase] as const)),
+))
+
+function actionable(task: ActionTaskView) {
+  const phase = phaseByTask.value.get(task.task_id)
+  return !task.done && task.status !== 'waiting' && !(phase?.blocked_by?.length)
+}
+
+function taskTimestamp(task: ActionTaskView) {
+  const value = task.scheduled_at || task.due_date
+  if (!value) return Number.POSITIVE_INFINITY
+  const time = new Date(value).getTime()
+  return Number.isNaN(time) ? Number.POSITIVE_INFINITY : time
+}
+
+const specifiedFocus = computed(() => {
+  const id = plan.value?.next_task?.task_id
+  return id ? tasks.value.find(task => task.task_id === id && !task.done) : undefined
+})
+const focusTask = computed(() => specifiedFocus.value ?? [...activeTasks.value]
+  .filter(actionable)
+  .sort((a, b) => {
+    const aOverdue = deadline(a.due_date).overdue ? 0 : 1
+    const bOverdue = deadline(b.due_date).overdue ? 0 : 1
+    return aOverdue - bOverdue || taskTimestamp(a) - taskTimestamp(b)
+  })[0])
+const focusIsSpecified = computed(() => !!specifiedFocus.value)
+
+const queueTasks = computed(() => tasks.value.filter(task => task.task_id !== focusTask.value?.task_id))
+const todayTasks = computed(() => queueTasks.value
+  .filter(task => actionable(task) && (
+    dateKey(task.scheduled_at) === today.value
+    || deadline(task.due_date).days === 0
+    || task.status === 'in_progress'
+  ))
+  .sort((a, b) => taskTimestamp(a) - taskTimestamp(b)))
+const todayIds = computed(() => new Set(todayTasks.value.map(task => task.task_id)))
+const overdueTasks = computed(() => queueTasks.value
+  .filter(task => actionable(task) && !todayIds.value.has(task.task_id) && deadline(task.due_date).overdue)
+  .sort((a, b) => taskTimestamp(a) - taskTimestamp(b)))
+const overdueIds = computed(() => new Set(overdueTasks.value.map(task => task.task_id)))
+const suggestedTasks = computed(() => queueTasks.value
+  .filter(task => actionable(task) && !todayIds.value.has(task.task_id) && !overdueIds.value.has(task.task_id))
+  .sort((a, b) => taskTimestamp(a) - taskTimestamp(b)))
+const todayCommitment = computed(() => [focusTask.value, ...todayTasks.value].filter((task): task is ActionTaskView => !!task))
+
+const timeFact = computed(() => backendDemo.state.liveWorkspace?.profile_panel?.fields?.find(field => field.key === 'time' || field.key === 'weekly_hours'))
+const estimatedMinutes = computed(() => todayCommitment.value.reduce((sum, task) => sum + (task.estimated_minutes || 0), 0))
+
+async function load() {
+  if (busy.value) return
+  busy.value = true
+  error.value = ''
+  arrangementError.value = ''
+  try {
+    const [actionResult, workspaceResult] = await Promise.allSettled([backendClient.action(), backendClient.workspace()])
+    if (actionResult.status === 'fulfilled') backendDemo.setAction(actionResult.value)
+    else error.value = (actionResult.reason as Error).message
+    if (workspaceResult.status === 'fulfilled') backendDemo.setWorkspace(workspaceResult.value)
+    else arrangementError.value = '可投入时间暂时未读取到，不影响查看行动任务。'
+  } finally {
+    busy.value = false
+  }
+}
+
+async function finish(task: ActionTaskView) {
+  if (savingId.value) return
+  savingId.value = task.task_id
+  error.value = ''
+  try {
+    backendDemo.setAction(await backendClient.actionDone({ task_id: task.task_id, done: !task.done }))
+    lastDone.value = task.done ? null : { ...task, done: true }
+  } catch (caught) {
+    error.value = (caught as Error).message
+  } finally {
+    savingId.value = ''
+  }
+}
+
 onMounted(load)
 </script>
-<template><div class="ws-page journey-page">
-<PageHeading title="今日行动" description="从一件具体的小事开始，让想好的方向往前走。"><template #meta><span class="tag">{{new Date().toLocaleDateString('zh-CN')}}</span><span class="tag">待执行 {{pending.length}} 件</span><span class="tag">已完成 {{doneCount}} / {{tasks.length}}</span></template><TaskEditor class="btn"/><RouterLink class="btn" to="/plan">看阶段计划</RouterLink></PageHeading>
-<AssetNotice/><StatusBanner v-if="error" tone="error" :message="error" retry-label="重新读取" @retry="load"/><p v-if="status" class="desk-status" role="status">{{status}}</p>
-<section v-if="lastDone" class="journey-complete"><div><h2>刚刚完成</h2><p>{{lastDone.text}}</p></div><button class="btn" :disabled="busy" @click="finish(lastDone)">恢复任务</button></section>
-<div class="journey-action-grid"><main class="journey-action-main">
-<section v-if="next" class="c2-today-task"><header class="c2-today-task-head"><h2>当前优先任务</h2><span :class="{'ws-attention':deadline(next.due_date).overdue}">{{deadline(next.due_date).label}}</span></header><div class="journey-focus"><div class="journey-focus__copy"><p class="ws-muted">{{next.phase}}<span v-if="next.due_date"> · {{dateKey(next.due_date)}}</span></p><h2>{{next.text}}</h2><DetailPopover title="任务依据与关联计划" label="查看任务依据与关联计划" side="right"><template #trigger>为什么是这项任务</template><p>{{plan?.next_task?.task_id===next.task_id?'来自当前计划的优先任务。':'当前计划没有指定优先项，先展示第一项未完成任务。'}}</p><p>关联阶段：{{next.phase}}</p><p class="ws-muted">该任务尚未提供独立的推荐理由。</p><RouterLink to="/plan">查看完整阶段路径</RouterLink></DetailPopover><div class="journey-focus__actions"><button class="btn btn--primary" :disabled="busy" @click="finish(next)">{{busy?(saving?'正在保存…':'正在读取…'):'标记完成'}}</button><RouterLink class="btn" :to="'/chat?question='+encodeURIComponent('我想讨论这项任务：'+next.text+'；所属阶段：'+next.phase)">咨询此任务</RouterLink></div></div></div></section>
-<p v-else class="ws-empty">{{busy?'正在读取行动计划…':tasks.length?(pending.length?'当前任务处于等待或依赖未完成状态。':'当前计划任务已完成。'):'暂无行动任务，请通过咨询安排计划。'}}</p>
-<section class="hm-live"><div class="hm-live__head"><h2>任务完成情况</h2><span>{{doneCount}} / {{tasks.length}}</span></div><progress v-if="tasks.length" :value="doneCount" :max="tasks.length" aria-label="任务完成情况"/></section>
-<section><div class="task-list-tools"><div class="task-group-filter"><button v-for="g in groups.filter(g=>['pending','in_progress','done'].includes(g.key))" :key="g.key" class="btn" :aria-pressed="group===g.key" @click="group=g.key">{{g.label}} {{tasks.filter(t=>matches(t,g.key)).length}}</button></div><label class="ws-field task-filter-select">筛选任务<select v-model="group"><option v-for="g in groups" :key="g.key" :value="g.key">{{g.label}} · {{tasks.filter(t=>matches(t,g.key)).length}}</option></select></label></div><label class="information-search task-search">查找任务<input v-model="query" type="search" placeholder="任务、阶段或日期"/></label><ActionTaskRow v-for="task in paged" :key="task.task_id" :task="task" :busy="busy" @toggle="finish"/><p v-if="!filtered.length&&!busy" class="ws-empty">当前分组没有符合条件的任务。</p><ResultPager v-model:page="page" :total="filtered.length" :size="5" label="行动任务"/></section>
-</main><aside class="journey-action-aside"><section><h2>时间与安排依据</h2><p v-if="timeFact">{{timeFact.label||'可投入时间'}}：{{timeFact.value}}</p><p v-else class="ws-muted">当前画像未提供可投入时间。</p><p v-if="pending.some(t=>t.estimated_minutes)">已填写的待执行任务预计用时：{{pending.reduce((n,t)=>n+(t.estimated_minutes||0),0)}} 分钟。未填写用时的任务不计入。</p><p v-else class="ws-muted">待执行任务尚未填写预计用时。</p><RouterLink class="ws-text-link" to="/schedule">核对课程与截止日期</RouterLink><RouterLink class="ws-text-link" to="/profile">补充可投入时间</RouterLink></section><TaskBrief/><section><h2>执行记录</h2><p>已完成 {{doneCount}} 件任务。</p><RouterLink class="ws-text-link" to="/review">查看复盘与执行记录</RouterLink></section></aside></div>
-<section class="c2-plan-tools"><button class="btn" @click="addOpen=true">添加个人待办</button><button class="ws-text-button" :disabled="busy" @click="load">刷新行动计划</button></section>
-<InfoSheet :open="addOpen" title="记一件准备做的事" @close="!noteBusy&&(addOpen=false)"><form @submit.prevent="addNote"><label class="ws-field">做什么<textarea v-model="note" maxlength="200" required placeholder="例如：整理项目经历与成果"/></label><p class="ws-muted">保存到个人待办，可在「待办与目标」继续管理。</p><p class="ws-muted">需要设置日期与用时，请使用页面上的「安排新任务」。</p><p v-if="noteError" role="alert" class="ws-field-error">{{noteError}}</p><button class="btn btn--primary" :disabled="noteBusy||!note.trim()">{{noteBusy?'正在保存…':'保存个人待办'}}</button></form></InfoSheet>
-</div></template>
-<style scoped>.journey-page .c2-today-task .journey-focus{margin:0}.journey-page .hm-live{display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:16px}.journey-page .hm-live__head{flex:1;min-width:170px}.journey-page .hm-live progress{width:34%;height:6px}.journey-page .task-filter-select{flex-direction:row;align-items:center}.journey-page .task-filter-select select{width:auto}@media(max-width:600px){.journey-page .hm-live{flex-wrap:wrap}.journey-page .hm-live progress{flex:1}}.task-list-tools{display:flex;flex-wrap:wrap;align-items:end;gap:12px;justify-content:space-between;margin:0 0 12px}.task-list-tools .task-group-filter{display:flex;flex-wrap:wrap;margin:0;gap:6px}.task-filter-select{margin:0;min-width:150px}.task-search{margin:0 0 8px}@media(max-width:600px){.task-filter-select{flex:1}.task-list-tools{gap:8px}}.task-group-filter{gap:8px;margin-bottom:16px}.task-group-filter [aria-pressed=true]{background:var(--c-primary-weak);color:var(--c-primary);border-color:var(--c-primary)}progress{width:100%;accent-color:var(--c-primary)}.c2-plan-tools{display:flex;flex-wrap:wrap;gap:16px}form>.btn{margin-top:20px}</style>
+
+<template>
+  <div class="ws-page today-page">
+    <PageHeading title="今日行动" description="把计划收成一条可执行队列：先看现在这一件，再处理接下来的任务。">
+      <TaskEditor class="btn" />
+      <RouterLink class="btn" to="/plan">阶段计划</RouterLink>
+    </PageHeading>
+
+    <AssetNotice />
+    <StatusBanner v-if="error" tone="error" :message="error" retry-label="重新读取" :retrying="busy" @retry="load" />
+
+    <div class="today-layout">
+      <main class="today-main">
+        <section v-if="focusTask" class="today-focus" aria-labelledby="today-focus-title">
+          <div class="today-focus__body">
+            <header class="today-focus__head">
+              <div>
+                <h2 class="today-focus__label">现在做</h2>
+                <p class="today-focus__source">{{ focusIsSpecified ? '计划指定的下一项' : '按截止与安排时间显示' }}</p>
+              </div>
+              <span class="today-focus__deadline" :class="{ 'today-urgent': deadline(focusTask.due_date).overdue }">{{ deadline(focusTask.due_date).label }}</span>
+            </header>
+            <p class="today-focus__phase">{{ focusTask.phase || '阶段任务' }}<span v-if="focusTask.scheduled_at"> · {{ new Date(focusTask.scheduled_at).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) }}</span><span v-if="focusTask.estimated_minutes"> · 预计 {{ focusTask.estimated_minutes }} 分钟</span></p>
+            <h2 id="today-focus-title">{{ focusTask.text }}</h2>
+            <div class="today-focus__actions">
+              <button class="btn btn--primary" type="button" :disabled="!!savingId" @click="finish(focusTask)">{{ savingId === focusTask.task_id ? '正在保存…' : '完成' }}</button>
+              <TaskEditor :task="focusTask" trigger-text="调整" />
+              <DetailPopover title="这项任务需要帮助？" label="打开当前任务帮助" side="right">
+                <template #trigger>帮助</template>
+                <TaskBrief />
+                <RouterLink class="ws-text-link today-help-link" :to="'/chat?question=' + encodeURIComponent('我想讨论这项任务：' + focusTask.text + '；所属阶段：' + (focusTask.phase || '未提供'))">和生涯助手讨论这项任务</RouterLink>
+              </DetailPopover>
+            </div>
+          </div>
+        </section>
+
+        <section v-else class="today-empty today-empty--focus">
+          <template v-if="busy"><h2>正在读取行动计划…</h2></template>
+          <template v-else-if="plan?.has_plan === false"><h2>还没有行动计划</h2><p>先从咨询中明确目标，再把建议保存为阶段与任务。</p><RouterLink class="btn btn--primary" to="/chat">开始咨询</RouterLink></template>
+          <template v-else-if="tasks.length && !activeTasks.length"><h2>计划内任务已全部完成</h2><p>可以查看复盘，或回到阶段计划安排下一步。</p><RouterLink class="btn" to="/review">查看复盘</RouterLink></template>
+          <template v-else><h2>当前没有可直接执行的任务</h2><p>任务可能仍在等待依赖；请先核对等待条件或阶段计划。</p><RouterLink class="btn" to="/plan">查看阶段计划</RouterLink></template>
+        </section>
+
+        <StatusBanner
+            v-if="lastDone"
+            class="today-undo"
+            tone="success"
+            :message="`已完成“${lastDone.text}”`"
+            action-label="撤销"
+            :auto-dismiss="0"
+            @action="finish(lastDone)"
+            @dismiss="lastDone = null"
+        />
+
+        <section class="today-queue" aria-label="今日任务队列">
+          <section v-if="todayTasks.length" class="today-next" aria-labelledby="today-queue-title">
+            <div class="today-section-head">
+              <h2 id="today-queue-title">接下来</h2>
+              <span>{{ todayTasks.length }} 项</span>
+            </div>
+
+            <TodayTaskRow v-for="task in todayTasks" :key="task.task_id" :task="task" :busy="!!savingId" @toggle="finish" />
+          </section>
+
+          <section v-if="overdueTasks.length" class="today-decision" aria-labelledby="today-decision-title">
+            <div class="today-decision__head">
+              <div><h2 id="today-decision-title">{{ overdueTasks.length }} 项需要改期</h2><p>已过截止日，不再默认算作今天的任务。</p></div>
+            </div>
+            <TodayTaskRow v-for="task in overdueTasks" :key="task.task_id" :task="task" :busy="!!savingId" @toggle="finish" />
+          </section>
+
+          <section v-if="suggestedTasks.length" class="today-suggestions" aria-labelledby="today-suggestions-title">
+            <header class="today-suggestions__head">
+              <div>
+                <h2 id="today-suggestions-title">下一步候选</h2>
+                <p>当前任务完成后，可以把其中一项安排到今天。</p>
+              </div>
+              <button
+                v-if="suggestedTasks.length > 1"
+                class="ws-text-button"
+                type="button"
+                :aria-expanded="suggestionsOpen"
+                @click="suggestionsOpen = !suggestionsOpen"
+              >{{ suggestionsOpen ? '收起候选' : `查看其余 ${suggestedTasks.length - 1} 项` }}</button>
+            </header>
+            <TodayTaskRow :task="suggestedTasks[0]" mode="candidate" />
+            <template v-if="suggestionsOpen">
+              <TodayTaskRow v-for="task in suggestedTasks.slice(1, 5)" :key="task.task_id" :task="task" mode="candidate" />
+              <RouterLink v-if="suggestedTasks.length > 5" class="ws-text-link today-suggestions__more" to="/plan">在阶段计划查看其余 {{ suggestedTasks.length - 5 }} 项</RouterLink>
+            </template>
+          </section>
+
+        </section>
+      </main>
+
+      <aside class="today-aside" aria-label="今日概览">
+        <section class="today-date-card">
+          <p>{{ todayMonth }} · {{ todayWeekday }}</p>
+          <strong>{{ todayDay }}</strong>
+          <span>今天</span>
+        </section>
+        <section class="today-capacity" aria-labelledby="today-capacity-title">
+          <div class="today-capacity__identity">
+            <h2 id="today-capacity-title">今日容量</h2>
+            <p v-if="arrangementError">{{ arrangementError }}</p>
+            <p v-else>为今天留下可完成的空间。</p>
+          </div>
+          <dl>
+            <div><dt>可投入</dt><dd>{{ timeFact?.value || '未填写' }}</dd></div>
+            <div><dt>预计用时</dt><dd>{{ estimatedMinutes ? `${estimatedMinutes} 分钟` : '未估算' }}</dd></div>
+            <div><dt>逾期待处理</dt><dd>{{ overdueTasks.length }} 项</dd></div>
+          </dl>
+          <div class="today-progress">
+            <span>阶段计划</span><strong>{{ doneCount }} / {{ tasks.length }}</strong>
+            <progress v-if="tasks.length" :value="doneCount" :max="tasks.length" aria-label="计划任务完成进度" />
+          </div>
+          <RouterLink class="btn today-capacity__action" :to="timeFact?.value ? '/schedule' : '/profile'">{{ timeFact?.value ? '检查日程' : '填写时间' }}</RouterLink>
+        </section>
+      </aside>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.today-page { max-width: 1080px; margin-inline: auto; }
+.today-layout { display: grid; grid-template-columns: minmax(0, 1fr) 248px; gap: 22px; align-items: start; margin-top: 16px; }
+.today-main { min-width: 0; }
+.today-focus { overflow: hidden; color: var(--c-text); background: var(--c-surface); border: 1px solid var(--c-border); border-top: 4px solid var(--c-primary); border-radius: 12px; box-shadow: var(--e-2); }
+.today-focus__body { padding: 24px 28px 26px; }
+.today-focus__head,.today-section-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.today-focus__label { color: var(--c-primary); font-size: var(--fs-14); font-weight: var(--fw-semibold); }
+.today-focus__source,.today-focus__phase { color: var(--c-text-3); font-size: var(--fs-12); }
+.today-focus__phase { margin-top: 22px; }
+.today-focus__body > h2 { max-width: 22em; margin-top: 6px; color: var(--c-text); font-size: clamp(23px, 2.5vw, 30px); font-weight: 650; line-height: 1.38; letter-spacing: -.02em; }
+.today-focus__deadline { flex: none; padding: 5px 9px; color: var(--c-text-2); background: var(--c-surface-2); border: 1px solid var(--c-border); border-radius: var(--r-sm); font-size: var(--fs-12); }
+.today-focus__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; margin-top: 22px; }
+.today-focus__actions .btn--primary { box-shadow: none; }
+.today-focus__actions :deep(.detail-trigger) { min-height: 42px; color: var(--c-text-2); }
+.today-focus__actions :deep(.detail-trigger:hover) { color: var(--c-primary); }
+.today-help-link { display: block; margin-top: 18px; }
+.today-focus .today-urgent { color: var(--c-attention-strong); background: var(--c-attention-weak); border-color: color-mix(in srgb, var(--c-attention) 30%, transparent); }
+.today-urgent { color: var(--c-attention); font-weight: var(--fw-semibold); }
+.today-empty--focus { padding: 28px; background: var(--c-surface); }
+.today-empty--focus p { margin: 8px 0 20px; color: var(--c-text-2); }
+.today-undo { margin-top: 12px; }
+.today-queue { margin-top: 14px; padding: 20px 24px 18px; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 12px; box-shadow: var(--e-1); }
+.today-next { padding-top: 16px; }
+.today-section-head h2 { color: var(--c-text); font-size: var(--fs-20); }
+.today-section-head > span { color: var(--c-text-3); font-size: var(--fs-12); }
+.today-decision { padding-top: 0; }
+.today-next + .today-decision { margin-top: 10px; border-top: 1px solid var(--c-border); }
+.today-decision__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.today-decision__head h2 { color: var(--c-text); font-size: var(--fs-16); }
+.today-decision__head p { margin-top: 4px; color: var(--c-text-3); font-size: var(--fs-12); line-height: 1.7; }
+.today-suggestions { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--c-border); }
+.today-suggestions__head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+.today-suggestions__head h2 { font-size: var(--fs-16); }
+.today-suggestions__head p { margin-top: 3px; color: var(--c-text-3); font-size: var(--fs-12); }
+.today-suggestions__head .ws-text-button { flex: none; min-height: 44px; color: var(--c-primary); }
+.today-suggestions__more { display: inline-flex; min-height: 44px; align-items: center; margin-top: 8px; }
+.today-aside { position: sticky; top: 16px; display: grid; gap: 12px; }
+.today-date-card { position: relative; overflow: hidden; min-height: 164px; padding: 20px; color: var(--c-on-primary); background: var(--c-primary-brand); border-radius: 12px; box-shadow: var(--e-2); }
+.today-date-card::after { content: ''; position: absolute; right: -36px; bottom: -54px; width: 150px; height: 150px; border: 28px solid rgba(255,255,255,.11); border-radius: 50%; }
+.today-date-card p { color: rgba(255,255,255,.76); font-size: var(--fs-13); }
+.today-date-card strong { display: block; margin-top: 15px; font-family: Georgia, 'Times New Roman', serif; font-size: 58px; font-weight: 400; line-height: .9; }
+.today-date-card span { display: block; margin-top: 8px; font-size: var(--fs-14); }
+.today-capacity { padding: 20px; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 12px; box-shadow: var(--e-1); }
+.today-capacity__identity h2 { font-size: var(--fs-16); }
+.today-capacity__identity p { margin-top: 5px; color: var(--c-text-3); font-size: var(--fs-12); line-height: 1.65; }
+.today-capacity dl { display: grid; gap: 0; margin: 16px 0 0; }
+.today-capacity dl div { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--c-border); }
+.today-capacity dt { color: var(--c-text-3); font-size: var(--fs-12); }
+.today-capacity dd { margin: 0; color: var(--c-text); font-size: var(--fs-14); font-weight: var(--fw-semibold); font-variant-numeric: tabular-nums; }
+.today-progress { display: grid; grid-template-columns: 1fr auto; gap: 7px 10px; margin-top: 16px; color: var(--c-text-3); font-size: var(--fs-12); }
+.today-progress strong { color: var(--c-text); font-variant-numeric: tabular-nums; }
+.today-progress progress { grid-column: 1 / -1; width: 100%; height: 5px; accent-color: var(--c-primary); }
+.today-capacity__action { width: 100%; margin-top: 18px; white-space: nowrap; }
+@media (max-width: 720px) {
+  .today-layout { grid-template-columns: minmax(0, 1fr); }
+  .today-aside { position: static; grid-template-columns: 150px minmax(0, 1fr); order: -1; }
+  .today-date-card { min-height: 100%; }
+}
+@media (max-width: 600px) {
+  .today-layout { margin-top: 8px; }
+  .today-aside { grid-template-columns: minmax(0, 1fr); }
+  .today-date-card { min-height: 132px; }
+  .today-date-card strong { font-size: 48px; }
+  .today-focus__body { padding: 20px 16px 22px; }
+  .today-focus__head { flex-direction: column; gap: 8px; }
+  .today-focus__phase { margin-top: 18px; }
+  .today-focus__body > h2 { font-size: 21px; }
+  .today-focus__actions .btn { flex: 1 1 140px; }
+  .today-focus__actions :deep(.detail-trigger) { min-height: 44px; }
+  .today-queue { padding: 18px 16px 8px; }
+  .today-decision__head { flex-direction: column; gap: 6px; }
+  .today-suggestions__head { align-items: flex-start; }
+  .today-suggestions__head p { max-width: 22em; }
+}
+</style>
