@@ -59,10 +59,14 @@ export async function loadShell() {
   const failure = results.find(r => r.status === 'rejected')
   if (failure?.status === 'rejected') systemData.error = failure.reason instanceof Error ? failure.reason.message : '部分资料加载失败'
 }
+export async function loadAchievements() {
+  const achievements = await backendClient.achievements()
+  systemData.achievements = achievements
+  return achievements
+}
 export async function loadRecords() {
-  const [events, achievements] = await Promise.allSettled([backendClient.events(), backendClient.achievements()])
+  const [events, achievements] = await Promise.allSettled([backendClient.events(), loadAchievements()])
   if(events.status === 'fulfilled') systemData.events = events.value
-  if(achievements.status === 'fulfilled') systemData.achievements = achievements.value
   if(events.status === 'rejected') throw events.reason
   if(achievements.status === 'rejected') throw achievements.reason
 }

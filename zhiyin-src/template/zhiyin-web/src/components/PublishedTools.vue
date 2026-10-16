@@ -154,9 +154,8 @@ const TOOL_REL: ToolRel[] = [
     feedsOthers: true,
   },
   {
-    /* 出处：src/components/AchievementsSection.vue:10 —— 解锁日期读
-       backendDemo.state.eventTimes[rule.trigger_events]；badgeRules 里
-       first_task_done 的 trigger_events 是 ['task_done']（backend-registry.json:193-198） */
+    /* 出处：GET /api/v1/app/achievements 返回服务端根据行为记录形成的完成状态；
+       first_task_done 对应完成第一件计划任务。 */
     id: 'achievements',
     dependsOn: ['action_progress'],
     readsFrom: 'action_progress',
@@ -196,7 +195,7 @@ const preset = registry.modules.map<DirectoryEntry>((m) => ({
   sourceLabel: '工作空间内置',
   sourceKind: 'external',
   runnable: (m.actions?.length ?? 0) > 0,
-  to: m.id === 'action_progress' ? '/plan' : '/review?view=achievements',
+  to: m.id === 'action_progress' ? '/plan' : '/achievements',
 }))
 
 const directory = computed<DirectoryEntry[]>(() => [
