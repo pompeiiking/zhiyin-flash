@@ -32,7 +32,7 @@ export const router = createRouter({
       path: '/home',
       name: 'home',
       component: () => import('./views/TodayView.vue'),
-      meta: { title: '行动计划', step: 'today' },
+      meta: { title: '今日行动', step: 'today' },
     },
     {
       path: '/chat',
@@ -56,7 +56,7 @@ export const router = createRouter({
       path: '/plan',
       name: 'plan',
       component: () => import('./views/RoadmapView.vue'),
-      meta: { title: '行动计划', step: 'today' },
+      meta: { title: '阶段计划', step: 'today' },
     },
     {
       path: '/review',
@@ -71,7 +71,7 @@ export const router = createRouter({
     { path: '/notes', name: 'notes', component: () => import('./views/NotesView.vue'), meta: { title: '待办与目标' } },
     { path: '/intel', name: 'intel', component: () => import('./views/IntelView.vue'), meta: { title: '职业探索' } },
     { path: '/tools', name: 'tools', component: () => import('./views/ToolsView.vue'), meta: { title: '应用工具' } },
-    ...['settings','reminders','guide','achievements'].map(name => ({path:'/' + name,name,component:() => import('./views/SystemView.vue'),meta:{title:({settings:'账号设置',reminders:'提醒',guide:'使用指南',gallery:'通用组件与状态',login:'登录',achievements:'成长记录'} as Record<string,string>)[name]}})),
+    ...['settings','reminders','guide','achievements'].map(name => ({path:'/' + name,name,component:() => import('./views/SystemView.vue'),meta:{title:({settings:'账号设置',reminders:'提醒',guide:'使用指南',gallery:'通用组件与状态',login:'登录',achievements:'完成记录'} as Record<string,string>)[name]}})),
     { path: '/notfound', name: 'notfound', component: () => import('./views/NotFoundView.vue'), meta: { title: '异常页' } },
     /*
      * 兜底：**必须放最后**。没有它时，匹配不到的地址会让 <RouterView> 什么都不渲染 ——
@@ -95,6 +95,7 @@ export const router = createRouter({
 })
 
 router.beforeEach(async (to) => {
+  if (to.path === '/review' && to.query.view === 'achievements') return '/achievements'
   if (to.path === '/report' && to.query.focus === 'choose') return '/directions'
   if (to.meta.public) return true
   if (!demo.state.authed && !await auth.restore()) return {path:'/',query:{signin:'1',redirect:to.fullPath}}

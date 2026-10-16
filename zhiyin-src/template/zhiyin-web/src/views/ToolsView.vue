@@ -14,12 +14,12 @@ const profileCount=computed(()=>backendDemo.state.liveWorkspace?.profile_panel?.
 const directionCount=computed(()=>backendDemo.state.liveDirections?.plans?.length??0)
 const taskCount=computed(()=>backendDemo.state.liveAction?.phases?.reduce((n,p)=>n+(p.tasks?.length??0),0)??0)
 const tools = computed(() => [
- {id:'verify',name:'学籍核验',step:1,reads:'本人授权的在线验证码',writes:'专业、年级与在读状态，保留核验时间',when:'第一次使用，或学籍变化之后',to:'/academic',state:backendDemo.chsiVerified.value?'已有核验资料':'等待本人授权'},
- {id:'import',name:'成绩与课表导入',step:1,reads:'本人提供的成绩单与课表',writes:(backendDemo.state.academic?.grades?.length??0)+' 条成绩、'+(backendDemo.state.academic?.courses?.length??0)+' 门课程，保留冲突与缺失时间',when:'资料更新时，重新核对导入快照',to:'/academic',state:backendDemo.state.academic?'已有资料':'等待资料'},
+ {id:'verify',name:'学籍核验',step:1,reads:'本人授权的在线验证码',writes:'专业、年级与在读状态，保留核验时间',when:'第一次使用，或学籍变化之后',to:'/profile?section=enrollment',state:backendDemo.chsiVerified.value?'已有核验资料':'等待本人授权'},
+ {id:'import',name:'成绩导入',step:1,reads:'本人提供的成绩单',writes:(backendDemo.state.academic?.grades?.length??0)+' 条成绩，按学期核对导入记录',when:'资料更新时，重新核对导入快照',to:'/grades',state:backendDemo.state.academic?.grades?.length?'已有资料':'等待资料'},
  {id:'profile',name:'画像分析',step:2,reads:'已核对的学校资料、对话与本人更正',writes:'已有信息、缺口与判断的依赖关系',when:'先补资料，再核对每条判断',to:'/profile',state:profileCount.value?'已有画像':'等待资料'},
  {id:'directions',name:'方向对比',step:2,reads:'个人画像和岗位要求笔记',writes:directionCount.value+' 条方向方案，可逐项核对目标、依据与风险',when:'需要比较方向、调整看重程度时',to:'/directions',state:directionCount.value?'可比较':'等待方案'},
  {id:'tasks',name:'任务建议',step:3,reads:'已选方向与报告中的差距',writes:demo.use.now.value.length+' 件现在可以动手的任务',when:'把判断拆成今天做得完的小事',to:'/home',state:demo.use.now.value.length?'可执行':taskCount.value?'已全部完成':'暂未形成'},
- {id:'schedule',name:'周时间表',step:3,reads:'课程占用、任务时长与截止节点',writes:'任务、课程与空档，放在同一时间刻度上',when:'课表或计划变化后重新看一周',to:'/schedule',state:backendDemo.state.academic?'可查看':'等待课表'},
+ {id:'schedule',name:'课表导入与日历',step:3,reads:'课程占用、任务时长与截止节点',writes:'任务、课程与空档，放在同一时间刻度上',when:'课表或计划变化后重新看一周',to:'/schedule',state:backendDemo.state.academic?'可查看':'等待课表'},
 ])
 const groups=computed(()=>axis.value==='state' ? [true,false].map(ready=>({key:String(ready),title:ready?'可以使用':'需要先补充资料',items:tools.value.filter(t=>/等待|暂未/.test(t.state)!==ready)})) : [1,2,3].map(step=>({key:String(step),title:['','资料管理','分析与比较','行动安排'][step],items:tools.value.filter(t=>t.step===step)})))
 const steps=computed(()=>[

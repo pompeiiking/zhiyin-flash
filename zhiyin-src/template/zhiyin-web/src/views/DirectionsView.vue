@@ -1,46 +1,38 @@
 <script setup lang="ts">
-import {computed,onMounted,ref,watch} from 'vue'
+import {computed,onMounted,ref} from 'vue'
 import {useRoute,useRouter} from 'vue-router'
 import {backendClient,BackendError} from '../api/backend-client'
 import {backendDemo} from '../lib/backend-demo'
-import type {ReportFullTextView,AssetVersionView} from '../api/backend-types'
+import type {AssetVersionView} from '../api/backend-types'
 import PageHeading from '../components/PageHeading.vue'
-import FullReportBody from '../components/FullReportBody.vue'
 import DirectionDetails from '../components/LiveDirectionCompare.vue'
 import ReportHistory from '../components/ReportHistory.vue'
-import AssetNotice from '../components/AssetNotice.vue'
 import EmptyState from '../components/EmptyState.vue'
 import SkeletonBlock from '../components/SkeletonBlock.vue'
 import StatusBanner from '../components/StatusBanner.vue'
-import ReportSummary from '../components/ReportSummary.vue'
 const route=useRoute(),router=useRouter(),busy=ref(false),saving=ref(false),error=ref(''),selectionChanged=ref(false)
-const directions=computed(()=>route.path==='/directions'), report=computed(()=>backendDemo.state.liveReport),plans=computed(()=>backendDemo.state.liveDirections)
+const plans=computed(()=>backendDemo.state.liveDirections)
 const history=computed(()=>route.query.view==='versions'||route.query.focus==='versions')
 const impact=ref({report:false,plan:false,checked:false})
 async function loadImpact(){
- if(!directions.value)return
  const settled=await Promise.allSettled([backendClient.versions('report'),backendClient.versions('action_plan')])
  const latest=(result:PromiseSettledResult<AssetVersionView[]>)=>result.status==='fulfilled'?[...result.value].sort((a,b)=>b.version-a.version)[0]:undefined
  impact.value={report:latest(settled[0])?.needs_recompute===true,plan:latest(settled[1])?.needs_recompute===true,checked:settled.every(result=>result.status==='fulfilled')}
 }
 async function load(){if(busy.value)return;busy.value=true;error.value='';try{
- if(directions.value){backendDemo.setLiveDirections(await backendClient.directions());await loadImpact()}
- else{backendDemo.setReport(await backendClient.report());const versions=await backendClient.versions('report');backendDemo.setReportMetadata(versions.find(v=>v.version===report.value?.version)??null)}
+ backendDemo.setLiveDirections(await backendClient.directions());await loadImpact()
 }catch(e){if(!(e instanceof BackendError&&e.code===1002))error.value=(e as Error).message}finally{busy.value=false}}
 async function select(id:string){if(saving.value)return;saving.value=true;error.value='';try{backendDemo.setLiveDirections(await backendClient.selectDirection(id));backendDemo.markDirectionChange();selectionChanged.value=true;await loadImpact()}catch(e){error.value=(e as Error).message}finally{saving.value=false}}
 function printReport(){window.print()}
 function setHistory(open:boolean){const query={...route.query};delete query.focus;if(open)query.view='versions';else delete query.view;void router.replace({query})}
-function historical(doc:ReportFullTextView,meta:AssetVersionView|null){backendDemo.setReport(doc);backendDemo.setReportMetadata(meta);setHistory(false)}
 onMounted(load)
-watch(directions,()=>{selectionChanged.value=false;void load()})
 </script>
 <template><div class="ws-page report-page">
-<PageHeading :title="directions?'方向方案':'诊断报告'" :description="directions?'把三个可能的未来看清楚，用一次真实尝试替代仓促决定。':'核对每项判断的依据，查看资料变化与历史版本。'"><button class="btn" :disabled="busy" @click="load">{{busy?'正在读取…':directions?'刷新方向':'刷新'}}</button><button :class="directions?'ws-text-button':'btn'" @click="setHistory(!history)">{{history?(directions?'返回方案':'返回报告'):'版本记录'}}</button><button :class="directions?'ws-text-button':'btn'" :disabled="busy||(directions?!plans:!report)" @click="printReport">{{directions?'打印方案':'打印报告'}}</button></PageHeading>
-<AssetNotice v-if="!directions"/><StatusBanner v-if="error" tone="error" :message="error" retry-label="重新读取" @retry="load"/><SkeletonBlock v-if="busy" variant="list" :lines="4"/>
-<DirectionDetails v-if="directions && plans && !history" :plans="plans" :saving="saving" :impact="impact" :selection-changed="selectionChanged" @select="select"/>
-<ReportHistory v-else-if="history" :key="directions?'directions':'report'" :asset-type="directions?'direction_plan':'report'" @open="historical"/>
-<div v-else-if="!directions && report" class="c2-report-layout"><main><FullReportBody :report="report"/></main><aside class="report-next-rail"><ReportSummary/><section><h2>资料有变化？</h2><RouterLink class="btn" to="/chat?topic=更新报告">继续咨询</RouterLink><RouterLink class="ws-text-link" to="/profile">核对个人画像</RouterLink></section></aside></div>
-<EmptyState v-else-if="!busy&&!error" kind="report" :title="directions?'尚未形成方向方案':'尚未生成诊断报告'" description="先通过咨询补充资料，生成后会保存在这里。"><RouterLink class="btn btn--primary" to="/chat">继续咨询</RouterLink></EmptyState>
+<PageHeading title="方向方案" description="把三个可能的未来看清楚，用一次真实尝试替代仓促决定。"><button class="btn" :disabled="busy" @click="load">{{busy?'正在读取…':'刷新方向'}}</button><button class="ws-text-button" @click="setHistory(!history)">{{history?'返回方案':'版本记录'}}</button><button class="ws-text-button" :disabled="busy||!plans" @click="printReport">打印方案</button></PageHeading>
+<StatusBanner v-if="error" tone="error" :message="error" retry-label="重新读取" @retry="load"/><SkeletonBlock v-if="busy" variant="list" :lines="4"/>
+<DirectionDetails v-if="plans && !history" :plans="plans" :saving="saving" :impact="impact" :selection-changed="selectionChanged" @select="select"/>
+<ReportHistory v-else-if="history" asset-type="direction_plan"/>
+<EmptyState v-else-if="!busy&&!error" kind="report" title="尚未形成方向方案" description="先通过咨询补充资料，生成后会保存在这里。"><RouterLink class="btn btn--primary" to="/chat">继续咨询</RouterLink></EmptyState>
 </div></template>
 <style scoped>
 .report-page .c2-report-layout > .report-next-rail { grid-column:2; grid-row:1; display:grid; gap:24px; position:sticky; top:20px; padding-top:0; }

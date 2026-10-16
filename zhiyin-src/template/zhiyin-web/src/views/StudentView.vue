@@ -3,6 +3,7 @@ const MAX_CHARS = 40
 import {PROFILE_TOPICS, profilePriority, exactProfileKeys} from '../lib/profile-organization'
 import {profileLabel} from '../lib/server-copy'
 import { onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 /**
  * 个人画像 · v8
  * ---------------------------------------------------------------------------
@@ -183,7 +184,9 @@ const DEMO_EDGES: DependencyEdgeView[] = (() => {
  * ======================================================================== */
 
 const profileTab = ref<'facts' | 'judgments' | 'gaps' | 'sources'>('facts')
+const profileRoute = useRoute()
 const verificationOpen = ref(false)
+watch(() => profileRoute.query.section, async section => { if(section === 'enrollment') { await nextTick(); document.getElementById('enrollment-title')?.scrollIntoView({block:'start'}) } }, {immediate:true})
 const isVerified = computed(() => backendDemo.chsiVerified.value)
 const loading = ref(false)
 const serviceError = ref('')
@@ -1222,7 +1225,7 @@ onMounted(()=>{ void loadWorkspace() })
         <section>
           <h3>学校资料</h3>
           <p>学籍核验只需在线验证码，不需要账号密码。课表和成绩分别在对应页面管理。</p>
-          <button class="ws-text-button" @click="verificationOpen=true">核验学籍<UiIcon name="shield" :size="16" /></button>
+          <button class="ws-text-button" @click="profileTab='facts'; verificationOpen=true">核验学籍<UiIcon name="shield" :size="16" /></button>
           <RouterLink class="ws-text-link" to="/grades">查看我的成绩<UiIcon name="arrow" :size="16" /></RouterLink>
         </section>
       </div>

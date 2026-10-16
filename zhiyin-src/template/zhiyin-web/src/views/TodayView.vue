@@ -290,7 +290,7 @@ onMounted(load)
 .today-capacity__action { width: 100%; margin-top: 18px; white-space: nowrap; }
 @media (max-width: 720px) {
   .today-layout { grid-template-columns: minmax(0, 1fr); }
-  .today-aside { position: static; grid-template-columns: 150px minmax(0, 1fr); order: -1; }
+  .today-aside { position: static; grid-template-columns: 150px minmax(0, 1fr); }
   .today-date-card { min-height: 100%; }
 }
 @media (max-width: 600px) {

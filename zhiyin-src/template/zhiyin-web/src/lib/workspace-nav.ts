@@ -93,8 +93,6 @@ export const DIRECTORY_PAGES = [
   {label:'登录',to:'/login',hint:'选择当前工作空间'},
   {label:'工具',to:'/tools',hint:'六个工具与四步依赖链'},
   {label:'使用指南',to:'/guide',hint:'咨询、画像、选择与行动'},
-  {label:'通用组件与状态',to:'/gallery',hint:'来源、把握度、加载、空白与错误'},
-  {label:'设计规范',to:'/spec',hint:'颜色、排印、间距与组件'},
   {label:'异常页',to:'/notfound',hint:'404、无权限与服务不可用'},
 ]
 

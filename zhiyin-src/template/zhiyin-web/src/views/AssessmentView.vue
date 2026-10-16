@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { backendClient, BackendError } from '../api/backend-client'
 import { backendDemo } from '../lib/backend-demo'
 import type { ReportFullTextView, AssetVersionView, WorkspacePageView } from '../api/backend-types'
 import PageHeading from '../components/PageHeading.vue'
 import FullReportBody from '../components/FullReportBody.vue'
-import DirectionDetails from '../components/LiveDirectionCompare.vue'
 import ReportHistory from '../components/ReportHistory.vue'
 import AssetNotice from '../components/AssetNotice.vue'
 import EmptyState from '../components/EmptyState.vue'
@@ -14,16 +13,15 @@ import SkeletonBlock from '../components/SkeletonBlock.vue'
 import StatusBanner from '../components/StatusBanner.vue'
 
 const route = useRoute()
+const router = useRouter()
 const busy = ref(false)
-const saving = ref(false)
 const error = ref('')
-const history = ref(route.query.focus === 'versions')
+const history = computed(() => route.query.focus === 'versions' || route.query.view === 'versions')
+function setHistory(open: boolean) { const query = {...route.query}; delete query.focus; if(open) query.view='versions'; else delete query.view; void router.replace({query}) }
 const viewedReport = ref<ReportFullTextView | null>(null)
 const viewedMetadata = ref<AssetVersionView | null>(null)
 const profileError = ref('')
-const directions = computed(() => route.path === '/directions')
 const report = computed(() => viewedReport.value)
-const plans = computed(() => backendDemo.state.liveDirections)
 const workspace = ref<WorkspacePageView | null>(null)
 const reportItems = computed(() => report.value?.sections?.flatMap((section) => section.items ?? []) ?? [])
 const pendingCount = computed(() => reportItems.value.filter((item) => !item.evidence?.trim() || /待|缺|不足|未知/.test(item.tag || '')).length)
@@ -46,8 +44,7 @@ async function load() {
   error.value = ''
   profileError.value = ''
   try {
-    if (directions.value) backendDemo.setLiveDirections(await backendClient.directions())
-    else {
+    {
       const [current, versions, workspaceResult] = await Promise.all([
         backendClient.report(),
         backendClient.versions('report'),
@@ -65,39 +62,26 @@ async function load() {
     if (!(caught instanceof BackendError && caught.code === 1002)) error.value = (caught as Error).message
   } finally { busy.value = false }
 }
-async function select(id: string) {
-  if (saving.value) return
-  saving.value = true
-  error.value = ''
-  try { backendDemo.setLiveDirections(await backendClient.selectDirection(id)); backendDemo.markDirectionChange() }
-  catch (caught) { error.value = (caught as Error).message }
-  finally { saving.value = false }
-}
 function printReport() { window.print() }
-function historical(document: ReportFullTextView, metadata: AssetVersionView | null) { viewedReport.value = document; viewedMetadata.value = metadata; history.value = false }
+function historical(document: ReportFullTextView, metadata: AssetVersionView | null) { viewedReport.value = document; viewedMetadata.value = metadata; setHistory(false) }
 onMounted(load)
-watch(directions, () => { history.value = false; void load() })
 </script>
 
 <template>
   <div class="ws-page report-page">
-    <PageHeading :title="directions ? '方向方案' : '你的报告'" :description="directions ? '比较目标、依据与风险，再确认自己的方向。' : '先看判断、差距和下一步；需要时再点开依据与资料。'">
-      <template v-if="directions">
-        <button class="btn" :disabled="busy" @click="load">{{ busy ? '正在读取…' : '刷新' }}</button><button class="btn" @click="history = !history">{{ history ? '返回方案' : '版本记录' }}</button><button class="btn" :disabled="busy || !plans" @click="printReport">打印 / 保存 PDF</button>
-      </template>
-      <button v-else-if="history" class="btn" @click="history = false">返回报告</button>
+    <PageHeading title="你的报告" description="先看判断、差距和下一步；需要时再点开依据与资料。">
+      <button v-if="history" class="btn" @click="setHistory(false)">返回报告</button>
       <template v-else-if="report">
-        <button class="ws-text-button" :disabled="busy" @click="load">{{ busy ? '正在读取…' : historicalView ? '回到最新版' : '重新读取' }}</button><button class="ws-text-button" @click="history = true">版本记录</button><button class="ws-text-button" :disabled="busy" @click="printReport">打印</button>
+        <button class="ws-text-button" :disabled="busy" @click="load">{{ busy ? '正在读取…' : historicalView ? '回到最新版' : '重新读取' }}</button><button class="ws-text-button" @click="setHistory(true)">版本记录</button><button class="ws-text-button" :disabled="busy" @click="printReport">打印</button>
       </template>
     </PageHeading>
 
     <AssetNotice />
     <StatusBanner v-if="error" tone="error" :message="error" retry-label="重新读取" @retry="load" />
     <SkeletonBlock v-if="busy" variant="list" :lines="4" />
-    <DirectionDetails v-if="directions && plans && !history" :plans="plans" :saving="saving" :error="error" @select="select" />
-    <ReportHistory v-else-if="history" :key="directions ? 'directions' : 'report'" :asset-type="directions ? 'direction_plan' : 'report'" @open="historical" />
+    <ReportHistory v-if="history" asset-type="report" @open="historical" />
 
-    <div v-else-if="!directions && report" class="report-article-shell">
+    <div v-else-if="report" class="report-article-shell">
       <div class="report-masthead-grid">
         <header class="report-masthead" :class="{ 'report-masthead--attention': viewedMetadata?.needs_recompute, 'report-masthead--historical': historicalView }">
           <div class="report-cover__topline"><span>职引 · 个人发展诊断</span><strong>{{ reportState }}</strong></div>
@@ -126,7 +110,7 @@ watch(directions, () => { history.value = false; void load() })
       </FullReportBody>
     </div>
 
-    <EmptyState v-else-if="!busy && !error" kind="report" :title="directions ? '尚未形成方向方案' : '尚未生成报告'" description="先通过咨询补充资料，生成后会保存在这里。"><RouterLink class="btn btn--primary" to="/chat">继续咨询</RouterLink></EmptyState>
+    <EmptyState v-else-if="!busy && !error" kind="report" title="尚未生成报告" description="先通过咨询补充资料，生成后会保存在这里。"><RouterLink class="btn btn--primary" to="/chat">继续咨询</RouterLink></EmptyState>
   </div>
 </template>
 
