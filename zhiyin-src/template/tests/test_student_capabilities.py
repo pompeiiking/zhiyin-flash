@@ -337,3 +337,17 @@ async def test_repeated_identical_task_edit_does_not_create_versions(service):
     await service.edit_task("a", body, plan.phases[0].tasks[0].id)
     after = await service.assets.get_latest_version("a", AssetType.ACTION_PLAN)
     assert before.version == after.version
+
+async def test_reply_snapshots_keep_history_and_reject_other_account(service):
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+    service.sessions.get = AsyncMock(return_value=SimpleNamespace(user_id='a'))
+    first={'messages':[{'role':'agent','agent_id':'x','text':'first','intel_refs':[{'id':'source'}]}]}
+    second={'messages':[{'role':'agent','agent_id':'x','text':'second'}]}
+    await service.store_session_snapshot('a','task',first,'one')
+    await service.store_session_snapshot('a','task',second,'two')
+    await service.store_session_snapshot('a','task',{'messages':[]},'one')
+    history=await service.conversation_reply_snapshots('a','task')
+    assert history['one']==first and history['two']==second
+    with pytest.raises(ResourceNotFound):
+        await service.conversation_reply_snapshots('b','task')

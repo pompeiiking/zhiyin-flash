@@ -620,6 +620,9 @@ class DefaultOrchestrator(Orchestrator):
             if external is not None:
                 prompt_vars["external_data"] = external
 
+        from zhiyin_kernel.streaming import emit_progress
+        stream_badge = await self._badge(lead.lead_agent, [])
+        emit_progress({'agent': stream_badge.name, 'note': '正在整理回复'})
         result = await self._agent_engine.invoke(
             AgentRequest(
                 agent_id=lead.lead_agent,
@@ -627,6 +630,7 @@ class DefaultOrchestrator(Orchestrator):
                 blackboard=blackboard.model_dump(mode="json"),
                 prompt_vars=prompt_vars,
                 output_schema=STAGE_CONTRACTS[stage].model_json_schema(),
+                stream_field=None if _asks_for_chart(request.message) else 'conclusion',
             )
         )
 

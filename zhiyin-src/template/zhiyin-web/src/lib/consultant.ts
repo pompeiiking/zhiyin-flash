@@ -1,6 +1,11 @@
 import type { AgentKey } from './agents'
 
 const labels: Record<string, string> = {
+  '建档分析师': '信息采集顾问',
+  '职业顾问': '职业分析顾问',
+  '路径规划师': '行动规划顾问',
+  '陪伴教练': '行动支持顾问',
+  '信息侦查员': '就业资讯顾问',
   '了解你情况的人': '信息采集顾问',
   '帮你判断方向的人': '职业分析顾问',
   '帮你排计划的人': '行动规划顾问',
@@ -18,6 +23,11 @@ export function consultantLabel(name?: string) { return labels[name ?? ''] ?? na
  * 不靠关键词猜，猜错会让头像认错人。
  */
 const keys: Record<string, AgentKey> = {
+  '建档分析师': 'profile_analyst',
+  '职业顾问': 'career_advisor',
+  '路径规划师': 'path_planner',
+  '陪伴教练': 'companion_coach',
+  '信息侦查员': 'info_scout',
   '了解你情况的人': 'profile_analyst',
   '帮你判断方向的人': 'career_advisor',
   '帮你排计划的人': 'path_planner',

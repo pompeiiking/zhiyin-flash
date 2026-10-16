@@ -303,6 +303,7 @@ class DefaultApplicationFacade(ApplicationFacade):
         if self._memories is None:
             return []
         turns = await self._memories.list_turns(user_id, task_id, limit=limit)
+        snapshots = await self._student.conversation_reply_snapshots(user_id, task_id) if self._student is not None else {}
         names: dict[str, str] = {}
         messages: list[ConversationMessageView] = []
         for turn in turns:
@@ -312,7 +313,14 @@ class DefaultApplicationFacade(ApplicationFacade):
                     agent = await self._registry.get_agent(turn.agent_id)
                     names[turn.agent_id] = agent.name if agent else turn.agent_id
                 agent_name = names[turn.agent_id]
-            messages.append(mappers.conversation_message_view(turn, agent_name=agent_name))
+            message = mappers.conversation_message_view(turn, agent_name=agent_name)
+            snapshot = snapshots.get(turn.client_msg_id, {})
+            for saved in snapshot.get('messages', []):
+                if saved.get('role') == turn.role and saved.get('agent_id') == (turn.agent_id or None) and saved.get('text') == turn.text:
+                    source = ConversationMessageView.model_validate(saved)
+                    message = message.model_copy(update={'theory_refs': source.theory_refs, 'intel_refs': source.intel_refs})
+                    break
+            messages.append(message)
         return messages
 
     async def enter_task(self, user_id: str, body: TaskEnterRequest) -> TaskSessionView:

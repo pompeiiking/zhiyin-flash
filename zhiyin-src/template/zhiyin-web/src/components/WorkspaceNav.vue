@@ -1,6 +1,9 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { backendDemo } from '../lib/backend-demo'
+import { openSession, systemData } from '../lib/system-data'
+import { demo, toast } from '../store'
 import InfoSheet from './InfoSheet.vue'
 import UiIcon from './UiIcon.vue'
 import { WORKSPACE_GROUPS, WORKSPACE_PRIMARY, MOBILE_TABS, isNavActive, activeGroup } from '../lib/workspace-nav'
@@ -18,6 +21,9 @@ import { AccordionRoot, AccordionItem, AccordionHeader, AccordionTrigger, Accord
  * 这里只剩学生真正要去的地方。
  */
 const route = useRoute()
+const router = useRouter()
+const sessions = computed(() => [...backendDemo.state.sessions].sort((a,b) => (b.last_active_at || '').localeCompare(a.last_active_at || '')))
+async function resume(id: string) { try { await openSession(id); more.value = false; await router.push('/chat') } catch(e) { toast((e as Error).message) } }
 const more = ref(false)
 defineExpose({ show() { more.value = true } })
 /** 与桌面侧栏一致：分组默认全部展开，收起只是用户主动收窄列表。 */
@@ -76,5 +82,12 @@ watch(
         </AccordionContent>
       </AccordionItem>
     </AccordionRoot>
+    <section class="mobile-session-history" aria-label="历史会话"><h2>历史会话</h2><button v-for="session in sessions" :key="session.task_id" :disabled="demo.state.chatBusy || systemData.busy" :aria-pressed="session.task_id === demo.state.currentSessionId" @click="resume(session.task_id)">{{ session.task_name }}</button><p v-if="!sessions.length">还没有历史会话。</p></section>
   </InfoSheet>
 </template>
+<style scoped>
+.mobile-session-history {border-top:1px solid var(--c-border);margin-top:16px;padding-top:16px;}
+.mobile-session-history h2 {font-size:12px;font-weight:500;color:var(--c-text-3);}
+.mobile-session-history button {display:block;width:100%;min-height:44px;border:0;background:none;text-align:left;color:var(--c-text-2);font-size:14px;}
+.mobile-session-history button[aria-pressed=true] {color:var(--c-primary);}
+</style>

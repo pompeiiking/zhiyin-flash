@@ -373,5 +373,10 @@
     "method": "GET",
     "path": "/app/schedule/workload",
     "surface": "\u5de5\u4f5c\u53f0\u4ea4\u4e92\u80fd\u529b"
+  },
+  "messageStream": {
+    "path": "/app/conversation/message/stream",
+    "method": "POST",
+    "stream": true
   }
 }

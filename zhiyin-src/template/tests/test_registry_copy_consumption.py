@@ -1,7 +1,4 @@
-"""Dynamic labels in the selected frontend and backend alias rules.
-Legacy eight-stop portal copy is retained for registry compatibility; the selected
-portal uses trust_blocks. It no longer promises to render the removed canvas.
-"""
+"""Dynamic field labels and the user-selected classic portal entry."""
 
 from pathlib import Path
 
@@ -16,10 +13,13 @@ def test_profile_and_badge_copies_are_consumed():
     assert "badgeCopy(r.key" in (WEB / "lib/growth-records.ts").read_text(encoding="utf-8")
 
 
-def test_portal_consumes_published_trust_blocks():
-    for name in ["PortalClassicView.vue", "PortalProposalView.vue"]:
-        source = (WEB / "views" / name).read_text(encoding="utf-8")
-        assert "trust_blocks" in source and "publishedTrust.length" in source
+def test_portal_keeps_the_selected_classic_intro():
+    entry = (WEB / "views/PortalView.vue").read_text(encoding="utf-8")
+    source = (WEB / "views/PortalClassicView.vue").read_text(encoding="utf-8")
+    assert "<PortalClassic />" in entry
+    assert not (WEB / "views/PortalProposalView.vue").exists()
+    assert 'v-for="w in what"' in source
+    assert "publishedTrust" not in source
 
 
 def test_backend_profile_alias_registry_is_preserved():

@@ -1,0 +1,86 @@
+import unittest
+from zhiyin_orchestration.impl.stream_text import partial_root_string
+
+class StreamTextTests(unittest.TestCase):
+    def test_never_exposes_other_fields(self):
+        raw = '{"private":{"conclusion":"secret"},"conclusion":"回答\\n继续\\u4f60好", "guide":{"text":"later"}}'
+        previous = ''
+        for i in range(len(raw) + 1):
+            value = partial_root_string(raw[:i], 'conclusion')
+            self.assertTrue('回答\n继续你好'.startswith(value))
+            self.assertTrue(value.startswith(previous))
+            previous = value
+        self.assertEqual(previous, '回答\n继续你好')
+    def test_quotes_and_fences(self):
+        self.assertEqual(partial_root_string('```json\n{"conclusion":"a\\"b\\\\c"}', 'conclusion'), 'a"b\\c')
+    def test_incomplete_escape(self):
+        self.assertEqual(partial_root_string('{"conclusion":"ok\\u4f', 'conclusion'), 'ok')
+    def test_no_string(self):
+        self.assertEqual(partial_root_string('{"conclusion":null,"private":"secret"}', 'conclusion'), '')
+
+if __name__ == '__main__': unittest.main()
+
+async def test_agno_stream_emits_before_model_finishes():
+    import json
+    from test_orchestration import _StubModel, _PromptRegistry
+    from agno.models.response import ModelResponse
+    from zhiyin_orchestration.impl.agno_engine import AgnoAgentEngine
+    from zhiyin_orchestration.agent import AgentRequest
+    from zhiyin_kernel.streaming import progress_channel
+    frames = []
+    class StreamingModel(_StubModel):
+        async def ainvoke_stream(self, *args, **kwargs):
+            raw = json.dumps({'conclusion':'真实增量', 'private':'不得展示'}, ensure_ascii=False)
+            for ch in raw:
+                yield ModelResponse(content=ch)
+            assert any(f.get('text') == '真实' for f in frames)
+    engine = AgnoAgentEngine(model_factory=lambda **_: StreamingModel(), registry=_PromptRegistry())
+    request = AgentRequest(agent_id='test', stream_field='conclusion', output_schema={'type':'object','properties':{'conclusion':{'type':'string'}},'required':['conclusion']})
+    with progress_channel(frames.append):
+        result = await engine.invoke(request)
+    assert result.valid, result.errors
+    assert frames[-1]['text'] == '真实增量'
+    assert all('不得展示' not in f.get('text', '') for f in frames)
+
+async def test_stream_controller_isolates_concurrent_users(monkeypatch):
+    import asyncio, json
+    from types import SimpleNamespace
+    from zhiyin_api.controllers import conversation_controller as controller
+    from zhiyin_api.dto.conversation import MessageRequest
+    from zhiyin_kernel.streaming import emit_progress
+    class Facade:
+        async def resolve_user_id(self, request): return request.user
+        async def check_analysis_consent(self, user): pass
+        async def send_message(self, user, body):
+            emit_progress({'text': user + '-partial'})
+            await asyncio.sleep(0)
+            return SimpleNamespace(model_dump=lambda **_: {'task_id':body.task_id,'text':user + '-complete'})
+    monkeypatch.setattr(controller, 'get_facade', lambda: Facade())
+    async def read(user):
+        response = await controller.stream_message(SimpleNamespace(user=user), MessageRequest(task_id=user,message='test'))
+        return [json.loads(frame[6:]) async for frame in response.body_iterator if frame.startswith('data: ')]
+    a,b = await asyncio.gather(read('a'),read('b'))
+    assert a[1]['text'] == 'a-partial' and b[1]['text'] == 'b-partial'
+    assert a[-1]['result']['task_id'] == 'a'
+
+async def test_stream_controller_disconnect_cancels_model(monkeypatch):
+    import asyncio
+    from types import SimpleNamespace
+    from zhiyin_api.controllers import conversation_controller as controller
+    from zhiyin_api.dto.conversation import MessageRequest
+    from zhiyin_kernel.streaming import emit_progress
+    cancelled = asyncio.Event()
+    class Facade:
+        async def resolve_user_id(self, request): return 'a'
+        async def check_analysis_consent(self, user): pass
+        async def send_message(self, user, body):
+            try:
+                emit_progress({'text':'partial'})
+                await asyncio.Event().wait()
+            finally: cancelled.set()
+    monkeypatch.setattr(controller, 'get_facade', lambda: Facade())
+    response = await controller.stream_message(None, MessageRequest(task_id='a',message='test'))
+    await anext(response.body_iterator)
+    await anext(response.body_iterator)
+    await response.body_iterator.aclose()
+    assert cancelled.is_set()

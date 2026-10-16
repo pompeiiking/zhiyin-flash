@@ -349,10 +349,24 @@ class StudentService:
                 return s
             if client_msg_id:
                 seen.append(client_msg_id)
+                s.setdefault('conversation_reply_snapshots', {}).setdefault(task_id, {})[client_msg_id] = view
             s.setdefault("session_snapshots", {})[task_id] = view
             return s
 
         await self.state.update(user_id, change)
+
+    async def conversation_reply_snapshots(self, user_id, task_id):
+        session = await self.sessions.get(task_id)
+        if session is None or session.user_id != user_id:
+            raise ResourceNotFound('会话不存在')
+        state = await self.state.get(user_id)
+        snapshots = dict(state.get('conversation_reply_snapshots', {}).get(task_id, {}))
+        # Older installations retained only the latest complete response.
+        seen = state.get('snapshot_messages', {}).get(task_id, [])
+        latest = state.get('session_snapshots', {}).get(task_id)
+        if latest and seen:
+            snapshots.setdefault(seen[-1], latest)
+        return snapshots
 
     async def save_measurements(self, user_id, body: MeasurementBatch):
         if body.asset_type == "report":

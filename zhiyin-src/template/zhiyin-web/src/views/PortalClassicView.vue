@@ -2,14 +2,8 @@
 import { useRoute, useRouter } from 'vue-router'
 import { ref, onMounted, onUnmounted } from 'vue'
 import { demo } from '../store'
-import {inject,computed,type Ref} from 'vue'
-import type {PortalView} from '../api/backend-types'
-const portalContent=inject<Ref<PortalView|null>>('portalContent')
-const publishedTrust=computed(()=>portalContent?.value?.trust_blocks??[])
-
-
 /** 旧门户动态背景恢复自 60d4e4f（2026-10-16 用户确认）。
- * 保留漂移光晕、呼吸网格、扫光与路径节点；减少动态效果时保留静态背景。
+ * 保留原版光晕与路径节点；按用户反馈移除横向扫光和竖线网格，减少动态效果时保留静态背景。
  * 门户是用户明确要求保留的版本，不套用工作区的装饰动效限制。
  */
 const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)')
@@ -30,30 +24,23 @@ function start() {
 const LEFT_WORDS = ['持续陪伴', '专业牵引']
 const RIGHT_WORDS = ['行动落地', '心想事成']
 
-/**
- * 四件事：把产品真正的区别写出来。
- *
- * 用 4 字名词短语作标题（与两侧竖排的四字口号同一套语言），下面各配一句**书面语**。
- * 上一版这里全是口语（"答不上来可以跳过""少一样就不推给你""始终在你手上"）——
- * 产品内页该用生活化口吻（设计文档 7.4 是这么定的），但**门户是宣传面**，
- * 口语放在这里会显得不郑重。所以门户与内页用两套语气，这是有意的。
- */
+/** 恢复旧门户四项产品介绍；采用正式表述，不由通用信任文案替换。 */
 const what = [
   {
-    title: '一次一问',
-    body: '每次只提出一个问题，答不上来可以跳过，无需提前准备简历。',
+    title: '循序咨询',
+    body: '通过逐步对话梳理个人情况与发展需求，支持按需补充资料、分次开展咨询。',
   },
   {
     title: '结论有据',
-    body: '每条结论都注明依据：来自哪句话、哪条记录、哪份岗位要求，以及把握程度。',
+    body: '结合个人资料与职业信息开展分析，呈现已有依据，并保留待核对事项。',
   },
   {
-    title: '每天一件',
-    body: '每天只安排一件具体行动，并说明它需要多久、为什么是现在。',
+    title: '行动落实',
+    body: '将发展目标分解为阶段任务，明确行动重点与时间安排，持续记录执行进展。',
   },
   {
-    title: '选择自主',
-    body: '只呈现各方向的差别与风险，不替你做选择；改选随时可行。',
+    title: '自主选择',
+    body: '比较不同方向的条件、差异与风险，为自主决策及后续调整提供参考。',
   },
 ]
 </script>
@@ -89,8 +76,6 @@ const what = [
         </circle>
       </svg>
 
-      <div class="bg__grid" />
-      <div class="bg__sweep" />
       <div class="bg__grain" />
     </div>
 
@@ -110,9 +95,9 @@ const what = [
         <span class="top__mark" aria-hidden="true" />
         <span class="top__name">职引</span>
         <span class="top__divider" />
-        <span class="top__context">{{ '河北大学' }} · 生涯规划与就业指导</span>
+        <span class="top__context">河北大学<span class="top__context-detail"> · 生涯规划与就业指导</span></span>
       </div>
-      <div class="pc-controls"><slot name="portal-switch" /><RouterLink v-if="demo.state.authed" class="top__account" to="/chat"><span class="pc-account-name">{{ demo.state.account }} · </span>进入</RouterLink><button v-else class="top__login" @click="start">登录</button></div>
+      <div class="pc-controls"><RouterLink v-if="demo.state.authed" class="top__account" to="/chat"><span class="pc-account-name">{{ demo.state.account }} · </span>进入工作空间</RouterLink><button v-else class="top__login" @click="start">登录</button></div>
     </header>
 
     <main class="main">
@@ -125,31 +110,26 @@ const what = [
         -->
         <h1 class="hero__headline">问出方向，一路陪你</h1>
 
-        <p class="hero__pitch">专业选择、岗位选择、行动计划，一件一件问清楚</p>
+        <p class="hero__pitch">围绕专业选择、职业方向与行动规划，提供持续支持</p>
 
         <p class="hero__what">
-          面向大学生的生涯规划与就业指导平台。以对话了解你，生成带依据的报告，
-          据此每天安排一件具体的事。
+          <span class="hero__intro">面向大学生的生涯规划与就业指导平台。</span>通过对话梳理个人情况，
+          结合已有资料形成分析报告，协助制定并推进阶段行动。
         </p>
 
-        <button class="hero__cta" @click="start">开始第一个问题</button>
+        <button class="hero__cta" @click="start">开始生涯咨询</button>
 
         <p class="hero__cost">
-          首次约 5 分钟 · 无需填表 · 可随时中止 · 回答仅用于生成你自己的报告
+          按需补充资料 · 支持分次咨询 · 可随时结束本次对话
         </p>
       </section>
     </main>
 
-    <!--
-      四件事放在**贴边的通栏**里，而不是居中竖列底下的一个块。
-      这是这一版避免"土"字的关键：居中的竖轴没办法不要（内容就是中轴对称的），
-      所以只能让"别的东西"不构成第二道横 —— 通栏有底色、左右到边、贴着页面底部，
-      它读作"页面的底边"，而不是读作版面上的一笔横。
-    -->
-    <section class="band" aria-label="它具体怎么帮你">
+    <!-- 四项服务介绍延续页面底色，以轻分隔收尾，避免形成厚重的灰色底栏。 -->
+    <section class="band" aria-label="平台服务特点">
       <div class="band__inner">
         <ul class="band__list">
-          <li v-for="w in (publishedTrust.length ? publishedTrust : what)" :key="w.title" class="item">
+          <li v-for="w in what" :key="w.title" class="item">
             <p class="item__title">{{ w.title }}</p>
             <p class="item__body">{{ w.body }}</p>
           </li>
@@ -163,7 +143,7 @@ const what = [
       但它不该在门户上多出第二个可点的东西 —— 门户只回答"从哪开始"。
     -->
     <footer class="foot">
-      <span class="foot__note">把方向想清楚，把行动做具体</span>
+      <span class="foot__note">明确发展方向，推进具体行动</span>
     </footer>
   </div>
 </template>
@@ -241,6 +221,8 @@ const what = [
 
 /* 路径与节点：极淡，只做"这条路一直在走"的暗示，不抢文字 */
 .bg__paths {
+  -webkit-mask-image: linear-gradient(to bottom, #000 65%, transparent 84%);
+  mask-image: linear-gradient(to bottom, #000 65%, transparent 84%);
   position: absolute;
   inset: 0;
   width: 100%;
@@ -270,58 +252,6 @@ const what = [
 .bg__node--accent {
   fill: var(--brand-stripe);
   opacity: 0.35;
-}
-
-/* 版面竖线格（思路取自 designeer 清单里 Fffuel 的 ooorganize）。
-   缓慢呼吸：透明度 12s 往复 —— 这是"背景活着"最省的一种动法，只动 opacity。 */
-.bg__grid {
-  position: absolute;
-  inset: 0;
-  background-image: repeating-linear-gradient(
-    to right,
-    var(--c-border) 0 1px,
-    transparent 1px 280px
-  );
-  -webkit-mask-image: radial-gradient(ellipse 74% 68% at 50% 44%, #000 26%, transparent 100%);
-  mask-image: radial-gradient(ellipse 74% 68% at 50% 44%, #000 26%, transparent 100%);
-  animation: grid-breathe 12s var(--ease-in-out) infinite alternate;
-}
-
-@keyframes grid-breathe {
-  from {
-    opacity: 0.2;
-  }
-  to {
-    opacity: 0.4;
-  }
-}
-
-/* 一道非常淡的光带，每 12s 从左侧扫到右侧。
-   宽度是页面的 1.6 倍、起始位置在视口外，所以进出都不露头。 */
-.bg__sweep {
-  position: absolute;
-  top: -20%;
-  left: -70%;
-  width: 46%;
-  height: 140%;
-  background: linear-gradient(
-    100deg,
-    transparent 0%,
-    var(--sweep-color) 45%,
-    var(--sweep-color) 55%,
-    transparent 100%
-  );
-  animation: sweep 12s var(--ease-in-out) infinite;
-}
-
-@keyframes sweep {
-  0% {
-    transform: translate3d(0, 0, 0);
-  }
-  70%,
-  100% {
-    transform: translate3d(320%, 0, 0);
-  }
 }
 
 /* 颗粒（思路取自 Fffuel 的 nnnoise）。**刻意不动** —— 它压在文字底下，动起来字会发飘 */
@@ -532,26 +462,25 @@ const what = [
   color: var(--c-text-3);
 }
 
-/* ===========================================================================
- * 四件事 · 贴边通栏
- * ---------------------------------------------------------------------------
- * 它不是版面上的一笔横，而是"页面的底边"：有底色、左右到边、贴着底部。
- * 居中的竖轴没法不要（内容就是中轴对称的），所以只能让第二道横**不像横**。
- * ======================================================================== */
+/* 服务介绍与主视觉共用底色，用渐隐分隔线保留清楚的阅读边界。 */
 .band {
-  /* 必须有定位：.bg 是绝对定位元素，会盖在所有未定位的块级元素上面 ——
-     少了这两行，背景的两条路线会画在通栏之上，横穿"一次一问"那一段。 */
   position: relative;
   z-index: 2;
   flex: none;
-  background: var(--c-surface-2);
-  border-top: var(--bw-1) solid var(--c-border);
+  background: transparent;
 }
-
+.band::before {
+  content: '';
+  display: block;
+  height: 1px;
+  width: min(1112px, calc(100% - 48px));
+  margin: 0 auto;
+  background: linear-gradient(90deg, transparent, var(--c-border) 16%, var(--c-border) 84%, transparent);
+}
 .band__inner {
   max-width: 1160px;
   margin: 0 auto;
-  padding: var(--sp-5) var(--sp-6);
+  padding: 28px var(--sp-6);
 }
 
 .band__list {
@@ -596,9 +525,7 @@ const what = [
 
 /* 减少动态效果：保留背景与正文，停止 CSS 动画并移除移动节点。 */
 @media (prefers-reduced-motion: reduce) {
-  .bg__glow, .bg__grid, .bg__sweep { animation: none; }
-  .bg__grid { opacity: 0.3; }
-  .bg__sweep { display: none; }
+  .bg__glow { animation: none; }
 
   .top__login,
   .hero__cta {
@@ -610,16 +537,7 @@ const what = [
   }
 }
 
-/* ===========================================================================
- * 断点 —— 只有 1120 / 768 两档（项目契约 §2.7）
- * ---------------------------------------------------------------------------
- * 上一版是 1180 / 1000 / 760 / 600 四档，其中 1000 与 600 并不承担独立职责：
- *   · 1180（收起两侧竖排）→ 1120，与全站宽屏断点对齐
- *   · 1000（通栏 4→2 列）→ 1120，和"收起竖排"同一时刻发生：窄了就先减列、再收竖排
- *   · 760 / 600（窄屏顶栏收信息、通栏 1 列）→ 768，合并成一档
- * 于是四档收敛为两档。注意：workspace.css 已经按 1120 / 768 走（min-width:1120 与 max-width:1119），
- * 本页与之对齐；PortalProposalView.vue 还是 1100 / 760 / 360，那一份不归本次改动，见交付说明。
- * ======================================================================== */
+/* 平板保持两列介绍；手机调整阅读顺序和触控尺寸。 */
 @media (max-width: 1120px) {
   .sides {
     display: none;
@@ -632,18 +550,39 @@ const what = [
 }
 
 @media (max-width: 768px) {
-  .pc-controls {
-    gap: 10px;
-  }
-
-  .pc-account-name,
-  .top__context,
-  .top__divider {
-    display: none;
-  }
-
-  .band__list {
-    grid-template-columns: minmax(0, 1fr);
-  }
+  .portal { min-height: 100svh; }
+  .top { height: 64px; padding: 0 20px; gap: 12px; }
+  .top__brand { gap: 6px; }
+  .top__divider { margin: 0 6px; }
+  .top__context { white-space: nowrap; }
+  .pc-controls { gap: 0; }
+  .pc-account-name, .top__context-detail { display: none; }
+  .top__account, .top__login { display: inline-flex; align-items: center; min-height: 44px; font-size: 13px; }
+  .main { flex: none; padding: 28px 22px 30px; }
+  .hero__headline { font-size: clamp(28px, 7.7vw, 36px); line-height: 1.25; }
+  .hero__pitch { max-width: 24em; margin-top: 16px; font-size: 15px; line-height: 1.75; text-wrap: balance; }
+  .hero__what { max-width: 25em; margin-top: 18px; line-height: 1.8; text-wrap: pretty; }
+  .hero__intro { display: none; }
+  .hero__cta { width: 100%; max-width: 344px; min-height: 52px; margin-top: 24px; font-size: 18px; }
+  .hero__cost { max-width: 30em; margin-top: 14px; line-height: 1.8; text-wrap: balance; }
+  .band__inner { padding: 24px 22px 26px; }
+  .band::before { width: calc(100% - 44px); }
+  .band__list { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 22px; }
+  .item__title { font-size: 14px; }
+  .item__body { margin-top: 8px; font-size: 13px; line-height: 1.75; }
+  .foot { margin-top: auto; padding: 12px 22px calc(20px + env(safe-area-inset-bottom)); }
+  /* 路径在主视觉内淡出，避免穿过窄屏服务介绍的正文。 */
+  .bg__paths { height: 440px; max-height: 58%; }
+}
+@media (max-width: 359px) {
+  .top { padding: 0 16px; }
+  .top__brand { gap: 4px; }
+  .top__divider { margin: 0 4px; }
+  .top__name { font-size: 18px; }
+  .main { padding: 24px 18px 26px; }
+  .band__inner { padding: 22px 18px; }
+  .band__list { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .item { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 14px; }
+  .item__body { margin-top: 0; }
 }
 </style>

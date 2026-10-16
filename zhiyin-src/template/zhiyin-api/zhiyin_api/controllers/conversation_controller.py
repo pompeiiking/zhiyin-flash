@@ -20,6 +20,11 @@ from zhiyin_api.dto.conversation import (
 )
 from zhiyin_api.facade import get_facade
 from zhiyin_kernel.errors import InvalidRequest
+from zhiyin_kernel.streaming import progress_channel
+from fastapi.responses import StreamingResponse
+import asyncio
+import json
+import logging
 
 router = APIRouter(tags=["conversation"])
 
@@ -70,6 +75,50 @@ async def send_message(
     facade = get_facade()
     user_id = await facade.resolve_user_id(request)
     return ApiResponse(data=await facade.send_message(user_id, body))
+
+
+@router.post('/app/conversation/message/stream', response_class=StreamingResponse)
+async def stream_message(request: Request, body: MessageRequest):
+    """Model text arrives incrementally; cards are released only after persistence."""
+    facade = get_facade()
+    user_id = await facade.resolve_user_id(request)
+    await facade.check_analysis_consent(user_id)
+
+    async def frames():
+        from zhiyin_api.controllers.ai_controller import _code_of, _user_message
+        queue: asyncio.Queue = asyncio.Queue()
+
+        async def run():
+            try:
+                with progress_channel(queue.put_nowait):
+                    result = await facade.send_message(user_id, body)
+                queue.put_nowait({'result': result.model_dump(mode='json')})
+            except Exception as exc:
+                logging.getLogger(__name__).exception('Conversation stream failed')
+                code = _code_of(exc)
+                queue.put_nowait({'error': {'code': int(code), 'message': _user_message(exc, code)}})
+            finally:
+                queue.put_nowait(None)
+
+        worker = asyncio.create_task(run())
+        try:
+            yield 'data: {"note":"正在分析你的问题"}\n\n'
+            while True:
+                try:
+                    frame = await asyncio.wait_for(queue.get(), timeout=10)
+                except asyncio.TimeoutError:
+                    yield ': keep-alive\n\n'
+                    continue
+                if frame is None:
+                    break
+                yield 'data: ' + json.dumps(frame, ensure_ascii=False) + '\n\n'
+        finally:
+            worker.cancel()
+            await asyncio.gather(worker, return_exceptions=True)
+
+    return StreamingResponse(frames(), media_type='text/event-stream', headers={
+        'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no',
+    })
 
 
 """一份材料的体积上限（2 MB）。

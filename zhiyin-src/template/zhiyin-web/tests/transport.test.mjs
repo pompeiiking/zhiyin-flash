@@ -101,3 +101,18 @@ test('account switch while reading response bodies rejects old results and auth 
     assert.deepEqual(app.events,[])
   }
 })
+
+test('chat SSE preserves request identity and delivers partial UTF8 text before terminal result',async()=>{
+ let sent, push
+ const stream=new ReadableStream({start(c){push=c}})
+ const progress=[]
+ const app=runtime(async(_url,init)=>{sent=JSON.parse(init.body);return new Response(stream,{headers:{'Content-Type':'text/event-stream'}})})
+ const request={task_id:'real-session',message:'问题',client_msg_id:'stable-id',material_ids:['file']}
+ const pending=app.streamBackend('messageStream',{body:request},f=>progress.push(f))
+ const bytes=new TextEncoder().encode('data: {"text":"真实"}\r\n\r\n')
+ for(const byte of bytes) push.enqueue(new Uint8Array([byte]))
+ await new Promise(resolve=>setTimeout(resolve,0))
+ assert.equal(progress[0].text,'真实');assert.deepEqual(sent,request)
+ push.enqueue(new TextEncoder().encode('data: {"result":{"task_id":"real-session"}}\n\n'));push.close()
+ assert.equal((await pending).task_id,'real-session')
+})

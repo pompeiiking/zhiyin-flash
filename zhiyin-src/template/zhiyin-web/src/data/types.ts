@@ -119,6 +119,8 @@ export interface DirectionPlan {
 
 /** 对话里的一条消息 */
 export interface ChatTurn {
+  guideText?: string
+  intel_refs?: import('../api/backend-types').IntelRefView[]
   renderables?: import('../api/backend-types').RenderableView[]
   theory_refs?: import('../api/backend-types').TheoryRefView[]
   guideTask?: import('../api/backend-types').GuideTaskView

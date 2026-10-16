@@ -45,6 +45,7 @@ class AgentRequest(BaseModel):
         default=None, description="产出契约的 JSON Schema，非空则强校验"
     )
     trace_id: Optional[str] = None
+    stream_field: Optional[str] = Field(default=None, description="可向调用方增量展示的顶层字符串字段；其他字段不发送")
 
 
 class AgentResult(BaseModel):

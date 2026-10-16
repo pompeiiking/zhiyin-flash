@@ -1,10 +1,10 @@
 /** AI endpoints return progress/result/error frames, not JSON page data. */
 import operations from './operations.json'
 import { BackendError } from './backend-client'
-export type StreamProgress = { pct?: number; note?: string; text?: string }
+export type StreamProgress = { pct?: number; note?: string; text?: string; agent?: string }
 export async function streamBackend<T>(
   key: keyof typeof operations,
-  options: { params?: Record<string, string>; arg?: string | number; signal?: AbortSignal },
+  options: { params?: Record<string, string>; arg?: string | number; body?: unknown; signal?: AbortSignal },
   onProgress: (frame: StreamProgress) => void,
 ): Promise<T> {
   const operation = operations[key]
@@ -28,7 +28,7 @@ export async function streamBackend<T>(
   }
   try {
     const arg = options.arg ?? (key === 'dayAdvice' ? -new Date().getTimezoneOffset() : '')
-    const response = await fetch('/api/v1' + path, { method: operation.method, headers, signal: controller.signal, body: JSON.stringify({ arg }) })
+    const response = await fetch('/api/v1' + path, { method: operation.method, headers, signal: controller.signal, body: JSON.stringify(options.body ?? { arg }) })
     ensureSameAccount()
     if (!response.ok || !response.headers.get('content-type')?.includes('text/event-stream')) {
       const body = await response.json().catch(() => null) as { code?: number; message?: string; trace_id?: string } | null

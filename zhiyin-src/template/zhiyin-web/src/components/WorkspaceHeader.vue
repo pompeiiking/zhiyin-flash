@@ -65,8 +65,8 @@ const themeOptions: { id: ThemeMode; label: string }[] = [
   { id: 'system', label: '跟随系统' },
 ]
 const accentOptions: { id: Accent; label: string; hint: string }[] = [
-  { id: 'blue', label: '校徽蓝', hint: '蓝做主色，红只作提醒' },
-  { id: 'red', label: '官网红', hint: '校色红做主色，蓝退为信息色' },
+  { id: 'blue', label: '校徽蓝', hint: '校徽蓝用于导航、操作与重点信息' },
+  { id: 'red', label: '官网红', hint: '官网红用于导航、操作与重点信息' },
 ]
 const styleOptions: { id: StyleId; label: string; hint: string }[] = [
   { id: 'plain', label: '极简', hint: '小圆角、无阴影、1px 描边' },

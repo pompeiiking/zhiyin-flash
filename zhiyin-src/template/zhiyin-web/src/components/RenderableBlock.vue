@@ -12,11 +12,14 @@
  *   · 认不出的 `kind` **什么都不画**（只留一行控制台日志）。
  *     摆一块空白比不摆更坏：用户会以为"这里本来就该有东西，只是没加载出来"。
  */
-import { computed, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { profileLabel } from '../lib/server-copy'
 import ModuleRenderable from '../modules/ModuleRenderable.vue'
 import type { RenderableView } from '../api/backend-types'
 
 const props = defineProps<{ item: RenderableView }>()
+const expanded = ref(false)
+const label = (key: string) => profileLabel(key, ({ courses:'课程表', scores:'成绩单' } as Record<string,string>)[key] || key)
 
 interface BarsPoint {
   label: string
@@ -94,38 +97,40 @@ const numberText = (value: number, unit: string, ratio: boolean) =>
   <figure v-if="bars" class="rb">
     <figcaption class="label rb__k">{{ bars.title }}</figcaption>
     <ul class="rb__rows">
-      <li v-for="point in bars.points" :key="point.label">
-        <span class="rb__label">{{ point.label }}</span>
+      <li v-for="point in (expanded ? bars.points : bars.points.slice(0, 6))" :key="point.label">
+        <span class="rb__label">{{ label(point.label) }}</span>
         <span class="rb__bar"><i :style="{ width: width(point.value, bars.max) }" /></span>
         <span class="mono rb__num">{{ numberText(point.value, bars.unit, bars.ratio) }}</span>
       </li>
     </ul>
+    <button v-if="bars.points.length > 6" class="rb__expand" :aria-expanded="expanded" @click="expanded = !expanded">{{ expanded ? '收起部分条目' : `展开其余 ${bars.points.length - 6} 项` }}</button>
   </figure>
 </template>
 
 <style scoped>
 /* 横条 + 数值：窄也放得下，因为它本来就是"比较"用的 */
-.rb { margin: 2px 0 6px; display: grid; gap: 6px; }
-.rb__k { color: var(--ink-3); }
-.rb__rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.rb { margin: 12px 0; padding:16px; display: grid; gap: 14px; border:1px solid var(--c-border);border-radius:14px;background:var(--c-surface); }
+.rb__k { color: var(--c-text-2);font-size:13px;line-height:1.65; }
+.rb__rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
 /*
  * 三列：名字 / 条 / 数值。
  * 名字那列原来上限 6em，"FDE · 在客…" 这种带半个说明的词被截成看不懂的样子
  * （issue 证据截图 4），所以放宽到 10em；数值那列原来 3.4em 装不下"7400 分"，
  * 于是单位被折到第二行（截图 3），改成按内容给宽并禁止折行。
  */
-.rb__rows li { display: grid; grid-template-columns: minmax(4em, 10em) 1fr minmax(3.4em, 7em); gap: var(--c-surface-2); align-items: center; }
+.rb__rows li { display: grid; grid-template-columns: minmax(4em, 7em) minmax(20px,1fr) auto; gap: 10px; align-items: center; }
 /*
  * 标签允许**两行**：长类目名（"FDE 主攻 · 在客户现场"）截成 "FDE · 在客…" 之后
  * 用户读不出它指的是哪条路（issue #18）。两行够装下常见的方案名，
  * 再长的仍然省略 —— 行高不能因为一个名字而把整张图撑开。
  */
 .rb__label {
-  font-size: var(--fs-small); color: var(--ink-2);
+  font-size: 12px; color: var(--c-text-2);
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
   overflow: hidden; overflow-wrap: anywhere;
 }
-.rb__bar { height: 8px; border-radius: 999px; background: var(--fill-subtle); overflow: hidden; }
-.rb__bar i { display: block; height: 100%; border-radius: inherit; background: var(--mk-green); }
-.rb__num { font-size: var(--fs-small); color: var(--ink-3); text-align: right; white-space: nowrap; }
+.rb__bar { height: 6px; border-radius: 999px; background: var(--c-primary-weak); overflow: hidden; }
+.rb__bar i { display: block; height: 100%; border-radius: inherit; background: var(--c-primary); }
+.rb__num { font-size: 12px; color: var(--c-text-3); text-align: right; white-space: nowrap; }
+.rb__expand {background:none;border:0;color:var(--c-primary);font-size:12px;min-height:36px;text-align:left;cursor:pointer;}
 </style>

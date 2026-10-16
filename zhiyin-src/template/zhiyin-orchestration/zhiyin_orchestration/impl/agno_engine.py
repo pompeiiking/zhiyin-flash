@@ -22,6 +22,8 @@ from zhiyin_data_sdk.repositories import RegistryRepository
 from zhiyin_orchestration.agent import AgentEngine, AgentRequest, AgentResult
 from zhiyin_orchestration.impl._shared import _render_prompt
 from zhiyin_orchestration.impl.schema import validate_schema
+from zhiyin_kernel.streaming import emit_progress, is_streaming
+from zhiyin_orchestration.impl.stream_text import partial_root_string
 
 logger = logging.getLogger(__name__)
 
@@ -178,11 +180,38 @@ class AgnoAgentEngine(AgentEngine):
             #     而我们要到解析时才发现 —— 采集中途就变成"产出不合法"；
             #   · 交给框架：agno 把 schema 放进 system message（use_json_mode），
             #     并按它解析与校验，产出结构与契约对不上时在**调用处**就暴露。
-            output = await agent.arun(
-                input=input_text,
-                output_schema=output_schema,
-                **run_kwargs,
-            )
+            if request.stream_field and is_streaming():
+                from agno.run.agent import RunOutput
+                # Agno buffers structured responses when parse_response=True.
+                # Use a per-run copy; our validation/repair below still enforces
+                # the same schema, without mutating a shared cached Agent.
+                agent = agent.deep_copy(update={'parse_response': False})
+                output = None
+                raw_stream, shown = '', ''
+                chunk_count, visible_count = 0, 0
+                async for event in agent.arun(
+                    input=input_text, output_schema=output_schema,
+                    stream=True, stream_events=True, yield_run_output=True, **run_kwargs,
+                ):
+                    if isinstance(event, RunOutput):
+                        output = event
+                    elif str(getattr(event, 'event', '')) == 'RunContent':
+                        content = getattr(event, 'content', '')
+                        if isinstance(content, str):
+                            chunk_count += 1
+                            raw_stream += content
+                            text = partial_root_string(raw_stream, request.stream_field)
+                            # Module results have a server-authored final answer;
+                            # never stream schema filler claiming nonexistent writes.
+                            if text != shown and not _module_attempts_from_run_context(run_kwargs):
+                                shown = text
+                                visible_count += 1
+                                emit_progress({'text': text})
+                logger.info('模型流完成：chunks=%s visible_updates=%s', chunk_count, visible_count)
+                if output is None:
+                    raise RuntimeError('模型流缺少完成结果')
+            else:
+                output = await agent.arun(input=input_text, output_schema=output_schema, **run_kwargs)
         except Exception as exc:  # 模型不可用不阻断核心链路（R-SDK-008）
             return AgentResult(
                 agent_id=request.agent_id,

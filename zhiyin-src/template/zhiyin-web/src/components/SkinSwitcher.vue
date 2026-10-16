@@ -38,8 +38,8 @@ const themeOptions: { id: ThemeMode; label: string }[] = [
 ]
 
 const accentOptions: { id: Accent; label: string; hint: string }[] = [
-  { id: 'blue', label: '河大蓝', hint: '蓝做主色，红只作提醒' },
-  { id: 'red', label: '河大红', hint: '校色红做主色，蓝退为信息色' },
+  { id: 'blue', label: '河大蓝', hint: '校徽蓝用于导航、操作与重点信息' },
+  { id: 'red', label: '河大红', hint: '官网红用于导航、操作与重点信息' },
 ]
 
 const styleOptions: { id: StyleId; label: string; hint: string }[] = [

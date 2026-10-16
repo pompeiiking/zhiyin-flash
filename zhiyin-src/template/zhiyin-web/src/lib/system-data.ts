@@ -1,19 +1,15 @@
 import {studentApi} from '../api/student-capabilities'
+import { mapMessage, withGuide } from './conversation-turns'
+export { mapMessage } from './conversation-turns'
 import type {ConversationTurnView} from '../api/backend-types'
 import { reactive } from 'vue'
 import { backendClient } from '../api/backend-client'
 import { auth } from './auth'
 import { backendDemo } from './backend-demo'
 import { demo } from '../store'
-import type { ChatTurn } from '../data/types'
-import type { ConversationMessageView, TrackEventView, AchievementListView } from '../api/backend-types'
+import type { TrackEventView, AchievementListView } from '../api/backend-types'
 
 export const systemData = reactive({ snapshot: null as ConversationTurnView|null, busy: false, error: '', events: [] as TrackEventView[], achievements: null as AchievementListView | null })
-export function mapMessage(message: ConversationMessageView, id: string): ChatTurn {
-  return { ...message, id, from: message.role === 'user' ? 'me' : message.role === 'agent' ? 'host' : 'system',
-    speaker: message.agent_name || message.agent_id || undefined, text: message.text,
-    citations: [...(message.theory_refs ?? []).map(r => r.name), ...(message.intel_refs ?? []).map(r => r.title || '')] }
-}
 export function clearSystemData(){selecting++;systemData.snapshot=null;systemData.events=[];systemData.achievements=null;systemData.error='';systemData.busy=false}
 let selecting = 0
 export async function openSession(id: string) {
@@ -24,10 +20,9 @@ export async function openSession(id: string) {
     const [messages,snapshot] = await Promise.all([backendClient.turns(id),studentApi.sessionSnapshot(id)])
     if (serial !== selecting) return
     systemData.snapshot=snapshot
-    const turns = messages.map((m, i) => mapMessage(m, `${id}-${i}`))
-    if(snapshot?.guide){const g=snapshot.guide;turns.push({id:id+'-restored-guide',from:'host',speaker:snapshot.badge.name,text:g.text||g.question||'',guideTask:g.task??undefined,reminder:g.reminder??undefined,question:g.question??undefined,options:g.options?.map(o=>o.label),optionRefs:g.options?.map(o=>({...o,value:o.value}))})}
+    const turns = withGuide(messages.map((m, i) => mapMessage(m, `${id}-${i}`)), snapshot, `${id}-guide`)
     backendDemo.selectSession(id); backendDemo.saveTurns(id, turns); demo.setChatTurns(turns, id)
-  } catch(e) { systemData.error = (e as Error).message; throw e }
+  } catch(e) { if (serial === selecting) systemData.error = (e as Error).message; throw e }
   finally { if (serial === selecting) systemData.busy = false }
 }
 export async function newSession(taskCode?: string) {
@@ -39,7 +34,7 @@ export async function newSession(taskCode?: string) {
     const session = await backendClient.enter(code)
     systemData.snapshot=await studentApi.sessionSnapshot(session.task_id)
     backendDemo.setCurrentSession(session)
-    const turns = (await backendClient.turns(session.task_id)).map((m,i) => mapMessage(m, `${session.task_id}-${i}`))
+    const turns = withGuide((await backendClient.turns(session.task_id)).map((m,i) => mapMessage(m, `${session.task_id}-${i}`)), systemData.snapshot, `${session.task_id}-guide`)
     demo.setChatTurns(turns, session.task_id)
   } catch(e) { systemData.error = (e as Error).message; throw e }
   finally { systemData.busy = false }

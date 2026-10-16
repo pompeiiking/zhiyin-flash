@@ -390,8 +390,7 @@ html[data-theme='dark'] .detail-popover { background: #252931; color: #edf0f5; -
 }
 /* Product workspace — one hierarchy, purpose-specific compositions. */
 .app.app--workspace {
- --c-bg:#f7f8fa; --workspace-nav:#fff; --c-primary:#2563eb; --c-primary-weak:#eff5ff;
- --c-primary-weak-2:#dbe8ff; --c-primary-border:#b9d0ff; --w-sidebar:216px;
+ --c-bg:#f7f8fa; --workspace-nav:#fff; --w-sidebar:216px;
  --font-ui:'Segoe UI','Microsoft YaHei','PingFang SC','Noto Sans CJK SC',sans-serif;
  --font-sans:var(--font-ui); --font-title:var(--font-ui);
  color:var(--c-text); font-size:14px; line-height:1.6;
@@ -445,6 +444,13 @@ html[data-theme='dark'] .app.app--workspace { --c-bg:#181a20; --workspace-nav:#1
 .profile-coverage-track .is-known { background:var(--c-primary); }
 .app.app--workspace .p7-block[aria-labelledby='p7-a-title'] { margin-top:16px; padding:20px; background:var(--c-surface); border:1px solid var(--c-border); border-radius:12px; }
 .app.app--workspace .p7-groups { display:block; }
+.app.app--workspace .p7-block .profile-toolbar { margin:0; }
+@media(max-width:600px){
+ .app.app--workspace .profile-toolbar{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+ .app.app--workspace .profile-toolbar .information-search{grid-column:1/-1;min-width:0}
+ .app.app--workspace .profile-toolbar .ws-field{display:flex;flex-direction:column;align-items:stretch;min-width:0;gap:4px}
+ .app.app--workspace .profile-toolbar select{width:100%;min-width:0}
+}
 .app.app--workspace .p7-group { margin:0; }
 .app.app--workspace .p7-group__head { margin:16px 0 0; padding:0; border:0; min-height:28px; }
 .app.app--workspace .p7-group__head h3 { font-size:12px; font-weight:500; color:var(--c-text-3); }

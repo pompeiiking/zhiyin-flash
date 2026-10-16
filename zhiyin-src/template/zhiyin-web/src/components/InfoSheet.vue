@@ -337,8 +337,10 @@ function onDragEnd(event: PointerEvent) {
   max-height: inherit;
   min-height: 0;
 }
-.ws-sheet--sheet .ws-sheet__inner,
-.ws-sheet--panel .ws-sheet__inner { max-height: 100%; }
+.ws-sheet--sheet .ws-sheet__inner { max-height: 100%; }
+/* Panel height is content-driven: 100% cannot resolve against an auto-height dialog.
+   Inherit its viewport limit so the body scrolls and actions remain reachable. */
+.ws-sheet--panel .ws-sheet__inner { max-height: inherit; }
 .ws-sheet__head {
   display: flex;
   align-items: center;

@@ -8657,6 +8657,41 @@
         ]
       }
     },
+    "/api/v1/app/conversation/message/stream": {
+      "post": {
+        "description": "Model text arrives incrementally; cards are released only after persistence.",
+        "operationId": "stream_message_api_v1_app_conversation_message_stream_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MessageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stream Message",
+        "tags": [
+          "conversation"
+        ]
+      }
+    },
     "/api/v1/app/day/{day}/advice": {
       "post": {
         "description": "「这一天的建议」：日历里点开某一天时生成（`day` 是 YYYY-MM-DD）。\n\n日历上其余的东西都是事实（那天有哪几门课、哪个节点到期、哪件事该做完），\n前端直接读；这一条是那一天**怎么用**的建议，要模型下判断。\n\n请求体里的 `arg` 是客户端的时区偏移（分钟，东为正）—— \"那一天\"是用户\n手表上的那一天，不带这个偏移，傍晚以后的事会被算到前一天。",

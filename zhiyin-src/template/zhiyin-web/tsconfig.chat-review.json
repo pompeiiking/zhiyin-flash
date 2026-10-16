@@ -1,0 +1,4 @@
+{
+  "extends": "./tsconfig.json",
+  "include": ["src/design-review/chat/main.ts", "src/**/*.d.ts", "env.d.ts"]
+}

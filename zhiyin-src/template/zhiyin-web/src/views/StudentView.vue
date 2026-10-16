@@ -1,5 +1,6 @@
 <script setup lang="ts">
 const MAX_CHARS = 40
+import {PROFILE_TOPICS, profilePriority, exactProfileKeys} from '../lib/profile-organization'
 import {profileLabel} from '../lib/server-copy'
 import { onMounted } from 'vue'
 import ResultPager from '../components/ResultPager.vue'
@@ -102,13 +103,8 @@ const SOURCE_ENUM: Record<FieldSource, ProfileSource> = {
  */
 const LEGACY_CONF: Record<ProfileField['confidence']['level'], number> = { high: 0.9, mid: 0.6, low: 0.2 }
 
-/** 主题分组（保留原有四组口径） */
-const TOPICS: { key: string; title: string; keys: string[] }[] = [
-  { key: 'study', title: '学习与经历', keys: ['major', 'grade', 'rank', 'award', 'internship'] },
-  { key: 'ability', title: '兴趣与能力', keys: ['interest', 'style', 'weakness'] },
-  { key: 'expect', title: '条件与期待', keys: ['family', 'city', 'jobtype', 'salary'] },
-  { key: 'action', title: '行动与时间', keys: ['pipeline', 'time', 'schedule'] },
-]
+/** 职业线索优先，学籍资料保持独立可查。 */
+const TOPICS = PROFILE_TOPICS
 
 /** 来源视角：把原来的「来源筛选」并进视角切换，不再两套并存 */
 const SOURCE_GROUPS: { key: string; label: string; from: ProfileField['source'][] }[] = [
@@ -230,7 +226,7 @@ const edges = computed<readonly ReadonlyEdge[]>(() => {
 const depsFromContract = computed(() => edges.value !== DEMO_EDGES)
 const depsSourceNote = computed(() =>
   depsFromContract.value
-    ? '关联关系来自已保存的资料记录，具体证据仍需逐项核对。'
+    ? '仅展示明确对应这条判断的资料关联。整份报告的关联资料不等于每条判断的依据。'
     : '当前按资料与判断的对应关系整理，尚未提供逐项关联记录。',
 )
 
@@ -461,8 +457,10 @@ const anyFocus = computed(() => (mode.value === 'conf' ? confFocus.value : mode.
 
 /** 视角切换 = 这一页"正在发生的组织过程"：换的是分组与顺序，不是列表内容 */
 const profileQuery=ref('')
+const profileScope=ref('career')
 const visible = computed<FieldRow[]>(() => {
-  const rows = known.value.filter(row => !profileQuery.value.trim() || (row.label+' '+row.value).toLocaleLowerCase().includes(profileQuery.value.trim().toLocaleLowerCase()))
+  const rows = known.value.filter(row => (!profileQuery.value.trim() || (row.label+' '+row.value).toLocaleLowerCase().includes(profileQuery.value.trim().toLocaleLowerCase())) && (profileScope.value==='all'||(profileScope.value==='career'?profilePriority(row.key)!==3:profileScope.value==='study'?profilePriority(row.key)===3:!Number.isFinite(row.conf)||row.conf<0.8)))
+    .sort((a,b) => mode.value==='time' ? (b.iso||'').localeCompare(a.iso||'') : mode.value==='conf' ? (Number.isFinite(a.conf)?a.conf:-1)-(Number.isFinite(b.conf)?b.conf:-1) : profilePriority(a.key)-profilePriority(b.key))
   if (mode.value === 'source' && focus.value) {
     const group = SOURCE_GROUPS.find((item) => item.key === focus.value)
     if (group) return rows.filter((row) => group.from.includes(row.desc))
@@ -635,12 +633,12 @@ const conclusionMap = computed<Record<string, Conclusion>>(() => {
   if(live.value){
     for(const section of backendDemo.state.liveReport?.sections??[])for(const dimension of section.items??[]){
       const key=section.id+'.'+dimension.index
-      const keys=edges.value.filter(e=>e.to_asset==='report'||e.to_asset===backendDemo.state.liveReport?.report_id).flatMap(e=>e.via_profile_keys??[])
+      const keys=exactProfileKeys(edges.value,key)
       const links=[...new Set(keys)].map(link)
       map[key]={key,kind:'dimension',section:section.title,label:dimension.name,brief:briefOf(dimension.conclusion),full:dimension.conclusion,conf:NaN,deps:links,depsFromContract:true,missingKeys:links.filter(x=>!x.present).map(x=>x.key),evidence:dimension.evidence?[dimension.evidence]:[],note:dimension.tag,risk:'',ripple:''}
     }
     for(const plan of backendDemo.state.liveDirections?.plans??[]){
-      const links=[...new Set(edges.value.filter(e=>e.to_asset===plan.id||e.to_asset==='direction_plan').flatMap(e=>e.via_profile_keys??[]))].map(link)
+      const links=exactProfileKeys(edges.value,plan.id).map(link)
       map[plan.id]={key:plan.id,kind:'direction',section:'方向方案',label:plan.name,brief:briefOf(plan.fit_reason??''),full:plan.fit_reason??'',conf:NaN,deps:links,depsFromContract:true,missingKeys:links.filter(x=>!x.present).map(x=>x.key),evidence:[],note:plan.target_desc??'',risk:plan.main_risk??'',ripple:''}
     }
     return map
@@ -711,6 +709,11 @@ const depsTextByField = computed<Record<string, string>>(() => {
 })
 
 /** A 段最终形态：在 rowsBase 上补上"支撑 N 条判断"。关系与 B 段同源，不另算一套。 */
+const reportFields=computed(()=>new Set(edges.value.filter(e=>e.to_asset==='report'||e.to_asset===backendDemo.state.liveReport?.report_id).flatMap(e=>e.via_profile_keys??[])))
+const needsCheck=computed(()=>known.value.filter(row=>!Number.isFinite(row.conf)||row.conf<0.8))
+const fieldReading=ref<FieldRow|null>(null)
+async function readField(row:FieldRow){openField.value=null;await nextTick();fieldReading.value=row}
+async function readAnalysis(){openField.value=null;await nextTick();profileTab.value='judgments'}
 const known = computed<FieldRow[]>(() => rowsBase.value.map((row) => ({ ...row, supports: (fieldDeps.value[row.key] ?? []).length })))
 
 const {page:profilePage,paged:pagedProfile}=usePagedItems(visible)
@@ -878,7 +881,7 @@ async function jumpToGap(key: string) {
 async function jumpToField(key: string) {
   profileTab.value = 'facts'
   profileQuery.value=''
-  mode.value='topic';focus.value=null;confFocus.value=null
+  mode.value='topic';profileScope.value='all';focus.value=null;confFocus.value=null
   await nextTick()
   profilePage.value=Math.floor(Math.max(0,visible.value.findIndex(row=>row.key===key))/6)+1
   openField.value = key
@@ -948,7 +951,7 @@ const identity = computed(() => {
   const school = live.value ? pick('school') : demo.state.profileEdits.school ?? STUDENT.school
   const grade = live.value ? pick('grade') : demo.state.profileEdits.grade ?? demo.use.scenario.value.grade
   if (!live.value && demo.state.account === 'fresh') return { name: '新用户', line: '学校与年级待补充' }
-  return { name: name || '个人档案', line: [school, grade].filter(Boolean).join(' · ') || '学校与年级待补充' }
+  return { name: name || '个人档案', line: [school, pick('major'), grade || pick('degree_level')].filter(Boolean).join(' · ') || '学校与年级待补充' }
 })
 function exportProfile(){const url=URL.createObjectURL(new Blob([JSON.stringify({profile:known.value,gaps:gapRows.value,source:live.value?'本次读取的档案':'个人画像'},null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='职引-个人画像.json';a.click();URL.revokeObjectURL(url)}
 onMounted(()=>{ void loadWorkspace() })
@@ -973,6 +976,7 @@ onMounted(()=>{ void loadWorkspace() })
 
     <!-- ═══ 活的度量：可信度环从 0 生长到实际值；数字旁边写清是谁算的 ═══ -->
 <section class="profile-identity"><div class="profile-identity__portrait" aria-hidden="true">{{ identity.name.slice(0,1) }}</div><div class="profile-identity__person"><h2>{{ identity.name }}</h2><p>{{ identity.line }}</p></div><DetailPopover title="个人资料概况" label="查看个人资料概况"><p>已记录 {{ known.length }} 项信息，{{ progress.gap }} 项待补充。</p><p>依据充分 {{ confBands[0]?.count ?? 0 }} 项，待核对 {{ confBands[1]?.count ?? 0 }} 项。</p></DetailPopover><div class="profile-identity__coverage"><div><span>个人信息</span><strong>{{ known.length }}<small> / {{ known.length + progress.gap }} 项</small></strong></div><div class="profile-coverage-track" :aria-label="'已记录'+known.length+'项，待补充'+progress.gap+'项'"><i v-for="n in known.length + progress.gap" :key="n" :class="{'is-known':n<=known.length}"/></div></div></section>
+<section v-if="gapRows.length || needsCheck.length" class="profile-attention" aria-label="需要完善的信息"><strong>需要完善</strong><button v-for="gap in gapRows.slice(0,2)" :key="gap.key" type="button" @click="jumpToGap(gap.key)">{{gap.label}}<span>待补充</span><UiIcon name="arrow" :size="14"/></button><button v-if="gapRows.length>2" @click="profileTab='gaps'">全部 {{gapRows.length}} 项待补充</button><button v-if="needsCheck.length" @click="profileScope='check';profileQuery='';focus=null;confFocus=null">{{needsCheck.length}} 项待核对<UiIcon name="arrow" :size="14"/></button></section>
 
 
 
@@ -980,14 +984,38 @@ onMounted(()=>{ void loadWorkspace() })
 
     <!-- ═══ A · 我知道什么 ═══ -->
     <section class="p7-block" aria-labelledby="p7-a-title">
-      <header class="p7-block__head">
-        <div>
-          <h2 id="p7-a-title" class="sr-only">个人信息</h2>
-          
-        </div>
+      <h2 id="p7-a-title" class="sr-only">个人信息</h2>
+      <div class="profile-toolbar"><label class="information-search"><span class="sr-only">查找个人信息</span><input v-model="profileQuery" type="search" placeholder="查找全部个人资料…" @input="profileScope='all'"/></label><label class="ws-field">查看<select v-model="profileScope"><option value="career">职业相关信息</option><option value="all">全部个人资料</option><option value="study">学籍与学习背景</option><option value="check">待核对信息</option></select></label><label class="ws-field">组织<select v-model="mode"><option v-for="item in modes" :key="item.key" :value="item.key">{{item.label}}</option></select></label></div><div v-if="mode === 'source' || mode === 'conf'" class="p7-subfilter" data-testid="sub-filter">
+        <span>只看</span>
+        <button
+          class="p7-subchip"
+          :class="{ 'p7-subchip--on': !anyFocus }"
+          type="button"
+          @click="mode === 'conf' ? (confFocus = null) : (focus = null)"
+        >全部</button>
+        <template v-if="mode === 'source'">
+          <button
+            v-for="item in SOURCE_GROUPS"
+            :key="item.key"
+            class="p7-subchip"
+            :class="{ 'p7-subchip--on': focus === item.key }"
+            type="button"
+            @click="focus = focus === item.key ? null : item.key"
+          >{{ item.label }}</button>
+        </template>
+        <template v-else>
+          <button
+            v-for="item in CONF_GROUPS"
+            :key="item.key"
+            class="p7-subchip"
+            :class="{ 'p7-subchip--on': confFocus === item.key }"
+            type="button"
+            @click="confFocus = confFocus === item.key ? null : item.key"
+          >{{ item.title }}</button>
+        </template>
+        <span v-if="filteredNote" class="p7-subfilter__note">{{ filteredNote }}</span>
+      </div>
         
-      </header>
-      <label class="information-search"><span class="sr-only">查找个人信息</span><input v-model="profileQuery" type="search" placeholder="专业、兴趣、城市或其他关键词…"/></label>
 
       <!-- 第二层：在同一个视角里再收窄（原来那个"来源筛选"并到这里，不再有第二套控件） -->
 
@@ -1053,14 +1081,14 @@ onMounted(()=>{ void loadWorkspace() })
                       <span
                         class="p7-support"
                         :class="{ 'p7-support--on': openField === row.key, 'p7-support--none': !row.supports }"
-                        :title="row.supports ? `用到它的判断：${depsTextByField[row.key]}` : '还没有判断用到这条信息'"
+                        :title="row.supports ? `用到它的判断：${depsTextByField[row.key]}` : '尚未提供逐条判断的关联依据'"
                       >
-                        <i class="p7-support__mark" aria-hidden="true" />{{ row.supports ? `支撑 ${row.supports} 条判断` : '暂未用于判断' }}
+                        <i class="p7-support__mark" aria-hidden="true" />{{ row.supports ? `支撑 ${row.supports} 条判断` : '逐项关联待核对' }}
                       </span>
-                      <span v-if="row.conf < 0.8" class="profile-needs-check">待核对</span><span class="p7-row__cue">查看依据<UiIcon name="info" :size="16" /></span>
+                      <span v-if="!Number.isFinite(row.conf) || row.conf < 0.8" class="profile-needs-check">待核对</span><span class="p7-row__cue">查看依据<UiIcon name="info" :size="16" /></span>
                     </span>
                   </span>
-                </template><p>{{ row.desc }} · {{ row.noted }}</p><ConfidenceBadge :confidence="row.conf" />
+                </template><p class="profile-fact-value">{{fieldValue(row).slice(0,240)}}{{fieldValue(row).length>240?'…':''}}</p><p>{{ row.desc }} · {{ row.noted }}</p><ConfidenceBadge :confidence="row.conf" />
                   <div :id="`p7-more-${row.key}`" class="p7-row__more-body">
                     <div class="p7-row__actions">
                       <button class="ws-text-button" type="button" @click="inspectField(row)">深入了解这项信息</button>
@@ -1069,13 +1097,14 @@ onMounted(()=>{ void loadWorkspace() })
                     <template v-if="row.evidence.length">
                       <p class="p7-facts__title">原始证据</p>
                       <ul class="ws-mini-list p7-evidence">
-                        <li v-for="item in row.evidence" :key="item">{{ item }}</li>
+                        <li v-for="item in row.evidence.slice(0,2)" :key="item">{{ item.slice(0,180) }}{{item.length>180?'…':''}}</li>
                       </ul>
                     </template>
                     <p v-else class="p7-evidence__none">这条没有附原始证据，只有来源与时间。</p>
 
+                    <button v-if="row.evidence.length>2 || row.evidence.some(item=>item.length>180) || fieldValue(row).length>240" class="ws-text-button" @click="readField(row)">阅读完整资料与证据<UiIcon name="arrow" :size="14"/></button>
                     <!-- 关系本身在折叠内可点：跳到 B 段那条判断（≥44px 的行，不再是 24px 的 chip） -->
-                    <p class="p7-facts__title">关联判断 <span class="ws-muted">{{ fieldDeps[row.key]?.length || 0 }} 条</span></p>
+                    <p v-if="fieldDeps[row.key]?.length" class="p7-facts__title">关联判断 <span class="ws-muted">{{ fieldDeps[row.key]?.length || 0 }} 条</span></p>
                     <ul v-if="fieldDeps[row.key]?.length" class="p7-links">
                       <li v-for="key in fieldDeps[row.key].slice(0, 3)" :key="key">
                         <button class="p7-link" type="button" @click="jumpToConclusion(key)">
@@ -1085,7 +1114,7 @@ onMounted(()=>{ void loadWorkspace() })
                         </button>
                       </li>
                     </ul>
-                    <p v-else class="p7-evidence__none">暂时还没有判断用到它。</p><button v-if="fieldDeps[row.key]?.length > 3" class="ws-text-button" @click="jumpToConclusion(fieldDeps[row.key][0])">查看全部分析与判断<UiIcon name="arrow" :size="14" /></button>
+                    <div v-else class="profile-association-note"><template v-if="reportFields.has(row.key)"><button class="ws-text-button" @click="readAnalysis">查看关联报告<UiIcon name="arrow" :size="14"/></button><p>这项资料关联整份报告，尚未明确对应哪些具体判断。</p></template><p v-else>尚未提供这项资料与具体判断的关联依据。</p></div><button v-if="fieldDeps[row.key]?.length > 3" class="ws-text-button" @click="jumpToConclusion(fieldDeps[row.key][0])">查看全部分析与判断<UiIcon name="arrow" :size="14" /></button>
 
 
                   </div>
@@ -1094,7 +1123,7 @@ onMounted(()=>{ void loadWorkspace() })
             </motion.ul>
           </motion.section>
         </motion.div>
-      </LayoutGroup><ResultPager v-model:page="profilePage" :total="visible.length" label="个人信息"/><p v-if="profileQuery && !visible.length" class="ws-muted">没有匹配的信息，请换一个关键词。</p>
+      </LayoutGroup><ResultPager v-model:page="profilePage" :total="visible.length" label="个人信息"/><div v-if="known.length && !visible.length" class="profile-filter-empty"><p>{{profileScope==='check' ? '当前没有待核对信息。' : '当前条件下没有个人信息。'}}</p><button class="ws-text-button" @click="profileScope='all';profileQuery='';focus=null;confFocus=null">查看全部资料</button></div>
 
       <!-- 刷新时的加载态：骨架**盖在仍在 DOM 的内容上**（`SkeletonBlock.vue:21-26`），不摘内容 ——
            原来只有页头按钮的文案从「读取最新档案」变成「正在读取…」，内容区在重新取数的
@@ -1111,7 +1140,7 @@ onMounted(()=>{ void loadWorkspace() })
       </EmptyState>
     </section>
 
-<section class="profile-reading-entries" aria-label="个人资料详情"><button class="information-entry" @click="profileTab='gaps'"><span><strong>待补充信息</strong><small>{{ gapRows.length }} 项信息有待完善</small></span><UiIcon name="arrow" :size="18"/></button><button class="information-entry" @click="profileTab='judgments'"><span><strong>分析与判断</strong><small>查看已有资料支持的结论</small></span><UiIcon name="arrow" :size="18"/></button><button class="information-entry" @click="profileTab='sources'"><span><strong>资料管理</strong><small>核对来源、核验说明与组织方式</small></span><UiIcon name="arrow" :size="18"/></button></section>
+<section class="profile-reading-entries" aria-label="个人资料详情"><button class="information-entry" @click="profileTab='gaps'"><span><strong>待补充信息</strong><small>{{ gapRows.length }} 项信息有待完善</small></span><UiIcon name="arrow" :size="18"/></button><button class="information-entry" @click="profileTab='judgments'"><span><strong>分析与判断</strong><small>查看已有资料支持的结论</small></span><UiIcon name="arrow" :size="18"/></button><button class="information-entry" @click="profileTab='sources'"><span><strong>资料管理</strong><small>核对来源与核验说明</small></span><UiIcon name="arrow" :size="18"/></button></section>
     <!-- ═══ B · 所以判断了什么 ═══ -->
     
 
@@ -1127,6 +1156,7 @@ onMounted(()=>{ void loadWorkspace() })
     
 
 
+<InfoSheet :open="!!fieldReading" shape="panel" :title="fieldReading?.label || '完整资料'" @close="fieldReading=null"><template v-if="fieldReading"><p class="profile-fact-value">{{fieldValue(fieldReading)}}</p><p class="ws-muted">{{fieldReading.desc}} · {{fieldReading.noted}}</p><h3>原始证据</h3><ul class="ws-mini-list"><li v-for="item in fieldReading.evidence" :key="item">{{item}}</li></ul></template></InfoSheet>
 <InfoSheet :open="profileTab === 'judgments'" shape="panel" title="分析与判断" @close="profileTab='facts'"><section><ProfileInsights ref="insights" /></section><section class="p7-block" aria-labelledby="p7-b-title">
       <header class="p7-block__head">
         <div>
@@ -1180,7 +1210,7 @@ onMounted(()=>{ void loadWorkspace() })
               </span>
               <span class="p7-concl__brief">{{ item.brief }}</span>
               <span class="p7-concl__side">
-                <ConfidenceBadge class="p7-concl__conf" :confidence="item.conf" />
+                <ConfidenceBadge v-if="Number.isFinite(item.conf)" class="p7-concl__conf" :confidence="item.conf" />
                 <span v-if="recomputeIds.has(item.key)" class="chip chip--attention">需要重算</span>
                 <span class="p7-concl__cue">{{ openConclusion === item.key ? '收起' : '完整判断与依据' }}<UiIcon name="chevron" :size="14" /></span>
               </span>
@@ -1204,7 +1234,7 @@ onMounted(()=>{ void loadWorkspace() })
               >
                 <i aria-hidden="true" />{{ dep.label }}<small v-if="!dep.present">缺</small><em v-if="!dep.present && gapIndex[dep.key]" class="p7-dep__where">C{{ gapIndex[dep.key] }}</em>
               </li>
-              <li v-if="!item.deps.length" class="p7-dep p7-dep--none">契约里还没有它的依赖边</li>
+              <li v-if="!item.deps.length" class="p7-dep p7-dep--none">逐项关联尚待核对</li>
             </ul>
             <span v-if="depsMixed && !item.depsFromContract" class="p7-concl__prov">资料对应表</span>
           </div>
@@ -1235,11 +1265,11 @@ onMounted(()=>{ void loadWorkspace() })
                   <i class="p7-link__dot" aria-hidden="true" />
                   <span class="p7-link__label">{{ dep.label }}</span>
                   <span class="p7-link__value" :title="dep.present ? dep.value : 'A 段还没有这条信息'">{{ dep.present ? dep.value : '还没拿到' }}</span>
-                  <span class="p7-link__go">{{ dep.present ? '去 A 段' : `去 C${gapIndex[dep.key] ?? ''}` }}<UiIcon name="arrow" :size="14" /></span>
+                  <span class="p7-link__go">{{ dep.present ? '核对资料' : '补充信息' }}<UiIcon name="arrow" :size="14" /></span>
                 </button>
               </li>
             </ul>
-            <p v-else class="p7-evidence__none">契约里还没有它的依赖边，所以这里没有可追的 A 段信息。</p>
+            <p v-else class="p7-evidence__none">尚未提供逐项关联记录，可结合判断原文与引用材料核对。</p>
 
             <button v-if="item.kind === 'direction'" class="ws-text-button" type="button" @click="toggleLingerConclusion(item.key)">
               看它用到哪几条<UiIcon name="arrow" :size="14" />
@@ -1296,50 +1326,7 @@ onMounted(()=>{ void loadWorkspace() })
       </ul>
       <p v-else class="ws-muted p7-none">暂未发现缺口。已记录的信息会继续按来源与可信度核对。</p>
     </section></InfoSheet>
-<InfoSheet :open="profileTab === 'sources'" shape="panel" title="资料管理" @close="profileTab='facts'"><DetailPopover title="组织个人信息" label="选择个人信息组织方式" class="profile-organize"><template #trigger>{{ modes.find(item => item.key === mode)?.label }}<UiIcon name="chevron" :size="16" /></template><div class="p7-modes" role="group" aria-label="换一种组织方式">
-          <span class="p7-modes__label">组织方式</span>
-          <div class="p7-modes__set">
-            <button
-              v-for="item in modes"
-              :key="item.key"
-              class="p7-mode"
-              :class="{ 'p7-mode--on': mode === item.key }"
-              :aria-pressed="mode === item.key"
-              :title="item.note"
-              data-testid="view-mode"
-              @click="mode = item.key"
-            >{{ item.label }}</button>
-          </div><div v-if="mode === 'source' || mode === 'conf'" class="p7-subfilter" data-testid="sub-filter">
-        <span>只看</span>
-        <button
-          class="p7-subchip"
-          :class="{ 'p7-subchip--on': !anyFocus }"
-          type="button"
-          @click="mode === 'conf' ? (confFocus = null) : (focus = null)"
-        >全部</button>
-        <template v-if="mode === 'source'">
-          <button
-            v-for="item in SOURCE_GROUPS"
-            :key="item.key"
-            class="p7-subchip"
-            :class="{ 'p7-subchip--on': focus === item.key }"
-            type="button"
-            @click="focus = focus === item.key ? null : item.key"
-          >{{ item.label }}</button>
-        </template>
-        <template v-else>
-          <button
-            v-for="item in CONF_GROUPS"
-            :key="item.key"
-            class="p7-subchip"
-            :class="{ 'p7-subchip--on': confFocus === item.key }"
-            type="button"
-            @click="confFocus = confFocus === item.key ? null : item.key"
-          >{{ item.title }}</button>
-        </template>
-        <span v-if="filteredNote" class="p7-subfilter__note">{{ filteredNote }}</span>
-      </div>
-        </div></DetailPopover><Foldable class="p7-sources" static variant="section" title="资料来源与核验说明">
+<InfoSheet :open="profileTab === 'sources'" shape="panel" title="资料管理" @close="profileTab='facts'"><Foldable class="p7-sources" static variant="section" title="资料来源与核验说明">
       <div class="ws-context__body">
         <section>
           <h3>可获取的信息</h3>
@@ -1377,6 +1364,8 @@ onMounted(()=>{ void loadWorkspace() })
 </template>
 
 <style scoped>
+.profile-filter-empty{padding:24px 0;color:var(--c-text-2)}.profile-filter-empty p{margin-bottom:8px}.profile-toolbar{display:flex;align-items:center;gap:14px;flex-wrap:wrap}.profile-toolbar .information-search{flex:1;min-width:180px;margin:0}.profile-toolbar .ws-field{display:flex;flex-direction:row;align-items:center;gap:8px;margin:0;white-space:nowrap}.profile-toolbar select{width:auto}.profile-attention{display:flex;align-items:center;flex-wrap:wrap;gap:8px 18px;padding:12px 0;border-bottom:1px solid var(--c-border);font-size:13px}.profile-attention>strong{font-weight:500;color:var(--c-text-2)}.profile-attention button{display:flex;align-items:center;gap:8px;min-height:36px;color:var(--c-primary);background:transparent;border:0}.profile-attention button span{font-size:12px;color:var(--c-text-3)}.profile-fact-value{font-size:15px;line-height:1.75;white-space:pre-wrap;overflow-wrap:anywhere}.profile-association-note p{font-size:13px;color:var(--c-text-3);margin-top:8px}.profile-toolbar+.p7-subfilter{margin-top:10px}@media(max-width:600px){.profile-toolbar{gap:10px}.profile-toolbar .information-search{flex-basis:100%}.profile-toolbar .ws-field{flex:1;font-size:12px}.profile-toolbar select{min-width:0;max-width:100%}.profile-attention{gap:4px 12px}.profile-identity__coverage{display:none}}
+
 /* ═══════════════════════════════════════════════════════════════════════════
  * 用底色 / 描边 / 留白分层，不给所有内容套同一张卡片。
  *
