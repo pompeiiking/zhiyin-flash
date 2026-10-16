@@ -8,6 +8,7 @@ import InfoSheet from './InfoSheet.vue'
 import UiIcon from './UiIcon.vue'
 import { WORKSPACE_GROUPS, WORKSPACE_PRIMARY, MOBILE_TABS, isNavActive, activeGroup } from '../lib/workspace-nav'
 import { AccordionRoot, AccordionItem, AccordionHeader, AccordionTrigger, AccordionContent } from 'reka-ui'
+import BrandMark from './BrandMark.vue'
 
 /**
  * 移动端导航。
@@ -25,6 +26,7 @@ const router = useRouter()
 const sessions = computed(() => [...backendDemo.state.sessions].sort((a,b) => (b.last_active_at || '').localeCompare(a.last_active_at || '')))
 async function resume(id: string) { try { await openSession(id); more.value = false; await router.push('/chat') } catch(e) { toast((e as Error).message) } }
 const more = ref(false)
+const emit = defineEmits<{ account: [] }>()
 defineExpose({ show() { more.value = true } })
 /** 与桌面侧栏一致：分组默认全部展开，收起只是用户主动收窄列表。 */
 const openGroup = ref<string[]>(WORKSPACE_GROUPS.map((g) => g.key))
@@ -57,6 +59,12 @@ watch(
   </nav>
 
   <InfoSheet shape="sheet" :open="more" title="更多功能" @close="more = false">
+    <div class="mobile-menu-brand"><BrandMark /></div>
+    <button class="mobile-account-entry" type="button" @click="more=false;emit('account')">
+      <span class="mobile-account-entry__avatar" aria-hidden="true">{{ demo.state.account.slice(0,1) }}</span>
+      <span><strong>{{ demo.state.account }}</strong><small>账号与外观设置</small></span>
+      <UiIcon name="arrow" :size="16" />
+    </button>
     <RouterLink class="ws-directory__primary" :to="WORKSPACE_PRIMARY.to" @click="more = false">
       <UiIcon :name="WORKSPACE_PRIMARY.icon" /><span><strong>{{ WORKSPACE_PRIMARY.label }}</strong><small>{{ WORKSPACE_PRIMARY.hint }}</small></span>
       <UiIcon name="arrow" :size="16" />
@@ -86,6 +94,12 @@ watch(
   </InfoSheet>
 </template>
 <style scoped>
+.mobile-menu-brand { display:flex; align-items:center; padding:0 0 14px; border-bottom:1px solid var(--c-border); }
+.mobile-account-entry { display:flex; align-items:center; gap:12px; width:100%; min-height:58px; padding:8px 0; border-bottom:1px solid var(--c-border); color:var(--c-text); text-align:left; }
+.mobile-account-entry>span:nth-child(2) { flex:1; min-width:0; }
+.mobile-account-entry strong { display:block; font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mobile-account-entry small { display:block; margin-top:2px; color:var(--c-text-3); font-size:12px; }
+.mobile-account-entry__avatar { display:grid; place-items:center; width:34px; height:34px; border-radius:10px; background:var(--c-surface-3); color:var(--c-text-2); }
 .mobile-session-history {border-top:1px solid var(--c-border);margin-top:16px;padding-top:16px;}
 .mobile-session-history h2 {font-size:12px;font-weight:500;color:var(--c-text-3);}
 .mobile-session-history button {display:block;width:100%;min-height:44px;border:0;background:none;text-align:left;color:var(--c-text-2);font-size:14px;}

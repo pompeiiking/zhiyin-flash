@@ -37,9 +37,9 @@ const themeOptions: { id: ThemeMode; label: string }[] = [
   { id: 'system', label: '跟随系统' },
 ]
 
-const accentOptions: { id: Accent; label: string; hint: string }[] = [
-  { id: 'blue', label: '河大蓝', hint: '校徽蓝用于导航、操作与重点信息' },
-  { id: 'red', label: '河大红', hint: '官网红用于导航、操作与重点信息' },
+const accentOptions: { id: Accent; label: string }[] = [
+  { id: 'blue', label: '蓝' },
+  { id: 'red', label: '红' },
 ]
 
 const styleOptions: { id: StyleId; label: string; hint: string }[] = [
@@ -50,7 +50,7 @@ const styleOptions: { id: StyleId; label: string; hint: string }[] = [
 
 const summary = computed(() => {
   const t = skin.state.theme === 'system' ? '跟随系统' : skin.state.theme === 'dark' ? '深色' : '浅色'
-  const a = skin.state.accent === 'red' ? '河大红' : '河大蓝'
+  const a = skin.state.accent === 'red' ? '红' : '蓝'
   const s = styleOptions.find((o) => o.id === skin.state.style)?.label ?? '极简'
   return `${t} · ${a} · ${s}`
 })
@@ -112,9 +112,6 @@ const summary = computed(() => {
               {{ o.label }}
             </button>
           </div>
-          <p class="skin__hint">
-            {{ accentOptions.find((o) => o.id === skin.state.accent)?.hint }}
-          </p>
         </section>
 
         <section class="skin__group">

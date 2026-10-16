@@ -186,7 +186,6 @@ onMounted(load)
             <header class="today-suggestions__head">
               <div>
                 <h2 id="today-suggestions-title">下一步候选</h2>
-                <p>当前任务完成后，可以把其中一项安排到今天。</p>
               </div>
               <button
                 v-if="suggestedTasks.length > 1"
@@ -216,7 +215,6 @@ onMounted(load)
           <div class="today-capacity__identity">
             <h2 id="today-capacity-title">今日容量</h2>
             <p v-if="arrangementError">{{ arrangementError }}</p>
-            <p v-else>为今天留下可完成的空间。</p>
           </div>
           <dl>
             <div><dt>可投入</dt><dd>{{ timeFact?.value || '未填写' }}</dd></div>

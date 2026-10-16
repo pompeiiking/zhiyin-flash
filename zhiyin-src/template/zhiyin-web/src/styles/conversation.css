@@ -244,3 +244,21 @@
 @media(prefers-reduced-motion:reduce) {.consult-wait-orbit i {animation:none;}.consult-composer {transition:none;}}
 
 .consult-copy {width:auto;min-width:44px;gap:6px;font-size:12px;padding:0 8px;}
+
+/* Long assistant replies are a reading stream. The response itself stays open;
+   only sources, tasks and generated modules use cards. */
+.consult-answer-copy,.consult-prose,.consult-guide,.consult-renderables,.consult-task,.consult-reminder,.consult-options {min-width:0;max-width:100%;box-sizing:border-box;}
+.consult-turn--latest .consult-answer-copy {padding:0;border:0;border-radius:0;background:transparent;}
+.consult-answer-copy :is(p,li,a,strong,em,code),.consult-renderables :is(p,li,a,strong,em,code),.consult-task,.consult-reminder {overflow-wrap:anywhere;word-break:break-word;}
+.consult-answer-copy :is(pre,table),.consult-renderables :is(pre,table) {display:block;max-width:100%;overflow-x:auto;overscroll-behavior-inline:contain;}
+.consult-answer-copy :is(img,video,canvas),.consult-renderables :is(img,video,canvas) {max-width:100%;height:auto;}
+.consult-options button {max-width:100%;white-space:normal;overflow-wrap:anywhere;}
+.consult-task>div,.consult-reminder>div,.consult-options button span {min-width:0;}
+.consult-pending .consult-answer {overflow:hidden;}
+@media(max-width:767px) {
+ .consult-journey {width:100%;max-width:none;}
+ .consult-journey li {gap:3px;font-size:9px;}
+ .consult-journey span {padding-right:2px;text-overflow:clip;}
+ .consult-messages {width:100%;box-sizing:border-box;overflow-x:hidden;}
+ .consult-turn--host>.consult-answer {max-width:calc(100% - 40px);}
+}

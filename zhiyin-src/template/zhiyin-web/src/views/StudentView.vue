@@ -833,7 +833,7 @@ onMounted(()=>{ void loadWorkspace() })
 
 <template>
   <div class="ws-page profile-page p7">
-    <PageHeading title="个人画像" description="把零散经历整理成可核对、可继续验证的职业探索档案。"><template #meta><div class="c2-page-meta"><span v-if="live">{{ livePanel ? '已读取的档案' : loading ? '正在读取档案' : '尚未读取档案' }}</span><span>{{ known.length }} 条已知 · {{ progress.gap }} 条待补充</span><span>判断可追溯到资料</span></div></template>
+    <PageHeading title="个人画像" description="把零散经历整理成可核对、可继续验证的职业探索档案。"><template #meta><div class="c2-page-meta"><span v-if="live">{{ livePanel ? '已读取的档案' : loading ? '正在读取档案' : '尚未读取档案' }}</span><span>{{ known.length }} 条已知 · {{ progress.gap }} 条待补充</span></div></template>
       <RouterLink class="btn btn--primary" to="/chat">{{ progress.gap ? '补充关键信息' : '更新信息' }}<UiIcon name="arrow" :size="16" /></RouterLink>
       <button class="btn" @click="exportProfile"><UiIcon name="download" :size="16"/>导出画像</button>
     </PageHeading>
@@ -881,7 +881,7 @@ onMounted(()=>{ void loadWorkspace() })
       <div class="profile-dossier__body">
         <section class="profile-directions" aria-labelledby="profile-directions-title">
           <header>
-            <div><h3 id="profile-directions-title">正在浮现的方向</h3><p>这些是接下来值得验证的假设，不是替你做出的职业定论。</p></div>
+            <div><h3 id="profile-directions-title">正在浮现的方向 <DetailPopover title="方向说明" label="查看方向说明"><p>这些是接下来值得验证的假设，不是替你做出的职业定论。</p></DetailPopover></h3></div>
             <button class="ws-text-button" type="button" @click="profileTab='judgments'">查看完整分析<UiIcon name="arrow" :size="14"/></button>
           </header>
           <ul v-if="priorityConclusions.length">
@@ -912,7 +912,7 @@ onMounted(()=>{ void loadWorkspace() })
         </aside>
       </div>
     </section>
-<section class="enrollment" aria-labelledby="enrollment-title"><header><div><span class="enrollment__eyebrow">学校档案</span><h2 id="enrollment-title">学籍信息</h2><p>核对学校、专业与在读状态，查看学籍核验结果。</p></div><button class="btn" @click="verificationOpen=true"><UiIcon name="shield" :size="16" />{{ isVerified ? '重新核验' : '核验学籍' }}</button></header><dl><div v-for="item in enrollmentRows" :key="item.label"><dt>{{item.label}}</dt><dd :class="{'is-missing':item.value==='待补充'}">{{item.value}}</dd></div></dl><footer><span :class="['enrollment__state', isVerified ? 'is-verified' : '']"><i />{{ isVerified ? '已包含学信来源' : '尚未完成学信核验' }}</span><RouterLink class="ws-text-link" to="/grades">查看我的成绩<UiIcon name="arrow" :size="14" /></RouterLink></footer></section>
+<section class="enrollment" aria-labelledby="enrollment-title"><header><div><span class="enrollment__eyebrow">学校档案</span><h2 id="enrollment-title">学籍信息 <DetailPopover title="学籍信息说明" label="查看学籍信息说明"><p>核对学校、专业与在读状态，查看学籍核验结果。</p></DetailPopover></h2></div><button class="btn" @click="verificationOpen=true"><UiIcon name="shield" :size="16" />{{ isVerified ? '重新核验' : '核验学籍' }}</button></header><dl><div v-for="item in enrollmentRows" :key="item.label"><dt>{{item.label}}</dt><dd :class="{'is-missing':item.value==='待补充'}">{{item.value}}</dd></div></dl><footer><span :class="['enrollment__state', isVerified ? 'is-verified' : '']"><i />{{ isVerified ? '已包含学信来源' : '尚未完成学信核验' }}</span><RouterLink class="ws-text-link" to="/grades">查看我的成绩<UiIcon name="arrow" :size="14" /></RouterLink></footer></section>
 
 
 
@@ -920,7 +920,7 @@ onMounted(()=>{ void loadWorkspace() })
 
     <!-- ═══ A · 我知道什么 ═══ -->
     <section class="p7-block" aria-labelledby="p7-a-title">
-      <header class="profile-facts-head"><div><span class="profile-focus-kicker">资料底稿</span><h2 id="p7-a-title">组成这份画像的信息</h2><p>所有字段完整展示；点开一项可核对来源、可信度和关联判断。</p></div><button class="btn" type="button" @click="profileTab='sources'">资料来源<UiIcon name="arrow" :size="14"/></button></header>
+      <header class="profile-facts-head"><div><span class="profile-focus-kicker">资料底稿</span><h2 id="p7-a-title">组成这份画像的信息 <DetailPopover title="资料底稿说明" label="查看资料底稿说明"><p>点开一项可核对来源、可信度和关联判断。</p></DetailPopover></h2></div><button class="btn" type="button" @click="profileTab='sources'">资料来源<UiIcon name="arrow" :size="14"/></button></header>
 
       <!-- 全量资料按主题展开，不设置搜索、范围或组织方式筛选。 -->
       <LayoutGroup>

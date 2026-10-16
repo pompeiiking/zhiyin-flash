@@ -5,7 +5,7 @@ import AppTopBar from './components/WorkspaceHeader.vue'
 import WorkspaceNav from './components/WorkspaceNav.vue'
 import CommandPalette from './components/CommandMenu.vue'
 import AuthLayer from './components/AuthLayer.vue'
-import NoticeToast from './components/InboxSheet.vue'
+import FloatingReminders from './components/FloatingReminders.vue'
 import InterventionModal from './components/CareSheet.vue'
 import { demo } from './store'
 import { skin } from './lib/theme'
@@ -124,13 +124,13 @@ onUnmounted(()=>clearInterval(notificationTimer))
           </RouterView>
         </div>
       </main>
-      <WorkspaceNav v-if="!desktop" ref="mobileNav" />
+      <WorkspaceNav v-if="!desktop" ref="mobileNav" @account="workspaceHeader?.showAccount()" />
     </template>
 
     <CommandPalette ref="palette" />
     <AuthLayer v-if="authOpen" @close="closeAuth" />
     <!-- 提醒是登录后的产品功能，不出现在公开门户上 -->
-    <NoticeToast v-if="demo.state.authed && !bare" />
+    <FloatingReminders v-if="demo.state.authed && !bare" />
     <InterventionModal
       v-if="demo.state.interventionOpen"
       :host="INTERVENTION.host"

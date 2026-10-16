@@ -10,6 +10,7 @@ import SegmentedChoice from './SegmentedChoice.vue'
 import InfoSheet from './InfoSheet.vue'
 import { navigation } from '../lib/layout'
 import { activeGroup, labelForPath, PORTAL_LINK } from '../lib/workspace-nav'
+import BrandMark from './BrandMark.vue'
 
 /**
  * 工作区顶栏。
@@ -23,7 +24,7 @@ import { activeGroup, labelForPath, PORTAL_LINK } from '../lib/workspace-nav'
  * 390px 上顶栏一次挤着 品牌 + 搜索 40×40 + 皮肤 38×40 + 提醒 40×40 + 账号 34×34，
  * 带子上再挂一颗 56×40 的按钮，**没有一个到 44px**。现在顶栏剩下的每个控件都 ≥44px。
  */
-const emit = defineEmits<{ openPalette: []; expandSidebar: []; openAccount: []; openMobileMenu: [] }>()
+const emit = defineEmits<{ openPalette: []; expandSidebar: []; openMobileMenu: [] }>()
 const router = useRouter()
 const route = useRoute()
 /**
@@ -57,18 +58,18 @@ const themeOptions: { id: ThemeMode; label: string }[] = [
   { id: 'dark', label: '深色' },
   { id: 'system', label: '跟随系统' },
 ]
-const accentOptions: { id: Accent; label: string; hint: string }[] = [
-  { id: 'blue', label: '校徽蓝', hint: '校徽蓝用于导航、操作与重点信息' },
-  { id: 'red', label: '官网红', hint: '官网红用于导航、操作与重点信息' },
+const accentOptions: { id: Accent; label: string }[] = [
+  { id: 'blue', label: '蓝' },
+  { id: 'red', label: '红' },
 ]
-const styleOptions: { id: StyleId; label: string; hint: string }[] = [
-  { id: 'plain', label: '极简', hint: '清晰描边，克制的控件层次' },
-  { id: 'soft', label: '柔和', hint: '大圆角、轻影、更松的内距' },
-  { id: 'dense', label: '紧凑', hint: '更小圆角与内距，一屏多看几条' },
+const styleOptions: { id: StyleId; label: string }[] = [
+  { id: 'plain', label: '极简' },
+  { id: 'soft', label: '柔和' },
+  { id: 'dense', label: '紧凑' },
 ]
 const appearanceSummary = computed(() => {
   const t = skin.state.theme === 'system' ? '跟随系统' : skin.state.theme === 'dark' ? '深色' : '浅色'
-  return `${t} · ${skin.state.accent === 'red' ? '河大红' : '河大蓝'} · ${styleOptions.find((o) => o.id === skin.state.style)?.label ?? '极简'}`
+  return `${t} · ${skin.state.accent === 'red' ? '红' : '蓝'} · ${styleOptions.find((o) => o.id === skin.state.style)?.label ?? '极简'}`
 })
 
 async function signOut() { try {await auth.logout();accountOpen.value=false;router.push('/')}catch(e){toast((e as Error).message)} }
@@ -79,7 +80,7 @@ async function signOut() { try {await auth.logout();accountOpen.value=false;rout
       <button v-if="navigation.sidebarCollapsed.value" ref="expandButton" class="ws-icon-button" aria-label="展开侧栏" title="展开侧栏" aria-controls="student-desktop-sidebar" aria-expanded="false" @click="emit('expandSidebar')"><UiIcon name="sidebar" /></button>
       <span>学生空间</span><span aria-hidden="true">/</span><strong>{{ groupLabel }}</strong>
     </div>
-    <button v-else class="ws-icon-button c2-mobile-menu" aria-label="打开导航" @click="emit('openMobileMenu')"><UiIcon name="menu" :size="20" /></button>
+    <button v-else class="mobile-brand-button" aria-label="职引，打开导航" @click="emit('openMobileMenu')"><BrandMark /></button>
     <!--
       搜索：c2 靶子的顶栏第一件东西就是这个输入框（左放大镜 + 占位文案 + 键帽）。
       它做成 **button** 而不是 input —— 因为它不自己收字：点一下打开的是**已有的命令面板**
@@ -95,24 +96,15 @@ async function signOut() { try {await auth.logout();accountOpen.value=false;rout
       <kbd class="hf-search__kbd">{{ modKey }}</kbd>
     </button>
     <div class="ws-topbar__tools">
-      <button type="button" class="ws-brand-switch" :aria-label="skin.state.accent === 'blue' ? '切换为官网红' : '切换为校徽蓝'" :title="skin.state.accent === 'blue' ? '当前校徽蓝，切换为官网红' : '当前官网红，切换为校徽蓝'" @click="skin.setAccent(skin.state.accent === 'blue' ? 'red' : 'blue')"><i aria-hidden="true" /><span>{{ skin.state.accent === 'blue' ? '校徽蓝' : '官网红' }}</span></button>
+      <button type="button" class="ws-brand-switch" :aria-label="skin.state.accent === 'blue' ? '当前为蓝色，切换为红色' : '当前为红色，切换为蓝色'" :title="skin.state.accent === 'blue' ? '蓝' : '红'" @click="skin.setAccent(skin.state.accent === 'blue' ? 'red' : 'blue')"><i aria-hidden="true" /><span>{{ skin.state.accent === 'blue' ? '蓝' : '红' }}</span></button>
       <!-- 搜索不再另留一颗 44×44 图标按钮：顶栏只留**一个**搜索入口（左边那个盒子），
            两颗并存就是"同一个功能两个入口"，正是这个壳层一直在收敛的东西。 -->
-      <button class="ws-icon-button ws-inbox-trigger" :aria-label="'提醒，' + demo.state.noticeQueue.length + ' 条待处理'" @click="router.push('/reminders')"><UiIcon name="bell" :size="18" /><span v-if="demo.state.noticeQueue.length">{{ demo.state.noticeQueue.length }}</span></button>
-      <!-- 演示标识：壳层的一行小字，点击进「工作空间设置」。它不占行、不与主行动竞争 -->
-      <button class="ws-account" aria-label="账号菜单" @click="openAccount">
-        <span class="ws-account__avatar" aria-hidden="true">{{ demo.state.account.slice(0, 1) }}</span>
-        <span class="ws-account__label hf-account__label">{{ demo.state.account }}</span>
-        <UiIcon class="ws-account__chevron" name="chevron" :size="15" />
-      </button>
     </div>
   </header>
 
 <!-- 账号抽屉：只管账号。身份、演示标识说明、退出。 -->
   <InfoSheet shape="sheet" :open="accountOpen" title="账号" @close="accountOpen = false">
     <p class="ws-person">{{ demo.state.account }}</p>
-    <p class="ws-muted">{{ '职引个人账号' }}</p>
-
     <!-- 完整外观设置与顶栏主色按钮共用 skin 状态。 -->
     <details class="ws-appearance">
       <summary class="ws-appearance__summary"><span>外观<small>主题 · 主色 · 风格</small></span><span class="ws-appearance__now">{{ appearanceSummary }}<UiIcon name="chevron" :size="16" /></span></summary>
@@ -121,21 +113,18 @@ async function signOut() { try {await auth.logout();accountOpen.value=false;rout
         <SegmentedChoice :model-value="skin.state.theme" :options="themeOptions" label="主题" @update:model-value="skin.setTheme" />
         <p class="ws-appearance__title">主色</p>
         <SegmentedChoice :model-value="skin.state.accent" :options="accentOptions" label="主色" @update:model-value="skin.setAccent" />
-        <p class="ws-appearance__hint">{{ accentOptions.find((o) => o.id === skin.state.accent)?.hint }}</p>
         <p class="ws-appearance__title">风格</p>
         <SegmentedChoice :model-value="skin.state.style" :options="styleOptions" label="风格" @update:model-value="skin.setStyle" />
-        <p class="ws-appearance__hint">{{ styleOptions.find((o) => o.id === skin.state.style)?.hint }}</p>
         <button class="btn btn--sm btn--block" @click="skin.reset()">恢复默认外观</button>
-        <p class="ws-demo-note">外观设置自动保存，下次进入时沿用。</p>
       </div>
     </details>
-    <div class="ws-account-list"><RouterLink class="ws-account-row" to="/settings" @click="accountOpen=false"><span><strong>账号设置</strong><small>资料授权、提醒、外观与导出</small></span><UiIcon name="arrow" :size="16"/></RouterLink>
+    <div class="ws-account-list"><RouterLink class="ws-account-row" to="/settings" @click="accountOpen=false"><span><strong>账号设置</strong></span><UiIcon name="arrow" :size="16"/></RouterLink>
       <button class="ws-account-row" @click="openDemo()">
-        <span><strong>工作空间设置</strong><small>导航布局与操作引导</small></span>
+        <span><strong>工作空间设置</strong></span>
         <UiIcon name="chevron" :size="16" />
       </button>
       <RouterLink class="ws-account-row" :to="PORTAL_LINK.to" @click="accountOpen = false">
-        <span><strong>{{ PORTAL_LINK.label }}</strong><small>{{ PORTAL_LINK.hint }}</small></span>
+        <span><strong>{{ PORTAL_LINK.label }}</strong></span>
         <UiIcon name="arrow" :size="16" />
       </RouterLink>
     </div>
@@ -212,7 +201,9 @@ async function signOut() { try {await auth.logout();accountOpen.value=false;rout
   /* 窄屏：只留放大镜。命中的还是同一个面板（同一个 @click），只是不再装作能收字 */
   .hf-search { flex: none; width: 44px; max-width: none; padding: 0; justify-content: center; }
   .hf-search__ph, .hf-search__kbd { display: none; }
-  /* 账号标签让位给搜索入口：头像 + chevron 仍然说明"这是我"，aria-label 不变 */
-  .hf-account__label { display: none; }
+  .ws-brand-switch i { display:none; }
+  .ws-brand-switch span { display:inline; }
 }
+.mobile-brand-button { display:inline-flex; align-items:center; min-height:44px; padding:4px 6px 4px 2px; border-radius:10px; }
+.mobile-brand-button:hover { background:var(--c-surface-2); }
 </style>

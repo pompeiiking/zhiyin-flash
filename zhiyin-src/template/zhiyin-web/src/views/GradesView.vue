@@ -12,6 +12,7 @@ import PageHeading from '../components/PageHeading.vue'
 import ReadableText from '../components/ReadableText.vue'
 import StatusBanner from '../components/StatusBanner.vue'
 import UiIcon from '../components/UiIcon.vue'
+import DetailPopover from '../components/DetailPopover.vue'
 import { backendDemo } from '../lib/backend-demo'
 import { useAiTask } from '../lib/use-ai-task'
 
@@ -335,8 +336,7 @@ onMounted(() => { void loadGrades() })
           <article v-if="analysisView === 'trend'" class="trend-chart">
             <div class="trend-chart__head">
               <div>
-                <h3>{{ analysisMetric === 'score' ? '学期平均分趋势' : '学期平均绩点趋势' }}</h3>
-                <p>{{ analysisMetric === 'score' ? '按筛选范围内每学期已录入的数值成绩计算。' : '学分完整时按学分加权；否则采用已录入绩点的算术平均。' }}</p>
+                <h3>{{ analysisMetric === 'score' ? '学期平均分趋势' : '学期平均绩点趋势' }} <DetailPopover title="计算口径" label="查看计算口径"><p>{{ analysisMetric === 'score' ? '按筛选范围内每学期已录入的数值成绩计算。' : '学分完整时按学分加权；否则采用已录入绩点的算术平均。' }}</p></DetailPopover></h3>
               </div>
               <strong v-if="latestTrendPoint">{{ formatTrendValue(latestTrendPoint.value) }}<small>{{ analysisMetric === 'score' ? '分' : '绩点' }}</small></strong>
             </div>
@@ -363,7 +363,7 @@ onMounted(() => { void loadGrades() })
 
           <article v-else class="course-comparison course-comparison--chart" aria-labelledby="course-comparison-title">
             <div class="course-comparison__head">
-              <div><h3 id="course-comparison-title">课程表现对比</h3><p>按当前指标从高到低排列课程。</p></div>
+              <div><h3 id="course-comparison-title">课程表现对比</h3></div>
             </div>
 
             <ol v-if="visibleCourseRows.length" class="course-bars">
@@ -402,7 +402,7 @@ onMounted(() => { void loadGrades() })
       <section class="learning-analysis" aria-labelledby="learning-analysis-title">
         <div class="learning-analysis__lead">
           <div class="learning-analysis__icon" aria-hidden="true"><UiIcon name="trophy" :size="20" /></div>
-          <div><p>结合成绩与已授权画像</p><h2 id="learning-analysis-title">AI 学习分析</h2><span>识别优势、留意项和下一步；资料不足时保留待确认项，不替你推断。</span></div>
+          <div><p>结合成绩与已授权画像</p><h2 id="learning-analysis-title">AI 学习分析 <DetailPopover title="学习分析说明" label="查看学习分析说明"><p>识别优势、留意项和下一步；资料不足时保留待确认项，不替你推断。</p></DetailPopover></h2></div>
         </div>
         <button class="btn" :disabled="learningAnalysis.busy.value" @click="analyzeLearning">{{ learningAnalysis.result.value ? '更新学习分析' : '生成学习分析' }}</button>
         <AiStatus class="learning-analysis__status" :busy="learningAnalysis.busy.value" :error="learningAnalysis.error.value" :progress="learningAnalysis.progress.value" @cancel="learningAnalysis.cancel" @retry="analyzeLearning" />
@@ -437,7 +437,7 @@ onMounted(() => { void loadGrades() })
         <EmptyState v-else kind="search-empty" :heading-level="3" size="sm" title="这个筛选下没有成绩" description="换一个学年或学期查看。" :next="false" />
       </section>
 
-      <section class="grade-notes"><div><h2>关于成绩口径</h2><p>等级制成绩按原文保留，不自动换算；绩点以学校导出值为准。趋势仅使用已录入的数值成绩，不推算排名或综合绩点，避免混用不同学校的计算规则。</p></div><button class="grade-revoke" @click="revokeOpen=true"><UiIcon name="trash" :size="16" />撤回成绩记录</button></section>
+      <section class="grade-notes"><DetailPopover title="成绩口径" label="查看成绩口径"><template #trigger>成绩口径</template><p>等级制成绩按原文保留，不自动换算；绩点以学校导出值为准。趋势仅使用已录入的数值成绩，不推算排名或综合绩点，避免混用不同学校的计算规则。</p></DetailPopover><button class="grade-revoke" @click="revokeOpen=true"><UiIcon name="trash" :size="16" />撤回成绩记录</button></section>
     </template>
 
     <EmptyState v-else kind="academic" :heading-level="2" title="还没有成绩记录" description="从教务系统复制带表头的成绩表，保存前可以先预览识别结果。" action-label="导入成绩" @action="importOpen=true" />
