@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { WORKSPACE_ITEMS, PORTAL_LINK, DIRECTORY_PAGES } from '../lib/workspace-nav'
 import InfoSheet from './InfoSheet.vue'
 import UiIcon from './UiIcon.vue'
+import { isComposingKey } from '../lib/scroll-intent'
 interface Item { label: string; hint: string; run: () => void }
 const open = ref(false)
 const query = ref('')
@@ -21,6 +22,7 @@ function show() { open.value = true; query.value = ''; cursor.value = 0 }
 function hide() { open.value = false }
 function run(index: number) { const command = results.value[index]; if (command) { hide(); command.run() } }
 function onKey(event: KeyboardEvent) {
+  if (isComposingKey(event)) return
   if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); open.value ? hide() : show(); return }
   if (!open.value) return
   if (event.key === 'Escape') { event.preventDefault(); hide() }
@@ -37,8 +39,8 @@ defineExpose({ show })
 </script>
 <template>
   <InfoSheet shape="panel" :open="open" title="搜索与跳转" @close="hide" @opened="field?.focus()">
-    <label class="ws-command-search"><UiIcon name="search" /><input ref="field" v-model="query" placeholder="搜索页面或功能…" aria-label="搜索命令" /></label>
-    <div class="ws-command-results"><button v-for="(item, index) in results" :id="'ws-command-' + index" :key="item.label + index" class="ws-command-item" :class="{ 'ws-command-item--on': cursor === index }" @mouseenter="cursor = index" @click="run(index)"><strong>{{ item.label }}</strong><span>{{ item.hint }}</span></button><p v-if="!results.length" class="ws-muted">没有匹配的功能，换个词试试。</p></div>
+    <label class="ws-command-search"><UiIcon name="search" /><input ref="field" v-model="query" placeholder="搜索页面或功能…" aria-label="搜索命令" role="combobox" aria-autocomplete="list" aria-expanded="true" aria-controls="ws-command-results" :aria-activedescendant="results.length ? 'ws-command-' + cursor : undefined" /></label>
+    <div id="ws-command-results" class="ws-command-results" role="listbox" aria-label="页面与功能"><button v-for="(item, index) in results" :id="'ws-command-' + index" :key="item.label + index" class="ws-command-item" role="option" :aria-selected="cursor === index" :class="{ 'ws-command-item--on': cursor === index }" @mouseenter="cursor = index" @click="run(index)"><strong>{{ item.label }}</strong><span>{{ item.hint }}</span></button><p v-if="!results.length" class="ws-muted">没有匹配的功能，换个词试试。</p></div>
     <p class="ws-muted" style="margin-top: var(--sp-4)">↑ ↓ 选择 · Enter 打开 · Esc 关闭</p>
   </InfoSheet>
 </template>

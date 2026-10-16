@@ -11,6 +11,7 @@ import './styles/redesign.css'
 import './styles/c2-fidelity.css'
 import './styles/refinement.css'
 import './styles/workspace-modern.css'
+import './styles/product-interactions.css'
 
 const app = createApp(App)
 

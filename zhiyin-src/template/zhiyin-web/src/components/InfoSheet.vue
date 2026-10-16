@@ -26,6 +26,7 @@
  */
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import UiIcon from './UiIcon.vue'
+import { vScrollFade } from '../lib/scroll-fade'
 
 type Shape = 'dialog' | 'sheet' | 'panel'
 
@@ -243,7 +244,7 @@ function onDragEnd(event: PointerEvent) {
         <button class="ws-icon-button" aria-label="关闭面板" @click="emit('close')"><UiIcon name="close" /></button>
       </header>
       <p v-if="description" :id="`${bodyId}-desc`" class="ws-sheet__desc">{{ description }}</p>
-      <div :id="bodyId" class="ws-sheet__body"><slot /></div>
+      <div :id="bodyId" v-scroll-fade class="ws-sheet__body"><slot /></div>
     </div>
   </dialog>
 </template>

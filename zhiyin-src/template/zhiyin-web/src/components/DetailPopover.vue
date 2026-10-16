@@ -2,6 +2,7 @@
 import { computed, ref, useId, onMounted, onBeforeUnmount } from 'vue'
 import { PopoverRoot, PopoverTrigger, PopoverPortal, PopoverContent, PopoverClose } from 'reka-ui'
 import UiIcon from './UiIcon.vue'
+import { vScrollFade } from '../lib/scroll-fade'
 defineOptions({ inheritAttrs: false })
 const props = withDefaults(defineProps<{ modelValue?: boolean; title: string; label?: string; side?: 'top' | 'bottom' | 'left' | 'right'; inlineOnNarrow?: boolean }>(), { modelValue: undefined, side: 'right', inlineOnNarrow: false })
 const emit = defineEmits<{ 'update:modelValue': [value: boolean] }>()
@@ -38,7 +39,7 @@ function inlineToggle() { open.value = !!inlineDetails.value?.open }
     <PopoverPortal :to="portalTarget">
       <PopoverContent :id="id" class="detail-popover" :side="placement" :side-offset="8" :collision-padding="16" :aria-label="title" @escape-key-down="escape">
         <header><h2>{{ title }}</h2><PopoverClose class="detail-popover__close" aria-label="关闭详情"><UiIcon name="close" :size="17" /></PopoverClose></header>
-        <div class="detail-popover__body"><slot /></div>
+        <div v-scroll-fade class="detail-popover__body"><slot /></div>
       </PopoverContent>
     </PopoverPortal>
   </PopoverRoot>
