@@ -1,0 +1,71 @@
+[
+  {
+    "user_id": "kev-smoke-471478ad0f",
+    "occurred_at": "2026-10-16T19:50:45.404548+00:00",
+    "decision": {
+      "intent": "free_chat",
+      "reason": "confidence_below_threshold",
+      "source": "kev",
+      "adopted": false,
+      "candidate": "how_to_act",
+      "confidence": 0.5158,
+      "latency_ms": 244.5,
+      "probabilities": {
+        "stuck": 0.0628,
+        "unclear": 0.1423,
+        "confused": 0.0424,
+        "free_chat": 0.0894,
+        "undecided": 0.0203,
+        "how_to_act": 0.5763,
+        "review_due": 0.0391,
+        "verify_direction": 0.0275
+      }
+    }
+  },
+  {
+    "user_id": "kev-smoke-471478ad0f",
+    "occurred_at": "2026-10-16T19:50:07.027698+00:00",
+    "decision": {
+      "intent": "review_due",
+      "reason": "thresholds_met",
+      "source": "kev",
+      "adopted": true,
+      "candidate": "review_due",
+      "confidence": 0.7196,
+      "latency_ms": 450.5,
+      "probabilities": {
+        "stuck": 0.0461,
+        "unclear": 0.043,
+        "confused": 0.0125,
+        "free_chat": 0.015,
+        "undecided": 0.0067,
+        "how_to_act": 0.0249,
+        "review_due": 0.7547,
+        "verify_direction": 0.097
+      }
+    }
+  },
+  {
+    "user_id": "qa_cap_7037406dfc",
+    "occurred_at": "2026-10-16T19:49:56.518695+00:00",
+    "decision": {
+      "intent": "review_due",
+      "reason": "thresholds_met",
+      "source": "kev",
+      "adopted": true,
+      "candidate": "review_due",
+      "confidence": 0.7145,
+      "latency_ms": 254.1,
+      "probabilities": {
+        "stuck": 0.0449,
+        "unclear": 0.0419,
+        "confused": 0.0112,
+        "free_chat": 0.0135,
+        "undecided": 0.006,
+        "how_to_act": 0.0211,
+        "review_due": 0.7502,
+        "verify_direction": 0.1112
+      }
+    }
+  }
+]

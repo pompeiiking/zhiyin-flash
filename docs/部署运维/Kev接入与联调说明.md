@@ -4,7 +4,7 @@ Kev 是独立的 System One 决策服务，只辅助职业意图分类；原聊�
 
 ## 启动
 
-1. 启动本机 Kev，确认 `http://127.0.0.1:8009/v1/models` 返回 `kev-latest`、`device=cpu`、`backend=torch`。
+1. 启动已安装的本机 Kev（当前目录 `E:\ai-models\kev`，执行 `start.ps1`）。等待 `http://127.0.0.1:8009/v1/models` 返回 `kev-latest`；以返回的 device、backend 为准，不要求固定 CPU。仅有进程不代表模型已加载。
 2. 首次部署或代码变更后构建并启动后端：
 
 ```powershell
@@ -21,11 +21,24 @@ docker compose -f docker-compose.yml -f docker-compose.kev.yml restart zhiyin-fl
 
 新数据库会从 JSON 种子得到 active 配置；已有数据库必须运行上述脚本。不要为这两项配置执行全量 `--resync-registry`。
 
+### 旧草稿策略迁移（保留已有分类规则）
+
+旧数据库可能使用 `status=draft`、`min_confidence`、`min_probability` 和 `prompt_version`。当前路由要求 confirmed 状态及新字段；仅打开功能开关或把 mode 改成 active 不足以启用。
+
+在配置了当前数据库连接的后端环境运行：
+
+```powershell
+python zhiyin-src/template/scripts/migrate_decision_routing.py
+python zhiyin-src/template/scripts/migrate_decision_routing.py --apply --backup decision-routing-before.json
+```
+
+第一条仅预览，第二条显式启用并迁移这一条策略。备份文件必须不存在；保留原阈值及分类规则，拒绝新旧阈值冲突和不合法候选。此脚本不打开功能开关，须另核对 `decision_intent_routing` 为 true。切换脚本 `kev_config.py` 则使用仓库种子重建策略，两者用途不同。
+
 ## 路由口径
 
 - 关键词命中与明确点选均跳过 Kev。
 - 自由输入只有在开关开启、模式为 active、消息不超过 6000 字，并且 `confidence >= 0.55`、首选概率 `>= 0.70` 时采用 Kev。
-- `unclear`、低阈值、非法响应、网络错误或超过 10 秒均沿用原流程。
+- `unclear`、低置信度、非法响应、网络错误或超过配置的 `ZHIYIN_DECISION_TIMEOUT_S` 均沿用原流程；以运行配置为准，不把超时回退算作 Kev 已采用。
 - `shadow` 会调用并记录，但永不采用；`off` 完全不调用。
 - 决策依据写在 ANSWER 行为日志的 `payload.intent_decision`。
 

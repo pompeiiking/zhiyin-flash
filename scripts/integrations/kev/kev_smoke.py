@@ -99,7 +99,7 @@ async def main() -> None:
     else:
         models = _request_json(f"{args.kev.rstrip('/')}/v1/models", timeout=10)
         card = next(item for item in models["models"] if item["name"] == "kev-latest")
-        assert card["device"] == "cpu", card
+        assert card["device"] in {"cpu", "cuda", "mps"}, card
         assert card["backend"] == "torch", card
         print(f"Kev ready: {card['run']} / {card['device']} / {card['dtype']}")
 
@@ -124,7 +124,7 @@ async def main() -> None:
     high_message = "我已经执行原定求职安排一个月，请分析实际效果和不足，并根据结果校准今后的安排。"
     message_id = f"kev-{uuid4().hex}"
     started = time.perf_counter()
-    _api(
+    reply = _api(
         args.api,
         "/app/conversation/message",
         {"task_id": task_id, "message": high_message, "client_msg_id": message_id},
@@ -143,6 +143,7 @@ async def main() -> None:
     assert first[0]["source"] == "kev", first[0]
     assert first[0]["candidate"] == "review_due", first[0]
     assert first[0]["adopted"] is True, first[0]
+    assert reply["stage"] == "review", reply["stage"]
     print(f"Active routing passed in {wall_ms} ms: {first[0]}")
 
     # 同一个 client_msg_id 重放，既不再调用 Kev，也不新增行为记录。

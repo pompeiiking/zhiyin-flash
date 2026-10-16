@@ -1,0 +1,93 @@
+[
+  {
+    "message": "我想在毕业后从事软件测试，请给我安排这周每天的练习任务。",
+    "intent": "free_chat",
+    "candidate": "how_to_act",
+    "source": "kev",
+    "adopted": false,
+    "reason": "confidence_below_threshold",
+    "confidence": 0.3342,
+    "probabilities": {
+      "stuck": 0.0562,
+      "unclear": 0.1781,
+      "confused": 0.1214,
+      "free_chat": 0.0796,
+      "undecided": 0.0543,
+      "how_to_act": 0.4175,
+      "review_due": 0.0237,
+      "verify_direction": 0.0692
+    },
+    "latency_ms": 1118.4
+  },
+  {
+    "message": "我已经连续三天没完成原定任务，每次打开项目就停在那里。",
+    "intent": "free_chat",
+    "candidate": "stuck",
+    "source": "kev",
+    "adopted": false,
+    "reason": "confidence_below_threshold",
+    "confidence": 0.2842,
+    "probabilities": {
+      "stuck": 0.3737,
+      "unclear": 0.1826,
+      "confused": 0.0475,
+      "free_chat": 0.0792,
+      "undecided": 0.0294,
+      "how_to_act": 0.0779,
+      "review_due": 0.1859,
+      "verify_direction": 0.0239
+    },
+    "latency_ms": 265.4
+  },
+  {
+    "message": "软件测试和技术支持这两份工作让我难以取舍，请帮我梳理各自的代价。",
+    "intent": "free_chat",
+    "candidate": "undecided",
+    "source": "kev",
+    "adopted": false,
+    "reason": "confidence_below_threshold",
+    "confidence": 0.2199,
+    "probabilities": {
+      "stuck": 0.0399,
+      "unclear": 0.2265,
+      "confused": 0.1363,
+      "free_chat": 0.0704,
+      "undecided": 0.3174,
+      "how_to_act": 0.0249,
+      "review_due": 0.0421,
+      "verify_direction": 0.1424
+    },
+    "latency_ms": 252.0
+  },
+  {
+    "message": "嗯。",
+    "intent": "free_chat",
+    "candidate": "unclear",
+    "source": "kev",
+    "adopted": false,
+    "reason": "invalid_business_intent",
+    "confidence": 0.1884,
+    "probabilities": {
+      "stuck": 0.1081,
+      "unclear": 0.2899,
+      "confused": 0.1446,
+      "free_chat": 0.233,
+      "undecided": 0.0581,
+      "how_to_act": 0.0566,
+      "review_due": 0.0497,
+      "verify_direction": 0.06
+    },
+    "latency_ms": 285.1
+  },
+  {
+    "message": "我不知道自己适合什么",
+    "intent": "confused",
+    "candidate": "confused",
+    "source": "keyword",
+    "adopted": true,
+    "reason": "keyword_match",
+    "confidence": null,
+    "probabilities": {},
+    "latency_ms": null
+  }
+]

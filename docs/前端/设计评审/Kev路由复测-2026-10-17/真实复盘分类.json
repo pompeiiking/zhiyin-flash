@@ -1,0 +1,42 @@
+[
+  {
+    "message": "我已经执行原定求职安排一个月，请分析实际效果和不足，并根据结果校准今后的安排。",
+    "intent": "review_due",
+    "candidate": "review_due",
+    "source": "kev",
+    "adopted": true,
+    "reason": "thresholds_met",
+    "confidence": 0.7196,
+    "probabilities": {
+      "stuck": 0.0461,
+      "unclear": 0.043,
+      "confused": 0.0125,
+      "free_chat": 0.015,
+      "undecided": 0.0067,
+      "how_to_act": 0.0249,
+      "review_due": 0.7547,
+      "verify_direction": 0.097
+    },
+    "latency_ms": 219.6
+  },
+  {
+    "message": "I have followed my job search plan for a month. Please evaluate the results and adjust my plan based on what worked.",
+    "intent": "review_due",
+    "candidate": "review_due",
+    "source": "kev",
+    "adopted": true,
+    "reason": "thresholds_met",
+    "confidence": 0.7238,
+    "probabilities": {
+      "stuck": 0.0246,
+      "unclear": 0.0554,
+      "confused": 0.0239,
+      "free_chat": 0.0231,
+      "undecided": 0.0148,
+      "how_to_act": 0.0424,
+      "review_due": 0.7583,
+      "verify_direction": 0.0576
+    },
+    "latency_ms": 224.8
+  }
+]
