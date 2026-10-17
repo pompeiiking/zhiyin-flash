@@ -27,16 +27,16 @@ async function save(){if(busy.value)return;error.value='';status.value='';if(sta
       <form class="phase-editor" @submit.prevent="save">
         <fieldset :disabled="busy">
           <section class="phase-editor__section phase-editor__name">
-            <label class="ws-field">阶段名称<input v-model="name" type="text" autofocus required maxlength="100" placeholder="例如：完成第一个可演示作品"/></label>
+            <label class="ws-field">阶段名称<input v-model="name" name="phase-name" type="text" autocomplete="off" required maxlength="100" placeholder="例如：完成第一个可演示作品"/></label>
             <p>写清这一阶段要推进的结果，后续任务会围绕它展开。</p>
           </section>
 
           <section class="phase-editor__section" aria-labelledby="phase-editor-time-title">
             <div class="phase-editor__heading"><div><h3 id="phase-editor-time-title">时间范围</h3><p>先给自己一个大致区间，之后仍可调整。</p></div><span>可选</span></div>
             <div class="phase-editor__dates">
-              <label class="ws-field">开始日期<input v-model="start" type="date" @input="datesTouched=true"/></label>
+              <label class="ws-field">开始日期<input v-model="start" name="phase-start" type="date" autocomplete="off" @input="datesTouched=true"/></label>
               <span aria-hidden="true">至</span>
-              <label class="ws-field">计划完成<input v-model="end" type="date" :min="start||undefined" @input="datesTouched=true"/></label>
+              <label class="ws-field">计划完成<input v-model="end" name="phase-end" type="date" autocomplete="off" :min="start||undefined" @input="datesTouched=true"/></label>
             </div>
             <p v-if="dateRange&&!start&&!end&&!datesTouched" class="phase-editor__legacy-date">当前安排：{{dateRange}}。不修改日期会保留原时间。</p>
           </section>
@@ -53,8 +53,8 @@ async function save(){if(busy.value)return;error.value='';status.value='';if(sta
           <details class="phase-editor__advanced" @toggle="revealRules">
             <summary><span><strong>补充开始条件和完成标准</strong><small>{{hasRules?'已填写，可展开修改':'需要明确验收方式时再填写'}}</small></span><i aria-hidden="true"/></summary>
             <div class="phase-editor__rules">
-              <label class="ws-field">开始前要满足什么 <span>可选</span><textarea v-model="blocks" rows="3" placeholder="例如：先完成 Python 基础练习&#10;每行写一项"/></label>
-              <label class="ws-field">做到什么算完成 <span>可选</span><textarea v-model="handoff" rows="3" placeholder="例如：做出一个可以演示的小工具&#10;例如：邀请 2 位同学试用并记录反馈"/></label>
+              <label class="ws-field">开始前要满足什么 <span>可选</span><textarea v-model="blocks" name="phase-blockers" rows="3" autocomplete="off" placeholder="例如：先完成 Python 基础练习&#10;每行写一项"/></label>
+              <label class="ws-field">做到什么算完成 <span>可选</span><textarea v-model="handoff" name="phase-handoff" rows="3" autocomplete="off" placeholder="例如：做出一个可以演示的小工具&#10;例如：邀请 2 位同学试用并记录反馈"/></label>
             </div>
           </details>
         </fieldset>

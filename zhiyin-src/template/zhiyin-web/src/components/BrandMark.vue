@@ -7,7 +7,7 @@ withDefaults(defineProps<{ compact?: boolean }>(), { compact: false })
 <template>
   <span class="brand-mark" :class="{ 'brand-mark--compact': compact }">
     <span class="brand-mark__crest" aria-hidden="true">
-      <img :src="crest" alt="" />
+      <img :src="crest" alt="" width="187" height="188" />
     </span>
     <span v-if="!compact" class="brand-mark__lockup">
       <strong class="brand-mark__name">职引</strong>

@@ -2,7 +2,9 @@
 import { routeEnabled } from '../lib/features'
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { TooltipContent, TooltipPortal, TooltipProvider, TooltipRoot, TooltipTrigger } from 'reka-ui'
 import { WORKSPACE_GROUPS, WORKSPACE_PRIMARY, PORTAL_LINK, isNavActive, type NavItem } from '../lib/workspace-nav'
+import { navigation } from '../lib/layout'
 import { demo } from '../store'
 import { openSession } from '../lib/system-data'
 import { toast } from '../store'
@@ -45,6 +47,7 @@ const chatActive = computed(() => isNavActive(WORKSPACE_PRIMARY, route))
  */
 const sessionCount = computed(() => backendDemo.state.sessions.length)
 const nowCount = computed(() => demo.state.tasks.filter((t) => t.bucket === 'now').length)
+const railMode = computed(() => navigation.width.value >= 768 && navigation.width.value < 1024)
 function navCount(item: NavItem) { return item.key === 'home' ? nowCount.value : 0 }
 function sessionDate(date?: string | null) { return date ? new Date(date).toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' }) : '' }
 </script>
@@ -53,16 +56,28 @@ function sessionDate(date?: string | null) { return date ? new Date(date).toLoca
     <div class="desk-brand-row"><RouterLink class="desk-brand" to="/chat" aria-label="职引，回到对话"><BrandMark /></RouterLink><button ref="collapseButton" class="ws-icon-button desk-collapse" aria-label="收起侧栏" title="收起侧栏" aria-controls="student-desktop-sidebar" aria-expanded="true" @click="$emit('collapse')"><UiIcon name="sidebar" :size="19" /></button></div>
 
     <div class="desk-scroll">
-    <nav v-scroll-fade class="desk-nav" aria-label="学生空间导航"><div class="c2-chat-group-head"><h2>对话</h2><button class="c2-new-consult" aria-label="选择咨询主题" title="选择咨询主题" :disabled="demo.state.chatBusy" @click="$emit('newChat')"><UiIcon name="plus" :size="18" /></button></div>
-      <RouterLink :to="WORKSPACE_PRIMARY.to" class="desk-link desk-link--conversation" :aria-current="isNavActive(WORKSPACE_PRIMARY, route) ? 'page' : undefined"><UiIcon :name="WORKSPACE_PRIMARY.icon" :size="20" /><span class="hf-label">{{ WORKSPACE_PRIMARY.label }}</span><span class="hf-tail" v-if="sessionCount || chatActive"><span v-if="sessionCount" class="hf-badge" :title="'共 ' + sessionCount + ' 段咨询'">{{ sessionCount }}</span><span v-if="chatActive" class="desk-link__dot" /></span></RouterLink>
-      <section v-for="group in WORKSPACE_GROUPS" :key="group.key" class="c2-nav-group">
-        <h2>{{ group.label }}</h2>
-        <RouterLink v-for="item in group.items.filter(item => routeEnabled(item.to))" :key="item.key" :to="item.to" :title="item.label" class="desk-link" :aria-current="isNavActive(item, route) ? 'page' : undefined">
-          <UiIcon :name="item.icon" :size="18" /><span class="hf-label">{{ item.label }}</span>
-          <span v-if="navCount(item)" class="hf-badge">{{ navCount(item) }}</span>
-        </RouterLink>
-      </section>
-    </nav>
+    <TooltipProvider :delay-duration="120" :skip-delay-duration="80">
+      <nav v-scroll-fade class="desk-nav" aria-label="学生空间导航"><div class="c2-chat-group-head"><h2>对话</h2><button class="c2-new-consult" aria-label="选择咨询主题" title="选择咨询主题" :disabled="demo.state.chatBusy" @click="$emit('newChat')"><UiIcon name="plus" :size="18" /></button></div>
+        <TooltipRoot :disabled="!railMode">
+          <TooltipTrigger as-child>
+            <RouterLink :to="WORKSPACE_PRIMARY.to" class="desk-link desk-link--conversation" :aria-label="WORKSPACE_PRIMARY.label" :aria-current="isNavActive(WORKSPACE_PRIMARY, route) ? 'page' : undefined"><UiIcon :name="WORKSPACE_PRIMARY.icon" :size="20" /><span class="hf-label">{{ WORKSPACE_PRIMARY.label }}</span><span class="hf-tail" v-if="sessionCount || chatActive"><span v-if="sessionCount" class="hf-badge">{{ sessionCount }}</span><span v-if="chatActive" class="desk-link__dot" /></span></RouterLink>
+          </TooltipTrigger>
+          <TooltipPortal><TooltipContent class="desk-rail-tooltip" side="right" :side-offset="12" :collision-padding="8">{{ WORKSPACE_PRIMARY.label }}</TooltipContent></TooltipPortal>
+        </TooltipRoot>
+        <section v-for="group in WORKSPACE_GROUPS" :key="group.key" class="c2-nav-group">
+          <h2>{{ group.label }}</h2>
+          <TooltipRoot v-for="item in group.items.filter(item => routeEnabled(item.to))" :key="item.key" :disabled="!railMode">
+            <TooltipTrigger as-child>
+              <RouterLink :to="item.to" :aria-label="item.label" class="desk-link" :aria-current="isNavActive(item, route) ? 'page' : undefined">
+                <UiIcon :name="item.icon" :size="18" /><span class="hf-label">{{ item.label }}</span>
+                <span v-if="navCount(item)" class="hf-badge">{{ navCount(item) }}</span>
+              </RouterLink>
+            </TooltipTrigger>
+            <TooltipPortal><TooltipContent class="desk-rail-tooltip" side="right" :side-offset="12" :collision-padding="8">{{ item.label }}</TooltipContent></TooltipPortal>
+          </TooltipRoot>
+        </section>
+      </nav>
+    </TooltipProvider>
     <section v-if="chatActive" v-scroll-fade class="desk-history" aria-label="历史会话"><div class="desk-history__head"><h2>历史会话</h2><span>{{ backendDemo.state.sessions.length }}</span></div><button v-for="session in sessions" :key="session.task_id" class="desk-session" :title="session.task_name" :aria-pressed="route.path === '/chat' && session.task_id === demo.state.currentSessionId" :disabled="demo.state.chatBusy" @click="resumeSession(session.task_id)"><span>{{ session.task_name || '未命名咨询' }}</span><small>{{ sessionDate(session.last_active_at) }}</small></button><p v-if="!sessions.length" class="desk-history__empty">创建咨询后，会话将显示在这里。</p></section>
     </div>
     <!--
@@ -135,4 +150,7 @@ function sessionDate(date?: string | null) { return date ? new Date(date).toLoca
    定高会让文字从盒子里溢出去压住页脚上边距。min-height 保住 44px 命中区。 */
 .hf-person { height: auto; min-height: 44px; }
 .hf-person-text { flex: 1 1 auto; min-width: 0; }
+:global(.desk-rail-tooltip) { z-index:140; padding:7px 10px; border:1px solid var(--c-border); border-radius:9px; background:var(--c-surface); color:var(--c-text); box-shadow:var(--e-2); font-size:13px; line-height:1.4; }
+@media (prefers-reduced-motion:no-preference) { :global(.desk-rail-tooltip) { animation:desk-rail-tooltip-in .12s ease-out; } }
+@keyframes desk-rail-tooltip-in { from { opacity:0; transform:translateX(-4px); } }
 </style>

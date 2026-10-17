@@ -102,6 +102,7 @@ onUnmounted(()=>clearInterval(notificationTimer))
 
 <template>
   <div class="app" :data-route="route.path" :data-nav="layout.mode.value" :class="{ 'app--workspace': !bare, 'app--desktop': !bare && desktop, 'app--sidebar-collapsed': !bare && desktop && layout.sidebarCollapsed.value, 'app--chat': route.name === 'chat' }" :style="{ '--progress-max': progressMax }">
+    <a v-if="!bare" class="skip-link" href="#main-content">跳到主要内容</a>
     <template v-if="bare && !routeLoadError">
       <RouterView v-slot="{ Component }">
         <Transition name="page" mode="out-in">
@@ -113,7 +114,7 @@ onUnmounted(()=>clearInterval(notificationTimer))
     <template v-else>
       <DesktopSidebar v-if="desktop" v-show="!layout.sidebarCollapsed.value" ref="sidebar" @new-chat="newChat" @collapse="collapseSidebar" />
       <AppTopBar ref="workspaceHeader" @open-palette="palette?.show()" @expand-sidebar="expandSidebar" @open-mobile-menu="mobileNav?.show()" />
-      <main class="app__main">
+      <main id="main-content" class="app__main" tabindex="-1">
         <!-- 氛围层：与门户同一套语言（一片很淡的品牌色光 + 颗粒），但强度低得多 -->
         <div class="app__atmos" aria-hidden="true" />
 
@@ -161,6 +162,27 @@ onUnmounted(()=>clearInterval(notificationTimer))
   min-height: 100%;
   display: flex;
   flex-direction: column;
+}
+
+.skip-link {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: calc(var(--z-toast) + 1);
+  padding: 10px 14px;
+  border-radius: var(--r-md);
+  background: var(--c-text);
+  color: var(--c-surface);
+  box-shadow: var(--e-2);
+  transform: translateY(calc(-100% - 20px));
+  transition: transform var(--dur-1) var(--ease-out);
+}
+
+.skip-link:focus-visible {
+  color: var(--c-surface);
+  outline: 2px solid var(--c-primary);
+  outline-offset: 2px;
+  transform: translateY(0);
 }
 
 .app__main {
@@ -253,6 +275,7 @@ onUnmounted(()=>clearInterval(notificationTimer))
 
 /* 减少动效：保留淡入，去掉位移 */
 @media (prefers-reduced-motion: reduce) {
+  .skip-link { transition: none; }
   .workspace-page-enter-active { transition: none; }
   .workspace-page-enter-from { transform: none; }
   .page-enter-from {
