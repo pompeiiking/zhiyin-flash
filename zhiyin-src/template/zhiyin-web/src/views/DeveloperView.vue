@@ -55,6 +55,7 @@ const fixture = ref('normal')
 const commit = ref('')
 const kind = ref<'deploy' | 'rollback' | 'check'>('deploy')
 const error = ref('')
+const accessDenied = computed(() => !context.value && /权限|forbidden|403/i.test(error.value))
 const message = ref('')
 const busy = ref(false)
 const administrator = computed(() => context.value?.role === 'admin')
@@ -103,10 +104,14 @@ function reloadConfig(){void run(()=>api('/app/config/reload',{method:'POST'}),'
 <template>
 <button v-if="administrator" class="btn" :disabled="busy" @click="reloadConfig">重新加载动态配置</button>
   <main class="developer">
-    <header class="dev-header"><div><RouterLink to="/">← 职引</RouterLink><h1>{{ !context || isWorkbench ? '模块开发工作台' : context.environment === 'staging' ? '测试环境模块管理' : '模块管理' }}</h1><p>{{ !context || isWorkbench ? '开发组件、验证完整数据流，将通过验收的版本部署到职引。' : '管理当前环境已安装模块的启停与授权，编排数据流并调试真实组件。' }}</p></div>
+    <section v-if="accessDenied" class="developer-denied" aria-labelledby="developer-denied-title">
+      <span aria-hidden="true">403</span>
+      <div><p>开发者管理</p><h1 id="developer-denied-title">当前账号没有开发者权限</h1><p>学生功能和已保存资料不受影响。开发者工作台只向获得授权的账号开放。</p><div><RouterLink class="btn btn--primary" to="/chat">回到咨询</RouterLink><RouterLink class="btn" to="/settings">查看账号设置</RouterLink></div></div>
+    </section>
+    <header v-else class="dev-header"><div><RouterLink to="/">← 职引</RouterLink><h1>{{ !context || isWorkbench ? '模块开发工作台' : context.environment === 'staging' ? '测试环境模块管理' : '模块管理' }}</h1><p>{{ !context || isWorkbench ? '开发组件、验证完整数据流，将通过验收的版本部署到职引。' : '管理当前环境已安装模块的启停与授权，编排数据流并调试真实组件。' }}</p></div>
       <div v-if="context" class="identity">{{ context.user_id }} · {{ administrator ? '管理员' : '开发者' }}<small>{{ context.environment }}</small></div>
     </header>
-    <p v-if="error" class="notice error" role="alert">{{ error }}</p>
+    <p v-if="error && !accessDenied" class="notice error" role="alert">{{ error }}</p>
     <p v-if="message" class="notice success" role="status">{{ message }}</p>
     <p v-if="!context && !error">正在核对开发权限…</p>
     <template v-if="context">
@@ -171,4 +176,11 @@ function reloadConfig(){void run(()=>api('/app/config/reload',{method:'POST'}),'
 .module-filters { display:flex; align-items:end; gap:24px; margin-bottom:20px; }.module-filters p { color:#69786d; font-size:13px; margin:0; max-width:620px; }.module-meta { display:flex; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:12px; }.category-badge { color:#176647; }.module-grid .dev-card { margin-inline-start:calc(var(--module-depth, 0) * 24px); }.module-grid .child-module { border-inline-start:3px solid #b2c8b5; }.blocked { background:#fff0dc; color:#87551c; }.blocked-reason { color:#87551c; font-size:13px; }.permission-help { color:#69786d; font-size:12px; margin-top:0; }
 .developer { max-width:1280px; margin:0 auto; padding:44px 36px 100px; color:#25362c; }.dev-header { display:flex; align-items:start; justify-content:space-between; gap:24px; }.dev-header h1 { font-size:34px; margin:16px 0 8px; }.dev-header p { color:#69786d; }.identity { padding:12px 18px; border:1px solid #d7dfd6; border-radius:12px; }.identity small { display:block; margin-top:6px; color:#69786d; }.dev-summary { display:flex; flex-wrap:wrap; gap:24px; background:#edf2e8; padding:20px; border-radius:14px; margin:28px 0; }.dev-summary span { min-width:220px; }.dev-summary small { display:block; margin-bottom:6px; } code { font-size:12px; word-break:break-all; } nav { display:flex; gap:8px; border-bottom:1px solid #d7dfd6; padding-bottom:14px; margin-bottom:28px; } button { border:1px solid #ccd7cc; border-radius:8px; padding:9px 16px; cursor:pointer; background:#fffdf8; } button.active,button.primary { background:#176647; color:white; border-color:#176647; } button:disabled { opacity:.5; cursor:wait; }.module-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:22px; }.dev-card { border:1px solid #d7dfd6; border-radius:16px; padding:24px; background:#fffdf8; }.row { display:flex; justify-content:space-between; align-items:center; gap:16px; }.row h2 { font-size:21px; margin:0; }.badge { font-size:12px; padding:5px 8px; background:#eef3e9; border-radius:6px; white-space:nowrap; } p { line-height:1.7; } small { color:#69786d; } fieldset { margin:24px 0; padding:16px; border:1px solid #e0e4db; border-radius:10px; } fieldset label { display:flex; gap:8px; margin:10px 0; font-size:13px; } input[type=checkbox] { accent-color:#176647; width:16px; height:16px; } .notice { padding:14px 18px; border-radius:10px; overflow-wrap:anywhere; }.error { background:#fae9e1; color:#8f321c; }.success { background:#e7f2e4; }.check,.job { margin-top:18px; }.preview-controls { display:flex; gap:18px; flex-wrap:wrap; } label>select,label>input:not([type=checkbox]) { display:block; margin-top:8px; border:1px solid #cbd5c9; background:white; border-radius:8px; padding:10px; min-width:180px; } .preview-area { max-width:560px; margin-top:24px; }.preview-area :deep(.bubble) { position:relative; min-height:280px; }.release-form { display:grid; gap:12px; }.release-form input { width:100%; }.release-form button { justify-self:start; } pre { white-space:pre-wrap; overflow-wrap:anywhere; max-height:280px; overflow:auto; background:#f2f4ee; padding:10px; font-size:12px; } details { margin-top:16px; } a { color:#176647; } @media(max-width:760px) { .developer { padding:24px 16px 70px; }.dev-header h1 { font-size:25px; }.module-grid { grid-template-columns:1fr; }nav { overflow:auto; }nav button { white-space:nowrap; }.dev-card { padding:18px; }.dev-summary { gap:14px; }.identity { font-size:12px; } }
 .module-grid { grid-template-columns:minmax(0,1fr); } @media(max-width:760px) { .module-filters { align-items:start; flex-direction:column; gap:12px; }.module-grid .dev-card { margin-inline-start:calc(var(--module-depth, 0) * 12px); }.module-grid .row { flex-wrap:wrap; } }
+.developer-denied { display:grid; grid-template-columns:auto minmax(0,1fr); align-items:start; gap:26px; max-width:760px; margin:10vh auto 0; padding:34px; border:1px solid var(--c-border); border-radius:20px; background:var(--c-surface); color:var(--c-text); box-shadow:var(--e-2); }
+.developer-denied>span { color:var(--c-primary); font-size:48px; font-weight:600; line-height:1; }
+.developer-denied>div>p:first-child { color:var(--c-primary); font-size:13px; font-weight:600; }
+.developer-denied h1 { margin:7px 0 12px; font-size:30px; }
+.developer-denied>div>p { color:var(--c-text-2); }
+.developer-denied>div>div { display:flex; flex-wrap:wrap; gap:10px; margin-top:22px; }
+@media(max-width:760px){.developer-denied{grid-template-columns:1fr;margin-top:36px;padding:24px}.developer-denied>span{font-size:40px}.developer-denied h1{font-size:25px}}
 </style>

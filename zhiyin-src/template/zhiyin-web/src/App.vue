@@ -5,7 +5,7 @@ import AppTopBar from './components/WorkspaceHeader.vue'
 import WorkspaceNav from './components/WorkspaceNav.vue'
 import CommandPalette from './components/CommandMenu.vue'
 import AuthLayer from './components/AuthLayer.vue'
-import NoticeToast from './components/InboxSheet.vue'
+import FloatingReminders from './components/FloatingReminders.vue'
 import InterventionModal from './components/CareSheet.vue'
 import { demo } from './store'
 import { skin } from './lib/theme'
@@ -111,7 +111,7 @@ onUnmounted(()=>clearInterval(notificationTimer))
     </template>
 
     <template v-else>
-      <DesktopSidebar v-if="desktop" v-show="!layout.sidebarCollapsed.value" ref="sidebar" @new-chat="newChat" @account="workspaceHeader?.showAccount()" @collapse="collapseSidebar" />
+      <DesktopSidebar v-if="desktop" v-show="!layout.sidebarCollapsed.value" ref="sidebar" @new-chat="newChat" @collapse="collapseSidebar" />
       <AppTopBar ref="workspaceHeader" @open-palette="palette?.show()" @expand-sidebar="expandSidebar" @open-mobile-menu="mobileNav?.show()" />
       <main class="app__main">
         <!-- 氛围层：与门户同一套语言（一片很淡的品牌色光 + 颗粒），但强度低得多 -->
@@ -130,7 +130,7 @@ onUnmounted(()=>clearInterval(notificationTimer))
     <CommandPalette ref="palette" />
     <AuthLayer v-if="authOpen" @close="closeAuth" />
     <!-- 提醒是登录后的产品功能，不出现在公开门户上 -->
-    <NoticeToast v-if="demo.state.authed && !bare" />
+    <FloatingReminders v-if="demo.state.authed && !bare" />
     <InterventionModal
       v-if="demo.state.interventionOpen"
       :host="INTERVENTION.host"

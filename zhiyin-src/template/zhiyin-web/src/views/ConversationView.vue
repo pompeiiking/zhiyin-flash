@@ -7,7 +7,6 @@ import { auth } from '../lib/auth'
 import { useConversationScroll } from '../lib/use-conversation-scroll'
 import { isComposingKey } from '../lib/scroll-intent'
 import { vScrollFade } from '../lib/scroll-fade'
-import ProfileResizer from '../components/ProfileResizer.vue'
 import { navigation } from '../lib/layout'
 import { consultantLabel, agentKeyOf } from '../lib/consultant'
 import { newSession, openSession, loadShell, systemData } from '../lib/system-data'
@@ -20,7 +19,7 @@ import AgentAvatar from '../components/AgentAvatar.vue'
 import UiIcon from '../components/UiIcon.vue'
 import ReadableText from '../components/ReadableText.vue'
 import DetailPopover from '../components/DetailPopover.vue'
-import InfoSheet from '../components/InfoSheet.vue'
+import AnchoredCard from '../components/AnchoredCard.vue'
 import RenderableBlock from '../components/RenderableBlock.vue'
 import ConversationProfile from '../components/ConversationProfile.vue'
 import '../styles/conversation.css'
@@ -33,10 +32,9 @@ const selectedOption = ref<NonNullable<ChatTurn['optionRefs']>[number] | null>(n
 const flow = ref<HTMLElement | null>(null), input = ref<HTMLTextAreaElement | null>(null), fileInput = ref<HTMLInputElement | null>(null)
 const uploading = ref(false), thinking = ref(false), stopped = ref(false)
 const { followTail, showLatest, bottom, onScroll } = useConversationScroll(flow)
-const elapsed = ref(0), draggingFiles = ref(false), profileWidth = ref(300)
+const elapsed = ref(0), draggingFiles = ref(false)
 let waitTimer: ReturnType<typeof setInterval> | undefined
 let requestStarted = 0
-const profileMax = computed(() => Math.min(440, Math.max(260, navigation.width.value - 850)))
 const pending = ref<{ text: string; agent: string; note: string } | null>(null)
 const copiedTurn = ref('')
 let copyTimer: ReturnType<typeof setTimeout> | undefined
@@ -46,7 +44,6 @@ const profileOpen = ref(false), historyOpen = ref(false), profileLoading = ref(f
 const choosingTopic = ref(false)
 const theoryCards = ref<Record<string, TheoryCardView>>({}), theoryErrors = ref<Record<string, string>>({})
 const theoryLoading = ref<Record<string, boolean>>({})
-const desktopProfile = computed(() => navigation.width.value >= 1180 && navigation.mode.value === 'desktop')
 const sessions = computed(() => [...backendDemo.state.sessions].sort((a,b) => (b.last_active_at || '').localeCompare(a.last_active_at || '')))
 const title = computed(() => choosingTopic.value ? '选择咨询主题' : backendDemo.currentSession.value?.task_name || '咨询对话')
 const journey = [
@@ -67,7 +64,7 @@ let controller: AbortController | null = null, serial = 0, disposed = false
 let failedRequest: MessageRequest | null = null
 function remember() { backendDemo.saveDraft(demo.state.currentSessionId, draft.value, attached.value, flow.value?.scrollTop ?? null) }
 function resizeInput() { if (input.value) { input.value.style.height = 'auto'; input.value.style.height = Math.min(input.value.scrollHeight, 144) + 'px' } }
-function fill(text: string, option?: NonNullable<ChatTurn['optionRefs']>[number]) { draft.value = text; selectedOption.value = option ?? null; if (!desktopProfile.value) profileOpen.value = false; void nextTick(() => input.value?.focus()) }
+function fill(text: string, option?: NonNullable<ChatTurn['optionRefs']>[number]) { draft.value = text; selectedOption.value = option ?? null; profileOpen.value = false; void nextTick(() => input.value?.focus()) }
 function safeLink(url?: string | null) { try { const u = new URL(url || ''); return ['http:', 'https:'].includes(u.protocol) ? u.href : undefined } catch { return undefined } }
 function displayDate(raw: string) { const date = new Date(raw); return Number.isNaN(date.getTime()) ? raw : date.toLocaleString('zh-CN', {month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'}) }
 function evidenceCount(t: ChatTurn) { return (t.theory_refs?.length ?? 0) + (t.intel_refs?.length ?? 0) }
@@ -151,7 +148,6 @@ watch(thinking, busy => {
  if (busy) { elapsed.value = 0; requestStarted = Date.now(); waitTimer = setInterval(() => { elapsed.value = Math.floor((Date.now() - requestStarted) / 1000) }, 1000) }
 }, { flush:'sync' })
 watch(() => navigation.width.value, () => { void nextTick(resizeInput) })
-watch(profileMax, max => { profileWidth.value = Math.min(profileWidth.value, max) })
 watch([draft, attached], () => { remember(); void nextTick(resizeInput) }, { deep:true })
 watch(() => demo.state.currentSessionId, (_id, previous) => {
  backendDemo.saveDraft(previous, draft.value, attached.value, flow.value?.scrollTop ?? null)
@@ -182,13 +178,13 @@ onMounted(() => {
 onUnmounted(() => { disposed = true; clearInterval(waitTimer); clearTimeout(copyTimer); remember(); serial++; controller?.abort(); demo.setChatBusy(false) })
 </script>
 <template>
-<section class="consultation-page" :class="{ 'consultation-page--profile': profileOpen && desktopProfile }" :style="{ '--profile-width': profileWidth + 'px' }" aria-label="咨询对话空间">
+<section class="consultation-page" aria-label="咨询对话空间">
  <div class="consult-main">
   <header class="consult-header">
    <div class="consult-header__top"><div class="consult-heading"><h1 :title="title">{{ title }}</h1><p v-if="!choosingTopic && demo.state.currentSessionId"><span>当前阶段：{{ stageLabel(currentStage) }}</span><span v-if="profileFieldCount">已记录 {{ profileFieldCount }} 项信息</span><span v-if="profileGapCount">{{ profileGapCount }} 项待补</span></p></div><div class="consult-header__actions">
-    <button class="consult-icon consult-history-button" aria-label="历史会话" :disabled="thinking" @click="historyOpen = true"><UiIcon name="chat" :size="18" /></button>
+    <AnchoredCard v-model="historyOpen" class="consult-icon consult-history-button" title="历史会话" side="bottom" align="end"><template #trigger><UiIcon name="chat" :size="18" /></template><div class="consult-session-list"><button :disabled="!turns.length" @click="copy(turns.map(t => (t.from === 'me' ? '我' : t.speaker || '系统') + '：' + t.text).join('\n\n'))">复制当前会话记录</button><button v-for="session in sessions" :key="session.task_id" :disabled="thinking || systemData.busy" :aria-pressed="session.task_id === demo.state.currentSessionId" @click="resume(session.task_id)"><strong>{{ session.task_name }}</strong><small>{{ session.last_active_at ? new Date(session.last_active_at).toLocaleDateString('zh-CN') : '' }}</small></button><p v-if="!sessions.length">还没有历史会话。</p></div></AnchoredCard>
     <button class="consult-icon consult-new-button" aria-label="选择咨询主题" :disabled="thinking || systemData.busy" @click="chooseTopic"><UiIcon name="plus" :size="19" /></button>
-    <button class="consult-icon" aria-label="个人画像" :aria-expanded="profileOpen" @click="profileOpen = !profileOpen"><UiIcon name="profile" :size="19" /><span class="consult-header__label">个人画像</span></button>
+    <AnchoredCard v-model="profileOpen" class="consult-icon" title="个人画像" side="bottom" align="end"><template #trigger><UiIcon name="profile" :size="19" /><span class="consult-header__label">个人画像</span></template><ConversationProfile embedded :loading="profileLoading" :error="profileError" @close="profileOpen = false" @refresh="refreshProfile" @supplement="fill" /></AnchoredCard>
    </div></div>
    <ol v-if="!choosingTopic && demo.state.currentSessionId" class="consult-journey" aria-label="咨询轨迹"><li v-for="item in journey" :key="item.key" :data-state="journeyState(item.key)" :aria-current="journeyState(item.key) === 'current' ? 'step' : undefined"><i /><span><em class="consult-journey__full">{{ item.label }}</em><em class="consult-journey__short">{{ item.short }}</em></span></li></ol>
   </header>
@@ -244,9 +240,5 @@ onUnmounted(() => { disposed = true; clearInterval(waitTimer); clearTimeout(copy
    <p class="consult-disclaimer">建议供参考，重要决定由你做出。<DetailPopover title="资料使用说明" side="top"><template #trigger><UiIcon name="info" :size="13" /></template><p>材料和对话将按你的资料偏好参与分析。你可以查看、更正个人画像，或调整资料使用范围。</p><RouterLink to="/settings">管理资料偏好</RouterLink></DetailPopover></p>
   </footer>
  </div>
- <ProfileResizer v-if="profileOpen && desktopProfile" v-model="profileWidth" :max="profileMax" />
- <ConversationProfile v-if="profileOpen && desktopProfile" :loading="profileLoading" :error="profileError" @close="profileOpen = false" @refresh="refreshProfile" @supplement="fill" />
- <InfoSheet :open="profileOpen && !desktopProfile" title="个人画像" shape="sheet" @close="profileOpen = false"><ConversationProfile embedded :loading="profileLoading" :error="profileError" @close="profileOpen = false" @refresh="refreshProfile" @supplement="fill" /></InfoSheet>
- <InfoSheet :open="historyOpen" title="历史会话" shape="sheet" @close="historyOpen = false"><div class="consult-session-list"><button :disabled="!turns.length" @click="copy(turns.map(t => (t.from === 'me' ? '我' : t.speaker || '系统') + '：' + t.text).join('\n\n'))">复制当前会话记录</button><button v-for="session in sessions" :key="session.task_id" :disabled="thinking || systemData.busy" :aria-pressed="session.task_id === demo.state.currentSessionId" @click="resume(session.task_id)"><strong>{{ session.task_name }}</strong><small>{{ session.last_active_at ? new Date(session.last_active_at).toLocaleDateString('zh-CN') : '' }}</small></button><p v-if="!sessions.length">还没有历史会话。</p></div></InfoSheet>
 </section>
 </template>

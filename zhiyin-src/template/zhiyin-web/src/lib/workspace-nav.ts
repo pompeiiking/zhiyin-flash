@@ -89,11 +89,6 @@ export const WORKSPACE_ITEMS: NavItem[] = [WORKSPACE_PRIMARY, ...GROUP_ITEMS]
 /** 全部界面目录包含原型登记的非主导航页；主侧栏仍只显示学生任务分组。 */
 export const DIRECTORY_PAGES = [
   {label:'账号设置',to:'/settings',hint:'授权、提醒偏好、外观与导出'},
-  {label:'提醒',to:'/reminders',hint:'需要处理的事项与处理结果'},
-  {label:'登录',to:'/login',hint:'选择当前工作空间'},
-  {label:'工具',to:'/tools',hint:'六个工具与四步依赖链'},
-  {label:'使用指南',to:'/guide',hint:'咨询、画像、选择与行动'},
-  {label:'异常页',to:'/notfound',hint:'404、无权限与服务不可用'},
 ]
 
 /**
@@ -110,6 +105,9 @@ export const DIRECTORY_PAGES = [
  * 这一份同时兑现文件头的老决定（"内部文档，不进学生导航"）与 `PLAN §2.4`。
  */
 const INTERNAL_PAGE_TITLES: Record<string, string> = {
+  '/reminders': '提醒',
+  '/guide': '使用指南',
+  '/developer': '开发者管理',
   '/spec': '设计规范',
   '/path': '大一到大四',
   '/tools': '应用工具',
@@ -121,21 +119,18 @@ const INTERNAL_PAGE_TITLES: Record<string, string> = {
  */
 export const PORTAL_LINK = { label: '返回门户', to: '/', hint: '职引如何帮助你' }
 
-/** 移动端底栏：四个常用去处（各自覆盖整组）+ 「更多」。 */
+/** 移动端底栏：完整呈现主循环的六个高频节点，其余能力进入「更多」。 */
 export const MOBILE_TABS: NavItem[] = [
   { ...WORKSPACE_PRIMARY, short: '对话' },
-  { ...findItem('home'), short: '行动', paths: groupPaths('act') },
-  { ...findItem('profile'), short: '画像', paths: groupPaths('self') },
-  { ...findItem('directions'), short: '方向', paths: groupPaths('decide') },
+  { ...findItem('profile'), short: '画像' },
+  { ...findItem('report'), short: '报告' },
+  { ...findItem('directions'), short: '方向' },
+  { ...findItem('home'), short: '今日' },
+  { ...findItem('plan'), short: '计划' },
 ]
 
 function findItem(key: string): NavItem {
   return WORKSPACE_ITEMS.find((i) => i.key === key)!
-}
-
-function groupPaths(groupKey: string): string[] {
-  const group = WORKSPACE_GROUPS.find((g) => g.key === groupKey)!
-  return [...new Set(group.items.flatMap((i) => i.paths))]
 }
 
 interface RouteLike {
@@ -171,5 +166,5 @@ export function activeItem(route: RouteLike): NavItem | undefined {
 
 /** 面包屑与兜底页共用的「地址 → 名称」查询，避免各处再写一份硬编码映射。 */
 export function labelForPath(path: string, query: Record<string, unknown> = {}): string | undefined {
-  return activeItem({ path, query })?.label ?? INTERNAL_PAGE_TITLES[path]
+  return activeItem({ path, query })?.label ?? DIRECTORY_PAGES.find((page) => page.to === path)?.label ?? INTERNAL_PAGE_TITLES[path]
 }

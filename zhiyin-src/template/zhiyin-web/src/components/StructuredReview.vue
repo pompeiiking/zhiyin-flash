@@ -337,10 +337,17 @@ onMounted(() => { void load() })
           </template>
 
           <div v-else class="review-editor__empty">
-            <strong>{{ props.loadingTasks ? '正在读取任务…' : '选择任务后开始' }}</strong>
-            <p v-if="tasks.length">完整列表中有 {{ tasks.length }} 项任务。</p>
-            <p v-else>阶段计划中还没有可复盘的任务。</p>
-            <RouterLink v-if="!tasks.length" to="/home">去安排今日行动</RouterLink>
+            <div class="review-editor__empty-copy">
+              <span>{{ props.loadingTasks ? '正在准备' : tasks.length ? '等待选择' : '尚无任务' }}</span>
+              <strong>{{ props.loadingTasks ? '正在读取任务…' : tasks.length ? '选一项任务，开始本次回看' : '先安排一项可以执行的任务' }}</strong>
+              <p>{{ props.loadingTasks ? '正在整理阶段计划和最近完成记录。' : tasks.length ? `当前有 ${tasks.length} 项任务可供选择。` : '完成或推进任务后，再回来记录实际情况与下一步决定。' }}</p>
+            </div>
+            <ol class="review-editor__empty-steps" aria-label="复盘流程">
+              <li class="is-current"><span>01</span><strong>选择任务</strong></li>
+              <li><span>02</span><strong>记录实际情况</strong></li>
+              <li><span>03</span><strong>决定继续或调整</strong></li>
+            </ol>
+            <div v-if="!tasks.length && !props.loadingTasks" class="review-editor__empty-actions"><RouterLink class="btn btn--primary" to="/plan">安排阶段任务</RouterLink><RouterLink class="ws-text-link" to="/home">查看今日行动</RouterLink></div>
           </div>
         </fieldset>
       </form>
@@ -405,7 +412,7 @@ form .ws-field { margin: 0; }
 .review-editor__mode,.review-editor__saved { color: var(--c-primary); font-size: var(--fs-12); font-weight: var(--fw-semibold); }
 .review-editor__saved { padding-left: 8px; border-left: 1px solid var(--c-primary-border); }
 .review-task-switcher { position: relative; display: flex; align-items: center; gap: 8px; min-width: 0; margin-left: auto; color: var(--c-text-2); font-size: var(--fs-13); }
-.review-task-switcher select { max-width: 240px; min-height: 38px; padding: 7px 30px 7px 10px; border-color: var(--c-border-strong); border-radius: var(--r-pill); background-color: var(--c-surface); color: var(--c-text); font-size: var(--fs-13); }
+.review-task-switcher select { max-width: 240px; min-height: 44px; padding: 8px 30px 8px 10px; border-color: var(--c-border-strong); border-radius: var(--r-pill); background-color: var(--c-surface); color: var(--c-text); font-size: var(--fs-13); }
 .review-editor__masthead h2 { max-width: 680px; margin: 0; font-size: clamp(22px, 2.4vw, 30px); font-weight: var(--fw-bold); line-height: 1.36; letter-spacing: -.025em; text-wrap: balance; }
 .review-editor__masthead > p { margin-top: 8px; color: var(--c-text-3); }
 .review-editor__context { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; color: var(--c-text-2); font-size: var(--fs-13); }
@@ -423,7 +430,7 @@ form .ws-field { margin: 0; }
 .review-reasons { display: flex; flex-wrap: wrap; gap: 9px; min-width: 0; margin: 0 0 0 42px; padding: 0; border: 0; }
 .review-reasons label { position: relative; cursor: pointer; }
 .review-reasons input,.review-outcomes input { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; }
-.review-reasons span { display: block; min-height: 38px; padding: 8px 14px; border: 1px solid var(--c-border-strong); border-radius: var(--r-pill); color: var(--c-text); font-size: var(--fs-13); transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease; }
+.review-reasons span { display: block; min-height: 44px; padding: 10px 14px; border: 1px solid var(--c-border-strong); border-radius: var(--r-pill); color: var(--c-text); font-size: var(--fs-13); transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease; }
 .review-reasons label:hover span { border-color: var(--c-primary-border); background: var(--c-primary-weak); }
 .review-reasons label.is-selected span { border-color: var(--c-primary); background: var(--c-primary); color: var(--c-on-primary); }
 .review-reasons label:has(input:focus-visible) span,.review-outcomes label:has(input:focus-visible) { outline: 3px solid var(--c-focus); outline-offset: 2px; }
@@ -448,10 +455,20 @@ form .ws-field { margin: 0; }
 .review-editor__actions > div { display: grid; gap: 3px; min-width: 0; }
 .review-editor__actions strong { font-size: var(--fs-14); }
 .review-editor__actions span { color: var(--c-text-3); font-size: var(--fs-12); }
-.review-editor__actions .btn { min-width: 120px; min-height: 42px; }
-.review-editor__empty { padding: 28px 0 8px; border-top: 1px solid var(--c-border); color: var(--c-text-2); }
-.review-editor__empty p { margin-top: 4px; color: var(--c-text-3); font-size: var(--fs-12); }
-.review-editor__empty a { display: inline-block; margin-top: 10px; }
+.review-editor__actions .btn { min-width: 120px; min-height: 44px; }
+.review-editor__empty { display:grid; grid-template-columns:minmax(0,1fr) minmax(300px,.9fr); gap:22px 36px; align-items:center; min-height:230px; padding:30px 28px; border-top:1px solid var(--c-border); color:var(--c-text-2); background:linear-gradient(135deg,var(--c-surface),var(--c-surface-2)); }
+.review-editor__empty-copy { display:grid; gap:6px; min-width:0; }
+.review-editor__empty-copy>span { color:var(--c-primary); font-size:var(--fs-12); font-weight:var(--fw-semibold); }
+.review-editor__empty-copy>strong { max-width:16em; color:var(--c-text); font-size:clamp(20px,2.2vw,26px); line-height:1.4; text-wrap:balance; }
+.review-editor__empty-copy>p { max-width:38em; color:var(--c-text-2); font-size:var(--fs-13); line-height:1.7; }
+.review-editor__empty-steps { display:grid; margin:0; padding:0; list-style:none; }
+.review-editor__empty-steps li { display:grid; grid-template-columns:34px minmax(0,1fr); align-items:center; gap:10px; min-height:54px; border-top:1px solid var(--c-border); color:var(--c-text-3); }
+.review-editor__empty-steps li:last-child { border-bottom:1px solid var(--c-border); }
+.review-editor__empty-steps span { font-size:12px; font-variant-numeric:tabular-nums; }
+.review-editor__empty-steps strong { font-size:var(--fs-13); font-weight:var(--fw-medium); }
+.review-editor__empty-steps li.is-current { color:var(--c-primary); }
+.review-editor__empty-actions { grid-column:1 / -1; display:flex; align-items:center; gap:16px; margin-top:-6px; }
+.review-editor__empty-actions .ws-text-link { min-height:44px; }
 .review-editor__status { margin-top: 14px; padding: 11px 14px; background: var(--status-success-bg); border: 1px solid var(--status-success-border); border-radius: var(--r-md); color: var(--status-success-text); font-size: var(--fs-14); }
 .saved-reviews { min-width: 0; padding: 22px 24px; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-lg); }
 .saved-reviews__head,.review-entry__head { display: flex; align-items: start; justify-content: space-between; gap: 18px; }
@@ -470,7 +487,7 @@ form .ws-field { margin: 0; }
 .review-entry__impact strong { font-size: var(--fs-12); }
 .review-entry__impact p { margin-top: 4px; color: var(--c-text-2); font-size: var(--fs-12); }
 .review-entry__actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; }
-.review-entry__actions :deep(.detail-trigger) { min-height: 36px; min-width: 0; padding: 6px 8px; color: var(--c-primary); font-size: var(--fs-12); }
+.review-entry__actions :deep(.detail-trigger) { min-height: 44px; min-width: 0; padding: 8px; color: var(--c-primary); font-size: var(--fs-12); }
 @media (max-width: 767px) {
   .review-editor__masthead { padding: 20px 18px 22px; }
   .review-editor__topline { align-items: start; flex-wrap: wrap; margin-bottom: 18px; }
@@ -487,6 +504,9 @@ form .ws-field { margin: 0; }
   .review-adjustment { grid-template-columns: minmax(0, 1fr); }
   .review-editor__actions { align-items: stretch; flex-direction: column; padding: 18px; }
   .review-editor__actions .btn { width: 100%; min-height: 46px; }
+  .review-editor__empty { grid-template-columns:minmax(0,1fr); gap:22px; min-height:0; padding:24px 18px; }
+  .review-editor__empty-actions { grid-column:auto; align-items:stretch; flex-direction:column; }
+  .review-editor__empty-actions .btn,.review-editor__empty-actions .ws-text-link { width:100%; justify-content:center; }
   .saved-reviews { padding: 20px 18px; }
   .saved-reviews__head { display: block; }
   .review-entry__head { gap: 10px; }

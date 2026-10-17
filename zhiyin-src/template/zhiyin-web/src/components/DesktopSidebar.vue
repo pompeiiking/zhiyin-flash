@@ -9,9 +9,11 @@ import { toast } from '../store'
 import UiIcon from './UiIcon.vue'
 import { vScrollFade } from '../lib/scroll-fade'
 import { backendDemo } from '../lib/backend-demo'
+import BrandMark from './BrandMark.vue'
+import AccountPopover from './AccountPopover.vue'
 const route = useRoute()
 const router = useRouter()
-defineEmits<{ newChat: []; account: []; collapse: [] }>()
+defineEmits<{ newChat: []; collapse: [] }>()
 const collapseButton = ref<HTMLButtonElement | null>(null)
 defineExpose({ focusCollapse() { collapseButton.value?.focus() } })
 /**
@@ -48,7 +50,7 @@ function sessionDate(date?: string | null) { return date ? new Date(date).toLoca
 </script>
 <template>
   <aside id="student-desktop-sidebar" class="desk-sidebar" aria-label="桌面导航">
-    <div class="desk-brand-row"><RouterLink class="desk-brand" to="/chat" aria-label="职引，回到对话"><span class="hf-mark" aria-hidden="true">职</span><div class="hf-names"><strong>职引</strong><span>陪你走完这一段</span></div></RouterLink><button ref="collapseButton" class="ws-icon-button desk-collapse" aria-label="收起侧栏" title="收起侧栏" aria-controls="student-desktop-sidebar" aria-expanded="true" @click="$emit('collapse')"><UiIcon name="sidebar" :size="19" /></button></div>
+    <div class="desk-brand-row"><RouterLink class="desk-brand" to="/chat" aria-label="职引，回到对话"><BrandMark /></RouterLink><button ref="collapseButton" class="ws-icon-button desk-collapse" aria-label="收起侧栏" title="收起侧栏" aria-controls="student-desktop-sidebar" aria-expanded="true" @click="$emit('collapse')"><UiIcon name="sidebar" :size="19" /></button></div>
 
     <div class="desk-scroll">
     <nav v-scroll-fade class="desk-nav" aria-label="学生空间导航"><div class="c2-chat-group-head"><h2>对话</h2><button class="c2-new-consult" aria-label="选择咨询主题" title="选择咨询主题" :disabled="demo.state.chatBusy" @click="$emit('newChat')"><UiIcon name="plus" :size="18" /></button></div>
@@ -69,7 +71,7 @@ function sessionDate(date?: string | null) { return date ? new Date(date).toLoca
       每颗 35×41 —— 既不到 44px，又让内部文档从导航裂缝漏回学生入口。
     -->
     <div class="desk-footer">
-      <button class="desk-person hf-person" aria-label="账号" @click="$emit('account')"><span class="desk-person__avatar">{{ userName.slice(0, 1) }}</span><span class="hf-person-text"><strong>{{ userName }}</strong><small>{{ personSub }}</small></span></button>
+      <AccountPopover class="desk-person hf-person" side="right" align="end"><template #trigger><span class="desk-person__avatar">{{ userName.slice(0, 1) }}</span><span class="hf-person-text"><strong>{{ userName }}</strong><small>{{ personSub }}</small></span></template></AccountPopover>
       <div class="desk-footer__links"><RouterLink :to="PORTAL_LINK.to">{{ PORTAL_LINK.label }}</RouterLink></div>
     </div>
   </aside>
@@ -97,21 +99,6 @@ function sessionDate(date?: string | null) { return date ? new Date(date).toLoca
       没有换成靶子的 30px 灰色方片：§5.2 这一项要的是"人名带专业年级"，头像形态不在差异项里，
       而 `--chip-1/2/ink` 这三个靶子令牌本工程也不存在。
 */
-.hf-mark {
-  flex: none;
-  width: 34px;
-  height: 34px;
-  border-radius: 11px;
-  background: linear-gradient(148deg, var(--c-primary), var(--c-primary-active));
-  box-shadow: var(--e-1);
-  display: grid;
-  place-items: center;
-  color: var(--c-on-primary);
-  font-size: var(--fs-16);
-  font-weight: var(--fw-semibold);
-  line-height: 1;
-}
-.hf-names { min-width: 0; }
 .hf-label {
   flex: 1 1 auto;
   min-width: 0;

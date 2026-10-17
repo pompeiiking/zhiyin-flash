@@ -31,7 +31,6 @@ function valueText(value: unknown): string {
   <section class="consult-profile" aria-label="当前个人画像">
     <header v-if="!embedded"><div><h2>对你的了解</h2><p>{{ fields.length ? `已记录 ${fields.length} 项信息` : '随咨询逐步完善' }}</p></div><button class="consult-icon" aria-label="收起个人画像" @click="$emit('close')"><UiIcon name="sidebar" :size="19" /></button></header>
     <div class="consult-profile__scroll">
-      <p v-if="embedded && fields.length" class="consult-profile__summary">已记录 {{ fields.length }} 项信息，按用途归在下面几组。</p>
       <p v-if="loading" role="status" class="consult-muted">正在更新资料…</p>
       <p v-if="error" role="alert" class="consult-error">{{ error }} <button @click="$emit('refresh')">重新读取</button></p>
       <p v-if="!fields.length && !loading" class="consult-empty">尚未收集到个人信息。可以从兴趣、经历或当前目标开始交流。</p>
@@ -44,6 +43,6 @@ function valueText(value: unknown): string {
       </section>
       <section v-if="profile?.gaps?.length" class="consult-profile__gaps"><h3>还可以补充</h3><button v-for="gap in profile.gaps" :key="gap.key" @click="$emit('supplement', '我想补充' + (gap.label || profileLabel(gap.key, gap.key)) + '：')"><span>{{ gap.label || profileLabel(gap.key, gap.key) }}</span><UiIcon name="plus" :size="15" /></button></section>
     </div>
-    <footer><RouterLink to="/profile" @click="$emit('close')">查看完整画像<UiIcon name="arrow" :size="16" /></RouterLink><small>仅展示系统已记录的信息</small></footer>
+    <footer><RouterLink to="/profile" @click="$emit('close')">查看完整画像<UiIcon name="arrow" :size="16" /></RouterLink></footer>
   </section>
 </template>

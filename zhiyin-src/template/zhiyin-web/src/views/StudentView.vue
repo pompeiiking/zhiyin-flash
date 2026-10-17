@@ -838,13 +838,28 @@ const identity = computed(() => {
   if (!live.value && demo.state.account === 'fresh') return { name: '新用户', line: '学校与年级待补充' }
   return { name: name || '个人档案', line: [school, pick('major'), grade || pick('degree_level')].filter(Boolean).join(' · ') || '学校与年级待补充' }
 })
-const profileStatement = computed(() => {
+const profileSnapshot = computed(() => {
   const directions = backendDemo.state.liveDirections
   const selected = directions?.plans?.find(plan => plan.id === directions.selected_id || plan.selected)
-  if (selected) return `已选择“${selected.name}”作为当前验证方向。${selected.main_risk || '适合程度仍需结合具体经历与岗位要求核对。'}`
+  if (selected) return {
+    label: '当前验证方向',
+    title: selected.name,
+    state: '已选择，继续验证',
+    detail: selected.main_risk || '适合程度仍需结合具体经历与岗位要求核对。',
+  }
   const first = priorityConclusions.value[0]
-  if (!first) return '资料还在形成中。先补充一段真实经历或一个明确偏好，再开始比较方向。'
-  return `${first.label}：${first.brief || first.full}。这是已有分析线索，尚不代表已选择该方向。`
+  if (!first) return {
+    label: '画像状态',
+    title: '资料正在形成',
+    state: '需要补充',
+    detail: '先补充一段真实经历或一个明确偏好，再开始比较方向。',
+  }
+  return {
+    label: '当前重点判断',
+    title: first.label,
+    state: first.missingKeys.length ? `仍缺 ${first.missingKeys.length} 项资料` : '待继续验证',
+    detail: `${first.brief || first.full}。这是已有分析线索，尚不代表已选择该方向。`,
+  }
 })
 const enrollmentRows = computed(() => {
   const pick = (...keys: string[]) => known.value.find((row) => keys.includes(row.key))
@@ -861,7 +876,7 @@ onMounted(()=>{ void loadWorkspace() })
 
 <template>
   <div class="ws-page profile-page p7">
-    <PageHeading title="个人画像" description="把零散经历整理成可核对、可继续验证的职业探索档案。"><template #meta><div class="c2-page-meta"><span v-if="live">{{ livePanel ? '已读取的档案' : loading ? '正在读取档案' : '尚未读取档案' }}</span><span>{{ known.length }} 条已知 · {{ progress.gap }} 条待补充</span><span>判断可追溯到资料</span></div></template>
+    <PageHeading title="个人画像" description="把零散经历整理成可核对、可继续验证的职业探索档案。"><template #meta><div class="c2-page-meta"><span v-if="live">{{ livePanel ? '已读取的档案' : loading ? '正在读取档案' : '尚未读取档案' }}</span><span>{{ known.length }} 条已知 · {{ progress.gap }} 条待补充</span></div></template>
       <RouterLink class="btn btn--primary" to="/chat">{{ progress.gap ? '补充关键信息' : '更新信息' }}<UiIcon name="arrow" :size="16" /></RouterLink>
       <button class="btn" @click="exportProfile"><UiIcon name="download" :size="16"/>导出画像</button>
     </PageHeading>
@@ -902,14 +917,21 @@ onMounted(()=>{ void loadWorkspace() })
       </header>
 
       <div class="profile-dossier__statement">
-        <span>当前画像</span>
-        <p>{{ profileStatement }}</p>
+        <span>{{ profileSnapshot.label }}</span>
+        <div class="profile-dossier__statement-main">
+          <strong>{{ profileSnapshot.title }}</strong>
+          <small>{{ profileSnapshot.detail }}</small>
+        </div>
+        <div class="profile-dossier__statement-actions">
+          <span>{{ profileSnapshot.state }}</span>
+          <DetailPopover :title="profileSnapshot.title" label="查看当前画像判断"><template #trigger>查看判断</template><p>{{ profileSnapshot.detail }}</p><p>画像会随补充资料、核对来源和实际行动继续更新。</p></DetailPopover>
+        </div>
       </div>
 
       <div class="profile-dossier__body">
         <section class="profile-directions" aria-labelledby="profile-directions-title">
           <header>
-            <div><h3 id="profile-directions-title">正在浮现的方向</h3><p>这些是接下来值得验证的假设，不是替你做出的职业定论。</p></div>
+            <div><h3 id="profile-directions-title">正在浮现的方向 <DetailPopover title="方向说明" label="查看方向说明"><p>这些是接下来值得验证的假设，不是替你做出的职业定论。</p></DetailPopover></h3></div>
             <button class="ws-text-button" type="button" @click="profileTab='judgments'">查看完整分析<UiIcon name="arrow" :size="14"/></button>
           </header>
           <ul v-if="priorityConclusions.length">
@@ -919,15 +941,22 @@ onMounted(()=>{ void loadWorkspace() })
               </template><p>{{ item.full || item.brief }}</p><p class="profile-popover-meta">{{ item.section }} · {{ item.deps.length ? item.deps.length + ' 项资料支撑' : '逐项依据待核对' }}</p><p v-if="item.note">判断说明：{{ item.note }}</p><p v-if="item.risk">需要留意：{{ item.risk }}</p><p v-if="item.missingKeys.length">仍缺 {{ item.missingKeys.length }} 项关键资料。</p><button class="ws-text-button" type="button" @click="jumpToConclusion(item.key)">在完整分析中核对</button></DetailPopover>
             </li>
           </ul>
-          <p v-else class="profile-focus-empty">当前还没有可展示的方向。补充资料后，再开始比较。</p>
+          <div v-else class="profile-focus-empty">
+            <span>方向尚未形成</span>
+            <strong>{{ priorityGaps.length ? '还缺几项会影响判断的信息' : '先让系统了解你的专业与经历' }}</strong>
+            <ol v-if="priorityGaps.length" aria-label="形成方向前待补充的信息">
+              <li v-for="item in priorityGaps.slice(0,3)" :key="item.key"><i aria-hidden="true" />{{ item.label }}</li>
+            </ol>
+            <RouterLink class="ws-text-link" :to="priorityGaps[0] ? '/chat?gap='+encodeURIComponent(priorityGaps[0].key)+'&label='+encodeURIComponent(priorityGaps[0].label) : '/chat'">补充后开始比较<UiIcon name="arrow" :size="14" /></RouterLink>
+          </div>
         </section>
 
         <aside class="profile-next" aria-labelledby="profile-next-title">
           <p class="profile-next__label">下一步只做一件事</p>
           <template v-if="priorityGaps[0]">
             <h3 id="profile-next-title">{{ priorityGaps[0].label }}</h3>
-            <p>{{ priorityGaps[0].why }}</p>
-            <div class="profile-next__suggestion"><span>可以先这样做</span><strong>{{ priorityGaps[0].next }}</strong></div>
+            <div class="profile-next__suggestion"><span>建议行动</span><strong>{{ priorityGaps[0].next }}</strong></div>
+            <DetailPopover class="profile-next__reason" :title="'为什么先补充' + priorityGaps[0].label" label="查看这项信息的影响"><template #trigger>为什么先补这项</template><p>{{ priorityGaps[0].why }}</p><p v-if="priorityGaps[0].affects.length">它会影响 {{ priorityGaps[0].affects.map(item => item.label).join('、') }}。</p></DetailPopover>
             <RouterLink class="btn btn--primary" :to="'/chat?gap='+encodeURIComponent(priorityGaps[0].key)+'&label='+encodeURIComponent(priorityGaps[0].label)">去补充这条信息<UiIcon name="arrow" :size="14"/></RouterLink>
             <button class="ws-text-button" type="button" @click="profileTab='gaps'">查看全部待补充信息</button>
           </template>
@@ -940,7 +969,7 @@ onMounted(()=>{ void loadWorkspace() })
         </aside>
       </div>
     </section>
-<section class="enrollment" aria-labelledby="enrollment-title"><header><div><span class="enrollment__eyebrow">学校档案</span><h2 id="enrollment-title">学籍信息</h2><p>核对学校、专业与在读状态，查看学籍核验结果。</p></div><button class="btn" @click="verificationOpen=true"><UiIcon name="shield" :size="16" />{{ isVerified ? '重新核验' : '核验学籍' }}</button></header><dl><div v-for="item in enrollmentRows" :key="item.label"><dt>{{item.label}}</dt><dd :class="{'is-missing':item.value==='待补充'}">{{item.value}}</dd></div></dl><footer><span :class="['enrollment__state', isVerified ? 'is-verified' : '']"><i />{{ isVerified ? '已包含学信来源' : '尚未完成学信核验' }}</span><RouterLink class="ws-text-link" to="/grades">查看我的成绩<UiIcon name="arrow" :size="14" /></RouterLink></footer></section>
+<section class="enrollment" aria-labelledby="enrollment-title"><header><div><span class="enrollment__eyebrow">学校档案</span><h2 id="enrollment-title">学籍信息 <DetailPopover title="学籍信息说明" label="查看学籍信息说明"><p>核对学校、专业与在读状态，查看学籍核验结果。</p></DetailPopover></h2></div><button class="btn" @click="verificationOpen=true"><UiIcon name="shield" :size="16" />{{ isVerified ? '重新核验' : '核验学籍' }}</button></header><dl><div v-for="item in enrollmentRows" :key="item.label"><dt>{{item.label}}</dt><dd :class="{'is-missing':item.value==='待补充'}">{{item.value}}</dd></div></dl><footer><span :class="['enrollment__state', isVerified ? 'is-verified' : '']"><i />{{ isVerified ? '已包含学信来源' : '尚未完成学信核验' }}</span><RouterLink class="ws-text-link" to="/grades">查看我的成绩<UiIcon name="arrow" :size="14" /></RouterLink></footer></section>
 
 
 
@@ -948,7 +977,7 @@ onMounted(()=>{ void loadWorkspace() })
 
     <!-- ═══ A · 我知道什么 ═══ -->
     <section class="p7-block" aria-labelledby="p7-a-title">
-      <header class="profile-facts-head"><div><span class="profile-focus-kicker">资料底稿</span><h2 id="p7-a-title">组成这份画像的信息</h2><p>所有字段完整展示；点开一项可核对来源、可信度和关联判断。</p></div><button class="btn" type="button" @click="profileTab='sources'">资料来源<UiIcon name="arrow" :size="14"/></button></header>
+      <header class="profile-facts-head"><div><span class="profile-focus-kicker">资料底稿</span><h2 id="p7-a-title">组成这份画像的信息 <DetailPopover title="资料底稿说明" label="查看资料底稿说明"><p>点开一项可核对来源、可信度和关联判断。</p></DetailPopover></h2></div><button class="btn" type="button" @click="profileTab='sources'">资料来源<UiIcon name="arrow" :size="14"/></button></header>
 
       <!-- 全量资料按主题展开，不设置搜索、范围或组织方式筛选。 -->
       <LayoutGroup>
@@ -1269,7 +1298,7 @@ onMounted(()=>{ void loadWorkspace() })
     <InfoSheet :open="verificationOpen" shape="panel" title="核验学籍信息" @close="verificationOpen=false"><AcademicVerification /></InfoSheet>
     <!-- 更正是一条信息的小表单（`text` + 两个按钮），不是"从一行钻进去看细节"。
          所以 shape 是 dialog（缺省也是它，这里写出来是为了让形态是**显式**的）。 -->
-    <InfoSheet shape="dialog" :open="correction !== null" :title="'更正' + (correction?.label ?? '信息')" @close="correction = null">
+    <InfoSheet shape="sheet" :open="correction !== null" :title="'更正' + (correction?.label ?? '信息')" @close="correction = null">
       <form @submit.prevent="save">
         <label class="ws-field">更正内容<textarea v-model="value" maxlength="40" /></label>
         <FormConflict v-if="correctionLatest" :rows="correctionConflictRows" @confirm="confirmCorrectionConflict" />
