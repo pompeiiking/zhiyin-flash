@@ -55,7 +55,7 @@ function displayKind(item: IntelItemView) {
   const labels: Record<string, string> = {
     speciality: '专业信息',
     occupation: '职业方向',
-    career_case: '校友去向',
+    career_case: '公开职业案例',
     job_requirement: '岗位要求',
     industry: '行业情况',
   }
@@ -150,7 +150,7 @@ onMounted(() => { void load() })
           <i aria-hidden="true"></i>
           <span><strong>{{ allItems.filter((item) => item.kind === 'occupation').length }}</strong> 个相关职业</span>
           <i aria-hidden="true"></i>
-          <span><strong>{{ allItems.filter((item) => item.kind === 'career_case').length }}</strong> 个校友去向</span>
+          <span><strong>{{ allItems.filter((item) => item.kind === 'career_case').length }}</strong> 个公开职业案例</span>
         </div>
 
         <aside class="intel-match-prompt" aria-labelledby="intel-match-title">

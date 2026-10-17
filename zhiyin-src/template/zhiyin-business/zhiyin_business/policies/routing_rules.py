@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import Optional
 
 from zhiyin_business.policies.routing import IntentDecision, IntentPolicy, StagePolicy
@@ -132,6 +133,15 @@ class RuleStagePolicy(StagePolicy):
         intent: IntentType,
         message: str,
     ) -> StageDecision:
+        # A requested diagnosis or explicit profile update takes precedence
+        # over incidental words such as “下一步” in the same message.
+        if re.search(r"(?:帮我|请|做|进行|生成|重新|一次).{0,16}(?:诊断|评估报告)", message) and not re.search(r"(?:不要|不必|无需).{0,8}诊断", message):
+            return StageDecision(stage=LoopStage.DIAGNOSE, confidence=0.95, source="intent")
+        if re.search(r"(?:补充|记录|更新|完善|写入).{0,12}(?:画像|个人信息|经历|兴趣|能力|学籍)", message):
+            return StageDecision(stage=LoopStage.COLLECT, confidence=0.95, source="intent")
+        if (re.search(r"我(?:曾经|之前|现在|目前|还|也|比较|最)?(?:做过|参加过|参与过|实习过|喜欢|擅长|会|学过|学习过|希望|想去|计划去|就读|毕业|主修|是大[一二三四])", message)
+                and not re.search(r"(?:生成|制定|创建|重做|调整|修改).{0,15}(?:计划|阶段|任务|行动)", message)):
+            return StageDecision(stage=LoopStage.COLLECT, confidence=0.8, source="intent")
         for rule in await self._rules("stage"):
             if rule.intent != intent.value:
                 continue

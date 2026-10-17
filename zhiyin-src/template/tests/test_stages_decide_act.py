@@ -225,10 +225,9 @@ def _done(task_id: str, done: bool):
 
 
 @pytest.mark.asyncio
-async def test_match_method_travels_with_the_plans(wired) -> None:
-    """匹配口径是**产出的一部分**：生成时那句话要能读回来，不是前端常量。"""
+async def test_model_estimates_are_not_presented_as_verifiable_scores(wired) -> None:
+    """模型写出评分口径不等于存在可复算的输入和算法。"""
     await _seed_plans(wired)
     view = await wired.facade.get_direction_plans("u1")
-    assert view.match_score_method == "三叶草契合度 × 可达性（含课程成绩折算）", (
-        "读回来的不是产出里那句口径 —— DecideOutput.match_score_method 在落库时丢了"
-    )
+    assert view.match_score_method == "暂无可核验的量化评分"
+    assert all(plan.match_score is None for plan in view.plans)

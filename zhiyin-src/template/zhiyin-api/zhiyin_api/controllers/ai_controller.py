@@ -184,6 +184,11 @@ async def portrait_analysis(request: Request) -> Response:
     return await _stream(request, "portrait.analysis")
 
 
+@router.post("/app/academic/analysis")
+async def academic_analysis(request: Request) -> Response:
+    return await _stream(request, "academic.analysis")
+
+
 @router.post("/app/day/{day}/advice")
 async def day_advice(request: Request, day: str) -> Response:
     """「这一天的建议」：日历里点开某一天时生成（`day` 是 YYYY-MM-DD）。

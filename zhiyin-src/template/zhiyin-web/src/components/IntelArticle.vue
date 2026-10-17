@@ -8,7 +8,7 @@ const props = defineProps<{ item: IntelItemView }>()
 const kindLabel = computed(() => ({
   speciality: '专业信息',
   occupation: '职业方向',
-  career_case: '校友去向',
+  career_case: '公开职业案例',
   job_requirement: '岗位要求',
   industry: '行业情况',
 }[props.item.kind ?? ''] ?? props.item.kind_label ?? '参考资料'))
@@ -16,7 +16,7 @@ const kindLabel = computed(() => ({
 const contentTitle = computed(() => {
   if (props.item.kind === 'speciality') return '专业介绍与毕业去向'
   if (props.item.kind === 'occupation') return '职业介绍与能力要求'
-  if (props.item.kind === 'career_case') return '校友经历'
+  if (props.item.kind === 'career_case') return '职业经历'
   return '资料详情'
 })
 

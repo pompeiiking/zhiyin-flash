@@ -61,6 +61,7 @@ _TASK_SPECS: dict[str, tuple[str, str, type[BaseModel], bool]] = {
     # 「对你的分析」：整份画像合起来的一段判断（画像页第一屏）。归职业顾问，
     # 不归画像分析员 —— 后者的角色提示词里写死"不下结论、不给建议"。
     "portrait.analysis": ("career_advisor", "task.portrait.analysis", PortraitAnalysis, False),
+    "academic.analysis": ("career_advisor", "task.academic.analysis", PortraitAnalysis, False),
     # 按天的一条建议：日历里点开某一天时生成。归职业顾问 —— 它同样是"下判断"。
     "day.advice": ("career_advisor", "task.day.advice", DayAdvice, False),
     "gap": ("profile_analyst", "task.gap", GapClarify, False),
@@ -103,6 +104,7 @@ _TASK_INPUTS: dict[str, tuple[str, ...]] = {
     "dim": ("profile_field_updated",),
     # 对你的分析：整份画像 + 缺口 + 他写过的话
     "portrait.analysis": ("profile_field_updated", "note_changed"),
+    "academic.analysis": ("academic_changed",),
     # 这一天怎么用：那天的课 + 那天到期的节点 + 手里还没做完的任务 + 画像
     "day.advice": (
         "profile_field_updated",
@@ -570,6 +572,7 @@ class AiTaskService:
             "brief": self._brief,
             "dim": self._dimension,
             "portrait": self._portrait,
+            "academic": self._academic_analysis,
             "day": self._day_advice,
             "gap": self._clarify,
             "report": self._report_summary,
@@ -710,6 +713,22 @@ class AiTaskService:
             citations=citations,
             rationale="对你的分析 = 把画像里已有的每条记录合起来，说他现在处在哪一步。",
         )
+
+    async def _academic_analysis(
+        self, user_id: str, profile: Optional[Profile], arg: str, *, by: str
+    ) -> AiResultEnvelope:
+        snapshot = await self._academic_records.get(user_id) if self._academic_records else None
+        grades = list(snapshot.grades) if snapshot else []
+        if not grades:
+            raise ResourceNotFound("没有可用于分析的成绩，请先导入成绩单并允许使用该资料")
+        rows = [f"{g.term or '学期未标注'} · {g.name} · 成绩 {g.score or '未提供'} · 学分 {g.credit or '未提供'} · 绩点 {g.point or '未提供'}" for g in grades]
+        context = self._context(
+            ("任务", ["分析下列用户导入的成绩，引用具体课程及原始分数，说明局限和可执行的学习建议。等级制不可自行换算；成绩不能证明职业能力。"]),
+            ("成绩单", rows),
+        )
+        return await self._generate(user_id, "academic.analysis", context_text=context,
+                                    citations=[Citation(source="用户导入的成绩单", detail=f"{len(grades)} 门课程，尚未经学校核验", confidence=1.0)],
+                                    rationale="仅依据用户导入的课程成绩，成绩不等于能力或职业适配度。")
 
     async def _day_advice(
         self, user_id: str, profile: Optional[Profile], day: str, *, by: str

@@ -116,19 +116,8 @@ async def _chart_points(
     if not isinstance(data, dict):
         return None
     if kind == "direction_match":
-        directions = list(data.get("directions") or [])
-        points = []
-        for plan in directions:
-            name = getattr(plan, "name", "") or (
-                plan.get("name") if isinstance(plan, dict) else ""
-            )
-            score = getattr(plan, "match_score", None)
-            if score is None and isinstance(plan, dict):
-                score = plan.get("match_score")
-            if score is None:
-                continue
-            points.append({"label": str(name)[:12], "value": round(float(score), 4)})
-        return points or None
+        # Legacy direction scores are model estimates, not verified metrics.
+        return None
     action = data.get("plan")
     phases = list(getattr(action, "phases", []) or []) if action is not None else []
     points = []

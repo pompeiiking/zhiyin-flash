@@ -8524,6 +8524,25 @@
         ]
       }
     },
+    "/api/v1/app/academic/analysis": {
+      "post": {
+        "operationId": "academic_analysis_api_v1_app_academic_analysis_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Academic Analysis",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
     "/api/v1/app/academic/courses": {
       "delete": {
         "description": "只清空课表；成绩单由「我的成绩」独立管理。",

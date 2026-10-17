@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from typing import Any, Optional, Sequence
 from uuid import uuid4
 
+
 from zhiyin_business.contracts import STAGE_CONTRACTS
 from zhiyin_business.policies.intel_labels import kind_label, source_name_of
 from zhiyin_business.policies.intel_query import intel_topic
@@ -69,6 +70,42 @@ from zhiyin_orchestration import (
     EventBus,
     ExternalDataSource,
 )
+
+def _forbids_profile_write(message: str) -> bool:
+    return bool(re.search(r"(?:不要|别|无需|不必|不想).{0,8}(?:记|保存|写入|更新).{0,8}(?:画像|经历|信息|资料)", message))
+
+
+def _contains_personal_disclosure(message: str) -> bool:
+    if _forbids_profile_write(message):
+        return False
+    return bool(re.search(r"我(?:曾经|之前|现在|目前|还|也|比较|最)?(?:做过|参加过|参与过|实习过|喜欢|擅长|学过|学习过|希望|想去|计划去|就读|毕业|主修|是大[一二三四])|我的(?:专业|兴趣|经历|能力|目标|学校|年级|毕业时间)(?:是|为|叫|有)", message))
+
+
+def _direct_field_updates(structured: dict[str, Any], message: str) -> dict[str, Any]:
+    """Only allow updates with a nonempty evidence excerpt from this user turn."""
+    updates = []
+    for item in structured.get("field_updates") or []:
+        if not isinstance(item, dict):
+            continue
+        evidence = item.get("evidence")
+        if isinstance(evidence, list) and any(isinstance(e, str) and len(e.strip()) >= 3 and e.strip() in message for e in evidence):
+            updates.append(item)
+    return {"field_updates": updates}
+
+
+def _explicit_plan_request(message: str) -> bool:
+    """Only a user's affirmative request can create or replace an action plan."""
+    # A later explicit prohibition must win over an earlier generation request:
+    # this system stores one current plan and cannot create an isolated draft.
+    if re.search(r"(?:不要|不必|无需|暂不|别|不能|不想).{0,12}(?:保存|覆盖|更新|修改|调整|改动|替换)", message):
+        return False
+    pattern = r"(?:生成|制定|创建|建立|制订|重做|重新|调整|修改|改|安排|规划).{0,18}(?:计划|阶段|任务|行动)|(?:计划|阶段|任务|行动).{0,12}(?:生成|制定|创建|建立|重做|调整|修改|改|安排|规划)"
+    for clause in re.split(r"[，。；！？\n]", message):
+        match = re.search(pattern, clause)
+        if match and not re.search(r"(?:不要|不必|无需|暂不|别|不能|不想|不再|不)", clause[:match.end()]):
+            return True
+    return False
+
 
 logger = logging.getLogger(__name__)
 
@@ -576,12 +613,16 @@ class DefaultOrchestrator(Orchestrator):
             request.user_id, request.task_id, axis_a, stage, intent
         )
         disclosure = None
+        direction_selected = None
+        if stage is LoopStage.ACT:
+            directions = await self._assets.list_direction_plans(request.user_id)
+            direction_selected = any(item.selected for item in directions)
         if lead.lead_agent != session.lead_agent:
             handoff = await self.handoff(
                 request.user_id,
                 request.task_id,
                 stage,
-                await self._lead_change_reason(stage, lead.lead_agent),
+                await self._lead_change_reason(stage, lead.lead_agent, direction_selected=direction_selected),
             )
             disclosure = handoff.disclosure
             session = await self._sessions.get(request.task_id) or session
@@ -592,9 +633,14 @@ class DefaultOrchestrator(Orchestrator):
 
         prompt_vars: dict[str, Any] = {
             "user_input": _user_input_with_material(request),
+            "raw_user_message": request.message,
             "task_id": request.task_id,
             "intent": intent.value,
         }
+        if stage is LoopStage.ACT and direction_selected is False:
+            prompt_vars["direction_selection_status"] = "用户尚未在方向方案中正式确认方向；可以围绕本轮想法拟定计划，但不要声称方向已选定。"
+        if stage is LoopStage.ACT and not _explicit_plan_request(request.message):
+            prompt_vars["plan_write_boundary"] = "本轮只回答问题，不会保存或修改行动计划；不要声称计划已创建或更新。需要修改计划时请先征求用户明确要求。"
         from zhiyin_business.services.analysis_access import current_scope
         scope = current_scope(request.user_id)
         if scope and scope.restricted:
@@ -670,6 +716,7 @@ class DefaultOrchestrator(Orchestrator):
         # Generated assets and older replies are not new evidence. Keep their
         # assumptions from silently becoming personal facts on the next turn.
         prompt_vars["evidence_constraints"] = [
+            "先核对已提供的用户原话和已有记录，再描述信息缺口；不能把已提供的经历说成没有。缺少可解释的评分方法和真实依据时，不得编造量化匹配分数。",
             "个人事实以本轮原始画像字段、用户明确原话和可核对材料为准；旧报告、旧建议和模型推断不能反过来证明事实。",
             "专业名称不能推出学历层次、毕业时间或学籍状态。未提供学历就写学历待确认，不能擅自添加本科、硕士等背景。",
             "任务完成状态仅证明用户标记完成，不足以证明项目质量、独立能力、实际工作经历或职业胜任力。",
@@ -688,11 +735,19 @@ class DefaultOrchestrator(Orchestrator):
                 blackboard=blackboard.model_dump(mode="json"),
                 prompt_vars=prompt_vars,
                 output_schema=STAGE_CONTRACTS[stage].model_json_schema(),
-                stream_field=None if _asks_for_chart(request.message) else 'conclusion',
+                # For mixed-intent turns, wait for the separate profile write
+                # before displaying a reply that might claim it succeeded.
+                stream_field=None if _asks_for_chart(request.message) or (stage is not LoopStage.COLLECT and _contains_personal_disclosure(request.message)) else 'conclusion',
             )
         )
 
         structured = result.structured or {}
+        if stage is LoopStage.DECIDE:
+            # Current direction scores are supplied by the model, without
+            # verifiable inputs or a reproducible calculation.
+            for option in structured.get("plans") or []:
+                if isinstance(option, dict):
+                    option["match_score"] = None
         if external is not None and lead.info_scout_required:
             verified_facts = await self._run_info_scout(external, stage)
             if stage is LoopStage.DIAGNOSE:
@@ -749,8 +804,18 @@ class DefaultOrchestrator(Orchestrator):
         module_query = bool(result.module_attempts or result.module_results) or any(
             item.kind.startswith("module.") for item in validate_renderables(result.renderables)
         )
-        changed_assets = [] if module_query else await self._persist_stage_output(
-            stage, request.user_id, structured, valid=result.valid,
+        # Reaching the action stage through conversation progress is not consent
+        # to overwrite a saved plan. Only an explicit request can generate one.
+        explicit_plan = _explicit_plan_request(request.message)
+        write_tool_attempted = "workspace.task.set_done" in result.business_tool_calls
+        may_persist = (not module_query and not write_tool_attempted
+                       and (not result.business_tool_calls or (stage is LoopStage.ACT and explicit_plan))
+                       and (stage is not LoopStage.ACT or explicit_plan))
+        persisted_output = structured
+        if stage is LoopStage.REVIEW and not explicit_plan and structured.get("plan_patch"):
+            persisted_output = {**structured, "plan_patch": None}
+        changed_assets = [] if not may_persist else await self._persist_stage_output(
+            stage, request.user_id, persisted_output, valid=result.valid,
             session_id=request.task_id,
         )
         # 这一轮真的把一份"待重算"的资产重算掉了 → **必须显式告知**（结论变化），
@@ -773,8 +838,41 @@ class DefaultOrchestrator(Orchestrator):
         # **不看 `result.valid`**：采集这一环的硬指标只有一个 —— 他说的话有没有被记下来。
         # 整份产出别处不合契约（少个字段、格式歪了）不该连累这一条：字段能解析就落库，
         # 其余的问题留在日志里。`_apply_collect` 自己会挑出能解析的部分。
-        if stage is LoopStage.COLLECT and not module_query:
-            write = await self._apply_collect(request.user_id, structured)
+        collect_data = None
+        if stage is LoopStage.COLLECT and not module_query and not _forbids_profile_write(request.message):
+            if not result.business_tool_calls:
+                collect_data = structured
+            elif _contains_personal_disclosure(request.message) and not write_tool_attempted:
+                collect_data = _direct_field_updates(structured, request.message)
+        elif stage is not LoopStage.COLLECT and _contains_personal_disclosure(request.message):
+            # Mixed-intent turns still need to answer the requested stage. Run a
+            # separate read-only collector and only accept evidence quoted from
+            # this exact message; never promote old generated text into a fact.
+            try:
+                collected = await self._agent_engine.invoke(AgentRequest(
+                    agent_id="profile_analyst", stage=LoopStage.COLLECT.value,
+                    blackboard=blackboard.model_dump(mode="json"),
+                    prompt_vars={"user_input": request.message, "raw_user_message": request.message,
+                                 "profile_keys": prompt_vars["profile_keys"],
+                                 "evidence_constraints": ["只提取用户本轮明确自述，evidence 必须逐字引用本轮原话；不要根据旧信息推断。"]},
+                    output_schema=STAGE_CONTRACTS[LoopStage.COLLECT].model_json_schema(),
+                    use_tools=False,
+                ))
+                collect_data = _direct_field_updates(collected.structured or {}, request.message)
+            except Exception:
+                logger.exception("混合意图画像采集失败，本轮继续原咨询流程")
+        if collect_data is not None and (not result.business_tool_calls and stage is LoopStage.COLLECT or collect_data.get("field_updates")):
+            write = await self._apply_collect(request.user_id, collect_data)
+            if stage is not LoopStage.COLLECT and write.written and (scope is None or not scope.restricted):
+                # A mixed turn only carries new field updates, not a fresh gap
+                # list. Remove gaps just satisfied by these explicit facts.
+                try:
+                    gaps = await self._profiles.get_gaps(request.user_id)
+                    remaining = [gap for gap in gaps if self._normalize_profile_key(gap.key) not in write.written]
+                    if len(remaining) != len(gaps):
+                        await self._profiles.replace_gaps(request.user_id, remaining)
+                except Exception:
+                    logger.exception("画像已写入，但已满足的缺口未能同步")
             # `_apply_collect` 的返回值在此之前**没有任何消费方**：被挡下的写入只有日志知道，
             # 而他看不到日志。这一格是他自己填的、推断改不动，那是设计如此；但"没写进去"
             # 必须当面说，并且给出口（去画像点「更正」），否则他听到的就是"我说了它不听"。
@@ -823,6 +921,22 @@ class DefaultOrchestrator(Orchestrator):
         )
         if stage is LoopStage.REVIEW:
             reply_text = _replace_task_ids_in_prose(reply_text, task_labels)
+        if result.business_read_receipts and not result.valid and not result.business_tool_receipts:
+            reply_text = "\n\n".join(str(item.get("text") or "") for item in result.business_read_receipts)
+            guide = BehaviorGuide(kind="question", text="", question=None)
+        if (not result.business_tool_receipts
+                and re.search(r"标记.{0,8}完成|取消完成|撤销完成|勾选", request.message)
+                and not re.search(r"不要|不必|无需|暂不|别", request.message)):
+            reply_text = "这次没有确认任务已更改，请写出完整任务名称后重试。"
+            guide = BehaviorGuide(kind="question", text="", question=None)
+        if result.business_tool_receipts:
+            receipt = next((item for item in reversed(result.business_tool_receipts) if item.get("executed")), result.business_tool_receipts[-1])
+            if receipt.get("executed"):
+                state = "完成" if receipt.get("done") else "未完成"
+                reply_text = f"已将「{receipt.get('task', '该任务')}」标记为{state}。"
+            else:
+                reply_text = "没有更改任务：" + str(receipt.get("reason") or "操作未完成，请重试。")
+            guide = BehaviorGuide(kind="question", text="", question=None)
         messages = [
             ConversationMessage(
                 role="agent",
@@ -1624,14 +1738,15 @@ class DefaultOrchestrator(Orchestrator):
             raise MissingConfigError(f"缺少澄清话术配置：{CLARIFY_PROMPT_CODE}")
         return prompt.content.strip()
 
-    async def _lead_change_reason(self, stage: LoopStage, to_agent: str) -> str:
+    async def _lead_change_reason(self, stage: LoopStage, to_agent: str, *, direction_selected: bool | None = None) -> str:
         """换主理时对用户说的那句话：谁接手 + 为什么。"""
         reason_code = _LEAD_CHANGE_REASON_PROMPT.format(stage=stage.value)
         template = await self._required_prompt(_LEAD_CHANGE_PROMPT)
         reason = await self._required_prompt(reason_code)
         to_name = await self._display_name(to_agent)
         # 占位符对不上会在这里抛 KeyError：那是配置错，不是运行故障，不该被吞掉。
-        return template.content.format(to_name=to_name, reason=reason.content)
+        reason_text = "先把当前想法整理成步骤，方向仍可调整。" if stage is LoopStage.ACT and direction_selected is False else reason.content
+        return template.content.format(to_name=to_name, reason=reason_text)
 
     async def _display_name(self, agent_id: str) -> str:
         """agent_id → 用户称呼。取不到就抛：把标识念给用户听等于没配。"""
@@ -1721,6 +1836,8 @@ def _renderables_for_turn(
     # 否则“不要生成图表”既会命中“生成图表”，模型误调工具后还会把图原样带出去。
     if _forbids_chart(message):
         return [item for item in kept if item.kind != "bars_chart"]
+    if not _asks_for_chart(message):
+        return [item for item in kept if item.kind != "bars_chart"]
     if any(item.kind == "bars_chart" for item in kept):
         return kept
     if _asks_for_chart(message):
@@ -1748,11 +1865,8 @@ def _renderables_for_turn(
         # 用户明确要图时，没有可比较的数据就如实说画不出来；不要再拿当前环节的
         # 默认图替代，否则看起来像回答了请求，实际比较的是另一组东西。
         return kept
-    fallback = _default_bars(stage, structured)
-    if fallback is not None:
-        kept.extend(_without_uninformative_full_scale_bars(
-            validate_renderables([fallback.model_dump(mode="json")])
-        ))
+    # Do not attach a stage-default chart to unrelated questions. In
+    # particular, model-generated direction scores are not verified metrics.
     return kept
 
 

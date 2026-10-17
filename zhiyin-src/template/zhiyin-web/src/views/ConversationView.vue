@@ -80,6 +80,13 @@ function journeyState(stage: string) { const current = journey.findIndex(item =>
 async function theory(id: string) { if (theoryCards.value[id] || theoryLoading.value[id]) return; theoryErrors.value[id] = ''; theoryLoading.value[id] = true; try { theoryCards.value[id] = await backendClient.theory(id) } catch (e) { theoryErrors.value[id] = (e as Error).message } finally { theoryLoading.value[id] = false } }
 async function refreshProfile() { profileLoading.value = true; profileError.value = ''; try { const result = await backendClient.workspace(); if (!disposed) { backendDemo.setWorkspace(result); const stored = result.profile_panel?.fields?.find(field => field.key === 'study_year'); if (stored) savedStudyYear.value = String(stored.value ?? '') } } catch (e) { if (!disposed) profileError.value = (e as Error).message } finally { profileLoading.value = false; profileLoaded.value = true } }
 function clearTopicQuery() { if (route.query.new === undefined) return; const query = { ...route.query }; delete query.new; void router.replace({ path:route.path, query }) }
+async function refreshSessionsOnFocus() {
+ if (document.visibilityState !== 'visible') return
+ try {
+  const result = await backendClient.sessions()
+  if (!disposed) backendDemo.setSessions(result.sessions ?? [], demo.state.currentSessionId)
+ } catch { /* Keep the current conversation usable if the refresh fails. */ }
+}
 function chooseTopic() { if (thinking.value || systemData.busy) return; choosingTopic.value = true; historyOpen.value = false; profileOpen.value = false; requestError.value = ''; void nextTick(() => { if (flow.value) flow.value.scrollTop = 0 }) }
 function closeTopic() { choosingTopic.value = false; clearTopicQuery(); void bottom(true) }
 async function resume(id: string) { if (thinking.value) return; try { await openSession(id); choosingTopic.value = false; clearTopicQuery(); historyOpen.value = false; pending.value = null; requestError.value = ''; await bottom(true) } catch (e) { requestError.value = (e as Error).message } }
@@ -191,13 +198,15 @@ watch(showStudyYearQuestion, open => {
  if (open) void nextTick(() => { if (flow.value) flow.value.scrollTop = 0 })
 })
 onMounted(() => {
+ window.addEventListener('focus', refreshSessionsOnFocus)
+ document.addEventListener('visibilitychange', refreshSessionsOnFocus)
  void nextTick(resizeInput)
  if (demo.state.currentSessionId && !systemData.busy) void resume(demo.state.currentSessionId)
  void refreshProfile()
  applyConsultationContext()
  void bottom(true)
 })
-onUnmounted(() => { disposed = true; clearInterval(waitTimer); clearTimeout(copyTimer); remember(); serial++; controller?.abort(); demo.setChatBusy(false) })
+onUnmounted(() => { disposed = true; window.removeEventListener('focus', refreshSessionsOnFocus); document.removeEventListener('visibilitychange', refreshSessionsOnFocus); clearInterval(waitTimer); clearTimeout(copyTimer); remember(); serial++; controller?.abort(); demo.setChatBusy(false) })
 </script>
 <template>
 <section class="consultation-page" aria-label="咨询对话空间">

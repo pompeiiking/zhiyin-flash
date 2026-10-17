@@ -387,6 +387,13 @@ class PostgresRegistryRepository(RegistryRepository):
                 if not force:
                     existing = await self._count_ai(kind)
                     if existing > 0:
+                        if kind == "prompts":
+                            # Ensure product additions exist without replacing
+                            # administrator-maintained prompt content.
+                            path = self._registry_dir / filename
+                            for item in _read_items(path):
+                                if item.get("code") in {"task.academic.analysis", "disclosure.field_kept_by_user"}:
+                                    await self._insert_missing_prompt(item)
                         continue
                 path = self._registry_dir / filename
                 if not path.is_file():
@@ -399,6 +406,17 @@ class PostgresRegistryRepository(RegistryRepository):
             self._ai_seeded = True
             if seeded_any:
                 logger.info("AI 动态资源已导入：%s", "、".join(sorted(_AI_FILES)))
+
+    async def _insert_missing_prompt(self, item: dict[str, Any]) -> None:
+        spec = PromptSpec.model_validate(item)
+        await self._db.execute(
+            """INSERT INTO ai_prompt_template
+               (code, layer, agent_id, stage, name, content, params, status, sort_order, note)
+               VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9,$10)
+               ON CONFLICT (code) DO NOTHING""",
+            spec.code, spec.layer, spec.agent_id, spec.stage, spec.name, spec.content,
+            json.dumps(spec.params, ensure_ascii=False), spec.status, spec.sort_order, spec.note,
+        )
 
     async def _count_ai(self, kind: str) -> int:
         table = _AI_TABLES[kind]

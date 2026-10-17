@@ -2,7 +2,10 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
+import re
+from typing import Literal
 
 from agno.run import RunContext
 
@@ -21,6 +24,9 @@ from zhiyin_kernel.modules import ModuleCapability
 from zhiyin_modules import discover, inspect_modules
 
 
+logger = logging.getLogger(__name__)
+
+
 class ModuleAchievementView(AchievementView):
     label: str
 
@@ -37,6 +43,83 @@ def definitions(container):
 
 def product_tools(container):
     modules = []
+    async def read_workspace(run_context: RunContext, area: Literal["profile", "academic", "report", "plan", "directions", "calendar", "notes", "reviews", "achievements"]) -> str:
+        """读取当前登录用户的指定业务资料；先选择一个资料领域。"""
+        from zhiyin_business.services.analysis_access import current_scope
+        user_id = run_context.user_id or ""
+        if not user_id:
+            raise InvalidRequest("缺少用户身份")
+        deps = run_context.dependencies if run_context.dependencies is not None else {}
+        deps.setdefault("business_tool_calls", []).append("workspace.read")
+        logger.info("业务工具调用：workspace.read area=%s", area)
+        scope = current_scope(user_id)
+        if scope and scope.restricted and area in {"notes", "reviews", "achievements"}:
+            deps.setdefault("business_read_receipts", []).append({"text": "当前资料偏好下无法安全筛选此类记录，请到对应页面查看。"})
+            return json.dumps({"available": False, "reason": "当前资料偏好下无法安全筛选此类记录，请到对应页面查看。"}, ensure_ascii=False)
+        readers = {
+            "profile": lambda: container.profile_service.get(user_id),
+            "academic": lambda: container.academic_service.get(user_id),
+            "report": lambda: container.asset_service.get_report(user_id),
+            "plan": lambda: container.asset_service.get_action_plan(user_id),
+            "directions": lambda: container.asset_service.list_direction_plans(user_id),
+            "calendar": lambda: container.function_service.list_calendar_nodes(user_id),
+            "notes": lambda: container.note_service.list_by_user(user_id),
+            "reviews": lambda: container.student_service.reviews(user_id),
+            "achievements": lambda: container.facade.list_achievements(user_id),
+        }
+        value = await readers[area]()
+        if area == "directions":
+            value = [item.model_copy(update={"match_score": None, "match_method": "暂无可核验的量化评分"}) for item in value]
+        if area == "academic":
+            grades = value.grades if value else []
+            lines = [f"{g.name}：{g.score or '未填写成绩'}（{g.term or '未标注学期'}）" for g in grades]
+            summary = "成绩记录：\n" + "\n".join(lines) if lines else "没有可读取的成绩记录。"
+        elif area == "plan":
+            tasks = [t for phase in (value.phases if value else []) for t in phase.tasks]
+            lines = [f"{t.text}：{'已完成' if t.done else '未完成'}" for t in tasks]
+            summary = "行动任务：\n" + "\n".join(lines) if lines else "没有可读取的行动任务。"
+        else:
+            labels = {"profile": "个人画像", "report": "诊断报告", "directions": "方向方案", "calendar": "日历", "notes": "成长记录", "reviews": "复盘记录", "achievements": "完成记录"}
+            summary = (f"没有可读取的{labels[area]}。" if value is None or value == []
+                       else f"已读取{labels[area]}。本次未能整理成可靠的详细回复，请到对应页面查看。")
+        deps.setdefault("business_read_receipts", []).append({"area": area, "text": summary})
+        return json.dumps({"area": area, "data": value}, ensure_ascii=False,
+                          default=lambda x: x.model_dump(mode="json") if hasattr(x, "model_dump") else str(x))
+
+    async def set_task_done(run_context: RunContext, task_id: str, done: bool) -> str:
+        """按用户本轮明确要求，将指定的已有行动任务标记完成或取消完成。"""
+        from zhiyin_business.services.analysis_access import current_scope
+        user_id = run_context.user_id or ""
+        deps = run_context.dependencies if run_context.dependencies is not None else {}
+        deps.setdefault("business_tool_calls", []).append("workspace.task.set_done")
+        logger.info("业务工具调用：workspace.task.set_done")
+        receipt = {"executed": False, "reason": "请明确写出任务名称和要标记完成还是取消完成。"}
+        deps.setdefault("business_tool_receipts", []).append(receipt)
+        message = str(deps.get("user_message") or "")
+        if not user_id:
+            raise InvalidRequest("缺少用户身份")
+        current_scope(user_id)
+        plan = await container.asset_service.get_action_plan(user_id)
+        tasks = [(task, task.id or f"{phase.name}:{task.text}") for phase in (plan.phases if plan else []) for task in phase.tasks]
+        # Never trust the model's identifier: only a unique exact task name in
+        # the user's message authorizes a write. Duplicate names are ambiguous.
+        named = [(item, identity) for item, identity in tasks if item.text and item.text in message]
+        task = None
+        if len(named) == 1:
+            task, task_id = named[0]
+        negative = bool(re.search(r"不要|不必|无需|暂不|别", message))
+        wants_undo = bool(re.search(r"取消完成|撤销完成|标记为未完成", message))
+        wants_done = bool(re.search(r"标记.{0,8}完成|勾选|完成.{0,4}任务", message))
+        if not task or not task.text or task.text not in message or negative or (not wants_undo if not done else not wants_done or wants_undo):
+            return json.dumps(receipt, ensure_ascii=False)
+        updated = await container.facade.set_action_task_done(user_id, ActionTaskDoneRequest(task_id=task_id, done=done))
+        receipt.update({"executed": True, "task": task.text, "done": done})
+        return json.dumps({**receipt, "plan": updated.model_dump(mode="json")}, ensure_ascii=False)
+
+    modules.append(ToolModule(name="workspace", tools=[
+        ToolSpec(name="workspace.read", description="读取当前用户的真实业务资料", handler=read_workspace),
+        ToolSpec(name="workspace.task.set_done", description="用户明确指定任务名称和操作时更新任务完成状态", handler=set_task_done),
+    ]))
     for module_id, definition in definitions(container).items():
         if not definition.manifest.tool:
             continue

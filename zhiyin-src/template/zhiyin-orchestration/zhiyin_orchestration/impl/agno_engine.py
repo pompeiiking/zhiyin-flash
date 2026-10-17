@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from hashlib import sha256
 from typing import Any, Callable, Mapping, Optional
 
@@ -166,8 +167,15 @@ class AgnoAgentEngine(AgentEngine):
             module_calls = request.use_tools and self.module_tool_names is not None and bool(
                 await self.module_tool_names(request.agent_id)
             )
+            # Business-tool requests need the same function-calling mode as
+            # modules; JSON-object mode suppresses tool calls on some models.
+            user_message = str(request.prompt_vars.get("raw_user_message") or "")
+            business_calls = (request.use_tools and "workspace.read" in self._tools
+                and any(word in user_message for word in ("查询", "查看", "看看", "列出", "展示", "读取", "统计", "多少", "怎么样", "勾选", "标记", "取消完成"))
+                and (any(word in user_message for word in ("画像", "成绩", "课表", "报告", "计划", "方向", "日历", "任务", "待办", "复盘", "记录", "成就"))
+                     or bool(re.search(r"标记.{0,15}完成|取消完成|撤销完成|勾选", user_message))))
             output_schema = request.output_schema or None
-            if module_calls and output_schema:
+            if (module_calls or business_calls) and output_schema:
                 # The configured Qwen JSON-object mode suppresses function calls
                 # in this stage workflow. Keep function calling enabled, ask for
                 # the same JSON contract in text, then use the existing strict
@@ -203,7 +211,7 @@ class AgnoAgentEngine(AgentEngine):
                             text = partial_root_string(raw_stream, request.stream_field)
                             # Module results have a server-authored final answer;
                             # never stream schema filler claiming nonexistent writes.
-                            if text != shown and not _module_attempts_from_run_context(run_kwargs):
+                            if text != shown and not business_calls and not _module_attempts_from_run_context(run_kwargs):
                                 shown = text
                                 visible_count += 1
                                 emit_progress({'text': text})
@@ -221,6 +229,9 @@ class AgnoAgentEngine(AgentEngine):
                 renderables=_renderables_from_run_context(run_kwargs),
                 module_results=_module_results_from_run_context(run_kwargs),
                 module_attempts=_module_attempts_from_run_context(run_kwargs),
+                business_tool_calls=_business_calls_from_run_context(run_kwargs),
+                business_tool_receipts=_business_receipts_from_run_context(run_kwargs),
+                business_read_receipts=_business_read_receipts_from_run_context(run_kwargs),
             )
 
         # agno 在模型报错时**不抛异常**：它把错误写进 content，并把 status 置为 error。
@@ -238,6 +249,9 @@ class AgnoAgentEngine(AgentEngine):
                 renderables=_renderables_from_run_context(run_kwargs),
                 module_results=_module_results_from_run_context(run_kwargs),
                 module_attempts=_module_attempts_from_run_context(run_kwargs),
+                business_tool_calls=_business_calls_from_run_context(run_kwargs),
+                business_tool_receipts=_business_receipts_from_run_context(run_kwargs),
+                business_read_receipts=_business_read_receipts_from_run_context(run_kwargs),
             )
 
         structured = _as_mapping(output.content)
@@ -288,6 +302,9 @@ class AgnoAgentEngine(AgentEngine):
             renderables=_renderables_from_run_context(run_kwargs),
             module_results=_module_results_from_run_context(run_kwargs),
             module_attempts=_module_attempts_from_run_context(run_kwargs),
+            business_tool_calls=_business_calls_from_run_context(run_kwargs),
+            business_tool_receipts=_business_receipts_from_run_context(run_kwargs),
+            business_read_receipts=_business_read_receipts_from_run_context(run_kwargs),
         )
 
     async def _repair_once(
@@ -398,6 +415,8 @@ class AgnoAgentEngine(AgentEngine):
                     "根据工具返回的真实数据回答；不得把提示词示例当成用户数据，也不得声称展示了未调用工具的卡片。"
                     "模块工具只读，查询进度不代表用户请求生成或替换计划。"
                 )
+        if use_tools and any(name in self._tools for name in ("workspace.read", "workspace.task.set_done")):
+            instructions.append("查询用户资料时可使用业务工具；任务状态操作仅在用户明确指定任务和操作时调用。以工具的 executed 和返回数据为准，禁止声称未成功的操作已完成。")
         agent = Agent(
             model=self._build_model(key, bundle.get("params") or {}),
             instructions=instructions or None,
@@ -507,6 +526,9 @@ class AgnoAgentEngine(AgentEngine):
             return []
         descriptor = await self._registry.get_agent(agent_id)
         names = list(descriptor.tools) if descriptor else []
+        if agent_id in {"profile_analyst", "career_advisor", "path_planner", "companion_coach"}:
+            # Product-owned tools enforce current-user identity and write intent.
+            names.extend(name for name in ("workspace.read", "workspace.task.set_done") if name in self._tools)
         if self.module_tool_names is not None:
             names.extend(await self.module_tool_names(agent_id))
         missing = sorted(name for name in names if name not in self._tools)
@@ -546,6 +568,11 @@ class AgnoAgentEngine(AgentEngine):
         # 每次运行一份的 dict，正好当这条通道 —— 不必给工具加全局状态，
         # 也不让模型有机会往里塞东西（它只能调工具，碰不到这个 dict）。
         kwargs["dependencies"] = {CHART_BOX_KEY: []}
+        if request.use_tools and "workspace.read" in self._tools:
+            kwargs["dependencies"]["user_message"] = request.prompt_vars.get("raw_user_message", "")
+            kwargs["dependencies"]["business_tool_calls"] = []
+            kwargs["dependencies"]["business_tool_receipts"] = []
+            kwargs["dependencies"]["business_read_receipts"] = []
         if self.module_tool_names is not None:
             kwargs["dependencies"]["module_agent_id"] = request.agent_id
             kwargs["dependencies"]["module_results"] = []
@@ -564,6 +591,21 @@ class AgnoAgentEngine(AgentEngine):
         if body:
             parts.append(body)
         return "\n\n".join(parts)
+
+
+def _business_read_receipts_from_run_context(run_kwargs: dict[str, Any]) -> list[dict[str, Any]]:
+    deps = run_kwargs.get("dependencies") or {}
+    return list(deps.get("business_read_receipts") or [])
+
+
+def _business_receipts_from_run_context(run_kwargs: dict[str, Any]) -> list[dict[str, Any]]:
+    deps = run_kwargs.get("dependencies") or {}
+    return list(deps.get("business_tool_receipts") or [])
+
+
+def _business_calls_from_run_context(run_kwargs: dict[str, Any]) -> list[str]:
+    deps = run_kwargs.get("dependencies") or {}
+    return list(deps.get("business_tool_calls") or [])
 
 
 def _renderables_from_run_context(run_kwargs: dict[str, Any]) -> list[dict[str, Any]]:

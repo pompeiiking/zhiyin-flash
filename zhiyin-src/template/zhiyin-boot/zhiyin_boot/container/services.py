@@ -149,9 +149,9 @@ def _lazy_plan_reader(container: "Container"):
         directions: list[Any] = []
         if container.asset_service is not None:
             plan = await container.asset_service.get_action_plan(user_id)
-            # 已落库的几套方向方案也一并给（规划师与画图都用得上：
-            # "他选的是哪一条、几条各差多少"是真实分值，不是模型算的）。
-            directions = await container.asset_service.list_direction_plans(user_id)
+            # 旧版本可能保存过模型估算分数；缺少可核验算法时不向 AI 提供。
+            directions = [item.model_copy(update={"match_score": None, "match_method": "暂无可核验的量化评分"})
+                          for item in await container.asset_service.list_direction_plans(user_id)]
         if container.function_service is not None:
             nodes = await container.function_service.list_calendar_nodes(user_id)
         return {"plan": plan, "nodes": nodes, "directions": directions}

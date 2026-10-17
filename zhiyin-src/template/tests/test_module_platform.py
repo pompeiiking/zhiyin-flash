@@ -226,7 +226,7 @@ def test_added_modules_have_distinct_model_callable_names(tmp_path):
     modules["another_progress"] = replace(second, manifest=second.manifest.model_copy(update={
         "id": "another_progress", "tool": "another_progress.read"}))
     container = SimpleNamespace(extra={"modules": modules})
-    handlers = [m.tools[0].handler for m in product_tools(container)]
+    handlers = [m.tools[0].handler for m in product_tools(container) if m.name != "workspace"]
     assert len(handlers) >= 2
     assert len({h.__name__ for h in handlers}) == len(handlers)
     for handler in handlers:

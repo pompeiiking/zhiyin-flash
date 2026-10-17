@@ -278,6 +278,22 @@
       "note": "口径来源：设计文档第十二节。"
     },
     {
+      "code": "task.academic.analysis",
+      "layer": "task",
+      "agent_id": "career_advisor",
+      "stage": "",
+      "name": "成绩学习分析",
+      "content": "根据给定的用户导入成绩单分析学习情况。headline 写课程成绩概览；reading 引用具体课程、成绩和数据限制；strengths、watchouts、next 各给一至三条 label 和 why。分数原样引用，不猜测成绩制度或换算规则；未提供的课程和教学要求不能编造。成绩仅反映记录，不等于能力或职业适配。",
+      "params": {
+        "temperature": 0.4,
+        "timeout_s": 60,
+        "retries": 1
+      },
+      "status": "enabled",
+      "sort_order": 52,
+      "note": "成绩分析只使用用户允许的导入成绩。"
+    },
+    {
       "code": "task.portrait.analysis",
       "layer": "task",
       "agent_id": "career_advisor",

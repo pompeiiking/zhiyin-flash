@@ -55,7 +55,7 @@ async function load() {
       else if (!workspace.value) profileError.value = '个人档案暂时没有读取到，诊断正文仍可继续查看。'
       backendDemo.setReport(current)
       backendDemo.setReportMetadata(metadata)
-      viewedReport.value = current
+      viewedReport.value = current.version > 0 || metadata ? current : null
       viewedMetadata.value = metadata
     }
   } catch (caught) {

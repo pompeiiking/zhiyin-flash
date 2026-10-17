@@ -55,7 +55,7 @@ const DIALS: Record<Level, Dial> = {
   unknown: { level: 'unknown', label: '还没有依据', bars: 0, hint: '这项还没有可用于判断的材料' },
   low: { level: 'low', label: '依据很少', bars: 1, hint: '只有零星线索，先按参考看' },
   mid: { level: 'mid', label: '还需要再核对', bars: 2, hint: '有依据，但还不足以定下来' },
-  high: { level: 'high', label: '依据比较充分', bars: 3, hint: '有可核对的材料支撑' },
+  high: { level: 'high', label: '记录较明确', bars: 3, hint: '置信度不代表材料已核验，来源请查看具体资料' },
 }
 
 const props = withDefaults(

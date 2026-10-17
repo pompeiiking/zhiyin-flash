@@ -19,7 +19,7 @@ import re
 KIND_LABELS: dict[str, str] = {
     "occupation": "职业",
     "speciality": "专业",
-    "career_case": "校友案例",
+    "career_case": "公开职业案例",
     "web": "网络公开信息",
     "job_requirement": "岗位要求",
     "industry": "行业情况",

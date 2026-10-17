@@ -60,6 +60,9 @@ class AgentResult(BaseModel):
     valid: bool = Field(default=False, description="是否通过产出契约校验")
     errors: list[str] = Field(default_factory=list)
     degraded: bool = Field(default=False)
+    business_tool_calls: list[str] = Field(default_factory=list, description="服务端记录的业务工具调用。")
+    business_tool_receipts: list[dict[str, Any]] = Field(default_factory=list, description="服务端记录的业务写入结果。")
+    business_read_receipts: list[dict[str, Any]] = Field(default_factory=list, description="服务端记录的业务查询摘要。")
     module_attempts: list[str] = Field(default_factory=list,
         description="服务端记录的模块工具调用尝试，包括失败和被拒绝的查询；不能由模型声明。")
     module_results: list[dict[str, Any]] = Field(default_factory=list,

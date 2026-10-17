@@ -15,6 +15,10 @@ export interface paths {
      */
     delete: operations["revoke_academic_api_v1_app_academic_delete"];
   };
+  "/api/v1/app/academic/analysis": {
+    /** Academic Analysis */
+    post: operations["academic_analysis_api_v1_app_academic_analysis_post"];
+  };
   "/api/v1/app/academic/courses": {
     /**
      * Revoke Academic Courses
@@ -4988,6 +4992,17 @@ export interface operations {
       200: {
         content: {
           "application/json": components["schemas"]["ApiResponse_AcademicRevokeAck_"];
+        };
+      };
+    };
+  };
+  /** Academic Analysis */
+  academic_analysis_api_v1_app_academic_analysis_post: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": unknown;
         };
       };
     };

@@ -77,7 +77,7 @@ function termSortKey(term: string) {
 }
 
 function gradeTerm(row: AcademicGradeView) {
-  return row.term?.trim() || academic.value?.term?.trim() || '未标注学期'
+  return row.term?.trim() || '未标注学期'
 }
 
 function courseKind(row: AcademicGradeView) {
@@ -256,7 +256,7 @@ function scoreTone(score = '') {
 
 async function analyzeLearning() {
   const revision = backendDemo.state.profileEditSerial
-  const result = await learningAnalysis.run('portraitAnalysis')
+  const result = await learningAnalysis.run('academicAnalysis')
   if (result) analysisSerial.value = revision
 }
 
@@ -402,7 +402,7 @@ onMounted(() => { void loadGrades() })
       <section class="learning-analysis" aria-labelledby="learning-analysis-title">
         <div class="learning-analysis__lead">
           <div class="learning-analysis__icon" aria-hidden="true"><UiIcon name="trophy" :size="20" /></div>
-          <div><p>结合成绩与已授权画像</p><h2 id="learning-analysis-title">AI 学习分析 <DetailPopover title="学习分析说明" label="查看学习分析说明"><p>识别优势、留意项和下一步；资料不足时保留待确认项，不替你推断。</p></DetailPopover></h2></div>
+          <div><p>基于已授权的成绩记录</p><h2 id="learning-analysis-title">AI 学习分析 <DetailPopover title="学习分析说明" label="查看学习分析说明"><p>结合已导入的课程成绩提出观察和下一步；成绩不代表能力，资料不足时保留待确认项。</p></DetailPopover></h2></div>
         </div>
         <button class="btn" :disabled="learningAnalysis.busy.value" @click="analyzeLearning">{{ learningAnalysis.result.value ? '更新学习分析' : '生成学习分析' }}</button>
         <AiStatus class="learning-analysis__status" :busy="learningAnalysis.busy.value" :error="learningAnalysis.error.value" :progress="learningAnalysis.progress.value" @cancel="learningAnalysis.cancel" @retry="analyzeLearning" />

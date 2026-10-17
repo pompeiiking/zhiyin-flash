@@ -7,7 +7,8 @@ export function validAiData(key: string, data: unknown): boolean {
   if (key === 'noteSuggestions') return list(data, ['id','label','why','from','when'])
   if (!object(data)) return false
   switch (key) {
-    case 'portraitAnalysis': return strings(data,['headline','reading']) && ['strengths','watchouts','next'].every(k=>list(data[k],['label','why']))
+    case 'portraitAnalysis':
+    case 'academicAnalysis': return strings(data,['headline','reading']) && ['strengths','watchouts','next'].every(k=>list(data[k],['label','why']))
     case 'dimension': return strings(data,['id','name','conclusion','reading','next']) && Array.isArray(data.trend) && data.trend.every(p=>object(p)&&strings(p,['at','why'])&&typeof p.v==='number')
     case 'gap': return strings(data,['question','whyNow']) && list(data.options,['label','why'])
     case 'careerMatch': return list(data.ranking,['track','gap','why']) && Array.isArray(data.cells) && data.cells.every(p=>object(p)&&strings(p,['track','skill'])&&typeof p.need==='number'&&typeof p.have==='number') && object(data.recommend) && strings(data.recommend,['title','body']) && Array.isArray(data.recommend.because) && data.recommend.because.every(p=>typeof p==='string')

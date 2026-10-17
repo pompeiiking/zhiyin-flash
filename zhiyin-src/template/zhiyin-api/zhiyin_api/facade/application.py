@@ -23,6 +23,7 @@ IO 口径：底层服务全部 async，因此本 Facade 的全部方法都是 `a
 from __future__ import annotations
 
 import asyncio
+from datetime import datetime
 from typing import Any, Optional
 
 from fastapi import Request
@@ -589,7 +590,22 @@ class DefaultApplicationFacade(ApplicationFacade):
         文案不在这一层：规则 code 由前端按 `badge.<code>.label` / `.how`
         从文案包取（`/app/bootstrap` 下发），改名字不发版、也不用改接口。
         """
-        return mappers.achievement_list_view(await self._function.list_achievements(user_id))
+        result = mappers.achievement_list_view(await self._function.list_achievements(user_id))
+        # Saving a review is itself a completed review; applying its proposed
+        # adjustment is optional. This also covers reviews saved before this fix.
+        if self._student is not None:
+            saved = (await self._student.reviews(user_id)).get("items", [])
+            item = next((entry for entry in result.items if entry.key == "first_review"), None)
+            if saved and item is not None:
+                times = [datetime.fromisoformat(entry["updated_at"]) for review in saved
+                         for entry in [review, *review.get("history", [])] if entry.get("updated_at")]
+                first = min(times) if times else None
+                if not item.unlocked:
+                    item.unlocked = True
+                    result.unlocked += 1
+                if first and (item.unlocked_at is None or first < item.unlocked_at):
+                    item.unlocked_at = first
+        return result
 
     async def _report_group_labels(self) -> dict[str, str]:
         """15 维分组的展示名：分组标识 → 文案。

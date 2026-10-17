@@ -4993,6 +4993,33 @@
         "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
       ],
       "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+    },
+    {
+      "id": "POST /api/v1/app/academic/analysis",
+      "method": "POST",
+      "path": "/api/v1/app/academic/analysis",
+      "capability": "基于用户授权的成绩单生成学习分析，并说明成绩来源和局限。",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py:187",
+      "scope": "学生端",
+      "stream": true,
+      "parameters": [],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {}
+            }
+          },
+          "description": "Successful Response"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/views/GradesView.vue",
+        "zhiyin-src/template/zhiyin-web/src/api/validate-ai.ts"
+      ],
+      "verification": "真实测试账号导入成绩后，经前端和源码测试后端验证。"
     }
   ],
   "schemas": {

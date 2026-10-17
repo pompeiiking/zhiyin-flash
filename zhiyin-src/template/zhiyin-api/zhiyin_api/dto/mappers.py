@@ -787,7 +787,7 @@ def direction_plan_view(plan: DirectionPlan) -> DirectionPlanView:
         role=plan.role,
         name=plan.name,
         target_desc=plan.target_desc,
-        match_score=plan.match_score,
+        match_score=None,  # Legacy model-generated scores have no auditable calculation.
         gaps=[
             PlanGapView(
                 requirement=gap.requirement,
@@ -810,16 +810,14 @@ def direction_plan_list_view(plans: Sequence[DirectionPlan]) -> DirectionPlanLis
     `selected_id` 从同一个列表里算出来，而不是再看一次库：
     两次读之间用户可能刚改过选择，那种不一致会在界面上表现成"两套都亮着"。
 
-    `match_score_method` 取方案资产里存下来的那一句（生成时模型给的），
-    而不是写一份前端/后端的常量 —— 口径是产出的一部分，不能两处各写一遍。
+    历史模型估算没有可复算的输入，暂不作为量化评分对外展示。
     """
     items = list(plans)
     selected = next((plan.id for plan in items if plan.selected), None)
-    method = next((plan.match_method for plan in items if plan.match_method), "")
     return DirectionPlanListView(
         plans=[direction_plan_view(plan) for plan in items],
         selected_id=selected,
-        match_score_method=method or "三叶草契合度 × 可达性",
+        match_score_method="暂无可核验的量化评分",
     )
 
 

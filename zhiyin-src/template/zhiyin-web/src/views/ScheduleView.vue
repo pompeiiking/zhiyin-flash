@@ -204,6 +204,7 @@ onMounted(() => { centerSelectedWeek(); centerTodayCourse(); void loadCalendar()
 
     <StatusBanner v-if="academicStatus" tone="success" size="sm" :message="academicStatus" @dismiss="academicStatus=''"/><StatusBanner :retryable="false" v-if="academicError" tone="error" size="sm" :message="academicError" @dismiss="academicError=''"/>
     <p v-if="calendarError" class="ws-field-error" role="alert">{{ calendarError }}</p>
+    <p v-if="timedCourses.length" class="ws-muted" role="status">课程按星期和节次作为参考展示，尚未按教学周筛选，不能据此确认某天一定有课。{{ timedCourses.some(course => !course.weeks?.trim()) ? '部分课程未提供周次，请先补充后再核对。' : '请结合课程周次及学期设置核对。' }}</p>
 
     <section class="schedule-surface" :aria-busy="calendarBusy">
       <header class="schedule-toolbar">

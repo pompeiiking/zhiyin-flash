@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import re
 from typing import Optional
 
 from zhiyin_business.ports.academic import AcademicImportResult
@@ -50,7 +51,21 @@ class DefaultAcademicService(AcademicService):
         self._profiles = profiles
 
     async def get(self, user_id: str) -> Optional[AcademicSnapshot]:
-        return await self._snapshots.get(user_id)
+        snapshot = await self._snapshots.get(user_id)
+        if not snapshot or not self._profiles or not hasattr(self._profiles, "get") or not any(not row.term for row in snapshot.grades):
+            return snapshot
+        # Older imports kept the grade term only in their generated profile
+        # summary. Recover it only from that identifiable import record.
+        profile = await self._profiles.get(user_id)
+        field = next((f for f in (profile.fields if profile else [])
+                      if f.key == "scores" and f.source == ProfileSource.RECORD), None)
+        match = re.fullmatch(r"(.+?) · \d+ 门成绩（.*导入）", str(field.value)) if field else None
+        if not match:
+            return snapshot
+        return snapshot.model_copy(update={"grades": [
+            row if row.term else row.model_copy(update={"term": match.group(1)})
+            for row in snapshot.grades
+        ]})
 
     async def import_(
         self,
@@ -63,7 +78,7 @@ class DefaultAcademicService(AcademicService):
     ) -> AcademicImportResult:
         courses_text = (courses_raw or "").strip()
         grades_text = (grades_raw or "").strip()
-        existing = await self._snapshots.get(user_id)
+        existing = await self.get(user_id)
         source = existing.source if existing else ""
         parsed_term = term.strip() or (existing.term if existing else "")
         courses = list(existing.courses) if existing else []
@@ -78,14 +93,18 @@ class DefaultAcademicService(AcademicService):
             if courses_text:
                 parsed = self._importer.parse_courses(courses_text)
                 source = parsed.source
-                parsed_term = parsed_term or parsed.term
+                parsed_term = term.strip() or parsed.term or parsed_term
                 courses = parsed.courses
                 updated.add("courses")
             if grades_text:
                 grade_parsed = self._importer.parse_grades(grades_text)
                 if not courses_text:
                     source = grade_parsed.source
-                grades = grade_parsed.grades
+                # The snapshot term belongs to the latest import, so keep the
+                # grade's own term on each row before a later course import.
+                # An unspecified term must not inherit an unrelated course term.
+                grades = [row.model_copy(update={"term": row.term or term.strip()})
+                          for row in grade_parsed.grades]
                 updated.add("scores")
         except AcademicImportError as exc:
             # "这份原文我读不出来"是**用户能自己修的事**（换个复制方式、连表头一起复制），
@@ -203,9 +222,11 @@ class DefaultAcademicService(AcademicService):
         if self._profiles is None:
             return []
         written: list[str] = []
+        grade_terms = {row.term for row in snapshot.grades}
+        grade_term = next(iter(grade_terms)) if len(grade_terms) == 1 else ""
         for key, summary in (
             ("courses", _summary("门课", snapshot.term, len(snapshot.courses), snapshot.imported_at)),
-            ("scores", _summary("门成绩", snapshot.term, len(snapshot.grades), snapshot.imported_at)),
+            ("scores", _summary("门成绩", grade_term, len(snapshot.grades), snapshot.imported_at)),
         ):
             if key not in updated or not summary:
                 continue

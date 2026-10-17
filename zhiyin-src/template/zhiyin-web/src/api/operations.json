@@ -70,6 +70,12 @@
     "surface": "/profile",
     "stream": true
   },
+  "academicAnalysis": {
+    "method": "POST",
+    "path": "/app/academic/analysis",
+    "surface": "/grades",
+    "stream": true
+  },
   "dimension": {
     "method": "POST",
     "path": "/app/dimensions/{dimension_id}",
