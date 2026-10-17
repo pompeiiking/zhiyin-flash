@@ -397,6 +397,67 @@ class DefaultOrchestrator(Orchestrator):
         logger.info("采集门槛：%s", gate.line)
         return gate
 
+    # ---------- 资产创建提议（报告 / 计划）的持久化 ----------
+    #
+    # 提议文本原本只存在"上一条主理消息"里：用户如果先回了一句别的话，
+    # 上一轮就被顶掉，提议随之消失 —— 实测清空后无论再说「可以」还是
+    # 「生成报告」都得重来一次，新手会以为"它答应过却什么都没做"。
+    # 这里把待确认的提议写进账号级状态，按时间过期，确认/拒绝时清掉。
+
+    _PENDING_OFFER_KEY = "pending_asset_offer"
+    _PENDING_OFFER_TTL_S = 2 * 24 * 3600
+
+    async def _pending_asset_offer(self, user_id: str, task_id: str) -> str | None:
+        if self._student_state is None:
+            return None
+        try:
+            state = await self._student_state.get(user_id) or {}
+        except Exception:  # noqa: BLE001 - 读不到就当没有，不影响本轮对话
+            logger.warning("读取待确认提议失败，本轮按无提议处理", exc_info=True)
+            return None
+        record = state.get(self._PENDING_OFFER_KEY)
+        if not isinstance(record, dict):
+            return None
+        kind = str(record.get("kind") or "")
+        if kind not in _ASSET_OFFERS:
+            return None
+        # 确认必须发生在**提出提议的同一个会话**里：在另一个话题里说「可以」
+        # 不构成授权（会话所有权不同，用户说的是另一件事）。
+        if str(record.get("task_id") or "") != (task_id or ""):
+            return None
+        try:
+            created_at = datetime.fromisoformat(str(record.get("at") or ""))
+        except ValueError:
+            return None
+        if created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=timezone.utc)
+        if (datetime.now(timezone.utc) - created_at).total_seconds() > self._PENDING_OFFER_TTL_S:
+            return None
+        return kind
+
+    async def _set_pending_asset_offer(
+        self, user_id: str, kind: str | None, *, task_id: str = ""
+    ) -> None:
+        if self._student_state is None:
+            return
+
+        def change(state: dict) -> dict:
+            state = dict(state or {})
+            if kind in _ASSET_OFFERS:
+                state[self._PENDING_OFFER_KEY] = {
+                    "kind": kind,
+                    "task_id": task_id or "",
+                    "at": datetime.now(timezone.utc).isoformat(),
+                }
+            else:
+                state.pop(self._PENDING_OFFER_KEY, None)
+            return state
+
+        try:
+            await self._student_state.update(user_id, change)
+        except Exception:  # noqa: BLE001 - 持久化失败不能打断这一轮对话
+            logger.warning("保存待确认提议失败（本轮对话继续）", exc_info=True)
+
     async def infer_axis_a(self, user_id: str, task_id: str) -> AxisAStage:
         blackboard = await self.read_blackboard(user_id, task_id)
         profile = blackboard.profile
@@ -581,6 +642,10 @@ class DefaultOrchestrator(Orchestrator):
         previous = recent_turns[-1] if recent_turns else None
         pending_offer = next((kind for kind, question in _ASSET_OFFERS.items()
                               if previous and previous.role == "agent" and previous.text.rstrip().endswith(question)), None)
+        if pending_offer is None:
+            # 上一轮提议被别的消息顶掉时，它仍以账号级状态保留（见 `_pending_asset_offer`）：
+            # 新手很可能会先说别的，再回来点「可以」，不能让这条提议悄悄消失。
+            pending_offer = await self._pending_asset_offer(request.user_id, request.task_id)
         pending_tool = proposal_at_end(previous.text) if previous and previous.role == "agent" else None
         tool_answer = _offer_answer(request.message) if pending_tool else None
         if pending_tool and re.fullmatch(r"(?:生成吧|创建吧|请生成|请创建|帮我生成|帮我创建)[。！!\s]*", request.message):
@@ -615,7 +680,18 @@ class DefaultOrchestrator(Orchestrator):
             expected = {f"asset.{pending_offer}.accept", f"asset.{pending_offer}.decline"}
             if request.option_id not in expected:
                 offer_answer = None
+        # 用户直接把诉求写出来（「帮我生成诊断报告」「创建行动计划」）也算确认：
+        # 不该要求他先猜中"可以"两个字，才算答应了上一轮。
+        if pending_offer and offer_answer is None and not request.option_id:
+            if pending_offer == "report" and _explicit_report_request(request.message):
+                offer_answer = "accept"
+            elif pending_offer == "plan" and _explicit_plan_request(request.message):
+                offer_answer = "accept"
         accepted_offer = pending_offer if offer_answer == "accept" else None
+        if pending_offer and offer_answer in {"accept", "decline"}:
+            await self._set_pending_asset_offer(
+                request.user_id, None, task_id=request.task_id
+            )
         # Another tab may already have created an asset after the proposal.
         # Never replace it on the strength of an older offer to create one.
         already_created = False
@@ -624,6 +700,9 @@ class DefaultOrchestrator(Orchestrator):
         elif accepted_offer == "report":
             already_created = await self._assets.get_report(request.user_id) is not None
         if already_created:
+            await self._set_pending_asset_offer(
+                request.user_id, None, task_id=request.task_id
+            )
             label = "行动计划" if accepted_offer == "plan" else "诊断报告"
             result = TurnResult(task_id=request.task_id, session=session, stage=session.loop_stage,
                 badge=await self._badge(session.lead_agent, []),
@@ -706,11 +785,25 @@ class DefaultOrchestrator(Orchestrator):
         # 他就是要回到"了解自己"这一步 —— 那时把他顶去诊断等于不听他说话，
         # 而且他后面补的情况一个字都进不了画像（诊断契约里没有字段更新）。
         # 实测就是这样：有人说了家里希望他求稳，画像里什么都没留下。
-        if stage is LoopStage.COLLECT and stage_decision.source != "intent":
+        if stage is LoopStage.COLLECT and (
+            stage_decision.source != "intent" or stage_decision.allow_gate_advance
+        ):
             gate = await self.collection_gate(request.user_id)
             if gate.ready:
                 logger.info("采集门槛已过（%s），本轮直接进入诊断", gate.line)
                 stage = LoopStage.DIAGNOSE
+            else:
+                # 门槛没到也不能让人在①无限答题：实测新手照引导答 30+ 轮仍在采集，
+                # 画像只落了 6 条字段，最后是关掉页面走的。
+                # 轮次到上限就带缺口进入诊断，缺口会以"待补充"继续跟着他。
+                user_rounds = sum(1 for turn in recent_turns if turn.role == "user")
+                if user_rounds >= self._MAX_COLLECT_ROUNDS:
+                    logger.info(
+                        "采集已进行 %s 轮（门槛：%s），按轮次上限带缺口进入诊断",
+                        user_rounds,
+                        gate.line,
+                    )
+                    stage = LoopStage.DIAGNOSE
         axis_a = await self.infer_axis_a(request.user_id, request.task_id)
         lead = await self.select_lead(
             request.user_id, request.task_id, axis_a, stage, intent
@@ -917,6 +1010,10 @@ class DefaultOrchestrator(Orchestrator):
             # the report converter happens to validate it.
             from zhiyin_business.contracts.diagnose import DiagnoseOutput
 
+            # 结论里已经写了"缺证据=能力不足"时不修：交给下面的校验器拒绝，
+            # 走 fallback 回复（不展示、不落库）；只修结构性的误写。
+            if not _diagnose_prose_is_unsafe(structured):
+                structured = _sanitize_absence_words(_repair_diagnose_evidence(structured))
             try:
                 structured = DiagnoseOutput.model_validate(structured).model_dump(
                     mode="json"
@@ -1116,7 +1213,13 @@ class DefaultOrchestrator(Orchestrator):
             else:
                 # The model may have written “已生成” before validation or a
                 # failed database write; only the server can confirm success.
-                reply_text = f"这次没有成功生成{label}，已有内容未确认更新。请稍后重试，或补充相关信息后再试。"
+                # 措辞要可执行：这句话实测出现时，用户唯一的感受是"它又失败了"；
+                # 要告诉他下一步能做什么，并明确已有内容没有被改。
+                reply_text = (
+                    f"这次没有成功生成{label}（模型没有给出可用内容，已自动重试）。"
+                    f"已有内容没有被修改。你可以再说一次「生成{label}」，"
+                    f"或先补充一条具体信息（比如一份岗位要求、一段经历）再试。"
+                )
                 guide = BehaviorGuide(kind="question", text="", question=None)
 
         # Do not repeatedly ask after a postponement. A fresh explicit request
@@ -1147,6 +1250,11 @@ class DefaultOrchestrator(Orchestrator):
                 GuideOption(option_id=f"asset.{offer_kind}.accept", label="可以", value="accept"),
                 GuideOption(option_id=f"asset.{offer_kind}.decline", label="先不要", value="decline"),
             ])
+            # 提议写进账号级状态：用户下一句说别的也不会把它顶掉，
+            # 之后再说「可以」或「生成报告」仍然算数（见 `_pending_asset_offer`）。
+            await self._set_pending_asset_offer(
+                request.user_id, offer_kind, task_id=request.task_id
+            )
         recent_tool_offers = {proposal_at_end(t.text) for t in recent_turns[-12:] if t.role == "agent"}
         # An unambiguous statement about an existing task deserves the matching
         # status question even when the model selected a more generic read.
@@ -1661,6 +1769,9 @@ class DefaultOrchestrator(Orchestrator):
         from zhiyin_business.contracts.diagnose import DiagnoseOutput
         from zhiyin_business.services.asset_content import report_from_diagnose
 
+        # 兜底再修一次：这条路径也可能被别的调用方直接使用（不只对话主链路）。
+        if not _diagnose_prose_is_unsafe(structured):
+            structured = _sanitize_absence_words(_repair_diagnose_evidence(structured))
         output = DiagnoseOutput.model_validate(structured)
         report = report_from_diagnose(output, user_id=user_id)
         # 认领是**用户行为**，不该被重算冲掉：报告里的 gap_claims 是从行为日志
@@ -1860,6 +1971,9 @@ class DefaultOrchestrator(Orchestrator):
     _TURN_GROUP_SIZE = 6
     #: 仓储取最近的若干条并按时间正序返回，上限与会话历史使用相同量级。
     _TURN_GROUP_SCAN = 200
+    #: ① 采集最多问几轮用户回答。到上限后带缺口进入诊断 —— 门槛是"尽量采到"，
+    #: 不是"采不到就不许往下走"：产品口径是宁可带着不完整画像进入下一环。
+    _MAX_COLLECT_ROUNDS = 8
     #: 每行上限。原文里可能有几百字的附件正文（用户传一份简历就是一整篇）。
     _TURN_LINE_MAX = 30
 
@@ -2359,6 +2473,87 @@ def _unsafe_diagnose_fallback(structured: dict[str, Any]) -> dict[str, Any]:
         "dimensions": [],
         "guide": None,
     }
+
+
+def _diagnose_prose_is_unsafe(structured: dict[str, Any]) -> bool:
+    """结论/判断正文里是否已经把"缺证据"直接说成了"能力不足"。
+
+    修补只负责**可判定的结构性误写**（把维度标签、SWOT 弱项、差距现状从
+    "未提供"改回"待验证"）。如果模型已经在结论里写了"未提供作品，所以你的
+    项目能力不足"，那就不是修补能救的：洗掉"未提供"只会留下一句更危险的
+    "所以你的项目能力不足"。这种情况仍整份走 fallback（不展示、不落库）。
+    """
+    from zhiyin_business.contracts.diagnose import ABSENCE_PHRASES, NEGATIVE_TAGS
+
+    verdict = structured.get("verdict") if isinstance(structured.get("verdict"), dict) else {}
+    prose = " ".join(
+        str(part or "")
+        for part in (
+            structured.get("conclusion"),
+            verdict.get("title"),
+            verdict.get("summary"),
+        )
+    )
+    return any(word in prose for word in ABSENCE_PHRASES) and any(
+        word in prose for word in NEGATIVE_TAGS
+    )
+
+
+def _repair_diagnose_evidence(structured: dict[str, Any]) -> dict[str, Any]:
+    """把"资料没提供被写成短板"就地修成"待验证"，再交给契约校验。
+
+    真实模型反复这么写；直接拒绝的后果是用户点了「可以」只收到一句
+    "没有成功生成诊断报告"，重试还是同一句 —— 实测连试 3 轮全部失败。
+    这里只修**可判定的三类**（判据与 `DiagnoseOutput` 的校验器共用同一份常量）：
+    - 维度标签是短板/弱项、证据却是"未提供/未见" → 标签改「待验证」；
+    - SWOT 弱项里出现"未提供" → 从弱项移除（没看到的不能当弱点）；
+    - 差距的现状写"未提供" → 改成「现有材料未覆盖这一项，先按待核对处理」。
+    修完仍不合契约的，照旧走 fallback（不落库、不假装生成成功）。
+    """
+    from zhiyin_business.contracts.diagnose import ABSENCE_PHRASES, NEGATIVE_TAGS
+
+    def has_absence(value: Any) -> bool:
+        return any(word in str(value or "") for word in ABSENCE_PHRASES)
+
+    for group in structured.get("dimensions") or []:
+        if not isinstance(group, dict):
+            continue
+        for item in group.get("items") or []:
+            if not isinstance(item, dict):
+                continue
+            if any(word in str(item.get("tag") or "") for word in NEGATIVE_TAGS) and has_absence(
+                item.get("evidence")
+            ):
+                item["tag"] = "待验证"
+    swot = structured.get("swot")
+    if isinstance(swot, dict) and isinstance(swot.get("weakness"), list):
+        swot["weakness"] = [item for item in swot["weakness"] if not has_absence(item)]
+    for gap in structured.get("gaps") or []:
+        if isinstance(gap, dict) and has_absence(gap.get("current_state")):
+            # 保留"待核对"这一层事实，但把触发校验的缺证表达换掉：
+            # 只做过滤仍有漏网的组合（实测报告仍偶发因这句被拒）。
+            gap["current_state"] = "现有材料未覆盖这一项，先按待核对处理"
+    return structured
+
+
+def _sanitize_absence_words(value: Any) -> Any:
+    """把文本里残留的"未提供/未见"等缺证表达换成中性说法。
+
+    校验器的判据是**字符串里出现这些词**；修补阶段若只做过滤，嵌套字段里
+    偶尔还会漏。落库前再扫一遍，比让用户看到"没有成功生成报告"要好。
+    """
+    from zhiyin_business.contracts.diagnose import ABSENCE_PHRASES
+
+    if isinstance(value, str):
+        for phrase in ABSENCE_PHRASES:
+            if phrase in value:
+                value = value.replace(phrase, "待核对")
+        return value
+    if isinstance(value, list):
+        return [_sanitize_absence_words(item) for item in value]
+    if isinstance(value, dict):
+        return {key: _sanitize_absence_words(item) for key, item in value.items()}
+    return value
 
 
 def _user_input_with_material(request: TurnRequest) -> str:

@@ -56,7 +56,7 @@ export const WORKSPACE_GROUPS: NavGroup[] = [
     label: '做决定',
     icon: 'directions',
     items: [
-      { key: 'directions', label: '方向方案', to: '/directions', icon: 'directions', paths: ['/directions'], hint: '主攻、平行与保底的选择' },
+      { key: 'directions', label: '方向方案', to: '/directions', icon: 'directions', paths: ['/directions'], hint: '先定最想投入的主攻方向，再准备并行尝试和保底备选' },
       { key: 'intel', label: '职业探索', to: '/intel', icon: 'compass', paths: ['/intel'], hint: '从专业出发了解职业方向与真实去向' },
     ],
   },
@@ -80,6 +80,21 @@ export const WORKSPACE_GROUPS: NavGroup[] = [
       { key: 'achievements', label: '完成记录', to: '/achievements', icon: 'trophy', paths: ['/achievements'], hint: '已完成、下一步与形成条件' },
     ],
   },
+  /**
+   * 帮助与工具：这两页以前只能手敲地址（`INTERNAL_PAGE_TITLES` 里只留标题），
+   * 新手既找不到"从哪开始"，也找不到学籍核验/成绩导入这些工具。
+   * 现在作为可发现入口挂在导航末尾：桌面侧栏渲染在页脚（见 DesktopSidebar.vue），
+   * 移动端「更多 → 全部功能」与 ⌘K 直接读这份分组，两处自动出现。
+   */
+  {
+    key: 'help',
+    label: '帮助与工具',
+    icon: 'info',
+    items: [
+      { key: 'guide', label: '使用指南', short: '指南', to: '/guide', icon: 'document', paths: ['/guide'], hint: '第一次用不知道从哪开始？六步走完一遍' },
+      { key: 'tools', label: '应用工具', short: '工具', to: '/tools', icon: 'apps', paths: ['/tools'], hint: '学籍核验、成绩与课表导入、画像分析等工具' },
+    ],
+  },
 ]
 
 const GROUP_ITEMS: NavItem[] = WORKSPACE_GROUPS.flatMap((g) => g.items)
@@ -94,23 +109,24 @@ export const DIRECTORY_PAGES = [
 /**
  * 不在学生导航里的页面（直链可达，不作为入口）。
  *
- * 这三页都判过"存在理由"，结论是**它们不是学生页**：
+ * 判过"存在理由"、结论是**它们不是学生页**：
  * - `/spec` 设计规范：内部文档，教的是本工程自己的排版与配色；
  * - `/path` 大一到大四：页面文案写着「设计要点」「截图来自改造后的实际浏览器预览」，
  *   是给评审看的施工说明书（且内嵌截图已过期）；
- * - `/tools` 应用工具：后端无数据时全文 327 字，**整页恰好一屏的空页**。
+ * - `/developer` 开发者管理：只向获得授权的账号开放，学生直链进来是"无权限"页；
+ * - `/reminders` 提醒：唯一入口是悬浮铃铛，不占导航位。
+ *
+ *（`/guide` 使用指南与 `/tools` 应用工具已经从这份名单移出，见 `WORKSPACE_GROUPS`
+ * 末尾的「帮助与工具」分组——它们现在是学生可发现的入口。）
  *
  * 只在这里留标题，给直链打开时的面包屑一个说法 —— **不导出成任何列表**，
  * 所以侧栏页脚、移动「更多」、⌘K 与 404 的"有效地址"都不会再出现它们。
- * 这一份同时兑现文件头的老决定（"内部文档，不进学生导航"）与 `PLAN §2.4`。
  */
 const INTERNAL_PAGE_TITLES: Record<string, string> = {
   '/reminders': '提醒',
-  '/guide': '使用指南',
   '/developer': '开发者管理',
   '/spec': '设计规范',
   '/path': '大一到大四',
-  '/tools': '应用工具',
 }
 
 /**

@@ -43,6 +43,13 @@ const personSub = computed(() => {
 })
 const chatActive = computed(() => isNavActive(WORKSPACE_PRIMARY, route))
 /**
+ * 主侧栏只铺"用户此刻要做什么"的四个分组；「帮助与工具」不进主滚动区，
+ * 而是和"返回门户"一起放在页脚 —— 两页都稳定可见，也不会把本来就不够高的
+ * 导航区再撑长 40 多像素（#8 的完成记录被压）。
+ */
+const navGroups = computed(() => WORKSPACE_GROUPS.filter((group) => group.key !== 'help'))
+const helpItems = computed(() => WORKSPACE_GROUPS.find((group) => group.key === 'help')?.items ?? [])
+/**
  * 导航计数徽标（c2 的 `.nav__badge`）—— **两个数字都来自真实状态，没有一个写死**：
  *   · 咨询对话 = `backendDemo.state.sessions` 的条数。侧栏「历史会话」表头读的是同一个字段
  *     （`backendDemo.ts:33` 初始化，`demo-fixtures.ts:27` 的 6 条演示会话），所以表头与徽标永远一致。
@@ -61,7 +68,7 @@ function sessionDate(date?: string | null) { return date ? new Date(date).toLoca
   <aside id="student-desktop-sidebar" class="desk-sidebar" aria-label="桌面导航">
     <div class="desk-brand-row"><RouterLink class="desk-brand" to="/chat" aria-label="职引，回到对话"><BrandMark /></RouterLink><button ref="collapseButton" class="ws-icon-button desk-collapse" aria-label="收起侧栏" title="收起侧栏" aria-controls="student-desktop-sidebar" aria-expanded="true" @click="$emit('collapse')"><UiIcon name="sidebar" :size="19" /></button></div>
 
-    <div class="desk-scroll">
+    <div v-scroll-fade class="desk-scroll">
     <TooltipProvider :delay-duration="120" :skip-delay-duration="80">
       <nav v-scroll-fade class="desk-nav" aria-label="学生空间导航"><div class="c2-chat-group-head"><h2>对话</h2><button class="c2-new-consult" aria-label="选择咨询主题" title="选择咨询主题" :disabled="demo.state.chatBusy" @click="$emit('newChat')"><UiIcon name="plus" :size="18" /></button></div>
         <TooltipRoot :disabled="!railMode">
@@ -70,7 +77,7 @@ function sessionDate(date?: string | null) { return date ? new Date(date).toLoca
           </TooltipTrigger>
           <TooltipPortal><TooltipContent class="desk-rail-tooltip" side="right" :side-offset="12" :collision-padding="8">{{ WORKSPACE_PRIMARY.label }}</TooltipContent></TooltipPortal>
         </TooltipRoot>
-        <section v-for="group in WORKSPACE_GROUPS" :key="group.key" class="c2-nav-group">
+        <section v-for="group in navGroups" :key="group.key" class="c2-nav-group">
           <h2>{{ group.label }}</h2>
           <TooltipRoot v-for="item in group.items.filter(item => routeEnabled(item.to))" :key="item.key" :disabled="!railMode">
             <TooltipTrigger as-child>
@@ -93,7 +100,7 @@ function sessionDate(date?: string | null) { return date ? new Date(date).toLoca
     -->
     <div class="desk-footer">
       <AccountPopover class="desk-person hf-person" side="right" align="end"><template #trigger><span class="desk-person__avatar">{{ userName.slice(0, 1) }}</span><span class="hf-person-text"><strong>{{ userName }}</strong><small>{{ personSub }}</small></span></template></AccountPopover>
-      <div class="desk-footer__links"><RouterLink :to="PORTAL_LINK.to">{{ PORTAL_LINK.label }}</RouterLink></div>
+      <div class="desk-footer__links"><RouterLink v-for="item in helpItems" :key="item.key" :to="item.to" :title="item.hint">{{ item.short || item.label }}</RouterLink><RouterLink :to="PORTAL_LINK.to">{{ PORTAL_LINK.label }}</RouterLink></div>
     </div>
   </aside>
 </template>
@@ -159,4 +166,32 @@ function sessionDate(date?: string | null) { return date ? new Date(date).toLoca
 :global(.desk-rail-tooltip) { z-index:140; padding:7px 10px; border:1px solid var(--c-border); border-radius:9px; background:var(--c-surface); color:var(--c-text); box-shadow:var(--e-2); font-size:13px; line-height:1.4; }
 @media (prefers-reduced-motion:no-preference) { :global(.desk-rail-tooltip) { animation:desk-rail-tooltip-in .12s ease-out; } }
 @keyframes desk-rail-tooltip-in { from { opacity:0; transform:translateX(-4px); } }
+
+/*
+ * 【#8】1440×900 下导航内容比可视区高 42px，最后一项「完成记录」只露出 31px；
+ * 同时全局 `scrollbar-width:none` 把滚动条藏掉了，看起来像被底部用户卡片压住。
+ * 处理三步：
+ *   ① 侧栏滚动区恢复细滚动条 + 边缘渐隐（v-scroll-fade 现在挂在真正滚动的 .desk-scroll 上），
+ *      短屏（比如 768 高）仍然可以滚到每一项；
+ *   ② 900 高度这一档把品牌行/分组间距收紧 48px，让 12 个入口在 900 高内完整落下，
+ *      不需要滚动就能点到「完成记录」；
+ *   ③ 页脚（账号卡 + 帮助/门户链接）是 flex 尾项，不覆盖滚动内容。
+ * 选择器带 `#student-desktop-sidebar` 是为了压过 workspace.css / workspace-modern.css 的全局规则。
+ */
+#student-desktop-sidebar .desk-scroll {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--c-border-strong) transparent;
+}
+#student-desktop-sidebar .desk-scroll::-webkit-scrollbar { width: 6px; }
+#student-desktop-sidebar .desk-scroll::-webkit-scrollbar-thumb { border-radius: 999px; background: var(--c-border-strong); }
+#student-desktop-sidebar .desk-brand-row { margin-bottom: 8px; }
+#student-desktop-sidebar .c2-nav-group { margin-top: 8px; }
+#student-desktop-sidebar .desk-nav { padding-bottom: 2px; }
+#student-desktop-sidebar .desk-footer { flex: none; padding-top: 12px; }
+#student-desktop-sidebar .desk-footer__links { flex-wrap: wrap; gap: 0 14px; }
+#student-desktop-sidebar .desk-footer__links a[aria-current='page'] { color: var(--c-primary); font-weight: var(--fw-semibold); }
 </style>

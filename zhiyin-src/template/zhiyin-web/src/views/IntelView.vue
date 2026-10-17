@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { backendDemo } from '../lib/backend-demo'
 import { backendClient } from '../api/backend-client'
 import type { IntelItemView } from '../api/backend-types'
@@ -24,6 +25,100 @@ const matchOpen = ref(false)
 const reading = ref<IntelItemView | null>(null)
 const selectedId = ref('')
 const matchPanel = ref<CareerMatchHandle | null>(null)
+/**
+ * 从提醒页「看看是什么」跳进来时，把职业资料区滚进视野并在顶部说明来意。
+ * 路由在 onMounted 里读（组件挂载时一定在路由上下文内），避免在模块/setup 顶层
+ * 直接取 route：单测会把 IntelView 的 setup 跑在没有路由的 vm 里。
+ */
+const fromReminders = ref(false)
+const bannerDismissed = ref(false)
+
+/*
+ * 【#12】展示层清洗：后端抓回来的原文是"标签堆叠 + 整段无分段 + 中英标点混排"，
+ * 直接渲染时用户会看到「基本信息：职业定义：职业定义：……」这样一堵字。
+ * 这里只做展示转换，不改数据请求、不改后端：
+ *   ① 合并相邻的重复标签（职业定义：职业定义： → 职业定义：）；
+ *   ② 统一中文标点（把 , : ; ( ) 在中文语境里换成全角）；
+ *   ③ 按「职业定义 / 基本信息 / 知识技能 / 职业发展」等小标题分段；
+ *   ④ 把 1. / 2、/ 3) 这类编号拆成独立条目，长段落按句子切成不超过约 110 字的行。
+ * IntelArticle 的文章正文是 `white-space: pre-line`，所以插入的换行会真实显示成分段。
+ */
+const majorSectionLabels = ['职业定义', '基本信息', '知识技能', '职业发展', '职业前景', '工作内容', '任职要求', '主要职责', '发展路径', '职业介绍']
+const inlineLabels = ['个性定义', '常用工具', '职业道德', '职业其他名称', '职业别名', '所属行业', '学科门类', '摘要', '案例', '职业']
+
+function normalizeChinesePunctuation(text: string) {
+  return text
+    .replace(/,\s*(?=[\u4e00-\u9fa5])/g, '，')
+    .replace(/([\u4e00-\u9fa5])\s*,\s*/g, '$1，')
+    .replace(/:\s*(?=[\u4e00-\u9fa5（(])/g, '：')
+    .replace(/([\u4e00-\u9fa5])\s*:\s*/g, '$1：')
+    .replace(/;\s*(?=[\u4e00-\u9fa5])/g, '；')
+    .replace(/([\u4e00-\u9fa5])\s*;\s*/g, '$1；')
+    .replace(/\(/g, '（')
+    .replace(/\)/g, '）')
+    .replace(/([\u4e00-\u9fa5，。；：！？、（）])[ \t\u3000]+(?=[\u4e00-\u9fa5])/g, '$1')
+    .replace(/[ \t\u3000]+([，。；：！？、）])/g, '$1')
+}
+
+/** 长句按句号切成不超过约 110 字的行，避免整段一大块压在一起。 */
+function breakSentences(text: string, limit = 110): string[] {
+  const sentences = text.split(/(?<=[。！？])/).map((part) => part.trim()).filter(Boolean)
+  const lines: string[] = []
+  for (const sentence of sentences) {
+    const last = lines.length - 1
+    if (last >= 0 && (lines[last]!.length + sentence.length) <= limit) lines[last] += sentence
+    else lines.push(sentence)
+  }
+  return lines.length ? lines : [text.trim()]
+}
+
+function cleanIntelText(input?: string): string {
+  if (!input?.trim()) return ''
+  let text = input.replace(/\r\n?/g, '\n')
+  // ① 重复标签：连续两次以上同一个「xx：」只留一个
+  for (let pass = 0; pass < 3; pass += 1) {
+    const before = text
+    text = text.replace(/([\u4e00-\u9fa5]{2,8}[：:])\s*\1/g, '$1')
+    if (before === text) break
+  }
+  // ② 统一标点
+  text = normalizeChinesePunctuation(text)
+  // ③ 小标题前强制分段（原文常见「……。基本信息：……」这种挤在一行里的情况）
+  text = text.replace(new RegExp('\\s*(' + majorSectionLabels.join('|') + ')[：:]', 'g'), '\n\n$1：')
+  const blocks: string[] = []
+  const seen = new Set<string>()
+  const pushLine = (line: string) => {
+    const key = line.replace(/\s/g, '')
+    if (!key || seen.has(key)) return
+    seen.add(key)
+    blocks.push(line)
+  }
+  for (const raw of text.split(/\n+/).map((part) => part.trim()).filter(Boolean)) {
+    // ④ 编号条目独立成行：1. / 1、 / （1）
+    const withItems = raw
+      .replace(/(?<=[\s：。；])(\d{1,2})[.、]/g, '\n$1.')
+      .replace(/^(\d{1,2})[.、]\s*/, '$1. ')
+      .replace(/\s*[（(](\d{1,2})[)）]\s*/g, '\n（$1）')
+    for (const chunk of withItems.split(/\n/).map((part) => part.trim()).filter(Boolean)) {
+      const label = [...majorSectionLabels, ...inlineLabels].find((name) => chunk.startsWith(name + '：') || chunk.startsWith(name + ':'))
+      const headingOnly = label && chunk.replace(/[：:\s]/g, '') === label
+      if (label && headingOnly) { blocks.push(label); continue }
+      if (label && majorSectionLabels.includes(label)) {
+        const content = chunk.slice(label.length + 1).trim()
+        if (!content) { blocks.push(label); continue }
+        blocks.push(`${label}\n${breakSentences(content).join('\n')}`)
+        continue
+      }
+      pushLine(breakSentences(chunk).join('\n'))
+    }
+  }
+  return blocks.join('\n\n').replace(/\n{3,}/g, '\n\n').trim()
+}
+
+/** 传给 IntelArticle 的副本：只换 text，其余字段保持后端原值。 */
+function cleanArticle(item: IntelItemView): IntelItemView {
+  return { ...item, text: cleanIntelText(item.text) || item.text }
+}
 
 const allItems = computed(() => backendDemo.state.intel)
 const majorItems = computed(() => allItems.value.filter((item) => item.kind === 'speciality'))
@@ -48,6 +143,8 @@ const selected = computed(() => {
   if (!query.value.trim() && current?.kind === 'speciality') return current
   return visible.find((item) => item.id === selectedId.value) ?? visible[0] ?? current ?? major.value
 })
+/** 详情区与移动端抽屉都用清洗后的正文（#12）。 */
+const selectedArticle = computed(() => (selected.value ? cleanArticle(selected.value) : null))
 const initialLoading = computed(() => busy.value && !loaded.value && !allItems.value.length)
 
 function displayKind(item: IntelItemView) {
@@ -83,6 +180,21 @@ async function startMatch() {
   matchPanel.value?.run()
 }
 
+/**
+ * 从提醒页跳进来时定位到"职业资料"工作台（#11 的"跳转带定位"）。
+ * 只滚到有内容的区块，不改选中项，也不额外发请求。
+ */
+async function focusFromReminders() {
+  if (!fromReminders.value) return
+  await nextTick()
+  requestAnimationFrame(() => {
+    document.getElementById('intel-related')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  })
+}
+function clearFromReminders() {
+  bannerDismissed.value = true
+}
+
 async function load(refresh = false) {
   if (busy.value) return
   busy.value = true
@@ -98,6 +210,7 @@ async function load(refresh = false) {
     if (!result.items.some((item) => item.id === selectedId.value)) {
       selectedId.value = result.items.find((item) => item.kind === 'occupation')?.id ?? result.items[0]?.id ?? ''
     }
+    await focusFromReminders()
   } catch {
     error.value = refresh ? '职业资料更新失败，已读取的内容仍保留，请稍后重试。' : '职业资料没有读取成功。可以稍后重试，画像匹配仍可单独发起。'
   } finally {
@@ -107,7 +220,11 @@ async function load(refresh = false) {
   }
 }
 
-onMounted(() => { void load() })
+onMounted(() => {
+  const route = useRoute()
+  fromReminders.value = route.query.from === 'reminders'
+  void load()
+})
 </script>
 
 <template>
@@ -129,6 +246,7 @@ onMounted(() => { void load() })
     <StatusBanner v-if="error" tone="error" :message="error" :retry-label="lastRefresh ? '重试更新' : '重新读取'" :retrying="busy" @retry="load(lastRefresh)" @dismiss="error = ''" />
 
     <StatusBanner v-if="status" tone="info" :message="status" @dismiss="status = ''" />
+    <StatusBanner v-if="fromReminders && !bannerDismissed" tone="info" message="你从提醒里的「看看是什么」进来：下面是与你方向相关的职业资料，可以逐条点开核对来源。提醒已同时标为已读。" @dismiss="clearFromReminders" />
     <div v-if="initialLoading" class="intel-loading" role="status" aria-label="正在读取职业资料">
       <SkeletonBlock variant="list" :lines="6" />
     </div>
@@ -170,7 +288,7 @@ onMounted(() => { void load() })
         </aside>
       </section>
 
-      <div class="intel-workbench">
+      <div id="intel-related" class="intel-workbench">
         <section class="intel-list-pane" :aria-busy="busy" aria-labelledby="intel-results-title">
           <header class="intel-list-pane__head">
             <div>
@@ -243,8 +361,8 @@ onMounted(() => { void load() })
           </EmptyState>
         </section>
 
-        <section v-if="selected" class="intel-detail-card" aria-label="职业探索详情">
-          <IntelArticle :item="selected" />
+        <section v-if="selectedArticle" class="intel-detail-card" aria-label="职业探索详情">
+          <IntelArticle :item="selectedArticle" />
         </section>
       </div>
     </template>
@@ -257,7 +375,7 @@ onMounted(() => { void load() })
     </EmptyState>
 
     <InfoSheet :open="reading !== null" shape="sheet" :title="reading ? displayKind(reading) : '职业详情'" @close="reading = null">
-      <IntelArticle v-if="reading" :item="reading" />
+      <IntelArticle v-if="reading" :item="cleanArticle(reading)" />
     </InfoSheet>
 
     <InfoSheet :open="matchOpen" shape="panel" title="画像岗位匹配" description="本次匹配由你主动发起，不会自动重复运行。" @close="matchOpen = false">

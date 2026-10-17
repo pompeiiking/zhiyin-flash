@@ -81,6 +81,10 @@ class DefaultFunctionService(FunctionService):
         #: 结果编得更像样。
         self._web_search = web_search
         self._intel_cache: dict[str, tuple[float, list[ExternalIntel]]] = {}
+        #: 站内提醒去重：同一批情报在 12 小时内只推一次。
+        #: 此前每次取数都推一条同标题提醒，实测同一个用户攒出 3 条一字不差的
+        #: 「给你找到 5 条与你方向相关的公开信息」，提醒页完全无法区分。
+        self._last_intel_announce: dict[str, tuple[float, str]] = {}
         # 成就解锁规则来自动态资源（经 RegistryService 这个业务侧出口读）。
         # 缺读侧时**不发放任何成就**，而不是退回一张内置表：
         # 内置表会让"库里改了规则但没生效"看起来像正常 —— 那正是要避免的静默回落。
@@ -324,9 +328,17 @@ class DefaultFunctionService(FunctionService):
             if hit.url
         ]
 
+    #: 同一批情报的提醒冷却时间（秒）。12 小时内内容没变就不再推。
+    INTEL_ANNOUNCE_COOLDOWN_S = 12 * 3600
+
     async def _announce_intel(self, user_id: str, items: list[ExternalIntel]) -> None:
         """把取到的东西推成一条站内通知（前端浮窗读的就是它）。"""
         if self._notifier is None:
+            return
+        fingerprint = "|".join(sorted(item.id or item.title or "" for item in items))
+        last = self._last_intel_announce.get(user_id)
+        if last and last[1] == fingerprint and time.monotonic() < last[0]:
+            logger.info("情报内容与上次相同，12 小时内不重复推送（user=%s）", user_id)
             return
         top = items[0]
         head = top.title or (top.text[:40] if top.text else "外部情报")
@@ -338,6 +350,10 @@ class DefaultFunctionService(FunctionService):
                 body=f"{head} —— 这些来自{source}，都能点回原页面核对。",
                 channel=NotifyChannel.IN_APP,
                 action={"kind": "intel", "label": "看看是什么"},
+            )
+            self._last_intel_announce[user_id] = (
+                time.monotonic() + self.INTEL_ANNOUNCE_COOLDOWN_S,
+                fingerprint,
             )
         except Exception:  # noqa: BLE001 - 通知推不出去不该让取数失败
             logger.warning("外部情报通知推送失败（user=%s）", user_id, exc_info=True)

@@ -70,15 +70,15 @@ const summary = computed(() => {
         <i class="skin__dot skin__dot--1" />
         <i class="skin__dot skin__dot--2" />
       </span>
-      皮肤
+      外观
     </button>
     </PopoverTrigger>
 
     <PopoverPortal>
-      <PopoverContent class="skin__pop" :side="props.side ?? 'bottom'" align="end" :side-offset="8" :collision-padding="12" role="dialog" :aria-labelledby="titleId" aria-label="选择皮肤">
-        <h2 :id="titleId" class="sr-only">选择皮肤</h2>
+      <PopoverContent class="skin__pop" :side="props.side ?? 'bottom'" align="end" :side-offset="8" :collision-padding="12" role="dialog" :aria-labelledby="titleId" aria-label="设置外观与主题">
+        <h2 :id="titleId" class="sr-only">设置外观与主题</h2>
         <header class="skin__head">
-          <span class="t-label">皮肤</span>
+          <span class="t-label">外观</span>
           <span class="t-note">{{ summary }}</span>
         </header>
 

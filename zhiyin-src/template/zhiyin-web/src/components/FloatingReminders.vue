@@ -29,7 +29,25 @@ const cardY = computed(() => {
     : Math.min(y.value + 54, Math.max(72, viewportHeight.value - height))
 })
 const cardStyle = computed(() => ({ top: `${cardY.value}px` }))
-const visibleNotices = computed(() => demo.state.noticeQueue)
+/**
+ * 同一条提醒（标题+正文完全相同）只显示一次，并在卡片里标出"出现了 N 次"。
+ * 后端会为同一件事重复投递提醒，三张卡片文案一模一样时新手无法分辨（#11）。
+ */
+const visibleNotices = computed(() => {
+  const groups = new Map<string, { key: string; notice: (typeof demo.state.noticeQueue)[number]; count: number; ids: string[] }>()
+  for (const notice of demo.state.noticeQueue) {
+    const key = `${notice.title}\u0000${notice.body}`
+    const hit = groups.get(key)
+    if (hit) { hit.count += 1; hit.ids.push(notice.id) }
+    else groups.set(key, { key, notice, count: 1, ids: [notice.id] })
+  }
+  return [...groups.values()]
+})
+const noticeTotal = computed(() => visibleNotices.value.length)
+/** 合并后的一条 = 把所有同内容提醒一起标已读，避免"点掉一条、下面还排着两条一样的"。 */
+async function resolveGroup(entry: { notice: (typeof demo.state.noticeQueue)[number]; ids: string[] }) {
+  for (const id of entry.ids) await demo.resolveNotice(id)
+}
 
 function clamp(value: number) { return Math.min(maxY.value, Math.max(minY.value, value)) }
 function resize() {
@@ -83,20 +101,22 @@ watch(() => route.path, () => { if (!hasSavedPosition) restore(); demo.closeNoti
       :style="triggerStyle"
       type="button"
       :aria-expanded="demo.state.noticeOpen"
-      :aria-label="`提醒，${demo.state.noticeQueue.length} 条待处理。可上下拖动位置`"
+      :aria-label="`提醒，${noticeTotal} 条待处理。可上下拖动位置`"
       @pointerdown="pointerDown"
       @click="toggle"
     >
       <UiIcon name="bell" :size="19" />
-      <span v-if="demo.state.noticeQueue.length">{{ demo.state.noticeQueue.length > 99 ? '99+' : demo.state.noticeQueue.length }}</span>
+      <span v-if="noticeTotal">{{ noticeTotal > 99 ? '99+' : noticeTotal }}</span>
     </button>
 
     <section v-if="demo.state.noticeOpen" class="floating-reminders__card" :style="cardStyle" aria-label="提醒快捷卡片">
-      <header><div><strong>提醒</strong><span>{{ demo.state.noticeQueue.length }} 条待处理</span></div><button type="button" aria-label="关闭提醒" @click="demo.closeNotice()"><UiIcon name="close" :size="17" /></button></header>
+      <header><div><strong>提醒</strong><span>{{ noticeTotal }} 条待处理</span></div><button type="button" aria-label="关闭提醒" @click="demo.closeNotice()"><UiIcon name="close" :size="17" /></button></header>
       <div v-if="visibleNotices.length" class="floating-reminders__list">
-        <article v-for="notice in visibleNotices" :key="notice.id">
-          <span>{{ notice.kind }}</span><h2>{{ notice.title }}</h2><p>{{ notice.body }}</p>
-          <button type="button" :disabled="demo.state.chatBusy" @click="demo.resolveNotice(notice.id)">{{ notice.action || '标为已读' }}</button>
+        <article v-for="entry in visibleNotices" :key="entry.key">
+          <span>{{ entry.notice.kind }}</span><h2>{{ entry.notice.title }}</h2>
+          <p v-if="entry.count > 1" class="floating-reminders__dup">同一条提醒出现了 {{ entry.count }} 次，已合并展示。</p>
+          <p>{{ entry.notice.body }}</p>
+          <button type="button" :disabled="demo.state.chatBusy" @click="resolveGroup(entry)">{{ entry.notice.action || '标为已读' }}</button>
         </article>
       </div>
       <p v-else class="floating-reminders__empty">目前没有待处理提醒。</p>
@@ -107,9 +127,16 @@ watch(() => route.path, () => { if (!hasSavedPosition) restore(); demo.closeNoti
 
 <style scoped>
 .floating-reminders { position:relative; z-index:calc(var(--z-drawer) - 1); }
-.floating-reminders__trigger { position:fixed; right:-6px; z-index:calc(var(--z-drawer) - 1); display:grid; place-items:center; width:46px; height:46px; padding:0 6px 0 0; border:1px solid var(--c-primary-border); border-radius:15px 0 0 15px; background:color-mix(in srgb,var(--c-surface) 92%,transparent); color:var(--c-primary); box-shadow:var(--e-2); backdrop-filter:blur(16px); cursor:grab; touch-action:none; }
+/*
+ * 【#10】原来贴右缘用负偏移（桌面 right:-6px、手机 right:-8px），按钮本身和未读红点
+ * 都被屏幕右缘裁掉（390 宽裁 8px、360 宽裁 12px），而它是提醒页唯一入口。
+ * 改成安全边距：按钮完整落在屏幕内，有刘海/圆角的设备再叠加 env(safe-area-inset-right)。
+ * 不再贴边之后恢复整圆角。
+ */
+.floating-reminders__trigger { position:fixed; right:calc(12px + env(safe-area-inset-right, 0px)); z-index:calc(var(--z-drawer) - 1); display:grid; place-items:center; width:46px; height:46px; padding:0; border:1px solid var(--c-primary-border); border-radius:15px; background:color-mix(in srgb,var(--c-surface) 92%,transparent); color:var(--c-primary); box-shadow:var(--e-2); backdrop-filter:blur(16px); cursor:grab; touch-action:none; }
 .floating-reminders__trigger:active { cursor:grabbing; }
 .floating-reminders__trigger>span { position:absolute; top:-5px; right:-5px; display:grid; place-items:center; min-width:21px; height:21px; padding:0 5px; border:2px solid var(--c-bg); border-radius:999px; background:var(--c-attention); color:var(--c-on-attention); font-size:11px; font-weight:700; font-variant-numeric:tabular-nums; }
+.floating-reminders__dup { margin:2px 0 4px; color:var(--c-text-3); font-size:12px; line-height:1.55; }
 .floating-reminders__card { position:fixed; right:18px; z-index:calc(var(--z-drawer) - 1); width:min(360px,calc(100vw - 36px)); max-height:min(520px,calc(100dvh - 96px)); overflow:auto; border:1px solid var(--c-border); border-radius:16px; background:var(--c-surface); box-shadow:var(--e-3); }
 .floating-reminders__card>header { position:sticky; top:0; z-index:1; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:15px 16px; border-bottom:1px solid var(--c-border); background:color-mix(in srgb,var(--c-surface) 94%,transparent); backdrop-filter:blur(14px); }
 .floating-reminders__card>header div { display:flex; align-items:baseline; gap:8px; }
@@ -128,7 +155,8 @@ watch(() => route.path, () => { if (!hasSavedPosition) restore(); demo.closeNoti
 .floating-reminders__card>footer>span { color:var(--c-text-3); }
 .floating-reminders__card>footer button { color:var(--c-text-3); }
 @media (max-width:767px) {
-  .floating-reminders__trigger { right:-8px; width:44px; height:44px; padding-right:8px; border-radius:14px 0 0 14px; }
+  .floating-reminders__trigger { right:calc(10px + env(safe-area-inset-right, 0px)); width:44px; height:44px; padding:0; border-radius:14px; }
+  .floating-reminders__trigger>span { top:-6px; right:-6px; }
   .floating-reminders__card { right:12px; width:calc(100vw - 24px); max-height:min(56dvh,440px); }
 }
 @media (prefers-reduced-motion:reduce) { .floating-reminders__trigger { transition:none; } }

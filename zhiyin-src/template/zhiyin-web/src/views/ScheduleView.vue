@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { backendDemo } from '../lib/backend-demo'
 import { backendClient } from '../api/backend-client'
 import type { ActionTaskView } from '../api/backend-types'
@@ -33,6 +34,7 @@ const timetableScroll = ref<HTMLElement | null>(null)
 const capacityOpen = ref(false)
 const timePlanOpen = ref(false)
 const weekdays = ['一', '二', '三', '四', '五', '六', '日']
+const route = useRoute()
 
 function dateKey(value: Date) {
   return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`
@@ -182,7 +184,12 @@ async function loadCalendar() {
 
 async function courseImported(message:string){courseImportOpen.value=false;await loadCalendar();academicStatus.value=message}
 async function revokeCourses(){if(calendarBusy.value)return;calendarBusy.value=true;academicError.value='';try{const result=await backendClient.revokeAcademicCourses();if(!result.revoked)throw new Error('Not confirmed');backendDemo.revokeAcademicCourses();courseRevokeOpen.value=false;academicStatus.value='已撤回课表，成绩记录保持不变。';backendDemo.setWorkspace(await backendClient.workspace())}catch{academicError.value='撤回结果暂时没有确认，请重新读取后再试。'}finally{calendarBusy.value=false}}
-onMounted(() => { centerSelectedWeek(); centerTodayCourse(); void loadCalendar() })
+onMounted(() => {
+  centerSelectedWeek(); centerTodayCourse(); void loadCalendar()
+  // 从「今日容量 · 填写时间」跳进来时直接打开课表检查面板：
+  // 每周可投入分钟就在「课表检查 → 设置学期时间」里，少一步找入口。
+  if (route.query.setup === '1') capacityOpen.value = true
+})
 </script>
 
 <template>

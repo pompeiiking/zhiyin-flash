@@ -31,6 +31,49 @@ const descriptions: Record<string,string> = {
 }
 const skinLabel = computed(() => `${skin.state.accent === 'red' ? '红色' : '蓝色'} · ${skin.state.theme === 'system' ? '跟随系统' : skin.state.theme === 'dark' ? '深色' : '浅色'}`)
 
+/**
+ * 使用指南的正文（#9）。原来这里只有 6 个链接标签，新生看不出"每一步做什么、点哪里、
+ * 做完在哪看结果"。每步固定三段：做什么（what）、点哪个按钮（how）、产出在哪（output）。
+ */
+const guideSteps = [
+  {
+    title: '说明当前问题', to: '/chat',
+    what: '在对话框里用大白话讲你现在的情况：年级、专业、眼下最想解决的问题。页面给的快捷选项可以点，但不用照模板说。',
+    how: '点「咨询对话」或下面的「开始咨询」，输入后按回车发送。',
+    output: '聊完一轮，右侧的画像会同步记下新信息，页面顶部会显示采集进度。',
+  },
+  {
+    title: '核对画像与资料', to: '/profile',
+    what: '逐条核对系统记下的专业、年级、成绩、兴趣和卡点是不是真的符合你。资料越准，后面的判断越有依据。',
+    how: '打开「个人画像」，不对的条目点开修改，缺的按页面提示补上；学籍、成绩、课表也可以从「应用工具」单独导入。',
+    output: '一份你能确认的"我的资料"。',
+  },
+  {
+    title: '核对报告依据', to: '/report',
+    what: '报告先给总体判断，再逐条给依据。带「待验证」的条目不是结论，而是需要你在现实中验证的问题。',
+    how: '点页头的「重新读取」拿最新报告；点报告里的蓝色文字可以展开这条判断的依据与来源。',
+    output: '一份知道"依据在哪、还缺什么"的诊断报告，也可以导出 JSON 保存。',
+  },
+  {
+    title: '比较并确认方向', to: '/directions',
+    what: '方向方案会给出几套选择：主攻是最想投入的方向，平行是同时准备的方向，保底是万一不顺仍能接受的方向。',
+    how: '在「方向方案」里逐个比较目标、依据和风险，确认一套；觉得信息不够就回到对话补。',
+    output: '一个你确认过的主攻方向。',
+  },
+  {
+    title: '安排阶段行动', to: '/plan',
+    what: '把选定的方向拆成阶段目标，再把本周要做的事排进今日行动。每件事都写清"做到什么程度算完成"。',
+    how: '打开「阶段计划」新建阶段，用「安排新任务」加任务并填截止时间；今天要做的会出现在「今日行动」。',
+    output: '阶段计划和今天就能开始的第一件事。',
+  },
+  {
+    title: '记录结果与调整', to: '/review',
+    what: '做完任务后回到复盘页，写清事实、原因和下一步。发现方向不合适就回去改方向，不用怕推翻前面的选择。',
+    how: '在「复盘记录」里选任务填写并保存；完成情况会同步进「完成记录」。',
+    output: '一条可回看的调整记录，和一份真实的完成记录。',
+  },
+]
+
 async function exportAsset() {
   if (busy.value) return
   busy.value = true; error.value = ''; status.value = ''
@@ -97,11 +140,23 @@ async function exportData() {
 
     <NotificationCenter v-else-if="key === 'reminders'" />
     <AchievementsSection v-else-if="key === 'achievements'" />
-    <section v-else-if="key === 'guide'" class="ws-paper">
-      <h2>从咨询开始</h2>
-      <ol class="guide-flow"><li><RouterLink to="/chat">说明当前问题</RouterLink></li><li><RouterLink to="/profile">核对画像与资料</RouterLink></li><li><RouterLink to="/report">核对报告依据</RouterLink></li><li><RouterLink to="/directions">比较并确认方向</RouterLink></li><li><RouterLink to="/plan">安排阶段行动</RouterLink></li><li><RouterLink to="/review">记录结果与调整</RouterLink></li></ol>
-      <div class="ws-inline-actions"><RouterLink class="btn" to="/chat">开始咨询</RouterLink><RouterLink class="btn" to="/profile">核对画像</RouterLink><RouterLink class="btn" to="/directions">比较方向</RouterLink></div>
-      <DetailPopover title="状态与术语" label="查看状态与术语"><template #trigger>状态与术语</template><dl><dt>已读</dt><dd>看过提醒，不代表事项已处理。</dd><dt>待重新计算</dt><dd>依赖资料已变化，旧报告保留原版。</dd><dt>个人待办</dt><dd>自己记录的安排，与阶段计划任务分别保存。</dd><dt>待支持</dt><dd>功能入口保留，尚缺相应服务能力。</dd></dl></DetailPopover>
+    <section v-else-if="key === 'guide'" class="ws-paper guide-page">
+      <h2>从第一次咨询到下一步行动</h2>
+      <p class="guide-intro">这个平台帮你在"不知道自己适合什么"的时候，用对话把情况说清楚，再给出有依据的判断和今天就能做的下一步。下面六步不用一次做完，先做第 1 步就有产出；每一步都写了做什么、点哪里、做完去哪看。</p>
+      <ol class="guide-flow">
+        <li v-for="(step, index) in guideSteps" :key="step.title">
+          <span class="guide-flow__index" aria-hidden="true">{{ String(index + 1).padStart(2, '0') }}</span>
+          <div class="guide-flow__copy">
+            <h3><RouterLink :to="step.to">{{ step.title }}</RouterLink></h3>
+            <p>{{ step.what }}</p>
+            <p class="guide-flow__how"><strong>怎么做：</strong>{{ step.how }}</p>
+            <p class="guide-flow__out"><strong>做完在哪看：</strong>{{ step.output }}</p>
+          </div>
+        </li>
+      </ol>
+      <p class="guide-tools">需要单独核验学籍、导入成绩或课表时，去「应用工具」页，每个工具都写明了读什么、给你什么、什么时候用。</p>
+      <div class="ws-inline-actions"><RouterLink class="btn" to="/chat">开始咨询</RouterLink><RouterLink class="btn" to="/profile">核对画像</RouterLink><RouterLink class="btn" to="/directions">比较方向</RouterLink><RouterLink class="btn" to="/tools">打开应用工具</RouterLink></div>
+      <DetailPopover title="状态与术语" label="查看状态与术语"><template #trigger>状态与术语</template><dl><dt>待验证</dt><dd>目前证据还不够，需要你在现实中做一次尝试后再回来更新，不是最终结论。</dd><dt>主攻 / 平行 / 保底</dt><dd>主攻是最想投入的方向，平行是同时准备的方向，保底是万一不顺仍能接受的方向。</dd><dt>已读</dt><dd>看过提醒，不代表事项已处理。</dd><dt>待重新计算</dt><dd>依赖资料已变化，旧报告保留原版，需要生成新版。</dd><dt>个人待办</dt><dd>自己记录的安排，与阶段计划任务分别保存。</dd><dt>待支持</dt><dd>功能入口保留，尚缺相应服务能力。</dd></dl></DetailPopover>
     </section>
   </div>
 </template>
@@ -136,8 +191,19 @@ async function exportData() {
 .settings-data nav>a:hover { color:var(--c-primary); background:var(--c-primary-weak); text-decoration:none; }
 .settings-data nav>a>span { display:grid; place-items:center; width:38px; height:38px; border-radius:11px; background:var(--c-surface-2); color:var(--c-primary); }
 .settings-data nav strong,.settings-data nav small { display:block; }.settings-data nav strong { color:var(--c-text); font-size:13px; }.settings-data nav small { margin-top:3px; color:var(--c-text-2); font-size:12px; }
-.guide-flow { display:grid; gap:14px; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); margin:20px 0; padding-left:24px; }
-.guide-flow a { display:inline-block; padding:10px 0; color:var(--c-primary); }
+.guide-page h2 { font-size:22px; }
+.guide-intro { max-width:64em; margin-top:10px; color:var(--c-text-2); font-size:14px; line-height:1.85; }
+.guide-flow { display:grid; gap:14px; margin:22px 0 18px; padding:0; list-style:none; }
+.guide-flow>li { display:grid; grid-template-columns:34px minmax(0,1fr); gap:12px; padding:16px 16px 15px; border:1px solid var(--c-border); border-radius:14px; background:var(--c-surface-2); }
+.guide-flow__index { padding-top:2px; color:var(--c-primary); font-size:13px; font-weight:650; font-variant-numeric:tabular-nums; }
+.guide-flow__copy { min-width:0; }
+.guide-flow__copy h3 { font-size:16px; font-weight:650; }
+.guide-flow__copy h3 a { color:var(--c-primary); }
+.guide-flow__copy>p { margin-top:6px; color:var(--c-text-2); font-size:13px; line-height:1.8; }
+.guide-flow__how strong,.guide-flow__out strong { color:var(--c-text); font-weight:600; }
+.guide-flow__out { color:var(--c-text-2); }
+.guide-tools { margin:0 0 16px; padding:12px 14px; border-left:3px solid var(--c-primary-border); border-radius:0 10px 10px 0; background:var(--c-primary-weak-2); color:var(--c-text-2); font-size:13px; line-height:1.75; }
+@media(max-width:600px){.guide-flow>li{grid-template-columns:minmax(0,1fr);gap:4px}.guide-flow__index{padding-top:0}.guide-page h2{font-size:20px}}
 @media(max-width:960px){.settings-identity{grid-template-columns:52px minmax(0,1fr) auto;grid-template-rows:auto auto}.settings-identity__avatar{grid-row:1/3}.settings-identity__name{grid-column:2;grid-row:1}.settings-identity__state{grid-column:2;grid-row:2;justify-content:flex-start}.settings-identity>.btn{grid-column:3;grid-row:1/3}.settings-layout{grid-template-columns:1fr}.settings-data{position:static;order:-1}.settings-data nav{grid-template-columns:repeat(3,minmax(0,1fr))}.settings-data nav>a{grid-template-columns:38px minmax(0,1fr)}.settings-data nav>a>svg{display:none}}
 @media(max-width:700px){.settings-export-grid article{grid-template-columns:40px minmax(0,1fr)}.settings-export-grid article>.btn,.settings-export-options{grid-column:1/-1}.settings-export-options{display:grid;grid-template-columns:1fr 1fr}.settings-export-options label{display:grid}.settings-export-grid select{width:100%;min-width:0}.settings-data nav{grid-template-columns:1fr}}
 @media(max-width:560px){.settings-identity{grid-template-columns:48px minmax(0,1fr);grid-template-rows:auto auto auto;padding:14px}.settings-identity__avatar{grid-row:1;width:48px;height:48px}.settings-identity__name{grid-column:2;grid-row:1}.settings-identity__state{grid-column:1/-1;grid-row:2;gap:6px}.settings-identity>.btn{grid-column:1/-1;grid-row:3;width:100%}.settings-identity__state>span{min-height:34px}.settings-block,.settings-data{padding:16px}.settings-export-options{grid-template-columns:1fr}.settings-export-grid article{padding:12px}.settings-export-grid article>.btn{width:100%}}

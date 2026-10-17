@@ -64,6 +64,13 @@ class StageDecision(BaseModel):
     )
     need_clarify: bool = Field(default=False, description="是否回落到澄清追问")
     clarify_question: Optional[str] = None
+    #: 采集门槛是否**允许**顶掉这条判定。
+    #:
+    #: 默认 False：用户明确说「我迷茫、想重新了解自己」时不把他顶去诊断，
+    #: 等于不听他说话。但"用户在回答采集问题"（自我介绍式表达）也被归进
+    #: intent 时，门槛必须还能推进 —— 否则一句"我做过…"就让采集永远收不了尾。
+    #: 由环节策略显式标记"这条 intent 是回答、不是要求回到采集"。
+    allow_gate_advance: bool = Field(default=False)
 
 
 class LeadDecision(BaseModel):

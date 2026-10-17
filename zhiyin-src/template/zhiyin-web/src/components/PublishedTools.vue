@@ -205,7 +205,7 @@ const directory = computed<DirectoryEntry[]>(() => [
     name: e.name,
     description: e.description,
     source: 'published',
-    sourceLabel: '服务端发布清单',
+    sourceLabel: '平台已发布',
     sourceKind: 'citation',
     runnable: e.runnable,
     version: e.version,
@@ -275,7 +275,7 @@ const toolGroups = computed<ToolGroup[]>(() => {
     ]
   }
   return [
-    { key: 'published', title: '服务端已发布的工具', note: '由服务返回的发布清单决定；未发布或未启用的不放进目录。', items: all.filter((t) => t.source === 'published') },
+    { key: 'published', title: '平台已发布的工具', note: '由平台统一发布；未发布或未启用的工具不会出现在这里。', items: all.filter((t) => t.source === 'published') },
     { key: 'preset', title: '工作空间内置的入口', note: '工作空间内置入口，打开后可直接使用。', items: all.filter((t) => t.source === 'preset') },
   ]
 })
@@ -289,11 +289,11 @@ const axisNote = computed(() => {
 /** 某一组为空时说什么 —— 服务端那一组的三种状态要分开说，不能都写成"没有"。 */
 function emptyText(g: ToolGroup): string {
   if (g.key !== 'published') return '这一组现在没有条目。'
-  if (stage.value === 'loading') return '正在读取发布清单…'
+  if (stage.value === 'loading') return '正在读取工具清单…'
   /* 用户自己点过重读、还是没读到 → 这时红条已经在运行区里给了原因，这里只指路。
      没点过（自动读那一次没读到）→ 说"还没取到 + 可以重试"，不替用户宣布失败。 */
-  if (autoLoadFailed.value) return '还没取到发布清单；页头的「重新读取工具目录」可以重试，重试失败时会写出原因。'
-  return '还没有读取发布清单。'
+  if (autoLoadFailed.value) return '还没取到工具清单；页头的「重新读取工具目录」可以重试，重试失败时会写出原因。'
+  return '还没有读取工具清单。'
 }
 
 /* ---- 三态轨：亮着的一格就是现在 ------------------------------------------- */
@@ -308,17 +308,17 @@ const railStage = computed(() => (stage.value === 'ready' ? 'ready' : stage.valu
    这句只在**自动读那一次失败**时出现；用户点过重读之后由运行区的红条说原因。 */
 function railBody(s: { key: string; body: string }): string {
   if (s.key === 'unread' && autoLoadFailed.value) {
-    return '打开这一页自动读了，但这次没有取到发布清单；可以点页头的「重新读取工具目录」重试，失败原因会在运行区写出来。'
+    return '打开这一页自动读了，但这次没有取到工具清单；可以点页头的「重新读取工具目录」重试，失败原因会在运行区写出来。'
   }
   return s.body
 }
 
 /* ---- 溯源：目录本身从哪来 -------------------------------------------------- */
-const sourceLabel = computed(() => (backendDemo.state.dataMode === 'demo' ? '本地资料' : '服务端发布清单'))
+const sourceLabel = computed(() => (backendDemo.state.dataMode === 'demo' ? '本地资料' : '平台已发布清单'))
 const sourceDetail = computed(() =>
   backendDemo.state.dataMode === 'demo'
     ? '本地工作空间'
-    : '服务端 /api/v1/modules，只返回已发布且启用的工具',
+    : '由平台统一发布，只显示已发布且已启用的工具',
 )
 </script>
 
@@ -326,7 +326,7 @@ const sourceDetail = computed(() =>
   <div class="ws-page">
     <PageHeading
       title="应用工具"
-      description="服务端已发布的工具和工作空间内置的入口放在同一个目录里：换一种分法，看的是同一批条目。"
+      description="平台已发布的工具和工作空间内置的入口放在同一个目录里：换一种分法，看的是同一批条目。"
     >
       <button class="btn" :disabled="stage==='loading'" @click="reloadCatalog">
         {{ stage==='loading' ? '正在读取…' : '重新读取工具目录' }}
@@ -379,7 +379,7 @@ const sourceDetail = computed(() =>
             :heading-level="4"
             :next="false"
             title="服务没有返回已发布工具"
-            description="发布清单为空时这里给空态，不拿预置入口来充数。"
+            description="工具清单为空时这里给空态，不拿预置入口来充数。"
           >
             <button class="btn" type="button" @click="reloadCatalog">重新读取工具目录</button>
           </EmptyState>

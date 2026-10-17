@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { api } from '@/api/client'
+import { auth } from '@/lib/auth'
 import { jsonRequest, type DeveloperContext, type ModuleView, type ReleaseJob } from '@/modules/client'
 import ModuleHost from '@/modules/ModuleHost.vue'
 import GettingStarted from '@/developer/GettingStarted.vue'
@@ -55,7 +56,16 @@ const fixture = ref('normal')
 const commit = ref('')
 const kind = ref<'deploy' | 'rollback' | 'check'>('deploy')
 const error = ref('')
-const accessDenied = computed(() => !context.value && /权限|forbidden|403/i.test(error.value))
+/**
+ * 【#17】学生直达 /#/developer 时，原来先发 GET /developer/context 拿到必然的 403，
+ * 在控制台/Network 留一条红，然后才由错误文案兜底成"无权限"页。
+ * 权限在登录后拿到的 bootstrap 里就有（identity.role），先看角色再决定要不要请求：
+ * 没有开发者/管理员角色就直接渲染无权限页，一个 /developer 请求都不发。
+ */
+const developerRole = computed(() => auth.state.bootstrap?.identity?.role ?? '')
+const isDeveloperAccount = computed(() => developerRole.value === 'admin' || developerRole.value === 'developer')
+const noPermission = ref(false)
+const accessDenied = computed(() => noPermission.value || (!context.value && /权限|forbidden|403/i.test(error.value)))
 const message = ref('')
 const busy = ref(false)
 const administrator = computed(() => context.value?.role === 'admin')
@@ -90,14 +100,17 @@ function release() {
   void run(() => api('/developer/releases', jsonRequest('POST', { commit:commit.value.trim(), kind:kind.value, request_id:requestId })), '任务已创建，管理员确认后由执行器处理。')
 }
 function approve(job: ReleaseJob) { void run(() => api(`/developer/releases/${job.id}/approve`, { method:'POST' }), '任务已加入执行队列。') }
-onMounted(() => {
-  void run(load, '')
+async function start() {
+  if (!auth.state.bootstrap) await auth.restore()
+  if (!isDeveloperAccount.value) { noPermission.value = true; return }
+  await run(load, '')
   poll = setInterval(async () => {
     if (!isWorkbench.value || busy.value) return
     try { const value = await api<ReleaseJob[]>('/developer/releases'); if (alive) jobs.value = value; await refreshPlatform() }
     catch (e) { if (alive) error.value = String(e) }
   }, 5000)
-})
+}
+onMounted(() => { void start() })
 onBeforeUnmount(() => { alive = false; clearInterval(poll) })
 function reloadConfig(){void run(()=>api('/app/config/reload',{method:'POST'}),'动态配置已重新加载。')}
 </script>
@@ -113,7 +126,7 @@ function reloadConfig(){void run(()=>api('/app/config/reload',{method:'POST'}),'
     </header>
     <p v-if="error && !accessDenied" class="notice error" role="alert">{{ error }}</p>
     <p v-if="message" class="notice success" role="status">{{ message }}</p>
-    <p v-if="!context && !error">正在核对开发权限…</p>
+    <p v-if="!context && !error && !accessDenied">正在核对开发权限…</p>
     <template v-if="context">
       <section v-if="isWorkbench" class="dev-summary"><span><small>工作台构建</small><code>{{ context.revision }}</code></span><span><small>测试环境实际运行版本</small><code>{{ platform?.environment.revision || '尚未确认运行版本' }}</code><a v-if="platform?.environment.url" :href="platform.environment.url" target="_blank" rel="noopener"> 打开环境 ↗</a></span><span><small>自动验收执行器</small>{{ platform ? platform.worker.healthy ? '在线' : '离线或尚无心跳' : '正在读取' }}<small v-if="platform">待处理 {{ platform.pending_versions }} 个版本 · 最近心跳 {{ platform.worker.last_seen || '无' }}</small></span></section>
       <section v-else class="dev-summary"><span><small>当前环境构建</small><code>{{ context.revision }}</code></span><span>新安装模块默认停用，由管理员在「模块列表」独立授权并启用。<small>配置仅影响当前环境；上传版本与维护发布请前往工作台。</small><a :href="workbenchUrl.href" target="_blank" rel="noopener">前往开发工作台上传与发布 ↗</a></span></section>

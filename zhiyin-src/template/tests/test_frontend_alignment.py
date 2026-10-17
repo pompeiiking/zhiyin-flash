@@ -79,7 +79,8 @@ def test_chat_preserves_retry_identity_and_real_task_ids():
     chat = "".join(chat.split())
     for code in [
         "client_msg_id:crypto.randomUUID()",
-        "retry&&failedRequest?failedRequest:",
+        # 重试必须复用失败时那条请求的 client_msg_id（身份不变），而不是新建一条
+        "retried=retry?(failedRequest??failedSend.value?.request??null):null",
         "demo.state.currentSessionId!==sessionId",
         "watch(()=>demo.state.currentSessionId,",
         "selectedOption.value=null;failedRequest=null;pending.value=null",

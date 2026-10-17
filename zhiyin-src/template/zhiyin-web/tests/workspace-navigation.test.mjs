@@ -44,8 +44,9 @@ test('every published navigation entry resolves to a real route', () => {
   }
 })
 
-test('all twelve workspaces have one active item; mobile tabs only highlight their own route', () => {
-  assert.equal(nav.WORKSPACE_ITEMS.length, 12)
+// 14 = 12 个学生主循环入口 + 「帮助与工具」分组里的 使用指南 / 应用工具（#9 修复后新增的可发现入口）。
+test('every workspace has one active item; mobile tabs only highlight their own route', () => {
+  assert.equal(nav.WORKSPACE_ITEMS.length, 14)
   for (const item of nav.WORKSPACE_ITEMS) {
     const route = { path: item.to, query: {} }
     assert.deepEqual(Array.from(nav.WORKSPACE_ITEMS.filter(i => nav.isNavActive(i, route)), i => i.key), [item.key])

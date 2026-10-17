@@ -26,11 +26,22 @@ const completed = computed(() => tasks.value.filter((task) => task.done))
 const pending = computed(() => tasks.value.filter((task) => !task.done))
 const overdue = computed(() => pending.value.filter((task) => deadline(task.due_date).overdue))
 const reviewedTaskIds = computed(() => new Set(reviews.value.map((review) => review.task_id)))
+// 默认优先带出「最近逾期」与「最近完成」的任务，新手不用先手动去"切换任务"里挑。
+const overdueSorted = computed(() => [...overdue.value].sort((a, b) =>
+  (dateKey(a.due_date) || '9999-12-31').localeCompare(dateKey(b.due_date) || '9999-12-31')))
+const recentCompleted = computed(() => [...completed.value].sort((a, b) =>
+  (b.done_at || '').localeCompare(a.done_at || '')))
+const upcomingPending = computed(() => [...pending.value]
+  .filter((task) => !deadline(task.due_date).overdue)
+  .sort((a, b) => (dateKey(a.due_date) || '9999-12-31').localeCompare(dateKey(b.due_date) || '9999-12-31')))
 const focusTaskPool = computed(() => {
   const rows = [
-    ...overdue.value,
-    ...completed.value.filter((task) => !reviewedTaskIds.value.has(task.task_id)),
+    ...overdueSorted.value,
+    ...recentCompleted.value.filter((task) => !reviewedTaskIds.value.has(task.task_id)),
     ...pending.value.filter((task) => !deadline(task.due_date).overdue && reviewedTaskIds.value.has(task.task_id)),
+    // 兜底：所有已完成（已复盘过的也可回看）与未到期任务，保证有任务时不会空着。
+    ...recentCompleted.value,
+    ...upcomingPending.value,
   ]
   const seen = new Set<string>()
   return rows.filter((task) => !seen.has(task.task_id) && seen.add(task.task_id))
@@ -39,7 +50,9 @@ const focusIndex = computed(() => focusTaskPool.value.findIndex((task) => task.t
 const queuePosition = computed(() => focusIndex.value >= 0 ? focusIndex.value + 1 : 0)
 
 watch(focusTaskPool, (items) => {
-  if (!selectedId.value && items.length) selectedId.value = items[0].task_id
+  if (!selectedId.value || !items.some((task) => task.task_id === selectedId.value)) {
+    selectedId.value = items[0]?.task_id ?? ''
+  }
 }, { immediate: true })
 
 function legacyReviewTaskId(text: string) {
@@ -136,11 +149,15 @@ onMounted(() => load(false))
           <span id="review-workspace-title">本次回看</span>
           <strong v-if="busy && !tasks.length">正在整理任务…</strong>
           <strong v-else-if="focusTaskPool.length">{{ overdue.length }} 项逾期，{{ completed.length }} 项已完成</strong>
-          <strong v-else>目前没有优先任务</strong>
+          <strong v-else>还没有可复盘的任务</strong>
         </div>
         <div v-if="focusTaskPool.length" class="review-session-bar__progress">
           <span>{{ queuePosition || '自由选择' }}<template v-if="queuePosition"> / {{ focusTaskPool.length }}</template></span>
           <progress :value="queuePosition" :max="focusTaskPool.length" aria-label="复盘进度"></progress>
+        </div>
+        <div v-else-if="!busy" class="review-session-bar__empty">
+          <p>先安排并完成一项任务，再回来记录实际发生的事。</p>
+          <RouterLink class="btn btn--sm" to="/home">去今日行动</RouterLink>
         </div>
         <div class="review-session-bar__actions">
           <button class="btn btn--sm" :disabled="focusIndex <= 0" @click="selectRelativeTask(-1)">上一项</button>
@@ -221,6 +238,9 @@ onMounted(() => load(false))
 .review-session-bar__progress progress::-webkit-progress-bar { background: var(--c-surface-3); }
 .review-session-bar__progress progress::-webkit-progress-value { border-radius: var(--r-pill); background: var(--c-primary); }
 .review-session-bar__progress progress::-moz-progress-bar { border-radius: var(--r-pill); background: var(--c-primary); }
+.review-session-bar__empty { display: flex; align-items: center; gap: 14px; min-width: 0; color: var(--c-text-2); font-size: var(--fs-12); }
+.review-session-bar__empty p { overflow: hidden; margin: 0; text-overflow: ellipsis; white-space: nowrap; }
+.review-session-bar__empty .btn { flex: none; min-height: 40px; white-space: nowrap; }
 .review-session-bar__actions { display: flex; gap: 6px; }
 .review-session-bar__actions .btn { min-height: 44px; }
 .review-records { max-width: 900px; margin: 28px auto 0; overflow: hidden; border: 1px solid var(--c-border); border-radius: var(--r-lg); background: var(--c-surface); }
@@ -254,6 +274,8 @@ onMounted(() => load(false))
 @media (max-width: 900px) {
   .review-session-bar { grid-template-columns: minmax(0, 1fr) auto; }
   .review-session-bar__progress { grid-column: 1 / -1; grid-row: 2; }
+  .review-session-bar__empty { grid-column: 1 / -1; grid-row: 2; flex-wrap: wrap; }
+  .review-session-bar__empty p { white-space: normal; }
   .review-session-bar__actions { grid-column: 2; grid-row: 1; }
 }
 @media (max-width: 767px) {

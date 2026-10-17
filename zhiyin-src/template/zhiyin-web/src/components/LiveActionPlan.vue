@@ -41,6 +41,14 @@ const nextTask=computed(()=>plan.value?.next_task??currentPhase.value?.items.fin
 const selectedDirection=computed(()=>directions.value?.plans?.find(item=>item.id===directions.value?.selected_id||item.selected))
 const overallPercent=computed(()=>tasks.value.length?Math.round(doneCount.value/tasks.value.length*100):0)
 const allDone=computed(()=>tasks.value.length>0&&doneCount.value===tasks.value.length)
+// 方向未确认但计划已存在：这是"试用计划"，确认方向后后端会重排，不该写成"方向尚未确认"。
+const directionUnconfirmed=computed(()=>!selectedDirection.value&&tasks.value.length>0)
+const directionTitle=computed(()=>selectedDirection.value?.name||(directionUnconfirmed.value?'试用计划':'方向尚未确认'))
+const directionDescription=computed(()=>{
+  if(selectedDirection.value)return selectedDirection.value.target_desc||selectedDirection.value.fit_reason||''
+  if(directionUnconfirmed.value)return '方向还没有确认，这份计划先按试用方案推进；确认方向后会自动对齐。'
+  return '先核对方向方案，再让行动计划围绕一个清晰目标展开。'
+})
 const timeFact=computed(()=>workspace.value?.profile_panel?.fields?.find(field=>field.key==='time'||field.key==='weekly_hours'))
 const filtered=computed(()=>tasks.value.filter(task=>(selected.value<0||task.phaseIndex===selected.value)
   &&actionStatusMatches(task,filter.value)
@@ -139,7 +147,7 @@ onBeforeUnmount(()=>{if(statusTimer)clearTimeout(statusTimer)})
     <p v-if="status" role="status" class="plan-toast">{{status}}</p>
 
     <section v-if="!busy&&plan?.has_plan===false" class="plan-empty-path">
-      <header><div><p>还没有阶段计划</p><h2>把方向、时间和第一步连起来</h2></div><RouterLink class="btn btn--primary" :to="'/chat?question='+encodeURIComponent('请根据我的资料和可投入时间，一起建立阶段行动计划')">开始规划</RouterLink></header>
+      <header><div><p>还没有阶段计划</p><h2>把方向、时间和第一步连起来</h2></div><div class="plan-empty-path__actions"><PhaseEditor/><RouterLink class="btn btn--primary" :to="'/chat?question='+encodeURIComponent('请根据我的资料和可投入时间，一起建立阶段行动计划')">开始规划</RouterLink></div></header>
       <ol><li><span>方向</span><strong>确定这轮要靠近什么</strong><RouterLink to="/directions">查看方向方案</RouterLink></li><li><span>时间</span><strong>确认每周能投入多少</strong><RouterLink to="/schedule">核对课表与时间</RouterLink></li><li><span>第一步</span><strong>安排一件现在能开始的事</strong><RouterLink to="/notes">查看待办与目标</RouterLink></li></ol>
     </section>
 
@@ -147,9 +155,9 @@ onBeforeUnmount(()=>{if(statusTimer)clearTimeout(statusTimer)})
       <section class="plan-overview">
         <div class="plan-goal">
           <div class="plan-goal-copy">
-            <span>{{selectedDirection?'已确认方向':'行动方向'}}</span>
-            <h2>{{selectedDirection?.name||'方向尚未确认'}}</h2>
-            <p>{{selectedDirection?.target_desc||selectedDirection?.fit_reason||'先核对方向方案，再让行动计划围绕一个清晰目标展开。'}}</p>
+            <span>{{selectedDirection?'已确认方向':directionUnconfirmed?'待确认方向':'行动方向'}}</span>
+            <h2>{{directionTitle}}</h2>
+            <p>{{directionDescription}}</p>
           </div>
           <div class="plan-progress">
             <strong>{{doneCount}} / {{tasks.length}}</strong><span>项已完成</span>
@@ -254,4 +262,6 @@ onBeforeUnmount(()=>{if(statusTimer)clearTimeout(statusTimer)})
 @media(max-width:700px){.plan-empty-path>header{align-items:flex-start;flex-direction:column}.plan-empty-path>header h2{font-size:22px}.plan-empty-path ol{grid-template-columns:1fr}.plan-empty-path li,.plan-empty-path li+li{padding:14px 0;border-left:0;border-bottom:1px solid var(--c-border)}}
 @media(max-width:700px){.plan-route li{flex-basis:210px}.plan-route li>button{min-height:84px;padding-right:18px}.plan-route-copy strong{width:auto;white-space:normal;overflow-wrap:anywhere;line-height:1.4}.plan-route-copy small{line-height:1.4}}
 @media print{.plan-task-tools,.restored-plan button,.plan-toast{display:none}.plan-overview{border-top-color:var(--c-border)}.plan-route nav{overflow:visible}}
+.plan-empty-path__actions{display:flex;align-items:center;gap:14px;flex:none}
+@media(max-width:700px){.plan-empty-path__actions{width:100%;align-items:stretch;flex-direction:column;gap:10px}.plan-empty-path__actions :deep(.ws-text-button),.plan-empty-path__actions .btn{width:100%;justify-content:center;min-height:44px}}
 </style>

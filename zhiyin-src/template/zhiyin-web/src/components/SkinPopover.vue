@@ -22,8 +22,8 @@ const accentOptions: { id: Accent; label: string }[] = [
 </script>
 
 <template>
-  <DetailPopover v-model="open" title="皮肤" label="选择皮肤" side="bottom" class="skin-trigger">
-    <template #trigger><UiIcon name="settings" :size="17" /><span>皮肤</span></template>
+  <DetailPopover v-model="open" title="外观与主题" label="设置外观与主题" side="bottom" class="skin-trigger">
+    <template #trigger><UiIcon name="settings" :size="17" /><span>外观</span></template>
     <div class="skin-picker">
       <section>
         <div class="skin-picker__heading"><strong>品牌色</strong><span>用于导航、主要操作与强调状态</span></div>
@@ -33,7 +33,7 @@ const accentOptions: { id: Accent; label: string }[] = [
         <div class="skin-picker__heading"><strong>明暗</strong><span>跟随系统会随设备外观自动变化</span></div>
         <SegmentedChoice :model-value="skin.state.theme" :options="themeOptions" label="明暗模式" @update:model-value="skin.setTheme" />
       </section>
-      <button class="skin-picker__reset" type="button" @click="skin.reset()">恢复默认皮肤</button>
+      <button class="skin-picker__reset" type="button" @click="skin.reset()">恢复默认外观</button>
     </div>
   </DetailPopover>
 </template>

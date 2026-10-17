@@ -52,6 +52,17 @@ _BINARY_SUFFIXES: dict[str, str] = {
     ".zip": "压缩包",
     ".rar": "压缩包",
     ".7z": "压缩包",
+    # 图片：对话侧只读文字。此前没有这一档，PNG 会被当文本解码成乱码
+    # （实测 70 字节 → 69 个"字符"），接口还返回 200，用户看到"上传成功"、
+    # 模型却读不到内容 —— 成功状态与真实能力不符。后缀在就应当场说清楚。
+    ".png": "图片",
+    ".jpg": "图片",
+    ".jpeg": "图片",
+    ".gif": "图片",
+    ".webp": "图片",
+    ".bmp": "图片",
+    ".heic": "图片",
+    ".svg": "矢量图",
 }
 
 
@@ -85,9 +96,28 @@ def unsupported_reason(filename: str) -> str:
         guidance = "请在 Excel 中另存为 CSV 后上传，或复制包含表头的表格内容。"
     elif suffix in {".pdf", ".doc", ".docx"}:
         guidance = "请复制需要分析的文字，保存为 TXT 后上传；扫描件需先识别为文字。"
+    elif label in {"图片", "矢量图"}:
+        guidance = (
+            "对话里只能读取文字：请把图片中的文字复制成文本，或上传 TXT/CSV；"
+            "需要描述图片内容时，直接用文字说明即可。"
+        )
     else:
         guidance = "请先解压，再选择其中的 TXT、CSV 等文本文件上传。"
     return f"暂不支持直接读取{label}（{suffix}）。{guidance}"
+
+
+def _looks_binary(data: bytes) -> bool:
+    """没有后缀可依时，按字节判断"这是不是一段文本"。
+
+    只看前 4 KB：NUL 与控制字符占比超过 10% 就按二进制处理。
+    没有这道判断时，一张改名的图片会被 GB18030 解成一串可打印的乱码，
+    一路走进模型上下文 —— 接口返回 200，用户以为"传上去了"。
+    """
+    sample = data[:4096]
+    if not sample:
+        return False
+    control = sum(1 for byte in sample if byte == 0 or byte < 9 or 13 < byte < 32)
+    return control / len(sample) > 0.10
 
 
 class LocalTextExtractor(DocumentTextGateway):
@@ -105,6 +135,13 @@ class LocalTextExtractor(DocumentTextGateway):
         reason = unsupported_reason(filename)
         if reason:
             raise DocumentReadError(reason, detail=f"suffix={filename}")
+        if _looks_binary(data):
+            label = filename or "这个文件"
+            raise DocumentReadError(
+                f"「{label}」看起来不是文本文件（二进制内容），读不出文字 —— "
+                "请上传 TXT/CSV，或把里面的文字复制粘贴进来。",
+                detail=f"bytes={len(data)}",
+            )
         text = decode_text(data)
         if not text.strip():
             label = filename or "这个文件"

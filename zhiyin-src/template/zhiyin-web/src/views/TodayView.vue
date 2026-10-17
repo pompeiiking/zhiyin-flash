@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { backendClient } from '../api/backend-client'
+import { studentApi } from '../api/student-capabilities'
 import { backendDemo } from '../lib/backend-demo'
 import { actionRows, dateKey, deadline } from '../lib/action-insights.mjs'
 import type { ActionTaskView } from '../api/backend-types'
@@ -76,8 +77,21 @@ const suggestedTasks = computed(() => queueTasks.value
   .sort((a, b) => taskTimestamp(a) - taskTimestamp(b)))
 const todayCommitment = computed(() => [focusTask.value, ...todayTasks.value].filter((task): task is ActionTaskView => !!task))
 
-const timeFact = computed(() => backendDemo.state.liveWorkspace?.profile_panel?.fields?.find(field => field.key === 'time' || field.key === 'weekly_hours'))
+const timeFact = computed(() => backendDemo.state.liveWorkspace?.profile_panel?.fields?.find(field => ['time', 'weekly_hours', 'weekly_available_minutes'].includes(field.key)))
+// 「可投入」优先读学期设置算出的每周课外剩余（与课表检查同一口径），没有再用画像里的旧字段兜底。
+const capacityMinutes = ref<number | null>(null)
+const capacityLabel = computed(() => {
+  if (typeof capacityMinutes.value === 'number') return `${Math.round(capacityMinutes.value)} 分钟`
+  return timeFact.value?.value || '未填写'
+})
+const capacityKnown = computed(() => typeof capacityMinutes.value === 'number' || !!timeFact.value?.value)
 const estimatedMinutes = computed(() => todayCommitment.value.reduce((sum, task) => sum + (task.estimated_minutes || 0), 0))
+
+function weekStartKey() {
+  const start = new Date()
+  start.setDate(start.getDate() - (start.getDay() + 6) % 7)
+  return `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`
+}
 
 async function load() {
   if (busy.value) return
@@ -85,11 +99,19 @@ async function load() {
   error.value = ''
   arrangementError.value = ''
   try {
-    const [actionResult, workspaceResult] = await Promise.allSettled([backendClient.action(), backendClient.workspace()])
+    const [actionResult, workspaceResult, capacityResult] = await Promise.allSettled([
+      backendClient.action(),
+      backendClient.workspace(),
+      studentApi.workload(weekStartKey()),
+    ])
     if (actionResult.status === 'fulfilled') backendDemo.setAction(actionResult.value)
     else error.value = (actionResult.reason as Error).message
     if (workspaceResult.status === 'fulfilled') backendDemo.setWorkspace(workspaceResult.value)
-    else arrangementError.value = '可投入时间暂时未读取到，不影响查看行动任务。'
+    if (workspaceResult.status === 'rejected' && capacityResult.status === 'rejected') arrangementError.value = '可投入时间暂时未读取到，不影响查看行动任务。'
+    if (capacityResult.status === 'fulfilled') {
+      const week = capacityResult.value.weeks?.[0]
+      capacityMinutes.value = typeof week?.remaining_minutes === 'number' ? week.remaining_minutes : null
+    }
   } finally {
     busy.value = false
   }
@@ -217,7 +239,7 @@ onMounted(load)
             <p v-if="arrangementError">{{ arrangementError }}</p>
           </div>
           <dl>
-            <div><dt>可投入</dt><dd>{{ timeFact?.value || '未填写' }}</dd></div>
+            <div><dt>可投入</dt><dd>{{ capacityLabel }}</dd></div>
             <div><dt>预计用时</dt><dd>{{ estimatedMinutes ? `${estimatedMinutes} 分钟` : '未估算' }}</dd></div>
             <div><dt>逾期待处理</dt><dd>{{ overdueTasks.length }} 项</dd></div>
           </dl>
@@ -225,7 +247,8 @@ onMounted(load)
             <span>阶段计划</span><strong>{{ doneCount }} / {{ tasks.length }}</strong>
             <progress v-if="tasks.length" :value="doneCount" :max="tasks.length" aria-label="计划任务完成进度" />
           </div>
-          <RouterLink class="btn today-capacity__action" :to="timeFact?.value ? '/schedule' : '/profile'">{{ timeFact?.value ? '检查日程' : '填写时间' }}</RouterLink>
+          <RouterLink class="btn today-capacity__action" :to="capacityKnown ? '/schedule' : '/schedule?setup=1'">{{ capacityKnown ? '检查日程' : '填写时间' }}</RouterLink>
+          <p v-if="!capacityKnown" class="today-capacity__hint">在「日历与课表」的课表检查里打开「设置学期时间」，填写每周课外可用分钟并保存，就会用于计算这里的可投入时间。</p>
         </section>
       </aside>
     </div>
@@ -286,6 +309,7 @@ onMounted(load)
 .today-progress strong { color: var(--c-text); font-variant-numeric: tabular-nums; }
 .today-progress progress { grid-column: 1 / -1; width: 100%; height: 5px; accent-color: var(--c-primary); }
 .today-capacity__action { width: 100%; margin-top: 18px; white-space: nowrap; }
+.today-capacity__hint { margin-top: 10px; color: var(--c-text-3); font-size: var(--fs-12); line-height: 1.65; }
 @media (max-width: 720px) {
   .today-layout { grid-template-columns: minmax(0, 1fr); }
   .today-aside { position: static; grid-template-columns: 150px minmax(0, 1fr); }

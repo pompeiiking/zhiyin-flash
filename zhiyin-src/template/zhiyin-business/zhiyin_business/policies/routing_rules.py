@@ -141,7 +141,16 @@ class RuleStagePolicy(StagePolicy):
             return StageDecision(stage=LoopStage.COLLECT, confidence=0.95, source="intent")
         if (re.search(r"我(?:曾经|之前|现在|目前|还|也|比较|最)?(?:做过|参加过|参与过|实习过|喜欢|擅长|会|学过|学习过|希望|想去|计划去|就读|毕业|主修|是大[一二三四])", message)
                 and not re.search(r"(?:生成|制定|创建|重做|调整|修改).{0,15}(?:计划|阶段|任务|行动)", message)):
-            return StageDecision(stage=LoopStage.COLLECT, confidence=0.8, source="intent")
+            # 这条是「用户在**回答**采集问题」，不是「用户要求回到采集」：
+            # 标 `allow_gate_advance` 让采集门槛仍然能推进。否则用户每一句带
+            # "我…"的回答都会被当成"他要留在采集"，实测连续答 30+ 轮仍在①，
+            # 画像早就过门槛了也进不了②。
+            return StageDecision(
+                stage=LoopStage.COLLECT,
+                confidence=0.8,
+                source="intent",
+                allow_gate_advance=True,
+            )
         for rule in await self._rules("stage"):
             if rule.intent != intent.value:
                 continue

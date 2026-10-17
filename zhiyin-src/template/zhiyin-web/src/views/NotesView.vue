@@ -228,7 +228,7 @@ onMounted(() => { void loadNotes() })
             <div>
               <p class="notes-ledger__kicker">{{ scope === 'todo' ? '下一步' : '方向' }}</p>
               <h2 id="notesLedgerTitle">我的{{ scopeLabel }}</h2>
-              <p>{{ pending.length }} 条待完成，{{ completed.length }} 条已完成</p>
+              <p v-if="items.length">{{ pending.length }} 条待完成，{{ completed.length }} 条已完成</p>
             </div>
             <strong>{{ items.length }}</strong>
           </header>
@@ -296,7 +296,7 @@ onMounted(() => { void loadNotes() })
             <span class="notes-context__icon"><UiIcon :name="otherKind === 'goal' ? 'trophy' : 'notes'" :size="18" /></span>
             <div>
               <h2>{{ otherKind === 'goal' ? '别忘了方向' : '把目标落到下一步' }}</h2>
-              <p>还有 {{ otherPending.length }} 条{{ otherLabel }}待完成</p>
+              <p v-if="otherPending.length">还有 {{ otherPending.length }} 条{{ otherLabel }}待完成</p>
             </div>
           </header>
           <ul v-if="contextItems.length">
