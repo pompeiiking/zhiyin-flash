@@ -2,6 +2,15 @@
 
 Kev 是独立的 System One 决策服务，只辅助职业意图分类；原聊天模型继续生成回复、报告和计划。模型权重与 PyTorch 不进入职引镜像。
 
+> **本机部署记录（2026-10-17）**
+>
+> - 实际安装目录是 `D:\ai-models\kev`（本文下面写的 `E:\ai-models\kev` 是早先的位置，本机不存在该目录；`install-startup.ps1` 用 `-KevRoot D:\ai-models\kev` 注册自启）。
+> - 模型 `jaredpalmer/kev-0.8b@v1.0`，当前以 **CPU / float32** 运行（PyPI 的 torch 是 CPU 版，未启用本机 4070）；分类耗时首轮约 2.5 s，前缀缓存命中后约 0.7 s，仍低于 10 s 超时。
+> - Kev 目录里有三个本地脚本：`start.ps1`、`status.ps1`、`stop.ps1`，加一个 `serve_clean.py`（见下面两条踩坑）；模型权重与 HF 缓存放在 `D:\ai-models\kev\.hf-cache`。
+> - 两个踩坑：① PyPI 上的 `kev` 是另一个无关项目（K.E.V. ORM），**必须从 `https://github.com/jaredpalmer/kev` 源码安装**；② 本机 `NO_PROXY` 里带 `[::1]`，httpx 会抛 `InvalidURL: Invalid port: ':1]'`，`serve_clean.py` 在 Python 侧清洗后再启动 `kev.serve`。
+> - 后端接线写进了 `.env` 的 `ZHIYIN_DECISION_*`（与 `docker-compose.kev.yml` 叠加层同值），因此不带叠加层的 `docker compose up -d` 也不会丢；已验证 `kev_smoke.py` 的采用、低置信度回退、重复消息幂等三项全部通过。
+
+
 ## 启动
 
 1. 启动已安装的本机 Kev（当前目录 `E:\ai-models\kev`，执行 `start.ps1`）。等待 `http://127.0.0.1:8009/v1/models` 返回 `kev-latest`；以返回的 device、backend 为准，不要求固定 CPU。仅有进程不代表模型已加载。

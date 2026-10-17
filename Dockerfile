@@ -12,7 +12,11 @@ COPY zhiyin-src/template/ /app/
 
 RUN pip install .
 
-RUN useradd --create-home --shell /usr/sbin/nologin app \
+# data/objects 必须**先在镜像里存在**：docker-compose.yml 把具名卷挂在这个路径上，
+# 而具名卷的挂载点若在镜像里不存在，docker 会以 root 建出来 —— 应用以 app 用户运行，
+# 材料上传就会 Permission denied（验证：docker compose exec zhiyin-flash touch data/objects/x）。
+RUN mkdir -p /app/data/objects \
+    && useradd --create-home --shell /usr/sbin/nologin app \
     && chown -R app:app /app
 
 USER app
