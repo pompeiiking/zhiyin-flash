@@ -107,9 +107,12 @@ def product_tools(container):
         task = None
         if len(named) == 1:
             task, task_id = named[0]
-        negative = bool(re.search(r"不要|不必|无需|暂不|别", message))
-        wants_undo = bool(re.search(r"取消完成|撤销完成|标记为未完成", message))
-        wants_done = bool(re.search(r"标记.{0,8}完成|勾选|完成.{0,4}任务", message))
+        # The task title is data, not part of the instruction: a title such as
+        # "不要忘记核对材料" must not cancel an otherwise explicit request.
+        directive = message.replace(task.text, "", 1) if task else message
+        negative = bool(re.search(r"不要|不必|无需|暂不|别", directive))
+        wants_undo = bool(re.search(r"取消完成|撤销完成|标记为未完成", directive))
+        wants_done = bool(re.search(r"标记.{0,8}完成|勾选|完成.{0,4}任务", directive))
         if not task or not task.text or task.text not in message or negative or (not wants_undo if not done else not wants_done or wants_undo):
             return json.dumps(receipt, ensure_ascii=False)
         updated = await container.facade.set_action_task_done(user_id, ActionTaskDoneRequest(task_id=task_id, done=done))

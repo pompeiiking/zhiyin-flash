@@ -94,6 +94,29 @@ async def test_business_tools_are_bound_to_current_user_and_explicit_task():
 
 
 @pytest.mark.asyncio
+async def test_task_title_negation_is_not_treated_as_instruction():
+    from types import SimpleNamespace
+    from agno.run import RunContext
+    from zhiyin_boot.module_platform import product_tools
+    from zhiyin_kernel.assets import ActionPlan, ActionPhase, ActionTask
+    from zhiyin_api.dto.asset import ActionPlanView
+
+    class Assets:
+        async def get_action_plan(self, user_id):
+            return ActionPlan(id='p', phases=[ActionPhase(name='阶段', date_range='', tasks=[
+                ActionTask(id='t1', text='不要忘记核对材料')])])
+    class Facade:
+        async def set_action_task_done(self, user_id, body):
+            return ActionPlanView(has_plan=True)
+    container = SimpleNamespace(extra={'modules': {}}, asset_service=Assets(), facade=Facade())
+    action = next(spec.handler for module in product_tools(container) for spec in module.tools
+                  if spec.name == 'workspace.task.set_done')
+    ctx = RunContext(run_id='r', session_id='s', user_id='u',
+                     dependencies={'user_message': '请把不要忘记核对材料标记为完成'})
+    assert '"executed": true' in await action(ctx, 't1', True)
+
+
+@pytest.mark.asyncio
 async def test_review_achievement_reflects_saved_reviews_without_applying():
     from types import SimpleNamespace
     from unittest.mock import AsyncMock

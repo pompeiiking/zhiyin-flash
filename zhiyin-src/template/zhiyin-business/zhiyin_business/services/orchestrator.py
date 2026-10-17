@@ -53,6 +53,7 @@ from zhiyin_kernel.blackboard import AssetVersion, TaskSession
 from zhiyin_kernel.assets import GapClaim
 from zhiyin_kernel import dynamic_config
 from zhiyin_business.policies.collection import may_override_user_edit
+from zhiyin_business.services.tool_offers import TOOL_OFFERS, mentioned_tasks, proposal_at_end, task_offer
 from zhiyin_business.policies.collection_gate import CollectionGate, evaluate_gate
 from zhiyin_kernel.errors import InvalidRequest, ResourceNotFound
 from zhiyin_kernel.enums import (
@@ -580,6 +581,35 @@ class DefaultOrchestrator(Orchestrator):
         previous = recent_turns[-1] if recent_turns else None
         pending_offer = next((kind for kind, question in _ASSET_OFFERS.items()
                               if previous and previous.role == "agent" and previous.text.rstrip().endswith(question)), None)
+        pending_tool = proposal_at_end(previous.text) if previous and previous.role == "agent" else None
+        tool_answer = _offer_answer(request.message) if pending_tool else None
+        if pending_tool and re.fullmatch(r"(?:生成吧|创建吧|请生成|请创建|帮我生成|帮我创建)[。！!\s]*", request.message):
+            tool_answer = None
+        if (pending_tool and pending_tool not in {"task_done", "task_undo"} and tool_answer is None
+                and re.fullmatch(r"(?:查吧|看吧|查一下|看一下|帮我查查|帮我看看|就按你说的|请查询)[。！!\s]*", request.message)):
+            tool_answer = "accept"
+        if request.option_id and pending_tool and request.option_id not in {
+            f"tool.{pending_tool}.accept", f"tool.{pending_tool}.decline"
+        }:
+            tool_answer = None
+        accepted_tool = pending_tool if tool_answer == "accept" else None
+        confirmed_tool_offer = TOOL_OFFERS.get(accepted_tool) if accepted_tool else None
+        if accepted_tool in {"task_done", "task_undo"}:
+            prior_user = next((t.text for t in reversed(recent_turns[:-1]) if t.role == "user"), "")
+            plan = await self._assets.get_action_plan(request.user_id)
+            should_complete = accepted_tool == "task_done"
+            matching = mentioned_tasks(plan, prior_user)
+            if (len(matching) == 1 and matching[0].done != should_complete and
+                    previous.text.rstrip().endswith(task_offer(matching[0].text, done=should_complete).question)):
+                confirmed_tool_offer = task_offer(matching[0].text, done=should_complete)
+            else:
+                result = TurnResult(task_id=request.task_id, session=session, stage=session.loop_stage,
+                    badge=await self._badge(session.lead_agent, []),
+                    messages=[ConversationMessage(role="agent", agent_id=session.lead_agent,
+                        text="任务已变化或无法唯一确认，这次没有修改。请查看现有计划后重新指定任务。")],
+                    guide=BehaviorGuide(kind="question", text="", question=None))
+                await self._remember_turn(request, result, loop_stage=session.loop_stage)
+                return result
         offer_answer = _offer_answer(request.message) if pending_offer else None
         if request.option_id and pending_offer:
             expected = {f"asset.{pending_offer}.accept", f"asset.{pending_offer}.decline"}
@@ -710,6 +740,12 @@ class DefaultOrchestrator(Orchestrator):
             "task_id": request.task_id,
             "intent": intent.value,
         }
+        if accepted_tool:
+            prior_user_text = next((t.text for t in reversed(recent_turns[:-1]) if t.role == "user"), "")
+            instruction = confirmed_tool_offer.instruction
+            prompt_vars["confirmed_tool_request"] = instruction
+            prompt_vars["raw_user_message"] = instruction
+            prompt_vars["user_input"] = f"用户已同意上一轮提议。{instruction}\n上一轮用户的问题：{prior_user_text}\n本轮补充：{request.message}"
         if accepted_offer:
             prompt_vars["confirmed_request"] = (
                 "用户同意了上一轮提出的创建行动计划请求，请按现有事实创建计划。"
@@ -807,6 +843,42 @@ class DefaultOrchestrator(Orchestrator):
             "在结构化报告中同样遵守以上限制，不能只在聊天回复里说资料不足，却在优势、机会和结论里继续作确定判断。",
         ]
         from zhiyin_kernel.streaming import emit_progress
+        available_names = set()
+        get_names = getattr(self._agent_engine, "conversation_tool_names", None)
+        if get_names is not None:
+            available_names = await get_names(lead.lead_agent)
+        available_offers = {key: offer for key, offer in TOOL_OFFERS.items() if offer.tool in available_names}
+        if ("workspace.task.set_done" in available_names and
+                re.search(r"(?:已经|刚刚|刚|已|做完|完成了|搞定|弄好了)", request.message) and
+                not re.search(r"没完成|未完成|还没|没有|不曾|不要|别", request.message)):
+            plan = await self._assets.get_action_plan(request.user_id)
+            named_tasks = mentioned_tasks(plan, request.message)
+            if len(named_tasks) == 1 and not named_tasks[0].done:
+                available_offers["task_done"] = task_offer(named_tasks[0].text)
+        if ("workspace.task.set_done" in available_names and
+                re.search(r"没完成|未完成|还没完成|没有完成|误标|标错", request.message)):
+            plan = await self._assets.get_action_plan(request.user_id)
+            named_tasks = mentioned_tasks(plan, request.message)
+            if len(named_tasks) == 1 and named_tasks[0].done:
+                available_offers["task_undo"] = task_offer(named_tasks[0].text, done=False)
+        prompt_vars["optional_tool_offers"] = {
+            "instruction": "仅当当前问题适合、对用户确有帮助且用户没有要求只聊天时，选择一个可用能力的键放入 tool_offer；没有合适机会就填空字符串。比如讨论学业困难时可建议核对成绩，谈计划执行时可建议查看进度，需要时效信息时可建议联网核实。选择工具建议时，正文不要再提出其他问题，也不要自行承诺执行；系统会生成确认问题。",
+            "choices": {key: offer.question for key, offer in available_offers.items()},
+        }
+        # Do not silently read or act merely because the conversation made a
+        # tool relevant. Direct requests and a confirmed proposal still work.
+        direct_tool_request = bool(re.search(
+            r"(?:查看|查找|查询|检索|搜索|联网|读取|展示|列出|统计|给我看|帮我看|看看我的|根据我的|结合我的|"
+            r"标记|勾选|取消完成|撤销完成|生成|创建|制定|画图|图表|进度卡片)", request.message))
+        if re.search(r"(?:不要|不用|不必|不想|别|先不|暂不).{0,12}(?:查看|查找|查询|检索|搜索|联网|读取|展示|列出|统计|标记|勾选|生成|创建|制定|画图)", request.message):
+            direct_tool_request = False
+        prompt_vars["proposal_only"] = not bool(accepted_tool or accepted_offer or direct_tool_request)
+        output_schema = STAGE_CONTRACTS[stage].model_json_schema()
+        output_schema.setdefault("properties", {})["tool_offer"] = {
+            "type": "string", "enum": [""] + list(available_offers),
+            "description": "可选的下一步工具建议键；没有适合的建议时为空。",
+        }
+        output_schema.setdefault("required", []).append("tool_offer")
         stream_badge = await self._badge(lead.lead_agent, [])
         emit_progress({'agent': stream_badge.name, 'note': '正在整理回复'})
         result = await self._agent_engine.invoke(
@@ -815,14 +887,15 @@ class DefaultOrchestrator(Orchestrator):
                 stage=stage.value,
                 blackboard=blackboard.model_dump(mode="json"),
                 prompt_vars=prompt_vars,
-                output_schema=STAGE_CONTRACTS[stage].model_json_schema(),
+                output_schema=output_schema,
                 # Wait for writes and validation before displaying a reply
                 # that might incorrectly claim a report or plan was saved.
                 stream_field=None if (stage is LoopStage.DIAGNOSE and explicit_report) or (stage is LoopStage.ACT and explicit_plan) or _asks_for_chart(request.message) or (stage is not LoopStage.COLLECT and _contains_personal_disclosure(request.message)) else 'conclusion',
             )
         )
 
-        structured = result.structured or {}
+        structured = dict(result.structured or {})
+        proposed_tool = structured.pop("tool_offer", None)
         if stage is LoopStage.DECIDE:
             # Current direction scores are supplied by the model, without
             # verifiable inputs or a reproducible calculation.
@@ -888,7 +961,7 @@ class DefaultOrchestrator(Orchestrator):
         # Reaching the action stage through conversation progress is not consent
         # to overwrite a saved plan. Only an explicit request can generate one.
         write_tool_attempted = "workspace.task.set_done" in result.business_tool_calls
-        may_persist = (not module_query and not write_tool_attempted
+        may_persist = (not accepted_tool and not module_query and not write_tool_attempted
                        and (not result.business_tool_calls or (stage is LoopStage.ACT and explicit_plan)
                             or (stage is LoopStage.DIAGNOSE and explicit_report))
                        and (stage is not LoopStage.ACT or explicit_plan)
@@ -921,7 +994,7 @@ class DefaultOrchestrator(Orchestrator):
         # 整份产出别处不合契约（少个字段、格式歪了）不该连累这一条：字段能解析就落库，
         # 其余的问题留在日志里。`_apply_collect` 自己会挑出能解析的部分。
         collect_data = None
-        if stage is LoopStage.COLLECT and not module_query and not _forbids_profile_write(request.message):
+        if stage is LoopStage.COLLECT and not accepted_tool and not module_query and not _forbids_profile_write(request.message):
             if not result.business_tool_calls:
                 collect_data = structured
             elif _contains_personal_disclosure(request.message) and not write_tool_attempted:
@@ -988,13 +1061,13 @@ class DefaultOrchestrator(Orchestrator):
         guide = BehaviorGuide(kind="question", text="", question=None) if module_query else _guide(
             structured.get("guide"), structured
         )
-        wants_chart = _asks_for_chart(request.message)
+        wants_chart = _asks_for_chart(request.message) or bool(confirmed_tool_offer and confirmed_tool_offer.tool == "chart.render")
         renderables = _renderables_for_turn(
             model_renderables,
             stage,
             structured,
-            message=request.message,
-            profile=await self._profiles.get(request.user_id) if wants_chart else None,
+            message=confirmed_tool_offer.instruction if wants_chart and confirmed_tool_offer else request.message,
+            profile=await self._profiles.get(request.user_id) if wants_chart and accepted_tool != "chart_plan" else None,
         )
         reply_text = (
             _chart_reply_text(renderables)
@@ -1019,6 +1092,21 @@ class DefaultOrchestrator(Orchestrator):
             else:
                 reply_text = "没有更改任务：" + str(receipt.get("reason") or "操作未完成，请重试。")
             guide = BehaviorGuide(kind="question", text="", question=None)
+        if accepted_tool:
+            offer = confirmed_tool_offer
+            if offer.tool == "workspace.read":
+                succeeded = any(r.get("area") == offer.area for r in result.business_read_receipts)
+            elif offer.tool == "workspace.task.set_done":
+                succeeded = any(r.get("executed") for r in result.business_tool_receipts)
+            elif offer.tool == "chart.render":
+                succeeded = any(r.kind == "bars_chart" for r in model_renderables)
+            elif offer.tool in {"action_progress.read", "plan_progress_skill.read"}:
+                succeeded = any(r.get("module_id") == offer.tool.split(".")[0] for r in result.module_results)
+            else:
+                succeeded = offer.tool in result.tool_calls
+            if not succeeded and not result.business_tool_receipts:
+                reply_text = "这次未能确认所需工具已成功调用，请稍后重试。"
+                guide = BehaviorGuide(kind="question", text="", question=None)
         requested_asset = (AssetType.ACTION_PLAN if stage is LoopStage.ACT and explicit_plan else
                            AssetType.REPORT if stage is LoopStage.DIAGNOSE and explicit_report else None)
         if requested_asset and not module_query and not write_tool_attempted:
@@ -1041,7 +1129,7 @@ class DefaultOrchestrator(Orchestrator):
             r"实习|求职|升学|考研|考公|考编|就业|岗位|职业|方向|项目|简历|作品集|面试|考试|技能|编程|课程", user_context))
         offer_kind = None
         if (result.valid and not module_query and not write_tool_attempted and not requested_asset
-                and not pending_offer and not _asks_for_chart(request.message)
+                and not pending_offer and not pending_tool and not _asks_for_chart(request.message)
                 and not re.search(r"(?:先|想|只|继续|再).{0,4}聊|(?:先|继续|再).{0,4}(?:了解|谈谈)", request.message)
                 and not re.search(r"(?:不要|暂不|先不|不想|无需|不必|别).{0,12}(?:报告|诊断|计划|生成|创建)", request.message)):
             if (stage in (LoopStage.COLLECT, LoopStage.DIAGNOSE) and "report" not in recent_offer_kinds
@@ -1058,6 +1146,26 @@ class DefaultOrchestrator(Orchestrator):
             guide = BehaviorGuide(kind="options", text="", options=[
                 GuideOption(option_id=f"asset.{offer_kind}.accept", label="可以", value="accept"),
                 GuideOption(option_id=f"asset.{offer_kind}.decline", label="先不要", value="decline"),
+            ])
+        recent_tool_offers = {proposal_at_end(t.text) for t in recent_turns[-12:] if t.role == "agent"}
+        # An unambiguous statement about an existing task deserves the matching
+        # status question even when the model selected a more generic read.
+        if "task_done" in available_offers:
+            proposed_tool = "task_done"
+        elif "task_undo" in available_offers:
+            proposed_tool = "task_undo"
+        if (not offer_kind and result.valid and isinstance(proposed_tool, str) and proposed_tool in available_offers
+                and proposed_tool not in recent_tool_offers and not pending_tool and not pending_offer
+                and not accepted_tool and not requested_asset and not write_tool_attempted and not module_query
+                and not result.business_tool_calls and not result.tool_calls
+                and not re.search(r"(?:先|想|只|继续|再).{0,4}聊|不要|暂不|先不|不想|无需|不必", request.message)):
+            if proposed_tool in {"task_done", "task_undo"}:
+                # Only the confirmed write receipt may claim that status changed.
+                reply_text = "我找到了你提到的任务。"
+            reply_text = f"{reply_text.rstrip()}\n\n{available_offers[proposed_tool].question}".strip()
+            guide = BehaviorGuide(kind="options", text="", options=[
+                GuideOption(option_id=f"tool.{proposed_tool}.accept", label="可以", value="accept"),
+                GuideOption(option_id=f"tool.{proposed_tool}.decline", label="先不要", value="decline"),
             ])
         messages = [
             ConversationMessage(

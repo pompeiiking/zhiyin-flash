@@ -141,6 +141,10 @@ class AgnoAgentEngine(AgentEngine):
             request.prompt_code,
             use_tools=request.use_tools,
         )
+        proposal_only = bool(request.prompt_vars.get("proposal_only"))
+        if proposal_only:
+            # A per-run copy avoids changing a cached agent used by other requests.
+            agent = agent.deep_copy(update={"tools": []})
         contract_fingerprint = sha256(
             json.dumps(request.output_schema or {}, ensure_ascii=False, sort_keys=True).encode("utf-8")
         ).hexdigest()[:16]
@@ -164,16 +168,17 @@ class AgnoAgentEngine(AgentEngine):
         run_kwargs = self._run_context_kwargs(request)
         try:
             input_text = self._compose_input(request, bundle)
-            module_calls = request.use_tools and self.module_tool_names is not None and bool(
+            module_calls = not proposal_only and request.use_tools and self.module_tool_names is not None and bool(
                 await self.module_tool_names(request.agent_id)
             )
             # Business-tool requests need the same function-calling mode as
             # modules; JSON-object mode suppresses tool calls on some models.
             user_message = str(request.prompt_vars.get("raw_user_message") or "")
-            business_calls = (request.use_tools and "workspace.read" in self._tools
+            business_calls = (not proposal_only and request.use_tools and "workspace.read" in self._tools
                 and any(word in user_message for word in ("查询", "查看", "看看", "列出", "展示", "读取", "统计", "多少", "怎么样", "勾选", "标记", "取消完成"))
                 and (any(word in user_message for word in ("画像", "成绩", "课表", "报告", "计划", "方向", "日历", "任务", "待办", "复盘", "记录", "成就"))
                      or bool(re.search(r"标记.{0,15}完成|取消完成|撤销完成|勾选", user_message))))
+            business_calls = business_calls or bool(request.prompt_vars.get("confirmed_tool_request"))
             output_schema = request.output_schema or None
             if (module_calls or business_calls) and output_schema:
                 # The configured Qwen JSON-object mode suppresses function calls
@@ -305,7 +310,19 @@ class AgnoAgentEngine(AgentEngine):
             business_tool_calls=_business_calls_from_run_context(run_kwargs),
             business_tool_receipts=_business_receipts_from_run_context(run_kwargs),
             business_read_receipts=_business_read_receipts_from_run_context(run_kwargs),
+            tool_calls=self._executed_tool_names(output),
         )
+
+    def _executed_tool_names(self, output: Any) -> list[str]:
+        called = {str(getattr(item, "tool_name", "") or "") for item in (getattr(output, "tools", None) or [])
+                  if not getattr(item, "tool_call_error", False)}
+        return [name for name, handler in self._tools.items()
+                if name in called or getattr(handler, "__name__", "") in called]
+
+    async def conversation_tool_names(self, agent_id: str) -> set[str]:
+        """Only expose tools actually installed and attached to this agent."""
+        handlers = await self._tools_for(agent_id)
+        return {name for name, handler in self._tools.items() if any(handler is item for item in handlers)}
 
     async def _repair_once(
         self,

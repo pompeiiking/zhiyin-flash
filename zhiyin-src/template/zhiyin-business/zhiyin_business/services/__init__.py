@@ -24,6 +24,7 @@
 | 开发项目与版本协作 | `developer.py` | `DeveloperPlatform` | DeveloperRepository、Identity、模块模板提供器 | P0 | 已交付 |
 | 模块上传包检查 | `module_packages.py` | `inspect_package` | ZIP 内容检查、ModuleManifest、源码依赖守卫 | P0 | 已交付 |
 | Orchestrator | `orchestrator.py` | `DefaultOrchestrator` | 黑板四件套 + `policies/` + AgentEngine | P0 | 已交付 |
+| 对话工具提议 | `tool_offers.py` | `ToolOffer` | 已装配工具目录及会话确认 | P1 | 已交付 |
 | Profile 服务 | `profile.py` | `DefaultProfileService` | ProfileRepository、EventBus | P0 | 已交付 |
 | Behavior 服务 | `behavior.py` | `DefaultBehaviorService` | BehaviorRepository、EventBus | P0 | 已交付 |
 | Memory 服务 | `memory.py` | `DefaultConversationMemoryService` | ConversationMemoryRepository | P0 | 已交付 |
