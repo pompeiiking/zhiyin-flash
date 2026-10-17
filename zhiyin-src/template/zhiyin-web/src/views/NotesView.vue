@@ -178,9 +178,13 @@ onMounted(() => { void loadNotes() })
 
     <section class="notes-capture" aria-labelledby="notesCaptureTitle">
       <div class="notes-capture__head">
-        <div>
+        <div class="notes-capture__title">
           <h2 id="notesCaptureTitle">记下一件事</h2>
-          <p>{{ scope === 'todo' ? '用动词写一个可以开始的动作。' : '写下你想达到的结果，不必急着拆步骤。' }}</p>
+          <DetailPopover title="记录提示" label="查看记录提示" side="bottom">
+            <template #trigger>记录提示</template>
+            <p>{{ scope === 'todo' ? '待办适合用动词写成一个可以开始的动作。' : '目标适合写成想达到的结果，不必急着拆分步骤。' }}</p>
+            <p>每条最多 200 字；同一类型下的相同内容只保留一条。</p>
+          </DetailPopover>
         </div>
         <div class="notes-scope" role="group" aria-label="选择记录类型并查看相应清单">
           <button type="button" :aria-pressed="scope === 'todo'" @click="selectScope('todo')">
@@ -204,8 +208,6 @@ onMounted(() => { void loadNotes() })
           <UiIcon name="plus" :size="17" />{{ adding ? '正在保存…' : `添加${scopeLabel}` }}
         </button>
       </form>
-      <p class="notes-capture__hint">最多 200 字；同一类型下的相同内容只保留一条。</p>
-
       <StatusBanner :open="!!status" tone="success" :message="status" @dismiss="status = ''" />
       <StatusBanner v-if="actionError" tone="warning" :message="actionError" @dismiss="actionError = ''" />
       <StatusBanner
@@ -346,7 +348,8 @@ onMounted(() => { void loadNotes() })
 .notes-capture { margin-bottom: 22px; padding: 18px 20px 16px; border: 1px solid var(--c-border); border-top: 3px solid var(--c-primary); border-radius: 0 0 12px 12px; background: var(--c-surface); }
 .notes-capture__head { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
 .notes-capture__head h2 { font-size: var(--fs-16); font-weight: var(--fw-semibold); }
-.notes-capture__head p { margin-top: 3px; color: var(--c-text-3); font-size: var(--fs-12); }
+.notes-capture__title { display: flex; align-items: center; gap: var(--sp-2); }
+.notes-capture__title :deep(.detail-trigger) { min-height: 32px; padding-inline: var(--sp-2); color: var(--c-text-2); font-size: var(--fs-12); }
 .notes-scope { display: flex; flex: none; gap: 4px; padding: 3px; border-radius: 9px; background: var(--c-surface-2); }
 .notes-scope button { display: flex; align-items: baseline; gap: 5px; min-height: 38px; padding: 7px 11px; border: 1px solid transparent; border-radius: 7px; color: var(--c-text-2); font-size: var(--fs-12); }
 .notes-scope button[aria-pressed='true'] { border-color: var(--c-primary-border); background: var(--c-surface); color: var(--c-primary); box-shadow: var(--e-1); }
@@ -356,7 +359,6 @@ onMounted(() => { void loadNotes() })
 .notes-composer input { width: 100%; min-width: 0; min-height: 46px; padding: 10px 13px; border: 1px solid var(--c-border-control); border-radius: 8px; background: var(--c-surface); color: var(--c-text); font: inherit; }
 .notes-composer input:focus-visible { outline: 2px solid var(--c-primary); outline-offset: 2px; }
 .notes-composer__submit { min-height: 46px; gap: 7px; white-space: nowrap; }
-.notes-capture__hint { margin-top: 7px; color: var(--c-text-3); font-size: var(--fs-11); }
 .notes-capture :deep(.status-banner) { margin-top: 12px; }
 
 .notes-workspace { display: grid; grid-template-columns: minmax(0,1fr) 282px; align-items: start; gap: 26px; }

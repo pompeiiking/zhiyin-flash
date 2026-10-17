@@ -165,80 +165,102 @@ const actionTarget = computed<'none' | 'link' | 'href' | 'button'>(() => {
           </pattern>
         </defs>
         <rect x="0" y="0" width="240" height="160" :fill="'url(#' + patternId + ')'" />
-        <path
-          d="M45 108H83C98 108 104 95 104 81V67C104 54 113 45 126 45H195"
-          stroke="currentColor"
-          stroke-width="1.5"
-        />
-        <path d="M104 81H149C161 81 170 90 170 102V112H195" stroke="currentColor" stroke-opacity=".25" stroke-width="1.5" />
-        <rect x="25" y="88" width="40" height="40" rx="12" fill="var(--c-surface)" stroke="currentColor" stroke-opacity=".3" />
-        <g stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <!-- 画像：一个人，不是一张便签 -->
-          <template v-if="kind === 'profile'">
-            <circle cx="45" cy="104" r="5" />
-            <path d="M35.5 118.5c1.4-5.2 5-7.8 9.5-7.8s8.1 2.6 9.5 7.8" />
-          </template>
-          <!-- 报告：带折角的文档 + 一条走势线 -->
-          <template v-else-if="kind === 'report'">
-            <path d="M36 97h13l7 7v16H36z" />
-            <path d="M49 97v7h7" />
-            <path d="M40 115l3.5-3.5 3 3 4.5-5.5" />
-          </template>
-          <!-- 学籍与资料：一张表，左列是字段名 -->
-          <template v-else-if="kind === 'academic'">
-            <rect x="35" y="98" width="20" height="20" rx="2.5" />
-            <path d="M42 98v20" />
-            <path d="M46 104h6m-6 4h6m-6 4h3" />
-          </template>
-          <!-- 日历与课表：格子，不是文档 -->
-          <template v-else-if="kind === 'schedule'">
-            <rect x="35" y="99" width="20" height="19" rx="3" />
-            <path d="M35 105.5h20" />
-            <path d="M41 95.5v6m8-6v6" />
-            <rect x="39.5" y="109" width="4" height="4" rx="1" />
-            <rect x="46.5" y="109" width="4" height="4" rx="1" />
-          </template>
-          <!-- 复盘：一条折返的箭头（回看已经发生的事） -->
-          <template v-else-if="kind === 'review'">
-            <path d="M52 100v8a6 6 0 0 1-6 6H38" />
-            <path d="M41.5 99.5 36 104l5.5 4.5" />
-          </template>
-          <!-- ===== wave2 新增四档。几何常量与上面几种完全一致（同一个 40×40 方框、
-               同一条路径骨架），只有框里的图形换成语义相符的一个 —— 这样四档空态
-               与既有九档在灰度下是同族的，不会读成"另一个组件的空态"。 ===== -->
-          <!-- 阶段计划：三级台阶（阶段是"一步一步来"的），不是文档也不是表 -->
-          <template v-else-if="kind === 'plan'">
-            <path d="M35 118h6v-6h6v-6h6v-6h6" />
-            <path d="M35 98v20h20" />
-          </template>
-          <!-- 方向：一个分叉的箭头（多条路里选一条），终点是一个空心点 -->
-          <template v-else-if="kind === 'direction'">
-            <path d="M35 108h8" />
-            <path d="M43 108 48 102M43 108l5 6" />
-            <circle cx="53" cy="100.5" r="2.5" />
-            <circle cx="53" cy="115.5" r="2.5" />
-          </template>
-          <!-- 提醒：一只铃（不是便签） -->
-          <template v-else-if="kind === 'notice'">
-            <path d="M39 116h12" />
-            <path d="M41 116v-8a4 4 0 0 1 8 0v8" />
-            <path d="M45 100.5v-2.5M43.5 118.5a1.7 1.7 0 0 0 3 0" />
-          </template>
-          <!-- 工具：一个扳手（可拿来用的东西），不是放大镜 -->
-          <template v-else-if="kind === 'tools'">
-            <path d="M52 100.5a3.5 3.5 0 0 1-4.6 3.3l-7.4 7.4a1.9 1.9 0 0 1-2.7-2.7l7.4-7.4a3.5 3.5 0 0 1 4.6-4.6l-2.6 2.6 2.2 2.2z" />
-          </template>
-          <!-- 筛选无结果：放大镜里的那道斜线才是"没有命中"，不是"什么都没有" -->
-          <template v-else>
-            <circle cx="43.5" cy="105" r="6.5" />
-            <path d="M48.5 110 54.5 116" />
-            <path d="M41 102.5 46 107.5" />
-          </template>
+        <!-- 统一的是线条、点阵和品牌色；各业务使用自己的信息构图，不再共用一条路线骨架。 -->
+        <g v-if="kind === 'profile'" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="120" cy="72" r="28" fill="var(--c-primary-weak)" stroke="none" />
+          <circle cx="120" cy="66" r="9" fill="var(--c-surface)" />
+          <path d="M101 96c2.8-12 10-18 19-18s16.2 6 19 18" fill="var(--c-surface)" />
+          <path d="M92 74H63M148 66h29M99 99l-21 17M141 98l22 18" stroke-opacity=".38" />
+          <rect x="37" y="62" width="27" height="24" rx="8" fill="var(--c-surface)" />
+          <rect x="176" y="54" width="29" height="24" rx="8" fill="var(--c-surface)" />
+          <rect x="52" y="108" width="31" height="22" rx="8" fill="var(--c-surface)" />
+          <rect x="160" y="107" width="34" height="22" rx="8" fill="var(--c-surface)" />
+          <path d="M44 73h13M183 65h15M59 119h17M167 118h20" stroke-opacity=".5" />
         </g>
-        <circle cx="195" cy="45" r="19" fill="var(--c-primary-weak)" />
-        <path d="m188 45 5 5 9-10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-        <circle cx="195" cy="112" r="12" fill="var(--c-surface)" stroke="currentColor" stroke-opacity=".3" />
-        <circle cx="195" cy="112" r="3" fill="currentColor" opacity=".4" />
+
+        <g v-else-if="kind === 'report'" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M68 28h75l29 29v79H68z" fill="var(--c-surface)" />
+          <path d="M143 28v29h29" fill="var(--c-primary-weak)" />
+          <path d="M88 58h31M88 70h48" stroke-opacity=".35" />
+          <path d="M89 113 104 96l14 8 23-25 13 11" />
+          <circle cx="89" cy="113" r="3" fill="var(--c-primary)" stroke="none" />
+          <circle cx="118" cy="104" r="3" fill="var(--c-primary)" stroke="none" />
+          <circle cx="154" cy="90" r="3" fill="var(--c-primary)" stroke="none" />
+          <path d="M88 124h66" stroke-opacity=".25" />
+        </g>
+
+        <g v-else-if="kind === 'academic'" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round">
+          <rect x="42" y="32" width="156" height="96" rx="11" fill="var(--c-surface)" />
+          <path d="M42 58h156M88 32v96M158 32v96" />
+          <path d="M55 45h20M101 45h35M171 45h14" stroke-opacity=".42" />
+          <path d="M55 72h19M101 72h38M171 72h13M55 91h19M101 91h31M171 91h13M55 110h19M101 110h42M171 110h13" stroke-opacity=".3" />
+          <circle cx="181" cy="72" r="4" fill="var(--c-primary)" stroke="none" />
+          <circle cx="181" cy="91" r="4" fill="var(--c-primary-weak)" />
+          <circle cx="181" cy="110" r="4" fill="var(--c-primary)" stroke="none" />
+        </g>
+
+        <g v-else-if="kind === 'schedule'" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="45" y="35" width="150" height="96" rx="12" fill="var(--c-surface)" />
+          <path d="M45 61h150M75 28v14M165 28v14" />
+          <path d="M82.5 61v70M120 61v70M157.5 61v70M45 84h150M45 107h150" stroke-opacity=".25" />
+          <rect x="87" y="67" width="28" height="12" rx="4" fill="var(--c-primary-weak)" stroke="none" />
+          <rect x="125" y="89" width="27" height="13" rx="4" fill="var(--c-primary-weak)" stroke="none" />
+          <rect x="163" y="112" width="26" height="12" rx="4" fill="var(--c-primary-weak)" stroke="none" />
+        </g>
+
+        <g v-else-if="kind === 'review'" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M72 89a49 49 0 1 0 13-38" />
+          <path d="m66 50 20 1-5 18" fill="var(--c-surface)" />
+          <circle cx="120" cy="82" r="27" fill="var(--c-primary-weak)" stroke="none" />
+          <path d="M120 67v17l13 9" />
+          <circle cx="120" cy="84" r="3" fill="currentColor" stroke="none" />
+          <path d="M67 113h31M142 124h31" stroke-opacity=".3" />
+        </g>
+
+        <g v-else-if="kind === 'plan'" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M38 126h40V99h42V73h42V44h40" stroke-opacity=".32" />
+          <circle cx="58" cy="126" r="10" fill="var(--c-surface)" />
+          <circle cx="99" cy="99" r="10" fill="var(--c-surface)" />
+          <circle cx="141" cy="73" r="10" fill="var(--c-surface)" />
+          <circle cx="182" cy="44" r="14" fill="var(--c-primary-weak)" stroke="none" />
+          <path d="m175 44 5 5 9-10" />
+          <path d="M52 126h12M93 99h12M135 73h12" stroke-opacity=".55" />
+        </g>
+
+        <g v-else-if="kind === 'direction'" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="54" cy="80" r="13" fill="var(--c-surface)" />
+          <path d="M67 80h34M101 80c18 0 21-31 39-31h27M101 80c18 0 21 31 39 31h27" />
+          <rect x="167" y="34" width="40" height="30" rx="9" fill="var(--c-primary-weak)" stroke="none" />
+          <rect x="167" y="96" width="40" height="30" rx="9" fill="var(--c-surface)" />
+          <path d="M177 49h20M177 111h20" stroke-opacity=".52" />
+          <path d="m48 80 4 4 8-9" />
+        </g>
+
+        <g v-else-if="kind === 'notice'" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="120" cy="78" r="45" fill="var(--c-primary-weak)" stroke="none" />
+          <path d="M92 103h56M98 103v-31a22 22 0 0 1 44 0v31M120 43v-8M112 112a8 8 0 0 0 16 0" fill="var(--c-surface)" />
+          <path d="M78 62c-6 10-6 23 0 33M162 62c6 10 6 23 0 33" stroke-opacity=".35" />
+        </g>
+
+        <g v-else-if="kind === 'tools'" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="48" y="35" width="58" height="40" rx="10" fill="var(--c-surface)" />
+          <rect x="134" y="35" width="58" height="40" rx="10" fill="var(--c-surface)" />
+          <rect x="48" y="91" width="58" height="40" rx="10" fill="var(--c-surface)" />
+          <rect x="134" y="91" width="58" height="40" rx="10" fill="var(--c-primary-weak)" stroke="none" />
+          <path d="M64 55h26M150 55h26M64 111h26M150 111h26" stroke-opacity=".45" />
+          <circle cx="77" cy="55" r="4" fill="var(--c-primary)" stroke="none" />
+          <circle cx="163" cy="111" r="4" fill="var(--c-primary)" stroke="none" />
+        </g>
+
+        <g v-else stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="105" cy="72" r="38" fill="var(--c-surface)" />
+          <circle cx="105" cy="72" r="24" stroke-opacity=".3" />
+          <path d="m133 100 35 35" stroke-width="8" stroke-opacity=".28" />
+          <path d="M82 72h46" stroke-opacity=".36" />
+          <circle cx="68" cy="35" r="6" fill="var(--c-primary-weak)" stroke="none" />
+          <circle cx="172" cy="55" r="9" fill="var(--c-primary-weak)" stroke="none" />
+          <circle cx="55" cy="118" r="5" fill="var(--c-primary-weak)" stroke="none" />
+        </g>
       </svg>
     </slot>
 
