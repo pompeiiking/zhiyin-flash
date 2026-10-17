@@ -43,14 +43,15 @@ test('every published navigation entry resolves to a real route', () => {
   }
 })
 
-test('all twelve workspaces have one active item; grades belong to the profile mobile group', () => {
+test('all twelve workspaces have one active item; mobile tabs only highlight their own route', () => {
   assert.equal(nav.WORKSPACE_ITEMS.length, 12)
   for (const item of nav.WORKSPACE_ITEMS) {
     const route = { path: item.to, query: {} }
     assert.deepEqual(Array.from(nav.WORKSPACE_ITEMS.filter(i => nav.isNavActive(i, route)), i => i.key), [item.key])
   }
   assert.equal(nav.activeGroup({ path: '/grades', query: {} }).key, 'self')
-  assert.equal(nav.isNavActive(nav.MOBILE_TABS.find(i => i.key === 'profile'), { path: '/grades', query: {} }), true)
+  assert.equal(nav.isNavActive(nav.MOBILE_TABS.find(i => i.key === 'profile'), { path: '/grades', query: {} }), false)
+  assert.deepEqual(Array.from(nav.MOBILE_TABS, item => item.key), ['chat', 'profile', 'report', 'directions', 'home', 'plan'])
   assert.equal(nav.WORKSPACE_ITEMS.some(i => i.to === '/academic'), false)
 })
 

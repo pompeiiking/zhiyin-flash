@@ -1,14 +1,12 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { backendDemo } from '../lib/backend-demo'
 import { openSession, systemData } from '../lib/system-data'
 import { demo, toast } from '../store'
 import InfoSheet from './InfoSheet.vue'
 import UiIcon from './UiIcon.vue'
-import { WORKSPACE_GROUPS, WORKSPACE_PRIMARY, MOBILE_TABS, isNavActive, activeGroup } from '../lib/workspace-nav'
-import { AccordionRoot, AccordionItem, AccordionHeader, AccordionTrigger, AccordionContent } from 'reka-ui'
-import BrandMark from './BrandMark.vue'
+import { WORKSPACE_GROUPS, MOBILE_TABS, isNavActive } from '../lib/workspace-nav'
 
 /**
  * 移动端导航。
@@ -28,17 +26,6 @@ async function resume(id: string) { try { await openSession(id); more.value = fa
 const more = ref(false)
 const emit = defineEmits<{ account: [] }>()
 defineExpose({ show() { more.value = true } })
-/** 与桌面侧栏一致：分组默认全部展开，收起只是用户主动收窄列表。 */
-const openGroup = ref<string[]>(WORKSPACE_GROUPS.map((g) => g.key))
-
-watch(
-  () => [route.path, more.value],
-  () => {
-    const key = activeGroup({ path: route.path, query: route.query })?.key
-    if (key && !openGroup.value.includes(key)) openGroup.value = [...openGroup.value, key]
-  },
-  { immediate: true },
-)
 </script>
 
 <template>
@@ -58,50 +45,51 @@ watch(
     </button>
   </nav>
 
-  <InfoSheet shape="sheet" :open="more" title="更多功能" @close="more = false">
-    <div class="mobile-menu-brand"><BrandMark /></div>
+  <InfoSheet shape="panel" :open="more" title="全部功能" description="按任务找到下一步；底栏保留最常使用的主业务。" @close="more = false">
     <button class="mobile-account-entry" type="button" @click="more=false;emit('account')">
       <span class="mobile-account-entry__avatar" aria-hidden="true">{{ demo.state.account.slice(0,1) }}</span>
-      <span><strong>{{ demo.state.account }}</strong><small>账号与外观设置</small></span>
+      <span><strong>{{ demo.state.account }}</strong><small>账号、资料授权与导出</small></span>
       <UiIcon name="arrow" :size="16" />
     </button>
-    <RouterLink class="ws-directory__primary" :to="WORKSPACE_PRIMARY.to" @click="more = false">
-      <UiIcon :name="WORKSPACE_PRIMARY.icon" /><span><strong>{{ WORKSPACE_PRIMARY.label }}</strong><small>{{ WORKSPACE_PRIMARY.hint }}</small></span>
-      <UiIcon name="arrow" :size="16" />
-    </RouterLink>
-    <AccordionRoot v-model="openGroup" type="multiple" class="desk-menu">
-      <AccordionItem v-for="group in WORKSPACE_GROUPS" :key="group.key" :value="group.key">
-        <AccordionHeader>
-          <AccordionTrigger class="desk-menu__trigger">
-            <UiIcon :name="group.icon" /><span>{{ group.label }}</span><UiIcon class="desk-menu__chevron" name="chevron" :size="16" />
-          </AccordionTrigger>
-        </AccordionHeader>
-        <AccordionContent class="desk-menu__content">
-          <div class="desk-menu__children">
-            <RouterLink
-              v-for="item in group.items"
-              :key="item.key"
-              :to="item.to"
-              class="desk-link desk-link--child"
-              :aria-current="isNavActive(item, route) ? 'page' : undefined"
-              @click="more = false"
-            >{{ item.label }}</RouterLink>
-          </div>
-        </AccordionContent>
-      </AccordionItem>
-    </AccordionRoot>
-    <section class="mobile-session-history" aria-label="历史会话"><h2>历史会话</h2><button v-for="session in sessions" :key="session.task_id" :disabled="demo.state.chatBusy || systemData.busy" :aria-pressed="session.task_id === demo.state.currentSessionId" @click="resume(session.task_id)">{{ session.task_name }}</button><p v-if="!sessions.length">还没有历史会话。</p></section>
+    <div class="mobile-function-map">
+      <section v-for="(group, index) in WORKSPACE_GROUPS" :key="group.key" class="mobile-function-group">
+        <header><span>{{ String(index + 1).padStart(2, '0') }}</span><UiIcon :name="group.icon" :size="18" /><h2>{{ group.label }}</h2></header>
+        <div class="mobile-function-group__items">
+          <RouterLink v-for="item in group.items" :key="item.key" :to="item.to" :class="{ 'is-active': isNavActive(item, route) }" :aria-current="isNavActive(item, route) ? 'page' : undefined" @click="more=false">
+            <UiIcon :name="item.icon" :size="19" /><span><strong>{{ item.label }}</strong><small>{{ item.hint }}</small></span><UiIcon name="arrow" :size="15" />
+          </RouterLink>
+        </div>
+      </section>
+    </div>
+    <div class="mobile-utility-links"><RouterLink to="/reminders" @click="more=false"><UiIcon name="bell" :size="17"/>提醒</RouterLink><RouterLink to="/settings" @click="more=false"><UiIcon name="settings" :size="17"/>账号设置</RouterLink></div>
+    <details class="mobile-session-history" aria-label="历史会话"><summary><span>历史会话</span><small>{{ sessions.length }} 个</small><UiIcon name="chevron" :size="16"/></summary><div><button v-for="session in sessions" :key="session.task_id" :disabled="demo.state.chatBusy || systemData.busy" :aria-pressed="session.task_id === demo.state.currentSessionId" @click="resume(session.task_id)">{{ session.task_name }}</button><p v-if="!sessions.length">还没有历史会话。</p></div></details>
   </InfoSheet>
 </template>
 <style scoped>
-.mobile-menu-brand { display:flex; align-items:center; padding:0 0 14px; border-bottom:1px solid var(--c-border); }
-.mobile-account-entry { display:flex; align-items:center; gap:12px; width:100%; min-height:58px; padding:8px 0; border-bottom:1px solid var(--c-border); color:var(--c-text); text-align:left; }
+.mobile-account-entry { display:flex; align-items:center; gap:12px; width:100%; min-height:64px; padding:10px 12px; border:1px solid var(--c-border); border-radius:14px; background:var(--c-surface-2); color:var(--c-text); text-align:left; }
 .mobile-account-entry>span:nth-child(2) { flex:1; min-width:0; }
 .mobile-account-entry strong { display:block; font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .mobile-account-entry small { display:block; margin-top:2px; color:var(--c-text-3); font-size:12px; }
 .mobile-account-entry__avatar { display:grid; place-items:center; width:34px; height:34px; border-radius:10px; background:var(--c-surface-3); color:var(--c-text-2); }
-.mobile-session-history {border-top:1px solid var(--c-border);margin-top:16px;padding-top:16px;}
-.mobile-session-history h2 {font-size:12px;font-weight:500;color:var(--c-text-3);}
+.mobile-function-map { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; margin-top:18px; }
+.mobile-function-group { min-width:0; padding:14px; border:1px solid var(--c-border); border-radius:16px; background:var(--c-surface); }
+.mobile-function-group header { display:flex; align-items:center; gap:8px; padding-bottom:10px; border-bottom:1px solid var(--c-border); }
+.mobile-function-group header>span { color:var(--c-primary); font-size:11px; font-variant-numeric:tabular-nums; }
+.mobile-function-group header h2 { font-size:14px; font-weight:600; }
+.mobile-function-group__items { display:grid; gap:2px; padding-top:6px; }
+.mobile-function-group__items a { display:grid; grid-template-columns:22px minmax(0,1fr) 16px; align-items:center; gap:9px; min-height:58px; padding:7px 5px; border-radius:10px; color:var(--c-text-2); }
+.mobile-function-group__items a:hover,.mobile-function-group__items a.is-active { background:var(--c-primary-weak); color:var(--c-primary); text-decoration:none; }
+.mobile-function-group__items span { min-width:0; }
+.mobile-function-group__items strong { display:block; color:var(--c-text); font-size:13px; }
+.mobile-function-group__items small { display:block; overflow:hidden; margin-top:2px; color:var(--c-text-3); font-size:11px; text-overflow:ellipsis; white-space:nowrap; }
+.mobile-utility-links { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-top:16px; }
+.mobile-utility-links a { display:flex; align-items:center; justify-content:center; gap:7px; min-height:46px; border:1px solid var(--c-border); border-radius:12px; color:var(--c-text-2); font-size:13px; }
+.mobile-session-history { margin-top:16px; border-top:1px solid var(--c-border); }
+.mobile-session-history summary { display:grid; grid-template-columns:minmax(0,1fr) auto 18px; align-items:center; gap:8px; min-height:52px; cursor:pointer; list-style:none; color:var(--c-text-2); font-size:13px; }
+.mobile-session-history summary::-webkit-details-marker { display:none; }
+.mobile-session-history summary small { color:var(--c-text-3); }
+.mobile-session-history[open] summary svg { transform:rotate(180deg); }
 .mobile-session-history button {display:block;width:100%;min-height:44px;border:0;background:none;text-align:left;color:var(--c-text-2);font-size:14px;}
 .mobile-session-history button[aria-pressed=true] {color:var(--c-primary);}
+@media(max-width:620px){.mobile-function-map{grid-template-columns:1fr}.mobile-function-group__items{grid-template-columns:repeat(2,minmax(0,1fr))}.mobile-function-group__items a{grid-template-columns:20px minmax(0,1fr)}.mobile-function-group__items a>svg:last-child{display:none}}
 </style>

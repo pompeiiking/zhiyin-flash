@@ -90,10 +90,6 @@ export const WORKSPACE_ITEMS: NavItem[] = [WORKSPACE_PRIMARY, ...GROUP_ITEMS]
 export const DIRECTORY_PAGES = [
   {label:'账号设置',to:'/settings',hint:'授权、提醒偏好、外观与导出'},
   {label:'提醒',to:'/reminders',hint:'需要处理的事项与处理结果'},
-  {label:'登录',to:'/login',hint:'选择当前工作空间'},
-  {label:'工具',to:'/tools',hint:'六个工具与四步依赖链'},
-  {label:'使用指南',to:'/guide',hint:'咨询、画像、选择与行动'},
-  {label:'异常页',to:'/notfound',hint:'404、无权限与服务不可用'},
 ]
 
 /**
@@ -121,21 +117,18 @@ const INTERNAL_PAGE_TITLES: Record<string, string> = {
  */
 export const PORTAL_LINK = { label: '返回门户', to: '/', hint: '职引如何帮助你' }
 
-/** 移动端底栏：四个常用去处（各自覆盖整组）+ 「更多」。 */
+/** 移动端底栏：完整呈现主循环的六个高频节点，其余能力进入「更多」。 */
 export const MOBILE_TABS: NavItem[] = [
   { ...WORKSPACE_PRIMARY, short: '对话' },
-  { ...findItem('home'), short: '行动', paths: groupPaths('act') },
-  { ...findItem('profile'), short: '画像', paths: groupPaths('self') },
-  { ...findItem('directions'), short: '方向', paths: groupPaths('decide') },
+  { ...findItem('profile'), short: '画像' },
+  { ...findItem('report'), short: '报告' },
+  { ...findItem('directions'), short: '方向' },
+  { ...findItem('home'), short: '今日' },
+  { ...findItem('plan'), short: '计划' },
 ]
 
 function findItem(key: string): NavItem {
   return WORKSPACE_ITEMS.find((i) => i.key === key)!
-}
-
-function groupPaths(groupKey: string): string[] {
-  const group = WORKSPACE_GROUPS.find((g) => g.key === groupKey)!
-  return [...new Set(group.items.flatMap((i) => i.paths))]
 }
 
 interface RouteLike {

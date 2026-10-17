@@ -4,13 +4,12 @@ import { useRoute, useRouter } from 'vue-router'
 import { demo } from '../store'
 import { auth } from '../lib/auth'
 import { toast } from '../store'
-import { skin, type Accent, type StyleId, type ThemeMode } from '../lib/theme'
 import UiIcon from './UiIcon.vue'
-import SegmentedChoice from './SegmentedChoice.vue'
 import InfoSheet from './InfoSheet.vue'
 import { navigation } from '../lib/layout'
 import { activeGroup, labelForPath, PORTAL_LINK } from '../lib/workspace-nav'
 import BrandMark from './BrandMark.vue'
+import SkinPopover from './SkinPopover.vue'
 
 /**
  * 工作区顶栏。
@@ -52,26 +51,6 @@ defineExpose({
   showDemo: openDemo,
   focusExpand() { expandButton.value?.focus() },
 })
-/** 完整外观选项保留在账号面板；主色也可从顶栏快速切换。 */
-const themeOptions: { id: ThemeMode; label: string }[] = [
-  { id: 'light', label: '浅色' },
-  { id: 'dark', label: '深色' },
-  { id: 'system', label: '跟随系统' },
-]
-const accentOptions: { id: Accent; label: string }[] = [
-  { id: 'blue', label: '蓝' },
-  { id: 'red', label: '红' },
-]
-const styleOptions: { id: StyleId; label: string }[] = [
-  { id: 'plain', label: '极简' },
-  { id: 'soft', label: '柔和' },
-  { id: 'dense', label: '紧凑' },
-]
-const appearanceSummary = computed(() => {
-  const t = skin.state.theme === 'system' ? '跟随系统' : skin.state.theme === 'dark' ? '深色' : '浅色'
-  return `${t} · ${skin.state.accent === 'red' ? '红' : '蓝'} · ${styleOptions.find((o) => o.id === skin.state.style)?.label ?? '极简'}`
-})
-
 async function signOut() { try {await auth.logout();accountOpen.value=false;router.push('/')}catch(e){toast((e as Error).message)} }
 </script>
 <template>
@@ -96,31 +75,21 @@ async function signOut() { try {await auth.logout();accountOpen.value=false;rout
       <kbd class="hf-search__kbd">{{ modKey }}</kbd>
     </button>
     <div class="ws-topbar__tools">
-      <button type="button" class="ws-brand-switch" :aria-label="skin.state.accent === 'blue' ? '当前为蓝色，切换为红色' : '当前为红色，切换为蓝色'" :title="skin.state.accent === 'blue' ? '蓝' : '红'" @click="skin.setAccent(skin.state.accent === 'blue' ? 'red' : 'blue')"><i aria-hidden="true" /><span>{{ skin.state.accent === 'blue' ? '蓝' : '红' }}</span></button>
+      <SkinPopover />
       <!-- 搜索不再另留一颗 44×44 图标按钮：顶栏只留**一个**搜索入口（左边那个盒子），
            两颗并存就是"同一个功能两个入口"，正是这个壳层一直在收敛的东西。 -->
     </div>
   </header>
 
 <!-- 账号抽屉：只管账号。身份、演示标识说明、退出。 -->
-  <InfoSheet shape="sheet" :open="accountOpen" title="账号" @close="accountOpen = false">
-    <p class="ws-person">{{ demo.state.account }}</p>
-    <!-- 完整外观设置与顶栏主色按钮共用 skin 状态。 -->
-    <details class="ws-appearance">
-      <summary class="ws-appearance__summary"><span>外观<small>主题 · 主色 · 风格</small></span><span class="ws-appearance__now">{{ appearanceSummary }}<UiIcon name="chevron" :size="16" /></span></summary>
-      <div class="ws-appearance__body">
-        <p class="ws-appearance__title">主题</p>
-        <SegmentedChoice :model-value="skin.state.theme" :options="themeOptions" label="主题" @update:model-value="skin.setTheme" />
-        <p class="ws-appearance__title">主色</p>
-        <SegmentedChoice :model-value="skin.state.accent" :options="accentOptions" label="主色" @update:model-value="skin.setAccent" />
-        <p class="ws-appearance__title">风格</p>
-        <SegmentedChoice :model-value="skin.state.style" :options="styleOptions" label="风格" @update:model-value="skin.setStyle" />
-        <button class="btn btn--sm btn--block" @click="skin.reset()">恢复默认外观</button>
-      </div>
-    </details>
-    <div class="ws-account-list"><RouterLink class="ws-account-row" to="/settings" @click="accountOpen=false"><span><strong>账号设置</strong></span><UiIcon name="arrow" :size="16"/></RouterLink>
+  <InfoSheet shape="dialog" :open="accountOpen" title="账号" description="查看当前身份并选择下一步。" @close="accountOpen = false">
+    <div class="account-card">
+      <span class="account-card__avatar" aria-hidden="true">{{ demo.state.account.slice(0,1) }}</span>
+      <div><strong>{{ demo.state.account }}</strong><small>当前登录账号</small></div>
+    </div>
+    <div class="ws-account-list"><RouterLink class="ws-account-row" to="/settings" @click="accountOpen=false"><span><strong>账号与资料设置</strong><small>授权、提醒偏好和资料导出</small></span><UiIcon name="arrow" :size="16"/></RouterLink>
       <button class="ws-account-row" @click="openDemo()">
-        <span><strong>工作空间设置</strong></span>
+        <span><strong>工作空间设置</strong><small>导航布局与操作引导</small></span>
         <UiIcon name="chevron" :size="16" />
       </button>
       <RouterLink class="ws-account-row" :to="PORTAL_LINK.to" @click="accountOpen = false">
@@ -128,7 +97,7 @@ async function signOut() { try {await auth.logout();accountOpen.value=false;rout
         <UiIcon name="arrow" :size="16" />
       </RouterLink>
     </div>
-    <div class="ws-stack"><button class="btn" @click="signOut">退出登录</button></div>
+    <button class="account-signout" @click="signOut">退出登录</button>
   </InfoSheet>
 
   <!-- 工作空间设置：独立入口，收纳所有演示开关。账号抽屉里不再有这些。 -->
@@ -206,4 +175,11 @@ async function signOut() { try {await auth.logout();accountOpen.value=false;rout
 }
 .mobile-brand-button { display:inline-flex; align-items:center; min-height:44px; padding:4px 6px 4px 2px; border-radius:10px; }
 .mobile-brand-button:hover { background:var(--c-surface-2); }
+.account-card { display:flex; align-items:center; gap:14px; padding:4px 0 18px; border-bottom:1px solid var(--c-border); }
+.account-card__avatar { display:grid; place-items:center; width:48px; height:48px; border-radius:15px; background:var(--c-primary-weak); color:var(--c-primary); font-size:18px; font-weight:600; }
+.account-card div { display:grid; gap:3px; }
+.account-card strong { font-size:16px; }
+.account-card small { color:var(--c-text-3); font-size:12px; }
+.account-signout { width:100%; min-height:44px; margin-top:12px; border-radius:10px; background:var(--c-surface-2); color:var(--c-text-2); font-size:13px; }
+.account-signout:hover { background:var(--c-surface-3); color:var(--c-attention-strong); }
 </style>

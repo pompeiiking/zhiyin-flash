@@ -442,8 +442,8 @@ html[data-style='dense'] .app.app--workspace :is(.ws-paper,.p7-block,.journey-fo
 }
 @media (max-width:767px) {
  .app.app--workspace { background-attachment:scroll; }
- .app.app--workspace .ws-bookmarks { left:0; bottom:0; transform:none; width:100%; max-width:none; border-radius:0; border:0; border-top:1px solid var(--c-border); box-shadow:none; padding:8px 16px calc(8px + env(safe-area-inset-bottom)); gap:4px; background:var(--c-surface); backdrop-filter:blur(18px); }
- .app.app--workspace .ws-bookmark { font-size:var(--fs-12); border-radius:8px; min-height:46px; height:46px; }
+ .app.app--workspace .ws-bookmarks { left:0; bottom:0; transform:none; width:100%; max-width:none; border-radius:0; border:0; border-top:1px solid var(--c-border); box-shadow:none; padding:6px 6px calc(6px + env(safe-area-inset-bottom)); gap:2px; background:var(--c-surface); backdrop-filter:blur(18px); }
+ .app.app--workspace .ws-bookmark { font-size:var(--fs-12); border-radius:8px; min-height:50px; height:50px; }
  .app.app--workspace .ws-topbar { height:60px; padding:8px 12px; gap:6px; }
  .app.app--workspace .hf-search { flex:1 1 auto; width:auto; max-width:none; min-width:0; padding:0 12px; justify-content:flex-start; }
  .app.app--workspace .hf-search__ph { display:block; overflow:hidden; text-overflow:ellipsis; }

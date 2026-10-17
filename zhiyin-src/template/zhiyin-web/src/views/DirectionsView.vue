@@ -7,7 +7,6 @@ import type {AssetVersionView} from '../api/backend-types'
 import PageHeading from '../components/PageHeading.vue'
 import DirectionDetails from '../components/LiveDirectionCompare.vue'
 import ReportHistory from '../components/ReportHistory.vue'
-import EmptyState from '../components/EmptyState.vue'
 import SkeletonBlock from '../components/SkeletonBlock.vue'
 import StatusBanner from '../components/StatusBanner.vue'
 const route=useRoute(),router=useRouter(),busy=ref(false),saving=ref(false),error=ref(''),selectionChanged=ref(false)
@@ -32,10 +31,16 @@ onMounted(load)
 <StatusBanner v-if="error" tone="error" :message="error" retry-label="重新读取" @retry="load"/><SkeletonBlock v-if="busy" variant="list" :lines="4"/>
 <DirectionDetails v-if="plans && !history" :plans="plans" :saving="saving" :impact="impact" :selection-changed="selectionChanged" @select="select"/>
 <ReportHistory v-else-if="history" asset-type="direction_plan"/>
-<EmptyState v-else-if="!busy&&!error" kind="report" title="尚未形成方向方案" description="先通过咨询补充资料，生成后会保存在这里。"><RouterLink class="btn btn--primary" to="/chat">继续咨询</RouterLink></EmptyState>
+<section v-else-if="!busy&&!error" class="direction-empty" aria-labelledby="direction-empty-title">
+  <div class="direction-empty__lead"><p>方向尚待形成</p><h2 id="direction-empty-title">先把考虑对象与判断依据放到同一处</h2><RouterLink class="btn btn--primary" to="/chat?question=请根据我的个人资料，帮我整理正在考虑的方向并说明还缺哪些依据">开始梳理方向</RouterLink></div>
+  <ol><li><span>01</span><div><strong>补充考虑对象</strong><p>可以有多个，也可以暂时说“还没定”。</p></div></li><li><span>02</span><div><strong>核对比较依据</strong><p>画像、报告与现实限制会一起参与判断。</p></div></li><li><span>03</span><div><strong>安排一次验证</strong><p>用可执行的小尝试降低选择的不确定性。</p></div></li></ol>
+  <div class="direction-empty__links"><RouterLink to="/profile">核对个人画像</RouterLink><RouterLink to="/report">查看诊断报告</RouterLink></div>
+</section>
 </div></template>
 <style scoped>
 .report-page .c2-report-layout > .report-next-rail { grid-column:2; grid-row:1; display:grid; gap:24px; position:sticky; top:20px; padding-top:0; }
+.direction-empty{display:grid;grid-template-columns:minmax(0,.9fr) minmax(360px,1.2fr);gap:42px;margin-top:18px;padding:34px 0;border-top:3px solid var(--c-primary);border-bottom:1px solid var(--c-border)}.direction-empty__lead>p{color:var(--c-primary);font-size:12px;font-weight:600}.direction-empty__lead h2{max-width:14em;margin:7px 0 22px;font-size:28px;line-height:1.38}.direction-empty ol{margin:0;padding:0;list-style:none}.direction-empty li{display:grid;grid-template-columns:34px minmax(0,1fr);gap:12px;padding:13px 0;border-bottom:1px solid var(--c-border)}.direction-empty li>span{color:var(--c-primary);font-size:12px;font-variant-numeric:tabular-nums}.direction-empty li strong{font-size:15px}.direction-empty li p{margin-top:4px;color:var(--c-text-3);font-size:13px}.direction-empty__links{grid-column:1/-1;display:flex;gap:20px}.direction-empty__links a{min-height:44px;color:var(--c-primary)}
+@media(max-width:720px){.direction-empty{grid-template-columns:1fr;gap:20px;padding-top:26px}.direction-empty__lead h2{font-size:23px}.direction-empty__links{flex-wrap:wrap}}
 @media(max-width:1279px){.report-page .c2-report-layout{grid-template-columns:minmax(0,1fr)}.report-page .c2-report-layout > .report-next-rail{grid-column:1;grid-row:auto;position:static}}
 
 @media print{.report-page :deep(button),.report-page :deep(.report-next-rail),.report-page :deep(.direction-radio),.report-page :deep(select){display:none!important}.report-page :deep(.c2-report-layout){display:block!important}.report-page :deep(.full-report){width:100%}}

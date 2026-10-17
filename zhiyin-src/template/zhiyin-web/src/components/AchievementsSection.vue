@@ -131,8 +131,6 @@ onMounted(() => {
             <div class="growth-queue__body">
               <div><span>{{ record.stage }}</span><strong>待补充</strong></div>
               <h3>{{ record.title }}</h3>
-              <p>{{ record.purpose }}</p>
-              <p class="growth-queue__condition"><span>形成条件</span>{{ record.requirement }}</p>
             </div>
             <div class="growth-queue__actions">
               <RouterLink :to="record.to" class="btn btn--primary">
@@ -177,7 +175,6 @@ onMounted(() => {
                 <div class="growth-archive__body">
                   <span>{{ record.stage }}</span>
                   <h3>{{ record.title }}</h3>
-                  <p>{{ record.purpose }}</p>
                 </div>
                 <div class="growth-archive__meta">
                   <DetailPopover :title="record.title + '记录说明'" :label="'查看' + record.title + '的记录说明'">

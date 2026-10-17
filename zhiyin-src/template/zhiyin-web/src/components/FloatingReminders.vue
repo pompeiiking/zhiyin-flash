@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { demo } from '../store'
 import UiIcon from './UiIcon.vue'
 
 const root = ref<HTMLElement | null>(null)
+const route = useRoute()
 const viewportHeight = ref(typeof window === 'undefined' ? 800 : window.innerHeight)
 const viewportWidth = ref(typeof window === 'undefined' ? 1280 : window.innerWidth)
 const y = ref(88)
@@ -12,6 +14,8 @@ let moved = false
 let suppressClick = false
 let startY = 0
 let startTop = 0
+let hasSavedPosition = false
+const positionKey = 'zhiyin-reminder-y-v2'
 
 const mobile = computed(() => viewportWidth.value <= 767)
 const minY = computed(() => mobile.value ? 136 : 72)
@@ -29,11 +33,14 @@ const visibleNotices = computed(() => demo.state.noticeQueue.slice(0, 3))
 function clamp(value: number) { return Math.min(maxY.value, Math.max(minY.value, value)) }
 function resize() { viewportHeight.value = window.innerHeight; viewportWidth.value = window.innerWidth; y.value = clamp(y.value) }
 function restore() {
-  const saved = Number(localStorage.getItem('zhiyin-reminder-y'))
-  if (Number.isFinite(saved)) y.value = clamp(saved)
+  const raw = localStorage.getItem(positionKey)
+  const saved = Number(raw)
+  hasSavedPosition = raw !== null && Number.isFinite(saved)
+  if (hasSavedPosition) y.value = clamp(saved)
+  else y.value = clamp(mobile.value ? viewportHeight.value * .55 : 88)
 }
-function save() { localStorage.setItem('zhiyin-reminder-y', String(Math.round(y.value))) }
-function resetPosition() { y.value = mobile.value ? 148 : 88; save() }
+function save() { localStorage.setItem(positionKey, String(Math.round(y.value))) }
+function resetPosition() { y.value = mobile.value ? viewportHeight.value * .55 : 88; save() }
 function pointerDown(event: PointerEvent) {
   if (event.button !== 0) return
   dragging = true; moved = false; startY = event.clientY; startTop = y.value
@@ -61,10 +68,11 @@ function outside(event: PointerEvent) {
 function escape(event: KeyboardEvent) { if (event.key === 'Escape') demo.closeNotice() }
 onMounted(() => { restore(); resize(); window.addEventListener('resize', resize); document.addEventListener('pointerdown', outside); document.addEventListener('keydown', escape) })
 onBeforeUnmount(() => { window.removeEventListener('resize', resize); window.removeEventListener('pointermove', pointerMove); document.removeEventListener('pointerdown', outside); document.removeEventListener('keydown', escape) })
+watch(() => route.path, () => { if (!hasSavedPosition) restore(); demo.closeNotice() })
 </script>
 
 <template>
-  <div ref="root" class="floating-reminders">
+  <div v-if="route.path !== '/reminders'" ref="root" class="floating-reminders">
     <button
       class="floating-reminders__trigger"
       :style="triggerStyle"
@@ -114,7 +122,7 @@ onBeforeUnmount(() => { window.removeEventListener('resize', resize); window.rem
 .floating-reminders__card>footer :is(a,button) { min-height:36px; display:inline-flex; align-items:center; color:var(--c-primary); font-size:12px; }
 .floating-reminders__card>footer button { color:var(--c-text-3); }
 @media (max-width:767px) {
-  .floating-reminders__trigger { right:12px; width:44px; height:44px; border-radius:14px; }
+  .floating-reminders__trigger { right:6px; width:44px; height:44px; border-radius:14px; }
   .floating-reminders__card { right:12px; width:calc(100vw - 24px); max-height:min(56dvh,440px); }
 }
 @media (prefers-reduced-motion:reduce) { .floating-reminders__trigger { transition:none; } }

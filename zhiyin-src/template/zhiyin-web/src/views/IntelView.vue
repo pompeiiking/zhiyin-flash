@@ -112,28 +112,28 @@ onMounted(() => { void load() })
 
 <template>
   <div class="ws-page intel-page">
+    <section class="intel-command" aria-labelledby="intel-page-title">
+      <div class="intel-command__title">
+        <h1 id="intel-page-title">职业探索</h1>
+        <p>从所学专业出发，了解相关职业，再用真实去向帮助自己做选择。</p>
+      </div>
+      <div class="intel-command__actions">
+        <label v-if="allItems.length" class="intel-search">
+          <UiIcon name="search" :size="17" />
+          <input v-model="query" name="intel-search" autocomplete="off" aria-label="搜索职业方向或校友去向" placeholder="搜索职业方向或校友去向…" />
+          <button v-if="query" type="button" aria-label="清空搜索" @click="query = ''">清空</button>
+        </label>
+        <button class="btn" type="button" :disabled="busy" @click="load(true)">{{ refreshing ? '正在更新资料…' : '更新职业资料' }}</button>
+      </div>
+    </section>
     <StatusBanner v-if="error" tone="error" :message="error" :retry-label="lastRefresh ? '重试更新' : '重新读取'" :retrying="busy" @retry="load(lastRefresh)" @dismiss="error = ''" />
 
     <StatusBanner v-if="status" tone="info" :message="status" @dismiss="status = ''" />
-    <div class="intel-refresh"><button class="btn" type="button" :disabled="busy" @click="load(true)">{{ refreshing ? '正在更新资料…' : '更新职业资料' }}</button></div>
-
     <div v-if="initialLoading" class="intel-loading" role="status" aria-label="正在读取职业资料">
       <SkeletonBlock variant="list" :lines="6" />
     </div>
 
     <template v-else-if="allItems.length">
-      <section class="intel-command" aria-labelledby="intel-page-title">
-        <div class="intel-command__title">
-          <h1 id="intel-page-title">职业探索</h1>
-          <p>从所学专业出发，了解相关职业，再用真实去向帮助自己做选择。</p>
-        </div>
-        <label class="intel-search">
-          <UiIcon name="search" :size="17" />
-          <input v-model="query" name="intel-search" autocomplete="off" aria-label="搜索职业方向或校友去向" placeholder="搜索职业方向或校友去向…" />
-          <button v-if="query" type="button" aria-label="清空搜索" @click="query = ''">清空</button>
-        </label>
-      </section>
-
       <section class="intel-route" aria-label="从专业到职业的探索路径">
         <article v-if="major" class="intel-origin">
           <div class="intel-origin__mark" aria-hidden="true"><UiIcon name="profile" :size="20" /></div>
@@ -257,13 +257,13 @@ onMounted(() => { void load() })
 </template>
 
 <style scoped>
-.intel-refresh { display: flex; justify-content: flex-end; margin-bottom: 12px; }
 .intel-page { width: 100%; min-width: 0; padding-bottom: 48px; }
 .intel-loading { padding: 20px; border: 1px solid var(--c-border); border-radius: 16px; background: var(--c-surface); }
 
 .intel-command { display: flex; align-items: end; justify-content: space-between; gap: 28px; margin-bottom: 14px; padding: 8px 2px 12px; }
 .intel-command__title h1 { font-size: 24px; font-weight: 720; line-height: 1.35; }
 .intel-command__title p { max-width: 52em; margin-top: 5px; color: var(--c-text-3); font-size: 12px; line-height: 1.6; }
+.intel-command__actions { display:flex; flex:0 1 520px; align-items:center; justify-content:flex-end; gap:10px; }
 .intel-search { display: flex; flex: 0 1 360px; align-items: center; gap: 8px; min-width: 260px; min-height: 40px; padding: 0 11px; border: 1px solid var(--c-border); border-radius: 10px; background: var(--c-surface); color: var(--c-text-3); box-shadow: var(--e-1); }
 .intel-search:focus-within { border-color: var(--c-primary); box-shadow: 0 0 0 3px var(--c-primary-weak); }
 .intel-search input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--c-text); font-size: 12px; }
@@ -327,6 +327,7 @@ onMounted(() => { void load() })
 @media (max-width: 900px) {
   .intel-command { align-items: stretch; flex-direction: column; gap: 13px; }
   .intel-search { flex-basis: auto; width: 100%; }
+  .intel-command__actions { width:100%; flex-basis:auto; align-items:stretch; }
   .intel-workbench { display: block; }
   .intel-detail-card { display: none; }
 }
@@ -336,6 +337,8 @@ onMounted(() => { void load() })
   .intel-command { padding-inline: 2px; }
   .intel-command__title h1 { font-size: 22px; }
   .intel-search { min-width: 0; }
+  .intel-command__actions { flex-direction:column; }
+  .intel-command__actions>.btn { width:100%; }
   .intel-route { margin-inline: -4px; }
   .intel-origin { grid-template-columns: 36px minmax(0, 1fr); padding: 15px 14px; }
   .intel-origin__mark { width: 36px; height: 36px; }

@@ -28,6 +28,7 @@ const adviceOpen = ref(false)
 const calendarBusy = ref(false)
 const calendarError = ref('')
 const readOnce = ref(false)
+const weekStrip = ref<HTMLElement | null>(null)
 const timetableScroll = ref<HTMLElement | null>(null)
 const capacityOpen = ref(false)
 const timePlanOpen = ref(false)
@@ -130,10 +131,20 @@ function centerTodayCourse() {
   })
 }
 
+function centerSelectedWeek() {
+  void nextTick(() => {
+    const el = weekStrip.value
+    const selectedDay = el?.querySelector<HTMLElement>('[aria-pressed="true"]')
+    if (!el || !selectedDay || el.scrollWidth <= el.clientWidth) return
+    selectedDay.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'center' })
+  })
+}
+
 function selectDate(value: Date) {
   selected.value = new Date(value.getFullYear(), value.getMonth(), value.getDate())
   month.value = new Date(value.getFullYear(), value.getMonth(), 1)
   adviceOpen.value = false
+  centerSelectedWeek()
 }
 function move(amount: number) {
   if (mode.value === 'month') {
@@ -145,7 +156,10 @@ function move(amount: number) {
   selectDate(next)
 }
 function resetDate() { selectDate(today) }
-function toggleMode() { mode.value = mode.value === 'week' ? 'month' : 'week' }
+function toggleMode() {
+  mode.value = mode.value === 'week' ? 'month' : 'week'
+  if (mode.value === 'week') centerSelectedWeek()
+}
 
 async function loadCalendar() {
   if (calendarBusy.value) return
@@ -168,7 +182,7 @@ async function loadCalendar() {
 
 async function courseImported(message:string){courseImportOpen.value=false;await loadCalendar();academicStatus.value=message}
 async function revokeCourses(){if(calendarBusy.value)return;calendarBusy.value=true;academicError.value='';try{const result=await backendClient.revokeAcademicCourses();if(!result.revoked)throw new Error('Not confirmed');backendDemo.revokeAcademicCourses();courseRevokeOpen.value=false;academicStatus.value='已撤回课表，成绩记录保持不变。';backendDemo.setWorkspace(await backendClient.workspace())}catch{academicError.value='撤回结果暂时没有确认，请重新读取后再试。'}finally{calendarBusy.value=false}}
-onMounted(() => { centerTodayCourse(); void loadCalendar() })
+onMounted(() => { centerSelectedWeek(); centerTodayCourse(); void loadCalendar() })
 </script>
 
 <template>
@@ -205,7 +219,7 @@ onMounted(() => { centerTodayCourse(); void loadCalendar() })
         </div>
       </header>
 
-      <div v-if="mode === 'week'" class="week-strip" aria-label="选择本周日期">
+      <div v-if="mode === 'week'" ref="weekStrip" class="week-strip" aria-label="选择本周日期">
         <button v-for="date in weekDates" :key="dateKey(date)" :class="{ 'is-selected': dateKey(date) === selectedDate, 'is-today': dateKey(date) === dateKey(today) }" :aria-pressed="dateKey(date) === selectedDate" :aria-label="`${formatDay(date, { weekday: 'long', month: 'long', day: 'numeric' })}，${dayCountLabel(date)}`" @click="selectDate(date)">
           <span>周{{ weekdays[(date.getDay() + 6) % 7] }}</span><strong>{{ date.getDate() }}</strong><small>{{ dayCountLabel(date) }}</small>
         </button>
