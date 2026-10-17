@@ -87,30 +87,31 @@
       "verification": "课表与成绩分离后新增；单元测试与前端构建通过，待独立 HTTP 联调。"
     },
     {
-      "id": "POST /api/v1/app/academic/import",
-      "method": "POST",
-      "path": "/api/v1/app/academic/import",
-      "capability": "导入课表与成绩单（学生自己贴原文）。  这条路是产品有意选的：不做替学生登录学校系统，也不经手他校内账号的密码。 用户的体验压在解析上 —— 贴进来的东西读不出来时，回执要说清楚**改哪里**。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py:38",
+      "id": "DELETE /api/v1/app/notes/{note_id}",
+      "method": "DELETE",
+      "path": "/api/v1/app/notes/{note_id}",
+      "capability": "删掉一条。",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/note_controller.py:46",
       "scope": "学生端",
       "stream": false,
-      "parameters": [],
-      "request": {
-        "content": {
-          "application/json": {
-            "schema": {
-              "$ref": "#/components/schemas/AcademicImportRequest"
-            }
+      "parameters": [
+        {
+          "in": "path",
+          "name": "note_id",
+          "required": true,
+          "schema": {
+            "title": "Note Id",
+            "type": "string"
           }
-        },
-        "required": true
-      },
+        }
+      ],
+      "request": null,
       "responses": {
         "200": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ApiResponse_AcademicImportAck_"
+                "$ref": "#/components/schemas/ApiResponse_NoteAck_"
               }
             }
           },
@@ -129,36 +130,36 @@
       },
       "status": "联调通过",
       "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/components/AcademicImportSheet.vue",
-        "zhiyin-src/template/zhiyin-web/src/views/GradesView.vue",
-        "zhiyin-src/template/zhiyin-web/src/views/ScheduleView.vue"
+        "zhiyin-src/template/zhiyin-web/src/views/NotesView.vue"
       ],
       "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
     },
     {
-      "id": "POST /api/v1/app/academic/import/file",
-      "method": "POST",
-      "path": "/api/v1/app/academic/import/file",
-      "capability": "导入课表与成绩单（**上传文件**那一版：multipart/form-data）。  为什么和上面那条并存，而不是合成一条：粘贴与上传是两种真实动作， 表单上也是两个不同的入口。合成一条的话，每次都要把\"这次有没有文件\"编码进 同一种请求体里，读的人得先解码一遍才知道这条路在做什么。两条路共用同一条业务 链路（`import_files` → `import_`），所以\"同一份数据读出来必须一样\"这件事 由业务层保证，不靠接口形状。  文件在这一层只做一件事：**限大小**。编码识别与二进制格式拒绝都在网关里 （见 `AcademicImportGateway.read_text`）—— 那一层才知道\"读不出来\"该怎么说。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py:61",
+      "id": "DELETE /api/v1/app/plan/action/phases/{phase_id}",
+      "method": "DELETE",
+      "path": "/api/v1/app/plan/action/phases/{phase_id}",
+      "capability": "删除一个阶段及其下任务（学生明确删除）。",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:89",
       "scope": "学生端",
       "stream": false,
-      "parameters": [],
-      "request": {
-        "content": {
-          "multipart/form-data": {
-            "schema": {
-              "$ref": "#/components/schemas/Body_import_academic_files_api_v1_app_academic_import_file_post"
-            }
+      "parameters": [
+        {
+          "in": "path",
+          "name": "phase_id",
+          "required": true,
+          "schema": {
+            "title": "Phase Id",
+            "type": "string"
           }
         }
-      },
+      ],
+      "request": null,
       "responses": {
         "200": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ApiResponse_AcademicImportAck_"
+                "$ref": "#/components/schemas/ApiResponse_ActionPlanView_"
               }
             }
           },
@@ -177,9 +178,61 @@
       },
       "status": "联调通过",
       "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/api/backend-client.ts"
+        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts",
+        "zhiyin-src/template/zhiyin-web/src/components/PhaseEditor.vue",
+        "zhiyin-src/template/zhiyin-web/src/views/RoadmapView.vue"
       ],
-      "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+      "verification": "2026-10-18 全站回归新增；阶段编辑器二次确认删除，删除后计划/今日行动同步。"
+    },
+    {
+      "id": "DELETE /api/v1/app/plan/action/tasks/{task_id}",
+      "method": "DELETE",
+      "path": "/api/v1/app/plan/action/tasks/{task_id}",
+      "capability": "删除一条行动任务（学生明确删除）。",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:83",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [
+        {
+          "in": "path",
+          "name": "task_id",
+          "required": true,
+          "schema": {
+            "title": "Task Id",
+            "type": "string"
+          }
+        }
+      ],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_ActionPlanView_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts",
+        "zhiyin-src/template/zhiyin-web/src/components/TaskEditor.vue",
+        "zhiyin-src/template/zhiyin-web/src/views/RoadmapView.vue"
+      ],
+      "verification": "2026-10-18 全站回归新增；任务编辑器二次确认删除，删除后计划/今日行动同步。"
     },
     {
       "id": "GET /api/v1/app/achievements",
@@ -257,53 +310,6 @@
       "status": "联调通过",
       "frontend": [
         "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
-      ],
-      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
-    },
-    {
-      "id": "POST /api/v1/app/assets/export",
-      "method": "POST",
-      "path": "/api/v1/app/assets/export",
-      "capability": "导出资产。第一期仅预留入口，available 恒 False。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/asset_controller.py:51",
-      "scope": "学生端",
-      "stream": false,
-      "parameters": [],
-      "request": {
-        "content": {
-          "application/json": {
-            "schema": {
-              "$ref": "#/components/schemas/ExportRequest"
-            }
-          }
-        },
-        "required": true
-      },
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_ExportResultView_"
-              }
-            }
-          },
-          "description": "Successful Response"
-        },
-        "422": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/HTTPValidationError"
-              }
-            }
-          },
-          "description": "Validation Error"
-        }
-      },
-      "status": "联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/views/SystemView.vue"
       ],
       "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
     },
@@ -409,6 +415,1988 @@
       "status": "联调通过",
       "frontend": [
         "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+      ],
+      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
+    },
+    {
+      "id": "GET /api/v1/app/bootstrap",
+      "method": "GET",
+      "path": "/api/v1/app/bootstrap",
+      "capability": "启动装配：菜单 / 路由 / 任务入口 / 文案 / 功能开关。  前端启动只请求一次即可渲染首页。",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/app_controller.py:36",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_BootstrapView_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/lib/auth.ts"
+      ],
+      "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+    },
+    {
+      "id": "GET /api/v1/app/calendar",
+      "method": "GET",
+      "path": "/api/v1/app/calendar",
+      "capability": "关键节点日历（④ 行动环节写进来的节点）。  此前这张表**只写不读**：库里有节点，界面上没有任何一处能看到 —— \"规划师写入、教练读取\"里的\"读取\"那一半没有实现。",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/asset_controller.py:117",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_list_CalendarNodeView__"
+              }
+            }
+          },
+          "description": "Successful Response"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/lib/workspace-nav.ts",
+        "zhiyin-src/template/zhiyin-web/src/views/ScheduleView.vue"
+      ],
+      "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+    },
+    {
+      "id": "GET /api/v1/app/intel",
+      "method": "GET",
+      "path": "/api/v1/app/intel",
+      "capability": "外部情报：公开事实（学职平台 + 通用网络检索）。  **不要求登录**：登了录就按你的画像收窄，没登录就按 `?q=` 或平台通用数据取。 每条都带来源链接 —— 这类信息\"凭什么这么说\"就是那个链接， 所以取不到来源的条目在服务层就被丢掉了，不会返回。",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py:165",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [
+        {
+          "in": "query",
+          "name": "q",
+          "required": false,
+          "schema": {
+            "default": "",
+            "title": "Q",
+            "type": "string"
+          }
+        }
+      ],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_IntelListView_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/router.ts",
+        "zhiyin-src/template/zhiyin-web/src/components/EmptyState.vue",
+        "zhiyin-src/template/zhiyin-web/src/components/WorkspaceMotif.vue",
+        "zhiyin-src/template/zhiyin-web/src/lib/workspace-nav.ts",
+        "zhiyin-src/template/zhiyin-web/src/views/IntelView.vue"
+      ],
+      "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+    },
+    {
+      "id": "GET /api/v1/app/measurements",
+      "method": "GET",
+      "path": "/api/v1/app/measurements",
+      "capability": "Measurements",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:146",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_MeasurementListView_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+      ],
+      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
+    },
+    {
+      "id": "GET /api/v1/app/modules",
+      "method": "GET",
+      "path": "/api/v1/app/modules",
+      "capability": "User Modules",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/module_controller.py:36",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [
+        {
+          "in": "query",
+          "name": "surface",
+          "required": false,
+          "schema": {
+            "default": "application",
+            "enum": [
+              "application",
+              "conversation"
+            ],
+            "title": "Surface",
+            "type": "string"
+          }
+        }
+      ],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_list_ModuleView__"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/components/ModuleCatalog.vue",
+        "zhiyin-src/template/zhiyin-web/src/views/DeveloperView.vue"
+      ],
+      "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+    },
+    {
+      "id": "GET /api/v1/app/modules/{module_id}/data",
+      "method": "GET",
+      "path": "/api/v1/app/modules/{module_id}/data",
+      "capability": "Module Data",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/module_controller.py:46",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [
+        {
+          "in": "path",
+          "name": "module_id",
+          "required": true,
+          "schema": {
+            "title": "Module Id",
+            "type": "string"
+          }
+        }
+      ],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_ModuleResult_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "隔离联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/components/ModuleCatalog.vue"
+      ],
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+    },
+    {
+      "id": "GET /api/v1/app/notes",
+      "method": "GET",
+      "path": "/api/v1/app/notes",
+      "capability": "他写下的全部内容（新写的在前）。",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/note_controller.py:20",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_list_NoteView__"
+              }
+            }
+          },
+          "description": "Successful Response"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/router.ts",
+        "zhiyin-src/template/zhiyin-web/src/components/EmptyState.vue",
+        "zhiyin-src/template/zhiyin-web/src/components/InboxSheet.vue",
+        "zhiyin-src/template/zhiyin-web/src/components/TaskList.vue",
+        "zhiyin-src/template/zhiyin-web/src/components/WorkspaceMotif.vue",
+        "zhiyin-src/template/zhiyin-web/src/lib/system-data.ts",
+        "zhiyin-src/template/zhiyin-web/src/lib/workspace-nav.ts",
+        "zhiyin-src/template/zhiyin-web/src/views/NotesView.vue",
+        "zhiyin-src/template/zhiyin-web/src/views/TodayView.vue"
+      ],
+      "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+    },
+    {
+      "id": "GET /api/v1/app/notifications",
+      "method": "GET",
+      "path": "/api/v1/app/notifications",
+      "capability": "Notifications",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:93",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_list_NotificationStateView__"
+              }
+            }
+          },
+          "description": "Successful Response"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+      ],
+      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
+    },
+    {
+      "id": "GET /api/v1/app/notifications/pending",
+      "method": "GET",
+      "path": "/api/v1/app/notifications/pending",
+      "capability": "教练主动介入通知出队（前端浮窗轮询消费）。",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/app_controller.py:47",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_list_CoachNotificationView__"
+              }
+            }
+          },
+          "description": "Successful Response"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/lib/system-data.ts"
+      ],
+      "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+    },
+    {
+      "id": "GET /api/v1/app/plan/action",
+      "method": "GET",
+      "path": "/api/v1/app/plan/action",
+      "capability": "行动计划正文（阶段 / 任务 / 现在这一件）。没有计划时 has_plan=False。",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/asset_controller.py:96",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_ActionPlanView_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/components/CareSheet.vue",
+        "zhiyin-src/template/zhiyin-web/src/components/EmptyState.vue",
+        "zhiyin-src/template/zhiyin-web/src/components/LiveActionPlan.vue",
+        "zhiyin-src/template/zhiyin-web/src/components/ModuleCatalog.vue",
+        "zhiyin-src/template/zhiyin-web/src/components/PortalExample.vue",
+        "zhiyin-src/template/zhiyin-web/src/components/StatusBanner.vue",
+        "zhiyin-src/template/zhiyin-web/src/components/TaskProgressMap.vue",
+        "zhiyin-src/template/zhiyin-web/src/developer/Workflows.vue",
+        "zhiyin-src/template/zhiyin-web/src/lib/system-data.ts",
+        "zhiyin-src/template/zhiyin-web/src/lib/workspace-nav.ts",
+        "zhiyin-src/template/zhiyin-web/src/modules/ModuleContent.vue",
+        "zhiyin-src/template/zhiyin-web/src/views/ConversationView.vue",
+        "zhiyin-src/template/zhiyin-web/src/views/DeveloperView.vue",
+        "zhiyin-src/template/zhiyin-web/src/views/ScheduleView.vue",
+        "zhiyin-src/template/zhiyin-web/src/views/StudentView.vue",
+        "zhiyin-src/template/zhiyin-web/src/views/TodayView.vue"
+      ],
+      "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+    },
+    {
+      "id": "GET /api/v1/app/plan/direction-comparison",
+      "method": "GET",
+      "path": "/api/v1/app/plan/direction-comparison",
+      "capability": "Comparison",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:170",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_DirectionComparisonView_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+      ],
+      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
+    },
+    {
+      "id": "GET /api/v1/app/plan/direction-weights",
+      "method": "GET",
+      "path": "/api/v1/app/plan/direction-weights",
+      "capability": "Weights",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:158",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_DirectionWeights_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+      ],
+      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
+    },
+    {
+      "id": "GET /api/v1/app/plan/directions",
+      "method": "GET",
+      "path": "/api/v1/app/plan/directions",
+      "capability": "三套方向方案（主攻 / 平行 / 保底）+ 当前选中那一套。",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/asset_controller.py:71",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_DirectionPlanListView_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/router.ts",
+        "zhiyin-src/template/zhiyin-web/src/components/WeightedDirectionCompare.vue",
+        "zhiyin-src/template/zhiyin-web/src/lib/workspace-nav.ts",
+        "zhiyin-src/template/zhiyin-web/src/views/AssessmentView.vue",
+        "zhiyin-src/template/zhiyin-web/src/views/ConversationView.vue",
+        "zhiyin-src/template/zhiyin-web/src/views/ToolsView.vue"
+      ],
+      "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+    },
+    {
+      "id": "GET /api/v1/app/portal",
+      "method": "GET",
+      "path": "/api/v1/app/portal",
+      "capability": "门户内容 —— **公开接口，不解析身份**。  门户是访客第一眼看到的那一页，内容全是产品自己的话（文案 / 信任块 / 横幅 / FAQ / 任务入口 / 开关）。它不需要知道\"你是谁\"，所以这里不调 `resolve_user_id` —— 那是全站唯一一个不要求登录的业务读接口。  为什么要开这个口子：门户文案此前写死在前端 `data/portal.ts`， 改一句主张要发一次前端版本 —— 那是本仓\"文案不进代码\"这条底线上的最后一处例外。",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/app_controller.py:21",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_PortalView_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/router.ts",
+        "zhiyin-src/template/zhiyin-web/src/views/PortalClassicView.vue",
+        "zhiyin-src/template/zhiyin-web/src/views/PortalView.vue"
+      ],
+      "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+    },
+    {
+      "id": "GET /api/v1/app/preferences",
+      "method": "GET",
+      "path": "/api/v1/app/preferences",
+      "capability": "Preferences",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:57",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_Preferences_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+      ],
+      "verification": "2026-10-16 当前 Docker HTTP/PostgreSQL/JWT 联调通过；来源关闭后仍可生成，四种组合、缓存隔离、派生信息过滤、数据库回读及普通读取保留共 21 项通过。见 资料来源过滤验收结果.json。"
+    },
+    {
+      "id": "GET /api/v1/app/report/full-text",
+      "method": "GET",
+      "path": "/api/v1/app/report/full-text",
+      "capability": "完整报告页正文。只读资产版本，不重新生成。",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/asset_controller.py:41",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [
+        {
+          "in": "query",
+          "name": "version",
+          "required": false,
+          "schema": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          }
+        }
+      ],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_ReportFullTextView_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/router.ts",
+        "zhiyin-src/template/zhiyin-web/src/components/EmptyState.vue",
+        "zhiyin-src/template/zhiyin-web/src/components/EvidenceList.vue",
+        "zhiyin-src/template/zhiyin-web/src/components/LiveActionPlan.vue",
+        "zhiyin-src/template/zhiyin-web/src/components/PortalExample.vue",
+        "zhiyin-src/template/zhiyin-web/src/components/ReportHistory.vue",
+        "zhiyin-src/template/zhiyin-web/src/data/copy.ts",
+        "zhiyin-src/template/zhiyin-web/src/developer/client.ts",
+        "zhiyin-src/template/zhiyin-web/src/lib/workspace-nav.ts",
+        "zhiyin-src/template/zhiyin-web/src/views/AssessmentView.vue",
+        "zhiyin-src/template/zhiyin-web/src/views/ConversationView.vue",
+        "zhiyin-src/template/zhiyin-web/src/views/SystemView.vue",
+        "zhiyin-src/template/zhiyin-web/src/views/ToolsView.vue"
+      ],
+      "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+    },
+    {
+      "id": "GET /api/v1/app/reviews",
+      "method": "GET",
+      "path": "/api/v1/app/reviews",
+      "capability": "Reviews",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:105",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_ReviewListView_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+      ],
+      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
+    },
+    {
+      "id": "GET /api/v1/app/schedule/semester",
+      "method": "GET",
+      "path": "/api/v1/app/schedule/semester",
+      "capability": "Semester",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:176",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_Union_Semester__NoneType__"
+              }
+            }
+          },
+          "description": "Successful Response"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+      ],
+      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
+    },
+    {
+      "id": "GET /api/v1/app/schedule/workload",
+      "method": "GET",
+      "path": "/api/v1/app/schedule/workload",
+      "capability": "Workload",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:188",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [
+        {
+          "in": "query",
+          "name": "start",
+          "required": true,
+          "schema": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          }
+        }
+      ],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_WorkloadView_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+      ],
+      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
+    },
+    {
+      "id": "GET /api/v1/app/sessions",
+      "method": "GET",
+      "path": "/api/v1/app/sessions",
+      "capability": "左栏会话列表（并行任务会话，按任务/环节命名）。",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py:33",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_SessionListView_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/lib/system-data.ts",
+        "zhiyin-src/template/zhiyin-web/src/views/ConversationView.vue"
+      ],
+      "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+    },
+    {
+      "id": "GET /api/v1/app/sessions/{task_id}/snapshot",
+      "method": "GET",
+      "path": "/api/v1/app/sessions/{task_id}/snapshot",
+      "capability": "Session Snapshot",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:140",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [
+        {
+          "in": "path",
+          "name": "task_id",
+          "required": true,
+          "schema": {
+            "title": "Task Id",
+            "type": "string"
+          }
+        }
+      ],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_Union_ConversationTurnView__NoneType__"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+      ],
+      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
+    },
+    {
+      "id": "GET /api/v1/app/sessions/{task_id}/turns",
+      "method": "GET",
+      "path": "/api/v1/app/sessions/{task_id}/turns",
+      "capability": "一条会话的逐轮原文。  会话列表点进去要能看见\"这条会话发生过什么\" —— 此前只有一张清单， 因为逐轮原文压根没落库（库里只有累积摘要）。",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py:44",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [
+        {
+          "in": "path",
+          "name": "task_id",
+          "required": true,
+          "schema": {
+            "title": "Task Id",
+            "type": "string"
+          }
+        },
+        {
+          "in": "query",
+          "name": "limit",
+          "required": false,
+          "schema": {
+            "default": 200,
+            "title": "Limit",
+            "type": "integer"
+          }
+        }
+      ],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_list_ConversationMessageView__"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/lib/system-data.ts"
+      ],
+      "verification": "已连接；浏览器真实对话收发及刷新后历史恢复通过（开发服务与 Docker 正式构建）"
+    },
+    {
+      "id": "GET /api/v1/app/theory-cards/{theory_id}",
+      "method": "GET",
+      "path": "/api/v1/app/theory-cards/{theory_id}",
+      "capability": "理论卡正文：点开理论标签时拉一次。  内容是**动态资源**（`data/registry/theory_cards.json`），改它不发版。 取不到按 1002（资源不存在）返回 —— 前端据此如实说\"这张卡还没配\"， 而不是渲染一张只有标题的空卡（那看起来像加载失败）。",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/app_controller.py:68",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [
+        {
+          "in": "path",
+          "name": "theory_id",
+          "required": true,
+          "schema": {
+            "title": "Theory Id",
+            "type": "string"
+          }
+        }
+      ],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_TheoryCardView_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "隔离联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/views/ConversationView.vue"
+      ],
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+    },
+    {
+      "id": "GET /api/v1/app/track/events",
+      "method": "GET",
+      "path": "/api/v1/app/track/events",
+      "capability": "跟踪时间线（复盘环节的载体）。  与 `/app/track` 是同一份数据的两个方向：那条写（前端埋点），这条读。 复盘页要回答\"这段时间发生过什么\"，靠的就是它 —— 此前只有写、没有读。",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/track_controller.py:30",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [
+        {
+          "in": "query",
+          "name": "limit",
+          "required": false,
+          "schema": {
+            "default": 50,
+            "title": "Limit",
+            "type": "integer"
+          }
+        }
+      ],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_list_TrackEventView__"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/lib/system-data.ts"
+      ],
+      "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+    },
+    {
+      "id": "GET /api/v1/app/workspace",
+      "method": "GET",
+      "path": "/api/v1/app/workspace",
+      "capability": "工作台聚合视图：画像 / 报告 / 方案 / 计划 / 跟踪 + 功能块。  进入工作台属于持久化行为，游客在此处被登录拦截。",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py:27",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_WorkspacePageView_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/components/AcademicVerification.vue",
+        "zhiyin-src/template/zhiyin-web/src/lib/system-data.ts",
+        "zhiyin-src/template/zhiyin-web/src/views/GradesView.vue",
+        "zhiyin-src/template/zhiyin-web/src/views/ScheduleView.vue",
+        "zhiyin-src/template/zhiyin-web/src/views/StudentView.vue",
+        "zhiyin-src/template/zhiyin-web/src/views/ToolsView.vue"
+      ],
+      "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+    },
+    {
+      "id": "GET /api/v1/developer/capabilities",
+      "method": "GET",
+      "path": "/api/v1/developer/capabilities",
+      "capability": "Module Capabilities",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/module_controller.py:67",
+      "scope": "管理端",
+      "stream": false,
+      "parameters": [],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_list_ModuleCapability__"
+              }
+            }
+          },
+          "description": "Successful Response"
+        }
+      },
+      "status": "隔离联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/developer/ProjectsVersions.vue",
+        "zhiyin-src/template/zhiyin-web/src/developer/GettingStarted.vue",
+        "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
+      ],
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+    },
+    {
+      "id": "GET /api/v1/developer/checks",
+      "method": "GET",
+      "path": "/api/v1/developer/checks",
+      "capability": "Module Checks",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/module_controller.py:167",
+      "scope": "管理端",
+      "stream": false,
+      "parameters": [],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_list_dict__"
+              }
+            }
+          },
+          "description": "Successful Response"
+        }
+      },
+      "status": "隔离联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/views/DeveloperView.vue",
+        "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
+      ],
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+    },
+    {
+      "id": "GET /api/v1/developer/context",
+      "method": "GET",
+      "path": "/api/v1/developer/context",
+      "capability": "Developer Context",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/module_controller.py:125",
+      "scope": "管理端",
+      "stream": false,
+      "parameters": [],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_ModuleDeveloperContext_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        }
+      },
+      "status": "隔离联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/views/DeveloperView.vue",
+        "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
+      ],
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+    },
+    {
+      "id": "GET /api/v1/developer/executor/configuration",
+      "method": "GET",
+      "path": "/api/v1/developer/executor/configuration",
+      "capability": "Executor Configuration",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/module_controller.py:221",
+      "scope": "服务间调用",
+      "stream": false,
+      "parameters": [],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_dict_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        }
+      },
+      "status": "服务间接口，不应从浏览器调用",
+      "frontend": [],
+      "verification": "隔离协议联调通过。读取实际装配的模块策略；全部验证无凭证、错误凭证和管理员 JWT 拒绝。见 服务间接口验收结果.json；不代表实际发布成功。"
+    },
+    {
+      "id": "GET /api/v1/developer/executor/{job_id}/authorization",
+      "method": "GET",
+      "path": "/api/v1/developer/executor/{job_id}/authorization",
+      "capability": "Release Authorization",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py:158",
+      "scope": "服务间调用",
+      "stream": false,
+      "parameters": [
+        {
+          "in": "path",
+          "name": "job_id",
+          "required": true,
+          "schema": {
+            "title": "Job Id",
+            "type": "string"
+          }
+        }
+      ],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_dict_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "服务间接口，不应从浏览器调用",
+      "frontend": [],
+      "verification": "隔离协议联调通过。固定提交授权查询、未知任务拒绝；版本关联授权与实际部署仍待完整发布验收；全部验证无凭证、错误凭证和管理员 JWT 拒绝。见 服务间接口验收结果.json；不代表实际发布成功。"
+    },
+    {
+      "id": "GET /api/v1/developer/modules",
+      "method": "GET",
+      "path": "/api/v1/developer/modules",
+      "capability": "Developer Modules",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/module_controller.py:136",
+      "scope": "管理端",
+      "stream": false,
+      "parameters": [],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_list_ModuleView__"
+              }
+            }
+          },
+          "description": "Successful Response"
+        }
+      },
+      "status": "隔离联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/views/DeveloperView.vue",
+        "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
+      ],
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+    },
+    {
+      "id": "GET /api/v1/developer/platform-status",
+      "method": "GET",
+      "path": "/api/v1/developer/platform-status",
+      "capability": "Platform Status",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py:92",
+      "scope": "管理端",
+      "stream": false,
+      "parameters": [],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_DeveloperPlatformStatus_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        }
+      },
+      "status": "隔离联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/views/DeveloperView.vue",
+        "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
+      ],
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+    },
+    {
+      "id": "GET /api/v1/developer/projects",
+      "method": "GET",
+      "path": "/api/v1/developer/projects",
+      "capability": "Projects",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py:23",
+      "scope": "管理端",
+      "stream": false,
+      "parameters": [],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_list_DeveloperProjectView__"
+              }
+            }
+          },
+          "description": "Successful Response"
+        }
+      },
+      "status": "隔离联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/developer/ProjectsVersions.vue",
+        "zhiyin-src/template/zhiyin-web/src/developer/GettingStarted.vue",
+        "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
+      ],
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+    },
+    {
+      "id": "GET /api/v1/developer/projects/{project_id}/versions",
+      "method": "GET",
+      "path": "/api/v1/developer/projects/{project_id}/versions",
+      "capability": "Versions",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py:42",
+      "scope": "管理端",
+      "stream": false,
+      "parameters": [
+        {
+          "in": "path",
+          "name": "project_id",
+          "required": true,
+          "schema": {
+            "title": "Project Id",
+            "type": "string"
+          }
+        }
+      ],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_list_DeveloperVersionView__"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "隔离联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/developer/ProjectsVersions.vue",
+        "zhiyin-src/template/zhiyin-web/src/developer/GettingStarted.vue",
+        "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
+      ],
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+    },
+    {
+      "id": "GET /api/v1/developer/releases",
+      "method": "GET",
+      "path": "/api/v1/developer/releases",
+      "capability": "Release Jobs",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/module_controller.py:174",
+      "scope": "管理端",
+      "stream": false,
+      "parameters": [],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_list_ReleaseJob__"
+              }
+            }
+          },
+          "description": "Successful Response"
+        }
+      },
+      "status": "隔离联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/views/DeveloperView.vue",
+        "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
+      ],
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。发布记录与申请/审批仅验证入队和回读，未执行部署。"
+    },
+    {
+      "id": "GET /api/v1/developer/source-worker/ready",
+      "method": "GET",
+      "path": "/api/v1/developer/source-worker/ready",
+      "capability": "Ready",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py:112",
+      "scope": "服务间调用",
+      "stream": false,
+      "parameters": [],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_list_DeveloperVersionView__"
+              }
+            }
+          },
+          "description": "Successful Response"
+        }
+      },
+      "status": "服务间接口，不应从浏览器调用",
+      "frontend": [],
+      "verification": "隔离协议联调通过。查询通过，失败候选不进入就绪队列；未验证真实成功候选入队；全部验证无凭证、错误凭证和管理员 JWT 拒绝。见 服务间接口验收结果.json；不代表实际发布成功。"
+    },
+    {
+      "id": "GET /api/v1/developer/source-worker/versions/{version_id}",
+      "method": "GET",
+      "path": "/api/v1/developer/source-worker/versions/{version_id}",
+      "capability": "Worker Version",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py:125",
+      "scope": "服务间调用",
+      "stream": false,
+      "parameters": [
+        {
+          "in": "path",
+          "name": "version_id",
+          "required": true,
+          "schema": {
+            "title": "Version Id",
+            "type": "string"
+          }
+        }
+      ],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_DeveloperVersionView_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "服务间接口，不应从浏览器调用",
+      "frontend": [],
+      "verification": "隔离协议联调通过。实际上传版本回读、不暴露租约、缺失版本拒绝；全部验证无凭证、错误凭证和管理员 JWT 拒绝。见 服务间接口验收结果.json；不代表实际发布成功。"
+    },
+    {
+      "id": "GET /api/v1/developer/source-worker/versions/{version_id}/package",
+      "method": "GET",
+      "path": "/api/v1/developer/source-worker/versions/{version_id}/package",
+      "capability": "Worker Package",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py:118",
+      "scope": "服务间调用",
+      "stream": false,
+      "parameters": [
+        {
+          "in": "path",
+          "name": "version_id",
+          "required": true,
+          "schema": {
+            "title": "Version Id",
+            "type": "string"
+          }
+        }
+      ],
+      "request": null,
+      "responses": {
+        "200": {
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "服务间接口，不应从浏览器调用",
+      "frontend": [],
+      "verification": "隔离协议联调通过。真实上传包下载逐字节一致，规范化源码摘要一致；全部验证无凭证、错误凭证和管理员 JWT 拒绝。见 服务间接口验收结果.json；不代表实际发布成功。"
+    },
+    {
+      "id": "GET /api/v1/developer/templates",
+      "method": "GET",
+      "path": "/api/v1/developer/templates",
+      "capability": "Template",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py:82",
+      "scope": "管理端",
+      "stream": false,
+      "parameters": [
+        {
+          "in": "query",
+          "name": "kind",
+          "required": false,
+          "schema": {
+            "default": "hybrid",
+            "enum": [
+              "application",
+              "tool",
+              "hybrid"
+            ],
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        {
+          "in": "query",
+          "name": "module_id",
+          "required": true,
+          "schema": {
+            "pattern": "^[a-z][a-z0-9_]{1,47}$",
+            "title": "Module Id",
+            "type": "string"
+          }
+        },
+        {
+          "in": "query",
+          "name": "name",
+          "required": true,
+          "schema": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        {
+          "in": "query",
+          "name": "owner",
+          "required": true,
+          "schema": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Owner",
+            "type": "string"
+          }
+        }
+      ],
+      "request": null,
+      "responses": {
+        "200": {
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "隔离联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/developer/ProjectsVersions.vue",
+        "zhiyin-src/template/zhiyin-web/src/developer/GettingStarted.vue",
+        "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
+      ],
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+    },
+    {
+      "id": "GET /api/v1/developer/versions/{version_id}",
+      "method": "GET",
+      "path": "/api/v1/developer/versions/{version_id}",
+      "capability": "Version",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py:55",
+      "scope": "管理端",
+      "stream": false,
+      "parameters": [
+        {
+          "in": "path",
+          "name": "version_id",
+          "required": true,
+          "schema": {
+            "title": "Version Id",
+            "type": "string"
+          }
+        }
+      ],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_DeveloperVersionView_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "隔离联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/developer/ProjectsVersions.vue",
+        "zhiyin-src/template/zhiyin-web/src/developer/GettingStarted.vue",
+        "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
+      ],
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+    },
+    {
+      "id": "GET /api/v1/developer/versions/{version_id}/package",
+      "method": "GET",
+      "path": "/api/v1/developer/versions/{version_id}/package",
+      "capability": "Package",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py:61",
+      "scope": "管理端",
+      "stream": false,
+      "parameters": [
+        {
+          "in": "path",
+          "name": "version_id",
+          "required": true,
+          "schema": {
+            "title": "Version Id",
+            "type": "string"
+          }
+        }
+      ],
+      "request": null,
+      "responses": {
+        "200": {
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "隔离联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/developer/ProjectsVersions.vue",
+        "zhiyin-src/template/zhiyin-web/src/developer/GettingStarted.vue",
+        "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
+      ],
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+    },
+    {
+      "id": "GET /api/v1/developer/workflows",
+      "method": "GET",
+      "path": "/api/v1/developer/workflows",
+      "capability": "Module Workflows",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/module_controller.py:74",
+      "scope": "管理端",
+      "stream": false,
+      "parameters": [],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_list_ModuleFlowView__"
+              }
+            }
+          },
+          "description": "Successful Response"
+        }
+      },
+      "status": "隔离联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/developer/Workflows.vue",
+        "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
+      ],
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+    },
+    {
+      "id": "GET /api/v1/developer/workflows/{workflow_id}/runs",
+      "method": "GET",
+      "path": "/api/v1/developer/workflows/{workflow_id}/runs",
+      "capability": "Workflow Runs",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/module_controller.py:102",
+      "scope": "管理端",
+      "stream": false,
+      "parameters": [
+        {
+          "in": "path",
+          "name": "workflow_id",
+          "required": true,
+          "schema": {
+            "title": "Workflow Id",
+            "type": "string"
+          }
+        }
+      ],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_list_ModuleFlowRun__"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "隔离联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/developer/Workflows.vue",
+        "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
+      ],
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+    },
+    {
+      "id": "PATCH /api/v1/app/notes/{note_id}",
+      "method": "PATCH",
+      "path": "/api/v1/app/notes/{note_id}",
+      "capability": "勾掉 / 取消勾掉一条待办。",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/note_controller.py:36",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [
+        {
+          "in": "path",
+          "name": "note_id",
+          "required": true,
+          "schema": {
+            "title": "Note Id",
+            "type": "string"
+          }
+        }
+      ],
+      "request": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/NoteDoneRequest"
+            }
+          }
+        },
+        "required": true
+      },
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_NoteView_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/views/NotesView.vue"
+      ],
+      "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+    },
+    {
+      "id": "PATCH /api/v1/app/notifications/{message_id}",
+      "method": "PATCH",
+      "path": "/api/v1/app/notifications/{message_id}",
+      "capability": "Notification State",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:99",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [
+        {
+          "in": "path",
+          "name": "message_id",
+          "required": true,
+          "schema": {
+            "title": "Message Id",
+            "type": "string"
+          }
+        }
+      ],
+      "request": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/NotificationEdit"
+            }
+          }
+        },
+        "required": true
+      },
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_NotificationStateView_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+      ],
+      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
+    },
+    {
+      "id": "PATCH /api/v1/app/plan/action/tasks",
+      "method": "PATCH",
+      "path": "/api/v1/app/plan/action/tasks",
+      "capability": "勾掉 / 取消勾选一个行动任务。  `done=false` 是\"勾错了要撤回\"：只支持单向勾选的话，用户点错一次就再也回不去。",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/asset_controller.py:104",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [],
+      "request": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ActionTaskDoneRequest"
+            }
+          }
+        },
+        "required": true
+      },
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_ActionPlanView_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "隔离联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/store.ts",
+        "zhiyin-src/template/zhiyin-web/src/components/LiveActionPlan.vue",
+        "zhiyin-src/template/zhiyin-web/src/views/ConversationView.vue",
+        "zhiyin-src/template/zhiyin-web/src/views/TodayView.vue"
+      ],
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+    },
+    {
+      "id": "POST /api/v1/app/academic/analysis",
+      "method": "POST",
+      "path": "/api/v1/app/academic/analysis",
+      "capability": "基于用户授权的成绩单生成学习分析，并说明成绩来源和局限。",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py:187",
+      "scope": "学生端",
+      "stream": true,
+      "parameters": [],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {}
+            }
+          },
+          "description": "Successful Response"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/views/GradesView.vue",
+        "zhiyin-src/template/zhiyin-web/src/api/validate-ai.ts"
+      ],
+      "verification": "真实测试账号导入成绩后，经前端和源码测试后端验证。"
+    },
+    {
+      "id": "POST /api/v1/app/academic/import",
+      "method": "POST",
+      "path": "/api/v1/app/academic/import",
+      "capability": "导入课表与成绩单（学生自己贴原文）。  这条路是产品有意选的：不做替学生登录学校系统，也不经手他校内账号的密码。 用户的体验压在解析上 —— 贴进来的东西读不出来时，回执要说清楚**改哪里**。",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py:38",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [],
+      "request": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/AcademicImportRequest"
+            }
+          }
+        },
+        "required": true
+      },
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_AcademicImportAck_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/components/AcademicImportSheet.vue",
+        "zhiyin-src/template/zhiyin-web/src/views/GradesView.vue",
+        "zhiyin-src/template/zhiyin-web/src/views/ScheduleView.vue"
+      ],
+      "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+    },
+    {
+      "id": "POST /api/v1/app/academic/import/file",
+      "method": "POST",
+      "path": "/api/v1/app/academic/import/file",
+      "capability": "导入课表与成绩单（**上传文件**那一版：multipart/form-data）。  为什么和上面那条并存，而不是合成一条：粘贴与上传是两种真实动作， 表单上也是两个不同的入口。合成一条的话，每次都要把\"这次有没有文件\"编码进 同一种请求体里，读的人得先解码一遍才知道这条路在做什么。两条路共用同一条业务 链路（`import_files` → `import_`），所以\"同一份数据读出来必须一样\"这件事 由业务层保证，不靠接口形状。  文件在这一层只做一件事：**限大小**。编码识别与二进制格式拒绝都在网关里 （见 `AcademicImportGateway.read_text`）—— 那一层才知道\"读不出来\"该怎么说。",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py:61",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [],
+      "request": {
+        "content": {
+          "multipart/form-data": {
+            "schema": {
+              "$ref": "#/components/schemas/Body_import_academic_files_api_v1_app_academic_import_file_post"
+            }
+          }
+        }
+      },
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_AcademicImportAck_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/api/backend-client.ts"
+      ],
+      "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+    },
+    {
+      "id": "POST /api/v1/app/assets/export",
+      "method": "POST",
+      "path": "/api/v1/app/assets/export",
+      "capability": "导出资产。第一期仅预留入口，available 恒 False。",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/asset_controller.py:51",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [],
+      "request": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ExportRequest"
+            }
+          }
+        },
+        "required": true
+      },
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_ExportResultView_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/views/SystemView.vue"
       ],
       "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
     },
@@ -539,34 +2527,6 @@
       "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
     },
     {
-      "id": "GET /api/v1/app/bootstrap",
-      "method": "GET",
-      "path": "/api/v1/app/bootstrap",
-      "capability": "启动装配：菜单 / 路由 / 任务入口 / 文案 / 功能开关。  前端启动只请求一次即可渲染首页。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/app_controller.py:36",
-      "scope": "学生端",
-      "stream": false,
-      "parameters": [],
-      "request": null,
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_BootstrapView_"
-              }
-            }
-          },
-          "description": "Successful Response"
-        }
-      },
-      "status": "联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/lib/auth.ts"
-      ],
-      "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
-    },
-    {
       "id": "POST /api/v1/app/brief/today",
       "method": "POST",
       "path": "/api/v1/app/brief/today",
@@ -590,35 +2550,6 @@
       "frontend": [
         "zhiyin-src/template/zhiyin-web/src/api/validate-ai.ts",
         "zhiyin-src/template/zhiyin-web/src/components/TaskBrief.vue"
-      ],
-      "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
-    },
-    {
-      "id": "GET /api/v1/app/calendar",
-      "method": "GET",
-      "path": "/api/v1/app/calendar",
-      "capability": "关键节点日历（④ 行动环节写进来的节点）。  此前这张表**只写不读**：库里有节点，界面上没有任何一处能看到 —— \"规划师写入、教练读取\"里的\"读取\"那一半没有实现。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/asset_controller.py:117",
-      "scope": "学生端",
-      "stream": false,
-      "parameters": [],
-      "request": null,
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_list_CalendarNodeView__"
-              }
-            }
-          },
-          "description": "Successful Response"
-        }
-      },
-      "status": "联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/lib/workspace-nav.ts",
-        "zhiyin-src/template/zhiyin-web/src/views/ScheduleView.vue"
       ],
       "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
     },
@@ -648,6 +2579,35 @@
         "zhiyin-src/template/zhiyin-web/src/components/AcademicVerification.vue"
       ],
       "verification": "前端已连接；非法验证码 SSE 错误路径通过。正向验收需要本人有效学信网在线验证码；文件导入不等于学信核验。见 剩余接口验收结果.json。"
+    },
+    {
+      "id": "POST /api/v1/app/config/reload",
+      "method": "POST",
+      "path": "/api/v1/app/config/reload",
+      "capability": "重新装载动态配置（环节口径 / 气泡编排 / 采集规则）。",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/config_controller.py:24",
+      "scope": "管理端",
+      "stream": false,
+      "parameters": [],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_dict_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        }
+      },
+      "status": "隔离联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/views/DeveloperView.vue",
+        "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
+      ],
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
     },
     {
       "id": "POST /api/v1/app/conversation/material",
@@ -931,59 +2891,6 @@
       "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
     },
     {
-      "id": "GET /api/v1/app/intel",
-      "method": "GET",
-      "path": "/api/v1/app/intel",
-      "capability": "外部情报：公开事实（学职平台 + 通用网络检索）。  **不要求登录**：登了录就按你的画像收窄，没登录就按 `?q=` 或平台通用数据取。 每条都带来源链接 —— 这类信息\"凭什么这么说\"就是那个链接， 所以取不到来源的条目在服务层就被丢掉了，不会返回。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py:165",
-      "scope": "学生端",
-      "stream": false,
-      "parameters": [
-        {
-          "in": "query",
-          "name": "q",
-          "required": false,
-          "schema": {
-            "default": "",
-            "title": "Q",
-            "type": "string"
-          }
-        }
-      ],
-      "request": null,
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_IntelListView_"
-              }
-            }
-          },
-          "description": "Successful Response"
-        },
-        "422": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/HTTPValidationError"
-              }
-            }
-          },
-          "description": "Validation Error"
-        }
-      },
-      "status": "联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/router.ts",
-        "zhiyin-src/template/zhiyin-web/src/components/EmptyState.vue",
-        "zhiyin-src/template/zhiyin-web/src/components/WorkspaceMotif.vue",
-        "zhiyin-src/template/zhiyin-web/src/lib/workspace-nav.ts",
-        "zhiyin-src/template/zhiyin-web/src/views/IntelView.vue"
-      ],
-      "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
-    },
-    {
       "id": "POST /api/v1/app/intel/refresh",
       "method": "POST",
       "path": "/api/v1/app/intel/refresh",
@@ -1060,34 +2967,6 @@
       "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
     },
     {
-      "id": "GET /api/v1/app/measurements",
-      "method": "GET",
-      "path": "/api/v1/app/measurements",
-      "capability": "Measurements",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:146",
-      "scope": "学生端",
-      "stream": false,
-      "parameters": [],
-      "request": null,
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_MeasurementListView_"
-              }
-            }
-          },
-          "description": "Successful Response"
-        }
-      },
-      "status": "联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
-      ],
-      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
-    },
-    {
       "id": "POST /api/v1/app/measurements",
       "method": "POST",
       "path": "/api/v1/app/measurements",
@@ -1135,60 +3014,6 @@
       "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
     },
     {
-      "id": "GET /api/v1/app/modules",
-      "method": "GET",
-      "path": "/api/v1/app/modules",
-      "capability": "User Modules",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/module_controller.py:36",
-      "scope": "学生端",
-      "stream": false,
-      "parameters": [
-        {
-          "in": "query",
-          "name": "surface",
-          "required": false,
-          "schema": {
-            "default": "application",
-            "enum": [
-              "application",
-              "conversation"
-            ],
-            "title": "Surface",
-            "type": "string"
-          }
-        }
-      ],
-      "request": null,
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_list_ModuleView__"
-              }
-            }
-          },
-          "description": "Successful Response"
-        },
-        "422": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/HTTPValidationError"
-              }
-            }
-          },
-          "description": "Validation Error"
-        }
-      },
-      "status": "联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/components/ModuleCatalog.vue",
-        "zhiyin-src/template/zhiyin-web/src/views/DeveloperView.vue"
-      ],
-      "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
-    },
-    {
       "id": "POST /api/v1/app/modules/{module_id}/actions",
       "method": "POST",
       "path": "/api/v1/app/modules/{module_id}/actions",
@@ -1217,54 +3042,6 @@
         },
         "required": true
       },
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_ModuleResult_"
-              }
-            }
-          },
-          "description": "Successful Response"
-        },
-        "422": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/HTTPValidationError"
-              }
-            }
-          },
-          "description": "Validation Error"
-        }
-      },
-      "status": "隔离联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/components/ModuleCatalog.vue"
-      ],
-      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
-    },
-    {
-      "id": "GET /api/v1/app/modules/{module_id}/data",
-      "method": "GET",
-      "path": "/api/v1/app/modules/{module_id}/data",
-      "capability": "Module Data",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/module_controller.py:46",
-      "scope": "学生端",
-      "stream": false,
-      "parameters": [
-        {
-          "in": "path",
-          "name": "module_id",
-          "required": true,
-          "schema": {
-            "title": "Module Id",
-            "type": "string"
-          }
-        }
-      ],
-      "request": null,
       "responses": {
         "200": {
           "content": {
@@ -1351,42 +3128,6 @@
       "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
     },
     {
-      "id": "GET /api/v1/app/notes",
-      "method": "GET",
-      "path": "/api/v1/app/notes",
-      "capability": "他写下的全部内容（新写的在前）。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/note_controller.py:20",
-      "scope": "学生端",
-      "stream": false,
-      "parameters": [],
-      "request": null,
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_list_NoteView__"
-              }
-            }
-          },
-          "description": "Successful Response"
-        }
-      },
-      "status": "联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/router.ts",
-        "zhiyin-src/template/zhiyin-web/src/components/EmptyState.vue",
-        "zhiyin-src/template/zhiyin-web/src/components/InboxSheet.vue",
-        "zhiyin-src/template/zhiyin-web/src/components/TaskList.vue",
-        "zhiyin-src/template/zhiyin-web/src/components/WorkspaceMotif.vue",
-        "zhiyin-src/template/zhiyin-web/src/lib/system-data.ts",
-        "zhiyin-src/template/zhiyin-web/src/lib/workspace-nav.ts",
-        "zhiyin-src/template/zhiyin-web/src/views/NotesView.vue",
-        "zhiyin-src/template/zhiyin-web/src/views/TodayView.vue"
-      ],
-      "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
-    },
-    {
       "id": "POST /api/v1/app/notes",
       "method": "POST",
       "path": "/api/v1/app/notes",
@@ -1434,224 +3175,6 @@
         "zhiyin-src/template/zhiyin-web/src/views/NotesView.vue"
       ],
       "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
-    },
-    {
-      "id": "DELETE /api/v1/app/notes/{note_id}",
-      "method": "DELETE",
-      "path": "/api/v1/app/notes/{note_id}",
-      "capability": "删掉一条。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/note_controller.py:46",
-      "scope": "学生端",
-      "stream": false,
-      "parameters": [
-        {
-          "in": "path",
-          "name": "note_id",
-          "required": true,
-          "schema": {
-            "title": "Note Id",
-            "type": "string"
-          }
-        }
-      ],
-      "request": null,
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_NoteAck_"
-              }
-            }
-          },
-          "description": "Successful Response"
-        },
-        "422": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/HTTPValidationError"
-              }
-            }
-          },
-          "description": "Validation Error"
-        }
-      },
-      "status": "联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/views/NotesView.vue"
-      ],
-      "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
-    },
-    {
-      "id": "PATCH /api/v1/app/notes/{note_id}",
-      "method": "PATCH",
-      "path": "/api/v1/app/notes/{note_id}",
-      "capability": "勾掉 / 取消勾掉一条待办。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/note_controller.py:36",
-      "scope": "学生端",
-      "stream": false,
-      "parameters": [
-        {
-          "in": "path",
-          "name": "note_id",
-          "required": true,
-          "schema": {
-            "title": "Note Id",
-            "type": "string"
-          }
-        }
-      ],
-      "request": {
-        "content": {
-          "application/json": {
-            "schema": {
-              "$ref": "#/components/schemas/NoteDoneRequest"
-            }
-          }
-        },
-        "required": true
-      },
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_NoteView_"
-              }
-            }
-          },
-          "description": "Successful Response"
-        },
-        "422": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/HTTPValidationError"
-              }
-            }
-          },
-          "description": "Validation Error"
-        }
-      },
-      "status": "联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/views/NotesView.vue"
-      ],
-      "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
-    },
-    {
-      "id": "GET /api/v1/app/notifications",
-      "method": "GET",
-      "path": "/api/v1/app/notifications",
-      "capability": "Notifications",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:93",
-      "scope": "学生端",
-      "stream": false,
-      "parameters": [],
-      "request": null,
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_list_NotificationStateView__"
-              }
-            }
-          },
-          "description": "Successful Response"
-        }
-      },
-      "status": "联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
-      ],
-      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
-    },
-    {
-      "id": "GET /api/v1/app/notifications/pending",
-      "method": "GET",
-      "path": "/api/v1/app/notifications/pending",
-      "capability": "教练主动介入通知出队（前端浮窗轮询消费）。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/app_controller.py:47",
-      "scope": "学生端",
-      "stream": false,
-      "parameters": [],
-      "request": null,
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_list_CoachNotificationView__"
-              }
-            }
-          },
-          "description": "Successful Response"
-        }
-      },
-      "status": "联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/lib/system-data.ts"
-      ],
-      "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
-    },
-    {
-      "id": "PATCH /api/v1/app/notifications/{message_id}",
-      "method": "PATCH",
-      "path": "/api/v1/app/notifications/{message_id}",
-      "capability": "Notification State",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:99",
-      "scope": "学生端",
-      "stream": false,
-      "parameters": [
-        {
-          "in": "path",
-          "name": "message_id",
-          "required": true,
-          "schema": {
-            "title": "Message Id",
-            "type": "string"
-          }
-        }
-      ],
-      "request": {
-        "content": {
-          "application/json": {
-            "schema": {
-              "$ref": "#/components/schemas/NotificationEdit"
-            }
-          }
-        },
-        "required": true
-      },
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_NotificationStateView_"
-              }
-            }
-          },
-          "description": "Successful Response"
-        },
-        "422": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/HTTPValidationError"
-              }
-            }
-          },
-          "description": "Validation Error"
-        }
-      },
-      "status": "联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
-      ],
-      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
     },
     {
       "id": "POST /api/v1/app/notifications/{message_id}/read",
@@ -1703,49 +3226,6 @@
       "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
     },
     {
-      "id": "GET /api/v1/app/plan/action",
-      "method": "GET",
-      "path": "/api/v1/app/plan/action",
-      "capability": "行动计划正文（阶段 / 任务 / 现在这一件）。没有计划时 has_plan=False。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/asset_controller.py:96",
-      "scope": "学生端",
-      "stream": false,
-      "parameters": [],
-      "request": null,
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_ActionPlanView_"
-              }
-            }
-          },
-          "description": "Successful Response"
-        }
-      },
-      "status": "联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/components/CareSheet.vue",
-        "zhiyin-src/template/zhiyin-web/src/components/EmptyState.vue",
-        "zhiyin-src/template/zhiyin-web/src/components/LiveActionPlan.vue",
-        "zhiyin-src/template/zhiyin-web/src/components/ModuleCatalog.vue",
-        "zhiyin-src/template/zhiyin-web/src/components/PortalExample.vue",
-        "zhiyin-src/template/zhiyin-web/src/components/StatusBanner.vue",
-        "zhiyin-src/template/zhiyin-web/src/components/TaskProgressMap.vue",
-        "zhiyin-src/template/zhiyin-web/src/developer/Workflows.vue",
-        "zhiyin-src/template/zhiyin-web/src/lib/system-data.ts",
-        "zhiyin-src/template/zhiyin-web/src/lib/workspace-nav.ts",
-        "zhiyin-src/template/zhiyin-web/src/modules/ModuleContent.vue",
-        "zhiyin-src/template/zhiyin-web/src/views/ConversationView.vue",
-        "zhiyin-src/template/zhiyin-web/src/views/DeveloperView.vue",
-        "zhiyin-src/template/zhiyin-web/src/views/ScheduleView.vue",
-        "zhiyin-src/template/zhiyin-web/src/views/StudentView.vue",
-        "zhiyin-src/template/zhiyin-web/src/views/TodayView.vue"
-      ],
-      "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
-    },
-    {
       "id": "POST /api/v1/app/plan/action/phases",
       "method": "POST",
       "path": "/api/v1/app/plan/action/phases",
@@ -1793,113 +3273,6 @@
       "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
     },
     {
-      "id": "PUT /api/v1/app/plan/action/phases/{phase_id}",
-      "method": "PUT",
-      "path": "/api/v1/app/plan/action/phases/{phase_id}",
-      "capability": "Edit Phase",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:87",
-      "scope": "学生端",
-      "stream": false,
-      "parameters": [
-        {
-          "in": "path",
-          "name": "phase_id",
-          "required": true,
-          "schema": {
-            "title": "Phase Id",
-            "type": "string"
-          }
-        }
-      ],
-      "request": {
-        "content": {
-          "application/json": {
-            "schema": {
-              "$ref": "#/components/schemas/PhaseEdit"
-            }
-          }
-        },
-        "required": true
-      },
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_ActionPlanView_"
-              }
-            }
-          },
-          "description": "Successful Response"
-        },
-        "422": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/HTTPValidationError"
-              }
-            }
-          },
-          "description": "Validation Error"
-        }
-      },
-      "status": "联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
-      ],
-      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
-    },
-    {
-      "id": "PATCH /api/v1/app/plan/action/tasks",
-      "method": "PATCH",
-      "path": "/api/v1/app/plan/action/tasks",
-      "capability": "勾掉 / 取消勾选一个行动任务。  `done=false` 是\"勾错了要撤回\"：只支持单向勾选的话，用户点错一次就再也回不去。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/asset_controller.py:104",
-      "scope": "学生端",
-      "stream": false,
-      "parameters": [],
-      "request": {
-        "content": {
-          "application/json": {
-            "schema": {
-              "$ref": "#/components/schemas/ActionTaskDoneRequest"
-            }
-          }
-        },
-        "required": true
-      },
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_ActionPlanView_"
-              }
-            }
-          },
-          "description": "Successful Response"
-        },
-        "422": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/HTTPValidationError"
-              }
-            }
-          },
-          "description": "Validation Error"
-        }
-      },
-      "status": "隔离联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/store.ts",
-        "zhiyin-src/template/zhiyin-web/src/components/LiveActionPlan.vue",
-        "zhiyin-src/template/zhiyin-web/src/views/ConversationView.vue",
-        "zhiyin-src/template/zhiyin-web/src/views/TodayView.vue"
-      ],
-      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
-    },
-    {
       "id": "POST /api/v1/app/plan/action/tasks",
       "method": "POST",
       "path": "/api/v1/app/plan/action/tasks",
@@ -1945,199 +3318,6 @@
         "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
       ],
       "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
-    },
-    {
-      "id": "PUT /api/v1/app/plan/action/tasks/{task_id}",
-      "method": "PUT",
-      "path": "/api/v1/app/plan/action/tasks/{task_id}",
-      "capability": "Edit Task",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:75",
-      "scope": "学生端",
-      "stream": false,
-      "parameters": [
-        {
-          "in": "path",
-          "name": "task_id",
-          "required": true,
-          "schema": {
-            "title": "Task Id",
-            "type": "string"
-          }
-        }
-      ],
-      "request": {
-        "content": {
-          "application/json": {
-            "schema": {
-              "$ref": "#/components/schemas/TaskEdit"
-            }
-          }
-        },
-        "required": true
-      },
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_ActionPlanView_"
-              }
-            }
-          },
-          "description": "Successful Response"
-        },
-        "422": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/HTTPValidationError"
-              }
-            }
-          },
-          "description": "Validation Error"
-        }
-      },
-      "status": "联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
-      ],
-      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
-    },
-    {
-      "id": "GET /api/v1/app/plan/direction-comparison",
-      "method": "GET",
-      "path": "/api/v1/app/plan/direction-comparison",
-      "capability": "Comparison",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:170",
-      "scope": "学生端",
-      "stream": false,
-      "parameters": [],
-      "request": null,
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_DirectionComparisonView_"
-              }
-            }
-          },
-          "description": "Successful Response"
-        }
-      },
-      "status": "联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
-      ],
-      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
-    },
-    {
-      "id": "GET /api/v1/app/plan/direction-weights",
-      "method": "GET",
-      "path": "/api/v1/app/plan/direction-weights",
-      "capability": "Weights",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:158",
-      "scope": "学生端",
-      "stream": false,
-      "parameters": [],
-      "request": null,
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_DirectionWeights_"
-              }
-            }
-          },
-          "description": "Successful Response"
-        }
-      },
-      "status": "联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
-      ],
-      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
-    },
-    {
-      "id": "PUT /api/v1/app/plan/direction-weights",
-      "method": "PUT",
-      "path": "/api/v1/app/plan/direction-weights",
-      "capability": "Save Weights",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:164",
-      "scope": "学生端",
-      "stream": false,
-      "parameters": [],
-      "request": {
-        "content": {
-          "application/json": {
-            "schema": {
-              "$ref": "#/components/schemas/DirectionWeights"
-            }
-          }
-        },
-        "required": true
-      },
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_DirectionWeights_"
-              }
-            }
-          },
-          "description": "Successful Response"
-        },
-        "422": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/HTTPValidationError"
-              }
-            }
-          },
-          "description": "Validation Error"
-        }
-      },
-      "status": "联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
-      ],
-      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
-    },
-    {
-      "id": "GET /api/v1/app/plan/directions",
-      "method": "GET",
-      "path": "/api/v1/app/plan/directions",
-      "capability": "三套方向方案（主攻 / 平行 / 保底）+ 当前选中那一套。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/asset_controller.py:71",
-      "scope": "学生端",
-      "stream": false,
-      "parameters": [],
-      "request": null,
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_DirectionPlanListView_"
-              }
-            }
-          },
-          "description": "Successful Response"
-        }
-      },
-      "status": "联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/router.ts",
-        "zhiyin-src/template/zhiyin-web/src/components/WeightedDirectionCompare.vue",
-        "zhiyin-src/template/zhiyin-web/src/lib/workspace-nav.ts",
-        "zhiyin-src/template/zhiyin-web/src/views/AssessmentView.vue",
-        "zhiyin-src/template/zhiyin-web/src/views/ConversationView.vue",
-        "zhiyin-src/template/zhiyin-web/src/views/ToolsView.vue"
-      ],
-      "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
     },
     {
       "id": "POST /api/v1/app/plan/directions/{option_id}/select",
@@ -2242,36 +3422,6 @@
       "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
     },
     {
-      "id": "GET /api/v1/app/portal",
-      "method": "GET",
-      "path": "/api/v1/app/portal",
-      "capability": "门户内容 —— **公开接口，不解析身份**。  门户是访客第一眼看到的那一页，内容全是产品自己的话（文案 / 信任块 / 横幅 / FAQ / 任务入口 / 开关）。它不需要知道\"你是谁\"，所以这里不调 `resolve_user_id` —— 那是全站唯一一个不要求登录的业务读接口。  为什么要开这个口子：门户文案此前写死在前端 `data/portal.ts`， 改一句主张要发一次前端版本 —— 那是本仓\"文案不进代码\"这条底线上的最后一处例外。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/app_controller.py:21",
-      "scope": "学生端",
-      "stream": false,
-      "parameters": [],
-      "request": null,
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_PortalView_"
-              }
-            }
-          },
-          "description": "Successful Response"
-        }
-      },
-      "status": "联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/router.ts",
-        "zhiyin-src/template/zhiyin-web/src/views/PortalClassicView.vue",
-        "zhiyin-src/template/zhiyin-web/src/views/PortalView.vue"
-      ],
-      "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
-    },
-    {
       "id": "POST /api/v1/app/portrait/analysis",
       "method": "POST",
       "path": "/api/v1/app/portrait/analysis",
@@ -2297,81 +3447,6 @@
         "zhiyin-src/template/zhiyin-web/src/components/ProfileInsights.vue"
       ],
       "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
-    },
-    {
-      "id": "GET /api/v1/app/preferences",
-      "method": "GET",
-      "path": "/api/v1/app/preferences",
-      "capability": "Preferences",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:57",
-      "scope": "学生端",
-      "stream": false,
-      "parameters": [],
-      "request": null,
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_Preferences_"
-              }
-            }
-          },
-          "description": "Successful Response"
-        }
-      },
-      "status": "联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
-      ],
-      "verification": "2026-10-16 当前 Docker HTTP/PostgreSQL/JWT 联调通过；来源关闭后仍可生成，四种组合、缓存隔离、派生信息过滤、数据库回读及普通读取保留共 21 项通过。见 资料来源过滤验收结果.json。"
-    },
-    {
-      "id": "PUT /api/v1/app/preferences",
-      "method": "PUT",
-      "path": "/api/v1/app/preferences",
-      "capability": "Save Preferences",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:63",
-      "scope": "学生端",
-      "stream": false,
-      "parameters": [],
-      "request": {
-        "content": {
-          "application/json": {
-            "schema": {
-              "$ref": "#/components/schemas/Preferences"
-            }
-          }
-        },
-        "required": true
-      },
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_Preferences_"
-              }
-            }
-          },
-          "description": "Successful Response"
-        },
-        "422": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/HTTPValidationError"
-              }
-            }
-          },
-          "description": "Validation Error"
-        }
-      },
-      "status": "联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
-      ],
-      "verification": "2026-10-16 当前 Docker HTTP/PostgreSQL/JWT 联调通过；来源关闭后仍可生成，四种组合、缓存隔离、派生信息过滤、数据库回读及普通读取保留共 21 项通过。见 资料来源过滤验收结果.json。"
     },
     {
       "id": "POST /api/v1/app/profile/fields/{key}",
@@ -2431,73 +3506,6 @@
       "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
     },
     {
-      "id": "GET /api/v1/app/report/full-text",
-      "method": "GET",
-      "path": "/api/v1/app/report/full-text",
-      "capability": "完整报告页正文。只读资产版本，不重新生成。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/asset_controller.py:41",
-      "scope": "学生端",
-      "stream": false,
-      "parameters": [
-        {
-          "in": "query",
-          "name": "version",
-          "required": false,
-          "schema": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Version"
-          }
-        }
-      ],
-      "request": null,
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_ReportFullTextView_"
-              }
-            }
-          },
-          "description": "Successful Response"
-        },
-        "422": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/HTTPValidationError"
-              }
-            }
-          },
-          "description": "Validation Error"
-        }
-      },
-      "status": "联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/router.ts",
-        "zhiyin-src/template/zhiyin-web/src/components/EmptyState.vue",
-        "zhiyin-src/template/zhiyin-web/src/components/EvidenceList.vue",
-        "zhiyin-src/template/zhiyin-web/src/components/LiveActionPlan.vue",
-        "zhiyin-src/template/zhiyin-web/src/components/PortalExample.vue",
-        "zhiyin-src/template/zhiyin-web/src/components/ReportHistory.vue",
-        "zhiyin-src/template/zhiyin-web/src/data/copy.ts",
-        "zhiyin-src/template/zhiyin-web/src/developer/client.ts",
-        "zhiyin-src/template/zhiyin-web/src/lib/workspace-nav.ts",
-        "zhiyin-src/template/zhiyin-web/src/views/AssessmentView.vue",
-        "zhiyin-src/template/zhiyin-web/src/views/ConversationView.vue",
-        "zhiyin-src/template/zhiyin-web/src/views/SystemView.vue",
-        "zhiyin-src/template/zhiyin-web/src/views/ToolsView.vue"
-      ],
-      "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
-    },
-    {
       "id": "POST /api/v1/app/report/summary",
       "method": "POST",
       "path": "/api/v1/app/report/summary",
@@ -2525,34 +3533,6 @@
       "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
     },
     {
-      "id": "GET /api/v1/app/reviews",
-      "method": "GET",
-      "path": "/api/v1/app/reviews",
-      "capability": "Reviews",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:105",
-      "scope": "学生端",
-      "stream": false,
-      "parameters": [],
-      "request": null,
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_ReviewListView_"
-              }
-            }
-          },
-          "description": "Successful Response"
-        }
-      },
-      "status": "联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
-      ],
-      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
-    },
-    {
       "id": "POST /api/v1/app/reviews",
       "method": "POST",
       "path": "/api/v1/app/reviews",
@@ -2561,63 +3541,6 @@
       "scope": "学生端",
       "stream": false,
       "parameters": [],
-      "request": {
-        "content": {
-          "application/json": {
-            "schema": {
-              "$ref": "#/components/schemas/ReviewEdit"
-            }
-          }
-        },
-        "required": true
-      },
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_ReviewRecordView_"
-              }
-            }
-          },
-          "description": "Successful Response"
-        },
-        "422": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/HTTPValidationError"
-              }
-            }
-          },
-          "description": "Validation Error"
-        }
-      },
-      "status": "联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
-      ],
-      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
-    },
-    {
-      "id": "PUT /api/v1/app/reviews/{review_id}",
-      "method": "PUT",
-      "path": "/api/v1/app/reviews/{review_id}",
-      "capability": "Edit Review",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:117",
-      "scope": "学生端",
-      "stream": false,
-      "parameters": [
-        {
-          "in": "path",
-          "name": "review_id",
-          "required": true,
-          "schema": {
-            "title": "Review Id",
-            "type": "string"
-          }
-        }
-      ],
       "request": {
         "content": {
           "application/json": {
@@ -2705,265 +3628,6 @@
       "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
     },
     {
-      "id": "GET /api/v1/app/schedule/semester",
-      "method": "GET",
-      "path": "/api/v1/app/schedule/semester",
-      "capability": "Semester",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:176",
-      "scope": "学生端",
-      "stream": false,
-      "parameters": [],
-      "request": null,
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_Union_Semester__NoneType__"
-              }
-            }
-          },
-          "description": "Successful Response"
-        }
-      },
-      "status": "联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
-      ],
-      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
-    },
-    {
-      "id": "PUT /api/v1/app/schedule/semester",
-      "method": "PUT",
-      "path": "/api/v1/app/schedule/semester",
-      "capability": "Save Semester",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:182",
-      "scope": "学生端",
-      "stream": false,
-      "parameters": [],
-      "request": {
-        "content": {
-          "application/json": {
-            "schema": {
-              "$ref": "#/components/schemas/Semester"
-            }
-          }
-        },
-        "required": true
-      },
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_Semester_"
-              }
-            }
-          },
-          "description": "Successful Response"
-        },
-        "422": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/HTTPValidationError"
-              }
-            }
-          },
-          "description": "Validation Error"
-        }
-      },
-      "status": "联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
-      ],
-      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
-    },
-    {
-      "id": "GET /api/v1/app/schedule/workload",
-      "method": "GET",
-      "path": "/api/v1/app/schedule/workload",
-      "capability": "Workload",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:188",
-      "scope": "学生端",
-      "stream": false,
-      "parameters": [
-        {
-          "in": "query",
-          "name": "start",
-          "required": true,
-          "schema": {
-            "format": "date",
-            "title": "Start",
-            "type": "string"
-          }
-        }
-      ],
-      "request": null,
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_WorkloadView_"
-              }
-            }
-          },
-          "description": "Successful Response"
-        },
-        "422": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/HTTPValidationError"
-              }
-            }
-          },
-          "description": "Validation Error"
-        }
-      },
-      "status": "联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
-      ],
-      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
-    },
-    {
-      "id": "GET /api/v1/app/sessions",
-      "method": "GET",
-      "path": "/api/v1/app/sessions",
-      "capability": "左栏会话列表（并行任务会话，按任务/环节命名）。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py:33",
-      "scope": "学生端",
-      "stream": false,
-      "parameters": [],
-      "request": null,
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_SessionListView_"
-              }
-            }
-          },
-          "description": "Successful Response"
-        }
-      },
-      "status": "联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/lib/system-data.ts",
-        "zhiyin-src/template/zhiyin-web/src/views/ConversationView.vue"
-      ],
-      "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
-    },
-    {
-      "id": "GET /api/v1/app/sessions/{task_id}/snapshot",
-      "method": "GET",
-      "path": "/api/v1/app/sessions/{task_id}/snapshot",
-      "capability": "Session Snapshot",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:140",
-      "scope": "学生端",
-      "stream": false,
-      "parameters": [
-        {
-          "in": "path",
-          "name": "task_id",
-          "required": true,
-          "schema": {
-            "title": "Task Id",
-            "type": "string"
-          }
-        }
-      ],
-      "request": null,
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_Union_ConversationTurnView__NoneType__"
-              }
-            }
-          },
-          "description": "Successful Response"
-        },
-        "422": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/HTTPValidationError"
-              }
-            }
-          },
-          "description": "Validation Error"
-        }
-      },
-      "status": "联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
-      ],
-      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
-    },
-    {
-      "id": "GET /api/v1/app/sessions/{task_id}/turns",
-      "method": "GET",
-      "path": "/api/v1/app/sessions/{task_id}/turns",
-      "capability": "一条会话的逐轮原文。  会话列表点进去要能看见\"这条会话发生过什么\" —— 此前只有一张清单， 因为逐轮原文压根没落库（库里只有累积摘要）。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py:44",
-      "scope": "学生端",
-      "stream": false,
-      "parameters": [
-        {
-          "in": "path",
-          "name": "task_id",
-          "required": true,
-          "schema": {
-            "title": "Task Id",
-            "type": "string"
-          }
-        },
-        {
-          "in": "query",
-          "name": "limit",
-          "required": false,
-          "schema": {
-            "default": 200,
-            "title": "Limit",
-            "type": "integer"
-          }
-        }
-      ],
-      "request": null,
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_list_ConversationMessageView__"
-              }
-            }
-          },
-          "description": "Successful Response"
-        },
-        "422": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/HTTPValidationError"
-              }
-            }
-          },
-          "description": "Validation Error"
-        }
-      },
-      "status": "联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/lib/system-data.ts"
-      ],
-      "verification": "已连接；浏览器真实对话收发及刷新后历史恢复通过（开发服务与 Docker 正式构建）"
-    },
-    {
       "id": "POST /api/v1/app/task/enter",
       "method": "POST",
       "path": "/api/v1/app/task/enter",
@@ -3011,54 +3675,6 @@
       "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
     },
     {
-      "id": "GET /api/v1/app/theory-cards/{theory_id}",
-      "method": "GET",
-      "path": "/api/v1/app/theory-cards/{theory_id}",
-      "capability": "理论卡正文：点开理论标签时拉一次。  内容是**动态资源**（`data/registry/theory_cards.json`），改它不发版。 取不到按 1002（资源不存在）返回 —— 前端据此如实说\"这张卡还没配\"， 而不是渲染一张只有标题的空卡（那看起来像加载失败）。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/app_controller.py:68",
-      "scope": "学生端",
-      "stream": false,
-      "parameters": [
-        {
-          "in": "path",
-          "name": "theory_id",
-          "required": true,
-          "schema": {
-            "title": "Theory Id",
-            "type": "string"
-          }
-        }
-      ],
-      "request": null,
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_TheoryCardView_"
-              }
-            }
-          },
-          "description": "Successful Response"
-        },
-        "422": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/HTTPValidationError"
-              }
-            }
-          },
-          "description": "Validation Error"
-        }
-      },
-      "status": "隔离联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/views/ConversationView.vue"
-      ],
-      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
-    },
-    {
       "id": "POST /api/v1/app/track",
       "method": "POST",
       "path": "/api/v1/app/track",
@@ -3103,55 +3719,6 @@
       "frontend": [
         "zhiyin-src/template/zhiyin-web/src/router.ts",
         "zhiyin-src/template/zhiyin-web/src/api/validate-ai.ts"
-      ],
-      "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
-    },
-    {
-      "id": "GET /api/v1/app/track/events",
-      "method": "GET",
-      "path": "/api/v1/app/track/events",
-      "capability": "跟踪时间线（复盘环节的载体）。  与 `/app/track` 是同一份数据的两个方向：那条写（前端埋点），这条读。 复盘页要回答\"这段时间发生过什么\"，靠的就是它 —— 此前只有写、没有读。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/track_controller.py:30",
-      "scope": "学生端",
-      "stream": false,
-      "parameters": [
-        {
-          "in": "query",
-          "name": "limit",
-          "required": false,
-          "schema": {
-            "default": 50,
-            "title": "Limit",
-            "type": "integer"
-          }
-        }
-      ],
-      "request": null,
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_list_TrackEventView__"
-              }
-            }
-          },
-          "description": "Successful Response"
-        },
-        "422": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/HTTPValidationError"
-              }
-            }
-          },
-          "description": "Validation Error"
-        }
-      },
-      "status": "联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/lib/system-data.ts"
       ],
       "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
     },
@@ -3213,12 +3780,12 @@
       "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
     },
     {
-      "id": "GET /api/v1/app/workspace",
-      "method": "GET",
-      "path": "/api/v1/app/workspace",
-      "capability": "工作台聚合视图：画像 / 报告 / 方案 / 计划 / 跟踪 + 功能块。  进入工作台属于持久化行为，游客在此处被登录拦截。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py:27",
-      "scope": "学生端",
+      "id": "POST /api/v1/developer/checks",
+      "method": "POST",
+      "path": "/api/v1/developer/checks",
+      "capability": "Check Modules",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/module_controller.py:160",
+      "scope": "管理端",
       "stream": false,
       "parameters": [],
       "request": null,
@@ -3227,23 +3794,19 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ApiResponse_WorkspacePageView_"
+                "$ref": "#/components/schemas/ApiResponse_dict_"
               }
             }
           },
           "description": "Successful Response"
         }
       },
-      "status": "联调通过",
+      "status": "隔离联调通过",
       "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/components/AcademicVerification.vue",
-        "zhiyin-src/template/zhiyin-web/src/lib/system-data.ts",
-        "zhiyin-src/template/zhiyin-web/src/views/GradesView.vue",
-        "zhiyin-src/template/zhiyin-web/src/views/ScheduleView.vue",
-        "zhiyin-src/template/zhiyin-web/src/views/StudentView.vue",
-        "zhiyin-src/template/zhiyin-web/src/views/ToolsView.vue"
+        "zhiyin-src/template/zhiyin-web/src/views/DeveloperView.vue",
+        "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
       ],
-      "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
     },
     {
       "id": "POST /api/v1/developer/executor/claim",
@@ -3270,32 +3833,6 @@
       "status": "服务间接口，不应从浏览器调用",
       "frontend": [],
       "verification": "隔离协议联调通过。并发领取唯一、过期接管生成新租约、终态不再领取；全部验证无凭证、错误凭证和管理员 JWT 拒绝。见 服务间接口验收结果.json；不代表实际发布成功。"
-    },
-    {
-      "id": "GET /api/v1/developer/executor/configuration",
-      "method": "GET",
-      "path": "/api/v1/developer/executor/configuration",
-      "capability": "Executor Configuration",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/module_controller.py:221",
-      "scope": "服务间调用",
-      "stream": false,
-      "parameters": [],
-      "request": null,
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_dict_"
-              }
-            }
-          },
-          "description": "Successful Response"
-        }
-      },
-      "status": "服务间接口，不应从浏览器调用",
-      "frontend": [],
-      "verification": "隔离协议联调通过。读取实际装配的模块策略；全部验证无凭证、错误凭证和管理员 JWT 拒绝。见 服务间接口验收结果.json；不代表实际发布成功。"
     },
     {
       "id": "POST /api/v1/developer/executor/{job_id}",
@@ -3351,614 +3888,6 @@
       "status": "服务间接口，不应从浏览器调用",
       "frontend": [],
       "verification": "隔离协议联调通过。有效租约进度/失败回写；错误、过期、替换租约与终态改写拒绝；全部验证无凭证、错误凭证和管理员 JWT 拒绝。见 服务间接口验收结果.json；不代表实际发布成功。"
-    },
-    {
-      "id": "GET /api/v1/developer/executor/{job_id}/authorization",
-      "method": "GET",
-      "path": "/api/v1/developer/executor/{job_id}/authorization",
-      "capability": "Release Authorization",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py:158",
-      "scope": "服务间调用",
-      "stream": false,
-      "parameters": [
-        {
-          "in": "path",
-          "name": "job_id",
-          "required": true,
-          "schema": {
-            "title": "Job Id",
-            "type": "string"
-          }
-        }
-      ],
-      "request": null,
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_dict_"
-              }
-            }
-          },
-          "description": "Successful Response"
-        },
-        "422": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/HTTPValidationError"
-              }
-            }
-          },
-          "description": "Validation Error"
-        }
-      },
-      "status": "服务间接口，不应从浏览器调用",
-      "frontend": [],
-      "verification": "隔离协议联调通过。固定提交授权查询、未知任务拒绝；版本关联授权与实际部署仍待完整发布验收；全部验证无凭证、错误凭证和管理员 JWT 拒绝。见 服务间接口验收结果.json；不代表实际发布成功。"
-    },
-    {
-      "id": "POST /api/v1/developer/source-worker/claim",
-      "method": "POST",
-      "path": "/api/v1/developer/source-worker/claim",
-      "capability": "Claim",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py:106",
-      "scope": "服务间调用",
-      "stream": false,
-      "parameters": [],
-      "request": null,
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_Union_dict__NoneType__"
-              }
-            }
-          },
-          "description": "Successful Response"
-        }
-      },
-      "status": "服务间接口，不应从浏览器调用",
-      "frontend": [],
-      "verification": "隔离协议联调通过。未授权项目不领取、并发唯一领取、过期接管、重试再次领取；全部验证无凭证、错误凭证和管理员 JWT 拒绝。见 服务间接口验收结果.json；不代表实际发布成功。"
-    },
-    {
-      "id": "POST /api/v1/developer/source-worker/heartbeat",
-      "method": "POST",
-      "path": "/api/v1/developer/source-worker/heartbeat",
-      "capability": "Heartbeat",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py:99",
-      "scope": "服务间调用",
-      "stream": false,
-      "parameters": [],
-      "request": {
-        "content": {
-          "application/json": {
-            "schema": {
-              "$ref": "#/components/schemas/DeveloperWorkerHeartbeat"
-            }
-          }
-        },
-        "required": true
-      },
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_dict_"
-              }
-            }
-          },
-          "description": "Successful Response"
-        },
-        "422": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/HTTPValidationError"
-              }
-            }
-          },
-          "description": "Validation Error"
-        }
-      },
-      "status": "服务间接口，不应从浏览器调用",
-      "frontend": [],
-      "verification": "隔离协议联调通过。心跳持久化并由管理端回读健康状态；全部验证无凭证、错误凭证和管理员 JWT 拒绝。见 服务间接口验收结果.json；不代表实际发布成功。"
-    },
-    {
-      "id": "GET /api/v1/developer/source-worker/ready",
-      "method": "GET",
-      "path": "/api/v1/developer/source-worker/ready",
-      "capability": "Ready",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py:112",
-      "scope": "服务间调用",
-      "stream": false,
-      "parameters": [],
-      "request": null,
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_list_DeveloperVersionView__"
-              }
-            }
-          },
-          "description": "Successful Response"
-        }
-      },
-      "status": "服务间接口，不应从浏览器调用",
-      "frontend": [],
-      "verification": "隔离协议联调通过。查询通过，失败候选不进入就绪队列；未验证真实成功候选入队；全部验证无凭证、错误凭证和管理员 JWT 拒绝。见 服务间接口验收结果.json；不代表实际发布成功。"
-    },
-    {
-      "id": "GET /api/v1/developer/source-worker/versions/{version_id}",
-      "method": "GET",
-      "path": "/api/v1/developer/source-worker/versions/{version_id}",
-      "capability": "Worker Version",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py:125",
-      "scope": "服务间调用",
-      "stream": false,
-      "parameters": [
-        {
-          "in": "path",
-          "name": "version_id",
-          "required": true,
-          "schema": {
-            "title": "Version Id",
-            "type": "string"
-          }
-        }
-      ],
-      "request": null,
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_DeveloperVersionView_"
-              }
-            }
-          },
-          "description": "Successful Response"
-        },
-        "422": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/HTTPValidationError"
-              }
-            }
-          },
-          "description": "Validation Error"
-        }
-      },
-      "status": "服务间接口，不应从浏览器调用",
-      "frontend": [],
-      "verification": "隔离协议联调通过。实际上传版本回读、不暴露租约、缺失版本拒绝；全部验证无凭证、错误凭证和管理员 JWT 拒绝。见 服务间接口验收结果.json；不代表实际发布成功。"
-    },
-    {
-      "id": "POST /api/v1/developer/source-worker/versions/{version_id}",
-      "method": "POST",
-      "path": "/api/v1/developer/source-worker/versions/{version_id}",
-      "capability": "Worker Update",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py:131",
-      "scope": "服务间调用",
-      "stream": false,
-      "parameters": [
-        {
-          "in": "path",
-          "name": "version_id",
-          "required": true,
-          "schema": {
-            "title": "Version Id",
-            "type": "string"
-          }
-        }
-      ],
-      "request": {
-        "content": {
-          "application/json": {
-            "schema": {
-              "$ref": "#/components/schemas/DeveloperWorkerUpdate"
-            }
-          }
-        },
-        "required": true
-      },
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_DeveloperVersionView_"
-              }
-            }
-          },
-          "description": "Successful Response"
-        },
-        "422": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/HTTPValidationError"
-              }
-            }
-          },
-          "description": "Validation Error"
-        }
-      },
-      "status": "服务间接口，不应从浏览器调用",
-      "frontend": [],
-      "verification": "隔离协议联调通过。进度/失败回写；过期、替换、错误租约和撤销授权拒绝；终态不可改写；全部验证无凭证、错误凭证和管理员 JWT 拒绝。见 服务间接口验收结果.json；不代表实际发布成功。"
-    },
-    {
-      "id": "GET /api/v1/developer/source-worker/versions/{version_id}/package",
-      "method": "GET",
-      "path": "/api/v1/developer/source-worker/versions/{version_id}/package",
-      "capability": "Worker Package",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py:118",
-      "scope": "服务间调用",
-      "stream": false,
-      "parameters": [
-        {
-          "in": "path",
-          "name": "version_id",
-          "required": true,
-          "schema": {
-            "title": "Version Id",
-            "type": "string"
-          }
-        }
-      ],
-      "request": null,
-      "responses": {
-        "200": {
-          "description": "Successful Response"
-        },
-        "422": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/HTTPValidationError"
-              }
-            }
-          },
-          "description": "Validation Error"
-        }
-      },
-      "status": "服务间接口，不应从浏览器调用",
-      "frontend": [],
-      "verification": "隔离协议联调通过。真实上传包下载逐字节一致，规范化源码摘要一致；全部验证无凭证、错误凭证和管理员 JWT 拒绝。见 服务间接口验收结果.json；不代表实际发布成功。"
-    },
-    {
-      "id": "POST /api/v1/developer/source-worker/versions/{version_id}/release",
-      "method": "POST",
-      "path": "/api/v1/developer/source-worker/versions/{version_id}/release",
-      "capability": "Worker Release",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py:139",
-      "scope": "服务间调用",
-      "stream": false,
-      "parameters": [
-        {
-          "in": "path",
-          "name": "version_id",
-          "required": true,
-          "schema": {
-            "title": "Version Id",
-            "type": "string"
-          }
-        }
-      ],
-      "request": null,
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_ReleaseJob_"
-              }
-            }
-          },
-          "description": "Successful Response"
-        },
-        "422": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/HTTPValidationError"
-              }
-            }
-          },
-          "description": "Validation Error"
-        }
-      },
-      "status": "服务间接口，不应从浏览器调用",
-      "frontend": [],
-      "verification": "环境阻塞（拒绝路径通过）。仅通过自动发布禁用与失败候选缺少完整门禁证据的拒绝路径；真实构建、数据流、浏览器与部署正向验收仍待完成；全部验证无凭证、错误凭证和管理员 JWT 拒绝。见 服务间接口验收结果.json；不代表实际发布成功。"
-    },
-    {
-      "id": "POST /api/v1/developer/source-worker/versions/{version_id}/retry",
-      "method": "POST",
-      "path": "/api/v1/developer/source-worker/versions/{version_id}/retry",
-      "capability": "Worker Retry",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py:152",
-      "scope": "服务间调用",
-      "stream": false,
-      "parameters": [
-        {
-          "in": "path",
-          "name": "version_id",
-          "required": true,
-          "schema": {
-            "title": "Version Id",
-            "type": "string"
-          }
-        }
-      ],
-      "request": null,
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_DeveloperVersionView_"
-              }
-            }
-          },
-          "description": "Successful Response"
-        },
-        "422": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/HTTPValidationError"
-              }
-            }
-          },
-          "description": "Validation Error"
-        }
-      },
-      "status": "服务间接口，不应从浏览器调用",
-      "frontend": [],
-      "verification": "隔离协议联调通过。失败版本重入队、保留上次失败报告并清空候选提交；全部验证无凭证、错误凭证和管理员 JWT 拒绝。见 服务间接口验收结果.json；不代表实际发布成功。"
-    },
-    {
-      "id": "POST /api/v1/app/config/reload",
-      "method": "POST",
-      "path": "/api/v1/app/config/reload",
-      "capability": "重新装载动态配置（环节口径 / 气泡编排 / 采集规则）。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/config_controller.py:24",
-      "scope": "管理端",
-      "stream": false,
-      "parameters": [],
-      "request": null,
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_dict_"
-              }
-            }
-          },
-          "description": "Successful Response"
-        }
-      },
-      "status": "隔离联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/views/DeveloperView.vue",
-        "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
-      ],
-      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
-    },
-    {
-      "id": "GET /api/v1/developer/capabilities",
-      "method": "GET",
-      "path": "/api/v1/developer/capabilities",
-      "capability": "Module Capabilities",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/module_controller.py:67",
-      "scope": "管理端",
-      "stream": false,
-      "parameters": [],
-      "request": null,
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_list_ModuleCapability__"
-              }
-            }
-          },
-          "description": "Successful Response"
-        }
-      },
-      "status": "隔离联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/developer/ProjectsVersions.vue",
-        "zhiyin-src/template/zhiyin-web/src/developer/GettingStarted.vue",
-        "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
-      ],
-      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
-    },
-    {
-      "id": "GET /api/v1/developer/checks",
-      "method": "GET",
-      "path": "/api/v1/developer/checks",
-      "capability": "Module Checks",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/module_controller.py:167",
-      "scope": "管理端",
-      "stream": false,
-      "parameters": [],
-      "request": null,
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_list_dict__"
-              }
-            }
-          },
-          "description": "Successful Response"
-        }
-      },
-      "status": "隔离联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/views/DeveloperView.vue",
-        "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
-      ],
-      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
-    },
-    {
-      "id": "POST /api/v1/developer/checks",
-      "method": "POST",
-      "path": "/api/v1/developer/checks",
-      "capability": "Check Modules",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/module_controller.py:160",
-      "scope": "管理端",
-      "stream": false,
-      "parameters": [],
-      "request": null,
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_dict_"
-              }
-            }
-          },
-          "description": "Successful Response"
-        }
-      },
-      "status": "隔离联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/views/DeveloperView.vue",
-        "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
-      ],
-      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
-    },
-    {
-      "id": "GET /api/v1/developer/context",
-      "method": "GET",
-      "path": "/api/v1/developer/context",
-      "capability": "Developer Context",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/module_controller.py:125",
-      "scope": "管理端",
-      "stream": false,
-      "parameters": [],
-      "request": null,
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_ModuleDeveloperContext_"
-              }
-            }
-          },
-          "description": "Successful Response"
-        }
-      },
-      "status": "隔离联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/views/DeveloperView.vue",
-        "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
-      ],
-      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
-    },
-    {
-      "id": "GET /api/v1/developer/modules",
-      "method": "GET",
-      "path": "/api/v1/developer/modules",
-      "capability": "Developer Modules",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/module_controller.py:136",
-      "scope": "管理端",
-      "stream": false,
-      "parameters": [],
-      "request": null,
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_list_ModuleView__"
-              }
-            }
-          },
-          "description": "Successful Response"
-        }
-      },
-      "status": "隔离联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/views/DeveloperView.vue",
-        "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
-      ],
-      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
-    },
-    {
-      "id": "PUT /api/v1/developer/modules/{module_id}/policy",
-      "method": "PUT",
-      "path": "/api/v1/developer/modules/{module_id}/policy",
-      "capability": "Module Policy",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/module_controller.py:143",
-      "scope": "管理端",
-      "stream": false,
-      "parameters": [
-        {
-          "in": "path",
-          "name": "module_id",
-          "required": true,
-          "schema": {
-            "title": "Module Id",
-            "type": "string"
-          }
-        }
-      ],
-      "request": {
-        "content": {
-          "application/json": {
-            "schema": {
-              "$ref": "#/components/schemas/ModulePolicy"
-            }
-          }
-        },
-        "required": true
-      },
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_ModulePolicy_"
-              }
-            }
-          },
-          "description": "Successful Response"
-        },
-        "422": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/HTTPValidationError"
-              }
-            }
-          },
-          "description": "Validation Error"
-        }
-      },
-      "status": "隔离联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/views/DeveloperView.vue",
-        "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
-      ],
-      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
     },
     {
       "id": "POST /api/v1/developer/modules/{module_id}/preview",
@@ -4019,65 +3948,6 @@
       "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
     },
     {
-      "id": "GET /api/v1/developer/platform-status",
-      "method": "GET",
-      "path": "/api/v1/developer/platform-status",
-      "capability": "Platform Status",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py:92",
-      "scope": "管理端",
-      "stream": false,
-      "parameters": [],
-      "request": null,
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_DeveloperPlatformStatus_"
-              }
-            }
-          },
-          "description": "Successful Response"
-        }
-      },
-      "status": "隔离联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/views/DeveloperView.vue",
-        "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
-      ],
-      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
-    },
-    {
-      "id": "GET /api/v1/developer/projects",
-      "method": "GET",
-      "path": "/api/v1/developer/projects",
-      "capability": "Projects",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py:23",
-      "scope": "管理端",
-      "stream": false,
-      "parameters": [],
-      "request": null,
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_list_DeveloperProjectView__"
-              }
-            }
-          },
-          "description": "Successful Response"
-        }
-      },
-      "status": "隔离联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/developer/ProjectsVersions.vue",
-        "zhiyin-src/template/zhiyin-web/src/developer/GettingStarted.vue",
-        "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
-      ],
-      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
-    },
-    {
       "id": "POST /api/v1/developer/projects",
       "method": "POST",
       "path": "/api/v1/developer/projects",
@@ -4102,115 +3972,6 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/ApiResponse_DeveloperProjectView_"
-              }
-            }
-          },
-          "description": "Successful Response"
-        },
-        "422": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/HTTPValidationError"
-              }
-            }
-          },
-          "description": "Validation Error"
-        }
-      },
-      "status": "隔离联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/developer/ProjectsVersions.vue",
-        "zhiyin-src/template/zhiyin-web/src/developer/GettingStarted.vue",
-        "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
-      ],
-      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
-    },
-    {
-      "id": "PUT /api/v1/developer/projects/{project_id}",
-      "method": "PUT",
-      "path": "/api/v1/developer/projects/{project_id}",
-      "capability": "Update Project",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py:36",
-      "scope": "管理端",
-      "stream": false,
-      "parameters": [
-        {
-          "in": "path",
-          "name": "project_id",
-          "required": true,
-          "schema": {
-            "title": "Project Id",
-            "type": "string"
-          }
-        }
-      ],
-      "request": {
-        "content": {
-          "application/json": {
-            "schema": {
-              "$ref": "#/components/schemas/DeveloperProjectUpdate"
-            }
-          }
-        },
-        "required": true
-      },
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_DeveloperProjectView_"
-              }
-            }
-          },
-          "description": "Successful Response"
-        },
-        "422": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/HTTPValidationError"
-              }
-            }
-          },
-          "description": "Validation Error"
-        }
-      },
-      "status": "隔离联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/developer/ProjectsVersions.vue",
-        "zhiyin-src/template/zhiyin-web/src/developer/GettingStarted.vue",
-        "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
-      ],
-      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
-    },
-    {
-      "id": "GET /api/v1/developer/projects/{project_id}/versions",
-      "method": "GET",
-      "path": "/api/v1/developer/projects/{project_id}/versions",
-      "capability": "Versions",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py:42",
-      "scope": "管理端",
-      "stream": false,
-      "parameters": [
-        {
-          "in": "path",
-          "name": "project_id",
-          "required": true,
-          "schema": {
-            "title": "Project Id",
-            "type": "string"
-          }
-        }
-      ],
-      "request": null,
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_list_DeveloperVersionView__"
               }
             }
           },
@@ -4293,35 +4054,6 @@
         "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
       ],
       "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
-    },
-    {
-      "id": "GET /api/v1/developer/releases",
-      "method": "GET",
-      "path": "/api/v1/developer/releases",
-      "capability": "Release Jobs",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/module_controller.py:174",
-      "scope": "管理端",
-      "stream": false,
-      "parameters": [],
-      "request": null,
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_list_ReleaseJob__"
-              }
-            }
-          },
-          "description": "Successful Response"
-        }
-      },
-      "status": "隔离联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/views/DeveloperView.vue",
-        "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
-      ],
-      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。发布记录与申请/审批仅验证入队和回读，未执行部署。"
     },
     {
       "id": "POST /api/v1/developer/releases",
@@ -4421,65 +4153,59 @@
       "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。发布记录与申请/审批仅验证入队和回读，未执行部署。"
     },
     {
-      "id": "GET /api/v1/developer/templates",
-      "method": "GET",
-      "path": "/api/v1/developer/templates",
-      "capability": "Template",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py:82",
-      "scope": "管理端",
+      "id": "POST /api/v1/developer/source-worker/claim",
+      "method": "POST",
+      "path": "/api/v1/developer/source-worker/claim",
+      "capability": "Claim",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py:106",
+      "scope": "服务间调用",
       "stream": false,
-      "parameters": [
-        {
-          "in": "query",
-          "name": "kind",
-          "required": false,
-          "schema": {
-            "default": "hybrid",
-            "enum": [
-              "application",
-              "tool",
-              "hybrid"
-            ],
-            "title": "Kind",
-            "type": "string"
-          }
-        },
-        {
-          "in": "query",
-          "name": "module_id",
-          "required": true,
-          "schema": {
-            "pattern": "^[a-z][a-z0-9_]{1,47}$",
-            "title": "Module Id",
-            "type": "string"
-          }
-        },
-        {
-          "in": "query",
-          "name": "name",
-          "required": true,
-          "schema": {
-            "maxLength": 80,
-            "minLength": 1,
-            "title": "Name",
-            "type": "string"
-          }
-        },
-        {
-          "in": "query",
-          "name": "owner",
-          "required": true,
-          "schema": {
-            "maxLength": 80,
-            "minLength": 1,
-            "title": "Owner",
-            "type": "string"
-          }
-        }
-      ],
+      "parameters": [],
       "request": null,
       "responses": {
         "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_Union_dict__NoneType__"
+              }
+            }
+          },
+          "description": "Successful Response"
+        }
+      },
+      "status": "服务间接口，不应从浏览器调用",
+      "frontend": [],
+      "verification": "隔离协议联调通过。未授权项目不领取、并发唯一领取、过期接管、重试再次领取；全部验证无凭证、错误凭证和管理员 JWT 拒绝。见 服务间接口验收结果.json；不代表实际发布成功。"
+    },
+    {
+      "id": "POST /api/v1/developer/source-worker/heartbeat",
+      "method": "POST",
+      "path": "/api/v1/developer/source-worker/heartbeat",
+      "capability": "Heartbeat",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py:99",
+      "scope": "服务间调用",
+      "stream": false,
+      "parameters": [],
+      "request": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/DeveloperWorkerHeartbeat"
+            }
+          }
+        },
+        "required": true
+      },
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_dict_"
+              }
+            }
+          },
           "description": "Successful Response"
         },
         "422": {
@@ -4493,21 +4219,118 @@
           "description": "Validation Error"
         }
       },
-      "status": "隔离联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/developer/ProjectsVersions.vue",
-        "zhiyin-src/template/zhiyin-web/src/developer/GettingStarted.vue",
-        "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
-      ],
-      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+      "status": "服务间接口，不应从浏览器调用",
+      "frontend": [],
+      "verification": "隔离协议联调通过。心跳持久化并由管理端回读健康状态；全部验证无凭证、错误凭证和管理员 JWT 拒绝。见 服务间接口验收结果.json；不代表实际发布成功。"
     },
     {
-      "id": "GET /api/v1/developer/versions/{version_id}",
-      "method": "GET",
-      "path": "/api/v1/developer/versions/{version_id}",
-      "capability": "Version",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py:55",
-      "scope": "管理端",
+      "id": "POST /api/v1/developer/source-worker/versions/{version_id}",
+      "method": "POST",
+      "path": "/api/v1/developer/source-worker/versions/{version_id}",
+      "capability": "Worker Update",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py:131",
+      "scope": "服务间调用",
+      "stream": false,
+      "parameters": [
+        {
+          "in": "path",
+          "name": "version_id",
+          "required": true,
+          "schema": {
+            "title": "Version Id",
+            "type": "string"
+          }
+        }
+      ],
+      "request": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/DeveloperWorkerUpdate"
+            }
+          }
+        },
+        "required": true
+      },
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_DeveloperVersionView_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "服务间接口，不应从浏览器调用",
+      "frontend": [],
+      "verification": "隔离协议联调通过。进度/失败回写；过期、替换、错误租约和撤销授权拒绝；终态不可改写；全部验证无凭证、错误凭证和管理员 JWT 拒绝。见 服务间接口验收结果.json；不代表实际发布成功。"
+    },
+    {
+      "id": "POST /api/v1/developer/source-worker/versions/{version_id}/release",
+      "method": "POST",
+      "path": "/api/v1/developer/source-worker/versions/{version_id}/release",
+      "capability": "Worker Release",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py:139",
+      "scope": "服务间调用",
+      "stream": false,
+      "parameters": [
+        {
+          "in": "path",
+          "name": "version_id",
+          "required": true,
+          "schema": {
+            "title": "Version Id",
+            "type": "string"
+          }
+        }
+      ],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_ReleaseJob_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "服务间接口，不应从浏览器调用",
+      "frontend": [],
+      "verification": "环境阻塞（拒绝路径通过）。仅通过自动发布禁用与失败候选缺少完整门禁证据的拒绝路径；真实构建、数据流、浏览器与部署正向验收仍待完成；全部验证无凭证、错误凭证和管理员 JWT 拒绝。见 服务间接口验收结果.json；不代表实际发布成功。"
+    },
+    {
+      "id": "POST /api/v1/developer/source-worker/versions/{version_id}/retry",
+      "method": "POST",
+      "path": "/api/v1/developer/source-worker/versions/{version_id}/retry",
+      "capability": "Worker Retry",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py:152",
+      "scope": "服务间调用",
       "stream": false,
       "parameters": [
         {
@@ -4543,56 +4366,9 @@
           "description": "Validation Error"
         }
       },
-      "status": "隔离联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/developer/ProjectsVersions.vue",
-        "zhiyin-src/template/zhiyin-web/src/developer/GettingStarted.vue",
-        "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
-      ],
-      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
-    },
-    {
-      "id": "GET /api/v1/developer/versions/{version_id}/package",
-      "method": "GET",
-      "path": "/api/v1/developer/versions/{version_id}/package",
-      "capability": "Package",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py:61",
-      "scope": "管理端",
-      "stream": false,
-      "parameters": [
-        {
-          "in": "path",
-          "name": "version_id",
-          "required": true,
-          "schema": {
-            "title": "Version Id",
-            "type": "string"
-          }
-        }
-      ],
-      "request": null,
-      "responses": {
-        "200": {
-          "description": "Successful Response"
-        },
-        "422": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/HTTPValidationError"
-              }
-            }
-          },
-          "description": "Validation Error"
-        }
-      },
-      "status": "隔离联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/developer/ProjectsVersions.vue",
-        "zhiyin-src/template/zhiyin-web/src/developer/GettingStarted.vue",
-        "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
-      ],
-      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+      "status": "服务间接口，不应从浏览器调用",
+      "frontend": [],
+      "verification": "隔离协议联调通过。失败版本重入队、保留上次失败报告并清空候选提交；全部验证无凭证、错误凭证和管理员 JWT 拒绝。见 服务间接口验收结果.json；不代表实际发布成功。"
     },
     {
       "id": "POST /api/v1/developer/versions/{version_id}/release",
@@ -4693,35 +4469,6 @@
         "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
       ],
       "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。以隔离失败版本验证重试入队，未冒充构建成功。"
-    },
-    {
-      "id": "GET /api/v1/developer/workflows",
-      "method": "GET",
-      "path": "/api/v1/developer/workflows",
-      "capability": "Module Workflows",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/module_controller.py:74",
-      "scope": "管理端",
-      "stream": false,
-      "parameters": [],
-      "request": null,
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_list_ModuleFlowView__"
-              }
-            }
-          },
-          "description": "Successful Response"
-        }
-      },
-      "status": "隔离联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/developer/Workflows.vue",
-        "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
-      ],
-      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
     },
     {
       "id": "POST /api/v1/developer/workflows",
@@ -4888,55 +4635,6 @@
       "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
     },
     {
-      "id": "GET /api/v1/developer/workflows/{workflow_id}/runs",
-      "method": "GET",
-      "path": "/api/v1/developer/workflows/{workflow_id}/runs",
-      "capability": "Workflow Runs",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/module_controller.py:102",
-      "scope": "管理端",
-      "stream": false,
-      "parameters": [
-        {
-          "in": "path",
-          "name": "workflow_id",
-          "required": true,
-          "schema": {
-            "title": "Workflow Id",
-            "type": "string"
-          }
-        }
-      ],
-      "request": null,
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_list_ModuleFlowRun__"
-              }
-            }
-          },
-          "description": "Successful Response"
-        },
-        "422": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/HTTPValidationError"
-              }
-            }
-          },
-          "description": "Validation Error"
-        }
-      },
-      "status": "隔离联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/developer/Workflows.vue",
-        "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
-      ],
-      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
-    },
-    {
       "id": "POST /api/v1/developer/workflows/{workflow_id}/unpublish",
       "method": "POST",
       "path": "/api/v1/developer/workflows/{workflow_id}/unpublish",
@@ -4995,31 +4693,433 @@
       "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
     },
     {
-      "id": "POST /api/v1/app/academic/analysis",
-      "method": "POST",
-      "path": "/api/v1/app/academic/analysis",
-      "capability": "基于用户授权的成绩单生成学习分析，并说明成绩来源和局限。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py:187",
+      "id": "PUT /api/v1/app/plan/action/phases/{phase_id}",
+      "method": "PUT",
+      "path": "/api/v1/app/plan/action/phases/{phase_id}",
+      "capability": "Edit Phase",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:87",
       "scope": "学生端",
-      "stream": true,
-      "parameters": [],
-      "request": null,
+      "stream": false,
+      "parameters": [
+        {
+          "in": "path",
+          "name": "phase_id",
+          "required": true,
+          "schema": {
+            "title": "Phase Id",
+            "type": "string"
+          }
+        }
+      ],
+      "request": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/PhaseEdit"
+            }
+          }
+        },
+        "required": true
+      },
       "responses": {
         "200": {
           "content": {
             "application/json": {
-              "schema": {}
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_ActionPlanView_"
+              }
             }
           },
           "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
         }
       },
       "status": "联调通过",
       "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/views/GradesView.vue",
-        "zhiyin-src/template/zhiyin-web/src/api/validate-ai.ts"
+        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
       ],
-      "verification": "真实测试账号导入成绩后，经前端和源码测试后端验证。"
+      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
+    },
+    {
+      "id": "PUT /api/v1/app/plan/action/tasks/{task_id}",
+      "method": "PUT",
+      "path": "/api/v1/app/plan/action/tasks/{task_id}",
+      "capability": "Edit Task",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:75",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [
+        {
+          "in": "path",
+          "name": "task_id",
+          "required": true,
+          "schema": {
+            "title": "Task Id",
+            "type": "string"
+          }
+        }
+      ],
+      "request": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/TaskEdit"
+            }
+          }
+        },
+        "required": true
+      },
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_ActionPlanView_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+      ],
+      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
+    },
+    {
+      "id": "PUT /api/v1/app/plan/direction-weights",
+      "method": "PUT",
+      "path": "/api/v1/app/plan/direction-weights",
+      "capability": "Save Weights",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:164",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [],
+      "request": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/DirectionWeights"
+            }
+          }
+        },
+        "required": true
+      },
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_DirectionWeights_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+      ],
+      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
+    },
+    {
+      "id": "PUT /api/v1/app/preferences",
+      "method": "PUT",
+      "path": "/api/v1/app/preferences",
+      "capability": "Save Preferences",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:63",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [],
+      "request": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Preferences"
+            }
+          }
+        },
+        "required": true
+      },
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_Preferences_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+      ],
+      "verification": "2026-10-16 当前 Docker HTTP/PostgreSQL/JWT 联调通过；来源关闭后仍可生成，四种组合、缓存隔离、派生信息过滤、数据库回读及普通读取保留共 21 项通过。见 资料来源过滤验收结果.json。"
+    },
+    {
+      "id": "PUT /api/v1/app/reviews/{review_id}",
+      "method": "PUT",
+      "path": "/api/v1/app/reviews/{review_id}",
+      "capability": "Edit Review",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:117",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [
+        {
+          "in": "path",
+          "name": "review_id",
+          "required": true,
+          "schema": {
+            "title": "Review Id",
+            "type": "string"
+          }
+        }
+      ],
+      "request": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ReviewEdit"
+            }
+          }
+        },
+        "required": true
+      },
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_ReviewRecordView_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+      ],
+      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
+    },
+    {
+      "id": "PUT /api/v1/app/schedule/semester",
+      "method": "PUT",
+      "path": "/api/v1/app/schedule/semester",
+      "capability": "Save Semester",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py:182",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [],
+      "request": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Semester"
+            }
+          }
+        },
+        "required": true
+      },
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_Semester_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts"
+      ],
+      "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
+    },
+    {
+      "id": "PUT /api/v1/developer/modules/{module_id}/policy",
+      "method": "PUT",
+      "path": "/api/v1/developer/modules/{module_id}/policy",
+      "capability": "Module Policy",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/module_controller.py:143",
+      "scope": "管理端",
+      "stream": false,
+      "parameters": [
+        {
+          "in": "path",
+          "name": "module_id",
+          "required": true,
+          "schema": {
+            "title": "Module Id",
+            "type": "string"
+          }
+        }
+      ],
+      "request": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ModulePolicy"
+            }
+          }
+        },
+        "required": true
+      },
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_ModulePolicy_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "隔离联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/views/DeveloperView.vue",
+        "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
+      ],
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+    },
+    {
+      "id": "PUT /api/v1/developer/projects/{project_id}",
+      "method": "PUT",
+      "path": "/api/v1/developer/projects/{project_id}",
+      "capability": "Update Project",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py:36",
+      "scope": "管理端",
+      "stream": false,
+      "parameters": [
+        {
+          "in": "path",
+          "name": "project_id",
+          "required": true,
+          "schema": {
+            "title": "Project Id",
+            "type": "string"
+          }
+        }
+      ],
+      "request": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/DeveloperProjectUpdate"
+            }
+          }
+        },
+        "required": true
+      },
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_DeveloperProjectView_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "隔离联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/developer/ProjectsVersions.vue",
+        "zhiyin-src/template/zhiyin-web/src/developer/GettingStarted.vue",
+        "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
+      ],
+      "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
     }
   ],
   "schemas": {

@@ -233,7 +233,7 @@ onMounted(() => { void loadNotes() })
     </section>
 
     <div class="notes-workspace">
-      <main class="notes-main">
+      <div class="notes-main">
         <section class="notes-ledger" aria-labelledby="notesLedgerTitle">
           <header class="notes-ledger__head">
             <div>
@@ -299,7 +299,7 @@ onMounted(() => { void loadNotes() })
         </section>
 
         <TodoSuggestions v-if="scope === 'todo'" />
-      </main>
+      </div>
 
       <aside class="notes-aside" aria-label="行动上下文">
         <section class="notes-context">

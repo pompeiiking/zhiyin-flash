@@ -10090,6 +10090,47 @@
       }
     },
     "/api/v1/app/plan/action/phases/{phase_id}": {
+      "delete": {
+        "description": "删除一个阶段及其下任务。",
+        "operationId": "delete_phase_api_v1_app_plan_action_phases__phase_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "phase_id",
+            "required": true,
+            "schema": {
+              "title": "Phase Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_ActionPlanView_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Phase",
+        "tags": [
+          "student-capabilities"
+        ]
+      },
       "put": {
         "operationId": "edit_phase_api_v1_app_plan_action_phases__phase_id__put",
         "parameters": [
@@ -10223,6 +10264,47 @@
       }
     },
     "/api/v1/app/plan/action/tasks/{task_id}": {
+      "delete": {
+        "description": "删除一条任务：学生明确删除，返回删除后的完整计划。",
+        "operationId": "delete_task_api_v1_app_plan_action_tasks__task_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_ActionPlanView_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Task",
+        "tags": [
+          "student-capabilities"
+        ]
+      },
       "put": {
         "operationId": "edit_task_api_v1_app_plan_action_tasks__task_id__put",
         "parameters": [

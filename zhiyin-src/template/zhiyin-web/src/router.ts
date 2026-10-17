@@ -6,6 +6,14 @@ import {backendRequest} from './api/backend-client'
 import { ref } from 'vue'
 import { sessionCacheAvailable } from './lib/session-cache'
 export const routeLoadError = ref(false)
+/** 路由懒加载进行中：App 壳层用它给 <main> 标 aria-busy，并播报"正在加载页面…"。 */
+export const routeLoading = ref(false)
+export const SITE_TITLE = '职引 · 大学生生涯规划与就业指导智能支撑平台'
+/** 浏览器标签标题 = 页面标题 + 站点名；门户保留完整站点名（WCAG 2.4.2）。 */
+function syncDocumentTitle(to: { path: string; meta: { title?: unknown } }) {
+  const pageTitle = typeof to.meta.title === 'string' ? to.meta.title : ''
+  document.title = pageTitle && to.path !== '/' ? `${pageTitle} · 职引` : SITE_TITLE
+}
 export function retryRoute() { try { sessionStorage.removeItem('zhiyin-demo-chunk-reload') } catch { /* Explicit retry still works when storage is unavailable. */ } window.location.reload() }
 
 /**
@@ -96,6 +104,7 @@ export const router = createRouter({
 })
 
 router.beforeEach(async (to) => {
+  routeLoading.value = true
   if (to.path === '/review' && to.query.view === 'achievements') return '/achievements'
   if (to.path === '/report' && to.query.focus === 'choose') return '/directions'
   if (to.meta.public) return true
@@ -118,6 +127,7 @@ router.beforeEach(async (to) => {
 const RELOAD_KEY = 'zhiyin-demo-chunk-reload'
 
 router.onError((_error, _to) => {
+  routeLoading.value = false
   if (!sessionCacheAvailable.value) { routeLoadError.value = true; return }
   try {
     if (sessionStorage.getItem(RELOAD_KEY)) { routeLoadError.value = true; return }
@@ -131,6 +141,8 @@ router.onError((_error, _to) => {
 })
 
 router.afterEach((to) => {
+  routeLoading.value = false
+  syncDocumentTitle(to)
   const event:Record<string,string>={'/report':'diagnosis_view','/directions':'decision_compare','/profile':'collect_gap_show'}
   if(demo.state.authed && event[to.path])void backendRequest('track',{body:{event:event[to.path],payload:{path:to.path},client_event_id:crypto.randomUUID()}}).catch(()=>{})
 

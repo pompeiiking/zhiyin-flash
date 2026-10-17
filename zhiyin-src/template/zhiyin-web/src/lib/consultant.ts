@@ -46,6 +46,14 @@ export function consultantLabel(name?: string) {
 export function cleanConsultantText(text?: string | null) {
   if (!text) return text ?? ''
   let result = text
+  // 系统已经写进画像的更正，模型有时仍复述旧的"没写进画像/你自己去改"；
+  // 这类与事实相反的句子不能展示给学生（后端已尽量清，这里做显示层兜底）。
+  const kept = result
+    .split(/(?<=[。！？\n])/)
+    .filter(part => !/(?:去画像里点|自己改一次|我不该拿推断|没写进画像[^。]{0,24}自己)/.test(part))
+    .join('')
+    .trim()
+  if (kept) result = kept
   for (const [alias, shown] of Object.entries(labels)) {
     if (alias === shown || !result.includes(alias)) continue
     result = result.split(alias).join(shown)

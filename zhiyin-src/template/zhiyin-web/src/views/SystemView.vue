@@ -105,7 +105,7 @@ async function exportData() {
     const reportValue = report.status === 'fulfilled' ? report.value : null
     const actionValue = action.status === 'fulfilled' ? action.value : null
     const account = demo.state.account || '当前账号'
-    const day = new Intl.DateTimeFormat('sv-SE').format(new Date())
+    const day = new Intl.DateTimeFormat('sv-SE', { dateStyle: 'short', timeStyle: 'medium' }).format(new Date()).replace(/[: ]/g, '-')
     // 「我的全部资料」= 画像 + 学业 + 待办 + 阶段计划/任务 + 当前报告。
     // 计划这次没读到就不写假数据，导出提示里如实说明，不继续称"全部"。
     const body = {
@@ -144,7 +144,7 @@ async function exportData() {
       </section>
 
       <div class="settings-layout">
-        <main class="settings-main">
+        <div class="settings-main">
           <AccountPreferences />
           <section class="settings-block settings-export" aria-labelledby="settings-export-title">
             <header><div><p>保存副本</p><h2 id="settings-export-title">导出资料</h2></div><DetailPopover title="导出说明" label="查看导出说明"><p>个人资料导出为 JSON；报告、方向和计划由服务生成相应文件。导出只读取当前账号的真实数据。</p></DetailPopover></header>
@@ -153,7 +153,7 @@ async function exportData() {
               <article v-if="featureEnabled('export')" class="settings-export-single"><span><UiIcon name="report" :size="21"/></span><div><h3>单项成果</h3><p>生成适合保存或打印的文件</p></div><div class="settings-export-options"><label><span>内容</span><select v-model="asset"><option value="report">诊断报告</option><option value="direction_plan">方向方案</option><option value="action_plan">行动计划</option></select></label><label><span>格式</span><select v-model="format"><option value="pdf">PDF</option><option value="docx">Word</option></select></label></div><button class="btn" :disabled="busy" @click="exportAsset">{{ busy ? '正在请求…' : '生成文件' }}</button></article>
             </div>
           </section>
-        </main>
+        </div>
         <aside class="settings-data">
           <header><p>资料入口</p><h2>更正与补充</h2><DetailPopover title="为什么在原页面修改" label="查看资料修改说明" side="left"><p>每类资料在对应页面中展示来源和影响范围，修改时更容易判断是否准确。</p></DetailPopover></header>
           <nav aria-label="资料更正入口">

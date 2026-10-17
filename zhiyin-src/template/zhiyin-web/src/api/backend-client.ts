@@ -67,7 +67,7 @@ async function request<T>(key: keyof typeof operations, options: Options = {}): 
   } catch (error) {
     if (error instanceof BackendError) throw error
     if (controller.signal.aborted) throw new BackendError('等待超时，输入内容已保留，请重新尝试。', 1007)
-    throw new BackendError('后端暂时连不上，请确认服务地址后重试。', 1007)
+    throw new BackendError('网络或服务暂时不可用，请稍后重试。', 1007)
   } finally { clearTimeout(timeout); options.signal?.removeEventListener('abort', abort) }
 }
 export const backendClient = {

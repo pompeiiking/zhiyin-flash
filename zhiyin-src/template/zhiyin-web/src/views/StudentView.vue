@@ -189,6 +189,7 @@ const DEMO_EDGES: DependencyEdgeView[] = (() => {
 const profileTab = ref<'facts' | 'judgments' | 'gaps' | 'sources'>('facts')
 const profileRoute = useRoute()
 const verificationOpen = ref(false)
+watch(() => profileRoute.query.tab, (tab) => { if (tab === 'gaps') profileTab.value = 'gaps' }, { immediate: true })
 watch(() => profileRoute.query.section, async section => { if(section === 'enrollment') { await nextTick(); document.getElementById('enrollment-title')?.scrollIntoView({block:'start'}) } }, {immediate:true})
 const isVerified = computed(() => backendDemo.chsiVerified.value)
 const loading = ref(false)
@@ -268,12 +269,17 @@ function depsOf(conclusionKey: string, kind: 'dimension' | 'direction'): { keys:
  * 4. A 段数据：每条默认带来源 / 可信度 / 时间
  * ======================================================================== */
 
-/** 已有 / 总数 / 缺口：demo 走画像池切片，service 走本次读取的档案 */
-const progress = computed(() =>
-  live.value
-    ? { known: livePanel.value?.fields?.length ?? 0, total: (livePanel.value?.fields?.length ?? 0) + (livePanel.value?.gaps?.length ?? 0), gap: livePanel.value?.gaps?.length ?? 0 }
-    : demo.use.profileProgress.value,
-)
+/** 已有 / 总数 / 缺口：demo 走画像池切片；service 优先用本轮采集清单（学校、专业、层次、在读状态都在里面），
+ *  清单缺席时才退回画像面板的 fields + gaps。这样"资料完整度"与页面上的"待补充"字段是同一口径。 */
+const progress = computed(() => {
+  if (!live.value) return demo.use.profileProgress.value
+  const collection = backendDemo.state.liveWorkspace?.collection_panel?.items ?? []
+  const gap = collection.filter((item) => !item.got).length
+  if (collection.length) return { known: collection.length - gap, total: collection.length, gap }
+  const fields = livePanel.value?.fields?.length ?? 0
+  const gaps = livePanel.value?.gaps?.length ?? 0
+  return { known: fields, total: fields + gaps, gap: gaps }
+})
 
 interface FieldRow extends ProfileField {
   /** 图上看到的来源（本人更正后要换掉） */
@@ -373,11 +379,21 @@ function valueParts(row: FieldRow): ValueParts {
   return parts
 }
 
-const missing = computed(() =>
-  live.value
-    ? (livePanel.value?.gaps ?? []).map((gap) => ({ key: gap.key, label: gap.label ?? gap.key, reason: gap.reason, next: gap.suggested_next_action ?? '' }))
-    : PROFILE_FIELDS.slice(progress.value.known).map((field) => ({ key: field.key, label: field.label, reason: '', next: '' })),
-)
+const missing = computed(() => {
+  const rows = live.value
+    ? (livePanel.value?.gaps ?? []).map((gap) => ({ key: gap.key, label: gap.label ?? gap.key, reason: gap.reason, next: gap.suggested_next_action ?? '', source: '' }))
+    : PROFILE_FIELDS.slice(progress.value.known).map((field) => ({ key: field.key, label: field.label, reason: '', next: '', source: '' }))
+  if (!live.value) return rows
+  // 画像面板的 gaps 只收"影响判断"的缺口；采集清单里没拿到的学校/专业/层次等也要进待补充列表，
+  // 否则会出现"资料完整度 1/15"却"暂未发现缺口"的自相矛盾。
+  const knownKeys = new Set(rows.map((row) => row.key))
+  for (const item of backendDemo.state.liveWorkspace?.collection_panel?.items ?? []) {
+    if (item.got || knownKeys.has(item.key)) continue
+    knownKeys.add(item.key)
+    rows.push({ key: item.key, label: item.label ?? item.key, reason: item.why ?? '', next: item.ask ?? '', source: item.source ?? '' })
+  }
+  return rows
+})
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * 5. 覆盖度与整体可信度：后端的数先用，说明白它是谁算的
@@ -664,7 +680,7 @@ const gapRows = computed<GapRow[]>(() =>
       label: item.label,
       why: item.reason || meta?.why || '这条信息还没有拿到，相关判断暂时只能给到"待确认"。',
       next: item.next || meta?.next || '在一次咨询里说清楚就可以',
-      origin: collect?.origin ?? (item.key === 'internship' || item.key === 'project' ? '可以自己写一段发过来' : '来自对话'),
+      origin: collect?.origin ?? (item.source === 'chsi' ? '来自学信网' : item.source === 'academic' ? '来自教务系统' : item.source === 'conversation' ? '来自对话' : item.key === 'internship' || item.key === 'project' ? '可以自己写一段发过来' : '来自对话'),
       blocked: collect?.blocked ?? '',
       ask: gapAsk(item.key),
       affects,
@@ -860,7 +876,7 @@ const profileSnapshot = computed(() => {
     label: '当前重点判断',
     title: first.label,
     state: first.missingKeys.length ? `仍缺 ${first.missingKeys.length} 项资料` : '待继续验证',
-    detail: `${first.brief || first.full}。这是已有分析线索，尚不代表已选择该方向。`,
+    detail: `${studentVoice(first.brief || first.full)}。这是已有分析线索，尚不代表已选择该方向。`,
   }
 })
 const enrollmentRows = computed(() => {
@@ -879,7 +895,7 @@ onMounted(()=>{ void loadWorkspace() })
 
 <template>
   <div class="ws-page profile-page p7">
-    <PageHeading title="个人画像" description="把零散经历整理成可核对、可继续验证的职业探索档案。"><template #meta><div class="c2-page-meta"><span v-if="live">{{ livePanel ? '已读取的档案' : loading ? '正在读取档案' : '尚未读取档案' }}</span><span>{{ known.length }} 条已知 · {{ progress.gap }} 条待补充</span></div></template>
+    <PageHeading title="个人画像" description="把零散经历整理成可核对、可继续验证的个人画像。"><template #meta><div class="c2-page-meta"><span v-if="live">{{ livePanel ? '已读取的档案' : loading ? '正在读取档案' : '尚未读取档案' }}</span><span>{{ progress.known }} 条已知 · {{ progress.gap }} 条待补充</span></div></template>
       <RouterLink class="btn btn--primary" to="/chat">{{ progress.gap ? '补充关键信息' : '更新信息' }}<UiIcon name="arrow" :size="16" /></RouterLink>
       <button class="btn" @click="exportProfile"><UiIcon name="download" :size="16"/>导出画像</button>
     </PageHeading>
@@ -906,16 +922,16 @@ onMounted(()=>{ void loadWorkspace() })
         <div class="profile-dossier__identity">
           <div class="profile-dossier__portrait" aria-hidden="true">{{ identity.name.slice(0,1) }}</div>
           <div>
-            <p class="profile-dossier__label">职业探索档案</p>
+            <p class="profile-dossier__label">个人画像</p>
             <h2 id="profile-dossier-title">{{ identity.name }}</h2>
             <p>{{ identity.line }}</p>
           </div>
-          <DetailPopover title="个人资料概况" label="查看个人资料概况"><p>已记录 {{ known.length }} 项信息，{{ progress.gap }} 项待补充。</p><p>依据充分 {{ confBands[0]?.count ?? 0 }} 项，待核对 {{ confBands[1]?.count ?? 0 }} 项。</p></DetailPopover>
+          <DetailPopover title="个人资料概况" label="查看个人资料概况"><p>已记录 {{ progress.known }} 项信息，{{ progress.gap }} 项待补充。</p><p>依据充分 {{ confBands[0]?.count ?? 0 }} 项，待核对 {{ confBands[1]?.count ?? 0 }} 项。</p></DetailPopover>
         </div>
         <div class="profile-dossier__coverage">
-          <div><span>资料完整度</span><strong>{{ known.length }}<small> / {{ known.length + progress.gap }}</small></strong></div>
-          <div class="profile-dossier__track" :aria-label="'已记录'+known.length+'项，待补充'+progress.gap+'项'"><i v-for="n in known.length + progress.gap" :key="n" :class="{'is-known':n<=known.length}"/></div>
-          <p>{{ loading && !livePanel ? '正在读取资料…' : serviceError ? '资料读取失败，请重试核对' : !livePanel ? '尚未读取资料' : !known.length && !progress.gap ? '暂无个人资料，可从咨询开始补充' : progress.gap ? `还差 ${progress.gap} 项关键信息` : '当前未列出待补充项' }}</p>
+          <div><span>资料完整度</span><strong>{{ progress.known }}<small> / {{ progress.total }}</small></strong></div>
+          <div class="profile-dossier__track" role="progressbar" :aria-label="'资料完整度'" :aria-valuemin="0" :aria-valuemax="progress.total" :aria-valuenow="progress.known" :aria-valuetext="'已记录 '+progress.known+' 项，共 '+progress.total+' 项，待补充 '+progress.gap+' 项'"><i v-for="n in progress.total" :key="n" aria-hidden="true" :class="{'is-known':n<=progress.known}"/></div>
+          <p>{{ loading && !livePanel ? '正在读取资料…' : serviceError ? '资料读取失败，请重试核对' : !livePanel ? '尚未读取资料' : !progress.known && !progress.gap ? '暂无个人资料，可从咨询开始补充' : progress.gap ? `还差 ${progress.gap} 项关键信息` : '当前未列出待补充项' }}</p>
         </div>
       </header>
 
@@ -939,9 +955,9 @@ onMounted(()=>{ void loadWorkspace() })
           </header>
           <ul v-if="priorityConclusions.length">
             <li v-for="item in priorityConclusions" :key="item.key">
-              <DetailPopover class="profile-direction" :title="item.label" :label="item.label + '：' + item.brief" side="bottom"><template #trigger>
-                <span class="profile-direction__mark" aria-hidden="true"></span><span><strong>{{ item.label }}</strong><small>{{ item.brief || '这条判断暂时没有摘要。' }}</small></span><UiIcon name="info" :size="16" aria-hidden="true"/>
-              </template><p>{{ item.full || item.brief }}</p><p class="profile-popover-meta">{{ item.section }} · {{ item.deps.length ? item.deps.length + ' 项资料支撑' : '逐项依据待核对' }}</p><p v-if="item.note">判断说明：{{ item.note }}</p><p v-if="item.risk">需要留意：{{ item.risk }}</p><p v-if="item.missingKeys.length">仍缺 {{ item.missingKeys.length }} 项关键资料。</p><button class="ws-text-button" type="button" @click="jumpToConclusion(item.key)">在完整分析中核对</button></DetailPopover>
+              <DetailPopover class="profile-direction" :title="item.label" :label="item.label + '：' + studentVoice(item.brief)" side="bottom"><template #trigger>
+                <span class="profile-direction__mark" aria-hidden="true"></span><span><strong>{{ item.label }}</strong><small>{{ studentVoice(item.brief) || '这条判断暂时没有摘要。' }}</small></span><UiIcon name="info" :size="16" aria-hidden="true"/>
+              </template><p>{{ studentVoice(item.full || item.brief) }}</p><p class="profile-popover-meta">{{ item.section }} · {{ item.deps.length ? item.deps.length + ' 项资料支撑' : '逐项依据待核对' }}</p><p v-if="item.note">判断说明：{{ item.note }}</p><p v-if="item.risk">需要留意：{{ item.risk }}</p><p v-if="item.missingKeys.length">仍缺 {{ item.missingKeys.length }} 项关键资料。</p><button class="ws-text-button" type="button" @click="jumpToConclusion(item.key)">在完整分析中核对</button></DetailPopover>
             </li>
           </ul>
           <div v-else class="profile-focus-empty">
@@ -954,7 +970,7 @@ onMounted(()=>{ void loadWorkspace() })
           </div>
         </section>
 
-        <aside class="profile-next" aria-labelledby="profile-next-title">
+        <section class="profile-next" aria-labelledby="profile-next-title">
           <p class="profile-next__label">下一步只做一件事</p>
           <template v-if="priorityGaps[0]">
             <h3 id="profile-next-title">{{ priorityGaps[0].label }}</h3>
@@ -964,12 +980,12 @@ onMounted(()=>{ void loadWorkspace() })
             <button class="ws-text-button" type="button" @click="profileTab='gaps'">查看全部待补充信息</button>
           </template>
           <template v-else>
-            <h3 id="profile-next-title">{{ known.length ? '核对已有资料' : '补充个人资料' }}</h3>
-            <p>{{ known.length ? '当前没有明确缺口，可以从标为“待核对”的信息开始确认。' : '先补充所学专业或一段经历，帮助系统了解你的情况。' }}</p>
-            <RouterLink v-if="!known.length" class="ws-text-link" to="/chat">开始补充<UiIcon name="arrow" :size="14" /></RouterLink>
+            <h3 id="profile-next-title">{{ progress.gap ? '继续补齐资料' : known.length ? '核对已有资料' : '补充个人资料' }}</h3>
+            <p>{{ progress.gap ? '还有 ' + progress.gap + ' 项资料待补充（学校、专业、学历、在读状态等）；可以先核对已有资料，也可以从对话里逐项补齐。' : known.length ? '当前没有明确缺口，可以从标为“待核对”的信息开始确认。' : '先补充所学专业或一段经历，帮助系统了解你的情况。' }}</p>
+            <RouterLink v-if="progress.gap || !known.length" class="ws-text-link" :to="known.length ? '/profile?tab=gaps' : '/chat'">{{ known.length ? '查看待补字段' : '开始补充' }}<UiIcon name="arrow" :size="14" /></RouterLink>
           </template>
           <p v-if="needsCheck.length" class="profile-next__check">另有 {{ needsCheck.length }} 项资料需要核对</p>
-        </aside>
+        </section>
       </div>
     </section>
 <section class="enrollment" aria-labelledby="enrollment-title"><header><div><span class="enrollment__eyebrow">学校档案</span><h2 id="enrollment-title">学籍信息 <DetailPopover title="学籍信息说明" label="查看学籍信息说明"><p>核对学校、专业与在读状态，查看学籍核验结果。</p></DetailPopover></h2></div><button class="btn" @click="verificationOpen=true"><UiIcon name="shield" :size="16" />{{ isVerified ? '重新核验' : '核验学籍' }}</button></header><dl><div v-for="item in enrollmentRows" :key="item.label"><dt>{{item.label}}</dt><dd :class="{'is-missing':item.value==='待补充'}">{{item.value}}</dd></div></dl><footer><span :class="['enrollment__state', isVerified ? 'is-verified' : '']"><i />{{ isVerified ? '已包含学信来源' : '尚未完成学信核验' }}</span><RouterLink class="ws-text-link" to="/grades">查看我的成绩<UiIcon name="arrow" :size="14" /></RouterLink></footer></section>
@@ -1060,7 +1076,7 @@ onMounted(()=>{ void loadWorkspace() })
                       <li v-for="key in fieldDeps[row.key].slice(0, 3)" :key="key">
                         <button class="p7-link" type="button" @click="jumpToConclusion(key)">
                           <span class="p7-link__label">{{ conclusionMap[key]?.label ?? key }}</span>
-                          <span class="p7-link__value" :title="conclusionMap[key]?.brief">{{ conclusionMap[key]?.brief }}</span>
+                          <span class="p7-link__value" :title="studentVoice(conclusionMap[key]?.brief)">{{ studentVoice(conclusionMap[key]?.brief) }}</span>
                           <span class="p7-link__go" aria-hidden="true"><UiIcon name="arrow" :size="14" /></span>
                         </button>
                       </li>
@@ -1160,7 +1176,7 @@ onMounted(()=>{ void loadWorkspace() })
                 <span class="p7-concl__kind">{{ item.kind === 'direction' ? '方向方案' : item.section }}</span>
                 {{ item.label }}
               </span>
-              <span class="p7-concl__brief">{{ item.brief }}</span>
+              <span class="p7-concl__brief">{{ studentVoice(item.brief) }}</span>
               <span class="p7-concl__side">
                 <ConfidenceBadge v-if="Number.isFinite(item.conf)" class="p7-concl__conf" :confidence="item.conf" />
                 <span v-if="recomputeIds.has(item.key)" class="chip chip--attention">需要重算</span>
@@ -1193,7 +1209,7 @@ onMounted(()=>{ void loadWorkspace() })
 
           <div v-show="openConclusion === item.key" :id="`p7-concl-more-${item.key}`" class="p7-concl__more-body">
             <p class="p7-concl__more-label">这条判断的原话</p>
-            <p class="p7-concl__full">{{ item.full }}</p>
+            <p class="p7-concl__full">{{ studentVoice(item.full) }}</p>
             <p v-if="item.note" class="p7-concl__note">门槛解释：{{ item.note }}</p>
             <p v-if="item.risk" class="p7-concl__note">风险：{{ item.risk }}</p>
             <p v-if="item.ripple" class="p7-concl__note">连带影响：{{ item.ripple }}</p>
@@ -1259,7 +1275,7 @@ onMounted(()=>{ void loadWorkspace() })
           <p class="p7-gap__blocked">
             <span>卡住了</span>
             <template v-if="gap.affects.length">
-              <button v-for="affect in gap.affects" :key="affect.key" class="p7-affect" type="button" :title="affect.brief" @click="jumpToConclusion(affect.key)">
+              <button v-for="affect in gap.affects" :key="affect.key" class="p7-affect" type="button" :title="studentVoice(affect.brief)" @click="jumpToConclusion(affect.key)">
                 <i aria-hidden="true" />{{ affect.label }}
               </button>
             </template>
@@ -1299,7 +1315,7 @@ onMounted(()=>{ void loadWorkspace() })
     </Foldable><aside class="c2-profile-side" aria-label="画像操作与来源">
       <section><h2>核对与管理资料</h2><RouterLink class="btn" to="/chat">补充一条信息<UiIcon name="plus" :size="16" /></RouterLink><button class="btn" :disabled="loading" @click="loadWorkspace">{{ loading ? '正在读取…' : '重新核对档案' }}</button><p>点开一条信息，可以查看依据、修改内容。更正后会标出受影响的判断。</p></section>
       <section><h2>这 {{ known.length }} 条从哪里来</h2><div v-for="source in SOURCE_GROUPS" :key="source.key" class="c2-source-row"><span>{{ source.label }}</span><span class="c2-source-track" role="meter" :aria-label="source.label" :aria-valuenow="known.filter(row => source.from.includes(row.desc)).length" :aria-valuemax="Math.max(1, known.length)" aria-valuemin="0"><i :style="{width: known.filter(row => source.from.includes(row.desc)).length / Math.max(1, known.length) * 100 + '%'}" /></span><b>{{ known.filter(row => source.from.includes(row.desc)).length }}</b></div></section>
-      <section><h2>{{ identity.name }}</h2><p>{{ identity.line }}</p><p>整体可信度 {{ Math.round(trustShown) }}% · 覆盖 {{ known.length }} / {{ tally.total }}</p><Foldable variant="inline" title="查看计算依据"><p>{{ trustOrigin }}。{{ statusLine }}</p><p>{{ coverageNote }}</p></Foldable></section>
+      <section><h2>{{ identity.name }}</h2><p>{{ identity.line }}</p><p>整体可信度 {{ Math.round(trustShown) }}% · 覆盖 {{ progress.known }} / {{ progress.total }}</p><Foldable variant="inline" title="查看计算依据"><p>{{ trustOrigin }}。{{ statusLine }}</p><p>{{ coverageNote }}</p></Foldable></section>
     </aside></InfoSheet>
     <InfoSheet :open="verificationOpen" shape="panel" title="核验学籍信息" @close="verificationOpen=false"><AcademicVerification /></InfoSheet>
     <!-- 更正是一条信息的小表单（`text` + 两个按钮），不是"从一行钻进去看细节"。

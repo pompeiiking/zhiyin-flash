@@ -1064,3 +1064,10 @@ html[data-theme='dark'] .app.app--workspace { --c-bg:#181a20; --workspace-nav:#1
  .profile-directions > header { display:block; }
  .profile-directions > header .ws-text-button { margin-top:4px; }
 }
+
+/* 手机端：右下角悬浮提醒固定在底栏上方（88px + 44px），页面底部留出对应空白，避免遮住最后一行操作。 */
+@media (max-width: 767px) {
+  .app.app--workspace:not([data-route='/reminders']) .ws-page.ws-page {
+    padding-bottom: max(144px, calc(env(safe-area-inset-bottom, 0px) + 144px));
+  }
+}

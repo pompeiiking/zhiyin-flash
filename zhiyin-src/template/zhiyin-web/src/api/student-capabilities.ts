@@ -9,7 +9,9 @@ export type Measurements={items:MeasurementBatch[];history:MeasurementBatch[]}
 export const studentApi={
  preferences:()=>api<Preferences>('/app/preferences'),savePreferences:(v:PreferencesEdit)=>api<Preferences>('/app/preferences',write('PUT',v)),
  saveTask:(v:TaskEdit,id?:string)=>api<ActionPlanView>('/app/plan/action/tasks'+(id?'/'+encodeURIComponent(id):''),write(id?'PUT':'POST',v)),
+ deleteTask:(id:string)=>api<ActionPlanView>('/app/plan/action/tasks/'+encodeURIComponent(id),{method:'DELETE'}),
  savePhase:(v:PhaseEdit,id?:string)=>api<ActionPlanView>('/app/plan/action/phases'+(id?'/'+encodeURIComponent(id):''),write(id?'PUT':'POST',v)),
+ deletePhase:(id:string)=>api<ActionPlanView>('/app/plan/action/phases/'+encodeURIComponent(id),{method:'DELETE'}),
  notifications:()=>api<Notice[]>('/app/notifications'),notification:(id:string,v:NotificationEdit)=>api<Notice>('/app/notifications/'+encodeURIComponent(id),write('PATCH',v)),
  reviews:()=>api<{items:Review[];reasons:Record<string,number>}>('/app/reviews'),saveReview:(v:ReviewEdit,id?:string)=>api<Review>('/app/reviews'+(id?'/'+id:''),write(id?'PUT':'POST',v)),applyReview:(id:string)=>api<Review>('/app/reviews/'+id+'/apply',{method:'POST'}),
  semester:()=>api<Semester|null>('/app/schedule/semester'),saveSemester:(v:SemesterEdit)=>api<Semester>('/app/schedule/semester',write('PUT',v)),

@@ -211,6 +211,8 @@ async function load(refresh = false) {
   lastRefresh.value = refresh
   error.value = ''
   status.value = ''
+  // 更新是"有过程"的动作：请求可能很快，先把状态条立起来，避免看起来没反应。
+  if (refresh) status.value = '正在更新职业资料…'
   try {
     const result = await (refresh ? backendClient.refreshIntel('') : backendClient.intel(''))
     if (!result || !Array.isArray(result.items)) throw new Error('Incomplete intel')
@@ -222,14 +224,18 @@ async function load(refresh = false) {
     if (result.status === 'failed') {
       error.value = String(result.message || '这次没有取到职业资料（不是"没有相关内容"）。可以稍后重试。')
     } else if (result.status === 'empty') {
-      status.value = String(result.message || '没有找到匹配的职业资料，可以换一个关键词或稍后重试。')
+      // 没有搜索词时的"0 条"交给页面空态解释；搜索后再显示"没找到匹配"。
+      status.value = query.value.trim() ? String(result.message || '没有找到匹配的职业资料，可以换一个关键词或稍后重试。') : ''
     }
-    if (refresh) status.value = result.items.length ? `已重新获取 ${result.items.length} 条职业资料。` : (status.value || '本次未获取到职业资料，可稍后重试或使用画像匹配。')
+    if (refresh) status.value = result.items.length
+      ? `已重新获取 ${result.items.length} 条职业资料。`
+      : (result.status === 'empty' ? status.value : '本次未获取到职业资料，可稍后重试或使用画像匹配。')
     if (!result.items.some((item) => item.id === selectedId.value)) {
       selectedId.value = result.items.find((item) => item.kind === 'occupation')?.id ?? result.items[0]?.id ?? ''
     }
     await focusFromReminders()
   } catch {
+    if (refresh) status.value = ''
     error.value = refresh ? '职业资料更新失败，已读取的内容仍保留，请稍后重试。' : '职业资料没有读取成功。可以稍后重试，画像匹配仍可单独发起。'
   } finally {
     busy.value = false
@@ -381,9 +387,10 @@ onMounted(() => {
             </section>
           </div>
 
-          <EmptyState v-else kind="search-empty" size="sm" title="没有找到相关方向" description="换一个职业名称或清空搜索。" :next="false">
+          <EmptyState v-else-if="query.trim()" kind="search-empty" size="sm" title="没有找到相关方向" description="换一个职业名称或清空搜索。" :next="false">
             <button class="btn" type="button" @click="query = ''">清空搜索</button>
           </EmptyState>
+          <p v-else class="ws-muted">暂无可展示的职业资料，可点「更新职业资料」获取；也可以先用画像发起匹配。</p>
         </section>
 
         <section v-if="selectedArticle" class="intel-detail-card" aria-label="职业探索详情">

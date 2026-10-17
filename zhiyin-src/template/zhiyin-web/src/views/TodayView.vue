@@ -145,7 +145,7 @@ onMounted(load)
     <StatusBanner v-if="error" tone="error" :message="error" retry-label="重新读取" :retrying="busy" @retry="load" />
 
     <div class="today-layout">
-      <main class="today-main">
+      <div class="today-main">
         <section v-if="focusTask" class="today-focus" aria-labelledby="today-focus-title">
           <div class="today-focus__body">
             <header class="today-focus__head">
@@ -225,7 +225,7 @@ onMounted(load)
           </section>
 
         </section>
-      </main>
+      </div>
 
       <aside class="today-aside" aria-label="今日概览">
         <section class="today-date-card">
@@ -295,7 +295,7 @@ onMounted(load)
 .today-aside { position: sticky; top: 16px; display: grid; gap: 12px; }
 .today-date-card { position: relative; overflow: hidden; min-height: 164px; padding: 20px; color: var(--c-on-primary); background: var(--c-primary-brand); border-radius: 12px; box-shadow: var(--e-2); }
 .today-date-card::after { content: ''; position: absolute; right: -36px; bottom: -54px; width: 150px; height: 150px; border: 28px solid rgba(255,255,255,.11); border-radius: 50%; }
-.today-date-card p { color: rgba(255,255,255,.76); font-size: var(--fs-13); }
+.today-date-card p { color: var(--c-on-primary); font-size: var(--fs-13); }
 .today-date-card strong { display: block; margin-top: 15px; font-family: Georgia, 'Times New Roman', serif; font-size: 58px; font-weight: 400; line-height: .9; }
 .today-date-card span { display: block; margin-top: 8px; font-size: var(--fs-14); }
 .today-capacity { padding: 20px; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 12px; box-shadow: var(--e-1); }

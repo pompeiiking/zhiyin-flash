@@ -188,7 +188,7 @@ onBeforeUnmount(() => observer?.disconnect())
           </div>
           <div v-else class="article-prose article-prose--lead">
             <p>这不是一份资料清单，而是对你当前状态的一次解释：系统把个人画像、咨询记录、学业资料和已经形成的诊断结论放到同一个语境里，寻找稳定优势、现实差距与最值得验证的假设。</p>
-            <p v-if="report.sections?.[0]?.items?.[0]">目前最先浮现的线索，是关于<strong>{{ report.sections[0].items[0].name }}</strong>的判断：{{ report.sections[0].items[0].conclusion }}</p>
+            <p v-if="report.sections?.[0]?.items?.[0]">目前最先浮现的线索，是关于<strong>{{ report.sections[0].items[0].name }}</strong>的判断：{{ studentVoice(report.sections[0].items[0].conclusion) }}</p>
             <p>全文共形成 {{ all.length }} 项判断，其中 {{ supportedCount }} 项附有依据说明，{{ pendingItems.length }} 项仍需要新的行动或资料来验证。没有依据的部分会明确保留为假设，不会写成定论。</p>
           </div>
           <div v-if="executiveFindings.length" class="executive-findings" aria-label="报告核心结论">
@@ -252,7 +252,7 @@ onBeforeUnmount(() => observer?.disconnect())
             <p>一份诊断报告的价值，不在于把你描述得多么完整，而在于让下一次选择比上一次更有依据。下面这些动作应当优先服务于“减少不确定性”。</p>
             <ol class="action-list">
               <li v-for="move in ai.result.value?.data.moves ?? []" :key="move.label"><strong>{{ studentVoice(move.label) }}</strong><span>{{ studentVoice(move.why) }}</span></li>
-              <li v-for="item in pendingItems" :key="item.index"><strong>验证{{ item.name }}</strong><span>{{ item.conclusion }} 可以通过一次具体项目、访谈、课程任务或真实投递来验证；完成后再回到报告更新判断。</span></li>
+              <li v-for="item in pendingItems" :key="item.index"><strong>验证{{ item.name }}</strong><span>{{ studentVoice(item.conclusion) }} 可以通过一次具体项目、访谈、课程任务或真实投递来验证；完成后再回到报告更新判断。</span></li>
             </ol>
           </div>
         </section>
@@ -265,7 +265,7 @@ onBeforeUnmount(() => observer?.disconnect())
         <slot />
       </div>
 
-      <aside class="report-toc-rail" :class="{ 'is-open': tocOpen }">
+      <div class="report-toc-rail" :class="{ 'is-open': tocOpen }">
         <nav class="report-toc" aria-label="报告章节目录">
           <button class="report-toc__handle" :aria-expanded="tocOpen" :aria-label="tocOpen ? '收起报告章节目录' : '展开报告章节目录'" @click="tocOpen = !tocOpen"><span class="report-toc__line" aria-hidden="true" /><span class="report-toc__ticks" aria-hidden="true"><i v-for="item in tocItems" :key="item.id" :class="{ 'is-active': activeSection === item.id, 'is-child': item.level === 'item' }" /></span></button>
           <div class="report-toc__panel">
@@ -273,7 +273,7 @@ onBeforeUnmount(() => observer?.disconnect())
             <button v-for="item in tocItems" :key="item.id" :class="[{ 'is-active': activeSection === item.id }, item.level === 'section' ? 'report-toc__section' : 'report-toc__item']" @click="scrollToSection(item.id)"><span>{{ item.title }}</span></button>
           </div>
         </nav>
-      </aside>
+      </div>
     </div>
 
     <InfoSheet :open="profileSheet" shape="panel" title="本报告使用的个人资料" @close="profileSheet = false">

@@ -10,6 +10,7 @@ const savedId=ref('')
 const requestId=ref(''), expectedTask=ref<TaskValues|null>(null)
 function snapshot(t:ActionTaskView, phaseId:string):TaskValues { return {text:t.text,phase_id:phaseId,status:t.done?'completed':t.status??'pending',progress:t.done?100:t.progress??0,waiting_reason:t.waiting_reason??'',due_date:t.due_date??null,scheduled_at:t.scheduled_at??null,estimated_minutes:t.estimated_minutes??null,parent_task_id:t.parent_task_id??null} }
 const open=ref(false),busy=ref(false),error=ref(''),status=ref('')
+const deleting=ref(false),deleteConfirm=ref(false)
 const phases=computed(()=>backendDemo.state.liveAction?.phases??[])
 const localTime=localDateTime
 const text=ref(''),phase=ref(''),state=ref<TaskEdit['status']>('pending'),progress=ref(0),reason=ref(''),due=ref(''),schedule=ref(''),minutes=ref<number|undefined>()
@@ -47,6 +48,19 @@ async function save(){
     open.value=false
   }catch(e){error.value=(e as Error).message}finally{busy.value=false}
 }
+async function removeTask(){
+  if(deleting.value)return
+  const id=savedId.value||props.task?.task_id
+  if(!id)return
+  deleting.value=true;error.value=''
+  try{
+    const plan=await studentApi.deleteTask(id)
+    backendDemo.setAction(plan)
+    deleteConfirm.value=false
+    open.value=false
+  }catch(e){error.value=(e as Error).message}
+  finally{deleting.value=false}
+}
 </script>
 <template>
   <DetailPopover v-model="open" :label="split?'拆分任务：'+task?.text:task?'编辑与排期：'+task.text:'安排新任务'" :title="split?'拆分任务':task?'编辑任务':'安排新任务'" side="right">
@@ -73,6 +87,10 @@ async function save(){
         <p v-if="split" class="ws-muted">新任务将保留与原任务的拆分关系，原任务不会自动完成。</p>
         <p v-if="error" role="alert" class="ws-field-error">{{error}}</p>
         <p v-if="status" role="status">{{status}}</p>
+        <div v-if="task&&!split" class="task-editor-danger">
+          <template v-if="deleteConfirm"><span>删除后无法恢复，确认删除这项任务吗？</span><button type="button" class="btn" :disabled="deleting" @click="deleteConfirm=false">取消</button><button type="button" class="btn" :disabled="deleting" @click="removeTask">{{deleting?'正在删除…':'确认删除'}}</button></template>
+          <button v-else type="button" class="ws-text-button" @click="deleteConfirm=true">删除任务</button>
+        </div>
         <button class="btn btn--primary" :disabled="busy||!phase">{{busy?'正在保存…':'保存安排'}}</button>
       </fieldset>
     </form>
@@ -88,6 +106,9 @@ async function save(){
 .task-editor-schedule{border-top:1px solid var(--c-border);padding-top:4px}
 .task-editor-schedule summary{cursor:pointer;min-height:44px;display:list-item;align-content:center;color:var(--c-primary)}
 .task-editor-schedule .ws-field{margin-bottom:12px}
+.task-editor-danger{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 0 2px;border-top:1px dashed var(--c-border)}
+.task-editor-danger span{color:var(--c-text-2);font-size:var(--fs-12);line-height:1.5}
+.task-editor-danger .btn{min-height:40px}
 .task-editor button[type=submit]{width:100%}
 .task-editor fieldset{display:grid;gap:12px;border:0;padding:0;margin:0;min-width:0}
 .task-editor{display:grid;gap:12px;min-width:230px}

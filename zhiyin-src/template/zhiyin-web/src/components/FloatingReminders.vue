@@ -21,14 +21,18 @@ const mobile = computed(() => viewportWidth.value <= 767)
 const minY = computed(() => mobile.value ? 136 : 72)
 const maxY = computed(() => Math.max(minY.value, viewportHeight.value - (mobile.value ? 138 : 78)))
 const defaultY = computed(() => mobile.value ? Math.round(viewportHeight.value * .54) : maxY.value)
-const triggerStyle = computed(() => ({ top: `${Math.min(maxY.value, Math.max(minY.value, y.value))}px` }))
+const triggerStyle = computed(() => mobile.value
+  ? { bottom: 'calc(88px + env(safe-area-inset-bottom, 0px))' }
+  : { top: `${Math.min(maxY.value, Math.max(minY.value, y.value))}px` })
 const cardY = computed(() => {
   const height = mobile.value ? 356 : 390
   return y.value > viewportHeight.value / 2
     ? Math.max(72, y.value - height)
     : Math.min(y.value + 54, Math.max(72, viewportHeight.value - height))
 })
-const cardStyle = computed(() => ({ top: `${cardY.value}px` }))
+const cardStyle = computed(() => mobile.value
+  ? { bottom: 'calc(146px + env(safe-area-inset-bottom, 0px))' }
+  : { top: `${cardY.value}px` })
 /**
  * 同一条提醒（标题+正文完全相同）只显示一次，并在卡片里标出"出现了 N 次"。
  * 后端会为同一件事重复投递提醒，三张卡片文案一模一样时新手无法分辨（#11）。
@@ -65,6 +69,7 @@ function restore() {
 function save() { hasSavedPosition = true; localStorage.setItem(positionKey, String(Math.round(y.value))) }
 function resetPosition() { hasSavedPosition = false; localStorage.removeItem(positionKey); y.value = clamp(defaultY.value) }
 function pointerDown(event: PointerEvent) {
+  if (mobile.value) return // 手机端固定在右下角，不参与拖拽
   if (event.button !== 0) return
   dragging = true; moved = false; startY = event.clientY; startTop = y.value
   window.addEventListener('pointermove', pointerMove)
@@ -101,7 +106,7 @@ watch(() => route.path, () => { if (!hasSavedPosition) restore(); demo.closeNoti
       :style="triggerStyle"
       type="button"
       :aria-expanded="demo.state.noticeOpen"
-      :aria-label="`提醒，${noticeTotal} 条待处理。可上下拖动位置`"
+      :aria-label="`提醒，${noticeTotal} 条待处理${mobile ? '' : '。可上下拖动位置'}`"
       @pointerdown="pointerDown"
       @click="toggle"
     >
@@ -120,7 +125,8 @@ watch(() => route.path, () => { if (!hasSavedPosition) restore(); demo.closeNoti
         </article>
       </div>
       <p v-else class="floating-reminders__empty">目前没有待处理提醒。</p>
-      <footer><span>上下拖动可调整位置</span><button type="button" @click="resetPosition">恢复默认位置</button></footer>
+      <RouterLink class="floating-reminders__more" to="/reminders" @click="demo.closeNotice()">查看全部提醒</RouterLink>
+      <footer v-if="!mobile"><span>上下拖动可调整位置</span><button type="button" @click="resetPosition">恢复默认位置</button></footer>
     </section>
   </div>
 </template>
@@ -137,6 +143,8 @@ watch(() => route.path, () => { if (!hasSavedPosition) restore(); demo.closeNoti
 .floating-reminders__trigger:active { cursor:grabbing; }
 .floating-reminders__trigger>span { position:absolute; top:-5px; right:-5px; display:grid; place-items:center; min-width:21px; height:21px; padding:0 5px; border:2px solid var(--c-bg); border-radius:999px; background:var(--c-attention); color:var(--c-on-attention); font-size:11px; font-weight:700; font-variant-numeric:tabular-nums; }
 .floating-reminders__dup { margin:2px 0 4px; color:var(--c-text-3); font-size:12px; line-height:1.55; }
+.floating-reminders__more { display:flex; align-items:center; justify-content:center; min-height:44px; margin:0 16px 8px; border:1px solid var(--c-primary-border); border-radius:10px; color:var(--c-primary); font-size:13px; text-decoration:none; }
+.floating-reminders__more:hover { background:var(--c-primary-weak); }
 .floating-reminders__card { position:fixed; right:18px; z-index:calc(var(--z-drawer) - 1); width:min(360px,calc(100vw - 36px)); max-height:min(520px,calc(100dvh - 96px)); overflow:auto; border:1px solid var(--c-border); border-radius:16px; background:var(--c-surface); box-shadow:var(--e-3); }
 .floating-reminders__card>header { position:sticky; top:0; z-index:1; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:15px 16px; border-bottom:1px solid var(--c-border); background:color-mix(in srgb,var(--c-surface) 94%,transparent); backdrop-filter:blur(14px); }
 .floating-reminders__card>header div { display:flex; align-items:baseline; gap:8px; }

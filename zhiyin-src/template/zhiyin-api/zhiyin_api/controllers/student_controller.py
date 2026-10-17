@@ -80,6 +80,20 @@ async def edit_task(request: Request, task_id: str, body: TaskEdit):
     return ApiResponse(data=action_plan_view(await service.edit_task(uid, body, task_id)))
 
 
+@router.delete("/app/plan/action/tasks/{task_id}", response_model=ApiResponse[ActionPlanView])
+async def delete_task(request: Request, task_id: str):
+    """删除一条任务：学生明确删除，返回删除后的完整计划。"""
+    uid, service = await context(request)
+    return ApiResponse(data=action_plan_view(await service.delete_task(uid, task_id)))
+
+
+@router.delete("/app/plan/action/phases/{phase_id}", response_model=ApiResponse[ActionPlanView])
+async def delete_phase(request: Request, phase_id: str):
+    """删除一个阶段及其下任务。"""
+    uid, service = await context(request)
+    return ApiResponse(data=action_plan_view(await service.delete_phase(uid, phase_id)))
+
+
 @router.post("/app/plan/action/phases", response_model=ApiResponse[ActionPlanView])
 async def create_phase(request: Request, body: PhaseEdit):
     uid, service = await context(request)

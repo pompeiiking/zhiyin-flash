@@ -39,6 +39,8 @@ export function studentVoice(value: unknown): string {
     .replace(/她/g, '你')
     // 「去问他有没有…」这类已由上面覆盖；再收拾「问问你一下」等重复
     .replace(/问问你一下/g, '问问你')
+    // 「把握度 1.00」「把握 1.00」→ 百分比：0–1 小数对学生太抽象，显示层统一成百分比
+    .replace(/把握(?:度)?\s*([01](?:\.\d+)?)/g, (_match, value: string) => `把握度 ${Math.round(Number(value) * 100)}%`)
     // 内部自称句式
     .replace(/^(?:可以|需要)?帮你问(?:问|一下)/, '可以补充')
     // 收拾多余空白与标点前空格

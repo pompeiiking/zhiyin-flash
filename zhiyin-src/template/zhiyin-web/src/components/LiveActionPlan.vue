@@ -174,7 +174,7 @@ onBeforeUnmount(()=>{if(statusTimer)clearTimeout(statusTimer)})
           <button class="plan-refresh" :disabled="busy||!!savingTask" @click="load">{{busy?'正在读取…':'刷新'}}</button>
         </div>
         <div class="plan-focus">
-          <div class="plan-focus-label"><span>现在做</span><p v-if="nextTask">{{dateKey(nextTask.due_date)||'未设截止日期'}}，{{deadline(nextTask.due_date).label}}</p></div>
+          <div class="plan-focus-label"><span>现在做</span><p v-if="nextTask">{{ dateKey(nextTask.due_date) ? dateKey(nextTask.due_date) + '，' + deadline(nextTask.due_date).label : '未设截止日期' }}</p></div>
           <strong v-if="nextTask">{{nextTask.text}}</strong>
           <strong v-else>{{allDone?'这一轮已经完成':'下一项任务待安排'}}</strong>
           <RouterLink v-if="nextTask" to="/home">开始行动</RouterLink>
@@ -204,7 +204,7 @@ onBeforeUnmount(()=>{if(statusTimer)clearTimeout(statusTimer)})
         <section class="plan-checklist" aria-labelledby="plan-stage-title">
           <header class="plan-stage-head">
             <div>
-              <p>{{selected>=0&&inspectedPhase?phaseStateLabel(inspectedPhase):'整份计划'}}</p>
+              <p>{{selected>=0&&inspectedPhase?(phaseStateLabel(inspectedPhase)==='当前阶段'?'阶段详情':phaseStateLabel(inspectedPhase)):'整份计划'}}</p>
               <h2 id="plan-stage-title">{{selected>=0&&inspectedPhase?inspectedPhase.name:'全部任务'}}</h2>
               <span v-if="selected>=0&&inspectedPhase">{{phasePeriod(inspectedPhase)}}</span>
               <span v-else>{{doneCount}} 项已完成，还有 {{tasks.length-doneCount}} 项待推进</span>

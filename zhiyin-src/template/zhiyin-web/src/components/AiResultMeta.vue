@@ -35,6 +35,7 @@ import { computed } from 'vue'
 import SourceChip from './SourceChip.vue'
 import StatTile from './StatTile.vue'
 import type { AiResult } from '../api/ai-types'
+import { studentVoice } from '../lib/student-voice'
 
 const props = defineProps<{ result: AiResult<unknown> }>()
 
@@ -84,7 +85,7 @@ const sourceCount = computed(() => props.result.citations.length)
       <li v-for="(c, i) in result.citations" :key="i" class="ai-meta__source">
         <span class="ai-meta__source-name">{{ c.source }}</span>
         <time v-if="c.at" class="ai-meta__time t-num">{{ c.at }}</time>
-        <p class="ai-meta__detail">{{ c.detail }}</p>
+        <p class="ai-meta__detail">{{ studentVoice(c.detail) }}</p>
         <a
           v-if="sourceLink(c.origin)"
           class="ws-text-link"

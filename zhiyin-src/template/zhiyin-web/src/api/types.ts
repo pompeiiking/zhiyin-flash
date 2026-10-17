@@ -327,6 +327,11 @@ export interface paths {
   "/api/v1/app/plan/action/phases/{phase_id}": {
     /** Edit Phase */
     put: operations["edit_phase_api_v1_app_plan_action_phases__phase_id__put"];
+    /**
+     * Delete Phase
+     * @description 删除一个阶段及其下任务。
+     */
+    delete: operations["delete_phase_api_v1_app_plan_action_phases__phase_id__delete"];
   };
   "/api/v1/app/plan/action/tasks": {
     /** Create Task */
@@ -342,6 +347,11 @@ export interface paths {
   "/api/v1/app/plan/action/tasks/{task_id}": {
     /** Edit Task */
     put: operations["edit_task_api_v1_app_plan_action_tasks__task_id__put"];
+    /**
+     * Delete Task
+     * @description 删除一条任务：学生明确删除，返回删除后的完整计划。
+     */
+    delete: operations["delete_task_api_v1_app_plan_action_tasks__task_id__delete"];
   };
   "/api/v1/app/plan/direction-comparison": {
     /** Comparison */
@@ -5985,6 +5995,31 @@ export interface operations {
       };
     };
   };
+  /**
+   * Delete Phase
+   * @description 删除一个阶段及其下任务。
+   */
+  delete_phase_api_v1_app_plan_action_phases__phase_id__delete: {
+    parameters: {
+      path: {
+        phase_id: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_ActionPlanView_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   /** Create Task */
   create_task_api_v1_app_plan_action_tasks_post: {
     requestBody: {
@@ -6044,6 +6079,31 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["TaskEdit"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_ActionPlanView_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /**
+   * Delete Task
+   * @description 删除一条任务：学生明确删除，返回删除后的完整计划。
+   */
+  delete_task_api_v1_app_plan_action_tasks__task_id__delete: {
+    parameters: {
+      path: {
+        task_id: string;
       };
     };
     responses: {

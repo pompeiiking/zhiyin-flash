@@ -15,7 +15,7 @@ import { useNavigationLayout } from './lib/layout'
 import { loadShell, systemData, refreshNotifications } from './lib/system-data'
 import { auth } from './lib/auth'
 import { toast } from './store'
-import { routeLoadError, retryRoute } from './router'
+import { routeLoadError, retryRoute, routeLoading } from './router'
 import { sessionCacheAvailable } from './lib/session-cache'
 
 /**
@@ -37,6 +37,14 @@ const sidebar = ref<InstanceType<typeof DesktopSidebar> | null>(null)
 const mobileNav = ref<InstanceType<typeof WorkspaceNav> | null>(null)
 
 const bare = computed(() => route.meta.public === true)
+
+/* 页面自己已经给出错误横幅时，壳层不再重复一条同样的提示（同一句话出现两遍）。 */
+const contentRef = ref<HTMLElement | null>(null)
+const pageErrorShown = ref(false)
+let pageErrorObserver: MutationObserver | undefined
+function refreshPageError() {
+  pageErrorShown.value = !!contentRef.value?.querySelector('.ws-page [role="alert"], .ws-page .ws-field-error')
+}
 const layout = useNavigationLayout()
 /**
  * C2 外壳与导航共用 layout 的响应式宽度：768 以下底栏，
@@ -91,13 +99,22 @@ onMounted(() => {
   document.documentElement.lang = 'zh-CN'
   skin.init()
   void auth.restore().then(ok => {if(ok)void loadShell()})
+  void nextTick(() => {
+    refreshPageError()
+    if (!contentRef.value) return
+    pageErrorObserver = new MutationObserver(() => refreshPageError())
+    pageErrorObserver.observe(contentRef.value, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'role'] })
+  })
 })
 watch(() => route.path, async () => {
   await nextTick()
   document.querySelector('.app__main')?.scrollTo(0, 0)
+  refreshPageError()
+  // SPA 路由切换不换文档：把焦点交给主内容，键盘与读屏用户不用从侧栏重新 Tab 一遍。
+  if (!bare.value && !authOpen.value && !routeLoadError.value) document.getElementById('main-content')?.focus({ preventScroll: true })
 })
 const notificationTimer=setInterval(()=>{if(demo.state.authed && document.visibilityState==='visible')void refreshNotifications().catch(()=>{})},60000)
-onUnmounted(()=>clearInterval(notificationTimer))
+onUnmounted(()=>{clearInterval(notificationTimer);pageErrorObserver?.disconnect()})
 </script>
 
 <template>
@@ -114,11 +131,12 @@ onUnmounted(()=>clearInterval(notificationTimer))
     <template v-else>
       <DesktopSidebar v-if="desktop" v-show="!layout.sidebarCollapsed.value" ref="sidebar" @new-chat="newChat" @collapse="collapseSidebar" />
       <AppTopBar ref="workspaceHeader" @open-palette="palette?.show()" @expand-sidebar="expandSidebar" @open-mobile-menu="mobileNav?.show()" />
-      <main id="main-content" class="app__main" tabindex="-1">
+      <main id="main-content" class="app__main" tabindex="-1" :aria-busy="routeLoading">
+        <p class="sr-only" role="status" aria-live="polite">{{ routeLoading ? '正在加载页面…' : '' }}</p>
         <!-- 氛围层：与门户同一套语言（一片很淡的品牌色光 + 颗粒），但强度低得多 -->
         <div class="app__atmos" aria-hidden="true" />
 
-        <div class="app__content"><div v-if="systemData.error" class="ws-field-error" role="alert">{{systemData.error}} <button class="ws-text-button" @click="loadShell">重新连接</button></div>
+        <div class="app__content" ref="contentRef"><div v-if="systemData.error && !pageErrorShown" class="ws-field-error" role="alert">{{systemData.error}} <button class="ws-text-button" @click="loadShell">重试</button></div>
           <section v-if="routeLoadError" class="ws-page ws-route-error" role="alert"><h1>页面暂时没有加载成功</h1><p>{{ sessionCacheAvailable ? '本次演示记录和已保存的咨询草稿会在重新加载后恢复。' : '浏览器未能保存当前工作空间上下文，请先保留重要内容。' }}可以重新加载，或先查看其他页面。</p><div class="ws-inline-actions"><button class="btn btn--primary" @click="retryRoute">重新加载</button><RouterLink class="btn" to="/chat">去咨询对话</RouterLink></div></section>
           <RouterView v-else v-slot="{ Component }">
             <component :is="Component" :key="route.path" />

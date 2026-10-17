@@ -56,12 +56,22 @@ const uploadError = ref('')
 const requestError = ref(''), profileError = ref(''), guideSaving = ref('')
 const profileOpen = ref(false), historyOpen = ref(false), profileLoading = ref(false)
 const choosingTopic = ref(false)
+// 恢复会话的短暂空态：避免刚刷新时先闪一句"新会话已就绪/咨询对话"。
+const restoring = ref(false)
+// 发送后极短时间内的"停止"点击要忽略：按钮在同一位置从"发送"变成"停止"，
+// 双击发送的第二次点击会命中停止，把刚发出的问题撤回（实测 DEF-C1）。
+const stopArmed = ref(true)
+let stopArmTimer: ReturnType<typeof setTimeout> | undefined
 // 「新开一条会话」模式：点主题时新建会话，而不是续接同主题的旧会话。
 const freshTopic = ref(false)
 const profileLoaded = ref(false), studyYearSaving = ref(''), studyYearError = ref(''), editingStudyYear = ref(false), savedStudyYear = ref('')
 const theoryCards = ref<Record<string, TheoryCardView>>({}), theoryErrors = ref<Record<string, string>>({})
 const theoryLoading = ref<Record<string, boolean>>({})
-const sessions = computed(() => [...backendDemo.state.sessions].sort((a,b) => ((b.last_message_at || b.last_active_at) || '').localeCompare((a.last_message_at || a.last_active_at) || '')))
+const sessions = computed(() => [...backendDemo.state.sessions]
+ // 与后端会话列表口径一致：还没有任何消息的会话不进历史。
+ // 否则 fresh 新建的空会话会先出现在列表里、刷新后又消失（DEF-C2）。
+ .filter(session => (session.message_count ?? 0) > 0 || !!session.last_message)
+ .sort((a,b) => ((b.last_message_at || b.last_active_at) || '').localeCompare((a.last_message_at || a.last_active_at) || '')))
 const title = computed(() => showStudyYearQuestion.value ? '开始咨询' : choosingTopic.value ? '选择咨询主题' : backendDemo.currentSession.value?.task_name || '咨询对话')
 const journey = [
  { key:'collect', label:'了解自己', short:'了解' },
@@ -408,7 +418,7 @@ async function toggleTask(guideTask: NonNullable<ChatTurn['guideTask']>) {
     else toast(friendlyError(e))
   } finally { guideSaving.value = '' }
 }
-function stop() { stopped.value = true; controller?.abort() }
+function stop() { if (!stopArmed.value) return; stopped.value = true; controller?.abort() }
 async function send(retry = false, choice?: { text: string; option?: OptionRef }) {
  if (thinking.value || uploading.value || systemData.busy) return
  // 刷新后 failedRequest 会因为本轮普通消息成功而被清空，失败态里仍保存着原始请求。
@@ -423,6 +433,9 @@ async function send(retry = false, choice?: { text: string; option?: OptionRef }
  const run = ++serial
  failedRequest = request; requestError.value = ''; stopped.value = false
  controller = new AbortController(); thinking.value = true
+ // 发送后 700ms 内忽略"停止"点击，避免双击发送把刚发出的消息撤回。
+ stopArmed.value = false; clearTimeout(stopArmTimer)
+ stopArmTimer = setTimeout(() => { stopArmed.value = true }, 700)
  pending.value = { text:'', agent:host.value, note:'正在分析你的问题' }
  if (!retry) {
   demo.addChatTurn({ id:`${request.client_msg_id}-user`, from:'me', text, materials:outgoingMaterials })
@@ -452,12 +465,19 @@ async function send(retry = false, choice?: { text: string; option?: OptionRef }
   void loadShell(); void refreshProfile(); void bottom()
  } catch (e) { if (run === serial) {
    if (stopped.value) {
-    demo.setChatTurns(turns.value.filter(turn => turn.id !== `${request.client_msg_id}-user`), sessionId)
+    // 停止不是"撤回提问"：问题已经发出并落库，保留它；已收到的部分正文留着，
+    // 并明确标注没说完（不伪装成完整回复）。
+    const partial = pending.value?.text?.trim() ?? ''
     pending.value = null
-    if (!draft.value.trim()) draft.value = outgoingDraft || text
-    const attachedIds = new Set(attached.value.map(material => material.id))
-    attached.value = [...outgoingMaterials.filter(material => !attachedIds.has(material.id)), ...attached.value]
-    remember(); requestError.value = '已停止接收，问题已放回输入框，可修改后重新发送。'
+    if (partial) demo.addChatTurn({
+      id: `${request.client_msg_id}-partial`,
+      from: 'host',
+      speaker: host.value,
+      text: partial,
+      guideText: '（已停止接收，以上是已经收到的部分，没有说完。）',
+    })
+    requestError.value = '已停止接收这一轮回复。你的问题已发出；可以继续补充，或稍后重新提问。'
+    remember()
    } else {
     requestError.value = friendlyError(e)
     // 失败的消息与错误按会话落盘：刷新后仍能看到、仍可重新尝试。
@@ -466,7 +486,34 @@ async function send(retry = false, choice?: { text: string; option?: OptionRef }
   } }
  finally { if (run === serial) { thinking.value = false; controller = null } }
 }
-async function copy(text: string, turnId?: string) { try { await navigator.clipboard.writeText(text); if (turnId) { copiedTurn.value = turnId; clearTimeout(copyTimer); copyTimer = setTimeout(() => { copiedTurn.value = '' }, 2000) } else toast('已复制') } catch { toast('复制失败，请手动选择文字复制。') } }
+async function copy(text: string, turnId?: string) {
+  const done = (ok: boolean) => {
+    if (!ok) { toast('复制失败，请手动选择文字复制。'); return }
+    if (turnId) { copiedTurn.value = turnId; clearTimeout(copyTimer); copyTimer = setTimeout(() => { copiedTurn.value = '' }, 2000) } else toast('已复制')
+  }
+  try {
+    await navigator.clipboard.writeText(text)
+    done(true)
+    return
+  } catch { /* 无剪贴板权限/非安全上下文：退回 execCommand */ }
+  try {
+    // 兜底：临时 textarea + execCommand。headless/受限权限下 clipboard API 会失败，
+    // 但 execCommand('copy') 仍可用，避免"点了复制只能手动选中"。
+    const area = document.createElement('textarea')
+    area.value = text
+    area.setAttribute('readonly', '')
+    area.style.position = 'fixed'
+    area.style.opacity = '0'
+    document.body.appendChild(area)
+    area.select()
+    area.setSelectionRange(0, area.value.length)
+    const ok = document.execCommand('copy')
+    area.remove()
+    done(ok)
+  } catch {
+    toast('复制失败，请手动选择文字复制。')
+  }
+}
 function keydown(e: KeyboardEvent) { if (e.key === 'Enter' && !e.shiftKey && !isComposingKey(e) && navigation.width.value > 760) { e.preventDefault(); void send() } }
 watch(thinking, busy => {
  demo.setChatBusy(busy); clearInterval(waitTimer)
@@ -534,7 +581,10 @@ onMounted(() => {
  window.addEventListener('zhiyin:session-cleared', clearAllFailures)
  document.addEventListener('visibilitychange', refreshSessionsOnFocus)
  void nextTick(resizeInput)
- if (demo.state.currentSessionId && !systemData.busy) void resume(demo.state.currentSessionId)
+ if (demo.state.currentSessionId && !systemData.busy) {
+  restoring.value = true
+  void resume(demo.state.currentSessionId).finally(() => { restoring.value = false })
+ }
  loadFailure(demo.state.currentSessionId)
  void refreshProfile()
  applyConsultationContext()
@@ -554,7 +604,7 @@ onUnmounted(() => { disposed = true; window.removeEventListener('focus', refresh
    <ol v-if="!choosingTopic && demo.state.currentSessionId" class="consult-journey" aria-label="咨询轨迹"><li v-for="item in journey" :key="item.key" :data-state="journeyState(item.key)" :aria-current="journeyState(item.key) === 'current' ? 'step' : undefined"><i /><span><em class="consult-journey__full">{{ item.label }}</em><em class="consult-journey__short">{{ item.short }}</em></span></li></ol>
   </header>
   <div ref="flow" v-scroll-fade class="consult-flow" tabindex="0" aria-label="对话记录" @scroll.passive="onScroll">
-   <div v-if="systemData.busy" class="consult-loading" role="status">正在读取会话…</div>
+   <div v-if="systemData.busy || restoring" class="consult-loading" role="status">正在读取会话…</div>
    <div v-else-if="showStudyYearQuestion || choosingTopic || (!turns.length && !pending && !showFailedSend && !demo.state.currentSessionId)" class="consult-intro" :class="{'consult-intro--onboarding':showStudyYearQuestion}">
     <AgentAvatar agent="career" :size="64" />
     <template v-if="showStudyYearQuestion">
@@ -650,7 +700,7 @@ onUnmounted(() => { disposed = true; window.removeEventListener('focus', refresh
     <div v-if="draggingFiles" class="consult-drop-label" aria-hidden="true"><UiIcon name="attachment" :size="20" />松开以添加材料</div>
     <div v-if="attached.length" class="consult-attachments"><span v-for="(m,i) in attached" :key="m.id"><UiIcon name="attachment" :size="14" />{{ m.name }}<button type="button" :aria-label="'移除' + m.name" @click="attached.splice(i,1)"><UiIcon name="close" :size="14" /></button></span></div>
     <textarea ref="input" v-model="draft" rows="1" aria-label="输入咨询内容" placeholder="说说你的想法，或添加材料…" @input="selectedOption?.label !== draft && (selectedOption = null)" @keydown="keydown" @paste="pasteFiles" />
-    <div class="consult-compose-tools"><input ref="fileInput" type="file" hidden multiple @change="upload" /><button type="button" class="consult-attach" :disabled="uploading || thinking" @click="fileInput?.click()"><UiIcon name="plus" :size="18" />{{ uploading ? '上传中…' : '添加材料' }}</button><span class="consult-send-hint">{{ thinking ? '回复生成中，可先准备下一条消息' : 'Enter 发送 · Shift + Enter 换行' }}</span><button v-if="thinking" type="button" class="consult-send consult-stop" aria-label="停止接收" @click="stop"><span /></button><button v-else type="submit" class="consult-send" aria-label="发送消息" :disabled="(!draft.trim() && !attached.length) || uploading || systemData.busy"><UiIcon name="arrow" :size="20" /></button></div>
+    <div class="consult-compose-tools"><input ref="fileInput" type="file" hidden multiple @change="upload" /><button type="button" class="consult-attach" :disabled="uploading || thinking" @click="fileInput?.click()"><UiIcon name="plus" :size="18" />{{ uploading ? '上传中…' : '添加材料' }}</button><span class="consult-send-hint">{{ thinking ? '回复生成中，可先准备下一条消息' : 'Enter 发送 · Shift + Enter 换行' }}</span><button v-if="thinking" type="button" class="consult-send consult-stop" :disabled="!stopArmed" aria-label="停止接收" @click="stop"><span /></button><button v-else type="submit" class="consult-send" aria-label="发送消息" :disabled="(!draft.trim() && !attached.length) || uploading || systemData.busy"><UiIcon name="arrow" :size="20" /></button></div>
    </form>
    <p class="consult-disclaimer">建议供参考，重要决定由你做出。<DetailPopover title="资料使用说明" side="top"><template #trigger><UiIcon name="info" :size="13" /></template><p>材料和对话将按你的资料偏好参与分析。你可以查看、更正个人画像，或调整资料使用范围。</p><RouterLink to="/settings">管理资料偏好</RouterLink></DetailPopover></p>
   </footer>

@@ -9,6 +9,7 @@ const props=defineProps<{phaseId?:string}>()
 const savedId=ref(''),requestId=ref(''),expectedPhase=ref<PhaseValues|null>(null)
 function snapshot(p:DeepReadonly<ActionPhaseView>):PhaseValues{return {name:p.name,depends_on:[...(p.depends_on??[])],starts_at:p.starts_at??null,ends_at:p.ends_at??null,blocking_conditions:[...(p.blocking_conditions??[])],handoff_requirements:[...(p.handoff_requirements??[])]}}
 const open=ref(false),name=ref(''),dependencies=ref<string[]>([]),start=ref(''),end=ref(''),blocks=ref(''),handoff=ref(''),busy=ref(false),error=ref(''),status=ref('')
+const deleting=ref(false),deleteConfirm=ref(false)
 const dateRange=ref(''),datesTouched=ref(false)
 const phases=computed(()=>backendDemo.state.liveAction?.phases??[])
 const hasRules=computed(()=>!!blocks.value.trim()||!!handoff.value.trim())
@@ -28,6 +29,19 @@ async function save(){
   if(start.value&&end.value&&end.value<start.value){error.value='结束日期不能早于开始日期，请调整时间范围。';return}
   busy.value=true
   try{const oldIds=new Set(phases.value.map(p=>p.id));const payload:PhaseEdit={client_request_id:requestId.value,expected_phase:expectedPhase.value,name:cleaned,depends_on:dependencies.value,starts_at:start.value?new Date(start.value+'T00:00').toISOString():null,ends_at:end.value?new Date(end.value+'T23:59').toISOString():null,blocking_conditions:blocks.value.split('\n').filter(Boolean),handoff_requirements:handoff.value.split('\n').filter(Boolean)};const plan=await studentApi.savePhase(payload,savedId.value||props.phaseId);const added=(plan.phases??[]).filter(p=>!oldIds.has(p.id));savedId.value=savedId.value||props.phaseId||(added.length===1?added[0]?.id:'')||'';const saved=(plan.phases??[]).find(p=>p.id===savedId.value);if(saved)expectedPhase.value=snapshot(saved);backendDemo.setAction(plan);dateRange.value=(plan.phases??[]).find(p=>p.id===(savedId.value||props.phaseId))?.date_range??dateRange.value;datesTouched.value=false;status.value='阶段安排已保存。'}catch(e){error.value=(e as Error).message}finally{busy.value=false}
+}
+async function removePhase(){
+  if(deleting.value)return
+  const id=savedId.value||props.phaseId
+  if(!id)return
+  deleting.value=true;error.value=''
+  try{
+    const plan=await studentApi.deletePhase(id)
+    backendDemo.setAction(plan)
+    deleteConfirm.value=false
+    open.value=false
+  }catch(e){error.value=(e as Error).message}
+  finally{deleting.value=false}
 }
 </script>
 <template>
@@ -70,6 +84,10 @@ async function save(){
         </fieldset>
         <footer class="phase-editor__footer">
           <p v-if="error" role="alert">{{error}}</p><p v-if="status" role="status">{{status}}</p>
+          <div class="phase-editor__danger" v-if="phaseId">
+            <template v-if="deleteConfirm"><span>删除阶段会同时删除该阶段下的任务，且无法恢复。</span><button type="button" class="btn" :disabled="deleting" @click="deleteConfirm=false">取消</button><button type="button" class="btn" :disabled="deleting" @click="removePhase">{{deleting?'正在删除…':'确认删除'}}</button></template>
+            <button v-else type="button" class="ws-text-button" @click="deleteConfirm=true">删除阶段</button>
+          </div>
           <div><button type="button" class="btn" @click="open=false">{{status?'完成':'取消'}}</button><button class="btn btn--primary" :disabled="busy">{{busy?'正在保存…':'保存阶段'}}</button></div>
         </footer>
       </form>
@@ -78,4 +96,7 @@ async function save(){
 </template>
 <style scoped>
 .phase-editor{display:grid;max-width:760px;margin:0 auto}.phase-editor>fieldset{display:grid;border:0;padding:0;min-width:0}.phase-editor .ws-field{margin:0}.phase-editor input[type=text],.phase-editor input[type=date]{min-height:48px}.phase-editor__section{min-width:0;padding:20px 0;border-bottom:1px solid var(--c-border)}.phase-editor__name{padding-top:0}.phase-editor__name>p,.phase-editor__heading p,.phase-editor__dependencies>p,.phase-editor__legacy-date{margin:7px 0 0;color:var(--c-text-3);font-size:var(--fs-12);line-height:1.6}.phase-editor__heading{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:14px}.phase-editor__heading h3{margin:0;font-size:var(--fs-14);font-weight:var(--fw-medium)}.phase-editor__heading p{margin-top:4px}.phase-editor__heading>span,.phase-editor__dependencies legend span,.phase-editor__rules .ws-field>span{color:var(--c-text-3);font-size:11px;font-weight:var(--fw-regular)}.phase-editor__dates{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:12px;align-items:end}.phase-editor__dates>span{display:grid;place-items:center;min-height:48px;color:var(--c-text-3);font-size:var(--fs-12)}.phase-editor .phase-editor__dependencies{display:block;min-width:0;margin:0;padding:20px 0;border:0}.phase-editor__dependencies legend{padding:0;font-size:var(--fs-14);font-weight:var(--fw-medium)}.phase-editor__dependency-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;margin-top:14px}.phase-editor__dependency-grid label{display:flex;align-items:center;gap:11px;min-height:60px;padding:9px 11px;border:1px solid var(--c-border);border-radius:var(--r-sm);background:var(--c-surface);cursor:pointer}.phase-editor__dependency-grid label:hover,.phase-editor__dependency-grid label:focus-within{border-color:var(--c-primary-border);background:var(--c-primary-weak)}.phase-editor__dependency-grid label.is-selected{border-color:var(--c-primary);background:var(--c-primary-weak)}.phase-editor__dependency-grid input{flex:none;width:18px;height:18px;accent-color:var(--c-primary)}.phase-editor__dependency-grid label>span{display:grid;gap:2px;min-width:0}.phase-editor__dependency-grid strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-14);font-weight:var(--fw-medium)}.phase-editor__dependency-grid small{color:var(--c-text-3);font-size:11px;line-height:1.35}.phase-editor__empty{padding:12px 14px;background:var(--c-bg)}.phase-editor__advanced{border-bottom:1px solid var(--c-border)}.phase-editor__advanced>summary{display:flex;align-items:center;justify-content:space-between;gap:20px;min-height:76px;cursor:pointer;list-style:none}.phase-editor__advanced>summary::-webkit-details-marker{display:none}.phase-editor__advanced>summary>span{display:grid;gap:4px}.phase-editor__advanced>summary strong{font-size:var(--fs-14);font-weight:var(--fw-medium)}.phase-editor__advanced>summary small{color:var(--c-text-3);font-size:var(--fs-12)}.phase-editor__advanced>summary i::before{content:"展开";color:var(--c-primary);font-size:var(--fs-12);font-style:normal}.phase-editor__advanced[open]>summary i::before{content:"收起"}.phase-editor__rules{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;padding:0 0 20px}.phase-editor__rules textarea{min-height:108px;margin-top:7px;resize:vertical}.phase-editor__footer{position:sticky;bottom:-32px;z-index:1;display:flex;align-items:center;justify-content:flex-end;min-height:76px;background:var(--c-surface);border-top:0}.phase-editor__footer>div{display:flex;justify-content:flex-end;gap:12px}.phase-editor__footer p{margin:0 auto 0 0}.phase-editor textarea{resize:vertical}@media(max-width:600px){.phase-editor__section{padding:18px 0}.phase-editor__dates{grid-template-columns:1fr;gap:10px}.phase-editor__dates>span{display:none}.phase-editor__dependency-grid,.phase-editor__rules{grid-template-columns:1fr}.phase-editor__advanced>summary{min-height:80px}.phase-editor__footer{bottom:-24px;min-height:72px;flex-wrap:wrap;gap:12px;padding:12px 0}.phase-editor__footer>p{flex-basis:100%;line-height:1.6}.phase-editor__footer>div{width:100%}}
+.phase-editor__danger{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 8px;padding:10px 0 2px;border-top:1px dashed var(--c-border)}
+.phase-editor__danger span{color:var(--c-text-2);font-size:var(--fs-12);line-height:1.5}
+.phase-editor__danger .btn{min-height:40px}
 </style>

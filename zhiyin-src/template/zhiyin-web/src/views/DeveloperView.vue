@@ -116,7 +116,7 @@ function reloadConfig(){void run(()=>api('/app/config/reload',{method:'POST'}),'
 </script>
 <template>
 <button v-if="administrator" class="btn" :disabled="busy" @click="reloadConfig">重新加载动态配置</button>
-  <main class="developer">
+  <div class="developer">
     <section v-if="accessDenied" class="developer-denied" aria-labelledby="developer-denied-title">
       <span aria-hidden="true">403</span>
       <div><p>开发者管理</p><h1 id="developer-denied-title">当前账号没有开发者权限</h1><p>学生功能和已保存资料不受影响。开发者工作台只向获得授权的账号开放。</p><div><RouterLink class="btn btn--primary" to="/chat">回到咨询</RouterLink><RouterLink class="btn" to="/settings">查看账号设置</RouterLink></div></div>
@@ -183,7 +183,7 @@ function reloadConfig(){void run(()=>api('/app/config/reload',{method:'POST'}),'
         <p v-if="!jobs.length">还没有发布任务。</p>
       </section>
     </template>
-  </main>
+  </div>
 </template>
 <style scoped>
 .module-filters { display:flex; align-items:end; gap:24px; margin-bottom:20px; }.module-filters p { color:#69786d; font-size:13px; margin:0; max-width:620px; }.module-meta { display:flex; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:12px; }.category-badge { color:#176647; }.module-grid .dev-card { margin-inline-start:calc(var(--module-depth, 0) * 24px); }.module-grid .child-module { border-inline-start:3px solid #b2c8b5; }.blocked { background:#fff0dc; color:#87551c; }.blocked-reason { color:#87551c; font-size:13px; }.permission-help { color:#69786d; font-size:12px; margin-top:0; }

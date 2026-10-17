@@ -35,6 +35,8 @@ const activeGaps = computed(() => activePlan.value?.gaps ?? [])
 const firstExperiment = computed(() => activeGaps.value.find(gap => gap.suggestion)?.suggestion || '先找一位了解这个方向的人聊 20 分钟，记录最吸引你和最犹豫的地方。')
 const invalidSelected = computed(() => !!selected.value && !props.plans.plans?.some(plan => plan.id === selected.value))
 const impactMessage = computed(() => {
+  // 还没有任何方向方案时，谈不上"方向变更影响"——空态只展示空态。
+  if (!(props.plans.plans ?? []).length) return ''
   const affected: string[] = []
   if (props.impact.report) affected.push('诊断报告')
   if (props.impact.plan) affected.push('阶段计划')

@@ -4,6 +4,15 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>职引 · 大学生生涯规划与就业指导智能支撑平台</title>
+    <style>
+      /* 首屏加载提示：写在 HTML 里，样式也内联，弱网/样式表未到时仍能看见"正在加载"而不是纯白屏。 */
+      .boot-loading{position:fixed;inset:0;display:grid;place-items:center;background:#f7f8fa;color:#5a6472;font:14px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}
+      .boot-loading__inner{display:flex;align-items:center;gap:10px}
+      .boot-loading__dot{width:10px;height:10px;border-radius:50%;background:#1f6feb;animation:boot-pulse 1.2s ease-in-out infinite}
+      @keyframes boot-pulse{0%,100%{opacity:.35}50%{opacity:1}}
+      html[data-theme='dark'] .boot-loading{background:#151517;color:#cfd3d6}
+      @media (prefers-reduced-motion: reduce){.boot-loading__dot{animation:none;opacity:.8}}
+    </style>
     <meta
       name="description"
       content="职引 · 持续陪伴 · 专业牵引 · 行动落地 · 心想事成"
@@ -47,7 +56,7 @@
     </script>
   </head>
   <body>
-    <div id="app"></div>
+    <div id="app"><div id="boot-loading" class="boot-loading" role="status" aria-live="polite"><div class="boot-loading__inner"><span class="boot-loading__dot" aria-hidden="true"></span><span>正在加载职引…</span></div></div></div>
     <!--
     启动看门狗：不允许出现"完全空白、连一句提示都没有"。
     它必须排在入口模块**之前** —— 一旦 /src/main.ts 或它 import 的某个模块在求值时就抛，
@@ -104,8 +113,7 @@
 
       // 看门狗：查两次再报，避免慢启动误报
       function check(n) {
-        var app = document.getElementById('app')
-        if (app && app.childElementCount > 0) return
+        if (!document.getElementById('boot-loading')) return
         if (n > 0) {
           setTimeout(function () {
             check(n - 1)

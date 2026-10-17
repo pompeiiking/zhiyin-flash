@@ -501,3 +501,18 @@ async def test_legacy_review_requires_reconfirmation_before_apply(service):
     await service.state.update('a', legacy)
     with pytest.raises(InvalidRequest, match='缺少任务原值'):
         await service.apply_review('a', review['id'])
+
+
+@pytest.mark.asyncio
+async def test_delete_task_and_phase(service):
+    pid = await phase(service)
+    plan = await service.edit_task("a", TaskEdit(text="要删除的任务", phase_id=pid))
+    tid = plan.phases[0].tasks[0].id
+    plan = await service.delete_task("a", tid)
+    assert not [task for p in plan.phases for task in p.tasks]
+    with pytest.raises(ResourceNotFound):
+        await service.delete_task("a", tid)
+    plan = await service.delete_phase("a", pid)
+    assert not plan.phases
+    with pytest.raises(ResourceNotFound):
+        await service.delete_phase("a", pid)

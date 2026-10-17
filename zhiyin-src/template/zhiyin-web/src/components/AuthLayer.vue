@@ -1,9 +1,12 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { nextTick, onMounted, ref } from 'vue'
 import { auth } from '../lib/auth'
 import InfoSheet from './InfoSheet.vue'
 const emit=defineEmits<{close:[]}>()
 const account=ref(''),password=ref(''),error=ref(''),busy=ref(false),mode=ref<'login'|'register'>('login')
+const accountInput=ref<HTMLInputElement|null>(null)
+/** 登录浮层打开后把焦点放到"账号"，键盘用户可以直接输入，不用先 Tab 过关闭按钮。 */
+onMounted(()=>{void nextTick(()=>accountInput.value?.focus())})
 async function submit(){
  if(busy.value)return
  if(account.value.trim().length<2||password.value.length<6){error.value='账号至少 2 个字符，密码至少 6 个字符。';return}
@@ -14,7 +17,7 @@ async function submit(){
 </script>
 <template><InfoSheet :open="true" :title="mode==='login'?'登录职引':'创建账号'" @close="!busy&&emit('close')">
 <form class="sheet__body stack stack-4" @submit.prevent="submit">
-<label class="field"><span class="field__label">账号</span><input v-model="account" class="field__input" autocomplete="username" minlength="2" maxlength="64" required :disabled="busy"/></label>
+<label class="field"><span class="field__label">账号</span><input ref="accountInput" v-model="account" class="field__input" autocomplete="username" minlength="2" maxlength="64" required :disabled="busy"/></label>
 <label class="field"><span class="field__label">密码</span><input v-model="password" class="field__input" type="password" :autocomplete="mode==='login'?'current-password':'new-password'" minlength="6" maxlength="128" required :disabled="busy"/></label>
 <p v-if="error" class="field__error" role="alert">{{error}}</p><p class="t-note">使用职引账号登录，无需填写学校或学信网密码。</p>
 <button class="btn btn--primary" :disabled="busy">{{busy?'正在连接…':mode==='login'?'登录':'注册并登录'}}</button>

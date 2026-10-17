@@ -139,6 +139,32 @@ def _explicit_plan_request(message: str) -> bool:
     return False
 
 
+def _wants_view_report(message: str) -> bool:
+    """用户是在"要看报告"，而不是"要生成报告"。"""
+    if re.search(r"(?:不要|别|不用|先不).{0,6}(?:看|打开|查看)", message):
+        return False
+    return bool(
+        re.search(
+            r"(?:看|查看|打开|瞧瞧|给我看|看一下|点开).{0,8}(?:我的)?(?:诊断|评估)?报告"
+            r"|(?:诊断|评估)?报告.{0,6}(?:在哪|看一下|打开|看看)",
+            message,
+        )
+    )
+
+
+def _wants_view_plan(message: str) -> bool:
+    """用户是在"要看计划"，而不是"要生成计划"。"""
+    if re.search(r"(?:不要|别|不用|先不).{0,6}(?:看|打开|查看)", message):
+        return False
+    return bool(
+        re.search(
+            r"(?:看|查看|打开|瞧瞧|给我看|看一下|点开).{0,8}(?:我的)?(?:行动|阶段)?计划"
+            r"|(?:行动|阶段)?计划.{0,6}(?:在哪|看一下|打开|看看)",
+            message,
+        )
+    )
+
+
 def _explicit_report_request(message: str) -> bool:
     if re.search(r"(?:不要|不必|无需|暂不|别|不能|不想|先不|不用).{0,12}(?:诊断|报告|生成|保存|更新|修改|重算)|不(?:生成|创建|保存|更新|修改|重算|诊断)", message):
         return False
@@ -852,6 +878,7 @@ class DefaultOrchestrator(Orchestrator):
         # 报告却按大三写，档案/对话/报告三方不一致。这里只处理可判定的学习阶段，
         # 写 user_edit（本人更正）来源，并在回复里插入一条系统说明。
         profile_correction_note = ""
+        protected_profile_values: dict[str, str] = {}
         corrections = _explicit_profile_correction(request.message)
         if corrections:
             field_labels = {
@@ -906,6 +933,7 @@ class DefaultOrchestrator(Orchestrator):
                     )
                     continue
                 changed.append(f"{field.label or field_labels.get(key, key)}：{value}")
+                protected_profile_values[key] = value
             if changed:
                 profile_correction_note = (
                     "已按你这次说明更新画像 —— " + "；".join(changed) + "。"
@@ -973,9 +1001,15 @@ class DefaultOrchestrator(Orchestrator):
         # 用户直接把诉求写出来（「帮我生成诊断报告」「创建行动计划」）也算确认：
         # 不该要求他先猜中"可以"两个字，才算答应了上一轮。
         if pending_offer and offer_answer is None and not request.option_id:
-            if pending_offer == "report" and _explicit_report_request(request.message):
+            if pending_offer == "report" and (
+                _explicit_report_request(request.message)
+                or _wants_view_report(request.message)
+            ):
                 offer_answer = "accept"
-            elif pending_offer == "plan" and _explicit_plan_request(request.message):
+            elif pending_offer == "plan" and (
+                _explicit_plan_request(request.message)
+                or _wants_view_plan(request.message)
+            ):
                 offer_answer = "accept"
         accepted_offer = pending_offer if offer_answer == "accept" else None
         if pending_offer and offer_answer in {"accept", "decline"}:
@@ -1026,6 +1060,20 @@ class DefaultOrchestrator(Orchestrator):
         )
         explicit_plan = _explicit_plan_request(request.message) or accepted_offer == "plan"
         explicit_report = _explicit_report_request(request.message) or accepted_offer == "report"
+        # "我想看一下我的诊断报告/我的计划"：若还没有，就直接生成，而不是只回答
+        # "去报告页看看"（实测第一次这样要报告没有任何产物，用户得再说一遍）。
+        if not explicit_report and _wants_view_report(request.message):
+            try:
+                if await self._assets.get_report(request.user_id) is None:
+                    explicit_report = True
+            except Exception:  # noqa: BLE001
+                logger.warning("读取报告状态失败（按普通查看处理）", exc_info=True)
+        if not explicit_plan and _wants_view_plan(request.message):
+            try:
+                if await self._assets.get_action_plan(request.user_id) is None:
+                    explicit_plan = True
+            except Exception:  # noqa: BLE001
+                logger.warning("读取计划状态失败（按普通查看处理）", exc_info=True)
         if explicit_report or (explicit_plan and (accepted_offer == "plan" or stage_decision.stage is not LoopStage.REVIEW)):
             stage_decision = stage_decision.model_copy(update={
                 "stage": LoopStage.ACT if explicit_plan else LoopStage.DIAGNOSE,
@@ -1163,7 +1211,11 @@ class DefaultOrchestrator(Orchestrator):
         if scope and scope.restricted:
             prompt_vars["analysis_sources"] = {
                 "allowed": sorted(scope.sources),
-                "note": "仅使用本轮上下文；未提供的旧摘要和推导资料已按用户设置排除，不能据此断言用户从未提供。",
+                "note": (
+                    "仅使用本轮上下文；未提供的旧摘要和推导资料已按用户设置排除，不能据此断言用户从未提供。"
+                    "如果画像里明明有某一项、只是被资料范围排除，必须写“按你的资料使用范围，本次未使用该项”，"
+                    "不能写成“这一项未填/没有”。"
+                ),
             }
         # 共享状态中虽有画像，模型在长上下文里仍曾说“没拿到你的画像”。
         # 把已存字段提到本轮输入的显眼位置，避免把“缺岗位要求”误说成“没有画像”。
@@ -1280,6 +1332,16 @@ class DefaultOrchestrator(Orchestrator):
         if get_names is not None:
             available_names = await get_names(lead.lead_agent)
         available_offers = {key: offer for key, offer in TOOL_OFFERS.items() if offer.tool in available_names}
+        # 当前环境没有接搜索服务时，web.search 不在任何主理的工具里：不要装作能联网，
+        # 也不要只说"没有工具"——给用户可用的替代（学职平台/知识库/公开资料）。
+        if ("web" not in available_offers and re.search(
+            r"(?:联网|网上搜|实时|最新招聘|搜索引擎|百度|谷歌|github|官网查)", request.message
+        )):
+            prompt_vars["search_capability_note"] = (
+                "本环境未接入联网搜索，不能声称自己去网上查。请明确说明这一点；"
+                "如果可用工具里有学职平台（xuezhi）或知识库（kb），建议用户改用这些公开资料，"
+                "并说明它们的局限（不是实时招聘）。不要编造岗位要求或来源链接。"
+            )
         if ("workspace.task.set_done" in available_names and
                 re.search(r"(?:已经|刚刚|刚|已|做完|完成了|搞定|弄好了)", request.message) and
                 not re.search(r"没完成|未完成|还没|没有|不曾|不要|别", request.message)):
@@ -1471,7 +1533,9 @@ class DefaultOrchestrator(Orchestrator):
             # **没有撞上时不出现**：这一轮一个字段都没被挡下时 `blocked_by_user_edit`
             # 是空元组，这里连文案都不取 —— 不能每轮都念一遍这句话，那样它就从"解释"
             # 变成了背景噪音，真正被挡的那一轮反而没人会注意。
-            if write.blocked_by_user_edit:
+            # 本人这一轮已经明确更正/追加画像时，系统说明条会告诉用户"改了什么"；
+            # 这时再弹"没写进画像，你自己去改"就与事实相反（实测同一条回复前后矛盾）。
+            if write.blocked_by_user_edit and not profile_correction_note:
                 kept = await self._field_kept_disclosure(write.blocked_by_user_edit)
                 if disclosure is None:
                     disclosure = kept
@@ -1481,6 +1545,25 @@ class DefaultOrchestrator(Orchestrator):
                     disclosure = disclosure.model_copy(
                         update={"text": f"{disclosure.text.rstrip()} {kept.text.strip()}"}
                     )
+        # 本人这一轮明确更正/追加的内容是"最终值"：采集从模型结构化输出里
+        # 再写一次同一格时（尤其"记到经历里"这种追加），不能把它覆盖回旧值。
+        if protected_profile_values:
+            for key, value in protected_profile_values.items():
+                try:
+                    await self._profiles.correct_field(request.user_id, key, value)
+                except InvalidRequest:
+                    try:
+                        await self._profiles.update_field(
+                            request.user_id,
+                            key,
+                            value,
+                            confidence=1.0,
+                            source=ProfileSource.USER_EDIT.value,
+                        )
+                    except Exception:  # noqa: BLE001
+                        logger.warning("本人更正内容回写失败：key=%s", key, exc_info=True)
+                except Exception:  # noqa: BLE001 - 回写失败保留采集结果，至少不抛给用户
+                    logger.warning("本人更正内容回写失败：key=%s", key, exc_info=True)
         # tao 分支原来的写法是 `if stage is LoopStage.COLLECT and not module_query:`
         # 直接 await（不带返回值）。上面保留了 HEAD 那侧的"接出返回值、当面告知"，
         # 并把 tao 的 module_query 条件合进了 if —— 两边要的事都还在。

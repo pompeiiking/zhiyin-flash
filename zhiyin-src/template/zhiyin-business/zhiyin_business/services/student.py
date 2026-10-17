@@ -293,6 +293,47 @@ class StudentService:
             await self._version(user_id, "调整阶段与依赖关系", plan)
         return plan
 
+    async def delete_task(self, user_id, task_id):
+        """删除一条任务（学生明确删除；完成/等待中的任务同样可删）。"""
+        removed = {"done": False}
+
+        def change(plan):
+            if plan is None:
+                raise ResourceNotFound("请先创建一个阶段")
+            normalize(plan)
+            for phase in plan.phases:
+                kept = [task for task in phase.tasks if task.id != task_id]
+                if len(kept) != len(phase.tasks):
+                    phase.tasks = kept
+                    removed["done"] = True
+                    return plan
+            raise ResourceNotFound("行动任务不存在")
+
+        plan = await self.assets.update_action_plan(user_id, change)
+        if removed["done"]:
+            await self._version(user_id, "删除任务", plan)
+        return plan
+
+    async def delete_phase(self, user_id, phase_id):
+        """删除一个阶段及其下任务（学生明确删除）。"""
+        removed = {"done": False}
+
+        def change(plan):
+            if plan is None:
+                raise ResourceNotFound("请先创建一个阶段")
+            normalize(plan)
+            kept = [phase for phase in plan.phases if phase.id != phase_id]
+            if len(kept) == len(plan.phases):
+                raise ResourceNotFound("阶段不存在")
+            plan.phases = kept
+            removed["done"] = True
+            return plan
+
+        plan = await self.assets.update_action_plan(user_id, change)
+        if removed["done"]:
+            await self._version(user_id, "删除阶段", plan)
+        return plan
+
     async def _version(self, user_id, description, plan):
         await self.asset_service.save_version(
             user_id,

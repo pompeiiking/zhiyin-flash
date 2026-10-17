@@ -152,7 +152,7 @@ onMounted(() => load(false))
           <strong v-else>还没有可复盘的任务</strong>
         </div>
         <div v-if="focusTaskPool.length" class="review-session-bar__progress">
-          <span>{{ queuePosition || '自由选择' }}<template v-if="queuePosition"> / {{ focusTaskPool.length }}</template></span>
+          <span>{{ queuePosition ? '第 ' + queuePosition + ' 个任务 / 共 ' + focusTaskPool.length + ' 个' : '自由选择' }}</span>
           <progress :value="queuePosition" :max="focusTaskPool.length" aria-label="复盘进度"></progress>
         </div>
         <div v-else-if="!busy" class="review-session-bar__empty">

@@ -24,7 +24,6 @@
 
 import { computed, ref } from 'vue'
 import registry from '../data/backend-registry.json'
-import PageHeading from '../components/PageHeading.vue'
 import UiIcon from '../components/UiIcon.vue'
 import ModuleCatalog from '../components/ModuleCatalog.vue'
 import PanelTabs from '../components/PanelTabs.vue'
@@ -323,15 +322,16 @@ const sourceDetail = computed(() =>
 </script>
 
 <template>
-  <div class="ws-page">
-    <PageHeading
-      title="应用工具"
-      description="平台已发布的工具和工作空间内置的入口放在同一个目录里：换一种分法，看的是同一批条目。"
-    >
+  <div class="published-tools">
+    <header class="ws-section-head published-tools__head">
+      <div>
+        <h2>应用工具</h2>
+        <p>平台已发布的工具和工作空间内置的入口放在同一个目录里：换一种分法，看的是同一批条目。</p>
+      </div>
       <button class="btn" :disabled="stage==='loading'" @click="reloadCatalog">
         {{ stage==='loading' ? '正在读取…' : '重新读取工具目录' }}
       </button>
-    </PageHeading>
+    </header>
 
     <!-- ① 三态在首屏：不是图例，是"现在在哪一格" -->
   <!-- ①′ 关系显形：工具不是并列的一堆按钮，是一条链（靶子 tools.html 第一节的主张）。
@@ -753,5 +753,14 @@ const sourceDetail = computed(() =>
   .tools-chain__steps { grid-template-columns: minmax(0, 1fr); }
   .tools-entry { grid-template-columns: minmax(0, 1fr); }
   .tools-entry__go { display: none; }
+}
+/* 应用工具这一段的标题行：与页面 h1「工具」分开，但不再重复成第二个 h1 */
+.published-tools__head { align-items: flex-start; gap: 16px; }
+.published-tools__head h2 { margin: 0 0 4px; font-size: var(--fs-18); }
+.published-tools__head p { max-width: 62ch; margin: 0; color: var(--c-text-2); font-size: var(--fs-13); line-height: 1.7; }
+.published-tools__head .btn { flex: none; }
+@media (max-width: 640px) {
+  .published-tools__head { flex-direction: column; align-items: stretch; }
+  .published-tools__head .btn { align-self: flex-start; }
 }
 </style>

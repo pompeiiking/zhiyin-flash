@@ -394,5 +394,15 @@
     "path": "/app/conversation/message/stream",
     "method": "POST",
     "stream": true
+  },
+  "student_delete_task": {
+    "method": "DELETE",
+    "path": "/app/plan/action/tasks/{task_id}",
+    "surface": "\u5de5\u4f5c\u53f0\u4ea4\u4e92\u80fd\u529b"
+  },
+  "student_delete_phase": {
+    "method": "DELETE",
+    "path": "/app/plan/action/phases/{phase_id}",
+    "surface": "\u5de5\u4f5c\u53f0\u4ea4\u4e92\u80fd\u529b"
   }
 }
