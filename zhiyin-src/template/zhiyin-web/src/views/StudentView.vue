@@ -810,13 +810,28 @@ const identity = computed(() => {
   if (!live.value && demo.state.account === 'fresh') return { name: '新用户', line: '学校与年级待补充' }
   return { name: name || '个人档案', line: [school, pick('major'), grade || pick('degree_level')].filter(Boolean).join(' · ') || '学校与年级待补充' }
 })
-const profileStatement = computed(() => {
+const profileSnapshot = computed(() => {
   const directions = backendDemo.state.liveDirections
   const selected = directions?.plans?.find(plan => plan.id === directions.selected_id || plan.selected)
-  if (selected) return `已选择“${selected.name}”作为当前验证方向。${selected.main_risk || '适合程度仍需结合具体经历与岗位要求核对。'}`
+  if (selected) return {
+    label: '当前验证方向',
+    title: selected.name,
+    state: '已选择，继续验证',
+    detail: selected.main_risk || '适合程度仍需结合具体经历与岗位要求核对。',
+  }
   const first = priorityConclusions.value[0]
-  if (!first) return '资料还在形成中。先补充一段真实经历或一个明确偏好，再开始比较方向。'
-  return `${first.label}：${first.brief || first.full}。这是已有分析线索，尚不代表已选择该方向。`
+  if (!first) return {
+    label: '画像状态',
+    title: '资料正在形成',
+    state: '需要补充',
+    detail: '先补充一段真实经历或一个明确偏好，再开始比较方向。',
+  }
+  return {
+    label: '当前重点判断',
+    title: first.label,
+    state: first.missingKeys.length ? `仍缺 ${first.missingKeys.length} 项资料` : '待继续验证',
+    detail: `${first.brief || first.full}。这是已有分析线索，尚不代表已选择该方向。`,
+  }
 })
 const enrollmentRows = computed(() => {
   const pick = (...keys: string[]) => known.value.find((row) => keys.includes(row.key))
@@ -874,8 +889,15 @@ onMounted(()=>{ void loadWorkspace() })
       </header>
 
       <div class="profile-dossier__statement">
-        <span>当前画像</span>
-        <p>{{ profileStatement }}</p>
+        <span>{{ profileSnapshot.label }}</span>
+        <div class="profile-dossier__statement-main">
+          <strong>{{ profileSnapshot.title }}</strong>
+          <small>{{ profileSnapshot.detail }}</small>
+        </div>
+        <div class="profile-dossier__statement-actions">
+          <span>{{ profileSnapshot.state }}</span>
+          <DetailPopover :title="profileSnapshot.title" label="查看当前画像判断"><template #trigger>查看判断</template><p>{{ profileSnapshot.detail }}</p><p>画像会随补充资料、核对来源和实际行动继续更新。</p></DetailPopover>
+        </div>
       </div>
 
       <div class="profile-dossier__body">
@@ -898,8 +920,8 @@ onMounted(()=>{ void loadWorkspace() })
           <p class="profile-next__label">下一步只做一件事</p>
           <template v-if="priorityGaps[0]">
             <h3 id="profile-next-title">{{ priorityGaps[0].label }}</h3>
-            <p>{{ priorityGaps[0].why }}</p>
-            <div class="profile-next__suggestion"><span>可以先这样做</span><strong>{{ priorityGaps[0].next }}</strong></div>
+            <div class="profile-next__suggestion"><span>建议行动</span><strong>{{ priorityGaps[0].next }}</strong></div>
+            <DetailPopover class="profile-next__reason" :title="'为什么先补充' + priorityGaps[0].label" label="查看这项信息的影响"><template #trigger>为什么先补这项</template><p>{{ priorityGaps[0].why }}</p><p v-if="priorityGaps[0].affects.length">它会影响 {{ priorityGaps[0].affects.map(item => item.label).join('、') }}。</p></DetailPopover>
             <RouterLink class="btn btn--primary" :to="'/chat?gap='+encodeURIComponent(priorityGaps[0].key)+'&label='+encodeURIComponent(priorityGaps[0].label)">去补充这条信息<UiIcon name="arrow" :size="14"/></RouterLink>
             <button class="ws-text-button" type="button" @click="profileTab='gaps'">查看全部待补充信息</button>
           </template>

@@ -165,7 +165,7 @@ onMounted(load)
             @dismiss="lastDone = null"
         />
 
-        <section class="today-queue" aria-label="今日任务队列">
+        <section v-if="todayTasks.length || overdueTasks.length || suggestedTasks.length" class="today-queue" aria-label="今日任务队列">
           <section v-if="todayTasks.length" class="today-next" aria-labelledby="today-queue-title">
             <div class="today-section-head">
               <h2 id="today-queue-title">接下来</h2>

@@ -222,7 +222,7 @@ onMounted(() => load(false))
 .review-session-bar__progress progress::-webkit-progress-value { border-radius: var(--r-pill); background: var(--c-primary); }
 .review-session-bar__progress progress::-moz-progress-bar { border-radius: var(--r-pill); background: var(--c-primary); }
 .review-session-bar__actions { display: flex; gap: 6px; }
-.review-session-bar__actions .btn { min-height: 38px; }
+.review-session-bar__actions .btn { min-height: 44px; }
 .review-records { max-width: 900px; margin: 28px auto 0; overflow: hidden; border: 1px solid var(--c-border); border-radius: var(--r-lg); background: var(--c-surface); }
 .review-records > summary { display: flex; align-items: center; justify-content: space-between; gap: 18px; min-height: 68px; padding: 14px 18px; cursor: pointer; list-style: none; }
 .review-records > summary::-webkit-details-marker { display: none; }
@@ -246,7 +246,7 @@ onMounted(() => load(false))
 .review-timeline time,.review-timeline__state { color: var(--c-text-3); font-size: var(--fs-12); }
 .review-timeline__body { min-width: 0; }
 .review-timeline__body > strong { display: block; overflow-wrap: anywhere; font-size: var(--fs-14); line-height: 1.6; }
-.review-timeline__body :deep(.detail-trigger) { min-height: 30px; min-width: 0; justify-content: start; margin-top: 3px; padding: 3px 0; color: var(--c-primary); font-size: var(--fs-12); }
+.review-timeline__body :deep(.detail-trigger) { min-height: 44px; min-width: 0; justify-content: start; margin-top: 3px; padding: 8px 0; color: var(--c-primary); font-size: var(--fs-12); }
 .review-timeline__state { padding: 4px 8px; border: 1px solid var(--c-border); border-radius: var(--r-pill); white-space: nowrap; }
 .review-records__empty { padding: 32px 0; border-top: 1px solid var(--c-border); text-align: center; }
 .review-records__empty p { margin-top: 4px; color: var(--c-text-3); font-size: var(--fs-12); }

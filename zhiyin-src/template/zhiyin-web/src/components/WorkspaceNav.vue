@@ -61,7 +61,7 @@ defineExpose({ show() { more.value = true } })
         </div>
       </section>
     </div>
-    <div class="mobile-utility-links"><RouterLink to="/reminders" @click="more=false"><UiIcon name="bell" :size="17"/>提醒</RouterLink><RouterLink to="/settings" @click="more=false"><UiIcon name="settings" :size="17"/>账号设置</RouterLink></div>
+    <div class="mobile-utility-links"><RouterLink to="/settings" @click="more=false"><UiIcon name="settings" :size="17"/>账号设置</RouterLink></div>
     <details class="mobile-session-history" aria-label="历史会话"><summary><span>历史会话</span><small>{{ sessions.length }} 个</small><UiIcon name="chevron" :size="16"/></summary><div><button v-for="session in sessions" :key="session.task_id" :disabled="demo.state.chatBusy || systemData.busy" :aria-pressed="session.task_id === demo.state.currentSessionId" @click="resume(session.task_id)">{{ session.task_name }}</button><p v-if="!sessions.length">还没有历史会话。</p></div></details>
   </InfoSheet>
 </template>
@@ -82,7 +82,7 @@ defineExpose({ show() { more.value = true } })
 .mobile-function-group__items span { min-width:0; }
 .mobile-function-group__items strong { display:block; color:var(--c-text); font-size:13px; }
 .mobile-function-group__items small { display:block; overflow:hidden; margin-top:2px; color:var(--c-text-3); font-size:11px; text-overflow:ellipsis; white-space:nowrap; }
-.mobile-utility-links { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-top:16px; }
+.mobile-utility-links { display:grid; grid-template-columns:minmax(0,1fr); gap:10px; margin-top:16px; }
 .mobile-utility-links a { display:flex; align-items:center; justify-content:center; gap:7px; min-height:46px; border:1px solid var(--c-border); border-radius:12px; color:var(--c-text-2); font-size:13px; }
 .mobile-session-history { margin-top:16px; border-top:1px solid var(--c-border); }
 .mobile-session-history summary { display:grid; grid-template-columns:minmax(0,1fr) auto 18px; align-items:center; gap:8px; min-height:52px; cursor:pointer; list-style:none; color:var(--c-text-2); font-size:13px; }

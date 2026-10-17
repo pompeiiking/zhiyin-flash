@@ -89,7 +89,6 @@ export const WORKSPACE_ITEMS: NavItem[] = [WORKSPACE_PRIMARY, ...GROUP_ITEMS]
 /** 全部界面目录包含原型登记的非主导航页；主侧栏仍只显示学生任务分组。 */
 export const DIRECTORY_PAGES = [
   {label:'账号设置',to:'/settings',hint:'授权、提醒偏好、外观与导出'},
-  {label:'提醒',to:'/reminders',hint:'需要处理的事项与处理结果'},
 ]
 
 /**
@@ -106,6 +105,7 @@ export const DIRECTORY_PAGES = [
  * 这一份同时兑现文件头的老决定（"内部文档，不进学生导航"）与 `PLAN §2.4`。
  */
 const INTERNAL_PAGE_TITLES: Record<string, string> = {
+  '/reminders': '提醒',
   '/spec': '设计规范',
   '/path': '大一到大四',
   '/tools': '应用工具',

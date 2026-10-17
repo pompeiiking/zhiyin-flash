@@ -123,7 +123,7 @@ onMounted(() => { void load() })
           <input v-model="query" name="intel-search" autocomplete="off" aria-label="搜索职业方向或校友去向" placeholder="搜索职业方向或校友去向…" />
           <button v-if="query" type="button" aria-label="清空搜索" @click="query = ''">清空</button>
         </label>
-        <button class="btn" type="button" :disabled="busy" @click="load(true)">{{ refreshing ? '正在更新资料…' : '更新职业资料' }}</button>
+        <button v-if="allItems.length" class="btn" type="button" :disabled="busy" @click="load(true)">{{ refreshing ? '正在更新资料…' : '更新职业资料' }}</button>
       </div>
     </section>
     <StatusBanner v-if="error" tone="error" :message="error" :retry-label="lastRefresh ? '重试更新' : '重新读取'" :retrying="busy" @retry="load(lastRefresh)" @dismiss="error = ''" />
@@ -242,8 +242,11 @@ onMounted(() => { void load() })
       </div>
     </template>
 
-    <EmptyState v-else kind="intel" title="还没有职业资料" description="可更新职业资料，或使用当前画像发起职业匹配。" :next="false">
-      <button class="btn btn--primary" type="button" data-sheet-trigger @click="startMatch">开始画像匹配</button>
+    <EmptyState v-else kind="intel" title="从真实资料开始职业探索" description="先读取职业资料了解可探索范围；也可以直接用当前画像发起一次匹配。" :next="false">
+      <div class="intel-empty-actions" aria-label="职业探索起步操作">
+        <button class="intel-empty-action is-primary" type="button" :disabled="busy" @click="load(true)"><span>01</span><strong>{{ refreshing ? '正在更新资料…' : '更新职业资料' }}</strong><small>读取专业相关职业与真实去向</small></button>
+        <button class="intel-empty-action" type="button" data-sheet-trigger @click="startMatch"><span>02</span><strong>用画像匹配</strong><small>根据当前资料生成匹配建议</small></button>
+      </div>
     </EmptyState>
 
     <InfoSheet :open="reading !== null" shape="sheet" :title="reading ? displayKind(reading) : '职业详情'" @close="reading = null">
@@ -259,6 +262,13 @@ onMounted(() => { void load() })
 <style scoped>
 .intel-page { width: 100%; min-width: 0; padding-bottom: 48px; }
 .intel-loading { padding: 20px; border: 1px solid var(--c-border); border-radius: 16px; background: var(--c-surface); }
+.intel-empty-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; width:min(560px,100%); margin-top:4px; text-align:left; }
+.intel-empty-action { display:grid; grid-template-columns:30px minmax(0,1fr); gap:2px 10px; align-items:center; min-height:72px; padding:12px 14px; border:1px solid var(--c-border-strong); border-radius:12px; background:var(--c-surface); color:var(--c-text); text-align:left; }
+.intel-empty-action:hover { border-color:var(--c-primary-border); background:var(--c-primary-weak-2); }
+.intel-empty-action>span { grid-row:1 / 3; color:var(--c-primary); font-size:11px; font-variant-numeric:tabular-nums; }
+.intel-empty-action strong { font-size:14px; }
+.intel-empty-action small { color:var(--c-text-3); font-size:11px; }
+.intel-empty-action.is-primary { border-color:var(--c-primary-border); background:var(--c-primary-weak); }
 
 .intel-command { display: flex; align-items: end; justify-content: space-between; gap: 28px; margin-bottom: 14px; padding: 8px 2px 12px; }
 .intel-command__title h1 { font-size: 24px; font-weight: 720; line-height: 1.35; }
@@ -339,6 +349,7 @@ onMounted(() => { void load() })
   .intel-search { min-width: 0; }
   .intel-command__actions { flex-direction:column; }
   .intel-command__actions>.btn { width:100%; }
+  .intel-empty-actions { grid-template-columns:minmax(0,1fr); }
   .intel-route { margin-inline: -4px; }
   .intel-origin { grid-template-columns: 36px minmax(0, 1fr); padding: 15px 14px; }
   .intel-origin__mark { width: 36px; height: 36px; }

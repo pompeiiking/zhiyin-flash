@@ -306,7 +306,7 @@ onMounted(() => { void loadGrades() })
   <div class="ws-page grades-page">
     <PageHeading title="我的成绩" description="先看成绩变化与学习建议，再按学年、学期核对课程明细。">
       <button v-if="grades.length" class="btn" :disabled="loading" @click="loadGrades(true)">{{ loading ? '正在读取…' : '刷新成绩' }}</button>
-      <button class="btn btn--primary" @click="importOpen = true"><UiIcon name="upload" :size="16" />{{ grades.length ? '更新成绩' : '导入成绩' }}</button>
+      <button v-if="grades.length" class="btn btn--primary" @click="importOpen = true"><UiIcon name="upload" :size="16" />更新成绩</button>
     </PageHeading>
 
     <StatusBanner v-if="status" tone="success" size="sm" :message="status" @dismiss="status=''" />

@@ -975,15 +975,20 @@ html[data-theme='dark'] .app.app--workspace { --c-bg:#181a20; --workspace-nav:#1
 .profile-dossier__track .is-known { background:var(--c-primary); }
 .profile-dossier__statement {
  display:grid;
- grid-template-columns:112px minmax(0,1fr);
+ grid-template-columns:112px minmax(0,1fr) auto;
  gap:20px;
- align-items:start;
- padding:20px 28px;
+ align-items:center;
+ padding:17px 28px;
  border-block:1px solid var(--c-border);
  background:var(--c-surface-2);
 }
-.profile-dossier__statement > span { padding-top:3px; color:var(--c-text-3); font-size:12px; }
-.profile-dossier__statement > p { max-width:780px; color:var(--c-text); font-size:16px; font-weight:500; line-height:1.8; text-wrap:pretty; }
+.profile-dossier__statement > span { color:var(--c-text-3); font-size:12px; }
+.profile-dossier__statement-main { display:grid; min-width:0; gap:3px; }
+.profile-dossier__statement-main strong { overflow:hidden; color:var(--c-text); font-size:16px; font-weight:600; text-overflow:ellipsis; white-space:nowrap; }
+.profile-dossier__statement-main small { display:-webkit-box; overflow:hidden; max-width:680px; color:var(--c-text-2); font-size:12px; line-height:1.55; -webkit-box-orient:vertical; -webkit-line-clamp:1; }
+.profile-dossier__statement-actions { display:flex; align-items:center; gap:12px; }
+.profile-dossier__statement-actions > span { padding:5px 8px; border:1px solid var(--c-primary-border); border-radius:var(--r-pill); background:var(--c-primary-weak); color:var(--c-primary); font-size:11px; white-space:nowrap; }
+.profile-dossier__statement-actions .detail-trigger { min-height:44px; white-space:nowrap; }
 .profile-dossier__body { display:grid; grid-template-columns:minmax(0,1fr) 304px; }
 .profile-directions { min-width:0; padding:24px 28px 26px; }
 .profile-directions > header { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; }
@@ -1016,9 +1021,10 @@ html[data-theme='dark'] .app.app--workspace { --c-bg:#181a20; --workspace-nav:#1
 .profile-next__label { color:var(--c-primary); font-size:11px; font-weight:600; }
 .profile-next h3 { margin-top:6px; }
 .profile-next h3 + p { margin-top:8px; color:var(--c-text-2); font-size:13px; line-height:1.75; }
-.profile-next__suggestion { margin:18px 0; padding-top:16px; border-top:1px solid color-mix(in srgb,var(--c-primary) 18%,transparent); }
+.profile-next__suggestion { margin:14px 0 8px; padding-top:14px; border-top:1px solid color-mix(in srgb,var(--c-primary) 18%,transparent); }
 .profile-next__suggestion span { display:block; color:var(--c-text-3); font-size:11px; }
 .profile-next__suggestion strong { display:block; margin-top:5px; font-size:13px; font-weight:500; line-height:1.7; }
+.profile-next__reason.detail-trigger { min-height:40px; margin:0 0 10px; padding-inline:0; color:var(--c-primary); }
 .profile-next .btn { width:100%; justify-content:center; }
 .profile-next .ws-text-button { width:100%; justify-content:center; margin-top:4px; }
 .profile-next__check { margin-top:14px; padding-top:12px; border-top:1px solid color-mix(in srgb,var(--c-primary) 18%,transparent); color:var(--c-text-3); font-size:11px; }
@@ -1033,8 +1039,11 @@ html[data-theme='dark'] .app.app--workspace { --c-bg:#181a20; --workspace-nav:#1
  .profile-dossier__portrait { width:46px; height:46px; font-size:19px; }
  .profile-dossier__identity h2 { font-size:19px; }
  .profile-dossier__coverage { padding:14px 0 0; border-top:1px solid var(--c-border); border-left:0; }
- .profile-dossier__statement { grid-template-columns:minmax(0,1fr); gap:6px; padding:17px 16px; }
- .profile-dossier__statement > p { font-size:15px; line-height:1.75; }
+ .profile-dossier__statement { grid-template-columns:minmax(0,1fr) auto; gap:8px 12px; padding:15px 16px; }
+ .profile-dossier__statement > span { grid-column:1 / -1; }
+ .profile-dossier__statement-main small { -webkit-line-clamp:2; }
+ .profile-dossier__statement-actions { align-self:end; }
+ .profile-dossier__statement-actions > span { display:none; }
  .profile-dossier__body { display:flex; flex-direction:column; }
  .profile-next { order:1; padding:20px 16px; }
  .profile-directions { order:2; padding:20px 16px 22px; }

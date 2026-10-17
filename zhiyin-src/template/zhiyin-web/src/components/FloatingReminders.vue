@@ -15,7 +15,7 @@ let suppressClick = false
 let startY = 0
 let startTop = 0
 let hasSavedPosition = false
-const positionKey = 'zhiyin-reminder-y-v2'
+const positionKey = 'zhiyin-reminder-y-v3'
 
 const mobile = computed(() => viewportWidth.value <= 767)
 const minY = computed(() => mobile.value ? 136 : 72)
@@ -28,19 +28,23 @@ const cardY = computed(() => {
     : Math.min(y.value + 54, Math.max(72, viewportHeight.value - height))
 })
 const cardStyle = computed(() => ({ top: `${cardY.value}px` }))
-const visibleNotices = computed(() => demo.state.noticeQueue.slice(0, 3))
+const visibleNotices = computed(() => demo.state.noticeQueue)
 
 function clamp(value: number) { return Math.min(maxY.value, Math.max(minY.value, value)) }
-function resize() { viewportHeight.value = window.innerHeight; viewportWidth.value = window.innerWidth; y.value = clamp(y.value) }
+function resize() {
+  viewportHeight.value = window.innerHeight
+  viewportWidth.value = window.innerWidth
+  y.value = hasSavedPosition ? clamp(y.value) : maxY.value
+}
 function restore() {
   const raw = localStorage.getItem(positionKey)
   const saved = Number(raw)
   hasSavedPosition = raw !== null && Number.isFinite(saved)
   if (hasSavedPosition) y.value = clamp(saved)
-  else y.value = clamp(mobile.value ? viewportHeight.value * .55 : 88)
+  else y.value = maxY.value
 }
-function save() { localStorage.setItem(positionKey, String(Math.round(y.value))) }
-function resetPosition() { y.value = mobile.value ? viewportHeight.value * .55 : 88; save() }
+function save() { hasSavedPosition = true; localStorage.setItem(positionKey, String(Math.round(y.value))) }
+function resetPosition() { hasSavedPosition = false; localStorage.removeItem(positionKey); y.value = maxY.value }
 function pointerDown(event: PointerEvent) {
   if (event.button !== 0) return
   dragging = true; moved = false; startY = event.clientY; startTop = y.value
@@ -95,14 +99,14 @@ watch(() => route.path, () => { if (!hasSavedPosition) restore(); demo.closeNoti
         </article>
       </div>
       <p v-else class="floating-reminders__empty">目前没有待处理提醒。</p>
-      <footer><RouterLink to="/reminders" @click="demo.closeNotice()">查看全部提醒</RouterLink><button type="button" @click="resetPosition">恢复默认位置</button></footer>
+      <footer><span>上下拖动可调整位置</span><button type="button" @click="resetPosition">恢复默认位置</button></footer>
     </section>
   </div>
 </template>
 
 <style scoped>
 .floating-reminders { position:relative; z-index:calc(var(--z-drawer) - 1); }
-.floating-reminders__trigger { position:fixed; right:18px; z-index:calc(var(--z-drawer) - 1); display:grid; place-items:center; width:46px; height:46px; padding:0; border:1px solid var(--c-primary-border); border-radius:15px; background:color-mix(in srgb,var(--c-surface) 92%,transparent); color:var(--c-primary); box-shadow:var(--e-2); backdrop-filter:blur(16px); cursor:grab; touch-action:none; }
+.floating-reminders__trigger { position:fixed; right:-6px; z-index:calc(var(--z-drawer) - 1); display:grid; place-items:center; width:46px; height:46px; padding:0 6px 0 0; border:1px solid var(--c-primary-border); border-radius:15px 0 0 15px; background:color-mix(in srgb,var(--c-surface) 92%,transparent); color:var(--c-primary); box-shadow:var(--e-2); backdrop-filter:blur(16px); cursor:grab; touch-action:none; }
 .floating-reminders__trigger:active { cursor:grabbing; }
 .floating-reminders__trigger>span { position:absolute; top:-5px; right:-5px; display:grid; place-items:center; min-width:21px; height:21px; padding:0 5px; border:2px solid var(--c-bg); border-radius:999px; background:var(--c-attention); color:var(--c-on-attention); font-size:11px; font-weight:700; font-variant-numeric:tabular-nums; }
 .floating-reminders__card { position:fixed; right:18px; z-index:calc(var(--z-drawer) - 1); width:min(360px,calc(100vw - 36px)); max-height:min(520px,calc(100dvh - 96px)); overflow:auto; border:1px solid var(--c-border); border-radius:16px; background:var(--c-surface); box-shadow:var(--e-3); }
@@ -119,10 +123,11 @@ watch(() => route.path, () => { if (!hasSavedPosition) restore(); demo.closeNoti
 .floating-reminders__list article>button { min-height:36px; margin-top:9px; padding:6px 10px; border-radius:8px; background:var(--c-primary-weak); color:var(--c-primary); font-size:12px; }
 .floating-reminders__empty { padding:28px 16px; text-align:center; color:var(--c-text-2); }
 .floating-reminders__card>footer { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:13px 16px; }
-.floating-reminders__card>footer :is(a,button) { min-height:36px; display:inline-flex; align-items:center; color:var(--c-primary); font-size:12px; }
+.floating-reminders__card>footer :is(span,button) { min-height:36px; display:inline-flex; align-items:center; color:var(--c-primary); font-size:12px; }
+.floating-reminders__card>footer>span { color:var(--c-text-3); }
 .floating-reminders__card>footer button { color:var(--c-text-3); }
 @media (max-width:767px) {
-  .floating-reminders__trigger { right:6px; width:44px; height:44px; border-radius:14px; }
+  .floating-reminders__trigger { right:-8px; width:44px; height:44px; padding-right:8px; border-radius:14px 0 0 14px; }
   .floating-reminders__card { right:12px; width:calc(100vw - 24px); max-height:min(56dvh,440px); }
 }
 @media (prefers-reduced-motion:reduce) { .floating-reminders__trigger { transition:none; } }
