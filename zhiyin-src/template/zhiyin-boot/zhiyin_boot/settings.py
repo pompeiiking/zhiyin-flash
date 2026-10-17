@@ -110,6 +110,9 @@ class Settings:
     app_name: str = "职引"
     env: str = "local"                     # local / dev / prod
     api_prefix: str = "/api/v1"
+    rate_limit_auth: int = 30
+    rate_limit_write: int = 120
+    rate_limit_conversation: int = 20
 
     # ---------- 外部存储 ----------
     # 只保留 Redis 与 PostgreSQL + pgvector。
@@ -188,6 +191,9 @@ class Settings:
         """构造配置：先自动加载就近的 `.env`，再读环境变量。"""
         _load_dotenv()
         return cls(
+            rate_limit_auth=_env_int("ZHIYIN_RATE_LIMIT_AUTH", 30),
+            rate_limit_write=_env_int("ZHIYIN_RATE_LIMIT_WRITE", 120),
+            rate_limit_conversation=_env_int("ZHIYIN_RATE_LIMIT_CONVERSATION", 20),
             env=_env("ZHIYIN_ENV", "local"),
             use_redis=_env_bool("ZHIYIN_USE_REDIS"),
             redis_url=_env("ZHIYIN_REDIS_URL", "redis://redis:6379/0"),

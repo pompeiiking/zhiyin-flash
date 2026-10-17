@@ -730,6 +730,12 @@ def test_engine_refuses_tool_run_without_user_context() -> None:
     with pytest.raises(MissingConfigError):
         engine._run_context_kwargs(AgentRequest(agent_id="a", blackboard={}))
 
+    read_only = engine._run_context_kwargs(
+        AgentRequest(agent_id="a", blackboard={}, use_tools=False)
+    )
+    assert "user_id" not in read_only
+    assert read_only["dependencies"] == {"renderables": []}
+
     kwargs = engine._run_context_kwargs(
         AgentRequest(agent_id="a", blackboard={"user_id": "u-1", "task_id": "t-1"})
     )

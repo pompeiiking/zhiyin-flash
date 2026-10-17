@@ -70,7 +70,7 @@ def report_from_diagnose(output: DiagnoseOutput, *, user_id: str) -> Report:
         verdict=output.verdict,
         swot=output.swot,
         dimensions=list(output.dimensions),
-        sources=_dedupe(item.source for item in output.facts if item.source),
+        sources=_dedupe(item.source_url for item in output.facts if item.source_url),
         methodologies=_dedupe(ref.name for ref in output.theory_refs if ref.name),
     )
 

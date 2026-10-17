@@ -59,6 +59,8 @@ class DefaultProfileService(ProfileService):
         source: str,
         label: str = "",
         evidence: Optional[list[str]] = None,
+        expected_updated_at: datetime | None = None,
+        check_version: bool = False,
     ) -> ProfileField:
         field = ProfileField(
             key=key,
@@ -86,7 +88,7 @@ class DefaultProfileService(ProfileService):
             logger.warning("读取既有画像失败，新字段判定按否处理", exc_info=True)
             known = None
         is_new = known is not None and key not in known
-        saved = await self._profiles.upsert_field(user_id, field)
+        saved = await self._profiles.upsert_field(user_id, field, expected_updated_at=expected_updated_at, check_version=True) if check_version else await self._profiles.upsert_field(user_id, field)
         await self._event_bus.publish(
             DomainEvent(
                 event_id=f"profile-{uuid4().hex[:12]}",
@@ -133,7 +135,7 @@ class DefaultProfileService(ProfileService):
             labels.setdefault(spec.key, spec.label or spec.key)
         return labels
 
-    async def correct_field(self, user_id: str, key: str, value: object) -> ProfileField:
+    async def correct_field(self, user_id: str, key: str, value: object, *, expected_updated_at: datetime | None = None, check_version: bool = False) -> ProfileField:
         """用户本人更正一个画像字段（issue #26 第三条）。
 
         为什么这条路径必须存在
@@ -190,6 +192,8 @@ class DefaultProfileService(ProfileService):
             # 旧证据撑的是**旧值**，留着会让"这条凭什么"指回一个已经不成立的说法。
             # 更正之后的出处就是他本人，这一点由 source 负责说明。
             evidence=[],
+            expected_updated_at=expected_updated_at,
+            check_version=check_version,
         )
         try:
             await self._close_gap(user_id, key)

@@ -1,5 +1,6 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
-import { demo } from './store'
+import { demo, toast } from './store'
+import { routeEnabled } from './lib/features'
 import { auth } from './lib/auth'
 import {backendRequest} from './api/backend-client'
 import { ref } from 'vue'
@@ -99,6 +100,7 @@ router.beforeEach(async (to) => {
   if (to.path === '/report' && to.query.focus === 'choose') return '/directions'
   if (to.meta.public) return true
   if (!demo.state.authed && !await auth.restore()) return {path:'/',query:{signin:'1',redirect:to.fullPath}}
+  if (!routeEnabled(to.path)) { toast('此功能当前未开放。'); return '/chat' }
   return true
 })
 

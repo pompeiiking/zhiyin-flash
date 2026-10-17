@@ -53,6 +53,37 @@ async def phase(service):
 
 
 @pytest.mark.asyncio
+async def test_form_merge_preserves_other_tab_and_rejects_same_field(service):
+    from zhiyin_business.contracts.student import PreferencesEdit, DirectionWeightsEdit
+    from zhiyin_kernel.errors import DuplicateResource
+
+    original = await service.preferences("a")
+    await service.save_preferences("a", PreferencesEdit(**{**original.model_dump(), "material_analysis": False}, expected=original))
+    merged = await service.save_preferences("a", PreferencesEdit(**{**original.model_dump(), "academic_analysis": False}, expected=original))
+    assert not merged.academic_analysis and not merged.material_analysis
+    assert (await service.preferences("b")).material_analysis
+    base = await service.weights("a")
+    first = DirectionWeightsEdit(**{**base.model_dump(), "major": 3}, expected=base)
+    await service.weights("a", first)
+    assert (await service.weights("a", first)).major == 3  # response-loss retry
+    with pytest.raises(DuplicateResource):
+        await service.weights("a", DirectionWeightsEdit(**{**base.model_dump(), "major": 4}, expected=base))
+    assert (await service.weights("a")).major == 3
+
+
+@pytest.mark.asyncio
+async def test_semester_creation_cannot_overwrite_another_tab(service):
+    from zhiyin_business.contracts.student import SemesterEdit
+    from zhiyin_kernel.errors import DuplicateResource
+
+    body = SemesterEdit(first_monday=date(2026, 10, 12), periods=[{"number": 1, "start": "08:00", "end": "08:45"}], expected=None)
+    await service.semester("a", body)
+    assert (await service.semester("a", body)).weeks == 20
+    with pytest.raises(DuplicateResource):
+        await service.semester("a", body.model_copy(update={"weeks": 18}))
+
+
+@pytest.mark.asyncio
 async def test_task_edit_split_state_and_account_isolation(service):
     pid = await phase(service)
     body = TaskEdit(
@@ -271,6 +302,7 @@ def test_http_roundtrip_download_and_ownership(tmp_path):
         return request.headers["Authorization"].removeprefix("Bearer ")
 
     container.facade.resolve_user_id = resolve_identity
+    container.registry_service.feature_flags = AsyncMock(return_value={"export": True})
     with TestClient(wire_application(container)) as client:
 
         def call(method, path, body=None, code=200):
@@ -308,7 +340,7 @@ def test_http_roundtrip_download_and_ownership(tmp_path):
         assert client.get(path).status_code == 404
         assert call("GET", "/reviews")["items"] == []
         call("PUT", f"/plan/action/tasks/{tid}", {"text": "越权", "phase_id": pid}, 404)
-        call("PUT", "/preferences", {"material_analysis": False})
+        call("PUT", "/preferences", {"material_analysis": False, "expected": call("GET", "/preferences")})
         from zhiyin_orchestration import AgentResult
         container.ai_task_service._engine = AsyncMock()
         container.ai_task_service._engine.invoke.return_value = AgentResult(

@@ -58,6 +58,7 @@ import StatusBanner from '../components/StatusBanner.vue'
 import ConfidenceBadge from '../components/ConfidenceBadge.vue'
 import ProfileInsights from '../components/ProfileInsights.vue'
 import AcademicVerification from '../components/AcademicVerification.vue'
+import FormConflict from '../components/FormConflict.vue'
 import { backendDemo } from '../lib/backend-demo'
 import { backendClient } from '../api/backend-client'
 import type { DependencyEdgeView, ProfileFieldView, ProfileSource } from '../api/backend-types'
@@ -761,6 +762,13 @@ async function jumpToField(key: string) {
 const correction = ref<FieldRow | null>(null)
 const value = ref('')
 const correctionError = ref('')
+const correctionVersion = ref<string|null>(null)
+const correctionLatest = ref<ProfileFieldView | null>(null)
+const correctionConflictRows = computed(() => correction.value && correctionLatest.value ? [{
+  label: correction.value.label,
+  latest: String(correctionLatest.value.value ?? '未填写'),
+  mine: value.value.trim() || '未填写',
+}] : [])
 
 function fieldValue(row: FieldRow) {
   if (live.value) return row.value
@@ -776,6 +784,8 @@ async function inspectField(row: FieldRow) {
 function edit(row: FieldRow) {
   openField.value = null
   correction.value = row
+  correctionVersion.value = livePanel.value?.fields?.find(item => item.key === row.key)?.updated_at ?? null
+  correctionLatest.value = null
   value.value = fieldValue(row)
   correctionError.value = ''
 }
@@ -788,18 +798,36 @@ async function save() {
     const previous = livePanel.value?.fields?.find((item) => item.key === field.key)
     serviceError.value = ''
     try {
-      const updated = await backendClient.correct(field.key, value.value.trim())
+      const updated = await backendClient.correct(field.key, value.value.trim(), correctionVersion.value)
       if (previous && !originalLive.value[field.key]) backendDemo.rememberProfileOriginal(field.key)
       const workspace = JSON.parse(JSON.stringify(backendDemo.state.liveWorkspace))
       workspace.profile_panel.fields = workspace.profile_panel.fields.map((item: ProfileFieldView) => (item.key === updated.key ? updated : item))
       backendDemo.setWorkspace(workspace)
-    } catch {
-      correctionError.value = '更正没有保存成功，输入仍保留，请重试。'
+      correctionLatest.value = null
+    } catch (error) {
+      correctionError.value = error instanceof Error ? error.message : '更正没有保存成功，输入仍保留，请重试。'
+      if ((error as { code?: number }).code === 1003) {
+        try {
+          const workspace = await backendClient.workspace()
+          if (!workspace.profile_panel?.fields) throw new Error('最新画像不完整')
+          backendDemo.setWorkspace(workspace)
+          correctionLatest.value = workspace.profile_panel.fields.find(item => item.key === field.key) ?? null
+        } catch {
+          correctionError.value += ' 最新记录暂未取得，请稍后重试。'
+        }
+      }
       return
     }
   }
   if (correction.value) demo.updateProfileField(correction.value.key, value.value)
   correction.value = null
+}
+
+async function confirmCorrectionConflict() {
+  if (!correctionLatest.value) return
+  correctionVersion.value = correctionLatest.value.updated_at
+  correctionLatest.value = null
+  await save()
 }
 
 const identity = computed(() => {
@@ -1244,9 +1272,10 @@ onMounted(()=>{ void loadWorkspace() })
     <InfoSheet shape="dialog" :open="correction !== null" :title="'更正' + (correction?.label ?? '信息')" @close="correction = null">
       <form @submit.prevent="save">
         <label class="ws-field">更正内容<textarea v-model="value" maxlength="40" /></label>
+        <FormConflict v-if="correctionLatest" :rows="correctionConflictRows" @confirm="confirmCorrectionConflict" />
         <p v-if="correctionError" class="ws-field-error" role="alert">{{ correctionError }}</p>
         <div class="ws-inline-actions">
-          <button class="btn btn--primary" type="submit">保存更正</button>
+          <button class="btn btn--primary" type="submit" :disabled="correctionLatest !== null">保存更正</button>
           <button class="btn" type="button" @click="correction = null">取消</button>
         </div>
       </form>

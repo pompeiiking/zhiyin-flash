@@ -268,14 +268,51 @@ export type NotificationEdit = {
   "status": "pending" | "read" | "later" | "done"
 }
 
-export type MeasurementBatch = {
+export type MeasurementEdit = {
   "asset_type": "report" | "direction_plan"
+  "expected": Array<Measurement>
   "measurements": Array<Measurement>
   "subject_id": string
   "version": number
 }
 
+export type MeasurementRecordView = {
+  "asset_type": "report" | "direction_plan"
+  "measurements": Array<Measurement>
+  "recorded_at": string
+  "subject_id": string
+  "version": number
+}
+
 export type DirectionWeights = {
+  "jobs"?: number
+  "location"?: number
+  "major"?: number
+  "salary"?: number
+  "stability"?: number
+}
+
+export type PreferencesEdit = {
+  "academic_analysis"?: boolean
+  "expected": Preferences
+  "material_analysis"?: boolean
+  "proactive_reminders"?: boolean
+  "quiet_end"?: (string | null)
+  "quiet_start"?: (string | null)
+  "timezone"?: string
+}
+
+export type SemesterEdit = {
+  "expected": (Semester | null)
+  "first_monday": string
+  "periods": Array<Period>
+  "timezone"?: string
+  "weekly_available_minutes"?: (number | null)
+  "weeks"?: number
+}
+
+export type DirectionWeightsEdit = {
+  "expected": DirectionWeights
   "jobs"?: number
   "location"?: number
   "major"?: number

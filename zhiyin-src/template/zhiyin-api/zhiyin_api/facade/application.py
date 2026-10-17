@@ -836,7 +836,7 @@ class DefaultApplicationFacade(ApplicationFacade):
         """
         if self._profiles is None:
             raise RuntimeError("画像服务未装配（Container.profile_service）")
-        field = await self._profiles.correct_field(user_id, key, body.value)
+        field = await self._profiles.correct_field(user_id, key, body.value, expected_updated_at=body.expected_updated_at, check_version=True)
         await self._invalidate_user(user_id, "profile_field_updated")
         # 单条回包与工作台面板走**同一个** mapper：改完那一刻看到的这条，
         # 必须和刷新之后看到的那条是同一个形状、同一个名字。

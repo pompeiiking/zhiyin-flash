@@ -97,6 +97,10 @@ def create_app(
     api_prefix: str = API_PREFIX,
     routers: Optional[Iterable[Any]] = None,
     lifespan: Optional[Any] = None,
+    rate_limit: Optional[Any] = None,
+    auth: Optional[Any] = None,
+    rate_limits: Optional[dict[str, int]] = None,
+    feature_registry: Optional[Any] = None,
 ) -> FastAPI:
     """构造 ASGI 应用。
 
@@ -119,6 +123,15 @@ def create_app(
 
     # trace id 的唯一生成点：任何进入应用的 HTTP 请求都会被包上上下文，
     # 因此信封里的 trace_id 不会是空字符串（守卫见 tests/test_request_context.py）。
+    if feature_registry is not None:
+        from zhiyin_api.feature_gate import FeatureGateMiddleware
+
+        app.add_middleware(FeatureGateMiddleware, registry=feature_registry, prefix=api_prefix)
+    if rate_limit is not None and hasattr(rate_limit, "allow_async"):
+        from zhiyin_api.rate_limit import ApiRateLimitMiddleware
+
+        app.add_middleware(ApiRateLimitMiddleware, gateway=rate_limit, auth=auth,
+                           prefix=api_prefix, limits=rate_limits)
     app.add_middleware(RequestContextMiddleware)
 
     _install_error_handlers(app)

@@ -131,7 +131,7 @@ def test_endpoint_degrades_when_the_facade_is_missing() -> None:
     """裸 app（未装配门面）按 1007 降级，而不是 500 —— 与其它接口同一条口径。"""
     with TestClient(create_app()) as bare:
         response = bare.post(
-            f"{API_PREFIX}/app/profile/fields/major", json={"value": "计算机大类"}
+            f"{API_PREFIX}/app/profile/fields/major", json={"expected_updated_at": None, "value": "计算机大类"}
         )
     assert response.status_code == 503
     assert response.json()["code"] == 1007
@@ -140,7 +140,7 @@ def test_endpoint_degrades_when_the_facade_is_missing() -> None:
 def test_endpoint_corrects_a_field_over_http(client: TestClient) -> None:
     """完整链路：默认登录态 → 写库 → 回包是存下来的那一条，工作台读到的也是它。"""
     response = client.post(
-        f"{API_PREFIX}/app/profile/fields/major", json={"value": "计算机大类"}
+        f"{API_PREFIX}/app/profile/fields/major", json={"expected_updated_at": None, "value": "计算机大类"}
     )
     assert response.status_code == 200, response.text
     body = response.json()
@@ -159,7 +159,7 @@ def test_endpoint_corrects_a_field_over_http(client: TestClient) -> None:
 
 def test_endpoint_rejects_an_empty_value_with_a_usable_message(client: TestClient) -> None:
     """空值：422 + 1001 + 一句能照着改的中文话（不是 Pydantic 的英文报错）。"""
-    response = client.post(f"{API_PREFIX}/app/profile/fields/major", json={"value": "  "})
+    response = client.post(f"{API_PREFIX}/app/profile/fields/major", json={"expected_updated_at": None, "value": "  "})
     assert response.status_code == 422
     body = response.json()
     assert body["code"] == 1001
@@ -170,7 +170,7 @@ def test_endpoint_rejects_an_empty_value_with_a_usable_message(client: TestClien
 def test_endpoint_rejects_an_unregistered_key(client: TestClient) -> None:
     """没登记过的键：422 + 1001，且**不**在画像里留下这一格。"""
     response = client.post(
-        f"{API_PREFIX}/app/profile/fields/ghost_field", json={"value": "随便"}
+        f"{API_PREFIX}/app/profile/fields/ghost_field", json={"expected_updated_at": None, "value": "随便"}
     )
     assert response.status_code == 422
     assert response.json()["code"] == 1001

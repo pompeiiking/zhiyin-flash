@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { routeEnabled } from '../lib/features'
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { WORKSPACE_GROUPS, WORKSPACE_PRIMARY, PORTAL_LINK, isNavActive, type NavItem } from '../lib/workspace-nav'
@@ -54,7 +55,7 @@ function sessionDate(date?: string | null) { return date ? new Date(date).toLoca
       <RouterLink :to="WORKSPACE_PRIMARY.to" class="desk-link desk-link--conversation" :aria-current="isNavActive(WORKSPACE_PRIMARY, route) ? 'page' : undefined"><UiIcon :name="WORKSPACE_PRIMARY.icon" :size="20" /><span class="hf-label">{{ WORKSPACE_PRIMARY.label }}</span><span class="hf-tail" v-if="sessionCount || chatActive"><span v-if="sessionCount" class="hf-badge" :title="'共 ' + sessionCount + ' 段咨询'">{{ sessionCount }}</span><span v-if="chatActive" class="desk-link__dot" /></span></RouterLink>
       <section v-for="group in WORKSPACE_GROUPS" :key="group.key" class="c2-nav-group">
         <h2>{{ group.label }}</h2>
-        <RouterLink v-for="item in group.items" :key="item.key" :to="item.to" :title="item.label" class="desk-link" :aria-current="isNavActive(item, route) ? 'page' : undefined">
+        <RouterLink v-for="item in group.items.filter(item => routeEnabled(item.to))" :key="item.key" :to="item.to" :title="item.label" class="desk-link" :aria-current="isNavActive(item, route) ? 'page' : undefined">
           <UiIcon :name="item.icon" :size="18" /><span class="hf-label">{{ item.label }}</span>
           <span v-if="navCount(item)" class="hf-badge">{{ navCount(item) }}</span>
         </RouterLink>

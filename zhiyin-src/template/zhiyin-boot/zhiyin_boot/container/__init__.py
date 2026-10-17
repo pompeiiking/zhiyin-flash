@@ -324,6 +324,12 @@ def wire_application(container: Optional[Container] = None) -> Any:
         # 前缀只有一个来源：Settings.api_prefix（默认 /api/v1）。
         # 换版本改配置即可，路由声明与前端都不用动。
         api_prefix=container.settings.api_prefix,
+        rate_limit=container.rate_limit,
+        auth=container.auth,
+        feature_registry=container.registry_service,
+        rate_limits={"auth": container.settings.rate_limit_auth,
+                     "write": container.settings.rate_limit_write,
+                     "conversation": container.settings.rate_limit_conversation},
     )
     app.state.module_platform = container.extra.get("module_platform")
     app.state.developer_platform = container.extra.get("developer_platform")

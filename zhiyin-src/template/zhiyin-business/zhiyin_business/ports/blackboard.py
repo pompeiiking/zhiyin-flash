@@ -13,6 +13,7 @@ LoopCoordinator）。所有智能体读写同一份黑板。
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from datetime import datetime
 from typing import Optional, Sequence
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -111,7 +112,7 @@ class ProfileService(ABC):
         """
 
     @abstractmethod
-    async def correct_field(self, user_id: str, key: str, value: object) -> ProfileField:
+    async def correct_field(self, user_id: str, key: str, value: object, *, expected_updated_at: datetime | None = None, check_version: bool = False) -> ProfileField:
         """**用户本人**更正一个画像字段（issue #26 第三条）。
 
         与 `update_field` 的分工：那一条是"系统去记"（采集 / 导入 / 推断），

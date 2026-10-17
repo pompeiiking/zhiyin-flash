@@ -1,0 +1,5 @@
+2026-10-17 04:32:28,850 INFO zhiyin_orchestration.impl.agno_engine | 模型调用：agent=career_advisor stage=diagnose prompt=role model=deepseek-flash
+2026-10-17 04:32:55,909 INFO zhiyin_orchestration.impl.agno_engine | 模型结果：agent=career_advisor stage=diagnose prompt=role valid=True errors=0
+2026-10-17 04:32:55,913 INFO zhiyin_orchestration.impl.agno_engine | 模型调用：agent=info_scout stage=diagnose prompt=role.info_scout model=deepseek-flash
+2026-10-17 04:33:03,613 INFO zhiyin_orchestration.impl.agno_engine | 模型结果：agent=info_scout stage=diagnose prompt=role.info_scout valid=True errors=0
+2026-10-17 04:33:03,613 WARNING zhiyin_business.services.orchestrator | 环节产出不符合契约：stage=diagnose agent=career_advisor errors=['诊断证据边界校验失败']

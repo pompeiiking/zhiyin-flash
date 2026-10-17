@@ -1,0 +1,106 @@
+{
+  "passed": true,
+  "run_id": "f08681bb11304acd9ec4af934f4179ac",
+  "schema": "accept_workflow_f08681bb11304acd9ec4af934f4179ac",
+  "storage": "real PostgreSQL / isolated schema",
+  "lock_key": 741517501,
+  "assertions": [
+    {
+      "id": "ddl_idempotent_legacy_empty",
+      "passed": true
+    },
+    {
+      "id": "legacy_empty_allows_first_publication",
+      "passed": true
+    },
+    {
+      "id": "exclusive_deployment_lock_available",
+      "passed": true
+    },
+    {
+      "id": "publication_conflict_rejected_without_wait",
+      "passed": true,
+      "error": "平台正在更新，请稍后刷新后再调整工作流发布状态"
+    },
+    {
+      "id": "unpublication_conflict_rejected_without_wait",
+      "passed": true,
+      "error": "平台正在更新，请稍后刷新后再调整工作流发布状态"
+    },
+    {
+      "id": "draft_save_works_during_deployment",
+      "passed": true
+    },
+    {
+      "id": "exclusive_conflicts_leave_snapshots",
+      "passed": true
+    },
+    {
+      "id": "real_repository_transaction_blocks_exclusive_deployment",
+      "passed": true
+    },
+    {
+      "id": "publication_commit_releases_shared_lock",
+      "passed": true
+    },
+    {
+      "id": "stale_api_publish_rejected_after_cutover",
+      "passed": true,
+      "error": "平台版本已更新，请刷新后重新调整工作流发布状态"
+    },
+    {
+      "id": "stale_api_unpublish_rejected_after_cutover",
+      "passed": true,
+      "error": "平台版本已更新，请刷新后重新调整工作流发布状态"
+    },
+    {
+      "id": "startup_ddl_preserves_runtime_fence",
+      "passed": true
+    },
+    {
+      "id": "stale_cas_cannot_unpublish",
+      "passed": true,
+      "error": "工作流版本已变化，请刷新后暂停发布"
+    },
+    {
+      "id": "stale_cas_preserves_pointer",
+      "passed": true
+    },
+    {
+      "id": "current_build_unpublishes_without_draft_change",
+      "passed": true
+    },
+    {
+      "id": "paused_public_read_not_found",
+      "passed": true,
+      "error": "工作流尚未发布"
+    },
+    {
+      "id": "unpublish_retains_both_history_snapshots",
+      "passed": true
+    },
+    {
+      "id": "unpublish_retains_execution_receipt",
+      "passed": true
+    },
+    {
+      "id": "same_snapshot_republish_works",
+      "passed": true
+    },
+    {
+      "id": "immutable_snapshot_cannot_be_replaced",
+      "passed": true,
+      "error": "该工作流版本已发布，引用版本变化后请保存新草稿"
+    },
+    {
+      "id": "failed_transaction_releases_shared_lock",
+      "passed": true
+    }
+  ],
+  "cleanup": {
+    "schema_removed": true,
+    "public_business_data_modified": false
+  },
+  "build_revision": "working-tree",
+  "finished_at": "2026-10-17T04:33:32.419353+00:00"
+}

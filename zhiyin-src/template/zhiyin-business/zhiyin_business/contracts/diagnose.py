@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from zhiyin_kernel.assets import (
     ReportDimensionGroup,
@@ -40,7 +40,17 @@ class FactItem(BaseModel):
     topic: str = Field(description="如 岗位要求 / 行业行情 / 时间窗口")
     content: str
     source: str = Field(default="", description="来源，如 学职平台 / JD")
+    source_url: str = Field(default="", description="可核对的原始页面链接；没有链接的外部说法不进入报告来源")
     fetched_at: str = ""
+
+
+class ScoutOutput(BaseModel):
+    """信息侦查员的独立产出；只整理已经取回的外部记录。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    facts: list[FactItem] = Field(default_factory=list, max_length=8)
+    note: str = ""
 
 
 class DiagnoseOutput(BaseModel):
@@ -76,3 +86,20 @@ class DiagnoseOutput(BaseModel):
         ),
     )
     disclosure: Disclosure | None = None
+
+    @model_validator(mode="after")
+    def evidence_absence_is_not_a_weakness(self):
+        """Reject the model's recurring conversion of unknowns into deficits."""
+        absence = ("未提供", "没有提供", "没提供", "未看到", "未见", "尚无资料", "缺少材料", "待补充证据")
+        negative_tags = ("短板", "弱项", "不足", "劣势")
+        for group in self.dimensions:
+            for item in group.items:
+                if any(word in item.tag for word in negative_tags) and any(word in item.evidence for word in absence):
+                    raise ValueError("资料未提供只能标为待验证，不能据此判定为短板")
+        for item in self.swot.weakness:
+            if any(word in item for word in absence):
+                raise ValueError("资料未提供不能写入 SWOT 弱项")
+        for gap in self.gaps:
+            if any(word in gap.current_state for word in absence):
+                raise ValueError("证据缺口不能改写成用户能力差距")
+        return self

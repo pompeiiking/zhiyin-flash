@@ -31,6 +31,7 @@ const { router } = load('../src/router.ts', {
   vue: { ref },
   './store': { demo: { state: { authed: true } } },
   './lib/auth': { auth: { restore: async () => true } },
+  './lib/features': { routeEnabled: () => true },
   './api/backend-client': { backendRequest: async () => ({}) },
   './lib/session-cache': { sessionCacheAvailable: ref(false) },
 })

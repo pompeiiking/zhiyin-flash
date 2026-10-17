@@ -1,0 +1,11 @@
+{
+  "checks": [
+    "/preferences: independent merge, conflict rejection and replay",
+    "/plan/direction-weights: independent merge, conflict rejection and replay",
+    "semester: concurrent first creation rejected, replay stable",
+    "profile: stale edit rejected, retry returns same version",
+    "upload: identical retry deduplicated, different content separated",
+    "expired session: write refused"
+  ],
+  "passed": 6
+}

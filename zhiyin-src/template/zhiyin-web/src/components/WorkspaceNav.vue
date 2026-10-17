@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { routeEnabled } from '../lib/features'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { backendDemo } from '../lib/backend-demo'
@@ -42,7 +43,7 @@ watch(
 <template>
   <nav class="ws-bookmarks" aria-label="学生空间导航">
     <RouterLink
-      v-for="tab in MOBILE_TABS"
+      v-for="tab in MOBILE_TABS.filter(tab => routeEnabled(tab.to))"
       :key="tab.key"
       :to="tab.to"
       class="ws-bookmark"
@@ -71,7 +72,7 @@ watch(
         <AccordionContent class="desk-menu__content">
           <div class="desk-menu__children">
             <RouterLink
-              v-for="item in group.items"
+              v-for="item in group.items.filter(item => routeEnabled(item.to))"
               :key="item.key"
               :to="item.to"
               class="desk-link desk-link--child"

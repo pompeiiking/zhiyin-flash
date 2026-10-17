@@ -49,6 +49,7 @@ class ProfileFieldUpdateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     value: str = Field(description="用户认可的那个值（空串会被拒 —— 清空是另一件事）")
+    expected_updated_at: datetime | None = Field(description="编辑时字段时间；首次填写传 null")
 
 
 class ProfileGapView(BaseModel):

@@ -51,7 +51,7 @@ export const backendClient = {
   message: (body: MessageRequest, signal?: AbortSignal) => request<ConversationTurnView>('message', { body, timeout: 90_000, signal }),
   material: (file: File) => { const form = new FormData(); form.append('file', file); return request<ConversationMaterialView>('material', { form, timeout: 60_000 }) },
   workspace: () => request<WorkspacePageView>('workspace'),
-  correct: (key: string, value: string) => request<ProfileFieldView>('correctProfile', { params: { key }, body: { value } }),
+  correct: (key: string, value: string, expected_updated_at: string | null) => request<ProfileFieldView>('correctProfile', { params: { key }, body: { value, expected_updated_at } }),
   theory: (theory_id: string) => request<TheoryCardView>('theory', { params: { theory_id } }),
   report: (version?: number) => request<ReportFullTextView>('report', { query: version ? { version } : undefined }),
   versions: (asset_type: 'report' | 'direction_plan' | 'action_plan') => request<AssetVersionView[]>('versions', { params: { asset_type } }),

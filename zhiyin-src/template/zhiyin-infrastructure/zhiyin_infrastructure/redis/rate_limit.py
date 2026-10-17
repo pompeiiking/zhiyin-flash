@@ -18,6 +18,7 @@
 from __future__ import annotations
 
 import time
+import logging
 from typing import Optional
 
 import redis.asyncio as redis
@@ -90,6 +91,7 @@ class RedisRateLimit(RateLimitGateway):
         except Exception:  # noqa: BLE001 - 限流器坏了不该把业务挡死
             # 这里是"故障开放"（fail-open）：Redis 抖一下就把所有请求拒掉，
             # 是把可用性押在一个缓存件上。代价是那一刻没有限流 —— 可接受。
+            logging.getLogger(__name__).warning("Redis 限流不可用，本次请求故障开放", exc_info=True)
             return True
 
     def allow(

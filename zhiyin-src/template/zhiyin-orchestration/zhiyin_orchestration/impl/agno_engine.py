@@ -531,7 +531,10 @@ class AgnoAgentEngine(AgentEngine):
         session_id = str(
             (request.blackboard or {}).get("task_id") or request.trace_id or ""
         )
-        if self._tools and not user_id:
+        # ``self._tools`` is the process-wide registry, not the tools attached to
+        # this request. Read-only role calls explicitly set ``use_tools=False``;
+        # they must not be rejected merely because another agent can use a tool.
+        if request.use_tools and self._tools and not user_id:
             raise MissingConfigError("挂了工具但这次调用没有用户上下文，拒绝执行")
         kwargs: dict[str, Any] = {}
         if user_id:

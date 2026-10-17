@@ -102,6 +102,12 @@ async def test_a_material_round_trips_and_stays_scoped_to_its_owner(tmp_path: Pa
     body = await service.material_body(USER_ID, material.material_id)
     assert body.name == "简历.txt"
     assert body.text == RESUME
+    replay = await service.put_material(USER_ID, name="简历.txt", data=RESUME.encode("gbk"))
+    assert replay.material_id == material.material_id
+    changed = await service.put_material(USER_ID, name="简历.txt", data=(RESUME + "补充项目").encode("gbk"))
+    assert changed.material_id != material.material_id
+    other = await service.put_material("u-other", name="简历.txt", data=RESUME.encode("gbk"))
+    assert other.material_id != material.material_id
 
     # 别人的 id 取不到自己的材料：对象键里带 user_id，越权就是"找不到"
     with pytest.raises(LookupError):

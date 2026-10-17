@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from hashlib import sha256
 from typing import Optional
 from uuid import uuid4
 
@@ -137,7 +138,10 @@ class DefaultConversationMemoryService(ConversationMemoryService):
             # 翻成 InvalidRequest，api 按 422 + 原话返回，界面照原样显示那句
             # "另存为 CSV 再传"。不翻的话用户看到的是 500。
             raise InvalidRequest(str(exc)) from exc
-        material_id = f"mat_{uuid4().hex[:12]}"
+        # A lost upload response may be retried. The same account/file must
+        # reference one object; names and accounts are part of its identity.
+        digest = sha256(user_id.encode() + b"\0" + name.encode() + b"\0" + data).hexdigest()
+        material_id = f"mat_{digest}"
         key = self._object_store.build_named_key(
             user_id, "conversation_material", material_id, "txt"
         )

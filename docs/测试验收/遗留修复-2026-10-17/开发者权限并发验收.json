@@ -1,0 +1,171 @@
+{
+  "passed": true,
+  "run_id": "c6e58851656345d8a9b4b4b9ccbac4e3",
+  "schema": "accept_dev_auth_c6e58851656345d8a9b4b4b9ccbac4e3",
+  "environment": "workbench",
+  "storage": "real PostgreSQL / isolated schema",
+  "http_transport": "actual controllers via in-process ASGI",
+  "assertions": [
+    {
+      "id": "isolated_search_path",
+      "passed": true
+    },
+    {
+      "id": "production_ddl_blank_schema_and_repeat",
+      "passed": true
+    },
+    {
+      "id": "platform_release_empty_queue_real_sql",
+      "passed": true
+    },
+    {
+      "id": "membership_revoke_commits_after_entry_check",
+      "passed": true,
+      "error": "不是此项目的开发成员"
+    },
+    {
+      "id": "rejected_upload_leaves_no_version",
+      "passed": true
+    },
+    {
+      "id": "project_lock_blocks_concurrent_membership_revoke",
+      "passed": true,
+      "blocker_count": 1
+    },
+    {
+      "id": "authorized_write_commits_before_waiting_revoke",
+      "passed": true,
+      "version_id": "c410ee6e25fb4d1883a44e0268ecc8b9"
+    },
+    {
+      "id": "later_write_rechecks_committed_membership_revoke",
+      "passed": true,
+      "error": "不是此项目的开发成员"
+    },
+    {
+      "id": "later_denial_creates_no_extra_version",
+      "passed": true
+    },
+    {
+      "id": "old_jwt_still_carries_developer_claim",
+      "passed": true
+    },
+    {
+      "id": "old_token_upload_denied_after_role_demotion",
+      "passed": true,
+      "http_status": 403,
+      "code": 1008
+    },
+    {
+      "id": "old_token_retry_denied_after_role_demotion",
+      "passed": true,
+      "http_status": 403,
+      "code": 1008
+    },
+    {
+      "id": "old_token_release_denied_after_role_demotion",
+      "passed": true,
+      "http_status": 403,
+      "code": 1008
+    },
+    {
+      "id": "repository_upload_rechecks_demoted_role",
+      "passed": true,
+      "error": "开发者或管理员权限已撤销"
+    },
+    {
+      "id": "repository_retry_rechecks_demoted_role",
+      "passed": true,
+      "error": "开发者或管理员权限已撤销"
+    },
+    {
+      "id": "repository_release_rechecks_demoted_role",
+      "passed": true,
+      "error": "开发者或管理员权限已撤销"
+    },
+    {
+      "id": "demotion_does_not_resurrect_role_from_token",
+      "passed": true
+    },
+    {
+      "id": "demotion_denials_preserve_version",
+      "passed": true
+    },
+    {
+      "id": "source_worker_named_user_cannot_upload",
+      "passed": true,
+      "error": "不是此项目的开发成员"
+    },
+    {
+      "id": "source_worker_named_user_cannot_retry",
+      "passed": true,
+      "error": "不是此项目的开发成员"
+    },
+    {
+      "id": "source_worker_named_user_cannot_release",
+      "passed": true,
+      "error": "不是此项目的开发成员"
+    },
+    {
+      "id": "source_worker_name_does_not_create_release",
+      "passed": true
+    },
+    {
+      "id": "source_worker_name_does_not_create_version",
+      "passed": true
+    },
+    {
+      "id": "revoked_project_queued_release_is_not_claimed",
+      "passed": true
+    },
+    {
+      "id": "revoked_project_queued_release_cancelled_with_event",
+      "passed": true,
+      "release_job_id": "9595e286a8424d2f99a070ededddece7",
+      "status": "failed",
+      "stage": "authorization_revoked"
+    },
+    {
+      "id": "release_rejects_legacy_rules",
+      "passed": true,
+      "error": "缺少与候选提交绑定的数据流验收及镜像凭证，必须重新验收"
+    },
+    {
+      "id": "legacy_rules_does_not_queue_release",
+      "passed": true
+    },
+    {
+      "id": "release_rejects_missing_browser",
+      "passed": true,
+      "error": "缺少与候选提交绑定的真实浏览器验收，必须重新验收"
+    },
+    {
+      "id": "missing_browser_does_not_queue_release",
+      "passed": true
+    },
+    {
+      "id": "release_rejects_wrong_browser_revision",
+      "passed": true,
+      "error": "缺少与候选提交绑定的真实浏览器验收，必须重新验收"
+    },
+    {
+      "id": "wrong_browser_revision_does_not_queue_release",
+      "passed": true
+    },
+    {
+      "id": "current_browser_attestation_queues_rules_three_release",
+      "passed": true
+    }
+  ],
+  "cleanup": {
+    "schema_removed": true,
+    "existing_public_data_modified": false
+  },
+  "synthetic_accounts": {
+    "owner": "auth_c6e5885165_owner",
+    "member": "auth_c6e5885165_member",
+    "demoted": "auth_c6e5885165_demoted",
+    "worker_name": "source-worker"
+  },
+  "finished_at": "2026-10-17T04:33:52.407967+00:00"
+}

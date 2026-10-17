@@ -87,7 +87,7 @@ async function uploadFiles(files: File[]) {
  if (!files.length || uploading.value || thinking.value) return
  uploading.value = true; uploadError.value = ''
  const sessionId = demo.state.currentSessionId
- try { for (const file of files) { const material = await backendClient.material(file); if (disposed || sessionId !== demo.state.currentSessionId) return; attached.value.push({ id: material.material_id, name: material.name || file.name }) } }
+ try { for (const file of files) { const material = await backendClient.material(file); if (disposed || sessionId !== demo.state.currentSessionId) return; if (!attached.value.some(item => item.id === material.material_id)) attached.value.push({ id: material.material_id, name: material.name || file.name }) } }
  catch (e) { if (!disposed && sessionId === demo.state.currentSessionId) uploadError.value = (e as Error).message }
  finally { uploading.value = false; if (fileInput.value) fileInput.value.value = '' }
 }

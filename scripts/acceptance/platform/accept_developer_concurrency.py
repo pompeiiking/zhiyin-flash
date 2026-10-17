@@ -238,7 +238,10 @@ async def run(output):
             for operation, (path, body) in requests.items():
                 response = await client.post("/api/v1" + path, json=body)
                 result = response.json()
-                assertion(f"old_token_{operation}_denied_after_role_demotion", response.status_code == 401 and result.get("code") == 1004,
+                # The token is still authentic; the authoritative account role no
+                # longer permits this operation. Preserve the login and report a
+                # permission denial instead of making the client log the user out.
+                assertion(f"old_token_{operation}_denied_after_role_demotion", response.status_code == 403 and result.get("code") == 1008,
                     http_status=response.status_code, code=result.get("code"))
         await denied("repository_upload_rechecks_demoted_role", upload(pid, accounts["demoted"], version="1.0.1", base=version["id"]))
         await denied("repository_retry_rechecks_demoted_role", repository.retry(version["id"], accounts["demoted"]))

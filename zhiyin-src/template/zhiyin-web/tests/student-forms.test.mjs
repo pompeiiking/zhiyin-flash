@@ -18,6 +18,7 @@ function setup(name,api={},props={},plan={phases:[]}){
     '../api/student-capabilities':{studentApi:api},
     '../api/backend-client':{backendClient:{action:async()=>{throw Error('计划读取失败')}}},
     '../lib/form-values.mjs':formValues,
+    '../lib/form-conflict':{conflictRows:()=>[],rebaseForm:(draft,original,latest)=>({...latest,...draft})},
     '../lib/action-insights.mjs':insights,
     '../lib/backend-demo':{backendDemo:{state:vue.reactive({liveAction:plan})}},
     '../lib/system-data':{refreshNotifications:async()=>{}},
@@ -51,8 +52,9 @@ test('an older workload request cannot replace the current date or clear its loa
 
 test('saving weights reports a successful write separately from a failed recalculation read',async()=>{
   let writes=0
-  const app=setup('DirectionScoring',{saveWeights:async()=>{writes++},compare:async()=>{throw Error('读取失败')}})
+  const app=setup('DirectionScoring',{saveWeights:async value=>{writes++;const {expected,...saved}=value;return saved},compare:async()=>{throw Error('读取失败')}})
   try{
+    app.state.data.value={weights:{...app.state.draft.value},plans:[]}
     await app.state.save()
     assert.equal(writes,1)
     assert.match(app.state.status.value,/已保存.*暂未更新/)
@@ -62,6 +64,45 @@ test('saving weights reports a successful write separately from a failed recalcu
     await app.state.save()
     assert.equal(writes,1)
     assert.match(app.state.error.value,/至少保留/)
+  }finally{app.stop()}
+})
+
+test('a weight conflict keeps the draft and rebases it on the latest snapshot',async()=>{
+  const conflict=Object.assign(new Error('记录已变化'),{code:1003});const writes=[];let attempt=0
+  const latest={major:1,jobs:1,salary:1,stability:1,location:4}
+  const app=setup('DirectionScoring',{saveWeights:async value=>{writes.push(value);if(++attempt===1)throw conflict;const {expected,...saved}=value;return saved},weights:async()=>latest,compare:async()=>({weights:{major:3,jobs:1,salary:1,stability:1,location:4},plans:[]})})
+  try{
+    app.state.data.value={weights:{major:1,jobs:1,salary:1,stability:1,location:1},plans:[]}
+    app.state.original.value={...app.state.data.value.weights};app.state.draft.value={...app.state.original.value,major:3}
+    await app.state.save()
+    assert.equal(app.state.draft.value.major,3);assert.equal(app.state.latest.value.location,4)
+    await app.state.confirmConflict()
+    assert.equal(writes[1].expected.location,4);assert.equal(writes[1].major,3)
+  }finally{app.stop()}
+})
+
+test('a semester conflict keeps local fields and retries against the latest semester',async()=>{
+  const conflict=Object.assign(new Error('记录已变化'),{code:1003});const writes=[];let attempt=0
+  const initial={first_monday:'2026-09-07',weeks:20,timezone:'Asia/Shanghai',periods:[{number:1,start:'08:00',end:'08:45'}],weekly_available_minutes:600}
+  const latest={...initial,weeks:18}
+  const app=setup('ScheduleCapacity',{saveSemester:async value=>{writes.push(value);if(++attempt===1)throw conflict;const {expected,...saved}=value;return saved},semester:async()=>latest,workload:async()=>({configured:true,weeks:[],conflicts:[],missing:[]})},{date:'2026-10-17'})
+  try{
+    app.state.setupReady.value=true;app.state.original.value=initial;app.state.first.value=initial.first_monday;app.state.weeks.value=22;app.state.periods.value=initial.periods;app.state.capacity.value=600
+    await app.state.save();assert.equal(app.state.weeks.value,22);assert.equal(app.state.latest.value.weeks,18)
+    await app.state.confirmConflict();assert.equal(writes[1].expected.weeks,18);assert.equal(writes[1].weeks,22)
+  }finally{app.stop()}
+})
+
+test('a measurement conflict preserves the entered value and retries with latest records',async()=>{
+  const conflict=Object.assign(new Error('记录已变化'),{code:1003});const writes=[];let attempt=0
+  const original={key:'fit',label:'适配度',value:50,minimum:0,maximum:100,threshold:null,source:'原记录',method:'量表',measured_at:'2026-10-16T00:00:00Z',origin:'self_report'}
+  const latest={...original,value:60,source:'另一标签页'}
+  const batches={items:[{asset_type:'report',version:1,subject_id:'report',measurements:[latest]}],history:[]}
+  const app=setup('MeasurementPanel',{saveMeasurements:async value=>{writes.push(value);if(++attempt===1)throw conflict;return value},measurements:async()=>batches},{assetType:'report',version:1,subjectId:'report',dimensions:[{key:'fit',label:'适配度'}]})
+  try{
+    app.state.records.value={items:[{asset_type:'report',version:1,subject_id:'report',measurements:[original]}],history:[]};app.state.key.value='fit';await vue.nextTick();app.state.value.value=70;app.state.source.value='本次填写';app.state.method.value='量表';app.state.when.value='2026-10-17T10:00'
+    await app.state.save();assert.equal(app.state.value.value,70);assert.equal(app.state.conflictLatest.value.value,60)
+    await app.state.confirmConflict();assert.equal(writes[1].expected[0].value,60);assert.equal(writes[1].measurements[0].value,70)
   }finally{app.stop()}
 })
 
@@ -82,6 +123,7 @@ test('a failed preference save clears a previous success message and preserves e
   const app=setup('AccountPreferences',{savePreferences:async()=>{throw Error('保存失败')}})
   try{
     app.state.values.value={proactive_reminders:false}
+    app.state.original.value={proactive_reminders:true}
     app.state.status.value='上次保存成功'
     await app.state.save()
     assert.equal(app.state.status.value,'')

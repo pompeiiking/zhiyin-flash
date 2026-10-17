@@ -24,8 +24,11 @@ from zhiyin_business.contracts.student import (
     Semester,
     ReviewEdit,
     NotificationEdit,
-    MeasurementBatch,
+    MeasurementEdit,
     DirectionWeights,
+    PreferencesEdit,
+    SemesterEdit,
+    DirectionWeightsEdit,
 )
 
 router = APIRouter(tags=["student-capabilities"])
@@ -60,7 +63,7 @@ async def preferences(request: Request):
 
 
 @router.put("/app/preferences", response_model=ApiResponse[Preferences])
-async def save_preferences(request: Request, body: Preferences):
+async def save_preferences(request: Request, body: PreferencesEdit):
     uid, service = await context(request)
     return ApiResponse(data=await service.save_preferences(uid, body))
 
@@ -149,7 +152,7 @@ async def measurements(request: Request):
 
 
 @router.post("/app/measurements", response_model=ApiResponse[MeasurementRecordView])
-async def save_measurements(request: Request, body: MeasurementBatch):
+async def save_measurements(request: Request, body: MeasurementEdit):
     uid, service = await context(request)
     return ApiResponse(data=await service.save_measurements(uid, body))
 
@@ -161,7 +164,7 @@ async def weights(request: Request):
 
 
 @router.put("/app/plan/direction-weights", response_model=ApiResponse[DirectionWeights])
-async def save_weights(request: Request, body: DirectionWeights):
+async def save_weights(request: Request, body: DirectionWeightsEdit):
     uid, service = await context(request)
     return ApiResponse(data=await service.weights(uid, body))
 
@@ -179,7 +182,7 @@ async def semester(request: Request):
 
 
 @router.put("/app/schedule/semester", response_model=ApiResponse[Semester])
-async def save_semester(request: Request, body: Semester):
+async def save_semester(request: Request, body: SemesterEdit):
     uid, service = await context(request)
     return ApiResponse(data=await service.semester(uid, body))
 

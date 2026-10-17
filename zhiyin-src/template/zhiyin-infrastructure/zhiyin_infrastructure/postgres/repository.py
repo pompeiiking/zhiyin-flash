@@ -41,7 +41,7 @@ from zhiyin_kernel.blackboard import (
     UserNote,
 )
 from zhiyin_kernel.enums import AssetType, BehaviorEventType, LoopStage, TaskStatus
-from zhiyin_kernel.errors import ResourceNotFound
+from zhiyin_kernel.errors import ResourceNotFound, DuplicateResource
 from zhiyin_kernel.identity import UserAccount
 from zhiyin_infrastructure.postgres.database import PostgresDatabase
 
@@ -223,11 +223,18 @@ class PostgresProfileRepository(ProfileRepository):
                     )
         return stored
 
-    async def upsert_field(self, user_id: str, field: ProfileField) -> ProfileField:
+    async def upsert_field(self, user_id: str, field: ProfileField, *, expected_updated_at: datetime | None = None, check_version: bool = False) -> ProfileField:
         incoming = field.model_copy(deep=True)
         incoming.updated_at = _now()
         async with self._db.transaction() as connection:
             await _lock(connection, f"profile:{user_id}")
+            if check_version:
+                row = await connection.fetchrow("SELECT * FROM biz_profile_field WHERE user_id=$1 AND key=$2", user_id, field.key)
+                if row and _load_value(row["value"]) == field.value and row["source"] == field.source.value:
+                    return ProfileField(key=row["key"], label=row["label"] or "", value=_load_value(row["value"]),
+                                        confidence=row["confidence"], source=row["source"], evidence=_load_value(row["evidence"]) or [], updated_at=row["updated_at"])
+                if (row["updated_at"] if row else None) != expected_updated_at:
+                    raise DuplicateResource("这项画像已更新，你的输入仍保留，请核对最新信息后再保存。")
             await connection.execute(
                 """
                 INSERT INTO biz_profile (user_id, profile_id, version, updated_at)

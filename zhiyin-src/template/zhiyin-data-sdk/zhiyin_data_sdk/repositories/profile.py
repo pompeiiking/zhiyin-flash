@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from datetime import datetime
 from typing import Optional, Sequence
 
 from zhiyin_kernel.blackboard import (
@@ -24,7 +25,7 @@ class ProfileRepository(ABC):
         """整体保存画像，返回落库后的对象。"""
 
     @abstractmethod
-    async def upsert_field(self, user_id: str, field: ProfileField) -> ProfileField:
+    async def upsert_field(self, user_id: str, field: ProfileField, *, expected_updated_at: datetime | None = None, check_version: bool = False) -> ProfileField:
         """写入 / 更新单个画像字段。已存在则覆盖并刷新 updated_at。"""
 
     @abstractmethod

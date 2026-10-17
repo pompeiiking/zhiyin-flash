@@ -1,0 +1,14 @@
+{
+  "stage": "diagnose",
+  "agent_id": "career_advisor",
+  "elapsed_ms": 36342.9,
+  "reply": "现有资料还不足以判断这些能力强弱。我先把缺少的原始材料保留为待核对，不把它当成你的短板。",
+  "source_urls": [
+    "https://xz.chsi.com.cn/speciality/detail.action?specId=hdyxw5rt5yg54yow",
+    "https://xz.chsi.com.cn/occupation/occudetail.action?id=621qz6e6s682xy2z",
+    "https://xz.chsi.com.cn/occupation/occudetail.action?id=lb4ql88xjx2n334x",
+    "https://xz.chsi.com.cn/occucase/casedetail.action?id=hfjdaw9umd3nitt3"
+  ],
+  "report_saved": false,
+  "report_sources": []
+}

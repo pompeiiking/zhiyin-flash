@@ -2995,6 +2995,35 @@ export interface components {
        */
       stability?: number;
     };
+    /** DirectionWeightsEdit */
+    DirectionWeightsEdit: {
+      expected: components["schemas"]["DirectionWeights"];
+      /**
+       * Jobs
+       * @default 1
+       */
+      jobs?: number;
+      /**
+       * Location
+       * @default 1
+       */
+      location?: number;
+      /**
+       * Major
+       * @default 1
+       */
+      major?: number;
+      /**
+       * Salary
+       * @default 1
+       */
+      salary?: number;
+      /**
+       * Stability
+       * @default 1
+       */
+      stability?: number;
+    };
     /**
      * DisclosureView
      * @description 显式告知行：换主理 / 换理论依据 / 结论变化。
@@ -3019,7 +3048,7 @@ export interface components {
      * @description 统一错误码。前端据此提示，不解析后端文案。
      * @enum {integer}
      */
-    ErrorCode: 0 | 1001 | 1002 | 1003 | 1004 | 1005 | 1006 | 1007 | 1008 | 1999;
+    ErrorCode: 0 | 1001 | 1002 | 1003 | 1004 | 1005 | 1006 | 1007 | 1008 | 1009 | 1999;
     /** ExecutorUpdate */
     ExecutorUpdate: {
       /** Event */
@@ -3303,13 +3332,15 @@ export interface components {
       /** Value */
       value: number;
     };
-    /** MeasurementBatch */
-    MeasurementBatch: {
+    /** MeasurementEdit */
+    MeasurementEdit: {
       /**
        * Asset Type
        * @enum {string}
        */
       asset_type: "report" | "direction_plan";
+      /** Expected */
+      expected: components["schemas"]["Measurement"][];
       /** Measurements */
       measurements: components["schemas"]["Measurement"][];
       /** Subject Id */
@@ -4042,6 +4073,34 @@ export interface components {
        */
       timezone?: string;
     };
+    /** PreferencesEdit */
+    PreferencesEdit: {
+      /**
+       * Academic Analysis
+       * @default true
+       */
+      academic_analysis?: boolean;
+      expected: components["schemas"]["Preferences"];
+      /**
+       * Material Analysis
+       * @default true
+       */
+      material_analysis?: boolean;
+      /**
+       * Proactive Reminders
+       * @default true
+       */
+      proactive_reminders?: boolean;
+      /** Quiet End */
+      quiet_end?: string | null;
+      /** Quiet Start */
+      quiet_start?: string | null;
+      /**
+       * Timezone
+       * @default Asia/Shanghai
+       */
+      timezone?: string;
+    };
     /**
      * ProfileFieldUpdateRequest
      * @description 用户手动更正一条画像字段（issue #26 第三条）。
@@ -4056,6 +4115,11 @@ export interface components {
      * 一句英文的字段名错误，用户看不懂自己该改什么。
      */
     ProfileFieldUpdateRequest: {
+      /**
+       * Expected Updated At
+       * @description 编辑时字段时间；首次填写传 null
+       */
+      expected_updated_at: string | null;
       /**
        * Value
        * @description 用户认可的那个值（空串会被拒 —— 清空是另一件事）
@@ -4461,6 +4525,29 @@ export interface components {
     };
     /** Semester */
     Semester: {
+      /**
+       * First Monday
+       * Format: date
+       */
+      first_monday: string;
+      /** Periods */
+      periods: components["schemas"]["Period"][];
+      /**
+       * Timezone
+       * @default Asia/Shanghai
+       */
+      timezone?: string;
+      /** Weekly Available Minutes */
+      weekly_available_minutes?: number | null;
+      /**
+       * Weeks
+       * @default 20
+       */
+      weeks?: number;
+    };
+    /** SemesterEdit */
+    SemesterEdit: {
+      expected: components["schemas"]["Semester"] | null;
       /**
        * First Monday
        * Format: date
@@ -5500,7 +5587,7 @@ export interface operations {
   save_measurements_api_v1_app_measurements_post: {
     requestBody: {
       content: {
-        "application/json": components["schemas"]["MeasurementBatch"];
+        "application/json": components["schemas"]["MeasurementEdit"];
       };
     };
     responses: {
@@ -5955,7 +6042,7 @@ export interface operations {
   save_weights_api_v1_app_plan_direction_weights_put: {
     requestBody: {
       content: {
-        "application/json": components["schemas"]["DirectionWeights"];
+        "application/json": components["schemas"]["DirectionWeightsEdit"];
       };
     };
     responses: {
@@ -6097,7 +6184,7 @@ export interface operations {
   save_preferences_api_v1_app_preferences_put: {
     requestBody: {
       content: {
-        "application/json": components["schemas"]["Preferences"];
+        "application/json": components["schemas"]["PreferencesEdit"];
       };
     };
     responses: {
@@ -6284,7 +6371,7 @@ export interface operations {
   save_semester_api_v1_app_schedule_semester_put: {
     requestBody: {
       content: {
-        "application/json": components["schemas"]["Semester"];
+        "application/json": components["schemas"]["SemesterEdit"];
       };
     };
     responses: {

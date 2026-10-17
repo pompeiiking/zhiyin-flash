@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { featureEnabled } from '../lib/features'
 import { computed, onMounted, ref } from 'vue'
 import { growthRecords } from '../lib/growth-records'
 import { loadAchievements, systemData } from '../lib/system-data'
@@ -82,7 +83,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <section class="growth-page" aria-label="完成记录">
+  <section v-if="featureEnabled('achievements')" class="growth-page" aria-label="完成记录">
     <StatusBanner
       v-if="error"
       tone="error"

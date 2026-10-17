@@ -4,6 +4,8 @@ import { studentApi, type Comparison } from '../api/student-capabilities'
 import type { DirectionWeights } from '../api/backend-types'
 import DetailPopover from './DetailPopover.vue'
 import MeasurementPanel from './MeasurementPanel.vue'
+import FormConflict from './FormConflict.vue'
+import { conflictRows, rebaseForm } from '../lib/form-conflict'
 
 const data = ref<Comparison | null>(null)
 const error = ref('')
@@ -13,11 +15,27 @@ const status = ref('')
 const expanded = ref('')
 const defaults = () => ({ major: 1, jobs: 1, salary: 1, stability: 1, location: 1 })
 const draft = ref<DirectionWeights>(defaults())
+const original = ref<DirectionWeights | null>(null)
+const latest = ref<DirectionWeights | null>(null)
 const id = useId()
 const dimensions = [{ key: 'major', label: '专业对口' }, { key: 'jobs', label: '岗位数量' }, { key: 'salary', label: '起薪水平' }, { key: 'stability', label: '稳定性' }, { key: 'location', label: '通勤与地点' }] as const
 const allDimensions = [...dimensions, { key: 'opportunity', label: '机会坐标' }, { key: 'feasibility', label: '可达性坐标' }]
 const points = computed(() => data.value?.plans.filter(plan => plan.opportunity != null && plan.feasibility != null) ?? [])
 const hasScores = computed(() => data.value?.plans.some(plan => plan.score != null) ?? false)
+const conflictDetails = computed(() => original.value && latest.value ? conflictRows(
+  draft.value,
+  original.value,
+  latest.value,
+  Object.fromEntries(dimensions.map(item => [item.key, item.label])),
+) : [])
+
+async function confirmConflict() {
+  if (!original.value || !latest.value) return
+  draft.value = rebaseForm(draft.value, original.value, latest.value)
+  original.value = { ...latest.value }
+  latest.value = null
+  await save()
+}
 
 async function load() {
   loading.value = true
@@ -25,6 +43,8 @@ async function load() {
   try {
     data.value = await studentApi.compare()
     draft.value = { ...defaults(), ...data.value.weights }
+    original.value = { ...data.value.weights }
+    latest.value = null
   } catch (e) {
     error.value = (e as Error).message
   } finally {
@@ -33,7 +53,7 @@ async function load() {
 }
 
 async function save() {
-  if (busy.value || loading.value) return
+  if (busy.value || loading.value || !data.value) return
   status.value = ''
   error.value = ''
   if (!dimensions.some(dimension => (draft.value[dimension.key] ?? 0) > 0)) {
@@ -42,11 +62,19 @@ async function save() {
   }
   busy.value = true
   try {
-    await studentApi.saveWeights({ ...draft.value })
+    const saved = await studentApi.saveWeights({ ...draft.value, expected: { ...(original.value ?? data.value!.weights) } })
+    data.value!.weights = saved
+    draft.value = { ...saved }
+    original.value = { ...saved }
+    latest.value = null
     await load()
     status.value = error.value ? '偏好已保存，比较结果暂未更新，请重新读取。' : '偏好已保存，比较结果已更新。'
   } catch (e) {
     error.value = (e as Error).message
+    if ((e as { code?: number }).code === 1003) {
+      try { latest.value = await studentApi.weights() }
+      catch { error.value += ' 最新记录暂未取得，请稍后重试。' }
+    }
   } finally {
     busy.value = false
   }
@@ -68,7 +96,8 @@ onMounted(load)
               <label v-for="dimension in dimensions" :key="dimension.key" class="ws-field">{{ dimension.label }}<span class="weight-control"><input v-model.number="draft[dimension.key]" type="range" min="0" max="5" step="1" /><output>{{ draft[dimension.key] }}</output></span></label>
             </fieldset>
             <p class="ws-muted">0 表示不计入，至少保留一项；缺少依据的维度不会自动补分。</p>
-            <div class="ws-inline-actions"><button type="button" class="btn" :disabled="busy || loading || !data" @click="draft = defaults(); status = ''">同等权重</button><button class="btn btn--primary" :disabled="busy || loading || !data">{{ busy ? '正在保存…' : '保存并重算' }}</button></div>
+            <FormConflict v-if="latest" :rows="conflictDetails" :busy="busy" @confirm="confirmConflict" />
+            <div class="ws-inline-actions"><button type="button" class="btn" :disabled="busy || loading || !data" @click="draft = defaults(); status = ''">同等权重</button><button class="btn btn--primary" :disabled="busy || loading || !data || latest !== null">{{ busy ? '正在保存…' : '保存并重算' }}</button></div>
           </form>
         </DetailPopover>
       </div>

@@ -4417,6 +4417,54 @@
         "title": "DirectionWeights",
         "type": "object"
       },
+      "DirectionWeightsEdit": {
+        "additionalProperties": false,
+        "properties": {
+          "expected": {
+            "$ref": "#/components/schemas/DirectionWeights"
+          },
+          "jobs": {
+            "default": 1,
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Jobs",
+            "type": "number"
+          },
+          "location": {
+            "default": 1,
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Location",
+            "type": "number"
+          },
+          "major": {
+            "default": 1,
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Major",
+            "type": "number"
+          },
+          "salary": {
+            "default": 1,
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Salary",
+            "type": "number"
+          },
+          "stability": {
+            "default": 1,
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Stability",
+            "type": "number"
+          }
+        },
+        "required": [
+          "expected"
+        ],
+        "title": "DirectionWeightsEdit",
+        "type": "object"
+      },
       "DisclosureView": {
         "additionalProperties": false,
         "description": "显式告知行：换主理 / 换理论依据 / 结论变化。",
@@ -4483,6 +4531,7 @@
           1006,
           1007,
           1008,
+          1009,
           1999
         ],
         "title": "ErrorCode",
@@ -4991,7 +5040,7 @@
         "title": "Measurement",
         "type": "object"
       },
-      "MeasurementBatch": {
+      "MeasurementEdit": {
         "additionalProperties": false,
         "properties": {
           "asset_type": {
@@ -5001,6 +5050,14 @@
             ],
             "title": "Asset Type",
             "type": "string"
+          },
+          "expected": {
+            "items": {
+              "$ref": "#/components/schemas/Measurement"
+            },
+            "maxItems": 30,
+            "title": "Expected",
+            "type": "array"
           },
           "measurements": {
             "items": {
@@ -5026,9 +5083,10 @@
           "asset_type",
           "version",
           "subject_id",
-          "measurements"
+          "measurements",
+          "expected"
         ],
-        "title": "MeasurementBatch",
+        "title": "MeasurementEdit",
         "type": "object"
       },
       "MeasurementListView": {
@@ -6639,10 +6697,80 @@
         "title": "Preferences",
         "type": "object"
       },
+      "PreferencesEdit": {
+        "additionalProperties": false,
+        "properties": {
+          "academic_analysis": {
+            "default": true,
+            "title": "Academic Analysis",
+            "type": "boolean"
+          },
+          "expected": {
+            "$ref": "#/components/schemas/Preferences"
+          },
+          "material_analysis": {
+            "default": true,
+            "title": "Material Analysis",
+            "type": "boolean"
+          },
+          "proactive_reminders": {
+            "default": true,
+            "title": "Proactive Reminders",
+            "type": "boolean"
+          },
+          "quiet_end": {
+            "anyOf": [
+              {
+                "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quiet End"
+          },
+          "quiet_start": {
+            "anyOf": [
+              {
+                "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quiet Start"
+          },
+          "timezone": {
+            "default": "Asia/Shanghai",
+            "title": "Timezone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "expected"
+        ],
+        "title": "PreferencesEdit",
+        "type": "object"
+      },
       "ProfileFieldUpdateRequest": {
         "additionalProperties": false,
         "description": "用户手动更正一条画像字段（issue #26 第三条）。\n\n只有一个 `value`，键在路径上（`POST /app/profile/fields/{key}`）：\n\"改哪一条\"不是可选的 —— 揉进请求体里，就等于允许一次请求改任意多条，\n而界面上的入口从来只对着一条。\n\n**为什么这里不设长度上限**：上限是业务口径（40 字，见\n`DefaultProfileService.MAX_FIELD_VALUE_CHARS`），超长要说人话\n（\"最多 40 个字，现在有 56 个\"）。交给 Pydantic 的 `max_length` 只会得到\n一句英文的字段名错误，用户看不懂自己该改什么。",
         "properties": {
+          "expected_updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "编辑时字段时间；首次填写传 null",
+            "title": "Expected Updated At"
+          },
           "value": {
             "description": "用户认可的那个值（空串会被拒 —— 清空是另一件事）",
             "title": "Value",
@@ -6650,7 +6778,8 @@
           }
         },
         "required": [
-          "value"
+          "value",
+          "expected_updated_at"
         ],
         "title": "ProfileFieldUpdateRequest",
         "type": "object"
@@ -7402,6 +7531,67 @@
           "periods"
         ],
         "title": "Semester",
+        "type": "object"
+      },
+      "SemesterEdit": {
+        "additionalProperties": false,
+        "properties": {
+          "expected": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Semester"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "first_monday": {
+            "format": "date",
+            "title": "First Monday",
+            "type": "string"
+          },
+          "periods": {
+            "items": {
+              "$ref": "#/components/schemas/Period"
+            },
+            "maxItems": 30,
+            "minItems": 1,
+            "title": "Periods",
+            "type": "array"
+          },
+          "timezone": {
+            "default": "Asia/Shanghai",
+            "title": "Timezone",
+            "type": "string"
+          },
+          "weekly_available_minutes": {
+            "anyOf": [
+              {
+                "maximum": 10080.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weekly Available Minutes"
+          },
+          "weeks": {
+            "default": 20,
+            "maximum": 53.0,
+            "minimum": 1.0,
+            "title": "Weeks",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "first_monday",
+          "periods",
+          "expected"
+        ],
+        "title": "SemesterEdit",
         "type": "object"
       },
       "SessionListView": {
@@ -9246,7 +9436,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/MeasurementBatch"
+                "$ref": "#/components/schemas/MeasurementEdit"
               }
             }
           },
@@ -10062,7 +10252,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/DirectionWeights"
+                "$ref": "#/components/schemas/DirectionWeightsEdit"
               }
             }
           },
@@ -10269,7 +10459,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Preferences"
+                "$ref": "#/components/schemas/PreferencesEdit"
               }
             }
           },
@@ -10606,7 +10796,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Semester"
+                "$ref": "#/components/schemas/SemesterEdit"
               }
             }
           },

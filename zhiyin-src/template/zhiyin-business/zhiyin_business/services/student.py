@@ -6,6 +6,7 @@ from uuid import uuid4, uuid5, NAMESPACE_URL
 from zoneinfo import ZoneInfo
 
 from zhiyin_business.contracts.common import AssetUpdateDraft
+from zhiyin_business.services.form_merge import merge_form
 from zhiyin_kernel.assets import ActionPlan, ActionPhase, ActionTask
 from zhiyin_kernel.enums import AssetType
 from zhiyin_kernel.errors import InvalidRequest, ResourceNotFound
@@ -70,15 +71,32 @@ class StudentService:
 
     async def save_preferences(self, user_id, body):
         previous = await self.preferences(user_id)
-        await self.state.update(
-            user_id, lambda s: {**s, "preferences": body.model_dump(mode="json")}
-        )
+        body = await self._save_form(user_id, "preferences", body, Preferences)
         if self.ai_tasks is not None and (
             previous.academic_analysis != body.academic_analysis
             or previous.material_analysis != body.material_analysis
         ):
             await self.ai_tasks.invalidate(user_id)
         return body
+
+    async def _save_form(self, user_id, key, body, model, *, nullable=False):
+        result = None
+
+        def change(state):
+            nonlocal result
+            desired = body.model_dump(mode="json", exclude={"expected"})
+            raw = state.get(key)
+            current = None if nullable and raw is None else model.model_validate(raw or {}).model_dump(mode="json")
+            # Internal callers with value-only models retain their existing contract;
+            # public write DTOs require an explicit snapshot, including first creation.
+            if hasattr(body, "expected"):
+                expected = body.expected.model_dump(mode="json") if body.expected is not None else None
+                desired = merge_form(current, expected, desired)
+            result = model.model_validate(desired)
+            return {**state, key: result.model_dump(mode="json")}
+
+        await self.state.update(user_id, change)
+        return result
 
     async def can_notify(self, user_id):
         prefs = await self.preferences(user_id)
@@ -448,10 +466,19 @@ class StudentService:
 
         def change(s):
             old = s.setdefault("measurements", {}).get(key)
+            values = body.model_dump(mode="json", exclude={"expected"})
+            if hasattr(body, "expected"):
+                desired = {m["key"]: m for m in values["measurements"]}
+                expected = {m.key: m.model_dump(mode="json") for m in body.expected}
+                current = {m["key"]: m for m in (old or {}).get("measurements", [])}
+                values["measurements"] = list(merge_form(current, expected, desired).values())
+                values = MeasurementBatch.model_validate(values).model_dump(mode="json")
+            if old and old["measurements"] == values["measurements"]:
+                return s
             if old:
                 s.setdefault("measurement_history", []).append(old)
             s["measurements"][key] = {
-                **body.model_dump(mode="json"),
+                **values,
                 "recorded_at": now().isoformat(),
             }
             return s
@@ -467,9 +494,7 @@ class StudentService:
 
     async def weights(self, user_id, body=None):
         if body is not None:
-            await self.state.update(
-                user_id, lambda s: {**s, "direction_weights": body.model_dump()}
-            )
+            return await self._save_form(user_id, "direction_weights", body, DirectionWeights)
         return DirectionWeights.model_validate(
             (await self.state.get(user_id)).get("direction_weights", {})
         )
@@ -515,9 +540,7 @@ class StudentService:
 
     async def semester(self, user_id, body=None):
         if body is not None:
-            await self.state.update(
-                user_id, lambda s: {**s, "semester": body.model_dump(mode="json")}
-            )
+            return await self._save_form(user_id, "semester", body, Semester, nullable=True)
         return (await self.state.get(user_id)).get("semester")
 
     async def require_analysis_consent(self, user_id):

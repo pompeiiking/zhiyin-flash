@@ -203,6 +203,22 @@ class DirectionWeights(StrictModel):
 
     @model_validator(mode="after")
     def nonzero(self):
-        if sum(self.model_dump().values()) <= 0:
+        if sum(getattr(self, key) for key in ("major", "jobs", "salary", "stability", "location")) <= 0:
             raise ValueError("至少一项权重需要大于零")
         return self
+
+
+class PreferencesEdit(Preferences):
+    expected: Preferences
+
+
+class MeasurementEdit(MeasurementBatch):
+    expected: list[Measurement] = Field(max_length=30)
+
+
+class DirectionWeightsEdit(DirectionWeights):
+    expected: DirectionWeights
+
+
+class SemesterEdit(Semester):
+    expected: Semester | None

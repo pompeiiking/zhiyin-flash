@@ -360,6 +360,94 @@ async def test_diagnose_stage_fetches_through_the_cached_intel_service(
     assert external["records"][0]["title"] == "会计学"
 
 
+async def test_evidence_unsafe_diagnosis_is_withheld_before_reply_and_report(
+    container: Container,
+) -> None:
+    """跨字段证据校验必须发生在用户看到回复和报告落库之前。"""
+    from zhiyin_business.ports.function import ExternalIntel
+    from zhiyin_business.ports.orchestrator import TurnRequest
+    from zhiyin_kernel.enums import AssetType
+
+    await container.profile_service.update_field(
+        "u-unsafe-diagnose", "major", "会计学", confidence=0.9, source="conversation"
+    )
+    functions = _StubFunctions([
+        ExternalIntel(
+            id="S1",
+            kind="speciality",
+            kind_label="专业",
+            title="会计学",
+            text="专业：会计学",
+            source_url="https://xz.chsi.com.cn/speciality/detail.action?specId=S1",
+            source_name="学职平台 · 学信网",
+            fetched_at="10/17/2026 09:00:00",
+        )
+    ])
+
+    class _UnsafeEngine(AgentEngine):
+        async def invoke(self, request: AgentRequest) -> AgentResult:
+            if request.agent_id == "info_scout":
+                return AgentResult(
+                    agent_id=request.agent_id,
+                    valid=True,
+                    structured={
+                        "facts": [{
+                            "topic": "岗位要求",
+                            "content": "专业：会计学",
+                            "source": "学职平台 · 学信网",
+                            "source_url": "https://xz.chsi.com.cn/speciality/detail.action?specId=S1",
+                            "fetched_at": "10/17/2026 09:00:00",
+                        }],
+                    },
+                )
+            return AgentResult(
+                agent_id=request.agent_id,
+                valid=True,
+                raw_text="未提供作品，所以你的项目能力不足。",
+                structured={
+                    "conclusion": "未提供作品，所以你的项目能力不足。",
+                    "verdict": {"title": "能力不足", "summary": "目前没有作品。"},
+                    "swot": {
+                        "strength": [],
+                        "weakness": ["未提供作品，因此项目能力不足"],
+                        "opportunity": [],
+                        "risk": [],
+                    },
+                    "dimensions": [],
+                    "gaps": [],
+                },
+            )
+
+    orchestrator = DefaultOrchestrator(
+        profiles=container.profile_service,
+        behaviors=container.behavior_service,
+        memories=container.memory_service,
+        assets=container.asset_service,
+        intent_policy=KeywordIntentPolicy(container.registry_service),
+        stage_policy=RuleStagePolicy(container.registry_service),
+        lead_policy=RegistryLeadPolicy(container.registry_service),
+        handoff_policy=DisclosureHandoffPolicy(),
+        agent_engine=_UnsafeEngine(),
+        sessions=container.sessions,
+        registry=container.registry_service,
+        event_bus=container.event_bus_primitive,
+        functions=functions,
+    )
+    session = await orchestrator.enter_task("u-unsafe-diagnose", "verify_direction")
+    result = await orchestrator.handle_message(TurnRequest(
+        user_id="u-unsafe-diagnose",
+        task_id=session.id,
+        message="请帮我判断这个方向。",
+    ))
+
+    assert result.messages
+    assert "不把它当成你的短板" in result.messages[-1].text
+    assert "项目能力不足" not in result.messages[-1].text
+    assert await container.asset_service.list_versions(
+        "u-unsafe-diagnose", AssetType.REPORT
+    ) == []
+
+
 async def test_collect_stage_only_reads_the_cache(container: Container) -> None:
     """① 采集**不主动取**外部事实：缓存里有就用，没有就不取。
 

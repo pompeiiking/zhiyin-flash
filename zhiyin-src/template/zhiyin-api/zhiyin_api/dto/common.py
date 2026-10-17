@@ -36,6 +36,7 @@ class ErrorCode(IntEnum):
     STAGE_UNCERTAIN = 1006        # 环节判定不确定，已回落澄清追问
     DEPENDENCY_UNAVAILABLE = 1007 # 模型 / 知识库不可用（已降级）
     FORBIDDEN = 1008             # 身份有效，但无权操作；保留登录状态
+    RATE_LIMITED = 1009          # 请求未执行，可按 Retry-After 重试
     INTERNAL = 1999
 
 

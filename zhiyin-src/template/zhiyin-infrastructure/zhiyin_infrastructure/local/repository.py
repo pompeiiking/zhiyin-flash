@@ -69,7 +69,7 @@ from zhiyin_kernel.registry import (
     TrackEventSpec,
     UserSignalSpec,
 )
-from zhiyin_kernel.errors import ResourceNotFound
+from zhiyin_kernel.errors import ResourceNotFound, DuplicateResource
 from zhiyin_data_sdk.repositories import (
     AcademicSnapshotRepository,
     AssetRepository,
@@ -120,8 +120,14 @@ class InMemoryProfileRepository(ProfileRepository):
         self._profiles[profile.user_id] = stored
         return _snapshot(stored)
 
-    async def upsert_field(self, user_id: str, field: ProfileField) -> ProfileField:
+    async def upsert_field(self, user_id: str, field: ProfileField, *, expected_updated_at: datetime | None = None, check_version: bool = False) -> ProfileField:
         profile = self._ensure(user_id)
+        existing = next((f for f in profile.fields if f.key == field.key), None)
+        if check_version:
+            if existing and existing.value == field.value and existing.source == field.source:
+                return _snapshot(existing)
+            if (existing.updated_at if existing else None) != expected_updated_at:
+                raise DuplicateResource("这项画像已更新，你的输入仍保留，请核对最新信息后再保存。")
         incoming = _snapshot(field)
         incoming.updated_at = _now()
         for index, existing in enumerate(profile.fields):

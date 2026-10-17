@@ -247,6 +247,52 @@ class DefaultOrchestrator(Orchestrator):
         dumped["topic"] = topic
         return dumped
 
+    async def _run_info_scout(self, external: dict[str, Any], stage: LoopStage) -> list[dict[str, Any]]:
+        """Give the enabled scout its own model call, then keep only verifiable URLs.
+
+        The raw records came from the external-data gateway. The scout can shorten and
+        classify them, but cannot introduce another source: every returned source_url
+        must exactly match one of those records. If the scout is unavailable or returns
+        unusable output, the original linked records remain the factual fallback.
+        """
+        from zhiyin_business.contracts.diagnose import FactItem, ScoutOutput
+
+        records = [row for row in external.get("records", []) if isinstance(row, dict)]
+        allowed = {str(row.get("source_url") or "") for row in records}
+        allowed.discard("")
+        fallback = [
+            FactItem(
+                topic=kind_label(str(row.get("kind") or "")) or "外部事实",
+                content=str(row.get("text") or row.get("title") or "")[:500],
+                source=str(row.get("source_name") or source_name_of(str(row.get("source_url") or ""))),
+                source_url=str(row.get("source_url") or ""),
+                fetched_at=str(row.get("fetched_at") or ""),
+            ).model_dump(mode="json")
+            for row in records
+            if row.get("source_url") and (row.get("text") or row.get("title"))
+        ]
+        if not fallback:
+            return []
+        try:
+            result = await self._agent_engine.invoke(
+                AgentRequest(
+                    agent_id="info_scout",
+                    stage=stage.value,
+                    prompt_code="role.info_scout",
+                    use_tools=False,
+                    prompt_vars={"external_data": external},
+                    output_schema=ScoutOutput.model_json_schema(),
+                )
+            )
+            if result.valid:
+                output = ScoutOutput.model_validate(result.structured)
+                verified = [item.model_dump(mode="json") for item in output.facts if item.source_url in allowed]
+                if verified:
+                    return verified
+        except Exception:  # noqa: BLE001 - 外部事实已有原始记录，侦查员失败不应中断主回答
+            logger.warning("信息侦查员整理失败，保留原始可核对记录", exc_info=True)
+        return fallback
+
     async def read_blackboard(self, user_id: str, task_id: str) -> BlackboardView:
         session = await self._sessions.get(task_id)
         asset_versions = []
@@ -608,6 +654,7 @@ class DefaultOrchestrator(Orchestrator):
             for spec in self._profile_vocabulary()
         ]
         # 主动取 / 只读缓存，两档见 `_EXTERNAL_FETCH_STAGES` 的说明。
+        external: dict[str, Any] | None = None
         if blackboard.profile is not None and stage in (
             _EXTERNAL_FETCH_STAGES | _EXTERNAL_CACHE_ONLY_STAGES
         ):
@@ -646,6 +693,32 @@ class DefaultOrchestrator(Orchestrator):
         )
 
         structured = result.structured or {}
+        if external is not None and lead.info_scout_required:
+            verified_facts = await self._run_info_scout(external, stage)
+            if stage is LoopStage.DIAGNOSE:
+                # Report sources are rebuilt from the scout's URL-checked facts.
+                # The lead cannot promote a source label or invented link into an asset.
+                structured["facts"] = verified_facts
+        if stage is LoopStage.DIAGNOSE and structured:
+            # The generic agent engine validates JSON Schema. Pydantic's cross-field
+            # validators are deliberately outside JSON Schema, so run the business
+            # contract once more before either the reply or report can consume it.
+            # Otherwise a structurally valid output can still turn "not provided"
+            # into a personal weakness, reach the chat, and only fail much later when
+            # the report converter happens to validate it.
+            from zhiyin_business.contracts.diagnose import DiagnoseOutput
+
+            try:
+                structured = DiagnoseOutput.model_validate(structured).model_dump(
+                    mode="json"
+                )
+            except Exception as exc:  # noqa: BLE001 - invalid model output has a safe reply
+                logger.warning(
+                    "诊断产出未通过证据边界校验，不展示且不落库：%s", exc
+                )
+                result.valid = False
+                result.errors.append("诊断证据边界校验失败")
+                structured = _unsafe_diagnose_fallback(structured)
         task_labels: dict[str, str] = {}
         if stage is LoopStage.REVIEW:
             plan = await self._assets.get_action_plan(request.user_id)
@@ -1921,6 +1994,28 @@ def _user_facing_text(
         return text.strip()
     raw = (raw_text or "").strip()
     return raw[:200] + ("…" if len(raw) > 200 else "") or "本轮已按当前环节完成分析。"
+
+
+def _unsafe_diagnose_fallback(structured: dict[str, Any]) -> dict[str, Any]:
+    """Keep verified sources while withholding an evidence-unsafe diagnosis.
+
+    This value is intentionally not a report-shaped substitute. ``result.valid`` is
+    set to false by the caller, so it cannot be persisted as a complete report. It is
+    only the short, deterministic reply shown for this turn; using the model's raw
+    prose here would reintroduce the claim that just failed the evidence boundary.
+    """
+    facts = structured.get("facts")
+    return {
+        "conclusion": (
+            "现有资料还不足以判断这些能力强弱。"
+            "我先把缺少的原始材料保留为待核对，不把它当成你的短板。"
+        ),
+        "facts": facts if isinstance(facts, list) else [],
+        "theory_refs": [],
+        "gaps": [],
+        "dimensions": [],
+        "guide": None,
+    }
 
 
 def _user_input_with_material(request: TurnRequest) -> str:
