@@ -1283,7 +1283,7 @@ class DefaultOrchestrator(Orchestrator):
         }
 
     def _normalize_profile_key(self, key: str) -> str:
-        """把模型写的同义词归到规范键上（`grade` → `degree_level`）。
+        """把模型写的同义词归到规范键上（`grade` → `study_year`）。
 
         不做这一步的后果，实测是这样的：同一个意思在不同轮次被写成
         `internship` / `internship_experience` / `experience` 三条，

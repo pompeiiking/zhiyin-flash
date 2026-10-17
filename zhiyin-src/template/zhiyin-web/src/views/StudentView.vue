@@ -2,6 +2,7 @@
 const MAX_CHARS = 40
 import {PROFILE_TOPICS, profilePriority, exactProfileKeys} from '../lib/profile-organization'
 import {profileLabel} from '../lib/server-copy'
+import {STUDY_YEAR_OPTIONS, studyYearLabel} from '../lib/study-year'
 import { onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 /**
@@ -133,7 +134,7 @@ const GAP_META: Record<string, { why: string; next: string }> = {
 
 /** 采集动线 → 字段 key（用于 C 段"去哪补"） */
 const COLLECT_OF: Record<string, string> = {
-  grade: '专业与年级', major: '专业与年级', rank: '成绩层级', schedule: '本周课表与空档',
+  study_year: '当前学习阶段', grade: '当前学习阶段', major: '专业', rank: '成绩层级', schedule: '本周课表与空档',
   award: '在校获奖与处分', jobtype: '目标岗位类型', salary: '薪资底线', city: '是否接受外省',
 }
 
@@ -150,7 +151,7 @@ const COLLECT_OF: Record<string, string> = {
  *      （present 讲"经历表达"→ internship + weakness + pipeline；compete 讲"对比里的差距"
  *       → internship + rank + award；demand / threshold 讲岗位要求 → jobtype + rank + city）；
  *   ③ 方向方案取它 evidence 里逐条点到的画像项（专业对口→major、兴趣倾向→interest、
- *      供给→jobtype/city、成绩→rank、地域偏好→city/family），再加上"学校与年级"（grade）。
+ *      供给→jobtype/city、成绩→rank、地域偏好→city/family），再加上当前学习阶段（study_year）。
  * 关键词不做任何推断；改这张表就是改演示里的追溯结果。
  */
 const DEMO_CONCL_FIELDS: Record<string, string[]> = {
@@ -163,7 +164,7 @@ const DEMO_CONCL_FIELDS: Record<string, string[]> = {
   city: ['city', 'family'],
   family: ['family'],
   time: ['time', 'schedule'],
-  d1: ['major', 'interest', 'jobtype', 'city', 'internship', 'grade'],
+  d1: ['major', 'interest', 'jobtype', 'city', 'internship', 'study_year'],
   d2: ['major', 'interest', 'rank', 'schedule', 'time'],
   d3: ['major', 'city', 'family', 'jobtype', 'time'],
 }
@@ -834,9 +835,9 @@ const identity = computed(() => {
   const pick = (key: string) => known.value.find((row) => row.key === key)?.value
   const name = live.value ? pick('name') || demo.state.account : STUDENT.name
   const school = live.value ? pick('school') : demo.state.profileEdits.school ?? STUDENT.school
-  const grade = live.value ? pick('grade') : demo.state.profileEdits.grade ?? demo.use.scenario.value.grade
+  const grade = live.value ? pick('study_year') || pick('grade') : demo.state.profileEdits.grade ?? demo.use.scenario.value.grade
   if (!live.value && demo.state.account === 'fresh') return { name: '新用户', line: '学校与年级待补充' }
-  return { name: name || '个人档案', line: [school, pick('major'), grade || pick('degree_level')].filter(Boolean).join(' · ') || '学校与年级待补充' }
+  return { name: name || '个人档案', line: [school, pick('major'), grade ? studyYearLabel(grade) : pick('degree_level')].filter(Boolean).join(' · ') || '学校与年级待补充' }
 })
 const profileSnapshot = computed(() => {
   const directions = backendDemo.state.liveDirections
@@ -866,7 +867,8 @@ const enrollmentRows = computed(() => {
   return [
     { label: '学校', row: pick('school', 'university') },
     { label: '专业', row: pick('major', 'major_name') },
-    { label: '年级 / 学历', row: pick('grade', 'degree_level', 'education') },
+    { label: '当前学习阶段', row: pick('study_year', 'grade') },
+    { label: '学历层次', row: pick('degree_level', 'education') },
     { label: '在读状态', row: pick('student_status', 'enrollment_status', 'study_status') },
   ].map(item => ({ ...item, value: item.row ? fieldValue(item.row) : '待补充' }))
 })
@@ -1300,7 +1302,8 @@ onMounted(()=>{ void loadWorkspace() })
          所以 shape 是 dialog（缺省也是它，这里写出来是为了让形态是**显式**的）。 -->
     <InfoSheet shape="sheet" :open="correction !== null" :title="'更正' + (correction?.label ?? '信息')" @close="correction = null">
       <form @submit.prevent="save">
-        <label class="ws-field">更正内容<textarea v-model="value" maxlength="40" /></label>
+        <label v-if="correction?.key === 'study_year'" class="ws-field">当前学习阶段<select v-model="value"><option v-for="option in STUDY_YEAR_OPTIONS" :key="option.code" :value="option.label">{{option.label}}</option></select></label>
+        <label v-else class="ws-field">更正内容<textarea v-model="value" maxlength="40" /></label>
         <FormConflict v-if="correctionLatest" :rows="correctionConflictRows" @confirm="confirmCorrectionConflict" />
         <p v-if="correctionError" class="ws-field-error" role="alert">{{ correctionError }}</p>
         <div class="ws-inline-actions">

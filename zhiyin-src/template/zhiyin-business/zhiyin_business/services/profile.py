@@ -129,7 +129,7 @@ class DefaultProfileService(ProfileService):
         labels = field_labels(list(dynamic_config.snapshot().collection_rules) or None)
         for spec in dynamic_config.snapshot().profile_fields:
             # 同义词（alias_of）不是画像里的格子：模型写的 `grade` 会归到
-            # `degree_level`，用户这边也只认规范键，否则同一个意思会另起一格。
+            # `study_year`，用户这边也只认规范键，否则同一个意思会另起一格。
             if spec.alias_of:
                 continue
             labels.setdefault(spec.key, spec.label or spec.key)

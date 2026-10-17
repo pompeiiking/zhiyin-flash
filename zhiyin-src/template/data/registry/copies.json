@@ -354,6 +354,14 @@
       "note": "画像字段词表 + 中文名：字段门禁只收这里的键，界面也用它显示"
     },
     {
+      "code": "profile.field.study_year",
+      "text": "当前学习阶段",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 9021,
+      "note": "当前处于大几或研究生阶段；与专科、本科、硕士等学历层次分开记录"
+    },
+    {
       "code": "profile.field.expected_graduation",
       "text": "预计毕业",
       "bundle": "zh-CN",
@@ -459,11 +467,11 @@
     },
     {
       "code": "profile.alias.grade",
-      "text": "degree_level",
+      "text": "study_year",
       "bundle": "zh-CN",
       "status": "enabled",
       "sort_order": 2001,
-      "note": "画像字段同义词 → 规范键：模型写左边这个键时归到右边那条，不让同一个意思在画像里占三格"
+      "note": "画像字段同义词 → 规范键：grade 表示当前年级，归入 study_year；学历层次继续使用 degree_level"
     },
     {
       "code": "profile.alias.education_stage",

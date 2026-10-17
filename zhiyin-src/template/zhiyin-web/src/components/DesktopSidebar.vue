@@ -13,6 +13,7 @@ import { vScrollFade } from '../lib/scroll-fade'
 import { backendDemo } from '../lib/backend-demo'
 import BrandMark from './BrandMark.vue'
 import AccountPopover from './AccountPopover.vue'
+import { studyYearLabel } from '../lib/study-year'
 const route = useRoute()
 const router = useRouter()
 defineEmits<{ newChat: []; collapse: [] }>()
@@ -34,7 +35,12 @@ const userName = computed(() => demo.state.account || '当前用户')
  * 因为切年级（GradeSwitch / ⌘K）真的会换掉这个人所处的场景 —— 写死 STUDENT.grade
  * 就会出现"任务清单是大一的、人名行还写着大三"。
  */
-const personSub = computed(() => backendDemo.state.liveWorkspace?.profile_panel?.fields?.filter(f=>['major','grade'].includes(f.key)).map(f=>String(f.value ?? '')).join(' · ') || '个人资料待完善')
+const personSub = computed(() => {
+  const fields = backendDemo.state.liveWorkspace?.profile_panel?.fields ?? []
+  const major = fields.find(field => field.key === 'major')?.value
+  const year = fields.find(field => field.key === 'study_year')?.value ?? fields.find(field => field.key === 'grade')?.value
+  return [major, year ? studyYearLabel(year) : ''].filter(Boolean).join(' · ') || '个人资料待完善'
+})
 const chatActive = computed(() => isNavActive(WORKSPACE_PRIMARY, route))
 /**
  * 导航计数徽标（c2 的 `.nav__badge`）—— **两个数字都来自真实状态，没有一个写死**：

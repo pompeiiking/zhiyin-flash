@@ -2,7 +2,7 @@
 export const PROFILE_TOPICS = [
   { key: 'career', title: '兴趣、能力与职业期待', keys: ['interest', 'skills', 'experience', 'values', 'internship', 'style', 'weakness', 'award'] },
   { key: 'expect', title: '期待与行动条件', keys: ['city', 'jobtype', 'salary', 'family', 'time', 'weekly_hours', 'pipeline', 'schedule'] },
-  { key: 'study', title: '学籍与学习背景', keys: ['major', 'school', 'degree_level', 'grade', 'rank', 'enrollment_status', 'duration', 'study_mode', 'enrolled_at', 'expected_graduation', 'courses', 'scores'] },
+  { key: 'study', title: '学籍与学习背景', keys: ['study_year', 'major', 'school', 'degree_level', 'grade', 'rank', 'enrollment_status', 'duration', 'study_mode', 'enrolled_at', 'expected_graduation', 'courses', 'scores'] },
 ]
 export function profilePriority(key: string) {
   const group = PROFILE_TOPICS.findIndex(topic => topic.keys.includes(key))

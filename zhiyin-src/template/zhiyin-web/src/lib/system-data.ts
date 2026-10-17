@@ -10,8 +10,8 @@ import { backendDemo } from './backend-demo'
 import { demo } from '../store'
 import type { TrackEventView, AchievementListView } from '../api/backend-types'
 
-export const systemData = reactive({ snapshot: null as ConversationTurnView|null, busy: false, error: '', events: [] as TrackEventView[], achievements: null as AchievementListView | null })
-export function clearSystemData(){selecting++;systemData.snapshot=null;systemData.events=[];systemData.achievements=null;systemData.error='';systemData.busy=false}
+export const systemData = reactive({ snapshot: null as ConversationTurnView|null, busy: false, shellReady: false, error: '', events: [] as TrackEventView[], achievements: null as AchievementListView | null })
+export function clearSystemData(){selecting++;systemData.snapshot=null;systemData.events=[];systemData.achievements=null;systemData.error='';systemData.busy=false;systemData.shellReady=false}
 let selecting = 0
 if (typeof window !== 'undefined') window.addEventListener('zhiyin:session-cleared', clearSystemData)
 export async function openSession(id: string) {
@@ -46,6 +46,7 @@ export async function refreshNotifications(current?: Notice[]) {
   demo.setNotices(notices.filter(n => n.status === 'pending').map(n => ({ id:n.id, title:n.title, body:n.body ?? '', kind:'提醒', action:'标为已读', secondary:'关闭', queued:0 })))
 }
 export async function loadShell() {
+  systemData.shellReady = false
   systemData.error = ''
   const results = await Promise.allSettled([
     backendClient.sessions().then(async s => {
@@ -60,6 +61,7 @@ export async function loadShell() {
   ])
   const failure = results.find(r => r.status === 'rejected')
   if (failure?.status === 'rejected') systemData.error = failure.reason instanceof Error ? failure.reason.message : '部分资料加载失败'
+  systemData.shellReady = true
 }
 export async function loadAchievements() {
   if (!featureEnabled('achievements')) { systemData.achievements = null; return null }

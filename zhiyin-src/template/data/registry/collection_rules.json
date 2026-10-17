@@ -1,5 +1,13 @@
 [
   {
+    "key": "study_year",
+    "label": "当前学习阶段",
+    "source": "conversation",
+    "why": "不同学习阶段的探索重点和可用准备时间不同",
+    "ask": "为了更准确地安排咨询重点，先确认一下：你目前处于哪个学习阶段？",
+    "order": 0
+  },
+  {
     "key": "major",
     "label": "专业",
     "source": "chsi",

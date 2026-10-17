@@ -182,9 +182,12 @@ def test_conversation_registered_fields_are_still_missing_when_absent() -> None:
         _profile(("interest", ProfileSource.CONVERSATION)), rules=_registry_rules()
     )
     values = _step(plan, "values")
+    study_year = _step(plan, "study_year")
     assert values.got is False
-    assert plan.by_source[CollectionSource.CONVERSATION.value] == 3
+    assert study_year.got is False
+    assert plan.by_source[CollectionSource.CONVERSATION.value] == 4
     assert values.ask, "没拿到的对话字段仍然要带着那个问题"
+    assert study_year.ask, "没拿到的学习阶段仍然要作为对话问题采集"
 
 
 # --------------------------------------------------------------- 真实装配下的三条路

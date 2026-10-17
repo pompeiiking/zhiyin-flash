@@ -9,6 +9,7 @@ import { isComposingKey } from '../lib/scroll-intent'
 import { vScrollFade } from '../lib/scroll-fade'
 import { navigation } from '../lib/layout'
 import { consultantLabel, agentKeyOf } from '../lib/consultant'
+import { personalizedStudyYearEntries, STUDY_YEAR_OPTIONS, studyYearIntro, studyYearLabel } from '../lib/study-year'
 import { newSession, openSession, loadShell, systemData } from '../lib/system-data'
 import { replyTurns } from '../lib/conversation-turns'
 import { backendClient } from '../api/backend-client'
@@ -42,10 +43,11 @@ const uploadError = ref('')
 const requestError = ref(''), profileError = ref(''), guideSaving = ref('')
 const profileOpen = ref(false), historyOpen = ref(false), profileLoading = ref(false)
 const choosingTopic = ref(false)
+const profileLoaded = ref(false), studyYearSaving = ref(''), studyYearError = ref(''), editingStudyYear = ref(false), savedStudyYear = ref('')
 const theoryCards = ref<Record<string, TheoryCardView>>({}), theoryErrors = ref<Record<string, string>>({})
 const theoryLoading = ref<Record<string, boolean>>({})
 const sessions = computed(() => [...backendDemo.state.sessions].sort((a,b) => (b.last_active_at || '').localeCompare(a.last_active_at || '')))
-const title = computed(() => choosingTopic.value ? '选择咨询主题' : backendDemo.currentSession.value?.task_name || '咨询对话')
+const title = computed(() => showStudyYearQuestion.value ? '开始咨询' : choosingTopic.value ? '选择咨询主题' : backendDemo.currentSession.value?.task_name || '咨询对话')
 const journey = [
  { key:'collect', label:'了解自己', short:'了解' },
  { key:'diagnose', label:'梳理判断', short:'判断' },
@@ -58,7 +60,11 @@ const profileFieldCount = computed(() => backendDemo.state.liveWorkspace?.profil
 const profileGapCount = computed(() => backendDemo.state.liveWorkspace?.profile_panel?.gaps?.length ?? 0)
 const latestHostId = computed(() => turns.value.at(-1)?.from === 'host' ? turns.value.at(-1)?.id : undefined)
 const host = computed(() => systemData.snapshot?.badge.name || backendDemo.currentSession.value?.lead_agent_name || '咨询顾问')
-const starters = computed(() => auth.state.bootstrap?.task_entries ?? [])
+const studyYearField = computed(() => backendDemo.state.liveWorkspace?.profile_panel?.fields?.find(field => field.key === 'study_year'))
+const studyYear = computed(() => savedStudyYear.value || String(studyYearField.value?.value ?? ''))
+const firstUse = computed(() => systemData.shellReady && !demo.state.currentSessionId && sessions.value.length === 0 && turns.value.length === 0)
+const showStudyYearQuestion = computed(() => profileLoaded.value && (editingStudyYear.value || (!studyYear.value && firstUse.value)))
+const starters = computed(() => personalizedStudyYearEntries(auth.state.bootstrap?.task_entries ?? [], studyYear.value))
 const doneTasks = computed(() => new Set((backendDemo.state.liveAction?.phases ?? []).flatMap(p => p.tasks ?? []).filter(t => t.done).map(t => t.task_id)))
 let controller: AbortController | null = null, serial = 0, disposed = false
 let failedRequest: MessageRequest | null = null
@@ -72,13 +78,26 @@ function assetLabel(type: string) { return ({ report:'诊断报告', direction_p
 function stageLabel(stage: string) { return ({ collect:'了解情况', diagnose:'梳理判断', decide:'比较选择', act:'安排下一步', review:'回顾调整' } as Record<string,string>)[stage] || '处理中' }
 function journeyState(stage: string) { const current = journey.findIndex(item => item.key === currentStage.value); const index = journey.findIndex(item => item.key === stage); return index === current ? 'current' : index < current ? 'past' : 'future' }
 async function theory(id: string) { if (theoryCards.value[id] || theoryLoading.value[id]) return; theoryErrors.value[id] = ''; theoryLoading.value[id] = true; try { theoryCards.value[id] = await backendClient.theory(id) } catch (e) { theoryErrors.value[id] = (e as Error).message } finally { theoryLoading.value[id] = false } }
-async function refreshProfile() { profileLoading.value = true; profileError.value = ''; try { const result = await backendClient.workspace(); if (!disposed) backendDemo.setWorkspace(result) } catch (e) { if (!disposed) profileError.value = (e as Error).message } finally { profileLoading.value = false } }
+async function refreshProfile() { profileLoading.value = true; profileError.value = ''; try { const result = await backendClient.workspace(); if (!disposed) { backendDemo.setWorkspace(result); const stored = result.profile_panel?.fields?.find(field => field.key === 'study_year'); if (stored) savedStudyYear.value = String(stored.value ?? '') } } catch (e) { if (!disposed) profileError.value = (e as Error).message } finally { profileLoading.value = false; profileLoaded.value = true } }
 function clearTopicQuery() { if (route.query.new === undefined) return; const query = { ...route.query }; delete query.new; void router.replace({ path:route.path, query }) }
 function chooseTopic() { if (thinking.value || systemData.busy) return; choosingTopic.value = true; historyOpen.value = false; profileOpen.value = false; requestError.value = ''; void nextTick(() => { if (flow.value) flow.value.scrollTop = 0 }) }
 function closeTopic() { choosingTopic.value = false; clearTopicQuery(); void bottom(true) }
 async function resume(id: string) { if (thinking.value) return; try { await openSession(id); choosingTopic.value = false; clearTopicQuery(); historyOpen.value = false; pending.value = null; requestError.value = ''; await bottom(true) } catch (e) { requestError.value = (e as Error).message } }
 async function create(code: string) { if (thinking.value || systemData.busy) return; try { await newSession(code); choosingTopic.value = false; clearTopicQuery(); pending.value = null; requestError.value = ''; await loadShell(); input.value?.focus() } catch (e) { requestError.value = (e as Error).message } }
-async function start(code: string, label: string) { await create(code); if (!requestError.value) fill(label) }
+async function start(code: string, label: string) { await create(code); if (!requestError.value) { if (code === 'free_chat') void nextTick(() => input.value?.focus()); else fill(label) } }
+async function saveStudyYear(label: string) {
+ if (studyYearSaving.value) return
+ studyYearSaving.value = label; studyYearError.value = ''
+ try {
+  const updated = await backendClient.correct('study_year', label, studyYearField.value?.updated_at ?? null)
+  savedStudyYear.value = String(updated.value ?? label)
+  editingStudyYear.value = false; choosingTopic.value = true
+  await refreshProfile()
+ } catch (e) {
+  studyYearError.value = e instanceof Error ? e.message : '当前学习阶段没有保存成功，请重试。'
+  if ((e as { code?: number }).code === 1003) await refreshProfile()
+ } finally { studyYearSaving.value = '' }
+}
 async function upload(event: Event) { await uploadFiles(Array.from((event.target as HTMLInputElement).files ?? [])) }
 async function uploadFiles(files: File[]) {
  if (!files.length || uploading.value || thinking.value) return
@@ -168,6 +187,9 @@ function applyConsultationContext() {
  void router.replace({ path: route.path, query: rest })
 }
 watch(() => route.query, applyConsultationContext)
+watch(showStudyYearQuestion, open => {
+ if (open) void nextTick(() => { if (flow.value) flow.value.scrollTop = 0 })
+})
 onMounted(() => {
  void nextTick(resizeInput)
  if (demo.state.currentSessionId && !systemData.busy) void resume(demo.state.currentSessionId)
@@ -190,11 +212,23 @@ onUnmounted(() => { disposed = true; clearInterval(waitTimer); clearTimeout(copy
   </header>
   <div ref="flow" v-scroll-fade class="consult-flow" tabindex="0" aria-label="对话记录" @scroll.passive="onScroll">
    <div v-if="systemData.busy" class="consult-loading" role="status">正在读取会话…</div>
-   <div v-else-if="choosingTopic || (!turns.length && !pending)" class="consult-intro">
-    <AgentAvatar agent="career" :size="64" /><h2>从你现在关心的事开始</h2><p>先选一个主题。进入后仍可自由补充，不会覆盖已有会话。</p>
-    <div class="consult-topics"><button v-for="(entry,i) in starters" :key="entry.code" @click="start(entry.code, entry.label)"><UiIcon :name="['profile','directions','action','review'][i % 4]" :size="21" /><span>{{ entry.label }}</span><UiIcon name="arrow" :size="17" /></button></div>
-    <button v-if="choosingTopic && demo.state.currentSessionId" class="consult-resume" @click="closeTopic">返回当前会话</button>
-    <button v-else-if="sessions.length" class="consult-resume" @click="resume(sessions[0].task_id)">继续最近的咨询：{{ sessions[0].task_name }}</button>
+   <div v-else-if="showStudyYearQuestion || choosingTopic || (!turns.length && !pending)" class="consult-intro" :class="{'consult-intro--onboarding':showStudyYearQuestion}">
+    <AgentAvatar agent="career" :size="64" />
+    <template v-if="showStudyYearQuestion">
+     <p class="consult-intro__eyebrow">开始前确认一项信息</p>
+     <h2>为了更准确地安排咨询重点，先确认一下：你目前处于哪个学习阶段？</h2>
+     <p>只用于调整默认咨询方向，不会限制你可以提出的问题。</p>
+     <div class="consult-year-options" role="group" aria-label="选择当前学习阶段"><button v-for="option in STUDY_YEAR_OPTIONS" :key="option.code" :disabled="!!studyYearSaving" :aria-pressed="studyYearLabel(studyYear) === option.label" @click="saveStudyYear(option.label)"><span>{{ option.label }}</span><small v-if="studyYearSaving === option.label">正在保存…</small><UiIcon v-else name="arrow" :size="16" /></button></div>
+     <p v-if="studyYearError" class="consult-error" role="alert">{{ studyYearError }}</p>
+     <button v-if="editingStudyYear" class="consult-resume" @click="editingStudyYear=false">取消修改</button>
+    </template>
+    <template v-else>
+     <button v-if="studyYear" class="consult-year-summary" @click="editingStudyYear=true"><span>当前阶段：{{ studyYearLabel(studyYear) }}</span><small>修改</small></button>
+     <h2>{{ studyYear ? `已按${studyYearLabel(studyYear)}安排咨询重点` : '从你现在关心的事开始' }}</h2><p>{{ studyYear ? studyYearIntro(studyYear) : '先选一个主题。进入后仍可自由补充，不会覆盖已有会话。' }}</p>
+     <div class="consult-topics"><button v-for="(entry,i) in starters" :key="entry.code" :class="{'consult-topic--free':entry.code==='free_chat'}" @click="start(entry.code, entry.label)"><UiIcon :name="['profile','directions','action','review'][i % 4]" :size="21" /><span>{{ entry.label }}</span><UiIcon name="arrow" :size="17" /></button></div>
+     <button v-if="choosingTopic && demo.state.currentSessionId" class="consult-resume" @click="closeTopic">返回当前会话</button>
+     <button v-else-if="sessions.length" class="consult-resume" @click="resume(sessions[0].task_id)">继续最近的咨询：{{ sessions[0].task_name }}</button>
+    </template>
    </div>
    <div v-else class="consult-messages" :aria-busy="thinking">
     <article v-for="turn in turns" :key="turn.id" class="consult-turn" :class="['consult-turn--' + turn.from, { 'consult-turn--latest': turn.id === latestHostId }]">
@@ -228,7 +262,7 @@ onUnmounted(() => { disposed = true; clearInterval(waitTimer); clearTimeout(copy
     <div v-if="requestError" class="consult-error" role="alert"><p>{{ requestError }}</p><button v-if="failedRequest && !stopped" @click="send(true)">重新尝试</button><button :disabled="thinking" @click="resume(demo.state.currentSessionId)">重新读取会话</button></div>
    </div>
   </div>
-  <footer v-if="!choosingTopic" class="consult-compose-area">
+  <footer v-if="!choosingTopic && !showStudyYearQuestion" class="consult-compose-area">
    <button v-if="showLatest" class="consult-latest" @click="followTail = true; bottom(true)"><UiIcon name="down" :size="15" />回到最新消息</button>
    <p v-if="requestError && !turns.length && !pending" role="alert" class="consult-error">{{ requestError }}</p>
    <form class="consult-composer" :class="{ 'consult-composer--drop': draggingFiles }" @dragover="dragOver" @dragleave="!($event.currentTarget as HTMLElement).contains($event.relatedTarget as Node) && (draggingFiles = false)" @drop="dropFiles" @submit.prevent="send()">

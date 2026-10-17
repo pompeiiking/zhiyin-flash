@@ -112,6 +112,19 @@ async def test_correction_accepts_fields_outside_the_collection_plan() -> None:
     assert saved.source is ProfileSource.USER_EDIT
 
 
+async def test_study_year_is_a_separate_user_confirmed_profile_field() -> None:
+    """“大三”是当前学习阶段，不再写进“本科/硕士”所在的学历层次字段。"""
+    profiles = await _profile_service()
+    saved = await profiles.correct_field("u-study-year", "study_year", "大三")
+
+    assert saved.key == "study_year"
+    assert saved.label == "当前学习阶段"
+    assert saved.value == "大三"
+    assert saved.source is ProfileSource.USER_EDIT
+    fields = {field.key for field in await profiles.get_fields("u-study-year")}
+    assert "degree_level" not in fields
+
+
 async def test_correction_rejects_empty_too_long_and_unregistered() -> None:
     """三类不合格的值都要在**业务层**被拒（不是接口层各自判一遍）。"""
     profiles = await _profile_service()
