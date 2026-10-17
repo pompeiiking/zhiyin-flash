@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
-import { PhCpu, PhBatteryCharging, PhFlask, PhSlidersHorizontal, PhChatCircleDots, PhList, PhListChecks, PhUserCircle, PhFileText, PhClockCounterClockwise, PhArrowRight, PhArrowLeft, PhCaretDown, PhX, PhCheck, PhPlus, PhDotsThree, PhMagnifyingGlass, PhBell, PhInfo, PhCalendarBlank, PhCompass, PhNotePencil, PhPaperclip, PhUploadSimple, PhGraduationCap, PhTrash, PhSquaresFour, PhShieldCheck, PhMapTrifold, PhCopy, PhArrowDown, PhSidebarSimple, PhPath, PhTrophy } from '@phosphor-icons/vue'
+import { PhCpu, PhBatteryCharging, PhFlask, PhSlidersHorizontal, PhChatCircleDots, PhList, PhListChecks, PhUserCircle, PhFileText, PhClockCounterClockwise, PhArrowRight, PhArrowLeft, PhCaretDown, PhX, PhCheck, PhPlus, PhDotsThree, PhMagnifyingGlass, PhBell, PhInfo, PhCalendarBlank, PhCompass, PhNotePencil, PhPaperclip, PhUploadSimple, PhGraduationCap, PhTrash, PhSquaresFour, PhShieldCheck, PhMapTrifold, PhCopy, PhArrowDown, PhSidebarSimple, PhPath, PhTrophy, PhHouse, PhArticle, PhArrowsClockwise, PhSparkle } from '@phosphor-icons/vue'
 withDefaults(defineProps<{ name: string; size?: number }>(), { size: 20 })
 const icons: Record<string, Component> = {
   chat: PhChatCircleDots, action: PhListChecks, profile: PhUserCircle, report: PhFileText, review: PhClockCounterClockwise,
@@ -9,6 +9,7 @@ const icons: Record<string, Component> = {
   directions: PhMapTrifold, compass: PhCompass, notes: PhNotePencil, attachment: PhPaperclip, upload: PhUploadSimple,
   academic: PhGraduationCap, trash: PhTrash, apps: PhSquaresFour, shield: PhShieldCheck, copy: PhCopy, down: PhArrowDown, sidebar: PhSidebarSimple,
   cpu: PhCpu, battery: PhBatteryCharging, flask: PhFlask, settings: PhSlidersHorizontal, path: PhPath, trophy: PhTrophy, menu: PhList, download: PhArrowDown,
+  home: PhHouse, document: PhArticle, refresh: PhArrowsClockwise, spark: PhSparkle,
 }
 </script>
 <template>

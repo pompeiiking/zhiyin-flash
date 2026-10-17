@@ -235,6 +235,7 @@ onMounted(() => load(false))
 .review-records[open] > summary > span:last-child::after { content: '收起'; }
 .review-records__body { padding: 24px; border-top: 1px solid var(--c-border); }
 .review-records__head { display: flex; align-items: start; justify-content: space-between; gap: 24px; }
+.review-records__head a { display:inline-flex; align-items:center; min-height:44px; }
 .review-records__head h2 { font-size: var(--fs-18); letter-spacing: -.015em; }
 .review-record-tools { display: flex; flex-wrap: wrap; gap: 16px; align-items: end; margin: 20px 0 8px; }
 .review-record-tools .information-search { flex: 1; min-width: 220px; }
@@ -264,7 +265,7 @@ onMounted(() => load(false))
   .review-records > summary small { white-space: normal; }
   .review-records__body { padding: 18px 14px; }
   .review-records__head { display: block; }
-  .review-records__head a { display: inline-block; margin-top: 10px; }
+  .review-records__head a { display: inline-flex; margin-top: 6px; }
   .review-record-tools { display: grid; grid-template-columns: minmax(0, 1fr); }
   .review-record-tools .information-search,.review-record-tools .ws-field { min-width: 0; }
   .review-timeline li { grid-template-columns: minmax(0, 1fr) auto; gap: 6px 10px; padding-left: 18px; }

@@ -439,7 +439,7 @@ form .ws-field { margin: 0; }
 .review-editor__empty-steps { display:grid; margin:0; padding:0; list-style:none; }
 .review-editor__empty-steps li { display:grid; grid-template-columns:34px minmax(0,1fr); align-items:center; gap:10px; min-height:54px; border-top:1px solid var(--c-border); color:var(--c-text-3); }
 .review-editor__empty-steps li:last-child { border-bottom:1px solid var(--c-border); }
-.review-editor__empty-steps span { font-size:11px; font-variant-numeric:tabular-nums; }
+.review-editor__empty-steps span { font-size:12px; font-variant-numeric:tabular-nums; }
 .review-editor__empty-steps strong { font-size:var(--fs-13); font-weight:var(--fw-medium); }
 .review-editor__empty-steps li.is-current { color:var(--c-primary); }
 .review-editor__empty-actions { grid-column:1 / -1; display:flex; align-items:center; gap:16px; margin-top:-6px; }

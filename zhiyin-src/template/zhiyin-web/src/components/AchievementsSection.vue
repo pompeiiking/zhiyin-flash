@@ -104,8 +104,7 @@ onMounted(() => {
     <template v-else-if="loaded && records.length">
       <section class="growth-ledger" aria-labelledby="growth-summary-title">
         <div class="growth-ledger__intro">
-          <h2 id="growth-summary-title">你做过的关键行动，都有记录</h2>
-          <p>记录由系统根据真实行为自动形成，可以随时核对形成条件与时间。</p>
+          <div class="growth-title-line"><h2 id="growth-summary-title">你做过的关键行动，都有记录</h2><DetailPopover title="完成记录如何形成" label="查看完成记录说明"><p>记录由系统根据真实行为自动形成，可以随时核对形成条件与时间。</p></DetailPopover></div>
         </div>
         <div class="growth-ledger__summary">
           <p><strong>{{ completedCount }}</strong><span>项已记录</span><small>共 {{ totalCount }} 个关键节点</small></p>
@@ -120,8 +119,7 @@ onMounted(() => {
       <section v-if="pending.length" class="growth-queue" aria-labelledby="growth-queue-title">
         <header class="growth-section-head">
           <div>
-            <h2 id="growth-queue-title">建议补上的记录</h2>
-            <p>这些节点不要求依次完成，选择当前最值得推进的一项即可。</p>
+            <div class="growth-title-line"><h2 id="growth-queue-title">建议补上的记录</h2><DetailPopover title="如何选择下一项" label="查看待补记录说明"><p>这些节点不要求依次完成，选择当前最值得推进的一项即可。</p></DetailPopover></div>
           </div>
           <span>{{ pending.length }} 项待补充</span>
         </header>
@@ -158,8 +156,7 @@ onMounted(() => {
       <section class="growth-archive" aria-labelledby="growth-archive-title">
         <header class="growth-section-head">
           <div>
-            <h2 id="growth-archive-title">已经留下的记录</h2>
-            <p>按实际形成时间倒序展示，不代表必须按阶段顺序推进。</p>
+            <div class="growth-title-line"><h2 id="growth-archive-title">已经留下的记录</h2><DetailPopover title="记录排序方式" label="查看记录排序说明"><p>按实际形成时间倒序展示，不代表必须按阶段顺序推进。</p></DetailPopover></div>
           </div>
           <button class="ws-text-button" type="button" :disabled="busy" @click="refresh">
             {{ busy ? '正在刷新…' : '刷新记录' }}
@@ -202,3 +199,7 @@ onMounted(() => {
     </section>
   </section>
 </template>
+
+<style scoped>
+.growth-title-line{display:flex;align-items:center;gap:8px;min-width:0}.growth-title-line h2{min-width:0}.growth-title-line :deep(.detail-trigger){flex:none}
+</style>

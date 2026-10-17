@@ -598,7 +598,7 @@ onMounted(() => { void loadGrades() })
 
 .chart-grid text {
   fill: var(--c-text-3);
-  font-size: 10px;
+  font-size: 12px;
   text-anchor: end;
 }
 
@@ -618,14 +618,14 @@ onMounted(() => { void loadGrades() })
 
 .trend-chart__value {
   fill: var(--c-text);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: var(--fw-semibold);
   text-anchor: middle;
 }
 
 .trend-chart__label {
   fill: var(--c-text-3);
-  font-size: 10px;
+  font-size: 12px;
   text-anchor: middle;
 }
 
@@ -820,7 +820,7 @@ onMounted(() => { void loadGrades() })
 .course-bars__label span {
   margin-top: 2px;
   color: var(--c-text-3);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .course-bars__plot {
@@ -854,7 +854,7 @@ onMounted(() => { void loadGrades() })
   justify-content: space-between;
   margin: 7px 48px 0 236px;
   color: var(--c-text-3);
-  font-size: 10px;
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
 

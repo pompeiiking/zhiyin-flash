@@ -111,7 +111,7 @@ onUnmounted(()=>clearInterval(notificationTimer))
     </template>
 
     <template v-else>
-      <DesktopSidebar v-if="desktop" v-show="!layout.sidebarCollapsed.value" ref="sidebar" @new-chat="newChat" @account="workspaceHeader?.showAccount()" @collapse="collapseSidebar" />
+      <DesktopSidebar v-if="desktop" v-show="!layout.sidebarCollapsed.value" ref="sidebar" @new-chat="newChat" @collapse="collapseSidebar" />
       <AppTopBar ref="workspaceHeader" @open-palette="palette?.show()" @expand-sidebar="expandSidebar" @open-mobile-menu="mobileNav?.show()" />
       <main class="app__main">
         <!-- 氛围层：与门户同一套语言（一片很淡的品牌色光 + 颗粒），但强度低得多 -->
@@ -124,7 +124,7 @@ onUnmounted(()=>clearInterval(notificationTimer))
           </RouterView>
         </div>
       </main>
-      <WorkspaceNav v-if="!desktop" ref="mobileNav" @account="workspaceHeader?.showAccount()" />
+      <WorkspaceNav v-if="!desktop" ref="mobileNav" />
     </template>
 
     <CommandPalette ref="palette" />

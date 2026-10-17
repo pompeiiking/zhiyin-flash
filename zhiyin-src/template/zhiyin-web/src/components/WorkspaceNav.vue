@@ -4,9 +4,10 @@ import { useRoute, useRouter } from 'vue-router'
 import { backendDemo } from '../lib/backend-demo'
 import { openSession, systemData } from '../lib/system-data'
 import { demo, toast } from '../store'
-import InfoSheet from './InfoSheet.vue'
+import AnchoredCard from './AnchoredCard.vue'
 import UiIcon from './UiIcon.vue'
 import { WORKSPACE_GROUPS, MOBILE_TABS, isNavActive } from '../lib/workspace-nav'
+import { navigation } from '../lib/layout'
 
 /**
  * 移动端导航。
@@ -24,7 +25,6 @@ const router = useRouter()
 const sessions = computed(() => [...backendDemo.state.sessions].sort((a,b) => (b.last_active_at || '').localeCompare(a.last_active_at || '')))
 async function resume(id: string) { try { await openSession(id); more.value = false; await router.push('/chat') } catch(e) { toast((e as Error).message) } }
 const more = ref(false)
-const emit = defineEmits<{ account: [] }>()
 defineExpose({ show() { more.value = true } })
 </script>
 
@@ -40,17 +40,13 @@ defineExpose({ show() { more.value = true } })
     >
       <UiIcon :name="tab.icon" :size="20" /><span>{{ tab.short ?? tab.label }}</span>
     </RouterLink>
-    <button class="ws-bookmark ws-bookmark--more" type="button" aria-label="更多功能" @click="more = true">
-      <UiIcon name="more" :size="20" /><span>更多</span>
-    </button>
-  </nav>
-
-  <InfoSheet shape="panel" :open="more" title="全部功能" description="按任务找到下一步；底栏保留最常使用的主业务。" @close="more = false">
-    <button class="mobile-account-entry" type="button" @click="more=false;emit('account')">
+    <AnchoredCard v-model="more" class="ws-bookmark ws-bookmark--more" title="全部功能" label="更多功能" side="top" align="end" size="wide">
+      <template #trigger><UiIcon name="more" :size="20" /><span>更多</span></template>
+    <RouterLink class="mobile-account-entry" to="/settings" @click="more=false">
       <span class="mobile-account-entry__avatar" aria-hidden="true">{{ demo.state.account.slice(0,1) }}</span>
       <span><strong>{{ demo.state.account }}</strong><small>账号、资料授权与导出</small></span>
       <UiIcon name="arrow" :size="16" />
-    </button>
+    </RouterLink>
     <div class="mobile-function-map">
       <section v-for="(group, index) in WORKSPACE_GROUPS" :key="group.key" class="mobile-function-group">
         <header><span>{{ String(index + 1).padStart(2, '0') }}</span><UiIcon :name="group.icon" :size="18" /><h2>{{ group.label }}</h2></header>
@@ -61,9 +57,13 @@ defineExpose({ show() { more.value = true } })
         </div>
       </section>
     </div>
-    <div class="mobile-utility-links"><RouterLink to="/settings" @click="more=false"><UiIcon name="settings" :size="17"/>账号设置</RouterLink></div>
+    <div v-if="!navigation.compact.value" class="mobile-layout-return">
+      <div><UiIcon name="sidebar" :size="18"/><span><strong>桌面侧栏</strong><small>恢复大分类、小分类与历史会话</small></span></div>
+      <button type="button" class="btn" @click="navigation.set('desktop');more=false">切换</button>
+    </div>
     <details class="mobile-session-history" aria-label="历史会话"><summary><span>历史会话</span><small>{{ sessions.length }} 个</small><UiIcon name="chevron" :size="16"/></summary><div><button v-for="session in sessions" :key="session.task_id" :disabled="demo.state.chatBusy || systemData.busy" :aria-pressed="session.task_id === demo.state.currentSessionId" @click="resume(session.task_id)">{{ session.task_name }}</button><p v-if="!sessions.length">还没有历史会话。</p></div></details>
-  </InfoSheet>
+    </AnchoredCard>
+  </nav>
 </template>
 <style scoped>
 .mobile-account-entry { display:flex; align-items:center; gap:12px; width:100%; min-height:64px; padding:10px 12px; border:1px solid var(--c-border); border-radius:14px; background:var(--c-surface-2); color:var(--c-text); text-align:left; }
@@ -82,8 +82,8 @@ defineExpose({ show() { more.value = true } })
 .mobile-function-group__items span { min-width:0; }
 .mobile-function-group__items strong { display:block; color:var(--c-text); font-size:13px; }
 .mobile-function-group__items small { display:block; overflow:hidden; margin-top:2px; color:var(--c-text-3); font-size:11px; text-overflow:ellipsis; white-space:nowrap; }
-.mobile-utility-links { display:grid; grid-template-columns:minmax(0,1fr); gap:10px; margin-top:16px; }
-.mobile-utility-links a { display:flex; align-items:center; justify-content:center; gap:7px; min-height:46px; border:1px solid var(--c-border); border-radius:12px; color:var(--c-text-2); font-size:13px; }
+.mobile-layout-return { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:16px; padding:10px 12px; border:1px solid var(--c-primary-border); border-radius:13px; background:var(--c-primary-weak); }
+.mobile-layout-return>div { display:flex; align-items:center; gap:10px; min-width:0; color:var(--c-primary); }.mobile-layout-return>div>span { min-width:0; }.mobile-layout-return strong,.mobile-layout-return small { display:block; }.mobile-layout-return strong { color:var(--c-text); font-size:13px; }.mobile-layout-return small { margin-top:2px; color:var(--c-text-2); font-size:12px; }
 .mobile-session-history { margin-top:16px; border-top:1px solid var(--c-border); }
 .mobile-session-history summary { display:grid; grid-template-columns:minmax(0,1fr) auto 18px; align-items:center; gap:8px; min-height:52px; cursor:pointer; list-style:none; color:var(--c-text-2); font-size:13px; }
 .mobile-session-history summary::-webkit-details-marker { display:none; }

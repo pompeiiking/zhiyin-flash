@@ -1,13 +1,9 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { demo } from '../store'
-import { auth } from '../lib/auth'
-import { toast } from '../store'
+import { useRoute } from 'vue-router'
 import UiIcon from './UiIcon.vue'
-import InfoSheet from './InfoSheet.vue'
 import { navigation } from '../lib/layout'
-import { activeGroup, labelForPath, PORTAL_LINK } from '../lib/workspace-nav'
+import { activeGroup, labelForPath } from '../lib/workspace-nav'
 import BrandMark from './BrandMark.vue'
 import SkinPopover from './SkinPopover.vue'
 
@@ -24,7 +20,6 @@ import SkinPopover from './SkinPopover.vue'
  * 带子上再挂一颗 56×40 的按钮，**没有一个到 44px**。现在顶栏剩下的每个控件都 ≥44px。
  */
 const emit = defineEmits<{ openPalette: []; expandSidebar: []; openMobileMenu: [] }>()
-const router = useRouter()
 const route = useRoute()
 /**
  * 与 App/WorkspaceNav 共用一个响应式布局来源，切换宽度时同步更新。
@@ -39,19 +34,10 @@ const groupLabel = computed(() => activeGroup({ path: route.path, query: route.q
  * 才对得上这台机器上真正能按出来的那一个键。Mac 上仍然是 `⌘K`。
  */
 const modKey = /Mac|iPhone|iPad|iPod/i.test(navigator.userAgent) ? '⌘K' : 'Ctrl K'
-const accountOpen = ref(false)
-const demoOpen = ref(false)
 const expandButton = ref<HTMLButtonElement | null>(null)
-/** 打开「账号」抽屉：顶栏账号按钮、桌面侧栏人名行、折叠态顶栏**三处都走这一个入口**。 */
-function openAccount() { demoOpen.value = false; accountOpen.value = true }
-/** 打开「工作空间设置」：账号抽屉里的那一行与顶栏的演示标识都走这里。 */
-function openDemo() { accountOpen.value = false; demoOpen.value = true }
 defineExpose({
-  showAccount: openAccount,
-  showDemo: openDemo,
   focusExpand() { expandButton.value?.focus() },
 })
-async function signOut() { try {await auth.logout();accountOpen.value=false;router.push('/')}catch(e){toast((e as Error).message)} }
 </script>
 <template>
   <header class="ws-topbar">
@@ -81,35 +67,6 @@ async function signOut() { try {await auth.logout();accountOpen.value=false;rout
     </div>
   </header>
 
-<!-- 账号抽屉：只管账号。身份、演示标识说明、退出。 -->
-  <InfoSheet shape="dialog" :open="accountOpen" title="账号" description="查看当前身份并选择下一步。" @close="accountOpen = false">
-    <div class="account-card">
-      <span class="account-card__avatar" aria-hidden="true">{{ demo.state.account.slice(0,1) }}</span>
-      <div><strong>{{ demo.state.account }}</strong><small>当前登录账号</small></div>
-    </div>
-    <div class="ws-account-list"><RouterLink class="ws-account-row" to="/settings" @click="accountOpen=false"><span><strong>账号与资料设置</strong><small>授权、提醒偏好和资料导出</small></span><UiIcon name="arrow" :size="16"/></RouterLink>
-      <button class="ws-account-row" @click="openDemo()">
-        <span><strong>工作空间设置</strong><small>导航布局与操作引导</small></span>
-        <UiIcon name="chevron" :size="16" />
-      </button>
-      <RouterLink class="ws-account-row" :to="PORTAL_LINK.to" @click="accountOpen = false">
-        <span><strong>{{ PORTAL_LINK.label }}</strong></span>
-        <UiIcon name="arrow" :size="16" />
-      </RouterLink>
-    </div>
-    <button class="account-signout" @click="signOut">退出登录</button>
-  </InfoSheet>
-
-  <!-- 工作空间设置：独立入口，收纳所有演示开关。账号抽屉里不再有这些。 -->
-  <InfoSheet shape="sheet" :open="demoOpen" title="工作空间设置" @close="demoOpen = false">
-    <label class="ws-field">导航布局
-      <select aria-label="导航布局" :value="desktop ? 'desktop' : 'mobile'" @change="navigation.set(($event.target as HTMLSelectElement).value as 'desktop' | 'mobile')">
-        <option value="desktop" :disabled="navigation.compact.value">桌面侧栏</option>
-        <option value="mobile">移动导航</option>
-      </select>
-    </label>
-    <button class="btn" @click="demo.resetGuide();demoOpen=false">恢复操作引导</button>
-  </InfoSheet>
 </template>
 
 <style scoped>

@@ -99,7 +99,7 @@ const emit = defineEmits<{ action: [] }>()
 const NEXT: Record<EmptyStateKind, NextStep> = {
   chat: { type: 'hint', text: '在下方说出你的第一个问题，从这里开始。' },
   notes: { type: 'hint', text: '在上方写下第一件要做的事。' },
-  intel: { type: 'hint', text: '在上方检索一次最新资讯，或先加载示例看看格式。' },
+  intel: { type: 'hint', text: '更新一次真实职业资料，或使用当前画像发起匹配。' },
   profile: { type: 'link', label: '去咨询里补充这项信息', to: '/chat' },
   report: { type: 'hint', text: '在上方生成第一份诊断；依据不足时它会先说明缺口。' },
   academic: { type: 'hint', text: '在上方导入学校资料，或手动补录这一项。' },
@@ -320,34 +320,59 @@ const actionTarget = computed<'none' | 'link' | 'href' | 'button'>(() => {
  *      盖不住 sm 档；顺序反了就会把 sm 档的内距也一起改掉。
  * ========================================================================= */
 .exp-empty {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: minmax(112px, 156px) minmax(0, 1fr);
+  grid-template-rows: auto auto 1fr;
   align-items: center;
-  text-align: center;
-  padding: 28px 12px 36px;
+  gap: 5px 26px;
+  min-height: 190px;
+  padding: 24px 28px;
+  border: 1px solid var(--c-border);
+  border-radius: 16px;
+  background:
+    linear-gradient(120deg, color-mix(in srgb, var(--c-primary) 7%, transparent), transparent 48%),
+    var(--c-surface);
+  text-align: left;
 }
 
 /* 图形尺寸沿用 .exp-motif 的既有口径（宽屏 200 → 空态 180 / 窄屏 140），不改全局那条。 */
 .exp-empty :deep(.exp-motif) {
-  width: 180px;
+  grid-column: 1;
+  grid-row: 1 / 4;
+  width: 100%;
+  max-width: 156px;
   display: block;
-  margin: 0 auto 12px;
+  margin: 0;
+  color: var(--c-primary);
 }
 
 /* 窄屏：内距与图形各收一档（原来都在 experience.css 的 ≤760 里） */
 @media (max-width: 760px) {
-  .exp-empty { padding: 20px 0 28px; }
-  .exp-empty :deep(.exp-motif) { width: 140px; }
+  .exp-empty {
+    grid-template-columns: 76px minmax(0, 1fr);
+    min-height: 150px;
+    gap: 4px 16px;
+    padding: 18px 16px;
+  }
+  .exp-empty :deep(.exp-motif) { width: 88px; transform: translateX(-6px); }
 }
 
 .exp-empty--sm {
-  padding: var(--sp-5) var(--sp-3) var(--sp-6);
+  grid-template-columns: 82px minmax(0,1fr);
+  min-height: 132px;
+  gap: 3px 14px;
+  padding: 16px;
+}
+.exp-empty--sm :deep(.exp-motif) {
+  width: 90px;
+  transform: translateX(-6px);
 }
 
 /* 标题只有一档（h3），字号沿用升级前那一档，页面观感不变 */
 .exp-empty__title {
+  grid-column: 2;
   font-size: var(--fs-20);
-  font-weight: var(--fw-medium);
+  font-weight: var(--fw-semibold);
   line-height: var(--lh-snug);
   color: var(--c-text);
 }
@@ -357,26 +382,29 @@ const actionTarget = computed<'none' | 'link' | 'href' | 'button'>(() => {
    computed 从 241px/auto 掉成 0px —— 虽然 flex 下 align-items:center 也能居中，
    但那是"另一个理由得到同一个像素"，不是"外观不变"。 */
 .exp-empty__desc {
+  grid-column: 2;
   max-width: 34em;
-  margin: var(--sp-2) auto 0;
+  margin: var(--sp-1, 4px) 0 0;
   font-size: var(--fs-14);
   line-height: var(--lh-normal);
   color: var(--c-text-3);
 }
 
 .exp-empty__actions {
-  margin-top: var(--sp-4);
+  grid-column: 2;
+  align-self: start;
+  margin-top: 10px;
 }
 
 /* 预设的"下一步"：一条安静的路标，不是一个抢视线的按钮 */
 .exp-empty__next {
   display: flex;
   align-items: baseline;
-  justify-content: center;
+  justify-content: flex-start;
   flex-wrap: wrap;
   gap: var(--sp-2);
   max-width: 34em;
-  margin: 0 auto;
+  margin: 0;
   font-size: var(--fs-14);
   line-height: var(--lh-normal);
   color: var(--c-text-3);

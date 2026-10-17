@@ -15,11 +15,12 @@ let suppressClick = false
 let startY = 0
 let startTop = 0
 let hasSavedPosition = false
-const positionKey = 'zhiyin-reminder-y-v3'
+const positionKey = 'zhiyin-reminder-y-v4'
 
 const mobile = computed(() => viewportWidth.value <= 767)
 const minY = computed(() => mobile.value ? 136 : 72)
 const maxY = computed(() => Math.max(minY.value, viewportHeight.value - (mobile.value ? 138 : 78)))
+const defaultY = computed(() => mobile.value ? Math.round(viewportHeight.value * .54) : maxY.value)
 const triggerStyle = computed(() => ({ top: `${Math.min(maxY.value, Math.max(minY.value, y.value))}px` }))
 const cardY = computed(() => {
   const height = mobile.value ? 356 : 390
@@ -34,17 +35,17 @@ function clamp(value: number) { return Math.min(maxY.value, Math.max(minY.value,
 function resize() {
   viewportHeight.value = window.innerHeight
   viewportWidth.value = window.innerWidth
-  y.value = hasSavedPosition ? clamp(y.value) : maxY.value
+  y.value = hasSavedPosition ? clamp(y.value) : clamp(defaultY.value)
 }
 function restore() {
   const raw = localStorage.getItem(positionKey)
   const saved = Number(raw)
   hasSavedPosition = raw !== null && Number.isFinite(saved)
   if (hasSavedPosition) y.value = clamp(saved)
-  else y.value = maxY.value
+  else y.value = clamp(defaultY.value)
 }
 function save() { hasSavedPosition = true; localStorage.setItem(positionKey, String(Math.round(y.value))) }
-function resetPosition() { hasSavedPosition = false; localStorage.removeItem(positionKey); y.value = maxY.value }
+function resetPosition() { hasSavedPosition = false; localStorage.removeItem(positionKey); y.value = clamp(defaultY.value) }
 function pointerDown(event: PointerEvent) {
   if (event.button !== 0) return
   dragging = true; moved = false; startY = event.clientY; startTop = y.value
@@ -114,16 +115,16 @@ watch(() => route.path, () => { if (!hasSavedPosition) restore(); demo.closeNoti
 .floating-reminders__card>header div { display:flex; align-items:baseline; gap:8px; }
 .floating-reminders__card>header strong { font-size:16px; }
 .floating-reminders__card>header span { color:var(--c-text-3); font-size:12px; }
-.floating-reminders__card>header button { display:grid; place-items:center; width:36px; height:36px; border-radius:10px; color:var(--c-text-2); }
+.floating-reminders__card>header button { display:grid; place-items:center; width:44px; height:44px; border-radius:10px; color:var(--c-text-2); }
 .floating-reminders__list { padding:4px 16px 0; }
 .floating-reminders__list article { padding:15px 0; border-bottom:1px solid var(--c-border); min-width:0; }
 .floating-reminders__list article>span { color:var(--c-primary); font-size:11px; font-weight:600; }
 .floating-reminders__list h2 { margin:4px 0; font-size:14px; font-weight:600; overflow-wrap:anywhere; }
 .floating-reminders__list p { margin:0; color:var(--c-text-2); font-size:13px; line-height:1.65; overflow-wrap:anywhere; }
-.floating-reminders__list article>button { min-height:36px; margin-top:9px; padding:6px 10px; border-radius:8px; background:var(--c-primary-weak); color:var(--c-primary); font-size:12px; }
+.floating-reminders__list article>button { min-height:44px; margin-top:9px; padding:6px 10px; border-radius:8px; background:var(--c-primary-weak); color:var(--c-primary); font-size:12px; }
 .floating-reminders__empty { padding:28px 16px; text-align:center; color:var(--c-text-2); }
 .floating-reminders__card>footer { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:13px 16px; }
-.floating-reminders__card>footer :is(span,button) { min-height:36px; display:inline-flex; align-items:center; color:var(--c-primary); font-size:12px; }
+.floating-reminders__card>footer :is(span,button) { min-height:44px; display:inline-flex; align-items:center; color:var(--c-primary); font-size:12px; }
 .floating-reminders__card>footer>span { color:var(--c-text-3); }
 .floating-reminders__card>footer button { color:var(--c-text-3); }
 @media (max-width:767px) {

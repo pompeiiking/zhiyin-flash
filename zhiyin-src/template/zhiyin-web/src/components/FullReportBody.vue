@@ -5,10 +5,13 @@ import { useRoute, useRouter } from 'vue-router'
 import { PROFILE_TOPICS } from '../lib/profile-organization'
 import { profileLabel } from '../lib/server-copy'
 import { useAiTask } from '../lib/use-ai-task'
+import { navigation } from '../lib/layout'
 import AiResultMeta from './AiResultMeta.vue'
 import AiStatus from './AiStatus.vue'
 import DetailPopover from './DetailPopover.vue'
 import InfoSheet from './InfoSheet.vue'
+import AnchoredCard from './AnchoredCard.vue'
+import UiIcon from './UiIcon.vue'
 
 type ReportReading = { headline: string; paragraphs: string[]; moves: { label: string; why: string }[] }
 type ProfileSection = { key: string; title: string; fields: ProfileFieldView[] }
@@ -28,6 +31,7 @@ const appendix = ref(false)
 const profileSheet = ref(false)
 const tocOpen = ref(false)
 const activeSection = ref('overview')
+const tocSide = computed<'top' | 'left'>(() => navigation.width.value <= 767 ? 'top' : 'left')
 const all = computed(() => props.report.sections?.flatMap((section) => section.items ?? []) ?? [])
 const pendingItems = computed(() => all.value.filter(isPending))
 const supportedCount = computed(() => all.value.filter((item) => !isPending(item)).length)
@@ -264,14 +268,13 @@ onBeforeUnmount(() => observer?.disconnect())
         <slot />
       </div>
 
-      <aside class="report-toc-rail" :class="{ 'is-open': tocOpen }">
-        <nav class="report-toc" aria-label="报告章节目录">
-          <button class="report-toc__handle" :aria-expanded="tocOpen" aria-label="展开报告章节目录" @click="tocOpen = !tocOpen"><span class="report-toc__line" aria-hidden="true" /><span class="report-toc__ticks" aria-hidden="true"><i v-for="item in tocItems" :key="item.id" :class="{ 'is-active': activeSection === item.id, 'is-child': item.level === 'item' }" /></span></button>
-          <div class="report-toc__panel">
-            <p>报告目录 · {{ tocItems.length }} 个节点</p>
-            <button v-for="item in tocItems" :key="item.id" :class="[{ 'is-active': activeSection === item.id }, item.level === 'section' ? 'report-toc__section' : 'report-toc__item']" @click="scrollToSection(item.id)"><span>{{ item.title }}</span></button>
-          </div>
-        </nav>
+      <aside class="report-toc-rail">
+        <AnchoredCard v-model="tocOpen" class="report-toc-button" title="报告目录" label="打开报告目录" :side="tocSide" align="center">
+          <template #trigger><UiIcon name="menu" :size="17" /><span>目录</span></template>
+          <nav class="report-toc-card" aria-label="报告章节目录">
+            <button v-for="item in tocItems" :key="item.id" :class="[{ 'is-active': activeSection === item.id }, item.level === 'section' ? 'report-toc-card__section' : 'report-toc-card__item']" @click="scrollToSection(item.id)"><span>{{ item.title }}</span></button>
+          </nav>
+        </AnchoredCard>
       </aside>
     </div>
 
@@ -308,5 +311,14 @@ onBeforeUnmount(() => observer?.disconnect())
 :deep(.detail-trigger.article-meta-link)::after,:deep(.detail-trigger.article-evidence-link)::after{position:absolute;inset:-10px -6px;content:''}
 @media(max-width:767px){.report-toc-rail{right:auto;left:4px;width:44px;height:44px}.report-toc{right:auto;left:0;min-height:44px}.report-toc__handle{right:auto;left:0;width:44px;height:44px}.report-toc__line{left:21px}.report-toc-rail:hover .report-toc{width:44px}.report-toc-rail.is-open .report-toc,.report-toc:has(:focus-visible){width:min(300px,calc(100vw - 12px))}.report-toc-rail.is-open .report-toc__panel,.report-toc:has(:focus-visible) .report-toc__panel{width:calc(min(300px,calc(100vw - 12px)) - 44px);margin-left:44px}}
 @media(prefers-reduced-motion:reduce){.report-toc,.report-toc__panel,.report-toc__ticks i{transition:none}}
+.report-toc-rail{position:fixed;top:50%;right:max(22px,calc((100vw - 1090px)/2));z-index:38;width:auto;height:auto;max-height:none;transform:translateY(-50%)}
+:deep(.report-toc-button){display:flex;align-items:center;justify-content:center;gap:6px;min-width:64px;height:44px;padding:0 11px;border:1px solid var(--c-border-strong);border-radius:12px;background:color-mix(in srgb,var(--c-surface) 90%,transparent);box-shadow:var(--e-2);backdrop-filter:blur(12px);color:var(--c-text-2);font-size:12px;cursor:pointer}
+:deep(.report-toc-button:hover),:deep(.report-toc-button[aria-expanded=true]){border-color:var(--c-primary-border);color:var(--c-primary)}
+.report-toc-card{display:grid;gap:2px}
+.report-toc-card button{display:block;width:100%;min-height:40px;padding:8px 10px;border:0;border-radius:8px;background:transparent;color:var(--c-text-2);font-size:13px;text-align:left;cursor:pointer}
+.report-toc-card button:hover,.report-toc-card button.is-active{background:var(--c-primary-weak);color:var(--c-primary)}
+.report-toc-card button.report-toc-card__section{margin-top:4px;font-weight:600}
+.report-toc-card button.report-toc-card__item{min-height:36px;padding-left:24px;font-size:12px}
+@media(max-width:767px){.report-toc-rail{top:auto;right:auto;bottom:88px;left:6px;transform:none}:deep(.report-toc-button){min-width:66px;height:44px;background:var(--c-surface)}}
 @media print{.report-toc-rail,.article-meta-link,.article-reading-note button,.reference-links{display:none!important}.report-document__grid{display:block}.article-section{break-inside:avoid}:deep(.detail-trigger.article-evidence-link){color:inherit!important;text-decoration:none}}
 </style>

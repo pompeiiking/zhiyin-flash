@@ -913,7 +913,14 @@ onMounted(()=>{ void loadWorkspace() })
               </template><p>{{ item.full || item.brief }}</p><p class="profile-popover-meta">{{ item.section }} · {{ item.deps.length ? item.deps.length + ' 项资料支撑' : '逐项依据待核对' }}</p><p v-if="item.note">判断说明：{{ item.note }}</p><p v-if="item.risk">需要留意：{{ item.risk }}</p><p v-if="item.missingKeys.length">仍缺 {{ item.missingKeys.length }} 项关键资料。</p><button class="ws-text-button" type="button" @click="jumpToConclusion(item.key)">在完整分析中核对</button></DetailPopover>
             </li>
           </ul>
-          <p v-else class="profile-focus-empty">当前还没有可展示的方向。补充资料后，再开始比较。</p>
+          <div v-else class="profile-focus-empty">
+            <span>方向尚未形成</span>
+            <strong>{{ priorityGaps.length ? '还缺几项会影响判断的信息' : '先让系统了解你的专业与经历' }}</strong>
+            <ol v-if="priorityGaps.length" aria-label="形成方向前待补充的信息">
+              <li v-for="item in priorityGaps.slice(0,3)" :key="item.key"><i aria-hidden="true" />{{ item.label }}</li>
+            </ol>
+            <RouterLink class="ws-text-link" :to="priorityGaps[0] ? '/chat?gap='+encodeURIComponent(priorityGaps[0].key)+'&label='+encodeURIComponent(priorityGaps[0].label) : '/chat'">补充后开始比较<UiIcon name="arrow" :size="14" /></RouterLink>
+          </div>
         </section>
 
         <aside class="profile-next" aria-labelledby="profile-next-title">
@@ -1263,7 +1270,7 @@ onMounted(()=>{ void loadWorkspace() })
     <InfoSheet :open="verificationOpen" shape="panel" title="核验学籍信息" @close="verificationOpen=false"><AcademicVerification /></InfoSheet>
     <!-- 更正是一条信息的小表单（`text` + 两个按钮），不是"从一行钻进去看细节"。
          所以 shape 是 dialog（缺省也是它，这里写出来是为了让形态是**显式**的）。 -->
-    <InfoSheet shape="dialog" :open="correction !== null" :title="'更正' + (correction?.label ?? '信息')" @close="correction = null">
+    <InfoSheet shape="sheet" :open="correction !== null" :title="'更正' + (correction?.label ?? '信息')" @close="correction = null">
       <form @submit.prevent="save">
         <label class="ws-field">更正内容<textarea v-model="value" maxlength="40" /></label>
         <p v-if="correctionError" class="ws-field-error" role="alert">{{ correctionError }}</p>

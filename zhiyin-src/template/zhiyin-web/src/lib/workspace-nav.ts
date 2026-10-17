@@ -106,6 +106,8 @@ export const DIRECTORY_PAGES = [
  */
 const INTERNAL_PAGE_TITLES: Record<string, string> = {
   '/reminders': '提醒',
+  '/guide': '使用指南',
+  '/developer': '开发者管理',
   '/spec': '设计规范',
   '/path': '大一到大四',
   '/tools': '应用工具',
@@ -164,5 +166,5 @@ export function activeItem(route: RouteLike): NavItem | undefined {
 
 /** 面包屑与兜底页共用的「地址 → 名称」查询，避免各处再写一份硬编码映射。 */
 export function labelForPath(path: string, query: Record<string, unknown> = {}): string | undefined {
-  return activeItem({ path, query })?.label ?? INTERNAL_PAGE_TITLES[path]
+  return activeItem({ path, query })?.label ?? DIRECTORY_PAGES.find((page) => page.to === path)?.label ?? INTERNAL_PAGE_TITLES[path]
 }

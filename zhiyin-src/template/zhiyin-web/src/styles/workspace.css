@@ -831,6 +831,7 @@
  * ==========================================================================*/
 .app--workspace .ws-text-button,
 .app--workspace .ws-text-link { min-height: 44px; }
+.app--workspace .ws-heading__actions .ws-text-button { min-width:44px; padding-inline:8px; }
 .app--workspace .profile-toolbar select,
 .app--workspace .calendar-view select { min-height: 44px; }
 .app--workspace .ws-task__details > summary { min-height: 44px; }

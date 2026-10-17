@@ -9,9 +9,10 @@ import UiIcon from './UiIcon.vue'
 import { vScrollFade } from '../lib/scroll-fade'
 import { backendDemo } from '../lib/backend-demo'
 import BrandMark from './BrandMark.vue'
+import AccountPopover from './AccountPopover.vue'
 const route = useRoute()
 const router = useRouter()
-defineEmits<{ newChat: []; account: []; collapse: [] }>()
+defineEmits<{ newChat: []; collapse: [] }>()
 const collapseButton = ref<HTMLButtonElement | null>(null)
 defineExpose({ focusCollapse() { collapseButton.value?.focus() } })
 /**
@@ -69,7 +70,7 @@ function sessionDate(date?: string | null) { return date ? new Date(date).toLoca
       每颗 35×41 —— 既不到 44px，又让内部文档从导航裂缝漏回学生入口。
     -->
     <div class="desk-footer">
-      <button class="desk-person hf-person" aria-label="账号" @click="$emit('account')"><span class="desk-person__avatar">{{ userName.slice(0, 1) }}</span><span class="hf-person-text"><strong>{{ userName }}</strong><small>{{ personSub }}</small></span></button>
+      <AccountPopover class="desk-person hf-person" side="right" align="end"><template #trigger><span class="desk-person__avatar">{{ userName.slice(0, 1) }}</span><span class="hf-person-text"><strong>{{ userName }}</strong><small>{{ personSub }}</small></span></template></AccountPopover>
       <div class="desk-footer__links"><RouterLink :to="PORTAL_LINK.to">{{ PORTAL_LINK.label }}</RouterLink></div>
     </div>
   </aside>
