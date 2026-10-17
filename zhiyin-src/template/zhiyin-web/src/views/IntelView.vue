@@ -10,7 +10,6 @@ import CareerMatchPanel from '../components/CareerMatchPanel.vue'
 import StatusBanner from '../components/StatusBanner.vue'
 import EmptyState from '../components/EmptyState.vue'
 import SkeletonBlock from '../components/SkeletonBlock.vue'
-import DetailPopover from '../components/DetailPopover.vue'
 
 type CareerMatchHandle = { run: () => void }
 
@@ -115,7 +114,8 @@ onMounted(() => { void load() })
   <div class="ws-page intel-page">
     <section class="intel-command" aria-labelledby="intel-page-title">
       <div class="intel-command__title">
-        <div><h1 id="intel-page-title">职业探索</h1><DetailPopover title="职业探索 · 页面说明" label="查看职业探索说明"><p>从所学专业出发，了解相关职业，再用真实去向帮助自己做选择。</p></DetailPopover></div>
+        <h1 id="intel-page-title">职业探索</h1>
+        <p>从所学专业出发，了解相关职业，再用真实去向帮助自己做选择。</p>
       </div>
       <div class="intel-command__actions">
         <label v-if="allItems.length" class="intel-search">
@@ -135,13 +135,20 @@ onMounted(() => { void load() })
 
     <template v-else-if="allItems.length">
       <section class="intel-route" aria-label="从专业到职业的探索路径">
-        <article v-if="major" class="intel-origin">
+        <article class="intel-origin">
           <div class="intel-origin__mark" aria-hidden="true"><UiIcon name="profile" :size="20" /></div>
           <div class="intel-origin__copy">
             <span>你的专业起点</span>
-            <h2>{{ major.title }}</h2>
-            <p>{{ majorExcerpt(major) }}</p>
-            <button type="button" @click="selectItem(major)">查看专业信息</button>
+            <template v-if="major">
+              <h2>{{ major.title }}</h2>
+              <p>{{ majorExcerpt(major) }}</p>
+              <button type="button" @click="selectItem(major)">查看专业信息</button>
+            </template>
+            <template v-else>
+              <h2>专业信息待补充</h2>
+              <p>补充专业信息后，可进一步了解相关职业方向。</p>
+              <RouterLink to="/profile">前往个人画像</RouterLink>
+            </template>
           </div>
         </article>
 
@@ -167,8 +174,8 @@ onMounted(() => { void load() })
         <section class="intel-list-pane" :aria-busy="busy" aria-labelledby="intel-results-title">
           <header class="intel-list-pane__head">
             <div>
-              <h2 id="intel-results-title">{{ query ? '搜索结果' : '相关职业方向' }}</h2>
-              <p>{{ query ? `找到 ${filteredItems.length} 条相关资料` : '先了解工作本身，再决定是否深入' }}</p>
+              <h2 id="intel-results-title">{{ query ? '搜索结果' : careerItems.length ? '相关职业方向' : '职业参考资料' }}</h2>
+              <p>{{ query ? `找到 ${filteredItems.length} 条相关资料` : careerItems.length ? '先了解工作本身，再决定是否深入' : '暂未获取相关职业方向，可先浏览公开资料' }}</p>
             </div>
             <span v-if="!query">{{ careerItems.length }} 个方向</span>
           </header>
@@ -198,7 +205,7 @@ onMounted(() => { void load() })
 
             <section v-if="caseItems.length" class="intel-result-group intel-result-group--cases" aria-labelledby="career-case-title">
               <header>
-                <h3 id="career-case-title">校友怎么走</h3>
+                <h3 id="career-case-title">公开职业案例</h3>
                 <span>{{ caseItems.length }} 个参考</span>
               </header>
               <p>看见真实路径，但不把个例当作唯一答案。</p>
@@ -272,7 +279,7 @@ onMounted(() => { void load() })
 
 .intel-command { display: flex; align-items: end; justify-content: space-between; gap: 28px; margin-bottom: 14px; padding: 8px 2px 12px; }
 .intel-command__title h1 { font-size: 24px; font-weight: 720; line-height: 1.35; }
-.intel-command__title>div { display:flex; align-items:center; gap:8px; }
+.intel-command__title p { max-width: 52em; margin-top: 5px; color: var(--c-text-3); font-size: 12px; line-height: 1.6; }
 .intel-command__actions { display:flex; flex:0 1 520px; align-items:center; justify-content:flex-end; gap:10px; }
 .intel-search { display: flex; flex: 0 1 360px; align-items: center; gap: 8px; min-width: 260px; min-height: 44px; padding: 0 11px; border: 1px solid var(--c-border); border-radius: 10px; background: var(--c-surface); color: var(--c-text-3); box-shadow: var(--e-1); }
 .intel-search:focus-within { border-color: var(--c-primary); box-shadow: 0 0 0 3px var(--c-primary-weak); }
@@ -285,7 +292,7 @@ onMounted(() => { void load() })
 .intel-origin__copy > span { color: var(--c-primary); font-size: 12px; font-weight: 650; }
 .intel-origin__copy h2 { margin-top: 3px; font-size: 18px; font-weight: 720; }
 .intel-origin__copy p { display: -webkit-box; overflow: hidden; max-width: 64em; margin-top: 7px; color: var(--c-text-2); font-size: 12px; line-height: 1.7; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-.intel-origin__copy button { margin-top: 9px; color: var(--c-primary); font-size: 12px; font-weight: 650; }
+.intel-origin__copy button, .intel-origin__copy a { display: inline-block; margin-top: 9px; color: var(--c-primary); font-size: 12px; font-weight: 650; }
 .intel-route__steps { display: flex; grid-column: 1; align-items: center; justify-content: center; gap: 12px; min-height: 42px; padding: 0 14px; border: 1px solid var(--c-primary-border); border-top: 0; border-radius: 0 0 13px 13px; background: var(--c-surface); color: var(--c-text-3); font-size: 12px; }
 .intel-route__steps span { white-space: nowrap; }
 .intel-route__steps strong { color: var(--c-primary); font-size: 13px; }
