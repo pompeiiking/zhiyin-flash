@@ -34,14 +34,26 @@ async function createPhase(){
   }catch(e){error.value=(e as Error).message}
   finally{creatingPhase.value=false}
 }
-async function save(){if(busy.value)return;busy.value=true;error.value='';status.value='';try{const oldIds=new Set(phases.value.flatMap(p=>(p.tasks??[]).map(t=>t.task_id)));const plan=await studentApi.saveTask({client_request_id:requestId.value,expected_task:expectedTask.value,text:text.value.trim(),phase_id:phase.value,status:state.value,progress:state.value==='completed'?100:progress.value,waiting_reason:reason.value,due_date:due.value?new Date(due.value).toISOString():null,scheduled_at:schedule.value?new Date(schedule.value).toISOString():null,estimated_minutes:minutes.value||null,parent_task_id:props.split?props.task?.task_id:props.task?.parent_task_id},savedId.value||(props.split?undefined:props.task?.task_id));const added=(plan.phases??[]).flatMap(p=>p.tasks??[]).filter(t=>!oldIds.has(t.task_id));savedId.value=savedId.value||(props.split?undefined:props.task?.task_id)||(added.length===1?added[0]?.task_id:'')||'';const currentPhase=(plan.phases??[]).find(p=>(p.tasks??[]).some(t=>t.task_id===savedId.value));const currentTask=currentPhase?.tasks?.find(t=>t.task_id===savedId.value);if(currentTask&&currentPhase)expectedTask.value=snapshot(currentTask,currentPhase.id || phase.value);backendDemo.setAction(plan);status.value='已保存到阶段计划。'}catch(e){error.value=(e as Error).message}finally{busy.value=false}}
+async function save(){
+  if(busy.value)return
+  error.value='';status.value=''
+  // 页内校验：原生 required 只会弹浏览器气泡，抽屉里没有中文说明（UX-09）。
+  const cleaned=text.value.trim()
+  if(!cleaned){error.value='请填写任务内容后再保存。';return}
+  if(state.value==='waiting'&&!reason.value.trim()){error.value='状态为“等待中”时，请填写等待原因。';return}
+  busy.value=true
+  try{const oldIds=new Set(phases.value.flatMap(p=>(p.tasks??[]).map(t=>t.task_id)));const plan=await studentApi.saveTask({client_request_id:requestId.value,expected_task:expectedTask.value,text:cleaned,phase_id:phase.value,status:state.value,progress:state.value==='completed'?100:progress.value,waiting_reason:reason.value,due_date:due.value?new Date(due.value).toISOString():null,scheduled_at:schedule.value?new Date(schedule.value).toISOString():null,estimated_minutes:minutes.value||null,parent_task_id:props.split?props.task?.task_id:props.task?.parent_task_id},savedId.value||(props.split?undefined:props.task?.task_id));const added=(plan.phases??[]).flatMap(p=>p.tasks??[]).filter(t=>!oldIds.has(t.task_id));savedId.value=savedId.value||(props.split?undefined:props.task?.task_id)||(added.length===1?added[0]?.task_id:'')||'';const currentPhase=(plan.phases??[]).find(p=>(p.tasks??[]).some(t=>t.task_id===savedId.value));const currentTask=currentPhase?.tasks?.find(t=>t.task_id===savedId.value);if(currentTask&&currentPhase)expectedTask.value=snapshot(currentTask,currentPhase.id || phase.value);backendDemo.setAction(plan);status.value='已保存到阶段计划。'
+    // 保存成功后收起抽屉：列表里已经能看到变化，不需要用户再点"取消"关掉。
+    open.value=false
+  }catch(e){error.value=(e as Error).message}finally{busy.value=false}
+}
 </script>
 <template>
   <DetailPopover v-model="open" :label="split?'拆分任务：'+task?.text:task?'编辑与排期：'+task.text:'安排新任务'" :title="split?'拆分任务':task?'编辑任务':'安排新任务'" side="right">
     <template #trigger>{{triggerText || (split?'拆分':task?'编辑与排期':'安排新任务')}}</template>
     <form class="task-editor" @submit.prevent="save">
       <fieldset :disabled="busy">
-        <label class="ws-field">任务内容<input v-model="text" required maxlength="500"/></label>
+        <label class="ws-field">任务内容<input v-model="text" maxlength="500"/></label>
         <div v-if="!phases.length" class="task-editor-phase-empty">
           <p>还没有阶段：先在这里建第一个阶段，任务就能挂到它下面。</p>
           <div class="task-editor-phase-create">
@@ -55,7 +67,7 @@ async function save(){if(busy.value)return;busy.value=true;error.value='';status
           <label class="ws-field">状态<select v-model="state"><option value="pending">待执行</option><option value="in_progress">进行中</option><option value="waiting">等待中</option><option value="completed">已完成</option></select></label>
         </div>
         <label v-if="state==='in_progress'" class="ws-field">进度（%）<input v-model.number="progress" type="number" min="0" max="99"/></label>
-        <label v-if="state==='waiting'" class="ws-field">等待原因<input v-model="reason" required maxlength="500"/></label>
+        <label v-if="state==='waiting'" class="ws-field">等待原因<input v-model="reason" maxlength="500"/></label>
         <label class="ws-field">截止时间<input v-model="due" type="datetime-local"/></label>
         <details class="task-editor-schedule" :open="!!task?.scheduled_at||!!task?.estimated_minutes"><summary>开始时间与预计用时{{schedule||minutes?' · 已填写':' · 选填'}}</summary><label class="ws-field">安排开始时间<input v-model="schedule" type="datetime-local"/></label><label class="ws-field">预计用时（分钟）<input v-model.number="minutes" type="number" min="1" max="1440"/></label></details>
         <p v-if="split" class="ws-muted">新任务将保留与原任务的拆分关系，原任务不会自动完成。</p>

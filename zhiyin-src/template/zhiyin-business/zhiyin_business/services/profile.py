@@ -14,10 +14,17 @@ from zhiyin_data_sdk.repositories import ProfileRepository
 from zhiyin_kernel import dynamic_config
 from zhiyin_kernel.blackboard import Profile, ProfileField, ProfileGap
 from zhiyin_kernel.enums import ProfileSource
-from zhiyin_kernel.errors import InvalidRequest
+from zhiyin_kernel.errors import DuplicateResource, InvalidRequest
 from zhiyin_orchestration import DomainEvent, EventBus
 
 logger = logging.getLogger(__name__)
+
+#: 两个标签页改同一格时的冲突文案。
+#:
+#: 为什么不用仓储层原话：那句话说"这项画像已更新"，指的是整份画像；
+#: 而用户此刻改的是**一个字段**，界面上也只有那一格 —— 按字段说、并告诉他下一步
+#: 做什么（核对最新值再保存），比"画像已更新"更容易对上他自己看到的东西。
+PROFILE_FIELD_CONFLICT_MESSAGE = "这个字段已在其他页面更新，请核对最新值后再保存"
 
 #: 用户手填的一个字段值最多多长（字符数）。
 #
@@ -177,24 +184,37 @@ class DefaultProfileService(ProfileService):
         before = next(
             (field for field in await self._profiles.list_fields(user_id, [key])), None
         )
-        saved = await self.update_field(
-            user_id,
-            key,
-            text,
-            # 把握度给 1.0，不是"抬高他"：这条不是推出来的，是他自己写的。
-            # 采集口径里把握低于 0.45 会被算成"还没拿到"（见 policies/collection_gate），
-            # 于是沿用旧把握度会让刚改对的那条继续挂在缺口里 —— 他明明刚说完。
-            confidence=1.0,
-            source=ProfileSource.USER_EDIT.value,
-            # 中文名优先沿用这一格原来的：模型起的名字（"专业方向"）比规则表的
-            # 通用名更贴他当时那句话，而 upsert 是整行替换，不带上就丢了。
-            label=(before.label if before else "") or label,
-            # 旧证据撑的是**旧值**，留着会让"这条凭什么"指回一个已经不成立的说法。
-            # 更正之后的出处就是他本人，这一点由 source 负责说明。
-            evidence=[],
-            expected_updated_at=expected_updated_at,
-            check_version=check_version,
-        )
+        # 两个标签页改同一格：只要调用方带了"我看到的是哪一版"（updated_at），
+        # 就必须按版本写 —— 不能提示"已保存"却把另一页的值留在那里。
+        # 原来默认 check_version=False，于是没显式要校验的调用方会静默覆盖；
+        # 这里改成"带了期望版本就校验"，比让每个调用方各自记得传更可靠。
+        enforce_version = check_version or expected_updated_at is not None
+        try:
+            saved = await self.update_field(
+                user_id,
+                key,
+                text,
+                # 把握度给 1.0，不是"抬高他"：这条不是推出来的，是他自己写的。
+                # 采集口径里把握低于 0.45 会被算成"还没拿到"（见 policies/collection_gate），
+                # 于是沿用旧把握度会让刚改对的那条继续挂在缺口里 —— 他明明刚说完。
+                confidence=1.0,
+                source=ProfileSource.USER_EDIT.value,
+                # 中文名优先沿用这一格原来的：模型起的名字（"专业方向"）比规则表的
+                # 通用名更贴他当时那句话，而 upsert 是整行替换，不带上就丢了。
+                label=(before.label if before else "") or label,
+                # 旧证据撑的是**旧值**，留着会让"这条凭什么"指回一个已经不成立的说法。
+                # 更正之后的出处就是他本人，这一点由 source 负责说明。
+                evidence=[],
+                expected_updated_at=expected_updated_at,
+                check_version=enforce_version,
+            )
+        except DuplicateResource as exc:
+            # 冲突要能被他读懂、且指出下一步；同时**不能**回"已保存"。
+            raise DuplicateResource(PROFILE_FIELD_CONFLICT_MESSAGE) from exc
+        if saved.value != text:
+            # 写路径返回了别的值（例如调用方漏传版本导致覆盖、或仓储幂等分支返回旧值）：
+            # 与其让界面显示"已保存"而库里不是他写的内容，不如如实说冲突。
+            raise DuplicateResource(PROFILE_FIELD_CONFLICT_MESSAGE)
         try:
             await self._close_gap(user_id, key)
         except Exception:  # noqa: BLE001 - 值已经写进去了，不能因为收尾失败告诉他"没改成"
@@ -222,4 +242,4 @@ class DefaultProfileService(ProfileService):
         return sum(field.confidence for field in fields) / len(fields)
 
 
-__all__ = ["DefaultProfileService", "MAX_FIELD_VALUE_CHARS"]
+__all__ = ["DefaultProfileService", "MAX_FIELD_VALUE_CHARS", "PROFILE_FIELD_CONFLICT_MESSAGE"]

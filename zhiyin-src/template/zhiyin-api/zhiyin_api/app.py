@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from pathlib import Path
 from typing import Any, Iterable, Optional
 
@@ -212,10 +213,21 @@ def _install_error_handlers(app: FastAPI) -> None:
         problems = []
         for item in exc.errors():
             location = ".".join(str(part) for part in item.get("loc", ()) if part != "body")
-            problems.append(f"{location or 'body'}：{item.get('msg', '格式不正确')}")
+            raw = str(item.get("msg", "格式不正确") or "格式不正确")
+            # Pydantic 会在自定义 validator 前加"Value error, "；字段名/英文原文
+            # 不该直接丢给学生（深度测试实测：安静时段只填一端时看到
+            # "请求参数不合法 —— body：Value error, 安静时段需同时填写…"）。
+            clean = re.sub(r"^Value error,\s*", "", raw).strip()
+            if "安静时段" in clean:
+                problems.append("安静时段：需要同时填写开始和结束时间")
+                continue
+            if re.search(r"[A-Za-z]{4,}", clean) or re.search(r"[A-Za-z_]{3,}", location):
+                problems.append("有填写项不符合要求，请检查格式与长度后再保存")
+                continue
+            problems.append(f"{location or '本次填写'}：{clean}")
         return _envelope(
             ErrorCode.INVALID_PARAM,
-            "请求参数不合法 —— " + "；".join(problems[:5]),
+            "有几个填写项需要检查：" + "；".join(dict.fromkeys(problems))[:200],
             422,
         )
 

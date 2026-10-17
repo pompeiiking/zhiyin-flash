@@ -9,6 +9,7 @@ import { actionRows, dateKey, deadline, taskStatusLabel } from '../lib/action-in
 import DetailPopover from './DetailPopover.vue'
 import StatusBanner from './StatusBanner.vue'
 import ResultPager from './ResultPager.vue'
+import InfoSheet from './InfoSheet.vue'
 import { usePagedItems } from '../lib/paged-items'
 
 const props = defineProps<{ taskId?: string; loadingTasks?: boolean }>()
@@ -33,6 +34,10 @@ function taskSnapshot(): TaskValues | null {
 const busy = ref(false)
 const error = ref('')
 const status = ref('')
+/** 页面内校验提示：原生 required 只弹浏览器气泡，用户看不到中文说明（F5）。 */
+const formMessage = ref('')
+/** 已应用过的复盘再次应用前，先让用户确认要覆盖（F7）。 */
+const applyTarget = ref<Review | null>(null)
 const items = ref<Review[]>([])
 const loading = ref(false)
 const form = ref<HTMLFormElement | null>(null)
@@ -113,7 +118,12 @@ async function load(raise = false) {
 }
 
 async function save() {
-  if (!selected.value || busy.value) return
+  if (busy.value) return
+  formMessage.value = ''
+  // 页内校验替代原生 required：任务、原因、调整内容都要有中文提示（F5）。
+  if (!selected.value) { formMessage.value = '请先选择要复盘的任务。'; return }
+  if (!reason.value) { formMessage.value = '请选择主要原因后再保存复盘。'; return }
+  if (result.value === 'adjust' && !adjustedText.value.trim()) { formMessage.value = '选择“调整”时，请填写新的任务内容。'; return }
   busy.value = true
   error.value = ''
   status.value = ''
@@ -155,6 +165,17 @@ async function save() {
   }
 }
 
+function requestApply(item: Review) {
+  // 应用过的复盘修订后再应用＝覆盖任务现有内容，先确认一次（F7）；历史仍保留。
+  const wasApplied = !!item.applied_at || (item.history ?? []).some((version) => !!version.applied_at)
+  if (wasApplied) { applyTarget.value = item; return }
+  void apply(item)
+}
+async function confirmApply() {
+  const item = applyTarget.value
+  applyTarget.value = null
+  if (item) await apply(item)
+}
 async function apply(item: Review) {
   if (busy.value) return
   busy.value = true
@@ -221,7 +242,7 @@ onMounted(() => { void load() })
               </DetailPopover>
               <label class="review-task-switcher">
                 <span>切换任务</span>
-                <select v-model="selectedId" name="review-task" autocomplete="off" required>
+                <select v-model="selectedId" name="review-task" autocomplete="off">
                   <option value="">选择一项任务</option>
                   <option v-for="task in tasks" :key="task.task_id" :value="task.task_id">
                     {{ taskStatusLabel(task) }}{{ !task.done && deadline(task.due_date).overdue ? ' · 已逾期' : '' }} · {{ task.text }}
@@ -273,10 +294,11 @@ onMounted(() => { void load() })
               <fieldset class="review-reasons">
                 <legend class="sr-only">主要原因</legend>
                 <label v-for="item in reasonOptions" :key="item" :class="{ 'is-selected': reason === item }">
-                  <input v-model="reason" type="radio" name="review-reason" :value="item" required />
+                  <input v-model="reason" type="radio" name="review-reason" :value="item" />
                   <span>{{ item }}</span>
                 </label>
               </fieldset>
+              <p v-if="formMessage === '请选择主要原因后再保存复盘。'" class="ws-field-error" role="alert">{{ formMessage }}</p>
             </section>
 
             <section class="review-step review-step--decision" aria-labelledby="review-step-decision">
@@ -308,7 +330,7 @@ onMounted(() => { void load() })
 
               <div v-if="result === 'adjust'" class="review-adjustment">
                 <label class="ws-field">新的任务内容
-                  <input v-model="adjustedText" name="review-adjusted-task" autocomplete="off" required />
+                  <input v-model="adjustedText" name="review-adjusted-task" autocomplete="off" />
                 </label>
                 <label class="ws-field">新的截止时间
                   <input v-model="adjustedDate" name="review-adjusted-date" type="datetime-local" autocomplete="off" />
@@ -327,6 +349,7 @@ onMounted(() => { void load() })
               </div>
             </section>
 
+            <p v-if="formMessage && formMessage !== '请选择主要原因后再保存复盘。'" class="ws-field-error" role="alert">{{ formMessage }}</p>
             <footer class="review-editor__actions">
               <div>
                 <strong>{{ editing ? '保存这次修订' : '完成本次复盘' }}</strong>
@@ -381,7 +404,7 @@ onMounted(() => { void load() })
           </div>
           <div class="review-entry__actions">
             <button class="btn btn--sm" :disabled="busy" @click="edit(item)">修订复盘</button>
-            <button v-if="item.result !== 'continue' && !item.applied_at" class="btn btn--primary btn--sm" :disabled="busy" @click="apply(item)">应用到计划</button>
+            <button v-if="item.result !== 'continue' && !item.applied_at" class="btn btn--primary btn--sm" :disabled="busy" @click="requestApply(item)">应用到计划</button>
             <DetailPopover
               v-if="item.history.length || item.applied_at"
               :model-value="opened === item.id"
@@ -399,6 +422,15 @@ onMounted(() => { void load() })
       </div>
       <ResultPager v-model:page="pendingPage" :total="pendingReviews.length" :size="5" label="待确认复盘" />
     </section>
+
+    <InfoSheet :open="applyTarget !== null" shape="dialog" title="这条复盘应用过，要覆盖吗？" @close="applyTarget = null">
+      <p>{{ applyTarget?.task_text }} 之前已经应用过一次。这次修订后再应用，会用新内容覆盖阶段计划里对应任务。</p>
+      <p class="ws-muted">修订历史会保留，覆盖只影响任务当前内容；不确定时可以先“暂不应用”。</p>
+      <div class="ws-inline-actions">
+        <button class="btn btn--primary" :disabled="busy" @click="confirmApply">{{ busy ? '正在应用…' : '确认覆盖并应用' }}</button>
+        <button class="btn" :disabled="busy" @click="applyTarget = null">暂不应用</button>
+      </div>
+    </InfoSheet>
   </section>
 </template>
 

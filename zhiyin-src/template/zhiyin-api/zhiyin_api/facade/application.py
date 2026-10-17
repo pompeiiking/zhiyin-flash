@@ -683,7 +683,26 @@ class DefaultApplicationFacade(ApplicationFacade):
         items = await self._function.fetch_external_intel(
             user_id, topic=topic, limit=12, refresh=refresh
         )
-        return mappers.intel_list_view(items)
+        status = ""
+        message = ""
+        major = ""
+        fetch_status = getattr(self._function, "intel_fetch_status", None)
+        if callable(fetch_status):
+            try:
+                info = await fetch_status(user_id, topic=topic)
+                status = str(info.get("status") or "")
+                message = str(info.get("message") or "")
+            except Exception:  # noqa: BLE001 - 状态读不到不影响清单
+                logger.warning("读取情报取数状态失败", exc_info=True)
+        major_of = getattr(self._function, "profile_major", None)
+        if callable(major_of):
+            try:
+                major = await major_of(user_id)
+            except Exception:  # noqa: BLE001
+                logger.warning("读取画像专业失败", exc_info=True)
+        return mappers.intel_list_view(
+            items, status=status, message=message, major=major
+        )
 
     # ---------- AI 任务（SSE） ----------
 

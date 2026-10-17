@@ -18,7 +18,17 @@ function revealRules(event:Event){
   requestAnimationFrame(()=>details.scrollIntoView({block:'nearest',behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'}))
 }
 watch(open,v=>{if(!v)return;savedId.value='';requestId.value=crypto.randomUUID();const p=phases.value.find(p=>p.id===props.phaseId);expectedPhase.value=p?snapshot(p):null;name.value=p?.name??'';dependencies.value=[...(p?.depends_on??[])];start.value=dateKey(p?.starts_at);end.value=dateKey(p?.ends_at);dateRange.value=p?.date_range??'';datesTouched.value=false;blocks.value=p?.blocking_conditions?.join('\n')??'';handoff.value=p?.handoff_requirements?.join('\n')??'';status.value='';error.value=''})
-async function save(){if(busy.value)return;error.value='';status.value='';if(start.value&&end.value&&end.value<start.value){error.value='结束日期不能早于开始日期。';return}busy.value=true;try{const oldIds=new Set(phases.value.map(p=>p.id));const payload:PhaseEdit={client_request_id:requestId.value,expected_phase:expectedPhase.value,name:name.value,depends_on:dependencies.value,starts_at:start.value?new Date(start.value+'T00:00').toISOString():null,ends_at:end.value?new Date(end.value+'T23:59').toISOString():null,blocking_conditions:blocks.value.split('\n').filter(Boolean),handoff_requirements:handoff.value.split('\n').filter(Boolean)};const plan=await studentApi.savePhase(payload,savedId.value||props.phaseId);const added=(plan.phases??[]).filter(p=>!oldIds.has(p.id));savedId.value=savedId.value||props.phaseId||(added.length===1?added[0]?.id:'')||'';const saved=(plan.phases??[]).find(p=>p.id===savedId.value);if(saved)expectedPhase.value=snapshot(saved);backendDemo.setAction(plan);dateRange.value=(plan.phases??[]).find(p=>p.id===(savedId.value||props.phaseId))?.date_range??dateRange.value;datesTouched.value=false;status.value='阶段安排已保存。'}catch(e){error.value=(e as Error).message}finally{busy.value=false}}
+async function save(){
+  if(busy.value)return
+  error.value='';status.value=''
+  // 页面内校验（不用原生 required / :min 拦截，否则用户点了保存却没有任何中文提示）
+  const cleaned=name.value.trim()
+  if(!cleaned){error.value='请填写阶段名称。';return}
+  if(cleaned.length>100){error.value='阶段名称最多 100 个字，请精简后再保存。';return}
+  if(start.value&&end.value&&end.value<start.value){error.value='结束日期不能早于开始日期，请调整时间范围。';return}
+  busy.value=true
+  try{const oldIds=new Set(phases.value.map(p=>p.id));const payload:PhaseEdit={client_request_id:requestId.value,expected_phase:expectedPhase.value,name:cleaned,depends_on:dependencies.value,starts_at:start.value?new Date(start.value+'T00:00').toISOString():null,ends_at:end.value?new Date(end.value+'T23:59').toISOString():null,blocking_conditions:blocks.value.split('\n').filter(Boolean),handoff_requirements:handoff.value.split('\n').filter(Boolean)};const plan=await studentApi.savePhase(payload,savedId.value||props.phaseId);const added=(plan.phases??[]).filter(p=>!oldIds.has(p.id));savedId.value=savedId.value||props.phaseId||(added.length===1?added[0]?.id:'')||'';const saved=(plan.phases??[]).find(p=>p.id===savedId.value);if(saved)expectedPhase.value=snapshot(saved);backendDemo.setAction(plan);dateRange.value=(plan.phases??[]).find(p=>p.id===(savedId.value||props.phaseId))?.date_range??dateRange.value;datesTouched.value=false;status.value='阶段安排已保存。'}catch(e){error.value=(e as Error).message}finally{busy.value=false}
+}
 </script>
 <template>
   <button class="ws-text-button" type="button" @click="open=true">{{phaseId?'编辑阶段':'新增阶段'}}</button>
@@ -27,7 +37,7 @@ async function save(){if(busy.value)return;error.value='';status.value='';if(sta
       <form class="phase-editor" @submit.prevent="save">
         <fieldset :disabled="busy">
           <section class="phase-editor__section phase-editor__name">
-            <label class="ws-field">阶段名称<input v-model="name" name="phase-name" type="text" autocomplete="off" required maxlength="100" placeholder="例如：完成第一个可演示作品"/></label>
+            <label class="ws-field">阶段名称<input v-model="name" name="phase-name" type="text" autocomplete="off" maxlength="100" placeholder="例如：完成第一个可演示作品"/></label>
             <p>写清这一阶段要推进的结果，后续任务会围绕它展开。</p>
           </section>
 
@@ -36,7 +46,7 @@ async function save(){if(busy.value)return;error.value='';status.value='';if(sta
             <div class="phase-editor__dates">
               <label class="ws-field">开始日期<input v-model="start" name="phase-start" type="date" autocomplete="off" @input="datesTouched=true"/></label>
               <span aria-hidden="true">至</span>
-              <label class="ws-field">计划完成<input v-model="end" name="phase-end" type="date" autocomplete="off" :min="start||undefined" @input="datesTouched=true"/></label>
+              <label class="ws-field">计划完成<input v-model="end" name="phase-end" type="date" autocomplete="off" @input="datesTouched=true"/></label>
             </div>
             <p v-if="dateRange&&!start&&!end&&!datesTouched" class="phase-editor__legacy-date">当前安排：{{dateRange}}。不修改日期会保留原时间。</p>
           </section>

@@ -85,8 +85,10 @@ def test_chat_preserves_retry_identity_and_real_task_ids():
         "watch(()=>demo.state.currentSessionId,",
         "selectedOption.value=null;failedRequest=null;pending.value=null",
         "controller?.abort()",
-        "toggleTask(turn.guideTask.task_id)",
-        "backendClient.actionDone({task_id:id",
+        # 对话任务卡：按 guideTask 对齐真实 plan task（task_id 可能已随计划重排变化），
+        # 对不上时先加入阶段计划，避免再出现"行动任务不存在"的 404。
+        "toggleTask(turn.guideTask)",
+        "backendClient.actionDone({task_id:found.task.task_id",
     ]:
         assert code in chat
 

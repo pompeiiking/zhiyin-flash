@@ -22,7 +22,11 @@ export async function openSession(id: string) {
     const [messages,snapshot] = await Promise.all([backendClient.turns(id),studentApi.sessionSnapshot(id)])
     if (serial !== selecting) return
     systemData.snapshot=snapshot
-    const turns = withGuide(messages.map((m, i) => mapMessage(m, `${id}-${i}`)), snapshot, `${id}-guide`)
+    // 最后一条是用户提问、没有回复（生成中刷新/中断）时，snapshot 里的 guide
+    // 属于上一轮：不能再挂一条空的主理回复到这句提问下面（实测会显示上一轮残片）。
+    const lastRole = messages.length ? messages[messages.length - 1]?.role : ''
+    const guideSnapshot = lastRole === 'user' ? null : snapshot
+    const turns = withGuide(messages.map((m, i) => mapMessage(m, `${id}-${i}`)), guideSnapshot, `${id}-guide`)
     backendDemo.selectSession(id); backendDemo.saveTurns(id, turns); demo.setChatTurns(turns, id)
   } catch(e) { if (serial === selecting) systemData.error = (e as Error).message; throw e }
   finally { if (serial === selecting) systemData.busy = false }
@@ -53,7 +57,12 @@ export async function loadShell() {
   const results = await Promise.allSettled([
     backendClient.sessions().then(async s => {
       backendDemo.setSessions(s.sessions ?? [], demo.state.currentSessionId || s.current_task_id || '')
-      const restoreId=s.current_task_id || s.sessions?.[0]?.task_id
+      // 恢复顺序：本标签页正在看的那条（sessionStorage）→ 后端最近会话 → 列表第一条。
+      // 只认仍在列表里的 id，避免恢复到已被清理/空会话。
+      let tabSession = ''
+      try { tabSession = sessionStorage.getItem('zhiyin-current-session') || '' } catch { /* 不可用就退回账号级 */ }
+      const known = (s.sessions ?? []).some(item => item.task_id === tabSession)
+      const restoreId = (known ? tabSession : '') || s.current_task_id || s.sessions?.[0]?.task_id
       if (!demo.state.currentSessionId && restoreId) await openSession(restoreId)
     }),
     backendClient.action().then(backendDemo.setAction),

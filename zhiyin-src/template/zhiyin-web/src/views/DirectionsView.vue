@@ -21,7 +21,12 @@ async function loadImpact(){
 async function load(){if(busy.value)return;busy.value=true;error.value='';try{
  backendDemo.setLiveDirections(await backendClient.directions());await loadImpact()
 }catch(e){if(!(e instanceof BackendError&&e.code===1002))error.value=(e as Error).message}finally{busy.value=false}}
-async function select(id:string){if(saving.value)return;saving.value=true;error.value='';try{backendDemo.setLiveDirections(await backendClient.selectDirection(id));backendDemo.markDirectionChange();selectionChanged.value=true;await loadImpact()}catch(e){error.value=(e as Error).message}finally{saving.value=false}}
+/**
+ * 选了方向后：如果后端两版资产都明确不需要重算，就把本会话里"方向已变化"的
+ * 提示标记清掉（深度测试 D9：仅选择方向也会在计划/报告页持续出现"资料已变化"。
+ * 只清提示，不伪造版本；真需要重算时（checked 且 report/plan 为 true）保留提示）。
+ */
+async function select(id:string){if(saving.value)return;saving.value=true;error.value='';try{backendDemo.setLiveDirections(await backendClient.selectDirection(id));backendDemo.markDirectionChange();selectionChanged.value=true;await loadImpact();if(impact.value.checked&&!impact.value.report&&!impact.value.plan)backendDemo.clearAssetChanges()}catch(e){error.value=(e as Error).message}finally{saving.value=false}}
 function printReport(){window.print()}
 function setHistory(open:boolean){const query={...route.query};delete query.focus;if(open)query.view='versions';else delete query.view;void router.replace({query})}
 onMounted(load)

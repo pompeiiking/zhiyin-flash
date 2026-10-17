@@ -3222,6 +3222,22 @@ export interface components {
       fetched_at?: string;
       /** Items */
       items?: components["schemas"]["IntelItemView"][];
+      /**
+       * Major
+       * @default
+       */
+      major?: string;
+      /**
+       * Message
+       * @description 给学生看的下一步说明
+       * @default
+       */
+      message?: string;
+      /**
+       * Status
+       * @default
+       */
+      status?: string;
     };
     /**
      * IntelRefView

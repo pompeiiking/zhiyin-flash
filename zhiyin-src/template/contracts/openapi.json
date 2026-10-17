@@ -4844,6 +4844,22 @@
             },
             "title": "Items",
             "type": "array"
+          },
+          "major": {
+            "default": "",
+            "title": "Major",
+            "type": "string"
+          },
+          "message": {
+            "default": "",
+            "description": "给学生看的下一步说明",
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "default": "",
+            "title": "Status",
+            "type": "string"
           }
         },
         "title": "IntelListView",

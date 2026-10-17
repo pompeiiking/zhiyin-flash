@@ -3,6 +3,11 @@ import { rememberSession } from './session-cache'
 import type { AcademicPanelView, AcademicCourseView, AcademicGradeView, ConversationMaterialView, IntelItemView, MessageRequest, NoteView, TaskSessionView, DirectionPlanListView, ActionPlanView, WorkspacePageView, ProfileFieldView, CalendarNodeView, ReportFullTextView, AssetVersionView } from '../api/backend-types'
 import type { ChatTurn } from '../data/types'
 const now = () => new Date().toISOString()
+/** 待办/目标统一口径：最新在前（与后端 DESC 一致），新增与刷新前后的顺序不再矛盾（STU-004）。 */
+const newestFirst = (a: NoteView, b: NoteView) => {
+  const ta = Date.parse(a.created_at ?? ''), tb = Date.parse(b.created_at ?? '')
+  return Number.isFinite(ta) && Number.isFinite(tb) ? tb - ta : 0
+}
 const emptyState = () => ({
   freshAccount: true, dataMode: 'service' as 'demo'|'service',
   assetChanges: {profileKeys: [] as string[], direction: false}, reportReviewRequested: false,
@@ -39,6 +44,8 @@ export const backendDemo = {
   setLiveDirections(plans: DirectionPlanListView) { state.liveDirections = plans },
   markProfileChange(key: string) { state.profileEditSerial++;if (!state.assetChanges.profileKeys.includes(key)) state.assetChanges.profileKeys.push(key) },
   markDirectionChange() { state.assetChanges.direction = true },
+  /** 用户核对版本后确认本次变更不需要重算：清掉展示提示，不动任何资产结论。 */
+  clearAssetChanges() { state.assetChanges.profileKeys.splice(0); state.assetChanges.direction = false },
   requestReportReview() { state.reportReviewRequested = true },
   setIntel(items: IntelItemView[]) { state.intel = items; state.intelOrigin = 'live' },
   setAction(plan: ActionPlanView) { state.liveAction = plan },
@@ -47,8 +54,8 @@ export const backendDemo = {
   setCalendar(nodes: CalendarNodeView[]) { state.liveCalendar = nodes },
   setReport(report: ReportFullTextView) { state.liveReport = report },
   setReportMetadata(metadata: AssetVersionView | null) { state.reportMetadata = metadata },
-  upsertNote(note: NoteView) { const i=state.notes.findIndex(n=>n.id===note.id);if(i>=0)state.notes[i]=note;else state.notes.push(note);if(!state.liveNoteIds.includes(note.id))state.liveNoteIds.push(note.id) },
-  setNotes(notes: NoteView[]) { state.notes=notes;state.notesOrigin='live';state.liveNoteIds=notes.map(n=>n.id) },
+  upsertNote(note: NoteView) { const i=state.notes.findIndex(n=>n.id===note.id);if(i>=0)state.notes[i]=note;else state.notes.unshift(note);state.notes.sort(newestFirst);if(!state.liveNoteIds.includes(note.id))state.liveNoteIds.push(note.id) },
+  setNotes(notes: NoteView[]) { state.notes=[...notes].sort(newestFirst);state.notesOrigin='live';state.liveNoteIds=state.notes.map(n=>n.id) },
   getDraft(id: string) { return state.drafts[id] ?? { text: '', materials: [], scroll: null } },
   saveDraft(id: string, text: string, materials: { id: string; name: string }[], scroll: number | null) { state.drafts[id] = { text, materials: materials.map(m => ({ ...m })), scroll } },
   recordEvent(event: string) { if (!state.eventTimes[event]) state.eventTimes[event] = now() },

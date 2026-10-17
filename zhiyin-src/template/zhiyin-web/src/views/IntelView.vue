@@ -121,6 +121,15 @@ function cleanArticle(item: IntelItemView): IntelItemView {
 }
 
 const allItems = computed(() => backendDemo.state.intel)
+/** 画像里已记录的专业（只用于说明「专业已记录、资料待获取」，不改后端数据）。 */
+const profileMajor = ref('')
+async function loadProfileMajor() {
+  try {
+    const workspace = await backendClient.workspace()
+    const fields = workspace.profile_panel?.fields ?? []
+    profileMajor.value = String(fields.find((field) => field.key === 'major')?.value ?? '').trim()
+  } catch { /* 读不到画像就退回通用文案 */ }
+}
 const majorItems = computed(() => allItems.value.filter((item) => item.kind === 'speciality'))
 const major = computed(() => majorItems.value[0] ?? null)
 const explorableItems = computed(() => allItems.value.filter((item) => item.kind !== 'speciality'))
@@ -206,7 +215,16 @@ async function load(refresh = false) {
     const result = await (refresh ? backendClient.refreshIntel('') : backendClient.intel(''))
     if (!result || !Array.isArray(result.items)) throw new Error('Incomplete intel')
     backendDemo.setIntel(result.items)
-    if (refresh) status.value = result.items.length ? `已重新获取 ${result.items.length} 条职业资料。` : '本次未获取到职业资料，可稍后重试或使用画像匹配。'
+    // 后端现在会给出取数状态（ok/empty/failed）与画像专业：把"确实没有"
+    // 和"这次没取到、可以重试"分开说，不再一律当 0 条。
+    if (result.major) profileMajor.value = String(result.major).trim()
+    else void loadProfileMajor()
+    if (result.status === 'failed') {
+      error.value = String(result.message || '这次没有取到职业资料（不是"没有相关内容"）。可以稍后重试。')
+    } else if (result.status === 'empty') {
+      status.value = String(result.message || '没有找到匹配的职业资料，可以换一个关键词或稍后重试。')
+    }
+    if (refresh) status.value = result.items.length ? `已重新获取 ${result.items.length} 条职业资料。` : (status.value || '本次未获取到职业资料，可稍后重试或使用画像匹配。')
     if (!result.items.some((item) => item.id === selectedId.value)) {
       selectedId.value = result.items.find((item) => item.kind === 'occupation')?.id ?? result.items[0]?.id ?? ''
     }
@@ -263,15 +281,22 @@ onMounted(() => {
               <button type="button" @click="selectItem(major)">查看专业信息</button>
             </template>
             <template v-else>
-              <h2>专业信息待补充</h2>
-              <p>补充专业信息后，可进一步了解相关职业方向。</p>
-              <RouterLink to="/profile">前往个人画像</RouterLink>
+              <template v-if="profileMajor">
+                <h2>专业已记录，相关职业资料待获取</h2>
+                <p>画像里已记录专业：{{ profileMajor }}。这次没有取到对应的职业资料，可以点「更新职业资料」重试，不用回画像重复填写。</p>
+                <button type="button" :disabled="busy" @click="load(true)">{{ refreshing ? '正在更新资料…' : '更新职业资料' }}</button>
+              </template>
+              <template v-else>
+                <h2>专业信息待补充</h2>
+                <p>补充专业信息后，可进一步了解相关职业方向。</p>
+                <RouterLink to="/profile">前往个人画像</RouterLink>
+              </template>
             </template>
           </div>
         </article>
 
         <div class="intel-route__steps" aria-label="探索关系">
-          <span><strong>{{ major ? 1 : 0 }}</strong> 个专业起点</span>
+          <span><strong>{{ major || profileMajor ? 1 : 0 }}</strong> 个专业起点</span>
           <i aria-hidden="true"></i>
           <span><strong>{{ allItems.filter((item) => item.kind === 'occupation').length }}</strong> 个相关职业</span>
           <i aria-hidden="true"></i>

@@ -305,6 +305,12 @@ class IntelListView(BaseModel):
 
     items: list[IntelItemView] = Field(default_factory=list)
     fetched_at: str = Field(default="", description="这一批的取回时间")
+    #: 取数状态：ok / empty / failed / unknown —— 学生要能区分"确实没有"
+    #: 与"这次没取到，可以重试"，而不是把失败当成 0 条。
+    status: str = ""
+    message: str = Field(default="", description="给学生看的下一步说明")
+    #: 画像里已记录的专业（"专业起点"的依据，不受本次取数成败影响）。
+    major: str = ""
 
 
 class WorkspacePageView(BaseModel):

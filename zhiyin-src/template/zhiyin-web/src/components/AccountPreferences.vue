@@ -36,7 +36,25 @@ const timezoneChoices=computed(()=>{
 })
 const timezoneLabel=computed(()=>timezoneChoices.value.find(option=>option.id===values.value?.timezone)?.label||values.value?.timezone||'Asia/Shanghai')
 async function load(){if(loading.value)return;loading.value=true;error.value='';try{values.value=await studentApi.preferences();original.value={...values.value}}catch(e){error.value=(e as Error).message}finally{loading.value=false}}
-async function save(){if(!values.value||!original.value||busy.value)return;busy.value=true;error.value='';status.value='';try{values.value=await studentApi.savePreferences({...values.value,expected:original.value,quiet_start:values.value.quiet_start||null,quiet_end:values.value.quiet_end||null});original.value={...values.value};latest.value=null;status.value='偏好已保存，后续提醒与分析请求将按此设置执行。'}catch(e){error.value=(e as Error).message;if((e as {code?:number}).code===1003){try{latest.value=await studentApi.preferences()}catch{error.value+=' 最新记录暂未取得，请稍后重试。'}}}finally{busy.value=false}}
+/** 技术报文 → 学生能照着做的一句话（#10：安静时间只填一端时的后端报错兜底）。 */
+function friendlyPreferenceError(message: unknown) {
+  const text = String(message ?? '')
+  if (/(安静时段|quiet)/i.test(text) || (/Value error/i.test(text) && /(开始|结束|start|end)/i.test(text))) {
+    return '安静时段需要同时填写开始和结束时间，或两处都清空。'
+  }
+  if (/Value error|请求参数不合法|body[：:]/i.test(text)) {
+    return '保存内容没有通过校验，请检查填写的时间与选项后重试。'
+  }
+  return text || '偏好没有保存成功，请稍后重试。'
+}
+async function save(){
+  if(!values.value||!original.value||busy.value)return
+  // 页面内先拦住"只填一端"，不让它走到后端再回一段技术报文。
+  const quietStart=values.value.quiet_start||'', quietEnd=values.value.quiet_end||''
+  if(!quietStart !== !quietEnd){error.value='安静时段需要同时填写开始和结束时间，或两处都清空。';return}
+  busy.value=true;error.value='';status.value=''
+  try{values.value=await studentApi.savePreferences({...values.value,expected:original.value,quiet_start:quietStart||null,quiet_end:quietEnd||null});original.value={...values.value};latest.value=null;status.value='偏好已保存，后续提醒与分析请求将按此设置执行。'}catch(e){error.value=friendlyPreferenceError((e as Error).message);if((e as {code?:number}).code===1003){try{latest.value=await studentApi.preferences()}catch{error.value+=' 最新记录暂未取得，请稍后重试。'}}}finally{busy.value=false}
+}
 onMounted(load)
 </script>
 <template>

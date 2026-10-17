@@ -83,7 +83,10 @@ async function save() {
       school: school.value.trim(),
       term: term.value.trim(),
     })
-    emit('saved', `已保存 ${props.kind === 'courses' ? receipt.courses : receipt.grades} ${props.kind === 'courses' ? '门课程' : '条成绩'}。`)
+    // 服务端会把重复行合并掉；只报"已保存 N 条"会让学生以为少识别了。
+    // 把后端回执里的合并说明一并带出来（如"已合并 1 条重复成绩记录"）。
+    const merged = (receipt.notes ?? []).find((note) => note.includes('合并'))
+    emit('saved', `已保存 ${props.kind === 'courses' ? receipt.courses : receipt.grades} ${props.kind === 'courses' ? '门课程' : '条成绩'}${merged ? `；${merged}` : ''}。`)
   } catch (cause) {
     error.value = (cause as Error).message
   } finally {

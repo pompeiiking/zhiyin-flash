@@ -5,6 +5,8 @@ from datetime import datetime, timedelta, timezone
 from uuid import uuid4, uuid5, NAMESPACE_URL
 from zoneinfo import ZoneInfo
 
+from pydantic import ValidationError
+
 from zhiyin_business.contracts.common import AssetUpdateDraft
 from zhiyin_business.services.form_merge import merge_form
 from zhiyin_kernel.assets import ActionPlan, ActionPhase, ActionTask
@@ -36,6 +38,54 @@ def normalize(plan):
     return plan
 
 
+"""设置类表单的校验文案。
+
+pydantic 的默认文字会带字段名与 `Value error` 这类实现细节
+（线上表现为"请求参数不合法 —— body：Value error, ..."）。这些是**用户能自己改**的事，
+应当用他看得懂的一句话说出来，而不是把校验器的内部结构摊到他面前。
+"""
+QUIET_HOURS_MESSAGE = "安静时段需要同时填写开始和结束时间"
+_TIMEZONE_MESSAGE = "时区不是有效的时区，请重新选择"
+
+
+def _friendly_form_error(exc: ValidationError, *, fallback: str = "设置内容不完整，请核对后重试") -> str:
+    for error in exc.errors():
+        message = str(error.get("msg") or "")
+        if "安静时段" in message:
+            return QUIET_HOURS_MESSAGE
+        if "时区" in message:
+            return _TIMEZONE_MESSAGE
+        if "输入应为有效的" in message or "Input should be" in message:
+            continue
+    return fallback
+
+
+def _task_dump(task) -> dict:
+    """导出用：任务只留用户能读懂、且不涉及内部标识的字段。"""
+    return {
+        "text": task.text,
+        "status": "completed" if task.done else (task.status or "pending"),
+        "progress": 100 if task.done else (task.progress or 0),
+        "waiting_reason": task.waiting_reason or "",
+        "due_date": task.due_date.isoformat() if task.due_date else None,
+        "scheduled_at": task.scheduled_at.isoformat() if task.scheduled_at else None,
+        "estimated_minutes": task.estimated_minutes,
+    }
+
+
+def _phase_dump(phase, phase_names: dict) -> dict:
+    return {
+        "name": phase.name,
+        "date_range": phase.date_range or "",
+        "starts_at": phase.starts_at.isoformat() if phase.starts_at else None,
+        "ends_at": phase.ends_at.isoformat() if phase.ends_at else None,
+        "depends_on": [phase_names.get(dep, "已移除阶段") for dep in (phase.depends_on or [])],
+        "blocking_conditions": list(phase.blocking_conditions or []),
+        "handoff_requirements": list(phase.handoff_requirements or []),
+        "tasks": [_task_dump(task) for task in phase.tasks],
+    }
+
+
 class StudentService:
     IMPLEMENTATION_STATUS = "wired"
 
@@ -53,6 +103,8 @@ class StudentService:
         behaviors=None,
         read_cache=None,
         ai_tasks=None,
+        profiles=None,
+        notes=None,
     ):
         self.state = state
         self.assets = assets
@@ -65,13 +117,28 @@ class StudentService:
         self.behaviors = behaviors
         self.read_cache = read_cache
         self.ai_tasks = ai_tasks
+        self.profiles = profiles
+        self.notes = notes
 
     async def preferences(self, user_id):
         return Preferences.model_validate((await self.state.get(user_id)).get("preferences", {}))
 
     async def save_preferences(self, user_id, body):
         previous = await self.preferences(user_id)
-        body = await self._save_form(user_id, "preferences", body, Preferences)
+        try:
+            body = await self._save_form(user_id, "preferences", body, Preferences)
+        except ValidationError as exc:
+            # 用户在表单里能自己改的事（安静时段只填一端、时区不认识），
+            # 用一句他能懂的话说出来；不要把他推到 "Value error" 上。
+            error = InvalidRequest(_friendly_form_error(exc))
+            error.user_facing = True
+            raise error from exc
+        # 合并另一个标签页的修改之后，仍可能只剩安静时段的一端；
+        # 这一处不依赖 pydantic 的错误形状，兜一层同样的文案。
+        if bool(body.quiet_start) != bool(body.quiet_end):
+            error = InvalidRequest(QUIET_HOURS_MESSAGE)
+            error.user_facing = True
+            raise error
         if self.ai_tasks is not None and (
             previous.academic_analysis != body.academic_analysis
             or previous.material_analysis != body.material_analysis
@@ -552,6 +619,83 @@ class StudentService:
             error = InvalidRequest("上传材料参与分析已关闭，请移除附件后发送，或在资料偏好中开启。")
             error.user_facing = True
             raise error
+
+    async def export_full_data(self, user_id):
+        """「我的全部资料」—— 供 API 层直接落成 JSON 下载文件。
+
+        为什么要由业务层组装：前端自己拼 workspace 时只拿到"面板摘要"，
+        阶段计划与任务不在其中，导出出来就缺了一块（深度测试 J-08/P2-01）。
+        这里把**用户自己产生的内容**收齐：画像、导入的学业快照、待办/目标、
+        当前报告、阶段计划与任务。
+
+        两条边界：
+        - **不输出凭据/令牌/内部状态**：只读上面这几个领域对象，不 read 原始 state；
+        - 顺序口径与接口一致（待办按创建时间倒序，最新在前），导出与页面看到的一样。
+        """
+        data = {"exported_at": now().isoformat(timespec="seconds"), "format_version": 1}
+
+        if self.profiles is not None:
+            try:
+                profile = await self.profiles.get(user_id)
+            except Exception:  # noqa: BLE001 - 导出不因单块读失败而整份失败
+                profile = None
+            data["profile"] = profile.model_dump(mode="json") if profile is not None else None
+        else:
+            data["profile"] = None
+
+        if self.academic is not None:
+            try:
+                snapshot = await self.academic.get(user_id)
+            except Exception:  # noqa: BLE001
+                snapshot = None
+            data["academic"] = snapshot.model_dump(mode="json") if snapshot is not None else None
+        else:
+            data["academic"] = None
+
+        notes: list[dict] = []
+        if self.notes is not None:
+            try:
+                rows = (
+                    await self.notes.list_by_user(user_id)
+                    if hasattr(self.notes, "list_by_user")
+                    else []
+                )
+                rows = sorted(rows, key=lambda item: getattr(item, "created_at", None) or now(), reverse=True)
+                notes = [
+                    {
+                        "kind": getattr(item, "kind", "todo"),
+                        "text": getattr(item, "text", ""),
+                        "done": bool(getattr(item, "done", False)),
+                        "created_at": getattr(item, "created_at", None).isoformat()
+                        if getattr(item, "created_at", None)
+                        else None,
+                    }
+                    for item in rows
+                ]
+            except Exception:  # noqa: BLE001
+                notes = []
+        data["notes"] = notes
+
+        try:
+            report = await self.assets.get_report(user_id)
+        except Exception:  # noqa: BLE001
+            report = None
+        data["report"] = report.model_dump(mode="json") if report is not None else None
+
+        try:
+            plan = await self.assets.get_action_plan(user_id)
+        except Exception:  # noqa: BLE001
+            plan = None
+        if plan is not None:
+            normalize(plan)
+            phase_names = {phase_id(plan, phase): phase.name for phase in plan.phases}
+            data["action_plan"] = {
+                "has_plan": True,
+                "phases": [_phase_dump(phase, phase_names) for phase in plan.phases],
+            }
+        else:
+            data["action_plan"] = {"has_plan": False, "phases": []}
+        return data
 
     async def export(self, user_id, asset_type, fmt):
         import asyncio

@@ -30,6 +30,14 @@ async def test_explicit_diagnosis_and_profile_update_override_current_action_sta
     ('帮我改一下计划', True),
     ('请帮我制定行动计划', True),
     ('现有行动计划需要重新调整', True),
+    # 2026-10-18 深度测试：讨论/草案回合曾被静默写成计划（9 项被改成 5 项）。
+    ('如果把第一周的任务都改到周末，会有什么影响？先别改，我只是问问', False),
+    ('先拟一个调整方案给我看看，别保存', False),
+    ('如果现在改计划，会怎样？', False),
+    # 反过来，对上一轮草案的明确确认要能识别（原来 false，导致"确认保存"不生效）。
+    ('确认按这个安排保存', True),
+    ('就按这个方案执行', True),
+    ('如果按这个方案改，帮我保存', True),
 ])
 def test_action_plan_requires_affirmative_request(message, expected):
     assert _explicit_plan_request(message) is expected

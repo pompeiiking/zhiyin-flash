@@ -3,10 +3,16 @@ type Kind = 'courses' | 'grades'
 
 export function decodeAcademicFile(bytes: ArrayBuffer): string {
   const prefix = new Uint8Array(bytes, 0, Math.min(bytes.byteLength, 2))
-  if (prefix[0] === 255 && prefix[1] === 254) return new TextDecoder('utf-16le', { fatal: true }).decode(bytes)
-  if (prefix[0] === 254 && prefix[1] === 255) return new TextDecoder('utf-16be', { fatal: true }).decode(bytes)
-  try { return new TextDecoder('utf-8', { fatal: true }).decode(bytes) }
-  catch { return new TextDecoder('gb18030', { fatal: true }).decode(bytes) }
+  try {
+    if (prefix[0] === 255 && prefix[1] === 254) return new TextDecoder('utf-16le', { fatal: true }).decode(bytes)
+    if (prefix[0] === 254 && prefix[1] === 255) return new TextDecoder('utf-16be', { fatal: true }).decode(bytes)
+    try { return new TextDecoder('utf-8', { fatal: true }).decode(bytes) }
+    catch { return new TextDecoder('gb18030', { fatal: true }).decode(bytes) }
+  } catch {
+    // 二进制/损坏文本会让 TextDecoder 抛英文异常（"Failed to execute 'decode'…"）。
+    // 学生只需要知道怎么改：换一份 UTF-8/GBK 文本，或直接粘贴内容。
+    throw new Error('这个文件的编码无法识别，请另存为 UTF-8 或 GBK 文本后再导入，也可以直接粘贴表格内容。')
+  }
 }
 
 export function parseAcademicSource(source: string, kind: Kind): (AcademicCourseView | AcademicGradeView)[] {

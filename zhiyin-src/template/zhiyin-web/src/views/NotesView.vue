@@ -50,9 +50,14 @@ const text = computed({
   get: () => drafts.value[scope.value],
   set: (value: string) => { drafts.value[scope.value] = value },
 })
+/** 最新在前（与后端返回口径一致），新增项一定落在第一页顶部（STU-004）。 */
+const noteTime = (note: NoteView) => {
+  const time = Date.parse(note.created_at ?? '')
+  return Number.isFinite(time) ? time : 0
+}
 const visibleNotes = computed(() => {
   const query = noteQuery.value.trim().toLocaleLowerCase()
-  const ordered = [...pending.value, ...completed.value]
+  const ordered = [...pending.value, ...completed.value].sort((a, b) => noteTime(b) - noteTime(a))
   return query ? ordered.filter((note) => note.text.toLocaleLowerCase().includes(query)) : ordered
 })
 const { page: notesPage, paged: pagedNotes } = usePagedItems(visibleNotes, 6, () => [scope.value, noteQuery.value])
@@ -100,6 +105,7 @@ async function add() {
   try {
     const note = await backendClient.addNote({ kind: scope.value, text: cleaned })
     backendDemo.upsertNote(note)
+    notesPage.value = 1
     text.value = ''
     status.value = `${scopeLabel.value}已保存到个人记录。`
   } catch {
@@ -131,10 +137,15 @@ async function remove() {
   deleteError.value = ''
   try {
     const id = deleting.value.id
-    const result = await backendClient.removeNote(id)
-    if (result.removed !== id) throw new Error('Delete was not confirmed')
     const removedText = displayNote(deleting.value.text)
+    // 服务端返回 2xx 即视为已删除；不在本地再复核返回体形状（原来严格的
+    // `removed !== id` 会让"已删成功"落到 catch，列表与计数于是要等刷新才变）。
+    await backendClient.removeNote(id)
     backendDemo.removeNote(id)
+    // 删除后用服务端最新列表再对一次：既确认它真的不在了，也避免本地列表
+    // 与"已完成/待完成"分组的口径残留（实测出现删完还挂在已完成列表的假象）。
+    await loadNotes()
+    notesPage.value = Math.min(notesPage.value, Math.max(1, Math.ceil(visibleNotes.value.length / 6)))
     deleting.value = null
     status.value = `已删除“${removedText}”。`
   } catch {

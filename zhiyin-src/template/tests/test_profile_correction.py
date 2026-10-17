@@ -191,3 +191,79 @@ def test_endpoint_rejects_an_unregistered_key(client: TestClient) -> None:
     workspace = client.get(f"{API_PREFIX}/app/workspace").json()
     keys = {item["key"] for item in workspace["data"]["profile_panel"]["fields"]}
     assert "ghost_field" not in keys
+
+
+# ---------------------------------------------------------------------------
+# 两个标签页改同一格：后保存的一方必须收到冲突，而不是"已保存"却丢掉自己的值
+# ---------------------------------------------------------------------------
+
+
+async def test_two_tabs_correcting_the_same_field_conflict_instead_of_fake_success() -> None:
+    """深度测试 P2-05：A 提示"已保存"，回读却是 B 的值 —— 那是假成功。
+
+    口径：调用方带着"我看到的是哪一版"（expected_updated_at）来写，
+    版本对不上就必须报冲突；冲突之后库里仍是先写入的那一版，
+    不能被第二次写悄悄覆盖。
+    """
+    from zhiyin_kernel.errors import DuplicateResource
+    from zhiyin_business.services.profile import PROFILE_FIELD_CONFLICT_MESSAGE
+
+    profiles = await _profile_service()
+    await profiles.update_field(
+        "u-tabs", "major", "汉语言文学", confidence=1.0, source=ProfileSource.CONVERSATION.value, label="专业"
+    )
+    first = next(f for f in await profiles.get_fields("u-tabs") if f.key == "major")
+
+    # 两个标签页都拿到了同一版
+    seen_by_a = seen_by_b = first.updated_at
+
+    # Windows 上 datetime.now() 的分辨率约 15ms：先让时钟走过一个 tick 再保存，
+    # 否则"创建"和"A 的保存"会落在同一时间戳上（真实两标签页操作间隔远大于此）。
+    import asyncio
+
+    await asyncio.sleep(0.02)
+    saved = await profiles.correct_field(
+        "u-tabs", "major", "汉语言文学（师范）", expected_updated_at=seen_by_a
+    )
+    assert saved.value == "汉语言文学（师范）"
+
+    await asyncio.sleep(0.02)
+    with pytest.raises(DuplicateResource) as caught:
+        await profiles.correct_field(
+            "u-tabs", "major", "中国语言文学", expected_updated_at=seen_by_b
+        )
+    assert str(caught.value) == PROFILE_FIELD_CONFLICT_MESSAGE
+    assert "已在其他页面更新" in str(caught.value)
+
+    # 后保存的一方没有覆盖先写入的值，也没有出现"提示已保存但没写"的中间态
+    current = next(f for f in await profiles.get_fields("u-tabs") if f.key == "major")
+    assert current.value == "汉语言文学（师范）"
+    assert current.source == ProfileSource.USER_EDIT
+
+
+def test_endpoint_two_tabs_stale_version_is_rejected_and_value_kept(client: TestClient) -> None:
+    """HTTP 链路同样不能静默覆盖：带旧版本更正 → 非成功响应 + 冲突文案。"""
+    import asyncio
+
+    first = client.post(
+        f"{API_PREFIX}/app/profile/fields/major", json={"expected_updated_at": None, "value": "计算机大类"}
+    )
+    assert first.status_code == 200, first.text
+    stale = first.json()["data"]["updated_at"]
+
+    asyncio.run(asyncio.sleep(0.02))
+    fresh = client.post(
+        f"{API_PREFIX}/app/profile/fields/major", json={"expected_updated_at": stale, "value": "计算机科学与技术"}
+    )
+    assert fresh.status_code == 200, fresh.text
+    asyncio.run(asyncio.sleep(0.02))
+    response = client.post(
+        f"{API_PREFIX}/app/profile/fields/major",
+        json={"expected_updated_at": stale, "value": "人工智能"},
+    )
+    body = response.json()
+    assert response.status_code != 200 or body.get("code") != 0
+    assert "已在其他页面更新" in body.get("message", "") or "已在其他页面更新" in response.text
+    workspace = client.get(f"{API_PREFIX}/app/workspace").json()
+    fields = {item["key"]: item for item in workspace["data"]["profile_panel"]["fields"]}
+    assert fields["major"]["value"] != "人工智能"

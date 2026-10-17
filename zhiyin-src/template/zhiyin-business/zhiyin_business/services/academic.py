@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import logging
 import re
 from typing import Optional
 
@@ -30,11 +31,28 @@ from zhiyin_data_sdk.repositories import AcademicSnapshotRepository
 from zhiyin_kernel.enums import ProfileSource
 from zhiyin_kernel.errors import InvalidRequest
 
+logger = logging.getLogger(__name__)
+
 """画像里那两条摘要叫什么。课表与成绩单的明细在快照里，画像只放一句能读懂的话。"""
 _PROFILE_LABEL: dict[str, str] = {
     "courses": "课程表",
     "scores": "成绩单",
 }
+
+"""两个上限，两条不同的口径 —— 提示文案必须对得上用户卡在哪一条：
+
+- `MAX_UPLOAD_BYTES`：**文件大小**。用户看到的是"这个文件 3 MB"，改法是"只保留表格另存"；
+- `MAX_PASTE_CHARS`：**正文字符数**。用户看到的是"我贴了 30 万字"，改法是"删掉无关部分"。
+
+混成一句（"内容过大"）时，用户不知道是把文件压小还是把文字删短（深度测试 D9）。
+"""
+MAX_UPLOAD_BYTES = 2_000_000
+MAX_PASTE_CHARS = 200_000
+
+_DECODE_MESSAGE = (
+    "这个文件读不出文字（编码无法识别，可能不是文本文件）。"
+    "请在 Excel/记事本里另存为 UTF-8 或 GBK 的 TXT/CSV 再上传，或者把表格内容选中复制、粘贴进来。"
+)
 
 
 class DefaultAcademicService(AcademicService):
@@ -78,12 +96,20 @@ class DefaultAcademicService(AcademicService):
     ) -> AcademicImportResult:
         courses_text = (courses_raw or "").strip()
         grades_text = (grades_raw or "").strip()
+        if len(courses_text) + len(grades_text) > MAX_PASTE_CHARS:
+            total = len(courses_text) + len(grades_text)
+            raise InvalidRequest(
+                f"粘贴的正文有 {total} 个字，超过 {MAX_PASTE_CHARS} 字（20 万字）上限 —— "
+                "请只保留表头与课表/成绩行，删掉页面上的其他文字后再试；文件上传请确认文件没有夹带无关内容。"
+            )
         existing = await self.get(user_id)
         source = existing.source if existing else ""
         parsed_term = term.strip() or (existing.term if existing else "")
         courses = list(existing.courses) if existing else []
         grades = list(existing.grades) if existing else []
         updated: set[str] = set()
+        dropped_courses = 0
+        dropped_grades = 0
         try:
             if not courses_text and not grades_text:
                 raise AcademicImportError(
@@ -94,7 +120,7 @@ class DefaultAcademicService(AcademicService):
                 parsed = self._importer.parse_courses(courses_text)
                 source = parsed.source
                 parsed_term = term.strip() or parsed.term or parsed_term
-                courses = parsed.courses
+                courses, dropped_courses = _dedupe_courses(parsed.courses)
                 updated.add("courses")
             if grades_text:
                 grade_parsed = self._importer.parse_grades(grades_text)
@@ -105,6 +131,7 @@ class DefaultAcademicService(AcademicService):
                 # An unspecified term must not inherit an unrelated course term.
                 grades = [row.model_copy(update={"term": row.term or term.strip()})
                           for row in grade_parsed.grades]
+                grades, dropped_grades = _dedupe_grades(grades)
                 updated.add("scores")
         except AcademicImportError as exc:
             # "这份原文我读不出来"是**用户能自己修的事**（换个复制方式、连表头一起复制），
@@ -114,6 +141,16 @@ class DefaultAcademicService(AcademicService):
             raise InvalidRequest(str(exc)) from exc
 
         notes = _notes_for(courses)
+        if dropped_courses:
+            notes.insert(
+                0,
+                f"已按“课程名 + 星期 + 节次 + 周次”合并 {dropped_courses} 条重复课程记录（保留先出现的一条）",
+            )
+        if dropped_grades:
+            notes.insert(
+                0,
+                f"已按“课程名 + 学期 + 成绩 + 学分 + 绩点”合并 {dropped_grades} 条重复成绩记录（保留先出现的一条）",
+            )
         snapshot = AcademicSnapshot(
             school=school.strip() or (existing.school if existing else ""),
             source=source,
@@ -158,10 +195,26 @@ class DefaultAcademicService(AcademicService):
         没选文件、也没贴文本时，交给 `import_` 去说那句"还没贴内容" ——
         这里不另写一份判定，两处各判一次迟早会不一致。
         """
+        for data, name in ((courses_file, courses_name), (grades_file, grades_name)):
+            if data and len(data) > MAX_UPLOAD_BYTES:
+                # 这一条说的是**文件大小**：改法是"只保留表格另存"，不是"删掉几段文字"。
+                raise InvalidRequest(
+                    f"「{name or '上传的文件'}」这个文件有 {len(data) / 1_000_000:.1f} MB，"
+                    f"超过 2 MB 上限 —— 请只保留课表/成绩表，另存为 TXT 或 CSV 后再上传。"
+                )
+        courses_text = self._decode_or_explain(courses_file, courses_name) or courses_raw
+        grades_text = self._decode_or_explain(grades_file, grades_name) or grades_raw
+        for text, name in ((courses_text, courses_name), (grades_text, grades_name)):
+            if len(text) > MAX_PASTE_CHARS:
+                # 这一条说的是**正文字符数**（文件可能不到 2 MB，但解出来是超长文本）。
+                raise InvalidRequest(
+                    f"「{name or '上传的文件'}」解出来的正文有 {len(text)} 个字，"
+                    f"超过 {MAX_PASTE_CHARS} 字（20 万字）上限 —— 请只保留表头与数据行后再上传。"
+                )
         return await self.import_(
             user_id,
-            courses_raw=self._decode_or_explain(courses_file, courses_name) or courses_raw,
-            grades_raw=self._decode_or_explain(grades_file, grades_name) or grades_raw,
+            courses_raw=courses_text,
+            grades_raw=grades_text,
             school=school,
             term=term,
         )
@@ -179,6 +232,14 @@ class DefaultAcademicService(AcademicService):
             return self._importer.read_text(data, filename=filename)
         except AcademicImportError as exc:
             raise InvalidRequest(str(exc)) from exc
+        except (UnicodeError, LookupError, ValueError):
+            # 解码器抛出的原话（如 "The encoded data was not valid for encoding utf-8"）
+            # 是给开发者看的。用户能做的只有换一种导出形式 —— 说那句。
+            logger.warning("文件解码失败（%s，%d 字节）", filename or "未提供文件名", len(data), exc_info=True)
+            raise InvalidRequest(_DECODE_MESSAGE) from None
+        except Exception:  # noqa: BLE001 - 读文件失败不能把英文异常原文抛到界面上
+            logger.warning("文件读取失败（%s）", filename or "未提供文件名", exc_info=True)
+            raise InvalidRequest(_DECODE_MESSAGE) from None
 
     async def revoke(self, user_id: str) -> None:
         """清空导入：快照与画像摘要一起删。
@@ -272,6 +333,46 @@ def _scheduled_count(courses) -> int:
         for course in courses
         if 1 <= course.weekday <= 7 and course.start_period >= 1
     )
+
+
+"""重复行的合并口径。
+
+为什么按"整行相同"合并、而不是按课程名：同一门课重修会有两条**分数不同**的成绩，
+按课程名去重会把重修记录吞掉。按整行相同合并只处理"同一份表贴了两遍 / 文件里
+复制粘贴重复了一段"这种真正的重复，保留先出现的一条。
+"""
+_COURSE_KEY_FIELDS = ("name", "weekday", "start_period", "end_period", "weeks", "place")
+_GRADE_KEY_FIELDS = ("term", "name", "score", "credit", "point", "category", "kind")
+
+
+def _row_key(row, fields: tuple[str, ...]) -> tuple[str, ...]:
+    parts: list[str] = []
+    for field in fields:
+        value = getattr(row, field, "")
+        parts.append(str(value if value is not None else "").strip())
+    return tuple(parts)
+
+
+def _dedupe(rows, fields: tuple[str, ...]):
+    seen: set[tuple[str, ...]] = set()
+    kept = []
+    dropped = 0
+    for row in rows:
+        key = _row_key(row, fields)
+        if key in seen:
+            dropped += 1
+            continue
+        seen.add(key)
+        kept.append(row)
+    return kept, dropped
+
+
+def _dedupe_courses(courses):
+    return _dedupe(courses, _COURSE_KEY_FIELDS)
+
+
+def _dedupe_grades(grades):
+    return _dedupe(grades, _GRADE_KEY_FIELDS)
 
 
 __all__ = ["DefaultAcademicService"]

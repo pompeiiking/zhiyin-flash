@@ -88,15 +88,43 @@ async function exportData() {
   if (busy.value) return
   busy.value = true; error.value = ''; status.value = ''
   try {
-    const [workspace,notes,report] = await Promise.all([backendClient.workspace(), backendClient.notes(), (featureEnabled('report_full_text') ? backendClient.report() : Promise.resolve(null)).catch(e => {
-      if (e instanceof BackendError && e.code === 1002) return null
-      throw e
-    })])
-    const body = { exported_at:new Date().toISOString(), profile:workspace.profile_panel, academic:workspace.academic_panel, notes, report }
-    const url = URL.createObjectURL(new Blob([JSON.stringify(body,null,2)], { type:'application/json' }))
-    const a = document.createElement('a'); a.href = url; a.download = '职引-我的资料.json'; a.click()
+    const [workspace, notes, report, action] = await Promise.allSettled([
+      backendClient.workspace(),
+      backendClient.notes(),
+      featureEnabled('report_full_text') ? backendClient.report().catch(e => {
+        if (e instanceof BackendError && e.code === 1002) return null
+        throw e
+      }) : Promise.resolve(null),
+      backendClient.action().catch(e => {
+        if (e instanceof BackendError && e.code === 1002) return null
+        throw e
+      }),
+    ])
+    if (workspace.status === 'rejected') throw workspace.reason
+    if (notes.status === 'rejected') throw notes.reason
+    const reportValue = report.status === 'fulfilled' ? report.value : null
+    const actionValue = action.status === 'fulfilled' ? action.value : null
+    const account = demo.state.account || '当前账号'
+    const day = new Intl.DateTimeFormat('sv-SE').format(new Date())
+    // 「我的全部资料」= 画像 + 学业 + 待办 + 阶段计划/任务 + 当前报告。
+    // 计划这次没读到就不写假数据，导出提示里如实说明，不继续称"全部"。
+    const body = {
+      exported_at: new Date().toISOString(),
+      account,
+      source: 'GET /app/bootstrap + /app/notes + /app/report/full-text + /app/plan/action',
+      profile: workspace.value.profile_panel,
+      academic: workspace.value.academic_panel,
+      notes: notes.value,
+      action_plan: actionValue,
+      report: reportValue,
+    }
+    const url = URL.createObjectURL(new Blob([JSON.stringify(body, null, 2)], { type: 'application/json;charset=utf-8' }))
+    const a = document.createElement('a'); a.href = url; a.download = `职引-资料-${account}-${day}.json`; a.rel = 'noopener'
+    document.body.appendChild(a); a.click(); a.remove()
     setTimeout(() => URL.revokeObjectURL(url), 1000)
-    status.value = '已导出刚从账号读取的资料。'
+    status.value = actionValue
+      ? `已导出「${account}」的资料（含阶段计划与任务）。`
+      : `已导出「${account}」的资料；阶段计划这次没读取到，文件里没有写入计划，可稍后重试补全。`
   } catch (e) { error.value = (e as Error).message } finally { busy.value = false }
 }
 </script>
@@ -121,7 +149,7 @@ async function exportData() {
           <section class="settings-block settings-export" aria-labelledby="settings-export-title">
             <header><div><p>保存副本</p><h2 id="settings-export-title">导出资料</h2></div><DetailPopover title="导出说明" label="查看导出说明"><p>个人资料导出为 JSON；报告、方向和计划由服务生成相应文件。导出只读取当前账号的真实数据。</p></DetailPopover></header>
             <div class="settings-export-grid">
-              <article class="settings-export-all"><span><UiIcon name="download" :size="21"/></span><div><h3>我的全部资料</h3><p>画像、学业、待办和当前报告的 JSON 副本</p></div><button class="btn" :disabled="busy" @click="exportData">导出</button></article>
+              <article class="settings-export-all"><span><UiIcon name="download" :size="21"/></span><div><h3>我的全部资料</h3><p>画像、学业、待办、阶段计划与任务，以及当前报告的 JSON 副本</p></div><button class="btn" :disabled="busy" @click="exportData">导出</button></article>
               <article v-if="featureEnabled('export')" class="settings-export-single"><span><UiIcon name="report" :size="21"/></span><div><h3>单项成果</h3><p>生成适合保存或打印的文件</p></div><div class="settings-export-options"><label><span>内容</span><select v-model="asset"><option value="report">诊断报告</option><option value="direction_plan">方向方案</option><option value="action_plan">行动计划</option></select></label><label><span>格式</span><select v-model="format"><option value="pdf">PDF</option><option value="docx">Word</option></select></label></div><button class="btn" :disabled="busy" @click="exportAsset">{{ busy ? '正在请求…' : '生成文件' }}</button></article>
             </div>
           </section>

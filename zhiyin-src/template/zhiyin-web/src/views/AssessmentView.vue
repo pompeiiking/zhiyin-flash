@@ -11,6 +11,7 @@ import AssetNotice from '../components/AssetNotice.vue'
 import EmptyState from '../components/EmptyState.vue'
 import SkeletonBlock from '../components/SkeletonBlock.vue'
 import StatusBanner from '../components/StatusBanner.vue'
+import { studentVoice } from '../lib/student-voice'
 
 const route = useRoute()
 const router = useRouter()
@@ -148,7 +149,7 @@ onMounted(load)
             <div><p>Personal development assessment</p><h2>个人发展诊断报告</h2></div>
             <div class="report-cover__edition"><span>REPORT</span><strong>V{{ report.version }}</strong></div>
           </div>
-          <p class="report-cover__verdict">{{ reportText(report.verdict) || '本版暂未提供总体判断。' }}</p>
+          <p class="report-cover__verdict">{{ studentVoice(reportText(report.verdict)) || '本版暂未提供总体判断。' }}</p>
           <div class="report-cover__footer">
             <div><span>报告状态</span><strong>{{ reportStateDetail }}</strong></div>
             <div><span>形成时间</span><time :datetime="report.generated_at">{{ reportDate(report.generated_at) }}</time></div>

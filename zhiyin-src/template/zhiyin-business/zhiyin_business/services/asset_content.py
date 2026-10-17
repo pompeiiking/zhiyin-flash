@@ -19,11 +19,13 @@
 
 from __future__ import annotations
 
+import re
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from hashlib import sha1
 from typing import Any
 from uuid import uuid4
+from zoneinfo import ZoneInfo
 
 from zhiyin_business.contracts.act import ActOutput
 from zhiyin_business.contracts.decide import DecideOutput
@@ -35,6 +37,37 @@ from zhiyin_kernel.assets import (
     PlanGap,
     Report,
 )
+
+_WEEKDAY_CN = ("周一", "周二", "周三", "周四", "周五", "周六", "周日")
+
+
+def _normalize_phase_date_range(text: str) -> str:
+    """把模型写的"M月D日（周X）"按真实日历纠正星期。
+
+    实测缺陷：阶段写"10月17日（周五）—10月23日（周四）"，而 2026-10-17 是周六，
+    日历页自己又是对的 —— 同一份计划里日期和星期互相矛盾，学生无法按阶段安排。
+    日期本身不动，只重算括号里的星期；解析不了的保持原样。
+    """
+    if not text:
+        return text
+    now = datetime.now(ZoneInfo("Asia/Shanghai"))
+    pattern = re.compile(r"(\d{1,2})月(\d{1,2})日[（(]周[一二三四五六日天][)）]")
+
+    def replace(match: re.Match[str]) -> str:
+        month, day = int(match.group(1)), int(match.group(2))
+        try:
+            value = date(now.year, month, day)
+        except ValueError:
+            return match.group(0)
+        # 跨年计划的粗略归属：明显是明年的日期就按明年算星期。
+        if (value - now.date()).days > 200:
+            try:
+                value = date(now.year + 1, month, day)
+            except ValueError:
+                return match.group(0)
+        return f"{month}月{day}日（{_WEEKDAY_CN[value.weekday()]}）"
+
+    return pattern.sub(replace, text)
 
 
 def _now() -> datetime:
@@ -132,7 +165,14 @@ def action_plan_from_act(
             tasks.append(task.model_copy(update={
                 "id": task.id or _stable_task_id(*key, occurrence)
             }))
-        phases.append(phase.model_copy(update={"tasks": tasks}))
+        phases.append(
+            phase.model_copy(
+                update={
+                    "tasks": tasks,
+                    "date_range": _normalize_phase_date_range(phase.date_range),
+                }
+            )
+        )
     plan = ActionPlan(id=_new_id("act"), plan_id="", phases=phases)
     # 日历节点 id 同样稳定：同一个提醒重算后落在同一个 id 上，写入即替换。
     # 随机 id 的后果实测过（ZY-06）：单账号攒出 57 个节点，其中 24 个标题重复。

@@ -495,7 +495,9 @@ def pipeline_cards(
 # ---------------------------------------------------------------------------
 
 
-def intel_list_view(items: list[ExternalIntel]) -> IntelListView:
+def intel_list_view(
+    items: list[ExternalIntel], *, status: str = "", message: str = "", major: str = ""
+) -> IntelListView:
     """外部情报清单 → 前端视图。取回时间取最新那一条。"""
     return IntelListView(
         items=[
@@ -512,6 +514,9 @@ def intel_list_view(items: list[ExternalIntel]) -> IntelListView:
             for item in items
         ],
         fetched_at=items[0].fetched_at if items else "",
+        status=status,
+        message=message,
+        major=major,
     )
 
 

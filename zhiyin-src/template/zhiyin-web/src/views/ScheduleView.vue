@@ -211,7 +211,13 @@ onMounted(() => {
 
     <StatusBanner v-if="academicStatus" tone="success" size="sm" :message="academicStatus" @dismiss="academicStatus=''"/><StatusBanner :retryable="false" v-if="academicError" tone="error" size="sm" :message="academicError" @dismiss="academicError=''"/>
     <p v-if="calendarError" class="ws-field-error" role="alert">{{ calendarError }}</p>
-    <p v-if="timedCourses.length" class="ws-muted" role="status">课程按星期和节次作为参考展示，尚未按教学周筛选，不能据此确认某天一定有课。{{ timedCourses.some(course => !course.weeks?.trim()) ? '部分课程未提供周次，请先补充后再核对。' : '请结合课程周次及学期设置核对。' }}</p>
+    <div v-if="timedCourses.length" class="ws-muted schedule-week-note" role="status">
+      <p>课程按星期和节次作为参考展示，尚未按教学周筛选，不能据此确认某天一定有课。<template v-if="timedCourses.some(course => !course.weeks?.trim())">部分课程未提供周次，请先补充后再核对。</template><template v-else>请结合课程周次及学期设置核对。</template></p>
+      <div v-if="timedCourses.some(course => !course.weeks?.trim())" class="schedule-week-note__actions">
+        <button class="ws-text-button" type="button" @click="courseImportOpen = true">补充周次（重新导入课表）</button>
+        <button class="ws-text-button" type="button" @click="capacityOpen = true">检查时间冲突</button>
+      </div>
+    </div>
 
     <section class="schedule-surface" :aria-busy="calendarBusy">
       <header class="schedule-toolbar">
@@ -391,4 +397,8 @@ onMounted(() => {
   .timetable-column { background-image: repeating-linear-gradient(to bottom, transparent 0 53px, var(--c-border) 53px 54px); }
   .timetable-course :deep(.detail-trigger) { padding: 7px; }
 }
+.schedule-week-note { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: 8px 0; }
+.schedule-week-note > p { margin: 0; }
+.schedule-week-note__actions { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.schedule-week-note__actions .ws-text-button { min-height: 44px; }
 </style>

@@ -99,14 +99,42 @@ def _explicit_plan_request(message: str) -> bool:
     """Only a user's affirmative request can create or replace an action plan."""
     # A later explicit prohibition must win over an earlier generation request:
     # this system stores one current plan and cannot create an isolated draft.
-    if re.search(r"(?:不要|不必|无需|暂不|别|不能|不想).{0,12}(?:保存|覆盖|更新|修改|调整|改动|替换)", message):
+    # 实测漏网：**"先别改"里的"改"不在原来的否定词表**（原表只认保存/覆盖/更新/…），
+    # 于是"如果把任务都改到周末…先别改，我只是问问"被当成明确改计划，静默重写了计划。
+    if re.search(
+        r"(?:先?别|不要|不必|无需|暂不|不能|不想|不用).{0,8}"
+        r"(?:改|动|改计划|动计划|保存|覆盖|更新|修改|调整|替换|写进|写入)",
+        message,
+    ):
         return False
+    if re.search(
+        r"(?:只是问问|先问问|随便问问|先不改|先别改|先别动|先不要|先不动|别动|别改|别保存)",
+        message,
+    ):
+        return False
+    # 假设/讨论（"如果改到周末会有什么影响"）不是执行：除非同一句里已有明确执行确认。
+    if (
+        re.search(r"(?:如果|假如|假设|要是)", message)
+        and re.search(r"(?:会有什么影响|有什么影响|会怎样|怎么样|影响如何|会不会)", message)
+        and not re.search(
+            r"(?:确认|就按|按这个|按刚才|按上述|执行|保存吧|开始改|就这么)", message
+        )
+    ):
+        return False
+    # 对上一轮草案的明确确认也是执行：实测"确认按这个安排保存"原来识别不到。
+    if re.search(
+        r"(?:确认|就按|按这个|按刚才|按上述|按该).{0,12}"
+        r"(?:安排|方案|草案|计划).{0,10}(?:保存|执行|应用|改|调整|更新)"
+        r"|(?:确认|就按|按这个|按刚才).{0,8}(?:保存|执行|应用)",
+        message,
+    ):
+        return True
     if re.search(r"(?:未|没有|没|尚未|还没|是否|有没有|会不会|怎么|如何).{0,8}(?:生成|创建|制定|保存)", message):
         return False
     pattern = r"(?:生成|制定|创建|建立|制订|重做|重新|调整|修改|改|安排|规划|给我一份|给我一个|帮我做).{0,18}(?:计划|阶段|任务|行动)|(?:计划|阶段|任务|行动).{0,12}(?:生成|制定|创建|建立|重做|调整|修改|改|安排|规划)"
     for clause in re.split(r"[，。；！？\n]", message):
         match = re.search(pattern, clause)
-        if match and not re.search(r"(?:不要|不必|无需|暂不|别|不能|不想|不再|不)", clause[:match.end()]):
+        if match and not re.search(r"(?:不要|不必|无需|暂不|别|不能|不想|不再|不)", clause[: match.end()]):
             return True
     return False
 
@@ -125,6 +153,159 @@ _ASSET_OFFERS = {
     "report": "目前的信息可以开始整理，要生成一份诊断报告吗？",
     "plan": "可以把接下来的行动整理成计划，要现在创建吗？",
 }
+
+
+_CN_ORDINAL = {
+    "一": 0, "二": 1, "三": 2, "四": 3, "五": 4, "六": 5, "七": 6, "八": 7, "九": 8, "十": 9,
+    "1": 0, "2": 1, "3": 2, "4": 3, "5": 4, "6": 5, "7": 6, "8": 7, "9": 8, "10": 9,
+}
+
+
+def _task_operation_intent(message: str) -> bool | None:
+    """用户在说"任务完成"（True）还是"恢复未完成"（False）；没提到就 None。
+
+    深度测试实测：对话回复"第一项勾掉了"，计划页仍 0/9 —— 模型只是在说话，
+    并没有调用 `workspace.task.set_done`。这里把**可判定**的完成/恢复语句
+    直接执行掉，不依赖模型是否记得调用工具。
+    """
+    text = message or ""
+    if re.search(r"(?:恢复|撤销|取消完成|取消勾选|改回|点错|标错|没做完|还没做|别标|不要标)", text):
+        return False
+    if re.search(r"(?:做完|完成|搞定|勾掉|划掉|写完了|投完了|弄完了|已经做|已做|已经投|已投|弄完)", text):
+        return True
+    return None
+
+
+def _resolve_task_for_operation(plan, message: str):
+    """按"完整任务名 / 第 N 项 / 已唯一完成项"定位一条任务；不唯一就返回 None。"""
+    tasks = [
+        task
+        for phase in (plan.phases if plan else [])
+        for task in phase.tasks
+        if task.text
+    ]
+    if not tasks:
+        return None
+    exact = [task for task in tasks if task.text in message]
+    if len(exact) == 1:
+        return exact[0]
+    ordinal = re.search(r"第\s*([一二三四五六七八九十\d]+)\s*(?:项|个|件|条)?", message)
+    if ordinal:
+        index = _CN_ORDINAL.get(ordinal.group(1))
+        if index is not None and 0 <= index < len(tasks):
+            return tasks[index]
+    if _task_operation_intent(message) is False:
+        completed = [task for task in tasks if task.done]
+        if len(completed) == 1:
+            return completed[0]
+    return None
+
+
+_STUDY_YEAR_VALUES = (
+    "大五／五年制",
+    "大五",
+    "大一",
+    "大二",
+    "大三",
+    "大四",
+    "研究生",
+    "其他阶段",
+)
+
+
+def _study_year_from_text(message: str) -> str | None:
+    """从"我现在大三了/把学习阶段改成大三"里取出学习阶段。
+
+    只认**本人当前状态**或**明确更正**；假设句("如果我大三")不触发，
+    避免把假设写进正式档案。
+    """
+    text = message or ""
+    if re.search(r"(?:如果|假如|假设|要是)", text):
+        return None
+    value = r"(大[一二三四]|大五(?:／五年制)?|研究生|其他阶段)"
+    patterns = (
+        r"(?:我现在|目前|现在|已经|已|今年|刚|开学)(?:是|读|上|升|在)?[^。；\n]{0,6}?" + value,
+        r"我(?:是|读|上)" + value,
+        r"(?:改|调|更新|换|设置|更正)(?:成|为|到)?[^。；\n]{0,6}?" + value,
+        r"(?:不是|不再是)" + value,
+    )
+    for pattern in patterns:
+        match = re.search(pattern, text)
+        if match:
+            found = match.group(1)
+            return "大五／五年制" if found == "大五" else found
+    return None
+
+
+def _explicit_profile_correction(message: str) -> dict[str, str]:
+    """可判定的本人更正/本人陈述：返回 `{画像字段键: 新值}`。
+
+    覆盖深度测试 STU-007：对话里"把专业改成…/我的专业是…/记到项目经历里"
+    既没有写工具、又会被"本人已编辑字段"保护挡住，结果回复说"记下了"而画像没变。
+    这里只收**明确陈述/明确更正**，不从闲聊里猜。
+    """
+    corrections: dict[str, str] = {}
+    text = message or ""
+    if re.search(r"(?:如果|假如|假设|要是)", text):
+        return corrections
+    year = _study_year_from_text(text)
+    if year:
+        corrections["study_year"] = year
+
+    def clean(value: str) -> str:
+        value = value.strip(" \t\r\n，。；,;！？!?：:")
+        value = re.sub(r"^(?:我|本人)(?:的)?", "", value).strip()
+        return value
+
+    major = re.search(
+        r"(?:把|将)?(?:我的)?专业(?:改成|改为|换成|更正为|调整为|是|为)\s*"
+        r"([^，。；,;！？!?]{2,40})",
+        text,
+    )
+    if major:
+        value = clean(major.group(1))
+        if value:
+            corrections["major"] = value
+
+    school = re.search(
+        r"(?:把|将)?(?:我的)?(?:学校|就读学校|毕业学校)(?:改成|改为|换成|更正为|是|为)\s*"
+        r"([^，。；,;！？!?]{2,40})",
+        text,
+    )
+    if school:
+        value = clean(school.group(1))
+        if value:
+            corrections["school"] = value
+
+    degree = re.search(
+        r"(?:把|将)?(?:我的)?(?:学历|层次|学位)(?:改成|改为|换成|更正为|是|为)\s*"
+        r"(本科|硕士|博士|研究生|专科|大专)",
+        text,
+    )
+    if degree:
+        corrections["degree_level"] = degree.group(1)
+
+    # "我参加过XX竞赛，帮我记到项目经历里" / "记一下经历：XX"
+    experience = re.search(
+        r"(.{4,120}?)[，,；;]?\s*(?:帮我|请)?\s*(?:记到|记一下|记录一下|放到|放进|加到)"
+        r"(?:我的)?(?:项目|实习|科研|竞赛)?(?:经历|实践)",
+        text,
+    )
+    if experience:
+        value = clean(experience.group(1))
+        if len(value) >= 4:
+            corrections["experience"] = value
+    else:
+        record = re.search(
+            r"(?:记一下|记录一下|帮我记)(?:我的)?(?:项目|实习|科研|竞赛)?(?:经历|实践)"
+            r"\s*[：:,，]\s*(.{4,200})$",
+            text,
+        )
+        if record:
+            value = clean(record.group(1))
+            if value:
+                corrections["experience"] = value
+    return corrections
 
 
 def _offer_answer(message: str) -> str | None:
@@ -666,6 +847,71 @@ class DefaultOrchestrator(Orchestrator):
         except Exception:  # noqa: BLE001 - 落库失败不能挡住这一轮对话
             logger.warning("用户这一轮先落库失败（本轮对话继续）", exc_info=True)
 
+        # 本人明确更正画像：**系统直接改**，不等模型"记得调用工具"。
+        # 深度测试实测：说"我现在已经大三了，不是大二"，回复称已改，画像仍大二；
+        # 报告却按大三写，档案/对话/报告三方不一致。这里只处理可判定的学习阶段，
+        # 写 user_edit（本人更正）来源，并在回复里插入一条系统说明。
+        profile_correction_note = ""
+        corrections = _explicit_profile_correction(request.message)
+        if corrections:
+            field_labels = {
+                "study_year": "当前学习阶段",
+                "major": "专业",
+                "school": "学校",
+                "degree_level": "层次",
+                "experience": "经历",
+            }
+            changed: list[str] = []
+            for key, value in corrections.items():
+                # "项目经历"是累加的：本人补充一段经历，不能覆盖掉之前记过的。
+                if key == "experience":
+                    try:
+                        existing_fields = await self._profiles.get_fields(
+                            request.user_id, [key]
+                        )
+                    except Exception:  # noqa: BLE001
+                        existing_fields = []
+                    existing = (
+                        str(existing_fields[0].value).strip()
+                        if existing_fields and existing_fields[0].value
+                        else ""
+                    )
+                    if existing and value not in existing:
+                        value = f"{existing}；{value}"
+                field = None
+                try:
+                    field = await self._profiles.correct_field(
+                        request.user_id, key, value
+                    )
+                except InvalidRequest:
+                    # 某些装配下词表没有把该键登记进"可更正"清单（测试/精简装配），
+                    # 但本人明确说出的更正仍要落库：退回 update_field，来源仍记"本人更正"。
+                    try:
+                        field = await self._profiles.update_field(
+                            request.user_id,
+                            key,
+                            value,
+                            confidence=1.0,
+                            source=ProfileSource.USER_EDIT.value,
+                            label=field_labels.get(key, ""),
+                        )
+                    except Exception:  # noqa: BLE001
+                        logger.warning(
+                            "对话内更正画像失败：key=%s value=%s", key, value, exc_info=True
+                        )
+                        continue
+                except Exception:  # noqa: BLE001 - 其余异常：不写，交回正常对话
+                    logger.warning(
+                        "对话内更正画像失败：key=%s value=%s", key, value, exc_info=True
+                    )
+                    continue
+                changed.append(f"{field.label or field_labels.get(key, key)}：{value}")
+            if changed:
+                profile_correction_note = (
+                    "已按你这次说明更新画像 —— " + "；".join(changed) + "。"
+                    "其他信息保持不变。"
+                )
+
         # Only a question produced by this server in the immediately preceding
         # assistant turn authorizes interpreting a short answer as consent.
         try:
@@ -678,6 +924,12 @@ class DefaultOrchestrator(Orchestrator):
         previous = next(
             (turn for turn in reversed(recent_turns) if turn.role == "agent"), None
         )
+        # "第一项做完了/点错了恢复"这类可判定的任务状态变更，直接执行并回读，
+        # 不等模型是否记得调用 `workspace.task.set_done`：深度测试里模型回了
+        # "第一项勾掉了"，计划页却仍是 0/9 —— 学生看到的完成是假的。
+        direct_task = await self._direct_task_toggle(request, session)
+        if direct_task is not None:
+            return direct_task
         pending_offer = next((kind for kind, question in _ASSET_OFFERS.items()
                               if previous and previous.role == "agent" and previous.text.rstrip().endswith(question)), None)
         if pending_offer is None:
@@ -883,12 +1135,29 @@ class DefaultOrchestrator(Orchestrator):
                 if accepted_offer == "plan" else
                 "用户同意了上一轮提出的生成诊断报告请求，请按现有事实生成报告。"
             )
+        if profile_correction_note:
+            # 系统已经写进画像：模型必须按新值回答，且不能再劝学生"去画像手动改"。
+            prompt_vars["confirmed_profile_correction"] = {
+                "note": profile_correction_note,
+                "rule": (
+                    "上一条已由系统写入正式画像（来源：本人本次说明）。"
+                    "直接按新值继续分析，不要说“没写进画像”“去画像里点更正”之类的话；"
+                    "其他字段保持不变。"
+                ),
+            }
         if stage is LoopStage.ACT and direction_selected is False:
             prompt_vars["direction_selection_status"] = "用户尚未在方向方案中正式确认方向；可以围绕本轮想法拟定计划，但不要声称方向已选定。"
         if stage is LoopStage.ACT and not explicit_plan:
             prompt_vars["plan_write_boundary"] = "本轮只回答问题，不会保存或修改行动计划；不要声称计划已创建或更新。需要修改计划时请先征求用户明确要求。"
         if stage is LoopStage.DIAGNOSE and not explicit_report:
             prompt_vars["report_write_boundary"] = "本轮只回答咨询，不会生成或保存诊断报告；不要声称报告已生成。"
+        if stage is LoopStage.DIAGNOSE:
+            prompt_vars["source_authority_rule"] = (
+                "引用个人信息来源时，只有 existing_profile_facts 里 source=record 的项"
+                "（学信网核验 / 教务导入）才能写成“学信网显示 / 教务核验”；"
+                "source=user_edit 或 conversation 的只能写“本人填写 / 对话记录”。"
+                "缺来源就写“尚未核验”，不得把未核验资料说成已核验。"
+            )
         from zhiyin_business.services.analysis_access import current_scope
         scope = current_scope(request.user_id)
         if scope and scope.restricted:
@@ -907,6 +1176,36 @@ class DefaultOrchestrator(Orchestrator):
                 }
                 for field in blackboard.profile.fields
             ]
+        # 查询类回答必须基于真实计划/画像：深度测试里模型答"画像里只有大三"
+        # 而画像页是大二、答"第一周只有一件事"而计划有 5 项 —— 都是没把库里
+        # 的真实值摆到它眼前。这里把计划逐项列出来，并给一条"以事实为准"的规则。
+        try:
+            plan_for_facts = await self._assets.get_action_plan(request.user_id)
+        except Exception:  # noqa: BLE001 - 读不到就不注入，不让这一轮失败
+            plan_for_facts = None
+        if plan_for_facts is not None:
+            plan_facts = []
+            for phase in plan_for_facts.phases:
+                for task in phase.tasks:
+                    plan_facts.append(
+                        {
+                            "phase": phase.name,
+                            "task": task.text,
+                            "done": task.done,
+                            "status": task.status,
+                            "due_date": task.due_date.isoformat()
+                            if task.due_date
+                            else None,
+                        }
+                    )
+            if plan_facts:
+                prompt_vars["plan_facts"] = plan_facts
+        if prompt_vars.get("existing_profile_facts") or prompt_vars.get("plan_facts"):
+            prompt_vars["factual_query_rule"] = (
+                "如果用户问的是“我有哪些信息/还有什么没完成/计划里有什么/几项/进度”，"
+                "必须以上面的 existing_profile_facts 和 plan_facts 为准逐项回答；"
+                "库里没有的就说“我这边没有看到”，不要编造、不要用对话记忆替代当前档案。"
+            )
         # 最近几条对话必须一并给模型（自己与他各一句）。
         #
         # 少了它，模型手上只有"这一句 + 黑板快照"：它看不到上一轮自己问了什么、用户
@@ -1315,6 +1614,67 @@ class DefaultOrchestrator(Orchestrator):
                 GuideOption(option_id=f"tool.{proposed_tool}.accept", label="可以", value="accept"),
                 GuideOption(option_id=f"tool.{proposed_tool}.decline", label="先不要", value="decline"),
             ])
+        # 系统已经明确写进画像时，模型仍可能复述旧的"我没写进画像/你自己去改"
+        # 兜底提示（它看不到我们刚写库这件事）—— 两句同时出现会互相打脸。
+        # 清掉这类与事实相反的句子，系统说明条单独负责"改了什么"。
+        if profile_correction_note:
+            reply_text = "".join(
+                part
+                for part in re.split(r"(?<=[。！？\n])", reply_text)
+                if not re.search(
+                    r"(?:没写进画像|没有写进画像|去画像里点|自己改一次|"
+                    r"我不该拿推断|手填字段.{0,6}不能改)",
+                    part,
+                )
+            ).strip() or reply_text
+        # 假成功语兜底：模型说了"已保存/已勾掉/记下了"，但这一轮**没有任何真实写入**
+        # （没调写工具、没有资产变化、也没有我们刚做的画像更正）——必须当场澄清。
+        # 深度测试里 AGT-06/08/22 都出现过"安排我认/目标先记下/进度卡挂上了"而页面没变。
+        if (
+            not write_tool_attempted
+            and not changed_assets
+            and not result.business_tool_calls
+            and not profile_correction_note
+            # 查询句（"有哪些/多少/进度/怎么样了"）不是写请求，别给它加"没写入"的说明。
+            and not re.search(
+                r"(?:有哪些|哪些|什么|多少|几[项个条]|进度|怎么样了|如何|是否|吗[？?]?$)",
+                request.message,
+            )
+            and re.search(
+                r"(?:已把|已经|已(?:经)?(?:保存|添加|创建|更新|修改|标记|记录|安排|生成|设好|完成)"
+                r"|勾掉了|记下了|挂上了|安排我认|已设好)",
+                reply_text,
+            )
+            and re.search(
+                r"(?:任务|计划|待办|目标|复盘|提醒|偏好|设置|画像|成绩|课表|方向|这条|这一项)"
+                r".{0,10}(?:完成|做完|勾掉|恢复|加|新增|创建|保存|改|调整|记录|删除)"
+                r"|(?:帮我|请|给我).{0,12}(?:完成|做完|勾掉|恢复|加|新增|创建|保存|改|调整|记录|删除)",
+                request.message,
+            )
+        ):
+            reply_text = (
+                reply_text.rstrip()
+                + "\n\n（说明：这一轮没有真正写入业务数据。如果你刚才是在要求修改，"
+                "请以对应页面为准，或明确再说一次要改哪一项。）"
+            )
+        # 画像查询与正式档案不一致时，以档案为准补一句（模型曾答"画像里只有大三"
+        # 而页面显示大二；这类矛盾会直接进报告结论）。
+        if re.search(r"(?:画像|学习阶段|年级|个人信息)", request.message) and blackboard.profile:
+            study_year = next(
+                (
+                    str(field.value)
+                    for field in blackboard.profile.fields
+                    if field.key == "study_year" and field.value
+                ),
+                "",
+            )
+            if study_year and re.search(
+                r"(?:大一|大二|大三|大四|大五|研究生)", reply_text
+            ) and study_year not in reply_text:
+                reply_text = (
+                    reply_text.rstrip()
+                    + f"\n\n（以画像页为准：你的当前学习阶段是「{study_year}」。）"
+                )
         messages = [
             ConversationMessage(
                 role="agent",
@@ -1333,6 +1693,14 @@ class DefaultOrchestrator(Orchestrator):
                 intel_refs=_intel_refs(prompt_vars.get("external_data")),
             )
         ]
+        if profile_correction_note:
+            # 用系统条把"真的改了什么"显式说给学生，避免模型的回复与档案再次不一致。
+            messages.insert(
+                0,
+                ConversationMessage(
+                    role="system", text=profile_correction_note, agent_id=""
+                ),
+            )
         await self._remember_turn(
             request,
             TurnResult(
@@ -1412,6 +1780,81 @@ class DefaultOrchestrator(Orchestrator):
             ],
             guide=BehaviorGuide(kind="question", text="", question=None),
         )
+
+    async def _direct_task_toggle(
+        self, request: TurnRequest, session: TaskSession
+    ) -> "TurnResult | None":
+        """用户明确说"第 N 项做完了/恢复"时直接改任务状态（不经模型）。
+
+        只在**能唯一定位任务**时执行；定位不到就交回模型追问，绝不猜。
+        返回 None 表示这一轮不接管。
+        """
+        intent = _task_operation_intent(request.message)
+        if intent is None:
+            return None
+        try:
+            plan = await self._assets.get_action_plan(request.user_id)
+        except Exception:  # noqa: BLE001 - 读不到计划就交回正常对话
+            logger.warning("读取行动计划失败，任务完成语句交回模型", exc_info=True)
+            return None
+        if plan is None:
+            return None
+        task = _resolve_task_for_operation(plan, request.message)
+        if task is None or not task.id:
+            return None
+        if bool(task.done) == intent:
+            text = (
+                f"「{task.text}」已经是完成状态了，这次没有重复修改。"
+                if intent
+                else f"「{task.text}」现在是未完成状态，不需要再恢复。"
+            )
+        else:
+            try:
+                await self._assets.mark_action_task_done(
+                    request.user_id, task.id, done=intent
+                )
+            except Exception:  # noqa: BLE001 - 写失败必须如实说，不能假装成功
+                logger.warning("对话内任务状态更新失败：task_id=%s", task.id, exc_info=True)
+                text = "这次没能改动任务状态（系统暂时没有保存成功），已保留你的原计划。请稍后在计划页重试。"
+            else:
+                if intent:
+                    try:
+                        await self._behaviors.log(
+                            request.user_id,
+                            BehaviorEventDraft(
+                                event_type=BehaviorEventType.TASK_DONE,
+                                payload={"task_id": task.id, "source": "conversation"},
+                            ),
+                        )
+                    except Exception:  # noqa: BLE001
+                        logger.warning("任务完成行为日志写入失败（任务已更新）", exc_info=True)
+                plan = await self._assets.get_action_plan(request.user_id)
+                tasks = [
+                    item
+                    for phase in (plan.phases if plan else [])
+                    for item in phase.tasks
+                ]
+                total = len(tasks)
+                done_count = sum(1 for item in tasks if item.done)
+                text = (
+                    f"已把「{task.text}」标记为完成（计划现在 {done_count}/{total} 项完成）。"
+                    if intent
+                    else f"已把「{task.text}」恢复为未完成（计划现在 {done_count}/{total} 项完成）。"
+                )
+        result = TurnResult(
+            task_id=request.task_id,
+            session=session,
+            stage=session.loop_stage,
+            badge=await self._badge(session.lead_agent, []),
+            messages=[
+                ConversationMessage(
+                    role="agent", text=text, agent_id=session.lead_agent
+                )
+            ],
+            guide=BehaviorGuide(kind="question", text="", question=None),
+        )
+        await self._remember_turn(request, result, loop_stage=session.loop_stage)
+        return result
 
     async def _user_turn_saved(self, request: TurnRequest) -> bool:
         """这一轮用户消息是否已经写进逐轮原文（开头先写、轮末不重复写）。"""

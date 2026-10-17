@@ -2,6 +2,7 @@
 const MAX_CHARS = 40
 import {PROFILE_TOPICS, profilePriority, exactProfileKeys} from '../lib/profile-organization'
 import {profileLabel} from '../lib/server-copy'
+import { studentVoice } from '../lib/student-voice'
 import {STUDY_YEAR_OPTIONS, studyYearLabel} from '../lib/study-year'
 import { onMounted } from 'vue'
 import { useRoute } from 'vue-router'
@@ -957,7 +958,7 @@ onMounted(()=>{ void loadWorkspace() })
           <p class="profile-next__label">下一步只做一件事</p>
           <template v-if="priorityGaps[0]">
             <h3 id="profile-next-title">{{ priorityGaps[0].label }}</h3>
-            <div class="profile-next__suggestion"><span>建议行动</span><strong>{{ priorityGaps[0].next }}</strong></div>
+            <div class="profile-next__suggestion"><span>建议行动</span><strong>{{ studentVoice(priorityGaps[0].next) }}</strong></div>
             <DetailPopover class="profile-next__reason" :title="'为什么先补充' + priorityGaps[0].label" label="查看这项信息的影响"><template #trigger>为什么先补这项</template><p>{{ priorityGaps[0].why }}</p><p v-if="priorityGaps[0].affects.length">它会影响 {{ priorityGaps[0].affects.map(item => item.label).join('、') }}。</p></DetailPopover>
             <RouterLink class="btn btn--primary" :to="'/chat?gap='+encodeURIComponent(priorityGaps[0].key)+'&label='+encodeURIComponent(priorityGaps[0].label)">去补充这条信息<UiIcon name="arrow" :size="14"/></RouterLink>
             <button class="ws-text-button" type="button" @click="profileTab='gaps'">查看全部待补充信息</button>
@@ -1027,6 +1028,7 @@ onMounted(()=>{ void loadWorkspace() })
                 @focusin="hoverField = row.key"
                 @focusout="hoverField = null"
               >
+                <div class="p7-row__wrap">
                 <!-- 整行就是命中区：这一行的关系与来历都从这一下开始，注脚尺寸只留给信息本身 -->
                 <DetailPopover class="profile-fact" :title="row.label" :label="row.label + '：' + fieldValue(row) + '，查看依据'" :model-value="openField === row.key" @update:model-value="(open: boolean) => openField = open ? row.key : null"><template #trigger>
                   <span class="p7-row__label">{{ row.label }}</span>
@@ -1068,6 +1070,8 @@ onMounted(()=>{ void loadWorkspace() })
 
                   </div>
                 </DetailPopover>
+                  <button class="p7-row__quick" type="button" :aria-label="'更正：' + row.label" @click="edit(row)">更正</button>
+                </div>
               </motion.li>
             </motion.ul>
           </motion.section>
@@ -1263,7 +1267,7 @@ onMounted(()=>{ void loadWorkspace() })
           </p>
           <p class="p7-gap__where">
             <span>去哪补</span>{{ gap.origin }}<template v-if="gap.blocked"> · {{ gap.blocked }}</template>
-            <template v-if="gap.next"><em class="p7-gap__next">下一步：{{ gap.next }}</em></template>
+            <template v-if="gap.next"><em class="p7-gap__next">下一步：{{ studentVoice(gap.next) }}</em></template>
           </p>
           <p v-if="gap.ask" class="p7-gap__ask"><span>可以直接回答</span>{{ gap.ask }}</p>
           <div class="p7-gap__actions">
@@ -1480,6 +1484,13 @@ onMounted(()=>{ void loadWorkspace() })
 .p7-row__hint { flex-basis: 100%; font-size: var(--fs-14); line-height: var(--lh-snug); color: var(--c-text-3); }
 .p7-row__hint::before { content: "·"; margin-right: 6px; }
 .p7-row__edited { color: var(--c-primary); }
+
+/* 行末直接「更正」：原路径（查看依据 → 抽屉底部更正信息）保留，
+     但用户不必再钻两层才找到修改入口（深度测试 D6）。 */
+.p7-row__wrap { display: flex; align-items: center; gap: 4px; padding-right: 6px; }
+.p7-row__wrap > :deep(.profile-fact) { flex: 1 1 auto; min-width: 0; }
+.p7-row__quick { flex: none; min-height: 44px; min-width: 44px; padding: 0 8px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--c-primary); font-size: var(--fs-12); }
+.p7-row__quick:hover, .p7-row__quick:focus-visible { border-color: var(--c-primary-border); background: var(--c-primary-weak); }
 
 /* 关联反馈：被依赖 / 被展开时，这一条才亮起来 */
 .p7-row--lit, .p7-row--open { background: var(--c-primary-weak); border-left-color: var(--c-primary); }

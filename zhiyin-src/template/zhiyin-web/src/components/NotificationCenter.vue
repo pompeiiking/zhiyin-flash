@@ -179,7 +179,14 @@ onMounted(load)
         </DetailPopover>
       </div>
     </article>
-    <p v-if="!filtered.length&&!busy&&!error" class="ws-empty">{{query?'没有匹配的提醒。':'此分类暂无提醒。'}}</p>
+    <div v-if="!filtered.length&&!busy&&!error" class="ws-empty" role="status">
+      <template v-if="query">没有匹配的提醒。</template>
+      <template v-else-if="filter==='pending'">
+        <p>目前没有待处理的提醒。</p>
+        <p class="ws-empty__hint">提醒会在这些时候出现：找到与你方向相关的公开信息时、阶段任务临近截止时，或你更正的资料需要重新核对时。新的提醒会同时出现在右下角的铃铛里。</p>
+      </template>
+      <template v-else>此分类暂无提醒。</template>
+    </div>
     <ResultPager v-model:page="page" :total="groups.length" :size="5" label="提醒"/>
   </section>
 </template>
@@ -200,6 +207,8 @@ onMounted(load)
 .c2-reminder__no { color: var(--c-primary); font-weight: 600; }
 .c2-reminder__detail .ws-inline-actions { margin-top: 12px; }
 .c2-reminder .ws-inline-actions { margin-top: 16px; gap: 12px; }
+
+.ws-empty__hint { max-width: 46em; margin-top: 8px; color: var(--c-text-3); font-size: var(--fs-12); line-height: 1.75; }
 
 @media (max-width: 600px) {
   .restored-notifications > .ws-section-head { align-items: stretch; flex-direction: column; }

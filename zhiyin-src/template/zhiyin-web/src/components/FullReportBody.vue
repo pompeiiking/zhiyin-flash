@@ -7,6 +7,7 @@ import { profileLabel } from '../lib/server-copy'
 import { useAiTask } from '../lib/use-ai-task'
 import AiResultMeta from './AiResultMeta.vue'
 import AiStatus from './AiStatus.vue'
+import { studentVoice } from '../lib/student-voice'
 import DetailPopover from './DetailPopover.vue'
 import InfoSheet from './InfoSheet.vue'
 
@@ -180,10 +181,10 @@ onBeforeUnmount(() => observer?.disconnect())
         <section :id="sectionDomId('overview')" class="report-overview article-section" data-section-id="overview" data-report-section>
           <header class="article-heading">
             <p>执行摘要</p>
-            <h2>{{ ai.result.value?.data.headline || '把零散的个人信息，读成一个可以行动的判断' }}</h2>
+            <h2>{{ studentVoice(ai.result.value?.data.headline) || '把零散的个人信息，读成一个可以行动的判断' }}</h2>
           </header>
           <div v-if="ai.result.value" class="article-prose article-prose--lead">
-            <p v-for="paragraph in ai.result.value.data.paragraphs" :key="paragraph">{{ paragraph }}</p>
+            <p v-for="paragraph in ai.result.value.data.paragraphs" :key="paragraph">{{ studentVoice(paragraph) }}</p>
           </div>
           <div v-else class="article-prose article-prose--lead">
             <p>这不是一份资料清单，而是对你当前状态的一次解释：系统把个人画像、咨询记录、学业资料和已经形成的诊断结论放到同一个语境里，寻找稳定优势、现实差距与最值得验证的假设。</p>
@@ -194,7 +195,7 @@ onBeforeUnmount(() => observer?.disconnect())
             <p class="executive-findings__title">核心结论</p>
             <article v-for="(finding, index) in executiveFindings" :key="finding.item.index">
               <span aria-hidden="true">0{{ index + 1 }}</span>
-              <p><DetailPopover :title="finding.item.name + ' · 判断依据'" :label="'查看“' + finding.item.name + '”的判断依据'" side="right" class="article-evidence-link article-evidence-link--summary"><template #trigger>{{ finding.item.name }}</template><p class="evidence-popover__label">{{ finding.item.evidence?.trim() ? '支撑这项判断的记录' : '当前还缺少什么' }}</p><p class="evidence-popover__quote">{{ evidenceText(finding.item.evidence) || '这项判断暂时没有可核对的记录，因此只能作为待验证假设。' }}</p><dl class="evidence-popover__facts"><div><dt>判断状态</dt><dd>{{ confidenceText(finding.item) }}</dd></div><div><dt>所在章节</dt><dd>{{ sectionTitle(finding.section) }}</dd></div><div><dt>报告版本</dt><dd>第 {{ report.version }} 版 · {{ reportDate(report.generated_at) }}</dd></div></dl><RouterLink class="btn btn--primary evidence-popover__action" :to="askLink(finding.item)">带着这条去核对</RouterLink></DetailPopover><strong>{{ finding.item.conclusion }}</strong></p>
+              <p><DetailPopover :title="finding.item.name + ' · 判断依据'" :label="'查看“' + finding.item.name + '”的判断依据'" side="right" class="article-evidence-link article-evidence-link--summary"><template #trigger>{{ finding.item.name }}</template><p class="evidence-popover__label">{{ finding.item.evidence?.trim() ? '支撑这项判断的记录' : '当前还缺少什么' }}</p><p class="evidence-popover__quote">{{ evidenceText(finding.item.evidence) || '这项判断暂时没有可核对的记录，因此只能作为待验证假设。' }}</p><dl class="evidence-popover__facts"><div><dt>判断状态</dt><dd>{{ confidenceText(finding.item) }}</dd></div><div><dt>所在章节</dt><dd>{{ sectionTitle(finding.section) }}</dd></div><div><dt>报告版本</dt><dd>第 {{ report.version }} 版 · {{ reportDate(report.generated_at) }}</dd></div></dl><RouterLink class="btn btn--primary evidence-popover__action" :to="askLink(finding.item)">带着这条去核对</RouterLink></DetailPopover><strong>{{ studentVoice(finding.item.conclusion) }}</strong></p>
             </article>
           </div>
           <AiStatus :busy="ai.busy.value" :error="ai.error.value" :progress="ai.progress.value" @cancel="ai.cancel" @retry="ai.run('reportSummary')" />
@@ -211,7 +212,7 @@ onBeforeUnmount(() => observer?.disconnect())
             <p>从现有资料看，这份报告并不支持用单一标签概括你。更准确的读法，是同时看见你已经具备的资源、仍然薄弱的环节，以及外部环境为你留下的窗口。</p>
             <template v-for="(value, key) in report.swot" :key="key">
               <h3>{{ labels[key] ?? '补充判断' }}</h3>
-              <p>{{ content(value) || '本版还没有形成足够具体的判断，需要在后续咨询和行动中继续补充。' }}</p>
+              <p>{{ studentVoice(content(value)) || '本版还没有形成足够具体的判断，需要在后续咨询和行动中继续补充。' }}</p>
             </template>
           </div>
           <blockquote v-if="pendingItems.length">真正决定下一步的，不是再收集更多泛泛的信息，而是把 {{ pendingItems.map((item) => item.name).slice(0, 3).join('、') }} 这些尚不确定的部分变成可观察的结果。</blockquote>
@@ -238,7 +239,7 @@ onBeforeUnmount(() => observer?.disconnect())
                 </h3>
                 <em :class="{ 'is-pending': isPending(item) }">{{ confidenceText(item) }}</em>
               </header>
-              <p class="article-finding__conclusion">{{ item.conclusion }}</p>
+              <p class="article-finding__conclusion">{{ studentVoice(item.conclusion) }}</p>
               <p class="article-finding__reading"><template v-if="isPending(item)">这项内容目前仍是待验证假设，不能据此形成最终选择。下一步应当用一次可观察的行动补足证据。</template><template v-else-if="sectionIndex === 0">它描述的是你当前较稳定的个人线索，将影响任务选择与学习方式，但不构成永久的人格定义。</template><template v-else-if="sectionIndex === 1">这项判断连接了个人条件与外部要求，后续需要通过真实任务或反馈继续校准。</template><template v-else>它的意义在于明确选择边界：保留调整空间，同时避免在证据不足时扩大投入。</template></p>
             </article>
             <p v-if="section.method" class="article-method">这一章的判断采用了<DetailPopover :title="sectionTitle(section) + ' · 判断方式'" :label="'查看' + sectionTitle(section) + '的判断方式'" side="right" class="article-evidence-link"><template #trigger>这一分析方法</template><p>{{ section.method }}</p><p class="evidence-popover__meta">方法用于组织证据和形成问题，不等于给你下最终定义。</p></DetailPopover>。它帮助把分散信息组织起来，但每一项结论仍应回到具体经历中核对。</p>
@@ -250,7 +251,7 @@ onBeforeUnmount(() => observer?.disconnect())
           <div class="article-prose">
             <p>一份诊断报告的价值，不在于把你描述得多么完整，而在于让下一次选择比上一次更有依据。下面这些动作应当优先服务于“减少不确定性”。</p>
             <ol class="action-list">
-              <li v-for="move in ai.result.value?.data.moves ?? []" :key="move.label"><strong>{{ move.label }}</strong><span>{{ move.why }}</span></li>
+              <li v-for="move in ai.result.value?.data.moves ?? []" :key="move.label"><strong>{{ studentVoice(move.label) }}</strong><span>{{ studentVoice(move.why) }}</span></li>
               <li v-for="item in pendingItems" :key="item.index"><strong>验证{{ item.name }}</strong><span>{{ item.conclusion }} 可以通过一次具体项目、访谈、课程任务或真实投递来验证；完成后再回到报告更新判断。</span></li>
             </ol>
           </div>
@@ -284,7 +285,7 @@ onBeforeUnmount(() => observer?.disconnect())
       </section>
       <section v-if="academic?.courses?.length" class="profile-sheet-section"><h2>课程记录 · {{ academic.courses.length }} 门</h2><div class="academic-prose"><article v-for="course in academic.courses" :key="course.name + '-' + course.weekday + '-' + course.start_period"><h3>{{ course.name }}</h3><p>{{ weekday(course.weekday) }}<template v-if="course.start_period">，第 {{ course.start_period }}–{{ course.end_period ?? course.start_period }} 节</template><template v-if="course.place">，上课地点为 {{ course.place }}</template><template v-if="course.teacher">，任课教师为 {{ course.teacher }}</template>。</p></article></div></section>
       <section v-if="academic?.grades?.length" class="profile-sheet-section"><h2>成绩记录 · {{ academic.grades.length }} 条</h2><div class="academic-prose"><article v-for="grade in academic.grades" :key="grade.name + '-' + grade.term"><h3>{{ grade.name }}</h3><p>{{ grade.term || '未注明学期' }}的记录中，成绩为 {{ grade.score || '未提供' }}<template v-if="grade.credit">，课程学分为 {{ grade.credit }}</template>。</p></article></div></section>
-      <section v-if="profileGaps.length" class="profile-sheet-section"><h2>还缺的资料</h2><article v-for="gap in profileGaps" :key="gap.key" class="profile-sheet-field is-gap"><header><strong>{{ gap.label || profileLabel(gap.key, gap.key) }}</strong></header><p>{{ gap.reason }}</p><small v-if="gap.suggested_next_action">下一步：{{ gap.suggested_next_action }}</small></article></section>
+      <section v-if="profileGaps.length" class="profile-sheet-section"><h2>还缺的资料</h2><article v-for="gap in profileGaps" :key="gap.key" class="profile-sheet-field is-gap"><header><strong>{{ gap.label || profileLabel(gap.key, gap.key) }}</strong></header><p>{{ studentVoice(gap.reason) }}</p><small v-if="gap.suggested_next_action">下一步：{{ studentVoice(gap.suggested_next_action) }}</small></article></section>
       <p v-if="!profileSections.length && !academic?.courses?.length && !academic?.grades?.length" class="ws-muted">当前没有读取到个人资料。</p>
     </InfoSheet>
 

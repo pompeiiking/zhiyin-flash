@@ -111,6 +111,9 @@ export type ProfileFieldView = {
 export type IntelListView = {
   "fetched_at"?: string
   "items"?: Array<IntelItemView>
+  "major"?: string
+  "message"?: string
+  "status"?: string
 }
 
 export type IntelItemView = {

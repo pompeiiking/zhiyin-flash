@@ -12,6 +12,7 @@ import logging
 import time
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, AsyncIterator, Optional
+from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel
 
@@ -189,6 +190,105 @@ def _period_text(course: Any) -> str:
     if start <= 0:
         return "时间没读出来"
     return f"第 {start}-{end} 节" if end > start else f"第 {start} 节"
+
+
+# ---------------------------------------------------------------------------
+# 产出清洗：来源只认真实来源，建议只用面向学生的第二人称
+# ---------------------------------------------------------------------------
+
+"""模型可能替我们"补上"它并没有的来源。
+
+最典型的一句是"学信网和对话记录显示…"——而学籍页明明写着"尚未完成学信核验"。
+这类句子不是小毛病：它把一条**没有依据**的判断说成官方记录，用户没法分辨。
+所以生成之后再做一次兜底清洗：画像里没有 `record`（学信网等权威记录）来源的字段时，
+把文本里的"学信网"说法换成他真实能核对的来源（本人填写/对话）。
+"""
+_UNVERIFIED_SOURCE_REPLACEMENTS: tuple[tuple[str, str], ...] = (
+    ("学信网和对话记录显示", "你提供的资料显示"),
+    ("学信网与对话记录显示", "你提供的资料显示"),
+    ("学信网和对话记录中的", "你提供的资料中的"),
+    ("根据学信网和对话记录", "根据你提供的资料"),
+    ("学信网显示", "你提供的资料显示"),
+    ("学信网核验结果", "你提供的资料"),
+    ("根据学信网", "根据你提供的资料"),
+    ("经学信网核验", "根据你提供的资料"),
+    ("学信网记录", "你提供的资料"),
+    # 实测还有"对话和学信记录里确认的""学籍记录显示"两种变体：
+    # 学籍页明明写着"尚未完成学信核验"，这些说法同样是给资料加了不存在的权威性。
+    ("学信网和对话记录里确认", "你提供的资料里确认"),
+    ("对话和学信记录里确认", "对话和你的资料里确认"),
+    ("对话与学信记录里确认", "对话和你的资料里确认"),
+    ("学信记录里确认", "你提供的资料里确认"),
+    ("学籍记录显示", "你提供的资料显示"),
+    ("学信记录显示", "你提供的资料显示"),
+    ("学籍记录", "你提供的资料"),
+    ("学信记录", "你提供的资料"),
+)
+
+"""把顾问内部口吻的建议改写成对学生说的话。
+
+两处来源：
+  · 画像缺口里的 `suggested_next_action` 本来就是写给顾问看的（"问一句：…"）；
+  · 模型模仿那批文案，会写出"问他有没有…"。
+用户看到"问一句：问他…"时不知道该做什么 —— 他不知道那个"他"是谁。
+"""
+_INTERNAL_VOICE_PREFIXES: tuple[str, ...] = (
+    "问一句：", "问一句:", "问一句", "问一下：", "问一下:", "问一下",
+    "可以问：", "可以问:", "可以问", "建议问：", "建议问:", "建议问",
+    "需要问：", "需要问:", "问问他：", "问问他:", "问问他",
+)
+
+
+def _student_voice(text: str) -> str:
+    """一条建议 → 面向学生的第二人称说法。空字符串原样返回。"""
+    value = (text or "").strip()
+    if not value:
+        return value
+    for prefix in _INTERNAL_VOICE_PREFIXES:
+        if value.startswith(prefix):
+            value = value[len(prefix):].strip()
+            break
+    # "问他有没有做过…" 里的"他"指的是学生自己；改成"你"才对得上他读的人称。
+    value = value.replace("问问他", "问问自己").replace("问他", "问自己")
+    value = value.replace("让他", "你").replace("请他", "你")
+    return value
+
+
+def _has_verified_record(profile: Optional[Profile]) -> bool:
+    """画像里有没有**已核验的客观记录**（学信网等机构记录）来源的字段。"""
+    if profile is None:
+        return False
+    # 延迟导入：枚举在模块顶部已可用，这里只取一次
+    return any(getattr(field.source, "value", field.source) == ProfileSource.RECORD.value for field in profile.fields)
+
+
+def _clean_claims(text: str, *, has_record: bool) -> str:
+    value = text or ""
+    if has_record:
+        return value
+    for wrong, right in _UNVERIFIED_SOURCE_REPLACEMENTS:
+        value = value.replace(wrong, right)
+    return value
+
+
+def _source_audit_lines(profile: Optional[Profile]) -> list[str]:
+    """给模型看"资料从哪来、哪些核验过"——它才不会把来源写成官方记录。"""
+    if profile is None:
+        return []
+    counts: dict[str, int] = {}
+    for field in profile.fields:
+        label = _source_text(field.source)
+        counts[label] = counts.get(label, 0) + 1
+    lines = [f"{label}：{count} 条" for label, count in counts.items()]
+    verified = counts.get(_source_text(ProfileSource.RECORD), 0)
+    if verified:
+        lines.append("以上含已核验的客观记录；引用时要说明是哪一类来源。")
+    else:
+        lines.append(
+            "本画像**没有**已核验的学信网/客观记录：不得说“学信网显示”“经学信网核验”，"
+            "只能说是本人填写、对话中说的或导入的成绩单。"
+        )
+    return lines
 
 """
 这里原来有三份**假数据**：五项能力、两条职业方向的需求矩阵、三门演示课程。
@@ -595,6 +695,86 @@ class AiTaskService:
             rationale=rationale,
         )
 
+    # ---------- 产出兜底清洗：来源 / 人称 ----------
+
+    @staticmethod
+    def _clean_point_rows(rows, *, has_record: bool, student_voice: bool):
+        cleaned = []
+        for point in rows:
+            label = _clean_claims(point.label, has_record=has_record)
+            why = _clean_claims(point.why or "", has_record=has_record)
+            if student_voice:
+                label = _student_voice(label)
+                why = _student_voice(why)
+            cleaned.append(point.model_copy(update={"label": label, "why": why}))
+        return cleaned
+
+    def _clean_portrait(self, envelope: AiResultEnvelope, profile: Optional[Profile]) -> AiResultEnvelope:
+        if envelope is None:  # 测试替身或上游异常返回空时不做清洗，原样交给调用方
+            return envelope
+        data = envelope.data
+        if not isinstance(data, PortraitAnalysis):
+            return envelope
+        has_record = _has_verified_record(profile)
+        update = {
+            "headline": _clean_claims(data.headline, has_record=has_record),
+            "reading": _clean_claims(data.reading, has_record=has_record),
+            "strengths": self._clean_point_rows(data.strengths, has_record=has_record, student_voice=False),
+            "watchouts": self._clean_point_rows(data.watchouts, has_record=has_record, student_voice=False),
+            "next": self._clean_point_rows(data.next, has_record=has_record, student_voice=True),
+        }
+        return envelope.model_copy(update={"data": data.model_copy(update=update)})
+
+    def _clean_report(self, envelope: AiResultEnvelope, profile: Optional[Profile]) -> AiResultEnvelope:
+        if envelope is None:
+            return envelope
+        data = envelope.data
+        if not isinstance(data, ReportSummary):
+            return envelope
+        has_record = _has_verified_record(profile)
+        moves = [
+            move.model_copy(
+                update={
+                    "label": _student_voice(_clean_claims(move.label, has_record=has_record)),
+                    "why": _student_voice(_clean_claims(move.why, has_record=has_record)),
+                }
+            )
+            for move in data.moves
+        ]
+        return envelope.model_copy(
+            update={
+                "data": data.model_copy(
+                    update={
+                        "headline": _clean_claims(data.headline, has_record=has_record),
+                        "paragraphs": [
+                            _clean_claims(part, has_record=has_record) for part in data.paragraphs
+                        ],
+                        "moves": moves,
+                    }
+                )
+            }
+        )
+
+    def _clean_brief(self, envelope: AiResultEnvelope, profile: Optional[Profile]) -> AiResultEnvelope:
+        if envelope is None:
+            return envelope
+        data = envelope.data
+        if not isinstance(data, BriefToday):
+            return envelope
+        has_record = _has_verified_record(profile)
+        next_rows = [
+            item.model_copy(
+                update={
+                    "label": _student_voice(_clean_claims(item.label, has_record=has_record)),
+                    "why": _student_voice(_clean_claims(item.why, has_record=has_record)),
+                }
+            )
+            for item in data.next
+        ]
+        return envelope.model_copy(
+            update={"data": data.model_copy(update={"next": next_rows})}
+        )
+
     # ---------- 各任务 ----------
 
     async def _brief(self, user_id: str, profile: Optional[Profile], arg: str, *, by: str) -> AiResultEnvelope:
@@ -646,13 +826,14 @@ class AiTaskService:
                 "changed 只列输入中明确提供日期的字段变更。行为日志的日期不能作为方向选择或笔记创建日期；缺少对应日期时 changed 留空。",
             ]),
         )
-        return await self._generate(
+        envelope = await self._generate(
             user_id,
             "brief.today",
             context_text=context,
             citations=citations,
             rationale="结合当前方向、行动计划和画像缺口；个人待办与目标只作为意向，不等同已完成经历。",
         )
+        return self._clean_brief(envelope, profile)
 
     async def _portrait(
         self, user_id: str, profile: Optional[Profile], arg: str, *, by: str
@@ -705,14 +886,17 @@ class AiTaskService:
             ("我已经知道的", self._profile_lines(profile)),
             ("还缺的", self._gap_lines(profile)),
             ("他自己写下的", notes),
+            ("资料从哪来（引用来源时必须照这里）", _source_audit_lines(profile)),
         )
-        return await self._generate(
+        envelope = await self._generate(
             user_id,
             "portrait.analysis",
             context_text=context,
             citations=citations,
             rationale="对你的分析 = 把画像里已有的每条记录合起来，说他现在处在哪一步。",
         )
+        # 生成之后的兜底：虚构来源改成真实来源，"问他…"改回对学生的第二人称。
+        return self._clean_portrait(envelope, profile)
 
     async def _academic_analysis(
         self, user_id: str, profile: Optional[Profile], arg: str, *, by: str
@@ -795,17 +979,53 @@ class AiTaskService:
             except Exception:  # noqa: BLE001
                 _log.exception("读关键节点失败：这一天按没有节点处理")
 
-        due: list[str] = []
+        due_overdue: list[str] = []
+        due_today: list[str] = []
+        due_later: list[str] = []
         try:
             action_plan = await self._assets.get_action_plan(user_id)
             for phase in getattr(action_plan, "phases", []) or []:
                 for task in phase.tasks:
                     if task.done or task.due_date is None:
                         continue
-                    if (local_day(task.due_date) or date(1970, 1, 1)) <= target:
-                        due.append(f"{task.text}（{phase.name}，应完成于 {task.due_date:%m-%d}）")
+                    due_day = local_day(task.due_date)
+                    if due_day is None:
+                        continue
+                    if due_day < target:
+                        overdue_days = (target - due_day).days
+                        due_overdue.append(
+                            f"{task.text}（{phase.name}，到期日 {due_day:%m-%d}，已逾期 {overdue_days} 天）"
+                        )
+                    elif due_day == target:
+                        due_today.append(f"{task.text}（{phase.name}，到期日 {due_day:%m-%d}）")
+                    elif len(due_later) < 3:
+                        due_later.append(f"{task.text}（{phase.name}，到期日 {due_day:%m-%d}，不是这一天）")
         except Exception:  # noqa: BLE001
             _log.exception("读行动计划失败：这一天按没有到期任务处理")
+
+        # "今天"到底指哪一天：只用服务器时区（Asia/Shanghai）说事。
+        # 用户点的是日历里的某一天，它未必等于服务器今天；把 10/20 那天的事
+        # 说成"今天到期"就是两条口径混用的结果（深度测试 P2-18）。
+        server_today = datetime.now(ZoneInfo("Asia/Shanghai")).date()
+        is_server_today = target == server_today
+        day_caption = (
+            f"{raw_day}（周{'一二三四五六日'[weekday - 1]}，是服务器今天）"
+            if is_server_today
+            else f"{raw_day}（周{'一二三四五六日'[weekday - 1]}，不是服务器今天；服务器今天为 {server_today:%Y-%m-%d}）"
+        )
+        course_lines = [
+            f"{_period_text(c)}：{c.name}（{_place_text(c) or '地点未提供'}，周次 {getattr(c, 'weeks', '') or '未提供'}）"
+            for c in courses
+        ]
+        date_facts = [
+            f"服务器今天：{server_today:%Y-%m-%d}（Asia/Shanghai）；用户点开的日期：{raw_day}",
+            "只有到期日等于被点开日期的任务，才能说“今天到期/这天到期”；到期日早于它的才能说“已逾期”。",
+            "上面“之后到期”的任务不得说成今天到期或已逾期。",
+            "课表事实只能引用列出的课程、节次、地点；这一天没有课就照实说这一天课表没有安排，不能说课表数据缺失。",
+            "不得把未核验的资料说成学信网记录。",
+        ]
+        if not courses:
+            course_lines = ["这一天课表里没有安排课程（这是排课结果，不代表课表数据缺失）"]
 
         citations = [
             Citation(
@@ -817,7 +1037,7 @@ class AiTaskService:
         citations += [
             Citation(
                 source="课表",
-                detail=f"{_period_text(c)} {c.name}（{_place_text(c)}）",
+                detail=f"{_period_text(c)} {c.name}（{_place_text(c) or '地点未提供'}）",
                 confidence=0.95,
                 origin="academic",
             )
@@ -832,19 +1052,23 @@ class AiTaskService:
             )
             for n in nodes
         ]
-        if due:
+        due_facts = due_overdue + due_today
+        if due_facts:
             citations.append(
-                Citation(source="行动计划", detail="；".join(due[:3]), confidence=0.9)
+                Citation(source="行动计划", detail="；".join(due_facts[:3]), confidence=0.9)
             )
 
         context = self._context(
-            ("这一天", [f"{raw_day}（周{'一二三四五六日'[weekday - 1]}）"]),
+            ("这一天", [day_caption]),
+            ("日期事实（必须遵守）", date_facts),
             (
                 "这一天有课",
-                [f"{_period_text(c)}：{c.name}（{_place_text(c)}）" for c in courses],
+                course_lines,
             ),
             ("到期日正好是这一天的事", [str(getattr(n, "title", "")) for n in nodes]),
-            ("到期了还没做完的事", due),
+            ("这一天到期、还没做完的事", due_today),
+            ("已经逾期的事（到期日早于这一天）", due_overdue),
+            ("之后到期（不是这一天，不要说成今天到期）", due_later),
             ("我已经知道的", self._profile_lines(profile)),
             ("还缺的", self._gap_lines(profile)),
         )
@@ -853,7 +1077,7 @@ class AiTaskService:
             "day.advice",
             context_text=context,
             citations=citations,
-            rationale="这一天怎么过 = 那天有的课 + 那天到期的事 + 他手里还差什么，排成能直接做的顺序。",
+            rationale="这一天怎么过 = 那天有的课 + 那天到期的事 + 他手里还差什么，排成能直接做的顺序；日期与课表事实以服务器日期和导入的快照为准。",
         )
 
     async def _dimension(self, user_id: str, profile: Optional[Profile], dim_id: str, *, by: str) -> AiResultEnvelope:
@@ -1069,13 +1293,17 @@ class AiTaskService:
             ))
         if notes:
             citations.append(Citation(source="用户笔记", detail=f"{len(notes)} 条自建内容", confidence=0.9))
-        return await self._generate(
+        envelope = await self._generate(
             user_id,
             "report.summary",
-            context_text=self._context(*blocks),
+            context_text=self._context(
+                *blocks,
+                ("资料从哪来（引用来源时必须照这里）", _source_audit_lines(profile)),
+            ),
             citations=citations,
             rationale="导读综合报告全文、个人画像、学业记录、方向与行动状态、笔记和近期行为；缺失的数据不补写，没有诊断时不编结论。",
         )
+        return self._clean_report(envelope, profile)
 
     async def _bind_chsi(self, user_id: str, profile: Optional[Profile], arg: str, *, by: str) -> AiResultEnvelope:
         """学信网绑定：核验在线验证码 → 读报告 → 写画像。

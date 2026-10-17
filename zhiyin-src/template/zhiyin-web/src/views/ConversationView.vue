@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch, type DeepReadonly } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { demo, toast } from '../store'
 import { backendDemo } from '../lib/backend-demo'
@@ -14,7 +14,8 @@ import { newSession, openSession, loadShell, systemData } from '../lib/system-da
 import { replyTurns } from '../lib/conversation-turns'
 import { backendClient } from '../api/backend-client'
 import { streamBackend } from '../api/backend-stream'
-import type { ConversationTurnView, MessageRequest, TheoryCardView } from '../api/backend-types'
+import { studentApi } from '../api/student-capabilities'
+import type { ActionPhaseView, ActionTaskView, ConversationTurnView, MessageRequest, TheoryCardView } from '../api/backend-types'
 import type { ChatTurn } from '../data/types'
 import AgentAvatar from '../components/AgentAvatar.vue'
 import UiIcon from '../components/UiIcon.vue'
@@ -47,6 +48,8 @@ const failedSend = ref<FailedSend | null>(null)
 // 已点过按钮的确认不再重复出现（问题 2：可以 / 先不要）。
 const confirmDismissed = ref<string[]>([])
 const askPending = ref('')
+// 生成中刷新/切页：本轮回复没有落库时，提示"上一轮中断"并给出重新发送入口。
+const interrupted = ref<{ text: string; turnId: string } | null>(null)
 const copiedTurn = ref('')
 let copyTimer: ReturnType<typeof setTimeout> | undefined
 const uploadError = ref('')
@@ -77,7 +80,6 @@ const studyYear = computed(() => savedStudyYear.value || String(studyYearField.v
 const firstUse = computed(() => systemData.shellReady && !demo.state.currentSessionId && sessions.value.length === 0 && turns.value.length === 0)
 const showStudyYearQuestion = computed(() => profileLoaded.value && (editingStudyYear.value || (!studyYear.value && firstUse.value)))
 const starters = computed(() => personalizedStudyYearEntries(auth.state.bootstrap?.task_entries ?? [], studyYear.value))
-const doneTasks = computed(() => new Set((backendDemo.state.liveAction?.phases ?? []).flatMap(p => p.tasks ?? []).filter(t => t.done).map(t => t.task_id)))
 let controller: AbortController | null = null, serial = 0, disposed = false
 let failedRequest: MessageRequest | null = null
 function remember() { backendDemo.saveDraft(demo.state.currentSessionId, draft.value, attached.value, flow.value?.scrollTop ?? null) }
@@ -93,6 +95,8 @@ function fill(text: string, option?: OptionRef) {
     return
   }
   applyFill(text, option)
+  // 点快捷选项只填入不发送：给一句明确反馈，避免"点了没反应"（深度测试观察项）。
+  if (option) toast('已填入输入框，点发送即可。')
 }
 function confirmFillReplace() {
   const request = fillRequest.value
@@ -100,6 +104,7 @@ function confirmFillReplace() {
   fillRequest.value = null
   applyFill(request.text, request.option)
   replacedDraft.value = { text: request.previousText, option: request.previousOption }
+  if (request.option) toast('已替换为所选内容，点发送即可。原草稿可点「撤销替换」恢复。')
 }
 function cancelFillReplace() { fillRequest.value = null }
 function undoFillReplace() {
@@ -131,6 +136,8 @@ function loadFailure(sessionId: string) {
     if (!data?.request?.message) return
     failedSend.value = data
     failedRequest = data.request
+    // 刷新后要让人知道上一轮没成功：把错误也放回对话提示里（含「重新尝试」）。
+    requestError.value = data.error || '上一轮回复没有完成，可以重新尝试。'
   } catch { /* 坏数据直接忽略，不阻塞会话 */ }
 }
 function discardFailure() {
@@ -154,6 +161,82 @@ const showFailedSend = computed(() => {
   if (!data) return false
   return !turns.value.some(turn => turn.from === 'me' && (turn.id === `${data.request.client_msg_id}-user` || turn.text === data.request.message))
 })
+
+/**
+ * 统一把技术异常收敛成中文可操作提示（深度测试 DEF：解析异常/英文校验文案漏到对话里）。
+ * 中文业务提示原样保留；英文或 JSON/解析类异常一律换成"稍后重试/改格式"的说法。
+ */
+const TECHNICAL_ERROR = /(Expected property name|Unexpected token|Unexpected end of JSON|is not valid JSON|JSON\.parse|SyntaxError|TypeError|ReferenceError|Traceback|ValidationError|String should|Input should|failed to fetch|NetworkError|Load failed)/i
+function friendlyError(error: unknown) {
+  const message = (error instanceof Error ? error.message : typeof error === 'string' ? error : '').trim()
+  if (!message) return '这次操作没有完成，请稍后重试。'
+  if (TECHNICAL_ERROR.test(message)) return '服务返回的内容无法识别，请稍后重试；如果正在上传材料，请改用 TXT/CSV 等文本格式。'
+  if (!/[\u4e00-\u9fa5]/.test(message)) return '这次操作没有完成，请稍后重试。'
+  return message
+}
+function errorCode(error: unknown) { return (error as { code?: number } | null)?.code }
+/**
+ * 材料预校验：能在前端拦住的就不要发请求。
+ * 后端对 PDF/Word/Excel/图片/压缩包有专门的中文说明（infra/textfile.py），这里给同样的口径；
+ * 其余非文本格式（.exe 等）后端会按文本解码成乱码，必须在前端拦下。
+ */
+const MAX_MATERIAL_BYTES = 2_000_000
+const TEXT_SUFFIXES = new Set(['txt', 'text', 'csv', 'tsv', 'json', 'jsonl', 'md', 'markdown', 'log', 'xml', 'html', 'htm', 'yaml', 'yml', 'sql', 'ini', 'cfg', 'conf', 'properties', 'py', 'js', 'mjs', 'cjs', 'ts', 'tsx', 'jsx', 'vue', 'java', 'c', 'h', 'cpp', 'hpp', 'cs', 'go', 'rs', 'rb', 'php', 'css', 'scss', 'less', 'srt', 'vtt', 'tex', 'bib', 'r'])
+const BINARY_LABELS: Record<string, string> = { pdf: 'PDF', doc: 'Word 文档', docx: 'Word 文档', xls: 'Excel 工作簿', xlsx: 'Excel 工作簿', xlsm: 'Excel 工作簿', ppt: 'PPT', pptx: 'PPT', zip: '压缩包', rar: '压缩包', '7z': '压缩包', png: '图片', jpg: '图片', jpeg: '图片', gif: '图片', webp: '图片', bmp: '图片', heic: '图片', svg: '矢量图', exe: '可执行文件', dll: '程序文件', msi: '安装包', bin: '二进制文件', iso: '光盘镜像', mp3: '音频', wav: '音频', mp4: '视频', mov: '视频', avi: '视频', ttf: '字体', otf: '字体', woff: '字体', woff2: '字体', psd: '设计文件' }
+function fileSuffix(name: string) { const index = name.lastIndexOf('.'); return index > 0 ? name.slice(index + 1).toLowerCase() : '' }
+function materialRejection(file: File) {
+  const suffix = fileSuffix(file.name)
+  if (file.size > MAX_MATERIAL_BYTES) return `「${file.name}」超过 2MB 上限，请截取相关的那一段后再上传。`
+  if (!file.size) return `「${file.name}」是空文件，请换一份有内容的文本。`
+  if (!suffix || TEXT_SUFFIXES.has(suffix)) return ''
+  const label = BINARY_LABELS[suffix]
+  // 认不出的后缀不抢后端判断权：后端会按内容识别二进制并给出中文说明，别误伤可读文本。
+  if (!label) return ''
+  if (suffix === 'pdf') return '暂不支持直接读取 PDF：请把需要分析的文字复制为 TXT 后上传，或直接粘贴到输入框。'
+  if (label === 'Word 文档' || label === 'Excel 工作簿' || label === 'PPT') return `暂不支持直接读取${label}：请在 Office 里另存为 CSV 或 TXT 后上传。`
+  if (label === '图片' || label === '矢量图') return '图片里的文字读不出来：请把文字复制成文本，或直接用文字描述图片内容。'
+  if (label === '压缩包') return '压缩包读不了：请先解压，再上传其中的 TXT、CSV 等文本文件。'
+  return `不支持 .${suffix} 文件：对话里只能读取文字，请上传 TXT、CSV、MD 等文本文件。`
+}
+function friendlyMaterialError(error: unknown) {
+  const message = error instanceof Error ? error.message : ''
+  if (errorCode(error) === 413 || /413|entity too large|payload too large/i.test(message)) return '材料超过大小限制（最多 2MB），请截取相关的那一段后再上传。'
+  if (errorCode(error) === 422) {
+    // 后端对 PDF/Word/Excel 等有专门说明时保留原话；纯校验/技术文案统一成"格式不支持"。
+    if (/暂不支持|请复制|请上传|TXT|CSV/i.test(message) && /[\u4e00-\u9fa5]/.test(message) && !TECHNICAL_ERROR.test(message)) return message
+    return '这个文件格式不支持，请上传 TXT、CSV、MD 等文本文件。'
+  }
+  return friendlyError(error)
+}
+// 对话任务卡：guideTask.task_id 可能来自旧计划，甚至只是模型给的一条建议（不在计划里）。
+const planTaskRows = computed(() => {
+  const rows: { task: DeepReadonly<ActionTaskView>; phase: DeepReadonly<ActionPhaseView> }[] = []
+  for (const phase of backendDemo.state.liveAction?.phases ?? []) for (const task of phase.tasks ?? []) rows.push({ task, phase })
+  return rows
+})
+const normalizeTaskText = (text: string) => text.replace(/[\s\p{P}\p{S}]/gu, '').toLowerCase()
+function resolveGuideTask(guideTask: ChatTurn['guideTask']) {
+  if (!guideTask) return undefined
+  const rows = planTaskRows.value
+  const direct = rows.find(row => row.task.task_id === guideTask.task_id)
+  if (direct) return direct
+  const legacy = rows.find(row => row.task.text === guideTask.task_id || `${row.phase.name}:${row.task.text}` === guideTask.task_id)
+  if (legacy) return legacy
+  const target = normalizeTaskText(guideTask.text)
+  if (!target) return undefined
+  const matches = rows.filter(row => normalizeTaskText(row.task.text) === target)
+  return matches.length === 1 ? matches[0] : undefined
+}
+type GuideTaskState = 'done' | 'pending' | 'missing'
+function guideTaskState(guideTask: ChatTurn['guideTask']): GuideTaskState {
+  const found = resolveGuideTask(guideTask)
+  if (!found) return 'missing'
+  return found.task.done ? 'done' : 'pending'
+}
+function guideTaskLabel(guideTask: ChatTurn['guideTask']) {
+  const state = guideTaskState(guideTask)
+  return state === 'done' ? '恢复任务' : state === 'pending' ? '完成任务' : '加入阶段计划'
+}
 // 最后一条带「可以 / 先不要」的回复：确认条常驻在输入框上方，不会被后续输入淹没。
 const pendingConfirm = computed(() => {
   for (let index = turns.value.length - 1; index >= 0; index -= 1) {
@@ -174,14 +257,52 @@ function chooseConfirm(choice: OptionRef) {
   if (draft.value.trim() === choice.label.trim()) { draft.value = ''; selectedOption.value = null; remember() }
   void send(false, { text: choice.label, option: choice })
 }
+/**
+ * 生成中刷新/切页的残局修复。
+ *
+ * openSession 恢复时会用会话快照里的 guide（属于**上一轮**回复）补齐最后一个助手回合；
+ * 如果最后一条其实是用户刚发出、还没等到回复的提问，就会把上一轮的引导/残片挂到这条
+ * 提问下面，看起来像"本轮回答"（深度测试 DEF-DS-02）。
+ * 这里把这种伪回合摘掉，换成一条明确的"回复中断"提示，并保留重新发送入口。
+ */
+function syncInterruptedNotice() {
+  if (thinking.value || systemData.busy) return
+  const list = turns.value
+  const last = list.at(-1)
+  const previous = list.at(-2)
+  const phantom = last?.from === 'host' && !last.text?.trim() && last.id.endsWith('-guide') && previous?.from === 'me' ? last : undefined
+  // 先摘掉伪回合：不管有没有失败提示，上一轮的引导都不能显示在这条提问下面。
+  if (phantom) {
+    demo.setChatTurns(list.slice(0, -1), demo.state.currentSessionId)
+    backendDemo.saveTurns(demo.state.currentSessionId, demo.state.chatTurns)
+  }
+  const question = phantom ? previous : last?.from === 'me' && !pending.value ? last : undefined
+  if (!question) {
+    if (last?.from === 'host') interrupted.value = null
+    return
+  }
+  // 已有失败态时优先走"重新尝试"那条通道，避免两条重试入口同时出现。
+  if (failedSend.value || requestError.value) { interrupted.value = null; return }
+  if (interrupted.value?.turnId !== question.id) interrupted.value = { text: question.text, turnId: question.id }
+}
+function retryInterrupted() {
+  const item = interrupted.value
+  if (!item || thinking.value || systemData.busy) return
+  interrupted.value = null
+  void send(false, { text: item.text })
+}
+function dismissInterrupted() {
+  interrupted.value = null
+  void nextTick(() => input.value?.focus())
+}
 function safeLink(url?: string | null) { try { const u = new URL(url || ''); return ['http:', 'https:'].includes(u.protocol) ? u.href : undefined } catch { return undefined } }
 function displayDate(raw: string) { const date = new Date(raw); return Number.isNaN(date.getTime()) ? raw : date.toLocaleString('zh-CN', {month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'}) }
 function evidenceCount(t: ChatTurn) { return (t.theory_refs?.length ?? 0) + (t.intel_refs?.length ?? 0) }
 function assetLabel(type: string) { return ({ report:'诊断报告', direction_plan:'方向方案', action_plan:'行动计划' } as Record<string,string>)[type] || '关联资料' }
 function stageLabel(stage: string) { return ({ collect:'了解情况', diagnose:'梳理判断', decide:'比较选择', act:'安排下一步', review:'回顾调整' } as Record<string,string>)[stage] || '处理中' }
 function journeyState(stage: string) { const current = journey.findIndex(item => item.key === currentStage.value); const index = journey.findIndex(item => item.key === stage); return index === current ? 'current' : index < current ? 'past' : 'future' }
-async function theory(id: string) { if (theoryCards.value[id] || theoryLoading.value[id]) return; theoryErrors.value[id] = ''; theoryLoading.value[id] = true; try { theoryCards.value[id] = await backendClient.theory(id) } catch (e) { theoryErrors.value[id] = (e as Error).message } finally { theoryLoading.value[id] = false } }
-async function refreshProfile() { profileLoading.value = true; profileError.value = ''; try { const result = await backendClient.workspace(); if (!disposed) { backendDemo.setWorkspace(result); const stored = result.profile_panel?.fields?.find(field => field.key === 'study_year'); if (stored) savedStudyYear.value = String(stored.value ?? '') } } catch (e) { if (!disposed) profileError.value = (e as Error).message } finally { profileLoading.value = false; profileLoaded.value = true } }
+async function theory(id: string) { if (theoryCards.value[id] || theoryLoading.value[id]) return; theoryErrors.value[id] = ''; theoryLoading.value[id] = true; try { theoryCards.value[id] = await backendClient.theory(id) } catch (e) { theoryErrors.value[id] = friendlyError(e) } finally { theoryLoading.value[id] = false } }
+async function refreshProfile() { profileLoading.value = true; profileError.value = ''; try { const result = await backendClient.workspace(); if (!disposed) { backendDemo.setWorkspace(result); const stored = result.profile_panel?.fields?.find(field => field.key === 'study_year'); if (stored) savedStudyYear.value = String(stored.value ?? '') } } catch (e) { if (!disposed) profileError.value = friendlyError(e) } finally { profileLoading.value = false; profileLoaded.value = true } }
 function clearTopicQuery() { if (route.query.new === undefined) return; const query = { ...route.query }; delete query.new; void router.replace({ path:route.path, query }) }
 async function refreshSessionsOnFocus() {
  if (document.visibilityState !== 'visible') return
@@ -192,8 +313,8 @@ async function refreshSessionsOnFocus() {
 }
 function chooseTopic() { if (thinking.value || systemData.busy) return; freshTopic.value = false; choosingTopic.value = true; historyOpen.value = false; profileOpen.value = false; requestError.value = ''; void nextTick(() => { if (flow.value) flow.value.scrollTop = 0 }) }
 function closeTopic() { choosingTopic.value = false; clearTopicQuery(); void bottom(true) }
-async function resume(id: string) { if (thinking.value) return; try { await openSession(id); choosingTopic.value = false; clearTopicQuery(); historyOpen.value = false; pending.value = null; requestError.value = ''; await bottom(true) } catch (e) { requestError.value = (e as Error).message } }
-async function create(code: string, fresh = false) { if (thinking.value || systemData.busy) return; try { await newSession(code, fresh); choosingTopic.value = false; clearTopicQuery(); pending.value = null; requestError.value = ''; await loadShell(); input.value?.focus() } catch (e) { requestError.value = (e as Error).message } }
+async function resume(id: string) { if (thinking.value) return; try { await openSession(id); choosingTopic.value = false; clearTopicQuery(); historyOpen.value = false; pending.value = null; requestError.value = ''; syncInterruptedNotice(); await bottom(true) } catch (e) { requestError.value = friendlyError(e) } }
+async function create(code: string, fresh = false) { if (thinking.value || systemData.busy) return; try { await newSession(code, fresh); choosingTopic.value = false; clearTopicQuery(); pending.value = null; requestError.value = ''; await loadShell(); input.value?.focus() } catch (e) { requestError.value = friendlyError(e) } }
 async function start(code: string, label: string) {
  const fresh = freshTopic.value
  await create(code, fresh)
@@ -212,17 +333,22 @@ async function saveStudyYear(label: string) {
   editingStudyYear.value = false; choosingTopic.value = true
   await refreshProfile()
  } catch (e) {
-  studyYearError.value = e instanceof Error ? e.message : '当前学习阶段没有保存成功，请重试。'
+  studyYearError.value = friendlyError(e)
   if ((e as { code?: number }).code === 1003) await refreshProfile()
  } finally { studyYearSaving.value = '' }
 }
 async function upload(event: Event) { await uploadFiles(Array.from((event.target as HTMLInputElement).files ?? [])) }
 async function uploadFiles(files: File[]) {
  if (!files.length || uploading.value || thinking.value) return
- uploading.value = true; uploadError.value = ''
+ // 先做格式与大小预校验：能当场说清楚的不发请求（深度测试 DEF-DS-03/04）。
+ const problems = files.map(file => materialRejection(file)).filter(Boolean)
+ const acceptable = files.filter(file => !materialRejection(file))
+ uploadError.value = problems.join(' ')
+ if (!acceptable.length) { if (fileInput.value) fileInput.value.value = ''; return }
+ uploading.value = true
  const sessionId = demo.state.currentSessionId
- try { for (const file of files) { const material = await backendClient.material(file); if (disposed || sessionId !== demo.state.currentSessionId) return; if (!attached.value.some(item => item.id === material.material_id)) attached.value.push({ id: material.material_id, name: material.name || file.name }) } }
- catch (e) { if (!disposed && sessionId === demo.state.currentSessionId) uploadError.value = (e as Error).message }
+ try { for (const file of acceptable) { const material = await backendClient.material(file); if (disposed || sessionId !== demo.state.currentSessionId) return; if (!attached.value.some(item => item.id === material.material_id)) attached.value.push({ id: material.material_id, name: material.name || file.name }) } }
+ catch (e) { if (!disposed && sessionId === demo.state.currentSessionId) uploadError.value = friendlyMaterialError(e) }
  finally { uploading.value = false; if (fileInput.value) fileInput.value.value = '' }
 }
 function dragOver(event: DragEvent) {
@@ -237,9 +363,53 @@ function pasteFiles(event: ClipboardEvent) {
  const files = Array.from(event.clipboardData?.files ?? [])
  if (files.length && !event.clipboardData?.getData('text/plain')) { event.preventDefault(); void uploadFiles(files) }
 }
-async function toggleTask(id: string) { guideSaving.value = id; try { backendDemo.setAction(await backendClient.actionDone({ task_id:id, done:!doneTasks.value.has(id) })) } catch (e) { toast((e as Error).message) } finally { guideSaving.value = '' } }
+/**
+ * 对话里的任务卡：先对齐真实计划，再按状态决定动作。
+ *
+ * 深度测试 DEF-DS-01：卡片上的 guideTask.task_id 有时不在当前计划里（计划已重排，
+ * 或这条只是主理给的建议），直接拿它勾选会得到 404「行动任务不存在」。现在的顺序是：
+ * ① 先取最新计划并按 id/文本对齐；② 对上了就勾完成/恢复；③ 对不上就把它加进当前阶段，
+ * 让「✓完成任务」不再是一条死路。成功后阶段计划与今日行动读的是同一份 liveAction。
+ */
+async function toggleTask(guideTask: NonNullable<ChatTurn['guideTask']>) {
+  if (guideSaving.value) return
+  guideSaving.value = guideTask.task_id
+  try {
+    const latest = await backendClient.action()
+    backendDemo.setAction(latest)
+    const found = resolveGuideTask(guideTask)
+    if (found) {
+      backendDemo.setAction(await backendClient.actionDone({ task_id: found.task.task_id, done: !found.task.done }))
+      toast(found.task.done ? '已恢复为待执行，今日行动同步更新。' : '已完成，今日行动与阶段计划同步更新。')
+      return
+    }
+    const phases = (latest.phases ?? []).filter(phase => phase.id)
+    if (!phases.length) { toast('这条建议还没进阶段计划，也找不到可用的阶段。请先到「阶段计划」新建阶段。'); return }
+    const nextId = latest.next_task?.task_id
+    const preferred = nextId ? phases.find(phase => (phase.tasks ?? []).some(task => task.task_id === nextId)) : undefined
+    const phase = preferred ?? phases.find(row => !row.blocked_by?.length) ?? phases[0]
+    if (!phase.id) { toast('这条建议暂时加不进阶段计划，请到「阶段计划」手动添加。'); return }
+    backendDemo.setAction(await studentApi.saveTask({
+      client_request_id: crypto.randomUUID(),
+      expected_task: null,
+      text: guideTask.text,
+      phase_id: phase.id,
+      status: 'pending',
+      progress: 0,
+      waiting_reason: '',
+      due_date: guideTask.due_date ?? null,
+      scheduled_at: null,
+      estimated_minutes: null,
+      parent_task_id: null,
+    }))
+    toast(`这条建议还没进阶段计划，已先加入「${phase.name}」，可到今日行动继续推进。`)
+  } catch (e) {
+    if (errorCode(e) === 404) toast('这条建议对应的任务已不在当前计划里（计划可能更新过）。已刷新计划，可到「阶段计划」核对后重试。')
+    else toast(friendlyError(e))
+  } finally { guideSaving.value = '' }
+}
 function stop() { stopped.value = true; controller?.abort() }
-async function send(retry = false, choice?: { text: string; option: OptionRef }) {
+async function send(retry = false, choice?: { text: string; option?: OptionRef }) {
  if (thinking.value || uploading.value || systemData.busy) return
  // 刷新后 failedRequest 会因为本轮普通消息成功而被清空，失败态里仍保存着原始请求。
  const retried = retry ? (failedRequest ?? failedSend.value?.request ?? null) : null
@@ -269,7 +439,8 @@ async function send(retry = false, choice?: { text: string; option: OptionRef })
   })
   if (run !== serial || demo.state.currentSessionId !== sessionId) return
   // 重新尝试成功时，失败的这条用户消息要正式进入对话流（之前只存在失败态里）。
-  if (retry && !turns.value.some(turn => turn.id === `${request.client_msg_id}-user`)) {
+  // 刷新恢复的会话里服务端消息 id 不是 client_msg_id，按文本再查一次，避免同一句出现两次。
+  if (retry && !turns.value.some(turn => turn.id === `${request.client_msg_id}-user` || (turn.from === 'me' && turn.text === text))) {
    demo.addChatTurn({ id:`${request.client_msg_id}-user`, from:'me', text, materials:outgoingMaterials })
   }
   demo.setChatTurns([...turns.value, ...replyTurns(result, request.client_msg_id || crypto.randomUUID())], sessionId)
@@ -288,7 +459,7 @@ async function send(retry = false, choice?: { text: string; option: OptionRef })
     attached.value = [...outgoingMaterials.filter(material => !attachedIds.has(material.id)), ...attached.value]
     remember(); requestError.value = '已停止接收，问题已放回输入框，可修改后重新发送。'
    } else {
-    requestError.value = (e as Error).message
+    requestError.value = friendlyError(e)
     // 失败的消息与错误按会话落盘：刷新后仍能看到、仍可重新尝试。
     if (demo.state.currentSessionId === sessionId) rememberFailure(sessionId, { request, materials: outgoingMaterials, error: requestError.value, at: new Date().toISOString() })
    }
@@ -307,10 +478,18 @@ watch(() => demo.state.currentSessionId, (_id, previous) => {
  backendDemo.saveDraft(previous, draft.value, attached.value, flow.value?.scrollTop ?? null)
  const data = backendDemo.getDraft(demo.state.currentSessionId); draft.value = data.text; attached.value = data.materials.map(m => ({ ...m }))
  selectedOption.value = null; failedRequest = null; pending.value = null; requestError.value = ''; uploadError.value = ''; stopped.value = false; choosingTopic.value = false; followTail.value = true
- fillRequest.value = null; replacedDraft.value = null; confirmDismissed.value = []
+ fillRequest.value = null; replacedDraft.value = null; confirmDismissed.value = []; interrupted.value = null
  loadFailure(demo.state.currentSessionId)
+ // 记住"这个标签页正在看哪条会话"：刷新后优先回到它，而不是账号级最近会话。
+ // （多标签页看不同会话时，按账号恢复会互相抢位置。）
+ try { if (demo.state.currentSessionId) sessionStorage.setItem('zhiyin-current-session', demo.state.currentSessionId) } catch { /* 私人模式等不可用 */ }
+ syncInterruptedNotice()
  void bottom(true)
 }, { flush:'sync' })
+// 刷新/切页恢复到"最后一条是提问、没有回复"的会话时，修复残局并给出中断提示。
+// 也监听 systemData.busy：刷新恢复走的是 App 壳的 loadShell→openSession，
+// 消息是在 busy=true 期间写入的，等 busy 落回 false 后还要再检查一次。
+watch([turns, thinking, () => systemData.busy, () => demo.state.currentSessionId], () => syncInterruptedNotice(), { flush: 'post' })
 function applyConsultationContext() {
  // 报告页等入口用 ?ask= 直接发起一句咨询：自动填入并发送，发送后清掉参数。
  const ask = typeof route.query.ask === 'string' ? route.query.ask.trim() : ''
@@ -337,7 +516,10 @@ watch(() => route.query, applyConsultationContext)
 async function runAsk() {
  if (!askPending.value || thinking.value || uploading.value || systemData.busy) return
  // 等壳层、画像与首屏问句就绪，避免把消息发进一个还没准备好的会话、跳过年级确认。
- if (!systemData.shellReady || !profileLoaded.value || choosingTopic.value || showStudyYearQuestion.value) return
+ if (!systemData.shellReady || !profileLoaded.value || showStudyYearQuestion.value) return
+ // 从报告页等入口带 ?ask= 进入时，页面可能正停在"选择咨询主题"。
+ // 直接提问是用户的明确动作：收起主题选择，交给 send() 自动建会话。
+ if (choosingTopic.value) choosingTopic.value = false
  const ask = askPending.value
  askPending.value = ''
  draft.value = ask
@@ -417,7 +599,7 @@ onUnmounted(() => { disposed = true; window.removeEventListener('focus', refresh
       </DetailPopover>
       </div>
         <div v-if="turn.renderables?.length" class="consult-renderables"><RenderableBlock v-for="(block,i) in turn.renderables" :key="i" :item="block" /></div>
-      <div v-if="turn.guideTask" class="consult-task"><UiIcon name="action" :size="21" /><div><small>把建议变成一步</small><p>{{ turn.guideTask.text }}</p><small v-if="turn.guideTask.due_date">{{ displayDate(turn.guideTask.due_date) }}</small></div><button :disabled="!!guideSaving" :aria-label="doneTasks.has(turn.guideTask.task_id) ? '恢复任务' : '完成任务'" @click="toggleTask(turn.guideTask.task_id)"><UiIcon :name="doneTasks.has(turn.guideTask.task_id) ? 'check' : 'plus'" :size="19" /></button></div>
+      <div v-if="turn.guideTask" class="consult-task"><UiIcon name="action" :size="21" /><div><small>把建议变成一步</small><p>{{ turn.guideTask.text }}</p><small v-if="turn.guideTask.due_date">{{ displayDate(turn.guideTask.due_date) }}</small><small v-if="guideTaskState(turn.guideTask) === 'missing'" class="consult-task-note">还没加入阶段计划，点右侧按钮可以加进去。</small></div><button :disabled="!!guideSaving" :title="guideTaskLabel(turn.guideTask)" :aria-label="guideTaskLabel(turn.guideTask)" @click="toggleTask(turn.guideTask)"><UiIcon :name="guideTaskState(turn.guideTask) === 'done' ? 'check' : 'plus'" :size="19" /></button></div>
       <div v-if="turn.reminder" class="consult-reminder"><UiIcon name="bell" :size="17" /><div><strong>{{ turn.reminder.title }}</strong><p v-if="turn.reminder.detail">{{ turn.reminder.detail }}</p><small v-if="turn.reminder.due_at">{{ displayDate(turn.reminder.due_at) }}</small></div></div>
       <p v-if="turn.question" class="consult-question">{{ cleanConsultantText(turn.question) }}</p>
       <div v-if="turn.optionRefs?.length" class="consult-option-group"><p>接下来，你可以</p><div class="consult-options"><button v-for="option in turn.optionRefs" :key="option.option_id" :aria-pressed="selectedOption?.option_id === option.option_id" :disabled="thinking" @click="fill(option.label, option)"><span>{{ cleanConsultantText(option.label) }}</span><UiIcon :name="selectedOption?.option_id === option.option_id ? 'check' : 'plus'" :size="14" /></button></div></div>
@@ -434,6 +616,13 @@ onUnmounted(() => { disposed = true; window.removeEventListener('focus', refresh
       </div>
      </div>
     </article>
+    <div v-if="interrupted" class="consult-error consult-interrupted" role="alert">
+     <p>上一轮回复在生成过程中中断了（刷新或切换页面导致），这一轮没有收到回答，上面也不会显示上一轮的旧内容。</p>
+     <div class="consult-interrupted__actions">
+      <button type="button" :disabled="thinking || systemData.busy" @click="retryInterrupted">重新发送这个问题</button>
+      <button type="button" @click="dismissInterrupted">继续自己输入</button>
+     </div>
+    </div>
     <article v-if="pending" class="consult-turn consult-turn--host consult-pending" aria-label="当前回复"><AgentAvatar :agent="agentKeyOf(pending.agent)" :size="38" :state="thinking ? pending.text ? 'speaking' : 'thinking' : 'idle'" /><div class="consult-answer"><span class="consult-speaker">{{ consultantLabel(pending.agent) }}</span><ReadableText v-if="pending.text" :text="cleanConsultantText(pending.text)" class="consult-prose" /><div v-else-if="thinking" class="consult-wait" role="status"><span class="consult-wait-orbit" aria-hidden="true"><i /><i /><i /></span><div><p>{{ pending.note }}</p><small>正在接收回复<span v-if="elapsed >= 3"> · {{ elapsed }} 秒</span></small></div></div><span v-if="thinking && pending.text" class="consult-cursor" aria-label="正在回复" /><small v-if="!thinking">{{ stopped ? '接收已停止' : '回复未完成' }}</small></div></article>
     <div v-if="uploadError" class="consult-error" role="alert"><p>{{ uploadError }}</p><button :disabled="uploading || thinking" @click="fileInput?.click()">重新选择材料</button><button @click="uploadError = ''">关闭上传提示</button></div>
     <div v-if="requestError && !showFailedSend" class="consult-error" role="alert"><p>{{ requestError }}</p><button v-if="failedRequest && !stopped" @click="send(true)">重新尝试</button><button :disabled="thinking" @click="resume(demo.state.currentSessionId)">重新读取会话</button></div>
@@ -493,6 +682,11 @@ onUnmounted(() => { disposed = true; window.removeEventListener('focus', refresh
 .consult-failed > div { display: flex; gap: 8px; }
 .consult-session-preview { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--c-text-3); font-size: var(--fs-12); text-align: left; }
 .consult-session-list button strong { display: block; text-align: left; }
+.consult-task-note { display: block; margin-top: 6px; color: var(--c-text-3); font-size: var(--fs-12); }
+.consult-interrupted { align-items: flex-start; }
+.consult-interrupted__actions { display: flex; flex: none; gap: 8px; }
+.consult-interrupted__actions button { min-height: 40px; padding: 0 12px; border: 1px solid var(--c-primary); border-radius: var(--r-pill); background: var(--c-surface); color: var(--c-primary); font-size: var(--fs-12); cursor: pointer; }
+.consult-interrupted__actions button:first-child { background: var(--c-primary); color: var(--c-on-primary); }
 .consult-fresh { display: flex; align-items: center; gap: 6px; margin: 2px auto 12px; padding: 8px 14px; border: 1px dashed var(--c-border-strong); border-radius: var(--r-pill); background: var(--c-surface); color: var(--c-text-2); font-size: var(--fs-12); cursor: pointer; }
 .consult-fresh[aria-pressed="true"] { border-color: var(--c-primary); color: var(--c-primary); background: var(--c-primary-weak); }
 .consult-empty { display: grid; justify-items: center; gap: 6px; padding: 40px 20px; text-align: center; color: var(--c-text-2); }

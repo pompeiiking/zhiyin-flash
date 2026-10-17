@@ -81,6 +81,14 @@ class DefaultFunctionService(FunctionService):
         #: 结果编得更像样。
         self._web_search = web_search
         self._intel_cache: dict[str, tuple[float, list[ExternalIntel]]] = {}
+        #: 上一次取数的**结果状态**：`ok / empty / failed`。
+        #:
+        #: 为什么必须分开记：面板上"0 条"有两种完全不同的意思 ——
+        #: "确实没有匹配的公开资料"和"这次检索/上游失败了"。前者该安心，
+        #: 后者该给他一个重试。只回一个空数组，界面只能猜。
+        self._intel_status: dict[str, dict[str, Any]] = {}
+        #: 本次取数里上游失败的说明（空串 = 没有失败）。由 `_collect_intel` 写。
+        self._last_collect_failure: str = ""
         #: 站内提醒去重：同一批情报在 12 小时内只推一次。
         #: 此前每次取数都推一条同标题提醒，实测同一个用户攒出 3 条一字不差的
         #: 「给你找到 5 条与你方向相关的公开信息」，提醒页完全无法区分。
@@ -237,8 +245,15 @@ class DefaultFunctionService(FunctionService):
             return []
 
         previous = cached[1] if cached else []
-        items = await self._collect_intel(user_id, topic=topic, limit=limit)
+        self._last_collect_failure = ""
+        try:
+            items = await self._collect_intel(user_id, topic=topic, limit=limit)
+        except Exception:  # noqa: BLE001 - 上游整体失败不该把面板打成 500
+            logger.warning("外部情报取数失败（user=%s, topic=%s）", user_id, topic, exc_info=True)
+            self._last_collect_failure = "检索服务这次没有响应"
+            items = []
         self._intel_cache[cache_key] = (time.monotonic() + self.INTEL_TTL_S, items)
+        await self._record_intel_status(user_id, cache_key, topic=topic, items=items)
 
         # 只在**真的有新东西**、而且**知道是谁**的时候推通知。
         # 前一条是防"每 45 秒打扰一次"；后一条是因为未登录时根本没有收件人。
@@ -246,6 +261,75 @@ class DefaultFunctionService(FunctionService):
         if fresh and user_id:
             await self._announce_intel(user_id, items)
         return items
+
+    async def _record_intel_status(
+        self,
+        user_id: Optional[str],
+        cache_key: str,
+        *,
+        topic: str,
+        items: list[ExternalIntel],
+    ) -> None:
+        """把这次取数归成三类之一，附一句用户能行动的话。
+
+        - `ok`：取到了条目；
+        - `empty`：链路正常，但确实没有匹配资料（"换个关键词/先补专业"就是可行动的话）；
+        - `failed`：上游/检索失败（"稍后重试"才是可行动的话）。
+        """
+        major = await self.profile_major(user_id) if user_id else ""
+        if items:
+            status, message = "ok", f"已取到 {len(items)} 条公开资料。"
+        elif self._last_collect_failure:
+            status, message = (
+                "failed",
+                f"{self._last_collect_failure}，这次没有取到资料 —— 可以稍后重试。",
+            )
+        else:
+            status, message = "empty", "没有找到匹配的公开资料，可以换个关键词或先补充专业信息后再试。"
+        self._intel_status[cache_key] = {
+            "status": status,
+            "message": message,
+            "items": len(items),
+            "topic": topic,
+            "major": major,
+            "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        }
+
+    async def intel_fetch_status(self, user_id: Optional[str] = None, *, topic: str = "") -> dict[str, Any]:
+        """最近一次外部情报取数的状态（供 API/前端显示"重试"而不是把失败当 0 条）。
+
+        返回 `status`（ok/empty/failed/unknown）、`message`（给学生的下一步）、
+        `major`（画像里已记录的专业，供"专业起点"判断）以及条数/时间。
+        """
+        cache_key = f"{user_id or '-'}|{topic.strip()}"
+        known = self._intel_status.get(cache_key)
+        if known is not None:
+            return dict(known)
+        major = await self.profile_major(user_id) if user_id else ""
+        return {
+            "status": "unknown",
+            "message": "还没有取过外部资料。",
+            "items": 0,
+            "topic": topic,
+            "major": major,
+            "fetched_at": "",
+        }
+
+    async def profile_major(self, user_id: Optional[str]) -> str:
+        """画像里**已记录的专业**（"专业起点"的唯一依据）。
+
+        为什么单独给一个方法：前端原来只看取回的情报里有没有 `speciality` 条目，
+        上游一旦失败/为空就显示"专业信息待补充" —— 可画像里明明有专业。
+        专业是否已记录，不该由"这次取数成不成功"决定。
+        """
+        if not user_id or self._profiles is None:
+            return ""
+        try:
+            rows = await self._profiles.get_fields(user_id)
+        except Exception:  # noqa: BLE001 - 读不到就当没有，不让面板因此报错
+            logger.warning("读取画像字段失败：专业起点按未知处理", exc_info=True)
+            return ""
+        return intel_topic(rows)
 
     async def _collect_intel(
         self, user_id: Optional[str], *, topic: str, limit: int
@@ -275,28 +359,34 @@ class DefaultFunctionService(FunctionService):
 
         items: list[ExternalIntel] = []
         if self._data_sources is not None and (context or topic.strip()):
-            result = await self._data_sources.fetch(
-                DataSourceRequest(
-                    source="xuezhi",
-                    query=topic.strip(),
-                    limit=limit,
-                    context={"fields": context, "topic": topic.strip()},
+            try:
+                result = await self._data_sources.fetch(
+                    DataSourceRequest(
+                        source="xuezhi",
+                        query=topic.strip(),
+                        limit=limit,
+                        context={"fields": context, "topic": topic.strip()},
+                    )
                 )
-            )
-            items.extend(
-                ExternalIntel(
-                    id=record.id,
-                    kind=record.kind,
-                    kind_label=kind_label(record.kind),
-                    title=record.title,
-                    text=record.text,
-                    source_url=record.source_url,
-                    source_name=source_name_of(record.source_url, source=result.source),
-                    fetched_at=record.fetched_at,
+            except Exception:  # noqa: BLE001 - 学职平台一路失败，仍可保留网络检索那一路
+                logger.warning("学职平台取数失败（topic=%s）", topic, exc_info=True)
+                self._last_collect_failure = "检索服务这次没有响应"
+                result = None
+            if result is not None:
+                items.extend(
+                    ExternalIntel(
+                        id=record.id,
+                        kind=record.kind,
+                        kind_label=kind_label(record.kind),
+                        title=record.title,
+                        text=record.text,
+                        source_url=record.source_url,
+                        source_name=source_name_of(record.source_url, source=result.source),
+                        fetched_at=record.fetched_at,
+                    )
+                    for record in result.records
+                    if record.source_url and (record.title or record.text)
                 )
-                for record in result.records
-                if record.source_url and (record.title or record.text)
-            )
 
         # 通用网络检索：配了搜索服务就一并取 —— 这才是"信息源很广"的落点。
         # 没配就没有这一路，界面上也不会出现"正在联网搜索"这种没发生的事。
