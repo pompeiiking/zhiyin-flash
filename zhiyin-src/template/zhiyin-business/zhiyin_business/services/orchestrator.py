@@ -20,6 +20,7 @@ from zhiyin_business.contracts.common import (
     BehaviorGuide,
     ConversationMessage,
     Disclosure,
+    GuideOption,
     IntelRef,
     Renderable,
     TheoryRef,
@@ -99,12 +100,44 @@ def _explicit_plan_request(message: str) -> bool:
     # this system stores one current plan and cannot create an isolated draft.
     if re.search(r"(?:不要|不必|无需|暂不|别|不能|不想).{0,12}(?:保存|覆盖|更新|修改|调整|改动|替换)", message):
         return False
-    pattern = r"(?:生成|制定|创建|建立|制订|重做|重新|调整|修改|改|安排|规划).{0,18}(?:计划|阶段|任务|行动)|(?:计划|阶段|任务|行动).{0,12}(?:生成|制定|创建|建立|重做|调整|修改|改|安排|规划)"
+    if re.search(r"(?:未|没有|没|尚未|还没|是否|有没有|会不会|怎么|如何).{0,8}(?:生成|创建|制定|保存)", message):
+        return False
+    pattern = r"(?:生成|制定|创建|建立|制订|重做|重新|调整|修改|改|安排|规划|给我一份|给我一个|帮我做).{0,18}(?:计划|阶段|任务|行动)|(?:计划|阶段|任务|行动).{0,12}(?:生成|制定|创建|建立|重做|调整|修改|改|安排|规划)"
     for clause in re.split(r"[，。；！？\n]", message):
         match = re.search(pattern, clause)
         if match and not re.search(r"(?:不要|不必|无需|暂不|别|不能|不想|不再|不)", clause[:match.end()]):
             return True
     return False
+
+
+def _explicit_report_request(message: str) -> bool:
+    if re.search(r"(?:不要|不必|无需|暂不|别|不能|不想|先不|不用).{0,12}(?:诊断|报告|生成|保存|更新|修改|重算)|不(?:生成|创建|保存|更新|修改|重算|诊断)", message):
+        return False
+    if re.search(r"(?:未|没有|没|尚未|还没|是否|有没有|会不会|怎么|如何).{0,8}(?:生成|创建|保存)", message):
+        return False
+    return bool(re.search(r"(?:生成|创建|做|进行|重新生成|更新|重算|给我一份).{0,18}(?:诊断|报告)|(?:诊断报告|评估报告).{0,12}(?:生成|创建|重做|更新|重算)", message))
+
+
+# The complete question is stored in the actual assistant turn, so confirmation
+# survives refresh/restart and is bound to the immediate previous turn/session.
+_ASSET_OFFERS = {
+    "report": "目前的信息可以开始整理，要生成一份诊断报告吗？",
+    "plan": "可以把接下来的行动整理成计划，要现在创建吗？",
+}
+
+
+def _offer_answer(message: str) -> str | None:
+    text = re.sub(r"[\s，。！？、,.!?]+", "", message)
+    if re.fullmatch(r"(?:先不要|暂时不要|暂不|不要|不需要|不用|先不|算了|稍后|以后再说|再等等|等等|不了|不必)", text):
+        return "decline"
+    if re.fullmatch(r"(?:可以|可以的|好的|好啊|好呀|好|行的|行|没问题|当然|嗯|嗯嗯|是的|是|同意|确认|确定|开始吧|现在开始|生成吧|创建吧|请生成|请创建|要|需要|帮我生成|帮我创建)", text):
+        return "accept"
+    # An affirmative may also include a useful constraint. Questions and
+    # reservations do not authorize a write; the original text goes to the AI.
+    if (re.match(r"^\s*(?:可以|好的|好|行|同意|确认|确定)[，,。]\s*\S", message)
+            and not re.search(r"[？?]|不要|不用|不想|不必|无需|先不|暂不|先别|别.{0,8}(?:做|生成|创建|保存|修改|替换)|暂缓|没想好|不确定|算了|等等|稍后|下次|以后|不急", message)):
+        return "accept"
+    return None
 
 
 logger = logging.getLogger(__name__)
@@ -537,6 +570,39 @@ class DefaultOrchestrator(Orchestrator):
             if replay is not None:
                 return replay
 
+        # Only a question produced by this server in the immediately preceding
+        # assistant turn authorizes interpreting a short answer as consent.
+        try:
+            recent_turns = await self._memories.list_turns(request.user_id, request.task_id, limit=self._TURN_GROUP_SCAN)
+        except Exception:
+            logger.warning("读取确认上下文失败，本轮不自动执行提议", exc_info=True)
+            recent_turns = []
+        previous = recent_turns[-1] if recent_turns else None
+        pending_offer = next((kind for kind, question in _ASSET_OFFERS.items()
+                              if previous and previous.role == "agent" and previous.text.rstrip().endswith(question)), None)
+        offer_answer = _offer_answer(request.message) if pending_offer else None
+        if request.option_id and pending_offer:
+            expected = {f"asset.{pending_offer}.accept", f"asset.{pending_offer}.decline"}
+            if request.option_id not in expected:
+                offer_answer = None
+        accepted_offer = pending_offer if offer_answer == "accept" else None
+        # Another tab may already have created an asset after the proposal.
+        # Never replace it on the strength of an older offer to create one.
+        already_created = False
+        if accepted_offer == "plan":
+            already_created = await self._assets.get_action_plan(request.user_id) is not None
+        elif accepted_offer == "report":
+            already_created = await self._assets.get_report(request.user_id) is not None
+        if already_created:
+            label = "行动计划" if accepted_offer == "plan" else "诊断报告"
+            result = TurnResult(task_id=request.task_id, session=session, stage=session.loop_stage,
+                badge=await self._badge(session.lead_agent, []),
+                messages=[ConversationMessage(role="agent", agent_id=session.lead_agent,
+                    text=f"已有{label}，这次没有重新生成。你可以先查看现有内容，再决定是否更新。")],
+                guide=BehaviorGuide(kind="question", text="", question=None))
+            await self._remember_turn(request, result, loop_stage=session.loop_stage)
+            return result
+
         blackboard = await self.read_blackboard(request.user_id, request.task_id)
         intent_decision = await self._intent_policy.classify_with_decision(
             message=request.message,
@@ -559,6 +625,13 @@ class DefaultOrchestrator(Orchestrator):
         stage_decision = await self._stage_policy.decide(
             blackboard=blackboard, intent=intent, message=request.message
         )
+        explicit_plan = _explicit_plan_request(request.message) or accepted_offer == "plan"
+        explicit_report = _explicit_report_request(request.message) or accepted_offer == "report"
+        if explicit_report or (explicit_plan and (accepted_offer == "plan" or stage_decision.stage is not LoopStage.REVIEW)):
+            stage_decision = stage_decision.model_copy(update={
+                "stage": LoopStage.ACT if explicit_plan else LoopStage.DIAGNOSE,
+                "need_clarify": False, "source": "intent",
+            })
         if stage_decision.need_clarify or stage_decision.stage is None:
             question = stage_decision.clarify_question or await self._clarify_text()
             result = TurnResult(
@@ -637,10 +710,18 @@ class DefaultOrchestrator(Orchestrator):
             "task_id": request.task_id,
             "intent": intent.value,
         }
+        if accepted_offer:
+            prompt_vars["confirmed_request"] = (
+                "用户同意了上一轮提出的创建行动计划请求，请按现有事实创建计划。"
+                if accepted_offer == "plan" else
+                "用户同意了上一轮提出的生成诊断报告请求，请按现有事实生成报告。"
+            )
         if stage is LoopStage.ACT and direction_selected is False:
             prompt_vars["direction_selection_status"] = "用户尚未在方向方案中正式确认方向；可以围绕本轮想法拟定计划，但不要声称方向已选定。"
-        if stage is LoopStage.ACT and not _explicit_plan_request(request.message):
+        if stage is LoopStage.ACT and not explicit_plan:
             prompt_vars["plan_write_boundary"] = "本轮只回答问题，不会保存或修改行动计划；不要声称计划已创建或更新。需要修改计划时请先征求用户明确要求。"
+        if stage is LoopStage.DIAGNOSE and not explicit_report:
+            prompt_vars["report_write_boundary"] = "本轮只回答咨询，不会生成或保存诊断报告；不要声称报告已生成。"
         from zhiyin_business.services.analysis_access import current_scope
         scope = current_scope(request.user_id)
         if scope and scope.restricted:
@@ -735,9 +816,9 @@ class DefaultOrchestrator(Orchestrator):
                 blackboard=blackboard.model_dump(mode="json"),
                 prompt_vars=prompt_vars,
                 output_schema=STAGE_CONTRACTS[stage].model_json_schema(),
-                # For mixed-intent turns, wait for the separate profile write
-                # before displaying a reply that might claim it succeeded.
-                stream_field=None if _asks_for_chart(request.message) or (stage is not LoopStage.COLLECT and _contains_personal_disclosure(request.message)) else 'conclusion',
+                # Wait for writes and validation before displaying a reply
+                # that might incorrectly claim a report or plan was saved.
+                stream_field=None if (stage is LoopStage.DIAGNOSE and explicit_report) or (stage is LoopStage.ACT and explicit_plan) or _asks_for_chart(request.message) or (stage is not LoopStage.COLLECT and _contains_personal_disclosure(request.message)) else 'conclusion',
             )
         )
 
@@ -806,11 +887,12 @@ class DefaultOrchestrator(Orchestrator):
         )
         # Reaching the action stage through conversation progress is not consent
         # to overwrite a saved plan. Only an explicit request can generate one.
-        explicit_plan = _explicit_plan_request(request.message)
         write_tool_attempted = "workspace.task.set_done" in result.business_tool_calls
         may_persist = (not module_query and not write_tool_attempted
-                       and (not result.business_tool_calls or (stage is LoopStage.ACT and explicit_plan))
-                       and (stage is not LoopStage.ACT or explicit_plan))
+                       and (not result.business_tool_calls or (stage is LoopStage.ACT and explicit_plan)
+                            or (stage is LoopStage.DIAGNOSE and explicit_report))
+                       and (stage is not LoopStage.ACT or explicit_plan)
+                       and (stage is not LoopStage.DIAGNOSE or explicit_report))
         persisted_output = structured
         if stage is LoopStage.REVIEW and not explicit_plan and structured.get("plan_patch"):
             persisted_output = {**structured, "plan_patch": None}
@@ -937,6 +1019,46 @@ class DefaultOrchestrator(Orchestrator):
             else:
                 reply_text = "没有更改任务：" + str(receipt.get("reason") or "操作未完成，请重试。")
             guide = BehaviorGuide(kind="question", text="", question=None)
+        requested_asset = (AssetType.ACTION_PLAN if stage is LoopStage.ACT and explicit_plan else
+                           AssetType.REPORT if stage is LoopStage.DIAGNOSE and explicit_report else None)
+        if requested_asset and not module_query and not write_tool_attempted:
+            label = "行动计划" if requested_asset is AssetType.ACTION_PLAN else "诊断报告"
+            if any(item.asset_type == requested_asset for item in changed_assets):
+                reply_text = f"{reply_text.rstrip()}\n\n{label}已生成，可以到对应页面查看。".strip()
+            else:
+                # The model may have written “已生成” before validation or a
+                # failed database write; only the server can confirm success.
+                reply_text = f"这次没有成功生成{label}，已有内容未确认更新。请稍后重试，或补充相关信息后再试。"
+                guide = BehaviorGuide(kind="question", text="", question=None)
+
+        # Do not repeatedly ask after a postponement. A fresh explicit request
+        # remains available at any time. Limit the cooldown to this conversation.
+        recent_offer_kinds = {kind for kind, question in _ASSET_OFFERS.items()
+                              if any(t.role == "agent" and t.text.rstrip().endswith(question)
+                                     for t in recent_turns[-12:])}
+        user_context = " ".join([request.message] + [t.text for t in recent_turns[-8:] if t.role == "user"])
+        has_plan_context = bool(direction_selected or re.search(
+            r"实习|求职|升学|考研|考公|考编|就业|岗位|职业|方向|项目|简历|作品集|面试|考试|技能|编程|课程", user_context))
+        offer_kind = None
+        if (result.valid and not module_query and not write_tool_attempted and not requested_asset
+                and not pending_offer and not _asks_for_chart(request.message)
+                and not re.search(r"(?:先|想|只|继续|再).{0,4}聊|(?:先|继续|再).{0,4}(?:了解|谈谈)", request.message)
+                and not re.search(r"(?:不要|暂不|先不|不想|无需|不必|别).{0,12}(?:报告|诊断|计划|生成|创建)", request.message)):
+            if (stage in (LoopStage.COLLECT, LoopStage.DIAGNOSE) and "report" not in recent_offer_kinds
+                    and await self._assets.get_report(request.user_id) is None
+                    and (await self.collection_gate(request.user_id)).ready):
+                offer_kind = "report"
+            elif (stage is LoopStage.ACT and intent is IntentType.HOW_TO_ACT
+                    and "plan" not in recent_offer_kinds
+                    and has_plan_context
+                    and await self._assets.get_action_plan(request.user_id) is None):
+                offer_kind = "plan"
+        if offer_kind:
+            reply_text = f"{reply_text.rstrip()}\n\n{_ASSET_OFFERS[offer_kind]}".strip()
+            guide = BehaviorGuide(kind="options", text="", options=[
+                GuideOption(option_id=f"asset.{offer_kind}.accept", label="可以", value="accept"),
+                GuideOption(option_id=f"asset.{offer_kind}.decline", label="先不要", value="decline"),
+            ])
         messages = [
             ConversationMessage(
                 role="agent",
@@ -1123,7 +1245,7 @@ class DefaultOrchestrator(Orchestrator):
         · ⑤ 完成复盘：复盘环节产出了合规结论，才算走过一次复盘；
         · ④ 任务停滞：由停滞 Worker 记（不在这里，见 `workers/active_event.py`）。
         """
-        if stage is LoopStage.DIAGNOSE and request.option_id:
+        if stage is LoopStage.DIAGNOSE and request.option_id and not request.option_id.startswith("asset."):
             await self._behaviors.log(
                 request.user_id,
                 BehaviorEventDraft(
@@ -1628,8 +1750,7 @@ class DefaultOrchestrator(Orchestrator):
     #: 回灌几轮。规格是"最近三条对话（自己与他各一句）"，一条对话两轮，
     #: 取 6 条正好是三次来回；再多只会把这一轮真正要看的东西挤下去。
     _TURN_GROUP_SIZE = 6
-    #: 扫描上限。仓储接口是"按时间正序 + LIMIT"，返回的是**最早**的若干条，
-    #: 所以这里只能多取一批再从尾巴上切。上限与前端"点开历史"用的是同一个量级。
+    #: 仓储取最近的若干条并按时间正序返回，上限与会话历史使用相同量级。
     _TURN_GROUP_SCAN = 200
     #: 每行上限。原文里可能有几百字的附件正文（用户传一份简历就是一整篇）。
     _TURN_LINE_MAX = 30

@@ -579,10 +579,15 @@ class PostgresConversationTurnRepository(ConversationTurnRepository):
             """
             SELECT id, user_id, task_id, role, text, loop_stage, agent_id,
                    client_msg_id, created_at, renderables
-            FROM biz_conversation_turn
-            WHERE user_id = $1 AND task_id = $2
-            ORDER BY created_at ASC
-            LIMIT $3
+            FROM (
+                SELECT id, user_id, task_id, role, text, loop_stage, agent_id,
+                       client_msg_id, created_at, renderables
+                FROM biz_conversation_turn
+                WHERE user_id = $1 AND task_id = $2
+                ORDER BY created_at DESC, id DESC
+                LIMIT $3
+            ) AS recent_turns
+            ORDER BY created_at ASC, id ASC
             """,
             user_id,
             task_id or "",
