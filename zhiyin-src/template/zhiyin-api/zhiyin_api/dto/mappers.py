@@ -349,6 +349,9 @@ def task_session_view(
     task_name: str,
     lead_agent_name: str = "",
     progress: float = 0.0,
+    message_count: int = 0,
+    last_message: Optional[str] = None,
+    last_message_at=None,
 ) -> TaskSessionView:
     """左栏会话项。`task_name` 取自动态任务入口文案，不按 agent 名排布。"""
     return TaskSessionView(
@@ -360,6 +363,9 @@ def task_session_view(
         status=session.status,
         progress=progress,
         last_active_at=session.updated_at,
+        message_count=message_count,
+        last_message=last_message,
+        last_message_at=last_message_at,
     )
 
 

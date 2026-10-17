@@ -94,6 +94,12 @@ _REPORT_GROUP_COPY: dict[str, str] = {
 }
 
 
+def _preview(text: str, limit: int = 60) -> str:
+    """会话最后一句的单行预览（超长截断加省略号）。"""
+    single = " ".join(str(text or "").split())
+    return single if len(single) <= limit else single[:limit].rstrip() + "…"
+
+
 class DefaultApplicationFacade(ApplicationFacade):
     """BFF 门面默认实现。"""
 
@@ -280,18 +286,51 @@ class DefaultApplicationFacade(ApplicationFacade):
     # ---------- 对话 ----------
 
     async def list_sessions(self, user_id: str) -> SessionListView:
+        """左栏历史会话。
+
+        只列**真的有内容**的会话：点了主题但一句没说的空会话不进历史 ——
+        它会因为 updated_at 最新而被"刷新后恢复最近会话"选中，用户看到的是
+        主题选择页而不是刚才聊到一半的对话，表现就是"会话没保存 / 点开是空的"。
+        列表项同时带上轮数与最后一句预览，同主题的多条会话才区分得开。
+        """
         sessions = await self._workspace.list_sessions(user_id)
         views = []
         for session in sessions:
+            turns = (
+                await self._memories.list_turns(user_id, session.id, limit=200)
+                if self._memories is not None
+                else []
+            )
+            if not turns:
+                continue
             agent = await self._registry.get_agent(session.lead_agent)
+            last = turns[-1]
             views.append(
                 mappers.task_session_view(
                     session,
                     task_name=session.task_name,
                     lead_agent_name=agent.name if agent else "",
+                    message_count=len(turns),
+                    last_message=_preview(last.text),
+                    last_message_at=last.created_at,
                 )
             )
-        return mappers.session_list_view(views)
+        # 按**最后一句消息时间**排序，而不是只按会话行的 updated_at：
+        # 历史列表点进去之后，用户判断"最近聊的"看的是消息时间；
+        # 空会话也已排除，第一条就是刷新后应该恢复的那条。
+        views.sort(
+            key=lambda view: (
+                (view.last_message_at or view.last_active_at).isoformat()
+                if (view.last_message_at or view.last_active_at)
+                else "",
+                (view.last_active_at.isoformat() if view.last_active_at else ""),
+                view.task_id,
+            ),
+            reverse=True,
+        )
+        return mappers.session_list_view(
+            views, current_task_id=views[0].task_id if views else None
+        )
 
     async def list_session_turns(
         self, user_id: str, task_id: str, *, limit: int = 200
@@ -325,7 +364,9 @@ class DefaultApplicationFacade(ApplicationFacade):
         return messages
 
     async def enter_task(self, user_id: str, body: TaskEnterRequest) -> TaskSessionView:
-        session = await self._orchestrator.enter_task(user_id, body.task_code)
+        session = await self._orchestrator.enter_task(
+            user_id, body.task_code, new_session=body.new_session
+        )
         agent = await self._registry.get_agent(session.lead_agent)
         return mappers.task_session_view(
             session,

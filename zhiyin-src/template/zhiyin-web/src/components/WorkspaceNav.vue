@@ -23,7 +23,7 @@ import { navigation } from '../lib/layout'
  */
 const route = useRoute()
 const router = useRouter()
-const sessions = computed(() => [...backendDemo.state.sessions].sort((a,b) => (b.last_active_at || '').localeCompare(a.last_active_at || '')))
+const sessions = computed(() => [...backendDemo.state.sessions].sort((a,b) => ((b.last_message_at || b.last_active_at) || '').localeCompare((a.last_message_at || a.last_active_at) || '')))
 async function resume(id: string) { try { await openSession(id); more.value = false; await router.push('/chat') } catch(e) { toast((e as Error).message) } }
 const more = ref(false)
 defineExpose({ show() { more.value = true } })
@@ -62,7 +62,7 @@ defineExpose({ show() { more.value = true } })
       <div><UiIcon name="sidebar" :size="18"/><span><strong>桌面侧栏</strong><small>恢复大分类、小分类与历史会话</small></span></div>
       <button type="button" class="btn" @click="navigation.set('desktop');more=false">切换</button>
     </div>
-    <details class="mobile-session-history" aria-label="历史会话"><summary><span>历史会话</span><small>{{ sessions.length }} 个</small><UiIcon name="chevron" :size="16"/></summary><div><button v-for="session in sessions" :key="session.task_id" :disabled="demo.state.chatBusy || systemData.busy" :aria-pressed="session.task_id === demo.state.currentSessionId" @click="resume(session.task_id)">{{ session.task_name }}</button><p v-if="!sessions.length">还没有历史会话。</p></div></details>
+    <details class="mobile-session-history" aria-label="历史会话"><summary><span>历史会话</span><small>{{ sessions.length }} 个</small><UiIcon name="chevron" :size="16"/></summary><div><button v-for="session in sessions" :key="session.task_id" :disabled="demo.state.chatBusy || systemData.busy" :aria-pressed="session.task_id === demo.state.currentSessionId" @click="resume(session.task_id)"><strong>{{ session.task_name }}</strong><small>{{ session.last_message || '还没有消息' }}</small></button><p v-if="!sessions.length">还没有历史会话。开始咨询后会自动保存在这里。</p></div></details>
     </AnchoredCard>
   </nav>
 </template>
@@ -91,6 +91,8 @@ defineExpose({ show() { more.value = true } })
 .mobile-session-history summary small { color:var(--c-text-3); }
 .mobile-session-history[open] summary svg { transform:rotate(180deg); }
 .mobile-session-history button {display:block;width:100%;min-height:44px;border:0;background:none;text-align:left;color:var(--c-text-2);font-size:14px;}
+.mobile-session-history button strong {display:block;font-weight:var(--fw-regular);}
+.mobile-session-history button small {display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--c-text-3);font-size:12px;line-height:1.5;}
 .mobile-session-history button[aria-pressed=true] {color:var(--c-primary);}
 @media(max-width:620px){.mobile-function-map{grid-template-columns:1fr}.mobile-function-group__items{grid-template-columns:repeat(2,minmax(0,1fr))}.mobile-function-group__items a{grid-template-columns:20px minmax(0,1fr)}.mobile-function-group__items a>svg:last-child{display:none}}
 </style>

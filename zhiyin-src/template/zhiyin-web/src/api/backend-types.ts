@@ -55,7 +55,10 @@ export type ConversationMaterialView = {
 
 export type TaskSessionView = {
   "last_active_at"?: (string | null)
+  "last_message"?: (string | null)
+  "last_message_at"?: (string | null)
   "lead_agent_name"?: string
+  "message_count"?: number
   "progress"?: number
   "stage": LoopStage
   "stage_label": string

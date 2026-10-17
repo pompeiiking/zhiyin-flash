@@ -47,7 +47,7 @@ export const backendClient = {
   bootstrap: () => request<BootstrapView>('bootstrap'),
   sessions: () => request<SessionListView>('sessions'),
   turns: (task_id: string) => request<ConversationMessageView[]>('sessionTurns', { params: { task_id } }),
-  enter: (task_code: string) => request<TaskSessionView>('enterTask', { body: { task_code } }),
+  enter: (task_code: string, new_session = false) => request<TaskSessionView>('enterTask', { body: { task_code, new_session } }),
   message: (body: MessageRequest, signal?: AbortSignal) => request<ConversationTurnView>('message', { body, timeout: 90_000, signal }),
   material: (file: File) => { const form = new FormData(); form.append('file', file); return request<ConversationMaterialView>('material', { form, timeout: 60_000 }) },
   workspace: () => request<WorkspacePageView>('workspace'),

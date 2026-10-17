@@ -7809,6 +7809,11 @@
         "additionalProperties": false,
         "description": "进入任务。task_code 取自 bootstrap 的任务入口。",
         "properties": {
+          "new_session": {
+            "default": false,
+            "title": "New Session",
+            "type": "boolean"
+          },
           "task_code": {
             "title": "Task Code",
             "type": "string"
@@ -7884,10 +7889,39 @@
             ],
             "title": "Last Active At"
           },
+          "last_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Message"
+          },
+          "last_message_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Message At"
+          },
           "lead_agent_name": {
             "default": "",
             "title": "Lead Agent Name",
             "type": "string"
+          },
+          "message_count": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Message Count",
+            "type": "integer"
           },
           "progress": {
             "default": 0.0,

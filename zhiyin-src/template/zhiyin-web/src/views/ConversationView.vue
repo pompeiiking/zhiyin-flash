@@ -53,10 +53,12 @@ const uploadError = ref('')
 const requestError = ref(''), profileError = ref(''), guideSaving = ref('')
 const profileOpen = ref(false), historyOpen = ref(false), profileLoading = ref(false)
 const choosingTopic = ref(false)
+// 「新开一条会话」模式：点主题时新建会话，而不是续接同主题的旧会话。
+const freshTopic = ref(false)
 const profileLoaded = ref(false), studyYearSaving = ref(''), studyYearError = ref(''), editingStudyYear = ref(false), savedStudyYear = ref('')
 const theoryCards = ref<Record<string, TheoryCardView>>({}), theoryErrors = ref<Record<string, string>>({})
 const theoryLoading = ref<Record<string, boolean>>({})
-const sessions = computed(() => [...backendDemo.state.sessions].sort((a,b) => (b.last_active_at || '').localeCompare(a.last_active_at || '')))
+const sessions = computed(() => [...backendDemo.state.sessions].sort((a,b) => ((b.last_message_at || b.last_active_at) || '').localeCompare((a.last_message_at || a.last_active_at) || '')))
 const title = computed(() => showStudyYearQuestion.value ? '开始咨询' : choosingTopic.value ? '选择咨询主题' : backendDemo.currentSession.value?.task_name || '咨询对话')
 const journey = [
  { key:'collect', label:'了解自己', short:'了解' },
@@ -188,11 +190,19 @@ async function refreshSessionsOnFocus() {
   if (!disposed) backendDemo.setSessions(result.sessions ?? [], demo.state.currentSessionId)
  } catch { /* Keep the current conversation usable if the refresh fails. */ }
 }
-function chooseTopic() { if (thinking.value || systemData.busy) return; choosingTopic.value = true; historyOpen.value = false; profileOpen.value = false; requestError.value = ''; void nextTick(() => { if (flow.value) flow.value.scrollTop = 0 }) }
+function chooseTopic() { if (thinking.value || systemData.busy) return; freshTopic.value = false; choosingTopic.value = true; historyOpen.value = false; profileOpen.value = false; requestError.value = ''; void nextTick(() => { if (flow.value) flow.value.scrollTop = 0 }) }
 function closeTopic() { choosingTopic.value = false; clearTopicQuery(); void bottom(true) }
 async function resume(id: string) { if (thinking.value) return; try { await openSession(id); choosingTopic.value = false; clearTopicQuery(); historyOpen.value = false; pending.value = null; requestError.value = ''; await bottom(true) } catch (e) { requestError.value = (e as Error).message } }
-async function create(code: string) { if (thinking.value || systemData.busy) return; try { await newSession(code); choosingTopic.value = false; clearTopicQuery(); pending.value = null; requestError.value = ''; await loadShell(); input.value?.focus() } catch (e) { requestError.value = (e as Error).message } }
-async function start(code: string, label: string) { await create(code); if (!requestError.value) { if (code === 'free_chat') void nextTick(() => input.value?.focus()); else fill(label) } }
+async function create(code: string, fresh = false) { if (thinking.value || systemData.busy) return; try { await newSession(code, fresh); choosingTopic.value = false; clearTopicQuery(); pending.value = null; requestError.value = ''; await loadShell(); input.value?.focus() } catch (e) { requestError.value = (e as Error).message } }
+async function start(code: string, label: string) {
+ const fresh = freshTopic.value
+ await create(code, fresh)
+ if (!requestError.value) {
+  freshTopic.value = false
+  // 新会话不预填主题句：让用户自己说第一句，历史里也不会多一条"只有一句模板"的记录。
+  if (fresh || code === 'free_chat') { void nextTick(() => input.value?.focus()) } else { fill(label) }
+ }
+}
 async function saveStudyYear(label: string) {
  if (studyYearSaving.value) return
  studyYearSaving.value = label; studyYearError.value = ''
@@ -355,7 +365,7 @@ onUnmounted(() => { disposed = true; window.removeEventListener('focus', refresh
  <div class="consult-main">
   <header class="consult-header">
    <div class="consult-header__top"><div class="consult-heading"><h1 :title="title">{{ title }}</h1><p v-if="!choosingTopic && demo.state.currentSessionId"><span>当前阶段：{{ stageLabel(currentStage) }}</span><span v-if="profileFieldCount">已记录 {{ profileFieldCount }} 项信息</span><span v-if="profileGapCount">{{ profileGapCount }} 项待补</span></p></div><div class="consult-header__actions">
-    <AnchoredCard v-model="historyOpen" class="consult-icon consult-history-button" title="历史会话" side="bottom" align="end"><template #trigger><UiIcon name="chat" :size="18" /></template><div class="consult-session-list"><button :disabled="!turns.length" @click="copy(turns.map(t => (t.from === 'me' ? '我' : t.speaker || '系统') + '：' + t.text).join('\n\n'))">复制当前会话记录</button><button v-for="session in sessions" :key="session.task_id" :disabled="thinking || systemData.busy" :aria-pressed="session.task_id === demo.state.currentSessionId" @click="resume(session.task_id)"><strong>{{ session.task_name }}</strong><small>{{ session.last_active_at ? new Date(session.last_active_at).toLocaleDateString('zh-CN') : '' }}</small></button><p v-if="!sessions.length">还没有历史会话。</p></div></AnchoredCard>
+    <AnchoredCard v-model="historyOpen" class="consult-icon consult-history-button" title="历史会话" side="bottom" align="end"><template #trigger><UiIcon name="chat" :size="18" /></template><div class="consult-session-list"><button :disabled="!turns.length" @click="copy(turns.map(t => (t.from === 'me' ? '我' : t.speaker || '系统') + '：' + t.text).join('\n\n'))">复制当前会话记录</button><button v-for="session in sessions" :key="session.task_id" :disabled="thinking || systemData.busy" :aria-pressed="session.task_id === demo.state.currentSessionId" @click="resume(session.task_id)"><strong>{{ session.task_name }}</strong><span class="consult-session-preview">{{ session.last_message || '还没有消息' }}</span><small><template v-if="session.message_count">{{ session.message_count }} 条 · </template>{{ (session.last_message_at || session.last_active_at) ? new Date(session.last_message_at || session.last_active_at || '').toLocaleString('zh-CN', { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '' }}</small></button><p v-if="!sessions.length">还没有历史会话。开始咨询后会自动保存在这里。</p></div></AnchoredCard>
     <button class="consult-icon consult-new-button" aria-label="选择咨询主题" :disabled="thinking || systemData.busy" @click="chooseTopic"><UiIcon name="plus" :size="19" /></button>
     <AnchoredCard v-model="profileOpen" class="consult-icon" title="个人画像" side="bottom" align="end"><template #trigger><UiIcon name="profile" :size="19" /><span class="consult-header__label">个人画像</span></template><ConversationProfile embedded :loading="profileLoading" :error="profileError" @close="profileOpen = false" @refresh="refreshProfile" @supplement="fill" /></AnchoredCard>
    </div></div>
@@ -363,7 +373,7 @@ onUnmounted(() => { disposed = true; window.removeEventListener('focus', refresh
   </header>
   <div ref="flow" v-scroll-fade class="consult-flow" tabindex="0" aria-label="对话记录" @scroll.passive="onScroll">
    <div v-if="systemData.busy" class="consult-loading" role="status">正在读取会话…</div>
-   <div v-else-if="showStudyYearQuestion || choosingTopic || (!turns.length && !pending && !showFailedSend)" class="consult-intro" :class="{'consult-intro--onboarding':showStudyYearQuestion}">
+   <div v-else-if="showStudyYearQuestion || choosingTopic || (!turns.length && !pending && !showFailedSend && !demo.state.currentSessionId)" class="consult-intro" :class="{'consult-intro--onboarding':showStudyYearQuestion}">
     <AgentAvatar agent="career" :size="64" />
     <template v-if="showStudyYearQuestion">
      <p class="consult-intro__eyebrow">开始前确认一项信息</p>
@@ -376,12 +386,18 @@ onUnmounted(() => { disposed = true; window.removeEventListener('focus', refresh
     <template v-else>
      <button v-if="studyYear" class="consult-year-summary" @click="editingStudyYear=true"><span>当前阶段：{{ studyYearLabel(studyYear) }}</span><small>修改</small></button>
      <h2>{{ studyYear ? `已按${studyYearLabel(studyYear)}安排咨询重点` : '从你现在关心的事开始' }}</h2><p>{{ studyYear ? studyYearIntro(studyYear) : '先选一个主题。进入后仍可自由补充，不会覆盖已有会话。' }}</p>
+     <button v-if="demo.state.currentSessionId" type="button" class="consult-fresh" :aria-pressed="freshTopic" @click="freshTopic = !freshTopic"><UiIcon :name="freshTopic ? 'check' : 'plus'" :size="16" />{{ freshTopic ? '将新开一条会话（旧会话留在历史里）' : '想从头开始？新开一条会话' }}</button>
      <div class="consult-topics"><button v-for="(entry,i) in starters" :key="entry.code" :class="{'consult-topic--free':entry.code==='free_chat'}" @click="start(entry.code, entry.label)"><UiIcon :name="['profile','directions','action','review'][i % 4]" :size="21" /><span>{{ entry.label }}</span><UiIcon name="arrow" :size="17" /></button></div>
      <button v-if="choosingTopic && demo.state.currentSessionId" class="consult-resume" @click="closeTopic">返回当前会话</button>
      <button v-else-if="sessions.length && sessions[0].task_id !== demo.state.currentSessionId" class="consult-resume" @click="resume(sessions[0].task_id)">继续最近的咨询：{{ sessions[0].task_name }}</button>
     </template>
    </div>
    <div v-else class="consult-messages" :aria-busy="thinking">
+    <div v-if="!turns.length && !pending && demo.state.currentSessionId" class="consult-empty" role="status">
+     <AgentAvatar agent="career" :size="52" />
+     <h2>新会话已就绪</h2>
+     <p>直接在下面说说你现在最想解决的问题；想换个主题就点右上角「＋」。</p>
+    </div>
     <article v-for="turn in turns" :key="turn.id" class="consult-turn" :class="['consult-turn--' + turn.from, { 'consult-turn--latest': turn.id === latestHostId }]">
      <div v-if="turn.from === 'me'" class="consult-user"><p>{{ turn.text }}</p><small v-for="m in turn.materials" :key="m.id"><UiIcon name="attachment" :size="14" />{{ m.name }}</small></div>
      <p v-else-if="turn.from === 'system'" class="consult-system">{{ cleanConsultantText(turn.text) }}</p>
@@ -475,6 +491,13 @@ onUnmounted(() => { disposed = true; window.removeEventListener('focus', refresh
 .consult-failed { display: grid; gap: 8px; margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--c-attention); }
 .consult-failed > span { color: var(--c-attention-strong); font-size: var(--fs-12); line-height: 1.55; }
 .consult-failed > div { display: flex; gap: 8px; }
+.consult-session-preview { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--c-text-3); font-size: var(--fs-12); text-align: left; }
+.consult-session-list button strong { display: block; text-align: left; }
+.consult-fresh { display: flex; align-items: center; gap: 6px; margin: 2px auto 12px; padding: 8px 14px; border: 1px dashed var(--c-border-strong); border-radius: var(--r-pill); background: var(--c-surface); color: var(--c-text-2); font-size: var(--fs-12); cursor: pointer; }
+.consult-fresh[aria-pressed="true"] { border-color: var(--c-primary); color: var(--c-primary); background: var(--c-primary-weak); }
+.consult-empty { display: grid; justify-items: center; gap: 6px; padding: 40px 20px; text-align: center; color: var(--c-text-2); }
+.consult-empty h2 { margin: 4px 0 0; font-size: var(--fs-18); color: var(--c-text); }
+.consult-empty p { margin: 0; font-size: var(--fs-13); line-height: 1.7; }
 @media (max-width: 767px) {
  .consult-confirm, .consult-draft-bar { align-items: stretch; flex-direction: column; }
  .consult-confirm__actions, .consult-draft-bar > div { justify-content: flex-end; }

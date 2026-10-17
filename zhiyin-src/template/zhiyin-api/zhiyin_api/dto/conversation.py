@@ -30,6 +30,10 @@ class TaskEnterRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     task_code: str
+    #: 是否**新建**一条会话，而不是续接同入口的进行中会话。
+    #: 「新建咨询」必须能真的开一条新对话：旧实现无论点几次都返回同一条
+    #: （find_active 续接），用户会觉得自己新开的话被旧会话顶掉了。
+    new_session: bool = False
 
 
 class MessageRequest(BaseModel):
@@ -199,6 +203,12 @@ class TaskSessionView(BaseModel):
     status: TaskStatus = TaskStatus.ACTIVE
     progress: float = Field(default=0.0, ge=0.0, le=1.0, description="闭环进度")
     last_active_at: Optional[datetime] = None
+    #: 这条会话里存了多少轮（用户与主理各算一轮）。
+    #: 历史列表靠它区分"真聊过的会话"与"只点了主题就离开的空会话"。
+    message_count: int = Field(default=0, ge=0)
+    #: 最后一句的预览：同主题的多条会话靠它区分。
+    last_message: Optional[str] = None
+    last_message_at: Optional[datetime] = None
 
 
 class SessionListView(BaseModel):

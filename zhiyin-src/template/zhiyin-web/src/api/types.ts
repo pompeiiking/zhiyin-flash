@@ -4649,6 +4649,11 @@ export interface components {
      * @description 进入任务。task_code 取自 bootstrap 的任务入口。
      */
     TaskEnterRequest: {
+      /**
+       * New Session
+       * @default false
+       */
+      new_session?: boolean;
       /** Task Code */
       task_code: string;
     };
@@ -4681,11 +4686,20 @@ export interface components {
     TaskSessionView: {
       /** Last Active At */
       last_active_at?: string | null;
+      /** Last Message */
+      last_message?: string | null;
+      /** Last Message At */
+      last_message_at?: string | null;
       /**
        * Lead Agent Name
        * @default
        */
       lead_agent_name?: string;
+      /**
+       * Message Count
+       * @default 0
+       */
+      message_count?: number;
       /**
        * Progress
        * @description 闭环进度

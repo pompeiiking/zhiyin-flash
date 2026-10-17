@@ -23,7 +23,7 @@ defineExpose({ focusCollapse() { collapseButton.value?.focus() } })
  * C2 导航是固定分组与平铺入口。各组不再套折叠目录；
  * 整体侧栏仍能收起，历史会话继续使用已有的恢复逻辑。
  */
-const sessions = computed(() => [...backendDemo.state.sessions].sort((a, b) => (b.last_active_at ?? '').localeCompare(a.last_active_at ?? '')))
+const sessions = computed(() => [...backendDemo.state.sessions].sort((a, b) => ((b.last_message_at || b.last_active_at) ?? '').localeCompare((a.last_message_at || a.last_active_at) ?? '')))
 async function resumeSession(id: string) {
   try { await openSession(id); await router.push('/chat') } catch(e) { toast((e as Error).message) }
 }
@@ -91,7 +91,7 @@ function sessionDate(date?: string | null) { return date ? new Date(date).toLoca
         </section>
       </nav>
     </TooltipProvider>
-    <section v-if="chatActive" v-scroll-fade class="desk-history" aria-label="历史会话"><div class="desk-history__head"><h2>历史会话</h2><span>{{ backendDemo.state.sessions.length }}</span></div><button v-for="session in sessions" :key="session.task_id" class="desk-session" :title="session.task_name" :aria-pressed="route.path === '/chat' && session.task_id === demo.state.currentSessionId" :disabled="demo.state.chatBusy" @click="resumeSession(session.task_id)"><span>{{ session.task_name || '未命名咨询' }}</span><small>{{ sessionDate(session.last_active_at) }}</small></button><p v-if="!sessions.length" class="desk-history__empty">创建咨询后，会话将显示在这里。</p></section>
+    <section v-if="chatActive" v-scroll-fade class="desk-history" aria-label="历史会话"><div class="desk-history__head"><h2>历史会话</h2><span>{{ backendDemo.state.sessions.length }}</span></div><button v-for="session in sessions" :key="session.task_id" class="desk-session" :title="session.task_name + '：' + (session.last_message || '')" :aria-pressed="route.path === '/chat' && session.task_id === demo.state.currentSessionId" :disabled="demo.state.chatBusy" @click="resumeSession(session.task_id)"><span>{{ session.task_name || '未命名咨询' }}</span><em class="desk-session__preview">{{ session.last_message || '还没有消息' }}</em><small><template v-if="session.message_count">{{ session.message_count }} 条 · </template>{{ sessionDate(session.last_message_at || session.last_active_at) }}</small></button><p v-if="!sessions.length" class="desk-history__empty">创建咨询后，会话将显示在这里。</p></section>
     </div>
     <!--
       页脚只留两样：账号（与顶栏、移动端指向**同一个「账号」抽屉**）、返回门户。
@@ -194,4 +194,5 @@ function sessionDate(date?: string | null) { return date ? new Date(date).toLoca
 #student-desktop-sidebar .desk-footer { flex: none; padding-top: 12px; }
 #student-desktop-sidebar .desk-footer__links { flex-wrap: wrap; gap: 0 14px; }
 #student-desktop-sidebar .desk-footer__links a[aria-current='page'] { color: var(--c-primary); font-weight: var(--fw-semibold); }
+#student-desktop-sidebar .desk-session__preview { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--c-text-3); font-size: 11px; font-style: normal; line-height: 1.4; }
 </style>

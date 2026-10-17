@@ -531,8 +531,14 @@ class DefaultOrchestrator(Orchestrator):
         await self._sessions.update_stage(session.id, to_stage, lead.lead_agent)
         return decision
 
-    async def enter_task(self, user_id: str, task_code: str) -> TaskSession:
+    async def enter_task(
+        self, user_id: str, task_code: str, *, new_session: bool = False
+    ) -> TaskSession:
         """进入任务：已有进行中的会话则续接，否则按任务入口建会话。
+
+        `new_session=True` 时**不续接**：把同入口还在进行中的旧会话标记完成
+        （仍留在左栏历史里可打开），再建一条新的。少了这个分支，「新建咨询」
+        永远返回同一条会话 —— 用户以为开了新对话，看到的却是旧内容。
 
         未登记的 `task_code` **必须报错**，不能静默建一个名字等于 code 的会话：
         任务码是前端从 `/app/bootstrap` 的 `task_entries` 里取的，拼错的唯一原因
@@ -543,7 +549,7 @@ class DefaultOrchestrator(Orchestrator):
         它走下面的回落分支（环节 ①、主理由组队规则选）。
         """
         existing = await self._sessions.find_active(user_id, task_code)
-        if existing is not None:
+        if existing is not None and not new_session:
             return existing
 
         entries = {entry.code: entry for entry in await self._registry.list_task_entries()}
@@ -553,6 +559,15 @@ class DefaultOrchestrator(Orchestrator):
                 f"未登记的任务入口：{task_code}。任务码须取自 /app/bootstrap 的 task_entries"
             )
         task_name = spec.label or task_code
+
+        if new_session:
+            # 旧会话不删除：标成已完成，历史里仍能打开；find_active 只找 active，
+            # 之后同一入口的"续接"就会命中这条新会话。
+            for item in await self._sessions.list_by_user(
+                user_id, statuses=[TaskStatus.ACTIVE]
+            ):
+                if item.task_code == task_code and item.id != "":
+                    await self._sessions.update_status(item.id, TaskStatus.COMPLETED)
 
         if spec.target_stage is not None:
             stage: LoopStage = spec.target_stage
@@ -632,6 +647,25 @@ class DefaultOrchestrator(Orchestrator):
             if replay is not None:
                 return replay
 
+        # 用户这句话**先落库**，再调模型。
+        #
+        # 轮末的 `_remember_turn` 只有走到终点才会写；而模型超时、用户点"停止"、
+        # 或直接刷新页面都会让这条路径中途返回 —— 实测这三种情况下刷新后刚发
+        # 的那句凭空消失，用户看到的就是"会话没保存"。先写用户这一轮，最坏
+        # 结果是"有提问、暂时没有回答"，也比整句话丢掉诚实。
+        try:
+            if not await self._user_turn_saved(request):
+                await self._memories.record_turn(
+                    request.user_id,
+                    request.task_id,
+                    role="user",
+                    text=request.message,
+                    loop_stage=session.loop_stage,
+                    client_msg_id=request.client_msg_id or "",
+                )
+        except Exception:  # noqa: BLE001 - 落库失败不能挡住这一轮对话
+            logger.warning("用户这一轮先落库失败（本轮对话继续）", exc_info=True)
+
         # Only a question produced by this server in the immediately preceding
         # assistant turn authorizes interpreting a short answer as consent.
         try:
@@ -639,7 +673,11 @@ class DefaultOrchestrator(Orchestrator):
         except Exception:
             logger.warning("读取确认上下文失败，本轮不自动执行提议", exc_info=True)
             recent_turns = []
-        previous = recent_turns[-1] if recent_turns else None
+        # 这一轮的用户消息刚写进逐轮原文，所以"上一条"要往回找**主理**那一轮；
+        # 直接取 recent_turns[-1] 会拿到刚写的用户消息，提议/工具确认全部失效。
+        previous = next(
+            (turn for turn in reversed(recent_turns) if turn.role == "agent"), None
+        )
         pending_offer = next((kind for kind, question in _ASSET_OFFERS.items()
                               if previous and previous.role == "agent" and previous.text.rstrip().endswith(question)), None)
         if pending_offer is None:
@@ -875,7 +913,9 @@ class DefaultOrchestrator(Orchestrator):
         # 答了什么，每一轮都像在对一个刚见面的陌生人开口 —— 接不上话，也认不出
         # "这条上一轮已经问过了"。实测症状就是"像在说梦话"：每句都像那么回事，
         # 但没有一句是在回应你。
-        turn_group = await self._turn_group(request.user_id, request.task_id)
+        turn_group = await self._turn_group(
+            request.user_id, request.task_id, exclude_user_text=request.message
+        )
         if turn_group:
             prompt_vars["turn_group"] = turn_group
         # 这一轮如果是**点选项**而不是手打，就把那个选项的身份一并给模型。
@@ -1373,6 +1413,29 @@ class DefaultOrchestrator(Orchestrator):
             guide=BehaviorGuide(kind="question", text="", question=None),
         )
 
+    async def _user_turn_saved(self, request: TurnRequest) -> bool:
+        """这一轮用户消息是否已经写进逐轮原文（开头先写、轮末不重复写）。"""
+        try:
+            turns = await self._memories.list_turns(
+                request.user_id, request.task_id, limit=5
+            )
+        except Exception:  # noqa: BLE001 - 读不到就当没写过，宁可重复也别丢
+            return False
+        for turn in reversed(turns):
+            if turn.role != "user":
+                continue
+            if request.client_msg_id:
+                # 带幂等键时按 key 认；纯文本比对会在"连发两句一样的话"时误吞。
+                if (
+                    turn.client_msg_id == request.client_msg_id
+                    and turn.text == request.message
+                ):
+                    return True
+                continue
+            if turn.text == request.message:
+                return True
+        return False
+
     async def _remember_turn(
         self,
         request: TurnRequest,
@@ -1410,14 +1473,17 @@ class DefaultOrchestrator(Orchestrator):
         # 逐轮原文也要留一份：摘要给模型续接用，原文给"会话列表点进去看历史"
         # 与复盘取证用。少了它，"回到旧会话"只能是空屏。
         try:
-            await self._memories.record_turn(
-                request.user_id,
-                request.task_id,
-                role="user",
-                text=request.message,
-                loop_stage=loop_stage,
-                client_msg_id=request.client_msg_id or "",
-            )
+            # 用户这一轮在 `_handle_message` 开头已经先写过（防"停止/刷新丢消息"），
+            # 这里只补主理那一条；再写一次就是同一条消息在历史里出现两遍。
+            if not await self._user_turn_saved(request):
+                await self._memories.record_turn(
+                    request.user_id,
+                    request.task_id,
+                    role="user",
+                    text=request.message,
+                    loop_stage=loop_stage,
+                    client_msg_id=request.client_msg_id or "",
+                )
             for message in result.messages:
                 await self._memories.record_turn(
                     request.user_id,
@@ -1977,7 +2043,9 @@ class DefaultOrchestrator(Orchestrator):
     #: 每行上限。原文里可能有几百字的附件正文（用户传一份简历就是一整篇）。
     _TURN_LINE_MAX = 30
 
-    async def _turn_group(self, user_id: str, task_id: str) -> list[str]:
+    async def _turn_group(
+        self, user_id: str, task_id: str, *, exclude_user_text: str = ""
+    ) -> list[str]:
         """最近几条对话的短行（`他：…` / `职业顾问：…`）。
 
         取**逐轮原文**（`biz_conversation_turn`），不是累积摘要：摘要里塞的是历次
@@ -1985,6 +2053,10 @@ class DefaultOrchestrator(Orchestrator):
 
         取不到就返回空表 —— 这一轮照常走完，只是"接不上话"这件事会如实留在
         这一轮里，而不是拿一份编出来的对话顶上。
+
+        `exclude_user_text`：这一轮的用户消息在 `_handle_message` 开头已先落库，
+        它本身会作为 `user_input` 单独进提示词；再从历史里带一遍就是同一句话说两次，
+        还会让"第一轮不该有历史对话"这类口径失真。
         """
         try:
             turns = await self._memories.list_turns(
@@ -1994,7 +2066,14 @@ class DefaultOrchestrator(Orchestrator):
             logger.warning("读取逐轮原文失败：task_id=%s", task_id, exc_info=True)
             return []
         lines: list[str] = []
-        for turn in turns[-self._TURN_GROUP_SIZE :]:
+        visible = list(turns[-self._TURN_GROUP_SIZE :])
+        if exclude_user_text:
+            # 只去掉"这一轮"用户消息（最近一条同文），历史里同文的更早消息保留。
+            for index in range(len(visible) - 1, -1, -1):
+                if visible[index].role == "user" and visible[index].text == exclude_user_text:
+                    visible.pop(index)
+                    break
+        for turn in visible:
             text = _single_line(turn.text, limit=self._TURN_LINE_MAX)
             if not text:
                 continue

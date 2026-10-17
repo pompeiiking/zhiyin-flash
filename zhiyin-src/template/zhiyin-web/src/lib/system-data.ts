@@ -27,13 +27,15 @@ export async function openSession(id: string) {
   } catch(e) { if (serial === selecting) systemData.error = (e as Error).message; throw e }
   finally { if (serial === selecting) systemData.busy = false }
 }
-export async function newSession(taskCode?: string) {
+export async function newSession(taskCode?: string, fresh = false) {
   if (systemData.busy || demo.state.chatBusy) throw new Error('正在读取会话，请稍候再试。')
   systemData.busy = true; systemData.error = ''
   try {
     const code = taskCode || auth.state.bootstrap?.task_entries?.[0]?.code
     if (!code) throw new Error('当前没有可用的咨询入口，请刷新或联系管理员。')
-    const session = await backendClient.enter(code)
+    // fresh=true 表示"新建一条会话"：后端会把同入口的进行中旧会话标记完成，
+    // 再建一条新的；旧会话仍留在历史里（不是续接同一条）。
+    const session = await backendClient.enter(code, fresh)
     systemData.snapshot=await studentApi.sessionSnapshot(session.task_id)
     backendDemo.setCurrentSession(session)
     const turns = withGuide((await backendClient.turns(session.task_id)).map((m,i) => mapMessage(m, `${session.task_id}-${i}`)), systemData.snapshot, `${session.task_id}-guide`)
