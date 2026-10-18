@@ -206,7 +206,8 @@ def _instruction_is_quoted_or_impersonated(message: str) -> bool:
             return True
     # “我同学/老师说……”是转述，不是本人直接要求。
     if re.search(
-        r"(?:同学|室友|朋友|别人|有人|他|她|老师|辅导员|导师|家长|父母|领导|HR|hr|面试官|同事)"
+        r"(?:同学|室友|朋友|别人|有人|他|她|老师|辅导员|导师|家长|父母|领导|HR|hr|面试官|同事|"
+        r"网友|客服|公众号|博主|管理员|系统)"
         r".{0,12}(?:说|让我|叫我|转告|转述|建议|问)",
         message,
     ) and re.search(r"(?:生成|更新|保存|报告|计划|执行|完成)", message):
@@ -1178,10 +1179,16 @@ class DefaultOrchestrator(Orchestrator):
         )
         explicit_plan = _explicit_plan_request(request.message) or accepted_offer == "plan"
         explicit_report = _explicit_report_request(request.message) or accepted_offer == "report"
+        impersonated = _instruction_is_quoted_or_impersonated(request.message)
+        if impersonated:
+            # 转述/注入既不能直接生成，也不能借“上一轮提议”的确认通道落库。
+            accepted_offer = None
+            explicit_plan = False
+            explicit_report = False
         view_report_requested = False
         # "我想看一下我的诊断报告/我的计划"：若还没有，就直接生成，而不是只回答
         # "去报告页看看"（实测第一次这样要报告没有任何产物，用户得再说一遍）。
-        if not explicit_report and _wants_view_report(request.message):
+        if not impersonated and not explicit_report and _wants_view_report(request.message):
             try:
                 if await self._assets.get_report(request.user_id) is None:
                     explicit_report = True
@@ -1197,7 +1204,6 @@ class DefaultOrchestrator(Orchestrator):
         report_basis_missing = (
             explicit_report
             and not accepted_offer
-            and not view_report_requested
             and not _has_report_basis(blackboard.profile)
         )
         if report_basis_missing:
@@ -1631,6 +1637,7 @@ class DefaultOrchestrator(Orchestrator):
         # to overwrite a saved plan. Only an explicit request can generate one.
         write_tool_attempted = "workspace.task.set_done" in result.business_tool_calls
         may_persist = (not accepted_tool and not module_query and not write_tool_attempted
+                       and not impersonated
                        and (not result.business_tool_calls or (stage is LoopStage.ACT and explicit_plan)
                             or (stage is LoopStage.DIAGNOSE and explicit_report))
                        and (stage is not LoopStage.ACT or explicit_plan)

@@ -286,8 +286,10 @@ function chooseConfirm(choice: OptionRef) {
 }
 function pendingKey(id: string) { return `zhiyin-chat-pending:${id}` }
 function markChatPending(id: string) { try { sessionStorage.setItem(pendingKey(id), '1') } catch { /* 无 storage 时由服务端状态兜底 */ } }
+function markChatStopped(id: string) { try { sessionStorage.setItem(pendingKey(id), 'stopped') } catch { /* ignore */ } }
 function clearChatPending(id: string) { try { sessionStorage.removeItem(pendingKey(id)) } catch { /* ignore */ } }
 function hasChatPending(id: string) { try { return sessionStorage.getItem(pendingKey(id)) === '1' } catch { return false } }
+function hasChatStopped(id: string) { try { return sessionStorage.getItem(pendingKey(id)) === 'stopped' } catch { return false } }
 /**
  * 生成中刷新/切页的残局修复。
  *
@@ -302,6 +304,14 @@ function syncInterruptedNotice() {
   const last = list.at(-1)
   const previous = list.at(-2)
   const markerPending = hasChatPending(demo.state.currentSessionId)
+  if (hasChatStopped(demo.state.currentSessionId)) {
+    // 主动停止不是“刷新导致的中断”：刷新后明确告诉用户上一轮是停止的，
+    // 不出现“重新发送这个问题”，避免把未完成说成系统故障。
+    clearChatPending(demo.state.currentSessionId)
+    interrupted.value = null
+    if (!requestError.value) requestError.value = '上一轮回复是你主动停止的，没有继续生成。你可以继续补充或重新提问。'
+    return
+  }
   const phantom = last?.from === 'host' && !last.text?.trim() && last.id.endsWith('-guide') && previous?.from === 'me' ? last : undefined
   // 先摘掉伪回合：不管有没有失败提示，上一轮的引导都不能显示在这条提问下面。
   if (phantom) {
@@ -583,7 +593,7 @@ async function toggleTask(guideTask: NonNullable<ChatTurn['guideTask']>) {
     else toast(friendlyError(e))
   } finally { guideSaving.value = '' }
 }
-function stop() { if (!stopArmed.value) return; stopped.value = true; clearChatPending(demo.state.currentSessionId); controller?.abort() }
+function stop() { if (!stopArmed.value) return; stopped.value = true; markChatStopped(demo.state.currentSessionId); controller?.abort() }
 async function send(retry = false, choice?: { text: string; option?: OptionRef }) {
  if (thinking.value || uploading.value || systemData.busy) return
  // 刷新后 failedRequest 会因为本轮普通消息成功而被清空，失败态里仍保存着原始请求。
@@ -651,7 +661,7 @@ async function send(retry = false, choice?: { text: string; option?: OptionRef }
     if (demo.state.currentSessionId === sessionId) rememberFailure(sessionId, { request, materials: outgoingMaterials, error: requestError.value, at: new Date().toISOString() })
    }
   } }
- finally { if (run === serial) { thinking.value = false; controller = null; clearChatPending(sessionId) } }
+ finally { if (run === serial) { thinking.value = false; controller = null; if (!stopped.value) clearChatPending(sessionId) } }
 }
 async function copy(text: string, turnId?: string) {
   const done = (ok: boolean) => {
@@ -687,6 +697,9 @@ watch(thinking, (busy, wasBusy) => {
  if (busy) { elapsed.value = 0; requestStarted = Date.now(); replyAnnouncement.value = '正在接收回复。'; waitTimer = setInterval(() => { elapsed.value = Math.floor((Date.now() - requestStarted) / 1000) }, 1000) }
  else if (wasBusy) replyAnnouncement.value = stopped.value ? '回复已停止，已接收的内容保留。' : '回复已到，可以继续提问。'
 }, { flush:'sync' })
+watch(() => route.query.history, value => {
+ if (value === '1') historyOpen.value = true
+}, { immediate: true })
 watch(() => navigation.width.value, () => { void nextTick(resizeInput) })
 watch(requestError, message => {
  if (!message) return

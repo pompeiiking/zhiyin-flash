@@ -40,6 +40,11 @@ def test_view_negation_is_not_recognized(message):
 @pytest.mark.asyncio
 async def test_view_missing_report_generates_instead_of_pointing_to_page():
     c, engine, session = await setup(IntentType.FREE_CHAT)
+    # 空画像现在会先要求补信息；看报告这条测的是“没有产物时直接生成”，
+    # 先放入最小画像，避免被空画像门禁挡掉。
+    await c.profile_service.update_field(
+        "u1", "study_year", "大三", confidence=1.0, source="user_edit"
+    )
     await send(c, session, "我想看一下我的诊断报告")
     assert engine.requests, "看报告应进入诊断生成，而不是只回一句去页面看"
     assert engine.requests[-1].stage == "diagnose"
