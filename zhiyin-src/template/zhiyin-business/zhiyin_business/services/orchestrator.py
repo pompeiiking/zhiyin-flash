@@ -166,6 +166,19 @@ def _explicit_plan_request(message: str) -> bool:
     return False
 
 
+def _explicit_direction_request(message: str) -> bool:
+    """用户明确要生成/保存方向方案，而不是只是在聊方向。"""
+    if _instruction_is_quoted_or_impersonated(message) or re.search(r"(?:如果|假如|假设|要是)", message):
+        return False
+    if re.search(r"(?:先|先别|不要|不用|不必|暂不).{0,8}(?:生成|保存|创建|做)", message):
+        return False
+    return bool(re.search(
+        r"(?:生成|创建|做|给我|列出|整理).{0,12}(?:几套|三套|三个|方向方案|职业方向)"
+        r"|(?:保存|落库).{0,8}(?:方向|方案)",
+        message,
+    ))
+
+
 def _wants_view_report(message: str) -> bool:
     """用户是在"要看报告"，而不是"要生成报告"。"""
     if re.search(r"(?:不要|别|不用|先不).{0,6}(?:看|打开|查看)", message):
@@ -1231,29 +1244,35 @@ class DefaultOrchestrator(Orchestrator):
         )
         explicit_plan = _explicit_plan_request(request.message) or accepted_offer == "plan"
         explicit_report = _explicit_report_request(request.message) or accepted_offer == "report"
+        explicit_direction = _explicit_direction_request(request.message)
         if safety_blocked:
             accepted_offer = None
             explicit_plan = False
             explicit_report = False
+            explicit_direction = False
         if impersonated:
             # 转述/注入既不能直接生成，也不能借“上一轮提议”的确认通道落库。
             accepted_offer = None
             explicit_plan = False
             explicit_report = False
+            explicit_direction = False
         view_report_requested = False
-        # "我想看一下我的诊断报告/我的计划"：若还没有，就直接生成，而不是只回答
-        # "去报告页看看"（实测第一次这样要报告没有任何产物，用户得再说一遍）。
+        view_plan_requested = False
+        view_report_missing = False
+        view_plan_missing = False
+        # 看资产不等于生成资产：没有时先问“要不要生成”，不先落库。
         if not impersonated and not explicit_report and _wants_view_report(request.message):
             try:
                 if await self._assets.get_report(request.user_id) is None:
-                    explicit_report = True
+                    view_report_missing = True
                     view_report_requested = True
             except Exception:  # noqa: BLE001
                 logger.warning("读取报告状态失败（按普通查看处理）", exc_info=True)
         if not impersonated and not explicit_plan and _wants_view_plan(request.message):
             try:
                 if await self._assets.get_action_plan(request.user_id) is None:
-                    explicit_plan = True
+                    view_plan_missing = True
+                    view_plan_requested = True
             except Exception:  # noqa: BLE001
                 logger.warning("读取计划状态失败（按普通查看处理）", exc_info=True)
         report_basis_missing = (
@@ -1412,6 +1431,8 @@ class DefaultOrchestrator(Orchestrator):
             }
         if stage is LoopStage.ACT and direction_selected is False:
             prompt_vars["direction_selection_status"] = "用户尚未在方向方案中正式确认方向；可以围绕本轮想法拟定计划，但不要声称方向已选定。"
+        if stage is LoopStage.DECIDE and not explicit_direction:
+            prompt_vars["direction_write_boundary"] = "本轮只讨论或比较方向，不会保存新的方向方案；不要声称方向方案已生成/已保存。需要落库时先征求用户明确要求。"
         if stage is LoopStage.ACT and not explicit_plan:
             prompt_vars["plan_write_boundary"] = "本轮只回答问题，不会保存或修改行动计划；不要声称计划已创建或更新。需要修改计划时请先征求用户明确要求。"
         if stage is LoopStage.DIAGNOSE and not explicit_report:
@@ -1785,7 +1806,8 @@ class DefaultOrchestrator(Orchestrator):
                        and (not result.business_tool_calls or (stage is LoopStage.ACT and explicit_plan)
                             or (stage is LoopStage.DIAGNOSE and explicit_report))
                        and (stage is not LoopStage.ACT or explicit_plan)
-                       and (stage is not LoopStage.DIAGNOSE or explicit_report))
+                       and (stage is not LoopStage.DIAGNOSE or explicit_report)
+                       and (stage is not LoopStage.DECIDE or explicit_direction))
         persisted_output = structured
         if stage is LoopStage.REVIEW and not explicit_plan and structured.get("plan_patch"):
             persisted_output = {**structured, "plan_patch": None}
@@ -2199,6 +2221,27 @@ class DefaultOrchestrator(Orchestrator):
             # 确定性安全/能力回复优先：不要留下上一轮的资产提议，避免下一句
             # “可以”把一个用户没再看到的报告/计划提议执行掉。
             await self._set_pending_asset_offer(request.user_id, None, task_id=request.task_id)
+        elif view_report_missing:
+            if _has_report_basis(blackboard.profile):
+                reply_text = "现在还没有诊断报告。要我现在按已有资料生成一份吗？"
+                guide = BehaviorGuide(kind="options", text="", options=[
+                    GuideOption(option_id="asset.report.accept", label="生成报告", value="accept"),
+                    GuideOption(option_id="asset.report.decline", label="先不用", value="decline"),
+                ])
+                await self._set_pending_asset_offer(request.user_id, "report", task_id=request.task_id)
+            else:
+                reply_text = (
+                    "现在还没有诊断报告。要生成报告，至少先告诉我年级，"
+                    "以及专业、目标方向或一段真实经历中的一项；有了这些我再按真实资料写。"
+                )
+                guide = BehaviorGuide(kind="question", text="", question=None)
+        elif view_plan_missing:
+            reply_text = "现在还没有行动计划。要我现在按已聊到的信息生成第一版吗？"
+            guide = BehaviorGuide(kind="options", text="", options=[
+                GuideOption(option_id="asset.plan.accept", label="生成计划", value="accept"),
+                GuideOption(option_id="asset.plan.decline", label="先不用", value="decline"),
+            ])
+            await self._set_pending_asset_offer(request.user_id, "plan", task_id=request.task_id)
         messages = [
             ConversationMessage(
                 role="agent",
