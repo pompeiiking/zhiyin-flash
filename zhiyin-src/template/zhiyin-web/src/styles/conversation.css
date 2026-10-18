@@ -194,7 +194,7 @@
  .consult-prose {font-size:14px;line-height:1.8;}
  .consult-prose--lead {font-size:17px;}
  .consult-guide {font-size:13px;}
- .consult-compose-area {padding:8px 12px 6px;}
+ .consult-compose-area {padding:8px 12px calc(34px + env(safe-area-inset-bottom));}
  .consult-composer {border-radius:18px;padding:10px 12px 8px;}
  .consult-composer textarea {font-size:16px;min-height:40px;}
  .consult-send-hint {display:none;}

@@ -1,0 +1,9 @@
+﻿{
+  "decisions": {
+    "update_without_discussion": "explicit_execute",
+    "report_insufficient_evidence": "generate_and_mark_unverified",
+    "historical_dirty_report": "no_auto_recompute_mark_regenerate",
+    "chart_without_data": "refuse_and_explain",
+    "long_context": "summarize_keys_then_prompt_new_session"
+  }
+}

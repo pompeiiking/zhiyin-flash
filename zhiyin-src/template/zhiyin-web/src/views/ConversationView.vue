@@ -34,7 +34,7 @@ const selectedOption = ref<NonNullable<ChatTurn['optionRefs']>[number] | null>(n
 const flow = ref<HTMLElement | null>(null), input = ref<HTMLTextAreaElement | null>(null), fileInput = ref<HTMLInputElement | null>(null)
 const uploading = ref(false), thinking = ref(false), stopped = ref(false)
 const { followTail, showLatest, bottom, onScroll } = useConversationScroll(flow)
-const elapsed = ref(0), draggingFiles = ref(false)
+const elapsed = ref(0), draggingFiles = ref(false), replyAnnouncement = ref('')
 let waitTimer: ReturnType<typeof setInterval> | undefined
 let requestStarted = 0
 const pending = ref<{ text: string; agent: string; note: string } | null>(null)
@@ -667,11 +667,13 @@ async function copy(text: string, turnId?: string) {
   }
 }
 function keydown(e: KeyboardEvent) { if (e.key === 'Enter' && !e.shiftKey && !isComposingKey(e) && navigation.width.value > 760) { e.preventDefault(); void send() } }
-watch(thinking, busy => {
+watch(thinking, (busy, wasBusy) => {
  demo.setChatBusy(busy); clearInterval(waitTimer)
- if (busy) { elapsed.value = 0; requestStarted = Date.now(); waitTimer = setInterval(() => { elapsed.value = Math.floor((Date.now() - requestStarted) / 1000) }, 1000) }
+ if (busy) { elapsed.value = 0; requestStarted = Date.now(); replyAnnouncement.value = '正在接收回复。'; waitTimer = setInterval(() => { elapsed.value = Math.floor((Date.now() - requestStarted) / 1000) }, 1000) }
+ else if (wasBusy) replyAnnouncement.value = stopped.value ? '回复已停止，已接收的内容保留。' : '回复已到，可以继续提问。'
 }, { flush:'sync' })
 watch(() => navigation.width.value, () => { void nextTick(resizeInput) })
+watch(requestError, message => { if (message) replyAnnouncement.value = '回复失败，可以重试。' })
 watch([draft, attached], () => { remember(); void nextTick(resizeInput) }, { deep:true })
 watch(() => demo.state.currentSessionId, (_id, previous) => {
  backendDemo.saveDraft(previous, draft.value, attached.value, flow.value?.scrollTop ?? null)
@@ -871,6 +873,7 @@ onUnmounted(() => { disposed = true; window.removeEventListener('focus', refresh
     <article v-if="pending" class="consult-turn consult-turn--host consult-pending" aria-label="当前回复"><AgentAvatar :agent="agentKeyOf(pending.agent)" :size="38" :state="thinking ? pending.text ? 'speaking' : 'thinking' : 'idle'" /><div class="consult-answer"><span class="consult-speaker">{{ consultantLabel(pending.agent) }}</span><ReadableText v-if="pending.text" :text="cleanConsultantText(pending.text)" class="consult-prose" /><div v-else-if="thinking" class="consult-wait" role="status"><span class="consult-wait-orbit" aria-hidden="true"><i /><i /><i /></span><div><p>{{ pending.note }}</p><small>正在接收回复<span v-if="elapsed >= 3"> · {{ elapsed }} 秒</span></small></div></div><span v-if="thinking && pending.text" class="consult-cursor" aria-label="正在回复" /><small v-if="!thinking">{{ stopped ? '接收已停止' : '回复未完成' }}</small></div></article>
     <div v-if="requestError && !showFailedSend" class="consult-error" role="alert"><p>{{ requestError }}</p><button v-if="failedRequest && !stopped" @click="send(true)">重新尝试</button><button :disabled="thinking" @click="resume(demo.state.currentSessionId)">重新读取会话</button></div>
    </div>
+   <p class="sr-only" role="status" aria-live="polite">{{ replyAnnouncement }}</p>
   </div>
   <footer v-if="!choosingTopic && !showStudyYearQuestion" class="consult-compose-area">
    <div v-if="uploadError" class="consult-error" role="alert"><p>{{ uploadError }}</p><button :disabled="uploading || thinking" @click="fileInput?.click()">重新选择材料</button><button @click="uploadError = ''">关闭上传提示</button></div>

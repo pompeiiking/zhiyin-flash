@@ -137,7 +137,7 @@ onUnmounted(()=>{clearInterval(notificationTimer);pageErrorObserver?.disconnect(
         <!-- 氛围层：与门户同一套语言（一片很淡的品牌色光 + 颗粒），但强度低得多 -->
         <div class="app__atmos" aria-hidden="true" />
 
-        <div class="app__content" ref="contentRef"><div v-if="systemData.error && !pageErrorShown" class="ws-field-error" role="alert">{{systemData.error}} <button class="ws-text-button" @click="loadShell">重试</button></div>
+        <div class="app__content" ref="contentRef"><div v-if="systemData.error && !pageErrorShown && route.name !== 'chat'" class="ws-field-error" role="alert">{{systemData.error}} <button class="ws-text-button" @click="loadShell">重试</button></div>
           <section v-if="routeLoadError" class="ws-page ws-route-error" role="alert"><h1>页面暂时没有加载成功</h1><p>{{ sessionCacheAvailable ? '本次演示记录和已保存的咨询草稿会在重新加载后恢复。' : '浏览器未能保存当前工作空间上下文，请先保留重要内容。' }}可以重新加载，或先查看其他页面。</p><div class="ws-inline-actions"><button class="btn btn--primary" @click="retryRoute">重新加载</button><RouterLink class="btn" to="/chat">去咨询对话</RouterLink></div></section>
           <RouterView v-else v-slot="{ Component }">
             <component :is="Component" :key="route.path" />
