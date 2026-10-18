@@ -545,8 +545,10 @@ class DefaultOrchestrator(Orchestrator):
         data_sources: ExternalDataSource | None = None,
         read_cache: Any = None,
         student_state=None,
+        academic_service=None,
     ) -> None:
         self._student_state = student_state
+        self._academic = academic_service
         self._profiles = profiles
         self._behaviors = behaviors
         self._memories = memories
@@ -1504,6 +1506,33 @@ class DefaultOrchestrator(Orchestrator):
                     available_offers.pop("read_directions", None)
             except Exception:  # noqa: BLE001
                 available_offers.pop("read_directions", None)
+        # 计划存在但一个任务都没有时，“查看计划/进度/图表”同样没有内容可看。
+        try:
+            current_plan = await self._assets.get_action_plan(request.user_id)
+        except Exception:  # noqa: BLE001
+            current_plan = None
+        has_plan_tasks = bool(current_plan and any(
+            task for phase in current_plan.phases for task in phase.tasks
+        ))
+        if not has_plan_tasks:
+            for key in ("read_plan", "plan_detail", "chart_plan", "progress_card", "progress_detail"):
+                available_offers.pop(key, None)
+        if not blackboard.recent_behaviors:
+            available_offers.pop("behavior", None)
+        if "read_academic" in available_offers and self._academic is not None:
+            try:
+                academic = await self._academic.get(request.user_id)
+                has_academic = bool(
+                    academic
+                    and (getattr(academic, "grades", None) or getattr(academic, "courses", None))
+                )
+                academic_context = bool(re.search(
+                    r"(?:成绩|课表|课程|学分|挂科|考试|作业|上课)", request.message
+                ))
+                if not has_academic and not academic_context:
+                    available_offers.pop("read_academic", None)
+            except Exception:  # noqa: BLE001
+                available_offers.pop("read_academic", None)
         # 画像只有一条（常见是刚填年级）时，不要提议“查看你已有的画像”；
         # 用户会以为系统已经有很多资料。第一次对话也不主动弹工具确认。
         profile_fields = [

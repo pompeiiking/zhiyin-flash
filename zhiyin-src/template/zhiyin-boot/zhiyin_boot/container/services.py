@@ -335,6 +335,7 @@ def build_services(container: "Container") -> None:
             functions=container.function_service,
             data_sources=container.data_sources,
             student_state=container.student_state,
+            academic_service=container.academic_service,
         )
 
     # ---- 读侧聚合：工作台 + 功能块 ----
