@@ -125,6 +125,14 @@ async def test_study_year_is_a_separate_user_confirmed_profile_field() -> None:
     assert "degree_level" not in fields
 
 
+async def test_study_year_rejects_unsupported_stage() -> None:
+    """当前只支持大一到大四；研究生/大五/其他阶段在业务层就被拒。"""
+    profiles = await _profile_service()
+    for value in ("研究生", "大五／五年制", "其他阶段"):
+        with pytest.raises(InvalidRequest):
+            await profiles.correct_field("u-study-year-bad", "study_year", value)
+
+
 async def test_correction_rejects_empty_too_long_and_unregistered() -> None:
     """三类不合格的值都要在**业务层**被拒（不是接口层各自判一遍）。"""
     profiles = await _profile_service()

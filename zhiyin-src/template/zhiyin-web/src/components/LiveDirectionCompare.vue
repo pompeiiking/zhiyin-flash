@@ -30,6 +30,15 @@ const candidate = ref('')
 const orderedPlans = computed(() => [...(props.plans.plans ?? [])].sort((a, b) => (roleOrder[a.role] ?? 9) - (roleOrder[b.role] ?? 9)))
 const selected = computed(() => props.plans.selected_id || props.plans.plans?.find(plan => plan.selected)?.id || '')
 const selectedName = computed(() => props.plans.plans?.find(plan => plan.id === selected.value)?.name || '此前保存的方向')
+// 角色的“主攻/平行/保留”是方案角色，不等于“当前方向”：用户可以把平行方案
+// 选为当前方向。两块都用 role 渲染时，就会出现“主攻方向 考研 / 平行方向 就业
+// （当前）”这种同页自相矛盾。当前选中的那套统一标成“当前方向”。
+function roleLabel(plan: DeepReadonly<DirectionPlanView>) {
+  return selected.value === plan.id ? '当前方向' : roles[plan.role] ?? plan.role
+}
+function shortRoleLabel(plan: DeepReadonly<DirectionPlanView>) {
+  return selected.value === plan.id ? '当前' : shortRoles[plan.role] ?? plan.role
+}
 const pending = computed(() => props.plans.plans?.find(plan => plan.id === candidate.value))
 const activePlan = computed(() => orderedPlans.value.find(plan => plan.id === activePlanId.value) ?? orderedPlans.value[0])
 const activeGaps = computed(() => activePlan.value?.gaps ?? [])
@@ -78,7 +87,7 @@ function values(plan: DeepReadonly<DirectionPlanView>, criterion: Criterion): re
         <section class="route-index" aria-label="路线总览">
           <header>
             <h2>方向概览</h2>
-            <p>先看清每条路，再决定把精力放在哪里。</p>
+            <p>先看清每条路，再决定把精力放在哪里。主攻/平行/保留是方案角色；「当前方向」以你最近一次选择为准。</p>
           </header>
 
           <nav class="route-list" aria-label="切换查看已有方向">
@@ -91,7 +100,7 @@ function values(plan: DeepReadonly<DirectionPlanView>, criterion: Criterion): re
             >
               <span class="route-list__node" aria-hidden="true"></span>
               <span class="route-list__copy">
-                <small>{{ roles[plan.role] ?? plan.role }}</small>
+                <small>{{ roleLabel(plan) }}</small>
                 <strong>{{ plan.name }}</strong>
                 <span>{{ plan.target_desc || '目标仍待补充' }}</span>
               </span>
@@ -106,7 +115,7 @@ function values(plan: DeepReadonly<DirectionPlanView>, criterion: Criterion): re
         <article v-if="activePlan" class="route-sheet">
           <header class="route-sheet__head">
             <div class="route-sheet__status">
-              <span>{{ shortRoles[activePlan.role] ?? activePlan.role }}</span>
+              <span>{{ shortRoleLabel(activePlan) }}</span>
               <i v-if="selected === activePlan.id">现在正在走</i>
               <i v-else-if="candidate === activePlan.id">准备调整到这里</i>
               <i v-else>还没有决定</i>
@@ -193,11 +202,11 @@ function values(plan: DeepReadonly<DirectionPlanView>, criterion: Criterion): re
         </nav>
         <template v-if="compareView === 'content'">
           <div class="compare-desktop local-table-scroll">
-            <table class="fact-table"><caption class="sr-only">最新方向的目标、要求、现状、建议与风险</caption><thead><tr><th scope="col">比较项目</th><th v-for="plan in orderedPlans" :key="plan.id" scope="col"><small>{{ shortRoles[plan.role] ?? plan.role }}</small>{{ plan.name }}</th></tr></thead><tbody><tr v-for="criterion in criteria" :key="criterion"><th scope="row">{{ criterion }}</th><td v-for="plan in orderedPlans" :key="plan.id"><ol :class="{'ws-attention': criterion === '主要风险'}"><li v-for="(value, index) in values(plan, criterion)" :key="index">{{ value }}</li></ol></td></tr></tbody></table>
+            <table class="fact-table"><caption class="sr-only">最新方向的目标、要求、现状、建议与风险</caption><thead><tr><th scope="col">比较项目</th><th v-for="plan in orderedPlans" :key="plan.id" scope="col"><small>{{ shortRoleLabel(plan) }}</small>{{ plan.name }}</th></tr></thead><tbody><tr v-for="criterion in criteria" :key="criterion"><th scope="row">{{ criterion }}</th><td v-for="plan in orderedPlans" :key="plan.id"><ol :class="{'ws-attention': criterion === '主要风险'}"><li v-for="(value, index) in values(plan, criterion)" :key="index">{{ value }}</li></ol></td></tr></tbody></table>
           </div>
           <div class="compare-mobile">
             <div class="compare-criterion-tabs" role="tablist" aria-label="选择比较维度"><button v-for="criterion in criteria" :key="criterion" type="button" role="tab" :aria-selected="mobileCriterion === criterion" @click="mobileCriterion = criterion">{{ criterion }}</button></div>
-            <section class="compare-one-criterion"><h3>{{ mobileCriterion }}</h3><article v-for="plan in orderedPlans" :key="plan.id"><strong>{{ shortRoles[plan.role] ?? plan.role }} · {{ plan.name }}</strong><ol :class="{'ws-attention': mobileCriterion === '主要风险'}"><li v-for="(value, index) in values(plan, mobileCriterion)" :key="index">{{ value }}</li></ol></article></section>
+            <section class="compare-one-criterion"><h3>{{ mobileCriterion }}</h3><article v-for="plan in orderedPlans" :key="plan.id"><strong>{{ shortRoleLabel(plan) }} · {{ plan.name }}</strong><ol :class="{'ws-attention': mobileCriterion === '主要风险'}"><li v-for="(value, index) in values(plan, mobileCriterion)" :key="index">{{ value }}</li></ol></article></section>
           </div>
         </template>
         <DirectionScoring v-else />
@@ -207,7 +216,7 @@ function values(plan: DeepReadonly<DirectionPlanView>, criterion: Criterion): re
 
     <section v-else class="direction-empty" aria-labelledby="direction-empty-title"><header><p>方向尚待形成</p><h2 id="direction-empty-title">先把考虑对象与判断依据放到同一处</h2><RouterLink class="btn btn--primary" to="/chat?question=请根据我的个人资料，帮我整理正在考虑的方向并说明还缺哪些依据">开始梳理方向</RouterLink></header><ol><li><span>01</span><div><strong>补充考虑对象</strong><p>可以有多个，也可以暂时说“还没定”。</p></div></li><li><span>02</span><div><strong>核对比较依据</strong><p>画像、报告与现实限制会一起参与判断。</p></div></li><li><span>03</span><div><strong>安排一次验证</strong><p>用可执行的小尝试降低选择的不确定性。</p></div></li></ol><footer><RouterLink to="/profile">核对个人画像</RouterLink><RouterLink to="/report">查看诊断报告</RouterLink></footer></section>
 
-    <div class="information-print-only"><h2>方向比较明细</h2><section v-for="plan in orderedPlans" :key="plan.id"><h3>{{ plan.name }} · {{ shortRoles[plan.role] ?? plan.role }}</h3><section v-for="criterion in criteria" :key="criterion"><h4>{{ criterion }}</h4><ul><li v-for="(value, index) in values(plan, criterion)" :key="index">{{ value }}</li></ul></section></section></div>
+    <div class="information-print-only"><h2>方向比较明细</h2><section v-for="plan in orderedPlans" :key="plan.id"><h3>{{ plan.name }} · {{ shortRoleLabel(plan) }}</h3><section v-for="criterion in criteria" :key="criterion"><h4>{{ criterion }}</h4><ul><li v-for="(value, index) in values(plan, criterion)" :key="index">{{ value }}</li></ul></section></section></div>
   </section>
 </template>
 

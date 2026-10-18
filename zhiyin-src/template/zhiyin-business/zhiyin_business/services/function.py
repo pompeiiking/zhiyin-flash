@@ -236,7 +236,10 @@ class DefaultFunctionService(FunctionService):
         缓存是进程内的短缓存（15 分钟）：这条链路会打外部站点，
         每开一次界面就打一遍既不礼貌也没必要。
         """
-        cache_key = f"{user_id or '-'}|{topic.strip()}"
+        # 缓存键带上"当前方向方案 id"：用户选/换方向后必须拿新结果，
+        # 不能因为 topic 为空就命中上一个方向的旧缓存（15 分钟）。
+        direction_name, direction_id = await self._direction_basis(user_id)
+        cache_key = f"{user_id or '-'}|{topic.strip()}|{direction_id or ''}"
         cached = self._intel_cache.get(cache_key)
         if not refresh and cached and cached[0] > time.monotonic():
             return cached[1]
@@ -305,6 +308,13 @@ class DefaultFunctionService(FunctionService):
         known = self._intel_status.get(cache_key)
         if known is not None:
             return dict(known)
+        direction_name, direction_id = await self._direction_basis(user_id)
+        if direction_id:
+            # 与 fetch_external_intel 的新缓存键对齐：选/换方向后状态条不能
+            # 还显示上一个方向的取数结果。
+            known = self._intel_status.get(f"{cache_key}|{direction_id}")
+            if known is not None:
+                return dict(known)
         major = await self.profile_major(user_id) if user_id else ""
         return {
             "status": "unknown",
@@ -331,6 +341,46 @@ class DefaultFunctionService(FunctionService):
             return ""
         return intel_topic(rows)
 
+    async def _direction_basis(self, user_id: Optional[str]) -> tuple[str, str]:
+        """当前方向方案（已选优先、否则主攻）作为探索依据；没有就返回空。
+
+        职业探索此前只读画像（major/target_direction），完全不知道
+        `direction_plan` 里用户已经选/已经生成的方向 —— 于是方向页说"后端开发"，
+        探索页却按专业返回"游戏开发/移动端"，看起来像两个功能各说各的。
+        """
+        if not user_id or self._assets is None:
+            return "", ""
+        try:
+            plans = await self._assets.list_direction_plans(user_id)
+        except Exception:  # noqa: BLE001 - 方向读不到不应让探索整页失败
+            logger.warning("读取方向方案失败：探索退回画像依据", exc_info=True)
+            return "", ""
+        if not plans:
+            return "", ""
+        selected = next((plan for plan in plans if plan.selected), None)
+        main = next(
+            (
+                plan
+                for plan in plans
+                if str(getattr(plan.role, "value", plan.role)) == "main"
+            ),
+            None,
+        )
+        plan = selected or main
+        return (plan.name, plan.id) if plan else ("", "")
+
+    async def intel_basis(self, user_id: Optional[str]) -> tuple[str, str]:
+        """探索依据：`("后端开发工程师", "direction")` 或 `("软件工程", "profile")`。
+
+        空串是合法结果：既没有方向也没有专业，界面应引导补资料，而不是假装
+        已经按某个方向探索过。
+        """
+        direction_name, _ = await self._direction_basis(user_id)
+        if direction_name:
+            return direction_name, "direction"
+        major = await self.profile_major(user_id)
+        return (major, "profile") if major else ("", "")
+
     async def _collect_intel(
         self, user_id: Optional[str], *, topic: str, limit: int
     ) -> list[ExternalIntel]:
@@ -346,7 +396,16 @@ class DefaultFunctionService(FunctionService):
                 for f in rows
             ]
 
-        # 主题没给就**从事画像推**。
+        # 方向方案是比画像 major 更近的一层依据：把它作为 target_direction
+        # 交给学职取数（取数侧会按 job_terms 查职业），这样探索页的结果才会
+        # 跟方向页正在考虑/已选的方向对得上。
+        direction_name, _ = await self._direction_basis(user_id)
+        if direction_name:
+            context.append(
+                {"key": "target_direction", "value": direction_name, "confidence": 1.0}
+            )
+
+        # 主题没给就**从事画像/方向推**。
         #
         # 这一行是"面板里那一批"和"主理引用的那一批"必须是同一批的关键：
         # 编排器喂给模型时用的也是这条规则（`intel_topic`），两处同一个主题，
@@ -355,7 +414,7 @@ class DefaultFunctionService(FunctionService):
         # 推不出来（没有画像字段）就**留空**：空的含义是"还不知道该查什么"，
         # 取数侧会退回平台通用公开数据 —— 比拿一句猜出来的话去搜要诚实。
         if not topic.strip():
-            topic = intel_topic(rows)
+            topic = direction_name or intel_topic(rows)
 
         items: list[ExternalIntel] = []
         if self._data_sources is not None and (context or topic.strip()):
@@ -433,10 +492,12 @@ class DefaultFunctionService(FunctionService):
         top = items[0]
         head = top.title or (top.text[:40] if top.text else "外部情报")
         source = top.source_name or "公开渠道"
+        basis, _ = await self.intel_basis(user_id)
+        scope = f"与你关注的「{basis}」相关" if basis else "与你当前资料相关"
         try:
             await self._notifier.push(
                 user_id,
-                title=f"给你找到 {len(items)} 条与你方向相关的公开信息",
+                title=f"给你找到 {len(items)} 条{scope}的公开信息",
                 body=f"{head} —— 这些来自{source}，都能点回原页面核对。",
                 channel=NotifyChannel.IN_APP,
                 action={"kind": "intel", "label": "看看是什么"},

@@ -695,3 +695,51 @@ async def test_xuezhi_gateway_keeps_partial_records_when_a_step_fails() -> None:
     assert result.degraded is True
     assert any("职业详情超时" in item for item in result.errors)
     assert [record.kind for record in result.records] == ["speciality"]
+
+async def test_intel_explores_by_direction_plan_not_only_profile(container: Container) -> None:
+    """方向方案优先于专业：选/生成方向后，探索取词与依据都跟方向走。
+
+    此前的缺陷：方向页说“后端开发”，探索页仍按专业“土木工程”返回
+    “结构工程师”，两页方向看起来对不上。
+    """
+    from zhiyin_business.services.function import DefaultFunctionService
+    from zhiyin_kernel.assets import DirectionPlan
+    from zhiyin_kernel.enums import PlanRole
+
+    await container.profile_service.update_field(
+        USER_ID, "major", "土木工程", confidence=0.9, source="conversation"
+    )
+    await container.asset_service.save_direction_plans(
+        USER_ID,
+        [
+            DirectionPlan(
+                id="dp-main",
+                role=PlanRole.MAIN,
+                name="后端开发工程师",
+                target_desc="后端开发",
+                fit_reason="用户明确提出的方向",
+                main_risk="需要补项目证据",
+            )
+        ],
+    )
+    gateway = _StubGateway(_result())
+    service = DefaultFunctionService(
+        assets=container.asset_service,
+        behaviors=container.behavior_service,
+        object_store=container.object_store,
+        calendar=container.calendar,
+        track_events=container.track_events,
+        notifications=container.notifications,
+        registry=container.registry_service,
+        profiles=container.profile_service,
+        data_sources=gateway,
+        notifier=None,
+    )
+
+    assert await service.intel_basis(USER_ID) == ("后端开发工程师", "direction")
+    await service.fetch_external_intel(USER_ID, limit=8)
+    assert gateway.requests[0].query == "后端开发工程师"
+    assert any(
+        field["key"] == "target_direction" and field["value"] == "后端开发工程师"
+        for field in gateway.requests[0].context["fields"]
+    )

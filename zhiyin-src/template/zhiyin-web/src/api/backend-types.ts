@@ -109,6 +109,8 @@ export type ProfileFieldView = {
 }
 
 export type IntelListView = {
+  "basis"?: string
+  "basis_kind"?: string
   "fetched_at"?: string
   "items"?: Array<IntelItemView>
   "major"?: string

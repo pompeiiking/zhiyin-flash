@@ -34,8 +34,16 @@ async def test_natural_correction_is_persisted() -> None:
 @pytest.mark.asyncio
 async def test_explicit_correction_is_persisted() -> None:
     c, _, session = await _setup_with_year("大四")
+    await send(c, session, "把当前学习阶段改成大二，其他信息都别动。")
+    assert await _year(c) == "大二"
+
+
+@pytest.mark.asyncio
+async def test_unsupported_study_year_is_not_written() -> None:
+    """当前只支持大一到大四：对话里说“研究生”不能写进画像。"""
+    c, _, session = await _setup_with_year("大四")
     await send(c, session, "把当前学习阶段改成研究生，其他信息都别动。")
-    assert await _year(c) == "研究生"
+    assert await _year(c) == "大四"
 
 
 @pytest.mark.asyncio

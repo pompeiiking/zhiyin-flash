@@ -49,7 +49,9 @@ class ProfileFieldUpdateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     value: str = Field(description="用户认可的那个值（空串会被拒 —— 清空是另一件事）")
-    expected_updated_at: datetime | None = Field(description="编辑时字段时间；首次填写传 null")
+    expected_updated_at: datetime | None = Field(
+        default=None, description="编辑时字段时间；首次填写传 null"
+    )
 
 
 class ProfileGapView(BaseModel):
@@ -311,6 +313,10 @@ class IntelListView(BaseModel):
     message: str = Field(default="", description="给学生看的下一步说明")
     #: 画像里已记录的专业（"专业起点"的依据，不受本次取数成败影响）。
     major: str = ""
+    #: 本次探索实际依据：方向方案名或专业名；空串 = 还没有可用依据。
+    basis: str = ""
+    #: basis 的类型：direction（方向方案）/ profile（画像专业）/ 空。
+    basis_kind: str = ""
 
 
 class CapabilityItemView(BaseModel):

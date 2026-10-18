@@ -498,7 +498,13 @@ def pipeline_cards(
 
 
 def intel_list_view(
-    items: list[ExternalIntel], *, status: str = "", message: str = "", major: str = ""
+    items: list[ExternalIntel],
+    *,
+    status: str = "",
+    message: str = "",
+    major: str = "",
+    basis: str = "",
+    basis_kind: str = "",
 ) -> IntelListView:
     """外部情报清单 → 前端视图。取回时间取最新那一条。"""
     return IntelListView(
@@ -519,6 +525,8 @@ def intel_list_view(
         status=status,
         message=message,
         major=major,
+        basis=basis,
+        basis_kind=basis_kind,
     )
 
 

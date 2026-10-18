@@ -21,6 +21,8 @@ const loaded = ref(false)
 const refreshing = ref(false)
 const lastRefresh = ref(false)
 const status = ref('')
+const basis = ref('')
+const basisKind = ref('')
 const matchOpen = ref(false)
 const reading = ref<IntelItemView | null>(null)
 const selectedId = ref('')
@@ -132,6 +134,12 @@ async function loadProfileMajor() {
 }
 const majorItems = computed(() => allItems.value.filter((item) => item.kind === 'speciality'))
 const major = computed(() => majorItems.value[0] ?? null)
+const basisLabel = computed(() => {
+  if (!basis.value) return ''
+  return basisKind.value === 'direction'
+    ? `你的方向方案「${basis.value}」`
+    : `画像专业「${basis.value}」`
+})
 const explorableItems = computed(() => allItems.value.filter((item) => item.kind !== 'speciality'))
 
 const filteredItems = computed(() => {
@@ -217,6 +225,8 @@ async function load(refresh = false) {
     const result = await (refresh ? backendClient.refreshIntel('') : backendClient.intel(''))
     if (!result || !Array.isArray(result.items)) throw new Error('Incomplete intel')
     backendDemo.setIntel(result.items)
+    basis.value = String(result.basis || '').trim()
+    basisKind.value = String(result.basis_kind || '').trim()
     // 后端现在会给出取数状态（ok/empty/failed）与画像专业：把"确实没有"
     // 和"这次没取到、可以重试"分开说，不再一律当 0 条。
     if (result.major) profileMajor.value = String(result.major).trim()
@@ -308,6 +318,11 @@ onMounted(() => {
           <i aria-hidden="true"></i>
           <span><strong>{{ allItems.filter((item) => item.kind === 'career_case').length }}</strong> 个公开职业案例</span>
         </div>
+        <p v-if="basisLabel" class="intel-basis" role="status">
+          本次探索依据：{{ basisLabel }}。平台职业库按职业大类收录，未单列的方向会展示相近职业；具体岗位要求仍需点回原始资料核对。
+          <RouterLink v-if="basisKind === 'direction'" to="/directions">查看方向方案</RouterLink>
+          <RouterLink v-else to="/profile">查看个人画像</RouterLink>
+        </p>
 
         <aside class="intel-match-prompt" aria-labelledby="intel-match-title">
           <div>
@@ -498,6 +513,9 @@ onMounted(() => {
   .intel-workbench { display: block; }
   .intel-detail-card { display: none; }
 }
+
+.intel-basis { margin: 10px 0 0; color: var(--c-text-2); font-size: 13px; line-height: 1.7; }
+.intel-basis a { margin-left: 6px; color: var(--c-primary); }
 
 @media (max-width: 640px) {
   .intel-page { padding-bottom: 92px; }

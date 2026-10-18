@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { personalizedStudyYearEntries, studyYearCode, studyYearIntro, studyYearLabel } from '../src/lib/study-year.ts'
+import { STUDY_YEAR_OPTIONS, personalizedStudyYearEntries, studyYearCode, studyYearIntro, studyYearLabel } from '../src/lib/study-year.ts'
 
 const entries = [
   ['confused', '不清楚', 1],
@@ -17,6 +17,13 @@ test('学习阶段代码与中文值使用同一套路由口径', () => {
   assert.equal(studyYearCode('大三'), 'year_3')
   assert.equal(studyYearLabel('year_3'), '大三')
   assert.match(studyYearIntro('大三'), /实习/)
+})
+
+test('学习阶段只提供大一到大四', () => {
+  assert.deepEqual(STUDY_YEAR_OPTIONS.map(option => option.label), ['大一', '大二', '大三', '大四'])
+  for (const retired of ['大五／五年制', '研究生', '其他阶段']) {
+    assert.equal(studyYearCode(retired), null)
+  }
 })
 
 test('大一和大四获得不同的默认咨询方向，且都保留自由交流', () => {

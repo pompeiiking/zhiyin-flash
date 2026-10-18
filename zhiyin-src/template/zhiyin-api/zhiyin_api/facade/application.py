@@ -576,6 +576,11 @@ class DefaultApplicationFacade(ApplicationFacade):
             None,
         )
         chosen = await self._assets.select_direction_plan(user_id, option_id)
+        # 探索结果依赖"当前方向"：选/换方向后必须立刻失效，否则 15 分钟内
+        # 职业探索还按上一个方向/专业返回，看起来就是两页方向不一致。
+        drop_intel = getattr(self._function, "drop_intel_cache", None)
+        if callable(drop_intel):
+            drop_intel(user_id)
         await self._log_behavior(
             user_id,
             (
@@ -735,6 +740,8 @@ class DefaultApplicationFacade(ApplicationFacade):
         status = ""
         message = ""
         major = ""
+        basis = ""
+        basis_kind = ""
         fetch_status = getattr(self._function, "intel_fetch_status", None)
         if callable(fetch_status):
             try:
@@ -749,8 +756,19 @@ class DefaultApplicationFacade(ApplicationFacade):
                 major = await major_of(user_id)
             except Exception:  # noqa: BLE001
                 logger.warning("读取画像专业失败", exc_info=True)
+        basis_of = getattr(self._function, "intel_basis", None)
+        if callable(basis_of):
+            try:
+                basis, basis_kind = await basis_of(user_id)
+            except Exception:  # noqa: BLE001 - 依据读不到不影响清单
+                logger.warning("读取探索依据失败", exc_info=True)
         return mappers.intel_list_view(
-            items, status=status, message=message, major=major
+            items,
+            status=status,
+            message=message,
+            major=major,
+            basis=basis,
+            basis_kind=basis_kind,
         )
 
     # ---------- AI 任务（SSE） ----------
@@ -963,6 +981,11 @@ class DefaultApplicationFacade(ApplicationFacade):
             raise RuntimeError("画像服务未装配（Container.profile_service）")
         field = await self._profiles.correct_field(user_id, key, body.value, expected_updated_at=body.expected_updated_at, check_version=True)
         await self._invalidate_user(user_id, "profile_field_updated")
+        # 职业探索按专业/方向取词，画像更正后必须一起失效；否则 15 分钟内
+        # 探索页仍显示旧专业的结果（工作台已经新值，两页看起来互相矛盾）。
+        drop_intel = getattr(self._function, "drop_intel_cache", None)
+        if callable(drop_intel):
+            drop_intel(user_id)
         # 单条回包与工作台面板走**同一个** mapper：改完那一刻看到的这条，
         # 必须和刷新之后看到的那条是同一个形状、同一个名字。
         return mappers.profile_field_view(field, labels={})

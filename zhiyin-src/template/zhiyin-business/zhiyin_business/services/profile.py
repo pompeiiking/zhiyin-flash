@@ -180,6 +180,11 @@ class DefaultProfileService(ProfileService):
                 f"「{label}」最多 {MAX_FIELD_VALUE_CHARS} 个字，现在有 {len(text)} 个 —— "
                 "画像里一格只放一句读得完的话。"
             )
+        if key == "study_year" and text not in {"大一", "大二", "大三", "大四"}:
+            raise InvalidRequest(
+                "当前只支持大一到大四的学习阶段；如果你是其他年级，请先按当前本科阶段选择，"
+                "具体说明可以写进「个人情况」或对话里。"
+            )
 
         before = next(
             (field for field in await self._profiles.list_fields(user_id, [key])), None

@@ -3305,6 +3305,16 @@ export interface components {
      */
     IntelListView: {
       /**
+       * Basis
+       * @default
+       */
+      basis?: string;
+      /**
+       * Basis Kind
+       * @default
+       */
+      basis_kind?: string;
+      /**
        * Fetched At
        * @description 这一批的取回时间
        * @default
@@ -4229,7 +4239,7 @@ export interface components {
        * Expected Updated At
        * @description 编辑时字段时间；首次填写传 null
        */
-      expected_updated_at: string | null;
+      expected_updated_at?: string | null;
       /**
        * Value
        * @description 用户认可的那个值（空串会被拒 —— 清空是另一件事）

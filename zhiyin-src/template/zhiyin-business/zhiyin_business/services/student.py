@@ -335,10 +335,15 @@ class StudentService:
         return plan
 
     async def _version(self, user_id, description, plan):
+        # 用户编辑产生的新版本必须继承上一版的依赖清单：否则删一次任务后
+        # depends_on_profile_keys=[]，之后画像变了也不会再把这个计划标成待重算。
+        versions = await self.asset_service.list_versions(user_id, AssetType.ACTION_PLAN)
+        latest = max(versions, key=lambda item: item.version, default=None)
         await self.asset_service.save_version(
             user_id,
             AssetUpdateDraft(
                 asset_type=AssetType.ACTION_PLAN,
+                depends_on_profile_keys=list(latest.depends_on_profile_keys) if latest else [],
                 diff_from_previous=description,
                 reason="用户主动编辑",
             ),

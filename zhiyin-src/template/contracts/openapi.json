@@ -4920,6 +4920,16 @@
         "additionalProperties": false,
         "description": "外部情报清单。",
         "properties": {
+          "basis": {
+            "default": "",
+            "title": "Basis",
+            "type": "string"
+          },
+          "basis_kind": {
+            "default": "",
+            "title": "Basis Kind",
+            "type": "string"
+          },
           "fetched_at": {
             "default": "",
             "description": "这一批的取回时间",
@@ -6882,8 +6892,7 @@
           }
         },
         "required": [
-          "value",
-          "expected_updated_at"
+          "value"
         ],
         "title": "ProfileFieldUpdateRequest",
         "type": "object"

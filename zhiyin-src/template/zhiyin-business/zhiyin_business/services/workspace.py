@@ -335,12 +335,13 @@ class DefaultWorkspaceService(WorkspaceService):
                     if asset_type == AssetType.REPORT and report is not None:
                         evaluation = report.verdict.title
                     elif asset_type == AssetType.DIRECTION_PLAN and direction_plans:
-                        selected = next(
-                            (p for p in direction_plans if p.selected), direction_plans[0]
-                        )
-                        evaluation = f"主攻：{selected.name}"
-                        if selected.match_score is not None:
-                            evaluation += f"（匹配 {selected.match_score:.2f}）"
+                        selected = next((p for p in direction_plans if p.selected), None)
+                        if selected is not None:
+                            # 只展示用户真正选中的那一套；没有选中时不要把第一套
+                            # 冒充“主攻”，也不要把旧模型分（方向接口已隐藏）混进来。
+                            evaluation = f"当前方向：{selected.name}"
+                        else:
+                            evaluation = "方向尚未选定，可先比较三套方案"
                     elif asset_type == AssetType.ACTION_PLAN and action_plan is not None:
                         done = sum(
                             t.done for phase in action_plan.phases for t in phase.tasks

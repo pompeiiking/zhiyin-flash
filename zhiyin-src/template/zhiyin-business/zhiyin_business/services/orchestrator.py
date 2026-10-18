@@ -233,14 +233,10 @@ def _resolve_task_for_operation(plan, message: str):
 
 
 _STUDY_YEAR_VALUES = (
-    "大五／五年制",
-    "大五",
     "大一",
     "大二",
     "大三",
     "大四",
-    "研究生",
-    "其他阶段",
 )
 
 
@@ -253,7 +249,7 @@ def _study_year_from_text(message: str) -> str | None:
     text = message or ""
     if re.search(r"(?:如果|假如|假设|要是)", text):
         return None
-    value = r"(大[一二三四]|大五(?:／五年制)?|研究生|其他阶段)"
+    value = r"(大[一二三四])"
     patterns = (
         r"(?:我现在|目前|现在|已经|已|今年|刚|开学)(?:是|读|上|升|在)?[^。；\n]{0,6}?" + value,
         r"我(?:是|读|上)" + value,
@@ -263,8 +259,7 @@ def _study_year_from_text(message: str) -> str | None:
     for pattern in patterns:
         match = re.search(pattern, text)
         if match:
-            found = match.group(1)
-            return "大五／五年制" if found == "大五" else found
+            return match.group(1)
     return None
 
 
@@ -1757,7 +1752,7 @@ class DefaultOrchestrator(Orchestrator):
                 "",
             )
             if study_year and re.search(
-                r"(?:大一|大二|大三|大四|大五|研究生)", reply_text
+                r"(?:大一|大二|大三|大四)", reply_text
             ) and study_year not in reply_text:
                 reply_text = (
                     reply_text.rstrip()

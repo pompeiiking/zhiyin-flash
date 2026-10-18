@@ -359,7 +359,7 @@
       "bundle": "zh-CN",
       "status": "enabled",
       "sort_order": 9021,
-      "note": "当前处于大几或研究生阶段；与专科、本科、硕士等学历层次分开记录"
+      "note": "当前处于大几（仅支持大一到大四）；与学历层次分开记录"
     },
     {
       "code": "profile.field.expected_graduation",
