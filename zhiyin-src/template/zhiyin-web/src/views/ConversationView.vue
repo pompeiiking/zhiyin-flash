@@ -496,7 +496,12 @@ async function saveStudyYear(label: string) {
 }
 async function upload(event: Event) { await uploadFiles(Array.from((event.target as HTMLInputElement).files ?? [])) }
 async function uploadFiles(files: File[]) {
- if (!files.length || uploading.value || thinking.value) return
+  if (!files.length || uploading.value) return
+  if (thinking.value) {
+    uploadError.value = '回复生成中，先等这一轮结束再添加材料。'
+    if (fileInput.value) fileInput.value.value = ''
+    return
+  }
  // 先做格式与大小预校验：能当场说清楚的不发请求（深度测试 DEF-DS-03/04）。
  const problems = files.map(file => materialRejection(file)).filter(Boolean)
  const acceptable = files.filter(file => !materialRejection(file))
@@ -743,7 +748,7 @@ onUnmounted(() => { disposed = true; window.removeEventListener('focus', refresh
 <section class="consultation-page" aria-label="咨询对话空间">
  <div class="consult-main">
   <header class="consult-header">
-   <div class="consult-header__top"><div class="consult-heading"><h1 :title="title">{{ title }}</h1><p v-if="!choosingTopic && demo.state.currentSessionId"><span>当前阶段：{{ stageLabel(currentStage) }}</span><span v-if="profileFieldCount">已记录 {{ profileFieldCount }} 项信息</span><span v-if="profileGapCount">{{ profileGapCount }} 项待补</span></p></div><div class="consult-header__actions">
+   <div class="consult-header__top"><div class="consult-heading"><h1>咨询对话</h1><p v-if="!choosingTopic && demo.state.currentSessionId" class="consult-session-title" :title="title">{{ title }}</p><p v-if="!choosingTopic && demo.state.currentSessionId"><span>当前阶段：{{ stageLabel(currentStage) }}</span><span v-if="profileFieldCount">已记录 {{ profileFieldCount }} 项信息</span><span v-if="profileGapCount">{{ profileGapCount }} 项待补</span></p></div><div class="consult-header__actions">
     <AnchoredCard v-model="historyOpen" class="consult-icon consult-history-button" title="历史会话" side="bottom" align="end" size="wide"><template #trigger><UiIcon name="chat" :size="18" /></template><div class="session-manage">
      <div class="session-manage__tools"><label class="information-search session-search"><span class="sr-only">搜索历史会话</span><input v-model="sessionQuery" type="search" aria-label="搜索历史会话" placeholder="搜索标题或最后一句" autocomplete="off" /></label><button type="button" class="ws-text-button" :disabled="sessionListLoading" @click="refreshSessionList(true)">{{ sessionListLoading ? '刷新中…' : '刷新列表' }}</button></div>
      <p v-if="sessionListError" class="consult-error session-manage__error" role="alert">{{ sessionListError }}<button type="button" @click="refreshSessionList(true)">重试</button></p>
@@ -864,11 +869,11 @@ onUnmounted(() => { disposed = true; window.removeEventListener('focus', refresh
      </div>
     </div>
     <article v-if="pending" class="consult-turn consult-turn--host consult-pending" aria-label="当前回复"><AgentAvatar :agent="agentKeyOf(pending.agent)" :size="38" :state="thinking ? pending.text ? 'speaking' : 'thinking' : 'idle'" /><div class="consult-answer"><span class="consult-speaker">{{ consultantLabel(pending.agent) }}</span><ReadableText v-if="pending.text" :text="cleanConsultantText(pending.text)" class="consult-prose" /><div v-else-if="thinking" class="consult-wait" role="status"><span class="consult-wait-orbit" aria-hidden="true"><i /><i /><i /></span><div><p>{{ pending.note }}</p><small>正在接收回复<span v-if="elapsed >= 3"> · {{ elapsed }} 秒</span></small></div></div><span v-if="thinking && pending.text" class="consult-cursor" aria-label="正在回复" /><small v-if="!thinking">{{ stopped ? '接收已停止' : '回复未完成' }}</small></div></article>
-    <div v-if="uploadError" class="consult-error" role="alert"><p>{{ uploadError }}</p><button :disabled="uploading || thinking" @click="fileInput?.click()">重新选择材料</button><button @click="uploadError = ''">关闭上传提示</button></div>
     <div v-if="requestError && !showFailedSend" class="consult-error" role="alert"><p>{{ requestError }}</p><button v-if="failedRequest && !stopped" @click="send(true)">重新尝试</button><button :disabled="thinking" @click="resume(demo.state.currentSessionId)">重新读取会话</button></div>
    </div>
   </div>
   <footer v-if="!choosingTopic && !showStudyYearQuestion" class="consult-compose-area">
+   <div v-if="uploadError" class="consult-error" role="alert"><p>{{ uploadError }}</p><button :disabled="uploading || thinking" @click="fileInput?.click()">重新选择材料</button><button @click="uploadError = ''">关闭上传提示</button></div>
    <button v-if="showLatest" class="consult-latest" @click="followTail = true; bottom(true)"><UiIcon name="down" :size="15" />回到最新消息</button>
    <div v-if="pendingConfirm" class="consult-confirm" role="status" aria-label="待确认事项">
     <div class="consult-confirm__copy"><strong>有一条确认还没回复</strong><p>可以直接点选；继续输入其他内容也不会自动取消它。</p></div>
@@ -890,7 +895,7 @@ onUnmounted(() => { disposed = true; window.removeEventListener('focus', refresh
     <div v-if="draggingFiles" class="consult-drop-label" aria-hidden="true"><UiIcon name="attachment" :size="20" />松开以添加材料</div>
     <div v-if="attached.length" class="consult-attachments"><span v-for="(m,i) in attached" :key="m.id"><UiIcon name="attachment" :size="14" />{{ m.name }}<button type="button" :aria-label="'移除' + m.name" @click="attached.splice(i,1)"><UiIcon name="close" :size="14" /></button></span></div>
     <textarea ref="input" v-model="draft" rows="1" aria-label="输入咨询内容" placeholder="说说你的想法，或添加材料…" @input="selectedOption?.label !== draft && (selectedOption = null)" @keydown="keydown" @paste="pasteFiles" />
-    <div class="consult-compose-tools"><input ref="fileInput" type="file" hidden multiple @change="upload" /><button type="button" class="consult-attach" :disabled="uploading || thinking" @click="fileInput?.click()"><UiIcon name="plus" :size="18" />{{ uploading ? '上传中…' : '添加材料' }}</button><span class="consult-send-hint">{{ thinking ? '回复生成中，可先准备下一条消息' : 'Enter 发送 · Shift + Enter 换行' }}</span><button v-if="thinking" type="button" class="consult-send consult-stop" :disabled="!stopArmed" aria-label="停止接收" @click="stop"><span /></button><button v-else type="submit" class="consult-send" aria-label="发送消息" :disabled="(!draft.trim() && !attached.length) || uploading || systemData.busy"><UiIcon name="arrow" :size="20" /></button></div>
+    <div class="consult-compose-tools"><input ref="fileInput" type="file" hidden multiple :disabled="uploading || thinking" @change="upload" /><button type="button" class="consult-attach" :disabled="uploading || thinking" @click="fileInput?.click()"><UiIcon name="plus" :size="18" />{{ uploading ? '上传中…' : '添加材料' }}</button><span class="consult-send-hint">{{ thinking ? '回复生成中，可先准备下一条消息' : 'Enter 发送 · Shift + Enter 换行' }}</span><button v-if="thinking" type="button" class="consult-send consult-stop" :disabled="!stopArmed" aria-label="停止接收" @click="stop"><span /></button><button v-else type="submit" class="consult-send" aria-label="发送消息" :disabled="(!draft.trim() && !attached.length) || uploading || systemData.busy"><UiIcon name="arrow" :size="20" /></button></div>
    </form>
    <p class="consult-disclaimer">建议供参考，重要决定由你做出。<DetailPopover title="资料使用说明" side="top"><template #trigger><UiIcon name="info" :size="13" /></template><p>材料和对话将按你的资料偏好参与分析。你可以查看、更正个人画像，或调整资料使用范围。</p><RouterLink to="/settings">管理资料偏好</RouterLink></DetailPopover></p>
   </footer>

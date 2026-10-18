@@ -991,6 +991,7 @@ html[data-theme='dark'] .app.app--workspace { --c-bg:#181a20; --workspace-nav:#1
 .profile-dossier__statement > span { color:var(--c-text-3); font-size:12px; }
 .profile-dossier__statement-main { display:grid; min-width:0; gap:3px; }
 .profile-dossier__statement-main strong { overflow:hidden; color:var(--c-text); font-size:16px; font-weight:600; text-overflow:ellipsis; white-space:nowrap; }
+@media(max-width:520px){.profile-dossier__statement-main strong{overflow:visible;text-overflow:clip;white-space:normal;line-height:1.5}}
 .profile-dossier__statement-main small { display:-webkit-box; overflow:hidden; max-width:680px; color:var(--c-text-2); font-size:12px; line-height:1.55; -webkit-box-orient:vertical; -webkit-line-clamp:1; }
 .profile-dossier__statement-actions { display:flex; align-items:center; gap:12px; }
 .profile-dossier__statement-actions > span { padding:5px 8px; border:1px solid var(--c-primary-border); border-radius:var(--r-pill); background:var(--c-primary-weak); color:var(--c-primary); font-size:12px; white-space:nowrap; }
@@ -1017,6 +1018,7 @@ html[data-theme='dark'] .app.app--workspace { --c-bg:#181a20; --workspace-nav:#1
 .profile-direction__mark { width:6px; height:6px; border-radius:50%; background:var(--c-primary); }
 .profile-direction strong { display:block; font-size:14px; font-weight:600; }
 .profile-direction small { display:block; margin-top:3px; overflow:hidden; color:var(--c-text-2); font-size:13px; line-height:1.6; text-overflow:ellipsis; white-space:nowrap; }
+@media(max-width:520px){.profile-direction small{overflow:visible;text-overflow:clip;white-space:normal;line-height:1.65}}
 .profile-direction > svg { color:var(--c-text-3); }
 .profile-next {
  min-width:0;

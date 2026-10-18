@@ -35,7 +35,7 @@ onMounted(load)
 <template><div class="ws-page report-page" :aria-busy="busy">
     <p class="sr-only" role="status" aria-live="polite">{{ busy ? '正在读取方向方案…' : '' }}</p>
 <PageHeading title="方向方案" description="把不同方向的可能性看清楚，用一次真实尝试替代仓促决定。"><button class="btn" :disabled="busy" @click="load">{{busy?'正在读取…':'刷新方向'}}</button><button class="ws-text-button" @click="setHistory(!history)">{{history?'返回方案':'版本记录'}}</button><button class="ws-text-button" :disabled="busy||!plans" @click="printReport">打印方案</button></PageHeading>
-<EvidenceState class="dir-evidence-state" :state="plans?.plans?.length ? 'recorded' : 'missing'" />
+<div class="dir-evidence-state"><span>方向方案</span><EvidenceState :state="plans?.plans?.length ? 'recorded' : 'missing'" /></div>
 <StatusBanner v-if="error" tone="error" :message="error" retry-label="重试" @retry="load"/><SkeletonBlock v-if="busy" variant="list" :lines="4"/>
 <DirectionDetails v-if="plans && !history" :plans="plans" :saving="saving" :impact="impact" :selection-changed="selectionChanged" @select="select"/>
 <ReportHistory v-else-if="history" asset-type="direction_plan"/>

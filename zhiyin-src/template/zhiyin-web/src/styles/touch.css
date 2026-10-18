@@ -223,7 +223,12 @@ input[type='radio'] {
 
 /* 方向页的证据徽标：放在页头下方，不与按钮挤在同一行 */
 .dir-evidence-state {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin: -4px 0 10px;
+  color: var(--c-text-3);
+  font-size: var(--fs-12);
 }
 
 /* 8) 触控收口：组件 scoped 样式里有 34–42px 的 min-height，这里用工作区前缀提特异性到 44 */

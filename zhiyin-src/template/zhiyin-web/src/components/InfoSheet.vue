@@ -25,7 +25,12 @@ function focusFallback() {
   const target = anchor.value
   queueMicrotask(() => {
     if (target && document.contains(target)) target.focus({ preventScroll: true })
-    else document.querySelector<HTMLElement>('main, [role="main"], .ws-page')?.focus?.({ preventScroll: true })
+    else {
+      // `.ws-page` 通常是 div，没有 tabindex，focus() 是空操作；优先回到
+      // 有 tabindex 的 main（路由层的 #main-content），否则不发焦点。
+      const main = document.querySelector<HTMLElement>('#main-content, main[tabindex], [role="main"][tabindex]')
+      main?.focus?.({ preventScroll: true })
+    }
   })
 }
 

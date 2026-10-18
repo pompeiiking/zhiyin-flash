@@ -47,13 +47,14 @@ function friendlyPreferenceError(message: unknown) {
   }
   return text || '偏好没有保存成功，请稍后重试。'
 }
+let savingLock=false
 async function save(){
-  if(!values.value||!original.value||busy.value)return
+  if(!values.value||!original.value||busy.value||savingLock)return
   // 页面内先拦住"只填一端"，不让它走到后端再回一段技术报文。
   const quietStart=values.value.quiet_start||'', quietEnd=values.value.quiet_end||''
   if(!quietStart !== !quietEnd){error.value='安静时段需要同时填写开始和结束时间，或两处都清空。';return}
-  busy.value=true;error.value='';status.value=''
-  try{values.value=await studentApi.savePreferences({...values.value,expected:original.value,quiet_start:quietStart||null,quiet_end:quietEnd||null});original.value={...values.value};latest.value=null;status.value='偏好已保存，后续提醒与分析请求将按此设置执行。'}catch(e){error.value=friendlyPreferenceError((e as Error).message);if((e as {code?:number}).code===1003){try{latest.value=await studentApi.preferences()}catch{error.value+=' 最新记录暂未取得，请稍后重试。'}}}finally{busy.value=false}
+  savingLock=true;busy.value=true;error.value='';status.value=''
+  try{values.value=await studentApi.savePreferences({...values.value,expected:original.value,quiet_start:quietStart||null,quiet_end:quietEnd||null});original.value={...values.value};latest.value=null;status.value='偏好已保存，后续提醒与分析请求将按此设置执行。'}catch(e){error.value=friendlyPreferenceError((e as Error).message);if((e as {code?:number}).code===1003){try{latest.value=await studentApi.preferences()}catch{error.value+=' 最新记录暂未取得，请稍后重试。'}}}finally{savingLock=false;busy.value=false}
 }
 onMounted(load)
 </script>

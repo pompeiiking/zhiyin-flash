@@ -29,11 +29,28 @@ function statusMessage(status: number) {
 }
 type Operation = { method: string; path: string }
 /**
+ * GET 请求的短缓存 + 并发去重。
+ *
+ * 工作台/壳层/各页面会同时请求同一个 GET（workspace 被 10+ 页面各拉一次），
+ * 既慢又容易在写后读到互相覆盖的旧快照。这里只缓存 **GET 800ms**，任何
+ * 非 GET（保存/勾选/选方向等）都会清空，避免拿写入前的旧值。
+ */
+const GET_CACHE_TTL_MS = 800
+const getCache = new Map<string, { at: number; promise: Promise<unknown> }>()
+function cacheKeyOf(key: string, options: Options) {
+  let token = ''
+  try { token = localStorage.getItem('zhiyin_token') ?? '' } catch { /* 匿名 */ }
+  return [key, JSON.stringify(options.params ?? {}), JSON.stringify(options.query ?? {}), token].join('|')
+}
+function clearGetCache() { getCache.clear() }
+/**
  * 会话历史管理（PATCH/DELETE /app/sessions/{task_id}）与能力清单（GET /app/capabilities）
  * 由这一轮新增，尚未写进 `operations.json`（该文件不在本次改动范围）。这里用显式
  * Operation 描述直接发请求：路径与方法是当前约定的最终形态，联调时只需核对。
  */
 async function send<T>(operation: Operation, options: Options = {}, opts: { auth?: boolean } = {}): Promise<T> {
+  // 任何写操作都让 GET 缓存失效：保存后马上回到报告/计划页时不能读旧快照。
+  if (operation.method !== 'GET') clearGetCache()
   let path = operation.path.replace(/\{(\w+)\}/g, (_match, key: string) => {
     const value = options.params?.[key]
     if (value === undefined) throw new Error('Missing path parameter: ' + key)
@@ -76,7 +93,20 @@ async function send<T>(operation: Operation, options: Options = {}, opts: { auth
   } finally { clearTimeout(timeout); options.signal?.removeEventListener('abort', abort) }
 }
 async function request<T>(key: keyof typeof operations, options: Options = {}): Promise<T> {
-  return send<T>(operations[key], options, { auth: key === 'login' || key === 'register' })
+  const operation = operations[key]
+  if (operation.method === 'GET' && !options.signal) {
+    const cacheKey = cacheKeyOf(key, options)
+    const hit = getCache.get(cacheKey)
+    if (hit && Date.now() - hit.at < GET_CACHE_TTL_MS) return hit.promise as Promise<T>
+    const promise = send<T>(operation, options, { auth: key === 'login' || key === 'register' })
+    getCache.set(cacheKey, { at: Date.now(), promise })
+    promise.catch(() => {
+      const current = getCache.get(cacheKey)
+      if (current?.promise === promise) getCache.delete(cacheKey)
+    })
+    return promise
+  }
+  return send<T>(operation, options, { auth: key === 'login' || key === 'register' })
 }
 export const backendClient = {
   portal: () => request<PortalView>('portal'),
