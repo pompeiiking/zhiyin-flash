@@ -425,6 +425,7 @@ def build_services(container: "Container") -> None:
             # 没有任何一次读会经过它 —— `/healthz` 的 hits/misses 会永远是 0，
             # 而"缓存装上了"看起来又是真的。装配一处漏接就是这个症状。
             read_cache=container.read_cache,
+            web_search_available=container.web_search is not None,
         )
 
 

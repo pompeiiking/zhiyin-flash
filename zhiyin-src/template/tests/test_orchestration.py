@@ -807,3 +807,33 @@ def test_review_prose_uses_task_label_without_changing_task_id() -> None:
     assert fixed["guide"]["text"] == "要不要继续「写出实际负责的部分」？"
     assert fixed["achievements_unlocked"] == ["t1"]
     assert source["conclusion"] == "你刚勾掉了 t1，下一步先看 t2。"
+
+@pytest.mark.asyncio
+async def test_engine_skips_optional_web_search_without_error(caplog) -> None:
+    """可选能力（web.search）未装配是正常部署：跳过、记 info，不刷 error。"""
+    from agno.models.openai import OpenAIChat
+
+    from zhiyin_kernel.registry import AgentDescriptor
+    from zhiyin_orchestration.impl.agno_engine import AgnoAgentEngine
+
+    async def kb_search(run_context, query: str) -> str:
+        """查知识库。"""
+        return "hit"
+
+    class _Registry:
+        async def get_agent(self, agent_id: str):
+            return AgentDescriptor(id="tester", name="测试", tools=["kb.search", "web.search"])
+
+    engine = AgnoAgentEngine(
+        model_factory=lambda **kw: OpenAIChat(
+            id="t", api_key="sk-test", base_url="https://api.deepseek.com"
+        ),
+        registry=_Registry(),
+        tools={"kb.search": kb_search},
+    )
+    with caplog.at_level("INFO"):
+        attached = await engine._tools_for("tester")
+    assert attached == [kb_search], "未装配的可选工具只跳过，其余照挂"
+    assert not [r for r in caplog.records if r.levelname == "ERROR"], "可选能力缺失不该报 error"
+    logged = "\n".join(record.getMessage() for record in caplog.records)
+    assert "web.search" in logged and "可选" in logged

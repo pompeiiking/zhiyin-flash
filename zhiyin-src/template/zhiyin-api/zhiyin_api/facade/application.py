@@ -23,7 +23,6 @@ IO 口径：底层服务全部 async，因此本 Facade 的全部方法都是 `a
 from __future__ import annotations
 
 import asyncio
-import os
 from datetime import datetime
 from typing import Any, Optional
 
@@ -124,6 +123,7 @@ class DefaultApplicationFacade(ApplicationFacade):
         read_cache: Optional[ReadCacheService] = None,
         profiles: Optional[ProfileService] = None,
         student=None,
+        web_search_available: bool = False,
     ) -> None:
         """构造依赖由 boot 注入。
 
@@ -159,6 +159,9 @@ class DefaultApplicationFacade(ApplicationFacade):
         # 画像的写侧：用户手动更正那一条要走它。**不能**经工作台服务代写 ——
         # 那个服务的契约是读侧（"本类不写任何状态、不发任何事件"）。
         self._profiles = profiles
+        # 能力面板必须反映**本次启动实际装配**的能力，而不是"环境变量里有没有 key"：
+        # 启动后再改 .env 不重启，工具其实没装上，面板不能先说可用。
+        self._web_search_available = bool(web_search_available)
 
     async def check_analysis_consent(self, user_id):
         if self._student is not None:
@@ -351,7 +354,7 @@ class DefaultApplicationFacade(ApplicationFacade):
 
     async def capabilities(self) -> CapabilityListView:
         """当前部署的真实能力（不猜、不把未配置说成可用）。"""
-        search_ready = bool(os.environ.get("ZHIYIN_SEARCH_API_KEY", "").strip())
+        search_ready = self._web_search_available
         rows = [
             {
                 "key": "web_search",

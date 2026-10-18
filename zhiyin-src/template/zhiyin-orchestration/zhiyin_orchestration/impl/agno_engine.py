@@ -44,6 +44,10 @@ ModelFactory = Callable[..., Any]
 # 不退回默认温度、也不用兜底句顶上。
 
 _CORE_PROMPT = "core.system"
+
+#: 部署可选的能力位：白名单里写了、当前装配没装，属于正常情况（只记 info）。
+#: 其余缺失仍按配置错误记 error —— 名字写错/该装没装不能被静默吞掉。
+_OPTIONAL_TOOLS = frozenset({"web.search"})
 _GUIDE_PROMPT = "guide.closing"
 
 #: 回传盒子的键名。工具与引擎共用它，**在编排层与工具层各写一遍常量**是刻意的：
@@ -523,7 +527,11 @@ class AgnoAgentEngine(AgentEngine):
 
         白名单写在 `agents.json` 的 `tools` 字段（业务口径：某个智能体允许用哪些工具），
         实现侧不得自作主张扩大权限。
-        **未注册的工具名：跳过它、记一条 error，但不让这一轮失败。**
+        **未注册的工具名：跳过它、记日志，但不让这一轮失败。**
+
+        可选能力（如 `web.search`）与"名字写错/该装配没装配"分开记：
+        · 可选能力：装配层没有它属于正常部署（没配密钥），记 info，不刷 error；
+        · 其余缺失：记 error（含智能体名与缺失的工具名），运维在日志里看得见。
 
         这条口径改过一次，两种做法各有代价，写清楚为什么改成现在这样：
 
@@ -532,8 +540,7 @@ class AgnoAgentEngine(AgentEngine):
           实测一次 —— `.env` 里没配搜索网关，`web.search` 因此没注册，
           而职业顾问的白名单里写着它，于是 ②③④ 每一步都 500：
           用户话说了一半、界面卡住，日志里只有一条配置错误。
-        · 现在：缺失**如实记 error**（含智能体名与缺失的工具名，运维在日志里看得见），
-          这一轮照常用**已装配**的工具跑完。同类先例见编排器里那句
+        · 现在：缺失如实记录，这一轮照常用**已装配**的工具跑完。同类先例见编排器里那句
           "资产落库失败不打断对话" —— 服务端的配置问题不该吃掉用户的话。
 
         "未注册"与"写错名字"是两件事：这里两种都会落在 missing 里，
@@ -549,13 +556,21 @@ class AgnoAgentEngine(AgentEngine):
         if self.module_tool_names is not None:
             names.extend(await self.module_tool_names(agent_id))
         missing = sorted(name for name in names if name not in self._tools)
-        if missing:
+        missing_optional = [name for name in missing if name in _OPTIONAL_TOOLS]
+        missing_required = [name for name in missing if name not in _OPTIONAL_TOOLS]
+        if missing_required:
             logger.error(
                 "智能体 %s 的白名单里有未注册的工具 %s：本次跳过。"
                 "未装配就在装配层注册它，写错名字就改 agents.json —— 两者都要处理，"
                 "否则这个智能体一直少一条能力而没人知道。",
                 agent_id,
-                missing,
+                missing_required,
+            )
+        if missing_optional:
+            logger.info(
+                "智能体 %s 的可选工具 %s 未装配（当前部署未配置对应服务），本次跳过。",
+                agent_id,
+                missing_optional,
             )
         return [self._tools[name] for name in dict.fromkeys(names) if name in self._tools]
 
