@@ -1644,7 +1644,7 @@ class DefaultOrchestrator(Orchestrator):
 
             # 结论里已经写了"缺证据=能力不足"时不修：交给下面的校验器拒绝，
             # 走 fallback 回复（不展示、不落库）；只修结构性的误写。
-            if _diagnose_verdict_is_meta(structured):
+            if explicit_report and _diagnose_verdict_is_meta(structured):
                 logger.warning("诊断报告结论混入生成过程/旧版点评，拒绝落库")
                 result.valid = False
                 result.errors.append("诊断结论内容越界")
