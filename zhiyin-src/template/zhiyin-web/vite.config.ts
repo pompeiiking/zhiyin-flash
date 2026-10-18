@@ -22,5 +22,17 @@ return {
     host: '127.0.0.1',
     port: 5275,
   },
+  build: {
+    // 第三方运行时单独成块：入口只装业务壳层，改业务代码时浏览器缓存不用重下 Vue。
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vue: ['vue', 'vue-router'],
+          motion: ['motion-v'],
+          reka: ['reka-ui'],
+        },
+      },
+    },
+  },
 }
 })

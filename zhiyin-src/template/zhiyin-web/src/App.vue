@@ -1,16 +1,17 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import AppTopBar from './components/WorkspaceHeader.vue'
-import WorkspaceNav from './components/WorkspaceNav.vue'
-import CommandPalette from './components/CommandMenu.vue'
+// 工作区壳层按需加载：公开门户/登录首屏不下载侧栏、提醒、命令面板与关怀弹层。
+const AppTopBar = defineAsyncComponent(() => import('./components/WorkspaceHeader.vue'))
+const WorkspaceNav = defineAsyncComponent(() => import('./components/WorkspaceNav.vue'))
+const CommandPalette = defineAsyncComponent(() => import('./components/CommandMenu.vue'))
+const FloatingReminders = defineAsyncComponent(() => import('./components/FloatingReminders.vue'))
+const InterventionModal = defineAsyncComponent(() => import('./components/CareSheet.vue'))
+const DesktopSidebar = defineAsyncComponent(() => import('./components/DesktopSidebar.vue'))
 import AuthLayer from './components/AuthLayer.vue'
-import FloatingReminders from './components/FloatingReminders.vue'
-import InterventionModal from './components/CareSheet.vue'
 import { demo } from './store'
 import { skin } from './lib/theme'
 import { INTERVENTION } from './data/student'
-import DesktopSidebar from './components/DesktopSidebar.vue'
 import { useNavigationLayout } from './lib/layout'
 import { loadShell, systemData, refreshNotifications } from './lib/system-data'
 import { auth } from './lib/auth'
@@ -31,10 +32,10 @@ import { sessionCacheAvailable } from './lib/session-cache'
  */
 const route = useRoute()
 const router = useRouter()
-const palette = ref<InstanceType<typeof CommandPalette> | null>(null)
-const workspaceHeader = ref<InstanceType<typeof AppTopBar> | null>(null)
-const sidebar = ref<InstanceType<typeof DesktopSidebar> | null>(null)
-const mobileNav = ref<InstanceType<typeof WorkspaceNav> | null>(null)
+const palette = ref<{ show: () => void } | null>(null)
+const workspaceHeader = ref<{ focusExpand: () => void } | null>(null)
+const sidebar = ref<{ focusCollapse: () => void } | null>(null)
+const mobileNav = ref<{ show: () => void } | null>(null)
 
 const bare = computed(() => route.meta.public === true)
 
