@@ -137,6 +137,11 @@ async def test_proposal_metadata_does_not_break_plan_creation():
 @pytest.mark.asyncio
 async def test_proposal_metadata_does_not_break_report_creation():
     c, _, session = await setup()
+    # 空画像现在会先要求补信息；这条测的是工具提议元数据不影响报告生成，
+    # 所以先放入一条最小画像，避免被空画像门禁挡掉。
+    await c.profile_service.update_field(
+        "u1", "study_year", "大三", confidence=1.0, source="user_edit"
+    )
     c.orchestrator._agent_engine = SuggestingEngine()
     result = await send(c, session, "请生成诊断报告")
     assert await c.asset_service.get_report("u1") is not None

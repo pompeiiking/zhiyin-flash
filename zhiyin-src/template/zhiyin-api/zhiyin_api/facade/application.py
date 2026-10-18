@@ -996,6 +996,14 @@ class DefaultApplicationFacade(ApplicationFacade):
             raise RuntimeError("画像服务未装配（Container.profile_service）")
         field = await self._profiles.correct_field(user_id, key, body.value, expected_updated_at=body.expected_updated_at, check_version=True)
         await self._invalidate_user(user_id, "profile_field_updated")
+        # 画像更正后必须沿 profile→report→direction→action 标记待核对；
+        # 只失效读缓存不够，报告页会继续展示旧值（R2-W2 RPT-016）。
+        propagate = getattr(self._assets, "propagate", None)
+        if callable(propagate):
+            try:
+                await propagate(user_id, [key])
+            except Exception:  # noqa: BLE001 - 标记失败不阻断更正本身
+                logger.warning("画像更正后的资产影响传播失败：%s", key, exc_info=True)
         # 职业探索按专业/方向取词，画像更正后必须一起失效；否则 15 分钟内
         # 探索页仍显示旧专业的结果（工作台已经新值，两页看起来互相矛盾）。
         drop_intel = getattr(self._function, "drop_intel_cache", None)

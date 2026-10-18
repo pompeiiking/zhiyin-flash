@@ -583,7 +583,7 @@ async function toggleTask(guideTask: NonNullable<ChatTurn['guideTask']>) {
     else toast(friendlyError(e))
   } finally { guideSaving.value = '' }
 }
-function stop() { if (!stopArmed.value) return; stopped.value = true; controller?.abort() }
+function stop() { if (!stopArmed.value) return; stopped.value = true; clearChatPending(demo.state.currentSessionId); controller?.abort() }
 async function send(retry = false, choice?: { text: string; option?: OptionRef }) {
  if (thinking.value || uploading.value || systemData.busy) return
  // 刷新后 failedRequest 会因为本轮普通消息成功而被清空，失败态里仍保存着原始请求。
@@ -688,7 +688,12 @@ watch(thinking, (busy, wasBusy) => {
  else if (wasBusy) replyAnnouncement.value = stopped.value ? '回复已停止，已接收的内容保留。' : '回复已到，可以继续提问。'
 }, { flush:'sync' })
 watch(() => navigation.width.value, () => { void nextTick(resizeInput) })
-watch(requestError, message => { if (message) replyAnnouncement.value = '回复失败，可以重试。' })
+watch(requestError, message => {
+ if (!message) return
+ replyAnnouncement.value = stopped.value
+  ? '回复已停止，已接收的内容保留。'
+  : '回复失败，可以重试。'
+})
 watch([draft, attached], () => { remember(); void nextTick(resizeInput) }, { deep:true })
 watch(() => demo.state.currentSessionId, (_id, previous) => {
  backendDemo.saveDraft(previous, draft.value, attached.value, flow.value?.scrollTop ?? null)

@@ -204,9 +204,10 @@ def _instruction_is_quoted_or_impersonated(message: str) -> bool:
     for segment in re.findall(r"[「『“\"'](.{1,120}?)[」』”\"']", message):
         if re.search(r"(?:生成|创建|更新|保存|重算|删除|修改|改|标记|完成|做完|搞定|勾掉|恢复|撤销)", segment):
             return True
-    # “我同学/室友/有人说……”是转述，不是本人直接要求。
+    # “我同学/老师说……”是转述，不是本人直接要求。
     if re.search(
-        r"(?:同学|室友|朋友|别人|有人|他|她).{0,12}(?:说|让我|叫我|转告|转述|建议)",
+        r"(?:同学|室友|朋友|别人|有人|他|她|老师|辅导员|导师|家长|父母|领导|HR|hr|面试官|同事)"
+        r".{0,12}(?:说|让我|叫我|转告|转述|建议|问)",
         message,
     ) and re.search(r"(?:生成|更新|保存|报告|计划|执行|完成)", message):
         return True
@@ -327,6 +328,31 @@ _STUDY_YEAR_VALUES = (
     "大三",
     "大四",
 )
+
+
+def _resolve_tasks_for_operation(plan, message: str) -> list:
+    """定位本轮要改的一条或多条任务（“第一项和第二项都完成”）。"""
+    tasks = [
+        task
+        for phase in (plan.phases if plan else [])
+        for task in phase.tasks
+        if task.text
+    ]
+    if not tasks:
+        return []
+    exact = [task for task in tasks if task.text in message]
+    if exact:
+        return exact
+    ordinals = re.findall(r"第\s*([一二三四五六七八九十\d]+)\s*(?:项|个|件|条)?", message)
+    resolved: list = []
+    for token in ordinals:
+        index = _CN_ORDINAL.get(token)
+        if index is not None and 0 <= index < len(tasks) and tasks[index] not in resolved:
+            resolved.append(tasks[index])
+    if resolved:
+        return resolved
+    single = _resolve_task_for_operation(plan, message)
+    return [single] if single is not None else []
 
 
 def _study_year_from_text(message: str) -> str | None:
@@ -1173,7 +1199,6 @@ class DefaultOrchestrator(Orchestrator):
             and not accepted_offer
             and not view_report_requested
             and not _has_report_basis(blackboard.profile)
-            and bool(re.search(r"(?:资料不足|没有资料|信息不足|资料太少|还没填|没什么信息|空白)", request.message))
         )
         if report_basis_missing:
             # 空画像不生成空报告：回采集补齐“年级 + 一条实质信息”。
@@ -1776,7 +1801,33 @@ class DefaultOrchestrator(Orchestrator):
                            AssetType.REPORT if stage is LoopStage.DIAGNOSE and explicit_report else None)
         if requested_asset and not module_query and not write_tool_attempted:
             label = "行动计划" if requested_asset is AssetType.ACTION_PLAN else "诊断报告"
-            if any(item.asset_type == requested_asset for item in changed_assets):
+            prior = max(
+                (
+                    item.version
+                    for item in blackboard.asset_versions
+                    if item.asset_type == requested_asset
+                ),
+                default=0,
+            )
+            changed_for_asset = any(
+                item.asset_type == requested_asset and item.version > prior
+                for item in changed_assets
+            )
+            same_version = any(
+                item.asset_type == requested_asset and item.version <= prior
+                for item in changed_assets
+            )
+            if not changed_for_asset:
+                # 模型/持久化分支异常时可能已经落库但本轮的 changed_assets 为空；
+                # 以资产版本为准再确认一次，避免“说没成功、版本却 +1”。
+                try:
+                    latest = await self._assets.get_latest_version(request.user_id, requested_asset)
+                except Exception:  # noqa: BLE001
+                    latest = None
+                if latest is not None and latest.version > prior:
+                    changed_assets = [*changed_assets, latest]
+                    changed_for_asset = True
+            if changed_for_asset:
                 # 报告/计划确实落了库；但正文里无法核对的判断仍可能是“待验证”。
                 # 把成功和限制放在同一句里，避免用户读到“先补依据”又紧跟“已生成”。
                 reply_text = (
@@ -1784,15 +1835,21 @@ class DefaultOrchestrator(Orchestrator):
                     "其中无法核对的部分会标为待验证/待补，请以页面上的状态为准。"
                 ).strip()
             else:
-                # The model may have written “已生成” before validation or a
-                # failed database write; only the server can confirm success.
-                # 措辞要可执行：这句话实测出现时，用户唯一的感受是"它又失败了"；
-                # 要告诉他下一步能做什么，并明确已有内容没有被改。
-                reply_text = (
-                    f"这次没有成功生成{label}。已有内容没有被修改。"
-                    f"你可以再说一次「生成{label}」，"
-                    f"或先补充一条具体信息（比如一份岗位要求、一段经历）再试。"
-                )
+                if prior > 0 and same_version:
+                    reply_text = (
+                        f"这次没有产生新的{label}：内容和上一版一致，已有版本没有被修改。"
+                        f"如果你要改结论，请补充一条新材料或明确说明要改哪一项。"
+                    )
+                else:
+                    # The model may have written “已生成” before validation or a
+                    # failed database write; only the server can confirm success.
+                    # 措辞要可执行：这句话实测出现时，用户唯一的感受是"它又失败了"；
+                    # 要告诉他下一步能做什么，并明确已有内容没有被改。
+                    reply_text = (
+                        f"这次没有成功生成{label}。已有内容没有被修改。"
+                        f"你可以再说一次「生成{label}」，"
+                        f"或先补充一条具体信息（比如一份岗位要求、一段经历）再试。"
+                    )
                 guide = BehaviorGuide(kind="question", text="", question=None)
 
         # Do not repeatedly ask after a postponement. A fresh explicit request
@@ -1891,6 +1948,17 @@ class DefaultOrchestrator(Orchestrator):
                 + "\n\n（说明：这一轮没有真正写入业务数据。如果你刚才是在要求修改，"
                 "请以对应页面为准，或明确再说一次要改哪一项。）"
             )
+        if (
+            re.search(r"(?:改短|缩短|改小|简化|改简单)", request.message)
+            and not changed_assets
+            and not write_tool_attempted
+            and not result.business_tool_calls
+        ):
+            reply_text = (
+                reply_text.rstrip()
+                + "\n\n（说明：这一轮计划没有被改写。如果要真正重排，请明确说「更新计划」，"
+                "我按新要求生成一版并在计划页标出版本变化。）"
+            )
         # 画像查询与正式档案不一致时，以档案为准补一句（模型曾答"画像里只有大三"
         # 而页面显示大二；这类矛盾会直接进报告结论）。
         if re.search(r"(?:画像|学习阶段|年级|个人信息)", request.message) and blackboard.profile:
@@ -1927,13 +1995,22 @@ class DefaultOrchestrator(Orchestrator):
             )
             guide = BehaviorGuide(kind="question", text="", question=None)
         if re.search(
-            r"(?:我是|读|在读|目前|学历|层次|学位).{0,8}(?:研究生|硕士|博士)",
+            r"(?:我是|读|在读|目前|学历|层次|学位).{0,8}(?:研究生|硕士|博士|大五|五年制|其他阶段)",
             request.message,
         ) and not re.search(r"(?:本科|大一|大二|大三|大四)", request.message):
             # 产品只支持本科阶段；不要顺着说“收下了”，否则用户会以为档案里有了。
             reply_text = (
-                "当前只支持本科大一到大四，研究生/硕士/博士阶段暂不写入档案。"
+                "当前只支持本科大一到大四，研究生/硕士/博士、大五/五年制阶段暂不写入档案。"
                 "如果你愿意，可以先按本科阶段记录，具体阶段可以在对话里说明。"
+            )
+            guide = BehaviorGuide(kind="question", text="", question=None)
+        if re.search(
+            r"(?:提醒我|设(?:个|一个)?提醒|到点提醒|明早|明天|今晚|后天).{0,16}(?:提醒|叫我|投|做|完成|准备)",
+            request.message,
+        ):
+            reply_text = (
+                "提醒需要在「提醒」页按日期设置，我在对话里不能直接替你创建。"
+                "我可以先把这件事写成计划任务；到时间你在「今日行动」里能看到。"
             )
             guide = BehaviorGuide(kind="question", text="", question=None)
         if re.search(
@@ -2080,16 +2157,15 @@ class DefaultOrchestrator(Orchestrator):
             return None
         if plan is None:
             return None
-        task = _resolve_task_for_operation(plan, request.message)
-        if task is None or not task.id:
+        targets = _resolve_tasks_for_operation(plan, request.message)
+        if not targets or any(not task.id for task in targets):
             return None
-        if bool(task.done) == intent:
-            text = (
-                f"「{task.text}」已经是完成状态了，这次没有重复修改。"
-                if intent
-                else f"「{task.text}」现在是未完成状态，不需要再恢复。"
-            )
-        else:
+        changed = []
+        unchanged = []
+        for task in targets:
+            if bool(task.done) == intent:
+                unchanged.append(task)
+                continue
             try:
                 await self._assets.mark_action_task_done(
                     request.user_id, task.id, done=intent
@@ -2097,31 +2173,51 @@ class DefaultOrchestrator(Orchestrator):
             except Exception:  # noqa: BLE001 - 写失败必须如实说，不能假装成功
                 logger.warning("对话内任务状态更新失败：task_id=%s", task.id, exc_info=True)
                 text = "这次没能改动任务状态（系统暂时没有保存成功），已保留你的原计划。请稍后在计划页重试。"
-            else:
-                if intent:
-                    try:
-                        await self._behaviors.log(
-                            request.user_id,
-                            BehaviorEventDraft(
-                                event_type=BehaviorEventType.TASK_DONE,
-                                payload={"task_id": task.id, "source": "conversation"},
-                            ),
-                        )
-                    except Exception:  # noqa: BLE001
-                        logger.warning("任务完成行为日志写入失败（任务已更新）", exc_info=True)
-                plan = await self._assets.get_action_plan(request.user_id)
-                tasks = [
-                    item
-                    for phase in (plan.phases if plan else [])
-                    for item in phase.tasks
-                ]
-                total = len(tasks)
-                done_count = sum(1 for item in tasks if item.done)
-                text = (
-                    f"已把「{task.text}」标记为完成（计划现在 {done_count}/{total} 项完成）。"
-                    if intent
-                    else f"已把「{task.text}」恢复为未完成（计划现在 {done_count}/{total} 项完成）。"
-                )
+                changed = []
+                break
+            changed.append(task)
+            if intent:
+                try:
+                    await self._behaviors.log(
+                        request.user_id,
+                        BehaviorEventDraft(
+                            event_type=BehaviorEventType.TASK_DONE,
+                            payload={"task_id": task.id, "source": "conversation"},
+                        ),
+                    )
+                except Exception:  # noqa: BLE001
+                    logger.warning("任务完成行为日志写入失败（任务已更新）", exc_info=True)
+        if not changed and not unchanged:
+            text = "这次没有找到要改的任务，请在计划页确认任务名称后重试。"
+        elif not changed:
+            text = (
+                "这几项已经是完成状态了，这次没有重复修改。"
+                if intent else "这几项现在是未完成状态，不需要再恢复。"
+            )
+        elif len(targets) == 1:
+            plan = await self._assets.get_action_plan(request.user_id)
+            tasks = [
+                item for phase in (plan.phases if plan else []) for item in phase.tasks
+            ]
+            total = len(tasks)
+            done_count = sum(1 for item in tasks if item.done)
+            text = (
+                f"已把「{changed[0].text}」标记为完成（计划现在 {done_count}/{total} 项完成）。"
+                if intent
+                else f"已把「{changed[0].text}」恢复为未完成（计划现在 {done_count}/{total} 项完成）。"
+            )
+        else:
+            plan = await self._assets.get_action_plan(request.user_id)
+            tasks = [
+                item for phase in (plan.phases if plan else []) for item in phase.tasks
+            ]
+            total = len(tasks)
+            done_count = sum(1 for item in tasks if item.done)
+            labels = "".join(f"「{task.text}」" for task in changed)
+            action = "标记为完成" if intent else "恢复为未完成"
+            text = f"已把{labels}{action}（计划现在 {done_count}/{total} 项完成）。"
+            if unchanged:
+                text += f" 另外 {len(unchanged)} 项本来就是这个状态，没有重复修改。"
         result = TurnResult(
             task_id=request.task_id,
             session=session,
