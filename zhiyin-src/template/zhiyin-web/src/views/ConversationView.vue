@@ -15,7 +15,7 @@ import { replyTurns } from '../lib/conversation-turns'
 import { backendClient } from '../api/backend-client'
 import { streamBackend } from '../api/backend-stream'
 import { studentApi } from '../api/student-capabilities'
-import type { ActionPhaseView, ActionTaskView, ConversationTurnView, MessageRequest, TheoryCardView } from '../api/backend-types'
+import type { ActionPhaseView, ActionTaskView, CapabilitiesView, CapabilityItemView, ConversationTurnView, MessageRequest, SessionListView, TaskSessionView, TheoryCardView } from '../api/backend-types'
 import type { ChatTurn } from '../data/types'
 import AgentAvatar from '../components/AgentAvatar.vue'
 import UiIcon from '../components/UiIcon.vue'
@@ -55,6 +55,15 @@ let copyTimer: ReturnType<typeof setTimeout> | undefined
 const uploadError = ref('')
 const requestError = ref(''), profileError = ref(''), guideSaving = ref('')
 const profileOpen = ref(false), historyOpen = ref(false), profileLoading = ref(false)
+// ---- F8 会话历史管理：搜索 / 行内重命名 / 二次确认删除 ----
+const sessionQuery = ref('')
+const sessionListLoading = ref(false), sessionListError = ref('')
+const renamingId = ref(''), renameDraft = ref(''), renameError = ref(''), renameBusy = ref(false)
+const deletingId = ref(''), deleteBusy = ref(false), deleteError = ref('')
+// ---- F9 能力面板：可用 / 未启用（原因）/ 替代 ----
+const capabilitiesOpen = ref(false)
+const capabilitiesLoading = ref(false), capabilitiesError = ref('')
+const capabilities = ref<CapabilitiesView | null>(null)
 const choosingTopic = ref(false)
 // 恢复会话的短暂空态：避免刚刷新时先闪一句"新会话已就绪/咨询对话"。
 const restoring = ref(false)
@@ -72,6 +81,14 @@ const sessions = computed(() => [...backendDemo.state.sessions]
  // 否则 fresh 新建的空会话会先出现在列表里、刷新后又消失（DEF-C2）。
  .filter(session => (session.message_count ?? 0) > 0 || !!session.last_message)
  .sort((a,b) => ((b.last_message_at || b.last_active_at) || '').localeCompare((a.last_message_at || a.last_active_at) || '')))
+// 会话搜索：按标题与会话最后一句内容实时过滤（无结果时给明确空态）。
+const filteredSessions = computed(() => {
+ const keyword = sessionQuery.value.trim().toLowerCase()
+ if (!keyword) return sessions.value
+ return sessions.value.filter(session => `${session.task_name || ''} ${session.last_message || ''}`.toLowerCase().includes(keyword))
+})
+const sessionMutationBusy = computed(() => renameBusy.value || deleteBusy.value)
+const capabilityItems = computed<CapabilityItemView[]>(() => capabilities.value?.items ?? [])
 const title = computed(() => showStudyYearQuestion.value ? '开始咨询' : choosingTopic.value ? '选择咨询主题' : backendDemo.currentSession.value?.task_name || '咨询对话')
 const journey = [
  { key:'collect', label:'了解自己', short:'了解' },
@@ -314,13 +331,143 @@ function journeyState(stage: string) { const current = journey.findIndex(item =>
 async function theory(id: string) { if (theoryCards.value[id] || theoryLoading.value[id]) return; theoryErrors.value[id] = ''; theoryLoading.value[id] = true; try { theoryCards.value[id] = await backendClient.theory(id) } catch (e) { theoryErrors.value[id] = friendlyError(e) } finally { theoryLoading.value[id] = false } }
 async function refreshProfile() { profileLoading.value = true; profileError.value = ''; try { const result = await backendClient.workspace(); if (!disposed) { backendDemo.setWorkspace(result); const stored = result.profile_panel?.fields?.find(field => field.key === 'study_year'); if (stored) savedStudyYear.value = String(stored.value ?? '') } } catch (e) { if (!disposed) profileError.value = friendlyError(e) } finally { profileLoading.value = false; profileLoaded.value = true } }
 function clearTopicQuery() { if (route.query.new === undefined) return; const query = { ...route.query }; delete query.new; void router.replace({ path:route.path, query }) }
-async function refreshSessionsOnFocus() {
- if (document.visibilityState !== 'visible') return
- try {
-  const result = await backendClient.sessions()
-  if (!disposed) backendDemo.setSessions(result.sessions ?? [], demo.state.currentSessionId)
- } catch { /* Keep the current conversation usable if the refresh fails. */ }
+/**
+ * 会话列表刷新：重命名/删除的响应优先直接落地（契约返回 SessionListView），
+ * 只有响应不可用时才再请求一次——避免操作后重复请求。
+ */
+function applySessionListResult(result: SessionListView | { removed?: string } | null | undefined) {
+  const sessionsResult = result && Array.isArray((result as SessionListView).sessions) ? result as SessionListView : null
+  if (!sessionsResult) return false
+  const list = sessionsResult.sessions ?? []
+  const current = demo.state.currentSessionId
+  const keep = list.some(session => session.task_id === current) ? current : (sessionsResult.current_task_id || '')
+  backendDemo.setSessions(list, keep)
+  return true
 }
+async function refreshSessionList(notify = false) {
+  if (sessionListLoading.value) return false
+  sessionListLoading.value = true
+  if (notify) sessionListError.value = ''
+  try {
+    const result = await backendClient.sessions()
+    if (!disposed) applySessionListResult(result)
+    return true
+  } catch (e) {
+    if (notify && !disposed) sessionListError.value = friendlyError(e)
+    return false
+  } finally { if (!disposed) sessionListLoading.value = false }
+}
+async function refreshSessionsOnFocus() {
+  if (document.visibilityState !== 'visible') return
+  // 焦点回到页面时静默刷新；历史浮层打开时把错误显示在浮层里。
+  await refreshSessionList(historyOpen.value)
+}
+function sessionTimeLabel(session: TaskSessionView) {
+  const raw = session.last_message_at || session.last_active_at
+  if (!raw) return ''
+  const date = new Date(raw)
+  return Number.isNaN(date.getTime()) ? '' : date.toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
+function startRename(session: TaskSessionView) {
+  if (sessionMutationBusy.value) { toast('正在处理上一个会话操作，请稍候。'); return }
+  deletingId.value = ''
+  renamingId.value = session.task_id
+  renameDraft.value = session.task_name
+  renameError.value = ''
+  void nextTick(() => {
+    // 行内输入框在 v-for 里，不用模板 ref（会变成数组），按容器查询后聚焦更稳。
+    const field = document.querySelector('.session-row__rename input') as HTMLInputElement | null
+    field?.focus()
+    field?.select()
+  })
+}
+function cancelRename() {
+  if (renameBusy.value) return
+  renamingId.value = ''
+  renameError.value = ''
+}
+async function saveRename(session: TaskSessionView) {
+  if (renameBusy.value) return
+  const name = renameDraft.value.trim()
+  // 校验口径与后端一致：2–60 个字（不含首尾空白）。
+  if (name.length < 2 || name.length > 60) { renameError.value = '会话名称需要 2–60 个字。'; return }
+  if (name === session.task_name) { renamingId.value = ''; return }
+  renameBusy.value = true
+  renameError.value = ''
+  try {
+    const result = await backendClient.sessionRename(session.task_id, name)
+    if (!applySessionListResult(result) && !await refreshSessionList(true)) throw new Error('名称已提交，但会话列表暂时没有刷新成功，请重新打开历史会话查看。')
+    renamingId.value = ''
+    toast('会话名称已更新。')
+  } catch (e) {
+    renameError.value = friendlyError(e)
+  } finally { renameBusy.value = false }
+}
+function askDelete(session: TaskSessionView) {
+  if (sessionMutationBusy.value) { toast('正在处理上一个会话操作，请稍候。'); return }
+  renamingId.value = ''
+  deletingId.value = session.task_id
+  deleteError.value = ''
+}
+function cancelDelete() {
+  if (deleteBusy.value) return
+  deletingId.value = ''
+  deleteError.value = ''
+}
+async function confirmDelete(session: TaskSessionView) {
+  if (deleteBusy.value) return
+  const wasCurrent = session.task_id === demo.state.currentSessionId
+  if (wasCurrent && thinking.value) { deleteError.value = '回复生成中，等这一轮结束后再删除当前会话。'; return }
+  deleteBusy.value = true
+  deleteError.value = ''
+  try {
+    const result = await backendClient.sessionDelete(session.task_id)
+    // 删除后清掉该会话的失败缓存与草稿，避免下次打开残留旧内容。
+    clearFailure(session.task_id)
+    backendDemo.saveDraft(session.task_id, '', [], null)
+    deletingId.value = ''
+    if (!applySessionListResult(result) && !await refreshSessionList(true)) throw new Error('会话已经删除，但列表暂时没有刷新成功，请重新打开历史会话查看最新状态。')
+    toast(`已删除会话「${session.task_name}」。`)
+    if (wasCurrent) {
+      historyOpen.value = false
+      const next = sessions.value[0]
+      if (next) await resume(next.task_id)
+      else {
+        // 没有剩余会话：回到"从主题开始"的空态。
+        demo.setChatTurns([], '')
+        demo.setChatBusy(false)
+        systemData.snapshot = null
+        pending.value = null
+        interrupted.value = null
+        requestError.value = ''
+        uploadError.value = ''
+        choosingTopic.value = false
+        void refreshProfile()
+      }
+    }
+  } catch (e) {
+    deleteError.value = friendlyError(e)
+  } finally { deleteBusy.value = false }
+}
+/** 能力状态：未接入（联网/检索这类需要配置的能力）与未启用分开说，避免暗示"可用"。 */
+function capabilityStatus(item: CapabilityItemView) {
+  if (item.available) return '可用'
+  const text = `${item.key || ''} ${item.label || ''} ${item.reason || ''}`
+  return /联网|在线检索|外部检索|web|search|internet/i.test(text) ? '未接入' : '未启用'
+}
+async function loadCapabilities(force = false) {
+  if (capabilitiesLoading.value) return
+  if (capabilities.value && !force) return
+  capabilitiesLoading.value = true
+  capabilitiesError.value = ''
+  try {
+    capabilities.value = await backendClient.capabilities()
+  } catch (e) {
+    capabilitiesError.value = friendlyError(e)
+  } finally { capabilitiesLoading.value = false }
+}
+watch(historyOpen, open => { if (open) void refreshSessionList(true) })
+watch(capabilitiesOpen, open => { if (open) void loadCapabilities() })
 function chooseTopic() { if (thinking.value || systemData.busy) return; freshTopic.value = false; choosingTopic.value = true; historyOpen.value = false; profileOpen.value = false; requestError.value = ''; void nextTick(() => { if (flow.value) flow.value.scrollTop = 0 }) }
 function closeTopic() { choosingTopic.value = false; clearTopicQuery(); void bottom(true) }
 async function resume(id: string) { if (thinking.value) return; try { await openSession(id); choosingTopic.value = false; clearTopicQuery(); historyOpen.value = false; pending.value = null; requestError.value = ''; syncInterruptedNotice(); await bottom(true) } catch (e) { requestError.value = friendlyError(e) } }
@@ -597,8 +744,51 @@ onUnmounted(() => { disposed = true; window.removeEventListener('focus', refresh
  <div class="consult-main">
   <header class="consult-header">
    <div class="consult-header__top"><div class="consult-heading"><h1 :title="title">{{ title }}</h1><p v-if="!choosingTopic && demo.state.currentSessionId"><span>当前阶段：{{ stageLabel(currentStage) }}</span><span v-if="profileFieldCount">已记录 {{ profileFieldCount }} 项信息</span><span v-if="profileGapCount">{{ profileGapCount }} 项待补</span></p></div><div class="consult-header__actions">
-    <AnchoredCard v-model="historyOpen" class="consult-icon consult-history-button" title="历史会话" side="bottom" align="end"><template #trigger><UiIcon name="chat" :size="18" /></template><div class="consult-session-list"><button :disabled="!turns.length" @click="copy(turns.map(t => (t.from === 'me' ? '我' : t.speaker || '系统') + '：' + t.text).join('\n\n'))">复制当前会话记录</button><button v-for="session in sessions" :key="session.task_id" :disabled="thinking || systemData.busy" :aria-pressed="session.task_id === demo.state.currentSessionId" @click="resume(session.task_id)"><strong>{{ session.task_name }}</strong><span class="consult-session-preview">{{ session.last_message || '还没有消息' }}</span><small><template v-if="session.message_count">{{ session.message_count }} 条 · </template>{{ (session.last_message_at || session.last_active_at) ? new Date(session.last_message_at || session.last_active_at || '').toLocaleString('zh-CN', { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '' }}</small></button><p v-if="!sessions.length">还没有历史会话。开始咨询后会自动保存在这里。</p></div></AnchoredCard>
+    <AnchoredCard v-model="historyOpen" class="consult-icon consult-history-button" title="历史会话" side="bottom" align="end" size="wide"><template #trigger><UiIcon name="chat" :size="18" /></template><div class="session-manage">
+     <div class="session-manage__tools"><label class="information-search session-search"><span class="sr-only">搜索历史会话</span><input v-model="sessionQuery" type="search" aria-label="搜索历史会话" placeholder="搜索标题或最后一句" autocomplete="off" /></label><button type="button" class="ws-text-button" :disabled="sessionListLoading" @click="refreshSessionList(true)">{{ sessionListLoading ? '刷新中…' : '刷新列表' }}</button></div>
+     <p v-if="sessionListError" class="consult-error session-manage__error" role="alert">{{ sessionListError }}<button type="button" @click="refreshSessionList(true)">重试</button></p>
+     <div class="session-manage__copy"><button type="button" class="ws-text-button" :disabled="!turns.length" @click="copy(turns.map(t => (t.from === 'me' ? '我' : t.speaker || '系统') + '：' + t.text).join('\n\n'))">复制当前会话记录</button></div>
+     <p v-if="!sessions.length" class="ws-muted">还没有历史会话。开始咨询后会自动保存在这里。</p>
+     <p v-else-if="!filteredSessions.length" class="ws-muted">没有找到匹配「{{ sessionQuery }}」的会话。</p>
+     <ul v-else class="session-rows">
+      <li v-for="session in filteredSessions" :key="session.task_id" class="session-row" :class="{ 'is-current': session.task_id === demo.state.currentSessionId }">
+       <form v-if="renamingId === session.task_id" class="session-row__rename" @submit.prevent="saveRename(session)">
+        <label class="ws-field"><span>会话名称</span><input v-model="renameDraft" type="text" maxlength="60" aria-label="会话名称" :aria-invalid="!!renameError" @keydown.esc="cancelRename" /></label>
+        <p class="session-row__hint">2–60 个字；只改标题，不影响对话内容。</p>
+        <p v-if="renameError" class="ws-field-error" role="alert">{{ renameError }}</p>
+        <div class="session-row__edit-actions"><button type="submit" class="btn btn--primary btn--sm" :disabled="renameBusy">{{ renameBusy ? '保存中…' : '保存' }}</button><button type="button" class="btn btn--sm" :disabled="renameBusy" @click="cancelRename">取消</button></div>
+       </form>
+       <div v-else-if="deletingId === session.task_id" class="session-row__confirm" role="alert">
+        <strong>删除「{{ session.task_name }}」？</strong>
+        <p>删除后不可恢复，这段对话记录会一起移除。</p>
+        <p v-if="deleteError" class="ws-field-error">{{ deleteError }}</p>
+        <div class="session-row__edit-actions"><button type="button" class="btn btn--danger btn--sm" :disabled="deleteBusy" @click="confirmDelete(session)">{{ deleteBusy ? '删除中…' : '确认删除' }}</button><button type="button" class="btn btn--sm" :disabled="deleteBusy" @click="cancelDelete">取消</button></div>
+       </div>
+       <template v-else>
+        <button type="button" class="session-row__main" :aria-pressed="session.task_id === demo.state.currentSessionId" @click="resume(session.task_id)"><strong>{{ session.task_name }}</strong><span class="consult-session-preview">{{ session.last_message || '还没有消息' }}</span><small><template v-if="session.message_count">{{ session.message_count }} 条 · </template>{{ sessionTimeLabel(session) }}</small></button>
+        <div class="session-row__actions"><button type="button" class="session-row__action" :aria-label="`重命名会话：${session.task_name}`" @click="startRename(session)">重命名</button><button type="button" class="session-row__action session-row__action--danger" :aria-label="`删除会话：${session.task_name}`" @click="askDelete(session)">删除</button></div>
+       </template>
+      </li>
+     </ul>
+     <p class="session-manage__note">重命名只改标题；删除不可恢复。</p>
+    </div></AnchoredCard>
     <button class="consult-icon consult-new-button" aria-label="选择咨询主题" :disabled="thinking || systemData.busy" @click="chooseTopic"><UiIcon name="plus" :size="19" /></button>
+    <AnchoredCard v-model="capabilitiesOpen" class="consult-icon consult-capability-button" title="能做什么" side="bottom" align="end" size="wide"><template #trigger><UiIcon name="spark" :size="18" /><span class="consult-header__label">能做什么</span></template><div class="capability-panel">
+     <p class="capability-panel__intro">这里列出当前账号能用和用不了的能力。不能用的会写明原因，并给出可以替代的做法。</p>
+     <p v-if="capabilitiesLoading" class="capability-panel__status" role="status">正在读取能力清单…</p>
+     <div v-else-if="capabilitiesError" class="consult-error" role="alert"><p>{{ capabilitiesError }}</p><button type="button" :disabled="capabilitiesLoading" @click="loadCapabilities(true)">重新读取</button></div>
+     <template v-else-if="capabilityItems.length">
+      <ul class="capability-list">
+       <li v-for="item in capabilityItems" :key="item.key" class="capability-item" :data-state="item.available ? 'available' : 'unavailable'">
+        <div class="capability-item__head"><strong>{{ item.label }}</strong><span class="capability-badge" :data-state="item.available ? 'available' : 'unavailable'">{{ capabilityStatus(item) }}</span></div>
+        <p v-if="!item.available && item.reason" class="capability-item__reason">原因：{{ item.reason }}</p>
+        <p v-if="item.fallback" class="capability-item__fallback">替代：{{ item.fallback }}</p>
+       </li>
+      </ul>
+      <p v-if="capabilities?.generated_at" class="capability-panel__meta">清单更新时间：{{ displayDate(capabilities.generated_at) }}</p>
+     </template>
+     <p v-else class="ws-muted">当前还没有登记可用能力。</p>
+    </div></AnchoredCard>
     <AnchoredCard v-model="profileOpen" class="consult-icon" title="个人画像" side="bottom" align="end"><template #trigger><UiIcon name="profile" :size="19" /><span class="consult-header__label">个人画像</span></template><ConversationProfile embedded :loading="profileLoading" :error="profileError" @close="profileOpen = false" @refresh="refreshProfile" @supplement="fill" /></AnchoredCard>
    </div></div>
    <ol v-if="!choosingTopic && demo.state.currentSessionId" class="consult-journey" aria-label="咨询轨迹"><li v-for="item in journey" :key="item.key" :data-state="journeyState(item.key)" :aria-current="journeyState(item.key) === 'current' ? 'step' : undefined"><i /><span><em class="consult-journey__full">{{ item.label }}</em><em class="consult-journey__short">{{ item.short }}</em></span></li></ol>
@@ -746,5 +936,51 @@ onUnmounted(() => { disposed = true; window.removeEventListener('focus', refresh
  .consult-confirm, .consult-draft-bar { align-items: stretch; flex-direction: column; }
  .consult-confirm__actions, .consult-draft-bar > div { justify-content: flex-end; }
  .consult-confirm__actions button, .consult-draft-bar button, .consult-failed button { min-height: 44px; }
+}
+/* ---- F8 会话历史管理 ---- */
+.session-manage { display: grid; gap: 10px; }
+.session-manage__tools { display: flex; align-items: center; gap: 10px; }
+.session-search { flex: 1; min-width: 0; margin: 0; }
+.session-search input { width: 100%; min-height: 40px; padding: 8px 10px; border: 1px solid var(--c-border); border-radius: 8px; background: var(--c-bg); color: var(--c-text); }
+.session-manage__tools .ws-text-button { flex: none; min-height: 40px; }
+.session-manage__error { margin: 0; }
+.session-manage__copy .ws-text-button { min-height: 36px; padding: 0; }
+.session-manage__note { margin: 2px 0 0; color: var(--c-text-3); font-size: var(--fs-12); }
+.session-rows { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+.session-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 10px; align-items: center; padding: 10px 0; border-top: 1px solid var(--c-border); }
+.session-row.is-current { background: color-mix(in srgb, var(--c-primary) 5%, transparent); }
+.session-row__main { display: grid; gap: 2px; min-width: 0; padding: 6px 8px; border: 0; border-radius: 8px; background: none; color: var(--c-text); text-align: left; cursor: pointer; }
+.session-row__main:hover { background: var(--c-surface-2); }
+.session-row__main[aria-pressed="true"] { color: var(--c-primary); }
+.session-row__main strong { overflow: hidden; font-size: var(--fs-14); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.session-row__main small { color: var(--c-text-3); font-size: var(--fs-12); }
+.session-row__actions { display: flex; flex: none; gap: 4px; }
+.session-row__action { min-height: 36px; padding: 0 8px; border: 1px solid var(--c-border); border-radius: var(--r-pill); background: var(--c-surface); color: var(--c-text-2); font-size: var(--fs-12); cursor: pointer; }
+.session-row__action:hover { border-color: var(--c-primary-border); color: var(--c-primary); }
+.session-row__action--danger:hover { border-color: var(--c-attention); color: var(--c-attention-strong); }
+.session-row__rename, .session-row__confirm { grid-column: 1 / -1; display: grid; gap: 6px; padding: 6px 2px; }
+.session-row__rename .ws-field { margin: 0; }
+.session-row__hint, .session-row__confirm p { margin: 0; color: var(--c-text-3); font-size: var(--fs-12); line-height: 1.6; }
+.session-row__confirm strong { color: var(--c-text); font-size: var(--fs-14); }
+.session-row__edit-actions { display: flex; gap: 8px; }
+.session-row__edit-actions .btn { min-height: 40px; }
+/* ---- F9 能力面板 ---- */
+.capability-panel { display: grid; gap: 10px; }
+.capability-panel__intro { margin: 0; color: var(--c-text-2); font-size: var(--fs-12); line-height: 1.65; }
+.capability-panel__status { margin: 6px 0; color: var(--c-text-2); font-size: var(--fs-13); }
+.capability-panel__meta { margin: 2px 0 0; color: var(--c-text-3); font-size: var(--fs-12); }
+.capability-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.capability-item { display: grid; gap: 4px; padding: 10px 12px; border: 1px solid var(--c-border); border-radius: 10px; background: var(--c-surface); }
+.capability-item[data-state="unavailable"] { background: var(--c-surface-2); }
+.capability-item__head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.capability-item__head strong { color: var(--c-text); font-size: var(--fs-14); }
+.capability-badge { flex: none; padding: 2px 8px; border: 1px solid var(--c-border-strong); border-radius: var(--r-pill); color: var(--c-text-2); font-size: var(--fs-12); }
+.capability-badge[data-state="available"] { border-color: var(--c-primary-border); background: var(--c-primary-weak); color: var(--c-primary); }
+.capability-item__reason, .capability-item__fallback { margin: 0; color: var(--c-text-2); font-size: var(--fs-12); line-height: 1.6; }
+.capability-item__fallback { color: var(--c-text-3); }
+@media (max-width: 767px) {
+ .session-row { grid-template-columns: minmax(0, 1fr); }
+ .session-row__actions { justify-content: flex-end; }
+ .session-row__action, .session-row__edit-actions .btn, .session-search input, .session-manage__tools .ws-text-button { min-height: 44px; }
 }
 </style>

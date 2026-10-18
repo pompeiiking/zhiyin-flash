@@ -12,6 +12,8 @@ import './styles/c2-fidelity.css'
 import './styles/refinement.css'
 import './styles/workspace-modern.css'
 import './styles/product-interactions.css'
+import './styles/touch.css'
+import './styles/print.css'
 
 const app = createApp(App)
 

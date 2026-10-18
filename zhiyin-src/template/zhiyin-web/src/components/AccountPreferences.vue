@@ -112,7 +112,7 @@ onMounted(load)
         </footer>
       </fieldset>
     </form>
-    <div v-if="!values&&error" class="preference-panel__error"><p role="alert">{{error}}</p><button class="btn" :disabled="loading" @click="load">重新读取</button></div>
+    <div v-if="!values&&error" class="preference-panel__error"><p role="alert">{{error}}</p><button class="btn" :disabled="loading" @click="load">重试</button></div>
   </section>
 </template>
 

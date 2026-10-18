@@ -288,6 +288,15 @@ class InMemoryConversationTurnRepository(ConversationTurnRepository):
         matched.sort(key=lambda item: item.created_at)
         return _snapshot(matched[-1])
 
+    async def delete_by_task(self, user_id: str, task_id: str) -> int:
+        before = len(self._turns)
+        self._turns = [
+            turn
+            for turn in self._turns
+            if not (turn.user_id == user_id and (turn.task_id or "") == (task_id or ""))
+        ]
+        return before - len(self._turns)
+
 
 class InMemoryUserNoteRepository(UserNoteRepository):
     """用户自建内容：内存实现，语义与 Postgres 版一致（更新即改 updated_at）。"""
@@ -561,6 +570,15 @@ class InMemoryTaskSessionRepository(TaskSessionRepository):
         session.status = status
         session.updated_at = _now()
         return _snapshot(session)
+
+    async def rename(self, session_id: str, task_name: str) -> TaskSession:
+        session = self._require(session_id)
+        session.task_name = task_name
+        session.updated_at = _now()
+        return _snapshot(session)
+
+    async def delete(self, session_id: str) -> None:
+        self._sessions.pop(session_id, None)
 
     def _require(self, session_id: str) -> TaskSession:
         session = self._sessions.get(session_id)

@@ -32,6 +32,8 @@ from __future__ import annotations
 import logging
 import os
 import re
+import time
+from collections import Counter
 from pathlib import Path
 from typing import Any, Iterable, Optional
 
@@ -55,6 +57,15 @@ from zhiyin_kernel.errors import (
 _log = logging.getLogger(__name__)
 
 DEFAULT_TITLE = "职引 API"
+
+#: 进程内运行指标。只记数量与耗时，不记 URL 参数、用户身份或请求体。
+_METRICS: dict[str, object] = {
+    "requests": 0,
+    "errors": 0,
+    "latency_ms": [],
+    "by_route": Counter(),
+    "by_status": Counter(),
+}
 
 
 def _default_version() -> str:
@@ -134,6 +145,55 @@ def create_app(
         app.add_middleware(ApiRateLimitMiddleware, gateway=rate_limit, auth=auth,
                            prefix=api_prefix, limits=rate_limits)
     app.add_middleware(RequestContextMiddleware)
+
+    @app.middleware("http")
+    async def _record_metrics(request: Request, call_next):
+        """记录数量/耗时/状态码，供 `/metrics` 排查；不记录业务内容。"""
+        started = time.perf_counter()
+        response = None
+        try:
+            response = await call_next(request)
+            return response
+        finally:
+            elapsed = (time.perf_counter() - started) * 1000
+            route = request.scope.get("route")
+            route_path = getattr(route, "path", None) or request.url.path
+            _METRICS["requests"] = int(_METRICS["requests"]) + 1
+            status = getattr(response, "status_code", 500)
+            if status >= 400:
+                _METRICS["errors"] = int(_METRICS["errors"]) + 1
+            _METRICS["by_route"][route_path] = _METRICS["by_route"].get(route_path, 0) + 1
+            _METRICS["by_status"][str(status)] = _METRICS["by_status"].get(str(status), 0) + 1
+            samples = _METRICS["latency_ms"]
+            samples.append(round(elapsed, 2))
+            if len(samples) > 5000:
+                del samples[: len(samples) - 5000]
+
+    @app.get("/metrics", include_in_schema=False)
+    async def metrics() -> dict[str, Any]:
+        """运行指标（JSON，非 Prometheus）；路径已按路由模板聚合，不含用户数据。"""
+        samples = sorted(_METRICS["latency_ms"])
+        count = len(samples)
+
+        def percentile(p: float) -> float:
+            if not samples:
+                return 0.0
+            index = min(count - 1, max(0, int(round((count - 1) * p))))
+            return float(samples[index])
+
+        return {
+            "requests_total": int(_METRICS["requests"]),
+            "errors_total": int(_METRICS["errors"]),
+            "latency_ms": {
+                "p50": percentile(0.50),
+                "p95": percentile(0.95),
+                "max": max(samples) if samples else 0.0,
+            },
+            "by_status": dict(_METRICS["by_status"]),
+            "top_routes": dict(
+                sorted(_METRICS["by_route"].items(), key=lambda item: item[1], reverse=True)[:20]
+            ),
+        }
 
     _install_error_handlers(app)
     return app

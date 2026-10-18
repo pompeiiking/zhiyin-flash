@@ -3,6 +3,8 @@ const MAX_CHARS = 40
 import {PROFILE_TOPICS, profilePriority, exactProfileKeys} from '../lib/profile-organization'
 import {profileLabel} from '../lib/server-copy'
 import { studentVoice } from '../lib/student-voice'
+import { formatPercent } from '../lib/format'
+import EvidenceState from '../components/EvidenceState.vue'
 import {STUDY_YEAR_OPTIONS, studyYearLabel} from '../lib/study-year'
 import { onMounted } from 'vue'
 import { useRoute } from 'vue-router'
@@ -894,7 +896,8 @@ onMounted(()=>{ void loadWorkspace() })
 </script>
 
 <template>
-  <div class="ws-page profile-page p7">
+  <div class="ws-page profile-page p7" :aria-busy="loading">
+    <p class="sr-only" role="status" aria-live="polite">{{ loading ? '正在读取个人画像…' : '' }}</p>
     <PageHeading title="个人画像" description="把零散经历整理成可核对、可继续验证的个人画像。"><template #meta><div class="c2-page-meta"><span v-if="live">{{ livePanel ? '已读取的档案' : loading ? '正在读取档案' : '尚未读取档案' }}</span><span>{{ progress.known }} 条已知 · {{ progress.gap }} 条待补充</span></div></template>
       <RouterLink class="btn btn--primary" to="/chat">{{ progress.gap ? '补充关键信息' : '更新信息' }}<UiIcon name="arrow" :size="16" /></RouterLink>
       <button class="btn" @click="exportProfile"><UiIcon name="download" :size="16"/>导出画像</button>
@@ -929,7 +932,7 @@ onMounted(()=>{ void loadWorkspace() })
           <DetailPopover title="个人资料概况" label="查看个人资料概况"><p>已记录 {{ progress.known }} 项信息，{{ progress.gap }} 项待补充。</p><p>依据充分 {{ confBands[0]?.count ?? 0 }} 项，待核对 {{ confBands[1]?.count ?? 0 }} 项。</p></DetailPopover>
         </div>
         <div class="profile-dossier__coverage">
-          <div><span>资料完整度</span><strong>{{ progress.known }}<small> / {{ progress.total }}</small></strong></div>
+          <div><span>资料完整度</span><strong>{{ progress.known }}<small> / {{ progress.total }}</small></strong><EvidenceState :state="progress.gap ? 'missing' : 'recorded'" /></div>
           <div class="profile-dossier__track" role="progressbar" :aria-label="'资料完整度'" :aria-valuemin="0" :aria-valuemax="progress.total" :aria-valuenow="progress.known" :aria-valuetext="'已记录 '+progress.known+' 项，共 '+progress.total+' 项，待补充 '+progress.gap+' 项'"><i v-for="n in progress.total" :key="n" aria-hidden="true" :class="{'is-known':n<=progress.known}"/></div>
           <p>{{ loading && !livePanel ? '正在读取资料…' : serviceError ? '资料读取失败，请重试核对' : !livePanel ? '尚未读取资料' : !progress.known && !progress.gap ? '暂无个人资料，可从咨询开始补充' : progress.gap ? `还差 ${progress.gap} 项关键信息` : '当前未列出待补充项' }}</p>
         </div>
@@ -1269,7 +1272,7 @@ onMounted(()=>{ void loadWorkspace() })
           <div class="p7-gap__head">
             <span class="p7-gap__index">C{{ index + 1 }}</span>
             <h3>{{ gap.label }}</h3>
-            <span class="chip chip--attention">待补充</span>
+            <EvidenceState state="missing" />
           </div>
           <p class="p7-gap__why"><span>为什么重要</span>{{ gap.why }}</p>
           <p class="p7-gap__blocked">
@@ -1315,7 +1318,7 @@ onMounted(()=>{ void loadWorkspace() })
     </Foldable><aside class="c2-profile-side" aria-label="画像操作与来源">
       <section><h2>核对与管理资料</h2><RouterLink class="btn" to="/chat">补充一条信息<UiIcon name="plus" :size="16" /></RouterLink><button class="btn" :disabled="loading" @click="loadWorkspace">{{ loading ? '正在读取…' : '重新核对档案' }}</button><p>点开一条信息，可以查看依据、修改内容。更正后会标出受影响的判断。</p></section>
       <section><h2>这 {{ known.length }} 条从哪里来</h2><div v-for="source in SOURCE_GROUPS" :key="source.key" class="c2-source-row"><span>{{ source.label }}</span><span class="c2-source-track" role="meter" :aria-label="source.label" :aria-valuenow="known.filter(row => source.from.includes(row.desc)).length" :aria-valuemax="Math.max(1, known.length)" aria-valuemin="0"><i :style="{width: known.filter(row => source.from.includes(row.desc)).length / Math.max(1, known.length) * 100 + '%'}" /></span><b>{{ known.filter(row => source.from.includes(row.desc)).length }}</b></div></section>
-      <section><h2>{{ identity.name }}</h2><p>{{ identity.line }}</p><p>整体可信度 {{ Math.round(trustShown) }}% · 覆盖 {{ progress.known }} / {{ progress.total }}</p><Foldable variant="inline" title="查看计算依据"><p>{{ trustOrigin }}。{{ statusLine }}</p><p>{{ coverageNote }}</p></Foldable></section>
+      <section><h2>{{ identity.name }}</h2><p>{{ identity.line }}</p><p>整体可信度 {{ formatPercent(trustShown) }} · 覆盖 {{ progress.known }} / {{ progress.total }}</p><Foldable variant="inline" title="查看计算依据"><p>{{ trustOrigin }}。{{ statusLine }}</p><p>{{ coverageNote }}</p></Foldable></section>
     </aside></InfoSheet>
     <InfoSheet :open="verificationOpen" shape="panel" title="核验学籍信息" @close="verificationOpen=false"><AcademicVerification /></InfoSheet>
     <!-- 更正是一条信息的小表单（`text` + 两个按钮），不是"从一行钻进去看细节"。

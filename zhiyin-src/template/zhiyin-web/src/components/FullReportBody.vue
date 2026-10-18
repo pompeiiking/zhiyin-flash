@@ -8,6 +8,8 @@ import { useAiTask } from '../lib/use-ai-task'
 import AiResultMeta from './AiResultMeta.vue'
 import AiStatus from './AiStatus.vue'
 import { studentVoice } from '../lib/student-voice'
+import { formatDate, formatDateTime, formatPercent } from '../lib/format'
+import EvidenceState from './EvidenceState.vue'
 import DetailPopover from './DetailPopover.vue'
 import InfoSheet from './InfoSheet.vue'
 
@@ -96,12 +98,10 @@ function profileValue(field: ProfileFieldView): string {
   return content(field.value) || '尚待补充'
 }
 function fieldDate(value: string) {
-  const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? '未记录时间' : date.toLocaleDateString('zh-CN')
+  return formatDate(value) || '未记录时间'
 }
 function reportDate(value: string) {
-  const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? '未记录时间' : new Intl.DateTimeFormat('zh-CN', { dateStyle: 'medium' }).format(date)
+  return formatDateTime(value) || '未记录时间'
 }
 function sectionTitle(section: ReportSectionView) {
   if (/self|portrait|自我|画像/i.test(section.id + section.title)) return '你是什么样的人'
@@ -120,7 +120,6 @@ function chapterLabel(index: number) { return ['第一章', '第二章', '第三
 function itemId(item: ReportDimensionItemView) { return `finding-${item.index}` }
 function isPending(item: ReportDimensionItemView) { return !item.evidence?.trim() || /待|缺|不足|未知/.test(item.tag || '') }
 function evidenceText(value?: string | null) { return (value || '').replace(/\b[a-z]+(?:_[a-z]+)+\b/g, key => profileLabel(key, key)) }
-function confidenceText(item: ReportDimensionItemView) { return isPending(item) ? '仍需验证' : '已附依据 · 待核对' }
 function sectionDomId(id: string) { return `report-section-${id.replace(/[^a-zA-Z0-9_-]/g, '-')}` }
 function askLink(item: ReportDimensionItemView) {
   return '/chat?question=' + encodeURIComponent(`我想核对第${props.report.version}版报告中的「${item.name}」：${item.conclusion}${item.evidence ? `；依据：${item.evidence}` : '；目前没有提供依据'}`)
@@ -191,11 +190,22 @@ onBeforeUnmount(() => observer?.disconnect())
             <p v-if="report.sections?.[0]?.items?.[0]">目前最先浮现的线索，是关于<strong>{{ report.sections[0].items[0].name }}</strong>的判断：{{ studentVoice(report.sections[0].items[0].conclusion) }}</p>
             <p>全文共形成 {{ all.length }} 项判断，其中 {{ supportedCount }} 项附有依据说明，{{ pendingItems.length }} 项仍需要新的行动或资料来验证。没有依据的部分会明确保留为假设，不会写成定论。</p>
           </div>
-          <div v-if="executiveFindings.length" class="executive-findings" aria-label="报告核心结论">
+          <table class="sr-only print-table">
+        <caption>诊断维度与判断状态（报告正文的文字替代）</caption>
+        <thead><tr><th scope="col">章节</th><th scope="col">判断</th><th scope="col">状态</th></tr></thead>
+        <tbody>
+          <tr v-for="section in report.sections" :key="section.id">
+            <td>{{ sectionTitle(section) }}</td>
+            <td><template v-for="item in section.items" :key="item.index">{{ item.name }}；</template></td>
+            <td><template v-for="item in section.items" :key="item.index + '-state'">{{ isPending(item) ? '待核对' : '已记录' }}；</template></td>
+          </tr>
+        </tbody>
+      </table>
+      <div v-if="executiveFindings.length" class="executive-findings" aria-label="报告核心结论">
             <p class="executive-findings__title">核心结论</p>
             <article v-for="(finding, index) in executiveFindings" :key="finding.item.index">
               <span aria-hidden="true">0{{ index + 1 }}</span>
-              <p><DetailPopover :title="finding.item.name + ' · 判断依据'" :label="'查看“' + finding.item.name + '”的判断依据'" side="right" class="article-evidence-link article-evidence-link--summary"><template #trigger>{{ finding.item.name }}</template><p class="evidence-popover__label">{{ finding.item.evidence?.trim() ? '支撑这项判断的记录' : '当前还缺少什么' }}</p><p class="evidence-popover__quote">{{ evidenceText(finding.item.evidence) || '这项判断暂时没有可核对的记录，因此只能作为待验证假设。' }}</p><dl class="evidence-popover__facts"><div><dt>判断状态</dt><dd>{{ confidenceText(finding.item) }}</dd></div><div><dt>所在章节</dt><dd>{{ sectionTitle(finding.section) }}</dd></div><div><dt>报告版本</dt><dd>第 {{ report.version }} 版 · {{ reportDate(report.generated_at) }}</dd></div></dl><RouterLink class="btn btn--primary evidence-popover__action" :to="askLink(finding.item)">带着这条去核对</RouterLink></DetailPopover><strong>{{ studentVoice(finding.item.conclusion) }}</strong></p>
+              <p><DetailPopover :title="finding.item.name + ' · 判断依据'" :label="'查看“' + finding.item.name + '”的判断依据'" side="right" class="article-evidence-link article-evidence-link--summary"><template #trigger>{{ finding.item.name }}</template><p class="evidence-popover__label">{{ finding.item.evidence?.trim() ? '支撑这项判断的记录' : '当前还缺少什么' }}</p><p class="evidence-popover__quote">{{ evidenceText(finding.item.evidence) || '这项判断暂时没有可核对的记录，因此只能作为待验证假设。' }}</p><dl class="evidence-popover__facts"><div><dt>判断状态</dt><dd><EvidenceState :state="isPending(finding.item) ? 'unverified' : 'recorded'" /></dd></div><div><dt>所在章节</dt><dd>{{ sectionTitle(finding.section) }}</dd></div><div><dt>报告版本</dt><dd>第 {{ report.version }} 版 · {{ reportDate(report.generated_at) }}</dd></div></dl><RouterLink class="btn btn--primary evidence-popover__action" :to="askLink(finding.item)">带着这条去核对</RouterLink></DetailPopover><strong>{{ studentVoice(finding.item.conclusion) }}</strong></p>
             </article>
           </div>
           <AiStatus :busy="ai.busy.value" :error="ai.error.value" :progress="ai.progress.value" @cancel="ai.cancel" @retry="ai.run('reportSummary')" />
@@ -233,11 +243,11 @@ onBeforeUnmount(() => observer?.disconnect())
                   <template #trigger>{{ item.name }}</template>
                   <p class="evidence-popover__label">{{ item.evidence?.trim() ? '支撑这项判断的记录' : '当前还缺少什么' }}</p>
                   <p class="evidence-popover__quote">{{ evidenceText(item.evidence) || '这项判断暂时没有可核对的记录，因此只能作为待验证假设。' }}</p>
-                  <dl class="evidence-popover__facts"><div><dt>判断状态</dt><dd>{{ confidenceText(item) }}</dd></div><div><dt>所在章节</dt><dd>{{ sectionTitle(section) }}</dd></div><div><dt>报告版本</dt><dd>第 {{ report.version }} 版 · {{ reportDate(report.generated_at) }}</dd></div></dl>
+                  <dl class="evidence-popover__facts"><div><dt>判断状态</dt><dd><EvidenceState :state="isPending(item) ? 'unverified' : 'recorded'" /></dd></div><div><dt>所在章节</dt><dd>{{ sectionTitle(section) }}</dd></div><div><dt>报告版本</dt><dd>第 {{ report.version }} 版 · {{ reportDate(report.generated_at) }}</dd></div></dl>
                   <RouterLink class="btn btn--primary evidence-popover__action" :to="askLink(item)">带着这条去核对</RouterLink>
                 </DetailPopover>
                 </h3>
-                <em :class="{ 'is-pending': isPending(item) }">{{ confidenceText(item) }}</em>
+                <span class="article-finding__state"><EvidenceState :state="isPending(item) ? 'unverified' : 'recorded'" /></span>
               </header>
               <p class="article-finding__conclusion">{{ studentVoice(item.conclusion) }}</p>
               <p class="article-finding__reading"><template v-if="isPending(item)">这项内容目前仍是待验证假设，不能据此形成最终选择。下一步应当用一次可观察的行动补足证据。</template><template v-else-if="sectionIndex === 0">它描述的是你当前较稳定的个人线索，将影响任务选择与学习方式，但不构成永久的人格定义。</template><template v-else-if="sectionIndex === 1">这项判断连接了个人条件与外部要求，后续需要通过真实任务或反馈继续校准。</template><template v-else>它的意义在于明确选择边界：保留调整空间，同时避免在证据不足时扩大投入。</template></p>
@@ -281,7 +291,7 @@ onBeforeUnmount(() => observer?.disconnect())
       <p v-if="profileError" class="report-profile-error" role="status">{{ profileError }}</p>
       <section v-for="section in profileSections" :key="section.key" class="profile-sheet-section">
         <h2>{{ section.title }}</h2>
-        <article v-for="field in section.fields" :key="field.key" class="profile-sheet-field"><header><strong>{{ profileLabel(field.key, field.label || field.key) }}</strong><span>{{ sourceNames[field.source] || field.source }}</span></header><p>{{ profileValue(field) }}</p><small><span v-if="field.confidence !== undefined">可信度 {{ Math.round(field.confidence * 100) }}% · </span>更新于 {{ fieldDate(field.updated_at) }}</small><ul v-if="field.evidence?.length"><li v-for="evidence in field.evidence" :key="evidence">{{ evidence }}</li></ul></article>
+        <article v-for="field in section.fields" :key="field.key" class="profile-sheet-field"><header><strong>{{ profileLabel(field.key, field.label || field.key) }}</strong><span>{{ sourceNames[field.source] || field.source }}</span></header><p>{{ profileValue(field) }}</p><small><span v-if="field.confidence !== undefined">可信度 {{ formatPercent(field.confidence) }} · </span>更新于 {{ fieldDate(field.updated_at) }}</small><ul v-if="field.evidence?.length"><li v-for="evidence in field.evidence" :key="evidence">{{ evidence }}</li></ul></article>
       </section>
       <section v-if="academic?.courses?.length" class="profile-sheet-section"><h2>课程记录 · {{ academic.courses.length }} 门</h2><div class="academic-prose"><article v-for="course in academic.courses" :key="course.name + '-' + course.weekday + '-' + course.start_period"><h3>{{ course.name }}</h3><p>{{ weekday(course.weekday) }}<template v-if="course.start_period">，第 {{ course.start_period }}–{{ course.end_period ?? course.start_period }} 节</template><template v-if="course.place">，上课地点为 {{ course.place }}</template><template v-if="course.teacher">，任课教师为 {{ course.teacher }}</template>。</p></article></div></section>
       <section v-if="academic?.grades?.length" class="profile-sheet-section"><h2>成绩记录 · {{ academic.grades.length }} 条</h2><div class="academic-prose"><article v-for="grade in academic.grades" :key="grade.name + '-' + grade.term"><h3>{{ grade.name }}</h3><p>{{ grade.term || '未注明学期' }}的记录中，成绩为 {{ grade.score || '未提供' }}<template v-if="grade.credit">，课程学分为 {{ grade.credit }}</template>。</p></article></div></section>
@@ -306,7 +316,7 @@ onBeforeUnmount(() => observer?.disconnect())
 @media(max-width:980px){.report-document__grid{grid-template-columns:minmax(0,1fr) 44px;gap:20px}}
 @media(max-width:767px){.report-document__grid{display:block}.report-paper{padding:0 20px 28px}.article-section{padding:52px 0 58px}.report-overview{padding-top:36px}.article-heading{margin-bottom:24px}.article-heading h2{font-size:28px}.article-heading>span{font-size:var(--fs-14)}.article-prose p{font-size:16px;line-height:1.92;text-align:left}.article-prose--lead p:first-child{font-size:18px}.executive-findings{margin-top:32px}.executive-findings article{grid-template-columns:30px minmax(0,1fr);gap:10px}.executive-findings article>p{font-size:15px}.article-finding{padding:22px 0 26px}.article-finding__heading{grid-template-columns:32px minmax(0,1fr);gap:10px}.article-finding__heading em{grid-column:2;margin-top:2px}.article-finding__conclusion,.article-finding__reading{margin-left:42px!important}.article-finding__conclusion{font-size:17px!important}.article-reading-note{margin-top:20px}.academic-prose{grid-template-columns:minmax(0,1fr)}.report-toc-rail{position:fixed;right:calc(12px + env(safe-area-inset-right, 0px));bottom:calc(96px + env(safe-area-inset-bottom, 0px));top:auto;z-index:40;width:44px;height:44px;max-height:none;transform:none}.report-toc{top:auto;bottom:0;width:44px;height:auto;min-height:44px;border-color:color-mix(in srgb,var(--c-border-strong) 80%,transparent);background:color-mix(in srgb,var(--c-surface) 88%,transparent);box-shadow:var(--e-2)}.report-toc__handle{top:auto;bottom:0;width:44px;height:44px}.report-toc__line{top:7px;bottom:7px;left:21px}.report-toc__ticks{inset:7px 0}.report-toc__ticks i{display:none}.report-toc__ticks i.is-active{display:block;width:9px;height:9px}.report-toc-rail:hover .report-toc{width:44px}.report-toc-rail:hover .report-toc__panel{width:0;height:0;padding:0;opacity:0;pointer-events:none}.report-toc-rail.is-open .report-toc,.report-toc:has(:focus-visible){width:min(300px,calc(100vw - 24px))}.report-toc-rail.is-open .report-toc__panel,.report-toc:has(:focus-visible) .report-toc__panel{width:calc(min(300px,calc(100vw - 24px)) - 44px);height:auto;max-height:calc(100vh - 150px);overflow-y:auto;padding:14px 8px 14px 12px;opacity:1;pointer-events:auto}}
 :deep(.detail-trigger.article-meta-link),:deep(.detail-trigger.article-evidence-link){position:relative}
-:deep(.detail-trigger.article-meta-link)::after,:deep(.detail-trigger.article-evidence-link)::after{position:absolute;inset:-10px -6px;content:''}
+:deep(.detail-trigger.article-meta-link)::after,:deep(.detail-trigger.article-evidence-link)::after{position:absolute;inset:-11px -8px;content:''}
 @media(max-width:767px){.report-toc-rail{right:calc(12px + env(safe-area-inset-right, 0px));left:auto;bottom:calc(96px + env(safe-area-inset-bottom, 0px));width:44px;height:44px}.report-toc{right:0;left:auto;min-height:44px}.report-toc__handle{right:0;left:auto;width:44px;height:44px}.report-toc__line{right:21px;left:auto}.report-toc-rail:hover .report-toc{width:44px}.report-toc-rail.is-open .report-toc,.report-toc:has(:focus-visible){width:min(300px,calc(100vw - 24px))}.report-toc-rail.is-open .report-toc__panel,.report-toc:has(:focus-visible) .report-toc__panel{width:calc(min(300px,calc(100vw - 24px)) - 44px);margin-right:44px;margin-left:0}}
 @media(min-width:1240px){.report-toc-rail{right:max(20px,calc((100vw - 1074px)/2 - 60px))}}
 @media(prefers-reduced-motion:reduce){.report-toc,.report-toc__panel,.report-toc__ticks i{transition:none}}

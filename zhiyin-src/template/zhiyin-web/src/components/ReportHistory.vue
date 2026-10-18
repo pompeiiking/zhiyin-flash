@@ -9,6 +9,7 @@ import type { AssetVersionView, ReportFullTextView } from '../api/backend-types'
 import SkeletonBlock from './SkeletonBlock.vue'
 import EmptyState from './EmptyState.vue'
 import StatTile from './StatTile.vue'
+import { formatDateTime } from '../lib/format'
 const props = withDefaults(defineProps<{assetType?: 'report'|'direction_plan'|'action_plan'}>(),{assetType:'report'})
 defineEmits<{ open: [report: ReportFullTextView, metadata: AssetVersionView | null] }>()
 const heading=computed(()=>props.assetType==='direction_plan'?'方案版本与更新状态':props.assetType==='action_plan'?'计划版本与更新状态':'完整版本与更新状态')
@@ -29,7 +30,7 @@ async function read(version: number, emit: (event: 'open', report: ReportFullTex
   catch { error.value = '这版完整正文暂时没有取得，请重试。当前报告没有被替换。' }
   finally { reading.value = null }
 }
-const formatDate=(value:string)=>new Intl.DateTimeFormat('zh-CN',{dateStyle:'medium',timeStyle:'short'}).format(new Date(value))
+const formatDate=(value:string)=>formatDateTime(value)||'未记录时间'
 onMounted(()=>{ void load() })
 </script>
 <template><section class="report-history-live">
@@ -54,7 +55,7 @@ onMounted(()=>{ void load() })
         :value="v.version"
         :state="v.needs_recompute ? 'recompute' : 'done'"
       />
-      <p class="ws-muted ws-section">生成于 {{ new Date(v.created_at).toLocaleString('zh-CN') }}</p>
+      <p class="ws-muted ws-section">生成于 {{ formatDate(v.created_at) }}</p>
       <p class="ws-section">{{ studentVersionDiff(v.diff_from_previous) || '本版没有提供差异摘要。' }}</p>
       <p v-if="v.depends_on_profile_keys?.length" class="ws-muted">参考的个人信息：{{ v.depends_on_profile_keys.join('、') }}</p>
       <DetailPopover :title="'第 '+v.version+' 版正文'" side="right" @update:model-value="open=>open&&readSnapshot(v.version)"><template #trigger>阅读历史正文</template><template v-if="historical?.version===v.version"><template v-if="assetType==='action_plan'"><section v-for="p in historical.content.phases" :key="p.id||p.name"><h3>{{p.name}}</h3><p v-for="t in p.tasks" :key="t.id">{{t.done?'✓':'○'}} {{t.text}}</p></section></template><template v-else><section v-for="p in historical.content" :key="p.id" class="history-direction"><h3>{{p.name}}</h3><dl><div><dt>方向目标</dt><dd>{{p.target_desc||'本版未提供'}}</dd></div><div><dt>匹配依据</dt><dd>{{p.fit_reason||'本版未提供'}}</dd></div><div><dt>主要风险</dt><dd>{{p.main_risk||'本版未提供'}}</dd></div></dl><section v-if="p.gaps?.length"><h4>差距与补齐建议</h4><article v-for="(gap,index) in p.gaps" :key="gap.id||index"><strong>{{gap.requirement||'未命名要求'}}</strong><p>当前情况：{{gap.current_state||'本版未提供'}}</p><p>补齐建议：{{gap.suggestion||'本版未提供'}}</p></article></section></section></template></template><p v-else>正在读取历史正文；缺少快照时会在版本列表显示原因。</p></DetailPopover>

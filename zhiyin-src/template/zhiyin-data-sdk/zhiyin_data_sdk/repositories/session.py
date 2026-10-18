@@ -42,3 +42,11 @@ class TaskSessionRepository(ABC):
     @abstractmethod
     async def update_status(self, session_id: str, status: TaskStatus) -> TaskSession:
         """更新会话状态。"""
+
+    @abstractmethod
+    async def rename(self, session_id: str, task_name: str) -> TaskSession:
+        """会话改名（只改展示名，不动环节/消息）。"""
+
+    @abstractmethod
+    async def delete(self, session_id: str) -> None:
+        """删除会话行；逐轮原文由记忆服务另行清理。"""

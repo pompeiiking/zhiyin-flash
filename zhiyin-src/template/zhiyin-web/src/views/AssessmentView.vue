@@ -12,6 +12,7 @@ import EmptyState from '../components/EmptyState.vue'
 import SkeletonBlock from '../components/SkeletonBlock.vue'
 import StatusBanner from '../components/StatusBanner.vue'
 import { studentVoice } from '../lib/student-voice'
+import { formatDateTime } from '../lib/format'
 
 const route = useRoute()
 const router = useRouter()
@@ -59,7 +60,7 @@ function reportText(value: unknown): string {
   if (typeof value === 'object') return Object.values(value).map(reportText).filter(Boolean).join('；')
   return String(value)
 }
-const reportDate = (value: string) => new Intl.DateTimeFormat('zh-CN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
+const reportDate = (value: string) => formatDateTime(value) || '未记录时间'
 
 async function load() {
   if (busy.value) return
@@ -126,7 +127,8 @@ onMounted(load)
 </script>
 
 <template>
-  <div class="ws-page report-page">
+  <div class="ws-page report-page" :aria-busy="busy">
+    <p class="sr-only" role="status" aria-live="polite">{{ busy ? '正在读取报告…' : '' }}</p>
     <PageHeading title="你的报告" description="先看判断、差距和下一步；需要时再点开依据与资料。">
       <button v-if="history" class="btn" @click="setHistory(false)">返回报告</button>
       <template v-else-if="report">
@@ -136,7 +138,7 @@ onMounted(load)
     </PageHeading>
 
     <AssetNotice />
-    <StatusBanner v-if="error" tone="error" :message="error" retry-label="重新读取" @retry="load" />
+    <StatusBanner v-if="error" tone="error" :message="error" retry-label="重试" @retry="load" />
     <StatusBanner v-if="exportStatus" tone="info" :message="exportStatus" @dismiss="exportStatus = ''" />
     <SkeletonBlock v-if="busy" variant="list" :lines="4" />
     <ReportHistory v-if="history" asset-type="report" @open="historical" />
@@ -171,7 +173,7 @@ onMounted(load)
       </FullReportBody>
     </div>
 
-    <EmptyState v-else-if="!busy && !error" kind="report" title="尚未生成报告" description="先在对话里说一句「帮我生成一份诊断报告」，生成后会保存在这里；页头的「导出」可以在生成后保存 JSON。"><RouterLink class="btn btn--primary" :to="{ path: '/chat', query: { ask: '帮我生成一份诊断报告' } }">生成报告</RouterLink><RouterLink class="btn" to="/chat">继续咨询</RouterLink></EmptyState>
+    <EmptyState v-else-if="!busy && !error" kind="report" :heading-level="2" title="尚未生成报告" description="先在对话里说一句「帮我生成一份诊断报告」，生成后会保存在这里；页头的「导出」可以在生成后保存 JSON。"><RouterLink class="btn btn--primary" :to="{ path: '/chat', query: { ask: '帮我生成一份诊断报告' } }">生成报告</RouterLink><RouterLink class="btn" to="/chat">继续咨询</RouterLink></EmptyState>
   </div>
 </template>
 

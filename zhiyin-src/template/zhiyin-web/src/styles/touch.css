@@ -1,0 +1,296 @@
+/* =============================================================================
+ * 触控热区（F1）：可点区域 ≥ 44×44。
+ *
+ * 两条策略，优先"视觉不变"：
+ *   1) 文本按钮/链接/说明触发器这类"看起来小、但必须能稳稳点中"的控件，
+ *      用不可见的 ::after 命中层把可点区域扩到 44×44 —— 排版与视觉不动。
+ *   2) 表单控件、图标按钮、底部导航这类有明确盒子的小控件，直接抬到 44px；
+ *      手机上再统一抬按钮面板，避免"桌面刚好 40、手指按不准"。
+ *
+ * 例外：正文里的行内链接（段落中的 `<a>`）不扩命中区——它们和相邻文字共享
+ * 一行，扩开会增加误点；这些链接按 WCAG 2.5.5（AAA）记录为非目标。
+ * ========================================================================== */
+
+/* 1) 文本控件：不可见命中层 */
+.ws-text-button,
+.ws-text-link,
+.detail-trigger,
+.plan-refresh,
+.report-toc__handle,
+.floating-reminders__empty + * {
+  position: relative;
+}
+
+.ws-text-button::after,
+.ws-text-link::after,
+.detail-trigger::after,
+.plan-refresh::after,
+.report-toc__handle::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(100%, 44px);
+  height: max(100%, 44px);
+  transform: translate(-50%, -50%);
+  /* 命中层本身不画东西，也不改变布局 */
+  background: transparent;
+  border-radius: inherit;
+}
+
+/* 2) 盒子控件：直接到 44 */
+input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']),
+select,
+textarea {
+  min-height: 44px;
+}
+
+.ws-icon-button {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.skip-link {
+  min-height: 44px;
+}
+
+/* 3) 手机/触屏：按钮、导航项、筛选器统一 44 */
+@media (pointer: coarse), (max-width: 767px) {
+  .btn,
+  button:not(.report-toc__handle):not(.ws-icon-button),
+  summary,
+  [role='button'] {
+    min-height: 44px;
+  }
+
+  .ws-text-button,
+  .ws-text-link,
+  .detail-trigger,
+  .plan-refresh {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  .ws-mobile-nav a,
+  .app-mobile-nav a,
+  nav[aria-label='工作区'] a {
+    min-width: 44px;
+    min-height: 48px;
+  }
+
+  .plan-filters button,
+  .consult-topics button,
+  .consult-year-options button,
+  .c2-review-zoom button {
+    min-height: 44px;
+  }
+
+  /* 表单里的紧凑标签也保证点击面 */
+  .field__label,
+  .ws-field > span {
+    min-height: 24px;
+  }
+}
+
+/* 4) 表格里的"更多"等小按钮：手机端给足高度，桌面端用命中层 */
+@media (pointer: fine) {
+  .ws-more-button,
+  .report-version-row__more,
+  .p7-affect {
+    position: relative;
+  }
+
+  .ws-more-button::after,
+  .p7-affect::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
+    background: transparent;
+    border-radius: inherit;
+  }
+}
+
+/* 触控目标变高后，密集工具栏允许换行而不是溢出 */
+@media (max-width: 767px) {
+  .ws-inline-actions,
+  .plan-goal-actions,
+  .plan-stage-actions,
+  .report-version-row__meta {
+    flex-wrap: wrap;
+  }
+}
+
+/* 5) 移动端浮层与安全区（F7）：弹层不超过一屏、底部避开手势条，输入聚焦时留出键盘空间 */
+@media (max-width: 767px) {
+  dialog,
+  .ws-confirm-dialog,
+  .ws-expand-card {
+    max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 16px) !important;
+  }
+
+  .ws-expand-card__inner,
+  .ws-confirm-dialog .ws-expand-card__inner {
+    max-height: inherit;
+  }
+
+  .ws-expand-card,
+  .ws-confirm-dialog {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .anchored-card,
+  .detail-popover,
+  .skin__pop {
+    max-height: min(70dvh, 620px);
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+
+  /* 键盘弹起时，聚焦的表单控件留出可滚动空间，不被键盘/底栏盖住 */
+  body {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  input,
+  select,
+  textarea,
+  .field__input {
+    scroll-margin-bottom: 96px;
+    scroll-margin-top: 72px;
+  }
+
+  .ws-page.ws-page {
+    scroll-padding-bottom: 96px;
+  }
+}
+
+/* 6) 第一轮实测后补齐：这些控件是 inline 或带更高特异性 height，上一组规则没盖住 */
+.ws-text-button,
+.ws-text-link {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.plan-refresh {
+  min-width: 44px;
+}
+
+.plan-goal-actions > a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+select,
+select.preference-row__select,
+.profile-toolbar select,
+.calendar-view select,
+.calendar-toolbar select {
+  min-height: 44px;
+}
+
+/* 复选框本体只有 18px：可点区域由包住它的 label 承担（label 整行、高 ≥44）。
+   这里把本体放大到 22px，减少误触；不强行拉到 44 以免挤坏整行表单。 */
+input[type='checkbox'],
+input[type='radio'] {
+  inline-size: 22px;
+  block-size: 22px;
+}
+
+/* 报告正文里的"判断名称/依据"按钮：已有 44px 命中层，这里再抬到 32 高避免 390 下仍显小 */
+.article-evidence-link,
+.article-meta-link {
+  min-height: 32px;
+}
+
+/* 7) F7：手机端给右侧悬浮铃铛留出固定栏位，任何滚动位置都不压住右侧按钮 */
+@media (max-width: 767px) {
+  .app.app--workspace:not([data-route='/reminders']) .ws-page.ws-page {
+    padding-right: max(56px, calc(16px + env(safe-area-inset-right, 0px)));
+  }
+
+  /* 对话页不是 .ws-page：给输入区右侧留出同一栏位，发送按钮不被铃铛盖住 */
+  .app.app--workspace .consult-compose-area {
+    padding-right: max(56px, calc(12px + env(safe-area-inset-right, 0px)));
+  }
+}
+
+/* 方向页的证据徽标：放在页头下方，不与按钮挤在同一行 */
+.dir-evidence-state {
+  margin: -4px 0 10px;
+}
+
+/* 8) 触控收口：组件 scoped 样式里有 34–42px 的 min-height，这里用工作区前缀提特异性到 44 */
+.app.app--workspace :is(.ws-text-button, .ws-text-link) {
+  min-height: 44px;
+}
+
+.app.app--workspace .desk-sidebar a,
+.app.app--workspace .desk-brand {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.app.app--workspace .consult-composer textarea {
+  min-height: 44px;
+}
+
+.app.app--workspace select.preference-row__select {
+  min-height: 44px;
+}
+
+.app.app--workspace .plan-goal-actions > a,
+.app.app--workspace .plan-goal-actions > :is(.detail-trigger, .plan-refresh),
+.app.app--workspace .plan-route-actions > button,
+.app.app--workspace .plan-stage-actions > button,
+.app.app--workspace .plan-stage-actions > .detail-trigger,
+.app.app--workspace .plan-stage-menu > summary,
+.app.app--workspace .plan-filters button {
+  min-height: 44px;
+}
+
+.app.app--workspace .plan-refresh {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* 待办/目标切换、任务行等 40–42px 的按钮 */
+.app.app--workspace .notes-workspace button,
+.app.app--workspace .notes-main button {
+  min-height: 44px;
+}
+
+/* 报告中的文字按钮（阅读说明、参考资料） */
+.app.app--workspace .article-reading-note button,
+.app.app--workspace .reference-links button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+/* 9) 320 宽度：底部 7 个导航项每个至少 44 宽；收掉两侧留白与间隙，仍在一行内 */
+@media (max-width: 360px) {
+  .app.app--workspace .ws-bookmarks {
+    width: calc(100% - 8px);
+    padding: 4px 2px;
+    gap: 0;
+  }
+  .app.app--workspace .ws-bookmarks .ws-bookmark {
+    min-width: 44px;
+  }
+  .app.app--workspace .plan-filters button {
+    min-width: 44px;
+  }
+}
+
+/* 10) 对话页快捷追问按钮（39px）在桌面也要 44 */
+.app.app--workspace .consult-options button,
+.app.app--workspace .consult-topics button {
+  min-height: 44px;
+}

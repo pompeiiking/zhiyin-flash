@@ -1,0 +1,111 @@
+/* =============================================================================
+ * 打印样式（F6）：报告/方案/计划打印时只留正文，导航与浮层全部隐藏。
+ * ========================================================================== */
+@page {
+  margin: 16mm 14mm;
+}
+
+@media print {
+  html,
+  body {
+    background: #fff !important;
+    color: #111 !important;
+  }
+
+  /* 导航、浮层、悬浮入口、跟踪/提醒 */
+  .desktop-sidebar,
+  .desk-sidebar,
+  .ws-mobile-nav,
+  .app-mobile-nav,
+  .ws-topbar,
+  .topbar,
+  .app-topbar,
+  .skip-link,
+  .floating-reminders,
+  .toast,
+  .app__atmos,
+  .report-toc-rail,
+  .report-toc,
+  .report-toc__handle,
+  .command-menu,
+  .anchored-card,
+  .detail-popover,
+  .skin__pop,
+  .ws-bookmarks,
+  .info-sheet,
+  .ws-expand-card,
+  dialog {
+    display: none !important;
+  }
+
+  .app,
+  .app__main,
+  .app__content,
+  .ws-page.ws-page {
+    display: block !important;
+    max-width: none !important;
+    width: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  /* 正文可读：去掉卡片阴影与背景，保留分隔线 */
+  .ws-card,
+  .ws-paper,
+  .p7-block,
+  .report-chapter,
+  .article-finding,
+  .profile-sheet-field,
+  .profile-insights,
+  .enrollment {
+    box-shadow: none !important;
+    background: #fff !important;
+    border-color: #d7dbe0 !important;
+  }
+
+  /* 章节/定位：不要被切在页中间 */
+  .report-chapter,
+  .article-finding,
+  .report-finding,
+  .profile-sheet-section,
+  .evidence-popover__facts,
+  article,
+  section {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    break-after: avoid;
+    page-break-after: avoid;
+    color: #111 !important;
+  }
+
+  /* 链接打印出来也能看出是链接，但不展开长 URL（正文里没有外链依赖） */
+  a {
+    color: #111 !important;
+    text-decoration: underline;
+  }
+
+  /* 只用于读屏/打印的替代表 */
+  .sr-only.print-table {
+    position: static !important;
+    width: auto !important;
+    height: auto !important;
+    clip: auto !important;
+    clip-path: none !important;
+    overflow: visible !important;
+    white-space: normal !important;
+  }
+
+  .sr-only.print-table caption {
+    text-align: left;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+}

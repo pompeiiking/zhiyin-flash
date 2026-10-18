@@ -5,6 +5,7 @@ import { growthRecords } from '../lib/growth-records'
 import { loadAchievements, systemData } from '../lib/system-data'
 import DetailPopover from './DetailPopover.vue'
 import StatusBanner from './StatusBanner.vue'
+import { formatDate as formatDateValue, formatDateTime as formatDateTimeValue } from '../lib/format'
 import UiIcon from './UiIcon.vue'
 
 const props = withDefaults(defineProps<{ autoLoad?: boolean }>(), { autoLoad: true })
@@ -44,12 +45,7 @@ function formatClock(value: string | null) {
 }
 
 function formatDateTime(value: string | null) {
-  if (!value) return '时间未提供'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return '时间未提供'
-  return new Intl.DateTimeFormat('zh-CN', {
-    year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
-  }).format(date)
+  return formatDateTimeValue(value) || '时间未提供'
 }
 
 function formatGroupDate(date: Date) {
@@ -58,7 +54,7 @@ function formatGroupDate(date: Date) {
   yesterday.setDate(today.getDate() - 1)
   const sameDay = (left: Date, right: Date) => left.getFullYear() === right.getFullYear()
     && left.getMonth() === right.getMonth() && left.getDate() === right.getDate()
-  const exact = new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' }).format(date)
+  const exact = formatDateValue(date)
   if (sameDay(date, today)) return `今天，${exact}`
   if (sameDay(date, yesterday)) return `昨天，${exact}`
   return exact
@@ -91,7 +87,7 @@ onMounted(() => {
       :message="error"
       :retrying="busy"
       :dismissible="false"
-      retry-label="重新读取"
+      retry-label="重试"
       @retry="refresh"
     />
 
@@ -196,7 +192,7 @@ onMounted(() => {
     <section v-else-if="loaded" class="ws-empty" aria-labelledby="growth-summary-title">
       <h2 id="growth-summary-title">当前没有可用的完成记录</h2>
       <p>服务端暂未返回记录规则，可以稍后重新读取。</p>
-      <button class="btn" type="button" :disabled="busy" @click="refresh">重新读取</button>
+      <button class="btn" type="button" :disabled="busy" @click="refresh">重试</button>
     </section>
   </section>
 </template>

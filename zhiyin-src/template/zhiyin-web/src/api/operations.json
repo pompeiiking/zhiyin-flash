@@ -404,5 +404,20 @@
     "method": "DELETE",
     "path": "/app/plan/action/phases/{phase_id}",
     "surface": "\u5de5\u4f5c\u53f0\u4ea4\u4e92\u80fd\u529b"
+  },
+  "session_rename": {
+    "method": "PATCH",
+    "path": "/app/sessions/{task_id}",
+    "surface": "\u5bf9\u8bdd\u5386\u53f2"
+  },
+  "session_delete": {
+    "method": "DELETE",
+    "path": "/app/sessions/{task_id}",
+    "surface": "\u5bf9\u8bdd\u5386\u53f2"
+  },
+  "capabilities": {
+    "method": "GET",
+    "path": "/app/capabilities",
+    "surface": "\u5bf9\u8bdd\u80fd\u529b\u9762\u677f"
   }
 }

@@ -104,7 +104,7 @@ onMounted(load)
     </header>
 
     <p v-if="loading" class="ws-muted" role="status">正在读取偏好与量化依据…</p>
-    <p v-if="error" class="ws-field-error" role="alert">{{ error }} <button class="ws-text-button" :disabled="loading || busy" @click="load">重新读取</button></p>
+    <p v-if="error" class="ws-field-error" role="alert">{{ error }} <button class="ws-text-button" :disabled="loading || busy" @click="load">重试</button></p>
     <p v-if="status" role="status">{{ status }}</p>
 
     <template v-if="data">

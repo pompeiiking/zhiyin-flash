@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import type { Confidence } from '../data/types'
 import { normalize01 } from './charts/MeterRow.vue'
+import { formatPercent } from '../lib/format'
 
 /* =============================================================================
  * ConfidenceBadge —— 可信度的**唯一**印法
@@ -94,7 +95,7 @@ const label = computed(() => props.value?.label?.trim() || dial.value.label)
 const title = computed(() =>
   score.value == null
     ? dial.value.hint
-    : `${dial.value.label} ${Math.round(score.value * 100)}% · ${dial.value.hint}`,
+    : `${dial.value.label} ${formatPercent(score.value)} · ${dial.value.hint}`,
 )
 </script>
 
@@ -118,7 +119,7 @@ const title = computed(() =>
 
     <span class="cf__label">{{ label }}</span>
 
-    <span v-if="showValue && score != null" class="cf__num t-num">{{ Math.round(score * 100) }}%</span>
+    <span v-if="showValue && score != null" class="cf__num t-num">{{ formatPercent(score) }}</span>
 
     <!-- 未知时补一句形状说明：读屏与灰度截图都不丢这条信息 -->
     <span v-if="dial.level === 'unknown'" class="cf__none">未评估</span>

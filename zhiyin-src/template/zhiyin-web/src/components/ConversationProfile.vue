@@ -32,7 +32,7 @@ function valueText(value: unknown): string {
     <header v-if="!embedded"><div><h2>对你的了解</h2><p>{{ fields.length ? `已记录 ${fields.length} 项信息` : '随咨询逐步完善' }}</p></div><button class="consult-icon" aria-label="收起个人画像" @click="$emit('close')"><UiIcon name="sidebar" :size="19" /></button></header>
     <div class="consult-profile__scroll">
       <p v-if="loading" role="status" class="consult-muted">正在更新资料…</p>
-      <p v-if="error" role="alert" class="consult-error">{{ error }} <button @click="$emit('refresh')">重新读取</button></p>
+      <p v-if="error" role="alert" class="consult-error">{{ error }} <button @click="$emit('refresh')">重试</button></p>
       <p v-if="!fields.length && !loading" class="consult-empty">尚未收集到个人信息。可以从兴趣、经历或当前目标开始交流。</p>
       <section v-for="group in groups" :key="group.key" class="consult-profile__group">
         <h3>{{ group.title }}<small>{{ group.items.length }}</small></h3>

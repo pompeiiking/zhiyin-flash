@@ -138,6 +138,16 @@ export interface paths {
      */
     get: operations["list_calendar_nodes_api_v1_app_calendar_get"];
   };
+  "/api/v1/app/capabilities": {
+    /**
+     * Capabilities
+     * @description 当前部署真实可用的能力（联网/学职/知识库/写任务/学信核验等）。
+     *
+     * 对话能力面板与服务端配置同源：未配置的能力明确显示不可用与替代，
+     * 不再让模型在对话里临时解释"我没有这个工具"。
+     */
+    get: operations["capabilities_api_v1_app_capabilities_get"];
+  };
   "/api/v1/app/chsi/bind": {
     /**
      * Chsi Bind
@@ -167,8 +177,10 @@ export interface paths {
      * · 正文不进对话气泡 —— 回执只有"它是什么"，正文留在服务端、只在用到它的
      *   那一轮进模型输入。
      *
-     * 读不出来的原因（Excel / 空文件）由文档抽取重载成一句用户能照做的话，
-     * 这一层只负责限大小。
+     * 这一层负责的边界（都在拿到字节之后、落库之前说清楚）：
+     * 文件大小 → 是否为空 → 扩展名白名单/二进制后缀拒绝 → 内容嗅探（空字节/控制字节）
+     * → 编码可解码性 → 正文字数。读不出来时给的都是**用户能照着做**的一句中文。
+     * 文件名只用来拼提示（取 basename、去控制字符、限长），不进日志正文。
      */
     post: operations["upload_material_api_v1_app_conversation_material_post"];
   };
@@ -479,6 +491,18 @@ export interface paths {
      * @description 左栏会话列表（并行任务会话，按任务/环节命名）。
      */
     get: operations["list_sessions_api_v1_app_sessions_get"];
+  };
+  "/api/v1/app/sessions/{task_id}": {
+    /**
+     * Delete Session
+     * @description 删除会话及其逐轮原文；返回删除后的列表。
+     */
+    delete: operations["delete_session_api_v1_app_sessions__task_id__delete"];
+    /**
+     * Rename Session
+     * @description 会话改名：只改展示名，不改变环节、消息与已有资产。
+     */
+    patch: operations["rename_session_api_v1_app_sessions__task_id__patch"];
   };
   "/api/v1/app/sessions/{task_id}/snapshot": {
     /** Session Snapshot */
@@ -1299,6 +1323,22 @@ export interface components {
       /** @default 0 */
       code?: components["schemas"]["ErrorCode"];
       data?: components["schemas"]["BootstrapView"] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
+    /** ApiResponse[CapabilityListView] */
+    ApiResponse_CapabilityListView_: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      data?: components["schemas"]["CapabilityListView"] | null;
       /**
        * Message
        * @default ok
@@ -2432,6 +2472,46 @@ export interface components {
       source?: "planner" | "coach" | "manual";
       /** Title */
       title: string;
+    };
+    /**
+     * CapabilityItemView
+     * @description 一项对话/业务能力在**当前部署**是否可用。
+     */
+    CapabilityItemView: {
+      /**
+       * Available
+       * @default false
+       */
+      available?: boolean;
+      /**
+       * Fallback
+       * @description 不可用时的替代做法
+       * @default
+       */
+      fallback?: string;
+      /** Key */
+      key: string;
+      /** Label */
+      label: string;
+      /**
+       * Reason
+       * @description 不可用原因（给学生看的）
+       * @default
+       */
+      reason?: string;
+    };
+    /**
+     * CapabilityListView
+     * @description 能力自检清单：前端能力面板与服务端真实配置同源。
+     */
+    CapabilityListView: {
+      /**
+       * Generated At
+       * @default
+       */
+      generated_at?: string;
+      /** Items */
+      items?: components["schemas"]["CapabilityItemView"][];
     };
     /**
      * CoachNotificationView
@@ -4609,6 +4689,14 @@ export interface components {
       sessions?: components["schemas"]["TaskSessionView"][];
     };
     /**
+     * SessionRenameRequest
+     * @description 会话改名：只改展示名，2–60 字。
+     */
+    SessionRenameRequest: {
+      /** Task Name */
+      task_name: string;
+    };
+    /**
      * StagePanelView
      * @description ②-⑤ 的节点卡。三态：当前评价 / 理论模型 / 历史 diff。
      */
@@ -5361,6 +5449,23 @@ export interface operations {
     };
   };
   /**
+   * Capabilities
+   * @description 当前部署真实可用的能力（联网/学职/知识库/写任务/学信核验等）。
+   *
+   * 对话能力面板与服务端配置同源：未配置的能力明确显示不可用与替代，
+   * 不再让模型在对话里临时解释"我没有这个工具"。
+   */
+  capabilities_api_v1_app_capabilities_get: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_CapabilityListView_"];
+        };
+      };
+    };
+  };
+  /**
    * Chsi Bind
    * @description 学信网绑定管线：核验在线验证码 → 读学籍 → 写画像。
    *
@@ -5402,8 +5507,10 @@ export interface operations {
    * · 正文不进对话气泡 —— 回执只有"它是什么"，正文留在服务端、只在用到它的
    *   那一轮进模型输入。
    *
-   * 读不出来的原因（Excel / 空文件）由文档抽取重载成一句用户能照做的话，
-   * 这一层只负责限大小。
+   * 这一层负责的边界（都在拿到字节之后、落库之前说清楚）：
+   * 文件大小 → 是否为空 → 扩展名白名单/二进制后缀拒绝 → 内容嗅探（空字节/控制字节）
+   * → 编码可解码性 → 正文字数。读不出来时给的都是**用户能照着做**的一句中文。
+   * 文件名只用来拼提示（取 basename、去控制字符、限长），不进日志正文。
    */
   upload_material_api_v1_app_conversation_material_post: {
     requestBody: {
@@ -6526,6 +6633,61 @@ export interface operations {
       200: {
         content: {
           "application/json": components["schemas"]["ApiResponse_SessionListView_"];
+        };
+      };
+    };
+  };
+  /**
+   * Delete Session
+   * @description 删除会话及其逐轮原文；返回删除后的列表。
+   */
+  delete_session_api_v1_app_sessions__task_id__delete: {
+    parameters: {
+      path: {
+        task_id: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_SessionListView_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /**
+   * Rename Session
+   * @description 会话改名：只改展示名，不改变环节、消息与已有资产。
+   */
+  rename_session_api_v1_app_sessions__task_id__patch: {
+    parameters: {
+      path: {
+        task_id: string;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SessionRenameRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_SessionListView_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };

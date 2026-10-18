@@ -108,3 +108,11 @@ class WorkspaceService(ABC):
     @abstractmethod
     async def list_sessions(self, user_id: str) -> list[TaskSession]:
         """列出该用户的任务会话（读侧转手，供左栏会话列表）。"""
+
+    @abstractmethod
+    async def rename_session(self, user_id: str, task_id: str, task_name: str) -> TaskSession:
+        """会话改名（只改展示名）。"""
+
+    @abstractmethod
+    async def delete_session(self, user_id: str, task_id: str) -> None:
+        """删除一条会话及其逐轮原文。"""

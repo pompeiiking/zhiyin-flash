@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import re
 from datetime import datetime, timezone
 from hashlib import sha256
 from typing import Optional
@@ -26,6 +27,22 @@ from zhiyin_data_sdk.repositories import (
 from zhiyin_kernel.blackboard import ConversationMemory, ConversationTurn
 from zhiyin_kernel.enums import LoopStage
 from zhiyin_kernel.errors import InvalidRequest
+
+"""材料正文字符数上限（20 万字）。与"文件 2MB"分开：这里限制的是模型输入的长度。"""
+_MAX_MATERIAL_CHARS = 200_000
+
+"""文件名是不可信输入，只用于提示与对象身份，不带着路径/控制字符进提示词或日志。"""
+_MATERIAL_NAME_LIMIT = 120
+
+
+def _safe_material_name(raw: str) -> str:
+    value = (raw or "").replace("\\", "/")
+    base = value.rsplit("/", 1)[-1]
+    # multipart 头里的换行/控制字符会被百分号编码（%0A/%0D/%09…），一并去掉
+    base = re.sub(r"%(?:0[0-9A-Fa-f]|1[0-9A-Fa-f]|7[Ff])", "", base)
+    base = "".join(ch for ch in base if ch.isprintable() and ch not in "\x00\r\n\t")
+    base = base.strip()[:_MATERIAL_NAME_LIMIT]
+    return base or "这个文件"
 
 
 class DefaultConversationMemoryService(ConversationMemoryService):
@@ -119,6 +136,12 @@ class DefaultConversationMemoryService(ConversationMemoryService):
             return []
         return await self._turns.list_by_task(user_id, task_id, limit=limit)
 
+    async def delete_session(self, user_id: str, task_id: str) -> None:
+        """删除会话的记忆摘要与逐轮原文（会话删除时调用）。"""
+        if self._turns is not None:
+            await self._turns.delete_by_task(user_id, task_id)
+        await self._memories.delete(user_id, task_id)
+
     # ------------------------------------------------------------ 用户带上来的材料
 
     async def put_material(
@@ -128,9 +151,15 @@ class DefaultConversationMemoryService(ConversationMemoryService):
 
         读不出正文时抛 `DocumentReadError`（消息里是用户能自己做的那一步）——
         业务层会把它翻成 422 的原话，界面照原样显示。
+
+        这一层再兜两道**服务层**边界（HTTP 入口已检查过，但直接调用方——测试、
+        内部任务——也走这里，不能只有入口一处校验）：
+        - 文件名只当数据：取 basename、去控制字符、限长，再落库/拼提示；
+        - 正文字数上限 20 万字，与"文件 2MB"是两个口径（这里说的是正文字符数）。
         """
         if self._documents is None or self._object_store is None:
             raise RuntimeError("材料上传未装配（Container.documents / object_store）")
+        name = _safe_material_name(name)
         try:
             text = self._documents.extract_text(data, filename=name)
         except DocumentReadError as exc:
@@ -138,6 +167,12 @@ class DefaultConversationMemoryService(ConversationMemoryService):
             # 翻成 InvalidRequest，api 按 422 + 原话返回，界面照原样显示那句
             # "另存为 CSV 再传"。不翻的话用户看到的是 500。
             raise InvalidRequest(str(exc)) from exc
+        if len(text) > _MAX_MATERIAL_CHARS:
+            # 这一条说的是**正文字符数**：文件可能不大，但读出来是一段超长文本。
+            raise InvalidRequest(
+                f"「{name}」读出来的正文有 {len(text)} 个字，超过 20 万字上限 —— "
+                "请只保留这件事用得上的部分再传。"
+            )
         # A lost upload response may be retried. The same account/file must
         # reference one object; names and accounts are part of its identity.
         digest = sha256(user_id.encode() + b"\0" + name.encode() + b"\0" + data).hexdigest()

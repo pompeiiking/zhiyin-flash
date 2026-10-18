@@ -218,3 +218,11 @@ class SessionListView(BaseModel):
 
     sessions: list[TaskSessionView] = Field(default_factory=list)
     current_task_id: Optional[str] = None
+
+
+class SessionRenameRequest(BaseModel):
+    """会话改名：只改展示名，2–60 字。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    task_name: str = Field(min_length=2, max_length=60)

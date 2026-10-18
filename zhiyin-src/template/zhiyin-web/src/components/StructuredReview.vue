@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { localDateTime, reviewDraft } from '../lib/form-values.mjs'
+import { formatDate as formatDateValue, formatDateTime as formatDateTimeValue } from '../lib/format'
 import { studentApi, type Review } from '../api/student-capabilities'
 import type { ReviewEdit, TaskValues } from '../api/backend-types'
 import { backendDemo } from '../lib/backend-demo'
@@ -68,8 +69,8 @@ const outcomeCopy = computed(() => {
   return '只保存本次复盘，不改变阶段计划。'
 })
 
-const formatDate = (value?: string | null) => value ? new Intl.DateTimeFormat('zh-CN', { dateStyle: 'medium' }).format(new Date(value)) : '日期未提供'
-const formatDateTime = (value?: string | null) => value ? new Intl.DateTimeFormat('zh-CN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : '时间未提供'
+const formatDate = (value?: string | null) => formatDateValue(value) || '日期未提供'
+const formatDateTime = (value?: string | null) => formatDateTimeValue(value) || '时间未提供'
 
 watch(selectedId, (id, previousId) => {
   if (previousId) {
@@ -375,7 +376,7 @@ onMounted(() => { void load() })
         </fieldset>
       </form>
 
-      <StatusBanner v-if="error" tone="error" :message="error" retry-label="重新读取" @retry="load" />
+      <StatusBanner v-if="error" tone="error" :message="error" retry-label="重试" @retry="load" />
       <p v-if="status" class="review-editor__status" role="status">{{ status }}</p>
     </section>
 

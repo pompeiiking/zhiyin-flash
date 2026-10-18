@@ -142,7 +142,7 @@ onMounted(load)
     </PageHeading>
 
     <AssetNotice />
-    <StatusBanner v-if="error" tone="error" :message="error" retry-label="重新读取" :retrying="busy" @retry="load" />
+    <StatusBanner v-if="error" tone="error" :message="error" retry-label="重试" :retrying="busy" @retry="load" />
 
     <div class="today-layout">
       <div class="today-main">

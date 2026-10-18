@@ -69,6 +69,8 @@ from zhiyin_api.dto.workspace import (
     AcademicCourseView,
     AcademicGradeView,
     AcademicPanelView,
+    CapabilityItemView,
+    CapabilityListView,
     CollectionItemView,
     CollectionPanelView,
     DependencyEdgeView,
@@ -1020,6 +1022,23 @@ def export_result_view(result: ExportResult | dict) -> ExportResultView:
     )
 
 
+def capability_list_view(rows: list[dict[str, Any]], *, generated_at: str = "") -> CapabilityListView:
+    """能力自检条目 → 前端视图；字段口径只在这里出现一次。"""
+    return CapabilityListView(
+        items=[
+            CapabilityItemView(
+                key=str(row.get("key", "")),
+                label=str(row.get("label", "")),
+                available=bool(row.get("available")),
+                reason=str(row.get("reason", "")),
+                fallback=str(row.get("fallback", "")),
+            )
+            for row in rows
+        ],
+        generated_at=generated_at,
+    )
+
+
 __all__ = [
     "academic_panel_view",
     "action_plan_view",
@@ -1041,6 +1060,7 @@ __all__ = [
     "report_full_text_view",
     "session_list_view",
     "task_session_view",
+    "capability_list_view",
     "theory_card_view",
     "theory_ref_view",
     "track_event_view",

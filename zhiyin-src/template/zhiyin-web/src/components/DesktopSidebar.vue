@@ -5,6 +5,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { TooltipContent, TooltipPortal, TooltipProvider, TooltipRoot, TooltipTrigger } from 'reka-ui'
 import { WORKSPACE_GROUPS, WORKSPACE_PRIMARY, PORTAL_LINK, isNavActive, type NavItem } from '../lib/workspace-nav'
 import { navigation } from '../lib/layout'
+import { formatRelative } from '../lib/format'
 import { demo } from '../store'
 import { openSession } from '../lib/system-data'
 import { toast } from '../store'
@@ -62,7 +63,7 @@ const sessionCount = computed(() => backendDemo.state.sessions.length)
 const nowCount = computed(() => demo.state.tasks.filter((t) => t.bucket === 'now').length)
 const railMode = computed(() => navigation.width.value >= 768 && navigation.width.value < 1024)
 function navCount(item: NavItem) { return item.key === 'home' ? nowCount.value : 0 }
-function sessionDate(date?: string | null) { return date ? new Date(date).toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' }) : '' }
+function sessionDate(date?: string | null) { return date ? formatRelative(date) : '' }
 </script>
 <template>
   <aside id="student-desktop-sidebar" class="desk-sidebar" aria-label="桌面导航">

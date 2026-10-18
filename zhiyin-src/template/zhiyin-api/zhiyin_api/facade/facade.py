@@ -52,7 +52,7 @@ from zhiyin_api.dto.conversation import (
     TaskEnterRequest,
     TaskSessionView,
 )
-from zhiyin_api.dto.workspace import WorkspacePageView
+from zhiyin_api.dto.workspace import WorkspacePageView, CapabilityListView
 from zhiyin_api.dto.track import TrackEventAck, TrackEventRequest
 from zhiyin_api.dto.note import NoteAck, NoteCreateRequest, NoteDoneRequest, NoteView
 from zhiyin_api.dto.workspace import (
@@ -110,6 +110,18 @@ class ApplicationFacade(ABC):
     @abstractmethod
     async def list_sessions(self, user_id: str) -> SessionListView:
         """左栏会话列表。"""
+
+    @abstractmethod
+    async def rename_session(self, user_id: str, task_id: str, task_name: str) -> SessionListView:
+        """会话改名（只改展示名）。"""
+
+    @abstractmethod
+    async def delete_session(self, user_id: str, task_id: str) -> SessionListView:
+        """删除会话及其逐轮原文。"""
+
+    @abstractmethod
+    async def capabilities(self) -> CapabilityListView:
+        """当前部署真实可用的对话/业务能力。"""
 
     @abstractmethod
     async def list_session_turns(

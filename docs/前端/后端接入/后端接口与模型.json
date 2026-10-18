@@ -235,6 +235,45 @@
       "verification": "2026-10-18 全站回归新增；任务编辑器二次确认删除，删除后计划/今日行动同步。"
     },
     {
+      "id": "DELETE /api/v1/app/sessions/{task_id}",
+      "method": "DELETE",
+      "path": "/api/v1/app/sessions/{task_id}",
+      "capability": "删除会话及其逐轮原文；返回删除后的会话列表。",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py:54",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [
+        {
+          "in": "path",
+          "name": "task_id",
+          "required": true,
+          "schema": {
+            "title": "Task Id",
+            "type": "string"
+          }
+        }
+      ],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_SessionListView_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/api/backend-client.ts",
+        "zhiyin-src/template/zhiyin-web/src/views/ConversationView.vue"
+      ],
+      "verification": "2026-10-18 新增：逐轮原文一并删除；越权/不存在返回 1002。"
+    },
+    {
       "id": "GET /api/v1/app/achievements",
       "method": "GET",
       "path": "/api/v1/app/achievements",
@@ -474,6 +513,36 @@
         "zhiyin-src/template/zhiyin-web/src/views/ScheduleView.vue"
       ],
       "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+    },
+    {
+      "id": "GET /api/v1/app/capabilities",
+      "method": "GET",
+      "path": "/api/v1/app/capabilities",
+      "capability": "当前部署真实可用的能力清单（联网/学职/知识库/任务写入/图表/提醒/学信核验）。",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py:36",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_SessionListView_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/api/backend-client.ts",
+        "zhiyin-src/template/zhiyin-web/src/views/ConversationView.vue",
+        "zhiyin-src/template/zhiyin-web/src/api/backend-types.ts"
+      ],
+      "verification": "2026-10-18 新增：未配置搜索服务时明确不可用并给替代，前端能力面板同源。"
     },
     {
       "id": "GET /api/v1/app/intel",
@@ -2230,6 +2299,45 @@
         "zhiyin-src/template/zhiyin-web/src/views/TodayView.vue"
       ],
       "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+    },
+    {
+      "id": "PATCH /api/v1/app/sessions/{task_id}",
+      "method": "PATCH",
+      "path": "/api/v1/app/sessions/{task_id}",
+      "capability": "会话重命名（只改展示名，2–60 字）。",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py:43",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [
+        {
+          "in": "path",
+          "name": "task_id",
+          "required": true,
+          "schema": {
+            "title": "Task Id",
+            "type": "string"
+          }
+        }
+      ],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_SessionListView_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/api/backend-client.ts",
+        "zhiyin-src/template/zhiyin-web/src/views/ConversationView.vue"
+      ],
+      "verification": "2026-10-18 新增：仅本人会话可改；返回最新会话列表。"
     },
     {
       "id": "POST /api/v1/app/academic/analysis",

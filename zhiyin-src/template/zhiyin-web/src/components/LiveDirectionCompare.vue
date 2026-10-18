@@ -4,6 +4,7 @@ import type { DirectionPlanListView, DirectionPlanView } from '../api/backend-ty
 import DirectionScoring from './DirectionScoring.vue'
 import InfoSheet from './InfoSheet.vue'
 import StatusBanner from './StatusBanner.vue'
+import EvidenceState from './EvidenceState.vue'
 
 type Criterion = '方向目标' | '匹配依据' | '方向要求' | '当前情况' | '补齐建议' | '主要风险'
 
@@ -121,6 +122,7 @@ function values(plan: DeepReadonly<DirectionPlanView>, criterion: Criterion): re
             </div>
             <aside class="route-evidence" aria-label="匹配依据状态">
               <span>画像依据</span>
+              <EvidenceState :state="validScore(activePlan.match_score) ? 'recorded' : 'missing'" />
               <strong v-if="validScore(activePlan.match_score)">{{ Math.round(activePlan.match_score * 100) }}<small>/100</small></strong>
               <strong v-else>待补充</strong>
               <p>{{ validScore(activePlan.match_score) ? '这是参考信号，不是最终结论。' : '补充经历后再核对，不自动补分。' }}</p>

@@ -154,7 +154,7 @@ async function exportData() {
             </div>
           </section>
         </div>
-        <aside class="settings-data">
+        <aside class="settings-data" aria-label="资料入口与更正说明">
           <header><p>资料入口</p><h2>更正与补充</h2><DetailPopover title="为什么在原页面修改" label="查看资料修改说明" side="left"><p>每类资料在对应页面中展示来源和影响范围，修改时更容易判断是否准确。</p></DetailPopover></header>
           <nav aria-label="资料更正入口">
             <RouterLink to="/profile"><span><UiIcon name="profile" :size="19"/></span><div><strong>个人画像与学籍</strong><small>核对资料和来源</small></div><UiIcon name="arrow" :size="15"/></RouterLink>

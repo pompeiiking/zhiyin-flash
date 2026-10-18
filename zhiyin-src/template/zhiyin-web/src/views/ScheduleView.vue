@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
+import { formatDate, formatDateRange, formatMonthDay } from '../lib/format'
 import { backendDemo } from '../lib/backend-demo'
 import { backendClient } from '../api/backend-client'
 import type { ActionTaskView } from '../api/backend-types'
@@ -61,7 +62,7 @@ const weekDates = computed(() => {
   start.setDate(start.getDate() - (start.getDay() + 6) % 7)
   return Array.from({ length: 7 }, (_, index) => new Date(start.getFullYear(), start.getMonth(), start.getDate() + index))
 })
-const weekTitle = computed(() => `${formatDay(weekDates.value[0], { month: 'long', day: 'numeric' })} — ${formatDay(weekDates.value[6], { month: 'long', day: 'numeric' })}`)
+const weekTitle = computed(() => formatDateRange(weekDates.value[0], weekDates.value[6]))
 const monthTitle = computed(() => formatDay(month.value, { year: 'numeric', month: 'long' }))
 const allTasks = computed<ActionTaskView[]>(() => backendDemo.state.liveAction?.phases?.flatMap(phase => phase.tasks ?? []) ?? [])
 const pendingTasks = computed(() => allTasks.value.filter(task => !task.done))
@@ -99,7 +100,7 @@ function monthDate(day: number) { return new Date(month.value.getFullYear(), mon
 function monthAriaLabel(day: number) {
   const date = monthDate(day)
   const labels = [...coursesForDate(date).map(course => course.name), ...entriesFor(date).map(item => item.title)]
-  return `${formatDay(monthDate(day), { month: 'long', day: 'numeric' })}${labels.length ? `，${labels.length} 项：${labels.join('、')}` : '，没有已记录事项'}`
+  return `${formatMonthDay(monthDate(day))}${labels.length ? `，${labels.length} 项：${labels.join('、')}` : '，没有已记录事项'}`
 }
 
 const timedCourses = computed(() => backendDemo.state.academic?.courses?.filter(hasCourseTime) ?? [])
@@ -248,7 +249,7 @@ onMounted(() => {
       </div>
 
       <section class="day-agenda" aria-labelledby="day-agenda-title">
-        <div class="day-agenda__head"><div><p>{{ formatDay(selected, { weekday: 'long' }) }}</p><h2 id="day-agenda-title">{{ formatDay(selected, { month: 'long', day: 'numeric' }) }}</h2></div><span>{{ selectedCourses.length }} 课 · {{ selectedNodes.length + selectedTasks.length }} 事</span></div>
+        <div class="day-agenda__head"><div><p>{{ formatDay(selected, { weekday: 'long' }) }}</p><h2 id="day-agenda-title">{{ formatDate(selected) }}</h2></div><span>{{ selectedCourses.length }} 课 · {{ selectedNodes.length + selectedTasks.length }} 事</span></div>
         <div v-if="selectedCourses.length || selectedNodes.length || selectedTasks.length" class="agenda-list">
           <article v-for="(course, index) in selectedCourses" :key="`${course.name}-${index}`" class="agenda-row agenda-row--course">
             <span class="agenda-row__marker" aria-hidden="true"><UiIcon name="academic" :size="17" /></span>

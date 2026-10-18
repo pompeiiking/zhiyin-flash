@@ -399,7 +399,7 @@ onMounted(() => {
       </div>
     </template>
 
-    <EmptyState v-else kind="intel" title="从真实资料开始职业探索" description="先读取职业资料了解可探索范围；也可以直接用当前画像发起一次匹配。" :next="false">
+    <EmptyState v-else kind="intel" :heading-level="2" title="从真实资料开始职业探索" description="先读取职业资料了解可探索范围；也可以直接用当前画像发起一次匹配。" :next="false">
       <div class="intel-empty-actions" aria-label="职业探索起步操作">
         <button class="intel-empty-action is-primary" type="button" :disabled="busy" @click="load(true)"><span>01</span><strong>{{ refreshing ? '正在更新资料…' : '更新职业资料' }}</strong><small>读取专业相关职业与真实去向</small></button>
         <button class="intel-empty-action" type="button" data-sheet-trigger @click="startMatch"><span>02</span><strong>用画像匹配</strong><small>根据当前资料生成匹配建议</small></button>

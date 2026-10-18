@@ -130,3 +130,48 @@ def test_academic_import_refuses_an_excel_upload_with_a_next_step(client: TestCl
     body = response.json()
     assert body["code"] == 1001
     assert "另存为 CSV" in body["message"]
+
+def test_capabilities_reports_real_availability(client: TestClient) -> None:
+    """能力自检：未配置搜索服务时必须明确不可用并给替代，不能假装能联网。"""
+    response = client.get(f"{API_PREFIX}/app/capabilities")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["code"] == 0
+    items = {item["key"]: item for item in body["data"]["items"]}
+    assert items["xuezhi_search"]["available"] is True
+    assert items["workspace_read"]["available"] is True
+    if not items["web_search"]["available"]:
+        assert "搜索服务" in items["web_search"]["reason"]
+        assert items["web_search"]["fallback"]
+
+
+def test_metrics_endpoint_counts_requests_without_business_data(client: TestClient) -> None:
+    client.get("/healthz")
+    response = client.get("/metrics")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["requests_total"] >= 1
+    assert "p50" in body["latency_ms"] and "p95" in body["latency_ms"]
+    assert "/api/v1/app/secret" not in body["top_routes"]
+
+
+def test_session_rename_and_delete_round_trip(client: TestClient) -> None:
+    """会话改名/删除接口可用；空会话不进历史列表（列表口径由会话服务保证）。"""
+    entered = client.post(
+        f"{API_PREFIX}/app/task/enter", json={"task_code": "free_chat", "new_session": True}
+    )
+    assert entered.status_code == 200, entered.text
+    task_id = entered.json()["data"]["task_id"]
+    renamed = client.patch(
+        f"{API_PREFIX}/app/sessions/{task_id}", json={"task_name": "复盘前的整理"}
+    )
+    assert renamed.status_code == 200, renamed.text
+    assert "sessions" in renamed.json()["data"]
+    deleted = client.delete(f"{API_PREFIX}/app/sessions/{task_id}")
+    assert deleted.status_code == 200, deleted.text
+    assert task_id not in {item["task_id"] for item in deleted.json()["data"]["sessions"]}
+    turns = client.get(f"{API_PREFIX}/app/sessions/{task_id}/turns")
+    # 会话行已删除：逐轮接口可以给空列表，也可以按“会话不存在”返回 404；两者都不泄露原文。
+    assert turns.status_code in {200, 404}
+    if turns.status_code == 200:
+        assert turns.json()["data"] == []

@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import type { IntelItemView } from '../api/backend-types'
 import UiIcon from './UiIcon.vue'
+import { formatDate as formatDateValue } from '../lib/format'
 
 const props = defineProps<{ item: IntelItemView }>()
 
@@ -24,8 +25,6 @@ const sourceNotice = computed(() => props.item.kind === 'speciality' || props.it
   ? '这是一份公开参考资料，请结合自己的情况理解，不把单一信息当作选择结论。'
   : '职业与招聘信息可能随时间变化，请以原始来源的最新内容为准。')
 
-const DATE = new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' })
-
 function safeSource(url?: string) {
   return url && /^https?:\/\//i.test(url) ? url : undefined
 }
@@ -33,7 +32,7 @@ function safeSource(url?: string) {
 function formatDate(value?: string) {
   if (!value) return '时间待补充'
   const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? '时间待补充' : DATE.format(date)
+  return Number.isNaN(date.getTime()) ? '时间待补充' : formatDateValue(date)
 }
 </script>
 

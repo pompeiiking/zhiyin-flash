@@ -611,6 +611,18 @@ class PostgresConversationTurnRepository(ConversationTurnRepository):
             for row in rows
         ]
 
+    async def delete_by_task(self, user_id: str, task_id: str) -> int:
+        result = await self._db.execute(
+            "DELETE FROM biz_conversation_turn WHERE user_id = $1 AND task_id = $2",
+            user_id,
+            task_id or "",
+        )
+        # asyncpg 返回 "DELETE n"；解析不出来就返回 0（不影响主流程）。
+        try:
+            return int(str(result).split()[-1])
+        except (ValueError, IndexError):
+            return 0
+
 
 class PostgresUserNoteRepository(UserNoteRepository):
     """用户自己写下的东西。列式存储：文本要能被查询与引用，不该埋在 JSON 里。"""
@@ -1129,6 +1141,29 @@ class PostgresTaskSessionRepository(TaskSessionRepository):
                 _dump(session),
             )
         return session
+
+    async def rename(self, session_id: str, task_name: str) -> TaskSession:
+        async with self._db.transaction() as connection:
+            await _lock(connection, f"session:{session_id}")
+            row = await connection.fetchrow(
+                "SELECT payload FROM biz_task_session WHERE id = $1 FOR UPDATE",
+                session_id,
+            )
+            if row is None:
+                raise ResourceNotFound(f"任务会话不存在：{session_id}")
+            session = _load(TaskSession, row["payload"])
+            session.task_name = task_name
+            session.updated_at = _now()
+            await connection.execute(
+                "UPDATE biz_task_session SET updated_at = $2, payload = $3::jsonb WHERE id = $1",
+                session.id,
+                session.updated_at,
+                _dump(session),
+            )
+        return session
+
+    async def delete(self, session_id: str) -> None:
+        await self._db.execute("DELETE FROM biz_task_session WHERE id = $1", session_id)
 
 
 class PostgresUserRepository(UserRepository):

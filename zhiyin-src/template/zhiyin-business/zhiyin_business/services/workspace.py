@@ -31,6 +31,7 @@ from zhiyin_kernel.assets import Report
 from zhiyin_kernel import dynamic_config
 from zhiyin_kernel.blackboard import TaskSession
 from zhiyin_kernel.enums import AssetType, LoopStage
+from zhiyin_kernel.errors import ResourceNotFound
 
 _log = logging.getLogger(__name__)
 
@@ -267,6 +268,24 @@ class DefaultWorkspaceService(WorkspaceService):
         if self._sessions is None:
             return []
         return list(await self._sessions.list_by_user(user_id))
+
+    async def rename_session(self, user_id: str, task_id: str, task_name: str) -> TaskSession:
+        if self._sessions is None:
+            raise ResourceNotFound("任务会话不存在")
+        session = await self._sessions.get(task_id)
+        if session is None or session.user_id != user_id:
+            raise ResourceNotFound("任务会话不存在或不属于当前账号")
+        return await self._sessions.rename(task_id, task_name.strip())
+
+    async def delete_session(self, user_id: str, task_id: str) -> None:
+        if self._sessions is None:
+            raise ResourceNotFound("任务会话不存在")
+        session = await self._sessions.get(task_id)
+        if session is None or session.user_id != user_id:
+            raise ResourceNotFound("任务会话不存在或不属于当前账号")
+        # 先删逐轮原文再删会话行：反过来的话，原文清到一半出错会留下无主记录。
+        await self._memories.delete_session(user_id, task_id)
+        await self._sessions.delete(task_id)
 
     # ---------- 内部聚合 ----------
 

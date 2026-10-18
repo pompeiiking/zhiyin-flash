@@ -3,6 +3,8 @@ import {computed,onBeforeUnmount,onMounted,ref} from 'vue'
 import {backendClient} from '../api/backend-client'
 import {backendDemo} from '../lib/backend-demo'
 import {actionRows,actionStatusMatches,dateKey,deadline} from '../lib/action-insights.mjs'
+import { formatDate } from '../lib/format'
+import EvidenceState from './EvidenceState.vue'
 import type {ActionTaskView} from '../api/backend-types'
 import {usePagedItems} from '../lib/paged-items'
 import TaskEditor from './TaskEditor.vue'
@@ -143,7 +145,7 @@ onBeforeUnmount(()=>{if(statusTimer)clearTimeout(statusTimer)})
 
 <template>
   <section class="restored-plan" :aria-busy="busy">
-    <StatusBanner v-if="error" tone="error" :message="error" retry-label="重新读取" @retry="load"/>
+    <StatusBanner v-if="error" tone="error" :message="error" retry-label="重试" @retry="load"/>
     <p v-if="status" role="status" class="plan-toast">{{status}}</p>
 
     <section v-if="!busy&&plan?.has_plan===false" class="plan-empty-path">
@@ -165,6 +167,7 @@ onBeforeUnmount(()=>{if(statusTimer)clearTimeout(statusTimer)})
           </div>
         </div>
         <div class="plan-goal-actions">
+          <EvidenceState :state="selectedDirection ? 'recorded' : 'missing'" />
           <RouterLink to="/directions">{{selectedDirection?'查看方向方案':'去确认方向'}}</RouterLink>
           <DetailPopover v-if="selectedDirection?.fit_reason||selectedDirection?.main_risk" :title="selectedDirection.name+' · 方向依据'" label="查看方向依据">
             <template #trigger>方向依据</template>
@@ -174,7 +177,7 @@ onBeforeUnmount(()=>{if(statusTimer)clearTimeout(statusTimer)})
           <button class="plan-refresh" :disabled="busy||!!savingTask" @click="load">{{busy?'正在读取…':'刷新'}}</button>
         </div>
         <div class="plan-focus">
-          <div class="plan-focus-label"><span>现在做</span><p v-if="nextTask">{{ dateKey(nextTask.due_date) ? dateKey(nextTask.due_date) + '，' + deadline(nextTask.due_date).label : '未设截止日期' }}</p></div>
+          <div class="plan-focus-label"><span>现在做</span><p v-if="nextTask">{{ formatDate(nextTask.due_date) ? formatDate(nextTask.due_date) + '，' + deadline(nextTask.due_date).label : '未设截止日期' }}</p></div>
           <strong v-if="nextTask">{{nextTask.text}}</strong>
           <strong v-else>{{allDone?'这一轮已经完成':'下一项任务待安排'}}</strong>
           <RouterLink v-if="nextTask" to="/home">开始行动</RouterLink>

@@ -313,6 +313,27 @@ class IntelListView(BaseModel):
     major: str = ""
 
 
+class CapabilityItemView(BaseModel):
+    """一项对话/业务能力在**当前部署**是否可用。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    key: str
+    label: str
+    available: bool = False
+    reason: str = Field(default="", description="不可用原因（给学生看的）")
+    fallback: str = Field(default="", description="不可用时的替代做法")
+
+
+class CapabilityListView(BaseModel):
+    """能力自检清单：前端能力面板与服务端真实配置同源。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    items: list[CapabilityItemView] = Field(default_factory=list)
+    generated_at: str = ""
+
+
 class WorkspacePageView(BaseModel):
     """工作台聚合视图。"""
 

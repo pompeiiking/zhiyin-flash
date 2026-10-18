@@ -14,6 +14,7 @@ from zhiyin_api.dto.workspace import (
     AcademicImportRequest,
     AcademicImportUpload,
     AcademicRevokeAck,
+    CapabilityListView,
     IntelListView,
     WorkspacePageView,
 )
@@ -32,6 +33,18 @@ async def get_workspace(request: Request) -> ApiResponse[WorkspacePageView]:
     facade = get_facade()
     user_id = await facade.resolve_user_id(request)
     return ApiResponse(data=await facade.get_workspace(user_id))
+
+
+@router.get("/app/capabilities", response_model=ApiResponse[CapabilityListView])
+async def capabilities(request: Request) -> ApiResponse[CapabilityListView]:
+    """当前部署真实可用的能力（联网/学职/知识库/写任务/学信核验等）。
+
+    对话能力面板与服务端配置同源：未配置的能力明确显示不可用与替代，
+    不再让模型在对话里临时解释"我没有这个工具"。
+    """
+    facade = get_facade()
+    await facade.resolve_user_id(request)
+    return ApiResponse(data=await facade.capabilities())
 
 
 @router.post("/app/academic/import", response_model=ApiResponse[AcademicImportAck])

@@ -54,3 +54,7 @@ class ConversationTurnRepository(ABC):
         重复消息（双击发送、网络重试）靠它直接返回上一次的答复，
         不再走一遍模型 —— 否则用户会白等一次、记录里也会多一条重复的往返。
         """
+
+    @abstractmethod
+    async def delete_by_task(self, user_id: str, task_id: str) -> int:
+        """删除一条会话的全部逐轮原文，返回删除条数（删除会话时使用）。"""

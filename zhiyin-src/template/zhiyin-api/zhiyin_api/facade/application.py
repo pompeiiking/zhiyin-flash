@@ -23,6 +23,7 @@ IO 口径：底层服务全部 async，因此本 Facade 的全部方法都是 `a
 from __future__ import annotations
 
 import asyncio
+import os
 from datetime import datetime
 from typing import Any, Optional
 
@@ -59,6 +60,7 @@ from zhiyin_api.dto.workspace import (
     AcademicImportRequest,
     AcademicImportUpload,
     AcademicRevokeAck,
+    CapabilityListView,
     IntelListView,
     ProfileFieldUpdateRequest,
     ProfileFieldView,
@@ -330,6 +332,50 @@ class DefaultApplicationFacade(ApplicationFacade):
         )
         return mappers.session_list_view(
             views, current_task_id=views[0].task_id if views else None
+        )
+
+    async def rename_session(
+        self, user_id: str, task_id: str, task_name: str
+    ) -> SessionListView:
+        cleaned = (task_name or "").strip()
+        if len(cleaned) < 2:
+            raise InvalidRequest("会话名称至少 2 个字。")
+        if len(cleaned) > 60:
+            raise InvalidRequest("会话名称最多 60 个字。")
+        await self._workspace.rename_session(user_id, task_id, cleaned)
+        return await self.list_sessions(user_id)
+
+    async def delete_session(self, user_id: str, task_id: str) -> SessionListView:
+        await self._workspace.delete_session(user_id, task_id)
+        return await self.list_sessions(user_id)
+
+    async def capabilities(self) -> CapabilityListView:
+        """当前部署的真实能力（不猜、不把未配置说成可用）。"""
+        search_ready = bool(os.environ.get("ZHIYIN_SEARCH_API_KEY", "").strip())
+        rows = [
+            {
+                "key": "web_search",
+                "label": "联网核实",
+                "available": search_ready,
+                "reason": "" if search_ready else "当前环境未接入搜索服务",
+                "fallback": "可改用学职平台公开资料或知识库；它们不是实时招聘信息",
+            },
+            {"key": "xuezhi_search", "label": "学职平台职业资料", "available": True},
+            {"key": "kb_search", "label": "知识库方法依据", "available": True},
+            {"key": "workspace_read", "label": "读取我的画像/成绩/计划", "available": True},
+            {"key": "task_write", "label": "更新任务完成状态", "available": True},
+            {"key": "chart", "label": "图表与进度卡片", "available": True},
+            {"key": "reminder", "label": "提醒与日程节点", "available": True},
+            {
+                "key": "chsi_verify",
+                "label": "学信网核验",
+                "available": False,
+                "reason": "需要本人授权并提供学信验证码",
+                "fallback": "可先导入成绩/课表或手动填写，并标注为未核验",
+            },
+        ]
+        return mappers.capability_list_view(
+            rows, generated_at=datetime.now().isoformat(timespec="seconds")
         )
 
     async def list_session_turns(

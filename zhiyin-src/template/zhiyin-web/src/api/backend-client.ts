@@ -1,7 +1,7 @@
 /** Formal BFF transport for integration. Demo data never silently replaces a failed request. */
 import operations from './operations.json'
 import type { AuthRequest, CoachNotificationView, ExportResultView, LoginResult, PortalView, WorkspacePageView } from './backend-types'
-import type { AcademicImportAck, AcademicImportRequest, ActionPlanView, ActionTaskDoneRequest, AchievementListView, AssetVersionView, BootstrapView, CalendarNodeView, ConversationMaterialView, ConversationMessageView, ConversationTurnView, DirectionPlanListView, IntelListView, MessageRequest, NoteCreateRequest, NoteView, ProfileFieldView, ReportFullTextView, SessionListView, TaskSessionView, TheoryCardView, TrackEventView } from './backend-types'
+import type { AcademicImportAck, AcademicImportRequest, ActionPlanView, ActionTaskDoneRequest, AchievementListView, AssetVersionView, BootstrapView, CalendarNodeView, CapabilitiesView, ConversationMaterialView, ConversationMessageView, ConversationTurnView, DirectionPlanListView, IntelListView, MessageRequest, NoteCreateRequest, NoteView, ProfileFieldView, ReportFullTextView, SessionListView, TaskSessionView, TheoryCardView, TrackEventView } from './backend-types'
 export class BackendError extends Error {
   constructor(message: string, public code: number, public traceId = '') { super(message) }
 }
@@ -27,8 +27,13 @@ function statusMessage(status: number) {
   if (status >= 500) return '服务暂时不可用，请稍后重试。'
   return '这次请求没有成功，请稍后重试。'
 }
-async function request<T>(key: keyof typeof operations, options: Options = {}): Promise<T> {
-  const operation = operations[key]
+type Operation = { method: string; path: string }
+/**
+ * 会话历史管理（PATCH/DELETE /app/sessions/{task_id}）与能力清单（GET /app/capabilities）
+ * 由这一轮新增，尚未写进 `operations.json`（该文件不在本次改动范围）。这里用显式
+ * Operation 描述直接发请求：路径与方法是当前约定的最终形态，联调时只需核对。
+ */
+async function send<T>(operation: Operation, options: Options = {}, opts: { auth?: boolean } = {}): Promise<T> {
   let path = operation.path.replace(/\{(\w+)\}/g, (_match, key: string) => {
     const value = options.params?.[key]
     if (value === undefined) throw new Error('Missing path parameter: ' + key)
@@ -49,7 +54,7 @@ async function request<T>(key: keyof typeof operations, options: Options = {}): 
   try {
     const response = await fetch('/api/v1' + path, { method: operation.method, headers, signal: controller.signal, body: options.form ?? (options.body === undefined ? undefined : JSON.stringify(options.body)) })
     sameAccount()
-    if (response.status === 401 && key !== 'login' && key !== 'register') window.dispatchEvent(new Event('zhiyin:unauthorized'))
+    if (response.status === 401 && !opts.auth) window.dispatchEvent(new Event('zhiyin:unauthorized'))
     let result: Envelope<T>
     try {
       result = await response.json() as Envelope<T>
@@ -60,7 +65,7 @@ async function request<T>(key: keyof typeof operations, options: Options = {}): 
       throw new BackendError(statusMessage(response.status), response.status === 200 ? 1007 : response.status)
     }
     sameAccount()
-    if ((response.status !== 401 && result.code === 1004) && key !== 'login' && key !== 'register') window.dispatchEvent(new Event('zhiyin:unauthorized'))
+    if ((response.status !== 401 && result.code === 1004) && !opts.auth) window.dispatchEvent(new Event('zhiyin:unauthorized'))
     if (!response.ok || result.code !== 0) throw new BackendError(userFacingMessage(result.message) || statusMessage(response.status), result.code ?? response.status, result.trace_id)
 
     return result.data
@@ -70,12 +75,21 @@ async function request<T>(key: keyof typeof operations, options: Options = {}): 
     throw new BackendError('网络或服务暂时不可用，请稍后重试。', 1007)
   } finally { clearTimeout(timeout); options.signal?.removeEventListener('abort', abort) }
 }
+async function request<T>(key: keyof typeof operations, options: Options = {}): Promise<T> {
+  return send<T>(operations[key], options, { auth: key === 'login' || key === 'register' })
+}
 export const backendClient = {
   portal: () => request<PortalView>('portal'),
   authenticate: (mode: 'login' | 'register', body: AuthRequest) => request<LoginResult>(mode, { body }),
   logout: () => request<{ logged_out: boolean }>('logout'),
   bootstrap: () => request<BootstrapView>('bootstrap'),
   sessions: () => request<SessionListView>('sessions'),
+  /** 重命名会话：PATCH /app/sessions/{task_id} body { task_name }，返回最新会话列表。 */
+  sessionRename: (task_id: string, task_name: string) => send<SessionListView>({ method: 'PATCH', path: `/app/sessions/${encodeURIComponent(task_id)}` }, { body: { task_name } }),
+  /** 删除会话：DELETE /app/sessions/{task_id}。契约优先返回最新 SessionListView；也兼容 { removed }。 */
+  sessionDelete: (task_id: string) => send<SessionListView | { removed?: string }>({ method: 'DELETE', path: `/app/sessions/${encodeURIComponent(task_id)}` }),
+  /** 能力清单：GET /app/capabilities（可用/未启用 + 原因 + 替代）。 */
+  capabilities: () => send<CapabilitiesView>({ method: 'GET', path: '/app/capabilities' }),
   turns: (task_id: string) => request<ConversationMessageView[]>('sessionTurns', { params: { task_id } }),
   enter: (task_code: string, new_session = false) => request<TaskSessionView>('enterTask', { body: { task_code, new_session } }),
   message: (body: MessageRequest, signal?: AbortSignal) => request<ConversationTurnView>('message', { body, timeout: 90_000, signal }),

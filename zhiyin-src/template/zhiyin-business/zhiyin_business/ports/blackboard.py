@@ -204,6 +204,10 @@ class ConversationMemoryService(ABC):
         """按时间正序读一条会话的全部轮次。"""
 
     @abstractmethod
+    async def delete_session(self, user_id: str, task_id: str) -> None:
+        """删除一条会话的记忆摘要与逐轮原文（会话删除时调用）。"""
+
+    @abstractmethod
     async def find_reply(
         self, user_id: str, client_msg_id: str
     ) -> Optional[ConversationTurn]:

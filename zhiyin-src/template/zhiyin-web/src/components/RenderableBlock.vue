@@ -113,6 +113,11 @@ const numberText = (value: number, unit: string, ratio: boolean) =>
         <span class="mono rb__num">{{ numberText(point.value, bars.unit, bars.ratio) }}</span>
       </li>
     </ul>
+    <table class="sr-only print-table">
+      <caption>{{ bars.title }}（数据表）</caption>
+      <thead><tr><th scope="col">项目</th><th scope="col">数值</th></tr></thead>
+      <tbody><tr v-for="point in bars.points" :key="point.label"><td>{{ label(point.label) }}</td><td>{{ numberText(point.value, bars.unit, bars.ratio) }}</td></tr></tbody>
+    </table>
     <button v-if="bars.points.length > 6" class="rb__expand" :aria-expanded="expanded" @click="expanded = !expanded">{{ expanded ? '收起部分条目' : `展开其余 ${bars.points.length - 6} 项` }}</button>
   </figure>
 </template>

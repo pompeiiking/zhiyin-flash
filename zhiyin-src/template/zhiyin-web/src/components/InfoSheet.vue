@@ -34,7 +34,7 @@ function positionCard() {
   const viewportW = window.innerWidth
   const viewportH = window.innerHeight
   if (viewportW <= 767) {
-    cardStyle.value = { left: '10px', right: '10px', bottom: '76px', top: 'auto', maxHeight: 'min(70dvh, 620px)' }
+    cardStyle.value = { left: '10px', right: '10px', bottom: 'calc(8px + env(safe-area-inset-bottom, 0px))', top: 'auto', maxHeight: 'calc(100dvh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))' }
     return
   }
   const rect = anchor.value?.getBoundingClientRect()
