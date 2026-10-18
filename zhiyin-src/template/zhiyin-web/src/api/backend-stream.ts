@@ -18,8 +18,10 @@ export async function streamBackend<T>(
   const abort = () => controller.abort()
   if (options.signal?.aborted) controller.abort()
   options.signal?.addEventListener('abort', abort, { once: true })
-  let idle = setTimeout(abort, 20_000)
-  const total = setTimeout(abort, 180_000)
+  let timedOut = false
+  const timeoutAbort = () => { timedOut = true; controller.abort() }
+  let idle = setTimeout(timeoutAbort, 20_000)
+  const total = setTimeout(timeoutAbort, 180_000)
   const headers: Record<string, string> = { Accept: 'text/event-stream', 'Content-Type': 'application/json' }
   try { const token = localStorage.getItem('zhiyin_token'); if (token) headers.Authorization = 'Bearer ' + token } catch { /* request without a persisted token */ }
   let reader: ReadableStreamDefaultReader<Uint8Array> | undefined
@@ -53,7 +55,7 @@ export async function streamBackend<T>(
     }
     while (true) {
       const chunk = await reader.read()
-      clearTimeout(idle); idle = setTimeout(abort, 60_000)
+      clearTimeout(idle); idle = setTimeout(timeoutAbort, 60_000)
       buffer += chunk.done ? decoder.decode() : decoder.decode(chunk.value, { stream: true })
       const blocks = buffer.split(/\r?\n\r?\n/)
       buffer = blocks.pop() ?? ''
@@ -65,7 +67,14 @@ export async function streamBackend<T>(
     return result as T
   } catch (error) {
     if (error instanceof BackendError) throw error
-    throw new BackendError(controller.signal.aborted ? '生成已停止，可保留输入后重试。' : '生成中途断开了，请重新尝试。', 1007)
+    throw new BackendError(
+      timedOut
+        ? '生成超时了，本次没有收到完整结果，请重试。'
+        : controller.signal.aborted
+          ? '生成已停止，可保留输入后重试。'
+          : '生成中途断开了，请重新尝试。',
+      1007,
+    )
   } finally {
     clearTimeout(idle); clearTimeout(total)
     options.signal?.removeEventListener('abort', abort)

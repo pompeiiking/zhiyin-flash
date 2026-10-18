@@ -120,6 +120,11 @@ def _explicit_plan_request(message: str) -> bool:
         message,
     ):
         return False
+    # 先讨论、讨论完再生成：这是分步请求，不是本轮执行授权。
+    if re.search(r"(?:先|先来|先一起).{0,8}(?:讨论|聊|商量)|讨论完再|聊完再|之后再|稍后|过会|晚点", message) and not re.search(
+        r"(?:现在就|马上|立刻|直接)", message
+    ):
+        return False
     # “我想讨论：更新计划”是讨论，不是执行；与报告同一口径。
     if re.search(
         r"(?:讨论|聊聊|先说|商量|想问|咨询|比较).{0,12}(?:计划|阶段|行动|更新|重算)",
@@ -187,6 +192,25 @@ def _wants_view_plan(message: str) -> bool:
     )
 
 
+_PII_PATTERN = re.compile(r"(?:身份证|手机号|银行卡|住址|家庭住址).{0,12}\d{5,}|(?<!\d)1[3-9]\d{9}(?!\d)")
+_UNSUPPORTED_STAGE_PATTERN = re.compile(r"(?:我是|读|在读|目前|学历|层次|学位).{0,8}(?:研究生|硕士|博士|大五|五年制|其他阶段)")
+_INJECTION_PATTERN = re.compile(
+    r"(?:忽略.{0,8}(?:规则|指令|限制)|跳过.{0,6}(?:确认|规则)|"
+    r"直接(?:调用|执行|生成|更新|写入)|写入数据库|覆盖.{0,6}(?:规则|设定)|"
+    r"系统提示|系统指令|开发者指令|管理员指令)"
+)
+
+
+def _is_safety_blocked(message: str) -> bool:
+    """安全/范围边界命中时，本轮只读：不落画像、不生成资产、不执行工具。"""
+    return bool(
+        _instruction_is_quoted_or_impersonated(message)
+        or _PII_PATTERN.search(message)
+        or _UNSUPPORTED_STAGE_PATTERN.search(message)
+        or _INJECTION_PATTERN.search(message)
+    )
+
+
 def _instruction_is_quoted_or_impersonated(message: str) -> bool:
     """别人转述/系统提示/引号里的命令，不构成本人授权。
 
@@ -200,6 +224,9 @@ def _instruction_is_quoted_or_impersonated(message: str) -> bool:
         message,
     ):
         return True
+    # 引号/截图/聊天记录/邮件/公告里的命令也是引用，不是本人直接授权。
+    if re.search(r"(?:截图|聊天记录|邮件|公告|朋友圈|帖子里|原文里).{0,20}(?:生成|更新|保存|报告|计划|执行|完成)", message):
+        return True
     # 引号里出现动作词：只当引用，不当指令。
     for segment in re.findall(r"[「『“\"'](.{1,120}?)[」』”\"']", message):
         if re.search(r"(?:生成|创建|更新|保存|重算|删除|修改|改|标记|完成|做完|搞定|勾掉|恢复|撤销)", segment):
@@ -207,7 +234,7 @@ def _instruction_is_quoted_or_impersonated(message: str) -> bool:
     # “我同学/老师说……”是转述，不是本人直接要求。
     if re.search(
         r"(?:同学|室友|朋友|别人|有人|他|她|老师|辅导员|导师|家长|父母|领导|HR|hr|面试官|同事|"
-        r"网友|客服|公众号|博主|管理员|系统)"
+        r"网友|客服|公众号|博主|管理员|系统|学长|学姐|亲戚|群友)"
         r".{0,12}(?:说|让我|叫我|转告|转述|建议|问)",
         message,
     ) and re.search(r"(?:生成|更新|保存|报告|计划|执行|完成)", message):
@@ -234,6 +261,11 @@ def _explicit_report_request(message: str) -> bool:
         return False
     # “我想讨论：更新报告”是在讨论，不是执行。先拦住讨论/商量句，
     # 除非同一句里还有明确的“帮我/现在/直接生成/更新”。
+    # 先讨论、讨论完再生成：这是分步请求，不是本轮执行授权。
+    if re.search(r"(?:先|先来|先一起).{0,8}(?:讨论|聊|商量)|讨论完再|聊完再|之后再|稍后|过会|晚点", message) and not re.search(
+        r"(?:现在就|马上|立刻|直接)", message
+    ):
+        return False
     if re.search(
         r"(?:讨论|聊聊|先说|商量|想问|咨询|比较).{0,12}(?:报告|诊断|更新|重算)",
         message,
@@ -285,6 +317,11 @@ def _task_operation_intent(message: str) -> bool | None:
     """
     text = message or ""
     if _instruction_is_quoted_or_impersonated(text):
+        return None
+    # “如果第二项做完了会怎样”是假设，不是结果。
+    if re.search(r"(?:如果|假如|假设|要是)", text) and not re.search(
+        r"(?:已经|刚刚|真的|确实).{0,6}(?:做完|完成|搞定|勾掉)", text
+    ):
         return None
     if re.search(r"(?:恢复|撤销|取消完成|取消勾选|改回|点错|标错|没做完|还没做|别标|不要标)", text):
         return False
@@ -388,6 +425,8 @@ def _explicit_profile_correction(message: str) -> dict[str, str]:
     """
     corrections: dict[str, str] = {}
     text = message or ""
+    if _instruction_is_quoted_or_impersonated(text):
+        return corrections
     if re.search(r"(?:如果|假如|假设|要是)", text):
         return corrections
     year = _study_year_from_text(text)
@@ -975,6 +1014,10 @@ class DefaultOrchestrator(Orchestrator):
             if replay is not None:
                 return replay
 
+        # 安全/范围边界必须先于“意图解析→阶段推进→落库”，否则回复虽拒答，
+        # 资产已经写进去了（P1：研究生更新计划、PII 生成报告）。
+        safety_blocked = _is_safety_blocked(request.message)
+
         # 用户这句话**先落库**，再调模型。
         #
         # 轮末的 `_remember_turn` 只有走到终点才会写；而模型超时、用户点"停止"、
@@ -1000,7 +1043,8 @@ class DefaultOrchestrator(Orchestrator):
         # 写 user_edit（本人更正）来源，并在回复里插入一条系统说明。
         profile_correction_note = ""
         protected_profile_values: dict[str, str] = {}
-        corrections = _explicit_profile_correction(request.message)
+        impersonated = _instruction_is_quoted_or_impersonated(request.message)
+        corrections = {} if safety_blocked or impersonated else _explicit_profile_correction(request.message)
         if corrections:
             field_labels = {
                 "study_year": "当前学习阶段",
@@ -1031,9 +1075,12 @@ class DefaultOrchestrator(Orchestrator):
                     field = await self._profiles.correct_field(
                         request.user_id, key, value
                     )
-                except InvalidRequest:
-                    # 某些装配下词表没有把该键登记进"可更正"清单（测试/精简装配），
-                    # 但本人明确说出的更正仍要落库：退回 update_field，来源仍记"本人更正"。
+                except InvalidRequest as exc:
+                    # 只有“这一格未登记”才退回 update_field；值本身不合法
+                    # （年级超范围、学历层次不支持等）必须拒绝，不能绕过校验。
+                    if "没有这一格" not in str(exc):
+                        logger.warning("对话内画像更正被拒：key=%s value=%s reason=%s", key, value, exc)
+                        continue
                     try:
                         field = await self._profiles.update_field(
                             request.user_id,
@@ -1097,6 +1144,9 @@ class DefaultOrchestrator(Orchestrator):
         }:
             tool_answer = None
         accepted_tool = pending_tool if tool_answer == "accept" else None
+        if impersonated or safety_blocked:
+            # 别人转述的“可以/查吧”不能替本人确认工具执行。
+            accepted_tool = None
         confirmed_tool_offer = TOOL_OFFERS.get(accepted_tool) if accepted_tool else None
         if accepted_tool in {"task_done", "task_undo"}:
             prior_user = next((t.text for t in reversed(recent_turns[:-1]) if t.role == "user"), "")
@@ -1181,7 +1231,10 @@ class DefaultOrchestrator(Orchestrator):
         )
         explicit_plan = _explicit_plan_request(request.message) or accepted_offer == "plan"
         explicit_report = _explicit_report_request(request.message) or accepted_offer == "report"
-        impersonated = _instruction_is_quoted_or_impersonated(request.message)
+        if safety_blocked:
+            accepted_offer = None
+            explicit_plan = False
+            explicit_report = False
         if impersonated:
             # 转述/注入既不能直接生成，也不能借“上一轮提议”的确认通道落库。
             accepted_offer = None
@@ -1197,7 +1250,7 @@ class DefaultOrchestrator(Orchestrator):
                     view_report_requested = True
             except Exception:  # noqa: BLE001
                 logger.warning("读取报告状态失败（按普通查看处理）", exc_info=True)
-        if not explicit_plan and _wants_view_plan(request.message):
+        if not impersonated and not explicit_plan and _wants_view_plan(request.message):
             try:
                 if await self._assets.get_action_plan(request.user_id) is None:
                     explicit_plan = True
@@ -1662,6 +1715,15 @@ class DefaultOrchestrator(Orchestrator):
                 result.valid = False
                 result.errors.append("诊断结论内容越界")
                 structured = _meta_verdict_fallback(structured)
+            elif _diagnose_prose_is_unsafe(structured):
+                if explicit_report:
+                    result.valid = False
+                    result.errors.append("诊断证据边界校验失败")
+                    structured = _unsafe_diagnose_fallback(structured)
+                else:
+                    # 自动交接/普通咨询里没有“报告”可拒；换成一句可继续的
+                    # 对话结论，不能把报告拒写模板抛给用户。
+                    structured = _conversation_safe_diagnose(structured)
             elif not _diagnose_prose_is_unsafe(structured):
                 structured = _sanitize_absence_words(_repair_diagnose_evidence(structured))
             try:
@@ -1709,7 +1771,7 @@ class DefaultOrchestrator(Orchestrator):
         # to overwrite a saved plan. Only an explicit request can generate one.
         write_tool_attempted = "workspace.task.set_done" in result.business_tool_calls
         may_persist = (not accepted_tool and not module_query and not write_tool_attempted
-                       and not impersonated
+                       and not impersonated and not safety_blocked
                        and (not result.business_tool_calls or (stage is LoopStage.ACT and explicit_plan)
                             or (stage is LoopStage.DIAGNOSE and explicit_report))
                        and (stage is not LoopStage.ACT or explicit_plan)
@@ -1742,12 +1804,12 @@ class DefaultOrchestrator(Orchestrator):
         # 整份产出别处不合契约（少个字段、格式歪了）不该连累这一条：字段能解析就落库，
         # 其余的问题留在日志里。`_apply_collect` 自己会挑出能解析的部分。
         collect_data = None
-        if stage is LoopStage.COLLECT and not accepted_tool and not module_query and not _forbids_profile_write(request.message):
+        if stage is LoopStage.COLLECT and not accepted_tool and not module_query and not impersonated and not safety_blocked and not _forbids_profile_write(request.message):
             if not result.business_tool_calls:
                 collect_data = structured
             elif _contains_personal_disclosure(request.message) and not write_tool_attempted:
                 collect_data = _direct_field_updates(structured, request.message)
-        elif stage is not LoopStage.COLLECT and _contains_personal_disclosure(request.message):
+        elif not impersonated and stage is not LoopStage.COLLECT and _contains_personal_disclosure(request.message):
             # Mixed-intent turns still need to answer the requested stage. Run a
             # separate read-only collector and only accept evidence quoted from
             # this exact message; never promote old generated text into a fact.
@@ -1939,8 +2001,16 @@ class DefaultOrchestrator(Orchestrator):
         user_context = " ".join([request.message] + [t.text for t in recent_turns[-8:] if t.role == "user"])
         has_plan_context = bool(direction_selected or re.search(
             r"实习|求职|升学|考研|考公|考编|就业|岗位|职业|方向|项目|简历|作品集|面试|考试|技能|编程|课程", user_context))
+        special_reply = bool(
+            report_basis_missing
+            or re.search(r"(?:身份证|手机号|银行卡|住址|家庭住址).{0,12}\d{5,}|(?<!\d)1[3-9]\d{9}(?!\d)", request.message)
+            or re.search(r"(?:我是|读|在读|目前|学历|层次|学位).{0,8}(?:研究生|硕士|博士|大五|五年制|其他阶段)", request.message)
+            or re.search(r"(?:提醒我|设(?:个|一个)?提醒|到点提醒|明早|明天|今晚|后天).{0,16}(?:提醒|叫我|投|做|完成|准备)", request.message)
+            or re.search(r"(?:任务|计划).{0,8}(?:完成了吗|完成没|进度|还剩|怎么样了|到哪了)|(?:进度|还剩).{0,6}(?:任务|计划)", request.message)
+        )
         offer_kind = None
         if (result.valid and not module_query and not write_tool_attempted and not requested_asset
+                and not impersonated and not safety_blocked and not special_reply
                 and not pending_offer and not pending_tool and not _asks_for_chart(request.message)
                 and not re.search(r"(?:先|想|只|继续|再).{0,4}聊|(?:先|继续|再).{0,4}(?:了解|谈谈)", request.message)
                 and not re.search(r"(?:不要|暂不|先不|不想|无需|不必|别).{0,12}(?:报告|诊断|计划|生成|创建)", request.message)):
@@ -1971,7 +2041,7 @@ class DefaultOrchestrator(Orchestrator):
             proposed_tool = "task_done"
         elif "task_undo" in available_offers:
             proposed_tool = "task_undo"
-        if (not offer_kind and result.valid and isinstance(proposed_tool, str) and proposed_tool in available_offers
+        if (not offer_kind and not impersonated and not safety_blocked and not special_reply and result.valid and isinstance(proposed_tool, str) and proposed_tool in available_offers
                 and proposed_tool not in recent_tool_offers and not pending_tool and not pending_offer
                 and not accepted_tool and not requested_asset and not write_tool_attempted and not module_query
                 and not result.business_tool_calls and not result.tool_calls
@@ -2063,10 +2133,13 @@ class DefaultOrchestrator(Orchestrator):
                 "先说说这两项，我就能按真实资料生成，不用猜。"
             )
             guide = BehaviorGuide(kind="question", text="", question=None)
-        if re.search(
-            r"(?:身份证|手机号|银行卡|住址|家庭住址).{0,12}\d{5,}|(?<!\d)1[3-9]\d{9}(?!\d)",
-            request.message,
-        ):
+        if _INJECTION_PATTERN.search(request.message):
+            reply_text = (
+                "这类“忽略规则、直接调用工具、写入数据库”的要求我不会执行。"
+                "如果你是在测试边界，可以直接问我系统能做什么；如果要改报告或计划，按正常请求说清改哪一项。"
+            )
+            guide = BehaviorGuide(kind="question", text="", question=None)
+        if _PII_PATTERN.search(request.message):
             # 敏感信息不应进入模型上下文或日志；给明确的安全拒答，而不是“格式失败”。
             reply_text = (
                 "这类个人敏感信息我不会读取、记录，也不会交给模型处理。"
@@ -2112,6 +2185,10 @@ class DefaultOrchestrator(Orchestrator):
                     GuideOption(option_id="asset.plan.accept", label="创建计划", value="accept"),
                     GuideOption(option_id="asset.plan.decline", label="先不用", value="decline"),
                 ])
+        if special_reply:
+            # 确定性安全/能力回复优先：不要留下上一轮的资产提议，避免下一句
+            # “可以”把一个用户没再看到的报告/计划提议执行掉。
+            await self._set_pending_asset_offer(request.user_id, None, task_id=request.task_id)
         messages = [
             ConversationMessage(
                 role="agent",
@@ -2227,7 +2304,7 @@ class DefaultOrchestrator(Orchestrator):
         返回 None 表示这一轮不接管。
         """
         intent = _task_operation_intent(request.message)
-        if intent is None:
+        if intent is None or _is_safety_blocked(request.message):
             return None
         try:
             plan = await self._assets.get_action_plan(request.user_id)
@@ -2476,8 +2553,9 @@ class DefaultOrchestrator(Orchestrator):
         # 复盘里说"周六删掉"，就得真的从行动计划里删掉（实测 ZY-05：
         # 话改了、资产没改，用户第二天看到的还是旧计划）。
         if stage is LoopStage.REVIEW:
-            changed = await self._apply_review_plan_patch(user_id, structured)
-            await self._complete_round(session_id)
+            changed, patch_ok = await self._apply_review_plan_patch(user_id, structured)
+            if patch_ok:
+                await self._complete_round(session_id)
             return changed
 
         converters = {
@@ -2608,13 +2686,16 @@ class DefaultOrchestrator(Orchestrator):
         # 被挡下的那几条**不算一次更新**：库里没有新值，却报一条"画像字段更新"，
         # 会让影响面传播去重算一份没变的画像（而它的由头正是这次"更新"）。
         for key in written:
-            await self._behaviors.log(
-                user_id,
-                BehaviorEventDraft(
-                    event_type=BehaviorEventType.PROFILE_FIELD_UPDATED,
-                    payload={"field_key": key, "stage": LoopStage.COLLECT.value},
-                ),
-            )
+            try:
+                await self._behaviors.log(
+                    user_id,
+                    BehaviorEventDraft(
+                        event_type=BehaviorEventType.PROFILE_FIELD_UPDATED,
+                        payload={"field_key": key, "stage": LoopStage.COLLECT.value},
+                    ),
+                )
+            except Exception:  # noqa: BLE001 - 画像已写成功，行为日志失败不该让整轮 500
+                logger.warning("画像更新行为日志写入失败：key=%s", key, exc_info=True)
 
         if blocked_by_user_edit:
             # 不静默，但也不当故障：这是设计如此。日志里要说清"被挡的是什么、
@@ -2815,7 +2896,7 @@ class DefaultOrchestrator(Orchestrator):
 
     async def _apply_review_plan_patch(
         self, user_id: str, structured: dict[str, Any]
-    ) -> list[AssetVersion]:
+    ) -> tuple[list[AssetVersion], bool]:
         """把复盘给出的结构化调整真正落到行动计划上（实测 ZY-05）。
 
         只在复盘明确给出 `plan_patch` 且确实命中时才写：
@@ -2824,7 +2905,8 @@ class DefaultOrchestrator(Orchestrator):
         落库失败只记日志：用户这一轮的话已经答完了。
 
         仅此一处会以「⑤ 复盘校准」为差异说明升版；单纯的"做完了"不升版。
-        返回实际产生的资产版本，供 SSE/处理记录显示"计划已更新"。
+        返回 (实际产生的资产版本, 是否可结束本轮)。没有 patch 或 patch 已应用才算
+        完成；patch 解析/命中/落库失败时不能把复盘标成 completed。
         """
         from zhiyin_business.contracts.review import ReviewOutput
         from zhiyin_business.services.plan_patch import apply_plan_patch
@@ -2833,13 +2915,13 @@ class DefaultOrchestrator(Orchestrator):
             output = ReviewOutput.model_validate(structured)
         except Exception:
             logger.warning("复盘产出无法按契约解析，跳过计划调整", exc_info=True)
-            return []
+            return [], False
         if output.plan_patch is None:
-            return []
+            return [], True
         plan = await self._assets.get_action_plan(user_id)
         if plan is None:
             logger.info("复盘要求调整计划，但当前没有行动计划，未落库")
-            return []
+            return [], False
 
         from zhiyin_business.contracts.student import Preferences
 
@@ -2848,7 +2930,7 @@ class DefaultOrchestrator(Orchestrator):
         updated, summary = apply_plan_patch(plan, output.plan_patch, timezone_name=preferences.timezone)
         if not summary:
             logger.info("复盘给出的计划调整没有命中任何任务，未落库")
-            return []
+            return [], False
         try:
             version = await self._assets.save_action_plan(
                 user_id,
@@ -2857,9 +2939,9 @@ class DefaultOrchestrator(Orchestrator):
             )
         except Exception:
             logger.warning("复盘的计划调整没落库", exc_info=True)
-            return []
+            return [], False
         logger.info("复盘校准已落到计划：%s", "；".join(summary))
-        return [version] if version is not None else []
+        return ([version] if version is not None else []), True
 
     async def _complete_round(self, session_id: str | None) -> None:
         """复盘走完 → 给这一轮一个明确的结束边界（实测 ZY-12）。
@@ -3441,6 +3523,27 @@ def _user_facing_text(
         return text.strip()
     raw = (raw_text or "").strip()
     return raw[:200] + ("…" if len(raw) > 200 else "") or "本轮已按当前环节完成分析。"
+
+
+def _conversation_safe_diagnose(structured: dict[str, Any]) -> dict[str, Any]:
+    """非报告场景里的诊断正文越界：保留对话，不抛报告拒写模板。"""
+    data = dict(structured)
+    data["conclusion"] = (
+        "这条我先记下，但还不能据此下判断。"
+        "你再多说一件具体做过的事，或者补一段真实要求，我再帮你看。"
+    )
+    verdict = data.get("verdict") if isinstance(data.get("verdict"), dict) else {}
+    data["verdict"] = {
+        **verdict,
+        "title": "先作为线索",
+        "summary": "目前材料还不足以形成结论，先把这条当作待核对的线索。",
+    }
+    data["guide"] = {
+        "kind": "question",
+        "text": "你再多说一件具体做过的事，我再帮你看。",
+        "question": "你再多说一件具体做过的事，我再帮你看。",
+    }
+    return data
 
 
 def _meta_verdict_fallback(structured: dict[str, Any]) -> dict[str, Any]:

@@ -219,7 +219,7 @@
 @media(max-width:767px) and (max-height:700px) {
  .consult-header {height:auto;padding-top:5px;padding-bottom:6px;}
  .consult-messages {padding-top:12px;}
- .consult-compose-area {padding-top:6px;padding-bottom:4px;}
+ .consult-compose-area {padding-top:6px;padding-bottom:calc(30px + env(safe-area-inset-bottom));}
  .consult-composer {padding-top:8px;}
  .consult-composer textarea {min-height:34px;max-height:92px;}
  .consult-disclaimer {display:none;}

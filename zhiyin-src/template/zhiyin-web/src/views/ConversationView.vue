@@ -49,7 +49,7 @@ const failedSend = ref<FailedSend | null>(null)
 const confirmDismissed = ref<string[]>([])
 const askPending = ref('')
 // 生成中刷新/切页：本轮回复没有落库时，提示"上一轮中断"并给出重新发送入口。
-const interrupted = ref<{ text: string; turnId: string } | null>(null)
+const interrupted = ref<{ text: string; turnId: string; clientMsgId?: string; materials?: { id: string; name: string }[] } | null>(null)
 const copiedTurn = ref('')
 let copyTimer: ReturnType<typeof setTimeout> | undefined
 const uploadError = ref('')
@@ -307,7 +307,7 @@ function syncInterruptedNotice() {
   if (hasChatStopped(demo.state.currentSessionId)) {
     // 主动停止不是“刷新导致的中断”：刷新后明确告诉用户上一轮是停止的，
     // 不出现“重新发送这个问题”，避免把未完成说成系统故障。
-    clearChatPending(demo.state.currentSessionId)
+    // 标记保留到下一轮发送/用户明确处理，刷新后仍能区分“主动停止”和“异常中断”。
     interrupted.value = null
     if (!requestError.value) requestError.value = '上一轮回复是你主动停止的，没有继续生成。你可以继续补充或重新提问。'
     return
@@ -325,14 +325,21 @@ function syncInterruptedNotice() {
   }
   // 已有失败态时优先走"重新尝试"那条通道，避免两条重试入口同时出现。
   if (failedSend.value || requestError.value) { interrupted.value = null; return }
-  if (interrupted.value?.turnId !== question.id) interrupted.value = { text: question.text, turnId: question.id }
+  if (interrupted.value?.turnId !== question.id) interrupted.value = {
+    text: question.text,
+    turnId: question.id,
+    clientMsgId: question.id.endsWith('-user') ? question.id.slice(0, -5) : undefined,
+    materials: question.materials?.map(item => ({ id: item.id, name: item.name })),
+  }
   if (markerPending) clearChatPending(demo.state.currentSessionId)
 }
 function retryInterrupted() {
   const item = interrupted.value
   if (!item || thinking.value || systemData.busy) return
   interrupted.value = null
-  void send(false, { text: item.text })
+  // 复用原 client_msg_id / 材料：服务端已保存这条用户消息，重发只补回答，
+  // 不再新增一条重复的用户气泡。
+  void send(false, { text: item.text }, { clientMsgId: item.clientMsgId, materials: item.materials })
 }
 function dismissInterrupted() {
   interrupted.value = null
@@ -594,18 +601,18 @@ async function toggleTask(guideTask: NonNullable<ChatTurn['guideTask']>) {
   } finally { guideSaving.value = '' }
 }
 function stop() { if (!stopArmed.value) return; stopped.value = true; markChatStopped(demo.state.currentSessionId); controller?.abort() }
-async function send(retry = false, choice?: { text: string; option?: OptionRef }) {
+async function send(retry = false, choice?: { text: string; option?: OptionRef }, resend?: { clientMsgId?: string; materials?: { id: string; name: string }[] }) {
  if (thinking.value || uploading.value || systemData.busy) return
  // 刷新后 failedRequest 会因为本轮普通消息成功而被清空，失败态里仍保存着原始请求。
  const retried = retry ? (failedRequest ?? failedSend.value?.request ?? null) : null
  const text = retry ? retried?.message : choice ? choice.text : draft.value.trim() || (attached.value.length ? '请结合我上传的材料提供建议。' : '')
  if (!text) return
- const outgoingMaterials = retry ? (failedSend.value?.materials ?? attached.value.map(m => ({ ...m }))) : choice ? [] : attached.value.map(m => ({ ...m }))
+ const outgoingMaterials = resend?.materials ?? (retry ? (failedSend.value?.materials ?? attached.value.map(m => ({ ...m }))) : choice ? [] : attached.value.map(m => ({ ...m })))
  const outgoingOption = choice ? choice.option : selectedOption.value, outgoingDraft = draft.value
  if (!demo.state.currentSessionId) { const code = starters.value[0]?.code; if (!code) { requestError.value = '当前没有可用的咨询入口。'; return }; await create(code); if (!demo.state.currentSessionId || requestError.value) return }
  const sessionId = demo.state.currentSessionId
  markChatPending(sessionId)
- const request: MessageRequest = retried ?? { task_id:sessionId, message:text, client_msg_id:crypto.randomUUID(), material_ids:outgoingMaterials.map(m => m.id), ...(outgoingOption ? { option_id:outgoingOption.option_id, option_value:outgoingOption.value } : {}) }
+ const request: MessageRequest = retried ?? { task_id:sessionId, message:text, client_msg_id:resend?.clientMsgId || crypto.randomUUID(), material_ids:outgoingMaterials.map(m => m.id), ...(outgoingOption ? { option_id:outgoingOption.option_id, option_value:outgoingOption.value } : {}) }
  const run = ++serial
  failedRequest = request; requestError.value = ''; stopped.value = false
  controller = new AbortController(); thinking.value = true
@@ -613,7 +620,7 @@ async function send(retry = false, choice?: { text: string; option?: OptionRef }
  stopArmed.value = false; clearTimeout(stopArmTimer)
  stopArmTimer = setTimeout(() => { stopArmed.value = true }, 700)
  pending.value = { text:'', agent:host.value, note:'正在分析你的问题' }
- if (!retry) {
+ if (!retry && !resend?.clientMsgId) {
   demo.addChatTurn({ id:`${request.client_msg_id}-user`, from:'me', text, materials:outgoingMaterials })
   if (!choice) { if (draft.value === outgoingDraft) draft.value = ''; attached.value = attached.value.filter(m => !outgoingMaterials.some(s => s.id === m.id)); selectedOption.value = null; remember() }
  }
@@ -926,7 +933,6 @@ onUnmounted(() => { disposed = true; window.removeEventListener('focus', refresh
     <p>已替换输入内容，原草稿可以恢复。</p>
     <div><button type="button" @click="undoFillReplace">撤销替换</button><button type="button" @click="replacedDraft = null">知道了</button></div>
    </div>
-   <p v-if="requestError && !turns.length && !pending && !showFailedSend" role="alert" class="consult-error">{{ requestError }}</p>
    <form class="consult-composer" :class="{ 'consult-composer--drop': draggingFiles }" @dragover="dragOver" @dragleave="!($event.currentTarget as HTMLElement).contains($event.relatedTarget as Node) && (draggingFiles = false)" @drop="dropFiles" @submit.prevent="send()">
     <div v-if="draggingFiles" class="consult-drop-label" aria-hidden="true"><UiIcon name="attachment" :size="20" />松开以添加材料</div>
     <div v-if="attached.length" class="consult-attachments"><span v-for="(m,i) in attached" :key="m.id"><UiIcon name="attachment" :size="14" />{{ m.name }}<button type="button" :aria-label="'移除' + m.name" @click="attached.splice(i,1)"><UiIcon name="close" :size="14" /></button></span></div>
