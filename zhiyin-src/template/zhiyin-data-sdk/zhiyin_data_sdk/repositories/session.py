@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from contextlib import asynccontextmanager
 from typing import Optional, Sequence
 
 from zhiyin_kernel.blackboard import TaskSession
@@ -14,6 +15,11 @@ from zhiyin_kernel.enums import LoopStage, TaskStatus
 
 class TaskSessionRepository(ABC):
     """任务会话 Repository。"""
+
+    @asynccontextmanager
+    async def conversation_lock(self, user_id: str):
+        """Production repositories override this to serialize across workers."""
+        yield
 
     @abstractmethod
     async def get(self, session_id: str) -> Optional[TaskSession]:

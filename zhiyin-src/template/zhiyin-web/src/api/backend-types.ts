@@ -123,11 +123,11 @@ export type IntelItemView = {
   "id": string
   "kind"?: string
   "kind_label"?: string
+  "relation"?: string
   "source_name"?: string
   "source_url"?: string
   "text"?: string
   "title"?: string
-  "relation"?: string
 }
 
 export type CalendarNodeView = {
@@ -379,6 +379,15 @@ export type PortalView = {
   "feature_flags"?: Record<string, boolean>
   "task_entries"?: Array<TaskEntryView>
   "trust_blocks"?: Array<TrustBlockView>
+}
+
+export type CapabilityListView = {
+  "generated_at"?: string
+  "items"?: Array<CapabilityItemView>
+}
+
+export type SessionRenameRequest = {
+  "task_name": string
 }
 
 export type AcademicCourseView = {
@@ -642,6 +651,14 @@ export type ProfilePanelView = {
   "updated_at"?: (string | null)
 }
 
+export type CapabilityItemView = {
+  "available"?: boolean
+  "fallback"?: string
+  "key": string
+  "label": string
+  "reason"?: string
+}
+
 export type TheoryRefView = {
   "name": string
   "stage"?: string
@@ -708,26 +725,5 @@ export type ProfileGapView = {
   "suggested_next_action"?: string
 }
 
-/**
- * 会话标题重命名请求（PATCH /app/sessions/{task_id}）。
- * 名称长度由前后端共同约束：2–60 个字。
- */
-export type SessionRenameRequest = {
-  "task_name": string
-}
-
-/** 「能做什么」能力面板的一项。available=false 时应说明 reason（原因）与 fallback（替代）。 */
-export type CapabilityItemView = {
-  "available": boolean
-  "fallback"?: (string | null)
-  "key": string
-  "label": string
-  "reason"?: (string | null)
-}
-
-/** GET /app/capabilities：当前账号可用/未启用的能力清单。 */
-export type CapabilitiesView = {
-  "generated_at"?: (string | null)
-  "items": Array<CapabilityItemView>
-}
+export type CapabilitiesView = CapabilityListView
 

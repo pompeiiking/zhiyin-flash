@@ -136,10 +136,11 @@ class ConversationTurn(BaseModel):
     id: str
     user_id: str
     task_id: Optional[str] = Field(default=None, description="为空表示无归属任务的自由会话")
-    role: Literal["user", "agent"] = Field(description="谁说的")
+    role: Literal["user", "agent", "system"] = Field(description="谁说的")
     text: str
     loop_stage: LoopStage
     renderables: list[dict[str, Any]] = Field(default_factory=list, description="服务端校验后的可视件快照")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="请求摘要、完整回包与提议身份；不直接作为模型事实")
     agent_id: str = Field(default="", description="role=agent 时是哪位主理")
     client_msg_id: str = Field(
         default="",

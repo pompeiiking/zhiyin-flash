@@ -2,6 +2,7 @@
 
 import ast
 import json
+import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -63,8 +64,10 @@ def test_no_fake_service_or_query_auth():
 
 def test_single_frontend_preserves_classic_portal_and_brands():
     assert (TEMPLATE / "zhiyin-web/src").is_dir()
-    assert not (ROOT / "redesign-demo").exists()
-    assert not (ROOT / "frontend").exists()
+    # Ignored local previews are not production source and must not be deleted
+    # to satisfy a repository-layout check.
+    tracked = subprocess.check_output(["git", "ls-files", "--", "redesign-demo", "frontend"], cwd=ROOT)
+    assert not tracked.strip()
     assert "dockerfile: zhiyin-src/template/zhiyin-web/Dockerfile" in (ROOT / "docker-compose.yml").read_text(
         encoding="utf-8"
     )

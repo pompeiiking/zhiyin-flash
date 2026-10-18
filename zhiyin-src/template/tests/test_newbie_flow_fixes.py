@@ -56,8 +56,8 @@ async def test_explicit_confused_still_keeps_user_in_collect():
 
 
 @pytest.mark.asyncio
-async def test_pending_offer_survives_an_unrelated_message_in_same_session():
-    """提议报告后用户先说了句别的，再回「可以」，仍应生成报告。"""
+async def test_pending_offer_expires_after_unrelated_message_in_same_session():
+    """换话题后的“可以”不构成对旧报告提议的授权。"""
     c, _, session = await setup(ready=True)
     first = await send(c, session, "聊聊我的情况")
     assert first.messages[0].text.endswith(_ASSET_OFFERS["report"])
@@ -65,8 +65,8 @@ async def test_pending_offer_survives_an_unrelated_message_in_same_session():
     await send(c, session, "今天我有点累，先随便聊聊")
     assert await c.asset_service.get_report("u1") is None
     result = await send(c, session, "可以")
-    assert await c.asset_service.get_report("u1") is not None
-    assert "诊断报告已生成" in result.messages[0].text
+    assert await c.asset_service.get_report("u1") is None
+    assert "诊断报告已生成" not in result.messages[0].text
 
 
 @pytest.mark.asyncio

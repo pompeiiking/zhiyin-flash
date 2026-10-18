@@ -45,17 +45,15 @@ def test_task_reference_supports_long_names_and_rejects_ambiguous_fragments():
 
 
 @pytest.mark.asyncio
-async def test_offer_is_confirmed_in_same_conversation_and_uses_real_tool_path():
+async def test_read_tool_is_not_offered_for_confirmation():
+    """只读工具由模型直接调用，不能再在正文后追问“要不要查看”。"""
     c, _, session = await setup()
     engine = SuggestingEngine()
     c.orchestrator._agent_engine = engine
     first = await send(c, session, "我觉得课程有些吃力")
-    assert first.messages[0].text.endswith(TOOL_OFFERS["read_academic"].question)
-    second = await send(c, session, "可以")
-    assert engine.requests[-1].prompt_vars["confirmed_tool_request"] == TOOL_OFFERS["read_academic"].instruction
-    assert "我觉得课程有些吃力" in engine.requests[-1].prompt_vars["user_input"]
-    assert "未能确认" not in second.messages[0].text
-    assert (await c.memory_service.list_turns("u1", session.id))[-2].text == "可以"
+    assert not first.messages[0].text.endswith(TOOL_OFFERS["read_academic"].question)
+    await send(c, session, "可以")
+    assert "confirmed_tool_request" not in engine.requests[-1].prompt_vars
 
 
 @pytest.mark.asyncio
@@ -98,12 +96,15 @@ async def test_completed_direct_query_is_not_offered_again():
 
 
 @pytest.mark.asyncio
-async def test_failed_tool_is_not_claimed_as_success():
+async def test_read_tool_failure_is_not_claimed_or_pending():
     c, _, session = await setup()
-    c.orchestrator._agent_engine = SuggestingEngine(succeeds=False)
+    engine = SuggestingEngine(succeeds=False)
+    c.orchestrator._agent_engine = engine
     await send(c, session, "课程有些吃力")
     result = await send(c, session, "可以")
-    assert "未能确认" in result.messages[0].text
+    # 只读工具不再进入待确认通道，不能因为“可以”而执行一个没展示过的工具。
+    assert "confirmed_tool_request" not in engine.requests[-1].prompt_vars
+    assert not result.messages[0].text.endswith(TOOL_OFFERS["read_academic"].question)
 
 
 @pytest.mark.asyncio

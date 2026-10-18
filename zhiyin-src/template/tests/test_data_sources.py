@@ -441,7 +441,8 @@ async def test_evidence_unsafe_diagnosis_is_withheld_before_reply_and_report(
     ))
 
     assert result.messages
-    assert "先不更新报告" in result.messages[-1].text
+    assert "项目能力不足" not in result.messages[-1].text
+    assert "还不能据此下判断" in result.messages[-1].text
     assert "项目能力不足" not in result.messages[-1].text
     assert await container.asset_service.list_versions(
         "u-unsafe-diagnose", AssetType.REPORT

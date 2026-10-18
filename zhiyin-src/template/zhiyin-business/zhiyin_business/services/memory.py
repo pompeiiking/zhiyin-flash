@@ -79,6 +79,10 @@ class DefaultConversationMemoryService(ConversationMemoryService):
     ) -> ConversationMemory:
         existing = await self._memories.get(user_id, task_id)
         summary = (existing.summary if existing else "") + summary_delta
+        if len(summary) > 6000:
+            # Display history remains complete in the turn repository. A bounded
+            # tail is only a resume hint, never a source of personal facts.
+            summary = summary[-6000:].partition("\n")[2]
         return await self._memories.upsert(
             ConversationMemory(
                 id=existing.id if existing else f"mem_{uuid4().hex[:12]}",
@@ -105,6 +109,7 @@ class DefaultConversationMemoryService(ConversationMemoryService):
         agent_id: str = "",
         client_msg_id: str = "",
         renderables: list[dict] | None = None,
+        metadata: dict | None = None,
     ) -> ConversationTurn:
         turn = ConversationTurn(
             id=f"turn_{uuid4().hex[:12]}",
@@ -116,6 +121,7 @@ class DefaultConversationMemoryService(ConversationMemoryService):
             agent_id=agent_id,
             client_msg_id=client_msg_id,
             renderables=renderables or [],
+            metadata=metadata or {},
             created_at=datetime.now(timezone.utc),
         )
         if self._turns is None:
@@ -167,6 +173,9 @@ class DefaultConversationMemoryService(ConversationMemoryService):
             # 翻成 InvalidRequest，api 按 422 + 原话返回，界面照原样显示那句
             # "另存为 CSV 再传"。不翻的话用户看到的是 500。
             raise InvalidRequest(str(exc)) from exc
+        from zhiyin_business.services.conversation_policy import SENSITIVE
+        if SENSITIVE.search(text) or SENSITIVE.search(name):
+            raise InvalidRequest("材料包含个人敏感信息，请移除身份证、手机号或银行卡等信息后重新上传。")
         if len(text) > _MAX_MATERIAL_CHARS:
             # 这一条说的是**正文字符数**：文件可能不大，但读出来是一段超长文本。
             raise InvalidRequest(

@@ -4,11 +4,46 @@ from __future__ import annotations
 
 import asyncio
 from contextlib import asynccontextmanager
+from contextvars import ContextVar
 from typing import Any, AsyncIterator, Optional
 
 import asyncpg
 
 from zhiyin_infrastructure.postgres.schema import SCHEMA_SQL
+
+
+class _ConnectionScope:
+    """Serialize parallel tool queries on a pinned connection; transactions are reentrant."""
+
+    def __init__(self, connection):
+        self._raw = connection
+        self._gate = asyncio.Lock()
+        self._owner = None
+
+    @asynccontextmanager
+    async def _exclusive(self):
+        task = asyncio.current_task()
+        if self._owner is task:
+            yield
+            return
+        async with self._gate:
+            self._owner = task
+            try:
+                yield
+            finally:
+                self._owner = None
+
+    def __getattr__(self, name):
+        async def call(*args, **kwargs):
+            async with self._exclusive():
+                return await getattr(self._raw, name)(*args, **kwargs)
+        return call
+
+    @asynccontextmanager
+    async def transaction(self):
+        async with self._exclusive():
+            async with self._raw.transaction():
+                yield self
 
 
 class PostgresDatabase:
@@ -32,6 +67,7 @@ class PostgresDatabase:
         self._max_size = max_size
         self._pool: Optional[asyncpg.Pool] = None
         self._lock = asyncio.Lock()
+        self._connection = ContextVar(f"db_connection_{id(self)}", default=None)
 
     async def _init_connection(self, connection: asyncpg.Connection) -> None:
         from pgvector.asyncpg import register_vector
@@ -60,28 +96,67 @@ class PostgresDatabase:
         return self._pool
 
     async def execute(self, query: str, *args: Any) -> str:
+        if self._connection.get() is not None:
+            return await self._connection.get().execute(query, *args)
         pool = await self.pool()
         return await pool.execute(query, *args)
 
     async def fetch(self, query: str, *args: Any) -> list[asyncpg.Record]:
+        if self._connection.get() is not None:
+            return await self._connection.get().fetch(query, *args)
         pool = await self.pool()
         return await pool.fetch(query, *args)
 
     async def fetchrow(self, query: str, *args: Any) -> Optional[asyncpg.Record]:
+        if self._connection.get() is not None:
+            return await self._connection.get().fetchrow(query, *args)
         pool = await self.pool()
         return await pool.fetchrow(query, *args)
 
     async def fetchval(self, query: str, *args: Any) -> Any:
+        if self._connection.get() is not None:
+            return await self._connection.get().fetchval(query, *args)
         pool = await self.pool()
         return await pool.fetchval(query, *args)
 
     @asynccontextmanager
     async def transaction(self) -> AsyncIterator[asyncpg.Connection]:
         """获取一个带事务的连接，供跨语句一致性写入使用。"""
+        existing = self._connection.get()
+        if existing is not None:
+            async with existing.transaction():
+                yield existing
+            return
         pool = await self.pool()
         async with pool.acquire() as connection:
-            async with connection.transaction():
-                yield connection
+            scoped = _ConnectionScope(connection)
+            async with scoped.transaction():
+                token = self._connection.set(scoped)
+                try:
+                    yield scoped
+                finally:
+                    self._connection.reset(token)
+
+    @asynccontextmanager
+    async def conversation_lock(self, user_id: str):
+        """Serialize one account across processes without holding a SQL transaction during inference.
+
+        Pin subsequent repository calls to this connection so even a one-slot pool
+        cannot deadlock while an advisory lock is held. Waiters release their slot.
+        """
+        pool = await self.pool()
+        while True:
+            async with pool.acquire() as connection:
+                locked = await connection.fetchval("SELECT pg_try_advisory_lock(hashtextextended($1, 0))", "conversation:" + user_id)
+                if locked:
+                    token = self._connection.set(_ConnectionScope(connection))
+                    try:
+                        yield
+                    finally:
+                        self._connection.reset(token)
+                        await asyncio.shield(connection.execute("SELECT pg_advisory_unlock(hashtextextended($1, 0))", "conversation:" + user_id))
+                    return
+            await asyncio.sleep(0.05)
 
     async def aclose(self) -> None:
         if self._pool is not None:

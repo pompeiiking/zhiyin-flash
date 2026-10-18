@@ -125,6 +125,7 @@ class TurnRequest(BaseModel):
             "把一份简历几百段塞进对话流，用户要读的是主理的回话，不是自己刚交的东西"
         ),
     )
+    material_ids: list[str] = Field(default_factory=list)
 
 
 class TurnResult(BaseModel):

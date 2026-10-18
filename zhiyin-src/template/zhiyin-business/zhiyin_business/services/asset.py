@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from zhiyin_business.services.unit_of_work import atomic_repository
+
 from collections import Counter, defaultdict
 import re
 from typing import Optional, Sequence
@@ -144,6 +146,7 @@ class DefaultAssetService(AssetService):
         """
         return await self._assets.mark_needs_recompute(user_id, asset_type, reason=reason)
 
+    @atomic_repository("_assets")
     async def save_version(
         self, user_id: str, draft: AssetUpdateDraft, *, snapshot_content=None, analysis_sources=None
     ) -> AssetVersion:
@@ -218,6 +221,7 @@ class DefaultAssetService(AssetService):
     # 模型已经把 15 维诊断生成并校验过了，却没有任何地方存下来 ——
     # 报告页与工作台恒为空，而看起来像"功能没做"。
 
+    @atomic_repository("_assets")
     async def save_report(
         self,
         user_id: str,
@@ -240,6 +244,7 @@ class DefaultAssetService(AssetService):
             snapshot_content=saved.model_dump(mode="json"),
         )
 
+    @atomic_repository("_assets")
     async def save_direction_plans(
         self,
         user_id: str,
@@ -270,6 +275,7 @@ class DefaultAssetService(AssetService):
             snapshot_content=[p.model_dump(mode="json") for p in plans],
         )
 
+    @atomic_repository("_assets")
     async def save_action_plan(
         self,
         user_id: str,

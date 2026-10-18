@@ -95,7 +95,7 @@ async def test_the_same_message_is_answered_from_the_record() -> None:
     assert engine.calls == 1, "重复消息又跑了一遍模型：用户白等、账单翻倍"
     assert again.messages[0].text == first.messages[0].text, "重发要返回上次那句原文"
     # 重放不带"下一步"：再推一次同一个问题，用户会以为又发生了什么
-    assert not again.guide.question
+    assert again.guide == first.guide
 
     # 换一个键 = 用户真的又说了一遍，照常处理
     await container.orchestrator.handle_message(

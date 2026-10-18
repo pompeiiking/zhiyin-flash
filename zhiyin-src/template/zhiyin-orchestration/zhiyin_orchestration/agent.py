@@ -35,6 +35,8 @@ class AgentRequest(BaseModel):
             "产出要可复现）；需要自己去取数的任务显式置 True。"
         ),
     )
+    conversation: bool = False
+    history: list[dict[str, str]] = Field(default_factory=list)
     blackboard: dict[str, Any] = Field(
         default_factory=dict, description="共享状态快照（已序列化）"
     )
@@ -64,6 +66,7 @@ class AgentResult(BaseModel):
     business_tool_receipts: list[dict[str, Any]] = Field(default_factory=list, description="服务端记录的业务写入结果。")
     business_read_receipts: list[dict[str, Any]] = Field(default_factory=list, description="服务端记录的业务查询摘要。")
     tool_calls: list[str] = Field(default_factory=list, description="本轮实际成功调用的已注册工具名。")
+    source_refs: list[dict[str, Any]] = Field(default_factory=list)
     module_attempts: list[str] = Field(default_factory=list,
         description="服务端记录的模块工具调用尝试，包括失败和被拒绝的查询；不能由模型声明。")
     module_results: list[dict[str, Any]] = Field(default_factory=list,

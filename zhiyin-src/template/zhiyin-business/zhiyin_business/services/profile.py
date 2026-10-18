@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from zhiyin_business.services.unit_of_work import atomic_repository
+
 import logging
 from datetime import datetime, timezone
 from typing import Optional, Sequence
@@ -56,6 +58,7 @@ class DefaultProfileService(ProfileService):
     async def get_gaps(self, user_id: str) -> list[ProfileGap]:
         return await self._profiles.list_gaps(user_id)
 
+    @atomic_repository("_profiles")
     async def update_field(
         self,
         user_id: str,
@@ -69,6 +72,8 @@ class DefaultProfileService(ProfileService):
         expected_updated_at: datetime | None = None,
         check_version: bool = False,
     ) -> ProfileField:
+        if isinstance(value, str) and len(value) > (12000 if key == "experience" else MAX_FIELD_VALUE_CHARS):
+            raise InvalidRequest("画像字段超过允许长度，请拆分为简短事实；经历最多 12000 字。")
         field = ProfileField(
             key=key,
             label=label,
@@ -142,6 +147,7 @@ class DefaultProfileService(ProfileService):
             labels.setdefault(spec.key, spec.label or spec.key)
         return labels
 
+    @atomic_repository("_profiles")
     async def correct_field(self, user_id: str, key: str, value: object, *, expected_updated_at: datetime | None = None, check_version: bool = False) -> ProfileField:
         """用户本人更正一个画像字段（issue #26 第三条）。
 
@@ -175,9 +181,10 @@ class DefaultProfileService(ProfileService):
             # 空值单独拒，而不是当成"清空这一格"：清空是另一件事（撤销一条记录），
             # 混进来的后果是用户以为自己在改值，实际把一条依据删掉了。
             raise InvalidRequest(f"「{label}」不能是空的 —— 写一句你认可的说法再提交。")
-        if len(text) > MAX_FIELD_VALUE_CHARS:
+        limit = 12000 if key == "experience" else MAX_FIELD_VALUE_CHARS
+        if len(text) > limit:
             raise InvalidRequest(
-                f"「{label}」最多 {MAX_FIELD_VALUE_CHARS} 个字，现在有 {len(text)} 个 —— "
+                f"「{label}」最多 {limit} 个字，现在有 {len(text)} 个 —— "
                 "画像里一格只放一句读得完的话。"
             )
         if key == "study_year" and text not in {"大一", "大二", "大三", "大四"}:

@@ -22,6 +22,8 @@ IO 口径：底层服务全部 async，因此本 Facade 的全部方法都是 `a
 
 from __future__ import annotations
 
+import logging
+
 import asyncio
 from datetime import datetime
 from typing import Any, Optional
@@ -93,6 +95,9 @@ _REPORT_GROUP_COPY: dict[str, str] = {
     "JOB-MARKET": "report.group.job_market",
     "DECISION-RISK": "report.group.decision_risk",
 }
+
+
+logger = logging.getLogger(__name__)
 
 
 def _preview(text: str, limit: int = 60) -> str:
@@ -443,6 +448,7 @@ class DefaultApplicationFacade(ApplicationFacade):
                 option_value=body.option_value,
                 attachment_name=material_name,
                 attachment_text=material_text,
+                material_ids=body.material_ids,
             )
         )
         # 这一轮要是产出了新版资产（② 报告 / ③ 方案 / ④ 计划），
@@ -456,9 +462,14 @@ class DefaultApplicationFacade(ApplicationFacade):
             await self._invalidate_user(user_id, "asset_version_changed")
         view = mappers.conversation_turn_view(turn)
         if self._student is not None:
-            await self._student.store_session_snapshot(
-                user_id, view.task_id, view.model_dump(mode="json"), body.client_msg_id
-            )
+            try:
+                await self._student.store_session_snapshot(
+                    user_id, view.task_id, view.model_dump(mode="json"), body.client_msg_id
+                )
+            except Exception:
+                # The durable turn result is already saved; snapshot failure must
+                # not turn a completed write into a failed request.
+                logger.exception("会话展示快照未保存，原文与执行回执已保留")
         return view
 
     async def upload_material(
@@ -493,6 +504,8 @@ class DefaultApplicationFacade(ApplicationFacade):
                 raise InvalidRequest(str(exc)) from exc
             names.append(body.name or material_id)
             blocks.append(body.text)
+        if sum(len(block) for block in blocks) > 64000:
+            raise InvalidRequest("本轮材料合计超过 6.4 万字，请只保留本次问题需要的部分，或分次发送。")
         return "、".join(names), "\n\n".join(blocks)
 
     # ---------- 工作台 ----------

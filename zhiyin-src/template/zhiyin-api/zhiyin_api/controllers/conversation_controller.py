@@ -32,6 +32,7 @@ import json
 import logging
 
 router = APIRouter(tags=["conversation"])
+_conversation_jobs: set[asyncio.Task] = set()
 
 
 @router.get("/app/sessions", response_model=ApiResponse[SessionListView])
@@ -124,6 +125,8 @@ async def stream_message(request: Request, body: MessageRequest):
                 queue.put_nowait(None)
 
         worker = asyncio.create_task(run())
+        _conversation_jobs.add(worker)
+        worker.add_done_callback(_conversation_jobs.discard)
         try:
             yield 'data: {"note":"正在分析你的问题"}\n\n'
             while True:
@@ -136,8 +139,11 @@ async def stream_message(request: Request, body: MessageRequest):
                     break
                 yield 'data: ' + json.dumps(frame, ensure_ascii=False) + '\n\n'
         finally:
-            worker.cancel()
-            await asyncio.gather(worker, return_exceptions=True)
+            # Closing the stream only stops reception. The approved turn must
+            # finish its bounded execution and persist a result for retry/readback.
+            # In particular do not cancel between a write and its receipt.
+            if worker.done():
+                await asyncio.gather(worker, return_exceptions=True)
 
     return StreamingResponse(frames(), media_type='text/event-stream', headers={
         'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no',

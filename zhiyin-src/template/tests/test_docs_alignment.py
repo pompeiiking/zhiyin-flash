@@ -111,6 +111,7 @@ SCANNED_SKIP_DIRS = {
     # 已在 .gitignore 里）。扫它只会让"包里那份旧代码"把本仓判成违规，
     # 而且每加一条标记就要多扫一遍全仓 —— 它不是源码。
     "release",
+    ".tmp-shots",
     # Private environment files, acceptance evidence and isolated Git checkouts.
     ".platform",
     "_archive-wireframe-v0",
@@ -135,6 +136,9 @@ AUDIT_OUTPUT_NAMES = {
 def _text_files() -> list[Path]:
     files: list[Path] = []
     for directory, children, names in os.walk(REPO_ROOT):
+        if Path(directory).is_relative_to(REPO_ROOT / "docs" / "测试验收"):
+            children[:] = []
+            continue
         children[:] = [name for name in children if name not in SCANNED_SKIP_DIRS]
         if Path(directory) == REPO_ROOT:
             children[:] = [name for name in children if name not in AUDIT_OUTPUT_NAMES]

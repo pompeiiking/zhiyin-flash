@@ -72,6 +72,7 @@ class AgnoModelRuntime:
             api_key=self.api_key,
             base_url=self.base_url,
             temperature=self.temperature if temperature is None else temperature,
+            max_tokens=4096,
             role_map=dict(self.role_map or _DEFAULT_ROLE_MAP),
             **({"timeout": timeout_s if timeout_s is not None else self.timeout_s}
                if timeout_s is not None or self.timeout_s else {}),

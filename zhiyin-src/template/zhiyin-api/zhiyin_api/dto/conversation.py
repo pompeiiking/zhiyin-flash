@@ -51,11 +51,11 @@ class MessageRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    task_id: str
-    message: str
-    client_msg_id: Optional[str] = Field(default=None, description="前端幂等键")
+    task_id: str = Field(min_length=1, max_length=200)
+    message: str = Field(min_length=1, max_length=16000)
+    client_msg_id: Optional[str] = Field(default=None, max_length=200, description="前端幂等键")
     option_id: Optional[str] = Field(
-        default=None, description="这一轮点了哪个选项（guide.options[].option_id）"
+        default=None, max_length=400, description="这一轮点了哪个选项（guide.options[].option_id）"
     )
     option_value: Any = Field(
         default=None,

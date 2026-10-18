@@ -65,19 +65,22 @@ async def test_stream_controller_isolates_concurrent_users(monkeypatch):
     assert a[1]['text'] == 'a-partial' and b[1]['text'] == 'b-partial'
     assert a[-1]['result']['task_id'] == 'a'
 
-async def test_stream_controller_disconnect_cancels_model(monkeypatch):
+async def test_stream_disconnect_does_not_interrupt_approved_writes(monkeypatch):
     import asyncio
     from zhiyin_api.controllers import conversation_controller as controller
     from zhiyin_api.dto.conversation import MessageRequest
     from zhiyin_kernel.streaming import emit_progress
     cancelled = asyncio.Event()
+    finish = asyncio.Event()
     class Facade:
         async def resolve_user_id(self, request): return 'a'
         async def check_analysis_consent(self, user): pass
         async def send_message(self, user, body):
             try:
                 emit_progress({'text':'partial'})
-                await asyncio.Event().wait()
+                await finish.wait()
+                from types import SimpleNamespace
+                return SimpleNamespace(model_dump=lambda **kwargs: {"task_id": "a"})
             finally:
                 cancelled.set()
     monkeypatch.setattr(controller, 'get_facade', lambda: Facade())
@@ -85,4 +88,6 @@ async def test_stream_controller_disconnect_cancels_model(monkeypatch):
     await anext(response.body_iterator)
     await anext(response.body_iterator)
     await response.body_iterator.aclose()
-    assert cancelled.is_set()
+    assert not cancelled.is_set()
+    finish.set()
+    await asyncio.wait_for(cancelled.wait(), 1)

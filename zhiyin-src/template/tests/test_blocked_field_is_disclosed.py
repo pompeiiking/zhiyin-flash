@@ -86,8 +86,12 @@ class _StubEngine(AgentEngine):
         self._structured = structured
 
     async def invoke(self, request: AgentRequest) -> AgentResult:
+        import copy
+        structured = copy.deepcopy(self._structured)
+        for update in structured.get("field_updates", []):
+            update["evidence"] = [request.prompt_vars["raw_user_message"]]
         return AgentResult(
-            agent_id=request.agent_id, structured=dict(self._structured), valid=True
+            agent_id=request.agent_id, structured=structured, valid=True
         )
 
 

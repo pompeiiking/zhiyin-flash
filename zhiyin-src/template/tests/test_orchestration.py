@@ -743,7 +743,7 @@ def test_engine_refuses_tool_run_without_user_context() -> None:
     assert kwargs["session_id"] == "t-1"
     # 每次运行还带一个**回传盒子**：工具（chart.render）算出来的可视件放这儿，
     # 跑完由引擎取回来交给上层。它的存在本身就是约定，所以这里钉住。
-    assert kwargs["dependencies"] == {"renderables": []}
+    assert kwargs["dependencies"] == {"renderables": [], "source_refs": [], "material_ids": []}
 
 
 def test_extract_json_handles_fenced_output() -> None:

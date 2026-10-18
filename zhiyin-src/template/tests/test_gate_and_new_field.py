@@ -96,7 +96,7 @@ COLLECT_PAYLOAD = {
             "value": "家里希望求稳",
             "confidence": 0.8,
             "source": "conversation",
-            "evidence": ["家里希望我找个稳定的方向"],
+            "evidence": ["家里希望我求稳"],
         }
     ],
     "remaining_gaps": [],

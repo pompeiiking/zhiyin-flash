@@ -16,11 +16,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import json
+from hashlib import sha256
 from typing import Any, Callable, Literal, Sequence
 
 from agno.run import RunContext
 
 from zhiyin_kernel.errors import ResourceNotFound
+from zhiyin_kernel.privacy import redact_sensitive
 
 # 全站可注册的工具名清单（唯一口径）。
 #
@@ -46,6 +49,20 @@ KNOWN_TOOL_NAMES: frozenset[str] = frozenset(
 #: 与编排层 `agno_engine.CHART_BOX_KEY` 是同一个约定，但两边各写一遍 ——
 #: 依赖守卫不许编排层 import 基础设施层的实现，而这个键名是它们之间的约定。
 CHART_BOX_KEY = "renderables"
+
+
+def _capture_sources(run_context, rows):
+    if run_context.dependencies is None:
+        run_context.dependencies = {}
+    box = run_context.dependencies.setdefault("source_refs", [])
+    for row in rows:
+        url = str(row.get("source_url") or "")
+        if not url.startswith(("https://", "http://")):
+            continue
+        ref = {"id": sha256(url.encode()).hexdigest()[:16], "title": str(row.get("title") or row.get("id") or "参考资料"),
+               "kind_label": "检索资料", "source_name": str(row.get("source_name") or "公开资料"), "source_url": url}
+        if not any(item["source_url"] == url for item in box):
+            box.append(ref)
 
 #: 能画的图**只有这几种**，每一种的点都由服务端自己从库里读出来。
 #:
@@ -291,9 +308,10 @@ def build_tool_catalog(
                 return f"这次联网检索失败了（{exc.__class__.__name__}）。不要凭印象补，直接说这次没查到。"
             if not hits:
                 return "网上没有搜到相关结果。这种情况不要凭印象补，直接说没查到。"
-            return "\n".join(
+            _capture_sources(run_context, [{"title": hit.title, "source_url": hit.url, "source_name": "联网检索"} for hit in hits])
+            return redact_sensitive("\n".join(
                 f"- {hit.title} —— {hit.snippet}\n  {hit.url}" for hit in hits
-            )
+            ))
 
         catalog["web.search"] = ToolSpec(
             name="web.search",
@@ -310,15 +328,18 @@ def build_tool_catalog(
                 query: 检索词，写具体一点，例如"结构设计岗 能力要求"或"执行意图 拆任务"
                 top_k: 返回几条，默认 5
             """
-            hits = await search.hybrid(query, top_k=top_k)
+            hits = await search.hybrid(query, top_k=max(1, min(top_k, 8)))
             if not hits:
                 return "知识库里没有找到相关条目。这种情况不要凭印象补，直接说没查到。"
-            lines = [
-                f"- {str(hit.content).strip()[:400]}"
+            rows = [
+                {"id": hit.id, "content": str(hit.content).strip()[:1600], "score": hit.score,
+                 "source_url": hit.metadata.get("source_url", ""), "fetched_at": hit.metadata.get("fetched_at", ""),
+                 "title": hit.metadata.get("title", hit.id)}
                 for hit in hits
                 if str(getattr(hit, "content", "")).strip()
             ]
-            return "\n".join(lines) or "知识库里没有找到相关条目。"
+            _capture_sources(run_context, rows)
+            return json.dumps(redact_sensitive(rows), ensure_ascii=False) if rows else "知识库里没有找到相关条目。"
 
         catalog["kb.search"] = ToolSpec(
             name="kb.search",
@@ -345,10 +366,11 @@ def build_tool_catalog(
                     source="xuezhi",
                     query=query,
                     limit=max(1, min(int(limit), 20)),
-                    context={"fields": _profile_fields(profile)},
+                    context={"fields": [], "background_fields": _profile_fields(profile)},
                 )
             )
             records = list(getattr(result, "records", []) or [])
+            _capture_sources(run_context, [record.model_dump(mode="json") for record in records])
             if not records:
                 errors = "；".join(str(e) for e in (getattr(result, "errors", []) or []))
                 return (
@@ -366,7 +388,7 @@ def build_tool_catalog(
                 )
             if getattr(result, "degraded", False):
                 parts.append("（这次只取到一部分，用它的时候要说明不完整。）")
-            return "\n".join(parts)
+            return redact_sensitive("\n".join(parts))
 
         catalog["xuezhi.search"] = ToolSpec(
             name="xuezhi.search",
@@ -379,7 +401,7 @@ def build_tool_catalog(
         async def profile_read(run_context: RunContext) -> str:
             """读当前用户的画像：已知哪些字段、把握多大、还缺什么。"""
             data = await _read(profile_reader, run_context.user_id)
-            return _describe_profile(data)
+            return redact_sensitive(_describe_profile(data))
 
         catalog["profile.read"] = ToolSpec(
             name="profile.read",
@@ -398,7 +420,7 @@ def build_tool_catalog(
             rows = await _read(behavior_reader, run_context.user_id, max(1, min(int(limit), 50)))
             if not rows:
                 return "这个用户还没有任何行为记录。"
-            return "\n".join(_describe_behavior(row) for row in rows)
+            return redact_sensitive("\n".join(_describe_behavior(row) for row in rows))
 
         catalog["behavior.recent"] = ToolSpec(
             name="behavior.recent",
@@ -415,7 +437,7 @@ def build_tool_catalog(
             把已经勾掉的事再安排一遍；陪你推进的人靠它判断"停在哪一步"。
             """
             data = await _read(plan_reader, run_context.user_id)
-            return _describe_plan(data)
+            return redact_sensitive(_describe_plan(data))
 
         catalog["plan.read"] = ToolSpec(
             name="plan.read",

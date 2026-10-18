@@ -99,6 +99,13 @@ def build_orchestration(container: "Container") -> None:
             registry=container.registry,
             tools={name: spec.handler for name, spec in catalog.items()},
         )
+        if container.extra.get("ai_router") is not None:
+            async def refresh_model():
+                resolved = await container.extra["ai_router"].resolve("llm")
+                if resolved is None:
+                    return False
+                return runtime.apply(api_key=resolved.api_key, base_url=resolved.base_url, model=resolved.model_code)
+            container.agent_engine.refresh_model = refresh_model
         container.workflow_engine = SequentialWorkflowEngine(container.agent_engine)
     else:
         # 没有真模型就没有智能体引擎 —— **不装 mock**。

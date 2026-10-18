@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import re
 from collections import Counter
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timezone, timedelta
 from hashlib import sha1
 from typing import Any
 from uuid import uuid4
@@ -51,21 +51,23 @@ def _normalize_phase_date_range(text: str) -> str:
     if not text:
         return text
     now = datetime.now(ZoneInfo("Asia/Shanghai"))
-    pattern = re.compile(r"(\d{1,2})月(\d{1,2})日[（(]周[一二三四五六日天][)）]")
+    pattern = re.compile(r"(?:(\d{4})年)?(\d{1,2})月(\d{1,2})日[（(]周[一二三四五六日天][)）]")
 
     def replace(match: re.Match[str]) -> str:
-        month, day = int(match.group(1)), int(match.group(2))
+        year = int(match.group(1)) if match.group(1) else now.year
+        month, day = int(match.group(2)), int(match.group(3))
         try:
-            value = date(now.year, month, day)
+            value = date(year, month, day)
         except ValueError:
             return match.group(0)
         # 跨年计划的粗略归属：明显是明年的日期就按明年算星期。
-        if (value - now.date()).days > 200:
+        if not match.group(1) and value < now.date() - timedelta(days=180):
             try:
                 value = date(now.year + 1, month, day)
             except ValueError:
                 return match.group(0)
-        return f"{month}月{day}日（{_WEEKDAY_CN[value.weekday()]}）"
+        prefix = f"{year}年" if match.group(1) else ""
+        return f"{prefix}{month}月{day}日（{_WEEKDAY_CN[value.weekday()]}）"
 
     return pattern.sub(replace, text)
 

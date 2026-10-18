@@ -1,6 +1,7 @@
 """基于 pgvector 的检索实现（关键词 / 向量 / 混合）。"""
 
 from __future__ import annotations
+import logging
 
 from zhiyin_data_sdk.gateways.ai import (
     EmbedGateway,
@@ -53,10 +54,16 @@ class VectorSearchGateway(SearchGateway):
 
     async def hybrid(self, query: str, *, top_k: int = 10) -> list[SearchHit]:
         keyword_hits = await self.keyword(query, top_k=top_k)
-        vectors = await self._embedding.embed([query])
-        if not vectors:
+        try:
+            if getattr(self._embedding, "IMPLEMENTATION_STATUS", "") == "skeleton":
+                return keyword_hits
+            vectors = await self._embedding.embed([query])
+            if not vectors:
+                return keyword_hits
+            vector_hits = await self.vector(vectors[0], top_k=top_k)
+        except Exception:
+            logging.getLogger(__name__).warning("向量检索不可用，保留关键词结果", exc_info=True)
             return keyword_hits
-        vector_hits = await self.vector(vectors[0], top_k=top_k)
         return _merge_hits(keyword_hits, vector_hits, top_k)
 
 

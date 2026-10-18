@@ -50,4 +50,6 @@ MIGRATION_SQL = "\n".join(
     ]
 )
 
+MIGRATION_SQL += "\nALTER TABLE biz_conversation_turn ADD COLUMN IF NOT EXISTS metadata JSONB NOT NULL DEFAULT '{}'::jsonb;"
+
 __all__ = ["MIGRATION_SQL"]

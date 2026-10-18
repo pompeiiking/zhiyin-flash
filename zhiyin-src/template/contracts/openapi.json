@@ -5326,6 +5326,7 @@
           "client_msg_id": {
             "anyOf": [
               {
+                "maxLength": 200,
                 "type": "string"
               },
               {
@@ -5345,12 +5346,15 @@
             "type": "array"
           },
           "message": {
+            "maxLength": 16000,
+            "minLength": 1,
             "title": "Message",
             "type": "string"
           },
           "option_id": {
             "anyOf": [
               {
+                "maxLength": 400,
                 "type": "string"
               },
               {
@@ -5365,6 +5369,8 @@
             "title": "Option Value"
           },
           "task_id": {
+            "maxLength": 200,
+            "minLength": 1,
             "title": "Task Id",
             "type": "string"
           }

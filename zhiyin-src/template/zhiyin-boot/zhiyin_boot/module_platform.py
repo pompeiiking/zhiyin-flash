@@ -43,6 +43,24 @@ def definitions(container):
 
 def product_tools(container):
     modules = []
+    async def read_material(run_context: RunContext, material_id: str, offset: int = 0, limit: int = 4000) -> str:
+        """按片段读取本会话已上传的材料。material_id 来自本轮材料清单，offset 为字符偏移。"""
+        from zhiyin_business.services.analysis_access import current_scope
+        from zhiyin_business.services.conversation_policy import SENSITIVE
+        user_id = run_context.user_id or ""
+        scope = current_scope(user_id)
+        if not user_id or (scope is not None and "material" not in scope.sources):
+            raise InvalidRequest("本轮未允许使用材料")
+        if container.student_service is not None:
+            await container.student_service.require_material_analysis(user_id)
+        if material_id not in (run_context.dependencies or {}).get("material_ids", []):
+            raise InvalidRequest("这份材料不在当前会话的已上传清单中")
+        body = await container.memory_service.material_body(user_id, material_id)
+        if SENSITIVE.search(body.text):
+            return "这份材料包含敏感信息，未交给模型。请脱敏后重新上传。"
+        start = max(0, offset)
+        return json.dumps({"id": material_id, "name": body.name, "offset": start,
+            "total_chars": len(body.text), "text": body.text[start:start + max(1, min(limit, 8000))]}, ensure_ascii=False)
     async def read_workspace(run_context: RunContext, area: Literal["profile", "academic", "report", "plan", "directions", "calendar", "notes", "reviews", "achievements"]) -> str:
         """读取当前登录用户的指定业务资料；先选择一个资料领域。"""
         from zhiyin_business.services.analysis_access import current_scope
@@ -83,7 +101,8 @@ def product_tools(container):
             summary = (f"没有可读取的{labels[area]}。" if value is None or value == []
                        else f"已读取{labels[area]}。本次未能整理成可靠的详细回复，请到对应页面查看。")
         deps.setdefault("business_read_receipts", []).append({"area": area, "text": summary})
-        return json.dumps({"area": area, "data": value}, ensure_ascii=False,
+        from zhiyin_kernel.privacy import redact_sensitive
+        return json.dumps(redact_sensitive({"area": area, "data": value}), ensure_ascii=False,
                           default=lambda x: x.model_dump(mode="json") if hasattr(x, "model_dump") else str(x))
 
     async def set_task_done(run_context: RunContext, task_id: str, done: bool) -> str:
@@ -120,6 +139,7 @@ def product_tools(container):
         return json.dumps({**receipt, "plan": updated.model_dump(mode="json")}, ensure_ascii=False)
 
     modules.append(ToolModule(name="workspace", tools=[
+        ToolSpec(name="material.read", description="分段读取当前会话已上传材料", handler=read_material),
         ToolSpec(name="workspace.read", description="读取当前用户的真实业务资料", handler=read_workspace),
         ToolSpec(name="workspace.task.set_done", description="用户明确指定任务名称和操作时更新任务完成状态", handler=set_task_done),
     ]))

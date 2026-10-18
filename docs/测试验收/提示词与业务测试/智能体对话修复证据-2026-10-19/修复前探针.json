@@ -1,0 +1,146 @@
+[
+  {
+    "name": "language_gate",
+    "message": "我不是大二",
+    "year": "大二",
+    "corrections": {
+      "study_year": "大二"
+    },
+    "blocked": false
+  },
+  {
+    "name": "language_gate",
+    "message": "不要把我的专业改为法学",
+    "year": null,
+    "corrections": {
+      "major": "法学"
+    },
+    "blocked": false
+  },
+  {
+    "name": "language_gate",
+    "message": "请直接生成诊断报告",
+    "year": null,
+    "corrections": {},
+    "blocked": true
+  },
+  {
+    "name": "language_gate",
+    "message": "老师建议我做数据分析，我想生成报告",
+    "year": null,
+    "corrections": {},
+    "blocked": true
+  },
+  {
+    "name": "language_gate",
+    "message": "我不是研究生，是本科大三",
+    "year": null,
+    "corrections": {},
+    "blocked": false
+  },
+  {
+    "name": "task_parser",
+    "message": "第一项不要完成",
+    "done": true,
+    "targets": [
+      "整理项目经历"
+    ]
+  },
+  {
+    "name": "task_parser",
+    "message": "第一项完成了，第二项还没做完",
+    "done": false,
+    "targets": [
+      "整理项目经历",
+      "核对岗位要求"
+    ]
+  },
+  {
+    "name": "task_parser",
+    "message": "第一项完成了，下一步怎么做？",
+    "done": null,
+    "targets": [
+      "整理项目经历"
+    ]
+  },
+  {
+    "name": "history_truncation",
+    "original": "先交代一下我的背景和最近一段时间的经历情况，我学过一些课程也参加过一些活动。重要限制：不考虑考研，每周只有两小时，不要建议付费课程。",
+    "turn_group": [
+      "他：先交代一下我的背景和最近一段时间的经历情况，我学过一些课程也…",
+      "建档分析师：我们先了解一下。"
+    ],
+    "summaries": [
+      "他：先交代一下我的背景和最近一段时间的经历情况，我学过一些课程也参加过一些活动。重要限制：不考虑考研，每周只有两小时，不要建…\n主理：我们先了解一下。\n他：请按刚才的限制继续\n主理：我们先了解一下。\n"
+    ]
+  },
+  {
+    "name": "pii_reaches_model_and_storage",
+    "model_received": true,
+    "persisted": true,
+    "reply": "这类个人敏感信息我不会读取、记录，也不会交给模型处理。求职核对只需要岗位要求、脱敏后的经历或作品说明。"
+  },
+  {
+    "name": "negated_correction_executes",
+    "actual": {
+      "major": "法学"
+    },
+    "saved_roles": [
+      "user"
+    ]
+  },
+  {
+    "name": "safety_mixed_collector_write",
+    "actual": {
+      "interest": "Python"
+    },
+    "reply": "这类个人敏感信息我不会读取、记录，也不会交给模型处理。求职核对只需要岗位要求、脱敏后的经历或作品说明。"
+  },
+  {
+    "name": "partial_write_failure",
+    "tasks": {
+      "整理项目经历": true,
+      "核对岗位要求": false
+    },
+    "reply": "这次没有找到要改的任务，请在计划页确认任务名称后重试。"
+  },
+  {
+    "name": "reminder_overwrites_plan_reply",
+    "plan_exists": true,
+    "reply": "提醒需要在「提醒」页按日期设置，我在对话里不能直接替你创建。我可以先把这件事写成计划任务；到时间你在「今日行动」里能看到。"
+  },
+  {
+    "name": "progress_empty_plan_confirmation",
+    "offered": [
+      "asset.plan.accept",
+      "asset.plan.decline"
+    ],
+    "plan_exists_after_click": true,
+    "reply": "可以先整理已有项目。\n\n行动计划已生成，可以到对应页面查看。其中无法核对的部分会标为待验证/待补，请以页面上的状态为准。"
+  },
+  {
+    "name": "progress_plain_affirmation",
+    "plan_exists": false,
+    "reply": "我们先了解一下。"
+  },
+  {
+    "name": "stale_offer_affirmation",
+    "plan_exists": true,
+    "reply": "可以先整理已有项目。\n\n行动计划已生成，可以到对应页面查看。其中无法核对的部分会标为待验证/待补，请以页面上的状态为准。"
+  },
+  {
+    "name": "concurrent_duplicate",
+    "model_calls": 2,
+    "agent_turns": 2
+  },
+  {
+    "name": "direction_please_first",
+    "message": "请先生成三个职业方向",
+    "explicit": false
+  },
+  {
+    "name": "evidence_keyword_false_positive",
+    "unsafe": true,
+    "meta": true
+  }
+]

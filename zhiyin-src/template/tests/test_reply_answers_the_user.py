@@ -110,8 +110,8 @@ def test_the_bubble_is_the_conclusion_not_the_reason_for_asking() -> None:
     assert text != guide.text, "气泡里显示的仍是「我为什么要问你」"
 
 
-def test_a_multiline_conclusion_is_collapsed_to_one_line() -> None:
-    """结论被写成两三行时收成一行 —— 否则气泡会散开一大片。"""
+def test_a_multiline_answer_preserves_readable_paragraphs() -> None:
+    """解释和比较保留段落，不能被压成一行。"""
     guide = BehaviorGuide(kind="question", text="为什么问", question="为什么问")
     text = _user_facing_text(
         {"conclusion": "你说先投产品岗。\n\n那就先把那 3 条职责抄下来。 "},
@@ -119,8 +119,7 @@ def test_a_multiline_conclusion_is_collapsed_to_one_line() -> None:
         "",
         valid=True,
     )
-    assert "\n" not in text
-    assert text == "你说先投产品岗。 那就先把那 3 条职责抄下来。"
+    assert text == "你说先投产品岗。\n\n那就先把那 3 条职责抄下来。"
 
 
 def test_single_line_trims_only_when_asked() -> None:
@@ -197,7 +196,5 @@ async def test_turn_group_stays_short_when_the_user_pastes_a_document() -> None:
 
     turns = engine.requests[-1].prompt_vars["turn_group"]
     assert turns, "上一轮的话应当被回灌"
-    assert all(len(line) <= 60 for line in turns), (
-        "回灌的行必须被截断：整篇附件正文进上下文会把这一轮的判断依据挤掉"
-    )
-    assert turns[0].endswith("…"), "长正文应当被截断，而不是整段照抄"
+    assert sum(map(len, turns)) <= 24500
+    assert "教育背景与项目经历。" * 400 in turns[0]

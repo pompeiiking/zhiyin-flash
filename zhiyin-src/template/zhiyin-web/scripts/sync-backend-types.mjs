@@ -9,6 +9,7 @@ const queue = ['NoteView', 'NoteCreateRequest', 'NoteDoneRequest', 'AcademicPane
 queue.push("TaskEdit", "PhaseEdit", "Preferences", "Semester", "ReviewEdit", "NotificationEdit", "MeasurementEdit", "MeasurementRecordView", "DirectionWeights", "PreferencesEdit", "SemesterEdit", "DirectionWeightsEdit")
 const seen = new Set()
 queue.push('WorkspacePageView', 'ExportResultView', 'LoginResult', 'AuthRequest', 'CoachNotificationView', 'PortalView')
+queue.push('CapabilityListView', 'SessionRenameRequest')
 function type(s = {}) {
   if (s.$ref) { const name = s.$ref.split('/').at(-1); if (!queue.includes(name)) queue.push(name); return name }
   if (s.const !== undefined) return JSON.stringify(s.const)
@@ -33,6 +34,8 @@ for (let i = 0; i < queue.length; i++) {
   seen.add(name)
   output += 'export type ' + name + ' = ' + type(schemas[name]) + '\n\n'
 }
+// Retain the client-facing name while deriving its fields from the actual API.
+output += 'export type CapabilitiesView = CapabilityListView\n\n'
 const target = resolve(root, 'src/api/backend-types.ts')
 if (process.argv.includes('--check')) {
   if (readFileSync(target, 'utf8').replace(/\r\n/g, '\n') !== output) throw new Error('Backend types changed. Run npm run sync:backend.')

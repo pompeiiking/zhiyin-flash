@@ -145,6 +145,9 @@ def _assemble_profile(
 
 
 class PostgresProfileRepository(ProfileRepository):
+    def transaction(self):
+        return self._db.transaction()
+
     IMPLEMENTATION_STATUS = "wired"
 
     def __init__(self, database: PostgresDatabase) -> None:
@@ -521,8 +524,8 @@ class PostgresConversationTurnRepository(ConversationTurnRepository):
             """
             INSERT INTO biz_conversation_turn
                 (id, user_id, task_id, role, text, loop_stage, agent_id,
-                 client_msg_id, created_at, renderables)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb)
+                 client_msg_id, created_at, renderables, metadata)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11::jsonb)
             """,
             stored.id,
             stored.user_id,
@@ -534,6 +537,7 @@ class PostgresConversationTurnRepository(ConversationTurnRepository):
             stored.client_msg_id,
             stored.created_at,
             json.dumps(stored.renderables),
+            json.dumps(stored.metadata),
         )
         return stored
 
@@ -545,7 +549,7 @@ class PostgresConversationTurnRepository(ConversationTurnRepository):
         row = await self._db.fetchrow(
             """
             SELECT id, user_id, task_id, role, text, loop_stage, agent_id,
-                   client_msg_id, created_at, renderables
+                   client_msg_id, created_at, renderables, metadata
             FROM biz_conversation_turn
             WHERE user_id = $1 AND client_msg_id = $2 AND role = 'agent'
             ORDER BY created_at DESC LIMIT 1
@@ -563,6 +567,7 @@ class PostgresConversationTurnRepository(ConversationTurnRepository):
                 loop_stage=LoopStage(row["loop_stage"]),
                 agent_id=row["agent_id"],
                 client_msg_id=row["client_msg_id"],
+                metadata=json.loads(row["metadata"]) if isinstance(row.get("metadata"), str) else (row.get("metadata") or {}),
                 created_at=row["created_at"],
                 renderables=json.loads(row["renderables"])
                 if isinstance(row["renderables"], str)
@@ -578,10 +583,10 @@ class PostgresConversationTurnRepository(ConversationTurnRepository):
         rows = await self._db.fetch(
             """
             SELECT id, user_id, task_id, role, text, loop_stage, agent_id,
-                   client_msg_id, created_at, renderables
+                   client_msg_id, created_at, renderables, metadata
             FROM (
                 SELECT id, user_id, task_id, role, text, loop_stage, agent_id,
-                       client_msg_id, created_at, renderables
+                       client_msg_id, created_at, renderables, metadata
                 FROM biz_conversation_turn
                 WHERE user_id = $1 AND task_id = $2
                 ORDER BY created_at DESC, id DESC
@@ -603,6 +608,7 @@ class PostgresConversationTurnRepository(ConversationTurnRepository):
                 loop_stage=LoopStage(row["loop_stage"]),
                 agent_id=row["agent_id"],
                 client_msg_id=row["client_msg_id"],
+                metadata=json.loads(row["metadata"]) if isinstance(row.get("metadata"), str) else (row.get("metadata") or {}),
                 created_at=row["created_at"],
                 renderables=json.loads(row["renderables"])
                 if isinstance(row["renderables"], str)
@@ -734,6 +740,9 @@ class PostgresAcademicSnapshotRepository(AcademicSnapshotRepository):
 
 
 class PostgresAssetRepository(AssetRepository):
+    def transaction(self):
+        return self._db.transaction()
+
     IMPLEMENTATION_STATUS = "wired"
 
     def __init__(self, database: PostgresDatabase) -> None:
@@ -1030,6 +1039,12 @@ class PostgresAssetRepository(AssetRepository):
 
 
 class PostgresTaskSessionRepository(TaskSessionRepository):
+    def transaction(self):
+        return self._db.transaction()
+
+    def conversation_lock(self, user_id):
+        return self._db.conversation_lock(user_id)
+
     IMPLEMENTATION_STATUS = "wired"
 
     def __init__(self, database: PostgresDatabase) -> None:

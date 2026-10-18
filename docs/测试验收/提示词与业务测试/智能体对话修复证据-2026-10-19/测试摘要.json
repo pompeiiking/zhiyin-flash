@@ -1,0 +1,34 @@
+{
+  "date": "2026-10-19",
+  "branch": "前端重构版",
+  "baseline": "f533057910c99678dbc23473eea3483844c088e1",
+  "backend": {
+    "passed": 1211,
+    "failed": 0,
+    "duration_seconds": 184.69,
+    "command": "python -X utf8 -m pytest -q --tb=short"
+  },
+  "frontend": {
+    "passed": 78,
+    "failed": 0,
+    "schemas": 88,
+    "operations": 82,
+    "build": "passed"
+  },
+  "database": {
+    "cross_worker_replay": "passed",
+    "parallel_queries_single_connection": "passed",
+    "profile_outbox_rollback": "passed",
+    "calendar_plan_rollback": "passed",
+    "isolation": "temporary schema, removed after validation"
+  },
+  "model": {
+    "name": "deepseek-chat",
+    "synthetic_turns": 3,
+    "actual_deployment_updated": false
+  },
+  "static_checks": {
+    "ruff": "passed",
+    "git_diff_check": "passed"
+  }
+}
