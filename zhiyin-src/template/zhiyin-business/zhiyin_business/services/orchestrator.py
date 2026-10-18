@@ -1656,14 +1656,24 @@ class DefaultOrchestrator(Orchestrator):
             "instruction": "仅当当前问题适合、对用户确有帮助且用户没有要求只聊天时，选择一个可用能力的键放入 tool_offer；没有合适机会就填空字符串。比如讨论学业困难时可建议核对成绩，谈计划执行时可建议查看进度，需要时效信息时可建议联网核实。选择工具建议时，正文不要再提出其他问题，也不要自行承诺执行；系统会生成确认问题。",
             "choices": {key: offer.question for key, offer in available_offers.items()},
         }
-        # Do not silently read or act merely because the conversation made a
-        # tool relevant. Direct requests and a confirmed proposal still work.
-        direct_tool_request = bool(re.search(
-            r"(?:查看|查找|查询|检索|搜索|联网|读取|展示|列出|统计|给我看|帮我看|看看我的|根据我的|结合我的|"
-            r"标记|勾选|取消完成|撤销完成|生成|创建|制定|画图|图表|进度卡片)", request.message))
-        if re.search(r"(?:不要|不用|不必|不想|别|先不|暂不).{0,12}(?:查看|查找|查询|检索|搜索|联网|读取|展示|列出|统计|标记|勾选|生成|创建|制定|画图)", request.message):
-            direct_tool_request = False
-        prompt_vars["proposal_only"] = not bool(accepted_tool or accepted_offer or direct_tool_request)
+        # 工具时机交给主模型：只读工具每轮都可直接调用，由模型结合上下文决定；
+        # 关键词不再决定“能不能调工具”。服务端只保留安全/数据/写入确认门禁。
+        # 唯一保留的关键词是“用户明确拒绝用工具”——这是授权，不是时机。
+        tool_refusal = bool(re.search(
+            r"(?:不要|不用|不必|不想|别|先不|暂不).{0,12}"
+            r"(?:查看|查询|检索|搜索|联网|读取|展示|列出|统计|调用|用工具)",
+            request.message,
+        ))
+        prompt_vars["proposal_only"] = bool(safety_blocked or tool_refusal)
+        prompt_vars["allow_write_tools"] = bool(
+            accepted_tool
+            and confirmed_tool_offer is not None
+            and confirmed_tool_offer.tool == "workspace.task.set_done"
+        )
+        prompt_vars["tool_policy"] = (
+            "你可以直接调用只读工具（图像/成绩/报告/计划/方向/记录/联网/知识库/图表等）核对自己的数据；"
+            "不要为了让回复看起来完整而调用无关工具。写入类工具只在用户已确认时可用。"
+        )
         output_schema = STAGE_CONTRACTS[stage].model_json_schema()
         output_schema.setdefault("properties", {})["tool_offer"] = {
             "type": "string", "enum": [""] + list(available_offers),

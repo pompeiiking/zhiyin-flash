@@ -144,6 +144,7 @@ class AgnoAgentEngine(AgentEngine):
             bundle,
             request.prompt_code,
             use_tools=request.use_tools,
+            allow_write_tools=bool(request.prompt_vars.get("allow_write_tools")),
         )
         proposal_only = bool(request.prompt_vars.get("proposal_only"))
         if proposal_only:
@@ -178,10 +179,7 @@ class AgnoAgentEngine(AgentEngine):
             # Business-tool requests need the same function-calling mode as
             # modules; JSON-object mode suppresses tool calls on some models.
             user_message = str(request.prompt_vars.get("raw_user_message") or "")
-            business_calls = (not proposal_only and request.use_tools and "workspace.read" in self._tools
-                and any(word in user_message for word in ("查询", "查看", "看看", "列出", "展示", "读取", "统计", "多少", "怎么样", "勾选", "标记", "取消完成"))
-                and (any(word in user_message for word in ("画像", "成绩", "课表", "报告", "计划", "方向", "日历", "任务", "待办", "复盘", "记录", "成就"))
-                     or bool(re.search(r"标记.{0,15}完成|取消完成|撤销完成|勾选", user_message))))
+            business_calls = (not proposal_only and request.use_tools and "workspace.read" in self._tools)
             business_calls = business_calls or bool(request.prompt_vars.get("confirmed_tool_request"))
             output_schema = request.output_schema or None
             if (module_calls or business_calls) and output_schema:
@@ -325,7 +323,7 @@ class AgnoAgentEngine(AgentEngine):
 
     async def conversation_tool_names(self, agent_id: str) -> set[str]:
         """Only expose tools actually installed and attached to this agent."""
-        handlers = await self._tools_for(agent_id)
+        handlers = await self._tools_for(agent_id, allow_write_tools=True)
         return {name for name, handler in self._tools.items() if any(handler is item for item in handlers)}
 
     async def _repair_once(
@@ -399,11 +397,13 @@ class AgnoAgentEngine(AgentEngine):
         prompt_code: Optional[str] = None,
         *,
         use_tools: bool = True,
+        allow_write_tools: bool = False,
     ) -> Agent:
         descriptor = await self._registry.get_agent(agent_id) if self._registry else None
         # 数据库中的提示词和角色配置允许热更新；旧 Agent 不能继续持有旧指令。
         key = _agent_key(
-            agent_id, stage, prompt_code, use_tools, _bundle_fingerprint(bundle, descriptor)
+            agent_id, stage, prompt_code, use_tools,
+            _bundle_fingerprint(bundle, descriptor) + ("@write" if allow_write_tools else "@read"),
         )
         cached = self._agents.get(key)
         if cached is not None and self.module_tool_names is None:
@@ -426,7 +426,7 @@ class AgnoAgentEngine(AgentEngine):
         # 挂不挂工具由调用方声明（`use_tools`），不是由"是不是任务"推断：
         # 生成类 AI 任务的上下文由业务层一次备齐，产出要可复现，所以不挂；
         # 而"方向匹配"必须自己去取职业要求，就显式声明要工具。
-        tools = await self._tools_for(agent_id) if use_tools else []
+        tools = await self._tools_for(agent_id, allow_write_tools=allow_write_tools) if use_tools else []
         if use_tools and self.module_tool_names is not None:
             module_names = await self.module_tool_names(agent_id)
             if module_names:
@@ -522,7 +522,7 @@ class AgnoAgentEngine(AgentEngine):
             "params": dict(role.params or {}),
         }
 
-    async def _tools_for(self, agent_id: str) -> list[Any]:
+    async def _tools_for(self, agent_id: str, *, allow_write_tools: bool = False) -> list[Any]:
         """按智能体注册表里的白名单取工具。
 
         白名单写在 `agents.json` 的 `tools` 字段（业务口径：某个智能体允许用哪些工具），
@@ -553,6 +553,10 @@ class AgnoAgentEngine(AgentEngine):
         if agent_id in {"profile_analyst", "career_advisor", "path_planner", "companion_coach"}:
             # Product-owned tools enforce current-user identity and write intent.
             names.extend(name for name in ("workspace.read", "workspace.task.set_done") if name in self._tools)
+        if not allow_write_tools:
+            # 写入工具不挂给普通轮次：模型可以自己决定读什么，但改任务必须
+            # 先由用户确认（确认轮 allow_write_tools=True 才会挂上）。
+            names = [name for name in names if name != "workspace.task.set_done"]
         if self.module_tool_names is not None:
             names.extend(await self.module_tool_names(agent_id))
         missing = sorted(name for name in names if name not in self._tools)
