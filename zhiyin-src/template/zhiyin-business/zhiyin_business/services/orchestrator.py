@@ -1504,6 +1504,36 @@ class DefaultOrchestrator(Orchestrator):
                     available_offers.pop("read_directions", None)
             except Exception:  # noqa: BLE001
                 available_offers.pop("read_directions", None)
+        # 画像只有一条（常见是刚填年级）时，不要提议“查看你已有的画像”；
+        # 用户会以为系统已经有很多资料。第一次对话也不主动弹工具确认。
+        profile_fields = [
+            field
+            for field in (getattr(blackboard.profile, "fields", None) or [])
+            if str(getattr(field, "value", "") or "").strip()
+        ]
+        if len(profile_fields) < 2:
+            for key in ("read_profile", "profile_detail", "chart_profile"):
+                available_offers.pop(key, None)
+        # 没有实际数据时不要提议“查看已有日历/记录/成就”。
+        if self._functions is not None and available_offers:
+            try:
+                if "read_calendar" in available_offers and not await self._functions.list_calendar_nodes(request.user_id):
+                    available_offers.pop("read_calendar", None)
+                if "read_achievements" in available_offers and not await self._functions.list_achievements(request.user_id):
+                    available_offers.pop("read_achievements", None)
+                if {"read_notes", "read_reviews"} & set(available_offers.keys()):
+                    events = await self._functions.list_track_events(request.user_id)
+                    if not events:
+                        available_offers.pop("read_notes", None)
+                        available_offers.pop("read_reviews", None)
+            except Exception:  # noqa: BLE001
+                logger.warning("检查工具提议前置数据失败", exc_info=True)
+        user_turn_count = sum(1 for turn in recent_turns if turn.role == "user")
+        if user_turn_count < 1:
+            # 第一次发言还没有任何“已有资料”可看：不要主动弹工具确认，
+            # 先让用户把话说完（否则新用户会以为系统已经存了很多东西）。
+            for key in ("read_profile", "read_academic", "read_directions", "read_calendar", "read_notes", "read_reviews", "read_achievements", "read_report", "read_plan"):
+                available_offers.pop(key, None)
         # 当前环境没有接搜索服务时，web.search 不在任何主理的工具里：不要装作能联网，
         # 也不要只说"没有工具"——给用户可用的替代（学职平台/知识库/公开资料）。
         if ("web" not in available_offers and re.search(
