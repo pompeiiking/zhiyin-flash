@@ -185,6 +185,10 @@ class DefaultProfileService(ProfileService):
                 "当前只支持大一到大四的学习阶段；如果你是其他年级，请先按当前本科阶段选择，"
                 "具体说明可以写进「个人情况」或对话里。"
             )
+        if key == "degree_level" and text in {"研究生", "硕士", "博士"}:
+            raise InvalidRequest(
+                "当前只支持本科阶段（大一到大四）；研究生/硕士/博士暂不写入层次字段。"
+            )
 
         before = next(
             (field for field in await self._profiles.list_fields(user_id, [key])), None

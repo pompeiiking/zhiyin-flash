@@ -398,7 +398,10 @@ def _explicit_profile_correction(message: str) -> dict[str, str]:
         text,
     )
     if degree:
-        corrections["degree_level"] = degree.group(1)
+        # 产品当前只支持本科大一到大四；研究生/硕士/博士不写入层次字段，
+        # 避免档案里出现“研究生”而年级仍是大三这种自相矛盾。
+        if degree.group(1) not in {"研究生", "硕士", "博士"}:
+            corrections["degree_level"] = degree.group(1)
 
     # "我参加过XX竞赛，帮我记到项目经历里" / "记一下经历：XX"
     experience = re.search(
@@ -1447,6 +1450,29 @@ class DefaultOrchestrator(Orchestrator):
         if get_names is not None:
             available_names = await get_names(lead.lead_agent)
         available_offers = {key: offer for key, offer in TOOL_OFFERS.items() if offer.tool in available_names}
+        # 没有对应资产时不要提议“查看你已有的报告/计划/方向”。
+        # 否则用户会点一个不存在的入口，或误以为系统已经替他生成了。
+        for key, getter in (
+            ("read_report", self._assets.get_report),
+            ("read_plan", self._assets.get_action_plan),
+            ("progress_card", self._assets.get_action_plan),
+            ("progress_detail", self._assets.get_action_plan),
+            ("chart_plan", self._assets.get_action_plan),
+        ):
+            if key not in available_offers:
+                continue
+            try:
+                if await getter(request.user_id) is None:
+                    available_offers.pop(key, None)
+            except Exception:  # noqa: BLE001
+                logger.warning("检查工具提议前置资产失败：%s", key, exc_info=True)
+                available_offers.pop(key, None)
+        if "read_directions" in available_offers:
+            try:
+                if not await self._assets.list_direction_plans(request.user_id):
+                    available_offers.pop("read_directions", None)
+            except Exception:  # noqa: BLE001
+                available_offers.pop("read_directions", None)
         # 当前环境没有接搜索服务时，web.search 不在任何主理的工具里：不要装作能联网，
         # 也不要只说"没有工具"——给用户可用的替代（学职平台/知识库/公开资料）。
         if ("web" not in available_offers and re.search(
@@ -1755,7 +1781,7 @@ class DefaultOrchestrator(Orchestrator):
                 # 把成功和限制放在同一句里，避免用户读到“先补依据”又紧跟“已生成”。
                 reply_text = (
                     f"{reply_text.rstrip()}\n\n{label}已生成，可以到对应页面查看。"
-                    "其中无法核对的部分会标为待验证，请以页面上的状态为准。"
+                    "其中无法核对的部分会标为待验证/待补，请以页面上的状态为准。"
                 ).strip()
             else:
                 # The model may have written “已生成” before validation or a
@@ -1763,8 +1789,8 @@ class DefaultOrchestrator(Orchestrator):
                 # 措辞要可执行：这句话实测出现时，用户唯一的感受是"它又失败了"；
                 # 要告诉他下一步能做什么，并明确已有内容没有被改。
                 reply_text = (
-                    f"这次没有成功生成{label}（模型没有给出可用内容，已自动重试）。"
-                    f"已有内容没有被修改。你可以再说一次「生成{label}」，"
+                    f"这次没有成功生成{label}。已有内容没有被修改。"
+                    f"你可以再说一次「生成{label}」，"
                     f"或先补充一条具体信息（比如一份岗位要求、一段经历）再试。"
                 )
                 guide = BehaviorGuide(kind="question", text="", question=None)
@@ -1854,7 +1880,7 @@ class DefaultOrchestrator(Orchestrator):
                 reply_text,
             )
             and re.search(
-                r"(?:任务|计划|待办|目标|复盘|提醒|偏好|设置|画像|成绩|课表|方向|这条|这一项)"
+                r"(?:任务|计划|待办|目标|复盘|提醒|偏好|设置|画像|成绩|课表|方向|学历|层次|学位|研究生|这条|这一项)"
                 r".{0,10}(?:完成|做完|勾掉|恢复|加|新增|创建|保存|改|调整|记录|删除)"
                 r"|(?:帮我|请|给我).{0,12}(?:完成|做完|勾掉|恢复|加|新增|创建|保存|改|调整|记录|删除)",
                 request.message,
@@ -1890,6 +1916,46 @@ class DefaultOrchestrator(Orchestrator):
                 "先说说这两项，我就能按真实资料生成，不用猜。"
             )
             guide = BehaviorGuide(kind="question", text="", question=None)
+        if re.search(
+            r"(?:身份证|手机号|银行卡|住址|家庭住址).{0,12}\d{5,}|(?<!\d)1[3-9]\d{9}(?!\d)",
+            request.message,
+        ):
+            # 敏感信息不应进入模型上下文或日志；给明确的安全拒答，而不是“格式失败”。
+            reply_text = (
+                "这类个人敏感信息我不会读取、记录，也不会交给模型处理。"
+                "求职核对只需要岗位要求、脱敏后的经历或作品说明。"
+            )
+            guide = BehaviorGuide(kind="question", text="", question=None)
+        if re.search(
+            r"(?:我是|读|在读|目前|学历|层次|学位).{0,8}(?:研究生|硕士|博士)",
+            request.message,
+        ) and not re.search(r"(?:本科|大一|大二|大三|大四)", request.message):
+            # 产品只支持本科阶段；不要顺着说“收下了”，否则用户会以为档案里有了。
+            reply_text = (
+                "当前只支持本科大一到大四，研究生/硕士/博士阶段暂不写入档案。"
+                "如果你愿意，可以先按本科阶段记录，具体阶段可以在对话里说明。"
+            )
+            guide = BehaviorGuide(kind="question", text="", question=None)
+        if re.search(
+            r"(?:任务|计划).{0,8}(?:完成了吗|完成没|进度|还剩|怎么样了|到哪了)"
+            r"|(?:进度|还剩).{0,6}(?:任务|计划)",
+            request.message,
+        ):
+            plan = await self._assets.get_action_plan(request.user_id)
+            tasks = [task for phase in (plan.phases if plan else []) for task in phase.tasks]
+            if tasks:
+                done = sum(1 for task in tasks if task.done)
+                pending_tasks = [task.text for task in tasks if not task.done]
+                reply_text = f"计划里共 {len(tasks)} 项，已完成 {done} 项，待做 {len(tasks) - done} 项。"
+                if pending_tasks:
+                    reply_text += f" 现在最前面的一项是：{pending_tasks[0]}。"
+                guide = BehaviorGuide(kind="question", text="", question=None)
+            else:
+                reply_text = "现在还没有行动计划，所以没有任务进度可报。要先做一份阶段计划吗？"
+                guide = BehaviorGuide(kind="options", text="", options=[
+                    GuideOption(option_id="asset.plan.accept", label="创建计划", value="accept"),
+                    GuideOption(option_id="asset.plan.decline", label="先不用", value="decline"),
+                ])
         messages = [
             ConversationMessage(
                 role="agent",
@@ -2235,9 +2301,9 @@ class DefaultOrchestrator(Orchestrator):
         # 复盘里说"周六删掉"，就得真的从行动计划里删掉（实测 ZY-05：
         # 话改了、资产没改，用户第二天看到的还是旧计划）。
         if stage is LoopStage.REVIEW:
-            await self._apply_review_plan_patch(user_id, structured)
+            changed = await self._apply_review_plan_patch(user_id, structured)
             await self._complete_round(session_id)
-            return []
+            return changed
 
         converters = {
             LoopStage.DIAGNOSE: self._save_report,
@@ -2322,6 +2388,14 @@ class DefaultOrchestrator(Orchestrator):
             if update.source in {ProfileSource.RECORD, ProfileSource.USER_EDIT}:
                 update = update.model_copy(update={"source": ProfileSource.CONVERSATION})
             key = self._normalize_profile_key(update.key)
+            # 产品只支持本科大一到大四；模型即使自己抽出“研究生/博士”，
+            # 也不能写进画像层次或学习阶段。
+            if key == "degree_level" and str(update.value or "").strip() in {"研究生", "硕士", "博士"}:
+                blocked_by_user_edit.append(key)
+                continue
+            if key == "study_year" and str(update.value or "").strip() not in {"大一", "大二", "大三", "大四"}:
+                blocked_by_user_edit.append(key)
+                continue
             # **字段门禁**：画像只有一份固定词表（动态资源的采集规则）。
             # 不在表里的键一律不写 —— 放进去的代价不是"多一条记录"，
             # 而是界面上多一条没人认识、也没有中文名的东西，
@@ -2566,7 +2640,7 @@ class DefaultOrchestrator(Orchestrator):
 
     async def _apply_review_plan_patch(
         self, user_id: str, structured: dict[str, Any]
-    ) -> None:
+    ) -> list[AssetVersion]:
         """把复盘给出的结构化调整真正落到行动计划上（实测 ZY-05）。
 
         只在复盘明确给出 `plan_patch` 且确实命中时才写：
@@ -2575,6 +2649,7 @@ class DefaultOrchestrator(Orchestrator):
         落库失败只记日志：用户这一轮的话已经答完了。
 
         仅此一处会以「⑤ 复盘校准」为差异说明升版；单纯的"做完了"不升版。
+        返回实际产生的资产版本，供 SSE/处理记录显示"计划已更新"。
         """
         from zhiyin_business.contracts.review import ReviewOutput
         from zhiyin_business.services.plan_patch import apply_plan_patch
@@ -2583,13 +2658,13 @@ class DefaultOrchestrator(Orchestrator):
             output = ReviewOutput.model_validate(structured)
         except Exception:
             logger.warning("复盘产出无法按契约解析，跳过计划调整", exc_info=True)
-            return
+            return []
         if output.plan_patch is None:
-            return
+            return []
         plan = await self._assets.get_action_plan(user_id)
         if plan is None:
             logger.info("复盘要求调整计划，但当前没有行动计划，未落库")
-            return
+            return []
 
         from zhiyin_business.contracts.student import Preferences
 
@@ -2598,17 +2673,18 @@ class DefaultOrchestrator(Orchestrator):
         updated, summary = apply_plan_patch(plan, output.plan_patch, timezone_name=preferences.timezone)
         if not summary:
             logger.info("复盘给出的计划调整没有命中任何任务，未落库")
-            return
+            return []
         try:
-            await self._assets.save_action_plan(
+            version = await self._assets.save_action_plan(
                 user_id,
                 updated,
                 diff_from_previous="⑤ 复盘校准：" + "；".join(summary[:3]),
             )
         except Exception:
             logger.warning("复盘的计划调整没落库", exc_info=True)
-            return
+            return []
         logger.info("复盘校准已落到计划：%s", "；".join(summary))
+        return [version] if version is not None else []
 
     async def _complete_round(self, session_id: str | None) -> None:
         """复盘走完 → 给这一轮一个明确的结束边界（实测 ZY-12）。
@@ -2873,8 +2949,8 @@ def _guide(raw: Any, structured: dict[str, Any] | None = None) -> BehaviorGuide:
 
     return BehaviorGuide(
         kind="question",
-        text="这一轮我没能按格式产出内容。你再说一句，我重新试。",
-        question="这一轮我没能按格式产出内容。你再说一句，我重新试。",
+        text="这次没接住你的问题。你可以换个说法，或直接说想先解决哪一件，我接着来。",
+        question="这次没接住你的问题。你可以换个说法，或直接说想先解决哪一件，我接着来。",
     )
 
 

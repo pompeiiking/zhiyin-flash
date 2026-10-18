@@ -167,7 +167,7 @@ onBeforeUnmount(()=>{if(statusTimer)clearTimeout(statusTimer)})
           </div>
         </div>
         <div class="plan-goal-actions">
-          <EvidenceState :state="selectedDirection ? 'recorded' : 'missing'" />
+          <EvidenceState :state="selectedDirection ? 'recorded' : 'missing'" label="计划依据" />
           <RouterLink to="/directions">{{selectedDirection?'查看方向方案':'去确认方向'}}</RouterLink>
           <DetailPopover v-if="selectedDirection?.fit_reason||selectedDirection?.main_risk" :title="selectedDirection.name+' · 方向依据'" label="查看方向依据">
             <template #trigger>方向依据</template>

@@ -98,7 +98,7 @@ def test_guide_uses_the_model_guide_when_present() -> None:
 def test_last_resort_line_admits_it_is_a_system_line() -> None:
     """什么都没有时，兜底句必须读起来像系统在说话，不能装成主理的回答。"""
     guide = _guide(None, {"field_updates": []})
-    assert "没能按格式产出" in guide.text
+    assert "没接住你的问题" in guide.text
 
 
 @pytest.mark.asyncio

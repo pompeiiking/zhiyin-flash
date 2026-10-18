@@ -13,10 +13,21 @@ const localHasChanges = computed(() => changes.value.profileKeys.length > 0 || c
 const serverStale = ref<Array<'report' | 'direction_plan' | 'action_plan'> | null>(null)
 const dismissed = ref(false)
 const route = useRoute()
+/**
+ * 每页只提示与本页资产有关的“待核对”：
+ * 报告页不因为方向方案过期就挡住报告；否则刚重算完报告仍看到旧横幅，
+ * 用户会以为重算没生效。方向/计划各自在自己的页面提示。
+ */
+const pageTypes = computed<Array<'report' | 'direction_plan' | 'action_plan'>>(() => {
+  if (route.name === 'report') return ['report']
+  if (route.name === 'directions') return ['direction_plan']
+  if (route.name === 'plan') return ['action_plan']
+  return ['report', 'direction_plan', 'action_plan']
+})
 
 async function loadStale() {
   const found: Array<'report' | 'direction_plan' | 'action_plan'> = []
-  for (const type of ['report', 'direction_plan', 'action_plan'] as const) {
+  for (const type of pageTypes.value) {
     try {
       const versions = await backendClient.versions(type)
       const latest = versions?.slice().sort((a, b) => b.version - a.version)[0]

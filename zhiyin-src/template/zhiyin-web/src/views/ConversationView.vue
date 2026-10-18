@@ -284,6 +284,10 @@ function chooseConfirm(choice: OptionRef) {
   if (draft.value.trim() === choice.label.trim()) { draft.value = ''; selectedOption.value = null; remember() }
   void send(false, { text: choice.label, option: choice })
 }
+function pendingKey(id: string) { return `zhiyin-chat-pending:${id}` }
+function markChatPending(id: string) { try { sessionStorage.setItem(pendingKey(id), '1') } catch { /* 无 storage 时由服务端状态兜底 */ } }
+function clearChatPending(id: string) { try { sessionStorage.removeItem(pendingKey(id)) } catch { /* ignore */ } }
+function hasChatPending(id: string) { try { return sessionStorage.getItem(pendingKey(id)) === '1' } catch { return false } }
 /**
  * 生成中刷新/切页的残局修复。
  *
@@ -297,13 +301,14 @@ function syncInterruptedNotice() {
   const list = turns.value
   const last = list.at(-1)
   const previous = list.at(-2)
+  const markerPending = hasChatPending(demo.state.currentSessionId)
   const phantom = last?.from === 'host' && !last.text?.trim() && last.id.endsWith('-guide') && previous?.from === 'me' ? last : undefined
   // 先摘掉伪回合：不管有没有失败提示，上一轮的引导都不能显示在这条提问下面。
   if (phantom) {
     demo.setChatTurns(list.slice(0, -1), demo.state.currentSessionId)
     backendDemo.saveTurns(demo.state.currentSessionId, demo.state.chatTurns)
   }
-  const question = phantom ? previous : last?.from === 'me' && !pending.value ? last : undefined
+  const question = phantom ? previous : last?.from === 'me' && (!pending.value || markerPending) ? last : undefined
   if (!question) {
     if (last?.from === 'host') interrupted.value = null
     return
@@ -311,6 +316,7 @@ function syncInterruptedNotice() {
   // 已有失败态时优先走"重新尝试"那条通道，避免两条重试入口同时出现。
   if (failedSend.value || requestError.value) { interrupted.value = null; return }
   if (interrupted.value?.turnId !== question.id) interrupted.value = { text: question.text, turnId: question.id }
+  if (markerPending) clearChatPending(demo.state.currentSessionId)
 }
 function retryInterrupted() {
   const item = interrupted.value
@@ -320,6 +326,7 @@ function retryInterrupted() {
 }
 function dismissInterrupted() {
   interrupted.value = null
+  clearChatPending(demo.state.currentSessionId)
   void nextTick(() => input.value?.focus())
 }
 function safeLink(url?: string | null) { try { const u = new URL(url || ''); return ['http:', 'https:'].includes(u.protocol) ? u.href : undefined } catch { return undefined } }
@@ -470,6 +477,12 @@ watch(historyOpen, open => { if (open) void refreshSessionList(true) })
 watch(capabilitiesOpen, open => { if (open) void loadCapabilities() })
 function chooseTopic() { if (thinking.value || systemData.busy) return; freshTopic.value = false; choosingTopic.value = true; historyOpen.value = false; profileOpen.value = false; requestError.value = ''; void nextTick(() => { if (flow.value) flow.value.scrollTop = 0 }) }
 function closeTopic() { choosingTopic.value = false; clearTopicQuery(); void bottom(true) }
+async function reloadConversation() {
+ if (thinking.value || systemData.busy) return
+ requestError.value = ''
+ interrupted.value = null
+ if (demo.state.currentSessionId) await resume(demo.state.currentSessionId)
+}
 async function resume(id: string) { if (thinking.value) return; try { await openSession(id); choosingTopic.value = false; clearTopicQuery(); historyOpen.value = false; pending.value = null; requestError.value = ''; syncInterruptedNotice(); await bottom(true) } catch (e) { requestError.value = friendlyError(e) } }
 async function create(code: string, fresh = false) { if (thinking.value || systemData.busy) return; try { await newSession(code, fresh); choosingTopic.value = false; clearTopicQuery(); pending.value = null; requestError.value = ''; await loadShell(); input.value?.focus() } catch (e) { requestError.value = friendlyError(e) } }
 async function start(code: string, label: string) {
@@ -581,6 +594,7 @@ async function send(retry = false, choice?: { text: string; option?: OptionRef }
  const outgoingOption = choice ? choice.option : selectedOption.value, outgoingDraft = draft.value
  if (!demo.state.currentSessionId) { const code = starters.value[0]?.code; if (!code) { requestError.value = '当前没有可用的咨询入口。'; return }; await create(code); if (!demo.state.currentSessionId || requestError.value) return }
  const sessionId = demo.state.currentSessionId
+ markChatPending(sessionId)
  const request: MessageRequest = retried ?? { task_id:sessionId, message:text, client_msg_id:crypto.randomUUID(), material_ids:outgoingMaterials.map(m => m.id), ...(outgoingOption ? { option_id:outgoingOption.option_id, option_value:outgoingOption.value } : {}) }
  const run = ++serial
  failedRequest = request; requestError.value = ''; stopped.value = false
@@ -610,6 +624,7 @@ async function send(retry = false, choice?: { text: string; option?: OptionRef }
   }
   demo.setChatTurns([...turns.value, ...replyTurns(result, request.client_msg_id || crypto.randomUUID())], sessionId)
   systemData.snapshot = result; pending.value = null; failedRequest = null
+  clearChatPending(sessionId)
   // 只有"重新尝试"成功才清掉失败记录；普通新消息成功不应抹掉另一条待重试的消息。
   if (retry) clearFailure(sessionId)
   else if (failedSend.value) failedRequest = failedSend.value.request
@@ -636,7 +651,7 @@ async function send(retry = false, choice?: { text: string; option?: OptionRef }
     if (demo.state.currentSessionId === sessionId) rememberFailure(sessionId, { request, materials: outgoingMaterials, error: requestError.value, at: new Date().toISOString() })
    }
   } }
- finally { if (run === serial) { thinking.value = false; controller = null } }
+ finally { if (run === serial) { thinking.value = false; controller = null; clearChatPending(sessionId) } }
 }
 async function copy(text: string, turnId?: string) {
   const done = (ok: boolean) => {
@@ -871,7 +886,7 @@ onUnmounted(() => { disposed = true; window.removeEventListener('focus', refresh
      </div>
     </div>
     <article v-if="pending" class="consult-turn consult-turn--host consult-pending" aria-label="当前回复"><AgentAvatar :agent="agentKeyOf(pending.agent)" :size="38" :state="thinking ? pending.text ? 'speaking' : 'thinking' : 'idle'" /><div class="consult-answer"><span class="consult-speaker">{{ consultantLabel(pending.agent) }}</span><ReadableText v-if="pending.text" :text="cleanConsultantText(pending.text)" class="consult-prose" /><div v-else-if="thinking" class="consult-wait" role="status"><span class="consult-wait-orbit" aria-hidden="true"><i /><i /><i /></span><div><p>{{ pending.note }}</p><small>正在接收回复<span v-if="elapsed >= 3"> · {{ elapsed }} 秒</span></small></div></div><span v-if="thinking && pending.text" class="consult-cursor" aria-label="正在回复" /><small v-if="!thinking">{{ stopped ? '接收已停止' : '回复未完成' }}</small></div></article>
-    <div v-if="requestError && !showFailedSend" class="consult-error" role="alert"><p>{{ requestError }}</p><button v-if="failedRequest && !stopped" @click="send(true)">重新尝试</button><button :disabled="thinking" @click="resume(demo.state.currentSessionId)">重新读取会话</button></div>
+    <div v-if="requestError && !showFailedSend" class="consult-error" role="alert"><p>{{ requestError }}</p><button v-if="failedRequest && !stopped" @click="send(true)">重试</button><button v-else :disabled="thinking" @click="reloadConversation">刷新会话</button></div>
    </div>
    <p class="sr-only" role="status" aria-live="polite">{{ replyAnnouncement }}</p>
   </div>

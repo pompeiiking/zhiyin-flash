@@ -131,7 +131,7 @@ function values(plan: DeepReadonly<DirectionPlanView>, criterion: Criterion): re
             </div>
             <aside class="route-evidence" aria-label="匹配依据状态">
               <span>画像依据</span>
-              <EvidenceState :state="validScore(activePlan.match_score) ? 'recorded' : 'missing'" />
+              <EvidenceState :state="validScore(activePlan.match_score) ? 'recorded' : 'missing'" label="方向依据" />
               <strong v-if="validScore(activePlan.match_score)">{{ Math.round(activePlan.match_score * 100) }}<small>/100</small></strong>
               <strong v-else>待补充</strong>
               <p>{{ validScore(activePlan.match_score) ? '这是参考信号，不是最终结论。' : '补充经历后再核对，不自动补分。' }}</p>
