@@ -145,7 +145,7 @@ def _explicit_plan_request(message: str) -> bool:
         return True
     if re.search(r"(?:未|没有|没|尚未|还没|是否|有没有|会不会|怎么|如何).{0,8}(?:生成|创建|制定|保存)", message):
         return False
-    pattern = r"(?:生成|制定|创建|建立|制订|重做|重新|调整|修改|改|安排|规划|给我一份|给我一个|帮我做).{0,18}(?:计划|阶段|任务|行动)|(?:计划|阶段|任务|行动).{0,12}(?:生成|制定|创建|建立|重做|调整|修改|改|安排|规划)"
+    pattern = r"(?:生成|制定|创建|建立|制订|重做|重新|调整|修改|改|更新|安排|规划|给我一份|给我一个|帮我做).{0,18}(?:计划|阶段|任务|行动)|(?:计划|阶段|任务|行动).{0,12}(?:生成|制定|创建|建立|重做|调整|修改|改|更新|安排|规划)"
     for clause in re.split(r"[，。；！？\n]", message):
         match = re.search(pattern, clause)
         if match and not re.search(r"(?:不要|不必|无需|暂不|别|不能|不想|不再|不)", clause[: match.end()]):
@@ -221,6 +221,11 @@ def _task_operation_intent(message: str) -> bool | None:
     text = message or ""
     if re.search(r"(?:恢复|撤销|取消完成|取消勾选|改回|点错|标错|没做完|还没做|别标|不要标)", text):
         return False
+    # “先聊聊怎么完成任务 / 任务完成了吗”是在讨论或提问，不是在报告结果。
+    if re.search(r"(?:讨论|聊聊|怎么|怎样|如何|是否|有没有|吗\s*$|？|\?)", text) and not re.search(
+        r"(?:已经|刚刚|刚|今天|昨天).{0,6}(?:做完|完成|搞定|勾掉|投完)", text
+    ):
+        return None
     if re.search(r"(?:做完|完成|搞定|勾掉|划掉|写完了|投完了|弄完了|已经做|已做|已经投|已投|弄完)", text):
         return True
     return None
@@ -1655,7 +1660,12 @@ class DefaultOrchestrator(Orchestrator):
         if requested_asset and not module_query and not write_tool_attempted:
             label = "行动计划" if requested_asset is AssetType.ACTION_PLAN else "诊断报告"
             if any(item.asset_type == requested_asset for item in changed_assets):
-                reply_text = f"{reply_text.rstrip()}\n\n{label}已生成，可以到对应页面查看。".strip()
+                # 报告/计划确实落了库；但正文里无法核对的判断仍可能是“待验证”。
+                # 把成功和限制放在同一句里，避免用户读到“先补依据”又紧跟“已生成”。
+                reply_text = (
+                    f"{reply_text.rstrip()}\n\n{label}已生成，可以到对应页面查看。"
+                    "其中无法核对的部分会标为待验证，请以页面上的状态为准。"
+                ).strip()
             else:
                 # The model may have written “已生成” before validation or a
                 # failed database write; only the server can confirm success.

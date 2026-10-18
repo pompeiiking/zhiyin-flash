@@ -95,6 +95,21 @@ def test_report_verdict_rejects_meta_commentary() -> None:
     )
 
 
+def test_discussion_about_completing_task_does_not_change_it() -> None:
+    o = _orchestrator()
+    assert o._task_operation_intent("先聊聊怎么完成任务") is None
+    assert o._task_operation_intent("我想讨论怎样完成任务") is None
+    assert o._task_operation_intent("任务完成了吗") is None
+    assert o._task_operation_intent("第二项做完了") is True
+
+
+def test_discussion_about_updating_plan_is_not_execution() -> None:
+    o = _orchestrator()
+    assert o._explicit_plan_request("我想讨论：更新计划") is False
+    assert o._explicit_plan_request("先聊聊计划怎么调整") is False
+    assert o._explicit_plan_request("帮我更新计划") is True
+
+
 def test_field_updates_require_evidence_from_this_turn() -> None:
     o = _orchestrator()
     message = "我做过一个校园二手平台，用 Python 写的"
