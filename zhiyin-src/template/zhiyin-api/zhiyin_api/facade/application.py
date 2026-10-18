@@ -542,7 +542,9 @@ class DefaultApplicationFacade(ApplicationFacade):
             return await self._load_report(user_id, version)
         return await self._cache.get_or_load(
             "report",
-            cache_key(user_id, version if version is not None else "latest"),
+            # 映射规则升级（如结论内容校验）后必须换键：Redis 里的旧 DTO
+            # 不会因为发新版本自动失效，用户会继续读到旧报告。
+            cache_key(user_id, f"v2:{version if version is not None else 'latest'}"),
             lambda: self._load_report(user_id, version),
             model=ReportFullTextView,
         )

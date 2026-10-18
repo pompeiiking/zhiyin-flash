@@ -112,6 +112,15 @@ def _explicit_plan_request(message: str) -> bool:
         message,
     ):
         return False
+    # “我想讨论：更新计划”是讨论，不是执行；与报告同一口径。
+    if re.search(
+        r"(?:讨论|聊聊|先说|商量|想问|咨询|比较).{0,12}(?:计划|阶段|行动|更新|重算)",
+        message,
+    ) and not re.search(
+        r"(?:帮我|直接|现在|马上|重新|开始).{0,6}(?:生成|创建|更新|重算|做)",
+        message,
+    ):
+        return False
     # 假设/讨论（"如果改到周末会有什么影响"）不是执行：除非同一句里已有明确执行确认。
     # "按这个方案改会怎样"里的"按这个…改"是假设动作本身，不能当成确认；只有
     # "确认保存/就按这个执行/开始改"这类明确执行才覆盖假设。
@@ -171,6 +180,16 @@ def _wants_view_plan(message: str) -> bool:
 
 
 def _explicit_report_request(message: str) -> bool:
+    # “我想讨论：更新报告”是在讨论，不是执行。先拦住讨论/商量句，
+    # 除非同一句里还有明确的“帮我/现在/直接生成/更新”。
+    if re.search(
+        r"(?:讨论|聊聊|先说|商量|想问|咨询|比较).{0,12}(?:报告|诊断|更新|重算)",
+        message,
+    ) and not re.search(
+        r"(?:帮我|直接|现在|马上|重新|开始).{0,6}(?:生成|创建|更新|重算|做)",
+        message,
+    ):
+        return False
     if re.search(r"(?:不要|不必|无需|暂不|别|不能|不想|先不|不用).{0,12}(?:诊断|报告|生成|保存|更新|修改|重算)|不(?:生成|创建|保存|更新|修改|重算|诊断)", message):
         return False
     if re.search(r"(?:未|没有|没|尚未|还没|是否|有没有|会不会|怎么|如何).{0,8}(?:生成|创建|保存)", message):
@@ -1413,7 +1432,12 @@ class DefaultOrchestrator(Orchestrator):
 
             # 结论里已经写了"缺证据=能力不足"时不修：交给下面的校验器拒绝，
             # 走 fallback 回复（不展示、不落库）；只修结构性的误写。
-            if not _diagnose_prose_is_unsafe(structured):
+            if _diagnose_verdict_is_meta(structured):
+                logger.warning("诊断报告结论混入生成过程/旧版点评，拒绝落库")
+                result.valid = False
+                result.errors.append("诊断结论内容越界")
+                structured = _meta_verdict_fallback(structured)
+            elif not _diagnose_prose_is_unsafe(structured):
                 structured = _sanitize_absence_words(_repair_diagnose_evidence(structured))
             try:
                 structured = DiagnoseOutput.model_validate(structured).model_dump(
@@ -2361,6 +2385,8 @@ class DefaultOrchestrator(Orchestrator):
         from zhiyin_business.contracts.diagnose import DiagnoseOutput
         from zhiyin_business.services.asset_content import report_from_diagnose
 
+        if _diagnose_verdict_is_meta(structured):
+            raise InvalidRequest("报告结论里混入了生成过程或旧版点评，不能保存；请重新生成。")
         # 兜底再修一次：这条路径也可能被别的调用方直接使用（不只对话主链路）。
         if not _diagnose_prose_is_unsafe(structured):
             structured = _sanitize_absence_words(_repair_diagnose_evidence(structured))
@@ -3058,6 +3084,22 @@ def _user_facing_text(
     return raw[:200] + ("…" if len(raw) > 200 else "") or "本轮已按当前环节完成分析。"
 
 
+def _meta_verdict_fallback(structured: dict[str, Any]) -> dict[str, Any]:
+    """报告结论写成了生成过程点评时，回复要明确“这轮不改报告”，而不是
+    再补一句“报告已生成”，也不把上一版结论当新依据。"""
+    return {
+        "conclusion": (
+            "这轮我不更新报告，也不把上一版结论当成新依据。"
+            "你直接把想核对的那一段报告原文，或岗位要求贴过来，我们先按原文看。"
+        ),
+        "facts": structured.get("facts") if isinstance(structured.get("facts"), list) else [],
+        "theory_refs": [],
+        "gaps": [],
+        "dimensions": [],
+        "guide": None,
+    }
+
+
 def _unsafe_diagnose_fallback(structured: dict[str, Any]) -> dict[str, Any]:
     """Keep verified sources while withholding an evidence-unsafe diagnosis.
 
@@ -3069,8 +3111,8 @@ def _unsafe_diagnose_fallback(structured: dict[str, Any]) -> dict[str, Any]:
     facts = structured.get("facts")
     return {
         "conclusion": (
-            "现有资料还不足以判断这些能力强弱。"
-            "我先把缺少的原始材料保留为待核对，不把它当成你的短板。"
+            "这轮先不更新报告，也不把上一版结论当成新依据。"
+            "你直接把想核对的那一段报告原文，或岗位要求贴过来，我们先按原文看。"
         ),
         "facts": facts if isinstance(facts, list) else [],
         "theory_refs": [],
@@ -3078,6 +3120,33 @@ def _unsafe_diagnose_fallback(structured: dict[str, Any]) -> dict[str, Any]:
         "dimensions": [],
         "guide": None,
     }
+
+
+def _diagnose_verdict_is_meta(structured: dict[str, Any]) -> bool:
+    """报告结论是否在点评“报告/本轮/旧版本”，而不是给用户的诊断。
+
+    实测过一次：报告 V4 导读写成“这轮能更新的是依据，不是结论……
+    报告里「匹配度最高」……没看到算法和情报原文”。这是生成过程，
+    不是诊断；它既不能给用户看，也不该落库。
+    """
+    verdict = structured.get("verdict") if isinstance(structured.get("verdict"), dict) else {}
+    prose = " ".join(
+        str(part or "") for part in (verdict.get("title"), verdict.get("summary"))
+    )
+    markers = (
+        "报告里",
+        "本报告",
+        "这轮",
+        "本轮",
+        "上一版",
+        "上一轮",
+        "匹配度最高",
+        "没看到算法",
+        "情报原文",
+        "更新的是依据",
+        "先补依据",
+    )
+    return any(marker in prose for marker in markers)
 
 
 def _diagnose_prose_is_unsafe(structured: dict[str, Any]) -> bool:

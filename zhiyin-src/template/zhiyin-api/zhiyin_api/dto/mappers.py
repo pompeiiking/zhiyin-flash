@@ -734,6 +734,37 @@ def academic_panel_view(snapshot: Any) -> Optional[AcademicPanelView]:
     )
 
 
+_META_VERDICT_MARKERS = (
+    "报告里",
+    "本报告",
+    "这轮",
+    "本轮",
+    "上一版",
+    "上一轮",
+    "匹配度最高",
+    "没看到算法",
+    "情报原文",
+    "更新的是依据",
+    "先补依据",
+)
+
+
+def _safe_report_verdict(verdict: Mapping[str, Any]) -> dict[str, Any]:
+    """存量报告里若混入“对旧报告/生成过程的点评”，不把它当诊断结论展示。
+
+    新报告在编排器落库前已拦截；这里兜住历史版本，避免用户点开旧报告又看到
+    “这轮能更新的是依据不是结论”这类莫名其妙的话。
+    """
+    prose = f"{verdict.get('title') or ''} {verdict.get('summary') or ''}"
+    if not any(marker in prose for marker in _META_VERDICT_MARKERS):
+        return dict(verdict)
+    return {
+        **dict(verdict),
+        "title": "本版结论待重新生成",
+        "summary": "本版报告生成时混入了对旧报告/生成过程的评论，未通过内容校验，暂不作为诊断结论展示。请补充材料后重新生成报告。",
+    }
+
+
 def report_full_text_view(
     report: Report | None, *, group_labels: Optional[Mapping[str, str]] = None
 ) -> ReportFullTextView:
@@ -782,7 +813,7 @@ def report_full_text_view(
         generated_at=report.generated_at,
         toc=toc,
         sections=sections,
-        verdict=report.verdict.model_dump(mode="json"),
+        verdict=_safe_report_verdict(report.verdict.model_dump(mode="json")),
         swot=report.swot.model_dump(mode="json"),
         methodologies=report.methodologies,
         sources=report.sources,

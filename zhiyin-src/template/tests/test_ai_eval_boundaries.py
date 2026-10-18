@@ -77,6 +77,22 @@ def test_report_negation_does_not_generate() -> None:
     o = _orchestrator()
     assert o._explicit_report_request("先不要生成报告") is False
     assert o._explicit_report_request("生成一份诊断报告") is True
+    # “我想讨论：更新报告”是讨论，不是执行；不能因此生成一份报告再补一句成功。
+    assert o._explicit_report_request("我想讨论：更新报告") is False
+    assert o._explicit_report_request("先聊聊报告怎么更新") is False
+    assert o._explicit_report_request("帮我更新报告") is True
+
+
+def test_report_verdict_rejects_meta_commentary() -> None:
+    """报告结论不能写成“这轮能更新的是依据/报告里匹配度最高”这类生成过程。"""
+    from zhiyin_business.services.orchestrator import _diagnose_verdict_is_meta
+
+    assert _diagnose_verdict_is_meta(
+        {"verdict": {"title": "先把新媒体运营变成可核对的依据", "summary": "报告里「匹配度最高」这类结论，我这边没看到算法和情报原文，这轮能更新的是依据，不是结论。"}}
+    )
+    assert not _diagnose_verdict_is_meta(
+        {"verdict": {"title": "先补可核对的证据，再谈方向", "summary": "校报稿件和公众号排版是已经做过的证据；岗位要求与匹配算法尚未取得，相关判断只能作为待验证假设。"}}
+    )
 
 
 def test_field_updates_require_evidence_from_this_turn() -> None:
