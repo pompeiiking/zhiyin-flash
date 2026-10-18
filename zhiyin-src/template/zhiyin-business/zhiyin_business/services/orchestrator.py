@@ -1274,10 +1274,12 @@ class DefaultOrchestrator(Orchestrator):
         # 他就是要回到"了解自己"这一步 —— 那时把他顶去诊断等于不听他说话，
         # 而且他后面补的情况一个字都进不了画像（诊断契约里没有字段更新）。
         # 实测就是这样：有人说了家里希望他求稳，画像里什么都没留下。
+        collection_gate_ready: bool | None = None
         if stage is LoopStage.COLLECT and (
             stage_decision.source != "intent" or stage_decision.allow_gate_advance
         ):
             gate = await self.collection_gate(request.user_id)
+            collection_gate_ready = gate.ready
             if gate.ready:
                 logger.info("采集门槛已过（%s），本轮直接进入诊断", gate.line)
                 stage = LoopStage.DIAGNOSE
@@ -1307,7 +1309,18 @@ class DefaultOrchestrator(Orchestrator):
                 request.user_id,
                 request.task_id,
                 stage,
-                await self._lead_change_reason(stage, lead.lead_agent, direction_selected=direction_selected),
+                await self._lead_change_reason(
+                    stage,
+                    lead.lead_agent,
+                    direction_selected=direction_selected,
+                    reason_override=(
+                        "先把已经聊到的线索收一收，看看还缺什么，再决定下一步。"
+                        if stage is LoopStage.DIAGNOSE
+                        and collection_gate_ready is False
+                        and not explicit_report
+                        else None
+                    ),
+                ),
             )
             disclosure = handoff.disclosure
             session = await self._sessions.get(request.task_id) or session
@@ -3058,14 +3071,14 @@ class DefaultOrchestrator(Orchestrator):
             raise MissingConfigError(f"缺少澄清话术配置：{CLARIFY_PROMPT_CODE}")
         return prompt.content.strip()
 
-    async def _lead_change_reason(self, stage: LoopStage, to_agent: str, *, direction_selected: bool | None = None) -> str:
+    async def _lead_change_reason(self, stage: LoopStage, to_agent: str, *, direction_selected: bool | None = None, reason_override: str | None = None) -> str:
         """换主理时对用户说的那句话：谁接手 + 为什么。"""
         reason_code = _LEAD_CHANGE_REASON_PROMPT.format(stage=stage.value)
         template = await self._required_prompt(_LEAD_CHANGE_PROMPT)
         reason = await self._required_prompt(reason_code)
         to_name = await self._display_name(to_agent)
         # 占位符对不上会在这里抛 KeyError：那是配置错，不是运行故障，不该被吞掉。
-        reason_text = "先把当前想法整理成步骤，方向仍可调整。" if stage is LoopStage.ACT and direction_selected is False else reason.content
+        reason_text = reason_override or ("先把当前想法整理成步骤，方向仍可调整。" if stage is LoopStage.ACT and direction_selected is False else reason.content)
         return template.content.format(to_name=to_name, reason=reason_text)
 
     async def _display_name(self, agent_id: str) -> str:
