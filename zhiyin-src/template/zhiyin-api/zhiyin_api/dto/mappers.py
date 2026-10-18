@@ -518,6 +518,7 @@ def intel_list_view(
                 source_url=item.source_url,
                 source_name=item.source_name,
                 fetched_at=item.fetched_at,
+                relation=item.relation,
             )
             for item in items
         ],
@@ -669,6 +670,7 @@ def asset_version_view(
         # "这一版是旧的"必须能从接口看出来：否则影响面传播打了标也没人知道，
         # 界面上那份过期结论看起来和新鲜的一样。
         needs_recompute=version.needs_recompute,
+        recompute_reason=version.recompute_reason,
     )
 
 

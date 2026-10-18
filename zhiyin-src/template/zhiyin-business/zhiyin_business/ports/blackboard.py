@@ -401,6 +401,12 @@ class AssetService(ABC):
     ) -> AssetVersion:
         """保存一次新版本并发布 asset_version_changed 事件。"""
 
+    @abstractmethod
+    async def mark_asset_stale(
+        self, user_id: str, asset_type: AssetType, *, reason: str
+    ) -> Optional[AssetVersion]:
+        """把某类资产的最新一版标成待核对（不升版）。"""
+
     # ---------- 资产内容读取（供工作台 / 报告页） ----------
 
     @abstractmethod

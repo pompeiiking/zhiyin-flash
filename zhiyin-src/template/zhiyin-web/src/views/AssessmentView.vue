@@ -52,7 +52,7 @@ const exportStatus = ref('')
 const latestVersion = computed(() => backendDemo.state.liveReport?.version ?? null)
 const historicalView = computed(() => !!report.value && latestVersion.value !== null && report.value.version !== latestVersion.value)
 const reportState = computed(() => historicalView.value ? '历史版本' : viewedMetadata.value?.needs_recompute ? '待重新核对' : '当前版本')
-const reportStateDetail = computed(() => historicalView.value ? '正在阅读旧版内容，不会替换当前报告。' : viewedMetadata.value?.needs_recompute ? '个人资料已有变化，本版结论尚未随之更新。' : '这是当前保存的最新报告。')
+const reportStateDetail = computed(() => historicalView.value ? '正在阅读旧版内容，不会替换当前报告。' : viewedMetadata.value?.needs_recompute ? '资料或方向已有变化，本版结论尚未随之更新。' : '这是当前保存的最新报告。')
 
 function reportText(value: unknown): string {
   if (value === null || value === undefined) return ''

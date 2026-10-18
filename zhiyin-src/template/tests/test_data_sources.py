@@ -743,3 +743,24 @@ async def test_intel_explores_by_direction_plan_not_only_profile(container: Cont
         field["key"] == "target_direction" and field["value"] == "后端开发工程师"
         for field in gateway.requests[0].context["fields"]
     )
+
+async def test_direction_plan_rejects_reminder_like_name(container: Container) -> None:
+    """方向方案不能被日程/提醒内容污染（存量缺陷：主攻叫“明早九点 · 实训材料提醒”）。"""
+    from zhiyin_kernel.assets import DirectionPlan
+    from zhiyin_kernel.enums import PlanRole
+    from zhiyin_kernel.errors import InvalidRequest
+
+    with pytest.raises(InvalidRequest):
+        await container.asset_service.save_direction_plans(
+            USER_ID,
+            [
+                DirectionPlan(
+                    id="dp-bad",
+                    role=PlanRole.MAIN,
+                    name="明早九点 · 实训材料提醒",
+                    target_desc="提醒",
+                    fit_reason="日程",
+                    main_risk="污染",
+                )
+            ],
+        )

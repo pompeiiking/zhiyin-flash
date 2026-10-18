@@ -298,6 +298,8 @@ class IntelItemView(BaseModel):
     source_url: str = ""
     source_name: str = Field(default="", description="来源的中文称呼（界面显示它）")
     fetched_at: str = ""
+    #: direction = 按当前方向方案取回；major = 专业对口参考。
+    relation: str = ""
 
 
 class IntelListView(BaseModel):

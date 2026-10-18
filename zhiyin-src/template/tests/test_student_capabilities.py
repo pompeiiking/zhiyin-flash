@@ -1,3 +1,4 @@
+import asyncio
 from datetime import date, datetime, timedelta, timezone
 from unittest.mock import AsyncMock
 from zipfile import ZipFile
@@ -466,6 +467,9 @@ async def test_review_stale_edit_rejected_and_identical_replay_preserves_history
     plan = await service.edit_task('a', TaskEdit(text='原任务', phase_id=pid))
     body = ReviewEdit(task_id=plan.phases[0].tasks[0].id, reason='时间不足')
     first = await service.save_review('a', body)
+    # Windows 的时钟精度约 15ms：同一瞬间连写两次可能拿到同一个 updated_at，
+    # 第三次“旧表单”就不再算过期。先等过一个时钟刻度，确保版本确实变了。
+    await asyncio.sleep(0.02)
     edit = ReviewEdit(**body.model_dump(exclude={'expected_updated_at', 'note'}), note='甲的新内容', expected_updated_at=first['updated_at'])
     saved = await service.save_review('a', edit, first['id'])
     assert await service.save_review('a', edit, first['id']) == saved

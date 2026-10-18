@@ -127,6 +127,7 @@ export type IntelItemView = {
   "source_url"?: string
   "text"?: string
   "title"?: string
+  "relation"?: string
 }
 
 export type CalendarNodeView = {
@@ -183,6 +184,7 @@ export type AssetVersionView = {
   "depends_on_profile_keys"?: Array<string>
   "diff_from_previous"?: (string | null)
   "needs_recompute"?: boolean
+  "recompute_reason"?: string
   "version": number
 }
 

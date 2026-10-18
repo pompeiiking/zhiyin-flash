@@ -19,7 +19,8 @@ async function loadStale() {
   for (const type of ['report', 'direction_plan', 'action_plan'] as const) {
     try {
       const versions = await backendClient.versions(type)
-      if (versions?.[0]?.needs_recompute) found.push(type)
+      const latest = versions?.slice().sort((a, b) => b.version - a.version)[0]
+      if (latest?.needs_recompute) found.push(type)
     } catch { /* 读不到版本时保留本地提示，不把"未知"当"无需核对" */ }
   }
   serverStale.value = found
@@ -43,7 +44,7 @@ const hasChanges = computed(() => {
 })
 const noticeText = computed(() => {
   const label = staleLabel.value
-  return label ? `资料已变化，${label}待核对` : '资料已变化，报告与阶段计划待核对'
+  return label ? `资料或方向已变化，${label}待核对` : '资料或方向已变化，报告与阶段计划待核对'
 })
 /**
  * 「确认无需重算」：用户核对过版本后可以自己消掉这条提示。

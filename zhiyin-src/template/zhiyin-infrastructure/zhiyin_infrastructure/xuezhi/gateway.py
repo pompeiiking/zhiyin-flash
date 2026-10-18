@@ -82,12 +82,14 @@ class XueZhiDataSourceGateway(DataSourceGateway):
         # 软件工程师/游戏开发/移动客户端这三个专业对口职业。
         direction_terms = _terms(values, ("target_direction", "target_job"))
         if direction_terms:
-            await self._collect_occupations(direction_terms, [], records)
-            await self._collect_occupations([], linked_occupations, records)
-            await self._collect_cases(direction_terms, records)
+            await self._collect_occupations(direction_terms, [], records, relation="direction")
+            await self._collect_occupations([], linked_occupations, records, relation="major")
+            await self._collect_cases(direction_terms, records, relation="direction")
         else:
-            await self._collect_occupations(job_terms, linked_occupations, records)
-            await self._collect_cases(job_terms or major_terms, records)
+            await self._collect_occupations(
+                job_terms, linked_occupations, records, relation="major"
+            )
+            await self._collect_cases(job_terms or major_terms, records, relation="major")
 
     async def _collect_specialities(
         self, terms: list[str], records: list[DataSourceRecord]
@@ -121,6 +123,7 @@ class XueZhiDataSourceGateway(DataSourceGateway):
                             "category": item.get("mlmc"),
                             "discipline": item.get("xk"),
                             "code": item.get("zydm"),
+                            "relation": "major",
                         },
                     )
                 )
@@ -135,6 +138,8 @@ class XueZhiDataSourceGateway(DataSourceGateway):
         terms: list[str],
         linked: list[tuple[str, str]],
         records: list[DataSourceRecord],
+        *,
+        relation: str = "major",
     ) -> None:
         """优先用专业对口职业；专业链条为空时才用职业名模糊检索兜底。"""
         candidates = linked or [("", term) for term in terms]
@@ -161,6 +166,7 @@ class XueZhiDataSourceGateway(DataSourceGateway):
                             detail,
                             base_url=self._client.base_url,
                             industry=str(item.get("industrymc") or ""),
+                            relation=relation,
                         )
                     )
                     added += 1
@@ -179,6 +185,7 @@ class XueZhiDataSourceGateway(DataSourceGateway):
                     base_url=self._client.base_url,
                     industry=str(detail.get("industryName") or ""),
                     matched_from="speciality",
+                    relation=relation,
                 )
             )
             added += 1
@@ -186,7 +193,7 @@ class XueZhiDataSourceGateway(DataSourceGateway):
                 break
 
     async def _collect_cases(
-        self, terms: list[str], records: list[DataSourceRecord]
+        self, terms: list[str], records: list[DataSourceRecord], *, relation: str = "major"
     ) -> None:
         """用目标岗位/专业名找公开人物案例；案例详情要登录，因此只取公开摘要。"""
         seen = {record.id for record in records}
@@ -211,7 +218,10 @@ class XueZhiDataSourceGateway(DataSourceGateway):
                             f"?id={case_id}"
                         ),
                         fetched_at=fetched_at(),
-                        metadata={"industry": item.get("industryName")},
+                        metadata={
+                            "industry": item.get("industryName"),
+                            "relation": relation,
+                        },
                     )
                 )
             return
@@ -225,6 +235,7 @@ def _occupation_record(
     base_url: str,
     industry: str = "",
     matched_from: str = "search",
+    relation: str = "major",
 ) -> DataSourceRecord:
     return DataSourceRecord(
         id=occupation_id,
@@ -239,6 +250,7 @@ def _occupation_record(
         metadata={
             "industry": industry or detail.get("industryName") or "",
             "matched_from": matched_from,
+            "relation": relation,
         },
     )
 

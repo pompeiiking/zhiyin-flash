@@ -151,11 +151,24 @@ const filteredItems = computed(() => {
   })
 })
 
-const careerItems = computed(() => filteredItems.value.filter((item) => item.kind === 'occupation'))
-const caseItems = computed(() => filteredItems.value.filter((item) => item.kind === 'career_case'))
-const otherItems = computed(() => filteredItems.value.filter((item) => !['occupation', 'career_case'].includes(item.kind ?? '')))
+const directionBasis = computed(() => basisKind.value === 'direction')
+// 有方向方案时，只有 relation=direction 的条目才算“方向相关”；
+// 按专业取回的职业/案例只能作为参考，不能混在“相关职业方向”里冒充方向结果。
+const primaryItems = computed(() =>
+  directionBasis.value
+    ? filteredItems.value.filter((item) => item.relation === 'direction')
+    : filteredItems.value,
+)
+const referenceItems = computed(() =>
+  directionBasis.value
+    ? filteredItems.value.filter((item) => item.relation !== 'direction')
+    : [],
+)
+const careerItems = computed(() => primaryItems.value.filter((item) => item.kind === 'occupation'))
+const caseItems = computed(() => primaryItems.value.filter((item) => item.kind === 'career_case'))
+const otherItems = computed(() => primaryItems.value.filter((item) => !['occupation', 'career_case'].includes(item.kind ?? '')))
 const selected = computed(() => {
-  const visible = [...careerItems.value, ...caseItems.value, ...otherItems.value]
+  const visible = [...careerItems.value, ...caseItems.value, ...otherItems.value, ...referenceItems.value]
   const current = allItems.value.find((item) => item.id === selectedId.value)
   if (!query.value.trim() && current?.kind === 'speciality') return current
   return visible.find((item) => item.id === selectedId.value) ?? visible[0] ?? current ?? major.value
@@ -319,7 +332,7 @@ onMounted(() => {
           <span><strong>{{ allItems.filter((item) => item.kind === 'career_case').length }}</strong> 个公开职业案例</span>
         </div>
         <p v-if="basisLabel" class="intel-basis" role="status">
-          本次探索依据：{{ basisLabel }}。平台职业库按职业大类收录，未单列的方向会展示相近职业；具体岗位要求仍需点回原始资料核对。
+          本次探索依据：{{ basisLabel }}。平台职业库按职业大类收录；未收录当前方向时，方向相关内容以公开案例呈现，专业对口职业只作背景参考。
           <RouterLink v-if="basisKind === 'direction'" to="/directions">查看方向方案</RouterLink>
           <RouterLink v-else to="/profile">查看个人画像</RouterLink>
         </p>
@@ -338,10 +351,10 @@ onMounted(() => {
         <section class="intel-list-pane" :aria-busy="busy" aria-labelledby="intel-results-title">
           <header class="intel-list-pane__head">
             <div>
-              <h2 id="intel-results-title">{{ query ? '搜索结果' : careerItems.length ? '相关职业方向' : '职业参考资料' }}</h2>
-              <p>{{ query ? `找到 ${filteredItems.length} 条相关资料` : careerItems.length ? '先了解工作本身，再决定是否深入' : '暂未获取相关职业方向，可先浏览公开资料' }}</p>
+              <h2 id="intel-results-title">{{ query ? '搜索结果' : careerItems.length ? '相关职业方向' : caseItems.length ? '与方向相关的公开案例' : '职业参考资料' }}</h2>
+              <p>{{ query ? `找到 ${primaryItems.length} 条方向相关资料` : careerItems.length ? '先了解工作本身，再决定是否深入' : caseItems.length ? '平台职业库未单列该方向，先看真实案例' : '暂未获取方向直接对应的职业资料，可先浏览下方专业参考' }}</p>
             </div>
-            <span v-if="!query">{{ careerItems.length }} 个方向</span>
+            <span v-if="!query">{{ careerItems.length ? `${careerItems.length} 个方向` : caseItems.length ? `${caseItems.length} 个案例` : '' }}</span>
           </header>
 
           <div v-if="filteredItems.length" class="intel-result-groups">
@@ -396,6 +409,18 @@ onMounted(() => {
                 <button v-for="item in otherItems" :key="item.id" class="intel-case-row" :class="{ 'is-selected': selected?.id === item.id }" type="button" :aria-pressed="selected?.id === item.id" @click="selectItem(item)">
                   <UiIcon name="document" :size="16" />
                   <span><strong>{{ item.title || '未命名参考资料' }}</strong><small>{{ displayKind(item) }}</small></span>
+                  <UiIcon name="arrow" :size="15" />
+                </button>
+              </div>
+            </section>
+
+            <section v-if="referenceItems.length" class="intel-result-group intel-result-group--cases" aria-labelledby="major-reference-title">
+              <header><h3 id="major-reference-title">专业对口参考</h3><span>{{ referenceItems.length }} 条</span></header>
+              <p>以下按画像专业{{ profileMajor ? `「${profileMajor}」` : '' }}取回，不等于你当前方向{{ basis ? `「${basis}」` : '' }}；只作背景参考，不要把这里的职业当成方向结论。</p>
+              <div class="intel-case-list">
+                <button v-for="item in referenceItems" :key="item.id" class="intel-case-row" :class="{ 'is-selected': selected?.id === item.id }" type="button" :aria-pressed="selected?.id === item.id" @click="selectItem(item)">
+                  <UiIcon name="document" :size="16" />
+                  <span><strong>{{ item.title || '未命名参考资料' }}</strong><small>{{ displayKind(item) }} · 专业对口</small></span>
                   <UiIcon name="arrow" :size="15" />
                 </button>
               </div>

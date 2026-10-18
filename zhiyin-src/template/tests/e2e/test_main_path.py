@@ -238,11 +238,13 @@ async def test_acceptance_5_profile_update_propagates_only_affected_assets() -> 
         ),
     )
 
-    # 画像只更新了 major：只有依赖它的 report 被标记
+    # 画像只更新了 major：report 直接命中；它下游的 direction_plan 也必须
+    # 跟着标“待核对”（否则报告过期、方向却显示当前，两页互相矛盾）。
     changed = await container.asset_service.propagate(user, ["major"])
-    assert [v.asset_type for v in changed] == [AssetType.REPORT], (
-        "只允许命中依赖字段的资产被标记"
-    )
+    assert [v.asset_type for v in changed] == [
+        AssetType.REPORT,
+        AssetType.DIRECTION_PLAN,
+    ], "直接命中的报告 + 下游方向方案都应被标记（下游不升版）"
     assert changed[0].needs_recompute, "命中的资产必须标成「待重算」"
     assert changed[0].recompute_reason, "标记要带上给用户看的原因，不能只置一个布尔"
     assert changed[0].version == hit.version, "只标记，不升版：版本号留给真正重算的那一轮"
@@ -252,8 +254,8 @@ async def test_acceptance_5_profile_update_propagates_only_affected_assets() -> 
     assert reports[-1].needs_recompute
 
     plans = await container.asset_service.list_versions(user, AssetType.DIRECTION_PLAN)
-    assert plans[-1].version == miss.version, "未命中的资产不得变化"
-    assert not plans[-1].needs_recompute
+    assert plans[-1].version == miss.version, "下游只标记，不升版"
+    assert plans[-1].needs_recompute, "报告过期时，已有方向方案也要提示待核对"
 
     # 真的重算（落一版新正文）之后，标记必须消失 —— 否则用户会一直被告知"这是旧的"。
     from zhiyin_kernel.assets import Report, Swot, Verdict

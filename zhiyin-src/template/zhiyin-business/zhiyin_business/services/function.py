@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import logging
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Literal, Optional
 
 from zhiyin_business.ports.blackboard import AssetService, BehaviorService
@@ -442,6 +442,7 @@ class DefaultFunctionService(FunctionService):
                         source_url=record.source_url,
                         source_name=source_name_of(record.source_url, source=result.source),
                         fetched_at=record.fetched_at,
+                        relation=str(record.metadata.get("relation") or ""),
                     )
                     for record in result.records
                     if record.source_url and (record.title or record.text)
@@ -494,10 +495,16 @@ class DefaultFunctionService(FunctionService):
         source = top.source_name or "公开渠道"
         basis, _ = await self.intel_basis(user_id)
         scope = f"与你关注的「{basis}」相关" if basis else "与你当前资料相关"
+        title = f"给你找到 {len(items)} 条{scope}的公开信息"
+        # 进程内冷却重启即失效；再查一次最近通知，重启后也不会把同一批
+        # 情报重复推给用户（通知历史本身就是去重账本）。
+        if await self._recent_intel_announced(user_id, title, head):
+            logger.info("情报内容与最近通知相同，12 小时内不重复推送（user=%s）", user_id)
+            return
         try:
             await self._notifier.push(
                 user_id,
-                title=f"给你找到 {len(items)} 条{scope}的公开信息",
+                title=title,
                 body=f"{head} —— 这些来自{source}，都能点回原页面核对。",
                 channel=NotifyChannel.IN_APP,
                 action={"kind": "intel", "label": "看看是什么"},
@@ -508,6 +515,31 @@ class DefaultFunctionService(FunctionService):
             )
         except Exception:  # noqa: BLE001 - 通知推不出去不该让取数失败
             logger.warning("外部情报通知推送失败（user=%s）", user_id, exc_info=True)
+
+    async def _recent_intel_announced(self, user_id: str, title: str, head: str) -> bool:
+        """从通知历史判断同一批情报是否已在冷却期内推过。"""
+        if self._notifications is None:
+            return False
+        try:
+            history = await self._notifications.list_all(user_id)
+        except Exception:  # noqa: BLE001 - 历史读不到就退回进程内冷却
+            return False
+        cutoff = datetime.now(timezone.utc) - timedelta(seconds=self.INTEL_ANNOUNCE_COOLDOWN_S)
+        for note in history[:30]:
+            if str(note.get("title") or "") != title:
+                continue
+            if head not in str(note.get("body") or ""):
+                continue
+            stamp = note.get("occurred_at") or note.get("created_at")
+            try:
+                when = datetime.fromisoformat(str(stamp).replace("Z", "+00:00"))
+            except (TypeError, ValueError):
+                continue
+            if when.tzinfo is None:
+                when = when.replace(tzinfo=timezone.utc)
+            if when >= cutoff:
+                return True
+        return False
 
     def drop_intel_cache(self, user_id: str) -> None:
         """画像变了就丢掉这个人的情报缓存（下一次读会重新取）。

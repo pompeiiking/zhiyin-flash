@@ -576,6 +576,19 @@ class DefaultApplicationFacade(ApplicationFacade):
             None,
         )
         chosen = await self._assets.select_direction_plan(user_id, option_id)
+        # 方向变了，旧报告里可能写着上一个方向的结论；把它和阶段计划标成待核对，
+        # 页面才会出现“资料/方向已变化”的提示，而不是继续把旧报告标成当前版本。
+        for asset_type in (AssetType.REPORT, AssetType.ACTION_PLAN):
+            mark = getattr(self._assets, "mark_asset_stale", None)
+            if callable(mark):
+                try:
+                    await mark(
+                        user_id,
+                        asset_type,
+                        reason="你调整了当前方向，报告与计划里的方向结论需要重新核对",
+                    )
+                except Exception:  # noqa: BLE001 - 标记失败不影响选择本身
+                    logger.warning("方向变更后标记资产待核对失败（%s）", asset_type, exc_info=True)
         # 探索结果依赖"当前方向"：选/换方向后必须立刻失效，否则 15 分钟内
         # 职业探索还按上一个方向/专业返回，看起来就是两页方向不一致。
         drop_intel = getattr(self._function, "drop_intel_cache", None)

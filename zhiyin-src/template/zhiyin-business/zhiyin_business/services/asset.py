@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import Counter, defaultdict
+import re
 from typing import Optional, Sequence
 from uuid import uuid4
 
@@ -14,6 +15,7 @@ from zhiyin_data_sdk.repositories import AssetRepository
 from zhiyin_kernel.assets import ActionPlan, DirectionPlan, Report
 from zhiyin_kernel.blackboard import AssetVersion
 from zhiyin_kernel.enums import AssetType
+from zhiyin_kernel.errors import InvalidRequest
 from zhiyin_orchestration import DomainEvent, EventBus
 
 
@@ -89,6 +91,35 @@ class DefaultAssetService(AssetService):
                     changed_profile_keys=changed_profile_keys, candidates=[item]
                 )
             ]
+        # 依赖链是 profile → report → direction_plan → action_plan。
+        # 只按画像字段命中的话，报告被标“待重算”后，方向/计划仍显示 false：
+        # 用户会看到“报告过期、计划却是当前”，两页互相矛盾。上游一过期待，
+        # 下游已有版本也一并标待核对（只标已有版本，不升版）。
+        affected_types = {item.asset_type for item in affected}
+        # 报告可能在本轮之前就已经是“待重算”（例如方向选择先标记过），
+        # 这次画像变更没重新命中它，但下游仍然必须跟着待核对。
+        if AssetType.REPORT not in affected_types:
+            report_latest = await self._assets.get_latest_version(user_id, AssetType.REPORT)
+            if report_latest is not None and report_latest.needs_recompute:
+                affected_types.add(AssetType.REPORT)
+        if AssetType.DIRECTION_PLAN not in affected_types:
+            direction_latest = await self._assets.get_latest_version(
+                user_id, AssetType.DIRECTION_PLAN
+            )
+            if direction_latest is not None and direction_latest.needs_recompute:
+                affected_types.add(AssetType.DIRECTION_PLAN)
+        downstream: list[AssetType] = []
+        if AssetType.REPORT in affected_types:
+            downstream.extend([AssetType.DIRECTION_PLAN, AssetType.ACTION_PLAN])
+        if AssetType.DIRECTION_PLAN in affected_types:
+            downstream.append(AssetType.ACTION_PLAN)
+        for asset_type in downstream:
+            if asset_type in affected_types:
+                continue
+            latest = await self._assets.get_latest_version(user_id, asset_type)
+            if latest is not None:
+                affected.append(latest)
+                affected_types.add(asset_type)
         # 一句话说清"为什么这一版过期了"，用户看得懂，也不出现画像字段的英文键。
         reason = "画像补了新信息，这一版还是旧的，等你回到这一步我再重算"
         changed: list[AssetVersion] = []
@@ -102,6 +133,16 @@ class DefaultAssetService(AssetService):
         # 与通知去追一条并不存在的新版。也不需要清读缓存 —— 正文没变，
         # "待重算"这个标记只有编排器会读（重算那一轮由它如实告知用户）。
         return changed
+
+    async def mark_asset_stale(
+        self, user_id: str, asset_type: AssetType, *, reason: str
+    ) -> AssetVersion | None:
+        """把某一类资产的最新一版标成待核对（不升版、不重算正文）。
+
+        用于“用户做了一个不进画像、但会让旧结论失效的动作”，例如切换已选方向：
+        报告里写的是上一个方向，必须让前端知道要重新核对，不能继续标“当前版本”。
+        """
+        return await self._assets.mark_needs_recompute(user_id, asset_type, reason=reason)
 
     async def save_version(
         self, user_id: str, draft: AssetUpdateDraft, *, snapshot_content=None, analysis_sources=None
@@ -207,6 +248,16 @@ class DefaultAssetService(AssetService):
         depends_on_profile_keys: Sequence[str] = (),
         diff_from_previous: Optional[str] = None,
     ) -> AssetVersion:
+        # 方向名不是“记一件事”：曾经把“明早九点 · 实训材料提醒”写成了主攻方向。
+        # 明显的提醒/日程文本在落库前拦掉，避免再污染方向方案与职业探索。
+        invalid = [
+            plan.name
+            for plan in plans
+            if re.search(r"(提醒|闹钟|明早|今天|明天|上午|下午|晚上|周[一二三四五六日天])", plan.name or "")
+            and not re.search(r"(方向|运营|工程|设计|教师|考研|就业|升学|产品|分析|开发)", plan.name or "")
+        ]
+        if invalid:
+            raise InvalidRequest("方向方案里混进了日程/提醒内容，请重新生成方向后再保存。")
         await self._assets.save_direction_plans(user_id, list(plans))
         return await self.save_version(
             user_id,

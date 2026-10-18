@@ -57,6 +57,9 @@ class ExternalIntel(BaseModel):
         ),
     )
     fetched_at: str = ""
+    #: 这条资料与“当前依据”的关系：direction（按方向方案取回）/ major（专业对口参考）。
+    #: 方向存在时，专业对口的职业不能混进“方向相关职业”里。
+    relation: str = ""
 
 
 class ExportResult(BaseModel):

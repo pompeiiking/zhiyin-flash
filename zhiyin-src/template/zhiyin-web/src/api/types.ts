@@ -2299,6 +2299,12 @@ export interface components {
        * @default false
        */
       needs_recompute?: boolean;
+      /**
+       * Recompute Reason
+       * @description 为什么这一版需要重新核对（如方向调整/画像更正）
+       * @default
+       */
+      recompute_reason?: string;
       /** Version */
       version: number;
     };
@@ -3277,6 +3283,11 @@ export interface components {
        * @default
        */
       kind_label?: string;
+      /**
+       * Relation
+       * @default
+       */
+      relation?: string;
       /**
        * Source Name
        * @description 来源的中文称呼（界面显示它）

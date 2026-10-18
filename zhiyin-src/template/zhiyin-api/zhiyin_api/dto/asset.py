@@ -28,6 +28,9 @@ class AssetVersionView(BaseModel):
             "下一次进入该环节真的重算时才 +1 —— 界面据此可以如实说「这版是旧的」"
         ),
     )
+    recompute_reason: str = Field(
+        default="", description="为什么这一版需要重新核对（如方向调整/画像更正）"
+    )
 
 
 class ReportTocItemView(BaseModel):
