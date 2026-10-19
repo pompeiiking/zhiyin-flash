@@ -991,6 +991,9 @@ onUnmounted(() => { disposed = true; clearInterval(recoveryTimer); window.remove
  .consult-journey li { font-size: 11px; }
  .consult-speaker small { font-size: 11px; }
 }
+ .consult-turn-progress { width: min(100%, 760px); margin: 8px auto 20px; color: var(--c-text-2); font-size: var(--fs-12); }
+ .consult-turn-progress summary { cursor: pointer; padding-block: 10px; }
+ .consult-turn-progress ul { margin: 0; padding: 0 0 0 20px; line-height: 1.8; }
 .consult-confirm { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin: 0 0 8px; padding: 10px 12px; border: 1px solid var(--c-primary-border); border-radius: var(--r-md); background: var(--c-primary-weak); }
 .consult-confirm__copy { display: grid; gap: 2px; min-width: 0; }
 .consult-confirm__copy strong { color: var(--c-text); font-size: var(--fs-14); }

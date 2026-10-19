@@ -170,3 +170,45 @@ async def test_stream_keeps_server_assigned_run_id_when_client_omits_it(monkeypa
     response = await controller.stream_message(None, MessageRequest(task_id='session', message='test'))
     frames = [json.loads(frame[6:]) async for frame in response.body_iterator if frame.startswith('data: ')]
     assert frames[1]['run_id'] == frames[-1]['run_id'] == 'server-generated'
+
+
+async def test_native_tool_turn_does_not_duplicate_pretool_answer(monkeypatch):
+    from types import SimpleNamespace
+    from tests.test_orchestration import _StubModel, _PromptRegistry
+    from zhiyin_orchestration.impl import dialogue_engine
+    from zhiyin_orchestration.impl.agno_engine import AgnoAgentEngine
+    from zhiyin_orchestration.agent import AgentRequest
+    from zhiyin_kernel.streaming import progress_channel
+    class Agent:
+        def __init__(self, **kwargs): pass
+        async def arun(self, **kwargs):
+            for event, content in [('RunContent','先从一道例题开始。'), ('ToolCallStarted',''),
+                                   ('ToolCallCompleted',''), ('RunContent','先从'), ('RunContent','一道例题开始。')]:
+                yield SimpleNamespace(event=event, content=content)
+    monkeypatch.setattr(dialogue_engine, 'Agent', Agent)
+    engine=AgnoAgentEngine(model_factory=lambda **_: _StubModel(), registry=_PromptRegistry())
+    frames=[]
+    with progress_channel(frames.append):
+        result=await engine.invoke(AgentRequest(agent_id='career_advisor',conversation=True))
+    assert result.raw_text == '先从一道例题开始。'
+    texts=[f['text'] for f in frames if f.get('type')=='message.delta']
+    assert texts == ['先从一道例题开始。','先从','先从一道例题开始。']
+
+
+async def test_nonstream_prefers_final_assistant_message_over_tool_turn_aggregate(monkeypatch):
+    from agno.run.agent import RunOutput
+    from agno.models.message import Message
+    from tests.test_orchestration import _StubModel, _PromptRegistry
+    from zhiyin_orchestration.impl import dialogue_engine
+    from zhiyin_orchestration.impl.agno_engine import AgnoAgentEngine
+    from zhiyin_orchestration.agent import AgentRequest
+    class Agent:
+        def __init__(self, **kwargs): pass
+        async def arun(self, **kwargs):
+            return RunOutput(content='我先核对资料。最终建议。',messages=[
+                Message(role='assistant',content='我先核对资料。'),
+                Message(role='tool',content='已查到'),Message(role='assistant',content='最终建议。')])
+    monkeypatch.setattr(dialogue_engine, 'Agent', Agent)
+    engine=AgnoAgentEngine(model_factory=lambda **_: _StubModel(), registry=_PromptRegistry())
+    result=await engine.invoke(AgentRequest(agent_id='career_advisor',conversation=True))
+    assert result.raw_text == '最终建议。'

@@ -104,7 +104,7 @@ async def invoke_dialogue(engine, request):
                   tool_call_limit=12, use_json_mode=False, parse_response=False)
     messages = [Message(role=i["role"], content=redact_sensitive(i["content"])) for i in request.history]
     messages.append(Message(role="user", content=engine._compose_input(request, {"guide": None})))
-    text, output = "", None
+    text, output, after_tool = "", None, False
     try:
         if is_streaming():
             async for event in agent.arun(input=messages, stream=True, stream_events=True, yield_run_output=True, **kwargs):
@@ -112,9 +112,16 @@ async def invoke_dialogue(engine, request):
                     break
                 if isinstance(event, RunOutput):
                     output = event
+                elif str(getattr(event, "event", "")) == "ToolCallStarted":
+                    # Assistant preambles belong to the earlier model turn.
+                    # The next post-tool answer replaces that turn; concatenating
+                    # both can repeat the whole answer (e.g. after record_clues).
+                    after_tool = True
                 elif str(getattr(event, "event", "")) == "RunContent":
                     delta = getattr(event, "content", "")
                     if isinstance(delta, str) and delta:
+                        if after_tool:
+                            text, after_tool = "", False
                         text += delta
                         emit_progress({"type": "message.delta", "text": text, "delta": delta, "note": "正在回复"})
         else:
@@ -123,7 +130,12 @@ async def invoke_dialogue(engine, request):
             status = getattr(output, "status", None)
             if str(getattr(status, "value", status)).lower() == "error":
                 raise RuntimeError("模型返回错误状态")
-            if not text:
+            messages_out = getattr(output, "messages", None) or []
+            last = messages_out[-1] if messages_out else None
+            if (getattr(last, "role", None) == "assistant" and not getattr(last, "tool_calls", None)
+                    and isinstance(getattr(last, "content", None), str) and last.content.strip()):
+                text = last.content
+            elif not text:
                 text = str(getattr(output, "content", "") or "")
         return AgentResult(agent_id=presentation["lead"], raw_text=text, valid=bool(text.strip()),
             structured={"dialogue_stage": presentation["stage"], "dialogue_roles": presentation["roles"],
