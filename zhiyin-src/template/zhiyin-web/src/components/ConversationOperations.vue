@@ -13,7 +13,7 @@ function preview(a: ConversationAction): string[] {
  const p = a.payload.content || a.payload
  if (a.operation.startsWith('calendar.')) return [p.title, p.due_at ? new Date(p.due_at).toLocaleString(undefined, { timeZoneName: 'short' }) : '无指定时间', a.operation === 'calendar.delete' ? '确认后删除这一条提醒。' : '确认后保存这一条提醒。']
  if (a.operation === 'direction.select') return [`${p.name}：${p.target_desc}`]
- if (a.operation === 'memory.forget') return [`${p.label}：${p.value}`, '删除后不再将这项画像作为咨询依据；历史聊天需另行删除会话。']
+ if (a.operation === 'memory.forget') return [`${p.label}：${p.value}`, '删除这项画像，并重置此前的对话上下文；其他已保存画像保留。历史聊天需另行删除会话。']
  if (a.operation === 'action.undo') {
   if (p.draft_only) return ['撤回这份尚未启用的草稿；当前使用的内容保持原样。']
   const old = p.before
