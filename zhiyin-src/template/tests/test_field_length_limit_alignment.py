@@ -3,8 +3,8 @@
 现象
 ----
 真正拒超长的是后端 `DefaultProfileService.MAX_FIELD_VALUE_CHARS = 40`
-（`services/profile.py`，用户更正走它）。前端 `PortraitFieldList.vue` 里另写了
-一个 `const MAX_CHARS = 40`，只用来显示输入框旁边那个"30/40"的计数。
+（`services/profile.py`，用户更正走它）。前端另写了一个
+`const MAX_CHARS = 40`，只用来显示输入框旁边那个"30/40"的计数。
 两个数字之间没有任何编译期联系 —— 改一边，另一边不会报错，症状全落在用户身上：
 
     · 前端写 30、后端还是 40：他打到 41 个字才被拒，而计数早在 30 就变红了，
@@ -19,8 +19,13 @@
 守卫会红，那时的最小改法是留一行字面量常量（`const MAX_CHARS = <数字>`）
 作为声明，其余地方引用它。
 
-前端的注释里写明了它与后端的对应关系（`PortraitFieldList.vue` 里
-「与后端 DefaultProfileService.MAX_FIELD_VALUE_CHARS 对齐（40）」）——
+**它不钉具体文件**：2026-10-19 把 `StudentView.vue` 拆成 composables 之后，
+这个常量随逻辑搬到了 `lib/use-profile-correction.ts`。如果断言写死某个文件，
+以后再拆一次就会红——而它真正要守的是"前端源码里存在且仅存在一个字面量取值"，
+不是"这个文件里得有这一行"。所以这里搜索整个 `src`（`.vue` 与 `.ts`）。
+
+前端的注释里写明了它与后端的对应关系
+（「与后端 DefaultProfileService.MAX_FIELD_VALUE_CHARS 对齐（40）」）——
 注释能解释为什么，但拦不住漂移；拦得住的是下面这条断言。
 """
 
@@ -30,9 +35,10 @@ import re
 from pathlib import Path
 
 TEMPLATE_ROOT = Path(__file__).resolve().parents[1]
-FRONTEND_FIELD_LIST = (
-    TEMPLATE_ROOT.parents[1] / "zhiyin-src/template/zhiyin-web" / "src" / "views" / "StudentView.vue"
-)
+#: 前端源码根。上限常量可能在视图里，也可能在拆出来的 composable 里，
+#: 所以按目录搜索而不是钉住某一个文件（见模块 docstring 末段）。
+FRONTEND_SRC = TEMPLATE_ROOT.parents[1] / "zhiyin-src/template/zhiyin-web" / "src"
+_FRONTEND_SUFFIXES = {".vue", ".ts"}
 
 #: 前端那处常量的声明形状（`const MAX_CHARS = 40`）。
 #: 只认这一种写法：数字必须是字面量，才可能被解析出来与后端比。
@@ -46,16 +52,24 @@ def _frontend_max_chars() -> int:
     解析不到就抛错而不是返回默认值 —— 否则守卫会"看起来在跑、其实什么都没比"
     （同 `test_frontend_alignment.py::_frontend_error_codes` 的口径）。
     """
-    assert FRONTEND_FIELD_LIST.is_file(), f"前端文件不在了：{FRONTEND_FIELD_LIST}"
-    text = FRONTEND_FIELD_LIST.read_text(encoding="utf-8")
-    found = _FRONTEND_MAX_CHARS.findall(text)
-    assert found, (
-        "前端 PortraitFieldList.vue 里没有解析到 `const MAX_CHARS = <数字>` —— "
+    assert FRONTEND_SRC.is_dir(), f"前端源码目录不在了：{FRONTEND_SRC}"
+    declarations: list[tuple[str, str]] = []
+    for path in sorted(FRONTEND_SRC.rglob("*")):
+        if path.suffix not in _FRONTEND_SUFFIXES or not path.is_file():
+            continue
+        for value in _FRONTEND_MAX_CHARS.findall(path.read_text(encoding="utf-8")):
+            declarations.append((str(path.relative_to(FRONTEND_SRC)), value))
+    assert declarations, (
+        "前端源码里没有解析到 `const MAX_CHARS = <数字>` —— "
         "守卫会变成空跑。请把上限写成一个字面量常量（其余地方引用它），"
         "别改成从接口读或拼出来的值。"
     )
-    assert len(set(found)) == 1, f"前端声明了不止一个 MAX_CHARS：{sorted(set(found))}"
-    return int(found[0])
+    values = {value for _, value in declarations}
+    assert len(values) == 1, (
+        f"前端声明了不止一个 MAX_CHARS：{sorted(values)}"
+        f"（{', '.join(name for name, _ in declarations)}）"
+    )
+    return int(next(iter(values)))
 
 
 def test_the_field_length_limit_is_the_same_on_both_sides() -> None:
@@ -74,7 +88,7 @@ def test_the_field_length_limit_is_the_same_on_both_sides() -> None:
 
     frontend = _frontend_max_chars()
     assert frontend == backend, (
-        f"字数上限漂了：前端 {FRONTEND_FIELD_LIST.name} 写 {frontend}，"
+        f"字数上限漂了：前端源码里写 {frontend}，"
         f"后端 services/profile.py 的 MAX_FIELD_VALUE_CHARS 是 {backend}。\n"
         "两边一起改：前端那个常量只用于计数提示（不静默截断），"
         "真正拒超长的是后端 —— 它才是上限的出处。"
