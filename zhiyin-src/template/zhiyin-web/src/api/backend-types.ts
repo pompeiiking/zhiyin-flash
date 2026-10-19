@@ -247,6 +247,7 @@ export type PhaseEdit = {
 
 export type Preferences = {
   "academic_analysis"?: boolean
+  "automatic_memory"?: boolean
   "material_analysis"?: boolean
   "proactive_reminders"?: boolean
   "quiet_end"?: (string | null)
@@ -304,6 +305,7 @@ export type DirectionWeights = {
 
 export type PreferencesEdit = {
   "academic_analysis"?: boolean
+  "automatic_memory"?: boolean
   "expected": Preferences
   "material_analysis"?: boolean
   "proactive_reminders"?: boolean

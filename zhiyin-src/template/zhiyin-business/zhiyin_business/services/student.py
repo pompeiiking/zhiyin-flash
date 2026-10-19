@@ -1,6 +1,7 @@
 """学生交互能力：真实计划修改、复盘、设置、量化记录及历史。"""
 
 from collections import Counter
+from functools import wraps
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4, uuid5, NAMESPACE_URL
 from zoneinfo import ZoneInfo
@@ -84,6 +85,14 @@ def _phase_dump(phase, phase_names: dict) -> dict:
         "handoff_requirements": list(phase.handoff_requirements or []),
         "tasks": [_task_dump(task) for task in phase.tasks],
     }
+
+
+def plan_mutation(method):
+    @wraps(method)
+    async def call(self, user_id, *args, **kwargs):
+        async with self.asset_service.mutation_scope(user_id):
+            return await method(self, user_id, *args, **kwargs)
+    return call
 
 
 class StudentService:
@@ -177,13 +186,15 @@ class StudentService:
                 return False
         return True
 
+    @plan_mutation
     async def edit_task(self, user_id, body, task_id=None):
         changed = False
         completed_id = None
+        reopened_id = None
         identity = task_id or (f"task_{uuid5(NAMESPACE_URL, user_id + chr(58) + body.client_request_id).hex}" if body.client_request_id else f"task_{uuid4().hex}")
 
         def change(plan):
-            nonlocal changed, completed_id
+            nonlocal changed, completed_id, reopened_id
             if plan is None:
                 raise ResourceNotFound("请先创建一个阶段")
             normalize(plan)
@@ -228,6 +239,8 @@ class StudentService:
             changed = True
             if item.done and not (old and old.done):
                 completed_id = item.id
+            if old and old.done and not item.done:
+                reopened_id = item.id
             if old:
                 for p in plan.phases:
                     p.tasks = [t for t in p.tasks if t.id != task_id]
@@ -239,8 +252,14 @@ class StudentService:
             await self._version(user_id, "手动新增或调整任务", plan)
             if completed_id:
                 await self._completed(user_id, completed_id)
+            if reopened_id and self.behaviors is not None:
+                from zhiyin_business.contracts.common import BehaviorEventDraft
+                from zhiyin_kernel.enums import BehaviorEventType
+                await self.behaviors.log(user_id, BehaviorEventDraft(event_type=BehaviorEventType.TASK_REOPENED,
+                    payload={"task_id": reopened_id}))
         return plan
 
+    @plan_mutation
     async def edit_phase(self, user_id, body, selected_id=None):
         changed = False
         identity = selected_id or (f"phase_{uuid5(NAMESPACE_URL, user_id + ':' + body.client_request_id).hex}" if body.client_request_id else f"phase_{uuid4().hex}")
@@ -293,6 +312,7 @@ class StudentService:
             await self._version(user_id, "调整阶段与依赖关系", plan)
         return plan
 
+    @plan_mutation
     async def delete_task(self, user_id, task_id):
         """删除一条任务（学生明确删除；完成/等待中的任务同样可删）。"""
         removed = {"done": False}
@@ -314,6 +334,7 @@ class StudentService:
             await self._version(user_id, "删除任务", plan)
         return plan
 
+    @plan_mutation
     async def delete_phase(self, user_id, phase_id):
         """删除一个阶段及其下任务（学生明确删除）。"""
         removed = {"done": False}
@@ -437,6 +458,7 @@ class StudentService:
 
         return (await self.state.update(user_id, change))["reviews"][identity]
 
+    @plan_mutation
     async def apply_review(self, user_id, review_id):
         from zhiyin_business.contracts.student import TaskEdit
 

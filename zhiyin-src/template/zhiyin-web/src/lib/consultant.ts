@@ -46,14 +46,6 @@ export function consultantLabel(name?: string) {
 export function cleanConsultantText(text?: string | null) {
   if (!text) return text ?? ''
   let result = text
-  // 系统已经写进画像的更正，模型有时仍复述旧的"没写进画像/你自己去改"；
-  // 这类与事实相反的句子不能展示给学生（后端已尽量清，这里做显示层兜底）。
-  const kept = result
-    .split(/(?<=[。！？\n])/)
-    .filter(part => !/(?:去画像里点|自己改一次|我不该拿推断|没写进画像[^。]{0,24}自己)/.test(part))
-    .join('')
-    .trim()
-  if (kept) result = kept
   for (const [alias, shown] of Object.entries(labels)) {
     if (alias === shown || !result.includes(alias)) continue
     result = result.split(alias).join(shown)
@@ -83,6 +75,7 @@ const keys: Record<string, AgentKey> = {
   // 有些示例数据直接写了展示名，一并兜住
   '信息采集顾问': 'profile_analyst',
   '职业分析顾问': 'career_advisor',
+  '知音': 'career_advisor',
   '行动规划顾问': 'path_planner',
   '行动支持顾问': 'companion_coach',
   '就业资讯顾问': 'info_scout',

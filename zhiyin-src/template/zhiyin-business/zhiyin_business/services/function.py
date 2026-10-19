@@ -113,6 +113,9 @@ class DefaultFunctionService(FunctionService):
     async def write_calendar_node(self, user_id: str, node: CalendarNode) -> CalendarNode:
         return await self._calendar.upsert_node(user_id, node)
 
+    async def delete_calendar_node(self, user_id: str, node_id: str) -> int:
+        return await self._calendar.delete_node(user_id, node_id)
+
     async def list_achievements(self, user_id: str) -> list[Achievement]:
         rules = await self._registry.list_badge_rules() if self._registry is not None else []
         if not rules:
@@ -143,8 +146,16 @@ class DefaultFunctionService(FunctionService):
         # 只读最近 200 条（限定在这几类触发行为上）：一个用户在这几类行为里积到
         # 200 条以上还不重复，现实中不会出现；真到了那天，该换成仓储层的"首次发生时间"。
         events = await self._behaviors.recent(
-            user_id, event_types=sorted(wanted, key=lambda item: item.value), limit=200
+            user_id, event_types=sorted(wanted | {BehaviorEventType.TASK_REOPENED}, key=lambda item: item.value), limit=200
         )
+        reopened = {}
+        for event in events:
+            if event.event_type == BehaviorEventType.TASK_REOPENED:
+                key = event.payload.get("task_id")
+                reopened[key] = max(reopened.get(key, event.occurred_at), event.occurred_at)
+        events = [event for event in events if event.event_type != BehaviorEventType.TASK_REOPENED and not (
+            event.event_type == BehaviorEventType.TASK_DONE and event.payload.get("task_id") in reopened
+            and event.occurred_at <= reopened[event.payload.get("task_id")])]
         first_at: dict[BehaviorEventType, datetime] = {}
         for event in events:
             current = first_at.get(event.event_type)

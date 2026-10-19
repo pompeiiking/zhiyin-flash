@@ -23,9 +23,10 @@
 | 模块数据流 | `module_flows.py` | `ModuleFlowService` | ModuleFlowRepository、ModulePlatform、授权业务操作 | P0 | 已交付 |
 | 开发项目与版本协作 | `developer.py` | `DeveloperPlatform` | DeveloperRepository、Identity、模块模板提供器 | P0 | 已交付 |
 | 模块上传包检查 | `module_packages.py` | `inspect_package` | ZIP 内容检查、ModuleManifest、源码依赖守卫 | P0 | 已交付 |
+| 对话运行 | `dialogue_runtime.py` | `DialogueRuntime` | 主模型、受控工具和现有业务服务 | P0 | 已交付 |
+| 对话操作记录 | `conversation_ledger.py` | `ConversationLedger` | 原子账号状态Repository | P0 | 已交付 |
+| 对话生命周期 | `conversation_control.py` | `ConversationControl` | 账号归属、取消、设置、删除与运行恢复 | P0 | 已交付 |
 | Orchestrator | `orchestrator.py` | `DefaultOrchestrator` | 黑板四件套 + `policies/` + AgentEngine | P0 | 已交付 |
-| 对话工具提议 | `tool_offers.py` | `ToolOffer` | 已装配工具目录及会话确认 | P1 | 已交付 |
-| 对话输入边界 | `conversation_policy.py` | 敏感信息与动作解析 | 当前用户输入 | P0 | 已交付 |
 | 原子写入 | `unit_of_work.py` | `atomic_repository` | Repository 事务上下文 | P0 | 已交付 |
 | Profile 服务 | `profile.py` | `DefaultProfileService` | ProfileRepository、EventBus | P0 | 已交付 |
 | Behavior 服务 | `behavior.py` | `DefaultBehaviorService` | BehaviorRepository、EventBus | P0 | 已交付 |

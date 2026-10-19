@@ -91,3 +91,64 @@ async def test_stream_disconnect_does_not_interrupt_approved_writes(monkeypatch)
     assert not cancelled.is_set()
     finish.set()
     await asyncio.wait_for(cancelled.wait(), 1)
+
+
+async def test_native_conversation_streams_plain_text_before_completion():
+    from tests.test_orchestration import _StubModel, _PromptRegistry
+    from agno.models.response import ModelResponse
+    from zhiyin_orchestration.impl.agno_engine import AgnoAgentEngine
+    from zhiyin_orchestration.agent import AgentRequest
+    from zhiyin_kernel.streaming import progress_channel
+    frames = []
+    class StreamingModel(_StubModel):
+        async def ainvoke_stream(self, *args, **kwargs):
+            for chunk in ['先解释', '高等数学', '的学习方法。']:
+                yield ModelResponse(content=chunk)
+                if chunk == '高等数学':
+                    assert frames and frames[-1]['text'] == '先解释高等数学'
+    engine = AgnoAgentEngine(model_factory=lambda **_: StreamingModel(), registry=_PromptRegistry())
+    with progress_channel(frames.append):
+        result = await engine.invoke(AgentRequest(agent_id='test', conversation=True))
+    assert result.valid and result.raw_text == '先解释高等数学的学习方法。'
+    assert [f['delta'] for f in frames if f.get('type') == 'message.delta'] == ['先解释', '高等数学', '的学习方法。']
+
+
+async def test_tool_status_only_completes_after_real_read_and_safe_failure():
+    from zhiyin_orchestration.impl.dialogue_engine import traced
+    from zhiyin_kernel.streaming import progress_channel
+    from zhiyin_kernel.errors import InvalidRequest
+    frames = []
+    async def read(*, area):
+        assert len(frames) == 1 and frames[0]['type'] == 'step.started'
+        return '{"data":null}'
+    with progress_channel(frames.append):
+        value = await traced(read, 'workspace.read')(area='plan')
+    assert value == '{"data":null}' and frames[-1]['type'] == 'step.completed'
+    assert frames[0]['step_id'] == frames[-1]['step_id']
+    async def fail():
+        raise InvalidRequest('对象已变化')
+    frames.clear()
+    with progress_channel(frames.append):
+        value = await traced(fail, 'workspace.action')()
+    assert '对象已变化' in value and frames[-1]['type'] == 'step.failed'
+
+
+async def test_read_timeout_does_not_mean_empty_data_or_cancel_committing_writes(monkeypatch):
+    import asyncio
+    import json
+    from zhiyin_orchestration.impl.dialogue_engine import traced
+    from zhiyin_kernel.streaming import progress_channel
+    timeout = asyncio.timeout
+    monkeypatch.setattr(asyncio, 'timeout', lambda _: timeout(0.001))
+    async def slow_read():
+        await asyncio.sleep(0.02)
+        return '{"data":[]}'
+    frames = []
+    with progress_channel(frames.append):
+        failed = json.loads(await traced(slow_read, 'xuezhi.search')())
+    assert failed['status'] == 'timeout' and failed['retry'] is False
+    assert frames[-1]['type'] == 'step.failed'
+    async def write_and_receipt():
+        await asyncio.sleep(0.02)
+        return '{"executed":true}'
+    assert json.loads(await traced(write_and_receipt, 'workspace.action')())['executed']

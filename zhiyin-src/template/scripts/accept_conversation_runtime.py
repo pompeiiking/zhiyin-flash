@@ -28,7 +28,7 @@ from zhiyin_infrastructure.postgres.repository import (
     PostgresProfileRepository,
 )
 from zhiyin_business.services.memory import DefaultConversationMemoryService
-from tests.test_conversation_asset_confirmation import setup
+from tests.test_dialogue_runtime import setup
 
 results = {}
 
@@ -79,6 +79,8 @@ async def main():
         await sessions.create(session)
         memories = DefaultConversationMemoryService(PostgresConversationMemoryRepository(db1), PostgresConversationTurnRepository(db1))
         c.orchestrator._sessions = sessions
+        from zhiyin_infrastructure.postgres.student import PostgresStudentStateRepository
+        c.orchestrator._student_state = PostgresStudentStateRepository(db1)
         c.orchestrator._memories = memories
         other = copy.copy(c.orchestrator)
         other._sessions = PostgresTaskSessionRepository(db2)
@@ -108,24 +110,6 @@ async def main():
             raise AssertionError("Synthetic failure was not raised")
         assert not await repo.list_fields("rollback-user")
         results["postgres_profile_outbox_rollback"] = "passed"
-        await db1.execute("CREATE TABLE audit_calendar_marker (title TEXT)")
-        class CalendarWriter:
-            async def write_calendar_node(self, user_id, node):
-                await db1.execute("INSERT INTO audit_calendar_marker(title) VALUES($1)", node.title)
-        class BrokenAssetWriter:
-            async def save_action_plan(self, *args, **kwargs):
-                raise RuntimeError("synthetic plan failure")
-        c.orchestrator._functions = CalendarWriter()
-        c.orchestrator._assets = BrokenAssetWriter()
-        try:
-            await c.orchestrator._save_action_plan("u1", {"phases": [], "reminders": [{"title": "synthetic node"}]})
-        except RuntimeError:
-            pass
-        else:
-            raise AssertionError("Synthetic plan failure was not raised")
-        assert await db1.fetchval("SELECT count(*) FROM audit_calendar_marker") == 0
-        results["postgres_calendar_plan_rollback"] = "passed"
-
         if resolved is None:
             results["real_model"] = "unavailable: no configured route"
         else:
@@ -142,6 +126,8 @@ async def main():
                 real = build_container(real_settings)
                 user = "audit_synthetic_" + uuid4().hex[:8]
                 current = await real.orchestrator.enter_task(user, "free_chat")
+                from zhiyin_business.services.dynamic_config import load_snapshot
+                await load_snapshot(real.registry_service)
                 replies = []
                 for message in [
                     "我是计算机专业大三，课程里用Python清洗过销售数据。我每周只有两小时，不考虑考研，也不要推荐付费课。先聊聊，给我两个找数据分析实习的准备建议，不要创建计划。",

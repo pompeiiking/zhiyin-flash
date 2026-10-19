@@ -82,6 +82,7 @@ class BehaviorEventType(str, Enum):
     DECISION_SELECT = "decision_select"                # 做出选择
     DECISION_RESELECT = "decision_reselect"            # 修改选择
     TASK_DONE = "task_done"                            # 勾掉任务
+    TASK_REOPENED = "task_reopened"                    # 撤销完成（追加修正事件）
     TASK_STALL = "task_stall"                          # 任务停滞
     PROFILE_FIELD_UPDATED = "profile_field_updated"    # 画像字段更新
     REVIEW = "review"                                  # 完成复盘

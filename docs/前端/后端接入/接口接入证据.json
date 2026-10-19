@@ -916,5 +916,80 @@
     "status": "服务间接口，不应从浏览器调用",
     "frontend": [],
     "verification": "隔离协议联调通过。失败版本重入队、保留上次失败报告并清空候选提交；全部验证无凭证、错误凭证和管理员 JWT 拒绝。见 服务间接口验收结果.json；不代表实际发布成功。"
+  },
+  "GET /api/v1/app/sessions/{task_id}/runtime": {
+    "status": "已接入",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/views/ConversationView.vue",
+      "zhiyin-src/template/zhiyin-web/src/api/backend-client.ts"
+    ],
+    "verification": "对话运行与操作状态接口；自动化与浏览器验收见本轮实施记录"
+  },
+  "PATCH /api/v1/app/sessions/{task_id}/settings": {
+    "status": "已接入",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/views/ConversationView.vue",
+      "zhiyin-src/template/zhiyin-web/src/api/backend-client.ts"
+    ],
+    "verification": "对话运行与操作状态接口；自动化与浏览器验收见本轮实施记录"
+  },
+  "POST /api/v1/app/sessions/{task_id}/runs/{run_id}/cancel": {
+    "status": "已接入",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/views/ConversationView.vue",
+      "zhiyin-src/template/zhiyin-web/src/api/backend-client.ts"
+    ],
+    "verification": "对话运行与操作状态接口；自动化与浏览器验收见本轮实施记录"
+  },
+  "DELETE /api/v1/app/plan/action/phases/{phase_id}": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts",
+      "zhiyin-src/template/zhiyin-web/src/components/PhaseEditor.vue",
+      "zhiyin-src/template/zhiyin-web/src/views/RoadmapView.vue"
+    ],
+    "verification": "2026-10-18 全站回归新增；阶段编辑器二次确认删除，删除后计划/今日行动同步。"
+  },
+  "DELETE /api/v1/app/plan/action/tasks/{task_id}": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/api/student-capabilities.ts",
+      "zhiyin-src/template/zhiyin-web/src/components/TaskEditor.vue",
+      "zhiyin-src/template/zhiyin-web/src/views/RoadmapView.vue"
+    ],
+    "verification": "2026-10-18 全站回归新增；任务编辑器二次确认删除，删除后计划/今日行动同步。"
+  },
+  "DELETE /api/v1/app/sessions/{task_id}": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/api/backend-client.ts",
+      "zhiyin-src/template/zhiyin-web/src/views/ConversationView.vue"
+    ],
+    "verification": "2026-10-18 新增：逐轮原文一并删除；越权/不存在返回 1002。"
+  },
+  "GET /api/v1/app/capabilities": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/api/backend-client.ts",
+      "zhiyin-src/template/zhiyin-web/src/views/ConversationView.vue",
+      "zhiyin-src/template/zhiyin-web/src/api/backend-types.ts"
+    ],
+    "verification": "2026-10-18 新增：未配置搜索服务时明确不可用并给替代，前端能力面板同源。"
+  },
+  "PATCH /api/v1/app/sessions/{task_id}": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/api/backend-client.ts",
+      "zhiyin-src/template/zhiyin-web/src/views/ConversationView.vue"
+    ],
+    "verification": "2026-10-18 新增：仅本人会话可改；返回最新会话列表。"
+  },
+  "POST /api/v1/app/academic/analysis": {
+    "status": "联调通过",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/views/GradesView.vue",
+      "zhiyin-src/template/zhiyin-web/src/api/validate-ai.ts"
+    ],
+    "verification": "真实测试账号导入成绩后，经前端和源码测试后端验证。"
   }
 }

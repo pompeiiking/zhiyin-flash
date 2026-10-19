@@ -137,6 +137,10 @@ class FunctionService(ABC):
         """写入节点（规划师写、教练读）。"""
 
     @abstractmethod
+    async def delete_calendar_node(self, user_id: str, node_id: str) -> int:
+        """删除当前用户的一个明确日历节点。调用方负责具体审批。"""
+
+    @abstractmethod
     async def list_achievements(self, user_id: str) -> list[Achievement]:
         """读取成就。只由行为日志驱动解锁，不做登录/浏览型徽章。"""
 

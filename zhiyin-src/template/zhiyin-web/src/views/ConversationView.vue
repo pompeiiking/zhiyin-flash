@@ -24,6 +24,8 @@ import DetailPopover from '../components/DetailPopover.vue'
 import AnchoredCard from '../components/AnchoredCard.vue'
 import RenderableBlock from '../components/RenderableBlock.vue'
 import ConversationProfile from '../components/ConversationProfile.vue'
+import ConversationOperations from '../components/ConversationOperations.vue'
+import type { ConversationRuntimeState } from '../api/backend-client'
 import '../styles/conversation.css'
 const route = useRoute()
 const router = useRouter()
@@ -38,6 +40,40 @@ const elapsed = ref(0), draggingFiles = ref(false), replyAnnouncement = ref('')
 let waitTimer: ReturnType<typeof setInterval> | undefined
 let requestStarted = 0
 const pending = ref<{ text: string; agent: string; note: string } | null>(null)
+const liveSteps = ref<{id: string; label: string; state: string}[]>([])
+const runtimeState = ref<ConversationRuntimeState | null>(null)
+const backgroundRun = computed(() => runtimeState.value?.runs.find(r => r.state === 'running'))
+let recoveryTimer: ReturnType<typeof setInterval> | undefined
+const activeRunId = ref('')
+async function refreshRuntime() {
+ const id = demo.state.currentSessionId
+ if (!id) { runtimeState.value = null; return }
+ try {
+  const value = await backendClient.conversationRuntime(id)
+  if (demo.state.currentSessionId !== id) return
+  const recovering = runtimeState.value?.runs.some(r => r.state === 'running')
+  runtimeState.value = value
+  if (!thinking.value) {
+   const run = value.runs[value.runs.length - 1]
+   const steps = new Map<string, {id: string; label: string; state: string}>()
+   for (const event of run?.events || []) {
+    if (event.step_id && event.type?.startsWith('step.')) steps.set(event.step_id, {id: event.step_id, label: event.note || '处理操作', state: event.type})
+   }
+   liveSteps.value = [...steps.values()]
+   if (run?.state === 'running') activeRunId.value = run.id
+   else if (recovering) { await openSession(id); syncInterruptedNotice() }
+  }
+ } catch { /* 普通历史仍可查看，执行权限由服务端校验 */ }
+}
+async function setTemporary(event: Event) {
+ const value = (event.target as HTMLInputElement).checked
+ try { runtimeState.value = await backendClient.conversationSettings(demo.state.currentSessionId, value) } catch (e) { toast(friendlyError(e)) }
+}
+function decideAction(id: string, accept: boolean) {
+ void send(false, { text: accept ? '确认执行这项变更' : '暂不执行这项变更', option: { option_id: `action.${id}.${accept ? 'accept' : 'decline'}`, label: accept ? '确认执行' : '暂不执行', value: {action_id: id} } })
+}
+watch(() => demo.state.currentSessionId, () => { runtimeState.value = null; liveSteps.value = []; void refreshRuntime() }, { immediate: true })
+
 type OptionRef = NonNullable<ChatTurn['optionRefs']>[number]
 type FailedSend = { request: MessageRequest; materials: { id: string; name: string }[]; error: string; at: string }
 // 快捷选项覆盖草稿：先确认，替换后还能撤销（问题 4）。无草稿时行为完全不变。
@@ -90,22 +126,11 @@ const filteredSessions = computed(() => {
 const sessionMutationBusy = computed(() => renameBusy.value || deleteBusy.value)
 const capabilityItems = computed<CapabilityItemView[]>(() => capabilities.value?.items ?? [])
 const title = computed(() => showStudyYearQuestion.value ? '开始咨询' : choosingTopic.value ? '选择咨询主题' : backendDemo.currentSession.value?.task_name || '咨询对话')
-const journey = [
- { key:'collect', label:'了解自己', short:'了解' },
- { key:'diagnose', label:'梳理判断', short:'判断' },
- { key:'decide', label:'比较选择', short:'选择' },
- { key:'act', label:'安排下一步', short:'行动' },
- { key:'review', label:'回顾调整', short:'回顾' },
-] as const
-const currentStage = computed(() => backendDemo.currentSession.value?.stage || systemData.snapshot?.stage || 'collect')
-const profileFieldCount = computed(() => backendDemo.state.liveWorkspace?.profile_panel?.fields?.length ?? 0)
-const profileGapCount = computed(() => backendDemo.state.liveWorkspace?.profile_panel?.gaps?.length ?? 0)
 const latestHostId = computed(() => turns.value.at(-1)?.from === 'host' ? turns.value.at(-1)?.id : undefined)
 const host = computed(() => systemData.snapshot?.badge.name || backendDemo.currentSession.value?.lead_agent_name || '咨询顾问')
 const studyYearField = computed(() => backendDemo.state.liveWorkspace?.profile_panel?.fields?.find(field => field.key === 'study_year'))
 const studyYear = computed(() => savedStudyYear.value || String(studyYearField.value?.value ?? ''))
-const firstUse = computed(() => systemData.shellReady && !demo.state.currentSessionId && sessions.value.length === 0 && turns.value.length === 0)
-const showStudyYearQuestion = computed(() => profileLoaded.value && (editingStudyYear.value || (!studyYear.value && firstUse.value)))
+const showStudyYearQuestion = computed(() => profileLoaded.value && editingStudyYear.value)
 const starters = computed(() => personalizedStudyYearEntries(auth.state.bootstrap?.task_entries ?? [], studyYear.value))
 let controller: AbortController | null = null, serial = 0, disposed = false
 let failedRequest: MessageRequest | null = null
@@ -351,7 +376,6 @@ function displayDate(raw: string) { const date = new Date(raw); return Number.is
 function evidenceCount(t: ChatTurn) { return (t.theory_refs?.length ?? 0) + (t.intel_refs?.length ?? 0) }
 function assetLabel(type: string) { return ({ report:'诊断报告', direction_plan:'方向方案', action_plan:'行动计划' } as Record<string,string>)[type] || '关联资料' }
 function stageLabel(stage: string) { return ({ collect:'了解情况', diagnose:'梳理判断', decide:'比较选择', act:'安排下一步', review:'回顾调整' } as Record<string,string>)[stage] || '处理中' }
-function journeyState(stage: string) { const current = journey.findIndex(item => item.key === currentStage.value); const index = journey.findIndex(item => item.key === stage); return index === current ? 'current' : index < current ? 'past' : 'future' }
 async function theory(id: string) { if (theoryCards.value[id] || theoryLoading.value[id]) return; theoryErrors.value[id] = ''; theoryLoading.value[id] = true; try { theoryCards.value[id] = await backendClient.theory(id) } catch (e) { theoryErrors.value[id] = friendlyError(e) } finally { theoryLoading.value[id] = false } }
 async function refreshProfile() { profileLoading.value = true; profileError.value = ''; try { const result = await backendClient.workspace(); if (!disposed) { backendDemo.setWorkspace(result); const stored = result.profile_panel?.fields?.find(field => field.key === 'study_year'); if (stored) savedStudyYear.value = String(stored.value ?? '') } } catch (e) { if (!disposed) profileError.value = friendlyError(e) } finally { profileLoading.value = false; profileLoaded.value = true } }
 function clearTopicQuery() { if (route.query.new === undefined) return; const query = { ...route.query }; delete query.new; void router.replace({ path:route.path, query }) }
@@ -600,7 +624,7 @@ async function toggleTask(guideTask: NonNullable<ChatTurn['guideTask']>) {
     else toast(friendlyError(e))
   } finally { guideSaving.value = '' }
 }
-function stop() { if (!stopArmed.value) return; stopped.value = true; markChatStopped(demo.state.currentSessionId); controller?.abort() }
+function stop() { if (!stopArmed.value) return; stopped.value = true; markChatStopped(demo.state.currentSessionId); if (activeRunId.value) void backendClient.cancelConversationRun(demo.state.currentSessionId, activeRunId.value).catch(() => toast('已停止接收，执行状态请稍后核对。')); controller?.abort() }
 async function send(retry = false, choice?: { text: string; option?: OptionRef }, resend?: { clientMsgId?: string; materials?: { id: string; name: string }[] }) {
  if (thinking.value || uploading.value || systemData.busy) return
  // 刷新后 failedRequest 会因为本轮普通消息成功而被清空，失败态里仍保存着原始请求。
@@ -619,7 +643,7 @@ async function send(retry = false, choice?: { text: string; option?: OptionRef }
  // 发送后 700ms 内忽略"停止"点击，避免双击发送把刚发出的消息撤回。
  stopArmed.value = false; clearTimeout(stopArmTimer)
  stopArmTimer = setTimeout(() => { stopArmed.value = true }, 700)
- pending.value = { text:'', agent:host.value, note:'正在分析你的问题' }
+ pending.value = { text:'', agent:'知音', note:'正在分析你的问题' }; liveSteps.value = []; activeRunId.value = request.client_msg_id || ''
  if (!retry && !resend?.clientMsgId) {
   demo.addChatTurn({ id:`${request.client_msg_id}-user`, from:'me', text, materials:outgoingMaterials })
   if (!choice) { if (draft.value === outgoingDraft) draft.value = ''; attached.value = attached.value.filter(m => !outgoingMaterials.some(s => s.id === m.id)); selectedOption.value = null; remember() }
@@ -629,8 +653,14 @@ async function send(retry = false, choice?: { text: string; option?: OptionRef }
   const result = await streamBackend<ConversationTurnView>('messageStream', { body:request, signal:controller.signal }, frame => {
    if (run !== serial || demo.state.currentSessionId !== sessionId || !pending.value) return
    if (frame.text !== undefined) pending.value.text = frame.text
+   if (frame.step_id && frame.type?.startsWith('step.')) {
+    const item = liveSteps.value.find(s => s.id === frame.step_id)
+    if (item) { item.state = frame.type; if (frame.type === 'step.started') item.label = frame.note || item.label }
+    else liveSteps.value.push({ id: frame.step_id, label: frame.note || '正在处理', state: frame.type })
+   }
    if (frame.agent) pending.value.agent = frame.agent
    if (frame.note) pending.value.note = frame.note
+   if (frame.type === 'approval.required') void refreshRuntime()
    void bottom()
   })
   if (run !== serial || demo.state.currentSessionId !== sessionId) return
@@ -640,7 +670,7 @@ async function send(retry = false, choice?: { text: string; option?: OptionRef }
    demo.addChatTurn({ id:`${request.client_msg_id}-user`, from:'me', text, materials:outgoingMaterials })
   }
   demo.setChatTurns([...turns.value, ...replyTurns(result, request.client_msg_id || crypto.randomUUID())], sessionId)
-  systemData.snapshot = result; pending.value = null; failedRequest = null
+  systemData.snapshot = result; pending.value = null; failedRequest = null; void refreshRuntime()
   clearChatPending(sessionId)
   // 只有"重新尝试"成功才清掉失败记录；普通新消息成功不应抹掉另一条待重试的消息。
   if (retry) clearFailure(sessionId)
@@ -771,6 +801,7 @@ watch(showStudyYearQuestion, open => {
  if (open) void nextTick(() => { if (flow.value) flow.value.scrollTop = 0 })
 })
 onMounted(() => {
+ recoveryTimer = setInterval(() => { if (!thinking.value && backgroundRun.value && document.visibilityState === 'visible') void refreshRuntime() }, 2500)
  window.addEventListener('focus', refreshSessionsOnFocus)
  window.addEventListener('zhiyin:session-cleared', clearAllFailures)
  document.addEventListener('visibilitychange', refreshSessionsOnFocus)
@@ -784,13 +815,13 @@ onMounted(() => {
  applyConsultationContext()
  void bottom(true)
 })
-onUnmounted(() => { disposed = true; window.removeEventListener('focus', refreshSessionsOnFocus); window.removeEventListener('zhiyin:session-cleared', clearAllFailures); document.removeEventListener('visibilitychange', refreshSessionsOnFocus); clearInterval(waitTimer); clearTimeout(copyTimer); remember(); serial++; controller?.abort(); demo.setChatBusy(false) })
+onUnmounted(() => { disposed = true; clearInterval(recoveryTimer); window.removeEventListener('focus', refreshSessionsOnFocus); window.removeEventListener('zhiyin:session-cleared', clearAllFailures); document.removeEventListener('visibilitychange', refreshSessionsOnFocus); clearInterval(waitTimer); clearTimeout(copyTimer); remember(); serial++; controller?.abort(); demo.setChatBusy(false) })
 </script>
 <template>
 <section class="consultation-page" aria-label="咨询对话空间">
  <div class="consult-main">
   <header class="consult-header">
-   <div class="consult-header__top"><div class="consult-heading"><h1>咨询对话</h1><p v-if="!choosingTopic && demo.state.currentSessionId" class="consult-session-title" :title="title">{{ title }}</p><p v-if="!choosingTopic && demo.state.currentSessionId"><span>当前阶段：{{ stageLabel(currentStage) }}</span><span v-if="profileFieldCount">已记录 {{ profileFieldCount }} 项信息</span><span v-if="profileGapCount">{{ profileGapCount }} 项待补</span></p></div><div class="consult-header__actions">
+   <div class="consult-header__top"><div class="consult-heading"><h1>咨询对话</h1><p v-if="!choosingTopic && demo.state.currentSessionId" class="consult-session-title" :title="title">{{ title }}</p></div><div class="consult-header__actions"><label v-if="demo.state.currentSessionId" class="consult-temporary" title="本会话不自动保存画像；聊天历史保留至你删除会话，主动保存的资产单独保留。"><input type="checkbox" :checked="runtimeState?.settings.temporary" :disabled="thinking" @change="setTemporary" />不自动记忆</label>
     <AnchoredCard v-model="historyOpen" class="consult-icon consult-history-button" title="历史会话" side="bottom" align="end" size="wide"><template #trigger><UiIcon name="chat" :size="18" /></template><div class="session-manage">
      <div class="session-manage__tools"><label class="information-search session-search"><span class="sr-only">搜索历史会话</span><input v-model="sessionQuery" type="search" aria-label="搜索历史会话" placeholder="搜索标题或最后一句" autocomplete="off" /></label><button type="button" class="ws-text-button" :disabled="sessionListLoading" @click="refreshSessionList(true)">{{ sessionListLoading ? '刷新中…' : '刷新列表' }}</button></div>
      <p v-if="sessionListError" class="consult-error session-manage__error" role="alert">{{ sessionListError }}<button type="button" @click="refreshSessionList(true)">重试</button></p>
@@ -838,12 +869,11 @@ onUnmounted(() => { disposed = true; window.removeEventListener('focus', refresh
     </div></AnchoredCard>
     <AnchoredCard v-model="profileOpen" class="consult-icon" title="个人画像" side="bottom" align="end"><template #trigger><UiIcon name="profile" :size="19" /><span class="consult-header__label">个人画像</span></template><ConversationProfile embedded :loading="profileLoading" :error="profileError" @close="profileOpen = false" @refresh="refreshProfile" @supplement="fill" /></AnchoredCard>
    </div></div>
-   <ol v-if="!choosingTopic && demo.state.currentSessionId" class="consult-journey" aria-label="咨询轨迹"><li v-for="item in journey" :key="item.key" :data-state="journeyState(item.key)" :aria-current="journeyState(item.key) === 'current' ? 'step' : undefined"><i /><span><em class="consult-journey__full">{{ item.label }}</em><em class="consult-journey__short">{{ item.short }}</em></span></li></ol>
   </header>
   <div ref="flow" v-scroll-fade class="consult-flow" tabindex="0" aria-label="对话记录" @scroll.passive="onScroll">
    <div v-if="systemData.busy || restoring" class="consult-loading" role="status">正在读取会话…</div>
    <div v-else-if="showStudyYearQuestion || choosingTopic || (!turns.length && !pending && !showFailedSend && !demo.state.currentSessionId)" class="consult-intro" :class="{'consult-intro--onboarding':showStudyYearQuestion}">
-    <AgentAvatar agent="career" :size="64" />
+    <AgentAvatar agent="career_advisor" :size="64" aria-label="知音 · 待命" title="知音 · 职业发展顾问" />
     <template v-if="showStudyYearQuestion">
      <p class="consult-intro__eyebrow">开始前确认一项信息</p>
      <h2>为了更准确地安排咨询重点，先确认一下：你目前处于哪个学习阶段？</h2>
@@ -863,14 +893,14 @@ onUnmounted(() => { disposed = true; window.removeEventListener('focus', refresh
    </div>
    <div v-else class="consult-messages" :aria-busy="thinking">
     <div v-if="!turns.length && !pending && demo.state.currentSessionId" class="consult-empty" role="status">
-     <AgentAvatar agent="career" :size="52" />
+     <AgentAvatar agent="career_advisor" :size="52" aria-label="知音 · 待命" title="知音 · 职业发展顾问" />
      <h2>新会话已就绪</h2>
      <p>直接在下面说说你现在最想解决的问题；想换个主题就点右上角「＋」。</p>
     </div>
     <article v-for="turn in turns" :key="turn.id" class="consult-turn" :class="['consult-turn--' + turn.from, { 'consult-turn--latest': turn.id === latestHostId }]">
      <div v-if="turn.from === 'me'" class="consult-user"><p>{{ turn.text }}</p><small v-for="m in turn.materials" :key="m.id"><UiIcon name="attachment" :size="14" />{{ m.name }}</small></div>
      <p v-else-if="turn.from === 'system'" class="consult-system">{{ cleanConsultantText(turn.text) }}</p>
-     <template v-else><AgentAvatar :agent="agentKeyOf(turn.speaker)" :size="38" /><div class="consult-answer">
+     <template v-else><AgentAvatar :agent="agentKeyOf(turn.speaker)" :size="38" :aria-label="consultantLabel(turn.speaker)" :title="consultantLabel(turn.speaker)" /><div class="consult-answer">
       <span class="consult-speaker"><b>{{ consultantLabel(turn.speaker || '咨询顾问') }}</b><small v-if="turn.id === latestHostId">当前建议</small></span>
       <div v-if="turn.text || turn.guideText" class="consult-answer-copy">
        <ReadableText v-if="turn.text" :text="cleanConsultantText(turn.text)" class="consult-prose" />
@@ -910,15 +940,17 @@ onUnmounted(() => { disposed = true; window.removeEventListener('focus', refresh
       <button type="button" @click="dismissInterrupted">继续自己输入</button>
      </div>
     </div>
-    <article v-if="pending" class="consult-turn consult-turn--host consult-pending" aria-label="当前回复"><AgentAvatar :agent="agentKeyOf(pending.agent)" :size="38" :state="thinking ? pending.text ? 'speaking' : 'thinking' : 'idle'" /><div class="consult-answer"><span class="consult-speaker">{{ consultantLabel(pending.agent) }}</span><ReadableText v-if="pending.text" :text="cleanConsultantText(pending.text)" class="consult-prose" /><div v-else-if="thinking" class="consult-wait" role="status"><span class="consult-wait-orbit" aria-hidden="true"><i /><i /><i /></span><div><p>{{ pending.note }}</p><small>正在接收回复<span v-if="elapsed >= 3"> · {{ elapsed }} 秒</span></small></div></div><span v-if="thinking && pending.text" class="consult-cursor" aria-label="正在回复" /><small v-if="!thinking">{{ stopped ? '接收已停止' : '回复未完成' }}</small></div></article>
+    <article v-if="pending" class="consult-turn consult-turn--host consult-pending" aria-label="当前回复"><AgentAvatar :agent="agentKeyOf(pending.agent)" aria-label="知音" title="知音 · 职业发展顾问" :size="38" :state="thinking ? pending.text ? 'speaking' : 'thinking' : 'idle'" /><div class="consult-answer"><span class="consult-speaker">{{ consultantLabel(pending.agent) }}</span><ReadableText v-if="pending.text" :text="cleanConsultantText(pending.text)" class="consult-prose" /><div v-else-if="thinking" class="consult-wait" role="status"><span class="consult-wait-orbit" aria-hidden="true"><i /><i /><i /></span><div><p>{{ pending.note }}</p><small>正在接收回复<span v-if="elapsed >= 3"> · {{ elapsed }} 秒</span></small></div></div><p v-if="thinking && pending.text" class="consult-live-note" role="status">{{ pending.note }}</p><span v-if="thinking && pending.text" class="consult-cursor" aria-label="正在回复" /><small v-if="!thinking">{{ stopped ? '接收已停止' : '回复未完成' }}</small></div></article>
     <div v-if="requestError && !showFailedSend" class="consult-error" role="alert"><p>{{ requestError }}</p><button v-if="failedRequest && !stopped" @click="send(true)">重试</button><button v-else :disabled="thinking" @click="reloadConversation">刷新会话</button></div>
    </div>
+   <p v-if="backgroundRun && !thinking" role="status">{{ backgroundRun.last_status || '这轮仍在处理，完成后会自动恢复结果。' }}</p>
+   <details v-if="liveSteps.length" class="consult-turn-progress"><summary>本轮处理过程</summary><ul><li v-for="step in liveSteps" :key="step.id">{{ step.label }} · {{ step.state === 'step.completed' ? '已返回结果' : step.state === 'step.failed' ? '未完成' : '处理中' }}</li></ul></details>
    <p class="sr-only" role="status" aria-live="polite">{{ replyAnnouncement }}</p>
   </div>
   <footer v-if="!choosingTopic && !showStudyYearQuestion" class="consult-compose-area">
    <div v-if="uploadError" class="consult-error" role="alert"><p>{{ uploadError }}</p><button :disabled="uploading || thinking" @click="fileInput?.click()">重新选择材料</button><button @click="uploadError = ''">关闭上传提示</button></div>
    <button v-if="showLatest" class="consult-latest" @click="followTail = true; bottom(true)"><UiIcon name="down" :size="15" />回到最新消息</button>
-   <div v-if="pendingConfirm" class="consult-confirm" role="status" aria-label="待确认事项">
+   <ConversationOperations v-if="runtimeState" :actions="runtimeState.actions" :busy="thinking || systemData.busy" @decide="decideAction" /><div v-if="pendingConfirm && !runtimeState?.actions.some(a => a.state === 'proposed')" class="consult-confirm" role="status" aria-label="待确认事项">
     <div class="consult-confirm__copy"><strong>有一条确认还没回复</strong><p>可以直接点选；继续输入其他内容也不会自动取消它。</p></div>
     <div class="consult-confirm__actions">
      <button type="button" :disabled="thinking || systemData.busy" @click="chooseConfirm(pendingConfirm.yes)">{{ cleanConsultantText(pendingConfirm.yes.label) }}</button>

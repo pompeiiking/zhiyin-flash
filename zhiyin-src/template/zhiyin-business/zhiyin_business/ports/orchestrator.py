@@ -138,6 +138,7 @@ class TurnResult(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     task_id: str
+    conversation: bool = False
     session: TaskSession
     stage: LoopStage
     badge: AgentBadge = Field(description="现在是谁在帮我、依据什么")
@@ -147,7 +148,7 @@ class TurnResult(BaseModel):
     disclosure: Optional[Disclosure] = Field(
         default=None, description="换主理 / 换理论 / 结论变化时的显式告知"
     )
-    guide: BehaviorGuide = Field(description="行为引导收尾，必须四选一")
+    guide: BehaviorGuide = Field(description="可选的后续交互；普通咨询允许为空内容")
     asset_versions: list[AssetVersion] = Field(
         default_factory=list, description="本轮产生或变化的资产版本"
     )
@@ -197,4 +198,12 @@ class Orchestrator(ABC):
 
     @abstractmethod
     async def handle_message(self, request: TurnRequest) -> TurnResult:
-        """处理一次用户输入，跑完"单轮回复骨架"。"""
+        """处理自然多轮对话，业务操作经过统一的权限和回执边界。"""
+
+    async def conversation_control(self, user_id: str, task_id: str, **kwargs) -> dict:
+        """读取运行记录、停止后续步骤或修改当前用户的会话设置。"""
+        raise NotImplementedError
+
+    async def delete_conversation(self, user_id: str, task_id: str) -> None:
+        """串行删除会话及其原文、摘要与操作记录。"""
+        raise NotImplementedError

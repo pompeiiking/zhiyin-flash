@@ -11,7 +11,6 @@ from zhiyin_boot import Settings, build_container
 from zhiyin_boot.container.services import _lazy_profile_reader, _lazy_plan_reader
 from zhiyin_business.contracts.student import Preferences
 from zhiyin_business.ports.orchestrator import TurnRequest
-from zhiyin_business.policies import KeywordIntentPolicy
 from zhiyin_business.services.analysis_access import activate, current_scope, load_scope
 from zhiyin_kernel.assets import ActionPlan, ActionPhase, ActionTask
 from zhiyin_kernel.enums import LoopStage
@@ -72,7 +71,7 @@ async def test_chat_and_tools_exclude_old_derivations_but_keep_allowed_sources(a
     ))
     recorder = Recorder(app)
     app.orchestrator._agent_engine = recorder
-    app.orchestrator._intent_policy = KeywordIntentPolicy(app.registry_service)
+    app.orchestrator._intent_policy = None
     request = TurnRequest(user_id="a", task_id="session", message="我想了解自己 CURRENT_SENTINEL",
                           attachment_text="MATERIAL_SENTINEL" if material else "")
     await app.orchestrator.handle_message(request)
@@ -85,7 +84,7 @@ async def test_chat_and_tools_exclude_old_derivations_but_keep_allowed_sources(a
     assert current_scope() is None
     # Following turns preserve newly permitted conversation history.
     await app.orchestrator.handle_message(request.model_copy(update={"message": "继续聊 NEXT_SENTINEL"}))
-    assert "CURRENT_SENTINEL" in serialized(recorder.requests[-1].prompt_vars.get("turn_group"))
+    assert "CURRENT_SENTINEL" in serialized(recorder.requests[-1].history)
     # Normal UI reads still show original data; filtering has not erased it.
     assert "LEGACY_DERIVED" in serialized(await app.profile_service.get("a"))
     assert "LEGACY_SUMMARY" in serialized(await app.memory_service.list_by_user("a"))

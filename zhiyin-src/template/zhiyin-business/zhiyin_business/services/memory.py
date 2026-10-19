@@ -173,7 +173,7 @@ class DefaultConversationMemoryService(ConversationMemoryService):
             # 翻成 InvalidRequest，api 按 422 + 原话返回，界面照原样显示那句
             # "另存为 CSV 再传"。不翻的话用户看到的是 500。
             raise InvalidRequest(str(exc)) from exc
-        from zhiyin_business.services.conversation_policy import SENSITIVE
+        from zhiyin_kernel.privacy import SENSITIVE
         if SENSITIVE.search(text) or SENSITIVE.search(name):
             raise InvalidRequest("材料包含个人敏感信息，请移除身份证、手机号或银行卡等信息后重新上传。")
         if len(text) > _MAX_MATERIAL_CHARS:

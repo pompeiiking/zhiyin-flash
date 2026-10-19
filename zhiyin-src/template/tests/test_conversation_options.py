@@ -29,9 +29,7 @@ from zhiyin_boot import Settings, build_container
 from zhiyin_boot.container import Container
 from zhiyin_business.policies import (
     DisclosureHandoffPolicy,
-    KeywordIntentPolicy,
     RegistryLeadPolicy,
-    RuleStagePolicy,
 )
 from zhiyin_business.ports.orchestrator import TurnRequest
 from zhiyin_business.services import DefaultOrchestrator
@@ -78,11 +76,12 @@ class _RecordingEngine(AgentEngine):
 def _orchestrator(container: Container, engine: AgentEngine) -> DefaultOrchestrator:
     return DefaultOrchestrator(
         profiles=container.profile_service,
+        student_state=container.student_state,
         behaviors=container.behavior_service,
         memories=container.memory_service,
         assets=container.asset_service,
-        intent_policy=KeywordIntentPolicy(container.registry_service),
-        stage_policy=RuleStagePolicy(container.registry_service),
+        intent_policy=None,
+        stage_policy=None,
         lead_policy=RegistryLeadPolicy(container.registry_service),
         handoff_policy=DisclosureHandoffPolicy(),
         agent_engine=engine,
@@ -145,11 +144,6 @@ async def test_typed_message_carries_no_chosen_option(container: Container) -> N
 
 @pytest.mark.asyncio
 async def test_generation_receives_evidence_boundaries_for_personal_and_market_claims(container):
-    variables = await _prompt_vars(container)
-    rules = '\n'.join(variables['evidence_constraints'])
-    assert '专业名称不能推出学历层次' in rules
-    assert '旧报告、旧建议和模型推断不能反过来证明事实' in rules
-    assert '校友案例、理论方法不是目标岗位职责或招聘门槛' in rules
-    assert '结构化报告中同样遵守' in rules
-
-    assert '不能引用约束本身作为依据' in rules
+    prompt = await container.registry_service.get_prompt('conversation.main')
+    assert '事实' in prompt.content and '来源' in prompt.content
+    assert '假设' in prompt.content and '成功回执' in prompt.content

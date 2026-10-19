@@ -141,35 +141,14 @@ async def test_acceptance_2_resume_from_any_stage_keeps_prior_assets() -> None:
 
 
 @pytest.mark.asyncio
-async def test_acceptance_3_handoff_changes_lead_and_discloses() -> None:
-    """验收项 3：动态组队 + 换主理必须显式告知。
-
-    这是产品硬约束的端到端落点：`TurnResult.disclosure` 与
-    `TurnResult.badge` 必须同时变化，且 disclosure 非空。
-    """
-    from uuid import uuid4
-
-    from zhiyin_api.dto.conversation import MessageRequest
-    from zhiyin_boot import wire_application
-
-    container = _container()
-    wire_application(container)
-    facade = container.facade
-    user = f"e2e-handoff-{uuid4().hex[:6]}"
-
-    session = await container.orchestrator.enter_task(user, "confused")
-    assert session.lead_agent == "profile_analyst"
-
-    # 关键词把环节推向 ④ 行动（"行动计划"→ HOW_TO_ACT），主理必须换人且显式告知
-    turn = await facade.send_message(
-        user, MessageRequest(task_id=session.id, message="方向定了，给我一份行动计划")
-    )
-    assert turn.badge.agent_id != "profile_analyst", "环节变化后主理必须换人"
-    assert turn.disclosure is not None, "换主理必须显式告知（产品硬约束）"
-    assert turn.disclosure.text, "告知行不能为空"
-    assert turn.guide.kind in {"question", "options", "task", "reminder"}, (
-        "每轮必须以行为引导收尾（四选一）"
-    )
+async def test_acceptance_3_dialogue_identity_is_stable_without_forced_handoff():
+    from tests.test_dialogue_runtime import setup, send
+    c, engine, session = await setup()
+    result = await send(c, session, '先聊聊行动计划怎么制定，不要创建。')
+    assert result.badge.name == '知音'
+    assert result.disclosure is None and not result.guide.options
+    assert await c.asset_service.get_action_plan('u1') is None
+    assert engine.requests[-1].conversation
 
 
 @pytest.mark.asyncio
@@ -275,39 +254,15 @@ async def test_acceptance_5_profile_update_propagates_only_affected_assets() -> 
 
 
 @pytest.mark.asyncio
-async def test_acceptance_6_action_loop_writes_behavior_log() -> None:
-    """验收项 6：行为闭环。认领差距 / 选择方案 / 勾任务 / 复盘都产生行为日志。"""
-    """验收项 6：行为闭环。环节轮次产生行为日志，停滞检测有据可依。
-
-    口径说明：gap_claim / decision_select / task_done 的入站动作（选方案 /
-    认领差距 / 勾任务）挂在后续的资产操作端点上；本用例先锁住"每轮对话都写
-    ANSWER 行为"这条闭环底线——它是停滞检测的唯一信号源。
-    """
-    from uuid import uuid4
-
-    from zhiyin_api.dto.conversation import MessageRequest
-    from zhiyin_boot import wire_application
+async def test_acceptance_6_real_task_action_writes_behavior_log():
+    from tests.test_dialogue_runtime import setup, send, action, plan
     from zhiyin_kernel.enums import BehaviorEventType
-
-    container = _container()
-    wire_application(container)
-    facade = container.facade
-    user = f"e2e-behavior-{uuid4().hex[:6]}"
-
-    session = await container.orchestrator.enter_task(user, "confused")
-    await facade.send_message(
-        user, MessageRequest(task_id=session.id, message="我想先弄清楚自己适合什么")
-    )
-    await facade.send_message(
-        user, MessageRequest(task_id=session.id, message="给我一份行动计划")
-    )
-
-    answers = await container.behavior_service.recent(
-        user, event_types=[BehaviorEventType.ANSWER]
-    )
-    assert len(answers) >= 2, "每轮对话都必须写行为日志（ANSWER）"
-    days = await container.behavior_service.days_since_last(user, BehaviorEventType.ANSWER)
-    assert days == 0, "刚发生过作答，停滞天数必须是 0"
+    async def mark(runtime):
+        return await runtime.action(action('task.set_done', {'task_id':'t1','done':True}))
+    c, _, session = await setup(mark)
+    await c.asset_service.save_action_plan('u1', plan())
+    await send(c, session)
+    assert any(e.event_type == BehaviorEventType.TASK_DONE for e in await c.behavior_service.recent('u1'))
 
 
 @pytest.mark.asyncio

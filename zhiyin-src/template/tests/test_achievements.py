@@ -107,7 +107,7 @@ async def test_unlock_time_is_when_he_actually_did_it_not_when_we_look() -> None
     # 只读一次：几条规则共用这一份行为（不是每条规则各查一次）
     assert len(behaviors.calls) == 1
     types, limit = behaviors.calls[0]
-    assert set(types) == {"answer", "task_done"} and limit == 200
+    assert set(types) == {"answer", "task_done", "task_reopened"} and limit == 200
 
 
 @pytest.mark.asyncio

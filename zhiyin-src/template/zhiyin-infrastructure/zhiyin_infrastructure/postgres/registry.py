@@ -392,7 +392,7 @@ class PostgresRegistryRepository(RegistryRepository):
                             # administrator-maintained prompt content.
                             path = self._registry_dir / filename
                             for item in _read_items(path):
-                                if item.get("code") in {"task.academic.analysis", "disclosure.field_kept_by_user"}:
+                                if item.get("code") in {"conversation.main", "conversation.memory", "conversation.context", "task.academic.analysis", "disclosure.field_kept_by_user"}:
                                     await self._insert_missing_prompt(item)
                         continue
                 path = self._registry_dir / filename

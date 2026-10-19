@@ -119,7 +119,7 @@ class AnalysisReadGuard:
 
     def __getattr__(self, name):
         target = getattr(self._service, name)
-        if not callable(target) or name in {"drop_intel_cache"}:
+        if not callable(target) or name in {"drop_intel_cache", "mutation_scope"}:
             return target
 
         async def call(user_id, *args, **kwargs):

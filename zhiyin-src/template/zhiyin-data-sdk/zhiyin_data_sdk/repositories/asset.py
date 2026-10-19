@@ -9,6 +9,9 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from typing import Optional, Sequence
+from contextlib import asynccontextmanager
+from contextvars import ContextVar
+import asyncio
 
 from zhiyin_kernel.assets import (
     ActionPlan,
@@ -21,6 +24,23 @@ from zhiyin_kernel.enums import AssetType
 
 class AssetRepository(ABC):
     """资产 Repository。版本与内容分开管理。"""
+
+    @asynccontextmanager
+    async def write_lock(self, user_id):
+        if not hasattr(self, "_mutation_gates"):
+            self._mutation_gates = {}
+            self._mutation_owner = ContextVar(f"asset_owner_{id(self)}", default=None)
+        owner = (user_id, asyncio.current_task())
+        if self._mutation_owner.get() == owner:
+            yield
+            return
+        lock = self._mutation_gates.setdefault(user_id, asyncio.Lock())
+        async with lock:
+            token = self._mutation_owner.set(owner)
+            try:
+                yield
+            finally:
+                self._mutation_owner.reset(token)
 
     # ---------- 版本 ----------
 

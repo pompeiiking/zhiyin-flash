@@ -68,6 +68,7 @@ class PhaseEdit(PhaseValues):
 
 
 class Preferences(StrictModel):
+    automatic_memory: bool = True
     proactive_reminders: bool = True
     quiet_start: str | None = Field(default=None, pattern=r"^(?:[01]\d|2[0-3]):[0-5]\d$")
     quiet_end: str | None = Field(default=None, pattern=r"^(?:[01]\d|2[0-3]):[0-5]\d$")

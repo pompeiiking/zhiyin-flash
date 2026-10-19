@@ -39,6 +39,7 @@ _ACTION_EVENTS: tuple[BehaviorEventType, ...] = (
     BehaviorEventType.DECISION_SELECT,
     BehaviorEventType.DECISION_RESELECT,
     BehaviorEventType.TASK_DONE,
+    BehaviorEventType.TASK_REOPENED,
     BehaviorEventType.PROFILE_FIELD_UPDATED,
     BehaviorEventType.REVIEW,
 )

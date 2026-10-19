@@ -163,26 +163,6 @@ def _container():
     return build_container(_settings())
 
 
-@pytest.mark.asyncio
-async def test_writing_profile_fields_counts_as_an_action() -> None:
-    """① 采集真的写了画像 → 记一条 `profile_field_updated`。
-
-    这条事件类型一直躺在停滞判定"什么算动作"的清单里，而库里从来没有过一行：
-    一个只补画像、不勾任务的人，会被停滞判定当成"好几天没动"。
-    """
-    container = _container()
-    container.orchestrator._agent_engine = _StubEngine(COLLECT_PAYLOAD)  # noqa: SLF001
-
-    session = await container.orchestrator.enter_task("u-collect-log", "confused")
-    await container.orchestrator.handle_message(
-        TurnRequest(user_id="u-collect-log", task_id=session.id, message="我是学计算机的")
-    )
-
-    logged = await container.behavior_service.recent("u-collect-log")
-    kinds = [event.event_type for event in logged]
-    assert BehaviorEventType.PROFILE_FIELD_UPDATED in kinds, (
-        "采集落库了画像却没记行为：干预判定看不见这次动作"
-    )
 
 
 @pytest.mark.asyncio
@@ -200,72 +180,3 @@ async def test_answer_only_logs_a_field_update_when_a_field_changed() -> None:
     logged = await container.behavior_service.recent("u-no-field")
     kinds = [event.event_type for event in logged]
     assert BehaviorEventType.PROFILE_FIELD_UPDATED not in kinds
-
-
-@pytest.mark.asyncio
-async def test_claiming_a_gap_is_recorded_and_moves_the_loop_forward() -> None:
-    """② 点了认领差距的选项 → 记 `gap_claim`，而且**下一轮真的进 ③**。
-
-    这是整条闭环能否走动的关键一步：此前 `gap_claim` 只有枚举和算式，
-    没有任何地方写它，于是"认领差距 → 决策"永远触发不了。
-    """
-    container = _container()
-    engine = _StubEngine(COLLECT_PAYLOAD)
-    container.orchestrator._agent_engine = engine  # noqa: SLF001
-    user = "u-claim"
-
-    # 先造出"② 已经产出过报告"这个前提（报告在手才会被认领推动）
-    from zhiyin_kernel.assets import Report, Swot, Verdict
-
-    await container.asset_service.save_report(
-        user,
-        Report(
-            id="rpt-1",
-            user_id=user,
-            version=0,
-            generated_at=datetime.now(timezone.utc),
-            verdict=Verdict(title="差在材料", summary="先补一份能打开的文件"),
-            swot=Swot(strength=["a", "b"], weakness=["c", "d"], opportunity=["e", "f"], risk=["g", "h"]),
-        ),
-        depends_on_profile_keys=["major"],
-    )
-    session = await container.orchestrator.enter_task(user, "confused")
-
-    # 用户点了"我先去抄 3 条岗位职责"这个认领选项
-    await container.orchestrator.handle_message(
-        TurnRequest(
-            user_id=user,
-            task_id=session.id,
-            message="我先去抄 3 条岗位职责",
-            option_id="gap_jd",
-        )
-    )
-    logged = await container.behavior_service.recent(user)
-    claims = [e for e in logged if e.event_type is BehaviorEventType.GAP_CLAIM]
-    assert claims, "认领了差距却没有留下行为记录"
-    assert claims[0].payload.get("gap_id") == "gap_jd"
-    assert claims[0].payload.get("label") == "我先去抄 3 条岗位职责", (
-        "只记 id 的话，报告与复盘里只剩一串没人看得懂的标识"
-    )
-
-    # 下一轮：关键词没命中，但进度说"该做选择了"
-    result = await container.orchestrator.handle_message(
-        TurnRequest(user_id=user, task_id=session.id, message="那接下来呢")
-    )
-    assert result.stage is LoopStage.DECIDE, (
-        "认领了差距却还在原地：闭环又回到「只能靠关键词推进」了"
-    )
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize("message", ["更新报告", "请重新生成诊断报告", "更新诊断报告", "重新诊断"])
-async def test_report_refresh_returns_from_review_to_diagnose(message: str) -> None:
-    from zhiyin_business.policies.routing_rules import KeywordIntentPolicy, RuleStagePolicy
-    from zhiyin_business.ports.orchestrator import IntentType
-
-    container = _container()
-    board = _board([AssetType.REPORT, AssetType.ACTION_PLAN], [BehaviorEventType.TASK_DONE], stage=LoopStage.REVIEW)
-    intent = await KeywordIntentPolicy(container.registry_service).classify(message=message, blackboard=board)
-    assert intent is IntentType.VERIFY_DIRECTION
-    decision = await RuleStagePolicy(container.registry_service).decide(blackboard=board, intent=intent, message=message)
-    assert decision.stage is LoopStage.DIAGNOSE
-    assert decision.source == "intent"

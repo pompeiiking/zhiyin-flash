@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 from zhiyin_business.services.unit_of_work import atomic_repository
+from zhiyin_business.services.unit_of_work import transaction
+from contextlib import asynccontextmanager
+from functools import wraps
 
 from collections import Counter, defaultdict
 import re
@@ -21,6 +24,14 @@ from zhiyin_kernel.errors import InvalidRequest
 from zhiyin_orchestration import DomainEvent, EventBus
 
 
+def asset_mutation(method):
+    @wraps(method)
+    async def call(self, user_id, *args, **kwargs):
+        async with self.mutation_scope(user_id):
+            return await method(self, user_id, *args, **kwargs)
+    return call
+
+
 class DefaultAssetService(AssetService):
     IMPLEMENTATION_STATUS = "wired"
 
@@ -35,6 +46,12 @@ class DefaultAssetService(AssetService):
         self._assets = assets
         self._event_bus = event_bus
         self._impact_policy = impact_policy
+
+    @asynccontextmanager
+    async def mutation_scope(self, user_id):
+        async with self._assets.write_lock(user_id):
+            async with transaction(self._assets):
+                yield
 
     async def list_versions(self, user_id: str, asset_type: AssetType) -> list[AssetVersion]:
         return await self._assets.list_versions(user_id, asset_type)
@@ -221,7 +238,7 @@ class DefaultAssetService(AssetService):
     # 模型已经把 15 维诊断生成并校验过了，却没有任何地方存下来 ——
     # 报告页与工作台恒为空，而看起来像"功能没做"。
 
-    @atomic_repository("_assets")
+    @asset_mutation
     async def save_report(
         self,
         user_id: str,
@@ -244,7 +261,7 @@ class DefaultAssetService(AssetService):
             snapshot_content=saved.model_dump(mode="json"),
         )
 
-    @atomic_repository("_assets")
+    @asset_mutation
     async def save_direction_plans(
         self,
         user_id: str,
@@ -275,7 +292,7 @@ class DefaultAssetService(AssetService):
             snapshot_content=[p.model_dump(mode="json") for p in plans],
         )
 
-    @atomic_repository("_assets")
+    @asset_mutation
     async def save_action_plan(
         self,
         user_id: str,
@@ -422,9 +439,11 @@ class DefaultAssetService(AssetService):
     # 仓储层早就实现了这两个动作，缺的是往上的出口；没有出口时，
     # 界面上"选它"只能是本地状态，刷新即消失。
 
+    @asset_mutation
     async def select_direction_plan(self, user_id: str, plan_id: str) -> DirectionPlan:
         return await self._assets.select_direction_plan(user_id, plan_id)
 
+    @asset_mutation
     async def mark_action_task_done(
         self, user_id: str, task_id: str, *, done: bool = True
     ) -> ActionPlan:

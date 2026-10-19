@@ -1,7 +1,7 @@
 """核心对话页接口（R-API-002 / R-API-003）。
 
 调用链：Controller → Facade → Orchestrator.handle_message
-（读黑板 → 环节判定 → 选主理 → 理论链产出 → 行为引导收尾）
+（会话上下文 → 模型自主调用 → 服务端权限与版本校验 → 实际回执）
 """
 
 from __future__ import annotations
@@ -10,7 +10,7 @@ import codecs
 import re
 from pathlib import PurePosixPath, PureWindowsPath
 
-from fastapi import APIRouter, File, Request, UploadFile
+from fastapi import APIRouter, Body, File, Request, UploadFile
 
 from zhiyin_api.dto.common import ApiResponse
 from zhiyin_api.dto.conversation import (
@@ -95,7 +95,7 @@ async def enter_task(
 async def send_message(
     request: Request, body: MessageRequest
 ) -> ApiResponse[ConversationTurnView]:
-    """发送一轮消息，返回最短结论 + 显式告知 + 行为引导 + 管线卡。"""
+    """发送自然对话一轮，返回正文和实际业务操作回执。"""
     facade = get_facade()
     user_id = await facade.resolve_user_id(request)
     return ApiResponse(data=await facade.send_message(user_id, body))
@@ -110,19 +110,36 @@ async def stream_message(request: Request, body: MessageRequest):
 
     async def frames():
         from zhiyin_api.controllers.ai_controller import _code_of, _user_message
-        queue: asyncio.Queue = asyncio.Queue()
+        queue: asyncio.Queue = asyncio.Queue(maxsize=256)
+        connected = True
+
+        sequence = 0
+        def publish(frame):
+            nonlocal sequence
+            if not connected:
+                return
+            sequence += 1
+            # Text frames carry cumulative text. Slow receivers may skip an
+            # intermediate frame; the final result and durable journal recover it.
+            if queue.full():
+                queue.get_nowait()
+            queue.put_nowait({**frame, "protocol": 2, "sequence": sequence,
+                "run_id": body.client_msg_id, "conversation_id": body.task_id})
 
         async def run():
             try:
-                with progress_channel(queue.put_nowait):
+                with progress_channel(publish):
                     result = await facade.send_message(user_id, body)
-                queue.put_nowait({'result': result.model_dump(mode='json')})
+                publish({'result': result.model_dump(mode='json')})
             except Exception as exc:
                 logging.getLogger(__name__).exception('Conversation stream failed')
                 code = _code_of(exc)
-                queue.put_nowait({'error': {'code': int(code), 'message': _user_message(exc, code)}})
+                publish({'error': {'code': int(code), 'message': _user_message(exc, code)}})
             finally:
-                queue.put_nowait(None)
+                if connected:
+                    if queue.full():
+                        queue.get_nowait()
+                    queue.put_nowait(None)
 
         worker = asyncio.create_task(run())
         _conversation_jobs.add(worker)
@@ -139,6 +156,7 @@ async def stream_message(request: Request, body: MessageRequest):
                     break
                 yield 'data: ' + json.dumps(frame, ensure_ascii=False) + '\n\n'
         finally:
+            connected = False
             # Closing the stream only stops reception. The approved turn must
             # finish its bounded execution and persist a result for retry/readback.
             # In particular do not cancel between a write and its receipt.
@@ -148,6 +166,27 @@ async def stream_message(request: Request, body: MessageRequest):
     return StreamingResponse(frames(), media_type='text/event-stream', headers={
         'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no',
     })
+
+
+@router.get('/app/sessions/{task_id}/runtime', response_model=ApiResponse[dict])
+async def conversation_runtime(request: Request, task_id: str, run_id: str = ""):
+    facade = get_facade()
+    user_id = await facade.resolve_user_id(request)
+    return ApiResponse(data=await facade.conversation_control(user_id, task_id, run_id=run_id))
+
+
+@router.post('/app/sessions/{task_id}/runs/{run_id}/cancel', response_model=ApiResponse[dict])
+async def cancel_conversation_run(request: Request, task_id: str, run_id: str):
+    facade = get_facade()
+    user_id = await facade.resolve_user_id(request)
+    return ApiResponse(data=await facade.conversation_control(user_id, task_id, run_id=run_id, cancel=True))
+
+
+@router.patch('/app/sessions/{task_id}/settings', response_model=ApiResponse[dict])
+async def conversation_settings(request: Request, task_id: str, body: dict = Body(...)):
+    facade = get_facade()
+    user_id = await facade.resolve_user_id(request)
+    return ApiResponse(data=await facade.conversation_control(user_id, task_id, settings=body))
 
 
 """一份材料的体积上限（2 MB）与正文字数上限（20 万字）。

@@ -401,7 +401,7 @@ def conversation_turn_view(turn: TurnResult) -> ConversationTurnView:
         ],
         disclosure=disclosure_view(turn.disclosure) if turn.disclosure is not None else None,
         guide=behavior_guide_view(turn.guide),
-        pipeline_cards=pipeline_cards(turn.session, turn.asset_versions),
+        pipeline_cards=[] if turn.conversation else pipeline_cards(turn.session, turn.asset_versions),
         changed_assets=[asset_version_view(version) for version in turn.asset_versions],
     )
 

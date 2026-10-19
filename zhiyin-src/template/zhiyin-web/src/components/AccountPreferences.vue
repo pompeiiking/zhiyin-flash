@@ -8,7 +8,7 @@ import DetailPopover from './DetailPopover.vue'
 import UiIcon from './UiIcon.vue'
 const loading=ref(false)
 const original=ref<Preferences|null>(null),latest=ref<Preferences|null>(null)
-const rows=computed(()=>values.value&&original.value&&latest.value?conflictRows(values.value,original.value,latest.value,{proactive_reminders:'主动提醒',quiet_start:'安静时间开始',quiet_end:'安静时间结束',timezone:'时区',academic_analysis:'学校资料参与分析',material_analysis:'上传材料参与分析'}):[])
+const rows=computed(()=>values.value&&original.value&&latest.value?conflictRows(values.value,original.value,latest.value,{automatic_memory:'自动记忆',proactive_reminders:'主动提醒',quiet_start:'安静时间开始',quiet_end:'安静时间结束',timezone:'时区',academic_analysis:'学校资料参与分析',material_analysis:'上传材料参与分析'}):[])
 async function confirmConflict(){if(!values.value||!original.value||!latest.value)return;values.value=rebaseForm(values.value,original.value,latest.value);original.value=latest.value;latest.value=null;await save()}
 const values=ref<Preferences|null>(null),busy=ref(false),error=ref(''),status=ref('')
 /**
@@ -93,6 +93,7 @@ onMounted(load)
 
         <section class="preference-group">
           <header><strong>参与分析的资料</strong><DetailPopover title="资料参与分析的规则" side="right"><template #trigger><UiIcon name="info" :size="16" /></template><p>关闭某一来源后，AI 继续使用本轮对话、本人填写内容和仍被允许的资料。已保存资料仍可查看、编辑和导出。</p><p>关闭上传材料时，请先移除附件再发送。</p></DetailPopover></header>
+          <label class="preference-row preference-row--choice"><div><h3>自动记忆</h3><p>自动保存你明确透露的情况；关闭后仍可正常咨询。</p></div><span class="toggle"><input v-model="values.automatic_memory" type="checkbox" role="switch" aria-label="自动记忆"/><span aria-hidden="true" /></span></label>
           <label class="preference-row preference-row--choice">
             <span class="preference-row__icon"><UiIcon name="academic" :size="20" /></span>
             <div><h3>学校资料</h3><p>成绩、课程和已核对的学籍信息</p></div>

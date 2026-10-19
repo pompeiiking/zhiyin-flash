@@ -4,6 +4,7 @@
 """
 
 from __future__ import annotations
+from contextlib import asynccontextmanager
 
 import json
 from datetime import datetime, timezone
@@ -41,7 +42,7 @@ from zhiyin_kernel.blackboard import (
     UserNote,
 )
 from zhiyin_kernel.enums import AssetType, BehaviorEventType, LoopStage, TaskStatus
-from zhiyin_kernel.errors import ResourceNotFound, DuplicateResource
+from zhiyin_kernel.errors import ResourceNotFound, DuplicateResource, InvalidRequest
 from zhiyin_kernel.identity import UserAccount
 from zhiyin_infrastructure.postgres.database import PostgresDatabase
 
@@ -740,6 +741,12 @@ class PostgresAcademicSnapshotRepository(AcademicSnapshotRepository):
 
 
 class PostgresAssetRepository(AssetRepository):
+    @asynccontextmanager
+    async def write_lock(self, user_id):
+        async with self._db.transaction():
+            await self._db.execute("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", "asset:" + user_id)
+            yield
+
     def transaction(self):
         return self._db.transaction()
 
@@ -1011,7 +1018,7 @@ class PostgresAssetRepository(AssetRepository):
         sort_order: int = 0,
     ) -> None:
         executor = connection or self._db
-        await executor.execute(
+        status = await executor.execute(
             """
             INSERT INTO biz_asset_content
                 (id, user_id, asset_type, version, sort_order, created_at, payload)
@@ -1020,6 +1027,7 @@ class PostgresAssetRepository(AssetRepository):
                 payload = EXCLUDED.payload,
                 version = EXCLUDED.version,
                 sort_order = EXCLUDED.sort_order
+            WHERE biz_asset_content.user_id = EXCLUDED.user_id AND biz_asset_content.asset_type = EXCLUDED.asset_type
             """,
             model.id,
             user_id,
@@ -1028,6 +1036,9 @@ class PostgresAssetRepository(AssetRepository):
             sort_order,
             _dump(model),
         )
+
+        if status.endswith(" 0"):
+            raise InvalidRequest("资产标识冲突，请重新读取后再操作。")
 
     async def _delete_content(self, user_id: str, asset_type: str, connection: Any = None) -> None:
         executor = connection or self._db

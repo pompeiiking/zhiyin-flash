@@ -254,7 +254,7 @@ async def test_a_chat_line_about_the_major_does_not_close_the_chsi_step() -> Non
     """
     container = await _container()
     user = "authority-chat-major"
-    await container.orchestrator._apply_collect(  # noqa: SLF001 - 直接验这一步
+    await _write_fields(container,  # noqa: SLF001 - 直接验这一步
         user, _chat_payload("major", "专业", "计算机大类")
     )
 
@@ -287,7 +287,7 @@ async def test_only_a_real_academic_import_closes_the_courses_step() -> None:
     """教务字段：对话里提过不算，真的从教务系统导入一次才算。"""
     container = await _container()
     user = "authority-academic"
-    await container.orchestrator._apply_collect(  # noqa: SLF001
+    await _write_fields(container,  # noqa: SLF001
         user, _chat_payload("courses", "课程表", "这学期课挺满")
     )
     assert _step(await _plan_of(container, user), "courses").got is False
@@ -333,7 +333,7 @@ async def test_the_chsi_verification_closes_what_the_chat_line_could_not() -> No
 
     container = await _container()
     user = "authority-chsi"
-    await container.orchestrator._apply_collect(  # noqa: SLF001
+    await _write_fields(container,  # noqa: SLF001
         user, _chat_payload("major", "专业", "计算机大类")
     )
 
@@ -352,3 +352,29 @@ async def test_the_chsi_verification_closes_what_the_chat_line_could_not() -> No
 
     closed_loop = next(step for step in frames[-1]["result"].data.steps if step.id == "s3")
     assert "专业" in closed_loop.detail, closed_loop.detail
+
+
+async def _write_fields(container, user, payload):
+    """Scripted extraction still crosses the production action boundary."""
+    from types import SimpleNamespace
+    from zhiyin_business.services.dialogue_runtime import active_dialogue
+    from zhiyin_business.ports.orchestrator import TurnRequest
+    from zhiyin_orchestration import AgentResult
+    updates = payload['field_updates']
+    message = '；'.join(str(i['value']) for i in updates)
+    async def invoke(request):
+        runtime = active_dialogue.get()
+        from zhiyin_orchestration.impl.dialogue_engine import traced
+        async def write(item):
+            return await runtime.action({'operation':'profile.update', 'payload': {'key':item['key'], 'value':item['value'], 'label':item.get('label',''), 'assertion_type':'affirmative_self_statement'},
+                'authorization':'automatic', 'evidence':str(item['value'])})
+        for item in updates:
+            await traced(write, 'workspace.action')(item)
+        return AgentResult(agent_id=request.agent_id, valid=True, raw_text='继续交流。')
+    original = container.orchestrator._agent_engine
+    container.orchestrator._agent_engine = SimpleNamespace(invoke=invoke)
+    try:
+        session = await container.orchestrator.enter_task(user, 'free_chat')
+        await container.orchestrator.handle_message(TurnRequest(user_id=user, task_id=session.id, message=message))
+    finally:
+        container.orchestrator._agent_engine = original

@@ -6785,6 +6785,11 @@
             "title": "Academic Analysis",
             "type": "boolean"
           },
+          "automatic_memory": {
+            "default": true,
+            "title": "Automatic Memory",
+            "type": "boolean"
+          },
           "material_analysis": {
             "default": true,
             "title": "Material Analysis",
@@ -6834,6 +6839,11 @@
           "academic_analysis": {
             "default": true,
             "title": "Academic Analysis",
+            "type": "boolean"
+          },
+          "automatic_memory": {
+            "default": true,
+            "title": "Automatic Memory",
             "type": "boolean"
           },
           "expected": {
@@ -9326,7 +9336,7 @@
     },
     "/api/v1/app/conversation/message": {
       "post": {
-        "description": "发送一轮消息，返回最短结论 + 显式告知 + 行为引导 + 管线卡。",
+        "description": "发送自然对话一轮，返回正文和实际业务操作回执。",
         "operationId": "send_message_api_v1_app_conversation_message_post",
         "requestBody": {
           "content": {
@@ -11288,6 +11298,163 @@
           }
         },
         "summary": "Rename Session",
+        "tags": [
+          "conversation"
+        ]
+      }
+    },
+    "/api/v1/app/sessions/{task_id}/runs/{run_id}/cancel": {
+      "post": {
+        "operationId": "cancel_conversation_run_api_v1_app_sessions__task_id__runs__run_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "title": "Task Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_dict_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel Conversation Run",
+        "tags": [
+          "conversation"
+        ]
+      }
+    },
+    "/api/v1/app/sessions/{task_id}/runtime": {
+      "get": {
+        "operationId": "conversation_runtime_api_v1_app_sessions__task_id__runtime_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "title": "Task Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "run_id",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_dict_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Conversation Runtime",
+        "tags": [
+          "conversation"
+        ]
+      }
+    },
+    "/api/v1/app/sessions/{task_id}/settings": {
+      "patch": {
+        "operationId": "conversation_settings_api_v1_app_sessions__task_id__settings_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_dict_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Conversation Settings",
         "tags": [
           "conversation"
         ]

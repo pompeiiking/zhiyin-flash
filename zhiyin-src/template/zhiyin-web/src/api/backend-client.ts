@@ -6,7 +6,7 @@ export class BackendError extends Error {
   constructor(message: string, public code: number, public traceId = '') { super(message) }
 }
 type Envelope<T> = { code: number; message: string; data: T; trace_id?: string }
-type Options = { params?: Record<string, string>; query?: Record<string, string | number>; body?: unknown; timeout?: number; form?: FormData; signal?: AbortSignal }
+type Options = { fresh?: boolean; params?: Record<string, string>; query?: Record<string, string | number>; body?: unknown; timeout?: number; form?: FormData; signal?: AbortSignal }
 export { request as backendRequest }
 /** 技术性异常（英文 JSON/校验/解析）不直接念给用户听，统一换成可操作的中文。 */
 const TECHNICAL_ERROR = /(Expected property name|Unexpected token|Unexpected end of JSON|is not valid JSON|JSON\.parse|SyntaxError|TypeError|ReferenceError|Traceback|ValidationError|String should|Input should)/i
@@ -94,7 +94,7 @@ async function send<T>(operation: Operation, options: Options = {}, opts: { auth
 }
 async function request<T>(key: keyof typeof operations, options: Options = {}): Promise<T> {
   const operation = operations[key]
-  if (operation.method === 'GET' && !options.signal) {
+  if (operation.method === 'GET' && !options.signal && !options.fresh) {
     const cacheKey = cacheKeyOf(key, options)
     const hit = getCache.get(cacheKey)
     if (hit && Date.now() - hit.at < GET_CACHE_TTL_MS) return hit.promise as Promise<T>
@@ -114,6 +114,9 @@ export const backendClient = {
   logout: () => request<{ logged_out: boolean }>('logout'),
   bootstrap: () => request<BootstrapView>('bootstrap'),
   sessions: () => request<SessionListView>('sessions'),
+  conversationRuntime: (id: string) => send<ConversationRuntimeState>({ method: 'GET', path: `/app/sessions/${encodeURIComponent(id)}/runtime` }, { fresh: true }),
+  conversationSettings: (id: string, temporary: boolean) => send<ConversationRuntimeState>({ method: 'PATCH', path: `/app/sessions/${encodeURIComponent(id)}/settings` }, { body: { temporary } }),
+  cancelConversationRun: (id: string, run: string) => send<Record<string, unknown>>({ method: 'POST', path: `/app/sessions/${encodeURIComponent(id)}/runs/${encodeURIComponent(run)}/cancel` }),
   /** 重命名会话：PATCH /app/sessions/{task_id} body { task_name }，返回最新会话列表。 */
   sessionRename: (task_id: string, task_name: string) => send<SessionListView>({ method: 'PATCH', path: `/app/sessions/${encodeURIComponent(task_id)}` }, { body: { task_name } }),
   /** 删除会话：DELETE /app/sessions/{task_id}。契约优先返回最新 SessionListView；也兼容 { removed }。 */
@@ -151,3 +154,6 @@ export const backendClient = {
   notificationRead: (message_id: string) => request<{ read: boolean }>('notificationRead', { params: { message_id } }),
   exportAsset: (asset_type: 'report' | 'direction_plan' | 'action_plan', format: 'pdf' | 'docx') => request<ExportResultView>('export', { body: { asset_type, format } }),
 }
+
+export type ConversationAction = { id: string; operation: string; state: string; payload: Record<string, any>; expires_at: string; receipt?: Record<string, any> }
+export type ConversationRuntimeState = { actions: ConversationAction[]; runs: {id: string; state: string; last_status?: string; events?: {type?: string; step_id?: string; note?: string}[]}[]; settings: {temporary?: boolean} }

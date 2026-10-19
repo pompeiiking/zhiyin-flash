@@ -39,7 +39,7 @@ def test_inventory_covers_every_controller():
 
 def test_student_operations_match_backend():
     spec = json.loads((TEMPLATE / "contracts/openapi.json").read_text(encoding="utf-8"))["paths"]
-    ops = json.loads((WEB / "src/api/operations.json").read_text())
+    ops = json.loads((WEB / "src/api/operations.json").read_text(encoding="utf-8"))
     for key, op in ops.items():
         assert op["method"].lower() in spec["/api/v1" + op["path"]], key
     student = {

@@ -23,8 +23,8 @@ export function withGuide(turns: ChatTurn[], snapshot: ConversationTurnView | nu
     answer.question = same(g.question) || g.question?.trim() === answer.guideText?.trim() ? undefined : g.question ?? undefined
     answer.guideTask = g.task ?? undefined
     answer.reminder = g.reminder ?? undefined
-    answer.options = g.options?.map(o => o.label)
-    answer.optionRefs = g.options?.map(o => ({ ...o, value: o.value }))
+    answer.options = g.options?.filter(o => !o.option_id.startsWith('action.')).map(o => o.label)
+    answer.optionRefs = g.options?.filter(o => !o.option_id.startsWith('action.')).map(o => ({ ...o, value: o.value }))
   }
   answer.pipelineCards = snapshot.pipeline_cards?.length ? snapshot.pipeline_cards.map(card => ({ ...card })) : undefined
   answer.changedAssets = snapshot.changed_assets?.length ? snapshot.changed_assets.map(asset => ({ ...asset })) : undefined

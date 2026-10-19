@@ -354,8 +354,15 @@ class DefaultApplicationFacade(ApplicationFacade):
         return await self.list_sessions(user_id)
 
     async def delete_session(self, user_id: str, task_id: str) -> SessionListView:
-        await self._workspace.delete_session(user_id, task_id)
+        if self._orchestrator is not None:
+            await self._orchestrator.delete_conversation(user_id, task_id)
+        else:
+            await self._workspace.delete_session(user_id, task_id)
         return await self.list_sessions(user_id)
+
+    async def conversation_control(self, user_id: str, task_id: str, *, run_id: str = "", cancel: bool = False,
+                                   settings: dict | None = None) -> dict:
+        return await self._orchestrator.conversation_control(user_id, task_id, run_id=run_id, cancel=cancel, settings=settings)
 
     async def capabilities(self) -> CapabilityListView:
         """当前部署的真实能力（不猜、不把未配置说成可用）。"""
@@ -408,6 +415,8 @@ class DefaultApplicationFacade(ApplicationFacade):
                     names[turn.agent_id] = agent.name if agent else turn.agent_id
                 agent_name = names[turn.agent_id]
             message = mappers.conversation_message_view(turn, agent_name=agent_name)
+            if (turn.metadata or {}).get("result", {}).get("conversation"):
+                message = message.model_copy(update={"agent_name": "知音"})
             snapshot = snapshots.get(turn.client_msg_id, {})
             for saved in snapshot.get('messages', []):
                 if saved.get('role') == turn.role and saved.get('agent_id') == (turn.agent_id or None) and saved.get('text') == turn.text:
@@ -645,24 +654,19 @@ class DefaultApplicationFacade(ApplicationFacade):
         events = await self._function.list_track_events(user_id)
         return [mappers.track_event_view(event) for event in events[:limit]]
 
-    async def set_action_task_done(
-        self, user_id: str, body: ActionTaskDoneRequest
-    ) -> ActionPlanView:
-        """勾掉 / 取消勾选一个任务：状态变更 + 行为日志，返回更新后的计划。"""
-        plan = await self._assets.mark_action_task_done(user_id, body.task_id, done=body.done)
-        # 只有"真的勾掉"才记行为：`done=false` 是**纠正误点**，不是一条行为信号。
-        # 之前这里把取消勾选记成了 TASK_STALL（任务停滞）—— 语义完全相反，
-        # 而停滞判定会读行为日志，等于让"点错了"去喂养"他卡住了"的判断。
-        if body.done:
-            await self._log_behavior(
-                user_id,
-                BehaviorEventType.TASK_DONE,
-                {"task_id": body.task_id},
-            )
-        # 勾掉一件改的是**计划状态**：读缓存那份要重读，模型算过的那几段也要重算 ——
-        # 「今天怎么过」原来是按"这件事还没做完"排的，勾完再看还是那一段就说不通了。
-        await self._invalidate_user(user_id, "asset_state_changed")
-        return mappers.action_plan_view(plan)
+    async def set_action_task_done(self, user_id: str, body: ActionTaskDoneRequest) -> ActionPlanView:
+        """Task state, correction event and invalidation share the mutation boundary."""
+        async with self._assets.mutation_scope(user_id):
+            previous = await self._assets.get_action_plan(user_id)
+            matched = [t for p in (previous.phases if previous else []) for t in p.tasks
+                       if body.task_id in {t.id, t.text, f"{p.name}:{t.text}"}]
+            changed = len(matched) == 1 and matched[0].done != body.done
+            plan = await self._assets.mark_action_task_done(user_id, body.task_id, done=body.done)
+            if changed:
+                await self._log_behavior(user_id, BehaviorEventType.TASK_DONE if body.done else BehaviorEventType.TASK_REOPENED,
+                    {"task_id": matched[0].id, "done": body.done})
+                await self._invalidate_user(user_id, "asset_state_changed")
+            return mappers.action_plan_view(plan)
 
     async def _log_behavior(
         self, user_id: str, event_type: BehaviorEventType, payload: dict[str, Any]

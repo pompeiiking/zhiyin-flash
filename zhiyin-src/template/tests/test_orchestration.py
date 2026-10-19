@@ -788,25 +788,6 @@ async def test_schema_repair_keeps_internal_feedback_out_of_user_reply() -> None
     assert "用户：请帮我梳理课程项目" in agent.prompt
 
 
-def test_review_prose_uses_task_label_without_changing_task_id() -> None:
-    from zhiyin_business.services.orchestrator import _replace_task_ids_in_prose
-
-    source = {
-        "conclusion": "你刚勾掉了 t1，下一步先看 t2。",
-        "minimal_action": {"task_id": "t2", "text": "继续做 t2"},
-        "guide": {"text": "要不要继续 t2？", "options": []},
-        "achievements_unlocked": ["t1"],
-    }
-    fixed = _replace_task_ids_in_prose(
-        source, {"t1": "整理项目文件清单", "t2": "写出实际负责的部分"}
-    )
-    assert fixed["conclusion"] == "你刚勾掉了「整理项目文件清单」，下一步先看「写出实际负责的部分」。"
-    assert fixed["minimal_action"] == {
-        "task_id": "t2", "text": "继续做「写出实际负责的部分」"
-    }
-    assert fixed["guide"]["text"] == "要不要继续「写出实际负责的部分」？"
-    assert fixed["achievements_unlocked"] == ["t1"]
-    assert source["conclusion"] == "你刚勾掉了 t1，下一步先看 t2。"
 
 @pytest.mark.asyncio
 async def test_engine_skips_optional_web_search_without_error(caplog) -> None:

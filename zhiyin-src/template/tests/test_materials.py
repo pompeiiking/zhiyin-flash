@@ -19,6 +19,7 @@
 """
 
 from __future__ import annotations
+import json
 
 from pathlib import Path
 from typing import Any
@@ -32,9 +33,7 @@ from zhiyin_boot import Settings, build_container, wire_application
 from zhiyin_boot.container import Container
 from zhiyin_business.policies import (
     DisclosureHandoffPolicy,
-    KeywordIntentPolicy,
     RegistryLeadPolicy,
-    RuleStagePolicy,
 )
 from zhiyin_business.ports.orchestrator import TurnRequest
 from zhiyin_business.services import DefaultOrchestrator
@@ -170,11 +169,12 @@ class _RecordingEngine(AgentEngine):
 def _orchestrator(container: Container, engine: AgentEngine) -> DefaultOrchestrator:
     return DefaultOrchestrator(
         profiles=container.profile_service,
+        student_state=container.student_state,
         behaviors=container.behavior_service,
         memories=container.memory_service,
         assets=container.asset_service,
-        intent_policy=KeywordIntentPolicy(container.registry_service),
-        stage_policy=RuleStagePolicy(container.registry_service),
+        intent_policy=None,
+        stage_policy=None,
         lead_policy=RegistryLeadPolicy(container.registry_service),
         handoff_policy=DisclosureHandoffPolicy(),
         agent_engine=engine,
@@ -201,7 +201,7 @@ async def test_material_text_reaches_the_model_but_not_the_conversation(
     )
 
     # 1. 正文进模型输入（不然用户白交一份）
-    user_input = engine.requests[0].prompt_vars["user_input"]
+    user_input = engine.requests[0].prompt_vars["user_input"] + "\n" + engine.requests[0].prompt_vars["untrusted_material"]["text"] + "\n" + engine.requests[0].prompt_vars["untrusted_material"]["name"]
     assert RESUME in user_input
     assert "简历在这，你看看" in user_input
     assert "简历.txt" in user_input, "要交代这段正文是哪份材料，否则模型不知道在看什么"

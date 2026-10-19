@@ -108,6 +108,8 @@ class AgnoAgentEngine(AgentEngine):
     """
 
     IMPLEMENTATION_STATUS = "wired"
+    supports_semantic_memory = True
+    supports_semantic_context = True
 
     def __init__(
         self,
@@ -133,6 +135,10 @@ class AgnoAgentEngine(AgentEngine):
     async def invoke(self, request: AgentRequest) -> AgentResult:
         from zhiyin_orchestration.errors import ContractViolationError
 
+        if request.conversation:
+            from zhiyin_orchestration.impl.dialogue_engine import invoke_dialogue
+            return await invoke_dialogue(self, request)
+
         if self.refresh_model is not None and await self.refresh_model():
             self._agents.clear()
             self._model_by_key.clear()
@@ -143,8 +149,6 @@ class AgnoAgentEngine(AgentEngine):
         bundle = await self._prompt_bundle(
             request.agent_id, request.stage, request.prompt_code
         )
-        if request.conversation:
-            bundle = {**bundle, "role": None, "guide": None, "conversation": True}
         agent = await self._agent_for(
             request.agent_id,
             request.stage,
@@ -189,7 +193,6 @@ class AgnoAgentEngine(AgentEngine):
             # Business-tool requests need the same function-calling mode as
             # modules; JSON-object mode suppresses tool calls on some models.
             business_calls = (not proposal_only and request.use_tools and "workspace.read" in self._tools)
-            business_calls = business_calls or bool(request.prompt_vars.get("confirmed_tool_request"))
             output_schema = request.output_schema or None
             if (module_calls or business_calls) and output_schema:
                 # The configured Qwen JSON-object mode suppresses function calls

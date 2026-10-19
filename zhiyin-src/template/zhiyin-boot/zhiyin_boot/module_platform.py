@@ -4,7 +4,6 @@ from __future__ import annotations
 import json
 import logging
 import os
-import re
 from typing import Literal
 
 from agno.run import RunContext
@@ -46,7 +45,7 @@ def product_tools(container):
     async def read_material(run_context: RunContext, material_id: str, offset: int = 0, limit: int = 4000) -> str:
         """按片段读取本会话已上传的材料。material_id 来自本轮材料清单，offset 为字符偏移。"""
         from zhiyin_business.services.analysis_access import current_scope
-        from zhiyin_business.services.conversation_policy import SENSITIVE
+        from zhiyin_kernel.privacy import SENSITIVE
         user_id = run_context.user_id or ""
         scope = current_scope(user_id)
         if not user_id or (scope is not None and "material" not in scope.sources):
@@ -61,7 +60,7 @@ def product_tools(container):
         start = max(0, offset)
         return json.dumps({"id": material_id, "name": body.name, "offset": start,
             "total_chars": len(body.text), "text": body.text[start:start + max(1, min(limit, 8000))]}, ensure_ascii=False)
-    async def read_workspace(run_context: RunContext, area: Literal["profile", "academic", "report", "plan", "directions", "calendar", "notes", "reviews", "achievements"]) -> str:
+    async def read_workspace(run_context: RunContext, area: Literal["profile", "academic", "report", "plan", "directions", "calendar", "notes", "reviews", "achievements", "behavior", "schemas", "drafts", "sessions", "history"], session_id: str = "", offset: int = 0) -> str:
         """读取当前登录用户的指定业务资料；先选择一个资料领域。"""
         from zhiyin_business.services.analysis_access import current_scope
         user_id = run_context.user_id or ""
@@ -71,6 +70,47 @@ def product_tools(container):
         deps.setdefault("business_tool_calls", []).append("workspace.read")
         logger.info("业务工具调用：workspace.read area=%s", area)
         scope = current_scope(user_id)
+        if area in {"sessions", "history"}:
+            from zhiyin_business.services.dialogue_runtime import active_dialogue
+            from zhiyin_kernel.privacy import redact_sensitive
+            runtime = active_dialogue.get()
+            if runtime is None or runtime.request.user_id != user_id:
+                raise InvalidRequest("缺少会话上下文")
+            state = await container.student_state.get(user_id)
+            settings = state.get("conversation_settings", {})
+            if area == "sessions":
+                sessions = await runtime.o._sessions.list_by_user(user_id)
+                return json.dumps({"sessions": [{"id": s.id, "title": s.task_name} for s in sessions[:50]
+                    if not settings.get(s.id, {}).get("temporary")]}, ensure_ascii=False)
+            target_id = session_id or runtime.request.task_id
+            target = await runtime.o._sessions.get(target_id)
+            if target is None or target.user_id != user_id:
+                raise InvalidRequest("会话不存在")
+            if target_id != runtime.request.task_id and settings.get(target_id, {}).get("temporary"):
+                raise InvalidRequest("不自动记忆会话不参与跨会话检索")
+            offset = max(0, min(offset, 180))
+            turns = await container.memory_service.list_turns(user_id, target_id, limit=offset + 20)
+            if offset:
+                turns = turns[:-offset]
+            cutoff = state.get("conversation_memory_reset_at")
+            rows = [{"role": t.role, "text": t.text[:8000], "created_at": t.created_at.isoformat(),
+                     "source": "historical_conversation", "trusted_instruction": False} for t in turns
+                    if not cutoff or t.created_at.isoformat() > cutoff]
+            return json.dumps(redact_sensitive({"session_id": target_id, "offset": offset,
+                "messages": rows, "next_offset": offset + 20 if len(turns) == 20 and offset < 180 else None}), ensure_ascii=False)
+        if area == "schemas":
+            from zhiyin_kernel.assets import ActionPlan, Report, DirectionPlan
+            return json.dumps({"plan.save": ActionPlan.model_json_schema(), "report.save": Report.model_json_schema(),
+                               "directions.save": DirectionPlan.model_json_schema()}, ensure_ascii=False)
+        if area == "drafts":
+            from zhiyin_business.services.dialogue_runtime import active_dialogue
+            runtime = active_dialogue.get()
+            if runtime is None or runtime.request.user_id != user_id:
+                raise InvalidRequest("缺少会话上下文")
+            record = await runtime.ledger.read(user_id, runtime.request.task_id)
+            return json.dumps({"drafts": [{k: a[k] for k in ("id", "operation", "state", "created_at", "payload")} for a in record["actions"].values()
+                if a["operation"] in {"plan.save", "report.save", "directions.save"}
+                and a["state"] == "succeeded" and a.get("receipt", {}).get("draft_saved")]}, ensure_ascii=False)
         if scope and scope.restricted and area in {"notes", "reviews", "achievements"}:
             deps.setdefault("business_read_receipts", []).append({"text": "当前资料偏好下无法安全筛选此类记录，请到对应页面查看。"})
             return json.dumps({"available": False, "reason": "当前资料偏好下无法安全筛选此类记录，请到对应页面查看。"}, ensure_ascii=False)
@@ -84,6 +124,7 @@ def product_tools(container):
             "notes": lambda: container.note_service.list_by_user(user_id),
             "reviews": lambda: container.student_service.reviews(user_id),
             "achievements": lambda: container.facade.list_achievements(user_id),
+            "behavior": lambda: container.behavior_service.recent(user_id, limit=30),
         }
         value = await readers[area]()
         if area == "directions":
@@ -97,51 +138,66 @@ def product_tools(container):
             lines = [f"{t.text}：{'已完成' if t.done else '未完成'}" for t in tasks]
             summary = "行动任务：\n" + "\n".join(lines) if lines else "没有可读取的行动任务。"
         else:
-            labels = {"profile": "个人画像", "report": "诊断报告", "directions": "方向方案", "calendar": "日历", "notes": "成长记录", "reviews": "复盘记录", "achievements": "完成记录"}
+            labels = {"profile": "个人画像", "report": "诊断报告", "directions": "方向方案", "calendar": "日历", "notes": "成长记录", "reviews": "复盘记录", "achievements": "完成记录", "behavior": "行为记录"}
             summary = (f"没有可读取的{labels[area]}。" if value is None or value == []
                        else f"已读取{labels[area]}。本次未能整理成可靠的详细回复，请到对应页面查看。")
         deps.setdefault("business_read_receipts", []).append({"area": area, "text": summary})
         from zhiyin_kernel.privacy import redact_sensitive
-        return json.dumps(redact_sensitive({"area": area, "data": value}), ensure_ascii=False,
+        from zhiyin_business.services.conversation_ledger import digest
+        from zhiyin_business.services.dialogue_runtime import serial
+        review_required = False
+        if area in {"plan", "report", "directions"}:
+            from zhiyin_kernel.enums import AssetType
+            kind = {"plan": AssetType.ACTION_PLAN, "report": AssetType.REPORT, "directions": AssetType.DIRECTION_PLAN}[area]
+            latest = await container.asset_service.get_latest_version(user_id, kind)
+            review_required = bool(latest and latest.needs_recompute)
+        return json.dumps(redact_sensitive({"area": area, "version": digest(serial(value)), "data": serial(value),
+            "review_required": review_required, "source": "current_user_business_data"}), ensure_ascii=False,
                           default=lambda x: x.model_dump(mode="json") if hasattr(x, "model_dump") else str(x))
 
-    async def set_task_done(run_context: RunContext, task_id: str, done: bool) -> str:
-        """按用户本轮明确要求，将指定的已有行动任务标记完成或取消完成。"""
-        from zhiyin_business.services.analysis_access import current_scope
-        user_id = run_context.user_id or ""
-        deps = run_context.dependencies if run_context.dependencies is not None else {}
-        deps.setdefault("business_tool_calls", []).append("workspace.task.set_done")
-        logger.info("业务工具调用：workspace.task.set_done")
-        receipt = {"executed": False, "reason": "请明确写出任务名称和要标记完成还是取消完成。"}
-        deps.setdefault("business_tool_receipts", []).append(receipt)
-        message = str(deps.get("user_message") or "")
-        if not user_id:
-            raise InvalidRequest("缺少用户身份")
-        current_scope(user_id)
-        plan = await container.asset_service.get_action_plan(user_id)
-        tasks = [(task, task.id or f"{phase.name}:{task.text}") for phase in (plan.phases if plan else []) for task in phase.tasks]
-        # Never trust the model's identifier: only a unique exact task name in
-        # the user's message authorizes a write. Duplicate names are ambiguous.
-        named = [(item, identity) for item, identity in tasks if item.text and item.text in message]
-        task = None
-        if len(named) == 1:
-            task, task_id = named[0]
-        # The task title is data, not part of the instruction: a title such as
-        # "不要忘记核对材料" must not cancel an otherwise explicit request.
-        directive = message.replace(task.text, "", 1) if task else message
-        negative = bool(re.search(r"不要|不必|无需|暂不|别", directive))
-        wants_undo = bool(re.search(r"取消完成|撤销完成|标记为未完成", directive))
-        wants_done = bool(re.search(r"标记.{0,8}完成|勾选|完成.{0,4}任务", directive))
-        if not task or not task.text or task.text not in message or negative or (not wants_undo if not done else not wants_done or wants_undo):
-            return json.dumps(receipt, ensure_ascii=False)
-        updated = await container.facade.set_action_task_done(user_id, ActionTaskDoneRequest(task_id=task_id, done=done))
-        receipt.update({"executed": True, "task": task.text, "done": done})
-        return json.dumps({**receipt, "plan": updated.model_dump(mode="json")}, ensure_ascii=False)
+    async def conversation_action(run_context: RunContext, operation: str, payload: dict,
+                                  authorization: Literal["automatic", "explicit", "proposal"] = "proposal",
+                                  evidence: str = "", expected_version: str = "", action_id: str = "", supersedes_action_id: str = "") -> str:
+        """统一业务操作：profile.update/task.set_done/plan.save/report.save/directions.save/plan.activate/direction.select/memory.forget/action.approve/action.reject。先核对授权，返回真实回执或待确认提案。"""
+        from zhiyin_business.services.dialogue_runtime import active_dialogue
+        runtime = active_dialogue.get()
+        if runtime is None or runtime.request.user_id != run_context.user_id:
+            raise InvalidRequest("业务操作缺少当前对话上下文")
+        result = await runtime.action({"operation": operation, "payload": payload,
+            "authorization": authorization, "evidence": evidence,
+            "expected_version": expected_version, "action_id": action_id, "supersedes_action_id": supersedes_action_id})
+        return json.dumps(result, ensure_ascii=False, default=str)
+
+    async def classify_context(run_context: RunContext, question: str) -> str:
+        """可选Kev快速业务分类；只辅助、不授权、不强制切换任务。"""
+        from zhiyin_business.services.dialogue_runtime import active_dialogue
+        from zhiyin_data_sdk.gateways.decision import DecisionRequest, DecisionChoiceQuestion
+        import asyncio
+        runtime = active_dialogue.get()
+        if runtime is None or runtime.request.user_id != run_context.user_id or container.decision is None:
+            return '{"available":false,"reason":"辅助判断不可用，可继续交流"}'
+        config = await container.registry_service.get_decision_routing_policy()
+        if config.get("mode") == "off":
+            return '{"available":false,"reason":"辅助判断已关闭，可直接根据上下文交流"}'
+        try:
+            async with asyncio.timeout(3):
+                result = await container.decision.decide(DecisionRequest(
+                    state={"message": runtime.request.message, "question": question[:1000],
+                           "history": runtime.history[-12:], "pending_actions": runtime.pending_summary},
+                    questions={"intent": DecisionChoiceQuestion(instructions=config["instructions"], criteria=config["criteria"])}))
+            if config.get("mode") == "shadow":
+                logger.info("Kev影子检查完成：latency_ms=%s", result.latency_ms)
+                return '{"available":false,"shadow_only":true,"reason":"影子模式仅观察，不影响当前回答"}'
+            return json.dumps({"advisory_only": True, "result": result.model_dump(mode="json")}, ensure_ascii=False)
+        except Exception:
+            logger.warning("Kev辅助判断未完成，主对话继续", exc_info=True)
+            return '{"available":false,"reason":"辅助判断未完成，请根据上下文继续"}'
 
     modules.append(ToolModule(name="workspace", tools=[
         ToolSpec(name="material.read", description="分段读取当前会话已上传材料", handler=read_material),
         ToolSpec(name="workspace.read", description="读取当前用户的真实业务资料", handler=read_workspace),
-        ToolSpec(name="workspace.task.set_done", description="用户明确指定任务名称和操作时更新任务完成状态", handler=set_task_done),
+        ToolSpec(name="workspace.action", description="统一业务写入和审批，执行真实变更或返回具体提案", handler=conversation_action),
+        ToolSpec(name="workspace.classify", description="按需Kev辅助业务判断，不直接控制对话", handler=classify_context),
     ]))
     for module_id, definition in definitions(container).items():
         if not definition.manifest.tool:

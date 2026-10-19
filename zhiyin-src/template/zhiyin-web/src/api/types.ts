@@ -187,7 +187,7 @@ export interface paths {
   "/api/v1/app/conversation/message": {
     /**
      * Send Message
-     * @description 发送一轮消息，返回最短结论 + 显式告知 + 行为引导 + 管线卡。
+     * @description 发送自然对话一轮，返回正文和实际业务操作回执。
      */
     post: operations["send_message_api_v1_app_conversation_message_post"];
   };
@@ -503,6 +503,18 @@ export interface paths {
      * @description 会话改名：只改展示名，不改变环节、消息与已有资产。
      */
     patch: operations["rename_session_api_v1_app_sessions__task_id__patch"];
+  };
+  "/api/v1/app/sessions/{task_id}/runs/{run_id}/cancel": {
+    /** Cancel Conversation Run */
+    post: operations["cancel_conversation_run_api_v1_app_sessions__task_id__runs__run_id__cancel_post"];
+  };
+  "/api/v1/app/sessions/{task_id}/runtime": {
+    /** Conversation Runtime */
+    get: operations["conversation_runtime_api_v1_app_sessions__task_id__runtime_get"];
+  };
+  "/api/v1/app/sessions/{task_id}/settings": {
+    /** Conversation Settings */
+    patch: operations["conversation_settings_api_v1_app_sessions__task_id__settings_patch"];
   };
   "/api/v1/app/sessions/{task_id}/snapshot": {
     /** Session Snapshot */
@@ -4185,6 +4197,11 @@ export interface components {
        */
       academic_analysis?: boolean;
       /**
+       * Automatic Memory
+       * @default true
+       */
+      automatic_memory?: boolean;
+      /**
        * Material Analysis
        * @default true
        */
@@ -4211,6 +4228,11 @@ export interface components {
        * @default true
        */
       academic_analysis?: boolean;
+      /**
+       * Automatic Memory
+       * @default true
+       */
+      automatic_memory?: boolean;
       expected: components["schemas"]["Preferences"];
       /**
        * Material Analysis
@@ -5556,7 +5578,7 @@ export interface operations {
   };
   /**
    * Send Message
-   * @description 发送一轮消息，返回最短结论 + 显式告知 + 行为引导 + 管线卡。
+   * @description 发送自然对话一轮，返回正文和实际业务操作回执。
    */
   send_message_api_v1_app_conversation_message_post: {
     requestBody: {
@@ -6703,6 +6725,83 @@ export interface operations {
       200: {
         content: {
           "application/json": components["schemas"]["ApiResponse_SessionListView_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Cancel Conversation Run */
+  cancel_conversation_run_api_v1_app_sessions__task_id__runs__run_id__cancel_post: {
+    parameters: {
+      path: {
+        task_id: string;
+        run_id: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_dict_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Conversation Runtime */
+  conversation_runtime_api_v1_app_sessions__task_id__runtime_get: {
+    parameters: {
+      query?: {
+        run_id?: string;
+      };
+      path: {
+        task_id: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_dict_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Conversation Settings */
+  conversation_settings_api_v1_app_sessions__task_id__settings_patch: {
+    parameters: {
+      path: {
+        task_id: string;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          [key: string]: unknown;
+        };
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_dict_"];
         };
       };
       /** @description Validation Error */

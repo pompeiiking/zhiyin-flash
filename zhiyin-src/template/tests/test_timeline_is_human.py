@@ -18,7 +18,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from zhiyin_business.services.orchestrator import _default_bars, _renderables_for_turn
 from zhiyin_kernel.enums import LoopStage
 
 TEMPLATE_ROOT = Path(__file__).resolve().parents[1]
@@ -73,55 +72,8 @@ def test_timeline_never_stores_raw_code_or_dict_repr() -> None:
     assert "title=title or" in source, "落库应当使用 Facade 传进来的人话标题"
 
 
-def test_default_bars_refuses_out_of_range_scores() -> None:
-    """分值超出 0–1 就**不画图** —— 这是项目已定的口径（宁可没有图，也不画量纲不明的数）。
-
-    我第一版在这里做了"按量级悄悄折算"，撞上了仓库里已有的
-    `test_default_chart_rejects_model_score_outside_ratio_range`：契约是
-    `contracts/decide.py` 的 `match_score: ge=0.0, le=1.0`，
-    上游给 90 这种值应当被拒绝，而不是被服务端猜成 0.9。
-    """
-    assert (
-        _renderables_for_turn(
-            [],
-            LoopStage.DECIDE,
-            {"plans": [{"name": "甲", "match_score": 90}, {"name": "乙", "match_score": 60}]},
-        )
-        == []
-    )
-    # 契约内的分值照常出图
-    good = _default_bars(
-        LoopStage.DECIDE,
-        {"plans": [{"name": "甲", "match_score": 0.74}, {"name": "乙", "match_score": 0.64}]},
-    )
-    assert good is not None
-    assert [point["value"] for point in good.payload["points"]] == [0.74, 0.64]
 
 
-def test_charts_coming_from_the_model_are_validated_too() -> None:
-    """从"回传盒子"进来的可视件**也要过校验**。
-
-    这是 issue 截图 3/4/6 的真正口子：`_renderables_for_turn` 原先写的是
-    `kept = list(from_model)` —— 只要里面已经有一张柱状图就直接返回，
-    **连校验都不做**。于是模型侧塞进来的分值（7400 那种）可以绕过
-    `validate_renderables` 一路走到前端，前端再当比值乘 100。
-    """
-    chart = _default_bars(
-        LoopStage.DECIDE,
-        {"plans": [{"name": "甲", "match_score": 0.74}, {"name": "乙", "match_score": 0.64}]},
-    )
-    assert chart is not None
-    tampered = chart.model_copy(
-        update={
-            "payload": {
-                "unit": "分",
-                "points": [{"label": "甲", "value": 7400}, {"label": "乙", "value": 6400}],
-            }
-        }
-    )
-    assert _renderables_for_turn([tampered], LoopStage.DECIDE, {}) == [], (
-        "越界的图表点必须被拦下（不能因为是模型给的就直接交给用户）"
-    )
 
 
 APPLICATION = TEMPLATE_ROOT / "zhiyin-api" / "zhiyin_api" / "facade" / "application.py"

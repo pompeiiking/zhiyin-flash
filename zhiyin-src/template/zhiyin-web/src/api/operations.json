@@ -278,117 +278,117 @@
   "student_download_asset": {
     "method": "GET",
     "path": "/app/assets/download/{export_id}",
-    "surface": "\u5de5\u4f5c\u53f0\u4ea4\u4e92\u80fd\u529b"
+    "surface": "工作台交互能力"
   },
   "student_preferences": {
     "method": "GET",
     "path": "/app/preferences",
-    "surface": "\u5de5\u4f5c\u53f0\u4ea4\u4e92\u80fd\u529b"
+    "surface": "工作台交互能力"
   },
   "student_save_preferences": {
     "method": "PUT",
     "path": "/app/preferences",
-    "surface": "\u5de5\u4f5c\u53f0\u4ea4\u4e92\u80fd\u529b"
+    "surface": "工作台交互能力"
   },
   "student_create_task": {
     "method": "POST",
     "path": "/app/plan/action/tasks",
-    "surface": "\u5de5\u4f5c\u53f0\u4ea4\u4e92\u80fd\u529b"
+    "surface": "工作台交互能力"
   },
   "student_edit_task": {
     "method": "PUT",
     "path": "/app/plan/action/tasks/{task_id}",
-    "surface": "\u5de5\u4f5c\u53f0\u4ea4\u4e92\u80fd\u529b"
+    "surface": "工作台交互能力"
   },
   "student_create_phase": {
     "method": "POST",
     "path": "/app/plan/action/phases",
-    "surface": "\u5de5\u4f5c\u53f0\u4ea4\u4e92\u80fd\u529b"
+    "surface": "工作台交互能力"
   },
   "student_edit_phase": {
     "method": "PUT",
     "path": "/app/plan/action/phases/{phase_id}",
-    "surface": "\u5de5\u4f5c\u53f0\u4ea4\u4e92\u80fd\u529b"
+    "surface": "工作台交互能力"
   },
   "student_notifications": {
     "method": "GET",
     "path": "/app/notifications",
-    "surface": "\u5de5\u4f5c\u53f0\u4ea4\u4e92\u80fd\u529b"
+    "surface": "工作台交互能力"
   },
   "student_notification_state": {
     "method": "PATCH",
     "path": "/app/notifications/{message_id}",
-    "surface": "\u5de5\u4f5c\u53f0\u4ea4\u4e92\u80fd\u529b"
+    "surface": "工作台交互能力"
   },
   "student_reviews": {
     "method": "GET",
     "path": "/app/reviews",
-    "surface": "\u5de5\u4f5c\u53f0\u4ea4\u4e92\u80fd\u529b"
+    "surface": "工作台交互能力"
   },
   "student_create_review": {
     "method": "POST",
     "path": "/app/reviews",
-    "surface": "\u5de5\u4f5c\u53f0\u4ea4\u4e92\u80fd\u529b"
+    "surface": "工作台交互能力"
   },
   "student_edit_review": {
     "method": "PUT",
     "path": "/app/reviews/{review_id}",
-    "surface": "\u5de5\u4f5c\u53f0\u4ea4\u4e92\u80fd\u529b"
+    "surface": "工作台交互能力"
   },
   "student_apply_review": {
     "method": "POST",
     "path": "/app/reviews/{review_id}/apply",
-    "surface": "\u5de5\u4f5c\u53f0\u4ea4\u4e92\u80fd\u529b"
+    "surface": "工作台交互能力"
   },
   "student_asset_snapshot": {
     "method": "GET",
     "path": "/app/assets/{asset_type}/versions/{version}/content",
-    "surface": "\u5de5\u4f5c\u53f0\u4ea4\u4e92\u80fd\u529b"
+    "surface": "工作台交互能力"
   },
   "student_session_snapshot": {
     "method": "GET",
     "path": "/app/sessions/{task_id}/snapshot",
-    "surface": "\u5de5\u4f5c\u53f0\u4ea4\u4e92\u80fd\u529b"
+    "surface": "工作台交互能力"
   },
   "student_measurements": {
     "method": "GET",
     "path": "/app/measurements",
-    "surface": "\u5de5\u4f5c\u53f0\u4ea4\u4e92\u80fd\u529b"
+    "surface": "工作台交互能力"
   },
   "student_save_measurements": {
     "method": "POST",
     "path": "/app/measurements",
-    "surface": "\u5de5\u4f5c\u53f0\u4ea4\u4e92\u80fd\u529b"
+    "surface": "工作台交互能力"
   },
   "student_weights": {
     "method": "GET",
     "path": "/app/plan/direction-weights",
-    "surface": "\u5de5\u4f5c\u53f0\u4ea4\u4e92\u80fd\u529b"
+    "surface": "工作台交互能力"
   },
   "student_save_weights": {
     "method": "PUT",
     "path": "/app/plan/direction-weights",
-    "surface": "\u5de5\u4f5c\u53f0\u4ea4\u4e92\u80fd\u529b"
+    "surface": "工作台交互能力"
   },
   "student_comparison": {
     "method": "GET",
     "path": "/app/plan/direction-comparison",
-    "surface": "\u5de5\u4f5c\u53f0\u4ea4\u4e92\u80fd\u529b"
+    "surface": "工作台交互能力"
   },
   "student_semester": {
     "method": "GET",
     "path": "/app/schedule/semester",
-    "surface": "\u5de5\u4f5c\u53f0\u4ea4\u4e92\u80fd\u529b"
+    "surface": "工作台交互能力"
   },
   "student_save_semester": {
     "method": "PUT",
     "path": "/app/schedule/semester",
-    "surface": "\u5de5\u4f5c\u53f0\u4ea4\u4e92\u80fd\u529b"
+    "surface": "工作台交互能力"
   },
   "student_workload": {
     "method": "GET",
     "path": "/app/schedule/workload",
-    "surface": "\u5de5\u4f5c\u53f0\u4ea4\u4e92\u80fd\u529b"
+    "surface": "工作台交互能力"
   },
   "messageStream": {
     "path": "/app/conversation/message/stream",
@@ -398,26 +398,38 @@
   "student_delete_task": {
     "method": "DELETE",
     "path": "/app/plan/action/tasks/{task_id}",
-    "surface": "\u5de5\u4f5c\u53f0\u4ea4\u4e92\u80fd\u529b"
+    "surface": "工作台交互能力"
   },
   "student_delete_phase": {
     "method": "DELETE",
     "path": "/app/plan/action/phases/{phase_id}",
-    "surface": "\u5de5\u4f5c\u53f0\u4ea4\u4e92\u80fd\u529b"
+    "surface": "工作台交互能力"
   },
   "session_rename": {
     "method": "PATCH",
     "path": "/app/sessions/{task_id}",
-    "surface": "\u5bf9\u8bdd\u5386\u53f2"
+    "surface": "对话历史"
   },
   "session_delete": {
     "method": "DELETE",
     "path": "/app/sessions/{task_id}",
-    "surface": "\u5bf9\u8bdd\u5386\u53f2"
+    "surface": "对话历史"
   },
   "capabilities": {
     "method": "GET",
     "path": "/app/capabilities",
-    "surface": "\u5bf9\u8bdd\u80fd\u529b\u9762\u677f"
+    "surface": "对话能力面板"
+  },
+  "conversationRuntime": {
+    "method": "GET",
+    "path": "/app/sessions/{task_id}/runtime"
+  },
+  "conversationSettings": {
+    "method": "PATCH",
+    "path": "/app/sessions/{task_id}/settings"
+  },
+  "cancelConversationRun": {
+    "method": "POST",
+    "path": "/app/sessions/{task_id}/runs/{run_id}/cancel"
   }
 }
