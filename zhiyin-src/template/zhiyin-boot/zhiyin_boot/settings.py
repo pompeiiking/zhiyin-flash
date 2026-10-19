@@ -16,7 +16,7 @@ from pathlib import Path
 # 模板目录锚点：zhiyin-boot/zhiyin_boot/settings.py → zhiyin-src/template
 _TEMPLATE_ROOT = Path(__file__).resolve().parents[2]
 # 仓库根：template 的上两级（zhiyin-src/template → 仓库根）
-_REPO_ROOT = _TEMPLATE_ROOT.parents[1]
+_REPO_ROOT = _TEMPLATE_ROOT.parents[1] if len(_TEMPLATE_ROOT.parents) > 1 else _TEMPLATE_ROOT
 
 
 def _resolve_local_dir(value: str) -> str:
