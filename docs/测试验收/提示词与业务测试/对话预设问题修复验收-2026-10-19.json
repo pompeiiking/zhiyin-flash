@@ -1,0 +1,82 @@
+{
+  "cases": [
+    {
+      "label": "认识自己的兴趣与优势",
+      "id": "task-df014b262f40",
+      "questionCount": 1,
+      "reply": [
+        "认识自己这件事，在大一其实不用“想明白”，用回忆具体经历的方式更靠谱。给你三个能马上动手的小动作：兴趣：回想过去半年，哪几件事你没人催也愿意多做一会儿——写代码调通一个bug、给人讲题、整理数据、还是做PPT/剪视频？记下3件，看它们更像“琢磨东西”还是“跟人打交道”。优势：挑一件你做得比同学顺的事，问自己：是知识（学过）、技能（练过）、还是习惯（比如坐得住、爱较真）。前两个能补，第三个才是你的底牌。验证：把猜出来的兴趣放到真实场景里试一次，比如参加一次算法竞赛或加入一个项目组，比空想准得多。你先说说上面第1条里想到的那几件事，我帮你归归类。"
+      ],
+      "mobile": false,
+      "streamingVisible": true
+    },
+    {
+      "label": "了解专业可以走向哪里",
+      "id": "task-e37c2d7651bd",
+      "questionCount": 1,
+      "reply": [
+        "人工智能专业的出口大致分四类：算法研发（推荐、CV、NLP、大模型）、工程落地（AI应用开发、数据工程、MLOps）、AI产品与解决方案（产品经理、行业方案）、科研深造（读研读博、进实验室）。平台上的公开案例多是硕博背景的算法岗，本科直接进核心算法岗竞争较激烈，工程和产品侧对本科更友好。大一现在最值得做的是把高数和编程基础打牢，同时用一两个小项目（比如跑通一个开源模型）试探自己更享受“调模型”还是“做产品”。你目前对哪类更感兴趣，或者有没有想过去实验室跟老师做项目？"
+      ],
+      "mobile": false,
+      "streamingVisible": true
+    },
+    {
+      "label": "建立大学阶段的行动起点",
+      "id": "task-485d74de225c",
+      "questionCount": 1,
+      "reply": [
+        "我按“先稳住高数，再摸清方向，最后动手试一次”的顺序，排了一份从今天到 11 月底的行动计划，共三步、八个小任务，每个任务都带截止日期。第一步最急：两天内把高数里最没把握的三个知识点标出来，这是眼下最该先做的事。计划已经生成，但还没有正式生效，需要你确认。你看一下节奏和任务量是否合适；如果觉得太紧或太松，告诉我，我会调整后再给你确认。"
+      ],
+      "mobile": true,
+      "streamingVisible": true
+    }
+  ],
+  "entries": [
+    {
+      "task_code": "confused",
+      "new_session": true
+    },
+    {
+      "task_code": "verify_direction",
+      "new_session": true
+    },
+    {
+      "task_code": "how_to_act",
+      "new_session": true
+    },
+    {
+      "task_code": "free_chat",
+      "new_session": true
+    },
+    {
+      "task_code": "confused",
+      "new_session": true
+    }
+  ],
+  "messages": [
+    "认识自己的兴趣与优势",
+    "了解专业可以走向哪里",
+    "建立大学阶段的行动起点"
+  ],
+  "freeChat": {
+    "id": "task-19129f9d0381",
+    "emptyAfterReload": true
+  },
+  "failedCreation": {
+    "visibleError": "网络或服务暂时不可用，请稍后重试。",
+    "keptSession": true,
+    "retryEnabled": true,
+    "attempts": 1
+  },
+  "oldHistoryReopened": true,
+  "passed": true,
+  "source_revision": "6f62699",
+  "environment": "Local Docker Web 5173 / real API 8000 / synthetic student account",
+  "validation": {
+    "frontend_tests": 89,
+    "contract_schemas": 88,
+    "student_operations": 85,
+    "production_build": true
+  },
+  "scope": "点击当前大一年级三个预设问题，真实后端流式回复；自由聊天留空及刷新；创建失败可见并可重试；旧历史重开。计划仅生成待审批提案，未确认执行；非全部业务矩阵复验。"
+}
