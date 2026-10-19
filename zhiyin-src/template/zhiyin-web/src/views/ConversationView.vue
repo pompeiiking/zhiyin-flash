@@ -531,7 +531,7 @@ async function reloadConversation() {
  interrupted.value = null
  if (demo.state.currentSessionId) await resume(demo.state.currentSessionId)
 }
-async function resume(id: string) { if (thinking.value) return; try { await openSession(id); choosingTopic.value = false; clearTopicQuery(); historyOpen.value = false; pending.value = null; requestError.value = ''; syncInterruptedNotice(); await bottom(true) } catch (e) { requestError.value = friendlyError(e) } }
+async function resume(id: string, startup = false) { if (thinking.value) return; try { await openSession(id); if (startup && typeof route.query.new === 'string') chooseTopic(); else { choosingTopic.value = false; clearTopicQuery() } historyOpen.value = false; pending.value = null; requestError.value = ''; syncInterruptedNotice(); await bottom(true) } catch (e) { requestError.value = friendlyError(e) } }
 async function create(code: string, fresh = false) { if (thinking.value || systemData.busy) return; try { await newSession(code, fresh); choosingTopic.value = false; clearTopicQuery(); pending.value = null; requestError.value = ''; await loadShell(); input.value?.focus() } catch (e) { requestError.value = friendlyError(e) } }
 async function start(code: string, label: string) {
  const fresh = freshTopic.value
@@ -792,6 +792,10 @@ function applyConsultationContext() {
  void router.replace({ path: route.path, query: rest })
 }
 watch(() => route.query, applyConsultationContext)
+// A sidebar request made during restoration must survive the pending history read.
+watch([() => systemData.busy, thinking, restoring], ([busy, active, loading]) => {
+ if (!busy && !active && !loading && !choosingTopic.value && typeof route.query.new === 'string') chooseTopic()
+})
 async function runAsk() {
  if (!askPending.value || thinking.value || uploading.value || systemData.busy) return
  // 等壳层、画像与首屏问句就绪，避免把消息发进一个还没准备好的会话、跳过年级确认。
@@ -816,7 +820,7 @@ onMounted(() => {
  void nextTick(resizeInput)
  if (demo.state.currentSessionId && !systemData.busy) {
   restoring.value = true
-  void resume(demo.state.currentSessionId).finally(() => { restoring.value = false })
+  void resume(demo.state.currentSessionId, true).finally(() => { restoring.value = false })
  }
  loadFailure(demo.state.currentSessionId)
  void refreshProfile()
