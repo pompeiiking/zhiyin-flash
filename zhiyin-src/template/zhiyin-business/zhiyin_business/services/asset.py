@@ -300,6 +300,7 @@ class DefaultAssetService(AssetService):
         *,
         depends_on_profile_keys: Sequence[str] = (),
         diff_from_previous: Optional[str] = None,
+        preserve_task_state: bool = True,
     ) -> AssetVersion:
         previous = await self._assets.get_action_plan(user_id)
         from zhiyin_business.services.analysis_access import ALL_SOURCES, current_scope
@@ -308,7 +309,7 @@ class DefaultAssetService(AssetService):
         # Keep that user data, but do not falsely label the merged plan as clean.
         analysis_sources = (ALL_SOURCES if scope and previous is not None
                             and not scope.allows("plan", previous) else None)
-        merged = self._inherit_task_state(previous, plan)
+        merged = self._inherit_task_state(previous, plan) if preserve_task_state else plan.model_copy(deep=True)
         if previous is not None:
             merged = merged.model_copy(update={"id": previous.id})
         # 内容没变就不升版（实测 ZY-07：单账号攒出 18 个行动计划版本，

@@ -13,14 +13,14 @@ import time
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from zhiyin_business.contracts.common import AgentBadge, BehaviorGuide, ConversationMessage, GuideOption, IntelRef
+from zhiyin_business.contracts.common import AgentBadge, BehaviorGuide, BehaviorEventDraft, ConversationMessage, GuideOption, IntelRef
 from zhiyin_business.ports.orchestrator import TurnResult
 from zhiyin_business.policies.renderers import validate_renderables
 from zhiyin_business.services.conversation_ledger import ConversationLedger, digest, utcnow
 from zhiyin_business.services.unit_of_work import atomic_repository
 from zhiyin_kernel.assets import ActionPlan, Report, DirectionPlan, CalendarNode
 from zhiyin_kernel.blackboard import TaskSession
-from zhiyin_kernel.enums import LoopStage, TaskStatus
+from zhiyin_kernel.enums import LoopStage, TaskStatus, BehaviorEventType
 from zhiyin_kernel.errors import InvalidRequest, ResourceNotFound
 from zhiyin_kernel.privacy import redact_sensitive
 from zhiyin_kernel.streaming import emit_progress
@@ -170,6 +170,14 @@ class DialogueRuntime:
     async def snapshot(self, operation):
         return digest(await self.read_target(operation))
 
+    @atomic_repository("_sessions")
+    async def record_input(self, request, session):
+        await self.o._memories.record_turn(request.user_id, request.task_id, role="user", text=request.message,
+            loop_stage=session.loop_stage, client_msg_id=request.client_msg_id,
+            metadata={"material_ids": request.material_ids, "material_name": request.attachment_name})
+        await self.o._behaviors.log(request.user_id, BehaviorEventDraft(event_type=BehaviorEventType.ANSWER,
+            payload={"session_id": request.task_id, "client_msg_id": request.client_msg_id, "conversation": True}))
+
     async def action(self, raw):
         if await self.cancelled(fresh=True):
             return {"executed": False, "state": "cancelled", "reason": "用户已停止，本项未开始执行。"}
@@ -307,7 +315,7 @@ class DialogueRuntime:
         if args.operation == "action.undo":
             record = await self.ledger.read(user, self.request.task_id)
             original = record["actions"].get(str(payload.get("target_id", "")))
-            if not original or original["state"] != "succeeded" or original["operation"] in {"memory.forget", "action.undo"}:
+            if not original or original["state"] != "succeeded" or original["operation"] in {"memory.forget", "action.undo", "direction.select"}:
                 raise InvalidRequest("该操作不支持自动撤销，请明确说明新的修改要求")
             if original.get("after_version") != await self.snapshot(original["scope_operation"]):
                 raise InvalidRequest("操作之后数据已变化，不能覆盖后续修改")
@@ -382,11 +390,15 @@ class DialogueRuntime:
             if not plan.phases or not any(p.tasks for p in plan.phases):
                 raise InvalidRequest("计划必须包含真实可执行的任务")
             current = await self.o._assets.get_action_plan(user)
-            existing = {t.id: t.text for p in (current.phases if current else []) for t in p.tasks}
+            existing = {t.id: t for p in (current.phases if current else []) for t in p.tasks}
             for pi, phase in enumerate(plan.phases):
                 for ti, task in enumerate(phase.tasks):
-                    if task.id not in existing or existing[task.id] != task.text:
+                    if task.id not in existing or existing[task.id].text != task.text:
                         task.id = f"t_{stable_id[:8]}_{pi}_{ti}"
+                        task.done, task.done_at, task.status, task.progress = False, None, "pending", 0
+                    else:
+                        previous = existing[task.id]
+                        task.done, task.done_at, task.status, task.progress = previous.done, previous.done_at, previous.status, previous.progress
             ids = [t.id for p in plan.phases for t in p.tasks]
             if len(ids) != len(set(ids)):
                 raise InvalidRequest("计划任务编号重复")
@@ -502,7 +514,7 @@ class DialogueRuntime:
                 else:
                     await self.o._functions.delete_calendar_node(user, original["node_id"])
             elif old_op.startswith("plan"):
-                self.versions.append(await self.o._assets.save_action_plan(user, ActionPlan.model_validate(before), diff_from_previous="用户确认撤销上次修改"))
+                self.versions.append(await self.o._assets.save_action_plan(user, ActionPlan.model_validate(before), diff_from_previous="用户确认撤销上次修改", preserve_task_state=False))
             elif old_op.startswith("report"):
                 self.versions.append(await self.o._assets.save_report(user, Report.model_validate(before), diff_from_previous="用户确认恢复上一版报告"))
             elif old_op.startswith("direction"):
@@ -582,9 +594,12 @@ class DialogueRuntime:
             for phase in plan.phases:
                 phase.tasks = [type(t).model_validate(changes[t.id]) if t.id in changes else t for t in phase.tasks]
             version = await self.o._assets.save_action_plan(user, plan,
-                depends_on_profile_keys=dependencies, diff_from_previous="用户确认调整计划")
+                depends_on_profile_keys=dependencies, diff_from_previous="用户确认调整计划", preserve_task_state=False)
         elif operation == "direction.select":
-            return await self.o._assets.select_direction_plan(user, payload["plan_id"])
+            writer = getattr(self.o, "direction_writer", None)
+            if writer is None:
+                raise InvalidRequest("方向选择的业务链未完整装配")
+            return await writer(user, payload["plan_id"])
         else:
             raise InvalidRequest("此操作未装配")
         self.versions.append(version)
@@ -627,9 +642,9 @@ class DialogueRuntime:
             text = "消息包含敏感信息，未保存原文，也未交给模型。请脱敏后重新发送。"
             safe_request = request.model_copy(update={"message": "[敏感信息已拦截]", "attachment_text": "", "attachment_name": ""})
             return await self.finish(safe_request, session, text)
-        await self.o._memories.record_turn(request.user_id, request.task_id, role="user", text=request.message,
-            loop_stage=session.loop_stage, client_msg_id=request.client_msg_id,
-            metadata={"material_ids": request.material_ids, "material_name": request.attachment_name})
+        await self.record_input(request, session)
+        if self.o._cache:
+            await self.o._cache.invalidate_for_event("session_changed")
         turns = await self.o._memories.list_turns(request.user_id, request.task_id, limit=100)
         state = await self.o._student_state.get(request.user_id)
         reset_at = state.get("conversation_memory_reset_at")
@@ -736,8 +751,23 @@ class DialogueRuntime:
         await self.ledger.put_run(request.user_id, request.task_id, request.client_msg_id,
             events=self.events[-200:], state="cancelled" if cancelled else "waiting_approval" if pending else "completed", result=result.model_dump(mode="json"))
         await self.ledger.compact(request.user_id, request.task_id)
-        if self.o._cache:
-            for event in ("profile_field_updated", "asset_version_changed", "task_done") if self.receipts else ():
-                await self.o._cache.invalidate_for_event(event)
+        changes = set()
+        for receipt in self.receipts:
+            if not receipt.get("executed"):
+                continue
+            action = record["actions"][receipt["action_id"]]
+            operation = action["payload"]["operation"] if action["operation"] == "action.undo" else action["operation"]
+            changes.add("calendar_changed" if operation.startswith("calendar") else
+                "profile_field_updated" if operation in {"profile.update", "memory.forget"} else
+                "asset_state_changed" if operation in {"task.set_done", "direction.select"} else "asset_version_changed")
+        for event in changes:
+            try:
+                if self.o._cache:
+                    await self.o._cache.invalidate_for_event(event)
+                invalidate = getattr(self.o, "conversation_invalidator", None)
+                if invalidate:
+                    await invalidate(request.user_id, event)
+            except Exception:
+                log.exception("对话变更已落库，派生缓存失效待重试：%s", event)
         self.event("run.completed", "回复完成", state="waiting_approval" if pending else "completed")
         return result

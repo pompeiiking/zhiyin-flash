@@ -108,6 +108,7 @@ _TASK_INPUTS: dict[str, tuple[str, ...]] = {
     "academic.analysis": ("academic_changed",),
     # 这一天怎么用：那天的课 + 那天到期的节点 + 手里还没做完的任务 + 画像
     "day.advice": (
+        "calendar_changed",
         "profile_field_updated",
         "academic_changed",
         "asset_state_changed",

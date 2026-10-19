@@ -431,6 +431,13 @@ def build_services(container: "Container") -> None:
         async def task_writer(user_id, task_id, *, done):
             return await container.facade.set_action_task_done(user_id, ActionTaskDoneRequest(task_id=task_id, done=done))
         container.orchestrator.task_writer = task_writer
+        async def direction_writer(user_id, plan_id):
+            return await container.facade.select_direction_plan(user_id, plan_id)
+        container.orchestrator.direction_writer = direction_writer
+        async def conversation_invalidator(user_id, event):
+            if container.ai_task_service is not None:
+                await container.ai_task_service.invalidate_for_event(user_id, event)
+        container.orchestrator.conversation_invalidator = conversation_invalidator
 
 
 def build_workers(container: "Container") -> None:

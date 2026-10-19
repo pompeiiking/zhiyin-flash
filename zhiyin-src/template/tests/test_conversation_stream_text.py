@@ -152,3 +152,21 @@ async def test_read_timeout_does_not_mean_empty_data_or_cancel_committing_writes
         await asyncio.sleep(0.02)
         return '{"executed":true}'
     assert json.loads(await traced(write_and_receipt, 'workspace.action')())['executed']
+
+
+async def test_stream_keeps_server_assigned_run_id_when_client_omits_it(monkeypatch):
+    import json
+    from types import SimpleNamespace
+    from zhiyin_api.controllers import conversation_controller as controller
+    from zhiyin_api.dto.conversation import MessageRequest
+    from zhiyin_kernel.streaming import emit_progress
+    class Facade:
+        async def resolve_user_id(self, request): return 'a'
+        async def check_analysis_consent(self, user): pass
+        async def send_message(self, user, body):
+            emit_progress({'type':'run.started', 'run_id':'server-generated'})
+            return SimpleNamespace(model_dump=lambda **_: {'task_id':body.task_id})
+    monkeypatch.setattr(controller, 'get_facade', lambda: Facade())
+    response = await controller.stream_message(None, MessageRequest(task_id='session', message='test'))
+    frames = [json.loads(frame[6:]) async for frame in response.body_iterator if frame.startswith('data: ')]
+    assert frames[1]['run_id'] == frames[-1]['run_id'] == 'server-generated'

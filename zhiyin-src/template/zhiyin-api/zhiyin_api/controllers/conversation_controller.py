@@ -114,17 +114,19 @@ async def stream_message(request: Request, body: MessageRequest):
         connected = True
 
         sequence = 0
+        run_id = body.client_msg_id
         def publish(frame):
-            nonlocal sequence
+            nonlocal sequence, run_id
             if not connected:
                 return
+            run_id = frame.get("run_id") or run_id
             sequence += 1
             # Text frames carry cumulative text. Slow receivers may skip an
             # intermediate frame; the final result and durable journal recover it.
             if queue.full():
                 queue.get_nowait()
             queue.put_nowait({**frame, "protocol": 2, "sequence": sequence,
-                "run_id": body.client_msg_id, "conversation_id": body.task_id})
+                "run_id": run_id, "conversation_id": body.task_id})
 
         async def run():
             try:

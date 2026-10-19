@@ -599,3 +599,89 @@ async def test_delete_field_cas_preserves_a_later_value():
     with pytest.raises(DuplicateResource):
         await c.profile_service.drop_field("u1", "major", check_version=True, expected_updated_at=old.updated_at)
     assert next(f for f in await c.profile_service.get_fields("u1") if f.key == "major").value == "物理"
+
+
+@pytest.mark.asyncio
+async def test_user_answer_is_logged_once_and_unlocks_real_first_answer_achievement():
+    from zhiyin_kernel.enums import BehaviorEventType
+    c, _, s = await setup()
+    await send(c, s, "先聊聊", client_msg_id="answer-once")
+    await send(c, s, "先聊聊", client_msg_id="answer-once")
+    events = await c.behavior_service.recent("u1", event_types=[BehaviorEventType.ANSWER])
+    assert len(events) == 1 and events[0].payload["session_id"] == s.id
+    assert "message" not in events[0].payload
+    achievements = await c.function_service.list_achievements("u1")
+    assert next(a for a in achievements if a.badge_key == "first_answer").unlocked
+
+
+@pytest.mark.asyncio
+async def test_direction_approval_keeps_decision_event_and_asset_review_chain():
+    from zhiyin_kernel.assets import DirectionPlan
+    from zhiyin_kernel.enums import PlanRole, BehaviorEventType, AssetType
+    async def propose(rt):
+        return await rt.action(action("direction.select", {"plan_id": "d1"}, authorization="proposal"))
+    c, engine, s = await setup(propose)
+    await c.asset_service.save_action_plan("u1", plan())
+    await c.asset_service.save_direction_plans("u1", [DirectionPlan(id="d1", role=PlanRole.MAIN,
+        name="数据分析", target_desc="探索数据分析方向", fit_reason="用户希望了解", main_risk="还需验证")])
+    pending = await send(c, s)
+    assert not any(p.selected for p in await c.asset_service.list_direction_plans("u1"))
+    engine.callback = None
+    await send(c, s, "确认这个方向", option_id=pending.guide.options[0].option_id)
+    events = await c.behavior_service.recent("u1", event_types=[BehaviorEventType.DECISION_SELECT])
+    assert len(events) == 1 and events[0].payload["plan_id"] == "d1"
+    assert (await c.asset_service.get_latest_version("u1", AssetType.ACTION_PLAN)).needs_recompute
+
+
+@pytest.mark.asyncio
+async def test_explicit_patch_and_undo_restore_scheduling_fields_instead_of_inheriting_them():
+    async def patch(rt):
+        return await rt.action(action("plan.patch", {"updates": [{"task_id": "t1", "fields": {
+            "estimated_minutes": 10, "scheduled_at": "2026-11-01T19:00:00+08:00"}}]}, evidence="10分钟"))
+    c, engine, s = await setup(patch)
+    p = plan()
+    p.phases[0].tasks[0].estimated_minutes = 30
+    await c.asset_service.save_action_plan("u1", p)
+    await send(c, s, "把任务改为10分钟")
+    target = engine.receipts[-1]["action_id"]
+    changed = (await c.asset_service.get_action_plan("u1")).phases[0].tasks[0]
+    assert changed.estimated_minutes == 10 and changed.scheduled_at is not None
+    async def undo(rt):
+        return await rt.action(action("action.undo", {"target_id": target}, authorization="proposal"))
+    engine.callback = undo
+    pending = await send(c, s)
+    engine.callback = None
+    await send(c, s, "确认撤销", option_id=pending.guide.options[0].option_id)
+    restored = (await c.asset_service.get_action_plan("u1")).phases[0].tasks[0]
+    assert restored.estimated_minutes == 30 and restored.scheduled_at is None
+
+
+@pytest.mark.asyncio
+async def test_generated_plan_cannot_invent_completed_tasks_or_achievements():
+    from zhiyin_kernel.enums import BehaviorEventType
+    async def generate(rt):
+        p = plan()
+        p.phases[0].tasks[0].done = True
+        p.phases[0].tasks[0].status = "completed"
+        p.phases[0].tasks[0].progress = 100
+        return await rt.action(action("plan.save", p.model_dump(mode="json")))
+    c, _, s = await setup(generate)
+    await send(c, s)
+    task = (await c.asset_service.get_action_plan("u1")).phases[0].tasks[0]
+    assert not task.done and task.status == "pending" and task.progress == 0
+    assert not await c.behavior_service.recent("u1", event_types=[BehaviorEventType.TASK_DONE])
+
+
+@pytest.mark.asyncio
+async def test_calendar_commit_invalidates_only_the_current_users_day_advice():
+    async def propose(rt):
+        return await rt.action(action("calendar.write", {"title": "复习", "due_at": "2026-11-01T19:00:00+08:00"}))
+    c, engine, s = await setup(propose)
+    for user in ("u1", "other"):
+        await c.ai_task_results.put(user, "day.advice.test", {"data": "旧建议"})
+    pending = await send(c, s)
+    assert await c.ai_task_results.get("u1", "day.advice.test")
+    engine.callback = None
+    await send(c, s, "确认", option_id=pending.guide.options[0].option_id)
+    assert await c.ai_task_results.get("u1", "day.advice.test") is None
+    assert await c.ai_task_results.get("other", "day.advice.test") is not None

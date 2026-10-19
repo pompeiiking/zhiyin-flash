@@ -451,6 +451,7 @@ class AssetService(ABC):
         *,
         depends_on_profile_keys: Sequence[str] = (),
         diff_from_previous: Optional[str] = None,
+        preserve_task_state: bool = True,
     ) -> AssetVersion:
         """保存行动计划，并同步升一个版本。"""
 
