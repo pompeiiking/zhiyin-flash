@@ -82,3 +82,17 @@ async def test_incomplete_generation_cannot_commit_new_focus():
     result = await send(c, session)
     assert result.stage == session.loop_stage
     assert result.badge.agent_id == session.lead_agent
+
+
+@pytest.mark.asyncio
+async def test_existing_database_gets_missing_professional_prompts_without_overwrite():
+    from zhiyin_infrastructure.postgres.registry import PostgresRegistryRepository
+    repository = PostgresRegistryRepository(AsyncMock(), "data/registry")
+    repository._count_ai = AsyncMock(return_value=1)
+    repository._insert_missing_prompt = AsyncMock()
+    await repository._ensure_ai_seeded()
+    codes = {call.args[0]["code"] for call in repository._insert_missing_prompt.await_args_list}
+    assert all("conversation.role." + role in codes for role in [
+        "profile_analyst", "career_advisor", "path_planner", "companion_coach", "info_scout"])
+    assert "conversation.main" in codes
+    assert "role.path_planner.act" not in codes
