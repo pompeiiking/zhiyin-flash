@@ -21,7 +21,7 @@ TODO：按自有基础设施演进。
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Any, Optional, Sequence
 from uuid import uuid4
 
@@ -129,7 +129,8 @@ class InMemoryProfileRepository(ProfileRepository):
             if (existing.updated_at if existing else None) != expected_updated_at:
                 raise DuplicateResource("这项画像已更新，你的输入仍保留，请核对最新信息后再保存。")
         incoming = _snapshot(field)
-        incoming.updated_at = _now()
+        incoming.updated_at = max(_now(), profile.updated_at + timedelta(microseconds=1),
+            existing.updated_at + timedelta(microseconds=1) if existing else _now())
         for index, existing in enumerate(profile.fields):
             if existing.key == incoming.key:
                 profile.fields[index] = incoming
@@ -137,16 +138,19 @@ class InMemoryProfileRepository(ProfileRepository):
         else:
             profile.fields.append(incoming)
         profile.version += 1
-        profile.updated_at = _now()
+        profile.updated_at = incoming.updated_at
         return _snapshot(incoming)
 
-    async def delete_field(self, user_id: str, key: str) -> None:
+    async def delete_field(self, user_id: str, key: str, *, expected_updated_at: datetime | None = None, check_version: bool = False) -> None:
         profile = self._ensure(user_id)
+        existing = next((f for f in profile.fields if f.key == key), None)
+        if check_version and (existing.updated_at if existing else None) != expected_updated_at:
+            raise DuplicateResource("这项画像已更新，请核对后再删除。")
         kept = [field for field in profile.fields if field.key != key]
         if len(kept) != len(profile.fields):
             profile.fields = kept
             profile.version += 1
-            profile.updated_at = _now()
+            profile.updated_at = max(_now(), profile.updated_at + timedelta(microseconds=1))
 
     async def list_fields(
         self, user_id: str, keys: Optional[Sequence[str]] = None

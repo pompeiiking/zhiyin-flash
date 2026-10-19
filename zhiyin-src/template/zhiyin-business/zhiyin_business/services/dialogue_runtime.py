@@ -56,6 +56,11 @@ def context_cost(text):
     return non_ascii * 2 + (len(text) - non_ascii + 2) // 3
 
 
+def field_stamp(action, key):
+    field = next((f for f in (action.get("before") or {}).get("fields", []) if f["key"] == key), None)
+    return datetime.fromisoformat(field["updated_at"]) if field else None
+
+
 class DialogueRuntime:
     AGENT = "career_advisor"
     LABELS = {"profile.update": "更新画像", "task.set_done": "更新任务状态", "plan.save": "保存计划",
@@ -343,6 +348,11 @@ class DialogueRuntime:
         if args.operation == "task.set_done":
             plan = await self.o._assets.get_action_plan(user)
             found = [t for p in (plan.phases if plan else []) for t in p.tasks if t.id == payload.get("task_id")]
+            title = payload.get("task_text")
+            if len(found) == 1 and title and title != found[0].text:
+                raise InvalidRequest("任务编号与标题不一致，请重新核对")
+            if not found and isinstance(title, str) and title and title in self.request.message:
+                found = [t for p in (plan.phases if plan else []) for t in p.tasks if t.text == title]
             if len(found) != 1 or not isinstance(payload.get("done"), bool):
                 raise InvalidRequest("必须定位唯一的真实任务并指定完成状态")
             return {"task_id": found[0].id, "done": payload["done"], "task": found[0].text}
@@ -371,9 +381,12 @@ class DialogueRuntime:
                                              "reminders_synced": False})
             if not plan.phases or not any(p.tasks for p in plan.phases):
                 raise InvalidRequest("计划必须包含真实可执行的任务")
+            current = await self.o._assets.get_action_plan(user)
+            existing = {t.id: t.text for p in (current.phases if current else []) for t in p.tasks}
             for pi, phase in enumerate(plan.phases):
                 for ti, task in enumerate(phase.tasks):
-                    task.id = task.id or f"task_{stable_id}_{pi}_{ti}"
+                    if task.id not in existing or existing[task.id] != task.text:
+                        task.id = f"t_{stable_id[:8]}_{pi}_{ti}"
             ids = [t.id for p in plan.phases for t in p.tasks]
             if len(ids) != len(set(ids)):
                 raise InvalidRequest("计划任务编号重复")
@@ -470,9 +483,11 @@ class DialogueRuntime:
             elif old_op == "profile.update":
                 field = next((f for f in (before or {}).get("fields", []) if f["key"] == original["key"]), None)
                 if field:
-                    await self.o._profiles.correct_field(user, field["key"], field["value"])
+                    await self.o._profiles.correct_field(user, field["key"], field["value"], check_version=True,
+                        expected_updated_at=field_stamp(action, field["key"]))
                 else:
-                    await self.o._profiles.drop_field(user, original["key"])
+                    await self.o._profiles.drop_field(user, original["key"], check_version=True,
+                        expected_updated_at=field_stamp(action, original["key"]))
             elif old_op == "task.set_done":
                 task = next(t for p in before["phases"] for t in p["tasks"] if t["id"] == original["task_id"])
                 writer = getattr(self.o, "task_writer", None)
@@ -505,9 +520,8 @@ class DialogueRuntime:
                 if old[payload["key"]].source.value in {"user_edit", "record"}:
                     raise InvalidRequest("已有手动或核验字段需要用户明确更正")
             if action["authorization"] == "explicit":
-                previous = old.get(payload["key"])
                 result = await self.o._profiles.correct_field(user, payload["key"], payload["value"],
-                    check_version=True, expected_updated_at=previous.updated_at if previous else None)
+                    check_version=True, expected_updated_at=field_stamp(action, payload["key"]))
                 def restore(state):
                     state["conversation_forgotten_keys"] = [k for k in state.get("conversation_forgotten_keys", []) if k != payload["key"]]
                     return state
@@ -515,7 +529,7 @@ class DialogueRuntime:
                 return result
             return await self.o._profiles.update_field(user, **payload, confidence=0.9,
                 source="conversation", evidence=[action["evidence"]], check_version=True,
-                expected_updated_at=old[payload["key"]].updated_at if payload["key"] in old else None)
+                expected_updated_at=field_stamp(action, payload["key"]))
         if operation == "task.set_done":
             writer = getattr(self.o, "task_writer", None)
             if writer is not None:
@@ -527,7 +541,8 @@ class DialogueRuntime:
             return {"deleted": await self.o._functions.delete_calendar_node(user, payload["node_id"])}
         if operation == "memory.forget":
             # Existing profile service owns actual field deletion and derived invalidation.
-            await self.o._profiles.drop_field(user, payload["key"])
+            await self.o._profiles.drop_field(user, payload["key"], check_version=True,
+                expected_updated_at=field_stamp(action, payload["key"]))
             def forget(state):
                 state["conversation_memory_reset_at"] = utcnow()
                 state["conversation_forgotten_keys"] = sorted(set(state.get("conversation_forgotten_keys", [])) | {payload["key"]})

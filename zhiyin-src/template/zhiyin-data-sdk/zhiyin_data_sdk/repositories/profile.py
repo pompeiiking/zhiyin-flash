@@ -29,7 +29,7 @@ class ProfileRepository(ABC):
         """写入 / 更新单个画像字段。已存在则覆盖并刷新 updated_at。"""
 
     @abstractmethod
-    async def delete_field(self, user_id: str, key: str) -> None:
+    async def delete_field(self, user_id: str, key: str, *, expected_updated_at: datetime | None = None, check_version: bool = False) -> None:
         """删掉一个画像字段。
 
         为什么需要它，而不只是"把值改成空"：采集清单判断"这条还需要吗"看的是

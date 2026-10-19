@@ -544,3 +544,58 @@ async def test_compacted_request_replays_durable_reply_without_new_model_or_writ
     calls = len(engine.requests)
     replay = await send(c, s, "第一条", client_msg_id="archive-me")
     assert replay.model_dump() == first.model_dump() and len(engine.requests) == calls
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("duplicate", [False, True])
+async def test_exact_current_task_title_is_resolved_only_when_unique(duplicate):
+    async def mark(rt):
+        return await rt.action(action("task.set_done", {"task_text": "整理课程笔记", "done": True}, evidence="整理课程笔记"))
+    c, engine, s = await setup(mark)
+    p = plan()
+    if duplicate:
+        p.phases[0].tasks.append(p.phases[0].tasks[0].model_copy(update={"id": "t2"}))
+    await c.asset_service.save_action_plan("u1", p)
+    if duplicate:
+        with pytest.raises(InvalidRequest):
+            await send(c, s, "把整理课程笔记标记完成")
+        assert not any(t.done for p in (await c.asset_service.get_action_plan("u1")).phases for t in p.tasks)
+    else:
+        await send(c, s, "把整理课程笔记标记完成")
+        assert engine.receipts[-1]["executed"]
+        assert (await c.asset_service.get_action_plan("u1")).phases[0].tasks[0].done
+
+
+@pytest.mark.asyncio
+async def test_profile_late_concurrent_edit_cannot_be_overwritten_after_snapshot_check():
+    from zhiyin_kernel.blackboard import ProfileField
+    from zhiyin_kernel.enums import ProfileSource
+    async def change(rt):
+        return await rt.action(action("profile.update", {"key": "major", "value": "人工智能"}, evidence="人工智能"))
+    c, engine, s = await setup(change)
+    await c.profile_service.correct_field("u1", "major", "数学")
+    original = c.orchestrator._profiles.get_fields
+    injected = False
+    async def racing_read(user, *args, **kwargs):
+        nonlocal injected
+        if not injected:
+            injected = True
+            await c.profiles.upsert_field(user, ProfileField(key="major", value="物理", confidence=1,
+                source=ProfileSource.USER_EDIT, updated_at=datetime.now(timezone.utc)))
+        return await original(user, *args, **kwargs)
+    c.orchestrator._profiles.get_fields = racing_read
+    await send(c, s, "把专业改成人工智能")
+    assert next(f for f in await original("u1") if f.key == "major").value == "物理"
+    assert not engine.receipts[-1]["executed"]
+
+
+@pytest.mark.asyncio
+async def test_delete_field_cas_preserves_a_later_value():
+    from zhiyin_kernel.errors import DuplicateResource
+    c, _, _ = await setup()
+    await c.profile_service.correct_field("u1", "major", "数学")
+    old = next(f for f in await c.profile_service.get_fields("u1") if f.key == "major")
+    await c.profile_service.correct_field("u1", "major", "物理")
+    with pytest.raises(DuplicateResource):
+        await c.profile_service.drop_field("u1", "major", check_version=True, expected_updated_at=old.updated_at)
+    assert next(f for f in await c.profile_service.get_fields("u1") if f.key == "major").value == "物理"

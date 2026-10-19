@@ -104,7 +104,7 @@ class ProfileService(ABC):
         """整体替换缺口清单。"""
 
     @abstractmethod
-    async def drop_field(self, user_id: str, key: str) -> None:
+    async def drop_field(self, user_id: str, key: str, *, expected_updated_at: datetime | None = None, check_version: bool = False) -> None:
         """抹掉一个画像字段。
 
         撤销教务系统授权时必须用它：采集清单按"字段在不在"判断还缺不缺，

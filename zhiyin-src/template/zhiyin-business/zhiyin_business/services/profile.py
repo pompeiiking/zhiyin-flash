@@ -121,9 +121,12 @@ class DefaultProfileService(ProfileService):
         await self._profiles.replace_gaps(user_id, gaps)
 
     @atomic_repository("_profiles")
-    async def drop_field(self, user_id: str, key: str) -> None:
+    async def drop_field(self, user_id: str, key: str, *, expected_updated_at: datetime | None = None, check_version: bool = False) -> None:
         """删掉一个画像字段（撤销授权时用）。"""
-        await self._profiles.delete_field(user_id, key)
+        if check_version:
+            await self._profiles.delete_field(user_id, key, expected_updated_at=expected_updated_at, check_version=True)
+        else:
+            await self._profiles.delete_field(user_id, key)
         await self._event_bus.publish(DomainEvent(event_id=f"profile-{uuid4().hex[:12]}",
             event_type=PROFILE_FIELD_UPDATED, occurred_at=datetime.now(timezone.utc),
             payload={"user_id": user_id, "field_key": key, "deleted": True, "is_new": False}))

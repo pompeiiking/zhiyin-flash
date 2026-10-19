@@ -110,6 +110,22 @@ async def main():
             raise AssertionError("Synthetic failure was not raised")
         assert not await repo.list_fields("rollback-user")
         results["postgres_profile_outbox_rollback"] = "passed"
+        from zhiyin_kernel.blackboard import ProfileField
+        from zhiyin_kernel.enums import ProfileSource
+        from zhiyin_kernel.errors import DuplicateResource
+        from datetime import datetime, timezone
+        first = await repo.upsert_field("cas-user", ProfileField(key="major", value="数学", confidence=1,
+            source=ProfileSource.USER_EDIT, updated_at=datetime.now(timezone.utc)))
+        second = await repo.upsert_field("cas-user", first.model_copy(update={"value": "物理"}))
+        assert second.updated_at > first.updated_at
+        try:
+            await repo.delete_field("cas-user", "major", expected_updated_at=first.updated_at, check_version=True)
+        except DuplicateResource:
+            pass
+        else:
+            raise AssertionError("Stale field deletion was accepted")
+        assert (await repo.list_fields("cas-user"))[0].value == "物理"
+        results["postgres_profile_delete_cas"] = "passed"
         if resolved is None:
             results["real_model"] = "unavailable: no configured route"
         else:

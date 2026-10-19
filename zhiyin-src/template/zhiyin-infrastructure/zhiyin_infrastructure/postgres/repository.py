@@ -7,7 +7,7 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Any, Optional, Sequence
 from uuid import uuid4
 
@@ -232,8 +232,12 @@ class PostgresProfileRepository(ProfileRepository):
         incoming.updated_at = _now()
         async with self._db.transaction() as connection:
             await _lock(connection, f"profile:{user_id}")
+            row = await connection.fetchrow("SELECT * FROM biz_profile_field WHERE user_id=$1 AND key=$2", user_id, field.key)
+            parent_stamp = await connection.fetchval("SELECT updated_at FROM biz_profile WHERE user_id=$1", user_id)
+            incoming.updated_at = max(incoming.updated_at,
+                (row["updated_at"] + timedelta(microseconds=1)) if row else incoming.updated_at,
+                parent_stamp + timedelta(microseconds=1) if parent_stamp else incoming.updated_at)
             if check_version:
-                row = await connection.fetchrow("SELECT * FROM biz_profile_field WHERE user_id=$1 AND key=$2", user_id, field.key)
                 if row and _load_value(row["value"]) == field.value and row["source"] == field.source.value:
                     return ProfileField(key=row["key"], label=row["label"] or "", value=_load_value(row["value"]),
                                         confidence=row["confidence"], source=row["source"], evidence=_load_value(row["evidence"]) or [], updated_at=row["updated_at"])
@@ -245,7 +249,7 @@ class PostgresProfileRepository(ProfileRepository):
                 VALUES ($1, $2, 1, $3)
                 ON CONFLICT (user_id) DO UPDATE SET
                     version = biz_profile.version + 1,
-                    updated_at = EXCLUDED.updated_at
+                    updated_at = GREATEST(biz_profile.updated_at + INTERVAL '1 microsecond', EXCLUDED.updated_at)
                 """,
                 user_id,
                 _new_id("prf"),
@@ -275,7 +279,7 @@ class PostgresProfileRepository(ProfileRepository):
             )
         return incoming
 
-    async def delete_field(self, user_id: str, key: str) -> None:
+    async def delete_field(self, user_id: str, key: str, *, expected_updated_at: datetime | None = None, check_version: bool = False) -> None:
         """删掉一个画像字段，并把画像版本 +1。
 
         版本要动：采集清单与气泡编排都按"画像变过"重算，
@@ -283,6 +287,10 @@ class PostgresProfileRepository(ProfileRepository):
         """
         async with self._db.transaction() as connection:
             await _lock(connection, f"profile:{user_id}")
+            if check_version:
+                current = await connection.fetchrow("SELECT updated_at FROM biz_profile_field WHERE user_id=$1 AND key=$2", user_id, key)
+                if (current["updated_at"] if current else None) != expected_updated_at:
+                    raise DuplicateResource("这项画像已更新，请核对后再删除。")
             await connection.execute(
                 "DELETE FROM biz_profile_field WHERE user_id = $1 AND key = $2",
                 user_id,
@@ -296,7 +304,7 @@ class PostgresProfileRepository(ProfileRepository):
                 VALUES ($1, $2, 1, $3)
                 ON CONFLICT (user_id) DO UPDATE SET
                     version = biz_profile.version + 1,
-                    updated_at = EXCLUDED.updated_at
+                    updated_at = GREATEST(biz_profile.updated_at + INTERVAL '1 microsecond', EXCLUDED.updated_at)
                 """,
                 user_id,
                 _new_id("prf"),
