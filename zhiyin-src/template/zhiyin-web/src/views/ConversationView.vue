@@ -1002,8 +1002,6 @@ onUnmounted(() => { disposed = true; clearInterval(recoveryTimer); window.remove
 .consult-interrupted__actions { display: flex; flex: none; gap: 8px; }
 .consult-interrupted__actions button { min-height: 40px; padding: 0 12px; border: 1px solid var(--c-primary); border-radius: var(--r-pill); background: var(--c-surface); color: var(--c-primary); font-size: var(--fs-12); cursor: pointer; }
 .consult-interrupted__actions button:first-child { background: var(--c-primary); color: var(--c-on-primary); }
-.consult-fresh { display: flex; align-items: center; gap: 6px; margin: 2px auto 12px; padding: 8px 14px; border: 1px dashed var(--c-border-strong); border-radius: var(--r-pill); background: var(--c-surface); color: var(--c-text-2); font-size: var(--fs-12); cursor: pointer; }
-.consult-fresh[aria-pressed="true"] { border-color: var(--c-primary); color: var(--c-primary); background: var(--c-primary-weak); }
 .consult-empty { display: grid; justify-items: center; gap: 6px; padding: 40px 20px; text-align: center; color: var(--c-text-2); }
 .consult-empty h2 { margin: 4px 0 0; font-size: var(--fs-18); color: var(--c-text); }
 .consult-empty p { margin: 0; font-size: var(--fs-13); line-height: 1.7; }

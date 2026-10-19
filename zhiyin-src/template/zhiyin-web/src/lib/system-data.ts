@@ -3,7 +3,7 @@ import { mapMessage, withGuide } from './conversation-turns'
 export { mapMessage } from './conversation-turns'
 import type {ConversationTurnView} from '../api/backend-types'
 import { reactive } from 'vue'
-import { backendClient } from '../api/backend-client'
+import { backendClient, BackendError } from '../api/backend-client'
 import { auth } from './auth'
 import { featureEnabled } from './features'
 import { backendDemo } from './backend-demo'
@@ -56,14 +56,27 @@ export async function loadShell() {
   systemData.error = ''
   const results = await Promise.allSettled([
     backendClient.sessions().then(async s => {
-      backendDemo.setSessions(s.sessions ?? [], demo.state.currentSessionId || s.current_task_id || '')
-      // 恢复顺序：本标签页正在看的那条（sessionStorage）→ 后端最近会话 → 列表第一条。
-      // 只认仍在列表里的 id，避免恢复到已被清理/空会话。
+      // The history endpoint intentionally omits empty sessions. A tab's
+      // explicit selection may still be a valid new session, so validate it
+      // through owner-checked reads instead of replacing it with old history.
+      const current = demo.state.currentSessionId
       let tabSession = ''
-      try { tabSession = sessionStorage.getItem('zhiyin-current-session') || '' } catch { /* 不可用就退回账号级 */ }
-      const known = (s.sessions ?? []).some(item => item.task_id === tabSession)
-      const restoreId = (known ? tabSession : '') || s.current_task_id || s.sessions?.[0]?.task_id
-      if (!demo.state.currentSessionId && restoreId) await openSession(restoreId)
+      try { tabSession = sessionStorage.getItem('zhiyin-current-session') || '' } catch { /* unavailable storage */ }
+      backendDemo.setSessions(s.sessions ?? [], current)
+      if (current) return
+      const fallback = s.current_task_id || s.sessions?.[0]?.task_id
+      const restoreId = tabSession || fallback
+      if (!restoreId) return
+      try { await openSession(restoreId) }
+      catch (error) {
+        if (!tabSession || !(error instanceof BackendError) || ![1002, 404].includes(error.code)) throw error
+        if (demo.state.currentSessionId) return
+        // Deleted or other-account pointers must not survive; network errors
+        // stay errors and never silently switch the user's conversation.
+        try { sessionStorage.removeItem('zhiyin-current-session') } catch { /* unavailable storage */ }
+        if (fallback && fallback !== restoreId) await openSession(fallback)
+        else { backendDemo.selectSession(''); demo.setChatTurns([], ''); systemData.error = '' }
+      }
     }),
     backendClient.action().then(backendDemo.setAction),
     backendClient.notes().then(backendDemo.setNotes),
