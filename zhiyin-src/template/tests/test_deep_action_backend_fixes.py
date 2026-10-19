@@ -7,21 +7,18 @@ from types import SimpleNamespace
 
 import pytest
 
-from zhiyin_business.contracts.student import Preferences, PreferencesEdit, TaskEdit
+from zhiyin_business.contracts.student import PreferencesEdit, TaskEdit
 from zhiyin_business.services.academic import (
     MAX_PASTE_CHARS,
     MAX_UPLOAD_BYTES,
     DefaultAcademicService,
 )
-from zhiyin_business.services.profile import PROFILE_FIELD_CONFLICT_MESSAGE
 from zhiyin_business.services.student import StudentService
-from zhiyin_data_sdk.gateways.academic import AcademicImportError
 from zhiyin_infrastructure.academic import ManualAcademicImporter
 from zhiyin_infrastructure.local.repository import (
     InMemoryAcademicSnapshotRepository,
     InMemoryAssetRepository,
     InMemoryNotificationRepository,
-    InMemoryProfileRepository,
     InMemoryTaskSessionRepository,
     InMemoryUserNoteRepository,
 )
@@ -30,7 +27,7 @@ from zhiyin_business.services.asset import DefaultAssetService
 from zhiyin_business.services.note import DefaultUserNoteService
 from zhiyin_kernel.blackboard import Profile
 from zhiyin_kernel.enums import ProfileSource
-from zhiyin_kernel.errors import DuplicateResource, InvalidRequest
+from zhiyin_kernel.errors import InvalidRequest
 
 # ---------------------------------------------------------------------------
 # 1. 待办排序：后端口径必须是"最新在前"，删除后不残留（STU-004 的后端一半）
@@ -49,7 +46,7 @@ async def test_notes_list_is_newest_first_and_delete_leaves_nothing() -> None:
     import asyncio
 
     notes = DefaultUserNoteService(InMemoryUserNoteRepository())
-    first = await notes.add("u-note", "第一条待办", kind="todo")
+    await notes.add("u-note", "第一条待办", kind="todo")
     await asyncio.sleep(0.02)
     second = await notes.add("u-note", "第二条待办", kind="todo")
     listed = await notes.list_by_user("u-note")

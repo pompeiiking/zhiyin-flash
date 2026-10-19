@@ -106,6 +106,20 @@ def _preview(text: str, limit: int = 60) -> str:
     return single if len(single) <= limit else single[:limit].rstrip() + "…"
 
 
+def report_full_text_cache_key(user_id: str, version: Optional[int]) -> str:
+    """完整报告正文的读缓存键。
+
+    键里带两段版本：映射规则版本（`v2`）与资产版本。同一版本的内容不会变，
+    所以缓存安全；资产升版时 `asset_version_changed` 整片失效。
+
+    **版本段必须作为 `cache_key` 的独立片段拼**，不能写成 `v2:3`：Redis 键段
+    不允许冒号（`RedisCacheGateway._validate_segment` 会抛错），那样每条读都会
+    "读缓存不可用 → 直读 → 回填失败"，缓存只有噪声没有收益（2026-10-19 实测
+    `/healthz` 自述 errors 140）。
+    """
+    return cache_key(user_id, "v2", version if version is not None else "latest")
+
+
 class DefaultApplicationFacade(ApplicationFacade):
     """BFF 门面默认实现。"""
 
@@ -562,9 +576,7 @@ class DefaultApplicationFacade(ApplicationFacade):
             return await self._load_report(user_id, version)
         return await self._cache.get_or_load(
             "report",
-            # 映射规则升级（如结论内容校验）后必须换键：Redis 里的旧 DTO
-            # 不会因为发新版本自动失效，用户会继续读到旧报告。
-            cache_key(user_id, f"v2:{version if version is not None else 'latest'}"),
+            report_full_text_cache_key(user_id, version),
             lambda: self._load_report(user_id, version),
             model=ReportFullTextView,
         )

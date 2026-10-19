@@ -5,6 +5,7 @@ Only model configuration is read from the local database.
 """
 import asyncio
 import argparse
+from functools import partial
 from hashlib import sha256
 import json
 from pathlib import Path
@@ -18,6 +19,11 @@ for package in TEMPLATE.glob('zhiyin-*'):
     if package.is_dir():
         sys.path.insert(0, str(package))
 sys.stdout.reconfigure(encoding='utf-8')
+
+
+def _collect_frame(frames: list, item: dict) -> None:
+    # Retain protocol metadata; avoid duplicating full streamed text.
+    frames.append({k: v for k, v in item.items() if k not in {'text', 'delta'}})
 
 
 async def main():
@@ -68,10 +74,7 @@ async def main():
                 loop_stage=session.loop_stage, agent_id='career_advisor' if role == 'assistant' else '')
         for index, question in enumerate(questions):
             frames, start = [], time.monotonic()
-            def frame(item):
-                # Retain protocol metadata; avoid duplicating full streamed text.
-                frames.append({k: v for k, v in item.items() if k not in {'text', 'delta'}})
-            with progress_channel(frame):
+            with progress_channel(partial(_collect_frame, frames)):
                 result = await c.orchestrator.handle_message(TurnRequest(user_id=user, task_id=session.id,
                     message=question, client_msg_id=uuid4().hex))
             evidence['cases'].append({'case': case, 'turn': index + 1, 'history': history,

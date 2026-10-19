@@ -22,7 +22,10 @@ def specialist_tools(registry, state):
             return {"loaded": False, "reason": "未知专业角色。"}
         role = await registry.get_agent(role_id)
         prompt = await registry.get_prompt("conversation.role." + role_id)
-        enabled = lambda value: str(getattr(value, "value", value)) == "enabled"
+
+        def enabled(value) -> bool:
+            return str(getattr(value, "value", value)) == "enabled"
+
         if not role or not enabled(role.status) or not prompt or not enabled(prompt.status):
             return {"loaded": False, "reason": "该专业能力当前不可用，请如实说明限制。"}
         if focus and focus not in ROLE_FOCUS[role_id]:

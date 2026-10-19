@@ -5,18 +5,11 @@
 3. 图片/二进制材料必须在上传阶段明确拒绝，不能"成功"后给模型一串乱码。
 """
 
-from unittest.mock import AsyncMock
 
 import pytest
 
-from zhiyin_business.policies.collection_gate import CollectionGate
-from zhiyin_business.policies.routing import IntentDecision
-from zhiyin_business.ports.blackboard import BlackboardView
-from zhiyin_business.ports.orchestrator import IntentType
-from zhiyin_business.contracts.diagnose import DiagnoseOutput
 from zhiyin_data_sdk.gateways.documents import DocumentReadError
 from zhiyin_infrastructure.textfile import LocalTextExtractor
-from zhiyin_kernel.enums import LoopStage
 
 
 

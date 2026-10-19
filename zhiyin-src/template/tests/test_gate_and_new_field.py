@@ -19,10 +19,8 @@ import pytest
 
 from zhiyin_boot import Settings, build_container
 from zhiyin_boot.container import wire_application
-from zhiyin_business.ports.blackboard import BlackboardView
-from zhiyin_business.ports.orchestrator import IntentType, TurnRequest
 from zhiyin_kernel.blackboard import AssetVersion
-from zhiyin_kernel.enums import AssetType, LoopStage
+from zhiyin_kernel.enums import AssetType
 from zhiyin_orchestration.agent import AgentEngine, AgentRequest, AgentResult
 
 TEMPLATE_ROOT = Path(__file__).resolve().parents[1]

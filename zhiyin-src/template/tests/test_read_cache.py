@@ -218,6 +218,29 @@ def test_cache_key_is_colon_free_and_single_source() -> None:
         assert ":" not in built, f"缓存键不能带冒号：{built!r}"
 
 
+def test_report_full_text_cache_key_is_colon_free_and_versioned() -> None:
+    """报告正文的缓存键：要能区分"当前版本"与具体版本，且不含冒号。
+
+    2026-10-19 实测：调用点把两个片段拼成 `f"v2:{version}"`，Redis 网关因冒号
+    整条拒收 —— 报告读缓存每次 get/set 都抛错退化成直读，`/healthz` 自述
+    `errors: 140`、命中率只剩 workspace/theory。上面那条通用守卫只测了
+    `cache_key` 自己，罩不住"调用点怎么传参"，所以这里钉住真实调用点。
+    """
+    from zhiyin_api.facade.application import report_full_text_cache_key
+    from zhiyin_infrastructure.redis.cache import RedisCacheGateway
+
+    latest = report_full_text_cache_key("u1", None)
+    versioned = report_full_text_cache_key("u1", 3)
+    assert ":" not in latest and ":" not in versioned
+    assert latest != versioned, "当前版本与具体版本不能共用一个键"
+    assert report_full_text_cache_key("u1", 3) == versioned
+    assert latest.split("|")[:2] == ["u1", "v2"], latest
+
+    # 真正复现原缺陷的失败点：网关拼键时会对每个片段做冒号校验，不通过就抛错。
+    gateway = RedisCacheGateway("redis://127.0.0.1:6379/0", key_prefix="zhiyin")
+    assert gateway._key("report", latest) == "zhiyin:report:u1|v2|latest"
+
+
 async def test_read_cache_is_wired_into_the_read_side() -> None:
     """装配守卫：读缓存必须真的接到**读侧**（Facade），不能只给编排器。
 

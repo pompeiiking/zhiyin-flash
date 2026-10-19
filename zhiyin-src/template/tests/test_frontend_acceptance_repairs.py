@@ -1,10 +1,7 @@
 import pytest
-from zhiyin_business.ports.blackboard import BlackboardView
-from zhiyin_business.ports.orchestrator import IntentType
 from zhiyin_business.services.academic import DefaultAcademicService
 from zhiyin_infrastructure.academic import ManualAcademicImporter
 from zhiyin_infrastructure.local.repository import InMemoryAcademicSnapshotRepository
-from zhiyin_kernel.enums import LoopStage
 
 
 

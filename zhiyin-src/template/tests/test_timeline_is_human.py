@@ -18,7 +18,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from zhiyin_kernel.enums import LoopStage
 
 TEMPLATE_ROOT = Path(__file__).resolve().parents[1]
 REGISTRY = TEMPLATE_ROOT / "data" / "registry" / "track_events.json"

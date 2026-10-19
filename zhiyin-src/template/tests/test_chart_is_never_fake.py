@@ -13,12 +13,9 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 
 from zhiyin_business.policies.renderers import known_kinds, renderer_for, validate_renderables
 from zhiyin_business.contracts.decide import PlanOption
-from zhiyin_kernel.blackboard import Profile, ProfileField
-from zhiyin_kernel.enums import LoopStage
 
 
 def _bars(points, title="这几项你现在各有多少把握", unit="%"):

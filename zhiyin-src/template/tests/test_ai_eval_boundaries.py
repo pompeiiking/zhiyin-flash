@@ -11,12 +11,12 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timezone
 from types import SimpleNamespace
 
 import pytest
 
-from zhiyin_business.contracts.ai_tasks import PortraitAnalysis, ReportSummary
+from zhiyin_business.contracts.ai_tasks import ReportSummary
 from zhiyin_business.services.ai_tasks import AiTaskService
 from zhiyin_data_sdk.errors import MissingConfigError
 from zhiyin_kernel.blackboard import Profile
