@@ -1,0 +1,24 @@
+{
+  "before": "task-3db7ad7e2331",
+  "first": "task-43106da8eac2",
+  "reply": "能，新会话可以正常交流。",
+  "second": "task-1674d1d60988",
+  "restored": "task-1674d1d60988",
+  "requests": [
+    {
+      "task_code": "free_chat",
+      "new_session": true
+    },
+    {
+      "task_code": "free_chat",
+      "new_session": true
+    }
+  ],
+  "old_history_preserved": true,
+  "process_entry_removed": true,
+  "mobileOverflow": false,
+  "passed": true,
+  "source_commit": "3545435f83788c8afba6aa13a7e36abb9245309e",
+  "environment": "local deployed Docker/Nginx/API, synthetic account; desktop1440x1000 / mobile390x844",
+  "unit_tests": 84
+}
