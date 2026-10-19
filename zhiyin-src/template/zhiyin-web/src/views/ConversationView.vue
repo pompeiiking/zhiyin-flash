@@ -40,7 +40,6 @@ const elapsed = ref(0), draggingFiles = ref(false), replyAnnouncement = ref('')
 let waitTimer: ReturnType<typeof setInterval> | undefined
 let requestStarted = 0
 const pending = ref<{ text: string; agent: string; note: string } | null>(null)
-const liveSteps = ref<{id: string; label: string; state: string}[]>([])
 const runtimeState = ref<ConversationRuntimeState | null>(null)
 const backgroundRun = computed(() => runtimeState.value?.runs.find(r => r.state === 'running'))
 let recoveryTimer: ReturnType<typeof setInterval> | undefined
@@ -56,11 +55,6 @@ async function refreshRuntime() {
   runtimeState.value = value
   if (!thinking.value) {
    const run = value.runs[value.runs.length - 1]
-   const steps = new Map<string, {id: string; label: string; state: string}>()
-   for (const event of run?.events || []) {
-    if (event.step_id && event.type?.startsWith('step.')) steps.set(event.step_id, {id: event.step_id, label: event.note || '处理操作', state: event.type})
-   }
-   liveSteps.value = [...steps.values()]
    if (run?.state === 'running') activeRunId.value = run.id
    else if (recovering) { await openSession(id); syncInterruptedNotice() }
   }
@@ -69,7 +63,7 @@ async function refreshRuntime() {
 function decideAction(id: string, accept: boolean) {
  void send(false, { text: accept ? '确认执行这项变更' : '暂不执行这项变更', option: { option_id: `action.${id}.${accept ? 'accept' : 'decline'}`, label: accept ? '确认执行' : '暂不执行', value: {action_id: id} } })
 }
-watch(() => demo.state.currentSessionId, () => { liveFocus.value = ''; runtimeState.value = null; liveSteps.value = []; void refreshRuntime() }, { immediate: true })
+watch(() => demo.state.currentSessionId, () => { liveFocus.value = ''; runtimeState.value = null; void refreshRuntime() }, { immediate: true })
 
 type OptionRef = NonNullable<ChatTurn['optionRefs']>[number]
 type FailedSend = { request: MessageRequest; materials: { id: string; name: string }[]; error: string; at: string }
@@ -104,8 +98,8 @@ const restoring = ref(false)
 // 双击发送的第二次点击会命中停止，把刚发出的问题撤回（实测 DEF-C1）。
 const stopArmed = ref(true)
 let stopArmTimer: ReturnType<typeof setTimeout> | undefined
-// 「新开一条会话」模式：点主题时新建会话，而不是续接同主题的旧会话。
-const freshTopic = ref(false)
+// 新建入口每次创建独立会话；旧会话通过历史列表继续。
+let handledNewTopicIntent = ''
 const profileLoaded = ref(false), studyYearSaving = ref(''), studyYearError = ref(''), editingStudyYear = ref(false), savedStudyYear = ref('')
 const theoryCards = ref<Record<string, TheoryCardView>>({}), theoryErrors = ref<Record<string, string>>({})
 const theoryLoading = ref<Record<string, boolean>>({})
@@ -519,7 +513,7 @@ async function loadCapabilities(force = false) {
 }
 watch(historyOpen, open => { if (open) void refreshSessionList(true) })
 watch(capabilitiesOpen, open => { if (open) void loadCapabilities() })
-function chooseTopic() { if (thinking.value || systemData.busy) return; freshTopic.value = false; choosingTopic.value = true; historyOpen.value = false; profileOpen.value = false; requestError.value = ''; void nextTick(() => { if (flow.value) flow.value.scrollTop = 0 }) }
+function chooseTopic() { if (thinking.value || systemData.busy || !systemData.shellReady) return; choosingTopic.value = true; historyOpen.value = false; profileOpen.value = false; requestError.value = ''; void nextTick(() => { if (flow.value) flow.value.scrollTop = 0 }) }
 function closeTopic() { choosingTopic.value = false; clearTopicQuery(); void bottom(true) }
 async function reloadConversation() {
  if (thinking.value || systemData.busy) return
@@ -527,16 +521,11 @@ async function reloadConversation() {
  interrupted.value = null
  if (demo.state.currentSessionId) await resume(demo.state.currentSessionId)
 }
-async function resume(id: string, startup = false) { if (thinking.value) return; try { await openSession(id); if (startup && typeof route.query.new === 'string') chooseTopic(); else { choosingTopic.value = false; clearTopicQuery() } historyOpen.value = false; pending.value = null; requestError.value = ''; syncInterruptedNotice(); await bottom(true) } catch (e) { requestError.value = friendlyError(e) } }
+async function resume(id: string, startup = false) { if (thinking.value) return; try { await openSession(id); if (startup && typeof route.query.new === 'string') applyNewTopicIntent(); else { choosingTopic.value = false; clearTopicQuery() } historyOpen.value = false; pending.value = null; requestError.value = ''; syncInterruptedNotice(); await bottom(true) } catch (e) { requestError.value = friendlyError(e) } }
 async function create(code: string, fresh = false) { if (thinking.value || systemData.busy) return; try { await newSession(code, fresh); choosingTopic.value = false; clearTopicQuery(); pending.value = null; requestError.value = ''; await loadShell(); input.value?.focus() } catch (e) { requestError.value = friendlyError(e) } }
-async function start(code: string, label: string) {
- const fresh = freshTopic.value
- await create(code, fresh)
- if (!requestError.value) {
-  freshTopic.value = false
-  // 新会话不预填主题句：让用户自己说第一句，历史里也不会多一条"只有一句模板"的记录。
-  if (fresh || code === 'free_chat') { void nextTick(() => input.value?.focus()) } else { fill(label) }
- }
+async function start(code: string) {
+ await create(code, true)
+ if (!requestError.value) void nextTick(() => input.value?.focus())
 }
 async function saveStudyYear(label: string) {
  if (studyYearSaving.value) return
@@ -646,7 +635,7 @@ async function send(retry = false, choice?: { text: string; option?: OptionRef }
  // 发送后 700ms 内忽略"停止"点击，避免双击发送把刚发出的消息撤回。
  stopArmed.value = false; clearTimeout(stopArmTimer)
  stopArmTimer = setTimeout(() => { stopArmed.value = true }, 700)
- liveFocus.value = ''; pending.value = { text:'', agent:host.value, note:'正在分析你的问题' }; liveSteps.value = []; activeRunId.value = request.client_msg_id || ''
+ liveFocus.value = ''; pending.value = { text:'', agent:host.value, note:'正在分析你的问题' }; activeRunId.value = request.client_msg_id || ''
  if (!retry && !resend?.clientMsgId) {
   demo.addChatTurn({ id:`${request.client_msg_id}-user`, from:'me', text, materials:outgoingMaterials })
   if (!choice) { if (draft.value === outgoingDraft) draft.value = ''; attached.value = attached.value.filter(m => !outgoingMaterials.some(s => s.id === m.id)); selectedOption.value = null; remember() }
@@ -656,11 +645,6 @@ async function send(retry = false, choice?: { text: string; option?: OptionRef }
   const result = await streamBackend<ConversationTurnView>('messageStream', { body:request, signal:controller.signal }, frame => {
    if (run !== serial || demo.state.currentSessionId !== sessionId || !pending.value) return
    if (frame.text !== undefined) pending.value.text = frame.text
-   if (frame.step_id && frame.type?.startsWith('step.')) {
-    const item = liveSteps.value.find(s => s.id === frame.step_id)
-    if (item) { item.state = frame.type; item.label = frame.note || item.label }
-    else liveSteps.value.push({ id: frame.step_id, label: frame.note || '正在处理', state: frame.type })
-   }
    if (frame.type === 'role.selected' && typeof frame.stage === 'string') liveFocus.value = frame.stage
    if (frame.agent) pending.value.agent = frame.agent
    if (frame.note) pending.value.note = frame.note
@@ -775,7 +759,7 @@ function applyConsultationContext() {
   void runAsk()
   return
  }
- if (typeof route.query.new === 'string') { chooseTopic(); return }
+ if (typeof route.query.new === 'string') { applyNewTopicIntent(); return }
  const query = route.query
  const text = typeof query.question === 'string' ? query.question
   : typeof query.topic === 'string' ? '我想讨论：' + query.topic
@@ -788,10 +772,15 @@ function applyConsultationContext() {
  void router.replace({ path: route.path, query: rest })
 }
 watch(() => route.query, applyConsultationContext)
-// A sidebar request made during restoration must survive the pending history read.
-watch([() => systemData.busy, thinking, restoring], ([busy, active, loading]) => {
- if (!busy && !active && !loading && !choosingTopic.value && typeof route.query.new === 'string') chooseTopic()
-})
+// Consume the route token once. Busy/restore changes must not reopen the
+// selector after the user has chosen a topic and created the new session.
+function applyNewTopicIntent() {
+ const token = route.query.new
+ if (typeof token !== 'string' || token === handledNewTopicIntent || !systemData.shellReady || thinking.value || systemData.busy || restoring.value) return
+ handledNewTopicIntent = token
+ chooseTopic()
+}
+watch([() => systemData.busy, () => systemData.shellReady, thinking, restoring], applyNewTopicIntent)
 async function runAsk() {
  if (!askPending.value || thinking.value || uploading.value || systemData.busy) return
  // 等壳层、画像与首屏问句就绪，避免把消息发进一个还没准备好的会话、跳过年级确认。
@@ -858,7 +847,7 @@ onUnmounted(() => { disposed = true; clearInterval(recoveryTimer); window.remove
      </ul>
      <p class="session-manage__note">重命名只改标题；删除不可恢复。</p>
     </div></AnchoredCard>
-    <button class="consult-icon consult-new-button" aria-label="选择咨询主题" :disabled="thinking || systemData.busy" @click="chooseTopic"><UiIcon name="plus" :size="19" /></button>
+    <button class="consult-icon consult-new-button" aria-label="新建对话" :disabled="thinking || systemData.busy" @click="chooseTopic"><UiIcon name="plus" :size="19" /></button>
     <AnchoredCard v-model="capabilitiesOpen" class="consult-icon consult-capability-button" title="能做什么" side="bottom" align="end" size="wide"><template #trigger><UiIcon name="spark" :size="18" /><span class="consult-header__label">能做什么</span></template><div class="capability-panel">
      <p class="capability-panel__intro">这里列出当前账号能用和用不了的能力。不能用的会写明原因，并给出可以替代的做法。</p>
      <p v-if="capabilitiesLoading" class="capability-panel__status" role="status">正在读取能力清单…</p>
@@ -894,8 +883,7 @@ onUnmounted(() => { disposed = true; clearInterval(recoveryTimer); window.remove
     <template v-else>
      <button v-if="studyYear" class="consult-year-summary" @click="editingStudyYear=true"><span>当前阶段：{{ studyYearLabel(studyYear) }}</span><small>修改</small></button>
      <h2>{{ studyYear ? `已按${studyYearLabel(studyYear)}安排咨询重点` : '从你现在关心的事开始' }}</h2><p>{{ studyYear ? studyYearIntro(studyYear) : '先选一个主题。进入后仍可自由补充，不会覆盖已有会话。' }}</p>
-     <button v-if="demo.state.currentSessionId" type="button" class="consult-fresh" :aria-pressed="freshTopic" @click="freshTopic = !freshTopic"><UiIcon :name="freshTopic ? 'check' : 'plus'" :size="16" />{{ freshTopic ? '将新开一条会话（旧会话留在历史里）' : '想从头开始？新开一条会话' }}</button>
-     <div class="consult-topics"><button v-for="(entry,i) in starters" :key="entry.code" :class="{'consult-topic--free':entry.code==='free_chat'}" @click="start(entry.code, entry.label)"><UiIcon :name="['profile','directions','action','review'][i % 4]" :size="21" /><span>{{ entry.label }}</span><UiIcon name="arrow" :size="17" /></button></div>
+     <div class="consult-topics"><button v-for="(entry,i) in starters" :key="entry.code" :class="{'consult-topic--free':entry.code==='free_chat'}" :disabled="!systemData.shellReady || systemData.busy || restoring" @click="start(entry.code)"><UiIcon :name="['profile','directions','action','review'][i % 4]" :size="21" /><span>{{ entry.label }}</span><UiIcon name="arrow" :size="17" /></button></div>
      <button v-if="choosingTopic && demo.state.currentSessionId" class="consult-resume" @click="closeTopic">返回当前会话</button>
      <button v-else-if="sessions.length && sessions[0].task_id !== demo.state.currentSessionId" class="consult-resume" @click="resume(sessions[0].task_id)">继续最近的咨询：{{ sessions[0].task_name }}</button>
     </template>
@@ -953,7 +941,6 @@ onUnmounted(() => { disposed = true; clearInterval(recoveryTimer); window.remove
     <div v-if="requestError && !showFailedSend" class="consult-error" role="alert"><p>{{ requestError }}</p><button v-if="failedRequest && !stopped" @click="send(true)">重试</button><button v-else :disabled="thinking" @click="reloadConversation">刷新会话</button></div>
    </div>
    <p v-if="backgroundRun && !thinking" role="status">{{ backgroundRun.last_status || '这轮仍在处理，完成后会自动恢复结果。' }}</p>
-   <details v-if="liveSteps.length" class="consult-turn-progress"><summary>本轮处理过程</summary><ul><li v-for="step in liveSteps" :key="step.id">{{ step.label }}</li></ul></details>
    <p class="sr-only" role="status" aria-live="polite">{{ replyAnnouncement }}</p>
   </div>
   <footer v-if="!choosingTopic && !showStudyYearQuestion" class="consult-compose-area">
@@ -991,9 +978,6 @@ onUnmounted(() => { disposed = true; clearInterval(recoveryTimer); window.remove
  .consult-journey li { font-size: 11px; }
  .consult-speaker small { font-size: 11px; }
 }
- .consult-turn-progress { width: min(100%, 760px); margin: 8px auto 20px; color: var(--c-text-2); font-size: var(--fs-12); }
- .consult-turn-progress summary { cursor: pointer; padding-block: 10px; }
- .consult-turn-progress ul { margin: 0; padding: 0 0 0 20px; line-height: 1.8; }
 .consult-confirm { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin: 0 0 8px; padding: 10px 12px; border: 1px solid var(--c-primary-border); border-radius: var(--r-md); background: var(--c-primary-weak); }
 .consult-confirm__copy { display: grid; gap: 2px; min-width: 0; }
 .consult-confirm__copy strong { color: var(--c-text); font-size: var(--fs-14); }
