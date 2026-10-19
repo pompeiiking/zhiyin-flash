@@ -35,6 +35,7 @@ const draft = ref(saved.text), attached = ref(saved.materials.map(m => ({ ...m }
 const selectedOption = ref<NonNullable<ChatTurn['optionRefs']>[number] | null>(null)
 const flow = ref<HTMLElement | null>(null), input = ref<HTMLTextAreaElement | null>(null), fileInput = ref<HTMLInputElement | null>(null)
 const uploading = ref(false), thinking = ref(false), stopped = ref(false)
+const startingTopic = ref(false)
 const { followTail, showLatest, bottom, onScroll } = useConversationScroll(flow)
 const elapsed = ref(0), draggingFiles = ref(false), replyAnnouncement = ref('')
 let waitTimer: ReturnType<typeof setInterval> | undefined
@@ -522,10 +523,16 @@ async function reloadConversation() {
  if (demo.state.currentSessionId) await resume(demo.state.currentSessionId)
 }
 async function resume(id: string, startup = false) { if (thinking.value) return; try { await openSession(id); if (startup && typeof route.query.new === 'string') applyNewTopicIntent(); else { choosingTopic.value = false; clearTopicQuery() } historyOpen.value = false; pending.value = null; requestError.value = ''; syncInterruptedNotice(); await bottom(true) } catch (e) { requestError.value = friendlyError(e) } }
-async function create(code: string, fresh = false) { if (thinking.value || systemData.busy) return; try { await newSession(code, fresh); choosingTopic.value = false; clearTopicQuery(); pending.value = null; requestError.value = ''; await loadShell(); input.value?.focus() } catch (e) { requestError.value = friendlyError(e) } }
-async function start(code: string) {
- await create(code, true)
- if (!requestError.value) void nextTick(() => input.value?.focus())
+async function create(code: string, fresh = false): Promise<boolean> { if (thinking.value || systemData.busy) return false; try { await newSession(code, fresh); choosingTopic.value = false; clearTopicQuery(); pending.value = null; requestError.value = ''; await loadShell(); input.value?.focus(); return true } catch (e) { requestError.value = friendlyError(e); return false } }
+async function start(code: string, label: string) {
+ if (startingTopic.value || thinking.value || uploading.value || systemData.busy || restoring.value || !systemData.shellReady) return
+ startingTopic.value = true
+ try {
+  // 先确认新会话创建成功，再把用户选中的问题交给模型，避免失败时发到旧会话。
+  if (!await create(code, true)) return
+  if (code !== 'free_chat') await send(false, { text: label })
+  else void nextTick(() => input.value?.focus())
+ } finally { startingTopic.value = false }
 }
 async function saveStudyYear(label: string) {
  if (studyYearSaving.value) return
@@ -883,7 +890,7 @@ onUnmounted(() => { disposed = true; clearInterval(recoveryTimer); window.remove
     <template v-else>
      <button v-if="studyYear" class="consult-year-summary" @click="editingStudyYear=true"><span>当前阶段：{{ studyYearLabel(studyYear) }}</span><small>修改</small></button>
      <h2>{{ studyYear ? `已按${studyYearLabel(studyYear)}安排咨询重点` : '从你现在关心的事开始' }}</h2><p>{{ studyYear ? studyYearIntro(studyYear) : '先选一个主题。进入后仍可自由补充，不会覆盖已有会话。' }}</p>
-     <div class="consult-topics"><button v-for="(entry,i) in starters" :key="entry.code" :class="{'consult-topic--free':entry.code==='free_chat'}" :disabled="!systemData.shellReady || systemData.busy || restoring" @click="start(entry.code)"><UiIcon :name="['profile','directions','action','review'][i % 4]" :size="21" /><span>{{ entry.label }}</span><UiIcon name="arrow" :size="17" /></button></div>
+     <div class="consult-topics"><button v-for="(entry,i) in starters" :key="entry.code" :class="{'consult-topic--free':entry.code==='free_chat'}" :disabled="!systemData.shellReady || systemData.busy || restoring || startingTopic || uploading" @click="start(entry.code, entry.label)"><UiIcon :name="['profile','directions','action','review'][i % 4]" :size="21" /><span>{{ entry.label }}</span><UiIcon name="arrow" :size="17" /></button></div>
      <button v-if="choosingTopic && demo.state.currentSessionId" class="consult-resume" @click="closeTopic">返回当前会话</button>
      <button v-else-if="sessions.length && sessions[0].task_id !== demo.state.currentSessionId" class="consult-resume" @click="resume(sessions[0].task_id)">继续最近的咨询：{{ sessions[0].task_name }}</button>
     </template>
