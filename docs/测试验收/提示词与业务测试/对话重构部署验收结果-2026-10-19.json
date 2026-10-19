@@ -1,0 +1,309 @@
+{
+  "environment": "local deployed Docker -> Nginx -> API -> PostgreSQL; synthetic account",
+  "passed": true,
+  "account": "dialogue-release-6ba20ea81a",
+  "session_id": "task-de639ef98161",
+  "checks": {
+    "real_text_stream": true,
+    "server_run_id_retained": true,
+    "major_saved": true,
+    "course_not_timetable": true,
+    "read_without_approval": true,
+    "calendar_approval": true,
+    "replay_once": true,
+    "calendar_delete": true
+  },
+  "turns": [
+    {
+      "case": "http-natural-stream",
+      "elapsed_s": 2.985,
+      "run_id": "server_9d74146bbfe6484eafddf89c04fc85b0",
+      "text_updates": 54,
+      "badge": {
+        "agent_id": "profile_analyst",
+        "name": "建档分析师",
+        "role_summary": "把零散信息沉淀成带置信度与缺口的结构化画像",
+        "theory_refs": []
+      },
+      "stage": "collect",
+      "clues": [],
+      "roles": [],
+      "notes": [
+        "正在整理对话记忆",
+        "正在更新画像",
+        "已更新画像",
+        "正在更新画像",
+        "已更新画像",
+        "已核对对话记忆"
+      ],
+      "reply": [
+        "已更新画像：专业、当前学习阶段。",
+        "高等数学对人工智能专业是底层工具，重点抓极限、导数、多元微积分和级数这几块，别只背公式，多动手推导加做题。每周固定复盘错题，把不会的类型集中攻，比刷题量更有效。"
+      ]
+    },
+    {
+      "case": "http-autonomous-read",
+      "elapsed_s": 3.031,
+      "run_id": "b2ce0c1e204c42498d0458d02ebf39f1",
+      "text_updates": 47,
+      "badge": {
+        "agent_id": "profile_analyst",
+        "name": "建档分析师",
+        "role_summary": "把零散信息沉淀成带置信度与缺口的结构化画像",
+        "theory_refs": []
+      },
+      "stage": "collect",
+      "clues": [],
+      "roles": [],
+      "notes": [
+        "正在读取计划",
+        "已读取计划",
+        "正在整理对话记忆",
+        "已核对对话记忆"
+      ],
+      "reply": [
+        "目前保存的内容只有画像两项：专业是人工智能，当前学习阶段是大一，都是你刚才自述的。计划方面还没有任何已保存的计划，所以没有可读的进度或任务。本轮未做任何修改。"
+      ]
+    },
+    {
+      "case": "http-calendar-proposal",
+      "elapsed_s": 3.922,
+      "run_id": "68b46eb637114805abb3a444b7acbebc",
+      "text_updates": 51,
+      "badge": {
+        "agent_id": "profile_analyst",
+        "name": "建档分析师",
+        "role_summary": "把零散信息沉淀成带置信度与缺口的结构化画像",
+        "theory_refs": []
+      },
+      "stage": "collect",
+      "clues": [],
+      "roles": [],
+      "notes": [
+        "正在核对操作权限",
+        "已核对操作回执",
+        "正在整理对话记忆",
+        "已核对对话记忆"
+      ],
+      "reply": [
+        "已生成待确认的日历提醒，内容如下：\n\n- 标题：复习高数\n- 时间：2026年11月2日（周一）19:00，北京时间\n\n你确认后，我再保存；现在还没有写入日历。"
+      ]
+    },
+    {
+      "case": "http-approve",
+      "elapsed_s": 0.219,
+      "run_id": "60af44e4083941bda62b4ae56c725699",
+      "text_updates": 0,
+      "badge": {
+        "agent_id": "profile_analyst",
+        "name": "建档分析师",
+        "role_summary": "把零散信息沉淀成带置信度与缺口的结构化画像",
+        "theory_refs": []
+      },
+      "stage": "collect",
+      "clues": [],
+      "roles": [],
+      "notes": [
+        "正在保存日历提醒",
+        "已保存日历提醒"
+      ],
+      "reply": [
+        "已保存日历提醒。",
+        "操作已完成。"
+      ]
+    },
+    {
+      "case": "http-approve-replay",
+      "elapsed_s": 0.047,
+      "run_id": "60af44e4083941bda62b4ae56c725699",
+      "text_updates": 0,
+      "badge": {
+        "agent_id": "profile_analyst",
+        "name": "建档分析师",
+        "role_summary": "把零散信息沉淀成带置信度与缺口的结构化画像",
+        "theory_refs": []
+      },
+      "stage": "collect",
+      "clues": [],
+      "roles": [],
+      "notes": [],
+      "reply": [
+        "已保存日历提醒。",
+        "操作已完成。"
+      ]
+    },
+    {
+      "case": "http-delete-proposal",
+      "elapsed_s": 4.5,
+      "run_id": "52c991b55a5b45dd830a97a0487f07cd",
+      "text_updates": 53,
+      "badge": {
+        "agent_id": "profile_analyst",
+        "name": "建档分析师",
+        "role_summary": "把零散信息沉淀成带置信度与缺口的结构化画像",
+        "theory_refs": []
+      },
+      "stage": "collect",
+      "clues": [],
+      "roles": [],
+      "notes": [
+        "正在读取日历",
+        "已读取日历",
+        "正在核对操作权限",
+        "已核对操作回执",
+        "正在整理对话记忆",
+        "已核对对话记忆"
+      ],
+      "reply": [
+        "已找到那条提醒，删除内容如下：\n\n- 标题：复习高数\n- 时间：2026年11月2日 19:00（北京时间）\n\n目前只是待确认状态，日历里那条还在。你确认后我再执行删除。"
+      ]
+    },
+    {
+      "case": "http-delete-approve",
+      "elapsed_s": 0.297,
+      "run_id": "0b3864b978944446bc3aa05a9023baa4",
+      "text_updates": 0,
+      "badge": {
+        "agent_id": "profile_analyst",
+        "name": "建档分析师",
+        "role_summary": "把零散信息沉淀成带置信度与缺口的结构化画像",
+        "theory_refs": []
+      },
+      "stage": "collect",
+      "clues": [],
+      "roles": [],
+      "notes": [
+        "正在删除日历提醒",
+        "已删除日历提醒"
+      ],
+      "reply": [
+        "已删除日历提醒。",
+        "操作已完成。"
+      ]
+    },
+    {
+      "case": "http-professional-planner",
+      "elapsed_s": 4.703,
+      "run_id": "c76ca213c5854804abfa886211565e2f",
+      "text_updates": 65,
+      "badge": {
+        "agent_id": "path_planner",
+        "name": "路径规划师",
+        "role_summary": "把选择拆成带日历、今天就能勾掉的行动",
+        "theory_refs": []
+      },
+      "stage": "act",
+      "clues": [
+        "判断标准：先定可验证的小目标（如今天完成一节极限概念与两道例题），再排时间",
+        "判断标准：按\"概念—例题—自测\"顺序推进，当天留出自测环节检验掌握",
+        "判断标准：任务量按可用时间倒推，宁可少而完成，避免计划落空",
+        "待核实：今天可用学习时长未知",
+        "待核实：高数当前讲到哪一章、教材版本未知",
+        "待核实：近期是否有测验或作业截止"
+      ],
+      "roles": [
+        {
+          "type": "role.selected",
+          "agent": "path_planner",
+          "stage": "act",
+          "note": "已加载路径规划师专业能力",
+          "protocol": 2,
+          "conversation_id": "task-de639ef98161",
+          "run_id": "c76ca213c5854804abfa886211565e2f",
+          "sequence": 3,
+          "timestamp": "2026-10-19T11:26:22.788036+00:00"
+        }
+      ],
+      "notes": [
+        "正在整理对话记忆",
+        "已核对对话记忆"
+      ],
+      "reply": [
+        "今天先做一件小事：打开教材，把当前这一节的概念和例题过一遍，再合上书自己重做两道题，做不出来就标记下来。用“如果晚上七点坐到书桌前，就先做这一步”的方式启动，比先排整周计划更容易坚持。没保存任何计划。"
+      ]
+    },
+    {
+      "case": "http-professional-coach",
+      "elapsed_s": 3.953,
+      "run_id": "39d33e3387c14475aea04ab741a85217",
+      "text_updates": 95,
+      "badge": {
+        "agent_id": "companion_coach",
+        "name": "陪伴教练",
+        "role_summary": "盯执行、给反馈、触发再入环",
+        "theory_refs": []
+      },
+      "stage": "review",
+      "clues": [],
+      "roles": [
+        {
+          "type": "role.selected",
+          "agent": "companion_coach",
+          "stage": "review",
+          "note": "已加载陪伴教练专业能力",
+          "protocol": 2,
+          "conversation_id": "task-de639ef98161",
+          "run_id": "39d33e3387c14475aea04ab741a85217",
+          "sequence": 3,
+          "timestamp": "2026-10-19T11:26:26.704165+00:00"
+        }
+      ],
+      "notes": [
+        "正在整理对话记忆",
+        "已核对对话记忆"
+      ],
+      "reply": [
+        "今天没开始，不是能力问题，是任务在脑子里被放大成了一个整体。先把它缩到“打开书、看一页”这种小到不需要下决心的动作，做完就算今天有进展。\n\n压力大的时候别跟自己讲道理，先降低启动门槛：定个五分钟，只做一件事，时间到就允许停。这样几次小成功攒起来，比一次硬扛更管用。计划不动，我们只调今天的入口。"
+      ]
+    },
+    {
+      "case": "http-professional-analyst",
+      "elapsed_s": 5.109,
+      "run_id": "55667e211d3c41f2961bb90210d4ce67",
+      "text_updates": 70,
+      "badge": {
+        "agent_id": "profile_analyst",
+        "name": "建档分析师",
+        "role_summary": "把零散信息沉淀成带置信度与缺口的结构化画像",
+        "theory_refs": []
+      },
+      "stage": "collect",
+      "clues": [
+        "判断标准：兴趣线索优先看具体经历而非笼统喜好：哪一次、做什么、当时什么感受",
+        "判断标准：区分「喜欢数学本身」与「喜欢数学带来的结果（成绩、被认可、解题掌控感）」",
+        "判断标准：兴趣与价值观、能力分开记录，不合并成职业结论",
+        "待核实：喜欢数学的具体触发场景未知",
+        "待核实：是享受过程还是享受结果未知",
+        "待核实：与人工智能专业学习的关联尚未确认"
+      ],
+      "roles": [
+        {
+          "type": "role.selected",
+          "agent": "profile_analyst",
+          "stage": "collect",
+          "note": "已加载建档分析师专业能力",
+          "protocol": 2,
+          "conversation_id": "task-de639ef98161",
+          "run_id": "55667e211d3c41f2961bb90210d4ce67",
+          "sequence": 3,
+          "timestamp": "2026-10-19T11:26:30.786273+00:00"
+        }
+      ],
+      "notes": [
+        "正在整理对话记忆",
+        "正在更新画像",
+        "已更新画像",
+        "已核对对话记忆"
+      ],
+      "reply": [
+        "已更新画像。",
+        "先问一个具体问题：回想最近一次你因为数学而感到“挺爽”的时刻，是哪种情形——自己把一道卡了很久的题推出来了，还是看到一个概念突然想通了它为什么这么定义，或者只是考了个好分数、被人夸了？\n\n你描述一下那个场景就行，我不替你判断这适合什么职业。"
+      ]
+    }
+  ],
+  "source_commit": "44a516b0bcb87403b2350d04987f9ae92d47c75e",
+  "health_revision": "44a516b0bcb87403b2350d04987f9ae92d47c75e",
+  "notes": [
+    "通过正式Nginx、API、PostgreSQL验证；无令牌及密码。主理、线索历史恢复与审批幂等均通过。"
+  ]
+}
