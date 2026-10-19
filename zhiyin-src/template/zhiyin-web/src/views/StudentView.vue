@@ -1,12 +1,8 @@
 <script setup lang="ts">
-const MAX_CHARS = 40
-import {PROFILE_TOPICS, profilePriority, exactProfileKeys} from '../lib/profile-organization'
-import {profileLabel} from '../lib/server-copy'
 import { studentVoice } from '../lib/student-voice'
 import { formatPercent } from '../lib/format'
 import EvidenceState from '../components/EvidenceState.vue'
 import {STUDY_YEAR_OPTIONS, studyYearLabel} from '../lib/study-year'
-import { onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 /**
  * 个人画像 · v8
@@ -44,11 +40,11 @@ import { useRoute } from 'vue-router'
  *      缺的落在 C 段第几张卡），可点的是折叠内的 44px 行——不再有 24px 的可点 chip。
  *   ⑧ 视角切换、子筛选、度量口径折叠、缺口动作、页头按钮统一补到 ≥44px。
  */
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { LayoutGroup, motion } from 'motion-v'
 import { demo } from '../store'
-import { COLLECT_ITEMS, DIRECTION_PLANS, PROFILE_FIELDS, REPORT_SECTIONS, STUDENT } from '../data/student'
-import type { FieldSource, ProfileField } from '../data/types'
+import { COLLECT_ITEMS, STUDENT } from '../data/student'
+import type { ProfileField } from '../data/types'
 import DetailPopover from '../components/DetailPopover.vue'
 import PageHeading from '../components/PageHeading.vue'
 import UiIcon from '../components/UiIcon.vue'
@@ -64,52 +60,20 @@ import ProfileInsights from '../components/ProfileInsights.vue'
 import AcademicVerification from '../components/AcademicVerification.vue'
 import FormConflict from '../components/FormConflict.vue'
 import { backendDemo } from '../lib/backend-demo'
-import { backendClient } from '../api/backend-client'
-import type { DependencyEdgeView, ProfileFieldView, ProfileSource } from '../api/backend-types'
+import { useProfileWorkspace } from '../lib/use-profile-workspace'
+import { useProfileFields } from '../lib/use-profile-fields'
+import { useProfileConclusions } from '../lib/use-profile-conclusions'
+import { useProfileNavigation } from '../lib/use-profile-navigation'
+import { useProfileCorrection } from '../lib/use-profile-correction'
+import ProfileDossier from './profile/ProfileDossier.vue'
+import EnrollmentCard from './profile/EnrollmentCard.vue'
 
-/* ═══════════════════════════════════════════════════════════════════════════
- * 1. 静态口径：主题、来源分组、缺口说明、依赖映射
- * ======================================================================== */
-
-const SOURCE_NAMES: Record<string, ProfileField['source']> = {
-  resume: '简历材料', conversation: '对话', assessment: '综合分析',
-  behavior_inference: '行为记录', mentor: '导师记录', record: '学校', user_edit: '本人填写',
-}
-
-/**
- * 演示资料的来源名 → 后端 `ProfileSource` 枚举（`backend-types.ts:335`）。
- *
- * 为什么要有这张表：`SourceChip` 的 `source` 是**必填的 7 值枚举**，
- * 而演示数据里的 `ProfileField.source` 是中文的自由串（`data/types.ts:23`）。
- * 契约模式下 `field.source` 本身就是枚举，直接传；只有演示数据需要过这张表。
- * 表是 `Record<FieldSource, ProfileSource>` —— 演示数据加一个来源名会**编译报错**，
- * 不会悄悄落成一个"未知来源"的灰 chip。
- */
-const SOURCE_ENUM: Record<FieldSource, ProfileSource> = {
-  简历材料: 'resume',
-  对话: 'conversation',
-  综合分析: 'assessment',
-  行为记录: 'behavior_inference',
-  导师记录: 'mentor',
-  学校: 'record',
-  学信网: 'record',
-  教务系统: 'record',
-  本人填写: 'user_edit',
-}
-
-/**
- * 可信度只有一把尺：0–1（后端口径）。
- * 演示数据（`data/types.ts:15` 的 `{level,label,bars}`）没有 0–1，所以按档位取中点折算 ——
- * 与 `ConfidenceBadge` 内部兼容旧对象的 `LEGACY_SCORE` 同值，**不新增第二套口径**。
- *
- * 原来这里是 `Math.max(1, Math.round(conf * 3))`：`conf === 0` 会被抬成"1 格"，
- * 于是"完全没有依据"印成"依据很少"（`ConfidenceBadge.vue:26-29` 明确要求这两者分开）。
- * 换成 0–1 之后 `0 / undefined` 都会落到"还没有依据"，这条 bug 自然消失。
- */
-const LEGACY_CONF: Record<ProfileField['confidence']['level'], number> = { high: 0.9, mid: 0.6, low: 0.2 }
-
-/** 职业线索优先，学籍资料保持独立可查。 */
-const TOPICS = PROFILE_TOPICS
+const profileTab = ref<'facts' | 'judgments' | 'gaps' | 'sources'>('facts')
+const profileRoute = useRoute()
+const verificationOpen = ref(false)
+watch(() => profileRoute.query.tab, (tab) => { if (tab === 'gaps') profileTab.value = 'gaps' }, { immediate: true })
+watch(() => profileRoute.query.section, async section => { if(section === 'enrollment') { await nextTick(); document.getElementById('enrollment-title')?.scrollIntoView({block:'start'}) } }, {immediate:true})
+const insights = ref<InstanceType<typeof ProfileInsights> | null>(null)
 
 /** 来源视角：把原来的「来源筛选」并进视角切换，不再两套并存 */
 const SOURCE_GROUPS: { key: string; label: string; from: ProfileField['source'][] }[] = [
@@ -120,735 +84,47 @@ const SOURCE_GROUPS: { key: string; label: string; from: ProfileField['source'][
   { key: 'user', label: '本人填写', from: ['本人填写'] },
 ]
 
-const CONF_GROUPS = [
-  { key: 'high', title: '比较确定', hint: '有正式来源或多处印证' },
-  { key: 'mid', title: '还要核对', hint: '来自对话，尚未核验' },
-  { key: 'low', title: '依据不足', hint: '只提过一次或待补充' },
-]
+const workspace = useProfileWorkspace()
+const { loading, serviceError, relatedError, live, livePanel, isVerified, progress, loadWorkspace } = workspace
 
-/** 缺口说明：demo 数据里没有 reason / suggested_next_action，所以在这里显式写清楚 */
-const GAP_META: Record<string, { why: string; next: string }> = {
-  internship: { why: '两条方向的匹配依据都落在"有没有一段能讲的项目或实习"上', next: '暑假或最近一段能沾产业线的经历，6 周就够写' },
-  jobtype: { why: '岗位供给与门槛要求这两条结论都还没法落到具体方向上', next: '先在一两个方向里各挑 3 条真实岗位看要求' },
-  salary: { why: '决策条件里的城市取舍、以及方向方案的排序都会受影响', next: '先说出一个"低于它会犹豫"的数，不用给范围' },
-  budget: { why: '城市取舍与"要不要去外省"的取舍都得先知道生活成本兜不兜得住', next: '说一个每月可接受的租房+生活上限就行' },
-  project: { why: '呈现能力与门槛要求这两条判断都卡在"有没有拿得出手的东西"上', next: '把一次实验或课程大作业的目标、你的动作、结果写成三句' },
-}
-
-/** 采集动线 → 字段 key（用于 C 段"去哪补"） */
-const COLLECT_OF: Record<string, string> = {
-  study_year: '当前学习阶段', grade: '当前学习阶段', major: '专业', rank: '成绩层级', schedule: '本周课表与空档',
-  award: '在校获奖与处分', jobtype: '目标岗位类型', salary: '薪资底线', city: '是否接受外省',
-}
-
-/**
- * 依赖映射 —— **本地资料对应关系，不是契约**。
- *
- * live 模式下，只要契约的 workspace.dependencies 里有能匹配到这个结论的边，
- * 就用契约的 via_profile_keys；只有一条都匹配不上时，才退回下面这张表。
- * 两者**不会混在同一条判断里**：用哪一套是逐条判定的（见 depsOf / fieldEdges）。
- *
- * 这张表的定法（三条，缺一条就不写进来）：
- *   ① 结论 key 与画像字段 key 同名 → 直接就是依赖（interest / style / city / family / time）；
- *   ② 不同名但报告维度的原文里点了名的能力对象 → 按对象取字段
- *      （present 讲"经历表达"→ internship + weakness + pipeline；compete 讲"对比里的差距"
- *       → internship + rank + award；demand / threshold 讲岗位要求 → jobtype + rank + city）；
- *   ③ 方向方案取它 evidence 里逐条点到的画像项（专业对口→major、兴趣倾向→interest、
- *      供给→jobtype/city、成绩→rank、地域偏好→city/family），再加上当前学习阶段（study_year）。
- * 关键词不做任何推断；改这张表就是改演示里的追溯结果。
- */
-const DEMO_CONCL_FIELDS: Record<string, string[]> = {
-  interest: ['interest'],
-  style: ['style'],
-  present: ['weakness', 'internship', 'pipeline'],
-  demand: ['jobtype', 'city', 'rank'],
-  threshold: ['internship', 'rank', 'jobtype'],
-  compete: ['internship', 'rank', 'award'],
-  city: ['city', 'family'],
-  family: ['family'],
-  time: ['time', 'schedule'],
-  d1: ['major', 'interest', 'jobtype', 'city', 'internship', 'study_year'],
-  d2: ['major', 'interest', 'rank', 'schedule', 'time'],
-  d3: ['major', 'city', 'family', 'jobtype', 'time'],
-}
-
-/** 演示用的依赖边：正式产品里这条链由后端给（WorkspacePageView.dependencies） */
-const DEMO_EDGES: DependencyEdgeView[] = (() => {
-  const reportKeys = REPORT_SECTIONS.flatMap((section) => section.dimensions.map((dimension) => dimension.key))
-  const planKeys = DIRECTION_PLANS.map((plan) => plan.id)
-  const edges: DependencyEdgeView[] = []
-  for (const [target, keys] of Object.entries(DEMO_CONCL_FIELDS)) {
-    const from_asset = reportKeys.includes(target) ? 'report:demo-report' : planKeys.includes(target) ? 'direction_plan:demo-plan' : 'report:demo-report'
-    for (const key of keys) edges.push({ from_asset, to_asset: target, via_profile_keys: [key] })
-  }
-  return edges
-})()
-
-/* ═══════════════════════════════════════════════════════════════════════════
- * 2. 读取与更正（能力与原来一致：demo / service 双模式，逐条更正写回）
- * ======================================================================== */
-
-const profileTab = ref<'facts' | 'judgments' | 'gaps' | 'sources'>('facts')
-const profileRoute = useRoute()
-const verificationOpen = ref(false)
-watch(() => profileRoute.query.tab, (tab) => { if (tab === 'gaps') profileTab.value = 'gaps' }, { immediate: true })
-watch(() => profileRoute.query.section, async section => { if(section === 'enrollment') { await nextTick(); document.getElementById('enrollment-title')?.scrollIntoView({block:'start'}) } }, {immediate:true})
-const isVerified = computed(() => backendDemo.chsiVerified.value)
-const loading = ref(false)
-const serviceError = ref('')
-const relatedError = ref('')
-const livePanel = computed(() => backendDemo.state.liveWorkspace?.profile_panel)
-/** 是不是"服务这次真的给了档案"。缺口清单、依赖边都以这次读取为准，不用演示数据兜底。 */
-const live = computed(() => backendDemo.state.dataMode === 'service')
-const originalLive = computed(() => backendDemo.state.profileOriginals)
-const insights = ref<InstanceType<typeof ProfileInsights> | null>(null)
-
-async function loadWorkspace() {
-  if (loading.value) return
-  loading.value = true
-  serviceError.value = ''
-  relatedError.value = ''
-  try {
-    const data = await backendClient.workspace()
-    if (!data?.profile_panel) throw new Error('Incomplete profile')
-    backendDemo.setWorkspace(data)
-    const results=await Promise.allSettled([backendClient.report(),backendClient.directions()])
-    if(results[0].status==='fulfilled')backendDemo.setReport(results[0].value)
-    if(results[1].status==='fulfilled')backendDemo.setLiveDirections(results[1].value)
-    const unavailable=[]
-    if(results[0].status==='rejected')unavailable.push('分析报告')
-    if(results[1].status==='rejected')unavailable.push('方向方案')
-    if(unavailable.length)relatedError.value=`个人资料已读取，但${unavailable.join('和')}暂时没有更新；下方判断可能不完整。`
-  } catch {
-    serviceError.value = '最新档案暂时没有取得，请重试。现有内容仍保留。'
-  } finally {
-    loading.value = false
-  }
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
- * 3. 依赖关系：先契约、后演示
- * ======================================================================== */
-
-/** backendDemo.state 是 readonly 的，读出来的边也是只读结构；这里只读不写 */
-type ReadonlyEdge = { readonly from_asset: string; readonly to_asset: string; readonly via_profile_keys?: readonly string[] }
-
-/** 本轮实际使用的依赖边：契约里有就用契约的，一条都没有才用演示边（两者不混用） */
-const edges = computed<readonly ReadonlyEdge[]>(() => {
-  const declared = backendDemo.state.liveWorkspace?.dependencies ?? []
-  const usable = declared.filter((edge) => (edge.via_profile_keys ?? []).length > 0)
-  return live.value ? usable : DEMO_EDGES
+const fields = useProfileFields({
+  live: workspace.live,
+  livePanel: workspace.livePanel,
+  originalLive: workspace.originalLive,
+  progress: workspace.progress,
+  getFieldDeps: () => conclusions.fieldDeps.value,
 })
-const depsFromContract = computed(() => edges.value !== DEMO_EDGES)
-const depsSourceNote = computed(() =>
-  depsFromContract.value
-    ? '仅展示明确对应这条判断的资料关联。整份报告的关联资料不等于每条判断的依据。'
-    : '当前按资料与判断的对应关系整理，尚未提供逐项关联记录。',
-)
+const { fieldValue, valueParts, known, tally, statusLine, confBands, trustOrigin, coverageNote, groups, trustShown, tweenTo, stopTween } = fields
 
-/** 资产 id 的写法在不同实现里有差异，这里按"能对上就用"的顺序收窄，不做语义猜测 */
-function matchesAsset(asset: string, conclusionKey: string, kind: 'dimension' | 'direction'): boolean {
-  const normalized = asset.trim().toLowerCase()
-  if (normalized === conclusionKey.toLowerCase()) return true
-  if (normalized.startsWith(conclusionKey.toLowerCase() + ':')) return true
-  if (normalized.endsWith(':' + conclusionKey.toLowerCase())) return true
-  return kind === 'direction' && /^(direction_plan|direction|plan)$/.test(normalized)
-}
-
-/** 某条判断依赖 A 里的哪几条，以及这组关系是从哪来的 */
-function depsOf(conclusionKey: string, kind: 'dimension' | 'direction'): { keys: string[]; fromContract: boolean } {
-  const mine = edges.value.filter((edge) => matchesAsset(edge.to_asset, conclusionKey, kind))
-  if (mine.length) {
-    const keys: string[] = []
-    for (const edge of mine) for (const key of edge.via_profile_keys ?? []) if (!keys.includes(key)) keys.push(key)
-    if (keys.length) return { keys, fromContract: depsFromContract.value }
-  }
-  if (depsFromContract.value) return { keys: [], fromContract: true }
-  return { keys: DEMO_CONCL_FIELDS[conclusionKey] ?? [], fromContract: false }
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
- * 4. A 段数据：每条默认带来源 / 可信度 / 时间
- * ======================================================================== */
-
-/** 已有 / 总数 / 缺口：demo 走画像池切片；service 优先用本轮采集清单（学校、专业、层次、在读状态都在里面），
- *  清单缺席时才退回画像面板的 fields + gaps。这样"资料完整度"与页面上的"待补充"字段是同一口径。 */
-const progress = computed(() => {
-  if (!live.value) return demo.use.profileProgress.value
-  const collection = backendDemo.state.liveWorkspace?.collection_panel?.items ?? []
-  const gap = collection.filter((item) => !item.got).length
-  if (collection.length) return { known: collection.length - gap, total: collection.length, gap }
-  const fields = livePanel.value?.fields?.length ?? 0
-  const gaps = livePanel.value?.gaps?.length ?? 0
-  return { known: fields, total: fields + gaps, gap: gaps }
+const conclusions = useProfileConclusions({
+  live: workspace.live,
+  known: fields.known,
+  rowsBase: fields.rowsBase,
+  fieldLabels: fields.fieldLabels,
+  missing: fields.missing,
 })
+const { depsSourceNote, depsMixed, conclusionMap, fieldDeps, reportFields, needsCheck, priorityConclusions, changedFields, recomputeIds, needsRecompute, gapRows, priorityGaps, gapIndex } = conclusions
 
-interface FieldRow extends ProfileField {
-  /** 图上看到的来源（本人更正后要换掉） */
-  desc: ProfileField['source']
-  /** 后端口径的来源枚举 —— `SourceChip` 要的是它，不是 `desc` 那个中文串 */
-  src: ProfileSource
-  /** 0–1 的可信度（唯一口径）。演示数据没有 0–1，由 `LEGACY_CONF` 折算 */
-  conf: number
-  /** 更早的来源（这条被本人改过时才出现） */
-  prior: string
-  /** YYYY-MM-DD，给 <time> 用；拿不到就是空 */
-  iso: string
-  /** 原始证据列表——唯一允许放在一层折叠里的东西 */
-  evidence: string[]
-  /** 本人更正过 */
-  touched: boolean
-  /** 依赖它的判断条数 */
-  supports: number
-}
-
-function human(value: unknown): string {
-  if (value == null) return '尚待补充'
-  if (Array.isArray(value)) return value.map(human).join('、')
-  if (typeof value === 'object') return Object.values(value).map(human).join('；')
-  return String(value)
-}
-
-const rowsBase = computed<Omit<FieldRow, 'supports'>[]>(() => {
-  if (live.value) {
-    return (livePanel.value?.fields ?? []).map((field) => {
-      const conf = field.confidence
-      const level: 'high' | 'mid' | 'low' = conf === undefined ? 'low' : conf >= 0.8 ? 'high' : conf >= 0.5 ? 'mid' : 'low'
-      const label = conf === undefined ? '待确认' : conf >= 0.8 ? '比较确定' : conf >= 0.5 ? '还要核对' : '依据不足'
-      const at = field.updated_at ? new Date(field.updated_at) : null
-      const edited = field.source === 'user_edit'
-      const priorKey = originalLive.value[field.key]
-      return {
-        key: field.key, label: profileLabel(field.key,field.label || field.key), value: human(field.value),
-        source: SOURCE_NAMES[field.source] ?? '学校',
-        // 契约模式：来源本来就是枚举，直接透传；没有 0–1 时按档位折算（未知仍是未知）
-        src: field.source,
-        conf: conf === undefined ? LEGACY_CONF[level] : conf,
-        // 档位与文案仍由后端置信度决定；模板不再读它，只有 tally 的分档与筛选读
-        confidence: { level, label, bars: 0 },
-        noted: at ? at.toLocaleString('zh-CN') : '未记录时间',
-        desc: SOURCE_NAMES[field.source] ?? '学校',
-        prior: edited && priorKey ? SOURCE_NAMES[priorKey.source] ?? '原来源' : '',
-        iso: at && !Number.isNaN(at.getTime()) ? at.toISOString().slice(0, 10) : '',
-        evidence: [...(field.evidence ?? [])],
-        touched: edited,
-      }
-    })
-  }
-  return PROFILE_FIELDS.slice(0, progress.value.known).map((field) => {
-    const touched = !!demo.state.profileEdits[field.key]
-    return {
-      ...field,
-      desc: touched ? '本人填写' as const : field.source,
-      src: touched ? 'user_edit' as const : SOURCE_ENUM[field.source],
-      conf: LEGACY_CONF[field.confidence.level],
-      prior: touched ? field.source : '',
-      iso: '',
-      evidence: [] as string[],
-      touched,
-    }
-  })
+const navigation = useProfileNavigation({
+  profileTab,
+  conclusionMap: conclusions.conclusionMap,
+  fieldDeps: conclusions.fieldDeps,
+  reduced: fields.reduced,
 })
+const { hoverField, hoverConclusion, openField, openConclusion, litFields, litConclusions, toggleConclusion, conclRowClick, toggleLingerConclusion, bindConclusion, flashId, jumpToConclusion, gapFlash, jumpToGap, jumpToField, fieldReading, readField, readAnalysis, stopJumpTimers } = navigation
 
-/** 依赖解析只需要"这一条在不在、叫什么"，所以断在 rowsBase 上，别绕回 known */
-const fieldLabels = computed<Map<string, string>>(() => new Map(rowsBase.value.map((row) => [row.key, row.label])))
-
-/**
- * 值的排版：长值让整行高度失控，是因为长度差全落在"折几行"上。
- * 演示数据里把"本人说明，待核对"这类括注挪到注脚那一行，
- * 主值回到一个短语，行高就稳了。真实数据（live）一个字都不动。
- */
-const LONG_VALUE = 15
-interface ValueParts { head: string; tail: string; hasHint: boolean }
-const valueCache = new Map<string, ValueParts>()
-function valueParts(row: FieldRow): ValueParts {
-  const cacheKey = `${row.key}||${live.value ? 'live' : 'demo'}||${fieldValue(row)}`
-  const cached = valueCache.get(cacheKey)
-  if (cached) return cached
-  const raw = fieldValue(row)
-  // 真实数据一个字都不动；只有演示文案里的括注会被挪到注脚行，避免行高忽高忽低
-  const parts: ValueParts = { head: raw, tail: '', hasHint: false }
-  const match = live.value ? null : raw.match(/^(.*?)[（(]([^（()）]*)[)）]\s*$/)
-  if (match) {
-    const head = match[1]!.trim()
-    if (head && head.length <= LONG_VALUE) {
-      parts.head = head
-      parts.tail = match[2]!.trim()
-      parts.hasHint = !/^在读$/.test(parts.tail)
-    }
-  }
-  valueCache.set(cacheKey, parts)
-  return parts
-}
-
-const missing = computed(() => {
-  const rows = live.value
-    ? (livePanel.value?.gaps ?? []).map((gap) => ({ key: gap.key, label: gap.label ?? gap.key, reason: gap.reason, next: gap.suggested_next_action ?? '', source: '' }))
-    : PROFILE_FIELDS.slice(progress.value.known).map((field) => ({ key: field.key, label: field.label, reason: '', next: '', source: '' }))
-  if (!live.value) return rows
-  // 画像面板的 gaps 只收"影响判断"的缺口；采集清单里没拿到的学校/专业/层次等也要进待补充列表，
-  // 否则会出现"资料完整度 1/15"却"暂未发现缺口"的自相矛盾。
-  const knownKeys = new Set(rows.map((row) => row.key))
-  for (const item of backendDemo.state.liveWorkspace?.collection_panel?.items ?? []) {
-    if (item.got || knownKeys.has(item.key)) continue
-    knownKeys.add(item.key)
-    rows.push({ key: item.key, label: item.label ?? item.key, reason: item.why ?? '', next: item.ask ?? '', source: item.source ?? '' })
-  }
-  return rows
+const correctionState = useProfileCorrection({
+  live: workspace.live,
+  livePanel: workspace.livePanel,
+  originalLive: workspace.originalLive,
+  serviceError: workspace.serviceError,
+  openField: navigation.openField,
+  fieldValue: fields.fieldValue,
+  inspect: (key, label) => { insights.value?.inspect(key, label) },
 })
+const { correction, value, correctionError, correctionLatest, correctionConflictRows, inspectField, edit, save, confirmCorrectionConflict } = correctionState
 
-/* ═══════════════════════════════════════════════════════════════════════════
- * 5. 覆盖度与整体可信度：后端的数先用，说明白它是谁算的
- * ======================================================================== */
-
-/** 后端给的数（缺省时为 undefined，缺一不可才自算） */
-function backendRatio(value: number | undefined): number | null {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return null
-  return Math.max(0, Math.min(1, value > 1 ? value / 100 : value))
-}
-
-const tally = computed(() => {
-  const rows = known.value
-  const firm = rows.filter((row) => row.confidence.level === 'high').length
-  const check = rows.filter((row) => row.confidence.level === 'mid').length
-  const thin = rows.filter((row) => row.confidence.level === 'low').length
-  const confirmedTotal = rows.length + missing.value.length
-  const computedCoverage = confirmedTotal ? rows.length / confirmedTotal : 0
-  const fromBackend = backendRatio(livePanel.value?.coverage)
-  const coverage = fromBackend ?? computedCoverage
-  const coverageSource: 'backend' | 'local' | 'backend-count' = fromBackend !== null ? 'backend' : live.value ? 'backend-count' : 'local'
-  // 后端没给整体可信度时才自算：各条可信度按三段取平均（资料对应关系），有缺口再整体打折
-  const sum = firm * 1 + check * 0.62 + thin * 0.3
-  const base = rows.length ? sum / rows.length : 0
-  const localTrust = coverage ? Math.round(base * (0.6 + 0.4 * coverage) * 100) : 0
-  const backendTrust = backendRatio(livePanel.value?.overall_confidence)
-  const trust = backendTrust !== null ? Math.round(backendTrust * 100) : localTrust
-  return { firm, check, thin, coverage, coverageSource, trust, trustFromBackend: backendTrust !== null, localTrust, fromTalk: rows.filter((row) => row.desc === '对话').length, total: confirmedTotal }
-})
-
-const statusLine = computed(() => {
-  const t = tally.value
-  const parts = [`${t.firm} 条已确认`, `${t.check} 条还要核对`]
-  if (t.thin) parts.push(`${t.thin} 条依据不足`)
-  parts.push(`${missing.value.length} 条待补充`)
-  return parts.join(' · ')
-})
-
-/** 三档读数的**数值**（标题与口径仍来自 CONF_GROUPS，不再另写一份文案） */
-const CONF_COUNT_KEY: Record<string, 'firm' | 'check' | 'thin'> = { high: 'firm', mid: 'check', low: 'thin' }
-const confBands = computed(() =>
-  CONF_GROUPS.map((group) => ({ key: group.key, title: group.title, count: tally.value[CONF_COUNT_KEY[group.key]!] })),
-)
-
-/** 口径说明：把"这个数是谁算的、怎么算的"写在数字旁边 */
-const trustOrigin = computed(() => (tally.value.trustFromBackend ? '后端给出' : live.value ? '本地按各条可信度折算（后端未给出整体可信度）' : '本地按资料对应关系折算'))
-const coverageCount = computed(() => `${known.value.length}/${tally.value.total} 条`)
-const coverageNote = computed(() => {
-  if (tally.value.coverageSource === 'backend') return `覆盖度取自后端（已收到 ${coverageCount.value}）`
-  if (tally.value.coverageSource === 'backend-count') return `本次读取：收到 ${coverageCount.value}`
-  return `资料对应关系：画像池收到 ${coverageCount.value}`
-})
-
-/** 覆盖度数值：进入页面从 0 生长到实际值；reduced-motion 下直接给终值 */
-const reduced = () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-
-const trustShown = ref(0)
-let trustFrame = 0
-function tweenTo(target: number, duration = 760) {
-  cancelAnimationFrame(trustFrame)
-  const from = trustShown.value
-  if (reduced() || from === target) { trustShown.value = target; return }
-  const start = performance.now()
-  const tick = (now: number) => {
-    const p = Math.min(1, (now - start) / duration)
-    trustShown.value = from + (target - from) * (1 - (1 - p) ** 3)
-    if (p < 1) trustFrame = requestAnimationFrame(tick)
-    else trustShown.value = target
-  }
-  trustFrame = requestAnimationFrame(tick)
-}
-// 这个 watch 依赖 tally，而 tally 又依赖 known（由结论侧的依赖关系算出来）——
-// 所以它必须注册在 known 之后，否则 immediate 求值时 known 还在 TDZ 里。
-
-
-/* ═══════════════════════════════════════════════════════════════════════════
- * 6. 全量资料：不设搜索、范围或组织方式筛选，进入页面就按主题完整展示
- * ======================================================================== */
-
-interface RowGroup {
-  key: string
-  title: string
-  hint: string
-  rows: FieldRow[]
-}
-
-const groups = computed<RowGroup[]>(() => {
-  const rows = [...known.value].sort((a,b) => profilePriority(a.key)-profilePriority(b.key))
-  const extra = rows.filter((row) => !TOPICS.some((topic) => topic.keys.includes(row.key))).map((row) => row.key)
-  return [
-    ...TOPICS.map((topic) => ({ key: topic.key, title: topic.title, hint: '', rows: rows.filter((row) => topic.keys.includes(row.key)) })),
-    { key: 'other', title: '其他已记录信息', hint: '', rows: rows.filter((row) => extra.includes(row.key)) },
-  ]
-})
-
-/* ═══════════════════════════════════════════════════════════════════════════
- * 7. B 段数据：下游结论 + 它依赖 A 里的哪几条
- * ======================================================================== */
-
-interface LinkedField { key: string; label: string; present: boolean; value: string }
-
-interface Conclusion {
-  key: string
-  kind: 'dimension' | 'direction'
-  section: string
-  label: string
-  /** 第一层：能一行扫完的判断；第二层显示完整句子 */
-  brief: string
-  full: string
-  /** 0–1 的把握（唯一口径，`data/types.ts` 的档位在这里折算一次） */
-  conf: number
-  /** 正向：它依赖 A 里的哪几条 */
-  deps: LinkedField[]
-  /** 这组依赖是从契约来的还是资料对应表来的 */
-  depsFromContract: boolean
-  /** 依赖里手上还没有的 */
-  missingKeys: string[]
-  /** 报告里逐条列出的依据（demo 数据里的原句） */
-  evidence: string[]
-  /** 门槛解释 / 判断说明 —— 第二层 */
-  note: string
-  risk: string
-  ripple: string
-}
-
-/** 方向方案的完整句子在 evidence[0]；它本身就是画像项的罗列（"专业对口：材料科学与工程"），
- *  所以拿它当能扫完的那一句，剩下的原依据进第二层。 */
-function briefOf(text: string): string {
-  const cut = text.split(/[。；]/)[0]!.trim()
-  return cut || text
-}
-
-const conclusionMap = computed<Record<string, Conclusion>>(() => {
-  const rows = new Map(rowsBase.value.map((row) => [row.key, row]))
-  const link = (key: string): LinkedField => {
-    const row = rows.get(key)
-    return { key, label: row?.label ?? fieldLabels.value.get(key) ?? key, present: !!row, value: row ? row.value : '待补充' }
-  }
-  const map: Record<string, Conclusion> = {}
-
-  if(live.value){
-    for(const section of backendDemo.state.liveReport?.sections??[])for(const dimension of section.items??[]){
-      const key=section.id+'.'+dimension.index
-      const keys=exactProfileKeys(edges.value,key)
-      const links=[...new Set(keys)].map(link)
-      map[key]={key,kind:'dimension',section:section.title,label:dimension.name,brief:briefOf(dimension.conclusion),full:dimension.conclusion,conf:NaN,deps:links,depsFromContract:true,missingKeys:links.filter(x=>!x.present).map(x=>x.key),evidence:dimension.evidence?[dimension.evidence]:[],note:dimension.tag,risk:'',ripple:''}
-    }
-    for(const plan of backendDemo.state.liveDirections?.plans??[]){
-      const links=exactProfileKeys(edges.value,plan.id).map(link)
-      map[plan.id]={key:plan.id,kind:'direction',section:'方向方案',label:plan.name,brief:briefOf(plan.fit_reason??''),full:plan.fit_reason??'',conf:NaN,deps:links,depsFromContract:true,missingKeys:links.filter(x=>!x.present).map(x=>x.key),evidence:[],note:plan.target_desc??'',risk:plan.main_risk??'',ripple:''}
-    }
-    return map
-  }
-  for (const section of REPORT_SECTIONS) {
-    for (const dimension of section.dimensions) {
-      const deps = depsOf(dimension.key, 'dimension')
-      const links = deps.keys.map(link)
-      map[dimension.key] = {
-        key: dimension.key,
-        kind: 'dimension',
-        section: section.title,
-        label: dimension.label,
-        brief: briefOf(dimension.conclusion),
-        full: dimension.conclusion,
-        conf: LEGACY_CONF[dimension.confidence.level],
-        deps: links,
-        depsFromContract: deps.fromContract,
-        missingKeys: links.filter((item) => !item.present).map((item) => item.key),
-        evidence: [...dimension.evidence],
-        note: dimension.threshold ?? '',
-        risk: '',
-        ripple: '',
-      }
-    }
-  }
-
-  for (const plan of DIRECTION_PLANS) {
-    const deps = depsOf(plan.id, 'direction')
-    const links = deps.keys.map(link)
-    map[plan.id] = {
-      key: plan.id,
-      kind: 'direction',
-      section: '方向方案',
-      label: plan.title,
-      brief: briefOf(plan.evidence[0] ?? plan.risk),
-      full: plan.evidence[0] ?? plan.risk,
-      conf: LEGACY_CONF[plan.fit.level],
-      deps: links,
-      depsFromContract: deps.fromContract,
-      missingKeys: links.filter((item) => !item.present).map((item) => item.key),
-      evidence: plan.evidence.slice(1),
-      note: '',
-      risk: plan.risk,
-      ripple: `${plan.ripple} 处会跟着改：${plan.ripplePoints.join('、')}`,
-    }
-  }
-
-  return map
-})
-
-/** 反查：字段被哪些判断依赖（由结论侧的依赖表推出，不手写第二份） */
-const fieldDeps = computed<Record<string, string[]>>(() => {
-  const map: Record<string, string[]> = {}
-  for (const item of Object.values(conclusionMap.value)) {
-    for (const dep of item.deps) (map[dep.key] ??= []).push(item.key)
-  }
-  return map
-})
-
-/** A 段最终形态：在 rowsBase 上补上"支撑 N 条判断"。关系与 B 段同源，不另算一套。 */
-const reportFields=computed(()=>new Set(edges.value.filter(e=>e.to_asset==='report'||e.to_asset===backendDemo.state.liveReport?.report_id).flatMap(e=>e.via_profile_keys??[])))
-const needsCheck=computed(()=>known.value.filter(row=>!Number.isFinite(row.conf)||row.conf<0.8))
-const fieldReading=ref<FieldRow|null>(null)
-async function readField(row:FieldRow){openField.value=null;await nextTick();fieldReading.value=row}
-async function readAnalysis(){openField.value=null;await nextTick();profileTab.value='judgments'}
-const known = computed<FieldRow[]>(() => rowsBase.value.map((row) => ({ ...row, supports: (fieldDeps.value[row.key] ?? []).length })))
-
-const priorityConclusions = computed(() => Object.values(conclusionMap.value)
-  .sort((a, b) => Number(b.kind === 'direction') - Number(a.kind === 'direction'))
-  .slice(0, 3))
-
-/** 覆盖度环：进入页面从 0 生长到实际值；reduced-motion 直接给终值 */
-watch(() => tally.value.trust, (value) => tweenTo(value), { immediate: true })
-
-onBeforeUnmount(() => {
-  cancelAnimationFrame(trustFrame)
-  window.clearTimeout(flashTimer)
-  window.clearTimeout(gapTimer)
-})
-
-/** 更正过的字段：demo 用 backendDemo 的共享标记位模拟，service 用后端的 needs_recompute */
-const changedFields = computed(() => new Set(backendDemo.state.assetChanges.profileKeys))
-const recomputeIds = computed(() => new Set(Object.keys(conclusionMap.value).filter((key) => conclusionMap.value[key]!.deps.some((dep) => changedFields.value.has(dep.key)))))
-const needsRecompute = computed(() => recomputeIds.value.size)
-
-/** 依赖关系沿用哪一套：整页只出现一种说法，不混用 */
-const depsMixed = computed(() => {
-  const values = Object.values(conclusionMap.value).map((item) => item.depsFromContract)
-  return values.some(Boolean) && values.some((value) => !value)
-})
-
-/* ═══════════════════════════════════════════════════════════════════════════
- * 8. C 段数据 + 关系高亮 + 缺口联动
- * ======================================================================== */
-
-interface GapRow {
-  key: string
-  label: string
-  why: string
-  next: string
-  origin: string
-  blocked: string
-  ask: string
-  /** 它卡住了哪几条判断 —— 这是 B 段与 C 段之间唯一的那次表达 */
-  affects: { key: string; label: string; brief: string }[]
-}
-
-const collectSourceOf = computed(() => {
-  const map: Record<string, { origin: string; blocked: string }> = {}
-  for (const item of COLLECT_ITEMS) {
-    const key = Object.keys(COLLECT_OF).find((field) => COLLECT_OF[field] === item.label)
-    if (!key) continue
-    map[key] = item.fetchable ? { origin: `来自${item.from}`, blocked: '' } : { origin: '', blocked: item.blockedBy ?? '' }
-  }
-  return map
-})
-
-function gapAsk(key: string) {
-  if (!live.value) return ''
-  const items = backendDemo.state.liveWorkspace?.collection_panel?.items ?? []
-  return items.find((item) => item.key === key)?.ask ?? ''
-}
-
-const gapRows = computed<GapRow[]>(() =>
-  missing.value.map((item) => {
-    const meta = GAP_META[item.key]
-    const collect = collectSourceOf.value[item.key]
-    const affects = (fieldDeps.value[item.key] ?? []).map((key) => {
-      const conclusion = conclusionMap.value[key]
-      return { key, label: conclusion?.label ?? key, brief: conclusion?.brief ?? '' }
-    })
-    return {
-      key: item.key,
-      label: item.label,
-      why: item.reason || meta?.why || '这条信息还没有拿到，相关判断暂时只能给到"待确认"。',
-      next: item.next || meta?.next || '在一次咨询里说清楚就可以',
-      origin: collect?.origin ?? (item.source === 'chsi' ? '来自学信网' : item.source === 'academic' ? '来自教务系统' : item.source === 'conversation' ? '来自对话' : item.key === 'internship' || item.key === 'project' ? '可以自己写一段发过来' : '来自对话'),
-      blocked: collect?.blocked ?? '',
-      ask: gapAsk(item.key),
-      affects,
-    }
-  }),
-)
-
-const priorityGaps = computed(() => gapRows.value.slice(0, 3))
-
-/** B 段缺口的落点：这里给出"为什么重要"和"去哪补"，补的是 C 段里那条的实话 */
-const gapIndex = computed(() => {
-  const map: Record<string, number> = {}
-  gapRows.value.forEach((gap, index) => { map[gap.key] = index + 1 })
-  return map
-})
-
-/** 双向高亮：悬停/聚焦一边，另一边的关联项要看得见 */
-const hoverField = ref<string | null>(null)
-const hoverConclusion = ref<string | null>(null)
-const lingerConclusion = ref<string | null>(null)
-
-/**
- * 行内展开的状态。
- * v8 把「撑起哪些判断」和「原始依据与操作」合并成**一次行内展开**：
- * 整行可点 → 展开后里面既有关系（撑起的判断，可跳）、也有来历（证据）与动作（≥44px）。
- * 所以"钉住关系高亮"不再是第二个小按钮，它就是"这一行开着的时候"。
- */
-const openField = ref<string | null>(null)
-const openConclusion = ref<string | null>(null)
-
-const activeField = computed(() => hoverField.value ?? openField.value)
-const activeConclusion = computed(() => hoverConclusion.value ?? lingerConclusion.value)
-const litFields = computed(() => new Set(activeConclusion.value ? conclusionMap.value[activeConclusion.value]?.deps.map((dep) => dep.key) ?? [] : []))
-const litConclusions = computed(() => new Set(activeField.value ? fieldDeps.value[activeField.value] ?? [] : []))
-
-/** A 段：一行一次展开（键盘由 <button> 原生负责 Enter / Space） */
-
-/** B 段：一条判断一次展开 */
-function toggleConclusion(key: string) { openConclusion.value = openConclusion.value === key ? null : key }
-/**
- * B 段整行可点：点在第一行按钮以外的位置（依赖 chip、留白）也展开。
- * 展开区里的任何点击都不切换——读原文、选字、点动作行时不会被误收起。
- */
-function conclRowClick(event: MouseEvent, key: string) {
-  const target = event.target as HTMLElement | null
-  if (!target) return
-  if (target.closest('.p7-concl__more-body')) return
-  if (target.closest('button:not(.p7-concl__hit), a[href], [role="button"]')) return
-  toggleConclusion(key)
-}
-function toggleLingerConclusion(key: string) { lingerConclusion.value = lingerConclusion.value === key ? null : key }
-
-const conclusionEls = new Map<string, HTMLElement>()
-function bindConclusion(key: string, el: Element | null) {
-  if (el instanceof HTMLElement) conclusionEls.set(key, el)
-  else conclusionEls.delete(key)
-}
-const flashId = ref('')
-let flashTimer = 0
-async function jumpToConclusion(key: string) {
-  openField.value = null
-  await nextTick()
-  profileTab.value = 'judgments'
-  await nextTick()
-  conclusionEls.get(key)?.scrollIntoView({ block: 'center', behavior: reduced() ? 'instant' : 'smooth' })
-  flashId.value = key
-  window.clearTimeout(flashTimer)
-  flashTimer = window.setTimeout(() => { flashId.value = '' }, 1400)
-}
-
-/** B 段的缺口标记 → C 段那条缺口：滚过去 + 闪一下，让"堵在哪"有落点 */
-const gapFlash = ref('')
-let gapTimer = 0
-async function jumpToGap(key: string) {
-  profileTab.value = 'gaps'
-  await nextTick()
-  document.querySelector(`[data-gap="${key}"]`)?.scrollIntoView({ block: 'center', behavior: reduced() ? 'instant' : 'smooth' })
-  gapFlash.value = key
-  window.clearTimeout(gapTimer)
-  gapTimer = window.setTimeout(() => { gapFlash.value = '' }, 1400)
-}
-
-/** B 段 → A 段：滚到全量资料里的对应字段并展开。 */
-async function jumpToField(key: string) {
-  profileTab.value = 'facts'
-  await nextTick()
-  openField.value = key
-  await nextTick()
-  const el = document.querySelector<HTMLElement>(`.p7-row[data-key="${key}"]`)
-  el?.scrollIntoView({ block: 'center', behavior: reduced() ? 'instant' : 'smooth' })
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
- * 9. 更正：40 字上限、错误提示、写回 demo / service
- * ======================================================================== */
-
-const correction = ref<FieldRow | null>(null)
-const value = ref('')
-const correctionError = ref('')
-const correctionVersion = ref<string|null>(null)
-const correctionLatest = ref<ProfileFieldView | null>(null)
-const correctionConflictRows = computed(() => correction.value && correctionLatest.value ? [{
-  label: correction.value.label,
-  latest: String(correctionLatest.value.value ?? '未填写'),
-  mine: value.value.trim() || '未填写',
-}] : [])
-
-function fieldValue(row: FieldRow) {
-  if (live.value) return row.value
-  return demo.state.profileEdits[row.key] ?? (row.key === 'grade' ? demo.use.scenario.value.grade + '（在读）' : row.value)
-}
-
-async function inspectField(row: FieldRow) {
-  openField.value = null
-  await nextTick()
-  insights.value?.inspect(row.key, row.label)
-}
-
-function edit(row: FieldRow) {
-  openField.value = null
-  correction.value = row
-  correctionVersion.value = livePanel.value?.fields?.find(item => item.key === row.key)?.updated_at ?? null
-  correctionLatest.value = null
-  value.value = fieldValue(row)
-  correctionError.value = ''
-}
-
-async function save() {
-  if (!value.value.trim()) { correctionError.value = '请填写更正后的信息。'; return }
-  if (value.value.trim().length > MAX_CHARS) { correctionError.value = '更正内容最多 40 个字。'; return }
-  if (correction.value && live.value) {
-    const field = correction.value
-    const previous = livePanel.value?.fields?.find((item) => item.key === field.key)
-    serviceError.value = ''
-    try {
-      const updated = await backendClient.correct(field.key, value.value.trim(), correctionVersion.value)
-      if (previous && !originalLive.value[field.key]) backendDemo.rememberProfileOriginal(field.key)
-      const workspace = JSON.parse(JSON.stringify(backendDemo.state.liveWorkspace))
-      workspace.profile_panel.fields = workspace.profile_panel.fields.map((item: ProfileFieldView) => (item.key === updated.key ? updated : item))
-      backendDemo.setWorkspace(workspace)
-      correctionLatest.value = null
-    } catch (error) {
-      correctionError.value = error instanceof Error ? error.message : '更正没有保存成功，输入仍保留，请重试。'
-      if ((error as { code?: number }).code === 1003) {
-        try {
-          const workspace = await backendClient.workspace()
-          if (!workspace.profile_panel?.fields) throw new Error('最新画像不完整')
-          backendDemo.setWorkspace(workspace)
-          correctionLatest.value = workspace.profile_panel.fields.find(item => item.key === field.key) ?? null
-        } catch {
-          correctionError.value += ' 最新记录暂未取得，请稍后重试。'
-        }
-      }
-      return
-    }
-  }
-  if (correction.value) demo.updateProfileField(correction.value.key, value.value)
-  correction.value = null
-}
-
-async function confirmCorrectionConflict() {
-  if (!correctionLatest.value) return
-  correctionVersion.value = correctionLatest.value.updated_at
-  correctionLatest.value = null
-  await save()
-}
+function changeTab(tab: 'facts' | 'judgments' | 'gaps' | 'sources') { profileTab.value = tab }
 
 const identity = computed(() => {
   const pick = (key: string) => known.value.find((row) => row.key === key)?.value
@@ -892,6 +168,17 @@ const enrollmentRows = computed(() => {
   ].map(item => ({ ...item, value: item.row ? fieldValue(item.row) : '待补充' }))
 })
 function exportProfile(){const url=URL.createObjectURL(new Blob([JSON.stringify({profile:known.value,gaps:gapRows.value,source:live.value?'本次读取的档案':'个人画像'},null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='职引-个人画像.json';a.click();URL.revokeObjectURL(url)}
+
+/** 覆盖度环：进入页面从 0 生长到实际值；reduced-motion 直接给终值 */
+// 这个 watch 依赖 tally，而 tally 又依赖 known（由结论侧的依赖关系算出来）——
+// 所以它必须注册在 known 之后，否则 immediate 求值时 known 还在 TDZ 里。
+watch(() => tally.value.trust, (value) => tweenTo(value), { immediate: true })
+
+onBeforeUnmount(() => {
+  stopTween()
+  stopJumpTimers()
+})
+
 onMounted(()=>{ void loadWorkspace() })
 </script>
 
@@ -920,82 +207,29 @@ onMounted(()=>{ void loadWorkspace() })
       :dismissible="false"
     />
 
-    <section class="profile-dossier" aria-labelledby="profile-dossier-title">
-      <header class="profile-dossier__header">
-        <div class="profile-dossier__identity">
-          <div class="profile-dossier__portrait" aria-hidden="true">{{ identity.name.slice(0,1) }}</div>
-          <div>
-            <p class="profile-dossier__label">个人画像</p>
-            <h2 id="profile-dossier-title">{{ identity.name }}</h2>
-            <p>{{ identity.line }}</p>
-          </div>
-          <DetailPopover title="个人资料概况" label="查看个人资料概况"><p>已记录 {{ progress.known }} 项信息，{{ progress.gap }} 项待补充。</p><p>依据充分 {{ confBands[0]?.count ?? 0 }} 项，待核对 {{ confBands[1]?.count ?? 0 }} 项。</p></DetailPopover>
-        </div>
-        <div class="profile-dossier__coverage">
-          <div><span>资料完整度</span><strong>{{ progress.known }}<small> / {{ progress.total }}</small></strong><EvidenceState :state="progress.gap ? 'missing' : 'recorded'" /></div>
-          <div class="profile-dossier__track" role="progressbar" :aria-label="'资料完整度'" :aria-valuemin="0" :aria-valuemax="progress.total" :aria-valuenow="progress.known" :aria-valuetext="'已记录 '+progress.known+' 项，共 '+progress.total+' 项，待补充 '+progress.gap+' 项'"><i v-for="n in progress.total" :key="n" aria-hidden="true" :class="{'is-known':n<=progress.known}"/></div>
-          <p>{{ loading && !livePanel ? '正在读取资料…' : serviceError ? '资料读取失败，请重试核对' : !livePanel ? '尚未读取资料' : !progress.known && !progress.gap ? '暂无个人资料，可从咨询开始补充' : progress.gap ? `还差 ${progress.gap} 项关键信息` : '当前未列出待补充项' }}</p>
-        </div>
-      </header>
 
-      <div class="profile-dossier__statement">
-        <span>{{ profileSnapshot.label }}</span>
-        <div class="profile-dossier__statement-main">
-          <strong>{{ profileSnapshot.title }}</strong>
-          <small>{{ profileSnapshot.detail }}</small>
-        </div>
-        <div class="profile-dossier__statement-actions">
-          <span>{{ profileSnapshot.state }}</span>
-          <DetailPopover :title="profileSnapshot.title" label="查看当前画像判断"><template #trigger>查看判断</template><p>{{ profileSnapshot.detail }}</p><p>画像会随补充资料、核对来源和实际行动继续更新。</p></DetailPopover>
-        </div>
-      </div>
+    <ProfileDossier
+      :identity="identity"
+      :progress="progress"
+      :conf-bands="confBands"
+      :loading="loading"
+      :live-panel="livePanel"
+      :service-error="serviceError"
+      :profile-snapshot="profileSnapshot"
+      :priority-conclusions="priorityConclusions"
+      :priority-gaps="priorityGaps"
+      :known="known"
+      :needs-check="needsCheck"
+      @tab="changeTab"
+      @jump-conclusion="jumpToConclusion"
+    />
 
-      <div class="profile-dossier__body">
-        <section class="profile-directions" aria-labelledby="profile-directions-title">
-          <header>
-            <div><h3 id="profile-directions-title">正在浮现的方向 <DetailPopover title="方向说明" label="查看方向说明"><p>这些是接下来值得验证的假设，不是替你做出的职业定论。</p></DetailPopover></h3></div>
-            <button class="ws-text-button" type="button" @click="profileTab='judgments'">查看完整分析<UiIcon name="arrow" :size="14"/></button>
-          </header>
-          <ul v-if="priorityConclusions.length">
-            <li v-for="item in priorityConclusions" :key="item.key">
-              <DetailPopover class="profile-direction" :title="item.label" :label="item.label + '：' + studentVoice(item.brief)" side="bottom"><template #trigger>
-                <span class="profile-direction__mark" aria-hidden="true"></span><span><strong>{{ item.label }}</strong><small>{{ studentVoice(item.brief) || '这条判断暂时没有摘要。' }}</small></span><UiIcon name="info" :size="16" aria-hidden="true"/>
-              </template><p>{{ studentVoice(item.full || item.brief) }}</p><p class="profile-popover-meta">{{ item.section }} · {{ item.deps.length ? item.deps.length + ' 项资料支撑' : '逐项依据待核对' }}</p><p v-if="item.note">判断说明：{{ item.note }}</p><p v-if="item.risk">需要留意：{{ item.risk }}</p><p v-if="item.missingKeys.length">仍缺 {{ item.missingKeys.length }} 项关键资料。</p><button class="ws-text-button" type="button" @click="jumpToConclusion(item.key)">在完整分析中核对</button></DetailPopover>
-            </li>
-          </ul>
-          <div v-else class="profile-focus-empty">
-            <span>方向尚未形成</span>
-            <strong>{{ priorityGaps.length ? '还缺几项会影响判断的信息' : '先让系统了解你的专业与经历' }}</strong>
-            <ol v-if="priorityGaps.length" aria-label="形成方向前待补充的信息">
-              <li v-for="item in priorityGaps.slice(0,3)" :key="item.key"><i aria-hidden="true" />{{ item.label }}</li>
-            </ol>
-            <RouterLink class="ws-text-link" :to="priorityGaps[0] ? '/chat?gap='+encodeURIComponent(priorityGaps[0].key)+'&label='+encodeURIComponent(priorityGaps[0].label) : '/chat'">补充后开始比较<UiIcon name="arrow" :size="14" /></RouterLink>
-          </div>
-        </section>
-
-        <section class="profile-next" aria-labelledby="profile-next-title">
-          <p class="profile-next__label">下一步只做一件事</p>
-          <template v-if="priorityGaps[0]">
-            <h3 id="profile-next-title">{{ priorityGaps[0].label }}</h3>
-            <div class="profile-next__suggestion"><span>建议行动</span><strong>{{ studentVoice(priorityGaps[0].next) }}</strong></div>
-            <DetailPopover class="profile-next__reason" :title="'为什么先补充' + priorityGaps[0].label" label="查看这项信息的影响"><template #trigger>为什么先补这项</template><p>{{ priorityGaps[0].why }}</p><p v-if="priorityGaps[0].affects.length">它会影响 {{ priorityGaps[0].affects.map(item => item.label).join('、') }}。</p></DetailPopover>
-            <RouterLink class="btn btn--primary" :to="'/chat?gap='+encodeURIComponent(priorityGaps[0].key)+'&label='+encodeURIComponent(priorityGaps[0].label)">去补充这条信息<UiIcon name="arrow" :size="14"/></RouterLink>
-            <button class="ws-text-button" type="button" @click="profileTab='gaps'">查看全部待补充信息</button>
-          </template>
-          <template v-else>
-            <h3 id="profile-next-title">{{ progress.gap ? '继续补齐资料' : known.length ? '核对已有资料' : '补充个人资料' }}</h3>
-            <p>{{ progress.gap ? '还有 ' + progress.gap + ' 项资料待补充（学校、专业、学历、在读状态等）；可以先核对已有资料，也可以从对话里逐项补齐。' : known.length ? '当前没有明确缺口，可以从标为“待核对”的信息开始确认。' : '先补充所学专业或一段经历，帮助系统了解你的情况。' }}</p>
-            <RouterLink v-if="progress.gap || !known.length" class="ws-text-link" :to="known.length ? '/profile?tab=gaps' : '/chat'">{{ known.length ? '查看待补字段' : '开始补充' }}<UiIcon name="arrow" :size="14" /></RouterLink>
-          </template>
-          <p v-if="needsCheck.length" class="profile-next__check">另有 {{ needsCheck.length }} 项资料需要核对</p>
-        </section>
-      </div>
-    </section>
-<section class="enrollment" aria-labelledby="enrollment-title"><header><div><span class="enrollment__eyebrow">学校档案</span><h2 id="enrollment-title">学籍信息 <DetailPopover title="学籍信息说明" label="查看学籍信息说明"><p>核对学校、专业与在读状态，查看学籍核验结果。</p></DetailPopover></h2></div><button class="btn" @click="verificationOpen=true"><UiIcon name="shield" :size="16" />{{ isVerified ? '重新核验' : '核验学籍' }}</button></header><dl><div v-for="item in enrollmentRows" :key="item.label"><dt>{{item.label}}</dt><dd :class="{'is-missing':item.value==='待补充'}">{{item.value}}</dd></div></dl><footer><span :class="['enrollment__state', isVerified ? 'is-verified' : '']"><i />{{ isVerified ? '已包含学信来源' : '尚未完成学信核验' }}</span><RouterLink class="ws-text-link" to="/grades">查看我的成绩<UiIcon name="arrow" :size="14" /></RouterLink></footer></section>
+    <EnrollmentCard :enrollment-rows="enrollmentRows" :is-verified="isVerified" @verify="verificationOpen = true" />
 
 
 
-    
+
+
 
     <!-- ═══ A · 我知道什么 ═══ -->
     <section class="p7-block" aria-labelledby="p7-a-title">
@@ -1113,18 +347,18 @@ onMounted(()=>{ void loadWorkspace() })
     </section>
 
     <!-- ═══ B · 所以判断了什么 ═══ -->
-    
+
 
     <!-- ═══ C · 还缺什么 ═══ -->
-    
+
 
     <!-- 溯源总账。原来是 `.ws-context` 折叠 —— 正是 `DESIGN-LANGUAGE.md:102` 点名的
          「溯源做成一个折叠的『来源』」。这里不是"还有更多内容"，是"我为什么该这么理解"，
          所以用 Foldable 的 **static** 形态：标题照排，内容始终可见。
          改 static 之后本页的折叠层数：度量口径(static) + 行内(1 层) + 这里(static) = **1 层**。 -->
-    
 
-    
+
+
 
 
 <InfoSheet :open="!!fieldReading" shape="panel" :title="fieldReading?.label || '完整资料'" @close="fieldReading=null"><template v-if="fieldReading"><p class="profile-fact-value">{{fieldValue(fieldReading)}}</p><p class="ws-muted">{{fieldReading.desc}} · {{fieldReading.noted}}</p><h3>原始证据</h3><ul class="ws-mini-list"><li v-for="item in fieldReading.evidence" :key="item">{{item}}</li></ul></template></InfoSheet>
@@ -1340,8 +574,6 @@ onMounted(()=>{ void loadWorkspace() })
 
 <style scoped>
 .profile-fact-value{font-size:15px;line-height:1.75;white-space:pre-wrap;overflow-wrap:anywhere}.profile-association-note p{font-size:13px;color:var(--c-text-3);margin-top:8px}@media(max-width:600px){.profile-identity__coverage{display:none}}
-.enrollment{margin:18px 0 24px;padding:22px 24px;border:1px solid var(--c-border);border-radius:var(--r-lg);background:var(--c-surface)}.enrollment header{display:flex;align-items:start;justify-content:space-between;gap:24px}.enrollment__eyebrow{font-size:var(--fs-12);font-weight:var(--fw-semibold);color:var(--c-primary)}.enrollment h2{margin-top:3px;font-size:var(--fs-18);font-weight:var(--fw-semibold)}.enrollment header p{max-width:64ch;margin-top:5px;font-size:var(--fs-13);line-height:1.7;color:var(--c-text-2)}.enrollment dl{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin-top:20px;border-top:1px solid var(--c-border);border-bottom:1px solid var(--c-border)}.enrollment dl>div{padding:15px 16px}.enrollment dl>div+div{border-left:1px solid var(--c-border)}.enrollment dt{font-size:var(--fs-12);color:var(--c-text-3)}.enrollment dd{margin-top:6px;font-size:var(--fs-14);font-weight:var(--fw-medium);color:var(--c-text)}.enrollment dd.is-missing{font-weight:var(--fw-regular);color:var(--c-text-3)}.enrollment footer{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-top:14px}.enrollment__state{display:flex;align-items:center;gap:7px;font-size:var(--fs-12);color:var(--c-text-3)}.enrollment__state i{width:7px;height:7px;border-radius:50%;background:var(--c-border-strong)}.enrollment__state.is-verified{color:var(--c-primary)}.enrollment__state.is-verified i{background:var(--c-primary)}
-@media(max-width:760px){.enrollment{padding:18px}.enrollment header{flex-direction:column}.enrollment header .btn{width:100%}.enrollment dl{grid-template-columns:1fr 1fr}.enrollment dl>div:nth-child(3){border-left:0;border-top:1px solid var(--c-border)}.enrollment dl>div:nth-child(4){border-top:1px solid var(--c-border)}.enrollment footer{align-items:flex-start;flex-direction:column}}
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * 用底色 / 描边 / 留白分层，不给所有内容套同一张卡片。

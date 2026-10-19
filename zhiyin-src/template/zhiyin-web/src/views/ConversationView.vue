@@ -15,7 +15,7 @@ import { replyTurns } from '../lib/conversation-turns'
 import { backendClient } from '../api/backend-client'
 import { streamBackend } from '../api/backend-stream'
 import { studentApi } from '../api/student-capabilities'
-import type { ActionPhaseView, ActionTaskView, CapabilitiesView, CapabilityItemView, ConversationTurnView, MessageRequest, SessionListView, TaskSessionView, TheoryCardView } from '../api/backend-types'
+import type { ActionPhaseView, ActionTaskView, ConversationTurnView, MessageRequest, TheoryCardView } from '../api/backend-types'
 import type { ChatTurn } from '../data/types'
 import AgentAvatar from '../components/AgentAvatar.vue'
 import UiIcon from '../components/UiIcon.vue'
@@ -26,18 +26,21 @@ import RenderableBlock from '../components/RenderableBlock.vue'
 import ConversationProfile from '../components/ConversationProfile.vue'
 import ConversationOperations from '../components/ConversationOperations.vue'
 import type { ConversationRuntimeState } from '../api/backend-client'
+import { errorCode, friendlyError } from '../lib/use-conversation-errors'
+import { type OptionRef, useConversationDraft } from '../lib/use-conversation-draft'
+import { useConversationMaterials } from '../lib/use-conversation-materials'
+import { useConversationRecovery } from '../lib/use-conversation-recovery'
+import { useConversationSessions } from '../lib/use-conversation-sessions'
+import { useConversationCapabilities } from '../lib/use-conversation-capabilities'
 import '../styles/conversation.css'
 const route = useRoute()
 const router = useRouter()
 const turns = computed(() => demo.state.chatTurns)
-const saved = backendDemo.getDraft(demo.state.currentSessionId)
-const draft = ref(saved.text), attached = ref(saved.materials.map(m => ({ ...m })))
-const selectedOption = ref<NonNullable<ChatTurn['optionRefs']>[number] | null>(null)
-const flow = ref<HTMLElement | null>(null), input = ref<HTMLTextAreaElement | null>(null), fileInput = ref<HTMLInputElement | null>(null)
-const uploading = ref(false), thinking = ref(false), stopped = ref(false)
+const flow = ref<HTMLElement | null>(null), input = ref<HTMLTextAreaElement | null>(null)
+const thinking = ref(false), stopped = ref(false)
 const startingTopic = ref(false)
 const { followTail, showLatest, bottom, onScroll } = useConversationScroll(flow)
-const elapsed = ref(0), draggingFiles = ref(false), replyAnnouncement = ref('')
+const elapsed = ref(0), replyAnnouncement = ref('')
 let waitTimer: ReturnType<typeof setInterval> | undefined
 let requestStarted = 0
 const pending = ref<{ text: string; agent: string; note: string } | null>(null)
@@ -46,6 +49,29 @@ const backgroundRun = computed(() => runtimeState.value?.runs.find(r => r.state 
 let recoveryTimer: ReturnType<typeof setInterval> | undefined
 const activeRunId = ref('')
 const liveFocus = ref('')
+let controller: AbortController | null = null, serial = 0, disposed = false
+let failedRequest: MessageRequest | null = null
+const requestError = ref(''), profileError = ref(''), guideSaving = ref('')
+const profileOpen = ref(false), historyOpen = ref(false), profileLoading = ref(false)
+const choosingTopic = ref(false)
+// 恢复会话的短暂空态：避免刚刷新时先闪一句"新会话已就绪/咨询对话"。
+const restoring = ref(false)
+// 发送后极短时间内的"停止"点击要忽略：按钮在同一位置从"发送"变成"停止"，
+// 双击发送的第二次点击会命中停止，把刚发出的问题撤回（实测 DEF-C1）。
+const stopArmed = ref(true)
+let stopArmTimer: ReturnType<typeof setTimeout> | undefined
+// 新建入口每次创建独立会话；旧会话通过历史列表继续。
+let handledNewTopicIntent = ''
+const profileLoaded = ref(false), studyYearSaving = ref(''), studyYearError = ref(''), editingStudyYear = ref(false), savedStudyYear = ref('')
+const theoryCards = ref<Record<string, TheoryCardView>>({}), theoryErrors = ref<Record<string, string>>({})
+const theoryLoading = ref<Record<string, boolean>>({})
+const copiedTurn = ref('')
+let copyTimer: ReturnType<typeof setTimeout> | undefined
+const { failedSend, confirmDismissed, askPending, interrupted, showFailedSend, rememberFailure, clearFailure, loadFailure, discardFailure, clearAllFailures, syncInterruptedNotice, retryInterrupted, dismissInterrupted, markChatPending, markChatStopped, clearChatPending } = useConversationRecovery({
+  turns, thinking, pending, requestError, input, send, setFailedRequest: value => { failedRequest = value },
+})
+const { draft, attached, selectedOption, fillRequest, replacedDraft, fill, applyFill, confirmFillReplace, cancelFillReplace, undoFillReplace, remember, resizeInput } = useConversationDraft({ flow, input, profileOpen, thinking })
+const { uploading, draggingFiles, uploadError, fileInput, upload, dragOver, dropFiles, pasteFiles } = useConversationMaterials({ thinking, attached, isDisposed: () => disposed })
 async function refreshRuntime() {
  const id = demo.state.currentSessionId
  if (!id) { runtimeState.value = null; return }
@@ -65,58 +91,8 @@ function decideAction(id: string, accept: boolean) {
  void send(false, { text: accept ? '确认执行这项变更' : '暂不执行这项变更', option: { option_id: `action.${id}.${accept ? 'accept' : 'decline'}`, label: accept ? '确认执行' : '暂不执行', value: {action_id: id} } })
 }
 watch(() => demo.state.currentSessionId, () => { liveFocus.value = ''; runtimeState.value = null; void refreshRuntime() }, { immediate: true })
-
-type OptionRef = NonNullable<ChatTurn['optionRefs']>[number]
-type FailedSend = { request: MessageRequest; materials: { id: string; name: string }[]; error: string; at: string }
-// 快捷选项覆盖草稿：先确认，替换后还能撤销（问题 4）。无草稿时行为完全不变。
-const fillRequest = ref<{ text: string; option?: OptionRef; previousText: string; previousOption: OptionRef | null } | null>(null)
-const replacedDraft = ref<{ text: string; option: OptionRef | null } | null>(null)
-// 发送失败的消息与错误按会话持久化，刷新后仍然可见、可重新尝试（问题 15）。
-const failedSend = ref<FailedSend | null>(null)
-// 已点过按钮的确认不再重复出现（问题 2：可以 / 先不要）。
-const confirmDismissed = ref<string[]>([])
-const askPending = ref('')
-// 生成中刷新/切页：本轮回复没有落库时，提示"上一轮中断"并给出重新发送入口。
-const interrupted = ref<{ text: string; turnId: string; clientMsgId?: string; materials?: { id: string; name: string }[] } | null>(null)
-const copiedTurn = ref('')
-let copyTimer: ReturnType<typeof setTimeout> | undefined
-const uploadError = ref('')
-const requestError = ref(''), profileError = ref(''), guideSaving = ref('')
-const profileOpen = ref(false), historyOpen = ref(false), profileLoading = ref(false)
-// ---- F8 会话历史管理：搜索 / 行内重命名 / 二次确认删除 ----
-const sessionQuery = ref('')
-const sessionListLoading = ref(false), sessionListError = ref('')
-const renamingId = ref(''), renameDraft = ref(''), renameError = ref(''), renameBusy = ref(false)
-const deletingId = ref(''), deleteBusy = ref(false), deleteError = ref('')
-// ---- F9 能力面板：可用 / 未启用（原因）/ 替代 ----
-const capabilitiesOpen = ref(false)
-const capabilitiesLoading = ref(false), capabilitiesError = ref('')
-const capabilities = ref<CapabilitiesView | null>(null)
-const choosingTopic = ref(false)
-// 恢复会话的短暂空态：避免刚刷新时先闪一句"新会话已就绪/咨询对话"。
-const restoring = ref(false)
-// 发送后极短时间内的"停止"点击要忽略：按钮在同一位置从"发送"变成"停止"，
-// 双击发送的第二次点击会命中停止，把刚发出的问题撤回（实测 DEF-C1）。
-const stopArmed = ref(true)
-let stopArmTimer: ReturnType<typeof setTimeout> | undefined
-// 新建入口每次创建独立会话；旧会话通过历史列表继续。
-let handledNewTopicIntent = ''
-const profileLoaded = ref(false), studyYearSaving = ref(''), studyYearError = ref(''), editingStudyYear = ref(false), savedStudyYear = ref('')
-const theoryCards = ref<Record<string, TheoryCardView>>({}), theoryErrors = ref<Record<string, string>>({})
-const theoryLoading = ref<Record<string, boolean>>({})
-const sessions = computed(() => [...backendDemo.state.sessions]
- // 与后端会话列表口径一致：还没有任何消息的会话不进历史。
- // 否则 fresh 新建的空会话会先出现在列表里、刷新后又消失（DEF-C2）。
- .filter(session => (session.message_count ?? 0) > 0 || !!session.last_message)
- .sort((a,b) => ((b.last_message_at || b.last_active_at) || '').localeCompare((a.last_message_at || a.last_active_at) || '')))
-// 会话搜索：按标题与会话最后一句内容实时过滤（无结果时给明确空态）。
-const filteredSessions = computed(() => {
- const keyword = sessionQuery.value.trim().toLowerCase()
- if (!keyword) return sessions.value
- return sessions.value.filter(session => `${session.task_name || ''} ${session.last_message || ''}`.toLowerCase().includes(keyword))
-})
-const sessionMutationBusy = computed(() => renameBusy.value || deleteBusy.value)
-const capabilityItems = computed<CapabilityItemView[]>(() => capabilities.value?.items ?? [])
+const { sessions, filteredSessions, sessionQuery, sessionListLoading, sessionListError, renamingId, renameDraft, renameError, renameBusy, deletingId, deleteBusy, deleteError, refreshSessionList, refreshSessionsOnFocus, sessionTimeLabel, startRename, cancelRename, saveRename, askDelete, cancelDelete, confirmDelete } = useConversationSessions({ historyOpen, thinking, choosingTopic, requestError, uploadError, interrupted, pending, isDisposed: () => disposed, clearFailure, resume, refreshProfile })
+const { capabilitiesOpen, capabilitiesLoading, capabilitiesError, capabilities, capabilityItems, capabilityStatus, loadCapabilities } = useConversationCapabilities()
 const title = computed(() => showStudyYearQuestion.value ? '开始咨询' : choosingTopic.value ? '选择咨询主题' : backendDemo.currentSession.value?.task_name || '咨询对话')
 const latestHostId = computed(() => turns.value.at(-1)?.from === 'host' ? turns.value.at(-1)?.id : undefined)
 const currentStage = computed(() => liveFocus.value || systemData.snapshot?.stage || backendDemo.currentSession.value?.stage || 'collect')
@@ -130,134 +106,6 @@ const studyYearField = computed(() => backendDemo.state.liveWorkspace?.profile_p
 const studyYear = computed(() => savedStudyYear.value || String(studyYearField.value?.value ?? ''))
 const showStudyYearQuestion = computed(() => profileLoaded.value && editingStudyYear.value)
 const starters = computed(() => personalizedStudyYearEntries(auth.state.bootstrap?.task_entries ?? [], studyYear.value))
-let controller: AbortController | null = null, serial = 0, disposed = false
-let failedRequest: MessageRequest | null = null
-function remember() { backendDemo.saveDraft(demo.state.currentSessionId, draft.value, attached.value, flow.value?.scrollTop ?? null) }
-function resizeInput() { if (input.value) { input.value.style.height = 'auto'; input.value.style.height = Math.min(input.value.scrollHeight, 144) + 'px' } }
-function applyFill(text: string, option?: OptionRef) { draft.value = text; selectedOption.value = option ?? null; profileOpen.value = false; void nextTick(() => input.value?.focus()) }
-function fill(text: string, option?: OptionRef) {
-  if (thinking.value) return
-  // 已有非空草稿时不能静默覆盖：先让用户确认，替换后仍可撤销。
-  if (draft.value.trim() && draft.value.trim() !== text.trim()) {
-    fillRequest.value = { text, option, previousText: draft.value, previousOption: selectedOption.value }
-    replacedDraft.value = null
-    profileOpen.value = false
-    return
-  }
-  applyFill(text, option)
-  // 点快捷选项只填入不发送：给一句明确反馈，避免"点了没反应"（深度测试观察项）。
-  if (option) toast('已填入输入框，点发送即可。')
-}
-function confirmFillReplace() {
-  const request = fillRequest.value
-  if (!request) return
-  fillRequest.value = null
-  applyFill(request.text, request.option)
-  replacedDraft.value = { text: request.previousText, option: request.previousOption }
-  if (request.option) toast('已替换为所选内容，点发送即可。原草稿可点「撤销替换」恢复。')
-}
-function cancelFillReplace() { fillRequest.value = null }
-function undoFillReplace() {
-  const previous = replacedDraft.value
-  if (!previous) return
-  replacedDraft.value = null
-  applyFill(previous.text, previous.option ?? undefined)
-}
-function failureKey(id: string) { return id ? `zhiyin-chat-failure:${id}` : '' }
-function rememberFailure(sessionId: string, data: FailedSend) {
-  failedSend.value = data
-  const key = failureKey(sessionId)
-  if (!key) return
-  try { localStorage.setItem(key, JSON.stringify(data)) } catch { /* 存储不可用时至少保留本次内存态 */ }
-}
-function clearFailure(sessionId = demo.state.currentSessionId) {
-  failedSend.value = null
-  const key = failureKey(sessionId)
-  if (!key) return
-  try { localStorage.removeItem(key) } catch { /* 忽略清理失败 */ }
-}
-function loadFailure(sessionId: string) {
-  failedSend.value = null
-  if (!sessionId) return
-  try {
-    const raw = localStorage.getItem(failureKey(sessionId))
-    if (!raw) return
-    const data = JSON.parse(raw) as FailedSend
-    if (!data?.request?.message) return
-    failedSend.value = data
-    failedRequest = data.request
-    // 刷新后要让人知道上一轮没成功：把错误也放回对话提示里（含「重新尝试」）。
-    requestError.value = data.error || '上一轮回复没有完成，可以重新尝试。'
-  } catch { /* 坏数据直接忽略，不阻塞会话 */ }
-}
-function discardFailure() {
-  clearFailure()
-  failedRequest = null
-  requestError.value = ''
-}
-// 登出/切换账号时清掉失败消息，避免下一次登录看到上一个账号的聊天内容。
-function clearAllFailures() {
-  failedSend.value = null
-  failedRequest = null
-  try {
-    for (let index = localStorage.length - 1; index >= 0; index -= 1) {
-      const key = localStorage.key(index)
-      if (key?.startsWith('zhiyin-chat-failure:')) localStorage.removeItem(key)
-    }
-  } catch { /* 存储不可用时只剩内存态 */ }
-}
-const showFailedSend = computed(() => {
-  const data = failedSend.value
-  if (!data) return false
-  return !turns.value.some(turn => turn.from === 'me' && (turn.id === `${data.request.client_msg_id}-user` || turn.text === data.request.message))
-})
-
-/**
- * 统一把技术异常收敛成中文可操作提示（深度测试 DEF：解析异常/英文校验文案漏到对话里）。
- * 中文业务提示原样保留；英文或 JSON/解析类异常一律换成"稍后重试/改格式"的说法。
- */
-const TECHNICAL_ERROR = /(Expected property name|Unexpected token|Unexpected end of JSON|is not valid JSON|JSON\.parse|SyntaxError|TypeError|ReferenceError|Traceback|ValidationError|String should|Input should|failed to fetch|NetworkError|Load failed)/i
-function friendlyError(error: unknown) {
-  const message = (error instanceof Error ? error.message : typeof error === 'string' ? error : '').trim()
-  if (!message) return '这次操作没有完成，请稍后重试。'
-  if (TECHNICAL_ERROR.test(message)) return '服务返回的内容无法识别，请稍后重试；如果正在上传材料，请改用 TXT/CSV 等文本格式。'
-  if (!/[\u4e00-\u9fa5]/.test(message)) return '这次操作没有完成，请稍后重试。'
-  return message
-}
-function errorCode(error: unknown) { return (error as { code?: number } | null)?.code }
-/**
- * 材料预校验：能在前端拦住的就不要发请求。
- * 后端对 PDF/Word/Excel/图片/压缩包有专门的中文说明（infra/textfile.py），这里给同样的口径；
- * 其余非文本格式（.exe 等）后端会按文本解码成乱码，必须在前端拦下。
- */
-const MAX_MATERIAL_BYTES = 2_000_000
-const TEXT_SUFFIXES = new Set(['txt', 'text', 'csv', 'tsv', 'json', 'jsonl', 'md', 'markdown', 'log', 'xml', 'html', 'htm', 'yaml', 'yml', 'sql', 'ini', 'cfg', 'conf', 'properties', 'py', 'js', 'mjs', 'cjs', 'ts', 'tsx', 'jsx', 'vue', 'java', 'c', 'h', 'cpp', 'hpp', 'cs', 'go', 'rs', 'rb', 'php', 'css', 'scss', 'less', 'srt', 'vtt', 'tex', 'bib', 'r'])
-const BINARY_LABELS: Record<string, string> = { pdf: 'PDF', doc: 'Word 文档', docx: 'Word 文档', xls: 'Excel 工作簿', xlsx: 'Excel 工作簿', xlsm: 'Excel 工作簿', ppt: 'PPT', pptx: 'PPT', zip: '压缩包', rar: '压缩包', '7z': '压缩包', png: '图片', jpg: '图片', jpeg: '图片', gif: '图片', webp: '图片', bmp: '图片', heic: '图片', svg: '矢量图', exe: '可执行文件', dll: '程序文件', msi: '安装包', bin: '二进制文件', iso: '光盘镜像', mp3: '音频', wav: '音频', mp4: '视频', mov: '视频', avi: '视频', ttf: '字体', otf: '字体', woff: '字体', woff2: '字体', psd: '设计文件' }
-function fileSuffix(name: string) { const index = name.lastIndexOf('.'); return index > 0 ? name.slice(index + 1).toLowerCase() : '' }
-function materialRejection(file: File) {
-  const suffix = fileSuffix(file.name)
-  if (file.size > MAX_MATERIAL_BYTES) return `「${file.name}」超过 2MB 上限，请截取相关的那一段后再上传。`
-  if (!file.size) return `「${file.name}」是空文件，请换一份有内容的文本。`
-  if (!suffix || TEXT_SUFFIXES.has(suffix)) return ''
-  const label = BINARY_LABELS[suffix]
-  // 认不出的后缀不抢后端判断权：后端会按内容识别二进制并给出中文说明，别误伤可读文本。
-  if (!label) return ''
-  if (suffix === 'pdf') return '暂不支持直接读取 PDF：请把需要分析的文字复制为 TXT 后上传，或直接粘贴到输入框。'
-  if (label === 'Word 文档' || label === 'Excel 工作簿' || label === 'PPT') return `暂不支持直接读取${label}：请在 Office 里另存为 CSV 或 TXT 后上传。`
-  if (label === '图片' || label === '矢量图') return '图片里的文字读不出来：请把文字复制成文本，或直接用文字描述图片内容。'
-  if (label === '压缩包') return '压缩包读不了：请先解压，再上传其中的 TXT、CSV 等文本文件。'
-  return `不支持 .${suffix} 文件：对话里只能读取文字，请上传 TXT、CSV、MD 等文本文件。`
-}
-function friendlyMaterialError(error: unknown) {
-  const message = error instanceof Error ? error.message : ''
-  if (errorCode(error) === 413 || /413|entity too large|payload too large/i.test(message)) return '材料超过大小限制（最多 2MB），请截取相关的那一段后再上传。'
-  if (errorCode(error) === 422) {
-    // 后端对 PDF/Word/Excel 等有专门说明时保留原话；纯校验/技术文案统一成"格式不支持"。
-    if (/暂不支持|请复制|请上传|TXT|CSV/i.test(message) && /[\u4e00-\u9fa5]/.test(message) && !TECHNICAL_ERROR.test(message)) return message
-    return '这个文件格式不支持，请上传 TXT、CSV、MD 等文本文件。'
-  }
-  return friendlyError(error)
-}
 // 对话任务卡：guideTask.task_id 可能来自旧计划，甚至只是模型给的一条建议（不在计划里）。
 const planTaskRows = computed(() => {
   const rows: { task: DeepReadonly<ActionTaskView>; phase: DeepReadonly<ActionPhaseView> }[] = []
@@ -307,68 +155,6 @@ function chooseConfirm(choice: OptionRef) {
   if (draft.value.trim() === choice.label.trim()) { draft.value = ''; selectedOption.value = null; remember() }
   void send(false, { text: choice.label, option: choice })
 }
-function pendingKey(id: string) { return `zhiyin-chat-pending:${id}` }
-function markChatPending(id: string) { try { sessionStorage.setItem(pendingKey(id), '1') } catch { /* 无 storage 时由服务端状态兜底 */ } }
-function markChatStopped(id: string) { try { sessionStorage.setItem(pendingKey(id), 'stopped') } catch { /* ignore */ } }
-function clearChatPending(id: string) { try { sessionStorage.removeItem(pendingKey(id)) } catch { /* ignore */ } }
-function hasChatPending(id: string) { try { return sessionStorage.getItem(pendingKey(id)) === '1' } catch { return false } }
-function hasChatStopped(id: string) { try { return sessionStorage.getItem(pendingKey(id)) === 'stopped' } catch { return false } }
-/**
- * 生成中刷新/切页的残局修复。
- *
- * openSession 恢复时会用会话快照里的 guide（属于**上一轮**回复）补齐最后一个助手回合；
- * 如果最后一条其实是用户刚发出、还没等到回复的提问，就会把上一轮的引导/残片挂到这条
- * 提问下面，看起来像"本轮回答"（深度测试 DEF-DS-02）。
- * 这里把这种伪回合摘掉，换成一条明确的"回复中断"提示，并保留重新发送入口。
- */
-function syncInterruptedNotice() {
-  if (thinking.value || systemData.busy) return
-  const list = turns.value
-  const last = list.at(-1)
-  const previous = list.at(-2)
-  const markerPending = hasChatPending(demo.state.currentSessionId)
-  if (hasChatStopped(demo.state.currentSessionId)) {
-    // 主动停止不是“刷新导致的中断”：刷新后明确告诉用户上一轮是停止的，
-    // 不出现“重新发送这个问题”，避免把未完成说成系统故障。
-    // 标记保留到下一轮发送/用户明确处理，刷新后仍能区分“主动停止”和“异常中断”。
-    interrupted.value = null
-    if (!requestError.value) requestError.value = '上一轮回复是你主动停止的，没有继续生成。你可以继续补充或重新提问。'
-    return
-  }
-  const phantom = last?.from === 'host' && !last.text?.trim() && last.id.endsWith('-guide') && previous?.from === 'me' ? last : undefined
-  // 先摘掉伪回合：不管有没有失败提示，上一轮的引导都不能显示在这条提问下面。
-  if (phantom) {
-    demo.setChatTurns(list.slice(0, -1), demo.state.currentSessionId)
-    backendDemo.saveTurns(demo.state.currentSessionId, demo.state.chatTurns)
-  }
-  const question = phantom ? previous : last?.from === 'me' && (!pending.value || markerPending) ? last : undefined
-  if (!question) {
-    if (last?.from === 'host') interrupted.value = null
-    return
-  }
-  // 已有失败态时优先走"重新尝试"那条通道，避免两条重试入口同时出现。
-  if (failedSend.value || requestError.value) { interrupted.value = null; return }
-  if (interrupted.value?.turnId !== question.id) interrupted.value = {
-    text: question.text,
-    turnId: question.id,
-    clientMsgId: question.id.endsWith('-user') ? question.id.slice(0, -5) : undefined,
-    materials: question.materials?.map(item => ({ id: item.id, name: item.name })),
-  }
-  if (markerPending) clearChatPending(demo.state.currentSessionId)
-}
-function retryInterrupted() {
-  const item = interrupted.value
-  if (!item || thinking.value || systemData.busy) return
-  interrupted.value = null
-  // 复用原 client_msg_id / 材料：服务端已保存这条用户消息，重发只补回答，
-  // 不再新增一条重复的用户气泡。
-  void send(false, { text: item.text }, { clientMsgId: item.clientMsgId, materials: item.materials })
-}
-function dismissInterrupted() {
-  interrupted.value = null
-  clearChatPending(demo.state.currentSessionId)
-  void nextTick(() => input.value?.focus())
-}
 function safeLink(url?: string | null) { try { const u = new URL(url || ''); return ['http:', 'https:'].includes(u.protocol) ? u.href : undefined } catch { return undefined } }
 function displayDate(raw: string) { const date = new Date(raw); return Number.isNaN(date.getTime()) ? raw : date.toLocaleString('zh-CN', {month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'}) }
 function evidenceCount(t: ChatTurn) { return (t.theory_refs?.length ?? 0) + (t.intel_refs?.length ?? 0) + (t.clues?.length ?? 0) }
@@ -377,143 +163,6 @@ function stageLabel(stage: string) { return ({ collect:'了解情况', diagnose:
 async function theory(id: string) { if (theoryCards.value[id] || theoryLoading.value[id]) return; theoryErrors.value[id] = ''; theoryLoading.value[id] = true; try { theoryCards.value[id] = await backendClient.theory(id) } catch (e) { theoryErrors.value[id] = friendlyError(e) } finally { theoryLoading.value[id] = false } }
 async function refreshProfile() { profileLoading.value = true; profileError.value = ''; try { const result = await backendClient.workspace(); if (!disposed) { backendDemo.setWorkspace(result); const stored = result.profile_panel?.fields?.find(field => field.key === 'study_year'); if (stored) savedStudyYear.value = String(stored.value ?? '') } } catch (e) { if (!disposed) profileError.value = friendlyError(e) } finally { profileLoading.value = false; profileLoaded.value = true } }
 function clearTopicQuery() { if (route.query.new === undefined) return; const query = { ...route.query }; delete query.new; void router.replace({ path:route.path, query }) }
-/**
- * 会话列表刷新：重命名/删除的响应优先直接落地（契约返回 SessionListView），
- * 只有响应不可用时才再请求一次——避免操作后重复请求。
- */
-function applySessionListResult(result: SessionListView | { removed?: string } | null | undefined) {
-  const sessionsResult = result && Array.isArray((result as SessionListView).sessions) ? result as SessionListView : null
-  if (!sessionsResult) return false
-  const list = sessionsResult.sessions ?? []
-  const current = demo.state.currentSessionId
-  const keep = list.some(session => session.task_id === current) ? current : (sessionsResult.current_task_id || '')
-  backendDemo.setSessions(list, keep)
-  return true
-}
-async function refreshSessionList(notify = false) {
-  if (sessionListLoading.value) return false
-  sessionListLoading.value = true
-  if (notify) sessionListError.value = ''
-  try {
-    const result = await backendClient.sessions()
-    if (!disposed) applySessionListResult(result)
-    return true
-  } catch (e) {
-    if (notify && !disposed) sessionListError.value = friendlyError(e)
-    return false
-  } finally { if (!disposed) sessionListLoading.value = false }
-}
-async function refreshSessionsOnFocus() {
-  if (document.visibilityState !== 'visible') return
-  // 焦点回到页面时静默刷新；历史浮层打开时把错误显示在浮层里。
-  await refreshSessionList(historyOpen.value)
-}
-function sessionTimeLabel(session: TaskSessionView) {
-  const raw = session.last_message_at || session.last_active_at
-  if (!raw) return ''
-  const date = new Date(raw)
-  return Number.isNaN(date.getTime()) ? '' : date.toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-}
-function startRename(session: TaskSessionView) {
-  if (sessionMutationBusy.value) { toast('正在处理上一个会话操作，请稍候。'); return }
-  deletingId.value = ''
-  renamingId.value = session.task_id
-  renameDraft.value = session.task_name
-  renameError.value = ''
-  void nextTick(() => {
-    // 行内输入框在 v-for 里，不用模板 ref（会变成数组），按容器查询后聚焦更稳。
-    const field = document.querySelector('.session-row__rename input') as HTMLInputElement | null
-    field?.focus()
-    field?.select()
-  })
-}
-function cancelRename() {
-  if (renameBusy.value) return
-  renamingId.value = ''
-  renameError.value = ''
-}
-async function saveRename(session: TaskSessionView) {
-  if (renameBusy.value) return
-  const name = renameDraft.value.trim()
-  // 校验口径与后端一致：2–60 个字（不含首尾空白）。
-  if (name.length < 2 || name.length > 60) { renameError.value = '会话名称需要 2–60 个字。'; return }
-  if (name === session.task_name) { renamingId.value = ''; return }
-  renameBusy.value = true
-  renameError.value = ''
-  try {
-    const result = await backendClient.sessionRename(session.task_id, name)
-    if (!applySessionListResult(result) && !await refreshSessionList(true)) throw new Error('名称已提交，但会话列表暂时没有刷新成功，请重新打开历史会话查看。')
-    renamingId.value = ''
-    toast('会话名称已更新。')
-  } catch (e) {
-    renameError.value = friendlyError(e)
-  } finally { renameBusy.value = false }
-}
-function askDelete(session: TaskSessionView) {
-  if (sessionMutationBusy.value) { toast('正在处理上一个会话操作，请稍候。'); return }
-  renamingId.value = ''
-  deletingId.value = session.task_id
-  deleteError.value = ''
-}
-function cancelDelete() {
-  if (deleteBusy.value) return
-  deletingId.value = ''
-  deleteError.value = ''
-}
-async function confirmDelete(session: TaskSessionView) {
-  if (deleteBusy.value) return
-  const wasCurrent = session.task_id === demo.state.currentSessionId
-  if (wasCurrent && thinking.value) { deleteError.value = '回复生成中，等这一轮结束后再删除当前会话。'; return }
-  deleteBusy.value = true
-  deleteError.value = ''
-  try {
-    const result = await backendClient.sessionDelete(session.task_id)
-    // 删除后清掉该会话的失败缓存与草稿，避免下次打开残留旧内容。
-    clearFailure(session.task_id)
-    backendDemo.saveDraft(session.task_id, '', [], null)
-    deletingId.value = ''
-    if (!applySessionListResult(result) && !await refreshSessionList(true)) throw new Error('会话已经删除，但列表暂时没有刷新成功，请重新打开历史会话查看最新状态。')
-    toast(`已删除会话「${session.task_name}」。`)
-    if (wasCurrent) {
-      historyOpen.value = false
-      const next = sessions.value[0]
-      if (next) await resume(next.task_id)
-      else {
-        // 没有剩余会话：回到"从主题开始"的空态。
-        demo.setChatTurns([], '')
-        demo.setChatBusy(false)
-        systemData.snapshot = null
-        pending.value = null
-        interrupted.value = null
-        requestError.value = ''
-        uploadError.value = ''
-        choosingTopic.value = false
-        void refreshProfile()
-      }
-    }
-  } catch (e) {
-    deleteError.value = friendlyError(e)
-  } finally { deleteBusy.value = false }
-}
-/** 能力状态：未接入（联网/检索这类需要配置的能力）与未启用分开说，避免暗示"可用"。 */
-function capabilityStatus(item: CapabilityItemView) {
-  if (item.available) return '可用'
-  const text = `${item.key || ''} ${item.label || ''} ${item.reason || ''}`
-  return /联网|在线检索|外部检索|web|search|internet/i.test(text) ? '未接入' : '未启用'
-}
-async function loadCapabilities(force = false) {
-  if (capabilitiesLoading.value) return
-  if (capabilities.value && !force) return
-  capabilitiesLoading.value = true
-  capabilitiesError.value = ''
-  try {
-    capabilities.value = await backendClient.capabilities()
-  } catch (e) {
-    capabilitiesError.value = friendlyError(e)
-  } finally { capabilitiesLoading.value = false }
-}
-watch(historyOpen, open => { if (open) void refreshSessionList(true) })
-watch(capabilitiesOpen, open => { if (open) void loadCapabilities() })
 function chooseTopic() { if (thinking.value || systemData.busy || !systemData.shellReady) return; choosingTopic.value = true; historyOpen.value = false; profileOpen.value = false; requestError.value = ''; void nextTick(() => { if (flow.value) flow.value.scrollTop = 0 }) }
 function closeTopic() { choosingTopic.value = false; clearTopicQuery(); void bottom(true) }
 async function reloadConversation() {
@@ -546,37 +195,6 @@ async function saveStudyYear(label: string) {
   studyYearError.value = friendlyError(e)
   if ((e as { code?: number }).code === 1003) await refreshProfile()
  } finally { studyYearSaving.value = '' }
-}
-async function upload(event: Event) { await uploadFiles(Array.from((event.target as HTMLInputElement).files ?? [])) }
-async function uploadFiles(files: File[]) {
-  if (!files.length || uploading.value) return
-  if (thinking.value) {
-    uploadError.value = '回复生成中，先等这一轮结束再添加材料。'
-    if (fileInput.value) fileInput.value.value = ''
-    return
-  }
- // 先做格式与大小预校验：能当场说清楚的不发请求（深度测试 DEF-DS-03/04）。
- const problems = files.map(file => materialRejection(file)).filter(Boolean)
- const acceptable = files.filter(file => !materialRejection(file))
- uploadError.value = problems.join(' ')
- if (!acceptable.length) { if (fileInput.value) fileInput.value.value = ''; return }
- uploading.value = true
- const sessionId = demo.state.currentSessionId
- try { for (const file of acceptable) { const material = await backendClient.material(file); if (disposed || sessionId !== demo.state.currentSessionId) return; if (!attached.value.some(item => item.id === material.material_id)) attached.value.push({ id: material.material_id, name: material.name || file.name }) } }
- catch (e) { if (!disposed && sessionId === demo.state.currentSessionId) uploadError.value = friendlyMaterialError(e) }
- finally { uploading.value = false; if (fileInput.value) fileInput.value.value = '' }
-}
-function dragOver(event: DragEvent) {
- if (!event.dataTransfer?.types.includes('Files')) return
- event.preventDefault(); event.dataTransfer.dropEffect = uploading.value || thinking.value ? 'none' : 'copy'; draggingFiles.value = !uploading.value && !thinking.value
-}
-function dropFiles(event: DragEvent) {
- if (!event.dataTransfer?.types.includes('Files')) return
- event.preventDefault(); draggingFiles.value = false; void uploadFiles(Array.from(event.dataTransfer.files))
-}
-function pasteFiles(event: ClipboardEvent) {
- const files = Array.from(event.clipboardData?.files ?? [])
- if (files.length && !event.clipboardData?.getData('text/plain')) { event.preventDefault(); void uploadFiles(files) }
 }
 /**
  * 对话里的任务卡：先对齐真实计划，再按状态决定动作。
