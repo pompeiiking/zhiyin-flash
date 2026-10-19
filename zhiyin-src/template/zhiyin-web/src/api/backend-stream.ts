@@ -1,7 +1,7 @@
 /** AI endpoints return progress/result/error frames, not JSON page data. */
 import operations from './operations.json'
 import { BackendError } from './backend-client'
-export type StreamProgress = { pct?: number; note?: string; text?: string; agent?: string; protocol?: number; type?: string; step_id?: string; sequence?: number; run_id?: string }
+export type StreamProgress = { pct?: number; note?: string; text?: string; agent?: string; stage?: string; protocol?: number; type?: string; step_id?: string; sequence?: number; run_id?: string }
 export async function streamBackend<T>(
   key: keyof typeof operations,
   options: { params?: Record<string, string>; arg?: string | number; body?: unknown; signal?: AbortSignal },

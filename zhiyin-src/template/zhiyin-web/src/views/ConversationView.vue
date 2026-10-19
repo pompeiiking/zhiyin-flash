@@ -45,6 +45,7 @@ const runtimeState = ref<ConversationRuntimeState | null>(null)
 const backgroundRun = computed(() => runtimeState.value?.runs.find(r => r.state === 'running'))
 let recoveryTimer: ReturnType<typeof setInterval> | undefined
 const activeRunId = ref('')
+const liveFocus = ref('')
 async function refreshRuntime() {
  const id = demo.state.currentSessionId
  if (!id) { runtimeState.value = null; return }
@@ -72,7 +73,7 @@ async function setTemporary(event: Event) {
 function decideAction(id: string, accept: boolean) {
  void send(false, { text: accept ? '确认执行这项变更' : '暂不执行这项变更', option: { option_id: `action.${id}.${accept ? 'accept' : 'decline'}`, label: accept ? '确认执行' : '暂不执行', value: {action_id: id} } })
 }
-watch(() => demo.state.currentSessionId, () => { runtimeState.value = null; liveSteps.value = []; void refreshRuntime() }, { immediate: true })
+watch(() => demo.state.currentSessionId, () => { liveFocus.value = ''; runtimeState.value = null; liveSteps.value = []; void refreshRuntime() }, { immediate: true })
 
 type OptionRef = NonNullable<ChatTurn['optionRefs']>[number]
 type FailedSend = { request: MessageRequest; materials: { id: string; name: string }[]; error: string; at: string }
@@ -127,6 +128,12 @@ const sessionMutationBusy = computed(() => renameBusy.value || deleteBusy.value)
 const capabilityItems = computed<CapabilityItemView[]>(() => capabilities.value?.items ?? [])
 const title = computed(() => showStudyYearQuestion.value ? '开始咨询' : choosingTopic.value ? '选择咨询主题' : backendDemo.currentSession.value?.task_name || '咨询对话')
 const latestHostId = computed(() => turns.value.at(-1)?.from === 'host' ? turns.value.at(-1)?.id : undefined)
+const currentStage = computed(() => liveFocus.value || systemData.snapshot?.stage || backendDemo.currentSession.value?.stage || 'collect')
+const journey = [
+ { key:'collect', label:'了解自己', short:'了解' }, { key:'diagnose', label:'梳理判断', short:'判断' },
+ { key:'decide', label:'比较选择', short:'选择' }, { key:'act', label:'安排下一步', short:'行动' },
+ { key:'review', label:'回顾调整', short:'回顾' },
+]
 const host = computed(() => systemData.snapshot?.badge.name || backendDemo.currentSession.value?.lead_agent_name || '咨询顾问')
 const studyYearField = computed(() => backendDemo.state.liveWorkspace?.profile_panel?.fields?.find(field => field.key === 'study_year'))
 const studyYear = computed(() => savedStudyYear.value || String(studyYearField.value?.value ?? ''))
@@ -373,7 +380,7 @@ function dismissInterrupted() {
 }
 function safeLink(url?: string | null) { try { const u = new URL(url || ''); return ['http:', 'https:'].includes(u.protocol) ? u.href : undefined } catch { return undefined } }
 function displayDate(raw: string) { const date = new Date(raw); return Number.isNaN(date.getTime()) ? raw : date.toLocaleString('zh-CN', {month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'}) }
-function evidenceCount(t: ChatTurn) { return (t.theory_refs?.length ?? 0) + (t.intel_refs?.length ?? 0) }
+function evidenceCount(t: ChatTurn) { return (t.theory_refs?.length ?? 0) + (t.intel_refs?.length ?? 0) + (t.clues?.length ?? 0) }
 function assetLabel(type: string) { return ({ report:'诊断报告', direction_plan:'方向方案', action_plan:'行动计划' } as Record<string,string>)[type] || '关联资料' }
 function stageLabel(stage: string) { return ({ collect:'了解情况', diagnose:'梳理判断', decide:'比较选择', act:'安排下一步', review:'回顾调整' } as Record<string,string>)[stage] || '处理中' }
 async function theory(id: string) { if (theoryCards.value[id] || theoryLoading.value[id]) return; theoryErrors.value[id] = ''; theoryLoading.value[id] = true; try { theoryCards.value[id] = await backendClient.theory(id) } catch (e) { theoryErrors.value[id] = friendlyError(e) } finally { theoryLoading.value[id] = false } }
@@ -643,7 +650,7 @@ async function send(retry = false, choice?: { text: string; option?: OptionRef }
  // 发送后 700ms 内忽略"停止"点击，避免双击发送把刚发出的消息撤回。
  stopArmed.value = false; clearTimeout(stopArmTimer)
  stopArmTimer = setTimeout(() => { stopArmed.value = true }, 700)
- pending.value = { text:'', agent:'知音', note:'正在分析你的问题' }; liveSteps.value = []; activeRunId.value = request.client_msg_id || ''
+ liveFocus.value = ''; pending.value = { text:'', agent:host.value, note:'正在分析你的问题' }; liveSteps.value = []; activeRunId.value = request.client_msg_id || ''
  if (!retry && !resend?.clientMsgId) {
   demo.addChatTurn({ id:`${request.client_msg_id}-user`, from:'me', text, materials:outgoingMaterials })
   if (!choice) { if (draft.value === outgoingDraft) draft.value = ''; attached.value = attached.value.filter(m => !outgoingMaterials.some(s => s.id === m.id)); selectedOption.value = null; remember() }
@@ -655,9 +662,10 @@ async function send(retry = false, choice?: { text: string; option?: OptionRef }
    if (frame.text !== undefined) pending.value.text = frame.text
    if (frame.step_id && frame.type?.startsWith('step.')) {
     const item = liveSteps.value.find(s => s.id === frame.step_id)
-    if (item) { item.state = frame.type; if (frame.type === 'step.started') item.label = frame.note || item.label }
+    if (item) { item.state = frame.type; item.label = frame.note || item.label }
     else liveSteps.value.push({ id: frame.step_id, label: frame.note || '正在处理', state: frame.type })
    }
+   if (frame.type === 'role.selected' && typeof frame.stage === 'string') liveFocus.value = frame.stage
    if (frame.agent) pending.value.agent = frame.agent
    if (frame.note) pending.value.note = frame.note
    if (frame.type === 'approval.required') void refreshRuntime()
@@ -869,6 +877,7 @@ onUnmounted(() => { disposed = true; clearInterval(recoveryTimer); window.remove
     </div></AnchoredCard>
     <AnchoredCard v-model="profileOpen" class="consult-icon" title="个人画像" side="bottom" align="end"><template #trigger><UiIcon name="profile" :size="19" /><span class="consult-header__label">个人画像</span></template><ConversationProfile embedded :loading="profileLoading" :error="profileError" @close="profileOpen = false" @refresh="refreshProfile" @supplement="fill" /></AnchoredCard>
    </div></div>
+   <ol v-if="!choosingTopic && demo.state.currentSessionId" class="consult-journey" aria-label="咨询进度：当前工作重点，可随话题调整"><li v-for="item in journey" :key="item.key" :data-state="currentStage === item.key ? 'current' : 'future'" :aria-current="currentStage === item.key ? 'step' : undefined"><i /><span><em class="consult-journey__full">{{ item.label }}</em><em class="consult-journey__short">{{ item.short }}</em></span></li></ol>
   </header>
   <div ref="flow" v-scroll-fade class="consult-flow" tabindex="0" aria-label="对话记录" @scroll.passive="onScroll">
    <div v-if="systemData.busy || restoring" class="consult-loading" role="status">正在读取会话…</div>
@@ -907,8 +916,8 @@ onUnmounted(() => { disposed = true; clearInterval(recoveryTimer); window.remove
        <ReadableText v-if="turn.guideText" :text="cleanConsultantText(turn.guideText)" class="consult-guide" />
       </div>
       <div class="consult-references">
-        <DetailPopover v-if="evidenceCount(turn)" title="本轮参考资料" side="top" class="consult-evidence" @update:model-value="open => open && turn.theory_refs?.forEach(r => theory(r.theory_id))"><template #trigger><UiIcon name="shield" :size="15" /><span>查看线索</span><small>{{ evidenceCount(turn) }}</small></template>
-         <p class="ws-muted">以下为本轮检索资料与参考方法，不代表每项资料均能直接支持当前结论；是否适用请结合回复中的限制说明核对。</p><h3 v-if="turn.intel_refs?.length">检索资料</h3><div v-for="r in turn.intel_refs" :key="r.id" class="consult-source"><strong>{{ r.title || '资料来源' }}</strong><p v-if="r.source_name">{{ r.source_name }}</p><a v-if="safeLink(r.source_url)" :href="safeLink(r.source_url)" target="_blank" rel="noopener noreferrer">查看原始资料</a></div>
+        <DetailPopover v-if="evidenceCount(turn)" title="本轮线索" side="top" class="consult-evidence" @update:model-value="open => open && turn.theory_refs?.forEach(r => theory(r.theory_id))"><template #trigger><UiIcon name="shield" :size="15" /><span>查看线索</span><small>{{ evidenceCount(turn) }}</small></template>
+         <h3 v-if="turn.clues?.length">判断标准与待核实项</h3><div v-for="(clue, index) in turn.clues" :key="index" class="consult-source"><p>{{ clue }}</p></div><p v-if="turn.clues?.length" class="ws-muted">以上为本轮分析说明；资料出处与参考方法列在下方。</p><h3 v-if="turn.intel_refs?.length">检索资料</h3><div v-for="r in turn.intel_refs" :key="r.id" class="consult-source"><strong>{{ r.title || '资料来源' }}</strong><p v-if="r.source_name">{{ r.source_name }}</p><a v-if="safeLink(r.source_url)" :href="safeLink(r.source_url)" target="_blank" rel="noopener noreferrer">查看原始资料</a></div>
          <h3 v-if="turn.theory_refs?.length">参考方法</h3><div v-for="r in turn.theory_refs" :key="r.theory_id" class="consult-source"><strong>{{ r.name }}</strong><p v-if="theoryCards[r.theory_id]">{{ theoryCards[r.theory_id].summary || '暂无详细方法说明。' }}</p><p v-else-if="theoryLoading[r.theory_id]" role="status">正在读取方法说明…</p><button v-else @click="theory(r.theory_id)">重新读取方法说明</button><p v-if="theoryErrors[r.theory_id]" role="alert">{{ theoryErrors[r.theory_id] }}</p></div>
         </DetailPopover>
       <DetailPopover v-if="turn.pipelineCards?.length || turn.changedAssets?.length" title="本轮处理记录" side="top" class="consult-evidence"><template #trigger><UiIcon name="check" :size="15" /><span>处理记录</span></template>
@@ -940,11 +949,11 @@ onUnmounted(() => { disposed = true; clearInterval(recoveryTimer); window.remove
       <button type="button" @click="dismissInterrupted">继续自己输入</button>
      </div>
     </div>
-    <article v-if="pending" class="consult-turn consult-turn--host consult-pending" aria-label="当前回复"><AgentAvatar :agent="agentKeyOf(pending.agent)" aria-label="知音" title="知音 · 职业发展顾问" :size="38" :state="thinking ? pending.text ? 'speaking' : 'thinking' : 'idle'" /><div class="consult-answer"><span class="consult-speaker">{{ consultantLabel(pending.agent) }}</span><ReadableText v-if="pending.text" :text="cleanConsultantText(pending.text)" class="consult-prose" /><div v-else-if="thinking" class="consult-wait" role="status"><span class="consult-wait-orbit" aria-hidden="true"><i /><i /><i /></span><div><p>{{ pending.note }}</p><small>正在接收回复<span v-if="elapsed >= 3"> · {{ elapsed }} 秒</span></small></div></div><p v-if="thinking && pending.text" class="consult-live-note" role="status">{{ pending.note }}</p><span v-if="thinking && pending.text" class="consult-cursor" aria-label="正在回复" /><small v-if="!thinking">{{ stopped ? '接收已停止' : '回复未完成' }}</small></div></article>
+    <article v-if="pending" class="consult-turn consult-turn--host consult-pending" aria-label="当前回复"><AgentAvatar :agent="agentKeyOf(pending.agent)" :aria-label="consultantLabel(pending.agent)" :title="consultantLabel(pending.agent)" :size="38" :state="thinking ? pending.text ? 'speaking' : 'thinking' : 'idle'" /><div class="consult-answer"><span class="consult-speaker">{{ consultantLabel(pending.agent) }}</span><ReadableText v-if="pending.text" :text="cleanConsultantText(pending.text)" class="consult-prose" /><div v-else-if="thinking" class="consult-wait" role="status"><span class="consult-wait-orbit" aria-hidden="true"><i /><i /><i /></span><div><p>{{ pending.note }}</p><small>正在接收回复<span v-if="elapsed >= 3"> · {{ elapsed }} 秒</span></small></div></div><p v-if="thinking && pending.text" class="consult-live-note" role="status">{{ pending.note }}</p><span v-if="thinking && pending.text" class="consult-cursor" aria-label="正在回复" /><small v-if="!thinking">{{ stopped ? '接收已停止' : '回复未完成' }}</small></div></article>
     <div v-if="requestError && !showFailedSend" class="consult-error" role="alert"><p>{{ requestError }}</p><button v-if="failedRequest && !stopped" @click="send(true)">重试</button><button v-else :disabled="thinking" @click="reloadConversation">刷新会话</button></div>
    </div>
    <p v-if="backgroundRun && !thinking" role="status">{{ backgroundRun.last_status || '这轮仍在处理，完成后会自动恢复结果。' }}</p>
-   <details v-if="liveSteps.length" class="consult-turn-progress"><summary>本轮处理过程</summary><ul><li v-for="step in liveSteps" :key="step.id">{{ step.label }} · {{ step.state === 'step.completed' ? '已返回结果' : step.state === 'step.failed' ? '未完成' : '处理中' }}</li></ul></details>
+   <details v-if="liveSteps.length" class="consult-turn-progress"><summary>本轮处理过程</summary><ul><li v-for="step in liveSteps" :key="step.id">{{ step.label }}</li></ul></details>
    <p class="sr-only" role="status" aria-live="polite">{{ replyAnnouncement }}</p>
   </div>
   <footer v-if="!choosingTopic && !showStudyYearQuestion" class="consult-compose-area">

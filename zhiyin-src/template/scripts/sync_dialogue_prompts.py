@@ -31,7 +31,7 @@ async def main(args):
         credentials = parsed.netloc.rsplit("@", 1)[0] if "@" in parsed.netloc else ""
         dsn = urlunsplit(parsed._replace(netloc=(credentials + "@" if credentials else "") + "127.0.0.1:55432"))
     source = json.loads((TEMPLATE / "data/registry/prompts.json").read_text(encoding="utf-8"))
-    wanted = {p["code"]: p for p in source["items"] if p["code"] in {"conversation.main", "conversation.memory", "conversation.context"}}
+    wanted = {p["code"]: p for p in source["items"] if p["code"].startswith("conversation.")}
     connection = await asyncpg.connect(dsn, timeout=10)
     try:
         async with connection.transaction():

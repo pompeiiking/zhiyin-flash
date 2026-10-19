@@ -2684,6 +2684,11 @@ export interface components {
       agent_id?: string | null;
       /** Agent Name */
       agent_name?: string | null;
+      /**
+       * Clues
+       * @description 可公开的判断标准与待核实项，不是内部推理或已核实来源
+       */
+      clues?: string[];
       /** Created At */
       created_at?: string | null;
       /**

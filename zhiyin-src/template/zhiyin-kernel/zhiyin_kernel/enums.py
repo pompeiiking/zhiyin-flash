@@ -147,3 +147,10 @@ class NotifyChannel(str, Enum):
 
     IN_APP = "in_app"      # 应用内消息
     LOCAL_LOG = "local_log"  # 本地日志
+
+
+# Professional focus is advisory: neither workflow completion nor write authority.
+DIALOGUE_ROLE_FOCUS = {
+    "profile_analyst": {"collect"}, "career_advisor": {"diagnose", "decide"},
+    "path_planner": {"act"}, "companion_coach": {"review"}, "info_scout": set(),
+}

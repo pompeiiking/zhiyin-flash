@@ -156,6 +156,7 @@ class ConversationMessage(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     role: Literal["agent", "user", "system"]
+    clues: list[str] = Field(default_factory=list, max_length=8, description="可公开的判断标准与待核实项，不是内部推理或已核实来源")
     text: str
     agent_id: Optional[str] = None
     theory_refs: list[TheoryRef] = Field(default_factory=list)

@@ -711,7 +711,7 @@
       "method": "POST",
       "path": "/api/v1/app/conversation/material",
       "capability": "交一份材料（multipart 上传）。  为什么材料要**上传**而不是在浏览器里读成文本再塞进消息：  · 编码（教务/办公软件导出的 GBK 文本）与二进制格式都由服务端统一处理，   浏览器那一侧不做第二份解码实现； · 正文不进对话气泡 —— 回执只有\"它是什么\"，正文留在服务端、只在用到它的   那一轮进模型输入。  这一层负责的边界（都在拿到字节之后、落库之前说清楚）： 文件大小 → 是否为空 → 扩展名白名单/二进制后缀拒绝 → 内容嗅探（空字节/控制字节） → 编码可解码性 → 正文字数。读不出来时给的都是**用户能照着做**的一句中文。 文件名只用来拼提示（取 basename、去控制字符、限长），不进日志正文。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py:241",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py:243",
       "scope": "学生端",
       "stream": false,
       "parameters": [],
@@ -3126,7 +3126,7 @@
       "method": "POST",
       "path": "/api/v1/app/sessions/{task_id}/runs/{run_id}/cancel",
       "capability": "Cancel Conversation Run",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py:179",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py:181",
       "scope": "学生端",
       "stream": false,
       "parameters": [
@@ -3184,7 +3184,7 @@
       "method": "GET",
       "path": "/api/v1/app/sessions/{task_id}/runtime",
       "capability": "Conversation Runtime",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py:172",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py:174",
       "scope": "学生端",
       "stream": false,
       "parameters": [
@@ -3243,7 +3243,7 @@
       "method": "PATCH",
       "path": "/api/v1/app/sessions/{task_id}/settings",
       "capability": "Conversation Settings",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py:186",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py:188",
       "scope": "学生端",
       "stream": false,
       "parameters": [
@@ -9021,6 +9021,15 @@
             }
           ],
           "title": "Agent Name"
+        },
+        "clues": {
+          "description": "可公开的判断标准与待核实项，不是内部推理或已核实来源",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 8,
+          "title": "Clues",
+          "type": "array"
         },
         "created_at": {
           "anyOf": [

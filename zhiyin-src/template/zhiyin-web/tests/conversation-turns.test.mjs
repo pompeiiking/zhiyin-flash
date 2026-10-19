@@ -30,3 +30,14 @@ test('pipeline and asset status stay attached to the latest answer',()=>{
  assert.equal(result[0].pipelineCards[0].title,'了解情况')
  assert.equal(result[0].changedAssets[0].version,2)
 })
+
+
+test('professional identity and public clues survive without expanding the reply',()=>{
+ const message={role:'agent',agent_id:'path_planner',agent_name:'路径规划师',text:'今天先整理一页笔记。',clues:['判断标准：能在25分钟内完成'],theory_refs:[{theory_id:'smart',name:'SMART'}]}
+ const result=replyTurns({badge:{agent_id:'path_planner',name:'路径规划师'},messages:[message],guide:{text:''}},'role')
+ assert.equal(result.length,1)
+ assert.equal(result[0].speaker,'路径规划师')
+ assert.equal(result[0].clues[0],'判断标准：能在25分钟内完成')
+ assert.equal(result[0].text,'今天先整理一页笔记。')
+ assert.equal(result[0].theory_refs[0].theory_id,'smart')
+})

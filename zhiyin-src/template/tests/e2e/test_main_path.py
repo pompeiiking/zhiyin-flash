@@ -141,11 +141,12 @@ async def test_acceptance_2_resume_from_any_stage_keeps_prior_assets() -> None:
 
 
 @pytest.mark.asyncio
-async def test_acceptance_3_dialogue_identity_is_stable_without_forced_handoff():
+async def test_acceptance_3_actual_professional_identity_without_forced_handoff():
     from tests.test_dialogue_runtime import setup, send
     c, engine, session = await setup()
     result = await send(c, session, '先聊聊行动计划怎么制定，不要创建。')
-    assert result.badge.name == '知音'
+    assert result.badge.agent_id == session.lead_agent
+    assert result.badge.name == (await c.registry_service.get_agent(session.lead_agent)).name
     assert result.disclosure is None and not result.guide.options
     assert await c.asset_service.get_action_plan('u1') is None
     assert engine.requests[-1].conversation

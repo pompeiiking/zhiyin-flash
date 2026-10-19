@@ -57,6 +57,8 @@ async def main():
             "zhiyin-business/zhiyin_business/services/conversation_control.py",
             "zhiyin-business/zhiyin_business/services/conversation_ledger.py",
             "zhiyin-orchestration/zhiyin_orchestration/impl/dialogue_engine.py",
+            "zhiyin-orchestration/zhiyin_orchestration/impl/dialogue_specialists.py",
+            "zhiyin-kernel/zhiyin_kernel/enums.py",
             "zhiyin-boot/zhiyin_boot/module_platform.py", "data/registry/prompts.json"]
     results = {"model": route.model_code, "environment": "synthetic in-memory; real model",
         "source_sha256": {name: sha256((template / name).read_bytes()).hexdigest() for name in core}, "turns": []}
@@ -86,7 +88,7 @@ async def main():
             result = await c.orchestrator.handle_message(TurnRequest(user_id=user, task_id=session.id,
                 message=message, client_msg_id=uuid4().hex, **kwargs))
         row = {"case": case, "input": message, "messages": [m.model_dump(mode="json") for m in result.messages],
-               "frames": frames, "elapsed": round(time.monotonic() - start, 3), "checks": {}}
+               "badge": result.badge.model_dump(mode="json"), "stage": result.stage.value, "frames": frames, "elapsed": round(time.monotonic() - start, 3), "checks": {}}
         results["turns"].append(row)
         output.parent.mkdir(parents=True, exist_ok=True)
         await save_evidence()
@@ -156,6 +158,18 @@ async def main():
     await check(row, summary_stored=bool(record.get("context_summary", {}).get("items")),
         recalls_older_constraint=("两小时" in text or "2小时" in text) and "考研" in text and "付费" in text,
         no_asset=await c.asset_service.get_action_plan(user) is None)
+    r, row = await turn("P01-planner-clues", "请用路径规划师的专业方法给我一个今天能开始的数学学习建议，不保存计划，正文两三句话就行，判断标准放在线索里。")
+    await check(row, planner_loaded=any(f.get("type") == "role.selected" and f.get("agent") == "path_planner" for f in row["frames"]),
+        planner_identity=r.badge.agent_id == "path_planner", focus_is_action=r.stage.value == "act",
+        public_clues=bool(r.messages[-1].clues), concise_body=len(r.messages[-1].text) <= 350,
+        no_asset=await c.asset_service.get_action_plan(user) is None)
+    r, row = await turn("P02-coach", "请用陪伴教练的专业方法帮我复盘：我刚才那一步没开始，因为任务一想到就很大。先聊聊怎么降低压力，不改计划。")
+    await check(row, coach_loaded=any(f.get("type") == "role.selected" and f.get("agent") == "companion_coach" for f in row["frames"]),
+        coach_identity=r.badge.agent_id == "companion_coach", focus_is_review=r.stage.value == "review",
+        no_asset=await c.asset_service.get_action_plan(user) is None)
+    r, row = await turn("P03-analyst", "请用建档分析师的方法帮我梳理：我喜欢数学，但不知道为什么，先问一个具体问题，不要替我判断职业方向。")
+    await check(row, analyst_loaded=any(f.get("type") == "role.selected" and f.get("agent") == "profile_analyst" for f in row["frames"]),
+        analyst_identity=r.badge.agent_id == "profile_analyst", focus_is_collection=r.stage.value == "collect")
     results["passed_checks"] = all(v for row in results["turns"] for v in row["checks"].values())
     await save_evidence()
     print(json.dumps({"passed_checks": results["passed_checks"], "turns": len(results["turns"]), "evidence": str(output)}, ensure_ascii=False))

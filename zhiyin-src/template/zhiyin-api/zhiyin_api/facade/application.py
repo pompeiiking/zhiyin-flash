@@ -415,13 +415,11 @@ class DefaultApplicationFacade(ApplicationFacade):
                     names[turn.agent_id] = agent.name if agent else turn.agent_id
                 agent_name = names[turn.agent_id]
             message = mappers.conversation_message_view(turn, agent_name=agent_name)
-            if (turn.metadata or {}).get("result", {}).get("conversation"):
-                message = message.model_copy(update={"agent_name": "知音"})
-            snapshot = snapshots.get(turn.client_msg_id, {})
+            snapshot = (turn.metadata or {}).get("result") or snapshots.get(turn.client_msg_id, {})
             for saved in snapshot.get('messages', []):
                 if saved.get('role') == turn.role and saved.get('agent_id') == (turn.agent_id or None) and saved.get('text') == turn.text:
                     source = ConversationMessageView.model_validate(saved)
-                    message = message.model_copy(update={'theory_refs': source.theory_refs, 'intel_refs': source.intel_refs})
+                    message = message.model_copy(update={'theory_refs': source.theory_refs, 'intel_refs': source.intel_refs, 'clues': source.clues})
                     break
             messages.append(message)
         return messages

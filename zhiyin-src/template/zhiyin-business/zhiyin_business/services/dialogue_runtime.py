@@ -13,7 +13,7 @@ import time
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from zhiyin_business.contracts.common import AgentBadge, BehaviorGuide, BehaviorEventDraft, ConversationMessage, GuideOption, IntelRef
+from zhiyin_business.contracts.common import AgentBadge, BehaviorGuide, BehaviorEventDraft, ConversationMessage, GuideOption, IntelRef, TheoryRef
 from zhiyin_business.ports.orchestrator import TurnResult
 from zhiyin_business.policies.renderers import validate_renderables
 from zhiyin_business.services.conversation_ledger import ConversationLedger, digest, utcnow
@@ -86,7 +86,7 @@ class DialogueRuntime:
                      sequence=self.sequence, timestamp=utcnow())
         if frame.get("type") != "message.delta":
             self.events.append(redact_sensitive({k: v for k, v in frame.items() if k != "receipt"}))
-            if frame.get("type", "").startswith(("step.", "approval.")):
+            if frame.get("type", "").startswith(("step.", "approval.", "role.")):
                 self.progress_writes.append(asyncio.create_task(self.ledger.put_run(
                     self.request.user_id, self.request.task_id, self.request.client_msg_id,
                     events=list(self.events[-200:]), last_status=frame.get("note", ""))))
@@ -678,9 +678,9 @@ class DialogueRuntime:
                 return await self.finish(request, session, text)
             variables = {"chosen_option": {"option_id": request.option_id, "value": request.option_value,
                                            "label": request.message}} if request.option_id else {}
-            result = await self.o._agent_engine.invoke(AgentRequest(agent_id=self.AGENT, conversation=True,
+            result = await self.o._agent_engine.invoke(AgentRequest(agent_id=session.lead_agent or self.AGENT, conversation=True,
                 blackboard={"user_id": request.user_id, "task_id": request.task_id}, history=history,
-                prompt_vars={**variables, "user_input": request.message, "raw_user_message": request.message,
+                prompt_vars={**variables, "dialogue_focus": session.loop_stage.value, "user_input": request.message, "raw_user_message": request.message,
                     "today": utcnow(), "profile": serial(profile), "pending_actions": [
                         {k: a[k] for k in ("id", "operation", "payload", "base_version", "expires_at")} for a in pending],
                     "earlier_context": earlier,
@@ -698,7 +698,7 @@ class DialogueRuntime:
             text = result.raw_text or result.structured.get("conclusion") or "这次回复未能完成，请稍后继续。"
             # Native dialogue returns text, not stage-shaped JSON. Do not display
             # an incompatible stage response as a successful module operation.
-            if result.structured and (result.module_results or result.module_attempts):
+            if result.structured and "dialogue_roles" not in result.structured and (result.module_results or result.module_attempts):
                 verified = [str(item.get("result", {}).get("data", {}).get("summary", "")) for item in result.module_results]
                 text = "\n\n".join(v for v in verified if v) or "本次技能查询未完成，请确认模块启用状态和调用权限后重试。"
             if not result.valid and result.raw_text:
@@ -731,9 +731,23 @@ class DialogueRuntime:
             name = self.LABELS.get(action.get("operation"), "执行操作")
             system_receipts.append(ConversationMessage(role="system", text=("已" + name + "。")
                 if receipt.get("executed") else "操作结果待核对，请查看当前数据后再继续。"))
-        result = TurnResult(task_id=request.task_id, conversation=True, session=session, stage=session.loop_stage,
-            badge=AgentBadge(agent_id=self.AGENT, name="知音", role_summary="职业发展顾问"),
-            messages=system_receipts + [ConversationMessage(role="agent", agent_id=self.AGENT, text=text,
+        from zhiyin_kernel.enums import DIALOGUE_ROLE_FOCUS as ROLE_FOCUS
+        lead = session.lead_agent or self.AGENT
+        stage = session.loop_stage
+        if model_result and model_result.valid and model_result.structured.get("dialogue_roles"):
+            candidate = model_result.agent_id
+            focus = model_result.structured.get("dialogue_stage")
+            if candidate in ROLE_FOCUS and focus in ROLE_FOCUS[candidate]:
+                lead, stage = candidate, LoopStage(focus)
+                await self.o._sessions.update_stage(session.id, stage, lead)
+                session = (await self.o._sessions.get(session.id)) or session
+        descriptor = await self.o._registry.get_agent(lead)
+        result = TurnResult(task_id=request.task_id, conversation=True, session=session, stage=stage,
+            badge=AgentBadge(agent_id=lead, name=descriptor.name if descriptor else "知音",
+                             role_summary=descriptor.role_summary if descriptor else "职业发展顾问"),
+            messages=system_receipts + [ConversationMessage(role="agent", agent_id=lead, text=text,
+                clues=model_result.structured.get("dialogue_clues", []) if model_result else [],
+                theory_refs=[TheoryRef.model_validate(ref) for ref in model_result.structured.get("dialogue_theories", [])] if model_result else [],
                 intel_refs=[IntelRef.model_validate(ref) for ref in model_result.source_refs] if model_result else [],
                 renderables=validate_renderables(model_result.renderables if model_result else []))],
             guide=guide, asset_versions=self.versions)
@@ -741,7 +755,7 @@ class DialogueRuntime:
             await self.o._memories.record_turn(request.user_id, request.task_id, role="system", text=receipt.text,
                 loop_stage=session.loop_stage, client_msg_id=request.client_msg_id)
         await self.o._memories.record_turn(request.user_id, request.task_id, role="agent", text=text,
-            loop_stage=session.loop_stage, agent_id=self.AGENT, client_msg_id=request.client_msg_id,
+            loop_stage=stage, agent_id=lead, client_msg_id=request.client_msg_id,
             renderables=[serial(r) for r in result.messages[-1].renderables],
             metadata={"result": result.model_dump(mode="json"), "request_hash": record["runs"][request.client_msg_id]["request_hash"],
                       "actions": pending, "receipts": self.receipts})

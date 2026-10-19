@@ -3586,6 +3586,15 @@
             ],
             "title": "Agent Name"
           },
+          "clues": {
+            "description": "可公开的判断标准与待核实项，不是内部推理或已核实来源",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 8,
+            "title": "Clues",
+            "type": "array"
+          },
           "created_at": {
             "anyOf": [
               {

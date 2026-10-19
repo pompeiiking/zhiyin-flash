@@ -54,7 +54,10 @@ def traced(handler, name):
             log.exception("对话工具失败：%s", name)
             emit_progress({"type": "step.failed", "step_id": step, "note": "本次操作未完成"})
             return json.dumps({"executed": False, "error": "工具未完成，请核对权限和数据后再继续。"}, ensure_ascii=False)
-        emit_progress({"type": "step.completed", "step_id": step, "note": "本步骤已返回结果"})
+        completed = label.replace("正在", "已", 1)
+        if name == "workspace.action":
+            completed = "已核对操作回执"
+        emit_progress({"type": "step.completed", "step_id": step, "note": completed})
         return value
     return call
 
@@ -67,8 +70,16 @@ async def invoke_dialogue(engine, request):
     if engine.refresh_model is not None:
         await engine.refresh_model()
     prompt = await _required_prompt(engine._registry, "conversation.main")
-    descriptor = await engine._registry.get_agent(request.agent_id)
-    names = list(descriptor.tools if descriptor else []) + ["workspace.read", "material.read", "workspace.action", "workspace.classify"]
+    from .dialogue_specialists import specialist_tools, ROLE_FOCUS
+    presentation = {"lead": request.agent_id, "stage": request.prompt_vars.get("dialogue_focus", ""), "roles": [],
+                    "methods": {}, "clues": [], "theories": []}
+    names = ["workspace.read", "material.read", "workspace.action", "workspace.classify"]
+    # All enabled professionals share one conversation. Each descriptor still
+    # controls which registered read capabilities enter the capability pool.
+    for role_id in ROLE_FOCUS:
+        descriptor = await engine._registry.get_agent(role_id)
+        if descriptor and str(getattr(descriptor.status, "value", descriptor.status)) == "enabled":
+            names += list(descriptor.tools)
     if engine.module_tool_names is not None:
         names += await engine.module_tool_names(request.agent_id)
     tools = []
@@ -81,6 +92,7 @@ async def invoke_dialogue(engine, request):
                 log.error("对话工具未装配：%s", name)
             continue
         tools.append(traced(handler, name))
+    tools.extend(specialist_tools(engine._registry, presentation))
     kwargs = engine._run_context_kwargs(request)
     model = engine._model_factory(**{k: v for k, v in (prompt.params or {}).items()
                                       if k in {"timeout_s", "temperature", "retries"}})
@@ -113,7 +125,11 @@ async def invoke_dialogue(engine, request):
                 raise RuntimeError("模型返回错误状态")
             if not text:
                 text = str(getattr(output, "content", "") or "")
-        return AgentResult(agent_id=request.agent_id, raw_text=text, valid=bool(text.strip()),
+        return AgentResult(agent_id=presentation["lead"], raw_text=text, valid=bool(text.strip()),
+            structured={"dialogue_stage": presentation["stage"], "dialogue_roles": presentation["roles"],
+                "dialogue_clues": presentation["clues"], "dialogue_theories": [
+                    {"theory_id": key, "name": presentation["methods"][key].name,
+                     "stage": presentation["stage"]} for key in presentation["theories"]]},
             renderables=_renderables_from_run_context(kwargs), module_results=_module_results_from_run_context(kwargs),
             module_attempts=_module_attempts_from_run_context(kwargs), source_refs=list(kwargs["dependencies"].get("source_refs", [])))
     except Exception:

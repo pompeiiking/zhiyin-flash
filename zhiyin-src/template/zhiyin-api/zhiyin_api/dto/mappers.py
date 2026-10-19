@@ -388,6 +388,7 @@ def conversation_turn_view(turn: TurnResult) -> ConversationTurnView:
             ConversationMessageView(
                 role=message.role,
                 text=message.text,
+                clues=message.clues,
                 agent_id=message.agent_id,
                 agent_name=turn.badge.name
                 if message.agent_id and message.agent_id == turn.badge.agent_id
