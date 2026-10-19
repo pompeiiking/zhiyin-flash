@@ -66,10 +66,6 @@ async function refreshRuntime() {
   }
  } catch { /* 普通历史仍可查看，执行权限由服务端校验 */ }
 }
-async function setTemporary(event: Event) {
- const value = (event.target as HTMLInputElement).checked
- try { runtimeState.value = await backendClient.conversationSettings(demo.state.currentSessionId, value) } catch (e) { toast(friendlyError(e)) }
-}
 function decideAction(id: string, accept: boolean) {
  void send(false, { text: accept ? '确认执行这项变更' : '暂不执行这项变更', option: { option_id: `action.${id}.${accept ? 'accept' : 'decline'}`, label: accept ? '确认执行' : '暂不执行', value: {action_id: id} } })
 }
@@ -833,7 +829,7 @@ onUnmounted(() => { disposed = true; clearInterval(recoveryTimer); window.remove
 <section class="consultation-page" aria-label="咨询对话空间">
  <div class="consult-main">
   <header class="consult-header">
-   <div class="consult-header__top"><div class="consult-heading"><h1>咨询对话</h1><p v-if="!choosingTopic && demo.state.currentSessionId" class="consult-session-title" :title="title">{{ title }}</p></div><div class="consult-header__actions"><label v-if="demo.state.currentSessionId" class="consult-temporary" title="本会话不自动保存画像；聊天历史保留至你删除会话，主动保存的资产单独保留。"><input type="checkbox" :checked="runtimeState?.settings.temporary" :disabled="thinking" @change="setTemporary" />不自动记忆</label>
+   <div class="consult-header__top"><div class="consult-heading"><h1>咨询对话</h1><p v-if="!choosingTopic && demo.state.currentSessionId" class="consult-session-title" :title="title">{{ title }}</p></div><div class="consult-header__actions">
     <AnchoredCard v-model="historyOpen" class="consult-icon consult-history-button" title="历史会话" side="bottom" align="end" size="wide"><template #trigger><UiIcon name="chat" :size="18" /></template><div class="session-manage">
      <div class="session-manage__tools"><label class="information-search session-search"><span class="sr-only">搜索历史会话</span><input v-model="sessionQuery" type="search" aria-label="搜索历史会话" placeholder="搜索标题或最后一句" autocomplete="off" /></label><button type="button" class="ws-text-button" :disabled="sessionListLoading" @click="refreshSessionList(true)">{{ sessionListLoading ? '刷新中…' : '刷新列表' }}</button></div>
      <p v-if="sessionListError" class="consult-error session-manage__error" role="alert">{{ sessionListError }}<button type="button" @click="refreshSessionList(true)">重试</button></p>
