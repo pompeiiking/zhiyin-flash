@@ -17,13 +17,26 @@ from zhiyin_kernel.enums import (
     BehaviorEventType,
     LoopStage,
     PathFocus,
+    ProfileEntryStatus,
+    ProfileEntryType,
     ProfileSource,
+    ProfileVerification,
     TaskStatus,
 )
 
 
 class ProfileField(BaseModel):
-    """画像字段 · 活状态的最小单位。"""
+    """画像里的一条记录（活状态的最小单位）。
+
+    记录结构见《个人画像设计-2026-10-20》第 4 节：一条记录除了「键值」，
+    还要能回答六件事 —— 它属于哪一类内容、内容结构是什么、原话/资料在哪、
+    来源方式与核实状态分别是什么、何时知道/何时发生/何时仍适用、以及它现在是
+    有效、被更正、存在冲突还是已撤回。
+
+    兼容阶段保留 `confidence`：它不再充当真实性、熟练度或写权限的共同开关，
+    也不直接展示成百分比。新字段全部有默认值，老数据读出来仍是合法记录
+    （缺类别时由受控词表按键推导，缺核实状态时由来源推导）。
+    """
 
     model_config = ConfigDict(extra="forbid")
 
@@ -37,10 +50,34 @@ class ProfileField(BaseModel):
         ),
     )
     value: Any = Field(description="字段值，结构由画像 schema 决定")
-    confidence: float = Field(ge=0.0, le=1.0, description="置信度 0-1")
-    source: ProfileSource = Field(description="来源")
-    updated_at: datetime = Field(description="更新时间")
-    evidence: list[str] = Field(default_factory=list, description="证据来源引用")
+    confidence: float = Field(ge=0.0, le=1.0, description="置信度 0-1（兼容字段，不再直接展示）")
+    source: ProfileSource = Field(description="来源：这条信息从哪儿来")
+    updated_at: datetime = Field(description="更新时间（何时知道这条记录）")
+    evidence: list[str] = Field(default_factory=list, description="证据来源引用（原话/资料片段）")
+    #: 内容类别：由受控词表按字段键推导，服务端写入时固化。
+    entry_type: Optional[ProfileEntryType] = Field(
+        default=None, description="内容类别（学习背景/兴趣/经历/能力/职业关注/价值取向/现实条件/补充信息）"
+    )
+    #: 类别专属的结构化值：兴趣的正负与情境、职业关注的关注状态、能力的证据类型等。
+    attributes: dict[str, Any] = Field(
+        default_factory=dict, description="类型专属的结构化属性（受控键；不是任意模型输出）"
+    )
+    #: 核实状态：与来源分开表达，不用一个分数混合。
+    verification: Optional[ProfileVerification] = Field(
+        default=None, description="核实状态（自述/本人确认/资料记录/核验/待核实）"
+    )
+    status: ProfileEntryStatus = Field(
+        default=ProfileEntryStatus.ACTIVE, description="当前状态：有效/已更正/冲突/过期/撤回"
+    )
+    #: 原话或资料来源引用：指向实际会话、材料片段或导入记录。
+    origin_ref: str = Field(default="", description="原话或资料来源引用（不编造引用）")
+    #: 三个时间分开：何时知道（updated_at）、何时发生（event_at）、何时仍适用（valid_from/valid_to）。
+    valid_from: Optional[datetime] = Field(default=None, description="有效范围起点；未知不补成当前时间")
+    valid_to: Optional[datetime] = Field(default=None, description="有效范围终点")
+    event_at: Optional[datetime] = Field(default=None, description="事情发生的时间（不是记录时间）")
+    #: 同一条记录的版本：并发更新与「我看到的是哪一版」的依据。
+    entry_version: int = Field(default=1, ge=1, description="条目版本，从 1 开始")
+    superseded_by: str = Field(default="", description="被哪条记录替代（修订关系）")
 
 
 class ProfileGap(BaseModel):

@@ -52,4 +52,22 @@ MIGRATION_SQL = "\n".join(
 
 MIGRATION_SQL += "\nALTER TABLE biz_conversation_turn ADD COLUMN IF NOT EXISTS metadata JSONB NOT NULL DEFAULT '{}'::jsonb;"
 
+# 2026-10-20 —— 《个人画像设计-2026-10-20》第 4 节：画像记录不再只有「键值」。
+# 老库（建于这次改动之前）缺这些列时，读画像会 UndefinedColumn，应用起不来。
+# 只增不改：新列全部可空或有默认值，老数据读出来仍是合法记录（类别由词表按键推导）。
+MIGRATION_SQL += "\n".join(
+    [
+        "ALTER TABLE biz_profile_field ADD COLUMN IF NOT EXISTS entry_type TEXT;",
+        "ALTER TABLE biz_profile_field ADD COLUMN IF NOT EXISTS attributes JSONB NOT NULL DEFAULT '{}'::jsonb;",
+        "ALTER TABLE biz_profile_field ADD COLUMN IF NOT EXISTS verification TEXT;",
+        "ALTER TABLE biz_profile_field ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'active';",
+        "ALTER TABLE biz_profile_field ADD COLUMN IF NOT EXISTS origin_ref TEXT NOT NULL DEFAULT '';",
+        "ALTER TABLE biz_profile_field ADD COLUMN IF NOT EXISTS valid_from TIMESTAMPTZ;",
+        "ALTER TABLE biz_profile_field ADD COLUMN IF NOT EXISTS valid_to TIMESTAMPTZ;",
+        "ALTER TABLE biz_profile_field ADD COLUMN IF NOT EXISTS event_at TIMESTAMPTZ;",
+        "ALTER TABLE biz_profile_field ADD COLUMN IF NOT EXISTS entry_version INTEGER NOT NULL DEFAULT 1;",
+        "ALTER TABLE biz_profile_field ADD COLUMN IF NOT EXISTS superseded_by TEXT NOT NULL DEFAULT '';",
+    ]
+)
+
 __all__ = ["MIGRATION_SQL"]

@@ -259,14 +259,17 @@ class DefaultFunctionService(FunctionService):
 
         previous = cached[1] if cached else []
         failure = ""
+        details: dict[str, Any] = {}
         try:
-            items, failure = await self._collect_intel(user_id, topic=topic, limit=limit)
+            items, failure, details = await self._collect_intel(user_id, topic=topic, limit=limit)
         except Exception:  # noqa: BLE001 - 上游整体失败不该把面板打成 500
             logger.warning("外部情报取数失败（user=%s, topic=%s）", user_id, topic, exc_info=True)
             failure = "检索服务这次没有响应"
             items = []
         self._intel_cache[cache_key] = (time.monotonic() + self.INTEL_TTL_S, items)
-        await self._record_intel_status(user_id, status_key, topic=topic, items=items, failure=failure)
+        await self._record_intel_status(
+            user_id, status_key, topic=topic, items=items, failure=failure, details=details
+        )
 
         # 只在**真的有新东西**、而且**知道是谁**的时候推通知。
         # 前一条是防"每 45 秒打扰一次"；后一条是因为未登录时根本没有收件人。
@@ -283,16 +286,31 @@ class DefaultFunctionService(FunctionService):
         topic: str,
         items: list[ExternalIntel],
         failure: str = "",
+        details: Optional[dict[str, Any]] = None,
     ) -> None:
         """把这次取数归成三类之一，附一句用户能行动的话。
 
         - `ok`：取到了条目；
         - `empty`：链路正常，但确实没有匹配资料（"换个关键词/先补专业"就是可行动的话）；
         - `failed`：上游/检索失败（"稍后重试"才是可行动的话）。
+
+        《个人画像设计-2026-10-20》第 8 节：专业、职业、案例分别报告数量与状态。
+        因此“专业取到了、职业 0 条”不能写成整次成功，也不能写成“平台没有收录”。
         """
         major = await self.profile_major(user_id) if user_id else ""
+        counts = (details or {}).get("counts") or {}
+        speciality = int(counts.get("speciality") or 0)
+        occupation = int(counts.get("occupation") or 0)
+        cases = int(counts.get("career_case") or 0)
         if items:
             status, message = "ok", f"已取到 {len(items)} 条公开资料。"
+            if details:
+                message = (
+                    f"已取到 {len(items)} 条公开资料：专业 {speciality} 条、"
+                    f"职业 {occupation} 条、公开案例 {cases} 条。"
+                )
+                if not occupation:
+                    message += "这次没有取到职业条目；这不代表平台没有收录，可以按明确的方向再查一次。"
             if failure:
                 message += "部分来源暂时不可用，可稍后重试。"
         elif failure:
@@ -301,7 +319,11 @@ class DefaultFunctionService(FunctionService):
                 f"{failure}，这次没有取到资料 —— 可以稍后重试。",
             )
         else:
-            status, message = "empty", "没有找到匹配的公开资料，可以换个关键词或先补充专业信息后再试。"
+            status, message = (
+                "empty",
+                "这次没有取到匹配的公开资料；这不等于平台没有收录。"
+                "可以补一条明确的专业或职业方向后再试。",
+            )
         self._intel_status[cache_key] = {
             "status": status,
             "degraded": bool(failure),
@@ -309,6 +331,9 @@ class DefaultFunctionService(FunctionService):
             "items": len(items),
             "topic": topic,
             "major": major,
+            "counts": {"speciality": speciality, "occupation": occupation, "career_case": cases},
+            "query": (details or {}).get("query") or {},
+            "occupation_sources": (details or {}).get("occupation_sources") or {},
             "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         }
 
@@ -330,6 +355,9 @@ class DefaultFunctionService(FunctionService):
             "items": 0,
             "topic": topic,
             "major": major,
+            "counts": {"speciality": 0, "occupation": 0, "career_case": 0},
+            "query": {},
+            "occupation_sources": {},
             "fetched_at": "",
         }
 
@@ -391,21 +419,22 @@ class DefaultFunctionService(FunctionService):
 
     async def _collect_intel(
         self, user_id: Optional[str], *, topic: str, limit: int
-    ) -> tuple[list[ExternalIntel], str]:
+    ) -> tuple[list[ExternalIntel], str, dict[str, Any]]:
         context: list[dict[str, Any]] = []
         rows: list[Any] = []
+        details: dict[str, Any] = {}
         if user_id and self._profiles is not None:
             # 用 `get_fields` 而不是 `get`：情报只关心**有哪些字段**。
             # 读整份 Profile 会多一次聚合，而且画像行与字段行不一致时（迁移、
             # 手工补数之后偶发）会静默拿到空表 —— 表现就是"明明有画像却说没有相关情报"。
             rows = await self._profiles.get_fields(user_id)
             context = [
-                {"key": f.key, "value": f.value, "confidence": f.confidence}
+                {"key": f.key, "value": f.value, "entry_type": getattr(f.entry_type, "value", None)}
                 for f in rows
             ]
 
-        # 方向方案是比画像 major 更近的一层依据：把它作为 target_direction
-        # 交给学职取数（取数侧会按 job_terms 查职业），这样探索页的结果才会
+        # 方向方案是比画像字段更近的一层依据：把它作为明确的职业关注交给学职取数
+        # （取数侧只把职业关注当职业名称，不会把兴趣拼进去）。这样探索页的结果才会
         # 跟方向页正在考虑/已选的方向对得上。
         direction_name, _ = await self._direction_basis(user_id)
         if direction_name:
@@ -413,7 +442,7 @@ class DefaultFunctionService(FunctionService):
                 {"key": "target_direction", "value": direction_name, "confidence": 1.0}
             )
 
-        # 主题没给就**从事画像/方向推**。
+        # 主题没给就**从画像/方向推**。
         #
         # 这一行是"面板里那一批"和"主理引用的那一批"必须是同一批的关键：
         # 编排器喂给模型时用的也是这条规则（`intel_topic`），两处同一个主题，
@@ -441,6 +470,7 @@ class DefaultFunctionService(FunctionService):
                 failure = "检索服务这次没有响应"
                 result = None
             if result is not None:
+                details = dict(getattr(result, "details", {}) or {})
                 if result.degraded or result.errors:
                     failure = "部分检索来源暂时不可用"
                 items.extend(
@@ -468,7 +498,7 @@ class DefaultFunctionService(FunctionService):
                 logger.warning("通用网络检索失败（topic=%s）", topic, exc_info=True)
                 failure = "部分检索来源暂时不可用"
 
-        return items[: max(limit, 1) * 2], failure
+        return items[: max(limit, 1) * 2], failure, details
 
     async def _web_intel(self, topic: str, *, limit: int) -> list[ExternalIntel]:
         """通用网络检索；异常由调用方记录为降级，保留其他来源结果。"""

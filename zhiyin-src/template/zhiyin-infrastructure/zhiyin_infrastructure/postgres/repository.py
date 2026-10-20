@@ -41,7 +41,15 @@ from zhiyin_kernel.blackboard import (
     TaskSession,
     UserNote,
 )
-from zhiyin_kernel.enums import AssetType, BehaviorEventType, LoopStage, TaskStatus
+from zhiyin_kernel.enums import (
+    AssetType,
+    BehaviorEventType,
+    LoopStage,
+    ProfileEntryStatus,
+    ProfileEntryType,
+    ProfileVerification,
+    TaskStatus,
+)
 from zhiyin_kernel.errors import ResourceNotFound, DuplicateResource, InvalidRequest
 from zhiyin_kernel.identity import UserAccount
 from zhiyin_infrastructure.postgres.database import PostgresDatabase
@@ -102,6 +110,57 @@ def _dump_value(value: Any) -> str:
 
 def _load_value(value: Any) -> Any:
     return json.loads(value) if isinstance(value, str) else value
+
+
+def _optional_enum(enum_type: Any, value: Any) -> Any:
+    """数据库里的可空枚举列 → 内核枚举；不认识的旧值按「未记录」处理。"""
+    if value in (None, ""):
+        return None
+    try:
+        return enum_type(value)
+    except ValueError:
+        return None
+
+
+def _profile_field_row(row: Any) -> ProfileField:
+    """画像字段行 → 内核记录（老库缺列时按默认值兜住）。
+
+    新列对老数据是可空的：缺少类别时读成 None，由词表在展示/取数时按键推导；
+    缺少核实状态时读成 None（来源仍然在，界面可以说清“从哪儿来”）。
+    """
+    values = row
+    try:
+        attributes = _load_value(values["attributes"]) or {}
+    except (KeyError, IndexError):
+        attributes = {}
+    return ProfileField(
+        key=values["key"],
+        label=values["label"] or "",
+        value=_load_value(values["value"]),
+        confidence=values["confidence"],
+        source=values["source"],
+        evidence=_load_value(values["evidence"]) or [],
+        updated_at=values["updated_at"],
+        entry_type=_optional_enum(ProfileEntryType, _row_get(values, "entry_type")),
+        attributes=attributes if isinstance(attributes, dict) else {},
+        verification=_optional_enum(ProfileVerification, _row_get(values, "verification")),
+        status=_optional_enum(ProfileEntryStatus, _row_get(values, "status"))
+        or ProfileEntryStatus.ACTIVE,
+        origin_ref=_row_get(values, "origin_ref") or "",
+        valid_from=_row_get(values, "valid_from"),
+        valid_to=_row_get(values, "valid_to"),
+        event_at=_row_get(values, "event_at"),
+        entry_version=int(_row_get(values, "entry_version") or 1),
+        superseded_by=_row_get(values, "superseded_by") or "",
+    )
+
+
+def _row_get(row: Any, key: str) -> Any:
+    try:
+        return row[key]
+    except (KeyError, IndexError):
+        return None
+
 
 
 def _assemble_profile(
@@ -196,8 +255,11 @@ class PostgresProfileRepository(ProfileRepository):
                     await connection.execute(
                         """
                         INSERT INTO biz_profile_field
-                            (user_id, key, label, value, confidence, source, evidence, updated_at)
-                        VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7::jsonb, $8)
+                            (user_id, key, label, value, confidence, source, evidence, updated_at,
+                             entry_type, attributes, verification, status, origin_ref,
+                             valid_from, valid_to, event_at, entry_version, superseded_by)
+                        VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7::jsonb, $8,
+                                $9, $10::jsonb, $11, $12, $13, $14, $15, $16, $17, $18)
                         """,
                         stored.user_id,
                         field.key,
@@ -207,6 +269,16 @@ class PostgresProfileRepository(ProfileRepository):
                         field.source.value,
                         _dump_value(field.evidence),
                         field.updated_at,
+                        field.entry_type.value if field.entry_type else None,
+                        _dump_value(field.attributes),
+                        field.verification.value if field.verification else None,
+                        field.status.value,
+                        field.origin_ref,
+                        field.valid_from,
+                        field.valid_to,
+                        field.event_at,
+                        field.entry_version,
+                        field.superseded_by,
                     )
                 await connection.execute(
                     "DELETE FROM biz_profile_gap WHERE user_id = $1",
@@ -238,9 +310,13 @@ class PostgresProfileRepository(ProfileRepository):
                 (row["updated_at"] + timedelta(microseconds=1)) if row else incoming.updated_at,
                 parent_stamp + timedelta(microseconds=1) if parent_stamp else incoming.updated_at)
             if check_version:
-                if row and _load_value(row["value"]) == field.value and row["source"] == field.source.value:
-                    return ProfileField(key=row["key"], label=row["label"] or "", value=_load_value(row["value"]),
-                                        confidence=row["confidence"], source=row["source"], evidence=_load_value(row["evidence"]) or [], updated_at=row["updated_at"])
+                if (
+                    row
+                    and _load_value(row["value"]) == field.value
+                    and row["source"] == field.source.value
+                    and (_load_value(_row_get(row, "attributes")) or {}) == field.attributes
+                ):
+                    return _profile_field_row(row)
                 if (row["updated_at"] if row else None) != expected_updated_at:
                     raise DuplicateResource("这项画像已更新，你的输入仍保留，请核对最新信息后再保存。")
             await connection.execute(
@@ -258,15 +334,28 @@ class PostgresProfileRepository(ProfileRepository):
             await connection.execute(
                 """
                 INSERT INTO biz_profile_field
-                    (user_id, key, label, value, confidence, source, evidence, updated_at)
-                VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7::jsonb, $8)
+                    (user_id, key, label, value, confidence, source, evidence, updated_at,
+                     entry_type, attributes, verification, status, origin_ref,
+                     valid_from, valid_to, event_at, entry_version, superseded_by)
+                VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7::jsonb, $8,
+                        $9, $10::jsonb, $11, $12, $13, $14, $15, $16, $17, $18)
                 ON CONFLICT (user_id, key) DO UPDATE SET
                     label = EXCLUDED.label,
                     value = EXCLUDED.value,
                     confidence = EXCLUDED.confidence,
                     source = EXCLUDED.source,
                     evidence = EXCLUDED.evidence,
-                    updated_at = EXCLUDED.updated_at
+                    updated_at = EXCLUDED.updated_at,
+                    entry_type = EXCLUDED.entry_type,
+                    attributes = EXCLUDED.attributes,
+                    verification = EXCLUDED.verification,
+                    status = EXCLUDED.status,
+                    origin_ref = EXCLUDED.origin_ref,
+                    valid_from = EXCLUDED.valid_from,
+                    valid_to = EXCLUDED.valid_to,
+                    event_at = EXCLUDED.event_at,
+                    entry_version = EXCLUDED.entry_version,
+                    superseded_by = EXCLUDED.superseded_by
                 """,
                 user_id,
                 incoming.key,
@@ -276,6 +365,16 @@ class PostgresProfileRepository(ProfileRepository):
                 incoming.source.value,
                 _dump_value(incoming.evidence),
                 incoming.updated_at,
+                incoming.entry_type.value if incoming.entry_type else None,
+                _dump_value(incoming.attributes),
+                incoming.verification.value if incoming.verification else None,
+                incoming.status.value,
+                incoming.origin_ref,
+                incoming.valid_from,
+                incoming.valid_to,
+                incoming.event_at,
+                incoming.entry_version,
+                incoming.superseded_by,
             )
         return incoming
 
@@ -316,7 +415,9 @@ class PostgresProfileRepository(ProfileRepository):
     ) -> list[ProfileField]:
         rows = await self._db.fetch(
             """
-            SELECT key, label, value, confidence, source, evidence, updated_at
+            SELECT key, label, value, confidence, source, evidence, updated_at,
+                   entry_type, attributes, verification, status, origin_ref,
+                   valid_from, valid_to, event_at, entry_version, superseded_by
             FROM biz_profile_field
             WHERE user_id = $1
               AND ($2::text[] IS NULL OR key = ANY($2::text[]))
@@ -325,18 +426,7 @@ class PostgresProfileRepository(ProfileRepository):
             user_id,
             list(keys) if keys else None,
         )
-        return [
-            ProfileField(
-                key=row["key"],
-                label=row["label"] or "",
-                value=_load_value(row["value"]),
-                confidence=row["confidence"],
-                source=row["source"],
-                evidence=_load_value(row["evidence"]) or [],
-                updated_at=row["updated_at"],
-            )
-            for row in rows
-        ]
+        return [_profile_field_row(row) for row in rows]
 
     async def list_gaps(self, user_id: str) -> list[ProfileGap]:
         rows = await self._db.fetch(

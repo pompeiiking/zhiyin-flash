@@ -784,12 +784,18 @@ class DefaultApplicationFacade(ApplicationFacade):
         major = ""
         basis = ""
         basis_kind = ""
+        counts: dict[str, int] = {}
+        query: dict[str, list[str]] = {}
+        occupation_sources: dict[str, int] = {}
         fetch_status = getattr(self._function, "intel_fetch_status", None)
         if callable(fetch_status):
             try:
                 info = await fetch_status(user_id, topic=topic)
                 status = str(info.get("status") or "")
                 message = str(info.get("message") or "")
+                counts = dict(info.get("counts") or {})
+                query = dict(info.get("query") or {})
+                occupation_sources = dict(info.get("occupation_sources") or {})
             except Exception:  # noqa: BLE001 - 状态读不到不影响清单
                 logger.warning("读取情报取数状态失败", exc_info=True)
         major_of = getattr(self._function, "profile_major", None)
@@ -811,6 +817,9 @@ class DefaultApplicationFacade(ApplicationFacade):
             major=major,
             basis=basis,
             basis_kind=basis_kind,
+            counts=counts,
+            query=query,
+            occupation_sources=occupation_sources,
         )
 
     # ---------- AI 任务（SSE） ----------

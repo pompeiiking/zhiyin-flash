@@ -48,7 +48,7 @@ from zhiyin_data_sdk.errors import MissingConfigError
 from zhiyin_data_sdk.repositories import AiTaskResultRepository
 from zhiyin_kernel import dynamic_config
 from zhiyin_kernel.blackboard import Profile
-from zhiyin_kernel.enums import ProfileSource
+from zhiyin_kernel.enums import ProfileSource, ProfileVerification
 from zhiyin_kernel.errors import ResourceNotFound
 from zhiyin_orchestration import AgentEngine, AgentRequest
 
@@ -1362,6 +1362,9 @@ class AiTaskService:
                 confidence=1.0,
                 source=ProfileSource.RECORD.value,
                 evidence=[report.source_url],
+                # 学信网在线验证是**外部核验**，不是普通资料记录：核实状态要与来源分开表达。
+                verification=ProfileVerification.VERIFIED.value,
+                origin_ref=report.source_url,
             )
             written.append(
                 ProfileLift(

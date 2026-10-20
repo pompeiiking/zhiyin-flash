@@ -44,6 +44,10 @@ class DataSourceResult(BaseModel):
     records: list[DataSourceRecord] = Field(default_factory=list)
     degraded: bool = False
     errors: list[str] = Field(default_factory=list)
+    #: 取数依据与分类结果（如专业/职业/案例各几条、职业是官方映射还是名称检索）。
+    #: 第 8 节：专业、职业、案例分别报告数量与状态，不能仅因返回了专业介绍
+    #: 就把整个职业查询宣布成功。调用方据此写“给学生看的下一步”。
+    details: dict[str, Any] = Field(default_factory=dict)
 
 
 class DataSourceGateway(ABC):

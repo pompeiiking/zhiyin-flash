@@ -98,6 +98,7 @@ from zhiyin_business.ports.orchestrator import TurnResult
 from zhiyin_business.ports.workspace import WorkspaceView
 from zhiyin_kernel.assets import Report
 from zhiyin_kernel.assets import ActionPlan, DirectionPlan
+from zhiyin_kernel import profile_taxonomy
 from zhiyin_kernel.assets import CalendarNode
 from zhiyin_kernel.assets import TrackEvent
 from zhiyin_kernel.assets import Achievement
@@ -506,6 +507,9 @@ def intel_list_view(
     major: str = "",
     basis: str = "",
     basis_kind: str = "",
+    counts: dict[str, int] | None = None,
+    query: dict[str, list[str]] | None = None,
+    occupation_sources: dict[str, int] | None = None,
 ) -> IntelListView:
     """外部情报清单 → 前端视图。取回时间取最新那一条。"""
     return IntelListView(
@@ -529,6 +533,9 @@ def intel_list_view(
         major=major,
         basis=basis,
         basis_kind=basis_kind,
+        counts=counts or {},
+        query=query or {},
+        occupation_sources=occupation_sources or {},
     )
 
 
@@ -539,6 +546,8 @@ def profile_field_view(field: Any, labels: Mapping[str, str]) -> ProfileFieldVie
     各写一遍的后果是同一个字段在"刚改完的回包"与"刷新后的面板"里可能叫两个名字
     （一个走了字段自带的 label、另一个走规则表），用户会以为系统记了两条。
     """
+    entry_type = field.entry_type or profile_taxonomy.entry_type_of(field.key)
+    verification = field.verification or profile_taxonomy.verification_for(field.source)
     return ProfileFieldView(
         key=field.key,
         label=field.label or labels.get(field.key, ""),
@@ -547,6 +556,18 @@ def profile_field_view(field: Any, labels: Mapping[str, str]) -> ProfileFieldVie
         source=field.source,
         updated_at=field.updated_at,
         evidence=list(field.evidence),
+        entry_type=entry_type,
+        entry_type_label=profile_taxonomy.entry_type_label(entry_type),
+        attributes=dict(field.attributes or {}),
+        verification=verification,
+        verification_label=profile_taxonomy.VERIFICATION_LABELS[verification],
+        status=field.status,
+        origin_ref=field.origin_ref,
+        valid_from=field.valid_from,
+        valid_to=field.valid_to,
+        event_at=field.event_at,
+        entry_version=field.entry_version,
+        superseded_by=field.superseded_by,
     )
 
 

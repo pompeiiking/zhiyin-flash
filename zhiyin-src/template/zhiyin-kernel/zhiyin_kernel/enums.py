@@ -107,6 +107,69 @@ class ProfileSource(str, Enum):
     USER_EDIT = "user_edit"
 
 
+class ProfileEntryType(str, Enum):
+    """画像条目的内容类别（《个人画像设计-2026-10-20》第 2 节）。
+
+    类别是**组织视角**，不是一个条目只能有一个去处：一份经历可以同时支撑
+    兴趣与能力分析（通过引用关联），但原始经历只有一个出处。因此每一次写入
+    都必须落到一个明确类别上，消费方不再猜字段键字符串的含义。
+
+    受控词表：类别由服务端按字段键推导（见 `profile_taxonomy.entry_type_of`），
+    模型不能自由生成，也不参与权限判断。
+    """
+
+    LEARNING_BACKGROUND = "learning_background"  # 学习背景（学校/专业/年级/学历/课程成绩）
+    INTEREST = "interest"                        # 兴趣与偏好（多条、可不确定、可变化）
+    EXPERIENCE = "experience"                    # 经历（项目/实践/实习中的行动与结果）
+    ABILITY = "ability"                          # 能力与技能（接触/自评/成果）
+    CAREER_FOCUS = "career_focus"                # 职业关注（了解/考虑/已选）
+    VALUES = "values"                            # 价值取向
+    CONDITION = "condition"                      # 现实条件（时间/地点/经济/家庭）
+    SUPPLEMENT = "supplement"                    # 补充信息（有来源、暂无法归类）
+
+
+class ProfileEntryStatus(str, Enum):
+    """画像条目状态（第 4、7 节）。
+
+    不统一执行「最新值覆盖旧值」：修正、冲突、过期、撤回是四种不同的变化，
+    混成一个状态后，界面上就分不清「他改过」和「两条资料对不上」。
+    """
+
+    ACTIVE = "active"          # 当前有效
+    CORRECTED = "corrected"    # 用户明确更正过
+    CONFLICT = "conflict"      # 两条来源对不上，尚未裁定
+    EXPIRED = "expired"        # 超出适用范围/时间
+    WITHDRAWN = "withdrawn"    # 用户撤回（不再作为事实使用）
+
+
+class ProfileVerification(str, Enum):
+    """核实状态：与「来源」分开表达（第 3.1、4 节）。
+
+    `ProfileSource` 回答「这条从哪儿来」，核实状态回答「它被确认到什么程度」——
+    用一个分数混合这两件事，用户看到的就只是一个说不清含义的百分比。
+    """
+
+    SELF_REPORTED = "self_reported"  # 本人自述（有原话支持，不需要外部验证）
+    USER_CONFIRMED = "user_confirmed"  # 本人手动确认/更正
+    RECORD = "record"                # 资料记录（教务/学信网等）
+    VERIFIED = "verified"            # 外部核验通过
+    PENDING = "pending"              # 待核实
+
+
+class ProfilePurpose(str, Enum):
+    """按用途读取（第 8 节）：业务方读服务端生成的用途视图。
+
+    任何业务都不能再自行扫描整份画像、把任意字符串拼成查询词；允许哪些类别
+    进入哪个用途，由服务端规则计算。
+    """
+
+    MAJOR_RETRIEVAL = "major_retrieval"              # 专业相关职业检索
+    CAREER_RETRIEVAL = "career_retrieval"            # 职业/方向检索
+    DIRECTION_RECOMMENDATION = "direction_recommendation"  # 方向推荐与比较
+    PLANNING = "planning"                            # 制定计划
+    CONVERSATION = "conversation"                    # 普通交流
+
+
 class UserRole(str, Enum):
     """身份角色。"""
 

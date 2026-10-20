@@ -99,22 +99,37 @@ export type ConversationTurnView = {
 }
 
 export type ProfileFieldView = {
+  "attributes"?: Record<string, unknown>
   "confidence"?: number
+  "entry_type"?: ProfileEntryType
+  "entry_type_label"?: string
+  "entry_version"?: number
+  "event_at"?: (string | null)
   "evidence"?: Array<string>
   "key": string
   "label"?: string
+  "origin_ref"?: string
   "source": ProfileSource
+  "status"?: ProfileEntryStatus
+  "superseded_by"?: string
   "updated_at": string
+  "valid_from"?: (string | null)
+  "valid_to"?: (string | null)
   "value"?: unknown
+  "verification"?: ProfileVerification
+  "verification_label"?: string
 }
 
 export type IntelListView = {
   "basis"?: string
   "basis_kind"?: string
+  "counts"?: Record<string, number>
   "fetched_at"?: string
   "items"?: Array<IntelItemView>
   "major"?: string
   "message"?: string
+  "occupation_sources"?: Record<string, number>
+  "query"?: Record<string, Array<string>>
   "status"?: string
 }
 
@@ -464,7 +479,13 @@ export type PipelineCardView = {
   "title": string
 }
 
+export type ProfileEntryType = "learning_background" | "interest" | "experience" | "ability" | "career_focus" | "values" | "condition" | "supplement"
+
 export type ProfileSource = "resume" | "conversation" | "assessment" | "behavior_inference" | "mentor" | "record" | "user_edit"
+
+export type ProfileEntryStatus = "active" | "corrected" | "conflict" | "expired" | "withdrawn"
+
+export type ProfileVerification = "self_reported" | "user_confirmed" | "record" | "verified" | "pending"
 
 export type AchievementView = {
   "key": string

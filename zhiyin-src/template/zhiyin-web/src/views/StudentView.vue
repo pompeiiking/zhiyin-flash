@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { studentVoice } from '../lib/student-voice'
-import { formatPercent } from '../lib/format'
 import EvidenceState from '../components/EvidenceState.vue'
 import {STUDY_YEAR_OPTIONS, studyYearLabel} from '../lib/study-year'
 import { useRoute } from 'vue-router'
@@ -55,7 +54,6 @@ import SkeletonBlock from '../components/SkeletonBlock.vue'
 import SourceChip from '../components/SourceChip.vue'
 import StatTile from '../components/StatTile.vue'
 import StatusBanner from '../components/StatusBanner.vue'
-import ConfidenceBadge from '../components/ConfidenceBadge.vue'
 import ProfileInsights from '../components/ProfileInsights.vue'
 import AcademicVerification from '../components/AcademicVerification.vue'
 import FormConflict from '../components/FormConflict.vue'
@@ -94,7 +92,7 @@ const fields = useProfileFields({
   progress: workspace.progress,
   getFieldDeps: () => conclusions.fieldDeps.value,
 })
-const { fieldValue, valueParts, known, tally, statusLine, confBands, trustOrigin, coverageNote, groups, trustShown, tweenTo, stopTween } = fields
+const { fieldValue, valueParts, known, statusLine, confBands, coverageNote, groups } = fields
 
 const conclusions = useProfileConclusions({
   live: workspace.live,
@@ -170,12 +168,7 @@ const enrollmentRows = computed(() => {
 function exportProfile(){const url=URL.createObjectURL(new Blob([JSON.stringify({profile:known.value,gaps:gapRows.value,source:live.value?'本次读取的档案':'个人画像'},null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='职引-个人画像.json';a.click();URL.revokeObjectURL(url)}
 
 /** 覆盖度环：进入页面从 0 生长到实际值；reduced-motion 直接给终值 */
-// 这个 watch 依赖 tally，而 tally 又依赖 known（由结论侧的依赖关系算出来）——
-// 所以它必须注册在 known 之后，否则 immediate 求值时 known 还在 TDZ 里。
-watch(() => tally.value.trust, (value) => tweenTo(value), { immediate: true })
-
 onBeforeUnmount(() => {
-  stopTween()
   stopJumpTimers()
 })
 
@@ -289,10 +282,11 @@ onMounted(()=>{ void loadWorkspace() })
                     <span class="p7-row__value" :title="fieldValue(row)">{{ valueParts(row).head }}</span>
                     <span v-if="valueParts(row).hasHint" class="p7-row__hint">{{ valueParts(row).tail }}</span>
                     <span class="p7-row__meta">
-                      <span v-if="!Number.isFinite(row.conf) || row.conf < 0.8" class="profile-needs-check">待核对</span><span class="p7-row__cue"><span class="sr-only">查看依据</span><UiIcon name="info" :size="16" /></span>
+                      <span class="p7-row__type">{{ row.typeLabel }}</span>
+                      <span v-if="row.needsCheck" class="profile-needs-check">{{ row.verificationLabel }}</span><span class="p7-row__cue"><span class="sr-only">查看依据</span><UiIcon name="info" :size="16" /></span>
                     </span>
                   </span>
-                </template><p class="profile-fact-value">{{fieldValue(row).slice(0,240)}}{{fieldValue(row).length>240?'…':''}}</p><div class="profile-fact-popover-meta"><SourceChip :source="row.src" :at="row.iso || null"/><ConfidenceBadge :confidence="row.conf" /></div><p class="profile-popover-meta">记录时间：{{ row.noted }}</p><p v-if="row.touched" class="profile-popover-meta">本人已更正<template v-if="row.prior">，原内容：{{ row.prior }}</template></p>
+                </template><p class="profile-fact-value">{{fieldValue(row).slice(0,240)}}{{fieldValue(row).length>240?'…':''}}</p><div class="profile-fact-popover-meta"><SourceChip :source="row.src" :at="row.iso || null"/><span class="profile-fact-verification">{{ row.typeLabel }} · {{ row.verificationLabel }}</span></div><p class="profile-popover-meta">记录时间：{{ row.noted }}</p><p v-if="row.touched" class="profile-popover-meta">本人已更正<template v-if="row.prior">，原内容：{{ row.prior }}</template></p>
                   <div :id="`p7-more-${row.key}`" class="p7-row__more-body">
                     <div class="p7-row__actions">
                       <button class="ws-text-button" type="button" @click="inspectField(row)">深入了解这项信息</button>
@@ -415,7 +409,7 @@ onMounted(()=>{ void loadWorkspace() })
               </span>
               <span class="p7-concl__brief">{{ studentVoice(item.brief) }}</span>
               <span class="p7-concl__side">
-                <ConfidenceBadge v-if="Number.isFinite(item.conf)" class="p7-concl__conf" :confidence="item.conf" />
+                <span class="p7-concl__conf">依据 {{ item.deps.length }} 条资料</span>
                 <span v-if="recomputeIds.has(item.key)" class="chip chip--attention">需要重算</span>
                 <span class="p7-concl__cue">{{ openConclusion === item.key ? '收起' : '完整判断与依据' }}<UiIcon name="chevron" :size="14" /></span>
               </span>
@@ -552,7 +546,7 @@ onMounted(()=>{ void loadWorkspace() })
     </Foldable><aside class="c2-profile-side" aria-label="画像操作与来源">
       <section><h2>核对与管理资料</h2><RouterLink class="btn" to="/chat">补充一条信息<UiIcon name="plus" :size="16" /></RouterLink><button class="btn" :disabled="loading" @click="loadWorkspace">{{ loading ? '正在读取…' : '重新核对档案' }}</button><p>点开一条信息，可以查看依据、修改内容。更正后会标出受影响的判断。</p></section>
       <section><h2>这 {{ known.length }} 条从哪里来</h2><div v-for="source in SOURCE_GROUPS" :key="source.key" class="c2-source-row"><span>{{ source.label }}</span><span class="c2-source-track" role="meter" :aria-label="source.label" :aria-valuenow="known.filter(row => source.from.includes(row.desc)).length" :aria-valuemax="Math.max(1, known.length)" aria-valuemin="0"><i :style="{width: known.filter(row => source.from.includes(row.desc)).length / Math.max(1, known.length) * 100 + '%'}" /></span><b>{{ known.filter(row => source.from.includes(row.desc)).length }}</b></div></section>
-      <section><h2>{{ identity.name }}</h2><p>{{ identity.line }}</p><p>整体可信度 {{ formatPercent(trustShown) }} · 覆盖 {{ progress.known }} / {{ progress.total }}</p><Foldable variant="inline" title="查看计算依据"><p>{{ trustOrigin }}。{{ statusLine }}</p><p>{{ coverageNote }}</p></Foldable></section>
+      <section><h2>{{ identity.name }}</h2><p>{{ identity.line }}</p><p>已记录 {{ progress.known }} 条 · {{ confBands[0]?.title }} {{ confBands[0]?.count ?? 0 }} 条 · {{ confBands[2]?.title }} {{ confBands[2]?.count ?? 0 }} 条</p><Foldable variant="inline" title="查看来源与核实状态"><p>{{ statusLine }}</p><p>{{ coverageNote }}</p><p>这里不显示内部置信度分数；每条记录由来源与核实状态分别说明。</p></Foldable></section>
     </aside></InfoSheet>
     <InfoSheet :open="verificationOpen" shape="panel" title="核验学籍信息" @close="verificationOpen=false"><AcademicVerification /></InfoSheet>
     <!-- 更正是一条信息的小表单（`text` + 两个按钮），不是"从一行钻进去看细节"。
@@ -573,7 +567,10 @@ onMounted(()=>{ void loadWorkspace() })
 </template>
 
 <style scoped>
-.profile-fact-value{font-size:15px;line-height:1.75;white-space:pre-wrap;overflow-wrap:anywhere}.profile-association-note p{font-size:13px;color:var(--c-text-3);margin-top:8px}@media(max-width:600px){.profile-identity__coverage{display:none}}
+.profile-fact-value{font-size:15px;line-height:1.75;white-space:pre-wrap;overflow-wrap:anywhere}
+.p7-row__type{font-size:var(--fs-12);color:var(--c-text-3);white-space:nowrap}
+.profile-fact-verification{font-size:var(--fs-12);color:var(--c-text-2)}
+.profile-association-note p{font-size:13px;color:var(--c-text-3);margin-top:8px}@media(max-width:600px){.profile-identity__coverage{display:none}}
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * 用底色 / 描边 / 留白分层，不给所有内容套同一张卡片。

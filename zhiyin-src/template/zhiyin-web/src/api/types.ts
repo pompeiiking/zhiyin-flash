@@ -3342,6 +3342,10 @@ export interface components {
        * @default
        */
       basis_kind?: string;
+      /** Counts */
+      counts?: {
+        [key: string]: number;
+      };
       /**
        * Fetched At
        * @description 这一批的取回时间
@@ -3361,6 +3365,14 @@ export interface components {
        * @default
        */
       message?: string;
+      /** Occupation Sources */
+      occupation_sources?: {
+        [key: string]: number;
+      };
+      /** Query */
+      query?: {
+        [key: string]: string[];
+      };
       /**
        * Status
        * @default
@@ -4260,6 +4272,28 @@ export interface components {
       timezone?: string;
     };
     /**
+     * ProfileEntryStatus
+     * @description 画像条目状态（第 4、7 节）。
+     *
+     * 不统一执行「最新值覆盖旧值」：修正、冲突、过期、撤回是四种不同的变化，
+     * 混成一个状态后，界面上就分不清「他改过」和「两条资料对不上」。
+     * @enum {string}
+     */
+    ProfileEntryStatus: "active" | "corrected" | "conflict" | "expired" | "withdrawn";
+    /**
+     * ProfileEntryType
+     * @description 画像条目的内容类别（《个人画像设计-2026-10-20》第 2 节）。
+     *
+     * 类别是**组织视角**，不是一个条目只能有一个去处：一份经历可以同时支撑
+     * 兴趣与能力分析（通过引用关联），但原始经历只有一个出处。因此每一次写入
+     * 都必须落到一个明确类别上，消费方不再猜字段键字符串的含义。
+     *
+     * 受控词表：类别由服务端按字段键推导（见 `profile_taxonomy.entry_type_of`），
+     * 模型不能自由生成，也不参与权限判断。
+     * @enum {string}
+     */
+    ProfileEntryType: "learning_background" | "interest" | "experience" | "ability" | "career_focus" | "values" | "condition" | "supplement";
+    /**
      * ProfileFieldUpdateRequest
      * @description 用户手动更正一条画像字段（issue #26 第三条）。
      *
@@ -4286,18 +4320,42 @@ export interface components {
     };
     /**
      * ProfileFieldView
-     * @description 画像里的一条字段（活状态的最小单位）。
+     * @description 画像里的一条记录（活状态的最小单位）。
      *
      * 此前这里是 `dict[str, Any]`：契约只说"有 fields"，不说每条里有什么。
      * 前端要按 `confidence` 画把握度、按 `evidence` 做可溯源展示、按 `source`
      * 说明这条从哪来 —— 全是猜的字段名。现在逐字段声明。
+     *
+     * 《个人画像设计-2026-10-20》第 4 节：一条记录还要能回答「属于哪一类内容、
+     * 结构是什么、原话在哪、核实到什么程度、何时仍适用」。这些字段都来自服务端
+     * 词表与写入校验，前端只按它们组织展示，不再自己猜键的含义。
      */
     ProfileFieldView: {
+      /** Attributes */
+      attributes?: {
+        [key: string]: unknown;
+      };
       /**
        * Confidence
+       * @description 兼容字段，界面不再展示成百分比
        * @default 0
        */
       confidence?: number;
+      /** @default supplement */
+      entry_type?: components["schemas"]["ProfileEntryType"];
+      /**
+       * Entry Type Label
+       * @description 内容类别的中文名（界面显示它）
+       * @default
+       */
+      entry_type_label?: string;
+      /**
+       * Entry Version
+       * @default 1
+       */
+      entry_version?: number;
+      /** Event At */
+      event_at?: string | null;
       /**
        * Evidence
        * @description 证据来源引用
@@ -4314,17 +4372,42 @@ export interface components {
        * @default
        */
       label?: string;
+      /**
+       * Origin Ref
+       * @description 原话或资料来源引用
+       * @default
+       */
+      origin_ref?: string;
       source: components["schemas"]["ProfileSource"];
+      /** @default active */
+      status?: components["schemas"]["ProfileEntryStatus"];
+      /**
+       * Superseded By
+       * @default
+       */
+      superseded_by?: string;
       /**
        * Updated At
        * Format: date-time
        */
       updated_at: string;
+      /** Valid From */
+      valid_from?: string | null;
+      /** Valid To */
+      valid_to?: string | null;
       /**
        * Value
        * @description 字段值，结构由画像 schema 决定
        */
       value?: unknown;
+      /** @default pending */
+      verification?: components["schemas"]["ProfileVerification"];
+      /**
+       * Verification Label
+       * @description 核实状态的中文名（界面显示它）
+       * @default
+       */
+      verification_label?: string;
     };
     /**
      * ProfileGapView
@@ -4383,6 +4466,15 @@ export interface components {
      * @enum {string}
      */
     ProfileSource: "resume" | "conversation" | "assessment" | "behavior_inference" | "mentor" | "record" | "user_edit";
+    /**
+     * ProfileVerification
+     * @description 核实状态：与「来源」分开表达（第 3.1、4 节）。
+     *
+     * `ProfileSource` 回答「这条从哪儿来」，核实状态回答「它被确认到什么程度」——
+     * 用一个分数混合这两件事，用户看到的就只是一个说不清含义的百分比。
+     * @enum {string}
+     */
+    ProfileVerification: "self_reported" | "user_confirmed" | "record" | "verified" | "pending";
     /** ReleaseJob */
     ReleaseJob: {
       /** Actor */

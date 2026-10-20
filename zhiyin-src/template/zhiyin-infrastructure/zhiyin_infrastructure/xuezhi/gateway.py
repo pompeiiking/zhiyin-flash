@@ -18,10 +18,14 @@ from zhiyin_infrastructure.xuezhi.parsing import (
     speciality_text,
 )
 
+from zhiyin_kernel import profile_taxonomy
+
 _SOURCE = "xuezhi"
-# 画像字段优先级：专业决定"读哪个专业"，目标岗位决定"看哪些职业与案例"。
-_MAJOR_KEYS = ("major", "speciality", "target_major", "field_of_study")
-_JOB_KEYS = ("target_job", "target_direction", "career_interest", "interest", "industry")
+# 画像字段优先级见《个人画像设计-2026-10-20》第 8 节：
+#   · 专业检索只认明确的学习背景专业字段（普通兴趣/价值偏好/补充描述不能替代）；
+#   · 职业检索只认明确的职业关注字段（兴趣、行业等不能拼成职业名称）。
+_MAJOR_KEYS = profile_taxonomy.MAJOR_KEYS
+_CAREER_KEYS = profile_taxonomy.CAREER_FOCUS_KEYS
 
 
 class XueZhiDataSourceGateway(DataSourceGateway):
@@ -52,28 +56,29 @@ class XueZhiDataSourceGateway(DataSourceGateway):
         records: list[DataSourceRecord] = []
         errors: list[str] = []
         try:
-            await self._collect(request, records, errors)
+            details = await self._collect(request, records, errors)
         except Exception as exc:
             # 已经取到的证据照常返回：半份真实数据比整份空缺更有用，
             # 但必须让调用方看见"这次不完整"。
             errors.append(str(exc))
+            details = {}
         return DataSourceResult(
             source=request.source,
             records=records[: request.limit],
             degraded=bool(errors),
             errors=errors,
+            details=details,
         )
 
     async def _collect(
         self, request: DataSourceRequest, records: list[DataSourceRecord], errors: list[str]
-    ) -> None:
-        values = _context_values(request.context)
-        major_terms = _terms(values, _MAJOR_KEYS)
-        job_terms = _terms(values, _JOB_KEYS)
-        if not major_terms and not job_terms and request.query.strip():
+    ) -> dict[str, Any]:
+        fields = _context_fields(request.context)
+        major_terms = profile_taxonomy.major_terms(fields)
+        career_terms = profile_taxonomy.career_focus_terms(fields)
+        if not major_terms and not career_terms and request.query.strip():
             # 画像为空（新用户）时才退回原始提问，避免拿整句话当检索词。
             major_terms = [request.query.strip()]
-            job_terms = [request.query.strip()]
 
         # 平台自带的"专业 → 对口职业"映射：比拿专业名去模糊搜职业准得多。
         async def attempt(operation):
@@ -83,20 +88,26 @@ class XueZhiDataSourceGateway(DataSourceGateway):
                 errors.append(str(exc))
                 return None
 
+        # 专业检索独立：即使同时有明确的职业关注，也照常按专业取专业详情与
+        # 官方对口职业，不用职业关注去替换或覆盖专业查询。
         linked_occupations = await attempt(self._collect_specialities(major_terms, records)) or []
-        # 已选/主攻方向比"专业对口职业"更近：先把方向对应的职业取回来，
-        # 再用专业链条补足；否则方向页写着"后端开发"，探索页永远是
-        # 软件工程师/游戏开发/移动客户端这三个专业对口职业。
-        direction_terms = _terms(values, ("target_direction", "target_job"))
+        # 明确的职业关注（已选/考虑中的方向）优先：先把关注对象对应的职业取回来，
+        # 再用专业链条补足；否则方向页写着"后端开发"，探索页永远是专业对口职业。
+        direction_terms = [term for term in career_terms if term not in major_terms]
         if direction_terms:
             await attempt(self._collect_occupations(direction_terms, [], records, relation="direction"))
             await attempt(self._collect_occupations(major_terms, linked_occupations, records, relation="major"))
             await attempt(self._collect_cases(direction_terms, records, relation="direction"))
         else:
             await attempt(self._collect_occupations(
-                job_terms or major_terms, linked_occupations, records, relation="major"
+                major_terms, linked_occupations, records, relation="major"
             ))
-            await attempt(self._collect_cases(job_terms or major_terms, records, relation="major"))
+            await attempt(self._collect_cases(major_terms, records, relation="major"))
+        return _retrieval_details(
+            major_terms=major_terms,
+            career_terms=career_terms,
+            records=records,
+        )
 
     async def _collect_specialities(
         self, terms: list[str], records: list[DataSourceRecord]
@@ -264,43 +275,53 @@ def _occupation_record(
     )
 
 
-def _context_values(context: dict[str, Any]) -> dict[str, list[str]]:
-    """把上下文（画像字段快照 / 扁平键值）整理成 键 → 检索词列表。"""
-    values: dict[str, Any] = {}
+def _context_fields(context: dict[str, Any]) -> list[dict[str, Any]]:
+    """把上下文（画像字段快照 / 扁平键值）整理成可交给用途视图的字段行。
+
+    `fields` 里的每条字段可以带 `entry_type`；没带就由词表按键推导 ——
+    与写侧共用同一份受控词表，不在取数处另判一套类别。
+    """
+    rows: list[dict[str, Any]] = []
     fields = context.get("fields")
     if isinstance(fields, list):
         for field in fields:
             if isinstance(field, dict) and field.get("key"):
-                values[str(field["key"])] = field.get("value")
+                rows.append(dict(field))
     for key, value in context.items():
-        if key != "fields":
-            values.setdefault(str(key), value)
-
-    collected: dict[str, list[str]] = {}
-    for key in values:
-        value = values[key]
-        terms: list[str] = []
-        if isinstance(value, str) and value.strip():
-            terms.append(value.strip())
-        elif isinstance(value, (list, tuple)):
-            terms.extend(str(item).strip() for item in value if str(item).strip())
-        elif isinstance(value, dict):
-            terms.extend(
-                str(item).strip() for item in value.values() if str(item).strip()
-            )
-        if terms:
-            collected[key] = terms
-    return collected
+        if key in {"fields", "background_fields", "topic"}:
+            continue
+        rows.append({"key": str(key), "value": value})
+    return rows
 
 
-def _terms(values: dict[str, list[str]], keys: tuple[str, ...]) -> list[str]:
-    """按字段优先级取出检索词，去重保序。"""
-    terms: list[str] = []
-    for key in keys:
-        for term in values.get(key, []):
-            if term not in terms:
-                terms.append(term)
-    return terms
+def _retrieval_details(
+    *,
+    major_terms: list[str],
+    career_terms: list[str],
+    records: list[DataSourceRecord],
+) -> dict[str, Any]:
+    """取数依据与结果状态：专业/职业/案例分别报数，不把“专业取到了”当成整次成功。
+
+    第 8 节要求区分官方专业映射、名称检索和一般案例；这条明细就是那句话的依据。
+    """
+    counts = {"speciality": 0, "occupation": 0, "career_case": 0}
+    official = 0
+    name_search = 0
+    for record in records:
+        kind = str(record.kind or "")
+        if kind in counts:
+            counts[kind] += 1
+        if kind == "occupation":
+            matched_from = str(record.metadata.get("matched_from") or "")
+            if matched_from == "speciality":
+                official += 1
+            elif matched_from == "search":
+                name_search += 1
+    return {
+        "query": {"major": list(major_terms), "career": list(career_terms)},
+        "counts": counts,
+        "occupation_sources": {"official_mapping": official, "name_search": name_search},
+    }
 
 
 def _items(payload: dict[str, Any]) -> list[dict[str, Any]]:

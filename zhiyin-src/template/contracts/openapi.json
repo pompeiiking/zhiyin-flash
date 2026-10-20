@@ -4950,6 +4950,13 @@
             "title": "Basis Kind",
             "type": "string"
           },
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Counts",
+            "type": "object"
+          },
           "fetched_at": {
             "default": "",
             "description": "这一批的取回时间",
@@ -4973,6 +4980,23 @@
             "description": "给学生看的下一步说明",
             "title": "Message",
             "type": "string"
+          },
+          "occupation_sources": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Occupation Sources",
+            "type": "object"
+          },
+          "query": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "title": "Query",
+            "type": "object"
           },
           "status": {
             "default": "",
@@ -6904,6 +6928,33 @@
         "title": "PreferencesEdit",
         "type": "object"
       },
+      "ProfileEntryStatus": {
+        "description": "画像条目状态（第 4、7 节）。\n\n不统一执行「最新值覆盖旧值」：修正、冲突、过期、撤回是四种不同的变化，\n混成一个状态后，界面上就分不清「他改过」和「两条资料对不上」。",
+        "enum": [
+          "active",
+          "corrected",
+          "conflict",
+          "expired",
+          "withdrawn"
+        ],
+        "title": "ProfileEntryStatus",
+        "type": "string"
+      },
+      "ProfileEntryType": {
+        "description": "画像条目的内容类别（《个人画像设计-2026-10-20》第 2 节）。\n\n类别是**组织视角**，不是一个条目只能有一个去处：一份经历可以同时支撑\n兴趣与能力分析（通过引用关联），但原始经历只有一个出处。因此每一次写入\n都必须落到一个明确类别上，消费方不再猜字段键字符串的含义。\n\n受控词表：类别由服务端按字段键推导（见 `profile_taxonomy.entry_type_of`），\n模型不能自由生成，也不参与权限判断。",
+        "enum": [
+          "learning_background",
+          "interest",
+          "experience",
+          "ability",
+          "career_focus",
+          "values",
+          "condition",
+          "supplement"
+        ],
+        "title": "ProfileEntryType",
+        "type": "string"
+      },
       "ProfileFieldUpdateRequest": {
         "additionalProperties": false,
         "description": "用户手动更正一条画像字段（issue #26 第三条）。\n\n只有一个 `value`，键在路径上（`POST /app/profile/fields/{key}`）：\n\"改哪一条\"不是可选的 —— 揉进请求体里，就等于允许一次请求改任意多条，\n而界面上的入口从来只对着一条。\n\n**为什么这里不设长度上限**：上限是业务口径（40 字，见\n`DefaultProfileService.MAX_FIELD_VALUE_CHARS`），超长要说人话\n（\"最多 40 个字，现在有 56 个\"）。交给 Pydantic 的 `max_length` 只会得到\n一句英文的字段名错误，用户看不懂自己该改什么。",
@@ -6935,14 +6986,48 @@
       },
       "ProfileFieldView": {
         "additionalProperties": false,
-        "description": "画像里的一条字段（活状态的最小单位）。\n\n此前这里是 `dict[str, Any]`：契约只说\"有 fields\"，不说每条里有什么。\n前端要按 `confidence` 画把握度、按 `evidence` 做可溯源展示、按 `source`\n说明这条从哪来 —— 全是猜的字段名。现在逐字段声明。",
+        "description": "画像里的一条记录（活状态的最小单位）。\n\n此前这里是 `dict[str, Any]`：契约只说\"有 fields\"，不说每条里有什么。\n前端要按 `confidence` 画把握度、按 `evidence` 做可溯源展示、按 `source`\n说明这条从哪来 —— 全是猜的字段名。现在逐字段声明。\n\n《个人画像设计-2026-10-20》第 4 节：一条记录还要能回答「属于哪一类内容、\n结构是什么、原话在哪、核实到什么程度、何时仍适用」。这些字段都来自服务端\n词表与写入校验，前端只按它们组织展示，不再自己猜键的含义。",
         "properties": {
+          "attributes": {
+            "additionalProperties": true,
+            "title": "Attributes",
+            "type": "object"
+          },
           "confidence": {
             "default": 0.0,
+            "description": "兼容字段，界面不再展示成百分比",
             "maximum": 1.0,
             "minimum": 0.0,
             "title": "Confidence",
             "type": "number"
+          },
+          "entry_type": {
+            "$ref": "#/components/schemas/ProfileEntryType",
+            "default": "supplement"
+          },
+          "entry_type_label": {
+            "default": "",
+            "description": "内容类别的中文名（界面显示它）",
+            "title": "Entry Type Label",
+            "type": "string"
+          },
+          "entry_version": {
+            "default": 1,
+            "minimum": 1.0,
+            "title": "Entry Version",
+            "type": "integer"
+          },
+          "event_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Event At"
           },
           "evidence": {
             "description": "证据来源引用",
@@ -6963,17 +7048,66 @@
             "title": "Label",
             "type": "string"
           },
+          "origin_ref": {
+            "default": "",
+            "description": "原话或资料来源引用",
+            "title": "Origin Ref",
+            "type": "string"
+          },
           "source": {
             "$ref": "#/components/schemas/ProfileSource"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ProfileEntryStatus",
+            "default": "active"
+          },
+          "superseded_by": {
+            "default": "",
+            "title": "Superseded By",
+            "type": "string"
           },
           "updated_at": {
             "format": "date-time",
             "title": "Updated At",
             "type": "string"
           },
+          "valid_from": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid From"
+          },
+          "valid_to": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid To"
+          },
           "value": {
             "description": "字段值，结构由画像 schema 决定",
             "title": "Value"
+          },
+          "verification": {
+            "$ref": "#/components/schemas/ProfileVerification",
+            "default": "pending"
+          },
+          "verification_label": {
+            "default": "",
+            "description": "核实状态的中文名（界面显示它）",
+            "title": "Verification Label",
+            "type": "string"
           }
         },
         "required": [
@@ -7079,6 +7213,18 @@
           "user_edit"
         ],
         "title": "ProfileSource",
+        "type": "string"
+      },
+      "ProfileVerification": {
+        "description": "核实状态：与「来源」分开表达（第 3.1、4 节）。\n\n`ProfileSource` 回答「这条从哪儿来」，核实状态回答「它被确认到什么程度」——\n用一个分数混合这两件事，用户看到的就只是一个说不清含义的百分比。",
+        "enum": [
+          "self_reported",
+          "user_confirmed",
+          "record",
+          "verified",
+          "pending"
+        ],
+        "title": "ProfileVerification",
         "type": "string"
       },
       "ReleaseJob": {

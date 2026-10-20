@@ -25,6 +25,16 @@ CREATE TABLE IF NOT EXISTS biz_profile_field (
     source TEXT NOT NULL,
     evidence JSONB NOT NULL DEFAULT '[]'::jsonb,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    entry_type TEXT,
+    attributes JSONB NOT NULL DEFAULT '{}'::jsonb,
+    verification TEXT,
+    status TEXT NOT NULL DEFAULT 'active',
+    origin_ref TEXT NOT NULL DEFAULT '',
+    valid_from TIMESTAMPTZ,
+    valid_to TIMESTAMPTZ,
+    event_at TIMESTAMPTZ,
+    entry_version INTEGER NOT NULL DEFAULT 1,
+    superseded_by TEXT NOT NULL DEFAULT '',
     PRIMARY KEY (user_id, key)
 );
 CREATE INDEX IF NOT EXISTS idx_biz_profile_field_user

@@ -14,8 +14,13 @@ from zhiyin_business.policies.collection import field_labels
 from zhiyin_business.ports.blackboard import ProfileService
 from zhiyin_data_sdk.repositories import ProfileRepository
 from zhiyin_kernel import dynamic_config
+from zhiyin_kernel import profile_taxonomy
 from zhiyin_kernel.blackboard import Profile, ProfileField, ProfileGap
-from zhiyin_kernel.enums import ProfileSource
+from zhiyin_kernel.enums import (
+    ProfileEntryStatus,
+    ProfileSource,
+    ProfileVerification,
+)
 from zhiyin_kernel.errors import DuplicateResource, InvalidRequest
 from zhiyin_orchestration import DomainEvent, EventBus
 
@@ -28,15 +33,12 @@ logger = logging.getLogger(__name__)
 #: 做什么（核对最新值再保存），比"画像已更新"更容易对上他自己看到的东西。
 PROFILE_FIELD_CONFLICT_MESSAGE = "这个字段已在其他页面更新，请核对最新值后再保存"
 
-#: 用户手填的一个字段值最多多长（字符数）。
-#
-# 40 不是排版上的拍脑袋：画像里每一格都要能被**读进一句话、写进一段提示词**，
-# 而"专业 / 兴趣 / 卡点"这类取值本来就是一个短语或一句话。放开长度之后，
-# 用户在这里贴一整段自述进来，画像那一格会变成一个文本域，采集清单与
-# 报告维度的对照关系也就断了（它们按"一格一件事"取值）。
-#
-# 所以线上限不住的地方由这里兜住：超长**如实拒**并说清上限，
-# 而不是悄悄截断 —— 截断会让他以为自己写的后半句被记住了。
+#: 兼容常量：短事实（专业 / 学校 / 年级）仍按 40 字，但**不再是所有记录的统一上限**。
+#:
+#: 《个人画像设计-2026-10-20》第 4 节：不继续用统一的 40 字短字符串承载所有记录。
+#: 各内容类别分别限制条数、文本长度、结构深度与来源大小 —— 具体口径在
+#: `zhiyin_kernel.profile_taxonomy`（键优先、类别兜底），这里只保留这个常量给
+#: 既有调用方与测试引用，避免它们被迫跟着改一遍。
 MAX_FIELD_VALUE_CHARS = 40
 
 
@@ -71,21 +73,45 @@ class DefaultProfileService(ProfileService):
         evidence: Optional[list[str]] = None,
         expected_updated_at: datetime | None = None,
         check_version: bool = False,
+        attributes: dict[str, object] | None = None,
+        verification: str | None = None,
+        origin_ref: str = "",
+        valid_from: datetime | None = None,
+        valid_to: datetime | None = None,
+        event_at: datetime | None = None,
+        status: str | None = None,
     ) -> ProfileField:
-        value_limit = (12000 if key == "experience" else 160
-                       if key in {"courses", "scores"} and source == ProfileSource.RECORD.value
-                       else MAX_FIELD_VALUE_CHARS)
-        if isinstance(value, str) and len(value) > value_limit:
-            raise InvalidRequest("画像字段超过允许长度，请拆分为简短事实；经历最多 12000 字。")
-        field = ProfileField(
-            key=key,
-            label=label,
-            value=value,
-            confidence=confidence,
-            source=ProfileSource(source),
-            evidence=evidence or [],
-            updated_at=datetime.now(timezone.utc),
-        )
+        """写入一条画像记录（所有来源共用的唯一写入口）。
+
+        写入方只提供「键、整理后的内容、来源与依据」；类别、取值形状、核实状态
+        与有效范围由服务端按受控词表校验后固化 —— 模型不能自己声明一个类别或
+        一个 `allowed=true` 绕过权限。
+
+        第 4 节的语义契约在这里落地：
+        - 类别来自键的受控映射（`profile_taxonomy.entry_type_of`），不采信调用方自报；
+        - 不同类型的取值形状与上限不同（兴趣可以是多条，经历正文可长）；
+        - 三者分开：何时知道（`updated_at`）、何时发生（`event_at`）、何时仍适用
+          （`valid_from` / `valid_to`）；未知时间不补成当前时间；
+        - 同一条记录每次写入版本 +1，供并发更新与「我看到的是哪一版」使用。
+        """
+        source_value = ProfileSource(source)
+        entry_type = profile_taxonomy.entry_type_of(key)
+        normalized = profile_taxonomy.normalize_value(key, value, entry_type)
+        normalized_attributes = profile_taxonomy.normalize_attributes(entry_type, attributes)
+        profile_taxonomy.validate_window(valid_from, valid_to)
+        try:
+            verification_value = (
+                ProfileVerification(verification)
+                if verification
+                else profile_taxonomy.verification_for(source_value)
+            )
+        except ValueError as exc:
+            raise InvalidRequest("核实状态无效。") from exc
+        try:
+            status_value = ProfileEntryStatus(status) if status else ProfileEntryStatus.ACTIVE
+        except ValueError as exc:
+            raise InvalidRequest("记录状态无效。") from exc
+
         # 这是**新出现**的一类信息吗？
         #
         # 为什么要在这里判：影响面的判据是"资产声明的依赖字段 ∩ 变更字段"，
@@ -94,15 +120,34 @@ class DefaultProfileService(ProfileService):
         # 于是"画像里多了一整类信息"这件事对已有结论完全不可见。
         # 交给下游的判据只能是"这个字段对谁都是新的"，所以得在写画像的地方算出来 ——
         # 只有这里知道画像在写之前长什么样。
-        #
-        # ⚠️ 必须在 upsert **之前**读：写在后面的话读到的就是刚写进去的那条，
-        # `is_new` 永远是假（实测：这条判据先写在后面，整条修复静默失效）。
         try:
-            known = {item.key for item in await self._profiles.list_fields(user_id)}
+            existing = await self._profiles.list_fields(user_id)
         except Exception:  # noqa: BLE001 - 读旧画像失败不该让这次写入失败
             logger.warning("读取既有画像失败，新字段判定按否处理", exc_info=True)
-            known = None
-        is_new = known is not None and key not in known
+            existing = []
+        known = {item.key for item in existing}
+        is_new = not existing or key not in known
+        before = next((item for item in existing if item.key == key), None)
+        field = ProfileField(
+            key=key,
+            label=label,
+            value=normalized,
+            confidence=confidence,
+            source=source_value,
+            evidence=evidence or [],
+            updated_at=datetime.now(timezone.utc),
+            entry_type=entry_type,
+            attributes=normalized_attributes,
+            verification=verification_value,
+            status=status_value,
+            origin_ref=origin_ref.strip()[:2000],
+            valid_from=valid_from,
+            valid_to=valid_to,
+            event_at=event_at,
+            entry_version=(before.entry_version if before else 1)
+            + (1 if before else 0),
+            superseded_by=before.superseded_by if before else "",
+        )
         saved = await self._profiles.upsert_field(user_id, field, expected_updated_at=expected_updated_at, check_version=True) if check_version else await self._profiles.upsert_field(user_id, field)
         await self._event_bus.publish(
             DomainEvent(
@@ -112,9 +157,12 @@ class DefaultProfileService(ProfileService):
                 payload={
                     "user_id": user_id,
                     "field_key": key,
+                    "entry_type": entry_type.value,
                     "is_new": is_new,
                     "confidence": confidence,
                     "source": saved.source.value,
+                    "verification": verification_value.value,
+                    "status": status_value.value,
                 },
             )
         )
@@ -191,7 +239,7 @@ class DefaultProfileService(ProfileService):
             # 空值单独拒，而不是当成"清空这一格"：清空是另一件事（撤销一条记录），
             # 混进来的后果是用户以为自己在改值，实际把一条依据删掉了。
             raise InvalidRequest(f"「{label}」不能是空的 —— 写一句你认可的说法再提交。")
-        limit = 12000 if key == "experience" else MAX_FIELD_VALUE_CHARS
+        limit = profile_taxonomy.value_limit(key)
         if len(text) > limit:
             raise InvalidRequest(
                 f"「{label}」最多 {limit} 个字，现在有 {len(text)} 个 —— "
@@ -231,13 +279,18 @@ class DefaultProfileService(ProfileService):
                 # 旧证据撑的是**旧值**，留着会让"这条凭什么"指回一个已经不成立的说法。
                 # 更正之后的出处就是他本人，这一点由 source 负责说明。
                 evidence=[],
+                # 更正后的记录是「本人确认」，而不是任何未经核验的分数：
+                # 核实状态与来源分开表达（第 3.1、4 节）。
+                verification=ProfileVerification.USER_CONFIRMED.value,
+                # 旧属性描述的是旧值（例如兴趣的“喜欢/不喜欢”），不能跟着新值留着。
+                attributes={},
                 expected_updated_at=expected_updated_at,
                 check_version=enforce_version,
             )
         except DuplicateResource as exc:
             # 冲突要能被他读懂、且指出下一步；同时**不能**回"已保存"。
             raise DuplicateResource(PROFILE_FIELD_CONFLICT_MESSAGE) from exc
-        if saved.value != text:
+        if saved.value != profile_taxonomy.normalize_value(key, text):
             # 写路径返回了别的值（例如调用方漏传版本导致覆盖、或仓储幂等分支返回旧值）：
             # 与其让界面显示"已保存"而库里不是他写的内容，不如如实说冲突。
             raise DuplicateResource(PROFILE_FIELD_CONFLICT_MESSAGE)

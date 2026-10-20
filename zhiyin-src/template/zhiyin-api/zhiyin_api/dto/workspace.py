@@ -8,15 +8,25 @@ from typing import Any, Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 from zhiyin_api.dto.common import TheoryRefView
-from zhiyin_kernel.enums import LoopStage, ProfileSource
+from zhiyin_kernel.enums import (
+    LoopStage,
+    ProfileEntryStatus,
+    ProfileEntryType,
+    ProfileSource,
+    ProfileVerification,
+)
 
 
 class ProfileFieldView(BaseModel):
-    """画像里的一条字段（活状态的最小单位）。
+    """画像里的一条记录（活状态的最小单位）。
 
     此前这里是 `dict[str, Any]`：契约只说"有 fields"，不说每条里有什么。
     前端要按 `confidence` 画把握度、按 `evidence` 做可溯源展示、按 `source`
     说明这条从哪来 —— 全是猜的字段名。现在逐字段声明。
+
+    《个人画像设计-2026-10-20》第 4 节：一条记录还要能回答「属于哪一类内容、
+    结构是什么、原话在哪、核实到什么程度、何时仍适用」。这些字段都来自服务端
+    词表与写入校验，前端只按它们组织展示，不再自己猜键的含义。
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -27,10 +37,25 @@ class ProfileFieldView(BaseModel):
         description="字段的展示名（来自动态资源）；为空表示这份配置里没有它，界面回落到 key",
     )
     value: Any = Field(default=None, description="字段值，结构由画像 schema 决定")
-    confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+    confidence: float = Field(default=0.0, ge=0.0, le=1.0, description="兼容字段，界面不再展示成百分比")
     source: ProfileSource
     updated_at: datetime
     evidence: list[str] = Field(default_factory=list, description="证据来源引用")
+    #: 内容类别（学习背景/兴趣/经历/能力/职业关注/价值取向/现实条件/补充信息）。
+    entry_type: ProfileEntryType = Field(default=ProfileEntryType.SUPPLEMENT)
+    entry_type_label: str = Field(default="", description="内容类别的中文名（界面显示它）")
+    #: 类别专属结构化属性（兴趣的正负与情境、职业关注的关注状态、能力的证据类型等）。
+    attributes: dict[str, Any] = Field(default_factory=dict)
+    #: 核实状态：与来源分开表达，不用一个分数混合。
+    verification: ProfileVerification = Field(default=ProfileVerification.PENDING)
+    verification_label: str = Field(default="", description="核实状态的中文名（界面显示它）")
+    status: ProfileEntryStatus = Field(default=ProfileEntryStatus.ACTIVE)
+    origin_ref: str = Field(default="", description="原话或资料来源引用")
+    valid_from: Optional[datetime] = None
+    valid_to: Optional[datetime] = None
+    event_at: Optional[datetime] = None
+    entry_version: int = Field(default=1, ge=1)
+    superseded_by: str = Field(default="")
 
 
 class ProfileFieldUpdateRequest(BaseModel):
@@ -319,6 +344,12 @@ class IntelListView(BaseModel):
     basis: str = ""
     #: basis 的类型：direction（方向方案）/ profile（画像专业）/ 空。
     basis_kind: str = ""
+    #: 专业/职业/案例分别几条（《个人画像设计》第 8 节：不能只报一个总数）。
+    counts: dict[str, int] = Field(default_factory=dict)
+    #: 本次实际下发的检索词（专业词 / 职业关注词）：可回看的取数依据。
+    query: dict[str, list[str]] = Field(default_factory=dict)
+    #: 职业条目的取得方式：官方专业映射 / 名称检索各几条。
+    occupation_sources: dict[str, int] = Field(default_factory=dict)
 
 
 class CapabilityItemView(BaseModel):

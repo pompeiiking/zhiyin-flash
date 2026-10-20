@@ -40,12 +40,12 @@ const emit = defineEmits<{
             <h2 id="profile-dossier-title">{{ identity.name }}</h2>
             <p>{{ identity.line }}</p>
           </div>
-          <DetailPopover title="个人资料概况" label="查看个人资料概况"><p>已记录 {{ progress.known }} 项信息，{{ progress.gap }} 项待补充。</p><p>依据充分 {{ confBands[0]?.count ?? 0 }} 项，待核对 {{ confBands[1]?.count ?? 0 }} 项。</p></DetailPopover>
+          <DetailPopover title="个人资料概况" label="查看个人资料概况"><p>已记录 {{ progress.known }} 条信息，{{ progress.gap }} 条可以继续补充。</p><p>{{ confBands[0]?.title }} {{ confBands[0]?.count ?? 0 }} 条，{{ confBands[2]?.title }} {{ confBands[2]?.count ?? 0 }} 条。</p></DetailPopover>
         </div>
         <div class="profile-dossier__coverage">
-          <div><span>资料完整度</span><strong>{{ progress.known }}<small> / {{ progress.total }}</small></strong><EvidenceState :state="progress.gap ? 'missing' : 'recorded'" /></div>
-          <div class="profile-dossier__track" role="progressbar" :aria-label="'资料完整度'" :aria-valuemin="0" :aria-valuemax="progress.total" :aria-valuenow="progress.known" :aria-valuetext="'已记录 '+progress.known+' 项，共 '+progress.total+' 项，待补充 '+progress.gap+' 项'"><i v-for="n in progress.total" :key="n" aria-hidden="true" :class="{'is-known':n<=progress.known}"/></div>
-          <p>{{ loading && !livePanel ? '正在读取资料…' : serviceError ? '资料读取失败，请重试核对' : !livePanel ? '尚未读取资料' : !progress.known && !progress.gap ? '暂无个人资料，可从咨询开始补充' : progress.gap ? `还差 ${progress.gap} 项关键信息` : '当前未列出待补充项' }}</p>
+          <div><span>已记录资料</span><strong>{{ progress.known }}<small> / {{ progress.total }}</small></strong><EvidenceState :state="progress.gap ? 'missing' : 'recorded'" /></div>
+          <div class="profile-dossier__track" role="progressbar" :aria-label="'已记录资料'" :aria-valuemin="0" :aria-valuemax="progress.total" :aria-valuenow="progress.known" :aria-valuetext="'已记录 '+progress.known+' 条，共 '+progress.total+' 条，可以补充 '+progress.gap+' 条'"><i v-for="n in progress.total" :key="n" aria-hidden="true" :class="{'is-known':n<=progress.known}"/></div>
+          <p>{{ loading && !livePanel ? '正在读取资料…' : serviceError ? '资料读取失败，请重试核对' : !livePanel ? '尚未读取资料' : !progress.known && !progress.gap ? '暂无个人资料，可从咨询开始补充' : progress.gap ? `还有 ${progress.gap} 条可以补充，不影响继续交流` : '当前没有列出的可补充项' }}</p>
         </div>
       </header>
 
