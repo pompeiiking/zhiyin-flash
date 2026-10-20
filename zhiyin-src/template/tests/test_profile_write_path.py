@@ -190,12 +190,38 @@ async def test_exploration_hypotheses_are_stored_as_separate_clues() -> None:
 
     container, session = await _setup(callback)
     await _send(container, session, "我喜欢调试程序")
+    await container.profile_service.update_field(
+        "u1", "interest", ["调试程序"], confidence=0.9, source="conversation",
+        origin_ref=f"conversation:{session.id}:turn-1",
+    )
     await _send(container, session, "嗯")
     clues = await container.profile_service.get_clues("u1")
     assert [clue.text for clue in clues] == ["可能更关注弄清原因的过程"]
     assert clues[0].session_id == session.id
     assert clues[0].evidence == ["我喜欢调试程序"]
+    assert clues[0].field_keys == ["interest"]
     assert clues[0].status.value == "proposed"
+
+
+@pytest.mark.asyncio
+async def test_content_level_denial_blocks_the_automatic_extraction_from_that_message() -> None:
+    """“这条不要记录”：同一条消息及其派生的自动写入被服务端策略拦住，其他内容不受影响。"""
+    from zhiyin_business.services.conversation_ledger import digest
+    from zhiyin_business.services.memory_policy import MemoryPolicyService
+
+    async def callback(runtime) -> None:
+        await runtime.action(
+            _profile_action({"key": "interest", "value": "调试程序"}, evidence="我喜欢调试程序")
+        )
+
+    container, session = await _setup(callback)
+    fingerprint = digest({"user_id": "u1", "message": "我喜欢调试程序"})
+    await MemoryPolicyService(container.student_state).deny_content(
+        "u1", fingerprint, source="conversation", note="这条内容不要记录"
+    )
+    with pytest.raises(InvalidRequest):
+        await _send(container, session, "我喜欢调试程序")
+    assert not await container.profile_service.get_fields("u1", ["interest"])
 
 
 @pytest.mark.asyncio

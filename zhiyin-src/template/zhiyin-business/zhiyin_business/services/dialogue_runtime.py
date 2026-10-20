@@ -322,10 +322,8 @@ class DialogueRuntime:
         if not getattr(self.o._agent_engine, "supports_semantic_memory", False) or await self.cancelled():
             return
         state = await self.o._student_state.get(self.request.user_id)
-        if not state.get("preferences", {}).get("automatic_memory", True):
-            return
-        if state.get("conversation_settings", {}).get(self.request.task_id, {}).get("temporary"):
-            return
+        automatic = state.get("preferences", {}).get("automatic_memory", True)
+        temporary = state.get("conversation_settings", {}).get(self.request.task_id, {}).get("temporary")
         record = await self.ledger.read(self.request.user_id, self.request.task_id)
         if any(a.get("run_id") == self.request.client_msg_id and a["operation"] == "profile.update"
                and a["state"] == "succeeded" for a in record["actions"].values()):
@@ -333,7 +331,12 @@ class DialogueRuntime:
         schema = {"type": "object", "additionalProperties": False, "required": ["updates"], "properties": {
             "updates": {"type": "array", "maxItems": 8, "items": {"type": "object", "additionalProperties": False,
                 "required": ["key", "value", "evidence", "assertion_type"], "properties": {"key": {"type": "string"},
-                    "value": {"type": "string"}, "evidence": {"type": "string"}, "assertion_type": {"type":"string", "enum":["affirmative_self_statement","explicit_correction","negative","hypothetical","quoted","uncertain","refusal"]}}}}}}
+                    "value": {"type": "string"}, "evidence": {"type": "string"}, "assertion_type": {"type":"string", "enum":["affirmative_self_statement","explicit_correction","negative","hypothetical","quoted","uncertain","refusal"]}}}},
+            # 记录范围：用户本轮明确提出的记忆要求（不保存/以后不自动记录/这条不要记录/只保存这条）。
+            # 由模型按语义识别，服务端只执行受控范围，不做关键词匹配。
+            "policy": {"type": "object", "additionalProperties": False, "required": ["scope"], "properties": {
+                "scope": {"type": "string", "enum": ["none", "account_off", "account_on", "session_temporary", "deny_content", "deny_key", "save_single"]},
+                "target": {"type": "string"}}}}}
         memory_ok = False
         step_id = "memory_" + self.request.client_msg_id
         self.event("step.started", "正在整理对话记忆", step_id=step_id)
@@ -352,8 +355,34 @@ class DialogueRuntime:
             if not result.valid:
                 return
             memory_ok = True
+            policy = result.structured.get("policy") or {}
+            scope = str(policy.get("scope") or "none")
+            if scope != "none":
+                # 记录范围由模型按语义识别；服务端只落在受控范围上，并留下带来源与时间的记录。
+                service = MemoryPolicyService(self.o._student_state)
+                current = await service.snapshot(self.request.user_id, self.request.task_id)
+                target = str(policy.get("target") or "").strip()
+                try:
+                    if scope == "account_off" and current["account_automatic"]:
+                        await service.set_account_automatic(self.request.user_id, False, source="conversation", note="用户要求以后不自动记录")
+                    elif scope == "account_on" and not current["account_automatic"]:
+                        await service.set_account_automatic(self.request.user_id, True, source="conversation", note="用户要求恢复自动记录")
+                    elif scope == "session_temporary" and not current["session_temporary"]:
+                        await service.set_session_temporary(self.request.user_id, self.request.task_id, True, source="conversation", note="用户要求本次会话不保存长期画像")
+                    elif scope == "deny_content":
+                        fingerprint = digest({"user_id": self.request.user_id, "message": self.request.message})
+                        if fingerprint not in current["content_denials"]:
+                            await service.deny_content(self.request.user_id, fingerprint, source="conversation", note="用户要求这条内容不要记录")
+                    elif scope == "deny_key" and target and target not in current["denied_keys"]:
+                        await service.deny_key(self.request.user_id, target, source="conversation", note="用户要求这个字段不要记录")
+                    elif scope == "save_single" and target and target not in current["single_keys"]:
+                        await service.grant_single(self.request.user_id, self.request.task_id, target, source="conversation", note="用户要求只保存明确那一条")
+                except Exception:  # noqa: BLE001 - 策略没记上不能把本轮对话打成失败
+                    log.warning("记录范围未保存（scope=%s）", scope, exc_info=True)
             fields = {f.key: f for f in await self.o._profiles.get_fields(self.request.user_id)}
             for item in result.structured.get("updates", []):
+                if not automatic or temporary:
+                    break
                 if item.get("assertion_type") not in {"affirmative_self_statement", "explicit_correction"}:
                     continue
                 if item.get("evidence") not in self.request.message or not item.get("evidence"):
@@ -904,10 +933,18 @@ class DialogueRuntime:
                 try:
                     hypotheses = [str(item).strip() for item in (self.pending_exploration.get("hypotheses") or []) if str(item).strip()]
                     quotes = [str(item.get("quote", "")).strip() for item in (self.pending_exploration.get("statements") or []) if str(item.get("quote", "")).strip()]
+                    # 依据字段：本会话真实写进画像的那些键（origin_ref 能指回本会话）。
+                    # 不猜文本关键词，只用服务端写入时固化的来源引用建立关联。
+                    session_prefix = f"conversation:{request.task_id}:"
+                    linked_keys = [
+                        field.key
+                        for field in await self.o._profiles.get_fields(request.user_id)
+                        if (field.origin_ref or "").startswith(session_prefix)
+                    ][:20]
                     clues = [
                         ProfileClue(
                             id="", user_id=request.user_id, session_id=request.task_id,
-                            text=text[:240], evidence=quotes[:12], field_keys=[],
+                            text=text[:240], evidence=quotes[:12], field_keys=linked_keys,
                             source=ProfileSource.ASSESSMENT,
                             created_at=utcnow(), updated_at=utcnow(),
                         )

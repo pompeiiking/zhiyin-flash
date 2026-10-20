@@ -25,6 +25,9 @@
     # 只处理前 500 行（大表分批）
     python scripts/migrate_profile_entries.py --dsn … --limit 500
 
+    # 同时给没有历史版本的当前字段补一条迁移基线（推荐首次上线时执行）
+    python scripts/migrate_profile_entries.py --dsn … --apply --backfill-revisions
+
 回退：迁移只改这三列，写回前按 ``user_id`` + ``key`` 可逐行还原原值
 （用 ``--limit`` 分批时请先导出对应行）。
 """
@@ -193,8 +196,62 @@ def _resolve_dsn(dsn: str) -> str:
     return resolved
 
 
-async def run(dsn: str, *, apply: bool, limit: int = 0) -> int:
-    """读取候选行、预览差异；``apply=True`` 时在事务里写回。"""
+async def _insert_baseline_revisions(connection: Any) -> int:
+    """给没有历史版本的当前字段补一条迁移基线；幂等，不覆盖已有版本。"""
+    from uuid import uuid4
+
+    rows = await connection.fetch(
+        """
+        SELECT f.user_id, f.key, f.label, f.value, f.attributes, f.confidence,
+               f.source, f.verification, f.evidence, f.origin_ref,
+               f.valid_from, f.valid_to, f.event_at, f.entry_version, f.updated_at
+        FROM biz_profile_field f
+        WHERE NOT EXISTS (
+            SELECT 1 FROM biz_profile_field_revision r
+            WHERE r.user_id = f.user_id AND r.key = f.key
+        )
+        """
+    )
+    for row in rows:
+        await connection.execute(
+            """
+            INSERT INTO biz_profile_field_revision
+                (id, user_id, key, label, value, attributes, confidence, source,
+                 verification, status, evidence, origin_ref, valid_from, valid_to,
+                 event_at, entry_version, created_at, replaced_at, change_reason)
+            VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7, $8,
+                    $9, 'superseded', $10::jsonb, $11, $12, $13,
+                    $14, $15, $16, NULL, '迁移基线：上线时的当前值')
+            """,
+            f"rev_{uuid4().hex[:12]}",
+            row["user_id"],
+            row["key"],
+            row["label"] or "",
+            row["value"],
+            row["attributes"] or "{}",
+            row["confidence"],
+            row["source"],
+            row["verification"],
+            row["evidence"] or "[]",
+            row["origin_ref"] or "",
+            row["valid_from"],
+            row["valid_to"],
+            row["event_at"],
+            row["entry_version"] or 1,
+            row["updated_at"],
+        )
+    return len(rows)
+
+
+async def run(
+    dsn: str, *, apply: bool, limit: int = 0, backfill_revisions: bool = False
+) -> int:
+    """读取候选行、预览差异；``apply=True`` 时在事务里写回。
+
+    ``backfill_revisions=True`` 时，为每一条还没有历史版本的当前字段补一条
+    “迁移基线”历史（status=superseded）：值就是上线时的当前值，之后每次变更
+    都能从这条基线继续追加。旧值在历史上线前从未保存，不能伪造。
+    """
     import asyncpg
 
     # 候选行：三列里任一为空，或值不在受控词表里。``--limit`` 限制的是候选行，
@@ -226,8 +283,10 @@ async def run(dsn: str, *, apply: bool, limit: int = 0) -> int:
         plans = plan_rows(rows)
         print_preview(len(rows), plans)
         if not apply:
+            if backfill_revisions:
+                print("历史基线：apply 时为没有版本记录的当前字段补一条 superseded 基线。")
             return 0
-        if not plans:
+        if not plans and not backfill_revisions:
             print("已确认：没有可写回的差异。")
             return 0
 
@@ -248,7 +307,13 @@ async def run(dsn: str, *, apply: bool, limit: int = 0) -> int:
                     row["user_id"],
                     row["key"],
                 )
-        print(f"已写回 {len(plans)} 行。再次执行本脚本应为 0 差异。")
+            baseline_count = 0
+            if backfill_revisions:
+                baseline_count = await _insert_baseline_revisions(connection)
+        print(f"已写回 {len(plans)} 行。")
+        if backfill_revisions:
+            print(f"已补历史基线 {baseline_count} 条。")
+        print("再次执行本脚本应为 0 差异。")
         return 0
     except Exception as exc:  # noqa: BLE001 - 运维脚本：如实报告连库/表结构问题
         print(f"迁移未完成：{exc}", file=sys.stderr)
@@ -271,6 +336,11 @@ def main(argv: Optional[list[str]] = None) -> int:
     )
     parser.add_argument("--apply", action="store_true", help="把差异写回数据库")
     parser.add_argument(
+        "--backfill-revisions",
+        action="store_true",
+        help="为没有历史版本的当前字段补一条迁移基线（apply 时写入）",
+    )
+    parser.add_argument(
         "--limit",
         type=int,
         default=0,
@@ -282,7 +352,14 @@ def main(argv: Optional[list[str]] = None) -> int:
     if args.limit < 0:
         parser.error("--limit 不能为负数")
     dsn = _resolve_dsn(args.dsn)
-    return asyncio.run(run(dsn, apply=args.apply, limit=args.limit))
+    return asyncio.run(
+        run(
+            dsn,
+            apply=args.apply,
+            limit=args.limit,
+            backfill_revisions=args.backfill_revisions,
+        )
+    )
 
 
 if __name__ == "__main__":

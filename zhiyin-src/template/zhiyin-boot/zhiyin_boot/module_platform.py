@@ -209,11 +209,43 @@ def product_tools(container):
             logger.warning("Kev辅助判断未完成，主对话继续", exc_info=True)
             return '{"available":false,"reason":"辅助判断未完成，请根据上下文继续"}'
 
+    async def record_memory_policy(run_context: RunContext, action: Literal["deny_key", "deny_content"], key: str = "", content: str = "") -> str:
+        """记录用户对记忆范围的要求：某条字段不要记录，或这条内容不要记录。
+
+        Args:
+            action: deny_key=这个字段不要自动记录；deny_content=这条内容及其派生提取不要记录
+            key: action=deny_key 时必填的画像字段键
+            content: action=deny_content 时可选；为空表示本轮用户消息
+        """
+        from zhiyin_business.services.dialogue_runtime import active_dialogue
+        from zhiyin_business.services.conversation_ledger import digest
+        from zhiyin_business.services.memory_policy import MemoryPolicyService
+
+        runtime = active_dialogue.get()
+        if runtime is None or runtime.request.user_id != run_context.user_id:
+            raise InvalidRequest("记忆策略缺少当前对话上下文")
+        policy = MemoryPolicyService(container.student_state)
+        if action == "deny_key":
+            if not key:
+                raise InvalidRequest("要拒绝记录的字段不能为空")
+            record = await policy.deny_key(
+                run_context.user_id, key, source="conversation", note="用户要求这条不要自动记录"
+            )
+        else:
+            # 内容指纹按“这一轮用户消息”算，与自动写入前的 check_auto_write 同一口径；
+            # 同一条消息派生的提取都会被拦住，不影响其他内容。
+            fingerprint = digest({"user_id": run_context.user_id, "message": content or runtime.request.message})
+            record = await policy.deny_content(
+                run_context.user_id, fingerprint, source="conversation", note="用户要求这条内容不要自动记录"
+            )
+        return json.dumps({"saved": True, "record": record}, ensure_ascii=False, default=str)
+
     modules.append(ToolModule(name="workspace", tools=[
         ToolSpec(name="material.read", description="分段读取当前会话已上传材料", handler=read_material),
         ToolSpec(name="workspace.read", description="读取当前用户的真实业务资料", handler=read_workspace),
         ToolSpec(name="workspace.action", description="统一业务写入和审批，执行真实变更或返回具体提案", handler=conversation_action),
         ToolSpec(name="workspace.exploration", description="更新本会话探索目标、原话与待核实线索；不写长期画像", handler=record_exploration),
+        ToolSpec(name="workspace.memory", description="记录用户对记忆范围的要求：某条字段或某条内容不要自动记录", handler=record_memory_policy),
         ToolSpec(name="workspace.classify", description="按需Kev辅助业务判断，不直接控制对话", handler=classify_context),
     ]))
     for module_id, definition in definitions(container).items():
