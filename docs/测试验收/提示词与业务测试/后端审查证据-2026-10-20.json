@@ -69,6 +69,217 @@
   },
   "data_safety": "Synthetic IDs, temporary local files and exact-ID cleanup; no real student records reset or bulk migration",
   "deployment": {
-    "status": "pending; updated in follow-up evidence commit"
+    "status": "deployed and smoke checks passed",
+    "environment": "local Docker Compose; API service only",
+    "revision": "bb9fdaf1720b668044eca0bb633260e8ebd4a9b9",
+    "image": "sha256:c064964306c3778a1f7b3e43d03cdf9ab2d1ebdaaa42b10350129c414f1f7b32",
+    "dependency_base_image": "sha256:06accf752ba3369a690e9ccccc0fd9df71a40aea7f4836451553df3e1733e86d",
+    "rollback_tag": "zhiyin-flash:before-backend-audit-20261020",
+    "build": "Previous full build did not complete. No dependency changes: reused the prior running image and installed the audited source with pip install --no-deps --no-build-isolation /app.",
+    "smoke": {
+      "revision": "bb9fdaf1720b668044eca0bb633260e8ebd4a9b9",
+      "checks": {
+        "health_and_assembly": true,
+        "private_workspace_requires_auth": true,
+        "invalid_token_rejected": true,
+        "synthetic_account_login_and_workspace": true,
+        "logout_revokes_token": true,
+        "public_intel_ai_occupation_and_non_unknown_status": true
+      },
+      "intel": {
+        "status": "ok",
+        "message": "已取到 4 条公开资料。",
+        "items": 4
+      },
+      "credentials_or_tokens_recorded": false
+    }
+  },
+  "tested_source_commit": "bb9fdaf1720b668044eca0bb633260e8ebd4a9b9",
+  "public_xuezhi_live": {
+    "degraded": false,
+    "errors": [],
+    "records": [
+      {
+        "kind": "speciality",
+        "title": "人工智能",
+        "url": "https://xz.chsi.com.cn/speciality/detail.action?specId=79f4y7gz3tsjeyvv",
+        "relation": "major"
+      },
+      {
+        "kind": "occupation",
+        "title": "人工智能工程技术人员",
+        "url": "https://xz.chsi.com.cn/occupation/occudetail.action?id=xkob2s0qbxc89piw",
+        "relation": "major"
+      },
+      {
+        "kind": "career_case",
+        "title": "网易云音乐人工智能专家",
+        "url": "https://xz.chsi.com.cn/occucase/casedetail.action?id=iju5644v3323nbu3",
+        "relation": "major"
+      },
+      {
+        "kind": "career_case",
+        "title": "腾讯优图实验室人工智能工程师",
+        "url": "https://xz.chsi.com.cn/occucase/casedetail.action?id=kj4inwtboiiz5lxi",
+        "relation": "major"
+      }
+    ],
+    "has_occupation": true
+  },
+  "live_api_before": {
+    "revision": "b28d51d45e396b9846edeeaa1cca342adbcd546b",
+    "status": "unknown",
+    "message": "还没有取过外部资料。",
+    "items": 4
+  },
+  "final_change_review": {
+    "commit": "bb9fdaf1720b668044eca0bb633260e8ebd4a9b9",
+    "total_files": 22,
+    "reviewable_files": 18,
+    "reviewed_files": 18,
+    "skipped_files": 0,
+    "coverage_rate": 1.0,
+    "coverage_limit": "Only the final fix commit selected by OCR; not entire backend semantic/live coverage",
+    "ledger": [
+      {
+        "path": "docs/测试验收/提示词与业务测试/后端审查清单-2026-10-20.json",
+        "status": "added",
+        "review": "reviewed",
+        "method": "JSON keys/schema and generated inventory consistency"
+      },
+      {
+        "path": "docs/测试验收/提示词与业务测试/后端审查证据-2026-10-20.json",
+        "status": "added",
+        "review": "reviewed",
+        "method": "JSON keys/schema and generated inventory consistency"
+      },
+      {
+        "path": "zhiyin-src/template/scripts/accept_backend_audit.py",
+        "status": "added",
+        "review": "reviewed",
+        "method": "diff and surrounding call contracts"
+      },
+      {
+        "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/facade/application.py",
+        "status": "modified",
+        "review": "reviewed",
+        "method": "diff and surrounding call contracts"
+      },
+      {
+        "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/academic.py",
+        "status": "modified",
+        "review": "reviewed",
+        "method": "diff and surrounding call contracts"
+      },
+      {
+        "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/function.py",
+        "status": "modified",
+        "review": "reviewed",
+        "method": "diff and surrounding call contracts"
+      },
+      {
+        "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/memory.py",
+        "status": "modified",
+        "review": "reviewed",
+        "method": "diff and surrounding call contracts"
+      },
+      {
+        "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/profile.py",
+        "status": "modified",
+        "review": "reviewed",
+        "method": "diff and surrounding call contracts"
+      },
+      {
+        "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/gateways/storage.py",
+        "status": "modified",
+        "review": "reviewed",
+        "method": "diff and surrounding call contracts"
+      },
+      {
+        "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/repositories/academic.py",
+        "status": "modified",
+        "review": "reviewed",
+        "method": "diff and surrounding call contracts"
+      },
+      {
+        "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/ai/tools.py",
+        "status": "modified",
+        "review": "reviewed",
+        "method": "diff and surrounding call contracts"
+      },
+      {
+        "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/local/object_store.py",
+        "status": "modified",
+        "review": "reviewed",
+        "method": "diff and surrounding call contracts"
+      },
+      {
+        "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/postgres/repository.py",
+        "status": "modified",
+        "review": "reviewed",
+        "method": "diff and surrounding call contracts"
+      },
+      {
+        "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/postgres/scheduler.py",
+        "status": "modified",
+        "review": "reviewed",
+        "method": "diff and surrounding call contracts"
+      },
+      {
+        "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/xuezhi/client.py",
+        "status": "modified",
+        "review": "reviewed",
+        "method": "diff and surrounding call contracts"
+      },
+      {
+        "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/xuezhi/gateway.py",
+        "status": "modified",
+        "review": "reviewed",
+        "method": "diff and surrounding call contracts"
+      },
+      {
+        "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/xuezhi/parsing.py",
+        "status": "modified",
+        "review": "reviewed",
+        "method": "diff and surrounding call contracts"
+      },
+      {
+        "path": "zhiyin-src/template/zhiyin-orchestration/zhiyin_orchestration/impl/event_bus.py",
+        "status": "modified",
+        "review": "reviewed",
+        "method": "diff and surrounding call contracts"
+      }
+    ],
+    "excluded_files": [
+      {
+        "path": "docs/测试验收/提示词与业务测试/后端专项审查与修复-2026-10-20.md",
+        "status": "added",
+        "insertions": 76,
+        "deletions": 0,
+        "exclude_reason": "unsupported_ext"
+      },
+      {
+        "path": "zhiyin-src/template/tests/test_backend_audit_boundaries.py",
+        "status": "added",
+        "insertions": 243,
+        "deletions": 0,
+        "exclude_reason": "default_path"
+      },
+      {
+        "path": "zhiyin-src/template/tests/test_conversation_options.py",
+        "status": "modified",
+        "insertions": 1,
+        "deletions": 1,
+        "exclude_reason": "default_path"
+      },
+      {
+        "path": "zhiyin-src/template/tests/test_data_sources.py",
+        "status": "modified",
+        "insertions": 1,
+        "deletions": 1,
+        "exclude_reason": "default_path"
+      }
+    ],
+    "excluded_handling": "Three test files and audit Markdown were independently read; tests included in full suite."
   }
 }
