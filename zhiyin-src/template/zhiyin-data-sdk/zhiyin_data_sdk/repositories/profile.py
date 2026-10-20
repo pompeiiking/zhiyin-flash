@@ -10,6 +10,7 @@ from zhiyin_kernel.blackboard import (
     Profile,
     ProfileClue,
     ProfileField,
+    ProfileFieldRevision,
     ProfileGap,
 )
 
@@ -82,3 +83,31 @@ class ProfileRepository(ABC):
         依据被更正、撤回或删除后，相关线索失效或等待重新分析（设计第 7 节）。
         只改「待验证」的线索：已失效的不重复改写，已确认的留给重新分析流程。
         """
+
+    @abstractmethod
+    async def append_revision(
+        self, user_id: str, revision: ProfileFieldRevision
+    ) -> ProfileFieldRevision:
+        """追加一条历史版本 / 冲突提案；**只追加，不覆盖当前字段**。"""
+
+    @abstractmethod
+    async def list_revisions(
+        self,
+        user_id: str,
+        key: Optional[str] = None,
+        *,
+        status: Optional[Sequence[str]] = None,
+    ) -> list[ProfileFieldRevision]:
+        """读取版本记录；可按字段键或状态筛选（冲突提案用 status=conflict）。"""
+
+    @abstractmethod
+    async def update_revision_status(
+        self,
+        user_id: str,
+        revision_id: str,
+        *,
+        status: str,
+        replaced_at: Optional[datetime] = None,
+        change_reason: str = "",
+    ) -> None:
+        """裁定一条冲突提案：改状态并记录裁定时刻/原因。"""

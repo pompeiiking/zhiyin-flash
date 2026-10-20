@@ -1009,5 +1009,22 @@
       "zhiyin-src/template/zhiyin-web/src/views/StudentView.vue"
     ],
     "verification": "代码可达；画像页“不是这样”入口已接入，本轮未做真实 HTTP 联调。"
+  },
+  "GET /api/v1/app/profile/fields/{key}/history": {
+    "status": "前端已连接",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/api/backend-client.ts",
+      "zhiyin-src/template/zhiyin-web/src/lib/use-profile-fields.ts"
+    ],
+    "verification": "代码可达；冲突/历史读取接口，本轮未做真实 HTTP 联调。"
+  },
+  "POST /api/v1/app/profile/conflicts/{revision_id}": {
+    "status": "前端已连接",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/api/backend-client.ts",
+      "zhiyin-src/template/zhiyin-web/src/lib/use-profile-fields.ts",
+      "zhiyin-src/template/zhiyin-web/src/views/StudentView.vue"
+    ],
+    "verification": "代码可达；画像页冲突裁定入口已接入，本轮未做真实 HTTP 联调。"
   }
 }

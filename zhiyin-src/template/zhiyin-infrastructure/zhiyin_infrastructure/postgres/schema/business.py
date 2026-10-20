@@ -72,6 +72,37 @@ CREATE TABLE IF NOT EXISTS biz_profile_clue (
 CREATE INDEX IF NOT EXISTS idx_biz_profile_clue_user_status
     ON biz_profile_clue (user_id, status);
 
+-- 画像记录的历史版本与冲突提案（《个人画像设计-2026-10-20》第 4、7 节）。
+--
+-- 当前值仍由 biz_profile_field 一行一键承载（旧 API 的兼容投影）；
+-- 这张表只追加：被替代的旧值进历史，自动记忆遇到与当前值不一致的新说法时
+-- 追加一条 conflict 提案等待用户裁定，而不是覆盖当前事实。
+CREATE TABLE IF NOT EXISTS biz_profile_field_revision (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    key TEXT NOT NULL,
+    label TEXT NOT NULL DEFAULT '',
+    value JSONB NOT NULL,
+    attributes JSONB NOT NULL DEFAULT '{}'::jsonb,
+    confidence DOUBLE PRECISION NOT NULL DEFAULT 0,
+    source TEXT NOT NULL,
+    verification TEXT,
+    status TEXT NOT NULL DEFAULT 'superseded',
+    evidence JSONB NOT NULL DEFAULT '[]'::jsonb,
+    origin_ref TEXT NOT NULL DEFAULT '',
+    valid_from TIMESTAMPTZ,
+    valid_to TIMESTAMPTZ,
+    event_at TIMESTAMPTZ,
+    entry_version INTEGER NOT NULL DEFAULT 1,
+    created_at TIMESTAMPTZ NOT NULL,
+    replaced_at TIMESTAMPTZ,
+    change_reason TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_biz_profile_field_revision_user_key
+    ON biz_profile_field_revision (user_id, key, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_biz_profile_field_revision_user_status
+    ON biz_profile_field_revision (user_id, status);
+
 CREATE TABLE IF NOT EXISTS biz_behavior_log (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,

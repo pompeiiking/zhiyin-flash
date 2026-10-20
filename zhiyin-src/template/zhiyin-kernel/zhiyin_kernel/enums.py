@@ -140,6 +140,7 @@ class ProfileEntryStatus(str, Enum):
     CONFLICT = "conflict"      # 两条来源对不上，尚未裁定
     EXPIRED = "expired"        # 超出适用范围/时间
     WITHDRAWN = "withdrawn"    # 用户撤回（不再作为事实使用）
+    SUPERSEDED = "superseded"  # 历史版本：已被后续版本替代（只出现在版本记录里）
 
 
 class ProfileVerification(str, Enum):

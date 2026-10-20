@@ -15,7 +15,13 @@ from zhiyin_business.ports.blackboard import ProfileService
 from zhiyin_data_sdk.repositories import ProfileRepository
 from zhiyin_kernel import dynamic_config
 from zhiyin_kernel import profile_taxonomy
-from zhiyin_kernel.blackboard import Profile, ProfileClue, ProfileField, ProfileGap
+from zhiyin_kernel.blackboard import (
+    Profile,
+    ProfileClue,
+    ProfileField,
+    ProfileFieldRevision,
+    ProfileGap,
+)
 from zhiyin_kernel.enums import (
     ProfileClueStatus,
     ProfileEntryStatus,
@@ -260,6 +266,15 @@ class DefaultProfileService(ProfileService):
             superseded_by=before.superseded_by if before else "",
         )
         saved = await self._profiles.upsert_field(user_id, field, expected_updated_at=expected_updated_at, check_version=True) if check_version else await self._profiles.upsert_field(user_id, field)
+        if before is not None and (
+            before.value != normalized or dict(before.attributes or {}) != normalized_attributes
+        ):
+            # 旧值进历史（设计第 7 节）：当前值仍是一行一键的兼容投影，
+            # 历史只追加，不参与用途读取。
+            await self._append_history(
+                user_id, before, status=ProfileEntryStatus.SUPERSEDED,
+                replaced_at=saved.updated_at, reason="被后续版本替代",
+            )
         await self._event_bus.publish(
             DomainEvent(
                 event_id=f"profile-{uuid4().hex[:12]}",
@@ -289,14 +304,161 @@ class DefaultProfileService(ProfileService):
         删完把依据这一格的待验证线索一起标记失效（设计第 7 节）：依据没了，
         建立在其上的理解不能继续当有效结论展示。
         """
+        before = next((item for item in await self._profiles.list_fields(user_id, [key])), None)
         if check_version:
             await self._profiles.delete_field(user_id, key, expected_updated_at=expected_updated_at, check_version=True)
         else:
             await self._profiles.delete_field(user_id, key)
+        if before is not None:
+            await self._append_history(
+                user_id, before, status=ProfileEntryStatus.WITHDRAWN,
+                replaced_at=datetime.now(timezone.utc), reason="本人删除了这条画像信息",
+            )
         await self._event_bus.publish(DomainEvent(event_id=f"profile-{uuid4().hex[:12]}",
             event_type=PROFILE_FIELD_UPDATED, occurred_at=datetime.now(timezone.utc),
             payload={"user_id": user_id, "field_key": key, "deleted": True, "is_new": False}))
         await self._invalidate_clues_for(user_id, [key], PROFILE_CLUE_INVALIDATED_BY_DELETION)
+
+    # ---------- 历史版本与冲突裁定（设计第 4、7 节） ----------
+
+    async def _append_history(
+        self,
+        user_id: str,
+        before: ProfileField,
+        *,
+        status: ProfileEntryStatus,
+        replaced_at: datetime,
+        reason: str,
+    ) -> None:
+        """把一版旧记录追加进历史；历史是旁路，写失败只记日志，不阻断主写入。"""
+        revision = ProfileFieldRevision(
+            id="",
+            user_id=user_id,
+            key=before.key,
+            label=before.label,
+            value=before.value,
+            attributes=dict(before.attributes or {}),
+            confidence=before.confidence,
+            source=before.source,
+            verification=before.verification,
+            status=status,
+            evidence=list(before.evidence),
+            origin_ref=before.origin_ref,
+            valid_from=before.valid_from,
+            valid_to=before.valid_to,
+            event_at=before.event_at,
+            entry_version=before.entry_version,
+            created_at=before.updated_at,
+            replaced_at=replaced_at,
+            change_reason=reason,
+        )
+        try:
+            await self._profiles.append_revision(user_id, revision)
+        except Exception:  # noqa: BLE001 - 历史写失败不该让当前值写不进去
+            logger.warning("画像历史版本写入失败（user=%s key=%s）", user_id, before.key, exc_info=True)
+
+    async def list_revisions(
+        self, user_id: str, key: str | None = None, *, status: list[str] | None = None
+    ) -> list[ProfileFieldRevision]:
+        """读取历史版本；冲突提案用 `status=["conflict"]` 单独取。"""
+        return await self._profiles.list_revisions(user_id, key, status=status)
+
+    async def list_conflicts(self, user_id: str) -> list[ProfileFieldRevision]:
+        """当前等待用户裁定的冲突提案（不参与用途读取）。"""
+        return await self._profiles.list_revisions(user_id, status=["conflict"])
+
+    @atomic_repository("_profiles")
+    async def record_conflict(
+        self,
+        user_id: str,
+        key: str,
+        value: object,
+        *,
+        confidence: float = 0.8,
+        source: str = ProfileSource.CONVERSATION.value,
+        label: str = "",
+        evidence: Optional[list[str]] = None,
+        attributes: dict[str, object] | None = None,
+        origin_ref: str = "",
+        valid_from: datetime | None = None,
+        valid_to: datetime | None = None,
+        event_at: datetime | None = None,
+    ) -> ProfileFieldRevision:
+        """把「与当前记录不一致的新说法」追加为冲突提案，**不覆盖当前值**。
+
+        设计第 7 节：不能明确区分修正与冲突时并存标记，只有影响当前服务时才澄清。
+        当前值继续作为兼容投影供旧 API 读取；冲突提案单独等待用户裁定。
+        """
+        entry_type = profile_taxonomy.entry_type_of(key)
+        normalized = profile_taxonomy.normalize_value(key, value, entry_type)
+        normalized_attributes = profile_taxonomy.normalize_attributes(entry_type, attributes)
+        profile_taxonomy.validate_window(valid_from, valid_to)
+        source_value = ProfileSource(source)
+        current = next((item for item in await self._profiles.list_fields(user_id, [key])), None)
+        revision = ProfileFieldRevision(
+            id="",
+            user_id=user_id,
+            key=key,
+            label=label or (current.label if current else ""),
+            value=normalized,
+            attributes=normalized_attributes,
+            confidence=confidence,
+            source=source_value,
+            verification=profile_taxonomy.verification_for(source_value),
+            status=ProfileEntryStatus.CONFLICT,
+            evidence=evidence or [],
+            origin_ref=origin_ref.strip()[:2000],
+            valid_from=valid_from,
+            valid_to=valid_to,
+            event_at=event_at,
+            entry_version=(current.entry_version if current else 1) + (1 if current else 0),
+            created_at=datetime.now(timezone.utc),
+            replaced_at=None,
+            change_reason="与当前记录不一致，等待核对",
+        )
+        return await self._profiles.append_revision(user_id, revision)
+
+    @atomic_repository("_profiles")
+    async def resolve_conflict(
+        self, user_id: str, revision_id: str, *, choice: str
+    ) -> ProfileFieldRevision:
+        """用户裁定一条冲突：`revision`=以新说法为准，`current`=保留当前记录。"""
+        if choice not in {"revision", "current"}:
+            raise InvalidRequest("请选择以哪一版为准。")
+        conflicts = await self._profiles.list_revisions(user_id, status=["conflict"])
+        target = next((item for item in conflicts if item.id == revision_id), None)
+        if target is None:
+            raise ResourceNotFound("这条待核对的说法已经不在了，刷新后再看。")
+        if choice == "revision":
+            await self.update_field(
+                user_id,
+                target.key,
+                target.value,
+                confidence=target.confidence,
+                source=ProfileSource.USER_EDIT.value,
+                label=target.label,
+                evidence=list(target.evidence),
+                attributes=dict(target.attributes),
+                verification=ProfileVerification.USER_CONFIRMED.value,
+                origin_ref=target.origin_ref,
+                valid_from=target.valid_from,
+                valid_to=target.valid_to,
+                event_at=target.event_at,
+            )
+            status, reason = ProfileEntryStatus.SUPERSEDED, "本人选择以此版本为准"
+            await self._invalidate_clues_for(user_id, [target.key], PROFILE_CLUE_INVALIDATED_BY_CORRECTION)
+        else:
+            status, reason = ProfileEntryStatus.WITHDRAWN, "本人选择保留当前记录"
+        await self._profiles.update_revision_status(
+            user_id,
+            target.id,
+            status=status.value,
+            replaced_at=datetime.now(timezone.utc),
+            change_reason=reason,
+        )
+        return target.model_copy(
+            update={"status": status, "replaced_at": datetime.now(timezone.utc), "change_reason": reason}
+        )
 
     def _registered_fields(self) -> dict[str, str]:
         """登记过的画像字段：键 → 中文名。

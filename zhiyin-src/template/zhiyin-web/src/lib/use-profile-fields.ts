@@ -149,6 +149,14 @@ interface FieldRow extends ProfileField {
   originRef: string
 }
 
+/** 一条“系统基于证据的理解”：它必须能单独展示、单独否认，不能混进事实字段。 */
+export interface ClueRow {
+  id: string
+  text: string
+  evidence: string[]
+  createdAt: string
+}
+
 export interface MissingRow {
   key: string
   label: string
@@ -157,11 +165,14 @@ export interface MissingRow {
   source: string
 }
 
-/** 一条“系统基于证据的理解”：它必须能单独展示、单独否认，不能混进事实字段。 */
-export interface ClueRow {
+/** 一条冲突提案：与当前记录并存的另一种说法，等待用户裁定。 */
+export interface ConflictRow {
   id: string
-  text: string
-  evidence: string[]
+  key: string
+  label: string
+  value: string
+  currentValue: string
+  reason: string
   createdAt: string
 }
 
@@ -418,10 +429,31 @@ export function useProfileFields(deps: ProfileFieldsDeps) {
     if (workspace) backendDemo.setWorkspace(workspace)
   }
 
+  /** 冲突提案：与当前值并存的另一种说法；当前值从投影里取，不改写事实。 */
+  const conflicts = computed<ConflictRow[]>(() =>
+    (livePanel.value?.conflicts ?? []).map((item) => ({
+      id: item.id,
+      key: item.key,
+      label: item.label || item.key,
+      value: human(item.value),
+      currentValue: known.value.find((row) => row.key === item.key)?.value ?? '未记录',
+      reason: item.change_reason || '与当前记录不一致，等待核对',
+      createdAt: item.created_at,
+    })),
+  )
+
+  async function resolveConflict(id: string, choice: 'revision' | 'current') {
+    if (!live.value) return
+    await backendClient.resolveProfileConflict(id, choice)
+    // 裁定可能改当前投影：重新读一次，别用乐观更新覆盖别的字段。
+    const workspace = await backendClient.workspace()
+    backendDemo.setWorkspace(workspace)
+  }
+
   return {
     fieldValue, valueParts, rowsBase, fieldLabels, missing, known,
     tally, statusLine, confBands, trustOrigin, coverageCount, coverageNote,
-    groups, clues, denyClue, reduced, trustShown, tweenTo, stopTween,
+    groups, clues, denyClue, conflicts, resolveConflict, reduced, trustShown, tweenTo, stopTween,
   }
 }
 

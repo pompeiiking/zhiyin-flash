@@ -78,6 +78,7 @@ from zhiyin_api.dto.workspace import (
     IntelListView,
     LayoutBlockView,
     ProfileClueView,
+    ProfileConflictView,
     ProfileFieldView,
     ProfileGapView,
     ProfilePanelView,
@@ -113,7 +114,7 @@ from zhiyin_kernel.dynamic_content import (
     RouteSpec,
     TrustBlockSpec,
 )
-from zhiyin_kernel.enums import LoopStage
+from zhiyin_kernel.enums import LoopStage, ProfileVerification
 from zhiyin_kernel.identity import UserAccount
 from zhiyin_kernel.registry import AgentDescriptor, TaskEntrySpec, TheoryCard
 
@@ -590,6 +591,31 @@ def profile_clue_view(clue: Any) -> ProfileClueView:
     )
 
 
+def profile_conflict_view(revision: Any) -> ProfileConflictView:
+    """历史版本 / 冲突提案 → 视图。它**不是当前事实**，界面只用来展示另一种说法并裁定。"""
+    try:
+        verification = ProfileVerification(revision.verification)
+    except (TypeError, ValueError):
+        verification = profile_taxonomy.verification_for(revision.source)
+    return ProfileConflictView(
+        id=revision.id,
+        key=revision.key,
+        label=revision.label,
+        value=revision.value,
+        attributes=dict(revision.attributes or {}),
+        source=revision.source,
+        verification=verification,
+        verification_label=profile_taxonomy.VERIFICATION_LABELS[verification],
+        status=revision.status,
+        status_label=profile_taxonomy.STATUS_LABELS.get(revision.status, ""),
+        evidence=list(revision.evidence),
+        origin_ref=revision.origin_ref,
+        created_at=revision.created_at,
+        replaced_at=revision.replaced_at,
+        change_reason=revision.change_reason,
+    )
+
+
 def workspace_page_view(view: WorkspaceView) -> WorkspacePageView:
     """工作台 ①-⑤ 聚合视图。"""
     panels = {panel.stage: panel for panel in view.panels}
@@ -631,6 +657,7 @@ def workspace_page_view(view: WorkspaceView) -> WorkspacePageView:
             for gap in (profile.gaps if profile else [])
         ],
         clues=[profile_clue_view(clue) for clue in (profile.clues if profile else [])],
+        conflicts=[profile_conflict_view(item) for item in (profile.conflicts if profile else [])],
         updated_at=profile.updated_at if profile else None,
     )
     coach_messages = [event.model_dump(mode="json") for event in view.track_events]

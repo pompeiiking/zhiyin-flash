@@ -441,5 +441,15 @@
     "method": "DELETE",
     "path": "/app/profile/clues/{clue_id}",
     "surface": "/profile"
+  },
+  "profileFieldHistory": {
+    "method": "GET",
+    "path": "/app/profile/fields/{key}/history",
+    "surface": "/profile"
+  },
+  "resolveProfileConflict": {
+    "method": "POST",
+    "path": "/app/profile/conflicts/{revision_id}",
+    "surface": "/profile"
   }
 }

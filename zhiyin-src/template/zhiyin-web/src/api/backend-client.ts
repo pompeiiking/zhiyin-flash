@@ -1,7 +1,7 @@
 /** Formal BFF transport for integration. Demo data never silently replaces a failed request. */
 import operations from './operations.json'
 import type { AuthRequest, CoachNotificationView, ExportResultView, LoginResult, PortalView, WorkspacePageView } from './backend-types'
-import type { AcademicImportAck, AcademicImportRequest, ActionPlanView, ActionTaskDoneRequest, AchievementListView, AssetVersionView, BootstrapView, CalendarNodeView, CapabilitiesView, ConversationMaterialView, ConversationMessageView, ConversationTurnView, DirectionPlanListView, IntelListView, MessageRequest, NoteCreateRequest, NoteView, ProfileFieldView, ReportFullTextView, SessionListView, TaskSessionView, TheoryCardView, TrackEventView } from './backend-types'
+import type { AcademicImportAck, AcademicImportRequest, ActionPlanView, ActionTaskDoneRequest, AchievementListView, AssetVersionView, BootstrapView, CalendarNodeView, CapabilitiesView, ConversationMaterialView, ConversationMessageView, ConversationTurnView, DirectionPlanListView, IntelListView, MessageRequest, NoteCreateRequest, NoteView, ProfileConflictView, ProfileFieldView, ReportFullTextView, SessionListView, TaskSessionView, TheoryCardView, TrackEventView } from './backend-types'
 export class BackendError extends Error {
   constructor(message: string, public code: number, public traceId = '') { super(message) }
 }
@@ -133,6 +133,10 @@ export const backendClient = {
   deleteProfileField: (key: string, expected_updated_at?: string | null) => request<{ deleted: string }>('deleteProfileField', { params: { key }, query: expected_updated_at ? { expected_updated_at } : undefined }),
   /** 用户否认一条系统理解（待验证线索）：DELETE /app/profile/clues/{clue_id}。 */
   denyProfileClue: (clue_id: string) => request<{ denied: string }>('denyProfileClue', { params: { clue_id } }),
+  /** 一条画像的历史版本（含冲突提案）：GET /app/profile/fields/{key}/history。 */
+  profileHistory: (key: string) => request<ProfileConflictView[]>('profileFieldHistory', { params: { key } }),
+  /** 裁定冲突：choice=revision 以新说法为准，current 保留当前记录。 */
+  resolveProfileConflict: (revision_id: string, choice: 'revision' | 'current') => request<ProfileConflictView>('resolveProfileConflict', { params: { revision_id }, body: { choice } }),
   theory: (theory_id: string) => request<TheoryCardView>('theory', { params: { theory_id } }),
   report: (version?: number) => request<ReportFullTextView>('report', { query: version ? { version } : undefined }),
   versions: (asset_type: 'report' | 'direction_plan' | 'action_plan') => request<AssetVersionView[]>('versions', { params: { asset_type } }),

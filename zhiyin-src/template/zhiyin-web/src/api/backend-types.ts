@@ -483,7 +483,7 @@ export type ProfileEntryType = "learning_background" | "interest" | "experience"
 
 export type ProfileSource = "resume" | "conversation" | "assessment" | "behavior_inference" | "mentor" | "record" | "user_edit"
 
-export type ProfileEntryStatus = "active" | "corrected" | "conflict" | "expired" | "withdrawn"
+export type ProfileEntryStatus = "active" | "corrected" | "conflict" | "expired" | "withdrawn" | "superseded"
 
 export type ProfileVerification = "self_reported" | "user_confirmed" | "record" | "verified" | "pending"
 
@@ -669,6 +669,7 @@ export type LayoutBlockView = {
 
 export type ProfilePanelView = {
   "clues"?: Array<ProfileClueView>
+  "conflicts"?: Array<ProfileConflictView>
   "coverage"?: number
   "fields"?: Array<ProfileFieldView>
   "gaps"?: Array<ProfileGapView>
@@ -752,6 +753,24 @@ export type ProfileClueView = {
   "status"?: ProfileClueStatus
   "text": string
   "updated_at": string
+}
+
+export type ProfileConflictView = {
+  "attributes"?: Record<string, unknown>
+  "change_reason"?: string
+  "created_at": string
+  "evidence"?: Array<string>
+  "id": string
+  "key": string
+  "label"?: string
+  "origin_ref"?: string
+  "replaced_at"?: (string | null)
+  "source": ProfileSource
+  "status"?: ProfileEntryStatus
+  "status_label"?: string
+  "value"?: unknown
+  "verification"?: ProfileVerification
+  "verification_label"?: string
 }
 
 export type ProfileGapView = {

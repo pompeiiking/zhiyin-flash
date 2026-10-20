@@ -80,6 +80,40 @@ class ProfileFieldUpdateRequest(BaseModel):
     )
 
 
+class ProfileConflictResolveRequest(BaseModel):
+    """用户裁定一条冲突：以新说法为准，或保留当前记录。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    choice: str = Field(description="revision=以这条说法为准；current=保留当前记录")
+
+
+class ProfileConflictView(BaseModel):
+    """历史版本 / 冲突提案（设计第 7 节）。
+
+    与 `ProfileFieldView` 分开：它不是当前事实，不能混进用途读取；
+    界面用它展示「另一种说法」并让用户裁定。
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    key: str
+    label: str = ""
+    value: Any = None
+    attributes: dict[str, Any] = Field(default_factory=dict)
+    source: ProfileSource
+    verification: ProfileVerification = ProfileVerification.PENDING
+    verification_label: str = ""
+    status: ProfileEntryStatus = ProfileEntryStatus.CONFLICT
+    status_label: str = ""
+    evidence: list[str] = Field(default_factory=list)
+    origin_ref: str = ""
+    created_at: datetime
+    replaced_at: Optional[datetime] = None
+    change_reason: str = ""
+
+
 class ProfileGapView(BaseModel):
     """画像缺口：还缺哪条、为什么算缺、建议怎么补。"""
 
@@ -146,6 +180,10 @@ class ProfilePanelView(BaseModel):
     clues: list[ProfileClueView] = Field(
         default_factory=list,
         description="系统基于证据的理解（待验证线索）：与 fields 分开，可否认",
+    )
+    conflicts: list[ProfileConflictView] = Field(
+        default_factory=list,
+        description="与当前记录不一致的另一种说法：并存等待用户裁定，不参与用途读取",
     )
     updated_at: Optional[datetime] = None
 

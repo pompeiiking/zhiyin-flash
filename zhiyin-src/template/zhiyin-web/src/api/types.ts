@@ -447,6 +447,13 @@ export interface paths {
      */
     delete: operations["deny_profile_clue_api_v1_app_profile_clues__clue_id__delete"];
   };
+  "/api/v1/app/profile/conflicts/{revision_id}": {
+    /**
+     * Resolve Profile Conflict
+     * @description 裁定一条冲突：`choice=revision` 以这条说法为准，`current` 保留当前记录。
+     */
+    post: operations["resolve_profile_conflict_api_v1_app_profile_conflicts__revision_id__post"];
+  };
   "/api/v1/app/profile/fields/{key}": {
     /**
      * Update Profile Field
@@ -465,6 +472,15 @@ export interface paths {
      * 删除后依据这一格的待验证线索一并失效（业务层负责）。
      */
     delete: operations["delete_profile_field_api_v1_app_profile_fields__key__delete"];
+  };
+  "/api/v1/app/profile/fields/{key}/history": {
+    /**
+     * Profile Field History
+     * @description 一条画像的历史版本（含被替代版本与冲突提案）。
+     *
+     * 当前值仍走 `/app/workspace` 的投影；这里只追加历史，不改旧读接口。
+     */
+    get: operations["profile_field_history_api_v1_app_profile_fields__key__history_get"];
   };
   "/api/v1/app/report/full-text": {
     /**
@@ -1765,6 +1781,22 @@ export interface components {
        */
       trace_id?: string;
     };
+    /** ApiResponse[ProfileConflictView] */
+    ApiResponse_ProfileConflictView_: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      data?: components["schemas"]["ProfileConflictView"] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
     /** ApiResponse[ProfileFieldDeleteAck] */
     ApiResponse_ProfileFieldDeleteAck_: {
       /** @default 0 */
@@ -2252,6 +2284,23 @@ export interface components {
       code?: components["schemas"]["ErrorCode"];
       /** Data */
       data?: components["schemas"]["NotificationStateView"][] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
+    /** ApiResponse[list[ProfileConflictView]] */
+    ApiResponse_list_ProfileConflictView__: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      /** Data */
+      data?: components["schemas"]["ProfileConflictView"][] | null;
       /**
        * Message
        * @default ok
@@ -4395,6 +4444,75 @@ export interface components {
       updated_at: string;
     };
     /**
+     * ProfileConflictResolveRequest
+     * @description 用户裁定一条冲突：以新说法为准，或保留当前记录。
+     */
+    ProfileConflictResolveRequest: {
+      /**
+       * Choice
+       * @description revision=以这条说法为准；current=保留当前记录
+       */
+      choice: string;
+    };
+    /**
+     * ProfileConflictView
+     * @description 历史版本 / 冲突提案（设计第 7 节）。
+     *
+     * 与 `ProfileFieldView` 分开：它不是当前事实，不能混进用途读取；
+     * 界面用它展示「另一种说法」并让用户裁定。
+     */
+    ProfileConflictView: {
+      /** Attributes */
+      attributes?: {
+        [key: string]: unknown;
+      };
+      /**
+       * Change Reason
+       * @default
+       */
+      change_reason?: string;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /** Evidence */
+      evidence?: string[];
+      /** Id */
+      id: string;
+      /** Key */
+      key: string;
+      /**
+       * Label
+       * @default
+       */
+      label?: string;
+      /**
+       * Origin Ref
+       * @default
+       */
+      origin_ref?: string;
+      /** Replaced At */
+      replaced_at?: string | null;
+      source: components["schemas"]["ProfileSource"];
+      /** @default conflict */
+      status?: components["schemas"]["ProfileEntryStatus"];
+      /**
+       * Status Label
+       * @default
+       */
+      status_label?: string;
+      /** Value */
+      value?: unknown;
+      /** @default pending */
+      verification?: components["schemas"]["ProfileVerification"];
+      /**
+       * Verification Label
+       * @default
+       */
+      verification_label?: string;
+    };
+    /**
      * ProfileEntryStatus
      * @description 画像条目状态（第 4、7 节）。
      *
@@ -4402,7 +4520,7 @@ export interface components {
      * 混成一个状态后，界面上就分不清「他改过」和「两条资料对不上」。
      * @enum {string}
      */
-    ProfileEntryStatus: "active" | "corrected" | "conflict" | "expired" | "withdrawn";
+    ProfileEntryStatus: "active" | "corrected" | "conflict" | "expired" | "withdrawn" | "superseded";
     /**
      * ProfileEntryType
      * @description 画像条目的内容类别（《个人画像设计-2026-10-20》第 2 节）。
@@ -4581,6 +4699,11 @@ export interface components {
        * @description 系统基于证据的理解（待验证线索）：与 fields 分开，可否认
        */
       clues?: components["schemas"]["ProfileClueView"][];
+      /**
+       * Conflicts
+       * @description 与当前记录不一致的另一种说法：并存等待用户裁定，不参与用途读取
+       */
+      conflicts?: components["schemas"]["ProfileConflictView"][];
       /**
        * Coverage
        * @description 字段覆盖度
@@ -6722,6 +6845,36 @@ export interface operations {
     };
   };
   /**
+   * Resolve Profile Conflict
+   * @description 裁定一条冲突：`choice=revision` 以这条说法为准，`current` 保留当前记录。
+   */
+  resolve_profile_conflict_api_v1_app_profile_conflicts__revision_id__post: {
+    parameters: {
+      path: {
+        revision_id: string;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ProfileConflictResolveRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_ProfileConflictView_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /**
    * Update Profile Field
    * @description 更正一条画像字段，返回更正后的那一条。
    *
@@ -6776,6 +6929,33 @@ export interface operations {
       200: {
         content: {
           "application/json": components["schemas"]["ApiResponse_ProfileFieldDeleteAck_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /**
+   * Profile Field History
+   * @description 一条画像的历史版本（含被替代版本与冲突提案）。
+   *
+   * 当前值仍走 `/app/workspace` 的投影；这里只追加历史，不改旧读接口。
+   */
+  profile_field_history_api_v1_app_profile_fields__key__history_get: {
+    parameters: {
+      path: {
+        key: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_list_ProfileConflictView__"];
         };
       };
       /** @description Validation Error */

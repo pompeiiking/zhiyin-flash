@@ -92,7 +92,7 @@ const fields = useProfileFields({
   progress: workspace.progress,
   getFieldDeps: () => conclusions.fieldDeps.value,
 })
-const { fieldValue, valueParts, known, statusLine, confBands, coverageNote, groups, clues, denyClue } = fields
+const { fieldValue, valueParts, known, statusLine, confBands, coverageNote, groups, clues, denyClue, conflicts, resolveConflict } = fields
 
 const conclusions = useProfileConclusions({
   live: workspace.live,
@@ -245,6 +245,28 @@ onMounted(()=>{ void loadWorkspace() })
                   <p v-if="clue.evidence.length" class="p7-clue__evidence">依据：{{ clue.evidence.slice(0, 2).join('；').slice(0, 180) }}</p>
                 </div>
                 <button class="ws-text-button" type="button" @click="denyClue(clue.id)">不是这样</button>
+              </li>
+            </ul>
+          </section>
+          <!-- 冲突并存：当前值不改，另一种说法单独列出，由用户裁定。 -->
+          <section v-if="conflicts.length" class="p7-group p7-conflicts" aria-labelledby="p7-conflicts-title">
+            <header class="p7-group__head">
+              <h3 id="p7-conflicts-title">有两种说法待核对</h3>
+              <span class="p7-group__hint">当前记录没有改；选择以哪一版为准</span>
+              <span class="p7-group__count">{{ conflicts.length }} 条</span>
+            </header>
+            <ul class="p7-rows">
+              <li v-for="item in conflicts" :key="item.id" class="p7-row p7-conflict">
+                <div class="p7-conflict__body">
+                  <p class="p7-conflict__title">{{ item.label }}</p>
+                  <p class="p7-conflict__line"><span>当前记录</span>{{ item.currentValue }}</p>
+                  <p class="p7-conflict__line p7-conflict__line--new"><span>另一种说法</span>{{ item.value }}</p>
+                  <p class="p7-conflict__reason">{{ item.reason }}</p>
+                </div>
+                <div class="p7-conflict__actions">
+                  <button class="ws-text-button" type="button" @click="resolveConflict(item.id, 'revision')">以新说法为准</button>
+                  <button class="ws-text-button" type="button" @click="resolveConflict(item.id, 'current')">保留当前记录</button>
+                </div>
               </li>
             </ul>
           </section>
@@ -601,6 +623,14 @@ onMounted(()=>{ void loadWorkspace() })
 .p7-clue__text{margin:0;font-size:15px;line-height:1.7;color:var(--c-text-1)}
 .p7-clue__evidence{margin-top:6px;font-size:12px;color:var(--c-text-3)}
 .p7-clue .ws-text-button{flex:none;min-height:44px}
+.p7-conflict{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-4);flex-wrap:wrap}
+.p7-conflict__body{min-width:0;flex:1 1 260px}
+.p7-conflict__title{margin:0 0 6px;font-size:14px;font-weight:600;color:var(--c-text-1)}
+.p7-conflict__line{display:flex;gap:8px;margin:2px 0;font-size:14px;color:var(--c-text-2)}
+.p7-conflict__line span{flex:none;min-width:64px;font-size:12px;color:var(--c-text-3);padding-top:2px}
+.p7-conflict__line--new{color:var(--c-text-1)}
+.p7-conflict__reason{margin-top:6px;font-size:12px;color:var(--c-text-3)}
+.p7-conflict__actions{display:flex;gap:var(--sp-3);flex:none;min-height:44px;align-items:center}
 .profile-association-note p{font-size:13px;color:var(--c-text-3);margin-top:8px}@media(max-width:600px){.profile-identity__coverage{display:none}}
 
 /* ═══════════════════════════════════════════════════════════════════════════

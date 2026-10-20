@@ -33,6 +33,8 @@ from fastapi import APIRouter, Request
 from zhiyin_api.dto.common import ApiResponse
 from zhiyin_api.dto.workspace import (
     ProfileClueDenyAck,
+    ProfileConflictResolveRequest,
+    ProfileConflictView,
     ProfileFieldDeleteAck,
     ProfileFieldUpdateRequest,
     ProfileFieldView,
@@ -91,6 +93,37 @@ async def deny_profile_clue(
     facade = get_facade()
     user_id = await facade.resolve_user_id(request)
     return ApiResponse(data=await facade.deny_profile_clue(user_id, clue_id))
+
+
+@router.get(
+    "/app/profile/fields/{key}/history",
+    response_model=ApiResponse[list[ProfileConflictView]],
+)
+async def profile_field_history(
+    request: Request, key: str
+) -> ApiResponse[list[ProfileConflictView]]:
+    """一条画像的历史版本（含被替代版本与冲突提案）。
+
+    当前值仍走 `/app/workspace` 的投影；这里只追加历史，不改旧读接口。
+    """
+    facade = get_facade()
+    user_id = await facade.resolve_user_id(request)
+    return ApiResponse(data=await facade.list_profile_history(user_id, key))
+
+
+@router.post(
+    "/app/profile/conflicts/{revision_id}",
+    response_model=ApiResponse[ProfileConflictView],
+)
+async def resolve_profile_conflict(
+    request: Request, revision_id: str, body: ProfileConflictResolveRequest
+) -> ApiResponse[ProfileConflictView]:
+    """裁定一条冲突：`choice=revision` 以这条说法为准，`current` 保留当前记录。"""
+    facade = get_facade()
+    user_id = await facade.resolve_user_id(request)
+    return ApiResponse(
+        data=await facade.resolve_profile_conflict(user_id, revision_id, body)
+    )
 
 
 __all__ = ["router"]

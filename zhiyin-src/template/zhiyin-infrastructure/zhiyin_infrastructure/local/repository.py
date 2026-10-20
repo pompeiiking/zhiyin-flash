@@ -34,6 +34,7 @@ from zhiyin_kernel.blackboard import (
     Profile,
     ProfileClue,
     ProfileField,
+    ProfileFieldRevision,
     ProfileGap,
     TaskSession,
     UserNote,
@@ -51,6 +52,7 @@ from zhiyin_kernel.enums import (
     BehaviorEventType,
     LoopStage,
     ProfileClueStatus,
+    ProfileEntryStatus,
     TaskStatus,
 )
 from zhiyin_kernel.identity import UserAccount
@@ -111,6 +113,7 @@ class InMemoryProfileRepository(ProfileRepository):
 
     def __init__(self) -> None:
         self._profiles: dict[str, Profile] = {}
+        self._revisions: dict[str, list[ProfileFieldRevision]] = {}
 
     async def get(self, user_id: str) -> Optional[Profile]:
         profile = self._profiles.get(user_id)
@@ -217,6 +220,70 @@ class InMemoryProfileRepository(ProfileRepository):
             profile.version += 1
             profile.updated_at = max(now, profile.updated_at + timedelta(microseconds=1))
         return changed
+
+    async def append_revision(
+        self, user_id: str, revision: ProfileFieldRevision
+    ) -> ProfileFieldRevision:
+        profile = self._ensure(user_id)
+        stored = _snapshot(revision)
+        if not stored.id:
+            stored.id = _new_id("rev")
+        revisions = self._revisions.setdefault(user_id, [])
+        revisions.append(stored)
+        if stored.status is ProfileEntryStatus.CONFLICT:
+            # 冲突提案与当前值并存：只加到待裁定清单，不改写 fields。
+            profile.conflicts = [
+                item for item in profile.conflicts if item.id != stored.id
+            ] + [_snapshot(stored)]
+            profile.version += 1
+            profile.updated_at = max(_now(), profile.updated_at + timedelta(microseconds=1))
+        return _snapshot(stored)
+
+    async def list_revisions(
+        self,
+        user_id: str,
+        key: Optional[str] = None,
+        *,
+        status: Optional[Sequence[str]] = None,
+    ) -> list[ProfileFieldRevision]:
+        rows = self._revisions.get(user_id, [])
+        wanted_status = {str(item) for item in status} if status else None
+        return [
+            _snapshot(item)
+            for item in rows
+            if (key is None or item.key == key)
+            and (wanted_status is None or item.status.value in wanted_status)
+        ]
+
+    async def update_revision_status(
+        self,
+        user_id: str,
+        revision_id: str,
+        *,
+        status: str,
+        replaced_at: Optional[datetime] = None,
+        change_reason: str = "",
+    ) -> None:
+        rows = self._revisions.get(user_id, [])
+        profile = self._profiles.get(user_id)
+        for index, item in enumerate(rows):
+            if item.id != revision_id:
+                continue
+            updated = item.model_copy(
+                update={
+                    "status": ProfileEntryStatus(status),
+                    "replaced_at": replaced_at or _now(),
+                    "change_reason": change_reason or item.change_reason,
+                }
+            )
+            rows[index] = updated
+            if profile is not None:
+                profile.conflicts = [
+                    updated if clue.id == revision_id else clue
+                    for clue in profile.conflicts
+                    if updated.status is ProfileEntryStatus.CONFLICT or clue.id != revision_id
+                ]
+            return
 
     def _ensure(self, user_id: str) -> Profile:
         profile = self._profiles.get(user_id)

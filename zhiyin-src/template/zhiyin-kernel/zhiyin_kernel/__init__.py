@@ -57,6 +57,7 @@ from zhiyin_kernel.blackboard import (
     Profile,
     ProfileClue,
     ProfileField,
+    ProfileFieldRevision,
     ProfileGap,
     TaskSession,
 )
@@ -124,6 +125,7 @@ __all__ = [
     "Profile",
     "ProfileClue",
     "ProfileField",
+    "ProfileFieldRevision",
     "ProfileGap",
     "TaskSession",
     "ActionPhase",

@@ -39,6 +39,7 @@ from zhiyin_kernel.blackboard import (
     Profile,
     ProfileClue,
     ProfileField,
+    ProfileFieldRevision,
     ProfileGap,
     TaskSession,
     UserNote,
@@ -189,12 +190,42 @@ def _profile_clue_row(row: Any) -> ProfileClue:
     )
 
 
+def _profile_revision_row(row: Any) -> ProfileFieldRevision:
+    """历史/冲突行 → 内核记录；未知枚举按「历史版本」兜底，不让一行坏数据拖垮画像。"""
+    try:
+        source = ProfileSource(row["source"])
+    except ValueError:
+        source = ProfileSource.CONVERSATION
+    return ProfileFieldRevision(
+        id=row["id"],
+        user_id=row["user_id"],
+        key=row["key"],
+        label=row["label"] or "",
+        value=_load_value(row["value"]),
+        attributes=_load_value(row["attributes"]) or {},
+        confidence=row["confidence"],
+        source=source,
+        verification=_optional_enum(ProfileVerification, row["verification"]),
+        status=_optional_enum(ProfileEntryStatus, row["status"]) or ProfileEntryStatus.SUPERSEDED,
+        evidence=_load_value(row["evidence"]) or [],
+        origin_ref=row["origin_ref"] or "",
+        valid_from=row["valid_from"],
+        valid_to=row["valid_to"],
+        event_at=row["event_at"],
+        entry_version=row["entry_version"] or 1,
+        created_at=row["created_at"],
+        replaced_at=row["replaced_at"],
+        change_reason=row["change_reason"] or "",
+    )
+
+
 def _assemble_profile(
     user_id: str,
     head_row: Any,
     fields: list[ProfileField],
     gaps: list[ProfileGap],
     clues: list[ProfileClue] | None = None,
+    conflicts: list[ProfileFieldRevision] | None = None,
 ) -> Optional[Profile]:
     """头行 + 字段行 → 画像。**头行缺、字段行在时，按字段把容器补出来。**
 
@@ -211,17 +242,20 @@ def _assemble_profile(
     谁补谁不补全凭记性。所以补在仓库这一层，只补一次、所有读法共享。
     """
     if head_row is None:
-        if not fields and not gaps and not clues:
+        if not fields and not gaps and not clues and not conflicts:
             return None
         stamps = [field.updated_at for field in fields]
         if clues:
             stamps.extend(clue.updated_at for clue in clues)
+        if conflicts:
+            stamps.extend(item.created_at for item in conflicts)
         return Profile(
             id=f"profile-{user_id}",
             user_id=user_id,
             fields=fields,
             gaps=gaps,
             clues=clues or [],
+            conflicts=conflicts or [],
             updated_at=max(stamps) if stamps else _now(),
         )
     return Profile(
@@ -232,6 +266,7 @@ def _assemble_profile(
         fields=fields,
         gaps=gaps,
         clues=clues or [],
+        conflicts=conflicts or [],
     )
 
 
@@ -260,12 +295,18 @@ class PostgresProfileRepository(ProfileRepository):
             # 变成 500。表由启动迁移创建，正常路径下这里不会走到。
             logger.warning("读取待验证线索失败，按空列表处理（user=%s）", user_id, exc_info=True)
             clues = []
+        try:
+            conflicts = await self.list_revisions(user_id, status=["conflict"])
+        except Exception:  # noqa: BLE001 - 同上：版本表还没建时主画像仍可读
+            logger.warning("读取画像冲突提案失败，按空列表处理（user=%s）", user_id, exc_info=True)
+            conflicts = []
         return _assemble_profile(
             user_id,
             profile_row,
             await self.list_fields(user_id),
             await self.list_gaps(user_id),
             clues,
+            conflicts,
         )
 
     async def save(self, profile: Profile) -> Profile:
@@ -632,6 +673,98 @@ class PostgresProfileRepository(ProfileRepository):
             if count:
                 await self._touch_profile(connection, user_id)
             return count
+
+    async def append_revision(
+        self, user_id: str, revision: ProfileFieldRevision
+    ) -> ProfileFieldRevision:
+        """追加历史版本/冲突提案；不触碰 biz_profile_field 的当前值。"""
+        stored = revision.model_copy(deep=True)
+        if not stored.id:
+            stored.id = _new_id("rev")
+        async with self._db.transaction() as connection:
+            await _lock(connection, f"profile:{user_id}")
+            await connection.execute(
+                """
+                INSERT INTO biz_profile_field_revision
+                    (id, user_id, key, label, value, attributes, confidence, source,
+                     verification, status, evidence, origin_ref, valid_from, valid_to,
+                     event_at, entry_version, created_at, replaced_at, change_reason)
+                VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7, $8,
+                        $9, $10, $11::jsonb, $12, $13, $14, $15, $16, $17, $18, $19)
+                """,
+                stored.id,
+                user_id,
+                stored.key,
+                stored.label,
+                _dump_value(stored.value),
+                _dump_value(stored.attributes),
+                stored.confidence,
+                stored.source.value,
+                stored.verification.value if stored.verification else None,
+                stored.status.value,
+                _dump_value(stored.evidence),
+                stored.origin_ref,
+                stored.valid_from,
+                stored.valid_to,
+                stored.event_at,
+                stored.entry_version,
+                stored.created_at,
+                stored.replaced_at,
+                stored.change_reason,
+            )
+            if stored.status is ProfileEntryStatus.CONFLICT:
+                await self._touch_profile(connection, user_id)
+        return stored
+
+    async def list_revisions(
+        self,
+        user_id: str,
+        key: Optional[str] = None,
+        *,
+        status: Optional[Sequence[str]] = None,
+    ) -> list[ProfileFieldRevision]:
+        rows = await self._db.fetch(
+            """
+            SELECT id, user_id, key, label, value, attributes, confidence, source,
+                   verification, status, evidence, origin_ref, valid_from, valid_to,
+                   event_at, entry_version, created_at, replaced_at, change_reason
+            FROM biz_profile_field_revision
+            WHERE user_id = $1
+              AND ($2::text IS NULL OR key = $2)
+              AND ($3::text[] IS NULL OR status = ANY($3::text[]))
+            ORDER BY created_at ASC
+            """,
+            user_id,
+            key,
+            list(status) if status else None,
+        )
+        return [_profile_revision_row(row) for row in rows]
+
+    async def update_revision_status(
+        self,
+        user_id: str,
+        revision_id: str,
+        *,
+        status: str,
+        replaced_at: Optional[datetime] = None,
+        change_reason: str = "",
+    ) -> None:
+        async with self._db.transaction() as connection:
+            await _lock(connection, f"profile:{user_id}")
+            await connection.execute(
+                """
+                UPDATE biz_profile_field_revision
+                SET status = $3, replaced_at = $4,
+                    change_reason = CASE WHEN $5 = '' THEN change_reason ELSE $5 END
+                WHERE user_id = $1 AND id = $2
+                """,
+                user_id,
+                revision_id,
+                status,
+                replaced_at or _now(),
+                change_reason or "",
+            )
+            await self._touch_profile(connection, user_id)
 
     async def _touch_profile(self, connection: Any, user_id: str) -> None:
         """画像版本 +1：线索也是画像的一部分，界面按整体版本判断要不要重读。"""

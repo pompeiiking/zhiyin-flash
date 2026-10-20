@@ -81,6 +81,42 @@ class ProfileField(BaseModel):
     superseded_by: str = Field(default="", description="被哪条记录替代（修订关系）")
 
 
+class ProfileFieldRevision(BaseModel):
+    """画像记录的历史版本 / 冲突提案（设计第 4、7 节）。
+
+    当前值仍由 `biz_profile_field` 一行一键承载（旧 API 的兼容投影）；
+    本模型只追加不改写：
+      · 每次值被替代时，旧值进历史（status=superseded）；
+      · 自动记忆遇到与当前值不一致的新说法时，不覆盖当前值，而是追加一条
+        status=conflict 的提案，等待用户裁定（设计第 7 节“并存标记”）。
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str = Field(description="版本标识（服务端生成）")
+    user_id: str = Field(description="归属账号")
+    key: str = Field(description="字段键")
+    label: str = Field(default="")
+    value: Any = Field(description="这一版的值")
+    attributes: dict[str, Any] = Field(default_factory=dict)
+    confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+    source: ProfileSource = Field(description="这一版从哪儿来")
+    verification: Optional[ProfileVerification] = None
+    status: ProfileEntryStatus = Field(
+        default=ProfileEntryStatus.ACTIVE,
+        description="这一版在历史里的状态：superseded / conflict / withdrawn 等",
+    )
+    evidence: list[str] = Field(default_factory=list)
+    origin_ref: str = Field(default="")
+    valid_from: Optional[datetime] = None
+    valid_to: Optional[datetime] = None
+    event_at: Optional[datetime] = None
+    entry_version: int = Field(default=1, ge=1, description="对应的条目版本")
+    created_at: datetime = Field(description="这一版产生的时刻")
+    replaced_at: Optional[datetime] = Field(default=None, description="被替代/裁定的时刻")
+    change_reason: str = Field(default="", description="为什么产生这一版：给用户看的一句话")
+
+
 class ProfileGap(BaseModel):
     """画像缺口。用于采集追问与工作台展示。"""
 
@@ -139,6 +175,8 @@ class Profile(BaseModel):
     gaps: list[ProfileGap] = Field(default_factory=list)
     #: 待验证线索：与 fields 分开展示，界面要能说清「这是系统的理解，不是事实」。
     clues: list[ProfileClue] = Field(default_factory=list)
+    #: 冲突提案：与当前值并存，等待用户裁定；不参与用途读取。
+    conflicts: list[ProfileFieldRevision] = Field(default_factory=list)
 
 
 class BehaviorLog(BaseModel):

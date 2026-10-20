@@ -406,7 +406,7 @@ class DialogueRuntime:
             # 预检与画像服务共用同一份词表校验：取值形状、条数、属性都在这里先拒，
             # 不把错误留到事务里变成“结果未知”。
             entry_type = profile_taxonomy.entry_type_of(key)
-            profile_taxonomy.normalize_value(key, value, entry_type)
+            normalized_value = profile_taxonomy.normalize_value(key, value, entry_type)
             profile_taxonomy.normalize_attributes(entry_type, attributes)
             valid_from = profile_time(payload, "valid_from")
             valid_to = profile_time(payload, "valid_to")
@@ -417,6 +417,7 @@ class DialogueRuntime:
                 raise InvalidRequest("画像更新必须引用本轮用户的明确自述")
             if isinstance(value, str) and key in {"major", "school", "study_year", "student_name", "degree_level"} and value not in args.evidence:
                 raise InvalidRequest("身份类画像须使用原话中的肯定值，不将否定概括成新身份")
+            current: dict[str, Any] = {}
             if args.authorization == "automatic":
                 # 所有自动写入前统一读服务端持久化策略（账号/会话/内容拒绝/只保存一条），
                 # 不靠提示词或最近几条消息维持限制。
@@ -433,10 +434,13 @@ class DialogueRuntime:
                 current = {f.key: f for f in await self.o._profiles.get_fields(user)}
                 if key in current and current[key].source.value in {"record", "user_edit"}:
                     raise InvalidRequest("已有手动或核验字段需要用户明确更正")
-                if key in current and current[key].value != value and payload.get("assertion_type") != "explicit_correction":
-                    raise InvalidRequest("新陈述不能直接覆盖已有事实，需要明确更正或向用户核对")
                 if payload.get("assertion_type") not in {"affirmative_self_statement", "explicit_correction"}:
                     raise InvalidRequest("只有肯定本人自述或明确更正可自动记录")
+            # 新说法与当前值不一致、又没有被用户明确更正：并存标记，不覆盖当前事实。
+            # 设计第 7 节：能并存就先并存，只有影响当前服务时才向用户澄清。
+            record_conflict = False
+            if args.authorization == "automatic" and key in current:
+                record_conflict = current[key].value != normalized_value and payload.get("assertion_type") != "explicit_correction"
             save_scope = str(payload.get("save_scope") or "")
             if save_scope not in {"", "single"}:
                 raise InvalidRequest("保存范围无效")
@@ -446,6 +450,7 @@ class DialogueRuntime:
             origin_ref = f"conversation:{self.request.task_id}:{self.request.client_msg_id}"
             return {"key": key, "value": value, "label": next((spec.label for spec in self.o._profile_vocabulary() if spec.key == key), key),
                     "attributes": attributes, "origin_ref": origin_ref, "save_scope": save_scope,
+                    "record_conflict": record_conflict,
                     "valid_from": valid_from, "valid_to": valid_to, "event_at": event_at}
         if args.operation == "task.set_done":
             plan = await self.o._assets.get_action_plan(user)
@@ -623,7 +628,26 @@ class DialogueRuntime:
         if operation == "profile.update":
             payload = dict(payload)
             save_scope = str(payload.pop("save_scope", "") or "")
+            record_conflict = bool(payload.pop("record_conflict", False))
             policy = MemoryPolicyService(self.o._student_state)
+            if record_conflict:
+                # 与当前记录不一致：保存为冲突提案，当前事实保持不变，等用户裁定。
+                revision = await self.o._profiles.record_conflict(
+                    user,
+                    payload["key"],
+                    payload["value"],
+                    confidence=0.9,
+                    source="conversation",
+                    label=payload.get("label", ""),
+                    evidence=[action["evidence"]],
+                    attributes=payload.get("attributes") or {},
+                    origin_ref=payload.get("origin_ref", ""),
+                    valid_from=payload.get("valid_from"),
+                    valid_to=payload.get("valid_to"),
+                    event_at=payload.get("event_at"),
+                )
+                return {"conflict": True, "revision_id": revision.id,
+                        "message": "这次说法与已记录的不一致，已单独保存待你核对；当前记录没有改。"}
             old = {f.key: f for f in await self.o._profiles.get_fields(user)}
             if action["authorization"] == "automatic" and payload["key"] in old:
                 if old[payload["key"]].source.value in {"user_edit", "record"}:

@@ -51,6 +51,7 @@ STATUS_LABELS: dict[ProfileEntryStatus, str] = {
     ProfileEntryStatus.CONFLICT: "来源存在冲突",
     ProfileEntryStatus.EXPIRED: "已过期",
     ProfileEntryStatus.WITHDRAWN: "已撤回",
+    ProfileEntryStatus.SUPERSEDED: "已被后续版本替代",
 }
 
 #: 字段键 → 内容类别。键来自画像字段词表（`profile.field.*`），模型不能自由生成。
@@ -231,7 +232,12 @@ PURPOSE_TYPES: dict[ProfilePurpose, frozenset[ProfileEntryType]] = {
 #: 不可用于任何业务读取的状态。修正过的记录仍是当前值（CORRECTED 可用），
 #: 冲突/过期/撤回必须退出读取，除非用户主动打开“全部记录”。
 _UNUSABLE_STATUSES = frozenset(
-    {ProfileEntryStatus.CONFLICT, ProfileEntryStatus.EXPIRED, ProfileEntryStatus.WITHDRAWN}
+    {
+        ProfileEntryStatus.CONFLICT,
+        ProfileEntryStatus.EXPIRED,
+        ProfileEntryStatus.WITHDRAWN,
+        ProfileEntryStatus.SUPERSEDED,
+    }
 )
 
 

@@ -2535,7 +2535,7 @@
       "method": "DELETE",
       "path": "/api/v1/app/profile/clues/{clue_id}",
       "capability": "否认一条「系统的理解」（待验证线索）。  线索不是用户提供的事实，所以不能说\"删除\" —— 他否认的是这条理解。 回执只回 id：界面据此把那一张卡片改成\"已否认\"，不需要重读整份画像。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/profile_controller.py:83",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/profile_controller.py:85",
       "scope": "学生端",
       "stream": false,
       "parameters": [
@@ -2581,11 +2581,70 @@
       "verification": "代码可达；画像页“不是这样”入口已接入，本轮未做真实 HTTP 联调。"
     },
     {
+      "id": "POST /api/v1/app/profile/conflicts/{revision_id}",
+      "method": "POST",
+      "path": "/api/v1/app/profile/conflicts/{revision_id}",
+      "capability": "裁定一条冲突：`choice=revision` 以这条说法为准，`current` 保留当前记录。",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/profile_controller.py:118",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [
+        {
+          "in": "path",
+          "name": "revision_id",
+          "required": true,
+          "schema": {
+            "title": "Revision Id",
+            "type": "string"
+          }
+        }
+      ],
+      "request": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ProfileConflictResolveRequest"
+            }
+          }
+        },
+        "required": true
+      },
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_ProfileConflictView_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "前端已连接",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/api/backend-client.ts",
+        "zhiyin-src/template/zhiyin-web/src/lib/use-profile-fields.ts",
+        "zhiyin-src/template/zhiyin-web/src/views/StudentView.vue"
+      ],
+      "verification": "代码可达；画像页冲突裁定入口已接入，本轮未做真实 HTTP 联调。"
+    },
+    {
       "id": "DELETE /api/v1/app/profile/fields/{key}",
       "method": "DELETE",
       "path": "/api/v1/app/profile/fields/{key}",
       "capability": "删除一条画像信息（用户自己的控制入口）。  `expected_updated_at` 可选：带了就按\"我看到的是哪一版\"校验，版本对不上返回 冲突（409 / 1003），不静默删掉另一个标签页刚改过的值；不带就是普通删除。 删除后依据这一格的待验证线索一并失效（业务层负责）。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/profile_controller.py:62",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/profile_controller.py:64",
       "scope": "学生端",
       "stream": false,
       "parameters": [
@@ -2652,7 +2711,7 @@
       "method": "POST",
       "path": "/api/v1/app/profile/fields/{key}",
       "capability": "更正一条画像字段，返回更正后的那一条。  回包给的是**服务端存下来的那一条**，不是把请求里的值原样弹回去： 界面据此做乐观更新与回滚，刷新之后看到的是同一份事实。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/profile_controller.py:46",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/profile_controller.py:48",
       "scope": "学生端",
       "stream": false,
       "parameters": [
@@ -2703,6 +2762,55 @@
         "zhiyin-src/template/zhiyin-web/src/views/StudentView.vue"
       ],
       "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
+    },
+    {
+      "id": "GET /api/v1/app/profile/fields/{key}/history",
+      "method": "GET",
+      "path": "/api/v1/app/profile/fields/{key}/history",
+      "capability": "一条画像的历史版本（含被替代版本与冲突提案）。  当前值仍走 `/app/workspace` 的投影；这里只追加历史，不改旧读接口。",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/profile_controller.py:102",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [
+        {
+          "in": "path",
+          "name": "key",
+          "required": true,
+          "schema": {
+            "title": "Key",
+            "type": "string"
+          }
+        }
+      ],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_list_ProfileConflictView__"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "前端已连接",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/api/backend-client.ts",
+        "zhiyin-src/template/zhiyin-web/src/lib/use-profile-fields.ts"
+      ],
+      "verification": "代码可达；冲突/历史读取接口，本轮未做真实 HTTP 联调。"
     },
     {
       "id": "GET /api/v1/app/report/full-text",
@@ -7395,6 +7503,37 @@
       "title": "ApiResponse[ProfileClueDenyAck]",
       "type": "object"
     },
+    "ApiResponse_ProfileConflictView_": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "$ref": "#/components/schemas/ErrorCode",
+          "default": 0
+        },
+        "data": {
+          "anyOf": [
+            {
+              "$ref": "#/components/schemas/ProfileConflictView"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "message": {
+          "default": "ok",
+          "title": "Message",
+          "type": "string"
+        },
+        "trace_id": {
+          "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+          "title": "Trace Id",
+          "type": "string"
+        }
+      },
+      "title": "ApiResponse[ProfileConflictView]",
+      "type": "object"
+    },
     "ApiResponse_ProfileFieldDeleteAck_": {
       "additionalProperties": false,
       "properties": {
@@ -8375,6 +8514,41 @@
         }
       },
       "title": "ApiResponse[list[NotificationStateView]]",
+      "type": "object"
+    },
+    "ApiResponse_list_ProfileConflictView__": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "$ref": "#/components/schemas/ErrorCode",
+          "default": 0
+        },
+        "data": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/components/schemas/ProfileConflictView"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Data"
+        },
+        "message": {
+          "default": "ok",
+          "title": "Message",
+          "type": "string"
+        },
+        "trace_id": {
+          "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+          "title": "Trace Id",
+          "type": "string"
+        }
+      },
+      "title": "ApiResponse[list[ProfileConflictView]]",
       "type": "object"
     },
     "ApiResponse_list_ReleaseJob__": {
@@ -12628,6 +12802,112 @@
       "title": "ProfileClueView",
       "type": "object"
     },
+    "ProfileConflictResolveRequest": {
+      "additionalProperties": false,
+      "description": "用户裁定一条冲突：以新说法为准，或保留当前记录。",
+      "properties": {
+        "choice": {
+          "description": "revision=以这条说法为准；current=保留当前记录",
+          "title": "Choice",
+          "type": "string"
+        }
+      },
+      "required": [
+        "choice"
+      ],
+      "title": "ProfileConflictResolveRequest",
+      "type": "object"
+    },
+    "ProfileConflictView": {
+      "additionalProperties": false,
+      "description": "历史版本 / 冲突提案（设计第 7 节）。\n\n与 `ProfileFieldView` 分开：它不是当前事实，不能混进用途读取；\n界面用它展示「另一种说法」并让用户裁定。",
+      "properties": {
+        "attributes": {
+          "additionalProperties": true,
+          "title": "Attributes",
+          "type": "object"
+        },
+        "change_reason": {
+          "default": "",
+          "title": "Change Reason",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "evidence": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence",
+          "type": "array"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "key": {
+          "title": "Key",
+          "type": "string"
+        },
+        "label": {
+          "default": "",
+          "title": "Label",
+          "type": "string"
+        },
+        "origin_ref": {
+          "default": "",
+          "title": "Origin Ref",
+          "type": "string"
+        },
+        "replaced_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Replaced At"
+        },
+        "source": {
+          "$ref": "#/components/schemas/ProfileSource"
+        },
+        "status": {
+          "$ref": "#/components/schemas/ProfileEntryStatus",
+          "default": "conflict"
+        },
+        "status_label": {
+          "default": "",
+          "title": "Status Label",
+          "type": "string"
+        },
+        "value": {
+          "title": "Value"
+        },
+        "verification": {
+          "$ref": "#/components/schemas/ProfileVerification",
+          "default": "pending"
+        },
+        "verification_label": {
+          "default": "",
+          "title": "Verification Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "key",
+        "source",
+        "created_at"
+      ],
+      "title": "ProfileConflictView",
+      "type": "object"
+    },
     "ProfileEntryStatus": {
       "description": "画像条目状态（第 4、7 节）。\n\n不统一执行「最新值覆盖旧值」：修正、冲突、过期、撤回是四种不同的变化，\n混成一个状态后，界面上就分不清「他改过」和「两条资料对不上」。",
       "enum": [
@@ -12635,7 +12915,8 @@
         "corrected",
         "conflict",
         "expired",
-        "withdrawn"
+        "withdrawn",
+        "superseded"
       ],
       "title": "ProfileEntryStatus",
       "type": "string"
@@ -12878,6 +13159,14 @@
             "$ref": "#/components/schemas/ProfileClueView"
           },
           "title": "Clues",
+          "type": "array"
+        },
+        "conflicts": {
+          "description": "与当前记录不一致的另一种说法：并存等待用户裁定，不参与用途读取",
+          "items": {
+            "$ref": "#/components/schemas/ProfileConflictView"
+          },
+          "title": "Conflicts",
           "type": "array"
         },
         "coverage": {

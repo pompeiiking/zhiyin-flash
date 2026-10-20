@@ -64,6 +64,8 @@ from zhiyin_api.dto.workspace import (
     CapabilityListView,
     IntelListView,
     ProfileClueDenyAck,
+    ProfileConflictResolveRequest,
+    ProfileConflictView,
     ProfileFieldDeleteAck,
     ProfileFieldUpdateRequest,
     ProfileFieldView,
@@ -1083,6 +1085,33 @@ class DefaultApplicationFacade(ApplicationFacade):
         await self._profiles.deny_clue(user_id, clue_id)
         await self._invalidate_user(user_id, "profile_field_updated")
         return ProfileClueDenyAck(denied=clue_id)
+
+    async def list_profile_history(
+        self, user_id: str, key: str
+    ) -> list[ProfileConflictView]:
+        """一条画像的历史版本（含冲突与被替代版本）；旧 API 仍只读当前投影。"""
+        if self._profiles is None:
+            raise RuntimeError("画像服务未装配（Container.profile_service）")
+        revisions = await self._profiles.list_revisions(user_id, key)
+        return [mappers.profile_conflict_view(item) for item in revisions]
+
+    async def resolve_profile_conflict(
+        self, user_id: str, revision_id: str, body: ProfileConflictResolveRequest
+    ) -> ProfileConflictView:
+        """用户裁定一条冲突：以新说法为准，或保留当前记录。
+
+        `revision` 会真正改写当前投影，所以与更正同一条收尾口径：失效读缓存、
+        标记上下游资产待核对、失效探索取词缓存；`current` 只改裁定状态。
+        """
+        if self._profiles is None:
+            raise RuntimeError("画像服务未装配（Container.profile_service）")
+        resolved = await self._profiles.resolve_conflict(
+            user_id, revision_id, choice=body.choice
+        )
+        await self._invalidate_user(user_id, "profile_field_updated")
+        if body.choice == "revision":
+            await self._mark_profile_dependents_stale(user_id, resolved.key)
+        return mappers.profile_conflict_view(resolved)
 
     async def _mark_profile_dependents_stale(self, user_id: str, key: str) -> None:
         """画像写入后的收尾：资产影响传播 + 职业探索取词缓存失效。
