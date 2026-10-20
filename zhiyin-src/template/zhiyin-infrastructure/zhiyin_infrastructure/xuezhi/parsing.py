@@ -74,7 +74,7 @@ def matched_occupations(
     返回 [(职业名, zhiyId)]。用平台自己的映射比拿专业名去模糊搜职业准得多：
     后者会把"结构工程师"搜成"游戏开发工程师"。
     """
-    entries = (speciality_detail.get("byfzVo") or {}).get("expOccList") or {}
+    entries = _occupation_entries(speciality_detail)
     if not isinstance(entries, dict):
         return []
     scored: list[tuple[float, str, str]] = []
@@ -93,11 +93,18 @@ def matched_occupations(
     return [(name, occupation_id) for _, name, occupation_id in scored[:limit]]
 
 
+def _occupation_entries(detail: dict[str, Any]) -> dict:
+    # Ordinary undergraduate pages nest this field; vocational pages put it at root.
+    byfz = detail.get("byfzVo") or {}
+    entries = byfz.get("expOccList") or detail.get("expOccList") or {}
+    return entries if isinstance(entries, dict) else {}
+
+
 def speciality_text(detail: dict[str, Any], *, fallback_name: str = "") -> str:
     """专业详情 → 事实文本：简介、规模、满意度、毕业去向、对口职业。"""
     basic = detail.get("basicVo") or {}
     byfz = detail.get("byfzVo") or {}
-    occupation_entries = (byfz.get("expOccList") or {}) if isinstance(byfz, dict) else {}
+    occupation_entries = _occupation_entries(detail)
     occupations = [
         f"{name}（占比 {info.get('specOccProportion')}%）"
         for name, info in occupation_entries.items()
@@ -120,7 +127,7 @@ def speciality_text(detail: dict[str, Any], *, fallback_name: str = "") -> str:
                 _line("简介", basic.get("desc")),
                 _line("年招生规模", basic.get("xsgm")),
                 _line("满意度", satisfaction),
-                _line("毕业去向行业", byfz.get("byfzCyfxList")),
+                _line("毕业去向行业", byfz.get("byfzCyfxList") or detail.get("byfzCyfxList")),
                 _line("对口职业", occupations),
                 _line("升学方向", advances),
             )

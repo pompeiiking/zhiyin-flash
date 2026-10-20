@@ -1,0 +1,74 @@
+{
+  "date": "2026-10-20",
+  "scope": "Backend critical-path audit; inventory is not line-by-line or complete live coverage",
+  "worktree_base": "879ec05",
+  "inventory": {
+    "source_files": 273,
+    "lines": 41741,
+    "routes": 125,
+    "packages": {
+      "zhiyin-api": 35,
+      "zhiyin-boot": 17,
+      "zhiyin-business": 71,
+      "zhiyin-data-sdk": 31,
+      "zhiyin-infrastructure": 75,
+      "zhiyin-kernel": 14,
+      "zhiyin-modules": 8,
+      "zhiyin-orchestration": 22
+    }
+  },
+  "baseline": {
+    "passed": 1056,
+    "failed": 1,
+    "failure": "stale literal assertion after prompt consolidation; not a product defect"
+  },
+  "final_suite": {
+    "command": "python -X utf8 -m pytest -q",
+    "passed": 1082,
+    "failed": 0,
+    "seconds": 88.22,
+    "warning": "Starlette TestClient httpx deprecation",
+    "new_regression_cases": 25
+  },
+  "ruff": {
+    "command": "python -m ruff check .",
+    "passed": true
+  },
+  "diff_check": {
+    "command": "git diff --check",
+    "passed": true
+  },
+  "failure_probes_before_fix": {
+    "initial_academic_and_parsers_failed": 7,
+    "event_retry_failed": 2,
+    "storage_isolation_failed": 3,
+    "intel_cache_status_failed": 4,
+    "scheduler_publications": 2
+  },
+  "postgres": {
+    "date": "2026-10-20T07:44:59.188692+00:00",
+    "user": "audit_backend_069772dc73ba4d88909bd1bcb8166089",
+    "checks": {
+      "valid_long_term_snapshot_summaries_and_outbox": true,
+      "second_summary_failure_rolls_back_snapshot_profile_and_outbox": true,
+      "concurrent_independent_imports_preserve_both": true,
+      "import_and_revoke_preserve_new_course_without_resurrecting_grades": true,
+      "scheduler_workers_claim_a_due_job_once": true,
+      "synthetic_rows_cleaned_by_exact_id": true
+    },
+    "scheduler_publications": 1
+  },
+  "ocr": {
+    "mode": "delegate; deterministic preview/rules only",
+    "commit": "b28d51d",
+    "preview_files": 3,
+    "reviewable_source_files": 2,
+    "source_files_reviewed": 2,
+    "excluded_tests_reviewed_separately": 1,
+    "coverage_limit": "Only the source diff in that commit; not backend coverage"
+  },
+  "data_safety": "Synthetic IDs, temporary local files and exact-ID cleanup; no real student records reset or bulk migration",
+  "deployment": {
+    "status": "pending; updated in follow-up evidence commit"
+  }
+}

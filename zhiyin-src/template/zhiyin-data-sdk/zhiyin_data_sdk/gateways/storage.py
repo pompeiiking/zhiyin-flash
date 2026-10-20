@@ -27,6 +27,10 @@ class StoredObject(BaseModel):
 class ObjectStoreGateway(ABC):
     """对象存储 Port。承载报告全文导出等非结构化内容。"""
 
+    def legacy_named_key(self, user_id: str, scope: str, name: str, ext: str) -> str | None:
+        """Optional migration locator; callers MUST verify ownership before returning data."""
+        return None
+
     @abstractmethod
     async def put(
         self, key: str, data: bytes, *, content_type: str = "application/octet-stream"
@@ -51,7 +55,7 @@ class ObjectStoreGateway(ABC):
 
     @abstractmethod
     def build_named_key(self, user_id: str, scope: str, name: str, ext: str) -> str:
-        """生成**带名字**的对象键：`{user_id}/{scope}/{name}.{ext}`。
+        """生成**带名字**的对象键，必须保留不同账号身份之间的隔离。
 
         与 `build_key` 的分工：那份是版本化资产（report v3.pdf），键由版本号定位；
         这份是用户带上来的东西（会话材料 / 附件），它没有"第几版"，

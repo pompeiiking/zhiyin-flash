@@ -391,7 +391,7 @@ def build_tool_catalog(
                 fetched = str(getattr(record, "fetched_at", "") or "").strip()
                 parts.append(
                     f"- {title}：{text[:500]}（来源：{origin or '学职平台'}，取数时间：{fetched or '未知'}"
-                    + ("；按名称检索的相关职业，不代表专业官方对口映射" if
+                    + ("；本工具取数方式说明（不是平台原文）：按名称检索的相关职业，不代表专业官方对口映射" if
                        getattr(record, "kind", "") == "occupation" and
                        (getattr(record, "metadata", {}) or {}).get("matched_from") == "search" else "")
                     + "）"

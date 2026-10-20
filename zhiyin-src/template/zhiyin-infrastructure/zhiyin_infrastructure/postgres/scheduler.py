@@ -55,6 +55,12 @@ class PostgresScheduler(SchedulerGateway):
         return [task.model_copy(deep=True) for task in self._tasks.values()]
 
     async def tick(self, now: Optional[datetime] = None) -> list[str]:
+        # Hold the claim through outbox insertion and schedule advancement.
+        # Another worker skips locked jobs; a failed publish leaves them due.
+        async with self._db.transaction():
+            return await self._tick_locked(now)
+
+    async def _tick_locked(self, now: Optional[datetime] = None) -> list[str]:
         moment = _as_utc(now) if now is not None else _now()
         rows = await self._db.fetch(
             """
@@ -62,6 +68,7 @@ class PostgresScheduler(SchedulerGateway):
             FROM orc_schedule_job
             WHERE status = 'pending' AND run_at <= $1
             ORDER BY run_at ASC
+            FOR UPDATE SKIP LOCKED
             """,
             moment,
         )

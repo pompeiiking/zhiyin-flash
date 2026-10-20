@@ -6,6 +6,7 @@ import asyncio
 import inspect
 from collections import deque
 from typing import Any
+from weakref import WeakValueDictionary
 
 from zhiyin_data_sdk.gateways.messaging import EventBusGateway
 from zhiyin_orchestration.event import DomainEvent, EventBus, EventHandler
@@ -20,28 +21,39 @@ class GatewayEventBus(EventBus):
     """
 
     def __init__(self, gateway: EventBusGateway, *, dedup_size: int = 1024) -> None:
+        if dedup_size < 1:
+            raise ValueError("event dedup_size 必须大于等于 1")
         self._gateway = gateway
         self._handlers: dict[str, list[EventHandler]] = {}
         self._subscribed: set[str] = set()
         self._seen_keys: set[str] = set()
         self._seen_order: deque[str] = deque(maxlen=dedup_size)
-        self._lock = asyncio.Lock()
+        self._dedup_locks = WeakValueDictionary()
+        self._publishing: dict[str, Any] = {}
 
     async def publish(self, event: DomainEvent) -> None:
         """发布事件。带 idempotency_key 时按 LRU 去重（R-ORC-007）。"""
-        if event.idempotency_key is not None:
-            async with self._lock:
-                if event.idempotency_key in self._seen_keys:
-                    return
-                if (
-                    self._seen_order.maxlen is not None
-                    and len(self._seen_order) == self._seen_order.maxlen
-                ):
+        key = event.idempotency_key
+        if key is None:
+            await self._gateway.publish(event.event_type, event.model_dump(mode="json"))
+            return
+        # In-memory subscribers may recursively publish the same event. Keep
+        # that suppression, but never mark a failed outbox write as delivered.
+        if self._publishing.get(key) is asyncio.current_task():
+            return
+        lock = self._dedup_locks.setdefault(key, asyncio.Lock())
+        async with lock:
+            if key in self._seen_keys:
+                return
+            self._publishing[key] = asyncio.current_task()
+            try:
+                await self._gateway.publish(event.event_type, event.model_dump(mode="json"))
+                if len(self._seen_order) == self._seen_order.maxlen:
                     self._seen_keys.discard(self._seen_order[0])
-                self._seen_order.append(event.idempotency_key)
-                self._seen_keys.add(event.idempotency_key)
-
-        await self._gateway.publish(event.event_type, event.model_dump(mode="json"))
+                self._seen_order.append(key)
+                self._seen_keys.add(key)
+            finally:
+                self._publishing.pop(key, None)
 
     def subscribe(self, event_type: str, handler: EventHandler) -> None:
         """订阅事件。同一事件可挂多个处理器，按注册顺序调用。"""

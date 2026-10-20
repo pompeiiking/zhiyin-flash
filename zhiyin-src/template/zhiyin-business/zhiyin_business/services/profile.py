@@ -72,7 +72,10 @@ class DefaultProfileService(ProfileService):
         expected_updated_at: datetime | None = None,
         check_version: bool = False,
     ) -> ProfileField:
-        if isinstance(value, str) and len(value) > (12000 if key == "experience" else MAX_FIELD_VALUE_CHARS):
+        value_limit = (12000 if key == "experience" else 160
+                       if key in {"courses", "scores"} and source == ProfileSource.RECORD.value
+                       else MAX_FIELD_VALUE_CHARS)
+        if isinstance(value, str) and len(value) > value_limit:
             raise InvalidRequest("画像字段超过允许长度，请拆分为简短事实；经历最多 12000 字。")
         field = ProfileField(
             key=key,

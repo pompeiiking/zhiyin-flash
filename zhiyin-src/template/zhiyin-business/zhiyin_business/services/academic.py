@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 import logging
 import re
 from typing import Optional
+from functools import wraps
 
 from zhiyin_business.ports.academic import AcademicImportResult
 from zhiyin_business.ports.blackboard import AcademicService, ProfileService
@@ -55,6 +56,14 @@ _DECODE_MESSAGE = (
 )
 
 
+def academic_mutation(method):
+    @wraps(method)
+    async def call(self, user_id, *args, **kwargs):
+        async with self._snapshots.write_lock(user_id):
+            return await method(self, user_id, *args, **kwargs)
+    return call
+
+
 class DefaultAcademicService(AcademicService):
     IMPLEMENTATION_STATUS = "wired"
 
@@ -85,6 +94,7 @@ class DefaultAcademicService(AcademicService):
             for row in snapshot.grades
         ]})
 
+    @academic_mutation
     async def import_(
         self,
         user_id: str,
@@ -241,6 +251,7 @@ class DefaultAcademicService(AcademicService):
             logger.warning("文件读取失败（%s）", filename or "未提供文件名", exc_info=True)
             raise InvalidRequest(_DECODE_MESSAGE) from None
 
+    @academic_mutation
     async def revoke(self, user_id: str) -> None:
         """清空导入：快照与画像摘要一起删。
 
@@ -261,6 +272,7 @@ class DefaultAcademicService(AcademicService):
         """只撤回成绩；课表仍继续服务日历与时间安排。"""
         await self._revoke_part(user_id, "scores")
 
+    @academic_mutation
     async def _revoke_part(self, user_id: str, key: str) -> None:
         snapshot = await self._snapshots.get(user_id)
         if snapshot is not None:

@@ -196,8 +196,8 @@ class DefaultApplicationFacade(ApplicationFacade):
     async def resolve_user_id(self, request: Request) -> str:
         """从 Authorization: Bearer <token> 取凭证 → IdentityService → user_id。
 
-        第一期鉴权为"默认通过"（本地演示用户）；无 token 时传空，
-        由 AuthGateway 落到游客/演示账号。
+        认证策略由装配的 AuthGateway 决定；正式 JWT 网关会拒绝缺失、失效或已撤销的令牌。
+        本方法不接受请求参数中的账号作为身份依据。
         """
         authorization = request.headers.get("Authorization", "")
         token = authorization.removeprefix("Bearer ").strip() or None

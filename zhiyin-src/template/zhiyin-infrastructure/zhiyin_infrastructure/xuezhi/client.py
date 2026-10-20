@@ -111,12 +111,14 @@ class XueZhiClient:
         text = await self._get_text(path, params, referer=referer)
         payload = text.strip()
         if not payload:
-            return {}
+            raise RuntimeError(f"学职接口返回空响应：{path}")
         try:
             data = json.loads(payload)
         except json.JSONDecodeError as exc:
             raise RuntimeError(f"学职接口返回非 JSON：{path}") from exc
-        return data if isinstance(data, dict) else {}
+        if not isinstance(data, dict):
+            raise RuntimeError(f"学职接口返回的数据不是有效对象：{path}")
+        return data
 
     async def _get_text(
         self, path: str, params: dict[str, Any], *, referer: str
@@ -143,18 +145,20 @@ def _extract_result_json(text: str) -> dict[str, Any]:
     marker = "resultJson:"
     index = text.find(marker)
     if index < 0:
-        return {}
+        raise RuntimeError("学职详情缺少公开数据，可能是登录页或页面结构已变化")
     start = text.find("{", index + len(marker))
     if start < 0:
-        return {}
+        raise RuntimeError("学职详情数据结构不完整")
     end = _find_matching_brace(text, start)
     if end < 0:
-        return {}
+        raise RuntimeError("学职详情数据被截断或结构不完整")
     try:
         value = json.loads(text[start : end + 1])
-    except json.JSONDecodeError:
-        return {}
-    return value if isinstance(value, dict) else {}
+    except json.JSONDecodeError as exc:
+        raise RuntimeError("学职详情数据无法解析") from exc
+    if not isinstance(value, dict):
+        raise RuntimeError("学职详情数据不是有效对象")
+    return value
 
 
 def _find_matching_brace(text: str, start: int) -> int:

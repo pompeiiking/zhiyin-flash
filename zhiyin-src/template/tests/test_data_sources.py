@@ -401,7 +401,7 @@ async def test_xuezhi_gateway_keeps_partial_records_when_a_step_fails() -> None:
 
     assert result.degraded is True
     assert any("职业详情超时" in item for item in result.errors)
-    assert [record.kind for record in result.records] == ["speciality"]
+    assert [record.kind for record in result.records] == ["speciality", "career_case"]
 
 async def test_intel_explores_by_direction_plan_not_only_profile(container: Container) -> None:
     """方向方案优先于专业：选/生成方向后，探索取词与依据都跟方向走。

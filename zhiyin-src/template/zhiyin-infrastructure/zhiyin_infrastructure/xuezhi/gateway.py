@@ -52,7 +52,7 @@ class XueZhiDataSourceGateway(DataSourceGateway):
         records: list[DataSourceRecord] = []
         errors: list[str] = []
         try:
-            await self._collect(request, records)
+            await self._collect(request, records, errors)
         except Exception as exc:
             # 已经取到的证据照常返回：半份真实数据比整份空缺更有用，
             # 但必须让调用方看见"这次不完整"。
@@ -65,7 +65,7 @@ class XueZhiDataSourceGateway(DataSourceGateway):
         )
 
     async def _collect(
-        self, request: DataSourceRequest, records: list[DataSourceRecord]
+        self, request: DataSourceRequest, records: list[DataSourceRecord], errors: list[str]
     ) -> None:
         values = _context_values(request.context)
         major_terms = _terms(values, _MAJOR_KEYS)
@@ -76,20 +76,27 @@ class XueZhiDataSourceGateway(DataSourceGateway):
             job_terms = [request.query.strip()]
 
         # 平台自带的"专业 → 对口职业"映射：比拿专业名去模糊搜职业准得多。
-        linked_occupations = await self._collect_specialities(major_terms, records)
+        async def attempt(operation):
+            try:
+                return await operation
+            except Exception as exc:
+                errors.append(str(exc))
+                return None
+
+        linked_occupations = await attempt(self._collect_specialities(major_terms, records)) or []
         # 已选/主攻方向比"专业对口职业"更近：先把方向对应的职业取回来，
         # 再用专业链条补足；否则方向页写着"后端开发"，探索页永远是
         # 软件工程师/游戏开发/移动客户端这三个专业对口职业。
         direction_terms = _terms(values, ("target_direction", "target_job"))
         if direction_terms:
-            await self._collect_occupations(direction_terms, [], records, relation="direction")
-            await self._collect_occupations(major_terms, linked_occupations, records, relation="major")
-            await self._collect_cases(direction_terms, records, relation="direction")
+            await attempt(self._collect_occupations(direction_terms, [], records, relation="direction"))
+            await attempt(self._collect_occupations(major_terms, linked_occupations, records, relation="major"))
+            await attempt(self._collect_cases(direction_terms, records, relation="direction"))
         else:
-            await self._collect_occupations(
+            await attempt(self._collect_occupations(
                 job_terms or major_terms, linked_occupations, records, relation="major"
-            )
-            await self._collect_cases(job_terms or major_terms, records, relation="major")
+            ))
+            await attempt(self._collect_cases(job_terms or major_terms, records, relation="major"))
 
     async def _collect_specialities(
         self, terms: list[str], records: list[DataSourceRecord]

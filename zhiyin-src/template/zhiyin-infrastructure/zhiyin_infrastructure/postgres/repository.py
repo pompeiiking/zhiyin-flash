@@ -706,6 +706,13 @@ def _note_from_row(row: Any) -> UserNote:
 
 
 class PostgresAcademicSnapshotRepository(AcademicSnapshotRepository):
+    @asynccontextmanager
+    async def write_lock(self, user_id: str):
+        # Snapshot, profile summaries and outbox events share this transaction.
+        async with self._db.transaction():
+            await self._db.execute("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", "academic:" + user_id)
+            yield
+
     """教务系统快照：一个用户一行，重新取数整体替换。"""
 
     IMPLEMENTATION_STATUS = "wired"

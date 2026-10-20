@@ -1,0 +1,2828 @@
+{
+  "source_files": 273,
+  "packages": {
+    "zhiyin-api": 35,
+    "zhiyin-boot": 17,
+    "zhiyin-business": 71,
+    "zhiyin-data-sdk": 31,
+    "zhiyin-infrastructure": 75,
+    "zhiyin-kernel": 14,
+    "zhiyin-modules": 8,
+    "zhiyin-orchestration": 22
+  },
+  "lines": 41741,
+  "routes": [
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py",
+      "function": "brief_today",
+      "method": "post",
+      "route": "/app/brief/today",
+      "guard_references": [],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py",
+      "function": "dimension",
+      "method": "post",
+      "route": "/app/dimensions/{dimension_id}",
+      "guard_references": [],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py",
+      "function": "portrait_analysis",
+      "method": "post",
+      "route": "/app/portrait/analysis",
+      "guard_references": [],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py",
+      "function": "academic_analysis",
+      "method": "post",
+      "route": "/app/academic/analysis",
+      "guard_references": [],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py",
+      "function": "day_advice",
+      "method": "post",
+      "route": "/app/day/{day}/advice",
+      "guard_references": [],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py",
+      "function": "gap_clarify",
+      "method": "post",
+      "route": "/app/gaps/{gap_key}/clarify",
+      "guard_references": [],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py",
+      "function": "report_summary",
+      "method": "post",
+      "route": "/app/report/summary",
+      "guard_references": [],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py",
+      "function": "chsi_bind",
+      "method": "post",
+      "route": "/app/chsi/bind",
+      "guard_references": [],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py",
+      "function": "plan_timetable",
+      "method": "post",
+      "route": "/app/plan/timetable",
+      "guard_references": [],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py",
+      "function": "plan_todo_suggestions",
+      "method": "post",
+      "route": "/app/plan/todos/suggestions",
+      "guard_references": [],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py",
+      "function": "match_careers",
+      "method": "post",
+      "route": "/app/match/careers",
+      "guard_references": [],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/app_controller.py",
+      "function": "portal",
+      "method": "get",
+      "route": "/app/portal",
+      "guard_references": [
+        "resolve_user_id"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/app_controller.py",
+      "function": "bootstrap",
+      "method": "get",
+      "route": "/app/bootstrap",
+      "guard_references": [
+        "resolve_user_id"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/app_controller.py",
+      "function": "list_pending_notifications",
+      "method": "get",
+      "route": "/app/notifications/pending",
+      "guard_references": [
+        "resolve_user_id"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/app_controller.py",
+      "function": "mark_notification_read",
+      "method": "post",
+      "route": "/app/notifications/{message_id}/read",
+      "guard_references": [
+        "resolve_user_id"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/app_controller.py",
+      "function": "get_theory_card",
+      "method": "get",
+      "route": "/app/theory-cards/{theory_id}",
+      "guard_references": [
+        "resolve_user_id"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/asset_controller.py",
+      "function": "list_asset_versions",
+      "method": "get",
+      "route": "/app/assets/{asset_type}/versions",
+      "guard_references": [
+        "resolve_user_id"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/asset_controller.py",
+      "function": "get_report_full_text",
+      "method": "get",
+      "route": "/app/report/full-text",
+      "guard_references": [
+        "resolve_user_id"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/asset_controller.py",
+      "function": "export_asset",
+      "method": "post",
+      "route": "/app/assets/export",
+      "guard_references": [
+        "resolve_user_id"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/asset_controller.py",
+      "function": "get_direction_plans",
+      "method": "get",
+      "route": "/app/plan/directions",
+      "guard_references": [
+        "resolve_user_id"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/asset_controller.py",
+      "function": "select_direction_plan",
+      "method": "post",
+      "route": "/app/plan/directions/{option_id}/select",
+      "guard_references": [
+        "resolve_user_id"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/asset_controller.py",
+      "function": "get_action_plan",
+      "method": "get",
+      "route": "/app/plan/action",
+      "guard_references": [
+        "resolve_user_id"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/asset_controller.py",
+      "function": "set_action_task_done",
+      "method": "patch",
+      "route": "/app/plan/action/tasks",
+      "guard_references": [
+        "resolve_user_id"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/asset_controller.py",
+      "function": "list_calendar_nodes",
+      "method": "get",
+      "route": "/app/calendar",
+      "guard_references": [
+        "resolve_user_id"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/auth_controller.py",
+      "function": "register",
+      "method": "post",
+      "route": "/app/auth/register",
+      "guard_references": [],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/auth_controller.py",
+      "function": "login",
+      "method": "post",
+      "route": "/app/auth/login",
+      "guard_references": [],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/auth_controller.py",
+      "function": "logout",
+      "method": "post",
+      "route": "/app/auth/logout",
+      "guard_references": [],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/config_controller.py",
+      "function": "reload_config",
+      "method": "post",
+      "route": "/app/config/reload",
+      "guard_references": [
+        "platform(request).require"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py",
+      "function": "list_sessions",
+      "method": "get",
+      "route": "/app/sessions",
+      "guard_references": [
+        "resolve_user_id"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py",
+      "function": "rename_session",
+      "method": "patch",
+      "route": "/app/sessions/{task_id}",
+      "guard_references": [
+        "resolve_user_id"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py",
+      "function": "delete_session",
+      "method": "delete",
+      "route": "/app/sessions/{task_id}",
+      "guard_references": [
+        "resolve_user_id"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py",
+      "function": "list_session_turns",
+      "method": "get",
+      "route": "/app/sessions/{task_id}/turns",
+      "guard_references": [
+        "resolve_user_id"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py",
+      "function": "enter_task",
+      "method": "post",
+      "route": "/app/task/enter",
+      "guard_references": [
+        "resolve_user_id"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py",
+      "function": "send_message",
+      "method": "post",
+      "route": "/app/conversation/message",
+      "guard_references": [
+        "resolve_user_id"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py",
+      "function": "stream_message",
+      "method": "post",
+      "route": "/app/conversation/message/stream",
+      "guard_references": [
+        "resolve_user_id"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py",
+      "function": "conversation_runtime",
+      "method": "get",
+      "route": "/app/sessions/{task_id}/runtime",
+      "guard_references": [
+        "resolve_user_id"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py",
+      "function": "cancel_conversation_run",
+      "method": "post",
+      "route": "/app/sessions/{task_id}/runs/{run_id}/cancel",
+      "guard_references": [
+        "resolve_user_id"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py",
+      "function": "conversation_settings",
+      "method": "patch",
+      "route": "/app/sessions/{task_id}/settings",
+      "guard_references": [
+        "resolve_user_id"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py",
+      "function": "upload_material",
+      "method": "post",
+      "route": "/app/conversation/material",
+      "guard_references": [
+        "resolve_user_id"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py",
+      "function": "projects",
+      "method": "get",
+      "route": "/developer/projects",
+      "guard_references": [
+        "platform.require"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py",
+      "function": "create_project",
+      "method": "post",
+      "route": "/developer/projects",
+      "guard_references": [
+        "platform.require"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py",
+      "function": "update_project",
+      "method": "put",
+      "route": "/developer/projects/{project_id}",
+      "guard_references": [
+        "platform.require"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py",
+      "function": "versions",
+      "method": "get",
+      "route": "/developer/projects/{project_id}/versions",
+      "guard_references": [
+        "platform.require"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py",
+      "function": "upload_version",
+      "method": "post",
+      "route": "/developer/projects/{project_id}/versions",
+      "guard_references": [
+        "platform.require"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py",
+      "function": "version",
+      "method": "get",
+      "route": "/developer/versions/{version_id}",
+      "guard_references": [
+        "platform.require"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py",
+      "function": "package",
+      "method": "get",
+      "route": "/developer/versions/{version_id}/package",
+      "guard_references": [
+        "platform.require"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py",
+      "function": "retry",
+      "method": "post",
+      "route": "/developer/versions/{version_id}/retry",
+      "guard_references": [
+        "platform.require"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py",
+      "function": "release",
+      "method": "post",
+      "route": "/developer/versions/{version_id}/release",
+      "guard_references": [
+        "platform.require"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py",
+      "function": "template",
+      "method": "get",
+      "route": "/developer/templates",
+      "guard_references": [
+        "platform.require"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py",
+      "function": "platform_status",
+      "method": "get",
+      "route": "/developer/platform-status",
+      "guard_references": [
+        "platform.require"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py",
+      "function": "heartbeat",
+      "method": "post",
+      "route": "/developer/source-worker/heartbeat",
+      "guard_references": [
+        "executor(request)"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py",
+      "function": "claim",
+      "method": "post",
+      "route": "/developer/source-worker/claim",
+      "guard_references": [
+        "executor(request)"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py",
+      "function": "ready",
+      "method": "get",
+      "route": "/developer/source-worker/ready",
+      "guard_references": [
+        "executor(request)"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py",
+      "function": "worker_package",
+      "method": "get",
+      "route": "/developer/source-worker/versions/{version_id}/package",
+      "guard_references": [
+        "executor(request)"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py",
+      "function": "worker_version",
+      "method": "get",
+      "route": "/developer/source-worker/versions/{version_id}",
+      "guard_references": [
+        "executor(request)"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py",
+      "function": "worker_update",
+      "method": "post",
+      "route": "/developer/source-worker/versions/{version_id}",
+      "guard_references": [
+        "executor(request)"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py",
+      "function": "worker_release",
+      "method": "post",
+      "route": "/developer/source-worker/versions/{version_id}/release",
+      "guard_references": [
+        "executor(request)"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py",
+      "function": "worker_retry",
+      "method": "post",
+      "route": "/developer/source-worker/versions/{version_id}/retry",
+      "guard_references": [
+        "executor(request)"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py",
+      "function": "release_authorization",
+      "method": "get",
+      "route": "/developer/executor/{job_id}/authorization",
+      "guard_references": [
+        "executor(request)"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/module_controller.py",
+      "function": "user_modules",
+      "method": "get",
+      "route": "/app/modules",
+      "guard_references": [
+        "service.user"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/module_controller.py",
+      "function": "module_data",
+      "method": "get",
+      "route": "/app/modules/{module_id}/data",
+      "guard_references": [
+        "service.user"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/module_controller.py",
+      "function": "module_action",
+      "method": "post",
+      "route": "/app/modules/{module_id}/actions",
+      "guard_references": [
+        "service.user"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/module_controller.py",
+      "function": "invoke_module",
+      "method": "post",
+      "route": "/app/modules/{module_id}/invoke",
+      "guard_references": [
+        "service.user"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/module_controller.py",
+      "function": "module_capabilities",
+      "method": "get",
+      "route": "/developer/capabilities",
+      "guard_references": [
+        "service.require"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/module_controller.py",
+      "function": "module_workflows",
+      "method": "get",
+      "route": "/developer/workflows",
+      "guard_references": [
+        "service.require"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/module_controller.py",
+      "function": "save_workflow",
+      "method": "post",
+      "route": "/developer/workflows",
+      "guard_references": [
+        "service.require"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/module_controller.py",
+      "function": "publish_workflow",
+      "method": "post",
+      "route": "/developer/workflows/{workflow_id}/publish",
+      "guard_references": [
+        "service.require"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/module_controller.py",
+      "function": "unpublish_workflow",
+      "method": "post",
+      "route": "/developer/workflows/{workflow_id}/unpublish",
+      "guard_references": [
+        "service.require"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/module_controller.py",
+      "function": "workflow_runs",
+      "method": "get",
+      "route": "/developer/workflows/{workflow_id}/runs",
+      "guard_references": [
+        "service.require"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/module_controller.py",
+      "function": "preview_workflow",
+      "method": "post",
+      "route": "/developer/workflows/{workflow_id}/run",
+      "guard_references": [
+        "service.require"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/module_controller.py",
+      "function": "run_workflow",
+      "method": "post",
+      "route": "/app/workflows/{workflow_id}/run",
+      "guard_references": [
+        "service.user"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/module_controller.py",
+      "function": "developer_context",
+      "method": "get",
+      "route": "/developer/context",
+      "guard_references": [
+        "service.require"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/module_controller.py",
+      "function": "developer_modules",
+      "method": "get",
+      "route": "/developer/modules",
+      "guard_references": [
+        "service.require"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/module_controller.py",
+      "function": "module_policy",
+      "method": "put",
+      "route": "/developer/modules/{module_id}/policy",
+      "guard_references": [
+        "service.require"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/module_controller.py",
+      "function": "preview_module",
+      "method": "post",
+      "route": "/developer/modules/{module_id}/preview",
+      "guard_references": [
+        "service.require"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/module_controller.py",
+      "function": "check_modules",
+      "method": "post",
+      "route": "/developer/checks",
+      "guard_references": [
+        "service.require"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/module_controller.py",
+      "function": "module_checks",
+      "method": "get",
+      "route": "/developer/checks",
+      "guard_references": [
+        "service.require"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/module_controller.py",
+      "function": "release_jobs",
+      "method": "get",
+      "route": "/developer/releases",
+      "guard_references": [
+        "service.require"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/module_controller.py",
+      "function": "request_release",
+      "method": "post",
+      "route": "/developer/releases",
+      "guard_references": [
+        "service.require"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/module_controller.py",
+      "function": "approve_release",
+      "method": "post",
+      "route": "/developer/releases/{job_id}/approve",
+      "guard_references": [
+        "service.require"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/module_controller.py",
+      "function": "claim_release",
+      "method": "post",
+      "route": "/developer/executor/claim",
+      "guard_references": [
+        "executor(request)"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/module_controller.py",
+      "function": "executor_configuration",
+      "method": "get",
+      "route": "/developer/executor/configuration",
+      "guard_references": [
+        "executor(request)"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/module_controller.py",
+      "function": "update_release",
+      "method": "post",
+      "route": "/developer/executor/{job_id}",
+      "guard_references": [
+        "executor(request)"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/note_controller.py",
+      "function": "list_notes",
+      "method": "get",
+      "route": "/app/notes",
+      "guard_references": [
+        "resolve_user_id"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/note_controller.py",
+      "function": "add_note",
+      "method": "post",
+      "route": "/app/notes",
+      "guard_references": [
+        "resolve_user_id"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/note_controller.py",
+      "function": "set_note_done",
+      "method": "patch",
+      "route": "/app/notes/{note_id}",
+      "guard_references": [
+        "resolve_user_id"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/note_controller.py",
+      "function": "remove_note",
+      "method": "delete",
+      "route": "/app/notes/{note_id}",
+      "guard_references": [
+        "resolve_user_id"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/profile_controller.py",
+      "function": "update_profile_field",
+      "method": "post",
+      "route": "/app/profile/fields/{key}",
+      "guard_references": [
+        "resolve_user_id"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py",
+      "function": "download_asset",
+      "method": "get",
+      "route": "/app/assets/download/{export_id}",
+      "guard_references": [],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py",
+      "function": "preferences",
+      "method": "get",
+      "route": "/app/preferences",
+      "guard_references": [],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py",
+      "function": "save_preferences",
+      "method": "put",
+      "route": "/app/preferences",
+      "guard_references": [],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py",
+      "function": "create_task",
+      "method": "post",
+      "route": "/app/plan/action/tasks",
+      "guard_references": [],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py",
+      "function": "edit_task",
+      "method": "put",
+      "route": "/app/plan/action/tasks/{task_id}",
+      "guard_references": [],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py",
+      "function": "delete_task",
+      "method": "delete",
+      "route": "/app/plan/action/tasks/{task_id}",
+      "guard_references": [],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py",
+      "function": "delete_phase",
+      "method": "delete",
+      "route": "/app/plan/action/phases/{phase_id}",
+      "guard_references": [],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py",
+      "function": "create_phase",
+      "method": "post",
+      "route": "/app/plan/action/phases",
+      "guard_references": [],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py",
+      "function": "edit_phase",
+      "method": "put",
+      "route": "/app/plan/action/phases/{phase_id}",
+      "guard_references": [],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py",
+      "function": "notifications",
+      "method": "get",
+      "route": "/app/notifications",
+      "guard_references": [],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py",
+      "function": "notification_state",
+      "method": "patch",
+      "route": "/app/notifications/{message_id}",
+      "guard_references": [],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py",
+      "function": "reviews",
+      "method": "get",
+      "route": "/app/reviews",
+      "guard_references": [],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py",
+      "function": "create_review",
+      "method": "post",
+      "route": "/app/reviews",
+      "guard_references": [],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py",
+      "function": "edit_review",
+      "method": "put",
+      "route": "/app/reviews/{review_id}",
+      "guard_references": [],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py",
+      "function": "apply_review",
+      "method": "post",
+      "route": "/app/reviews/{review_id}/apply",
+      "guard_references": [],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py",
+      "function": "asset_snapshot",
+      "method": "get",
+      "route": "/app/assets/{asset_type}/versions/{version}/content",
+      "guard_references": [],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py",
+      "function": "session_snapshot",
+      "method": "get",
+      "route": "/app/sessions/{task_id}/snapshot",
+      "guard_references": [],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py",
+      "function": "measurements",
+      "method": "get",
+      "route": "/app/measurements",
+      "guard_references": [],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py",
+      "function": "save_measurements",
+      "method": "post",
+      "route": "/app/measurements",
+      "guard_references": [],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py",
+      "function": "weights",
+      "method": "get",
+      "route": "/app/plan/direction-weights",
+      "guard_references": [],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py",
+      "function": "save_weights",
+      "method": "put",
+      "route": "/app/plan/direction-weights",
+      "guard_references": [],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py",
+      "function": "comparison",
+      "method": "get",
+      "route": "/app/plan/direction-comparison",
+      "guard_references": [],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py",
+      "function": "semester",
+      "method": "get",
+      "route": "/app/schedule/semester",
+      "guard_references": [],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py",
+      "function": "save_semester",
+      "method": "put",
+      "route": "/app/schedule/semester",
+      "guard_references": [],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py",
+      "function": "workload",
+      "method": "get",
+      "route": "/app/schedule/workload",
+      "guard_references": [],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/track_controller.py",
+      "function": "track_event",
+      "method": "post",
+      "route": "/app/track",
+      "guard_references": [
+        "resolve_user_id"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/track_controller.py",
+      "function": "list_track_events",
+      "method": "get",
+      "route": "/app/track/events",
+      "guard_references": [
+        "resolve_user_id"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py",
+      "function": "get_workspace",
+      "method": "get",
+      "route": "/app/workspace",
+      "guard_references": [
+        "resolve_user_id"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py",
+      "function": "capabilities",
+      "method": "get",
+      "route": "/app/capabilities",
+      "guard_references": [
+        "resolve_user_id"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py",
+      "function": "import_academic",
+      "method": "post",
+      "route": "/app/academic/import",
+      "guard_references": [
+        "resolve_user_id"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py",
+      "function": "import_academic_files",
+      "method": "post",
+      "route": "/app/academic/import/file",
+      "guard_references": [
+        "resolve_user_id"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py",
+      "function": "revoke_academic",
+      "method": "delete",
+      "route": "/app/academic",
+      "guard_references": [
+        "resolve_user_id"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py",
+      "function": "revoke_academic_courses",
+      "method": "delete",
+      "route": "/app/academic/courses",
+      "guard_references": [
+        "resolve_user_id"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py",
+      "function": "revoke_academic_grades",
+      "method": "delete",
+      "route": "/app/academic/grades",
+      "guard_references": [
+        "resolve_user_id"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py",
+      "function": "list_achievements",
+      "method": "get",
+      "route": "/app/achievements",
+      "guard_references": [
+        "resolve_user_id"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py",
+      "function": "get_intel",
+      "method": "get",
+      "route": "/app/intel",
+      "guard_references": [
+        "_optional_user"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py",
+      "function": "refresh_intel",
+      "method": "post",
+      "route": "/app/intel/refresh",
+      "guard_references": [
+        "_optional_user"
+      ],
+      "review": "route/call-chain index; authorization may be in the facade/service"
+    }
+  ],
+  "files": [
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/app.py",
+      "package": "zhiyin-api",
+      "lines": 314,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/context.py",
+      "package": "zhiyin-api",
+      "lines": 176,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/contract.py",
+      "package": "zhiyin-api",
+      "lines": 110,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/feature_gate.py",
+      "package": "zhiyin-api",
+      "lines": 32,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/rate_limit.py",
+      "package": "zhiyin-api",
+      "lines": 51,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/runtime.py",
+      "package": "zhiyin-api",
+      "lines": 117,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/__init__.py",
+      "package": "zhiyin-api",
+      "lines": 16,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py",
+      "package": "zhiyin-api",
+      "lines": 259,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/app_controller.py",
+      "package": "zhiyin-api",
+      "lines": 80,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/asset_controller.py",
+      "package": "zhiyin-api",
+      "lines": 125,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/auth_controller.py",
+      "package": "zhiyin-api",
+      "lines": 73,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/config_controller.py",
+      "package": "zhiyin-api",
+      "lines": 31,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py",
+      "package": "zhiyin-api",
+      "lines": 385,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/developer_controller.py",
+      "package": "zhiyin-api",
+      "lines": 159,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/module_controller.py",
+      "package": "zhiyin-api",
+      "lines": 230,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/note_controller.py",
+      "package": "zhiyin-api",
+      "lines": 53,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/profile_controller.py",
+      "package": "zhiyin-api",
+      "lines": 46,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/student_controller.py",
+      "package": "zhiyin-api",
+      "lines": 207,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/track_controller.py",
+      "package": "zhiyin-api",
+      "lines": 43,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py",
+      "package": "zhiyin-api",
+      "lines": 200,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/__init__.py",
+      "package": "zhiyin-api",
+      "lines": 51,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/dto/achievement.py",
+      "package": "zhiyin-api",
+      "lines": 45,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/dto/asset.py",
+      "package": "zhiyin-api",
+      "lines": 264,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/dto/bootstrap.py",
+      "package": "zhiyin-api",
+      "lines": 160,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/dto/common.py",
+      "package": "zhiyin-api",
+      "lines": 162,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/dto/conversation.py",
+      "package": "zhiyin-api",
+      "lines": 229,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/dto/mappers.py",
+      "package": "zhiyin-api",
+      "lines": 1113,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/dto/note.py",
+      "package": "zhiyin-api",
+      "lines": 52,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/dto/student.py",
+      "package": "zhiyin-api",
+      "lines": 93,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/dto/track.py",
+      "package": "zhiyin-api",
+      "lines": 36,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/dto/workspace.py",
+      "package": "zhiyin-api",
+      "lines": 372,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/dto/__init__.py",
+      "package": "zhiyin-api",
+      "lines": 96,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/facade/application.py",
+      "package": "zhiyin-api",
+      "lines": 1058,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/facade/facade.py",
+      "package": "zhiyin-api",
+      "lines": 352,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-api/zhiyin_api/facade/__init__.py",
+      "package": "zhiyin-api",
+      "lines": 17,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-boot/zhiyin_boot/ai_bootstrap.py",
+      "package": "zhiyin-boot",
+      "lines": 120,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-boot/zhiyin_boot/asgi.py",
+      "package": "zhiyin-boot",
+      "lines": 70,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-boot/zhiyin_boot/developer_platform.py",
+      "package": "zhiyin-boot",
+      "lines": 36,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-boot/zhiyin_boot/logging_setup.py",
+      "package": "zhiyin-boot",
+      "lines": 46,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-boot/zhiyin_boot/module_platform.py",
+      "package": "zhiyin-boot",
+      "lines": 304,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-boot/zhiyin_boot/registry_bootstrap.py",
+      "package": "zhiyin-boot",
+      "lines": 216,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-boot/zhiyin_boot/report.py",
+      "package": "zhiyin-boot",
+      "lines": 283,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-boot/zhiyin_boot/runtime_config.py",
+      "package": "zhiyin-boot",
+      "lines": 119,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-boot/zhiyin_boot/settings.py",
+      "package": "zhiyin-boot",
+      "lines": 262,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-boot/zhiyin_boot/workers.py",
+      "package": "zhiyin-boot",
+      "lines": 174,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-boot/zhiyin_boot/__init__.py",
+      "package": "zhiyin-boot",
+      "lines": 48,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-boot/zhiyin_boot/__main__.py",
+      "package": "zhiyin-boot",
+      "lines": 267,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-boot/zhiyin_boot/container/gateways.py",
+      "package": "zhiyin-boot",
+      "lines": 282,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-boot/zhiyin_boot/container/ports.py",
+      "package": "zhiyin-boot",
+      "lines": 119,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-boot/zhiyin_boot/container/repositories.py",
+      "package": "zhiyin-boot",
+      "lines": 111,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-boot/zhiyin_boot/container/services.py",
+      "package": "zhiyin-boot",
+      "lines": 505,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-boot/zhiyin_boot/container/__init__.py",
+      "package": "zhiyin-boot",
+      "lines": 344,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/events.py",
+      "package": "zhiyin-business",
+      "lines": 23,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/__init__.py",
+      "package": "zhiyin-business",
+      "lines": 32,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/contracts/act.py",
+      "package": "zhiyin-business",
+      "lines": 61,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/contracts/ai_tasks.py",
+      "package": "zhiyin-business",
+      "lines": 388,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/contracts/collect.py",
+      "package": "zhiyin-business",
+      "lines": 95,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/contracts/common.py",
+      "package": "zhiyin-business",
+      "lines": 193,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/contracts/decide.py",
+      "package": "zhiyin-business",
+      "lines": 63,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/contracts/diagnose.py",
+      "package": "zhiyin-business",
+      "lines": 110,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/contracts/review.py",
+      "package": "zhiyin-business",
+      "lines": 98,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/contracts/student.py",
+      "package": "zhiyin-business",
+      "lines": 225,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/contracts/__init__.py",
+      "package": "zhiyin-business",
+      "lines": 76,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/policies/collection.py",
+      "package": "zhiyin-business",
+      "lines": 609,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/policies/collection_gate.py",
+      "package": "zhiyin-business",
+      "lines": 122,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/policies/decision_routing.py",
+      "package": "zhiyin-business",
+      "lines": 51,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/policies/handoff.py",
+      "package": "zhiyin-business",
+      "lines": 47,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/policies/handoff_rules.py",
+      "package": "zhiyin-business",
+      "lines": 62,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/policies/impact.py",
+      "package": "zhiyin-business",
+      "lines": 32,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/policies/impact_rules.py",
+      "package": "zhiyin-business",
+      "lines": 30,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/policies/intel_labels.py",
+      "package": "zhiyin-business",
+      "lines": 78,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/policies/intel_query.py",
+      "package": "zhiyin-business",
+      "lines": 87,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/policies/intervention.py",
+      "package": "zhiyin-business",
+      "lines": 36,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/policies/intervention_rules.py",
+      "package": "zhiyin-business",
+      "lines": 47,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/policies/layout.py",
+      "package": "zhiyin-business",
+      "lines": 156,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/policies/progress.py",
+      "package": "zhiyin-business",
+      "lines": 88,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/policies/renderers.py",
+      "package": "zhiyin-business",
+      "lines": 145,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/policies/routing.py",
+      "package": "zhiyin-business",
+      "lines": 79,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/policies/teaming.py",
+      "package": "zhiyin-business",
+      "lines": 37,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/policies/teaming_rules.py",
+      "package": "zhiyin-business",
+      "lines": 40,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/policies/__init__.py",
+      "package": "zhiyin-business",
+      "lines": 65,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/ports/academic.py",
+      "package": "zhiyin-business",
+      "lines": 41,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/ports/ai_tasks.py",
+      "package": "zhiyin-business",
+      "lines": 49,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/ports/blackboard.py",
+      "package": "zhiyin-business",
+      "lines": 478,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/ports/cache.py",
+      "package": "zhiyin-business",
+      "lines": 90,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/ports/function.py",
+      "package": "zhiyin-business",
+      "lines": 178,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/ports/identity.py",
+      "package": "zhiyin-business",
+      "lines": 77,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/ports/orchestrator.py",
+      "package": "zhiyin-business",
+      "lines": 209,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/ports/registry.py",
+      "package": "zhiyin-business",
+      "lines": 227,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/ports/workspace.py",
+      "package": "zhiyin-business",
+      "lines": 118,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/ports/__init__.py",
+      "package": "zhiyin-business",
+      "lines": 52,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/academic.py",
+      "package": "zhiyin-business",
+      "lines": 390,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/ai_tasks.py",
+      "package": "zhiyin-business",
+      "lines": 1666,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/analysis_access.py",
+      "package": "zhiyin-business",
+      "lines": 192,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/asset.py",
+      "package": "zhiyin-business",
+      "lines": 460,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/asset_content.py",
+      "package": "zhiyin-business",
+      "lines": 229,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/behavior.py",
+      "package": "zhiyin-business",
+      "lines": 70,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/conversation_control.py",
+      "package": "zhiyin-business",
+      "lines": 62,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/conversation_ledger.py",
+      "package": "zhiyin-business",
+      "lines": 80,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/developer.py",
+      "package": "zhiyin-business",
+      "lines": 57,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/dialogue_runtime.py",
+      "package": "zhiyin-business",
+      "lines": 787,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/dynamic_config.py",
+      "package": "zhiyin-business",
+      "lines": 94,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/form_merge.py",
+      "package": "zhiyin-business",
+      "lines": 22,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/function.py",
+      "package": "zhiyin-business",
+      "lines": 565,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/identity.py",
+      "package": "zhiyin-business",
+      "lines": 106,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/memory.py",
+      "package": "zhiyin-business",
+      "lines": 251,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/modules.py",
+      "package": "zhiyin-business",
+      "lines": 226,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/module_contracts.py",
+      "package": "zhiyin-business",
+      "lines": 110,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/module_flows.py",
+      "package": "zhiyin-business",
+      "lines": 173,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/module_packages.py",
+      "package": "zhiyin-business",
+      "lines": 85,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/note.py",
+      "package": "zhiyin-business",
+      "lines": 73,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/orchestrator.py",
+      "package": "zhiyin-business",
+      "lines": 309,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/plan_patch.py",
+      "package": "zhiyin-business",
+      "lines": 107,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/profile.py",
+      "package": "zhiyin-business",
+      "lines": 271,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/read_cache.py",
+      "package": "zhiyin-business",
+      "lines": 171,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/registry.py",
+      "package": "zhiyin-business",
+      "lines": 160,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/student.py",
+      "package": "zhiyin-business",
+      "lines": 997,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/unit_of_work.py",
+      "package": "zhiyin-business",
+      "lines": 23,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/workspace.py",
+      "package": "zhiyin-business",
+      "lines": 423,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/services/__init__.py",
+      "package": "zhiyin-business",
+      "lines": 89,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/workers/active_event.py",
+      "package": "zhiyin-business",
+      "lines": 197,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/workers/impact.py",
+      "package": "zhiyin-business",
+      "lines": 122,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-business/zhiyin_business/workers/__init__.py",
+      "package": "zhiyin-business",
+      "lines": 35,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/errors.py",
+      "package": "zhiyin-data-sdk",
+      "lines": 59,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/__init__.py",
+      "package": "zhiyin-data-sdk",
+      "lines": 10,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/gateways/academic.py",
+      "package": "zhiyin-data-sdk",
+      "lines": 185,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/gateways/ai.py",
+      "package": "zhiyin-data-sdk",
+      "lines": 133,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/gateways/cache.py",
+      "package": "zhiyin-data-sdk",
+      "lines": 48,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/gateways/chsi.py",
+      "package": "zhiyin-data-sdk",
+      "lines": 154,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/gateways/datasource.py",
+      "package": "zhiyin-data-sdk",
+      "lines": 62,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/gateways/decision.py",
+      "package": "zhiyin-data-sdk",
+      "lines": 86,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/gateways/documents.py",
+      "package": "zhiyin-data-sdk",
+      "lines": 51,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/gateways/feature_flag.py",
+      "package": "zhiyin-data-sdk",
+      "lines": 35,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/gateways/messaging.py",
+      "package": "zhiyin-data-sdk",
+      "lines": 92,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/gateways/security.py",
+      "package": "zhiyin-data-sdk",
+      "lines": 105,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/gateways/storage.py",
+      "package": "zhiyin-data-sdk",
+      "lines": 64,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/gateways/vector.py",
+      "package": "zhiyin-data-sdk",
+      "lines": 86,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/gateways/__init__.py",
+      "package": "zhiyin-data-sdk",
+      "lines": 109,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/repositories/academic.py",
+      "package": "zhiyin-data-sdk",
+      "lines": 41,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/repositories/ai_tasks.py",
+      "package": "zhiyin-data-sdk",
+      "lines": 42,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/repositories/asset.py",
+      "package": "zhiyin-data-sdk",
+      "lines": 122,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/repositories/behavior.py",
+      "package": "zhiyin-data-sdk",
+      "lines": 43,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/repositories/developer.py",
+      "package": "zhiyin-data-sdk",
+      "lines": 18,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/repositories/function.py",
+      "package": "zhiyin-data-sdk",
+      "lines": 96,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/repositories/identity.py",
+      "package": "zhiyin-data-sdk",
+      "lines": 30,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/repositories/memory.py",
+      "package": "zhiyin-data-sdk",
+      "lines": 60,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/repositories/modules.py",
+      "package": "zhiyin-data-sdk",
+      "lines": 15,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/repositories/module_flows.py",
+      "package": "zhiyin-data-sdk",
+      "lines": 15,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/repositories/note.py",
+      "package": "zhiyin-data-sdk",
+      "lines": 28,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/repositories/profile.py",
+      "package": "zhiyin-data-sdk",
+      "lines": 53,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/repositories/registry.py",
+      "package": "zhiyin-data-sdk",
+      "lines": 183,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/repositories/session.py",
+      "package": "zhiyin-data-sdk",
+      "lines": 58,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/repositories/student.py",
+      "package": "zhiyin-data-sdk",
+      "lines": 12,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-data-sdk/zhiyin_data_sdk/repositories/__init__.py",
+      "package": "zhiyin-data-sdk",
+      "lines": 47,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/textfile.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 156,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/__init__.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 19,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/academic/importer.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 207,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/academic/parsers.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 965,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/academic/__init__.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 15,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/ai/agno_runtime.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 83,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/ai/deepseek.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 27,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/ai/doubao.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 26,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/ai/ollama.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 45,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/ai/openai_compat.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 215,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/ai/routed.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 117,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/ai/router.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 63,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/ai/systemone.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 82,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/ai/tools.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 609,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/ai/__init__.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 9,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/auth/gateway.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 272,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/auth/__init__.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 8,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/chsi/client.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 290,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/chsi/gateway.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 78,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/chsi/__init__.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 13,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/local/asset_documents.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 43,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/local/auth.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 62,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/local/cache.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 60,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/local/embedding.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 46,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/local/feature_flag.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 67,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/local/knowledge.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 163,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/local/messaging.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 219,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/local/object_store.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 125,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/local/repository.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 1035,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/local/security.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 44,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/local/student.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 20,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/local/vector_store.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 104,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/local/__init__.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 18,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/postgres/ai_config.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 319,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/postgres/database.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 203,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/postgres/developer.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 234,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/postgres/feature_flag.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 110,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/postgres/messaging.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 221,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/postgres/modules.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 123,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/postgres/module_flows.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 112,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/postgres/registry.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 671,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/postgres/repository.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 1552,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/postgres/runtime_config.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 76,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/postgres/scheduler.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 204,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/postgres/student.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 33,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/postgres/vector.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 163,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/postgres/vector_sync_state.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 50,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/postgres/__init__.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 9,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/postgres/schema/business.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 221,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/postgres/schema/developer.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 38,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/postgres/schema/infrastructure.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 152,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/postgres/schema/migrations.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 55,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/postgres/schema/modules.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 25,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/postgres/schema/module_flows.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 25,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/postgres/schema/orchestration.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 58,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/postgres/schema/vector.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 20,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/postgres/schema/__init__.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 40,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/rag/documents.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 70,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/rag/knowledge.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 94,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/rag/pipeline.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 188,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/rag/search.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 90,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/rag/__init__.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 23,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/redis/cache.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 91,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/redis/rate_limit.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 118,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/redis/__init__.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 8,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/search/web.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 88,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/search/__init__.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 20,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/security/crypto.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 119,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/security/__init__.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 13,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/workers/vector_sync.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 82,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/workers/__init__.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 37,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/xuezhi/client.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 193,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/xuezhi/gateway.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 316,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/xuezhi/parsing.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 180,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-infrastructure/zhiyin_infrastructure/xuezhi/__init__.py",
+      "package": "zhiyin-infrastructure",
+      "lines": 9,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-kernel/zhiyin_kernel/assets.py",
+      "package": "zhiyin-kernel",
+      "lines": 238,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-kernel/zhiyin_kernel/blackboard.py",
+      "package": "zhiyin-kernel",
+      "lines": 200,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-kernel/zhiyin_kernel/developer.py",
+      "package": "zhiyin-kernel",
+      "lines": 88,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-kernel/zhiyin_kernel/dynamic_config.py",
+      "package": "zhiyin-kernel",
+      "lines": 69,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-kernel/zhiyin_kernel/dynamic_content.py",
+      "package": "zhiyin-kernel",
+      "lines": 112,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-kernel/zhiyin_kernel/enums.py",
+      "package": "zhiyin-kernel",
+      "lines": 156,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-kernel/zhiyin_kernel/errors.py",
+      "package": "zhiyin-kernel",
+      "lines": 75,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-kernel/zhiyin_kernel/identity.py",
+      "package": "zhiyin-kernel",
+      "lines": 53,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-kernel/zhiyin_kernel/modules.py",
+      "package": "zhiyin-kernel",
+      "lines": 245,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-kernel/zhiyin_kernel/privacy.py",
+      "package": "zhiyin-kernel",
+      "lines": 19,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-kernel/zhiyin_kernel/registry.py",
+      "package": "zhiyin-kernel",
+      "lines": 475,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-kernel/zhiyin_kernel/streaming.py",
+      "package": "zhiyin-kernel",
+      "lines": 55,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-kernel/zhiyin_kernel/worker.py",
+      "package": "zhiyin-kernel",
+      "lines": 48,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-kernel/zhiyin_kernel/__init__.py",
+      "package": "zhiyin-kernel",
+      "lines": 160,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-modules/conftest.py",
+      "package": "zhiyin-modules",
+      "lines": 8,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-modules/zhiyin_modules/__init__.py",
+      "package": "zhiyin-modules",
+      "lines": 127,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-modules/zhiyin_modules/achievements/backend.py",
+      "package": "zhiyin-modules",
+      "lines": 16,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-modules/zhiyin_modules/achievements/test_module.py",
+      "package": "zhiyin-modules",
+      "lines": 10,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-modules/zhiyin_modules/action_progress/backend.py",
+      "package": "zhiyin-modules",
+      "lines": 36,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-modules/zhiyin_modules/action_progress/test_module.py",
+      "package": "zhiyin-modules",
+      "lines": 11,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-modules/zhiyin_modules/plan_progress_skill/backend.py",
+      "package": "zhiyin-modules",
+      "lines": 45,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-modules/zhiyin_modules/plan_progress_skill/test_module.py",
+      "package": "zhiyin-modules",
+      "lines": 60,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-orchestration/zhiyin_orchestration/agent.py",
+      "package": "zhiyin-orchestration",
+      "lines": 91,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-orchestration/zhiyin_orchestration/datasource.py",
+      "package": "zhiyin-orchestration",
+      "lines": 30,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-orchestration/zhiyin_orchestration/errors.py",
+      "package": "zhiyin-orchestration",
+      "lines": 41,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-orchestration/zhiyin_orchestration/event.py",
+      "package": "zhiyin-orchestration",
+      "lines": 50,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-orchestration/zhiyin_orchestration/notify.py",
+      "package": "zhiyin-orchestration",
+      "lines": 48,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-orchestration/zhiyin_orchestration/schedule.py",
+      "package": "zhiyin-orchestration",
+      "lines": 47,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-orchestration/zhiyin_orchestration/state.py",
+      "package": "zhiyin-orchestration",
+      "lines": 47,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-orchestration/zhiyin_orchestration/workflow.py",
+      "package": "zhiyin-orchestration",
+      "lines": 56,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-orchestration/zhiyin_orchestration/__init__.py",
+      "package": "zhiyin-orchestration",
+      "lines": 87,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-orchestration/zhiyin_orchestration/impl/agno_engine.py",
+      "package": "zhiyin-orchestration",
+      "lines": 757,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-orchestration/zhiyin_orchestration/impl/datasource.py",
+      "package": "zhiyin-orchestration",
+      "lines": 23,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-orchestration/zhiyin_orchestration/impl/dialogue_engine.py",
+      "package": "zhiyin-orchestration",
+      "lines": 150,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-orchestration/zhiyin_orchestration/impl/dialogue_specialists.py",
+      "package": "zhiyin-orchestration",
+      "lines": 64,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-orchestration/zhiyin_orchestration/impl/event_bus.py",
+      "package": "zhiyin-orchestration",
+      "lines": 93,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-orchestration/zhiyin_orchestration/impl/notifier.py",
+      "package": "zhiyin-orchestration",
+      "lines": 32,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-orchestration/zhiyin_orchestration/impl/scheduler.py",
+      "package": "zhiyin-orchestration",
+      "lines": 96,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-orchestration/zhiyin_orchestration/impl/schema.py",
+      "package": "zhiyin-orchestration",
+      "lines": 89,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-orchestration/zhiyin_orchestration/impl/state_store.py",
+      "package": "zhiyin-orchestration",
+      "lines": 45,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-orchestration/zhiyin_orchestration/impl/stream_text.py",
+      "package": "zhiyin-orchestration",
+      "lines": 65,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-orchestration/zhiyin_orchestration/impl/workflow_engine.py",
+      "package": "zhiyin-orchestration",
+      "lines": 94,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-orchestration/zhiyin_orchestration/impl/_shared.py",
+      "package": "zhiyin-orchestration",
+      "lines": 93,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    },
+    {
+      "path": "zhiyin-src/template/zhiyin-orchestration/zhiyin_orchestration/impl/__init__.py",
+      "package": "zhiyin-orchestration",
+      "lines": 28,
+      "inspection": "AST/compile inventory; not a claim of line-by-line or live-path verification"
+    }
+  ]
+}

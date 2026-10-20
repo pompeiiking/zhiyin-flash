@@ -146,4 +146,4 @@ async def test_typed_message_carries_no_chosen_option(container: Container) -> N
 async def test_generation_receives_evidence_boundaries_for_personal_and_market_claims(container):
     prompt = await container.registry_service.get_prompt('conversation.main')
     assert '事实' in prompt.content and '来源' in prompt.content
-    assert '假设' in prompt.content and '成功回执' in prompt.content
+    assert '假设' in prompt.content and '回执' in prompt.content and 'executed/state' in prompt.content

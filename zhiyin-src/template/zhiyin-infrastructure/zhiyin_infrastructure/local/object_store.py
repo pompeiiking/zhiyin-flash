@@ -17,6 +17,7 @@ import asyncio
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
+from hashlib import sha256
 
 from zhiyin_data_sdk.gateways.storage import ObjectStoreGateway, StoredObject
 
@@ -64,11 +65,11 @@ class LocalFileStore(ObjectStoreGateway):
         await asyncio.to_thread(path.unlink, True)
 
     def build_key(self, user_id: str, asset_type: str, version: int, ext: str) -> str:
-        """统一对象键：{user_id}/{asset_type}/v{version}.{ext}"""
-        return f"{user_id}/{asset_type}/v{version}.{ext.lstrip('.')}"
+        """Use an identity-derived namespace; never normalize distinct account IDs together."""
+        return f"{self._user_namespace(user_id)}/{self._safe_component(asset_type)}/v{version}.{self._safe_component(ext.lstrip('.'))}"
 
     def build_named_key(self, user_id: str, scope: str, name: str, ext: str) -> str:
-        """带名字的对象键：{user_id}/{scope}/{name}.{ext}
+        """带名字的对象键：{账号摘要命名空间}/{scope}/{name}.{ext}
 
         `name` 会经过 `_safe_component` 清洗：它来自用户（文件名、附件 id 都可能带
         斜杠或 `..`），直接拼进键就给了"用文件名写到别的目录"的机会。
@@ -76,9 +77,20 @@ class LocalFileStore(ObjectStoreGateway):
         另一道是"落盘时不越界"。
         """
         return (
-            f"{self._safe_component(user_id)}/{self._safe_component(scope)}"
+            f"{self._user_namespace(user_id)}/{self._safe_component(scope)}"
             f"/{self._safe_component(name)}.{self._safe_component(ext.lstrip('.'))}"
         )
+
+    @staticmethod
+    def _user_namespace(user_id: str) -> str:
+        if not isinstance(user_id, str) or not user_id:
+            raise ValueError("对象存储需要明确的账号身份")
+        return "user-" + sha256(user_id.encode("utf-8")).hexdigest()
+
+    def legacy_named_key(self, user_id: str, scope: str, name: str, ext: str) -> str:
+        # Only a locator. Legacy names are ambiguous and are not proof of ownership.
+        return (f"{self._safe_component(user_id)}/{self._safe_component(scope)}"
+                f"/{self._safe_component(name)}.{self._safe_component(ext.lstrip('.'))}")
 
     @staticmethod
     def _safe_component(part: str) -> str:

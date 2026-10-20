@@ -9,12 +9,24 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from typing import Optional
+import asyncio
+from contextlib import asynccontextmanager
+from weakref import WeakValueDictionary
 
 from zhiyin_data_sdk.gateways.academic import AcademicSnapshot
 
 
 class AcademicSnapshotRepository(ABC):
     """一个用户一份快照：重新取数即整体替换，不做增量。"""
+
+    @asynccontextmanager
+    async def write_lock(self, user_id: str):
+        """Serialize read/merge/write and revoke; persistent adapters add a transaction."""
+        if not hasattr(self, "_academic_write_locks"):
+            self._academic_write_locks = WeakValueDictionary()
+        lock = self._academic_write_locks.setdefault(user_id, asyncio.Lock())
+        async with lock:
+            yield
 
     @abstractmethod
     async def get(self, user_id: str) -> Optional[AcademicSnapshot]:

@@ -216,8 +216,36 @@ class DefaultConversationMemoryService(ConversationMemoryService):
         try:
             raw = await self._object_store.get(key)
         except FileNotFoundError as exc:
-            raise LookupError("这份材料找不到了 —— 重新传一次就行。") from exc
+            legacy = self._object_store.legacy_named_key(user_id, "conversation_material", material_id, "txt")
+            if legacy is None:
+                raise LookupError("这份材料找不到了 —— 重新传一次就行。") from exc
+            try:
+                raw = await self._object_store.get(legacy)
+            except FileNotFoundError:
+                raise LookupError("这份材料找不到了 —— 重新传一次就行。") from exc
+            body = ConversationMaterialBody.model_validate_json(raw.decode("utf-8"))
+            if not _legacy_material_owned_by(user_id, material_id, body):
+                raise LookupError("无法确认这份旧材料的归属，请重新上传。") from exc
+            await self._object_store.put(key, raw, content_type="application/json")
+            return body
         return ConversationMaterialBody.model_validate_json(raw.decode("utf-8", errors="replace"))
+
+
+def _legacy_material_owned_by(user_id, material_id, body):
+    """Reconstruct only supported text encodings and verify the original owner-bound digest.
+
+    A legacy path or possession of a material ID alone is never authorization.
+    Unverifiable older formats remain stored but require re-upload.
+    """
+    prefix = user_id.encode("utf-8") + b"\0" + body.name.encode("utf-8") + b"\0"
+    for encoding in ("utf-8", "utf-8-sig", "gb18030", "gbk", "utf-16", "utf-16-le", "utf-16-be"):
+        try:
+            data = body.text.encode(encoding)
+        except UnicodeEncodeError:
+            continue
+        if material_id == "mat_" + sha256(prefix + data).hexdigest():
+            return True
+    return False
 
 
 __all__ = ["DefaultConversationMemoryService"]
