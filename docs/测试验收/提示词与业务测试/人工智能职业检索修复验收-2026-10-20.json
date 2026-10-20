@@ -1,0 +1,315 @@
+{
+  "date": "2026-10-20",
+  "source_revision": "b28d51d",
+  "live_platform": {
+    "specialities": [
+      {
+        "specId": "79f4y7gz3tsjeyvv",
+        "zymc": "人工智能",
+        "zydm": "080717",
+        "cc": "本科（普通教育）"
+      },
+      {
+        "specId": "vtexj7c6jxocjde7",
+        "zymc": "人工智能技术应用",
+        "zydm": "510209",
+        "cc": "高职（专科）"
+      },
+      {
+        "specId": "nmb8twv8jiueams6",
+        "zymc": "人工智能工程技术",
+        "zydm": "310209",
+        "cc": "本科（职业教育）"
+      },
+      {
+        "specId": "njd99oz827rtu3tw",
+        "zymc": "人工智能教育",
+        "zydm": "040117",
+        "cc": "本科（普通教育）"
+      }
+    ],
+    "list_keys": [
+      "data",
+      "flag",
+      "msg"
+    ],
+    "details": [
+      {
+        "name": "人工智能",
+        "keys": [
+          "basicVo",
+          "byfzVo",
+          "canEvalSpec",
+          "ccKey",
+          "ccmc",
+          "courseVo",
+          "finishedXxtryyTask",
+          "hasLogin",
+          "hasXxtryyImg",
+          "mlmc",
+          "pc",
+          "sameXkSpecList",
+          "schoolVo",
+          "specId",
+          "sygsRec",
+          "xdxmSuggestList",
+          "xkmc",
+          "xxtryyImgList",
+          "zsnd",
+          "zttjList",
+          "zydm",
+          "zyjdInfo",
+          "zymc"
+        ],
+        "linked": [],
+        "expOccList": {}
+      },
+      {
+        "name": "人工智能技术应用",
+        "keys": [
+          "basicVo",
+          "byfzCyfxList",
+          "bylxImgVo",
+          "canEvalSpec",
+          "ccKey",
+          "ccmc",
+          "certList",
+          "courseVo",
+          "expOccList",
+          "hasLogin",
+          "mlmc",
+          "occList",
+          "occXkmc",
+          "pc",
+          "salaryImgVo",
+          "sameXkSpecList",
+          "schoolVo",
+          "specId",
+          "sxljVo",
+          "sxzsImgId",
+          "sygsRec",
+          "xdxmSuggestList",
+          "xkmc",
+          "zsnd",
+          "zttjList",
+          "zydm",
+          "zymc",
+          "zynlList",
+          "zynlVo"
+        ],
+        "linked": [],
+        "expOccList": null
+      },
+      {
+        "name": "人工智能工程技术",
+        "keys": [
+          "basicVo",
+          "byfzCyfxList",
+          "bylxImgVo",
+          "canEvalSpec",
+          "ccKey",
+          "ccmc",
+          "certList",
+          "courseVo",
+          "expOccList",
+          "hasLogin",
+          "mlmc",
+          "occList",
+          "occXkmc",
+          "pc",
+          "salaryImgVo",
+          "sameXkSpecList",
+          "schoolVo",
+          "specId",
+          "sxljVo",
+          "sxzsImgId",
+          "sygsRec",
+          "xdxmSuggestList",
+          "xkmc",
+          "zsnd",
+          "zttjList",
+          "zydm",
+          "zymc",
+          "zynlList",
+          "zynlVo"
+        ],
+        "linked": [],
+        "expOccList": null
+      }
+    ],
+    "occupation_search": [
+      {
+        "zhiyId": "xkob2s0qbxc89piw",
+        "title": "人工智能工程技术人员",
+        "name": null
+      }
+    ],
+    "elapsed": 5.89
+  },
+  "fixed_gateway": {
+    "elapsed": 5.94,
+    "degraded": false,
+    "errors": [],
+    "records": [
+      {
+        "id": "79f4y7gz3tsjeyvv",
+        "kind": "speciality",
+        "title": "人工智能",
+        "source_url": "https://xz.chsi.com.cn/speciality/detail.action?specId=79f4y7gz3tsjeyvv",
+        "fetched_at": "2026-10-20T07:03:09.085543+00:00",
+        "metadata": {
+          "level": "本科（普通教育）",
+          "category": "工学",
+          "discipline": "电子信息类",
+          "code": "080717",
+          "relation": "major"
+        }
+      },
+      {
+        "id": "xkob2s0qbxc89piw",
+        "kind": "occupation",
+        "title": "人工智能工程技术人员",
+        "source_url": "https://xz.chsi.com.cn/occupation/occudetail.action?id=xkob2s0qbxc89piw",
+        "fetched_at": "2026-10-20T07:03:11.454754+00:00",
+        "metadata": {
+          "industry": "互联网/通信",
+          "matched_from": "search",
+          "relation": "major"
+        }
+      },
+      {
+        "id": "iju5644v3323nbu3",
+        "kind": "career_case",
+        "title": "网易云音乐人工智能专家",
+        "source_url": "https://xz.chsi.com.cn/occucase/casedetail.action?id=iju5644v3323nbu3",
+        "fetched_at": "2026-10-20T07:03:12.553333+00:00",
+        "metadata": {
+          "industry": "互联网/通信",
+          "relation": "major"
+        }
+      },
+      {
+        "id": "kj4inwtboiiz5lxi",
+        "kind": "career_case",
+        "title": "腾讯优图实验室人工智能工程师",
+        "source_url": "https://xz.chsi.com.cn/occucase/casedetail.action?id=kj4inwtboiiz5lxi",
+        "fetched_at": "2026-10-20T07:03:12.553333+00:00",
+        "metadata": {
+          "industry": "互联网/通信",
+          "relation": "major"
+        }
+      }
+    ]
+  },
+  "tests": {
+    "data_sources_tools_regressions_passed": 55,
+    "dialogue_roles_streaming_passed": 71,
+    "ruff": "passed"
+  },
+  "root_causes": [
+    "平台人工智能普通本科详情的byfzVo.expOccList为空，但职业名称搜索有人工智能工程技术人员。",
+    "无专业映射且只有major没有目标岗位时，旧链路未传入专业作为职业搜索兜底。",
+    "兜底元组把名称放在ID位，导致跳过search_occupations并用检索词请求职业详情。",
+    "旧对话工具只接收自由query；背景画像不会替换本轮查询主题，缺少当前专业/职业结构化参数，整句查询可能不命中。"
+  ],
+  "boundaries": "相关职业名称搜索不是平台官方专业对口映射；不同专业或学历层次不混作同一专业。当前普通本科专业命中后只读取同名项。",
+  "deployed_dialogue": {
+    "frames": [
+      {
+        "type": "run.model",
+        "model": "deepseek-chat",
+        "prompt_code": "conversation.main",
+        "prompt_fingerprint": "a83bdf02518f2dad",
+        "protocol": 2,
+        "conversation_id": "task-13283e0cf4c5",
+        "run_id": "263e8282-58fa-44aa-a379-d109cebc5cb8",
+        "sequence": 2,
+        "timestamp": "2026-10-20T07:10:56.959953+00:00"
+      },
+      {
+        "type": "step.started",
+        "step_id": "tool_3bd1baee32f84fed",
+        "note": "正在查询学职平台",
+        "tool": "xuezhi.search",
+        "parameters": {
+          "query": "人工智能"
+        },
+        "protocol": 2,
+        "conversation_id": "task-13283e0cf4c5",
+        "run_id": "263e8282-58fa-44aa-a379-d109cebc5cb8",
+        "sequence": 3,
+        "timestamp": "2026-10-20T07:10:58.300773+00:00"
+      },
+      {
+        "type": "step.started",
+        "step_id": "tool_c5722a81ea0b4933",
+        "note": "正在查询学职平台",
+        "tool": "xuezhi.search",
+        "parameters": {
+          "query": "人工智能相关职业"
+        },
+        "protocol": 2,
+        "conversation_id": "task-13283e0cf4c5",
+        "run_id": "263e8282-58fa-44aa-a379-d109cebc5cb8",
+        "sequence": 4,
+        "timestamp": "2026-10-20T07:10:58.301203+00:00"
+      },
+      {
+        "type": "step.completed",
+        "step_id": "tool_3bd1baee32f84fed",
+        "note": "已查询学职平台",
+        "protocol": 2,
+        "conversation_id": "task-13283e0cf4c5",
+        "run_id": "263e8282-58fa-44aa-a379-d109cebc5cb8",
+        "sequence": 5,
+        "timestamp": "2026-10-20T07:10:59.790936+00:00"
+      },
+      {
+        "type": "step.completed",
+        "step_id": "tool_c5722a81ea0b4933",
+        "note": "已查询学职平台",
+        "protocol": 2,
+        "conversation_id": "task-13283e0cf4c5",
+        "run_id": "263e8282-58fa-44aa-a379-d109cebc5cb8",
+        "sequence": 6,
+        "timestamp": "2026-10-20T07:11:00.986850+00:00"
+      },
+      {
+        "protocol": 2,
+        "type": "step.started",
+        "conversation_id": "task-13283e0cf4c5",
+        "run_id": "263e8282-58fa-44aa-a379-d109cebc5cb8",
+        "sequence": 406,
+        "timestamp": "2026-10-20T07:11:04.075026+00:00",
+        "note": "正在整理对话记忆",
+        "step_id": "memory_263e8282-58fa-44aa-a379-d109cebc5cb8"
+      },
+      {
+        "protocol": 2,
+        "type": "step.completed",
+        "conversation_id": "task-13283e0cf4c5",
+        "run_id": "263e8282-58fa-44aa-a379-d109cebc5cb8",
+        "sequence": 407,
+        "timestamp": "2026-10-20T07:11:05.058424+00:00",
+        "note": "已核对对话记忆",
+        "step_id": "memory_263e8282-58fa-44aa-a379-d109cebc5cb8"
+      }
+    ],
+    "replies": [
+      "查到了，按来源分成两类：一、专业页（人工智能专业介绍）专业：人工智能（交叉专业，以计算机科学为基础，涉及机器人、语音识别、图像识别、自然语言处理、专家系统等）来源：https://xz.chsi.com.cn/speciality/detail.action?specId=79f4y7gz3tsjeyvv注意：这个专业页只给出了升学方向（信息与通信工程、控制科学与工程、计算机科学与技术、软件工程），没有直接列出对口职业清单。所以严格说，这次没有拿到“专业→职业”的官方对口映射。二、按名称搜索“人工智能”得到的职业与案例职业：人工智能工程技术人员（互联网/通信；算法、深度学习的研究开发，以及系统设计、优化、运维、管理）  来源：https://xz.chsi.com.cn/occupation/occudetail.action?id=xkob2s0qbxc89piw案例：网易云音乐人工智能专家（音频方向，浙大混合班+通信工程本科、荷兰 TU Eindhoven 电子工程硕士）  来源：https://xz.chsi.com.cn/occucase/casedetail.action?id=iju5644v3323nbu3案例：腾讯优图实验室人工智能工程师（浙大计算机博士，高级研究员）  来源：https://xz.chsi.com.cn/occucase/casedetail.action?id=kj4inwtboiiz5lxi平台自己也标注了：这些是按名称检索出的相关职业，不代表专业官方对口映射。两个案例都是硕博背景，本科阶段能参考的是方向，不是门槛结论。按你的要求，本轮没有保存任何画像或计划。要不要我再按“算法工程师”“数据分析师”这类具体职业名查一轮，看看平台上的职业要求和路径？"
+    ],
+    "links": []
+  },
+  "deployment": {
+    "revision": "b28d51d45e396b9846edeeaa1cca342adbcd546b",
+    "health": "ok",
+    "assembly_healthy": true,
+    "image": "sha256:06accf752ba3369a690e9ccccc0fd9df71a40aea7f4836451553df3e1733e86d",
+    "rollback_tag": "zhiyin-flash:before-xuezhi-fix-20261020"
+  },
+  "limitations": [
+    "本次职业记录来自名称搜索，不是专业官方对口映射；公开案例不是当前本科毕业生的准入门槛或就业统计。",
+    "模型把本工具的检索方式说明归因为平台自己标注，归因措辞仍需优化；本文按实际工具元数据解释。",
+    "此次只验证当前公开响应和一次部署对话，不保证平台后续数据或网络时效。"
+  ]
+}

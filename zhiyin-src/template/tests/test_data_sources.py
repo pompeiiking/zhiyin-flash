@@ -554,4 +554,3 @@ async def test_xuezhi_tool_passes_current_subject_without_overriding_it_with_old
     assert capture.request.context["fields"] == [{"key": "major", "value": "人工智能"}]
     assert capture.request.context["background_fields"][0]["value"] == "土木工程"
     assert "不代表专业官方对口映射" in result
-
