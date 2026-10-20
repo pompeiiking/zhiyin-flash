@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from zhiyin_business.services.unit_of_work import atomic_repository
+from zhiyin_business.services.memory_policy import MemoryPolicyService
 
 import logging
 from datetime import datetime, timezone
@@ -58,9 +59,10 @@ PROFILE_CLUE_DENIED_REASON = "本人否认了这条理解"
 class DefaultProfileService(ProfileService):
     IMPLEMENTATION_STATUS = "wired"
 
-    def __init__(self, profiles: ProfileRepository, event_bus: EventBus) -> None:
+    def __init__(self, profiles: ProfileRepository, event_bus: EventBus, student_state=None) -> None:
         self._profiles = profiles
         self._event_bus = event_bus
+        self._student_state = student_state
 
     async def get(self, user_id: str) -> Optional[Profile]:
         return await self._profiles.get(user_id)
@@ -100,11 +102,15 @@ class DefaultProfileService(ProfileService):
             raise InvalidRequest("缺少账号，无法写线索。")
         current = await self._profiles.list_clues(user_id)
         existing = {item.id: item for item in current if item.session_id == session_id}
+        # Re-analysis supplies fresh IDs. Keep denials as tombstones and match
+        # unchanged hypotheses to their existing identities before replacing.
+        by_text = {item.text.strip(): item for item in existing.values()}
         now = datetime.now(timezone.utc)
         used: set[str] = set()
         stored: list[ProfileClue] = []
         for clue in clues:
-            clue_id = clue.id if clue.id in existing else f"clue_{uuid4().hex[:12]}"
+            previous = existing.get(clue.id) or by_text.get(clue.text.strip())
+            clue_id = previous.id if previous is not None else f"clue_{uuid4().hex[:12]}"
             while clue_id in used:
                 clue_id = f"clue_{uuid4().hex[:12]}"
             used.add(clue_id)
@@ -118,9 +124,13 @@ class DefaultProfileService(ProfileService):
                         if clue_id in existing
                         else clue.created_at,
                         "updated_at": now,
+                        **({"status": previous.status, "invalidated_reason": previous.invalidated_reason}
+                           if previous is not None and previous.status is ProfileClueStatus.INVALID else {}),
                     }
                 )
             )
+        stored.extend(item for item in existing.values()
+                      if item.status is ProfileClueStatus.INVALID and item.id not in used)
         await self._profiles.replace_session_clues(user_id, session_id, stored)
         return stored
 
@@ -309,6 +319,16 @@ class DefaultProfileService(ProfileService):
             await self._profiles.delete_field(user_id, key, expected_updated_at=expected_updated_at, check_version=True)
         else:
             await self._profiles.delete_field(user_id, key)
+        if self._student_state is not None:
+            # All deletion entry points must retain the same refusal, including
+            # the profile page. A stale-version failure above cannot revoke memory.
+            await MemoryPolicyService(self._student_state).deny_key(
+                user_id, key, source="user_delete", note="本人删除了这条画像信息"
+            )
+            def reset(state):
+                state["conversation_memory_reset_at"] = datetime.now(timezone.utc).isoformat()
+                return state
+            await self._student_state.update(user_id, reset)
         if before is not None:
             await self._append_history(
                 user_id, before, status=ProfileEntryStatus.WITHDRAWN,

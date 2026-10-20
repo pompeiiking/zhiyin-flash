@@ -6,8 +6,6 @@ import { demo } from '../store'
 import type { ProfileFieldView } from '../api/backend-types'
 import type { FieldRow, LiveProfilePanel, LiveProfileOriginals } from './use-profile-fields'
 
-const MAX_CHARS = 40
-
 interface ProfileCorrectionDeps {
   live: ComputedRef<boolean>
   livePanel: ComputedRef<LiveProfilePanel>
@@ -22,7 +20,7 @@ export function useProfileCorrection(deps: ProfileCorrectionDeps) {
   const { live, livePanel, originalLive, serviceError, openField, fieldValue, inspect } = deps
 
   /* ═══════════════════════════════════════════════════════════════════════════
-   * 9. 更正：40 字上限、错误提示、写回 demo / service
+   * 9. 更正：服务端按记录类型校验、错误提示、写回 demo / service
    * ======================================================================== */
 
   const correction = ref<FieldRow | null>(null)
@@ -53,7 +51,6 @@ export function useProfileCorrection(deps: ProfileCorrectionDeps) {
 
   async function save() {
     if (!value.value.trim()) { correctionError.value = '请填写更正后的信息。'; return }
-    if (value.value.trim().length > MAX_CHARS) { correctionError.value = '更正内容最多 40 个字。'; return }
     if (correction.value && live.value) {
       const field = correction.value
       const previous = livePanel.value?.fields?.find((item) => item.key === field.key)
@@ -80,7 +77,7 @@ export function useProfileCorrection(deps: ProfileCorrectionDeps) {
         return
       }
     }
-    if (correction.value) demo.updateProfileField(correction.value.key, value.value)
+    if (correction.value && !live.value) demo.updateProfileField(correction.value.key, value.value)
     correction.value = null
   }
 

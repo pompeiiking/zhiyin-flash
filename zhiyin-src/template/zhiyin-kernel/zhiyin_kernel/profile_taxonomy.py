@@ -12,6 +12,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+import json
 from typing import Any, Iterable, Mapping, Sequence
 
 from zhiyin_kernel.enums import (
@@ -279,13 +281,32 @@ def is_usable(field: Any) -> bool:
     status = getattr(field, "status", None) or (
         field.get("status") if isinstance(field, Mapping) else None
     )
-    if status in (None, ""):
-        # 老数据没有状态列：默认按“当前有效”处理，不因此把它排除在读取之外。
-        return True
-    try:
-        return ProfileEntryStatus(status) not in _UNUSABLE_STATUSES
-    except ValueError:
-        return False
+    if status not in (None, ""):
+        try:
+            if ProfileEntryStatus(status) in _UNUSABLE_STATUSES:
+                return False
+        except ValueError:
+            return False
+    now = datetime.now(timezone.utc)
+    for name, is_start in (("valid_from", True), ("valid_to", False)):
+        value = field.get(name) if isinstance(field, Mapping) else getattr(field, name, None)
+        if value is None:
+            continue
+        try:
+            stamp = datetime.fromisoformat(value.replace("Z", "+00:00")) if isinstance(value, str) else value
+            if not isinstance(stamp, datetime) or stamp.tzinfo is None:
+                return False
+            if (is_start and stamp > now) or (not is_start and stamp < now):
+                return False
+        except (ValueError, TypeError):
+            return False
+    return True
+
+
+def attributes_text(field: Any) -> str:
+    """Preserve polarity, scope and evidence semantics when formatting model context."""
+    attrs = field.get("attributes") if isinstance(field, Mapping) else getattr(field, "attributes", None)
+    return f"；属性：{json.dumps(attrs, ensure_ascii=False, sort_keys=True)}" if attrs else ""
 
 
 def value_limit(key: str, entry_type: ProfileEntryType | None = None) -> int:
@@ -492,6 +513,7 @@ __all__ = [
     "TYPE_VALUE_LIMITS",
     "VERIFICATION_LABELS",
     "allows_multiple",
+    "attributes_text",
     "career_focus_terms",
     "entry_type_label",
     "entry_type_of",

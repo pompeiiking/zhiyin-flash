@@ -24,6 +24,7 @@ from zhiyin_business.ports.function import ExternalIntel, ExportResult, Function
 from zhiyin_business.ports.blackboard import ProfileService
 from zhiyin_business.policies.intel_labels import kind_label, source_name_of
 from zhiyin_business.policies.intel_query import intel_topic
+from zhiyin_kernel import profile_taxonomy
 from zhiyin_data_sdk.gateways.datasource import (
     DataSourceGateway,
     DataSourceRequest,
@@ -429,8 +430,10 @@ class DefaultFunctionService(FunctionService):
             # 手工补数之后偶发）会静默拿到空表 —— 表现就是"明明有画像却说没有相关情报"。
             rows = await self._profiles.get_fields(user_id)
             context = [
-                {"key": f.key, "value": f.value, "entry_type": getattr(f.entry_type, "value", None)}
+                {"key": f.key, "value": f.value, "entry_type": getattr(f.entry_type, "value", None),
+                 "status": f.status.value, "valid_from": f.valid_from, "valid_to": f.valid_to}
                 for f in rows
+                if profile_taxonomy.is_usable(f)
             ]
 
         # 方向方案是比画像字段更近的一层依据：把它作为明确的职业关注交给学职取数

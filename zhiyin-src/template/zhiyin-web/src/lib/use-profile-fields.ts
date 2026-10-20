@@ -147,6 +147,7 @@ interface FieldRow extends ProfileField {
   section: ContentSection
   /** 原话或资料来源引用（服务端写入时固化，不在前端编造） */
   originRef: string
+  attributeSummary: string
 }
 
 /** 一条“系统基于证据的理解”：它必须能单独展示、单独否认，不能混进事实字段。 */
@@ -236,6 +237,7 @@ export function useProfileFields(deps: ProfileFieldsDeps) {
           needsCheck: verification === 'pending',
           section: sectionOf(entryType, verification),
           originRef: field.origin_ref ?? '',
+          attributeSummary: profileAttributeSummary(field.attributes ?? {}),
         }
       })
     }
@@ -259,6 +261,7 @@ export function useProfileFields(deps: ProfileFieldsDeps) {
         needsCheck: verification === 'pending',
         section: sectionOf(entryType, verification),
         originRef: '',
+        attributeSummary: '',
       }
     })
   })
@@ -459,3 +462,17 @@ export function useProfileFields(deps: ProfileFieldsDeps) {
 
 export type { FieldRow }
 export { LEGACY_CONF }
+
+export function profileAttributeSummary(attributes: Readonly<Record<string, unknown>>): string {
+  const choices: Record<string, Record<string, string>> = {
+    polarity: { like: '喜欢', dislike: '不喜欢', unsure: '还不确定' },
+    state: { exploring: '正在了解', considering: '正在考虑', selected: '已选择' },
+    evidence_kind: { exposed: '接触过', self_assessed: '本人自评', completed_once: '完成过一次', work_output: '有作品或成果', verified: '有核验依据' },
+  }
+  const labels: Record<string, string> = { context: '情境', outcome: '结果', scope: '适用范围', title: '说明' }
+  return Object.entries(attributes).flatMap(([key, value]) => {
+    if (typeof value !== 'string' || !value.trim()) return []
+    const choice = choices[key]?.[value]
+    return choice ? [choice] : labels[key] ? [`${labels[key]}：${value}`] : []
+  }).join(' · ')
+}

@@ -124,7 +124,7 @@ async def test_real_tool_schema_specifies_source_quote_fields_and_rejects_identi
     assert "user_id" not in schema["properties"] and "session_id" not in schema["properties"]
 
 
-async def test_memory_extractor_receives_conversation_restrictions_and_quoted_working_context():
+async def test_memory_extractor_receives_restrictions_before_dialogue_tools_run():
     c, engine, session = await setup()
     engine.supports_semantic_memory = True
     requests = []
@@ -138,7 +138,11 @@ async def test_memory_extractor_receives_conversation_restrictions_and_quoted_wo
     engine.invoke = invoke
     await send(c, session, "先聊，不保存长期画像")
     memory = next(r for r in requests if r.prompt_code == "conversation.memory")
-    assert memory.prompt_vars["exploration_context"]["working"]["statements"][0]["quote"] == "先聊，不保存长期画像"
+    # Memory restrictions must be resolved before this turn's exploration/tool
+    # execution. The current utterance remains available without inventing a snapshot.
+    assert requests[0] is memory
+    assert memory.prompt_vars["current_user_message"] == "先聊，不保存长期画像"
+    assert memory.prompt_vars["exploration_context"]["working"] is None
     assert memory.prompt_vars["exploration_context"]["trusted_instruction"] is False
     assert "automatic_memory" in memory.prompt_vars["memory_controls"]
     assert not await c.profile_service.get_fields("u1")

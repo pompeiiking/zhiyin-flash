@@ -320,6 +320,7 @@ onMounted(()=>{ void loadWorkspace() })
                   <span class="p7-row__main">
                     <span class="p7-row__value" :title="fieldValue(row)">{{ valueParts(row).head }}</span>
                     <span v-if="valueParts(row).hasHint" class="p7-row__hint">{{ valueParts(row).tail }}</span>
+                    <span v-if="row.attributeSummary" class="p7-row__hint">{{ row.attributeSummary }}</span>
                     <span class="p7-row__meta">
                       <span class="p7-row__type">{{ row.typeLabel }}</span>
                       <span v-if="row.needsCheck" class="profile-needs-check">{{ row.verificationLabel }}</span><span class="p7-row__cue"><span class="sr-only">查看依据</span><UiIcon name="info" :size="16" /></span>
@@ -327,6 +328,7 @@ onMounted(()=>{ void loadWorkspace() })
                   </span>
                 </template><p class="profile-fact-value">{{fieldValue(row).slice(0,240)}}{{fieldValue(row).length>240?'…':''}}</p><div class="profile-fact-popover-meta"><SourceChip :source="row.src" :at="row.iso || null"/><span class="profile-fact-verification">{{ row.typeLabel }} · {{ row.verificationLabel }}</span></div><p class="profile-popover-meta">记录时间：{{ row.noted }}</p><p v-if="row.touched" class="profile-popover-meta">本人已更正<template v-if="row.prior">，原内容：{{ row.prior }}</template></p>
                   <div :id="`p7-more-${row.key}`" class="p7-row__more-body">
+                    <p v-if="row.attributeSummary" class="profile-popover-meta">{{ row.attributeSummary }}</p>
                     <div class="p7-row__actions">
                       <button class="ws-text-button" type="button" @click="inspectField(row)">深入了解这项信息</button>
                       <button class="ws-text-button" type="button" @click="edit(row)">更正信息<UiIcon name="arrow" :size="14" /></button>
@@ -594,7 +596,7 @@ onMounted(()=>{ void loadWorkspace() })
     <InfoSheet shape="sheet" :open="correction !== null" :title="'更正' + (correction?.label ?? '信息')" @close="correction = null">
       <form @submit.prevent="save">
         <label v-if="correction?.key === 'study_year'" class="ws-field">当前学习阶段<select v-model="value"><option v-for="option in STUDY_YEAR_OPTIONS" :key="option.code" :value="option.label">{{option.label}}</option></select></label>
-        <label v-else class="ws-field">更正内容<textarea v-model="value" maxlength="40" /></label>
+        <label v-else class="ws-field">更正内容<textarea v-model="value" /></label>
         <FormConflict v-if="correctionLatest" :rows="correctionConflictRows" @confirm="confirmCorrectionConflict" />
         <p v-if="correctionError" class="ws-field-error" role="alert">{{ correctionError }}</p>
         <div class="ws-inline-actions">
@@ -617,6 +619,7 @@ onMounted(()=>{ void loadWorkspace() })
 <style scoped>
 .profile-fact-value{font-size:15px;line-height:1.75;white-space:pre-wrap;overflow-wrap:anywhere}
 .p7-row__type{font-size:var(--fs-12);color:var(--c-text-3);white-space:nowrap}
+.p7-row__main .p7-row__meta{position:static;transform:none;margin-top:4px}
 .profile-fact-verification{font-size:var(--fs-12);color:var(--c-text-2)}
 .p7-clue{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-4)}
 .p7-clue__body{min-width:0}

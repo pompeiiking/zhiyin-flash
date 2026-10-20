@@ -606,6 +606,7 @@ def _describe_profile(data: Any) -> str:
             lines.append(
                 f"- {_profile_entry_type(item)} · {_profile_verification_text(item)} · "
                 f"来源：{_profile_source_text(source)} · {key}：{value}"
+                f"{profile_taxonomy.attributes_text(item)}"
             )
     if gaps:
         lines.append("还缺：")

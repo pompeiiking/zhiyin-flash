@@ -586,6 +586,7 @@ class AiTaskService:
         return [
             f"{_entry_type_text(field)} · {_verification_text(field)} · "
             f"{field.key}：{_value_text(field.value)}（更新于 {field.updated_at:%m-%d}）"
+            f"{profile_taxonomy.attributes_text(field)}"
             for field in profile_taxonomy.records_for_purpose(purpose, profile.fields)
         ]
 
@@ -1176,6 +1177,7 @@ class AiTaskService:
                     f"值：{_value_text(field.value)}",
                     f"类别：{_entry_type_text(field)}",
                     f"核实状态：{_verification_text(field)}",
+                    f"类型属性：{profile_taxonomy.attributes_text(field)}",
                     "核实状态只说明这条记录被确认到什么程度，不是能力评分或岗位匹配度；未提供测评分数、岗位基准或历史走势，score、bench、delta 必须为 null，trend 为空数组。",
                     f"来源：{_source_text(field.source)}",
                     f"更新于：{field.updated_at.strftime('%Y-%m-%d')}",

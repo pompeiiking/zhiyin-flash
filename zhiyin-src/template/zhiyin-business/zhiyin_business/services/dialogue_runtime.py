@@ -102,6 +102,9 @@ class DialogueRuntime:
         self.pending_exploration = None
         self.exploration_sources = {}
         self.loaded_exploration = None
+        self._memory_checked = False
+        self._memory_result = None
+        self._automatic_memory_safe = True
 
     def exploration_context(self, turns, record, state):
         """Expose source IDs for exact quotes; assistant guesses remain separate hypotheses."""
@@ -313,7 +316,7 @@ class DialogueRuntime:
         self._cancel_value = bool(record.get("delete_requested") or record["runs"].get(self.request.client_msg_id, {}).get("cancel_requested"))
         return self._cancel_value
 
-    async def extract_facts(self):
+    async def extract_facts(self, *, policy_only=False):
         """A semantic fallback for short answers missed by the conversational tool loop.
 
         No string classifiers. It cannot grant approval, execute other writes or
@@ -325,9 +328,6 @@ class DialogueRuntime:
         automatic = state.get("preferences", {}).get("automatic_memory", True)
         temporary = state.get("conversation_settings", {}).get(self.request.task_id, {}).get("temporary")
         record = await self.ledger.read(self.request.user_id, self.request.task_id)
-        if any(a.get("run_id") == self.request.client_msg_id and a["operation"] == "profile.update"
-               and a["state"] == "succeeded" for a in record["actions"].values()):
-            return
         schema = {"type": "object", "additionalProperties": False, "required": ["updates"], "properties": {
             "updates": {"type": "array", "maxItems": 8, "items": {"type": "object", "additionalProperties": False,
                 "required": ["key", "value", "evidence", "assertion_type"], "properties": {"key": {"type": "string"},
@@ -339,9 +339,13 @@ class DialogueRuntime:
                 "target": {"type": "string"}}}}}
         memory_ok = False
         step_id = "memory_" + self.request.client_msg_id
-        self.event("step.started", "正在整理对话记忆", step_id=step_id)
+        if policy_only:
+            self.event("step.started", "正在核对记忆范围", step_id=step_id)
         try:
-            result = await self.o._agent_engine.invoke(AgentRequest(agent_id=self.AGENT,
+            if not self._memory_checked:
+                self._memory_checked = True
+                self._automatic_memory_safe = False
+                self._memory_result = await self.o._agent_engine.invoke(AgentRequest(agent_id=self.AGENT,
                 prompt_code="conversation.memory", use_tools=False, output_schema=schema,
                 prompt_vars={"current_user_message": self.request.message,
                     "previous_question_context": self.history[-12:],
@@ -351,18 +355,23 @@ class DialogueRuntime:
                         "temporary": state.get("conversation_settings", {}).get(self.request.task_id, {}).get("temporary", False),
                         "forgotten_keys": state.get("conversation_forgotten_keys", [])},
                     "allowed_profile_keys": sorted(self.o._allowed_profile_keys())},
-                trace_id=self.request.client_msg_id + ":memory"))
-            if not result.valid:
+                    trace_id=self.request.client_msg_id + ":memory"))
+            result = self._memory_result
+            if result is None or not result.valid:
+                return
+            if not policy_only and not self._automatic_memory_safe:
                 return
             memory_ok = True
             policy = result.structured.get("policy") or {}
             scope = str(policy.get("scope") or "none")
-            if scope != "none":
+            if scope != "none" and policy_only:
                 # 记录范围由模型按语义识别；服务端只落在受控范围上，并留下带来源与时间的记录。
                 service = MemoryPolicyService(self.o._student_state)
                 current = await service.snapshot(self.request.user_id, self.request.task_id)
                 target = str(policy.get("target") or "").strip()
                 try:
+                    if scope in {"deny_key", "save_single"} and target not in self.o._allowed_profile_keys():
+                        raise InvalidRequest("记录范围没有指向可识别的画像字段")
                     if scope == "account_off" and current["account_automatic"]:
                         await service.set_account_automatic(self.request.user_id, False, source="conversation", note="用户要求以后不自动记录")
                     elif scope == "account_on" and not current["account_automatic"]:
@@ -378,7 +387,18 @@ class DialogueRuntime:
                     elif scope == "save_single" and target and target not in current["single_keys"]:
                         await service.grant_single(self.request.user_id, self.request.task_id, target, source="conversation", note="用户要求只保存明确那一条")
                 except Exception:  # noqa: BLE001 - 策略没记上不能把本轮对话打成失败
+                    memory_ok = False
                     log.warning("记录范围未保存（scope=%s）", scope, exc_info=True)
+                    return
+            self._automatic_memory_safe = True
+            if policy_only:
+                return
+            if any(a.get("run_id") == self.request.client_msg_id and a["operation"] == "profile.update"
+                   and a["state"] == "succeeded" for a in record["actions"].values()):
+                return
+            state = await self.o._student_state.get(self.request.user_id)
+            automatic = state.get("preferences", {}).get("automatic_memory", True)
+            temporary = state.get("conversation_settings", {}).get(self.request.task_id, {}).get("temporary")
             fields = {f.key: f for f in await self.o._profiles.get_fields(self.request.user_id)}
             for item in result.structured.get("updates", []):
                 if not automatic or temporary:
@@ -397,8 +417,9 @@ class DialogueRuntime:
         except Exception:
             log.exception("语义事实提取未完成；保持本轮对话理解")
         finally:
-            self.event("step.completed" if memory_ok else "step.failed",
-                "已核对对话记忆" if memory_ok else "记忆整理未完成，本轮对话仍可继续", step_id=step_id)
+            if policy_only:
+                self.event("step.completed" if memory_ok else "step.failed",
+                    "已核对记忆范围" if memory_ok else "记忆范围未能核对，本轮仍可继续交流", step_id=step_id)
 
     async def validate_action(self, args):
         payload = dict(args.payload)
@@ -448,6 +469,8 @@ class DialogueRuntime:
                 raise InvalidRequest("身份类画像须使用原话中的肯定值，不将否定概括成新身份")
             current: dict[str, Any] = {}
             if args.authorization == "automatic":
+                if not self._automatic_memory_safe:
+                    raise InvalidRequest("本轮记忆范围未能核对，暂不自动保存画像；仍可继续交流。")
                 # 所有自动写入前统一读服务端持久化策略（账号/会话/内容拒绝/只保存一条），
                 # 不靠提示词或最近几条消息维持限制。
                 allowed, reason = await MemoryPolicyService(self.o._student_state).check_auto_write(
@@ -839,10 +862,18 @@ class DialogueRuntime:
                 return await self.finish(request, session, text)
             variables = {"chosen_option": {"option_id": request.option_id, "value": request.option_value,
                                            "label": request.message}} if request.option_id else {}
+            # Resolve persistent memory preferences before the model can execute
+            # any write. Reuse the semantic result for fallback extraction later.
+            self.exploration_context(turns, data, state)
+            await self.extract_facts(policy_only=True)
+            state = await self.o._student_state.get(request.user_id)
             result = await self.o._agent_engine.invoke(AgentRequest(agent_id=session.lead_agent or self.AGENT, conversation=True,
                 blackboard={"user_id": request.user_id, "task_id": request.task_id}, history=history,
                 prompt_vars={**variables, "dialogue_focus": session.loop_stage.value, "user_input": request.message, "raw_user_message": request.message,
-                    "today": utcnow(), "profile": serial(profile), "pending_actions": [
+                    "today": utcnow(), "profile": serial(profile),
+                    "rejected_understandings": [clue.text for clue in (profile.clues if profile else []) if clue.status.value == "invalid"],
+                    "rejected_understandings_rule": "用户已否认的理解不能换一种措辞重新提出，也不能当成事实或依据。",
+                    "pending_actions": [
                         {k: a[k] for k in ("id", "operation", "payload", "base_version", "expires_at")} for a in pending],
                     "earlier_context": earlier,
                     "exploration_context": self.exploration_context(turns, data, state),
@@ -922,6 +953,9 @@ class DialogueRuntime:
             metadata={"result": result.model_dump(mode="json"), "request_hash": record["runs"][request.client_msg_id]["request_hash"],
                       "actions": pending, "receipts": self.receipts})
         cancelled = await self.cancelled()
+        allow_clues, _ = await MemoryPolicyService(self.o._student_state).check_auto_write(
+            request.user_id, request.task_id, "__profile_clue__",
+            fingerprint=digest({"user_id": request.user_id, "message": request.message}))
         if self.pending_exploration and model_result and model_result.valid and not cancelled:
             current_state = await self.o._student_state.get(request.user_id)
             if privacy_stamp(current_state, request.task_id) == self.exploration_stamp:
@@ -930,29 +964,10 @@ class DialogueRuntime:
                                  "updated_at": utcnow(), "trusted_instruction": False}))
                 # 设计第 3.2 节：AI 的有限理解单独保存为「待验证线索」，与事实字段分开；
                 # 同一会话整体替换，反复分析不会让同一处理解看起来像被多次验证过。
-                try:
-                    hypotheses = [str(item).strip() for item in (self.pending_exploration.get("hypotheses") or []) if str(item).strip()]
-                    quotes = [str(item.get("quote", "")).strip() for item in (self.pending_exploration.get("statements") or []) if str(item.get("quote", "")).strip()]
-                    # 依据字段：本会话真实写进画像的那些键（origin_ref 能指回本会话）。
-                    # 不猜文本关键词，只用服务端写入时固化的来源引用建立关联。
-                    session_prefix = f"conversation:{request.task_id}:"
-                    linked_keys = [
-                        field.key
-                        for field in await self.o._profiles.get_fields(request.user_id)
-                        if (field.origin_ref or "").startswith(session_prefix)
-                    ][:20]
-                    clues = [
-                        ProfileClue(
-                            id="", user_id=request.user_id, session_id=request.task_id,
-                            text=text[:240], evidence=quotes[:12], field_keys=linked_keys,
-                            source=ProfileSource.ASSESSMENT,
-                            created_at=utcnow(), updated_at=utcnow(),
-                        )
-                        for text in hypotheses
-                    ]
-                    await self.o._profiles.replace_session_clues(request.user_id, request.task_id, clues)
-                except Exception:  # noqa: BLE001 - 线索写失败不该把本轮回复变成失败
-                    log.warning("待验证线索保存失败；本轮对话仍保留工作快照", exc_info=True)
+                # Session work context remains available even when long-term
+                # profile publication is forbidden. Do not log a refusal as an error.
+                if allow_clues and self._automatic_memory_safe:
+                    await self.persist_profile_clues(request)
         if self.progress_writes:
             await asyncio.gather(*self.progress_writes)
         await self.ledger.put_run(request.user_id, request.task_id, request.client_msg_id,
@@ -978,3 +993,26 @@ class DialogueRuntime:
                 log.exception("对话变更已落库，派生缓存失效待重试：%s", event)
         self.event("run.completed", "回复完成", state="waiting_approval" if pending else "completed")
         return result
+
+    async def persist_profile_clues(self, request):
+        try:
+            statements = self.pending_exploration.get("statements") or []
+            policy = await MemoryPolicyService(self.o._student_state).snapshot(request.user_id, request.task_id)
+            # A later turn must not publish a quote from an earlier denied message.
+            if any(digest({"user_id": request.user_id, "message": self.exploration_sources.get(item.get("turn_id"), "")})
+                   in policy["content_denials"] for item in statements):
+                return
+            hypotheses = [str(item).strip() for item in (self.pending_exploration.get("hypotheses") or []) if str(item).strip()]
+            quotes = [str(item.get("quote", "")).strip() for item in statements if str(item.get("quote", "")).strip()]
+            session_prefix = f"conversation:{request.task_id}:"
+            linked_keys = [field.key for field in await self.o._profiles.get_fields(request.user_id)
+                           if (field.origin_ref or "").startswith(session_prefix)][:20]
+            if set(linked_keys).intersection(policy["denied_keys"]):
+                return
+            clues = [ProfileClue(id="", user_id=request.user_id, session_id=request.task_id,
+                                text=text[:240], evidence=quotes[:12], field_keys=linked_keys,
+                                source=ProfileSource.ASSESSMENT, created_at=utcnow(), updated_at=utcnow())
+                     for text in hypotheses]
+            await self.o._profiles.replace_session_clues(request.user_id, request.task_id, clues)
+        except Exception:  # noqa: BLE001 - 线索旁路失败不阻断回复
+            log.warning("待验证线索保存失败；本轮对话仍保留工作快照", exc_info=True)

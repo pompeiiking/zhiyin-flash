@@ -222,7 +222,7 @@ def build_services(container: "Container") -> None:
 
     if container.profiles is not None and container.event_bus_primitive is not None:
         container.profile_service = DefaultProfileService(
-            container.profiles, container.event_bus_primitive
+            container.profiles, container.event_bus_primitive, container.student_state
         )
         container.profile_service = guarded(container.profile_service, "profile")
     if container.behaviors is not None and container.event_bus_primitive is not None:
