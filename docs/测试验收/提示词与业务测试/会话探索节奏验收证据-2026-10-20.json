@@ -7334,6 +7334,124 @@
   "median_turn_seconds": 4.55,
   "working_snapshot_turns": 10,
   "deployment": {
-    "status": "pending; will be updated after live verification"
-  }
+    "status": "deployed and verified",
+    "environment": "local Docker API only",
+    "image": "sha256:7c1e574403fe93eb0cf7e57653a42b95a01a047d56e61a90106b633c82ca4a15",
+    "dependency_base_image": "sha256:c064964306c3778a1f7b3e43d03cdf9ab2d1ebdaaa42b10350129c414f1f7b32",
+    "build": "Reused unchanged dependency image, pip install --no-deps --no-build-isolation /app",
+    "rollback_tag": "zhiyin-flash:before-exploration-20261020",
+    "prompt_rollback_file": "zhiyin-src/template/output/dialogue-prompts-20261020T100229626980Z.json",
+    "prompt_sync_preview_after": {
+      "apply": false,
+      "changed": []
+    },
+    "live_synthetic_session": {
+      "turns": [
+        {
+          "input": "我是大一人工智能专业，想聊聊兴趣。先不要保存长期画像或计划。我调bug时喜欢弄清为什么出错。",
+          "reply": "好，这次只聊，不存任何东西。你说调 bug 时喜欢弄清为什么出错——那种“非要搞明白”的劲头，通常是在哪类问题上最明显？比如自己写的代码跑不通，还是别人给的现成程序出了问题？",
+          "stream_delta_frames": 54,
+          "model_frames": [
+            {
+              "type": "run.model",
+              "model": "deepseek-chat",
+              "prompt_code": "conversation.main",
+              "prompt_fingerprint": "26c2515b18749a56",
+              "protocol": 2,
+              "conversation_id": "task-4009065d4c2e",
+              "run_id": "0459917351bf4262b5a55ac837e3012a",
+              "sequence": 2,
+              "timestamp": "2026-10-20T10:03:32.577913+00:00"
+            }
+          ],
+          "steps": [
+            "已整理对话线索",
+            "已核对对话记忆"
+          ]
+        },
+        {
+          "input": "有次算不对，是从文件里读出的数字变成了字符串。我想查清原因，查明白挺开心。",
+          "reply": "这种“数字读进来变成字符串”的问题，往往要顺着数据从文件到计算一路追，能查明白确实挺有成就感。查清楚之后，让你更开心的是“终于知道它为什么这样”，还是“以后这类坑我能提前避开”？",
+          "stream_delta_frames": 53,
+          "model_frames": [
+            {
+              "type": "run.model",
+              "model": "deepseek-chat",
+              "prompt_code": "conversation.main",
+              "prompt_fingerprint": "26c2515b18749a56",
+              "protocol": 2,
+              "conversation_id": "task-4009065d4c2e",
+              "run_id": "7b9457becca0451cae868fa5bbe1e762",
+              "sequence": 2,
+              "timestamp": "2026-10-20T10:03:36.305275+00:00"
+            }
+          ],
+          "steps": [
+            "已整理对话线索",
+            "已核对对话记忆"
+          ]
+        },
+        {
+          "input": "先别再问了，用两三句话说说目前能了解什么。",
+          "reply": "目前能了解的是：你在调 bug 时愿意顺着线索追到根因，一次“数字读成字符串”的问题查明白后，你感到开心。这更像是对“弄清为什么”本身有兴趣，但只有这一两段经历，还不足以说明适合什么方向。先聊到这，你想继续时随时说。",
+          "stream_delta_frames": 68,
+          "model_frames": [
+            {
+              "type": "run.model",
+              "model": "deepseek-chat",
+              "prompt_code": "conversation.main",
+              "prompt_fingerprint": "26c2515b18749a56",
+              "protocol": 2,
+              "conversation_id": "task-4009065d4c2e",
+              "run_id": "bb19aa08a8bc4a9b957ae4ca271f4efc",
+              "sequence": 2,
+              "timestamp": "2026-10-20T10:03:40.569821+00:00"
+            }
+          ],
+          "steps": [
+            "已整理对话线索",
+            "已核对对话记忆"
+          ]
+        }
+      ],
+      "prompt_fingerprint": "26c2515b18749a56",
+      "revision": "423d35c81ff50a33757f54ecae8e0ae14dd1aa7c",
+      "profile_unchanged": true,
+      "postgres_working_snapshot": {
+        "goal": "聊聊兴趣方向，暂不保存长期画像或计划",
+        "mode": "paused",
+        "hypotheses": [
+          "对\"弄清原因\"本身有吸引力，可能偏向探究型兴趣，但仅一两条经历，尚不能推断岗位方向",
+          "从数据读入到计算结果的链路排查可能让他更有兴致，待核实"
+        ],
+        "next_focus": "用户暂停追问，等其主动继续；若继续，可聊查清原因后的满足感来源或不想深究的场景",
+        "statements": [
+          {
+            "quote": "我是大一人工智能专业，想聊聊兴趣。先不要保存长期画像或计划。我调bug时喜欢弄清为什么出错。",
+            "turn_id": "turn_58e2295f0098"
+          },
+          {
+            "quote": "有次算不对，是从文件里读出的数字变成了字符串。我想查清原因，查明白挺开心。",
+            "turn_id": "turn_17b47d8025b9"
+          },
+          {
+            "quote": "先别再问了，用两三句话说说目前能了解什么。",
+            "turn_id": "turn_61ed45bc48f9"
+          }
+        ],
+        "open_questions": [
+          "查清原因后的满足感来自\"知道为什么\"还是\"以后能避免\"",
+          "这种劲头在哪些场景里没有出现"
+        ],
+        "explored_topics": [
+          "调bug时喜欢弄清出错原因",
+          "一次数据读入类型错误（数字变字符串）的排查经历"
+        ]
+      },
+      "working_snapshot_persisted": true,
+      "synthetic_session_removed": true
+    },
+    "review": "All three replies read; no job classification/homework barrier; stop respected. Some binary questions and overly broad storage wording remain."
+  },
+  "source_revision": "423d35c81ff50a33757f54ecae8e0ae14dd1aa7c"
 }
