@@ -83,11 +83,11 @@ class XueZhiDataSourceGateway(DataSourceGateway):
         direction_terms = _terms(values, ("target_direction", "target_job"))
         if direction_terms:
             await self._collect_occupations(direction_terms, [], records, relation="direction")
-            await self._collect_occupations([], linked_occupations, records, relation="major")
+            await self._collect_occupations(major_terms, linked_occupations, records, relation="major")
             await self._collect_cases(direction_terms, records, relation="direction")
         else:
             await self._collect_occupations(
-                job_terms, linked_occupations, records, relation="major"
+                job_terms or major_terms, linked_occupations, records, relation="major"
             )
             await self._collect_cases(job_terms or major_terms, records, relation="major")
 
@@ -97,7 +97,9 @@ class XueZhiDataSourceGateway(DataSourceGateway):
         """按专业名取专业详情，并顺带拿到平台标注的对口职业。"""
         for term in terms[:2]:
             page = await self._client.list_specialities(name=term)
-            items = _items(page)[: self._max_specialities]
+            items = _items(page)
+            exact = [item for item in items if str(item.get("zymc") or "").strip() == term.strip()]
+            items = (exact or items)[: self._max_specialities]
             if not items:
                 continue
             linked: list[tuple[str, str]] = []
@@ -142,7 +144,7 @@ class XueZhiDataSourceGateway(DataSourceGateway):
         relation: str = "major",
     ) -> None:
         """优先用专业对口职业；专业链条为空时才用职业名模糊检索兜底。"""
-        candidates = linked or [("", term) for term in terms]
+        candidates = linked or [(term, "") for term in terms]
         seen = {record.id for record in records}
         added = 0
         for name, occupation_id in candidates:

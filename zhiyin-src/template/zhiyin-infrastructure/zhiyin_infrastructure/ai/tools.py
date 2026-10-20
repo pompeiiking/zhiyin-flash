@@ -349,12 +349,15 @@ def build_tool_catalog(
 
     if external_data is not None:
 
-        async def xuezhi_search(run_context: RunContext, query: str, limit: int = 5) -> str:
+        async def xuezhi_search(run_context: RunContext, query: str, limit: int = 5,
+                                major: str = "", occupation: str = "") -> str:
             """查学职平台的公开数据：专业介绍、对应职业、职业要求、公开案例。
 
             Args:
-                query: 想查什么，例如"土木工程 对口职业"或"结构设计 岗位要求"
+                query: 简短准确的检索词，不传整段问题，如"人工智能"或"结构工程师"
                 limit: 最多取几条，默认 5
+                major: 本轮实际要查询的专业全名，已明确时填写，不受旧画像专业限制
+                occupation: 本轮实际要查询的职业名称，查询具体职业时填写
             """
             profile: Any = None
             if profile_reader is not None:
@@ -366,7 +369,10 @@ def build_tool_catalog(
                     source="xuezhi",
                     query=query,
                     limit=max(1, min(int(limit), 20)),
-                    context={"fields": [], "background_fields": _profile_fields(profile)},
+                    context={"fields": [
+                        {"key": key, "value": value.strip()}
+                        for key, value in (("major", major), ("target_job", occupation)) if value.strip()
+                    ], "background_fields": _profile_fields(profile)},
                 )
             )
             records = list(getattr(result, "records", []) or [])
@@ -384,7 +390,11 @@ def build_tool_catalog(
                 origin = str(getattr(record, "source_url", "") or "").strip()
                 fetched = str(getattr(record, "fetched_at", "") or "").strip()
                 parts.append(
-                    f"- {title}：{text[:500]}（来源：{origin or '学职平台'}，取数时间：{fetched or '未知'}）"
+                    f"- {title}：{text[:500]}（来源：{origin or '学职平台'}，取数时间：{fetched or '未知'}"
+                    + ("；按名称检索的相关职业，不代表专业官方对口映射" if
+                       getattr(record, "kind", "") == "occupation" and
+                       (getattr(record, "metadata", {}) or {}).get("matched_from") == "search" else "")
+                    + "）"
                 )
             if getattr(result, "degraded", False):
                 parts.append("（这次只取到一部分，用它的时候要说明不完整。）")

@@ -471,3 +471,87 @@ async def test_direction_plan_rejects_reminder_like_name(container: Container) -
                 )
             ],
         )
+
+
+class _NoLinkedOccupationsClient(_StubXueZhiClient):
+    async def get_speciality_detail(self, spec_id: str):
+        return {"basicVo": {"zymc": "人工智能"}, "byfzVo": {"expOccList": {}}}
+
+    async def get_occupation_detail(self, occ_id: str):
+        self.calls.append(("occupation_detail", occ_id))
+        assert occ_id == "O1", "检索词不能作为平台职业ID请求详情"
+        return {"zhiyId": occ_id, "zhiyname": "人工智能工程技术人员"}
+
+
+async def test_xuezhi_empty_major_mapping_searches_occupations_by_major_name():
+    client = _NoLinkedOccupationsClient()
+    result = await XueZhiDataSourceGateway(client).fetch(DataSourceRequest(
+        source="xuezhi", query="想了解专业去向", limit=8,
+        context={"fields": [{"key": "major", "value": "人工智能"}]}))
+    assert not result.degraded
+    assert ("occupation", "人工智能") in client.calls
+    assert ("occupation_detail", "O1") in client.calls
+    occupation = next(r for r in result.records if r.kind == "occupation")
+    assert occupation.title == "人工智能工程技术人员"
+    assert occupation.metadata["matched_from"] == "search"
+
+
+async def test_xuezhi_explicit_direction_searches_name_before_fetching_real_id():
+    client = _NoLinkedOccupationsClient()
+    result = await XueZhiDataSourceGateway(client).fetch(DataSourceRequest(
+        source="xuezhi", query="人工智能", limit=8,
+        context={"major": "人工智能", "target_direction": "算法工程师"}))
+    assert not result.degraded
+    assert ("occupation", "算法工程师") in client.calls
+    assert ("occupation_detail", "算法工程师") not in client.calls
+    assert next(r for r in result.records if r.kind == "occupation").metadata["relation"] == "direction"
+
+
+async def test_xuezhi_exact_major_does_not_mix_other_education_levels():
+    class Client(_NoLinkedOccupationsClient):
+        async def list_specialities(self, **kwargs):
+            return {"data": {"pageArray": [
+                {"specId": "OTHER", "zymc": "人工智能技术应用"},
+                {"specId": "EXACT", "zymc": "人工智能"}]}}
+
+        async def get_speciality_detail(self, spec_id):
+            self.calls.append(("detail", spec_id))
+            return await super().get_speciality_detail(spec_id)
+
+    client = Client()
+    result = await XueZhiDataSourceGateway(client).fetch(DataSourceRequest(source="xuezhi", query="人工智能"))
+    assert not result.degraded
+    assert ("detail", "EXACT") in client.calls and ("detail", "OTHER") not in client.calls
+    assert [r.id for r in result.records if r.kind == "speciality"] == ["EXACT"]
+
+
+async def test_xuezhi_no_occupation_search_results_never_invents_a_mapping():
+    class Client(_NoLinkedOccupationsClient):
+        async def search_occupations(self, **kwargs):
+            return {"data": {"zhiyArray": []}}
+
+    result = await XueZhiDataSourceGateway(Client()).fetch(DataSourceRequest(source="xuezhi", query="人工智能"))
+    assert not result.degraded
+    assert not any(r.kind == "occupation" for r in result.records)
+
+
+async def test_xuezhi_tool_passes_current_subject_without_overriding_it_with_old_profile():
+    from agno.run import RunContext
+    from zhiyin_infrastructure.ai.tools import build_tool_catalog
+
+    class Capture:
+        async def fetch(self, request):
+            self.request = request
+            return DataSourceResult(source="xuezhi", records=[DataSourceRecord(
+                id="O1", kind="occupation", title="人工智能工程技术人员", text="公开职业介绍",
+                metadata={"matched_from": "search"})])
+
+    capture = Capture()
+    tool = build_tool_catalog(external_data=capture,
+        profile_reader=lambda _: {"fields": [{"key": "major", "value": "土木工程"}]})["xuezhi.search"]
+    result = await tool.handler(RunContext(run_id="r1", session_id="s1", user_id="u1", dependencies={}),
+                                query="人工智能", major="人工智能")
+    assert capture.request.context["fields"] == [{"key": "major", "value": "人工智能"}]
+    assert capture.request.context["background_fields"][0]["value"] == "土木工程"
+    assert "不代表专业官方对口映射" in result
+
