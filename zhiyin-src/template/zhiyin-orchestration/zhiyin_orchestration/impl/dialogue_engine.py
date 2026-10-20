@@ -31,6 +31,7 @@ def traced(handler, name):
             "web.search": "正在搜索资料", "kb.search": "正在检索知识库",
             "chart.render": "正在生成图表", "workspace.action": "正在核对操作权限",
             "workspace.classify": "正在分析业务意图",
+            "workspace.exploration": "正在整理对话线索",
         }.get(name, "正在读取模块资料")
         parameters = redact_sensitive({k: v for k, v in kwargs.items()
             if k in {"area", "offset", "session_id", "material_id", "query", "question"}})
@@ -73,7 +74,7 @@ async def invoke_dialogue(engine, request):
     from .dialogue_specialists import specialist_tools, ROLE_FOCUS
     presentation = {"lead": request.agent_id, "stage": request.prompt_vars.get("dialogue_focus", ""), "roles": [],
                     "methods": {}, "clues": [], "theories": []}
-    names = ["workspace.read", "material.read", "workspace.action", "workspace.classify"]
+    names = ["workspace.read", "material.read", "workspace.action", "workspace.classify", "workspace.exploration"]
     # All enabled professionals share one conversation. Each descriptor still
     # controls which registered read capabilities enter the capability pool.
     for role_id in ROLE_FOCUS:
@@ -103,7 +104,16 @@ async def invoke_dialogue(engine, request):
     agent = Agent(model=model, instructions=[prompt.content], tools=tools, telemetry=False,
                   tool_call_limit=12, use_json_mode=False, parse_response=False)
     messages = [Message(role=i["role"], content=redact_sensitive(i["content"])) for i in request.history]
-    messages.append(Message(role="user", content=engine._compose_input(request, {"guide": None})))
+    current = request.prompt_vars.get("raw_user_message", request.prompt_vars.get("user_input"))
+    if isinstance(current, str):
+        # Keep the actual user utterance last, outside the large context JSON.
+        # Context remains untrusted user-role data, never a system instruction.
+        context = request.model_copy(update={"prompt_vars": {k: v for k, v in request.prompt_vars.items()
+            if k not in {"raw_user_message", "user_input"}}})
+        messages.append(Message(role="user", content=engine._compose_input(context, {"guide": None})))
+        messages.append(Message(role="user", content=redact_sensitive(current)))
+    else:
+        messages.append(Message(role="user", content=engine._compose_input(request, {"guide": None})))
     text, output, after_tool = "", None, False
     try:
         if is_streaming():

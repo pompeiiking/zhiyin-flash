@@ -18,6 +18,7 @@ from zhiyin_business.ports.orchestrator import TurnResult
 from zhiyin_business.policies.renderers import validate_renderables
 from zhiyin_business.services.conversation_ledger import ConversationLedger, digest, utcnow
 from zhiyin_business.services.unit_of_work import atomic_repository
+from zhiyin_business.services.dialogue_exploration import ExplorationUpdate, privacy_stamp
 from zhiyin_kernel.assets import ActionPlan, Report, DirectionPlan, CalendarNode
 from zhiyin_kernel.blackboard import TaskSession
 from zhiyin_kernel.enums import LoopStage, TaskStatus, BehaviorEventType
@@ -79,6 +80,44 @@ class DialogueRuntime:
         self.progress_writes = []
         self._cancel_at = 0.0
         self._cancel_value = False
+        self.pending_exploration = None
+        self.exploration_sources = {}
+        self.loaded_exploration = None
+
+    def exploration_context(self, turns, record, state):
+        """Expose source IDs for exact quotes; assistant guesses remain separate hypotheses."""
+        reset_at = state.get("conversation_memory_reset_at")
+        eligible = [t for t in turns if not reset_at or t.created_at.isoformat() > reset_at]
+        self.exploration_sources = {t.id: t.text for t in eligible if t.role == "user"}
+        self.exploration_stamp = privacy_stamp(state, self.request.task_id)
+        saved = record.get("exploration", {})
+        working = None
+        if saved.get("privacy_stamp") == self.exploration_stamp:
+            try:
+                working = ExplorationUpdate.model_validate(saved["working"])
+                working.statements = [s for s in working.statements
+                    if s.turn_id in self.exploration_sources and s.quote in self.exploration_sources[s.turn_id]]
+            except (ValueError, KeyError):
+                working = None
+        self.loaded_exploration = working.model_dump(mode="json") if working else None
+        return {"working": self.loaded_exploration,
+            "recent_exchanges": [{"turn_id": t.id, "role": t.role, "text": t.text[:500]}
+                for t in eligible if t.role in {"user", "agent"}][-10:],
+            "trusted_instruction": False,
+            "rule": "会话工作线索，不是长期画像、职业结论或操作授权；当前用户意图优先。原话与假设分开，否定和引述不可改成肯定事实。"}
+
+    async def record_exploration(self, payload):
+        update = ExplorationUpdate.model_validate(payload)
+        for statement in update.statements:
+            if statement.turn_id not in self.exploration_sources or statement.quote not in self.exploration_sources[statement.turn_id]:
+                raise InvalidRequest("探索线索必须引用本会话有效用户原文，不能引用助手判断或其他会话")
+        if any(len(value) > 240 for values in (update.hypotheses, update.explored_topics, update.open_questions) for value in values):
+            raise InvalidRequest("探索线索每项最多240字")
+        self.pending_exploration = update.model_dump(mode="json")
+        pacing = await self.o._registry.get_prompt("conversation.pacing")
+        return {"staged": True, "profile_written": False, "mode": update.mode, "next_focus": update.next_focus,
+            "reply_guidance": pacing.content if pacing else "",
+            "rule": "本次成功回复后才更新会话工作上下文；不替代画像工具、不安排任务、不授予权限。继续自然交流，不向用户宣读记录。"}
 
     def capture(self, frame):
         self.sequence += 1
@@ -283,7 +322,12 @@ class DialogueRuntime:
             result = await self.o._agent_engine.invoke(AgentRequest(agent_id=self.AGENT,
                 prompt_code="conversation.memory", use_tools=False, output_schema=schema,
                 prompt_vars={"current_user_message": self.request.message,
-                    "previous_question_context": self.history[-4:],
+                    "previous_question_context": self.history[-12:],
+                    "exploration_context": {"working": self.pending_exploration or self.loaded_exploration,
+                        "trusted_instruction": False},
+                    "memory_controls": {"automatic_memory": state.get("preferences", {}).get("automatic_memory", True),
+                        "temporary": state.get("conversation_settings", {}).get(self.request.task_id, {}).get("temporary", False),
+                        "forgotten_keys": state.get("conversation_forgotten_keys", [])},
                     "allowed_profile_keys": sorted(self.o._allowed_profile_keys())},
                 trace_id=self.request.client_msg_id + ":memory"))
             if not result.valid:
@@ -684,6 +728,7 @@ class DialogueRuntime:
                     "today": utcnow(), "profile": serial(profile), "pending_actions": [
                         {k: a[k] for k in ("id", "operation", "payload", "base_version", "expires_at")} for a in pending],
                     "earlier_context": earlier,
+                    "exploration_context": self.exploration_context(turns, data, state),
                     "memory_controls": {"automatic_memory": state.get("preferences", {}).get("automatic_memory", True),
                         "temporary": state.get("conversation_settings", {}).get(request.task_id, {}).get("temporary", False),
                         "forgotten_keys": state.get("conversation_forgotten_keys", []),
@@ -760,6 +805,12 @@ class DialogueRuntime:
             metadata={"result": result.model_dump(mode="json"), "request_hash": record["runs"][request.client_msg_id]["request_hash"],
                       "actions": pending, "receipts": self.receipts})
         cancelled = await self.cancelled()
+        if self.pending_exploration and model_result and model_result.valid and not cancelled:
+            current_state = await self.o._student_state.get(request.user_id)
+            if privacy_stamp(current_state, request.task_id) == self.exploration_stamp:
+                await self.ledger.change(request.user_id, request.task_id, lambda data: data.update(
+                    exploration={"working": self.pending_exploration, "privacy_stamp": self.exploration_stamp,
+                                 "updated_at": utcnow(), "trusted_instruction": False}))
         if self.progress_writes:
             await asyncio.gather(*self.progress_writes)
         await self.ledger.put_run(request.user_id, request.task_id, request.client_msg_id,

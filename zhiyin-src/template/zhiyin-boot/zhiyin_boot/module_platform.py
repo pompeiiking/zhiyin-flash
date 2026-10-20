@@ -14,6 +14,7 @@ from zhiyin_api.dto.achievement import AchievementListView, AchievementView
 from zhiyin_business.policies.renderers import RendererSpec, register_renderer, renderer_for
 from zhiyin_business.services.modules import ModulePlatform
 from zhiyin_business.services.module_flows import ModuleFlowService
+from zhiyin_business.services.dialogue_exploration import QuotedStatement
 from zhiyin_infrastructure.ai.tools import ToolModule, ToolSpec
 from zhiyin_infrastructure.postgres.database import get_database
 from zhiyin_infrastructure.postgres.modules import PostgresModuleRepository
@@ -168,6 +169,21 @@ def product_tools(container):
             "expected_version": expected_version, "action_id": action_id, "supersedes_action_id": supersedes_action_id})
         return json.dumps(result, ensure_ascii=False, default=str)
 
+    async def record_exploration(run_context: RunContext, goal: str,
+                                 mode: Literal["explore", "answer", "act", "paused"],
+                                 statements: list[QuotedStatement] | None = None, hypotheses: list[str] | None = None,
+                                 explored_topics: list[str] | None = None, open_questions: list[str] | None = None,
+                                 next_focus: str = "") -> str:
+        """Update bounded conversation working context, not the permanent profile. Quotes require user turn_id from exploration_context. Hypotheses remain unverified. Use only when exploration changes; ordinary factual answers need no call."""
+        from zhiyin_business.services.dialogue_runtime import active_dialogue
+        runtime = active_dialogue.get()
+        if runtime is None or runtime.request.user_id != run_context.user_id:
+            raise InvalidRequest("探索记录缺少当前对话上下文")
+        result = await runtime.record_exploration({"goal": goal, "mode": mode,
+            "statements": [statement.model_dump(mode="json") for statement in statements or []], "hypotheses": hypotheses or [],
+            "explored_topics": explored_topics or [], "open_questions": open_questions or [], "next_focus": next_focus})
+        return json.dumps(result, ensure_ascii=False)
+
     async def classify_context(run_context: RunContext, question: str) -> str:
         """可选Kev快速业务分类；只辅助、不授权、不强制切换任务。"""
         from zhiyin_business.services.dialogue_runtime import active_dialogue
@@ -197,6 +213,7 @@ def product_tools(container):
         ToolSpec(name="material.read", description="分段读取当前会话已上传材料", handler=read_material),
         ToolSpec(name="workspace.read", description="读取当前用户的真实业务资料", handler=read_workspace),
         ToolSpec(name="workspace.action", description="统一业务写入和审批，执行真实变更或返回具体提案", handler=conversation_action),
+        ToolSpec(name="workspace.exploration", description="更新本会话探索目标、原话与待核实线索；不写长期画像", handler=record_exploration),
         ToolSpec(name="workspace.classify", description="按需Kev辅助业务判断，不直接控制对话", handler=classify_context),
     ]))
     for module_id, definition in definitions(container).items():

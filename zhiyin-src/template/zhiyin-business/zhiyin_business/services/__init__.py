@@ -24,6 +24,7 @@
 | 开发项目与版本协作 | `developer.py` | `DeveloperPlatform` | DeveloperRepository、Identity、模块模板提供器 | P0 | 已交付 |
 | 模块上传包检查 | `module_packages.py` | `inspect_package` | ZIP 内容检查、ModuleManifest、源码依赖守卫 | P0 | 已交付 |
 | 对话运行 | `dialogue_runtime.py` | `DialogueRuntime` | 主模型、受控工具和现有业务服务 | P0 | 已交付 |
+| 会话探索上下文 | `dialogue_exploration.py` | `ExplorationUpdate` | 本会话原文与探索工作快照；不写长期画像 | P0 | 已交付 |
 | 对话操作记录 | `conversation_ledger.py` | `ConversationLedger` | 原子账号状态Repository | P0 | 已交付 |
 | 对话生命周期 | `conversation_control.py` | `ConversationControl` | 账号归属、取消、设置、删除与运行恢复 | P0 | 已交付 |
 | Orchestrator | `orchestrator.py` | `DefaultOrchestrator` | 黑板四件套 + `policies/` + AgentEngine | P0 | 已交付 |
