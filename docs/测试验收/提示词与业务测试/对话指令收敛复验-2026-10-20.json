@@ -1,0 +1,329 @@
+{
+  "source_revision": "1e621ae",
+  "date": "2026-10-20",
+  "prompt_fingerprint": "a83bdf02518f2dad",
+  "change": {
+    "previous_characters": 4266,
+    "current_characters": 2819,
+    "changed_prompt_codes": [
+      "conversation.main"
+    ]
+  },
+  "deterministic_regression": {
+    "passed": 71,
+    "scope": [
+      "dialogue_runtime",
+      "dialogue_specialists",
+      "conversation_stream_text"
+    ]
+  },
+  "isolated_model": {
+    "model": "deepseek-chat",
+    "prompt_sha256": "8095cd9ed51522fc581b6edb9edb138686cc3fd4f48c526a03626d226fa08e5e",
+    "cases": [
+      {
+        "case": "short-answer-followed-by-unknown",
+        "turn": 1,
+        "history": [
+          [
+            "user",
+            "我是大一人工智能专业，想了解自己是否适合算法方向。先聊聊，不要保存画像或计划。"
+          ],
+          [
+            "assistant",
+            "数学课，比如线性代数和概率，目前学起来感觉怎么样？"
+          ]
+        ],
+        "input": "还可以",
+        "messages": [
+          {
+            "role": "agent",
+            "clues": [],
+            "text": "“还可以”说明基础没拖后腿，这已经是个不错的起点。想再具体一点：你平时写代码时，是更享受把模型跑通、调参数看效果，还是更愿意琢磨背后的数学推导？",
+            "agent_id": "profile_analyst",
+            "theory_refs": [],
+            "renderables": [],
+            "intel_refs": [],
+            "created_at": null
+          }
+        ],
+        "elapsed": 6.0,
+        "has_saved_plan": false
+      },
+      {
+        "case": "short-answer-followed-by-unknown",
+        "turn": 2,
+        "history": [
+          [
+            "user",
+            "我是大一人工智能专业，想了解自己是否适合算法方向。先聊聊，不要保存画像或计划。"
+          ],
+          [
+            "assistant",
+            "数学课，比如线性代数和概率，目前学起来感觉怎么样？"
+          ]
+        ],
+        "input": "不知道，没什么项目经历",
+        "messages": [
+          {
+            "role": "agent",
+            "clues": [],
+            "text": "没项目经历很正常，大一本来也还没到那一步。那换个更轻的问题：你平时会主动去看算法相关的东西吗，比如刷到某个模型怎么工作的、或者某个AI应用怎么实现的，会想点进去弄明白吗？",
+            "agent_id": "profile_analyst",
+            "theory_refs": [],
+            "renderables": [],
+            "intel_refs": [],
+            "created_at": null
+          }
+        ],
+        "elapsed": 3.03,
+        "has_saved_plan": false
+      },
+      {
+        "case": "no-interrogation",
+        "turn": 1,
+        "history": [
+          [
+            "user",
+            "我是大一人工智能专业，想了解自己是否适合算法方向。先聊聊，不要保存画像或计划。"
+          ],
+          [
+            "assistant",
+            "数学课，比如线性代数和概率，目前学起来感觉怎么样？"
+          ]
+        ],
+        "input": "还可以，别一直问问题，给我一个现在能试的小建议，不用保存。",
+        "messages": [
+          {
+            "role": "agent",
+            "clues": [],
+            "text": "给你一个今晚就能做的小尝试：找一个你感兴趣的小任务，比如用现成的库识别手写数字，或者给一段文本做情感分类，先跑通一个能出结果的版本，再试着改一个参数，看看结果怎么变。\n\n重点不是做得多好，而是留意过程中你的感受：调通时是兴奋，还是觉得琐碎、想快点结束。这个体验比任何测试都更能说明问题。",
+            "agent_id": "profile_analyst",
+            "theory_refs": [],
+            "renderables": [],
+            "intel_refs": [],
+            "created_at": null
+          }
+        ],
+        "elapsed": 4.14,
+        "has_saved_plan": false
+      },
+      {
+        "case": "respect-pause",
+        "turn": 1,
+        "history": [
+          [
+            "user",
+            "我是大一人工智能专业，想了解自己是否适合算法方向。先聊聊，不要保存画像或计划。"
+          ],
+          [
+            "assistant",
+            "数学课，比如线性代数和概率，目前学起来感觉怎么样？"
+          ]
+        ],
+        "input": "今天先不聊了，我想休息。",
+        "messages": [
+          {
+            "role": "agent",
+            "clues": [],
+            "text": "好，那今天就先到这儿，好好休息。想接着聊算法方向的时候随时找我。",
+            "agent_id": "profile_analyst",
+            "theory_refs": [],
+            "renderables": [],
+            "intel_refs": [],
+            "created_at": null
+          }
+        ],
+        "elapsed": 2.5,
+        "has_saved_plan": false
+      },
+      {
+        "case": "direct-fact",
+        "turn": 1,
+        "history": [],
+        "input": "只解释一下什么是线性代数，一句话就好。",
+        "messages": [
+          {
+            "role": "agent",
+            "clues": [],
+            "text": "线性代数就是研究向量、向量空间以及它们之间线性变换（比如矩阵运算）的一门数学分支，核心是解线性方程组和描述线性关系。",
+            "agent_id": "profile_analyst",
+            "theory_refs": [],
+            "renderables": [],
+            "intel_refs": [],
+            "created_at": null
+          }
+        ],
+        "elapsed": 3.09,
+        "has_saved_plan": false
+      },
+      {
+        "case": "explicit-future-wait",
+        "turn": 1,
+        "history": [
+          [
+            "user",
+            "我是大一人工智能专业，想了解自己是否适合算法方向。先聊聊，不要保存画像或计划。"
+          ],
+          [
+            "assistant",
+            "数学课，比如线性代数和概率，目前学起来感觉怎么样？"
+          ]
+        ],
+        "input": "我想等期末成绩出来再讨论方向，先到这里。",
+        "messages": [
+          {
+            "role": "agent",
+            "clues": [],
+            "text": "好，那就等期末成绩出来再说。到时候把成绩发我，我们接着聊算法方向的事。",
+            "agent_id": "profile_analyst",
+            "theory_refs": [],
+            "renderables": [],
+            "intel_refs": [],
+            "created_at": null
+          }
+        ],
+        "elapsed": 3.81,
+        "has_saved_plan": false
+      }
+    ]
+  },
+  "deployed_model": [
+    {
+      "replies": [
+        "数学这块，我想先了解你现在的真实感受：大一的高等数学学到哪一步了，是极限、导数这些还比较顺，还是某一类题会让你卡住、不太想碰？",
+        "“还可以”说明基础没大问题。那再问一个更具体的：如果让你自学一个数学概念，比如矩阵乘法或梯度，你更习惯先看教材推导，还是先看视频或例子，弄懂它用来干什么？",
+        "没项目经历很正常，大一本来也还没到那一步，不用当成短板。那换个更轻的问法：平时有没有哪类东西让你觉得“这个挺有意思，想搞明白它怎么做到的”，比如手机里的推荐、语音助手、下棋的AI，或者别的？"
+      ],
+      "modelFrames": [
+        {
+          "type": "run.model",
+          "model": "deepseek-chat",
+          "prompt_code": "conversation.main",
+          "prompt_fingerprint": "a83bdf02518f2dad",
+          "protocol": 2,
+          "conversation_id": "task-748703cd5910",
+          "run_id": "f7d45ded-f9e1-464a-be6e-c4f6d2d0bd32",
+          "sequence": 2,
+          "timestamp": "2026-10-20T05:32:14.398137+00:00"
+        },
+        {
+          "type": "run.model",
+          "model": "deepseek-chat",
+          "prompt_code": "conversation.main",
+          "prompt_fingerprint": "a83bdf02518f2dad",
+          "protocol": 2,
+          "conversation_id": "task-748703cd5910",
+          "run_id": "1e05195b-70d5-4cb2-bba8-fc7c1db6dbc0",
+          "sequence": 2,
+          "timestamp": "2026-10-20T05:32:17.878848+00:00"
+        },
+        {
+          "type": "run.model",
+          "model": "deepseek-chat",
+          "prompt_code": "conversation.main",
+          "prompt_fingerprint": "a83bdf02518f2dad",
+          "protocol": 2,
+          "conversation_id": "task-748703cd5910",
+          "run_id": "8e64836d-28cf-49d2-97c6-87290da5ca79",
+          "sequence": 2,
+          "timestamp": "2026-10-20T05:32:20.439945+00:00"
+        }
+      ],
+      "short": "还可以"
+    },
+    {
+      "short": "还行",
+      "modelFrames": [
+        {
+          "type": "run.model",
+          "model": "deepseek-chat",
+          "prompt_code": "conversation.main",
+          "prompt_fingerprint": "a83bdf02518f2dad",
+          "protocol": 2,
+          "conversation_id": "task-4ca8e9a5b1d0",
+          "run_id": "6699f18b-8466-43b0-9198-124b7c4d6ece",
+          "sequence": 2,
+          "timestamp": "2026-10-20T05:33:16.726180+00:00"
+        },
+        {
+          "type": "run.model",
+          "model": "deepseek-chat",
+          "prompt_code": "conversation.main",
+          "prompt_fingerprint": "a83bdf02518f2dad",
+          "protocol": 2,
+          "conversation_id": "task-4ca8e9a5b1d0",
+          "run_id": "dc1a0125-a12f-48ac-8c22-ed3605bea78f",
+          "sequence": 2,
+          "timestamp": "2026-10-20T05:33:19.718058+00:00"
+        },
+        {
+          "type": "run.model",
+          "model": "deepseek-chat",
+          "prompt_code": "conversation.main",
+          "prompt_fingerprint": "a83bdf02518f2dad",
+          "protocol": 2,
+          "conversation_id": "task-4ca8e9a5b1d0",
+          "run_id": "4c4a8915-b482-4c0d-aa91-164772a5acc9",
+          "sequence": 2,
+          "timestamp": "2026-10-20T05:33:24.966342+00:00"
+        }
+      ],
+      "replies": [
+        "数学方面想先问你一个：你现在学的高等数学里，哪部分让你觉得最顺手、或者最有兴趣？比如极限与连续、导数与微分、积分，还是级数。不用想得太正式，说说哪块你做题时感觉比较有把握就行。",
+        "“还行”这个回答本身就挺常见，说明高数整体还没到让你特别有感觉或特别吃力的程度。那换个更具体的小问题：做题时你更愿意推公式、一步步算，还是更愿意看图形、想几何直观？",
+        "没项目经历完全正常，大一本来也还没到那一步，不用当成短板。那就不聊项目，聊点更近的：你平时有没有过“这个东西挺有意思，想弄明白它怎么做到的”的时刻？比如某个App的推荐、语音助手、下棋程序，甚至游戏里的AI。有的话说一个就行，没有也没关系，我们换个角度。"
+      ]
+    },
+    {
+      "short": "一般吧",
+      "modelFrames": [
+        {
+          "type": "run.model",
+          "model": "deepseek-chat",
+          "prompt_code": "conversation.main",
+          "prompt_fingerprint": "a83bdf02518f2dad",
+          "protocol": 2,
+          "conversation_id": "task-e2b56b8624da",
+          "run_id": "9b39f280-074f-4812-8b6e-9f3bfed30de5",
+          "sequence": 2,
+          "timestamp": "2026-10-20T05:33:28.297812+00:00"
+        },
+        {
+          "type": "run.model",
+          "model": "deepseek-chat",
+          "prompt_code": "conversation.main",
+          "prompt_fingerprint": "a83bdf02518f2dad",
+          "protocol": 2,
+          "conversation_id": "task-e2b56b8624da",
+          "run_id": "46ebda80-6ba7-4440-bf33-718bac728e9e",
+          "sequence": 2,
+          "timestamp": "2026-10-20T05:33:32.992519+00:00"
+        },
+        {
+          "type": "run.model",
+          "model": "deepseek-chat",
+          "prompt_code": "conversation.main",
+          "prompt_fingerprint": "a83bdf02518f2dad",
+          "protocol": 2,
+          "conversation_id": "task-e2b56b8624da",
+          "run_id": "35bacea6-fbbf-4863-9bc0-6c6b6fa04922",
+          "sequence": 2,
+          "timestamp": "2026-10-20T05:33:36.957358+00:00"
+        }
+      ],
+      "replies": [
+        "算法方向最吃的是数学，但大一阶段真正拉开差距的往往不是\"会不会算\"，而是对哪类数学感觉顺手。所以想先问你一个：高等数学里，你更享受哪种时刻——是推导一个定理、搞清它为什么成立，还是把一道积分或极限算得又快又准？（这轮不记录画像、不生成计划，只是聊聊。）",
+        "“一般吧”这个回答挺常见的，不用勉强自己找出喜欢的感觉。换个更具体、更好回答的问法：做高数题时，你更常遇到哪种情况——是看懂了例题，自己动手却卡住；还是算得出来，但说不清为什么这么做？（这轮仍然不记录画像、不生成计划。）",
+        "大一没有项目经历太正常了，算法方向的项目基本都要先有编程和数学底子，现在没有不代表什么。不用想项目，换个更轻的问法：这学期除了高数，你有没有哪门课或者哪件小事，让你觉得“这个我还挺愿意多花点时间”的？哪怕只是写代码、做实验、看某个视频都算。"
+      ]
+    }
+  ],
+  "review": {
+    "scope": "本机合成用户；隔离6轮，正式3个会话各3轮；人工阅读输出，不以关键词匹配充当语义验收。",
+    "observed_improvement": "本次正式9轮未见信息量不足评价或用等待考试结束探索；无项目时转向具体兴趣。隔离暂停、不追问和一句事实答复正常。",
+    "remaining_quality": "仍有回答挺常见等多余评价、从模糊自评推断数学基础、重复不记录说明；隔离一条回复夸大小练习相对测试的价值。不宣称彻底解决表达、适合度判断或跨模型稳定性。",
+    "deployment": "仅热更新conversation.main，数据库同步预览changed=[]，更新前保存日期回退文件；不重建API或前端，不改变写权限。",
+    "limitations": "当前模型deepseek-chat，少量重复不代表全部用户或175用例族完成；权限和流式由71项定向回归验证，不冒充真实授权发布验收。"
+  }
+}
