@@ -668,6 +668,7 @@ export type LayoutBlockView = {
 }
 
 export type ProfilePanelView = {
+  "clues"?: Array<ProfileClueView>
   "coverage"?: number
   "fields"?: Array<ProfileFieldView>
   "gaps"?: Array<ProfileGapView>
@@ -742,12 +743,25 @@ export type CollectionItemView = {
   "why": string
 }
 
+export type ProfileClueView = {
+  "created_at": string
+  "evidence"?: Array<string>
+  "field_keys"?: Array<string>
+  "id": string
+  "invalidated_reason"?: string
+  "status"?: ProfileClueStatus
+  "text": string
+  "updated_at": string
+}
+
 export type ProfileGapView = {
   "key": string
   "label"?: string
   "reason": string
   "suggested_next_action"?: string
 }
+
+export type ProfileClueStatus = "proposed" | "invalid" | "confirmed"
 
 export type CapabilitiesView = CapabilityListView
 

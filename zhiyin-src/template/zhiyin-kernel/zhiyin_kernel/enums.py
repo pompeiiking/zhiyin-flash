@@ -170,6 +170,25 @@ class ProfilePurpose(str, Enum):
     CONVERSATION = "conversation"                    # 普通交流
 
 
+class ProfileClueStatus(str, Enum):
+    """待验证线索的状态（《个人画像设计-2026-10-20》第 3.2、7 节）。
+
+    线索是「AI 对信息的有限理解」，与事实字段分开存：必须关联依据、标明适用范围，
+    不进入事实字段，也不能靠反复引用把自己变成稳定结论。
+
+    · `PROPOSED`：待验证（默认）。依据变化、用户否认或用途不再需要时失效；
+    · `INVALID`：已失效。依据被更正/撤回/删除，或用户明确否认这条理解；
+    · `CONFIRMED`：已确认。留给后续「用户认可/重新分析后成立」的链路 ——
+      当前没有任何自动确认路径，重复出现不等于确认。
+
+    状态是服务端算的，不由模型自报。
+    """
+
+    PROPOSED = "proposed"
+    INVALID = "invalid"
+    CONFIRMED = "confirmed"
+
+
 class UserRole(str, Enum):
     """身份角色。"""
 

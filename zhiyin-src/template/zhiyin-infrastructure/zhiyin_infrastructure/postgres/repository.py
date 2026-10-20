@@ -7,6 +7,7 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 
 import json
+import logging
 from datetime import datetime, timezone, timedelta
 from typing import Any, Optional, Sequence
 from uuid import uuid4
@@ -36,6 +37,7 @@ from zhiyin_kernel.blackboard import (
     ConversationMemory,
     ConversationTurn,
     Profile,
+    ProfileClue,
     ProfileField,
     ProfileGap,
     TaskSession,
@@ -45,14 +47,18 @@ from zhiyin_kernel.enums import (
     AssetType,
     BehaviorEventType,
     LoopStage,
+    ProfileClueStatus,
     ProfileEntryStatus,
     ProfileEntryType,
+    ProfileSource,
     ProfileVerification,
     TaskStatus,
 )
 from zhiyin_kernel.errors import ResourceNotFound, DuplicateResource, InvalidRequest
 from zhiyin_kernel.identity import UserAccount
 from zhiyin_infrastructure.postgres.database import PostgresDatabase
+
+logger = logging.getLogger(__name__)
 
 
 def _now() -> datetime:
@@ -162,12 +168,33 @@ def _row_get(row: Any, key: str) -> Any:
         return None
 
 
+def _profile_clue_row(row: Any) -> ProfileClue:
+    """线索行 → 内核记录。来源/状态枚举不认识的旧值按「待验证」兜底。"""
+    try:
+        source = ProfileSource(row["source"])
+    except ValueError:
+        source = ProfileSource.ASSESSMENT
+    return ProfileClue(
+        id=row["id"],
+        user_id=row["user_id"],
+        session_id=row["session_id"] or "",
+        text=row["text"],
+        evidence=_load_value(row["evidence"]) or [],
+        field_keys=_load_value(row["field_keys"]) or [],
+        source=source,
+        status=_optional_enum(ProfileClueStatus, row["status"]) or ProfileClueStatus.PROPOSED,
+        invalidated_reason=row["invalidated_reason"] or "",
+        created_at=row["created_at"],
+        updated_at=row["updated_at"],
+    )
+
 
 def _assemble_profile(
     user_id: str,
     head_row: Any,
     fields: list[ProfileField],
     gaps: list[ProfileGap],
+    clues: list[ProfileClue] | None = None,
 ) -> Optional[Profile]:
     """头行 + 字段行 → 画像。**头行缺、字段行在时，按字段把容器补出来。**
 
@@ -184,14 +211,17 @@ def _assemble_profile(
     谁补谁不补全凭记性。所以补在仓库这一层，只补一次、所有读法共享。
     """
     if head_row is None:
-        if not fields and not gaps:
+        if not fields and not gaps and not clues:
             return None
         stamps = [field.updated_at for field in fields]
+        if clues:
+            stamps.extend(clue.updated_at for clue in clues)
         return Profile(
             id=f"profile-{user_id}",
             user_id=user_id,
             fields=fields,
             gaps=gaps,
+            clues=clues or [],
             updated_at=max(stamps) if stamps else _now(),
         )
     return Profile(
@@ -201,6 +231,7 @@ def _assemble_profile(
         updated_at=head_row["updated_at"],
         fields=fields,
         gaps=gaps,
+        clues=clues or [],
     )
 
 
@@ -222,8 +253,19 @@ class PostgresProfileRepository(ProfileRepository):
             """,
             user_id,
         )
+        try:
+            clues = await self.list_clues(user_id)
+        except Exception:  # noqa: BLE001 - 老库还没跑迁移建表时，画像主体仍要能读
+            # 为什么要吞这一处：线索是画像的旁路信息，读不到它不该让整个画像页
+            # 变成 500。表由启动迁移创建，正常路径下这里不会走到。
+            logger.warning("读取待验证线索失败，按空列表处理（user=%s）", user_id, exc_info=True)
+            clues = []
         return _assemble_profile(
-            user_id, profile_row, await self.list_fields(user_id), await self.list_gaps(user_id)
+            user_id,
+            profile_row,
+            await self.list_fields(user_id),
+            await self.list_gaps(user_id),
+            clues,
         )
 
     async def save(self, profile: Profile) -> Profile:
@@ -296,6 +338,32 @@ class PostgresProfileRepository(ProfileRepository):
                         gap.label,
                         gap.reason,
                         gap.suggested_next_action,
+                    )
+                # 线索与字段同一次整体保存：内存仓储里 clues 本来就在 Profile 上，
+                # 这里漏掉会出现「内存测得通、换 Postgres 就丢」的差异。
+                await connection.execute(
+                    "DELETE FROM biz_profile_clue WHERE user_id = $1", stored.user_id
+                )
+                for clue in stored.clues:
+                    await connection.execute(
+                        """
+                        INSERT INTO biz_profile_clue
+                            (id, user_id, session_id, text, evidence, field_keys,
+                             source, status, invalidated_reason, created_at, updated_at)
+                        VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb,
+                                $7, $8, $9, $10, $11)
+                        """,
+                        clue.id,
+                        stored.user_id,
+                        clue.session_id,
+                        clue.text,
+                        _dump_value(clue.evidence),
+                        _dump_value(clue.field_keys),
+                        clue.source.value,
+                        clue.status.value,
+                        clue.invalidated_reason,
+                        clue.created_at,
+                        clue.updated_at,
                     )
         return stored
 
@@ -478,6 +546,107 @@ class PostgresProfileRepository(ProfileRepository):
                     gap.reason,
                     gap.suggested_next_action,
                 )
+
+    async def list_clues(self, user_id: str) -> list[ProfileClue]:
+        rows = await self._db.fetch(
+            """
+            SELECT id, user_id, session_id, text, evidence, field_keys,
+                   source, status, invalidated_reason, created_at, updated_at
+            FROM biz_profile_clue
+            WHERE user_id = $1
+            ORDER BY created_at ASC, id ASC
+            """,
+            user_id,
+        )
+        return [_profile_clue_row(row) for row in rows]
+
+    async def replace_session_clues(
+        self, user_id: str, session_id: str, clues: list[ProfileClue]
+    ) -> None:
+        """同一 session 的线索整体替换：先删这一次会话的旧线索，再写这一批。
+
+        不逐条 upsert：重跑一次分析应该得到**那一次**的结果，而不是把新旧线索
+        叠在一起 —— 重复出现会被误读成「反复验证过」（设计第 3.2 节）。
+        """
+        async with self._db.transaction() as connection:
+            await _lock(connection, f"profile:{user_id}")
+            deleted = _affected(
+                await connection.execute(
+                    "DELETE FROM biz_profile_clue WHERE user_id = $1 AND session_id = $2",
+                    user_id,
+                    session_id,
+                )
+            )
+            if not clues and not deleted:
+                return
+            for clue in clues:
+                await connection.execute(
+                    """
+                    INSERT INTO biz_profile_clue
+                        (id, user_id, session_id, text, evidence, field_keys,
+                         source, status, invalidated_reason, created_at, updated_at)
+                    VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb,
+                            $7, $8, $9, $10, $11)
+                    """,
+                    clue.id,
+                    user_id,
+                    session_id,
+                    clue.text,
+                    _dump_value(clue.evidence),
+                    _dump_value(clue.field_keys),
+                    clue.source.value,
+                    clue.status.value,
+                    clue.invalidated_reason,
+                    clue.created_at,
+                    clue.updated_at,
+                )
+            await self._touch_profile(connection, user_id)
+
+    async def invalidate_clues(
+        self, user_id: str, field_keys: list[str], reason: str
+    ) -> int:
+        keys = [str(key).strip() for key in field_keys if str(key).strip()]
+        if not keys:
+            return 0
+        async with self._db.transaction() as connection:
+            await _lock(connection, f"profile:{user_id}")
+            result = await connection.execute(
+                """
+                UPDATE biz_profile_clue
+                SET status = 'invalid',
+                    invalidated_reason = $3,
+                    updated_at = $4
+                WHERE user_id = $1
+                  AND status = 'proposed'
+                  AND EXISTS (
+                      SELECT 1 FROM jsonb_array_elements_text(field_keys) AS k(key)
+                      WHERE k.key = ANY($2::text[])
+                  )
+                """,
+                user_id,
+                keys,
+                reason or "",
+                _now(),
+            )
+            count = _affected(result)
+            if count:
+                await self._touch_profile(connection, user_id)
+            return count
+
+    async def _touch_profile(self, connection: Any, user_id: str) -> None:
+        """画像版本 +1：线索也是画像的一部分，界面按整体版本判断要不要重读。"""
+        await connection.execute(
+            """
+            INSERT INTO biz_profile (user_id, profile_id, version, updated_at)
+            VALUES ($1, $2, 1, $3)
+            ON CONFLICT (user_id) DO UPDATE SET
+                version = biz_profile.version + 1,
+                updated_at = GREATEST(biz_profile.updated_at + INTERVAL '1 microsecond', EXCLUDED.updated_at)
+            """,
+            user_id,
+            _new_id("prf"),
+            _now(),
+        )
 
 
 class PostgresBehaviorRepository(BehaviorRepository):

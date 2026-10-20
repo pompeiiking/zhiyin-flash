@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from zhiyin_api.dto.common import TheoryRefView
 from zhiyin_kernel.enums import (
     LoopStage,
+    ProfileClueStatus,
     ProfileEntryStatus,
     ProfileEntryType,
     ProfileSource,
@@ -95,6 +96,44 @@ class ProfileGapView(BaseModel):
     suggested_next_action: str = Field(default="", description="建议的下一步采集动作")
 
 
+class ProfileClueView(BaseModel):
+    """一条待验证线索（《个人画像设计-2026-10-20》第 3.2、9 节）。
+
+    它是「系统基于证据的理解」，不是用户说过的事实 —— 所以单独一个形状、
+    单独一组展示，并且带 `status` 与 `invalidated_reason`：被更正/删除依据或
+    被用户否认之后，界面要能说清这条为什么不再算数，而不是让它悄悄消失。
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    text: str = Field(description="线索正文：一句「可能……」的有限理解")
+    evidence: list[str] = Field(default_factory=list, description="依据引用")
+    field_keys: list[str] = Field(
+        default_factory=list, description="依据哪些画像字段；这些字段变更时线索失效"
+    )
+    status: ProfileClueStatus = Field(default=ProfileClueStatus.PROPOSED)
+    invalidated_reason: str = Field(default="", description="为什么失效（给用户看的一句话）")
+    created_at: datetime
+    updated_at: datetime
+
+
+class ProfileClueDenyAck(BaseModel):
+    """否认一条「系统理解」的回执。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    denied: str = Field(description="已否认的那条线索 id")
+
+
+class ProfileFieldDeleteAck(BaseModel):
+    """用户删除一条画像信息的回执。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    deleted: str = Field(description="已删除的画像字段键")
+
+
 class ProfilePanelView(BaseModel):
     """① 画像状态：字段覆盖度 / 置信度 / 缺口 / 更新时间。"""
 
@@ -104,6 +143,10 @@ class ProfilePanelView(BaseModel):
     overall_confidence: float = Field(default=0.0, ge=0.0, le=1.0)
     fields: list[ProfileFieldView] = Field(default_factory=list)
     gaps: list[ProfileGapView] = Field(default_factory=list)
+    clues: list[ProfileClueView] = Field(
+        default_factory=list,
+        description="系统基于证据的理解（待验证线索）：与 fields 分开，可否认",
+    )
     updated_at: Optional[datetime] = None
 
 

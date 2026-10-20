@@ -10,6 +10,7 @@ from pydantic import ValidationError
 
 from zhiyin_business.contracts.common import AssetUpdateDraft
 from zhiyin_business.services.form_merge import merge_form
+from zhiyin_business.services.memory_policy import record_account_policy
 from zhiyin_kernel.assets import ActionPlan, ActionPhase, ActionTask
 from zhiyin_kernel.enums import AssetType
 from zhiyin_kernel.errors import InvalidRequest, ResourceNotFound
@@ -135,7 +136,20 @@ class StudentService:
     async def save_preferences(self, user_id, body):
         previous = await self.preferences(user_id)
         try:
-            body = await self._save_form(user_id, "preferences", body, Preferences)
+            body = await self._save_form(
+                user_id,
+                "preferences",
+                body,
+                Preferences,
+                # 账号级自动记忆属于“记录策略”：保存偏好的同一次原子更新里
+                # 留一条带来源与时间的记录，既有 preferences 返回结构不变。
+                after=lambda state, saved: record_account_policy(
+                    state,
+                    saved.automatic_memory,
+                    source="user_setting",
+                    note="保存资料偏好",
+                ),
+            )
         except ValidationError as exc:
             # 用户在表单里能自己改的事（安静时段只填一端、时区不认识），
             # 用一句他能懂的话说出来；不要把他推到 "Value error" 上。
@@ -155,7 +169,7 @@ class StudentService:
             await self.ai_tasks.invalidate(user_id)
         return body
 
-    async def _save_form(self, user_id, key, body, model, *, nullable=False):
+    async def _save_form(self, user_id, key, body, model, *, nullable=False, after=None):
         result = None
 
         def change(state):
@@ -169,7 +183,12 @@ class StudentService:
                 expected = body.expected.model_dump(mode="json") if body.expected is not None else None
                 desired = merge_form(current, expected, desired)
             result = model.model_validate(desired)
-            return {**state, key: result.model_dump(mode="json")}
+            state = {**state, key: result.model_dump(mode="json")}
+            if after is not None:
+                # 同一 change 内的附加写入（如记忆策略记录）：不该另起一次 update，
+                # 否则表单值与其关联记录可能只落一半。
+                after(state, result)
+            return state
 
         await self.state.update(user_id, change)
         return result

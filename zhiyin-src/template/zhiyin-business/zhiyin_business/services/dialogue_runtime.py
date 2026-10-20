@@ -19,9 +19,11 @@ from zhiyin_business.policies.renderers import validate_renderables
 from zhiyin_business.services.conversation_ledger import ConversationLedger, digest, utcnow
 from zhiyin_business.services.unit_of_work import atomic_repository
 from zhiyin_business.services.dialogue_exploration import ExplorationUpdate, privacy_stamp
+from zhiyin_business.services.memory_policy import MemoryPolicyService
+from zhiyin_kernel import profile_taxonomy
 from zhiyin_kernel.assets import ActionPlan, Report, DirectionPlan, CalendarNode
-from zhiyin_kernel.blackboard import TaskSession
-from zhiyin_kernel.enums import LoopStage, TaskStatus, BehaviorEventType
+from zhiyin_kernel.blackboard import ProfileClue, TaskSession
+from zhiyin_kernel.enums import LoopStage, TaskStatus, BehaviorEventType, ProfileSource
 from zhiyin_kernel.errors import InvalidRequest, ResourceNotFound
 from zhiyin_kernel.privacy import redact_sensitive
 from zhiyin_kernel.streaming import emit_progress
@@ -60,6 +62,23 @@ def context_cost(text):
 def field_stamp(action, key):
     field = next((f for f in (action.get("before") or {}).get("fields", []) if f["key"] == key), None)
     return datetime.fromisoformat(field["updated_at"]) if field else None
+
+
+def profile_time(payload: dict, name: str) -> datetime | None:
+    """画像写入里的可选时间：只接受带时区的 ISO 时间，未知不补当前时间。"""
+    raw = payload.get(name)
+    if raw in (None, ""):
+        return None
+    if isinstance(raw, datetime):
+        parsed = raw
+    else:
+        try:
+            parsed = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+        except ValueError as exc:
+            raise InvalidRequest(f"{name} 不是有效的时间格式") from exc
+    if parsed.tzinfo is None:
+        raise InvalidRequest(f"{name} 需要带时区")
+    return parsed
 
 
 class DialogueRuntime:
@@ -373,20 +392,42 @@ class DialogueRuntime:
             if key not in self.o._allowed_profile_keys():
                 raise InvalidRequest("该字段不在允许自动维护的画像字段中")
             value = payload.get("value")
-            if not isinstance(value, (str, int, float, list)) or len(str(value)) > 2000:
+            if not isinstance(value, (str, int, float, list)):
                 raise InvalidRequest("画像值无效")
+            # 长度不在这里另立口径：键/类别上限在 kernel.profile_taxonomy 一处定义，
+            # 对话预检与画像服务必须同一份（此前预检 2000 字会挡掉合法的长经历）。
+            limit = profile_taxonomy.value_limit(key)
+            items = value if isinstance(value, list) else [value]
+            if any(len(str(item)) > limit for item in items):
+                raise InvalidRequest(f"这条画像最多 {limit} 个字，请拆成一条读得完的事实")
+            attributes = payload.get("attributes") or {}
+            if not isinstance(attributes, dict):
+                raise InvalidRequest("画像属性无效")
+            # 预检与画像服务共用同一份词表校验：取值形状、条数、属性都在这里先拒，
+            # 不把错误留到事务里变成“结果未知”。
+            entry_type = profile_taxonomy.entry_type_of(key)
+            profile_taxonomy.normalize_value(key, value, entry_type)
+            profile_taxonomy.normalize_attributes(entry_type, attributes)
+            valid_from = profile_time(payload, "valid_from")
+            valid_to = profile_time(payload, "valid_to")
+            event_at = profile_time(payload, "event_at")
+            if valid_from is not None and valid_to is not None and valid_from > valid_to:
+                raise InvalidRequest("有效范围的开始时间不能晚于结束时间")
             if not args.evidence or args.evidence not in self.request.message:
                 raise InvalidRequest("画像更新必须引用本轮用户的明确自述")
             if isinstance(value, str) and key in {"major", "school", "study_year", "student_name", "degree_level"} and value not in args.evidence:
                 raise InvalidRequest("身份类画像须使用原话中的肯定值，不将否定概括成新身份")
-            state = await self.o._student_state.get(user)
-            if not state.get("preferences", {}).get("automatic_memory", True) and args.authorization != "explicit":
-                raise InvalidRequest("自动记忆已关闭")
-            if state.get("conversation_settings", {}).get(self.request.task_id, {}).get("temporary") and args.authorization != "explicit":
-                raise InvalidRequest("临时会话不自动写入画像")
-            if key in state.get("conversation_forgotten_keys", []) and args.authorization != "explicit":
-                raise InvalidRequest("该记忆已删除，只有用户明确要求才能重新保存")
             if args.authorization == "automatic":
+                # 所有自动写入前统一读服务端持久化策略（账号/会话/内容拒绝/只保存一条），
+                # 不靠提示词或最近几条消息维持限制。
+                allowed, reason = await MemoryPolicyService(self.o._student_state).check_auto_write(
+                    user,
+                    self.request.task_id,
+                    key,
+                    fingerprint=digest({"user_id": user, "message": self.request.message}),
+                )
+                if not allowed:
+                    raise InvalidRequest(reason)
                 if key in {"courses", "scores"}:
                     raise InvalidRequest("课表和成绩需单独导入或用户明确保存；咨询某门课不等于已提供课表")
                 current = {f.key: f for f in await self.o._profiles.get_fields(user)}
@@ -396,7 +437,16 @@ class DialogueRuntime:
                     raise InvalidRequest("新陈述不能直接覆盖已有事实，需要明确更正或向用户核对")
                 if payload.get("assertion_type") not in {"affirmative_self_statement", "explicit_correction"}:
                     raise InvalidRequest("只有肯定本人自述或明确更正可自动记录")
-            return {"key": key, "value": value, "label": next((spec.label for spec in self.o._profile_vocabulary() if spec.key == key), key)}
+            save_scope = str(payload.get("save_scope") or "")
+            if save_scope not in {"", "single"}:
+                raise InvalidRequest("保存范围无效")
+            if save_scope == "single" and args.authorization != "explicit":
+                raise InvalidRequest("“只保存这一条”需要你明确要求保存这一条")
+            # 原话引用：把这一轮真实用户消息的身份写进记录，而不是只留一段可被改写的文字。
+            origin_ref = f"conversation:{self.request.task_id}:{self.request.client_msg_id}"
+            return {"key": key, "value": value, "label": next((spec.label for spec in self.o._profile_vocabulary() if spec.key == key), key),
+                    "attributes": attributes, "origin_ref": origin_ref, "save_scope": save_scope,
+                    "valid_from": valid_from, "valid_to": valid_to, "event_at": event_at}
         if args.operation == "task.set_done":
             plan = await self.o._assets.get_action_plan(user)
             found = [t for p in (plan.phases if plan else []) for t in p.tasks if t.id == payload.get("task_id")]
@@ -571,6 +621,9 @@ class DialogueRuntime:
             await self.ledger.put_action(user, self.request.task_id, target)
             return {"restored_action": target["id"]}
         if operation == "profile.update":
+            payload = dict(payload)
+            save_scope = str(payload.pop("save_scope", "") or "")
+            policy = MemoryPolicyService(self.o._student_state)
             old = {f.key: f for f in await self.o._profiles.get_fields(user)}
             if action["authorization"] == "automatic" and payload["key"] in old:
                 if old[payload["key"]].source.value in {"user_edit", "record"}:
@@ -582,10 +635,16 @@ class DialogueRuntime:
                     state["conversation_forgotten_keys"] = [k for k in state.get("conversation_forgotten_keys", []) if k != payload["key"]]
                     return state
                 await self.o._student_state.update(user, restore)
+                if save_scope == "single":
+                    # “只保存这一条”：只放行这一条，不恢复其他自动记录。
+                    await policy.grant_single(user, self.request.task_id, payload["key"])
                 return result
-            return await self.o._profiles.update_field(user, **payload, confidence=0.9,
+            result = await self.o._profiles.update_field(user, **payload, confidence=0.9,
                 source="conversation", evidence=[action["evidence"]], check_version=True,
                 expected_updated_at=field_stamp(action, payload["key"]))
+            # 一次单条授权只用于一次自动写入；其他自动记录仍保持关闭。
+            await policy.consume_single(user, self.request.task_id, payload["key"])
+            return result
         if operation == "task.set_done":
             writer = getattr(self.o, "task_writer", None)
             if writer is not None:
@@ -599,6 +658,11 @@ class DialogueRuntime:
             # Existing profile service owns actual field deletion and derived invalidation.
             await self.o._profiles.drop_field(user, payload["key"], check_version=True,
                 expected_updated_at=field_stamp(action, payload["key"]))
+            # 删除一项记忆后，本会话基于它产生的「系统理解」也不能继续展示。
+            try:
+                await self.o._profiles.replace_session_clues(user, self.request.task_id, [])
+            except Exception:  # noqa: BLE001 - 字段已删除，线索收尾失败不阻断回执
+                log.warning("删除记忆后清理待验证线索失败", exc_info=True)
             def forget(state):
                 state["conversation_memory_reset_at"] = utcnow()
                 state["conversation_forgotten_keys"] = sorted(set(state.get("conversation_forgotten_keys", [])) | {payload["key"]})
@@ -811,6 +875,23 @@ class DialogueRuntime:
                 await self.ledger.change(request.user_id, request.task_id, lambda data: data.update(
                     exploration={"working": self.pending_exploration, "privacy_stamp": self.exploration_stamp,
                                  "updated_at": utcnow(), "trusted_instruction": False}))
+                # 设计第 3.2 节：AI 的有限理解单独保存为「待验证线索」，与事实字段分开；
+                # 同一会话整体替换，反复分析不会让同一处理解看起来像被多次验证过。
+                try:
+                    hypotheses = [str(item).strip() for item in (self.pending_exploration.get("hypotheses") or []) if str(item).strip()]
+                    quotes = [str(item.get("quote", "")).strip() for item in (self.pending_exploration.get("statements") or []) if str(item.get("quote", "")).strip()]
+                    clues = [
+                        ProfileClue(
+                            id="", user_id=request.user_id, session_id=request.task_id,
+                            text=text[:240], evidence=quotes[:12], field_keys=[],
+                            source=ProfileSource.ASSESSMENT,
+                            created_at=utcnow(), updated_at=utcnow(),
+                        )
+                        for text in hypotheses
+                    ]
+                    await self.o._profiles.replace_session_clues(request.user_id, request.task_id, clues)
+                except Exception:  # noqa: BLE001 - 线索写失败不该把本轮回复变成失败
+                    log.warning("待验证线索保存失败；本轮对话仍保留工作快照", exc_info=True)
         if self.progress_writes:
             await asyncio.gather(*self.progress_writes)
         await self.ledger.put_run(request.user_id, request.task_id, request.client_msg_id,

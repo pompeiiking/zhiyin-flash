@@ -8,6 +8,7 @@ from typing import Optional, Sequence
 
 from zhiyin_kernel.blackboard import (
     Profile,
+    ProfileClue,
     ProfileField,
     ProfileGap,
 )
@@ -51,3 +52,33 @@ class ProfileRepository(ABC):
     @abstractmethod
     async def replace_gaps(self, user_id: str, gaps: list[ProfileGap]) -> None:
         """整体替换缺口清单。"""
+
+    @abstractmethod
+    async def list_clues(self, user_id: str) -> list[ProfileClue]:
+        """读取待验证线索（《个人画像设计-2026-10-20》第 3.2 节）。
+
+        线索与事实字段分开存：它是「AI 对信息的有限理解」，界面要能说清
+        「这是系统的理解，不是你说过的事实」，用户也可以否认它。
+        """
+
+    @abstractmethod
+    async def replace_session_clues(
+        self, user_id: str, session_id: str, clues: list[ProfileClue]
+    ) -> None:
+        """按会话整体替换线索。
+
+        为什么是「整体替换」而不是逐条 upsert：线索来自一次分析，重跑一次分析
+        应该得到那一次的结果，而不是把新旧线索堆在一起。逐条追加的后果是同一句
+        理解重复出现，看起来像「被反复验证过」—— 设计第 3.2 节明确禁止这种
+        用重复次数把推测变成结论的做法。
+        """
+
+    @abstractmethod
+    async def invalidate_clues(
+        self, user_id: str, field_keys: list[str], reason: str
+    ) -> int:
+        """把依据这些画像字段的线索标记为失效，返回受影响条数。
+
+        依据被更正、撤回或删除后，相关线索失效或等待重新分析（设计第 7 节）。
+        只改「待验证」的线索：已失效的不重复改写，已确认的留给重新分析流程。
+        """

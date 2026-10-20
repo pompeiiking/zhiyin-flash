@@ -91,8 +91,52 @@ export function useProfileCorrection(deps: ProfileCorrectionDeps) {
     await save()
   }
 
+  /* ------------------------------------------------------------------ *
+   * 删除一条画像：用户可以查看、更正，也可以删除（设计第 7/9 节）。
+   * 删除后这条不再作为咨询依据；相关判断由服务端标记待核对。
+   * ------------------------------------------------------------------ */
+
+  const deleting = ref<FieldRow | null>(null)
+  const deleteBusy = ref(false)
+  const deleteError = ref('')
+
+  function askDelete(row: FieldRow) {
+    deleting.value = row
+    deleteError.value = ''
+  }
+
+  function closeDelete() {
+    if (!deleteBusy.value) deleting.value = null
+  }
+
+  async function confirmDelete() {
+    if (!deleting.value) return
+    if (!live.value) {
+      deleteError.value = '演示数据不支持删除，请连接真实档案后再试。'
+      return
+    }
+    const field = deleting.value
+    deleteBusy.value = true
+    deleteError.value = ''
+    try {
+      const version = livePanel.value?.fields?.find((item) => item.key === field.key)?.updated_at ?? null
+      await backendClient.deleteProfileField(field.key, version)
+      const workspace = JSON.parse(JSON.stringify(backendDemo.state.liveWorkspace))
+      if (workspace?.profile_panel?.fields) {
+        workspace.profile_panel.fields = workspace.profile_panel.fields.filter((item: ProfileFieldView) => item.key !== field.key)
+      }
+      if (workspace) backendDemo.setWorkspace(workspace)
+      deleting.value = null
+    } catch (error) {
+      deleteError.value = error instanceof Error ? error.message : '删除没有成功，这条记录仍然保留，请重试。'
+    } finally {
+      deleteBusy.value = false
+    }
+  }
+
   return {
     correction, value, correctionError, correctionVersion, correctionLatest,
     correctionConflictRows, inspectField, edit, save, confirmCorrectionConflict,
+    deleting, deleteBusy, deleteError, askDelete, closeDelete, confirmDelete,
   }
 }

@@ -17,6 +17,7 @@ from zhiyin_kernel.enums import (
     BehaviorEventType,
     LoopStage,
     PathFocus,
+    ProfileClueStatus,
     ProfileEntryStatus,
     ProfileEntryType,
     ProfileSource,
@@ -91,6 +92,40 @@ class ProfileGap(BaseModel):
     suggested_next_action: str = Field(description="建议的下一步采集动作")
 
 
+class ProfileClue(BaseModel):
+    """一条待验证线索（《个人画像设计-2026-10-20》第 3.2、7 节）。
+
+    它**不是**画像事实：AI 对信息的有限理解单独保存，必须关联依据、标明适用范围。
+    例如「喜欢弄清 bug 的原因」是兴趣体验，「可能关注机制与原因」是待验证线索，
+    「适合算法工程师」则不能由此成立 —— 后者不是线索，是无依据的结论。
+
+    为什么要有 `field_keys`：依据被更正、撤回或删除后，相关线索要能失效或等待
+    重新分析。服务端按「这次改到的字段键 ∩ 线索声明的依据字段」判定，而不是靠
+    重新读一遍对话去猜。
+
+    `evidence` 与 `origin_ref` 分工同 `ProfileField`：evidence 是可回看的依据列表，
+    这里不再额外存一份原话正文（原话在会话轮次里）。
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str = Field(description="线索标识（服务端生成）")
+    user_id: str = Field(description="归属账号：线索也不跨账号可见")
+    session_id: str = Field(default="", description="产生这条线索的会话（同一会话整体替换）")
+    text: str = Field(description="线索正文：一句「可能……」的有限理解，不是结论")
+    evidence: list[str] = Field(default_factory=list, description="依据引用（原话/资料片段）")
+    field_keys: list[str] = Field(
+        default_factory=list, description="这条理解依据哪些画像字段；这些字段变更时线索失效"
+    )
+    source: ProfileSource = Field(default=ProfileSource.ASSESSMENT, description="线索从哪儿来")
+    status: ProfileClueStatus = Field(
+        default=ProfileClueStatus.PROPOSED, description="待验证/已失效/已确认"
+    )
+    invalidated_reason: str = Field(default="", description="为什么失效：给用户看的一句话")
+    created_at: datetime = Field(description="产生时间")
+    updated_at: datetime = Field(description="最后变更时间")
+
+
 class Profile(BaseModel):
     """个人画像（活状态）。不因首次建档结束而冻结。"""
 
@@ -102,6 +137,8 @@ class Profile(BaseModel):
     updated_at: datetime
     fields: list[ProfileField] = Field(default_factory=list)
     gaps: list[ProfileGap] = Field(default_factory=list)
+    #: 待验证线索：与 fields 分开展示，界面要能说清「这是系统的理解，不是事实」。
+    clues: list[ProfileClue] = Field(default_factory=list)
 
 
 class BehaviorLog(BaseModel):

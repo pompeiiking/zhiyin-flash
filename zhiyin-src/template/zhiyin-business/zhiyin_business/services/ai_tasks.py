@@ -46,9 +46,9 @@ from zhiyin_data_sdk.gateways.chsi import (
 )
 from zhiyin_data_sdk.errors import MissingConfigError
 from zhiyin_data_sdk.repositories import AiTaskResultRepository
-from zhiyin_kernel import dynamic_config
+from zhiyin_kernel import dynamic_config, profile_taxonomy
 from zhiyin_kernel.blackboard import Profile
-from zhiyin_kernel.enums import ProfileSource, ProfileVerification
+from zhiyin_kernel.enums import ProfilePurpose, ProfileSource, ProfileVerification
 from zhiyin_kernel.errors import ResourceNotFound
 from zhiyin_orchestration import AgentEngine, AgentRequest
 
@@ -140,6 +140,34 @@ _TASK_INPUTS: dict[str, tuple[str, ...]] = {
     "match.careers": ("profile_field_updated",),
 }
 
+# 任务 key → 读画像的用途（《个人画像设计-2026-10-20》第 8 节）。
+#
+# 每个消费方读的是**服务端算好的用途视图**，不再各自扫描整份画像：
+# 报告 / 方向匹配 / 维度解读按「方向推荐与比较」取兴趣、经历、能力、价值与有效条件；
+# 计划类只取已确认目标、能力依据、有效条件和学习背景；缺口追问与其余任务按普通交流取。
+# 没登记的任务一律按普通交流处理 —— 宁可多给一点上下文，也不让新任务静默读到
+# 一份“谁都说不清该不该读”的画像。
+_PROFILE_PURPOSE: dict[str, ProfilePurpose] = {
+    "brief.today": ProfilePurpose.CONVERSATION,
+    # 单条维度解读可以点开任意类别的记录（画像页每条都能展开），
+    # 用途过滤用在批量读取上；`_dimension` 自己只按记录状态拦冲突/过期/撤回。
+    "dim": ProfilePurpose.DIRECTION_RECOMMENDATION,
+    "portrait.analysis": ProfilePurpose.DIRECTION_RECOMMENDATION,
+    "academic.analysis": ProfilePurpose.CONVERSATION,
+    "day.advice": ProfilePurpose.PLANNING,
+    "gap": ProfilePurpose.CONVERSATION,
+    "report.summary": ProfilePurpose.DIRECTION_RECOMMENDATION,
+    "plan.timetable": ProfilePurpose.PLANNING,
+    "plan.todos": ProfilePurpose.PLANNING,
+    "match.careers": ProfilePurpose.DIRECTION_RECOMMENDATION,
+}
+
+
+def _purpose_for(key: str) -> ProfilePurpose:
+    """任务 key → 用途；没登记的任务按普通交流处理。"""
+    return _PROFILE_PURPOSE.get(key, ProfilePurpose.CONVERSATION)
+
+
 # 画像来源 → 给模型看的说法。模型要引用来源，但读不懂 `behavior_inference` 这种键。
 _SOURCE_TEXT: dict[str, str] = {
     "conversation": "对话",
@@ -154,6 +182,25 @@ _SOURCE_TEXT: dict[str, str] = {
 def _source_text(source: Any) -> str:
     value = getattr(source, "value", source)
     return _SOURCE_TEXT.get(str(value), str(value))
+
+
+def _verification_text(field: Any) -> str:
+    """一条记录的核实状态中文名；老数据没有核实状态列时按来源推导。"""
+    raw = getattr(field, "verification", None)
+    if raw is None:
+        raw = profile_taxonomy.verification_for(getattr(field, "source", None))
+    try:
+        return profile_taxonomy.VERIFICATION_LABELS[ProfileVerification(raw)]
+    except (ValueError, KeyError):
+        return profile_taxonomy.VERIFICATION_LABELS[ProfileVerification.PENDING]
+
+
+def _entry_type_text(field: Any) -> str:
+    """一条记录的内容类别中文名；老数据没有类别列时按字段键推导。"""
+    raw = getattr(field, "entry_type", None) or profile_taxonomy.entry_type_of(
+        str(getattr(field, "key", "") or "")
+    )
+    return profile_taxonomy.entry_type_label(raw)
 
 
 def _value_text(value: Any) -> str:
@@ -273,11 +320,17 @@ def _clean_claims(text: str, *, has_record: bool) -> str:
 
 
 def _source_audit_lines(profile: Optional[Profile]) -> list[str]:
-    """给模型看"资料从哪来、哪些核验过"——它才不会把来源写成官方记录。"""
+    """给模型看"资料从哪来、哪些核验过"——它才不会把来源写成官方记录。
+
+    只统计**可用**记录：冲突/过期/撤回的记录不再算作可引用来源，
+    否则模型会把一条已经撤回的资料继续当成依据引用。
+    """
     if profile is None:
         return []
     counts: dict[str, int] = {}
     for field in profile.fields:
+        if not profile_taxonomy.is_usable(field):
+            continue
         label = _source_text(field.source)
         counts[label] = counts.get(label, 0) + 1
     lines = [f"{label}：{count} 条" for label, count in counts.items()]
@@ -520,13 +573,20 @@ class AiTaskService:
         return "\n".join(lines)
 
     @staticmethod
-    def _profile_lines(profile: Optional[Profile]) -> list[str]:
+    def _profile_lines(profile: Optional[Profile], purpose: ProfilePurpose) -> list[str]:
+        """按用途把画像读成给模型看的短行。
+
+        只读服务端算好的用途视图（`records_for_purpose`）：冲突/过期/撤回的记录
+        不进来，与当前用途无关的类别也不进来。每行写类别、核实状态与键值，
+        **不写内部 confidence** —— “把握 0.87”既不是真实性也不是熟练度，
+        模型会把它当成一个可以引用的结论。
+        """
         if profile is None:
             return []
         return [
-            f"{f.key}：{_value_text(f.value)}（来源：{_source_text(f.source)}，把握：{f.confidence:.2f}，"
-            f"更新于 {f.updated_at.strftime('%m-%d')}）"
-            for f in profile.fields
+            f"{_entry_type_text(field)} · {_verification_text(field)} · "
+            f"{field.key}：{_value_text(field.value)}（更新于 {field.updated_at:%m-%d}）"
+            for field in profile_taxonomy.records_for_purpose(purpose, profile.fields)
         ]
 
     @staticmethod
@@ -814,7 +874,7 @@ class AiTaskService:
                           "标明验收、测试夹具的记录用于软件验证，不作为真实职业经历或职业推荐依据。"]),
             ("当前方向", [f"{item.name}（{'已选择' if item.selected else '未选择'}）：{item.target_desc}；风险：{item.main_risk}" for item in directions]),
             ("当前行动计划", [f"{phase.name}：{task.text}（{'已完成' if task.done else '待完成'}）" for phase in (plan.phases if plan else []) for task in phase.tasks]),
-            ("我已经知道的", self._profile_lines(profile)),
+            ("我已经知道的", self._profile_lines(profile, _purpose_for("brief.today"))),
             ("还缺的", self._gap_lines(profile)),
             (
                 "他最近做过的事",
@@ -854,10 +914,10 @@ class AiTaskService:
         gaps = list(profile.gaps) if profile else []
         notes = await self._note_texts(user_id)
 
-        # 依据：一条总账 + 按把握从高到低最实的几条字段。
-        # 为什么按把握排：分析里最硬的那几句就是从这里来的，点开抽屉时
-        # 用户先看到的应该是"他真的有据"的那几条。
-        ranked = sorted(fields, key=lambda f: f.confidence, reverse=True)
+        # 依据：一条总账 + 最近仍可用的几条字段。
+        # 不再按内部置信度排序，也不把“把握 0.xx”写进给用户看的依据文案：
+        # 来源与核实状态分开说明（设计第 4/9 节）。
+        ranked = sorted(fields, key=lambda f: f.updated_at, reverse=True)
         citations = [
             Citation(
                 source="你的画像",
@@ -868,7 +928,7 @@ class AiTaskService:
         citations += [
             Citation(
                 source=f"画像 · {f.label or f.key}",
-                detail=f"{_value_text(f.value)}（{_source_text(f.source)}，把握 {f.confidence:.2f}）",
+                detail=f"{_value_text(f.value)}（{_source_text(f.source)}）",
                 confidence=f.confidence,
                 at=f.updated_at.strftime("%Y-%m-%d"),
             )
@@ -884,7 +944,7 @@ class AiTaskService:
             )
 
         context = self._context(
-            ("我已经知道的", self._profile_lines(profile)),
+            ("我已经知道的", self._profile_lines(profile, _purpose_for("portrait.analysis"))),
             ("还缺的", self._gap_lines(profile)),
             ("他自己写下的", notes),
             ("资料从哪来（引用来源时必须照这里）", _source_audit_lines(profile)),
@@ -1070,7 +1130,7 @@ class AiTaskService:
             ("这一天到期、还没做完的事", due_today),
             ("已经逾期的事（到期日早于这一天）", due_overdue),
             ("之后到期（不是这一天，不要说成今天到期）", due_later),
-            ("我已经知道的", self._profile_lines(profile)),
+            ("我已经知道的", self._profile_lines(profile, _purpose_for("day.advice"))),
             ("还缺的", self._gap_lines(profile)),
         )
         return await self._generate(
@@ -1082,7 +1142,13 @@ class AiTaskService:
         )
 
     async def _dimension(self, user_id: str, profile: Optional[Profile], dim_id: str, *, by: str) -> AiResultEnvelope:
-        fields = {f.key: f for f in (profile.fields if profile else [])}
+        # 单条维度可以点开任意类别的记录，类别不受用途视图限制；但冲突/过期/撤回的
+        # 记录对任何读取方都不可用，所以这里至少按记录状态拦一道。
+        fields = {
+            f.key: f
+            for f in (profile.fields if profile else [])
+            if profile_taxonomy.is_usable(f)
+        }
         field = fields.get(dim_id)
         if field is None:
             raise ResourceNotFound(f"画像中没有维度：{dim_id}")
@@ -1108,8 +1174,9 @@ class AiTaskService:
                 [
                     f"字段：{dim_id}",
                     f"值：{_value_text(field.value)}",
-                    f"把握程度：{score:.2f}",
-                    "把握程度仅指这条记录的可信度，不是能力评分或岗位匹配度；未提供测评分数、岗位基准或历史走势，score、bench、delta 必须为 null，trend 为空数组。",
+                    f"类别：{_entry_type_text(field)}",
+                    f"核实状态：{_verification_text(field)}",
+                    "核实状态只说明这条记录被确认到什么程度，不是能力评分或岗位匹配度；未提供测评分数、岗位基准或历史走势，score、bench、delta 必须为 null，trend 为空数组。",
                     f"来源：{_source_text(field.source)}",
                     f"更新于：{field.updated_at.strftime('%Y-%m-%d')}",
                 ],
@@ -1139,7 +1206,7 @@ class AiTaskService:
                     f"建议的采集动作：{gap.suggested_next_action}",
                 ],
             ),
-            ("我已经知道的（不要再问）", self._profile_lines(profile)),
+            ("我已经知道的（不要再问）", self._profile_lines(profile, _purpose_for("gap"))),
         )
         return await self._generate(
             user_id,
@@ -1189,7 +1256,7 @@ class AiTaskService:
                     confidence=0.9,
                 )
             )
-        blocks.append(("我已经知道的", self._profile_lines(profile)))
+        blocks.append(("我已经知道的", self._profile_lines(profile, _purpose_for("report.summary"))))
         blocks.append(("还缺的", self._gap_lines(profile)))
 
         notes = await self._note_texts(user_id)
@@ -1469,7 +1536,7 @@ class AiTaskService:
             ]
             context = self._context(
                 ("还缺的（按这个排优先级）", self._gap_lines(profile)),
-                ("我已经知道的", self._profile_lines(profile)),
+                ("我已经知道的", self._profile_lines(profile, _purpose_for("plan.todos"))),
                 (
                     "他最近做过的事",
                     [f"{b.occurred_at.strftime('%m-%d')} {b.event_type.value}" for b in recent],
@@ -1541,7 +1608,7 @@ class AiTaskService:
                 [f"{w['day']} {w['slot']}（{w['why']}）" for w in windows],
             ),
             ("还缺的", self._gap_lines(profile)),
-            ("已经知道的", self._profile_lines(profile)),
+            ("已经知道的", self._profile_lines(profile, _purpose_for("plan.timetable"))),
         )
         envelope = await self._generate(
             user_id,
@@ -1597,7 +1664,7 @@ class AiTaskService:
             ),
         ]
         context = self._context(
-            ("我已经知道的", self._profile_lines(profile)),
+            ("我已经知道的", self._profile_lines(profile, _purpose_for("match.careers"))),
             (
                 "他修过的课",
                 [

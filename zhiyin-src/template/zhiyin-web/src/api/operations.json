@@ -431,5 +431,15 @@
   "cancelConversationRun": {
     "method": "POST",
     "path": "/app/sessions/{task_id}/runs/{run_id}/cancel"
+  },
+  "deleteProfileField": {
+    "method": "DELETE",
+    "path": "/app/profile/fields/{key}",
+    "surface": "/profile"
+  },
+  "denyProfileClue": {
+    "method": "DELETE",
+    "path": "/app/profile/clues/{clue_id}",
+    "surface": "/profile"
   }
 }

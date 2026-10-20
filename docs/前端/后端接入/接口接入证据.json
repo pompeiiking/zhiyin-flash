@@ -991,5 +991,23 @@
       "zhiyin-src/template/zhiyin-web/src/api/validate-ai.ts"
     ],
     "verification": "真实测试账号导入成绩后，经前端和源码测试后端验证。"
+  },
+  "DELETE /api/v1/app/profile/fields/{key}": {
+    "status": "前端已连接",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/api/backend-client.ts",
+      "zhiyin-src/template/zhiyin-web/src/lib/use-profile-correction.ts",
+      "zhiyin-src/template/zhiyin-web/src/views/StudentView.vue"
+    ],
+    "verification": "代码可达；前端删除入口已接入，本轮未做真实 HTTP 联调。"
+  },
+  "DELETE /api/v1/app/profile/clues/{clue_id}": {
+    "status": "前端已连接",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/api/backend-client.ts",
+      "zhiyin-src/template/zhiyin-web/src/lib/use-profile-fields.ts",
+      "zhiyin-src/template/zhiyin-web/src/views/StudentView.vue"
+    ],
+    "verification": "代码可达；画像页“不是这样”入口已接入，本轮未做真实 HTTP 联调。"
   }
 }

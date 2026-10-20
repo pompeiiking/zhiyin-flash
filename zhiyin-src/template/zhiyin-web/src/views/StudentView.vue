@@ -92,7 +92,7 @@ const fields = useProfileFields({
   progress: workspace.progress,
   getFieldDeps: () => conclusions.fieldDeps.value,
 })
-const { fieldValue, valueParts, known, statusLine, confBands, coverageNote, groups } = fields
+const { fieldValue, valueParts, known, statusLine, confBands, coverageNote, groups, clues, denyClue } = fields
 
 const conclusions = useProfileConclusions({
   live: workspace.live,
@@ -120,7 +120,7 @@ const correctionState = useProfileCorrection({
   fieldValue: fields.fieldValue,
   inspect: (key, label) => { insights.value?.inspect(key, label) },
 })
-const { correction, value, correctionError, correctionLatest, correctionConflictRows, inspectField, edit, save, confirmCorrectionConflict } = correctionState
+const { correction, value, correctionError, correctionLatest, correctionConflictRows, inspectField, edit, save, confirmCorrectionConflict, deleting, deleteBusy, deleteError, askDelete, closeDelete, confirmDelete } = correctionState
 
 function changeTab(tab: 'facts' | 'judgments' | 'gaps' | 'sources') { profileTab.value = tab }
 
@@ -231,6 +231,23 @@ onMounted(()=>{ void loadWorkspace() })
       <!-- 全量资料按主题展开，不设置搜索、范围或组织方式筛选。 -->
       <LayoutGroup>
         <motion.div class="p7-groups" :layout="true" :layout-dependency="0" :transition="{ duration: 0.32, ease: [0.23, 1, 0.32, 1] }">
+          <!-- 系统理解与事实分开：线索必须能单独展示、单独否认。 -->
+          <section v-if="clues.length" class="p7-group p7-clues" aria-labelledby="p7-clues-title">
+            <header class="p7-group__head">
+              <h3 id="p7-clues-title">系统基于证据的理解</h3>
+              <span class="p7-group__hint">等待核对的线索，不是事实结论</span>
+              <span class="p7-group__count">{{ clues.length }} 条</span>
+            </header>
+            <ul class="p7-rows">
+              <li v-for="clue in clues" :key="clue.id" class="p7-row p7-clue">
+                <div class="p7-clue__body">
+                  <p class="p7-clue__text">{{ clue.text }}</p>
+                  <p v-if="clue.evidence.length" class="p7-clue__evidence">依据：{{ clue.evidence.slice(0, 2).join('；').slice(0, 180) }}</p>
+                </div>
+                <button class="ws-text-button" type="button" @click="denyClue(clue.id)">不是这样</button>
+              </li>
+            </ul>
+          </section>
           <motion.section
             v-for="group in groups.filter(group=>group.rows.length)"
             :key="group.key"
@@ -291,6 +308,7 @@ onMounted(()=>{ void loadWorkspace() })
                     <div class="p7-row__actions">
                       <button class="ws-text-button" type="button" @click="inspectField(row)">深入了解这项信息</button>
                       <button class="ws-text-button" type="button" @click="edit(row)">更正信息<UiIcon name="arrow" :size="14" /></button>
+                      <button v-if="live" class="ws-text-button" type="button" @click="askDelete(row)">删除这条</button>
                     </div>
                     <template v-if="row.evidence.length">
                       <p class="p7-facts__title">原始证据</p>
@@ -563,6 +581,14 @@ onMounted(()=>{ void loadWorkspace() })
         </div>
       </form>
     </InfoSheet>
+    <InfoSheet shape="dialog" :open="deleting !== null" title="删除这条画像？" @close="closeDelete">
+      <p>删除后这条不再作为咨询依据；依赖它的判断会标记待核对。历史聊天记录需要在会话里另行删除。</p>
+      <p v-if="deleteError" class="ws-field-error" role="alert">{{ deleteError }}</p>
+      <div class="ws-inline-actions">
+        <button class="btn btn--primary" type="button" :disabled="deleteBusy" @click="confirmDelete">{{ deleteBusy ? '正在删除…' : '确认删除' }}</button>
+        <button class="btn" type="button" :disabled="deleteBusy" @click="closeDelete">取消</button>
+      </div>
+    </InfoSheet>
   </div>
 </template>
 
@@ -570,6 +596,11 @@ onMounted(()=>{ void loadWorkspace() })
 .profile-fact-value{font-size:15px;line-height:1.75;white-space:pre-wrap;overflow-wrap:anywhere}
 .p7-row__type{font-size:var(--fs-12);color:var(--c-text-3);white-space:nowrap}
 .profile-fact-verification{font-size:var(--fs-12);color:var(--c-text-2)}
+.p7-clue{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-4)}
+.p7-clue__body{min-width:0}
+.p7-clue__text{margin:0;font-size:15px;line-height:1.7;color:var(--c-text-1)}
+.p7-clue__evidence{margin-top:6px;font-size:12px;color:var(--c-text-3)}
+.p7-clue .ws-text-button{flex:none;min-height:44px}
 .profile-association-note p{font-size:13px;color:var(--c-text-3);margin-top:8px}@media(max-width:600px){.profile-identity__coverage{display:none}}
 
 /* ═══════════════════════════════════════════════════════════════════════════

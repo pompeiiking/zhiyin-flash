@@ -15,13 +15,14 @@ from zhiyin_business.ports.blackboard import ProfileService
 from zhiyin_data_sdk.repositories import ProfileRepository
 from zhiyin_kernel import dynamic_config
 from zhiyin_kernel import profile_taxonomy
-from zhiyin_kernel.blackboard import Profile, ProfileField, ProfileGap
+from zhiyin_kernel.blackboard import Profile, ProfileClue, ProfileField, ProfileGap
 from zhiyin_kernel.enums import (
+    ProfileClueStatus,
     ProfileEntryStatus,
     ProfileSource,
     ProfileVerification,
 )
-from zhiyin_kernel.errors import DuplicateResource, InvalidRequest
+from zhiyin_kernel.errors import DuplicateResource, InvalidRequest, ResourceNotFound
 from zhiyin_orchestration import DomainEvent, EventBus
 
 logger = logging.getLogger(__name__)
@@ -41,6 +42,12 @@ PROFILE_FIELD_CONFLICT_MESSAGE = "这个字段已在其他页面更新，请核�
 #: 既有调用方与测试引用，避免它们被迫跟着改一遍。
 MAX_FIELD_VALUE_CHARS = 40
 
+#: 线索失效原因：给用户看的一句话，说明「这条理解为啥不算数了」。
+#: 设计第 7 节：用户更正/删除后，相关理解要标记待核对，不能继续当结论用。
+PROFILE_CLUE_INVALIDATED_BY_CORRECTION = "本人更正了这条理解所依据的画像信息"
+PROFILE_CLUE_INVALIDATED_BY_DELETION = "本人删除了这条理解所依据的画像信息"
+PROFILE_CLUE_DENIED_REASON = "本人否认了这条理解"
+
 
 class DefaultProfileService(ProfileService):
     IMPLEMENTATION_STATUS = "wired"
@@ -59,6 +66,110 @@ class DefaultProfileService(ProfileService):
 
     async def get_gaps(self, user_id: str) -> list[ProfileGap]:
         return await self._profiles.list_gaps(user_id)
+
+    # ---------- 待验证线索（《个人画像设计-2026-10-20》第 3.2、7、9 节） ----------
+
+    async def get_clues(self, user_id: str) -> list[ProfileClue]:
+        """读取待验证线索。
+
+        与 `get_fields` 分开是因为它们回答的是两个问题：字段答"他提供了什么"，
+        线索答"系统理解为可能怎样" —— 后者必须能单独展示、单独否认。
+        """
+        return await self._profiles.list_clues(user_id)
+
+    async def replace_session_clues(
+        self, user_id: str, session_id: str, clues: list[ProfileClue]
+    ) -> list[ProfileClue]:
+        """按会话整体替换线索，返回落库后的那一批。
+
+        同一 session 是**整体替换**，不是追加：重复跑一次分析不该让同一句理解
+        出现两次 —— 那看起来像「被反复验证过」，而设计第 3.2 节明确禁止用重复
+        次数把推测变成结论。
+
+        标识由服务端定：只有「本来就属于这个会话」的 id 才会被沿用（否认、重排
+        这类操作要靠它定位）；外面带进来的 id 一律重新生成，避免一条线索被另一次
+        写入顶掉或跨账号串用。
+        """
+        if not user_id:
+            raise InvalidRequest("缺少账号，无法写线索。")
+        current = await self._profiles.list_clues(user_id)
+        existing = {item.id: item for item in current if item.session_id == session_id}
+        now = datetime.now(timezone.utc)
+        used: set[str] = set()
+        stored: list[ProfileClue] = []
+        for clue in clues:
+            clue_id = clue.id if clue.id in existing else f"clue_{uuid4().hex[:12]}"
+            while clue_id in used:
+                clue_id = f"clue_{uuid4().hex[:12]}"
+            used.add(clue_id)
+            stored.append(
+                clue.model_copy(
+                    update={
+                        "id": clue_id,
+                        "user_id": user_id,
+                        "session_id": session_id,
+                        "created_at": existing[clue_id].created_at
+                        if clue_id in existing
+                        else clue.created_at,
+                        "updated_at": now,
+                    }
+                )
+            )
+        await self._profiles.replace_session_clues(user_id, session_id, stored)
+        return stored
+
+    async def deny_clue(self, user_id: str, clue_id: str) -> ProfileClue:
+        """用户否认一条「系统理解」（设计第 9 节）。
+
+        否认不等于删除字段：字段是他说过的事实，线索是系统的推测 —— 他否认的是
+        后者。失效的线索保留在原位（带原因），这样同类理解不会被悄悄重新提出，
+        界面上也能如实说「你否认过这条」。
+
+        `user_id` 必须参与定位：只按 clue_id 查会让任何知道 id 的人都能否认
+        别人的画像（验收 P23 的账号隔离）。
+        """
+        target_id = (clue_id or "").strip()
+        if not target_id:
+            raise InvalidRequest("缺少要否认的那条理解。")
+        clues = await self._profiles.list_clues(user_id)
+        target = next((item for item in clues if item.id == target_id), None)
+        if target is None:
+            raise ResourceNotFound("这条理解已经不在了，刷新后再看。")
+        if target.status is ProfileClueStatus.INVALID:
+            # 幂等：重复否认不报错，也不改写第一次的原因。
+            return target
+        denied = target.model_copy(
+            update={
+                "status": ProfileClueStatus.INVALID,
+                "invalidated_reason": PROFILE_CLUE_DENIED_REASON,
+            }
+        )
+        session_clues = [
+            denied if item.id == target.id else item
+            for item in clues
+            if item.session_id == target.session_id
+        ]
+        saved = await self.replace_session_clues(user_id, target.session_id, session_clues)
+        return next(item for item in saved if item.id == target.id)
+
+    async def _invalidate_clues_for(
+        self, user_id: str, keys: list[str], reason: str
+    ) -> None:
+        """依据这些字段的线索标记失效；失败只记日志，不阻断主写入。
+
+        为什么不能抛：字段已经写进去了（或删掉了），此时报错只会让用户看到
+        「没改成」而库里其实已经是新状态 —— 那是最难查的一类错。线索收尾失败
+        进日志，下一次依赖变化的重新分析仍会把它带出来。
+        """
+        try:
+            await self._profiles.invalidate_clues(user_id, list(keys), reason)
+        except Exception:  # noqa: BLE001 - 收尾失败不影响主写入
+            logger.warning(
+                "画像已写入，但相关待验证线索没失效（user=%s keys=%s）",
+                user_id,
+                keys,
+                exc_info=True,
+            )
 
     @atomic_repository("_profiles")
     async def update_field(
@@ -173,7 +284,11 @@ class DefaultProfileService(ProfileService):
 
     @atomic_repository("_profiles")
     async def drop_field(self, user_id: str, key: str, *, expected_updated_at: datetime | None = None, check_version: bool = False) -> None:
-        """删掉一个画像字段（撤销授权时用）。"""
+        """删掉一个画像字段（撤销授权时用）。
+
+        删完把依据这一格的待验证线索一起标记失效（设计第 7 节）：依据没了，
+        建立在其上的理解不能继续当有效结论展示。
+        """
         if check_version:
             await self._profiles.delete_field(user_id, key, expected_updated_at=expected_updated_at, check_version=True)
         else:
@@ -181,6 +296,7 @@ class DefaultProfileService(ProfileService):
         await self._event_bus.publish(DomainEvent(event_id=f"profile-{uuid4().hex[:12]}",
             event_type=PROFILE_FIELD_UPDATED, occurred_at=datetime.now(timezone.utc),
             payload={"user_id": user_id, "field_key": key, "deleted": True, "is_new": False}))
+        await self._invalidate_clues_for(user_id, [key], PROFILE_CLUE_INVALIDATED_BY_DELETION)
 
     def _registered_fields(self) -> dict[str, str]:
         """登记过的画像字段：键 → 中文名。
@@ -300,6 +416,10 @@ class DefaultProfileService(ProfileService):
             # 与资产/缺口落库同一条口径：值写完之后的收尾失败进日志，不打断这一次写入 ——
             # 抛出去会让用户看到"没改成"，而库里其实已经是新值（那是最难查的一类错）。
             logger.warning("更正已写入，但缺口清单没跟着更新（key=%s）", key, exc_info=True)
+        # 更正之后，依据这一格的「系统理解」不再成立（设计第 7 节：相关理解标记待核对）。
+        await self._invalidate_clues_for(
+            user_id, [key], PROFILE_CLUE_INVALIDATED_BY_CORRECTION
+        )
         return saved
 
     async def _close_gap(self, user_id: str, key: str) -> None:
@@ -321,4 +441,11 @@ class DefaultProfileService(ProfileService):
         return sum(field.confidence for field in fields) / len(fields)
 
 
-__all__ = ["DefaultProfileService", "MAX_FIELD_VALUE_CHARS", "PROFILE_FIELD_CONFLICT_MESSAGE"]
+__all__ = [
+    "DefaultProfileService",
+    "MAX_FIELD_VALUE_CHARS",
+    "PROFILE_CLUE_DENIED_REASON",
+    "PROFILE_CLUE_INVALIDATED_BY_CORRECTION",
+    "PROFILE_CLUE_INVALIDATED_BY_DELETION",
+    "PROFILE_FIELD_CONFLICT_MESSAGE",
+]

@@ -437,6 +437,16 @@ export interface paths {
     /** Save Preferences */
     put: operations["save_preferences_api_v1_app_preferences_put"];
   };
+  "/api/v1/app/profile/clues/{clue_id}": {
+    /**
+     * Deny Profile Clue
+     * @description 否认一条「系统的理解」（待验证线索）。
+     *
+     * 线索不是用户提供的事实，所以不能说"删除" —— 他否认的是这条理解。
+     * 回执只回 id：界面据此把那一张卡片改成"已否认"，不需要重读整份画像。
+     */
+    delete: operations["deny_profile_clue_api_v1_app_profile_clues__clue_id__delete"];
+  };
   "/api/v1/app/profile/fields/{key}": {
     /**
      * Update Profile Field
@@ -446,6 +456,15 @@ export interface paths {
      * 界面据此做乐观更新与回滚，刷新之后看到的是同一份事实。
      */
     post: operations["update_profile_field_api_v1_app_profile_fields__key__post"];
+    /**
+     * Delete Profile Field
+     * @description 删除一条画像信息（用户自己的控制入口）。
+     *
+     * `expected_updated_at` 可选：带了就按"我看到的是哪一版"校验，版本对不上返回
+     * 冲突（409 / 1003），不静默删掉另一个标签页刚改过的值；不带就是普通删除。
+     * 删除后依据这一格的待验证线索一并失效（业务层负责）。
+     */
+    delete: operations["delete_profile_field_api_v1_app_profile_fields__key__delete"];
   };
   "/api/v1/app/report/full-text": {
     /**
@@ -1719,6 +1738,38 @@ export interface components {
       /** @default 0 */
       code?: components["schemas"]["ErrorCode"];
       data?: components["schemas"]["Preferences"] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
+    /** ApiResponse[ProfileClueDenyAck] */
+    ApiResponse_ProfileClueDenyAck_: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      data?: components["schemas"]["ProfileClueDenyAck"] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
+    /** ApiResponse[ProfileFieldDeleteAck] */
+    ApiResponse_ProfileFieldDeleteAck_: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      data?: components["schemas"]["ProfileFieldDeleteAck"] | null;
       /**
        * Message
        * @default ok
@@ -4272,6 +4323,78 @@ export interface components {
       timezone?: string;
     };
     /**
+     * ProfileClueDenyAck
+     * @description 否认一条「系统理解」的回执。
+     */
+    ProfileClueDenyAck: {
+      /**
+       * Denied
+       * @description 已否认的那条线索 id
+       */
+      denied: string;
+    };
+    /**
+     * ProfileClueStatus
+     * @description 待验证线索的状态（《个人画像设计-2026-10-20》第 3.2、7 节）。
+     *
+     * 线索是「AI 对信息的有限理解」，与事实字段分开存：必须关联依据、标明适用范围，
+     * 不进入事实字段，也不能靠反复引用把自己变成稳定结论。
+     *
+     * · `PROPOSED`：待验证（默认）。依据变化、用户否认或用途不再需要时失效；
+     * · `INVALID`：已失效。依据被更正/撤回/删除，或用户明确否认这条理解；
+     * · `CONFIRMED`：已确认。留给后续「用户认可/重新分析后成立」的链路 ——
+     *   当前没有任何自动确认路径，重复出现不等于确认。
+     *
+     * 状态是服务端算的，不由模型自报。
+     * @enum {string}
+     */
+    ProfileClueStatus: "proposed" | "invalid" | "confirmed";
+    /**
+     * ProfileClueView
+     * @description 一条待验证线索（《个人画像设计-2026-10-20》第 3.2、9 节）。
+     *
+     * 它是「系统基于证据的理解」，不是用户说过的事实 —— 所以单独一个形状、
+     * 单独一组展示，并且带 `status` 与 `invalidated_reason`：被更正/删除依据或
+     * 被用户否认之后，界面要能说清这条为什么不再算数，而不是让它悄悄消失。
+     */
+    ProfileClueView: {
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /**
+       * Evidence
+       * @description 依据引用
+       */
+      evidence?: string[];
+      /**
+       * Field Keys
+       * @description 依据哪些画像字段；这些字段变更时线索失效
+       */
+      field_keys?: string[];
+      /** Id */
+      id: string;
+      /**
+       * Invalidated Reason
+       * @description 为什么失效（给用户看的一句话）
+       * @default
+       */
+      invalidated_reason?: string;
+      /** @default proposed */
+      status?: components["schemas"]["ProfileClueStatus"];
+      /**
+       * Text
+       * @description 线索正文：一句「可能……」的有限理解
+       */
+      text: string;
+      /**
+       * Updated At
+       * Format: date-time
+       */
+      updated_at: string;
+    };
+    /**
      * ProfileEntryStatus
      * @description 画像条目状态（第 4、7 节）。
      *
@@ -4293,6 +4416,17 @@ export interface components {
      * @enum {string}
      */
     ProfileEntryType: "learning_background" | "interest" | "experience" | "ability" | "career_focus" | "values" | "condition" | "supplement";
+    /**
+     * ProfileFieldDeleteAck
+     * @description 用户删除一条画像信息的回执。
+     */
+    ProfileFieldDeleteAck: {
+      /**
+       * Deleted
+       * @description 已删除的画像字段键
+       */
+      deleted: string;
+    };
     /**
      * ProfileFieldUpdateRequest
      * @description 用户手动更正一条画像字段（issue #26 第三条）。
@@ -4442,6 +4576,11 @@ export interface components {
      * @description ① 画像状态：字段覆盖度 / 置信度 / 缺口 / 更新时间。
      */
     ProfilePanelView: {
+      /**
+       * Clues
+       * @description 系统基于证据的理解（待验证线索）：与 fields 分开，可否认
+       */
+      clues?: components["schemas"]["ProfileClueView"][];
       /**
        * Coverage
        * @description 字段覆盖度
@@ -6555,6 +6694,34 @@ export interface operations {
     };
   };
   /**
+   * Deny Profile Clue
+   * @description 否认一条「系统的理解」（待验证线索）。
+   *
+   * 线索不是用户提供的事实，所以不能说"删除" —— 他否认的是这条理解。
+   * 回执只回 id：界面据此把那一张卡片改成"已否认"，不需要重读整份画像。
+   */
+  deny_profile_clue_api_v1_app_profile_clues__clue_id__delete: {
+    parameters: {
+      path: {
+        clue_id: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_ProfileClueDenyAck_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /**
    * Update Profile Field
    * @description 更正一条画像字段，返回更正后的那一条。
    *
@@ -6577,6 +6744,38 @@ export interface operations {
       200: {
         content: {
           "application/json": components["schemas"]["ApiResponse_ProfileFieldView_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /**
+   * Delete Profile Field
+   * @description 删除一条画像信息（用户自己的控制入口）。
+   *
+   * `expected_updated_at` 可选：带了就按"我看到的是哪一版"校验，版本对不上返回
+   * 冲突（409 / 1003），不静默删掉另一个标签页刚改过的值；不带就是普通删除。
+   * 删除后依据这一格的待验证线索一并失效（业务层负责）。
+   */
+  delete_profile_field_api_v1_app_profile_fields__key__delete: {
+    parameters: {
+      query?: {
+        expected_updated_at?: string | null;
+      };
+      path: {
+        key: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_ProfileFieldDeleteAck_"];
         };
       };
       /** @description Validation Error */

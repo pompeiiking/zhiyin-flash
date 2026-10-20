@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Optional, Sequence
+from typing import Any, Optional, Sequence
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -77,6 +77,18 @@ class ProfileService(ABC):
     @abstractmethod
     async def get_gaps(self, user_id: str) -> list[ProfileGap]:
         """读取缺口清单，用于采集追问与工作台展示。"""
+
+    @abstractmethod
+    async def get_clues(self, user_id: str) -> list[Any]:
+        """读取待验证线索（系统理解，不是画像事实）。"""
+
+    @abstractmethod
+    async def replace_session_clues(self, user_id: str, session_id: str, clues: list[Any]) -> list[Any]:
+        """按会话整体替换线索：重复分析不能让同一句理解看起来被多次验证。"""
+
+    @abstractmethod
+    async def deny_clue(self, user_id: str, clue_id: str) -> Any:
+        """用户否认一条系统理解；必须按 user_id 定位，不能跨账号。"""
 
     @abstractmethod
     async def update_field(

@@ -206,6 +206,9 @@ PURPOSE_TYPES: dict[ProfilePurpose, frozenset[ProfileEntryType]] = {
     ProfilePurpose.CAREER_RETRIEVAL: frozenset({ProfileEntryType.CAREER_FOCUS}),
     ProfilePurpose.DIRECTION_RECOMMENDATION: frozenset(
         {
+            # 专业/学校是“方向推荐与比较”的背景事实（读的是哪个专业、哪一阶段），
+            # 不是用它替代兴趣或职业关注；普通兴趣仍然不能进入专业检索。
+            ProfileEntryType.LEARNING_BACKGROUND,
             ProfileEntryType.INTEREST,
             ProfileEntryType.EXPERIENCE,
             ProfileEntryType.ABILITY,

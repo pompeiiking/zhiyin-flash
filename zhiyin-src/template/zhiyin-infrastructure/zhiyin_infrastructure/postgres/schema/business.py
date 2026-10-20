@@ -49,6 +49,29 @@ CREATE TABLE IF NOT EXISTS biz_profile_gap (
     PRIMARY KEY (user_id, key)
 );
 
+-- 待验证线索（《个人画像设计-2026-10-20》第 3.2 节）：AI 对信息的有限理解
+-- **单独一张表**，不并进 biz_profile_field。
+--
+-- 为什么必须分开：字段是「用户提供或资料中存在的事实」，线索是「系统的推测」。
+-- 塞进同一张表后，界面与取数都只能靠 source/confidence 去猜这一条算不算事实，
+-- 而设计要求的恰恰是两者有清楚区别（第 9 节），依据被更正后线索要失效（第 7 节）。
+-- 按 session_id 整体替换：同一次分析重复跑不会留下重复线索。
+CREATE TABLE IF NOT EXISTS biz_profile_clue (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    session_id TEXT NOT NULL DEFAULT '',
+    text TEXT NOT NULL,
+    evidence JSONB NOT NULL DEFAULT '[]'::jsonb,
+    field_keys JSONB NOT NULL DEFAULT '[]'::jsonb,
+    source TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'proposed',
+    invalidated_reason TEXT NOT NULL DEFAULT '',
+    created_at TIMESTAMPTZ NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_biz_profile_clue_user_status
+    ON biz_profile_clue (user_id, status);
+
 CREATE TABLE IF NOT EXISTS biz_behavior_log (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,

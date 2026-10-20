@@ -36,6 +36,9 @@ from zhiyin_api.dto.conversation import (
 )
 from zhiyin_api.dto.workspace import (
     DependencyEdgeView,
+    ProfileClueDenyAck,
+    ProfileClueView,
+    ProfileFieldDeleteAck,
     ProfileFieldView,
     ProfileGapView,
     ProfilePanelView,
@@ -79,6 +82,9 @@ __all__ = [
     "TaskEnterRequest",
     "TaskSessionView",
     "DependencyEdgeView",
+    "ProfileClueDenyAck",
+    "ProfileClueView",
+    "ProfileFieldDeleteAck",
     "ProfileFieldView",
     "ProfileGapView",
     "ProfilePanelView",

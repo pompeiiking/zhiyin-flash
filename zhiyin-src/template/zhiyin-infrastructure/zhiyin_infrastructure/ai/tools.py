@@ -22,6 +22,8 @@ from typing import Any, Callable, Literal, Sequence
 
 from agno.run import RunContext
 
+from zhiyin_kernel import profile_taxonomy
+from zhiyin_kernel.enums import ProfilePurpose, ProfileVerification
 from zhiyin_kernel.errors import ResourceNotFound
 from zhiyin_kernel.privacy import redact_sensitive
 
@@ -409,7 +411,7 @@ def build_tool_catalog(
     if profile_reader is not None:
 
         async def profile_read(run_context: RunContext) -> str:
-            """读当前用户的画像：已知哪些字段、把握多大、还缺什么。"""
+            """读当前用户的画像：已知哪些字段、每条的类别/核实状态/来源、还缺什么。"""
             data = await _read(profile_reader, run_context.user_id)
             return redact_sensitive(_describe_profile(data))
 
@@ -535,8 +537,54 @@ async def _read(reader: Callable[..., Any], *args: Any) -> Any:
     return value
 
 
+#: 画像来源 → 给模型看的说法。来源回答“从哪儿来”，与核实状态分开说。
+_PROFILE_SOURCE_TEXT: dict[str, str] = {
+    "conversation": "对话",
+    "record": "客观档案",
+    "assessment": "测评",
+    "behavior_inference": "行为推断",
+    "resume": "简历",
+    "mentor": "导师建议",
+    "user_edit": "本人更正",
+}
+
+
+def _profile_source_text(source: Any) -> str:
+    value = getattr(source, "value", source)
+    text = str(value or "").strip()
+    return _PROFILE_SOURCE_TEXT.get(text, text or "未注明")
+
+
+def _profile_verification_text(item: Any) -> str:
+    """一条记录的核实状态中文名；老数据没有核实状态时按来源推导。"""
+    raw = item.get("verification") if isinstance(item, dict) else getattr(item, "verification", None)
+    if raw in (None, ""):
+        source = item.get("source") if isinstance(item, dict) else getattr(item, "source", None)
+        raw = profile_taxonomy.verification_for(source)
+    try:
+        return profile_taxonomy.VERIFICATION_LABELS[ProfileVerification(raw)]
+    except (ValueError, KeyError):
+        return profile_taxonomy.VERIFICATION_LABELS[ProfileVerification.PENDING]
+
+
+def _profile_entry_type(item: Any) -> str:
+    """一条记录的内容类别中文名；老数据没有类别时按字段键推导。"""
+    raw = item.get("entry_type") if isinstance(item, dict) else getattr(item, "entry_type", None)
+    if not raw:
+        key = item.get("key") if isinstance(item, dict) else getattr(item, "key", "")
+        raw = profile_taxonomy.entry_type_of(str(key or ""))
+    return profile_taxonomy.entry_type_label(raw)
+
+
 def _describe_profile(data: Any) -> str:
-    """把画像整理成给模型看的几行字。空就如实说空。"""
+    """把画像整理成给模型看的几行字。
+
+    只读服务端算好的「普通交流」用途视图：冲突/过期/撤回的记录不进来，
+    与当前问题无关的类别也不会整份塞进提示词（设计第 8 节）。每条只给
+    类别、核实状态、来源与键值 —— **不输出内部 confidence**：“把握：0.87”
+    既不是真实性也不是熟练度，模型会把它当成一个可以引用的结论。
+    缺什么仍然照实说。
+    """
     if isinstance(data, str):
         return data
     fields = list(getattr(data, "fields", []) or []) if not isinstance(data, dict) else list(
@@ -545,16 +593,20 @@ def _describe_profile(data: Any) -> str:
     gaps = list(getattr(data, "gaps", []) or []) if not isinstance(data, dict) else list(
         data.get("gaps", []) or []
     )
-    if not fields and not gaps:
+    known = profile_taxonomy.records_for_purpose(ProfilePurpose.CONVERSATION, fields)
+    if not known and not gaps:
         return "这个用户还没有画像内容。先问出一个能答的问题，不要假装已经知道。"
-    lines = ["已知："]
-    for item in fields:
-        key = getattr(item, "key", None) or (item.get("key") if isinstance(item, dict) else "")
-        value = getattr(item, "value", None) if not isinstance(item, dict) else item.get("value")
-        confidence = getattr(item, "confidence", 0.0) if not isinstance(item, dict) else item.get("confidence", 0.0)
-        source = getattr(item, "source", "") if not isinstance(item, dict) else item.get("source", "")
-        source = getattr(source, "value", source)
-        lines.append(f"- {key}：{value}（来源：{source}，把握：{float(confidence or 0):.2f}）")
+    lines: list[str] = []
+    if known:
+        lines.append("已知：")
+        for item in known:
+            key = getattr(item, "key", None) or (item.get("key") if isinstance(item, dict) else "")
+            value = getattr(item, "value", None) if not isinstance(item, dict) else item.get("value")
+            source = getattr(item, "source", "") if not isinstance(item, dict) else item.get("source", "")
+            lines.append(
+                f"- {_profile_entry_type(item)} · {_profile_verification_text(item)} · "
+                f"来源：{_profile_source_text(source)} · {key}：{value}"
+            )
     if gaps:
         lines.append("还缺：")
         for gap in gaps:

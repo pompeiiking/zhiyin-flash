@@ -2,6 +2,7 @@
 from datetime import datetime, timezone
 
 from zhiyin_business.services.conversation_ledger import ConversationLedger
+from zhiyin_business.services.memory_policy import MemoryPolicyService
 from zhiyin_kernel.errors import InvalidRequest, ResourceNotFound
 
 
@@ -36,10 +37,12 @@ class ConversationControl:
         if settings is not None:
             if set(settings) - {"temporary"} or not isinstance(settings.get("temporary"), bool):
                 raise InvalidRequest("会话设置无效")
-            def update(state):
-                state.setdefault("conversation_settings", {}).setdefault(task_id, {}).update(settings)
-                return state
-            await self.owner._student_state.update(user_id, update)
+            # 会话级策略走统一记录：既写兼容字段 conversation_settings[task].temporary，
+            # 也留下一条带来源/时间/范围的记录；响应形状保持不变。
+            await MemoryPolicyService(self.owner._student_state).set_session_temporary(
+                user_id, task_id, settings["temporary"], source="user_setting",
+                note="会话设置：临时会话",
+            )
         record = await self.ledger.read(user_id, task_id)
         for key, run in record["runs"].items():
             updated_at = datetime.fromisoformat(run["updated_at"])

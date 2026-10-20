@@ -32,6 +32,7 @@ from zhiyin_kernel.blackboard import (
     ConversationMemory,
     ConversationTurn,
     Profile,
+    ProfileClue,
     ProfileField,
     ProfileGap,
     TaskSession,
@@ -49,6 +50,7 @@ from zhiyin_kernel.enums import (
     AssetType,
     BehaviorEventType,
     LoopStage,
+    ProfileClueStatus,
     TaskStatus,
 )
 from zhiyin_kernel.identity import UserAccount
@@ -170,6 +172,51 @@ class InMemoryProfileRepository(ProfileRepository):
         profile.gaps = [_snapshot(item) for item in gaps]
         profile.version += 1
         profile.updated_at = _now()
+
+    async def list_clues(self, user_id: str) -> list[ProfileClue]:
+        profile = self._profiles.get(user_id)
+        return [_snapshot(item) for item in profile.clues] if profile else []
+
+    async def replace_session_clues(
+        self, user_id: str, session_id: str, clues: list[ProfileClue]
+    ) -> None:
+        """同一会话整体替换：旧线索先拿掉，再放这一批（重跑不产生重复）。"""
+        profile = self._ensure(user_id)
+        kept = [item for item in profile.clues if item.session_id != session_id]
+        kept.extend(_snapshot(item) for item in clues)
+        profile.clues = kept
+        profile.version += 1
+        profile.updated_at = max(_now(), profile.updated_at + timedelta(microseconds=1))
+
+    async def invalidate_clues(
+        self, user_id: str, field_keys: list[str], reason: str
+    ) -> int:
+        profile = self._profiles.get(user_id)
+        wanted = {str(key).strip() for key in field_keys if str(key).strip()}
+        if profile is None or not wanted:
+            return 0
+        now = _now()
+        changed = 0
+        updated: list[ProfileClue] = []
+        for clue in profile.clues:
+            if clue.status is ProfileClueStatus.PROPOSED and wanted.intersection(clue.field_keys):
+                updated.append(
+                    clue.model_copy(
+                        update={
+                            "status": ProfileClueStatus.INVALID,
+                            "invalidated_reason": reason or "",
+                            "updated_at": now,
+                        }
+                    )
+                )
+                changed += 1
+            else:
+                updated.append(clue)
+        if changed:
+            profile.clues = updated
+            profile.version += 1
+            profile.updated_at = max(now, profile.updated_at + timedelta(microseconds=1))
+        return changed
 
     def _ensure(self, user_id: str) -> Profile:
         profile = self._profiles.get(user_id)

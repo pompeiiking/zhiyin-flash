@@ -5,6 +5,7 @@ import { PROFILE_FIELDS } from '../data/student'
 import type { FieldSource, ProfileField } from '../data/types'
 import { profileLabel } from './server-copy'
 import { backendDemo } from './backend-demo'
+import { backendClient } from '../api/backend-client'
 import type { ProfileSource } from '../api/backend-types'
 
 type BackendState = typeof backendDemo.state
@@ -154,6 +155,14 @@ export interface MissingRow {
   reason: string
   next: string
   source: string
+}
+
+/** 一条“系统基于证据的理解”：它必须能单独展示、单独否认，不能混进事实字段。 */
+export interface ClueRow {
+  id: string
+  text: string
+  evidence: string[]
+  createdAt: string
 }
 
 interface ValueParts { head: string; tail: string; hasHint: boolean }
@@ -387,10 +396,32 @@ export function useProfileFields(deps: ProfileFieldsDeps) {
     }))
   })
 
+  /** 系统理解（待验证线索）：只展示仍待核对的；已失效的不再当结论反复出现。 */
+  const clues = computed<ClueRow[]>(() =>
+    (livePanel.value?.clues ?? [])
+      .filter((clue) => !clue.status || clue.status === 'proposed')
+      .map((clue) => ({
+        id: clue.id,
+        text: clue.text,
+        evidence: [...(clue.evidence ?? [])],
+        createdAt: clue.created_at,
+      })),
+  )
+
+  async function denyClue(id: string) {
+    if (!live.value) return
+    await backendClient.denyProfileClue(id)
+    const workspace = JSON.parse(JSON.stringify(backendDemo.state.liveWorkspace))
+    if (workspace?.profile_panel) {
+      workspace.profile_panel.clues = (workspace.profile_panel.clues ?? []).filter((clue: { id: string }) => clue.id !== id)
+    }
+    if (workspace) backendDemo.setWorkspace(workspace)
+  }
+
   return {
     fieldValue, valueParts, rowsBase, fieldLabels, missing, known,
     tally, statusLine, confBands, trustOrigin, coverageCount, coverageNote,
-    groups, reduced, trustShown, tweenTo, stopTween,
+    groups, clues, denyClue, reduced, trustShown, tweenTo, stopTween,
   }
 }
 

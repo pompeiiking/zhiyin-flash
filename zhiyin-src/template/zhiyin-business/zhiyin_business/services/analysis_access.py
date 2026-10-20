@@ -13,7 +13,8 @@ from hashlib import sha256
 import json
 
 from zhiyin_business.contracts.student import Preferences
-from zhiyin_kernel.enums import ProfileSource
+from zhiyin_kernel import profile_taxonomy
+from zhiyin_kernel.enums import ProfileEntryType, ProfilePurpose, ProfileSource
 from zhiyin_kernel.errors import InvalidRequest
 
 
@@ -30,6 +31,17 @@ def fingerprint(kind, value):
     payload = json.dumps(value, default=serialize, sort_keys=True, ensure_ascii=False,
                          separators=(",", ":"))
     return f"{kind}:{sha256(payload.encode('utf-8')).hexdigest()}"
+
+
+def _entry_type(item):
+    """记录的内容类别；老数据没有类别列时按字段键推导（与用途视图同一口径）。"""
+    raw = getattr(item, "entry_type", None)
+    if raw:
+        try:
+            return ProfileEntryType(raw)
+        except ValueError:
+            pass
+    return profile_taxonomy.entry_type_of(str(getattr(item, "key", "") or ""))
 
 
 @dataclass
@@ -63,11 +75,29 @@ class AnalysisScope:
         self.lineage[key] = required
 
     def profile(self, profile):
-        if profile is None or not self.restricted:
+        if profile is None:
             return profile
+        # 冲突/过期/撤回的记录退出一切业务读取（《个人画像设计-2026-10-20》第 7、8 节）。
+        # 这一步对“是否受限”都生效：此前不受限时直接原样返回，
+        # 一条已经撤回的记录照样会进分析上下文。
+        usable = [item for item in profile.fields if profile_taxonomy.is_usable(item)]
+        if not self.restricted:
+            return profile.model_copy(update={"fields": usable})
+        # 受限分析读的是「方向推荐与比较」用途视图：只有兴趣、经历、能力证据、
+        # 价值取向、有效条件和职业关注能进来，再用原有的来源权限收一道。
+        view = profile_taxonomy.records_for_purpose(
+            ProfilePurpose.DIRECTION_RECOMMENDATION, usable
+        )
+        # 学习背景（专业/学校/年级/学历）不在“方向推荐”用途表里，但“允许学业资料”
+        # 这个来源开关一直把它当作可读的学业事实。用途过滤不能把它静默删掉：
+        # 那会让受限分析的来源语义变样（允许了学业资料却读不到专业/学校）。
+        view.extend(
+            item for item in usable
+            if _entry_type(item) is ProfileEntryType.LEARNING_BACKGROUND
+        )
         return profile.model_copy(update={
-            "fields": [f for f in profile.fields if self.field_allowed(f)],
-            "gaps": [g for g in profile.gaps if self.allows("gap", g)],
+            "fields": [item for item in view if self.field_allowed(item)],
+            "gaps": [gap for gap in profile.gaps if self.allows("gap", gap)],
         })
 
     def field_allowed(self, item):

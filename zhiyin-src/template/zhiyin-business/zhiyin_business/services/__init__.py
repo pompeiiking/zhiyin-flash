@@ -32,6 +32,7 @@
 | Profile 服务 | `profile.py` | `DefaultProfileService` | ProfileRepository、EventBus | P0 | 已交付 |
 | Behavior 服务 | `behavior.py` | `DefaultBehaviorService` | BehaviorRepository、EventBus | P0 | 已交付 |
 | Memory 服务 | `memory.py` | `DefaultConversationMemoryService` | ConversationMemoryRepository | P0 | 已交付 |
+| 记忆策略 | `memory_policy.py` | `MemoryPolicyService` | 账号状态 Repository（策略记录 + 兼容开关） | P0 | 已交付 |
 | 自建内容服务 | `note.py` | `DefaultUserNoteService` | UserNoteRepository | P1 | 已交付 |
 | 教务系统服务 | `academic.py` | `DefaultAcademicService` | AcademicSnapshotRepository | P1 | 已交付 |
 | AI 任务服务 | `ai_tasks.py` | `AiTaskService` | 画像 / 行为 / 资产 Port | P0 | 已交付 |
@@ -68,6 +69,7 @@ from zhiyin_business.services.behavior import DefaultBehaviorService
 from zhiyin_business.services.function import DefaultFunctionService
 from zhiyin_business.services.identity import DefaultIdentityService
 from zhiyin_business.services.memory import DefaultConversationMemoryService
+from zhiyin_business.services.memory_policy import MemoryPolicyService
 from zhiyin_business.services.note import DefaultUserNoteService
 from zhiyin_business.services.orchestrator import DefaultOrchestrator
 from zhiyin_business.services.profile import DefaultProfileService
@@ -87,4 +89,5 @@ __all__ = [
     "DefaultRegistryService",
     "DefaultUserNoteService",
     "DefaultWorkspaceService",
+    "MemoryPolicyService",
 ]

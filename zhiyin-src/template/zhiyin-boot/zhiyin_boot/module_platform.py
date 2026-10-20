@@ -159,7 +159,7 @@ def product_tools(container):
     async def conversation_action(run_context: RunContext, operation: str, payload: dict,
                                   authorization: Literal["automatic", "explicit", "proposal"] = "proposal",
                                   evidence: str = "", expected_version: str = "", action_id: str = "", supersedes_action_id: str = "") -> str:
-        """统一业务操作：profile.update/task.set_done/plan.save/report.save/directions.save/plan.activate/direction.select/memory.forget/action.approve/action.reject。先核对授权，返回真实回执或待确认提案。"""
+        """统一业务操作：profile.update/task.set_done/plan.save/report.save/directions.save/plan.activate/direction.select/memory.forget/action.approve/action.reject。先核对授权，返回真实回执或待确认提案。profile.update 的 payload 可含 key、value、assertion_type、attributes（类型专属受控属性，如兴趣 polarity、职业关注 state）、valid_from/valid_to/event_at（带时区的 ISO 时间）；用户说“只保存这一条”时 authorization=explicit 且 save_scope=single，只放行这一条，不恢复其他自动记录。原话引用与核实状态由服务端按本轮消息生成，不要自报。"""
         from zhiyin_business.services.dialogue_runtime import active_dialogue
         runtime = active_dialogue.get()
         if runtime is None or runtime.request.user_id != run_context.user_id:

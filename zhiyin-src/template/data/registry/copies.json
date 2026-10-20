@@ -466,6 +466,22 @@
       "note": "画像字段词表 + 中文名（模型实测会写的键，补进词表以免被门禁挡掉）"
     },
     {
+      "code": "profile.field.supplement",
+      "text": "补充信息",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 919,
+      "note": "补充信息类别：有来源、暂无法归类、可待归类；不作为业务检索或职业判断入口"
+    },
+    {
+      "code": "profile.field.supplement_info",
+      "text": "补充说明",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 920,
+      "note": "补充信息的另一条词表键：有来源、暂无法归类、可待归类；不作为业务检索或职业判断入口"
+    },
+    {
       "code": "profile.alias.grade",
       "text": "study_year",
       "bundle": "zh-CN",

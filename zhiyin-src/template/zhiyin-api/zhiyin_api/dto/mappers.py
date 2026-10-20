@@ -77,6 +77,7 @@ from zhiyin_api.dto.workspace import (
     IntelItemView,
     IntelListView,
     LayoutBlockView,
+    ProfileClueView,
     ProfileFieldView,
     ProfileGapView,
     ProfilePanelView,
@@ -571,6 +572,24 @@ def profile_field_view(field: Any, labels: Mapping[str, str]) -> ProfileFieldVie
     )
 
 
+def profile_clue_view(clue: Any) -> ProfileClueView:
+    """一条待验证线索 → 视图。
+
+    与字段视图分开：线索不是事实，界面按 `status` / `invalidated_reason` 单独说
+    「这是系统的理解 / 它为什么失效」，不能混进「你提供的信息」那一组。
+    """
+    return ProfileClueView(
+        id=clue.id,
+        text=clue.text,
+        evidence=list(clue.evidence),
+        field_keys=list(clue.field_keys),
+        status=clue.status,
+        invalidated_reason=clue.invalidated_reason,
+        created_at=clue.created_at,
+        updated_at=clue.updated_at,
+    )
+
+
 def workspace_page_view(view: WorkspaceView) -> WorkspacePageView:
     """工作台 ①-⑤ 聚合视图。"""
     panels = {panel.stage: panel for panel in view.panels}
@@ -611,6 +630,7 @@ def workspace_page_view(view: WorkspaceView) -> WorkspacePageView:
             )
             for gap in (profile.gaps if profile else [])
         ],
+        clues=[profile_clue_view(clue) for clue in (profile.clues if profile else [])],
         updated_at=profile.updated_at if profile else None,
     )
     coach_messages = [event.model_dump(mode="json") for event in view.track_events]

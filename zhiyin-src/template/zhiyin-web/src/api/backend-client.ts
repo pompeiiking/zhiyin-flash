@@ -129,6 +129,10 @@ export const backendClient = {
   material: (file: File) => { const form = new FormData(); form.append('file', file); return request<ConversationMaterialView>('material', { form, timeout: 60_000 }) },
   workspace: () => request<WorkspacePageView>('workspace'),
   correct: (key: string, value: string, expected_updated_at: string | null) => request<ProfileFieldView>('correctProfile', { params: { key }, body: { value, expected_updated_at } }),
+  /** 用户删除一条画像：DELETE /app/profile/fields/{key}，版本不符时后端返回冲突。 */
+  deleteProfileField: (key: string, expected_updated_at?: string | null) => request<{ deleted: string }>('deleteProfileField', { params: { key }, query: expected_updated_at ? { expected_updated_at } : undefined }),
+  /** 用户否认一条系统理解（待验证线索）：DELETE /app/profile/clues/{clue_id}。 */
+  denyProfileClue: (clue_id: string) => request<{ denied: string }>('denyProfileClue', { params: { clue_id } }),
   theory: (theory_id: string) => request<TheoryCardView>('theory', { params: { theory_id } }),
   report: (version?: number) => request<ReportFullTextView>('report', { query: version ? { version } : undefined }),
   versions: (asset_type: 'report' | 'direction_plan' | 'action_plan') => request<AssetVersionView[]>('versions', { params: { asset_type } }),

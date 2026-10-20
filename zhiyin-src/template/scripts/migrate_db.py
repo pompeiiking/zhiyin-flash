@@ -86,6 +86,7 @@ USER_TABLES: tuple[str, ...] = (
     "biz_profile",
     "biz_profile_field",
     "biz_profile_gap",
+    "biz_profile_clue",
     "biz_behavior_log",
     "biz_conversation_memory",
     "biz_conversation_turn",

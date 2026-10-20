@@ -63,6 +63,8 @@ from zhiyin_api.dto.workspace import (
     AcademicRevokeAck,
     CapabilityListView,
     IntelListView,
+    ProfileClueDenyAck,
+    ProfileFieldDeleteAck,
     ProfileFieldUpdateRequest,
     ProfileFieldView,
     WorkspacePageView,
@@ -1034,20 +1036,71 @@ class DefaultApplicationFacade(ApplicationFacade):
         await self._invalidate_user(user_id, "profile_field_updated")
         # 画像更正后必须沿 profile→report→direction→action 标记待核对；
         # 只失效读缓存不够，报告页会继续展示旧值（R2-W2 RPT-016）。
+        await self._mark_profile_dependents_stale(user_id, key)
+        # 单条回包与工作台面板走**同一个** mapper：改完那一刻看到的这条，
+        # 必须和刷新之后看到的那条是同一个形状、同一个名字。
+        return mappers.profile_field_view(field, labels={})
+
+    async def delete_profile_field(
+        self,
+        user_id: str,
+        key: str,
+        *,
+        expected_updated_at: datetime | None = None,
+    ) -> ProfileFieldDeleteAck:
+        """用户删除一条画像信息（《个人画像设计-2026-10-20》第 7、9 节）。
+
+        与更正同一条收尾口径：先落库（版本不符时由仓储返回冲突，**不吞错**），
+        再失效读缓存、沿 profile→report→direction→action 标记待核对 ——
+        否则删掉的那条会从报告、方向方案和探索缓存里继续被使用
+        （P22：删除不能通过旧资产恢复使用）。
+
+        线索的失效在业务层做：依据这一格的「系统理解」随之失效并写明原因。
+        """
+        if self._profiles is None:
+            raise RuntimeError("画像服务未装配（Container.profile_service）")
+        await self._profiles.drop_field(
+            user_id,
+            key,
+            expected_updated_at=expected_updated_at,
+            # 只有调用方带了"我看到的是哪一版"才校验；没带就是普通删除。
+            check_version=expected_updated_at is not None,
+        )
+        await self._invalidate_user(user_id, "profile_field_updated")
+        await self._mark_profile_dependents_stale(user_id, key)
+        return ProfileFieldDeleteAck(deleted=key)
+
+    async def deny_profile_clue(self, user_id: str, clue_id: str) -> ProfileClueDenyAck:
+        """否认一条「系统的理解」（待验证线索，设计第 9 节）。
+
+        线索不是事实字段：否认它不改画像里的任何一格，但界面与后续分析必须
+        立刻按"已否认"处理，所以同样要失效读缓存。不做资产影响传播 ——
+        字段值没变，报告/方案不因一条推测被否认而变成待重算；真正需要重算的是
+        依赖该字段的资产，那由字段写入路径负责。
+        """
+        if self._profiles is None:
+            raise RuntimeError("画像服务未装配（Container.profile_service）")
+        await self._profiles.deny_clue(user_id, clue_id)
+        await self._invalidate_user(user_id, "profile_field_updated")
+        return ProfileClueDenyAck(denied=clue_id)
+
+    async def _mark_profile_dependents_stale(self, user_id: str, key: str) -> None:
+        """画像写入后的收尾：资产影响传播 + 职业探索取词缓存失效。
+
+        两件事分开写失败口径：任何一个失败都只记日志，不把已经落库的写入
+        说成"没改成"（与 `DefaultProfileService` 的收尾口径一致）。
+        """
         propagate = getattr(self._assets, "propagate", None)
         if callable(propagate):
             try:
                 await propagate(user_id, [key])
-            except Exception:  # noqa: BLE001 - 标记失败不阻断更正本身
-                logger.warning("画像更正后的资产影响传播失败：%s", key, exc_info=True)
-        # 职业探索按专业/方向取词，画像更正后必须一起失效；否则 15 分钟内
+            except Exception:  # noqa: BLE001 - 标记失败不阻断写入本身
+                logger.warning("画像变更后的资产影响传播失败：%s", key, exc_info=True)
+        # 职业探索按专业/方向取词，画像变更后必须一起失效；否则 15 分钟内
         # 探索页仍显示旧专业的结果（工作台已经新值，两页看起来互相矛盾）。
         drop_intel = getattr(self._function, "drop_intel_cache", None)
         if callable(drop_intel):
             drop_intel(user_id)
-        # 单条回包与工作台面板走**同一个** mapper：改完那一刻看到的这条，
-        # 必须和刷新之后看到的那条是同一个形状、同一个名字。
-        return mappers.profile_field_view(field, labels={})
 
     async def reload_dynamic_config(self) -> dict[str, Any]:
         """重新装载动态配置，并回报这一次装到了什么。"""
