@@ -1,0 +1,17 @@
+{
+  "normalization": "LF",
+  "source_matches_running": {
+    "zhiyin-boot/zhiyin_boot/module_platform.py": true,
+    "zhiyin-business/zhiyin_business/services/dialogue_runtime.py": true,
+    "zhiyin-business/zhiyin_business/contracts/dialogue_actions.py": true,
+    "zhiyin-orchestration/zhiyin_orchestration/impl/dialogue_engine.py": true,
+    "zhiyin-orchestration/zhiyin_orchestration/impl/agno_engine.py": true
+  },
+  "source_hashes": {
+    "zhiyin-boot/zhiyin_boot/module_platform.py": "03072847f78c911c35ff104e5d684ce34ce051da9529497faba211f76365e64d",
+    "zhiyin-business/zhiyin_business/services/dialogue_runtime.py": "1195a164a17a126d00be41ce96d942606d19c06b1e1c0392f008a5bfc7d40257",
+    "zhiyin-business/zhiyin_business/contracts/dialogue_actions.py": "18da2a71cba10b424e14a0d281a38c0465049c3a10d132e1ee51dd082c78bef6",
+    "zhiyin-orchestration/zhiyin_orchestration/impl/dialogue_engine.py": "efcab6042e46a381094fad8da46072a1d2cb62cd40558169ae8dbccadff68f86",
+    "zhiyin-orchestration/zhiyin_orchestration/impl/agno_engine.py": "d618f4e35676fd995fb004d6a9a2826ce13f1c30a6823d8a6c7460ceaa774ea4"
+  }
+}

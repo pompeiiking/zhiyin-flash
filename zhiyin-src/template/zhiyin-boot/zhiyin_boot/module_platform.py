@@ -13,6 +13,7 @@ from zhiyin_api.dto.asset import ActionTaskDoneRequest, ActionPlanView, Directio
 from zhiyin_api.dto.achievement import AchievementListView, AchievementView
 from zhiyin_business.policies.renderers import RendererSpec, register_renderer, renderer_for
 from zhiyin_business.services.modules import ModulePlatform
+from zhiyin_business.contracts.dialogue_actions import DialogueOperation, ReportDraftInput, action_contracts
 from zhiyin_business.services.module_flows import ModuleFlowService
 from zhiyin_business.services.dialogue_exploration import QuotedStatement
 from zhiyin_infrastructure.ai.tools import ToolModule, ToolSpec
@@ -61,8 +62,8 @@ def product_tools(container):
         start = max(0, offset)
         return json.dumps({"id": material_id, "name": body.name, "offset": start,
             "total_chars": len(body.text), "text": body.text[start:start + max(1, min(limit, 8000))]}, ensure_ascii=False)
-    async def read_workspace(run_context: RunContext, area: Literal["profile", "academic", "report", "plan", "directions", "calendar", "notes", "reviews", "achievements", "behavior", "schemas", "drafts", "sessions", "history"], session_id: str = "", offset: int = 0) -> str:
-        """读取当前登录用户的指定业务资料；先选择一个资料领域。"""
+    async def read_workspace(run_context: RunContext, area: Literal["profile", "academic", "report", "plan", "directions", "calendar", "notes", "reviews", "achievements", "behavior", "schemas", "drafts", "sessions", "history"], session_id: str = "", offset: int = 0, operation: DialogueOperation | None = None) -> str:
+        """只读查询当前用户资料，无需审批。area=profile/academic/report/plan/directions/calendar/notes/reviews/achievements/behavior；schemas 返回写入契约，可用 operation 指定精确操作；drafts 读取本会话真实草稿ID；sessions/history 查询允许使用的历史（历史不是新授权）。没有资料时如实说明，不能把读成功当作生成或写成功。"""
         from zhiyin_business.services.analysis_access import current_scope
         user_id = run_context.user_id or ""
         if not user_id:
@@ -100,9 +101,11 @@ def product_tools(container):
             return json.dumps(redact_sensitive({"session_id": target_id, "offset": offset,
                 "messages": rows, "next_offset": offset + 20 if len(turns) == 20 and offset < 180 else None}), ensure_ascii=False)
         if area == "schemas":
-            from zhiyin_kernel.assets import ActionPlan, Report, DirectionPlan
-            return json.dumps({"plan.save": ActionPlan.model_json_schema(), "report.save": Report.model_json_schema(),
-                               "directions.save": DirectionPlan.model_json_schema()}, ensure_ascii=False)
+            contracts = action_contracts()
+            selected = {operation: contracts[operation]} if operation else contracts
+            return json.dumps({"operations": selected,
+                "rules": "读无需审批；save仅存草稿，activate必须审批。executed=true不一定改变正式资产，需核对receipt.draft_saved；proposed表示未执行。不要虚构未开放的操作。",
+                **{key: value["payload_schema"] for key, value in selected.items()}}, ensure_ascii=False)
         if area == "drafts":
             from zhiyin_business.services.dialogue_runtime import active_dialogue
             runtime = active_dialogue.get()
@@ -139,7 +142,7 @@ def product_tools(container):
             lines = [f"{t.text}：{'已完成' if t.done else '未完成'}" for t in tasks]
             summary = "行动任务：\n" + "\n".join(lines) if lines else "没有可读取的行动任务。"
         else:
-            labels = {"profile": "个人画像", "report": "诊断报告", "directions": "方向方案", "calendar": "日历", "notes": "成长记录", "reviews": "复盘记录", "achievements": "完成记录", "behavior": "行为记录"}
+            labels = {"profile": "个人画像", "report": "诊断报告", "directions": "方向方案", "calendar": "日历", "notes": "待办与目标", "reviews": "复盘记录", "achievements": "完成记录", "behavior": "行为记录"}
             summary = (f"没有可读取的{labels[area]}。" if value is None or value == []
                        else f"已读取{labels[area]}。本次未能整理成可靠的详细回复，请到对应页面查看。")
         deps.setdefault("business_read_receipts", []).append({"area": area, "text": summary})
@@ -156,10 +159,10 @@ def product_tools(container):
             "review_required": review_required, "source": "current_user_business_data"}), ensure_ascii=False,
                           default=lambda x: x.model_dump(mode="json") if hasattr(x, "model_dump") else str(x))
 
-    async def conversation_action(run_context: RunContext, operation: str, payload: dict,
+    async def conversation_action(run_context: RunContext, operation: DialogueOperation, payload: dict,
                                   authorization: Literal["automatic", "explicit", "proposal"] = "proposal",
                                   evidence: str = "", expected_version: str = "", action_id: str = "", supersedes_action_id: str = "") -> str:
-        """统一业务操作：profile.update/task.set_done/plan.save/report.save/directions.save/plan.activate/direction.select/memory.forget/action.approve/action.reject。先核对授权，返回真实回执或待确认提案。profile.update 的 payload 可含 key、value、assertion_type、attributes（类型专属受控属性，如兴趣 polarity、职业关注 state）、valid_from/valid_to/event_at（带时区的 ISO 时间）；用户说“只保存这一条”时 authorization=explicit 且 save_scope=single，只放行这一条，不恢复其他自动记录。原话引用与核实状态由服务端按本轮消息生成，不要自报。"""
+        """业务写入与审批统一入口。生成报告优先用 save_report_draft 的强类型参数；本工具仍用于启用草稿审批。operation 只允许枚举列出的操作；先 workspace.read(area=schemas, operation=操作名)读取 payload 契约。profile.update 可 automatic；用户明确指定的画像/任务和小范围调整可 explicit。plan.save/report.save/directions.save 只保存草稿，收到 draft_saved 后用相应 activate + draft_id 生成审批；不能说正式版本已替换。选方向、日历、删除和撤销必须 proposal。审批用真实 action_id，原话 evidence 引用本轮用户；不要自行确认。跨版本操作先读取真实对象并携带 expected_version。执行结果以 executed/state/receipt 为准；失败保留当前资料。"""
         from zhiyin_business.services.dialogue_runtime import active_dialogue
         runtime = active_dialogue.get()
         if runtime is None or runtime.request.user_id != run_context.user_id:
@@ -167,6 +170,16 @@ def product_tools(container):
         result = await runtime.action({"operation": operation, "payload": payload,
             "authorization": authorization, "evidence": evidence,
             "expected_version": expected_version, "action_id": action_id, "supersedes_action_id": supersedes_action_id})
+        return json.dumps(result, ensure_ascii=False, default=str)
+
+    async def save_report_draft(run_context: RunContext, report: ReportDraftInput, evidence: str) -> str:
+        """生成诊断报告首选此工具：report 是完整报告正文（verdict 与 swot 同级），按所示强类型参数填入。仅保存草稿，绝不替换正式报告。只写有证据的维度，不强制凑满15项；内容简练，避免过长参数。不要再套 payload/report 外壳，不填用户ID、版本或生成时间。evidence 逐字引用本轮用户生成报告的要求。成功后使用 workspace.action(operation=report.activate,payload={draft_id:回执action_id},authorization=proposal,evidence=原话)发起审批。"""
+        from zhiyin_business.services.dialogue_runtime import active_dialogue
+        runtime = active_dialogue.get()
+        if runtime is None or runtime.request.user_id != run_context.user_id:
+            raise InvalidRequest("报告草稿缺少当前对话上下文")
+        result = await runtime.action({"operation": "report.save", "payload": ReportDraftInput.model_validate(report).model_dump(mode="json"),
+            "authorization": "explicit", "evidence": evidence})
         return json.dumps(result, ensure_ascii=False, default=str)
 
     async def record_exploration(run_context: RunContext, goal: str,
@@ -244,6 +257,7 @@ def product_tools(container):
         ToolSpec(name="material.read", description="分段读取当前会话已上传材料", handler=read_material),
         ToolSpec(name="workspace.read", description="读取当前用户的真实业务资料", handler=read_workspace),
         ToolSpec(name="workspace.action", description="统一业务写入和审批，执行真实变更或返回具体提案", handler=conversation_action),
+        ToolSpec(name="workspace.report_draft", description="按明确字段保存报告草稿，不替换正式报告", handler=save_report_draft),
         ToolSpec(name="workspace.exploration", description="更新本会话探索目标、原话与待核实线索；不写长期画像", handler=record_exploration),
         ToolSpec(name="workspace.memory", description="记录用户对记忆范围的要求：某条字段或某条内容不要自动记录", handler=record_memory_policy),
         ToolSpec(name="workspace.classify", description="按需Kev辅助业务判断，不直接控制对话", handler=classify_context),

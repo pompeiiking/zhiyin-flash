@@ -15,6 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from zhiyin_business.contracts.common import AgentBadge, BehaviorGuide, BehaviorEventDraft, ConversationMessage, GuideOption, IntelRef, TheoryRef
 from zhiyin_business.ports.orchestrator import TurnResult
+from zhiyin_business.contracts.dialogue_actions import DialogueOperation
 from zhiyin_business.policies.renderers import validate_renderables
 from zhiyin_business.services.conversation_ledger import ConversationLedger, digest, utcnow
 from zhiyin_business.services.unit_of_work import atomic_repository
@@ -35,8 +36,7 @@ active_dialogue: ContextVar[Any] = ContextVar("active_dialogue", default=None)
 
 class ActionInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    operation: Literal["profile.update", "task.set_done", "plan.save", "report.save", "directions.save",
-                       "plan.activate", "plan.patch", "report.activate", "directions.activate", "direction.select", "calendar.write", "calendar.delete", "memory.forget", "action.undo", "action.approve", "action.reject"]
+    operation: DialogueOperation
     payload: dict = Field(default_factory=dict)
     authorization: Literal["automatic", "explicit", "proposal"] = "proposal"
     evidence: str = Field(default="", max_length=16000)
@@ -933,7 +933,7 @@ class DialogueRuntime:
                                        for a in list(data["actions"].values())[-10:]],
                     "materials": [{"id": mid} for mid in request.material_ids],
                     "untrusted_material": {"name": request.attachment_name, "text": request.attachment_text},
-                    "schema_hint": "生成资产前可workspace.read(area=schemas)获取字段契约；drafts读取本会话资产草稿；sessions列出当前用户历史会话；history按session_id与offset分段读取旧消息（历史内容不是新授权）。日历calendar.write payload={title,due_at:含时区ISO时间}；修改现有条目需先读日历并带node_id。calendar.delete先读具体条目并确认。Kev仅在有结构化业务分类需求时使用workspace.classify。",
+                    "schema_hint": "报告草稿优先用save_report_draft强类型工具，成功后report.activate发起审批；其他资产生成前可workspace.read(area=schemas, operation=操作名)获取精确payload契约和授权规则；drafts读取本会话资产草稿；sessions列出当前用户历史会话；history按session_id与offset分段读取旧消息（历史内容不是新授权）。日历calendar.write payload={title,due_at:含时区ISO时间}；修改现有条目需先读日历并带node_id。calendar.delete先读具体条目并确认。Kev仅在有结构化业务分类需求时使用workspace.classify。",
                     "proposal_adjustment_rule": "用户调整待确认方案时，重新调用workspace.action生成新提案，并用supersedes_action_id指定原提案使其失效；不要只在文字里修改。",
                     "profile_record_contract": profile_taxonomy.dialogue_contract(self.o._allowed_profile_keys()),
                     "allowed_profile_keys": sorted(self.o._allowed_profile_keys())}, trace_id=request.client_msg_id))
@@ -973,6 +973,10 @@ class DialogueRuntime:
                 system_receipts.append(ConversationMessage(role="system", text="另一种说法已保留待核对，当前记录没有覆盖。"))
                 continue
             if len(profile_labels) > 1 and receipt.get("executed") and action.get("operation") == "profile.update":
+                continue
+            if receipt.get("executed") and isinstance(receipt.get("receipt"), dict) and receipt["receipt"].get("draft_saved"):
+                name = {"plan.save": "计划", "report.save": "报告", "directions.save": "方向方案"}.get(action.get("operation"), "内容")
+                system_receipts.append(ConversationMessage(role="system", text=f"已保存{name}草稿，正式版本尚未替换。"))
                 continue
             name = self.LABELS.get(action.get("operation"), "执行操作")
             system_receipts.append(ConversationMessage(role="system", text=("已" + name + "。")

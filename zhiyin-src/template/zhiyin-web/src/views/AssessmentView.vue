@@ -14,6 +14,7 @@ import StatusBanner from '../components/StatusBanner.vue'
 import { studentVoice } from '../lib/student-voice'
 import { formatDateTime } from '../lib/format'
 
+const regenerateTarget = {path: '/chat', query: {ask: '请根据我最新的资料重新生成诊断报告。先给我看新版，等我确认后再替换当前报告，并保留历史版本。'}}
 const route = useRoute()
 const router = useRouter()
 const busy = ref(false)
@@ -129,6 +130,7 @@ onMounted(load)
   <div class="ws-page report-page" :aria-busy="busy">
     <p class="sr-only" role="status" aria-live="polite">{{ busy ? '正在读取报告…' : '' }}</p>
     <PageHeading title="你的报告" description="先看判断、差距和下一步；需要时再点开依据与资料。">
+      <RouterLink v-if="!history" class="btn btn--primary" :to="regenerateTarget">{{ report ? '重新生成报告' : '生成报告' }}</RouterLink>
       <button v-if="history" class="btn" @click="setHistory(false)">返回报告</button>
       <template v-else-if="report">
         <button class="ws-text-button" :disabled="busy" @click="load">{{ busy ? '正在读取…' : historicalView ? '回到最新版' : '重新读取' }}</button><button class="ws-text-button" @click="setHistory(true)">版本记录</button><button class="ws-text-button" :disabled="busy" @click="exportReport">导出</button><button class="ws-text-button" @click="printReport">打印</button>
@@ -137,6 +139,7 @@ onMounted(load)
     </PageHeading>
 
     <AssetNotice />
+    <p v-if="!history" class="ws-muted">{{ historicalView ? '重新生成会使用最新资料，当前查看的历史版本会保留。' : '在对话中生成新版，确认后再更新正式报告。' }}</p>
     <StatusBanner v-if="error" tone="error" :message="error" retry-label="重试" @retry="load" />
     <StatusBanner v-if="exportStatus" tone="info" :message="exportStatus" @dismiss="exportStatus = ''" />
     <SkeletonBlock v-if="busy" variant="list" :lines="4" />
@@ -171,7 +174,7 @@ onMounted(load)
       </FullReportBody>
     </div>
 
-    <EmptyState v-else-if="!busy && !error" kind="report" :heading-level="2" title="尚未生成报告" description="先在对话里说一句「帮我生成一份诊断报告」，生成后会保存在这里；页头的「导出」可以在生成后保存 JSON。"><RouterLink class="btn btn--primary" :to="{ path: '/chat', query: { ask: '帮我生成一份诊断报告' } }">生成报告</RouterLink><RouterLink class="btn" to="/chat">继续咨询</RouterLink></EmptyState>
+    <EmptyState v-else-if="!busy && !error" kind="report" :heading-level="2" title="尚未生成报告" description="根据已有资料生成报告草稿，确认后保存在这里。资料不足时会说明限制，不编造结论。"><RouterLink class="btn btn--primary" :to="regenerateTarget">生成报告</RouterLink><RouterLink class="btn" to="/chat">继续咨询</RouterLink></EmptyState>
   </div>
 </template>
 

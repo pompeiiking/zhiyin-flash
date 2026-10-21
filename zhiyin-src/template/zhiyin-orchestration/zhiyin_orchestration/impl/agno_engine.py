@@ -343,8 +343,8 @@ class AgnoAgentEngine(AgentEngine):
 
     async def conversation_tool_names(self, agent_id: str) -> set[str]:
         """Only expose tools actually installed and attached to this agent."""
-        handlers = await self._tools_for(agent_id, allow_write_tools=True)
-        return {name for name, handler in self._tools.items() if any(handler is item for item in handlers)}
+        from .dialogue_engine import dialogue_tool_names
+        return set(await dialogue_tool_names(self, agent_id))
 
     async def _repair_once(
         self,

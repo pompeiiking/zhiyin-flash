@@ -6,6 +6,7 @@ import json
 import logging
 from uuid import uuid4
 
+from pydantic import ValidationError
 from agno.agent import Agent
 from agno.models.message import Message
 from agno.run.agent import RunOutput
@@ -31,14 +32,14 @@ def traced(handler, name):
             "web.search": "正在搜索资料", "kb.search": "正在检索知识库",
             "chart.render": "正在生成图表", "workspace.action": "正在核对操作权限",
             "workspace.classify": "正在分析业务意图",
-            "workspace.exploration": "正在整理对话线索",
+            "workspace.exploration": "正在整理对话线索", "workspace.report_draft": "正在保存报告草稿",
         }.get(name, "正在读取模块资料")
         parameters = redact_sensitive({k: v for k, v in kwargs.items()
             if k in {"area", "offset", "session_id", "material_id", "query", "question"}})
         emit_progress({"type": "step.started", "step_id": step, "note": label,
                        "tool": name, "parameters": parameters})
         try:
-            if name == "workspace.action":
+            if name in {"workspace.action", "workspace.report_draft"}:
                 # Never apply a read timeout across a write and its receipt.
                 value = await handler(*args, **kwargs)
             else:
@@ -48,6 +49,12 @@ def traced(handler, name):
             emit_progress({"type": "step.failed", "step_id": step, "note": "本次资料查询超时"})
             return json.dumps({"executed": False, "available": False, "status": "timeout",
                 "reason": "查询超时，不代表没有数据；可先回答能够确认的部分，不要重复相同查询。", "retry": False}, ensure_ascii=False)
+        except ValidationError as exc:
+            emit_progress({"type": "step.failed", "step_id": step, "note": "内容格式需要调整"})
+            return json.dumps({"executed": False, "state": "validation_failed",
+                "errors": [{"path": list(error["loc"]), "type": error["type"], "message": error["msg"]}
+                    for error in exc.errors(include_input=False, include_url=False)[:12]],
+                "retry": "只修正列出的字段；报告生成优先用 save_report_draft，verdict和swot必须同级。不要重复提交原来的无效结构。"}, ensure_ascii=False)
         except InvalidRequest as exc:
             emit_progress({"type": "step.failed", "step_id": step, "note": "操作条件尚未满足"})
             return json.dumps({"executed": False, "reason": str(exc), "retry": "先重新读取资料，核对对象和版本；不要盲目重试。"}, ensure_ascii=False)
@@ -56,11 +63,25 @@ def traced(handler, name):
             emit_progress({"type": "step.failed", "step_id": step, "note": "本次操作未完成"})
             return json.dumps({"executed": False, "error": "工具未完成，请核对权限和数据后再继续。"}, ensure_ascii=False)
         completed = label.replace("正在", "已", 1)
-        if name == "workspace.action":
+        if name in {"workspace.action", "workspace.report_draft"}:
             completed = "已核对操作回执"
         emit_progress({"type": "step.completed", "step_id": step, "note": completed})
         return value
     return call
+
+
+async def dialogue_tool_names(engine, agent_id):
+    """The native dialogue and capability inspection use the same installed pool."""
+    from .dialogue_specialists import ROLE_FOCUS
+    names = ["workspace.read", "material.read", "workspace.action", "workspace.memory", "workspace.classify", "workspace.exploration", "workspace.report_draft"]
+    for role_id in ROLE_FOCUS:
+        descriptor = await engine._registry.get_agent(role_id)
+        if descriptor and str(getattr(descriptor.status, "value", descriptor.status)) == "enabled":
+            names.extend(descriptor.tools)
+    if engine.module_tool_names is not None:
+        names.extend(await engine.module_tool_names(agent_id))
+    legacy = {"workspace.task.set_done", "plan.read", "profile.read", "behavior.recent"}
+    return list(dict.fromkeys(name for name in names if name in engine._tools and name not in legacy))
 
 
 async def invoke_dialogue(engine, request):
@@ -71,18 +92,10 @@ async def invoke_dialogue(engine, request):
     if engine.refresh_model is not None:
         await engine.refresh_model()
     prompt = await _required_prompt(engine._registry, "conversation.main")
-    from .dialogue_specialists import specialist_tools, ROLE_FOCUS
+    from .dialogue_specialists import specialist_tools
     presentation = {"lead": request.agent_id, "stage": request.prompt_vars.get("dialogue_focus", ""), "roles": [],
                     "methods": {}, "clues": [], "theories": []}
-    names = ["workspace.read", "material.read", "workspace.action", "workspace.classify", "workspace.exploration"]
-    # All enabled professionals share one conversation. Each descriptor still
-    # controls which registered read capabilities enter the capability pool.
-    for role_id in ROLE_FOCUS:
-        descriptor = await engine._registry.get_agent(role_id)
-        if descriptor and str(getattr(descriptor.status, "value", descriptor.status)) == "enabled":
-            names += list(descriptor.tools)
-    if engine.module_tool_names is not None:
-        names += await engine.module_tool_names(request.agent_id)
+    names = await dialogue_tool_names(engine, request.agent_id)
     tools = []
     for name in dict.fromkeys(names):
         if name in {"workspace.task.set_done", "plan.read", "profile.read", "behavior.recent"}:
