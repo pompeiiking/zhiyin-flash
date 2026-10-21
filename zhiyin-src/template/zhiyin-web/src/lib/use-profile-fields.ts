@@ -422,14 +422,31 @@ export function useProfileFields(deps: ProfileFieldsDeps) {
       })),
   )
 
-  async function denyClue(id: string) {
-    if (!live.value) return
-    await backendClient.denyProfileClue(id)
-    const workspace = JSON.parse(JSON.stringify(backendDemo.state.liveWorkspace))
-    if (workspace?.profile_panel) {
-      workspace.profile_panel.clues = (workspace.profile_panel.clues ?? []).filter((clue: { id: string }) => clue.id !== id)
+  const profileActionError = ref('')
+  const profileActionsPending = ref<string[]>([])
+
+  async function profileAction(id: string, execute: () => Promise<void>) {
+    if (!live.value || profileActionsPending.value.includes(id)) return
+    profileActionError.value = ''
+    profileActionsPending.value = [...profileActionsPending.value, id]
+    try {
+      await execute()
+    } catch (error) {
+      profileActionError.value = error instanceof Error ? error.message : '这次操作没有完成，请重试。'
+    } finally {
+      profileActionsPending.value = profileActionsPending.value.filter(item => item !== id)
     }
-    if (workspace) backendDemo.setWorkspace(workspace)
+  }
+
+  async function denyClue(id: string) {
+    await profileAction(`deny:${id}`, async () => {
+      await backendClient.denyProfileClue(id)
+      const workspace = JSON.parse(JSON.stringify(backendDemo.state.liveWorkspace))
+      if (workspace?.profile_panel) {
+        workspace.profile_panel.clues = (workspace.profile_panel.clues ?? []).filter((clue: { id: string }) => clue.id !== id)
+      }
+      if (workspace) backendDemo.setWorkspace(workspace)
+    })
   }
 
   /** 冲突提案：与当前值并存的另一种说法；当前值从投影里取，不改写事实。 */
@@ -446,17 +463,28 @@ export function useProfileFields(deps: ProfileFieldsDeps) {
   )
 
   async function resolveConflict(id: string, choice: 'revision' | 'current') {
-    if (!live.value) return
-    await backendClient.resolveProfileConflict(id, choice)
-    // 裁定可能改当前投影：重新读一次，别用乐观更新覆盖别的字段。
-    const workspace = await backendClient.workspace()
-    backendDemo.setWorkspace(workspace)
+    await profileAction(`resolve:${id}`, async () => {
+      await backendClient.resolveProfileConflict(id, choice)
+      // The decision has already committed. A failed refresh must not claim
+      // that saving failed or offer the same stale decision again.
+      const previous = JSON.parse(JSON.stringify(backendDemo.state.liveWorkspace))
+      if (previous?.profile_panel) {
+        previous.profile_panel.conflicts = (previous.profile_panel.conflicts ?? []).filter((item: { id: string }) => item.id !== id)
+        backendDemo.setWorkspace(previous)
+      }
+      try {
+        backendDemo.setWorkspace(await backendClient.workspace())
+      } catch {
+        throw new Error('裁定已保存，但最新画像暂未读取，请重新核对档案后查看。')
+      }
+    })
   }
 
   return {
     fieldValue, valueParts, rowsBase, fieldLabels, missing, known,
     tally, statusLine, confBands, trustOrigin, coverageCount, coverageNote,
-    groups, clues, denyClue, conflicts, resolveConflict, reduced, trustShown, tweenTo, stopTween,
+    groups, clues, denyClue, conflicts, resolveConflict, profileActionError, profileActionsPending,
+    reduced, trustShown, tweenTo, stopTween,
   }
 }
 

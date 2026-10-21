@@ -92,7 +92,7 @@ const fields = useProfileFields({
   progress: workspace.progress,
   getFieldDeps: () => conclusions.fieldDeps.value,
 })
-const { fieldValue, valueParts, known, statusLine, confBands, coverageNote, groups, clues, denyClue, conflicts, resolveConflict } = fields
+const { fieldValue, valueParts, known, statusLine, confBands, coverageNote, groups, clues, denyClue, conflicts, resolveConflict, profileActionError, profileActionsPending } = fields
 
 const conclusions = useProfileConclusions({
   live: workspace.live,
@@ -231,6 +231,7 @@ onMounted(()=>{ void loadWorkspace() })
       <!-- 全量资料按主题展开，不设置搜索、范围或组织方式筛选。 -->
       <LayoutGroup>
         <motion.div class="p7-groups" :layout="true" :layout-dependency="0" :transition="{ duration: 0.32, ease: [0.23, 1, 0.32, 1] }">
+          <p v-if="profileActionError" class="ws-field-error" role="alert">{{ profileActionError }}</p>
           <!-- 系统理解与事实分开：线索必须能单独展示、单独否认。 -->
           <section v-if="clues.length" class="p7-group p7-clues" aria-labelledby="p7-clues-title">
             <header class="p7-group__head">
@@ -244,7 +245,7 @@ onMounted(()=>{ void loadWorkspace() })
                   <p class="p7-clue__text">{{ clue.text }}</p>
                   <p v-if="clue.evidence.length" class="p7-clue__evidence">依据：{{ clue.evidence.slice(0, 2).join('；').slice(0, 180) }}</p>
                 </div>
-                <button class="ws-text-button" type="button" @click="denyClue(clue.id)">不是这样</button>
+                <button class="ws-text-button" type="button" :disabled="profileActionsPending.includes('deny:' + clue.id)" @click="denyClue(clue.id)">{{ profileActionsPending.includes('deny:' + clue.id) ? '正在更新…' : '不是这样' }}</button>
               </li>
             </ul>
           </section>
@@ -264,8 +265,8 @@ onMounted(()=>{ void loadWorkspace() })
                   <p class="p7-conflict__reason">{{ item.reason }}</p>
                 </div>
                 <div class="p7-conflict__actions">
-                  <button class="ws-text-button" type="button" @click="resolveConflict(item.id, 'revision')">以新说法为准</button>
-                  <button class="ws-text-button" type="button" @click="resolveConflict(item.id, 'current')">保留当前记录</button>
+                  <button class="ws-text-button" type="button" :disabled="profileActionsPending.includes('resolve:' + item.id)" @click="resolveConflict(item.id, 'revision')">以新说法为准</button>
+                  <button class="ws-text-button" type="button" :disabled="profileActionsPending.includes('resolve:' + item.id)" @click="resolveConflict(item.id, 'current')">保留当前记录</button>
                 </div>
               </li>
             </ul>
