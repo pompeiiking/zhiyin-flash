@@ -35,7 +35,7 @@ export async function streamBackend<T>(
     if (!response.ok || !response.headers.get('content-type')?.includes('text/event-stream')) {
       const body = await response.json().catch(() => null) as { code?: number; message?: string; trace_id?: string } | null
       ensureSameAccount()
-      if (response.status === 401 || body?.code === 1004) window.dispatchEvent(new Event('zhiyin:unauthorized'))
+      if (headers.Authorization && (response.status === 401 || body?.code === 1004)) window.dispatchEvent(new Event('zhiyin:unauthorized'))
       throw new BackendError(body?.message || '这次生成没有接上，请稍后重试。', body?.code ?? response.status, body?.trace_id)
     }
     reader = response.body?.getReader()
@@ -49,7 +49,7 @@ export async function streamBackend<T>(
       const data = block.split(/\r?\n/).filter(line => line.startsWith('data:')).map(line => line.slice(5).trimStart()).join('\n')
       if (!data) return
       const frame = JSON.parse(data) as StreamProgress & { error?: { code: number; message: string }; result?: T }
-      if (frame.error) { if (frame.error.code === 1004) window.dispatchEvent(new Event('zhiyin:unauthorized')); throw new BackendError(frame.error.message, frame.error.code, response.headers.get('X-Trace-Id') ?? '') }
+      if (frame.error) { if (headers.Authorization && frame.error.code === 1004) window.dispatchEvent(new Event('zhiyin:unauthorized')); throw new BackendError(frame.error.message, frame.error.code, response.headers.get('X-Trace-Id') ?? '') }
       if (Object.hasOwn(frame, 'result')) { result = frame.result; finished = true }
       else onProgress(frame)
     }

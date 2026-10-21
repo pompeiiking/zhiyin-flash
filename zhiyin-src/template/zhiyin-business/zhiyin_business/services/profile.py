@@ -476,6 +476,25 @@ class DefaultProfileService(ProfileService):
             replaced_at=datetime.now(timezone.utc),
             change_reason=reason,
         )
+        # Both choices settle the conflict. A hypothesis or working snapshot
+        # saying "still awaiting review" must not survive either decision.
+        parts = (target.origin_ref or "").split(":")
+        if len(parts) >= 3 and parts[0] == "conversation":
+            session_id = parts[1]
+            clues = [clue for clue in await self.get_clues(user_id) if clue.session_id == session_id]
+            if clues:
+                await self._profiles.replace_session_clues(user_id, session_id, [
+                    clue.model_copy(update={"status": ProfileClueStatus.INVALID,
+                        "invalidated_reason": "本人已裁定这次冲突，相关理解需要重新核对",
+                        "updated_at": datetime.now(timezone.utc)})
+                    if clue.status != ProfileClueStatus.INVALID else clue for clue in clues])
+            if self._student_state is not None:
+                def clear_working(state):
+                    record = state.get("conversation_runtime_v2", {}).get(session_id)
+                    if record is not None:
+                        record.pop("exploration", None)
+                    return state
+                await self._student_state.update(user_id, clear_working)
         return target.model_copy(
             update={"status": status, "replaced_at": datetime.now(timezone.utc), "change_reason": reason}
         )
@@ -504,7 +523,9 @@ class DefaultProfileService(ProfileService):
         return labels
 
     @atomic_repository("_profiles")
-    async def correct_field(self, user_id: str, key: str, value: object, *, expected_updated_at: datetime | None = None, check_version: bool = False) -> ProfileField:
+    async def correct_field(self, user_id: str, key: str, value: object, *, expected_updated_at: datetime | None = None, check_version: bool = False,
+                            attributes: dict | None = None, origin_ref: str = "", evidence: list[str] | None = None,
+                            valid_from: datetime | None = None, valid_to: datetime | None = None, event_at: datetime | None = None) -> ProfileField:
         """用户本人更正一个画像字段（issue #26 第三条）。
 
         为什么这条路径必须存在
@@ -532,13 +553,15 @@ class DefaultProfileService(ProfileService):
             )
 
         label = labels.get(key, key)
-        text = "" if value is None else str(value).strip()
+        if value is None or (isinstance(value, str) and not value.strip()):
+            raise InvalidRequest(f"「{label}」不能是空的 —— 写一句你认可的说法再提交。")
+        text = profile_taxonomy.normalize_value(key, value)
         if not text:
             # 空值单独拒，而不是当成"清空这一格"：清空是另一件事（撤销一条记录），
             # 混进来的后果是用户以为自己在改值，实际把一条依据删掉了。
             raise InvalidRequest(f"「{label}」不能是空的 —— 写一句你认可的说法再提交。")
         limit = profile_taxonomy.value_limit(key)
-        if len(text) > limit:
+        if not isinstance(text, list) and len(text) > limit:
             raise InvalidRequest(
                 f"「{label}」最多 {limit} 个字，现在有 {len(text)} 个 —— "
                 "画像里一格只放一句读得完的话。"
@@ -576,12 +599,13 @@ class DefaultProfileService(ProfileService):
                 label=(before.label if before else "") or label,
                 # 旧证据撑的是**旧值**，留着会让"这条凭什么"指回一个已经不成立的说法。
                 # 更正之后的出处就是他本人，这一点由 source 负责说明。
-                evidence=[],
+                evidence=evidence or [],
                 # 更正后的记录是「本人确认」，而不是任何未经核验的分数：
                 # 核实状态与来源分开表达（第 3.1、4 节）。
                 verification=ProfileVerification.USER_CONFIRMED.value,
                 # 旧属性描述的是旧值（例如兴趣的“喜欢/不喜欢”），不能跟着新值留着。
-                attributes={},
+                attributes=attributes or {}, origin_ref=origin_ref,
+                valid_from=valid_from, valid_to=valid_to, event_at=event_at,
                 expected_updated_at=expected_updated_at,
                 check_version=enforce_version,
             )

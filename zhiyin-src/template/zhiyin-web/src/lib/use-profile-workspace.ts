@@ -45,8 +45,9 @@ export function useProfileWorkspace() {
   const progress = computed(() => {
     if (!live.value) return demo.use.profileProgress.value
     const collection = backendDemo.state.liveWorkspace?.collection_panel?.items ?? []
-    const gap = collection.filter((item) => !item.got).length
-    if (collection.length) return { known: collection.length - gap, total: collection.length, gap }
+    const present = new Set((livePanel.value?.fields ?? []).map(field => field.key))
+    const gap = collection.filter((item) => !item.got && !present.has(item.key)).length
+    if (collection.length) return { known: present.size, total: present.size + gap, gap }
     const fields = livePanel.value?.fields?.length ?? 0
     const gaps = livePanel.value?.gaps?.length ?? 0
     return { known: fields, total: fields + gaps, gap: gaps }

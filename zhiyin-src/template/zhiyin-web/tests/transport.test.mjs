@@ -42,6 +42,28 @@ test('401 invalidates authentication, failed login does not invalidate another s
   await assert.rejects(app.backendClient.authenticate('login',{account:'qa',password:'wrong'}))
   assert.equal(app.events.length,0)
 })
+
+test('anonymous old-page 401 requests do not clear an in-progress login form',async()=>{
+  for(const invoke of [app=>app.backendClient.bootstrap(),app=>app.api('/developer/context'),app=>app.streamBackend('brief',{},()=>{})]) {
+    const app=runtime(async()=>json(null,1004,401))
+    app.storage.delete('zhiyin_token')
+    await assert.rejects(invoke(app),e=>e.code===1004)
+    assert.equal(app.events.length,0)
+  }
+})
+
+test('anonymous business and streaming auth errors still reject without resetting login state',async()=>{
+  for(const invoke of [app=>app.backendClient.bootstrap(),app=>app.api('/developer/context'),app=>app.streamBackend('brief',{},()=>{})]) {
+    const app=runtime(async()=>json(null,1004,200))
+    app.storage.delete('zhiyin_token')
+    await assert.rejects(invoke(app),e=>e.code===1004)
+    assert.equal(app.events.length,0)
+  }
+  const app=runtime(async()=>sse([{error:{code:1004,message:'未登录'}}]))
+  app.storage.delete('zhiyin_token')
+  await assert.rejects(app.streamBackend('brief',{},()=>{}),e=>e.code===1004)
+  assert.equal(app.events.length,0)
+})
 test('late results cannot populate another account',async()=>{
   let release;const app=runtime(()=>new Promise(resolve=>release=resolve))
   const pending=app.backendClient.notes();app.storage.set('zhiyin_token','other');release(json([]))

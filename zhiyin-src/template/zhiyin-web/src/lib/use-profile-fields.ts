@@ -301,15 +301,16 @@ export function useProfileFields(deps: ProfileFieldsDeps) {
   }
 
   const missing = computed(() => {
+    const present = new Set(known.value.map(row => row.key))
     const rows = live.value
-      ? (livePanel.value?.gaps ?? []).map((gap) => ({ key: gap.key, label: gap.label ?? gap.key, reason: gap.reason, next: gap.suggested_next_action ?? '', source: '' }))
+      ? (livePanel.value?.gaps ?? []).filter(gap => !present.has(gap.key)).map((gap) => ({ key: gap.key, label: gap.label ?? gap.key, reason: gap.reason, next: gap.suggested_next_action ?? '', source: backendDemo.state.liveWorkspace?.collection_panel?.items?.find(item => item.key === gap.key)?.source ?? '' }))
       : PROFILE_FIELDS.slice(progress.value.known).map((field) => ({ key: field.key, label: field.label, reason: '', next: '', source: '' }))
     if (!live.value) return rows
     // 画像面板的 gaps 只收"影响判断"的缺口；采集清单里没拿到的学校/专业/层次等也要进待补充列表，
     // 否则会出现"资料完整度 1/15"却"暂未发现缺口"的自相矛盾。
     const knownKeys = new Set(rows.map((row) => row.key))
     for (const item of backendDemo.state.liveWorkspace?.collection_panel?.items ?? []) {
-      if (item.got || knownKeys.has(item.key)) continue
+      if (item.got || knownKeys.has(item.key) || present.has(item.key)) continue
       knownKeys.add(item.key)
       rows.push({ key: item.key, label: item.label ?? item.key, reason: item.why ?? '', next: item.ask ?? '', source: item.source ?? '' })
     }
@@ -455,8 +456,8 @@ export function useProfileFields(deps: ProfileFieldsDeps) {
       id: item.id,
       key: item.key,
       label: item.label || item.key,
-      value: human(item.value),
-      currentValue: known.value.find((row) => row.key === item.key)?.value ?? '未记录',
+      value: [human(item.value), profileAttributeSummary(item.attributes ?? {})].filter(Boolean).join('；'),
+      currentValue: (() => { const row = known.value.find((field) => field.key === item.key); return row ? [row.value, row.attributeSummary].filter(Boolean).join('；') : '未记录' })(),
       reason: item.change_reason || '与当前记录不一致，等待核对',
       createdAt: item.created_at,
     })),
@@ -499,6 +500,12 @@ export function profileAttributeSummary(attributes: Readonly<Record<string, unkn
   }
   const labels: Record<string, string> = { context: '情境', outcome: '结果', scope: '适用范围', title: '说明' }
   return Object.entries(attributes).flatMap(([key, value]) => {
+    if (['polarity', 'state'].includes(key) && Array.isArray(attributes.items) && attributes.items.length) return []
+    if (key === 'items' && Array.isArray(value)) return value.flatMap(item => {
+      if (!item || typeof item !== 'object') return []
+      const labels = [choices.polarity?.[item.polarity], choices.state?.[item.state]].filter(Boolean)
+      return labels.length ? [`${item.value}：${labels.join('，')}`] : []
+    })
     if (typeof value !== 'string' || !value.trim()) return []
     const choice = choices[key]?.[value]
     return choice ? [choice] : labels[key] ? [`${labels[key]}：${value}`] : []

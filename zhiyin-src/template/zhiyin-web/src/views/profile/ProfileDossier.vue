@@ -25,6 +25,7 @@ defineProps<{
 }>()
 
 const emit = defineEmits<{
+  verify: []
   tab: [tab: 'facts' | 'judgments' | 'gaps' | 'sources']
   'jump-conclusion': [key: string]
 }>()
@@ -76,11 +77,11 @@ const emit = defineEmits<{
           </ul>
           <div v-else class="profile-focus-empty">
             <span>方向尚未形成</span>
-            <strong>{{ priorityGaps.length ? '还缺几项会影响判断的信息' : '先让系统了解你的专业与经历' }}</strong>
-            <ol v-if="priorityGaps.length" aria-label="形成方向前待补充的信息">
+            <strong>{{ priorityGaps.length ? '还可以进一步了解这些信息' : '可以结合已有资料继续探索' }}</strong>
+            <ol v-if="priorityGaps.length" aria-label="可以继续了解的信息">
               <li v-for="item in priorityGaps.slice(0,3)" :key="item.key"><i aria-hidden="true" />{{ item.label }}</li>
             </ol>
-            <RouterLink class="ws-text-link" :to="priorityGaps[0] ? '/chat?gap='+encodeURIComponent(priorityGaps[0].key)+'&label='+encodeURIComponent(priorityGaps[0].label) : '/chat'">补充后开始比较<UiIcon name="arrow" :size="14" /></RouterLink>
+            <RouterLink class="ws-text-link" to="/chat">继续探索与比较<UiIcon name="arrow" :size="14" /></RouterLink>
           </div>
         </section>
 
@@ -90,7 +91,8 @@ const emit = defineEmits<{
             <h3 id="profile-next-title">{{ priorityGaps[0].label }}</h3>
             <div class="profile-next__suggestion"><span>建议行动</span><strong>{{ studentVoice(priorityGaps[0].next) }}</strong></div>
             <DetailPopover class="profile-next__reason" :title="'为什么先补充' + priorityGaps[0].label" label="查看这项信息的影响"><template #trigger>为什么先补这项</template><p>{{ priorityGaps[0].why }}</p><p v-if="priorityGaps[0].affects.length">它会影响 {{ priorityGaps[0].affects.map(item => item.label).join('、') }}。</p></DetailPopover>
-            <RouterLink class="btn btn--primary" :to="'/chat?gap='+encodeURIComponent(priorityGaps[0].key)+'&label='+encodeURIComponent(priorityGaps[0].label)">去补充这条信息<UiIcon name="arrow" :size="14"/></RouterLink>
+            <button v-if="priorityGaps[0].source === 'chsi'" type="button" class="btn btn--primary" @click="emit('verify')">核验学籍信息<UiIcon name="arrow" :size="14"/></button>
+            <RouterLink v-else class="btn btn--primary" :to="'/chat?gap='+encodeURIComponent(priorityGaps[0].key)+'&label='+encodeURIComponent(priorityGaps[0].label)">去补充这条信息<UiIcon name="arrow" :size="14"/></RouterLink>
             <button class="ws-text-button" type="button" @click="emit('tab','gaps')">查看全部待补充信息</button>
           </template>
           <template v-else>

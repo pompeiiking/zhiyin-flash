@@ -142,10 +142,12 @@ ATTRIBUTE_SPECS: dict[ProfileEntryType, dict[str, tuple[str, ...]]] = {
     ProfileEntryType.INTEREST: {
         "polarity": INTEREST_POLARITIES,
         "context": (),
+        "items": (),
     },
     ProfileEntryType.CAREER_FOCUS: {
         "state": CAREER_FOCUS_STATES,
         "occupation_id": (),
+        "items": (),
     },
     ProfileEntryType.ABILITY: {
         "evidence_kind": ABILITY_EVIDENCE_KINDS,
@@ -353,6 +355,12 @@ def normalize_value(key: str, value: Any, entry_type: ProfileEntryType | None = 
                 f"现在有 {len(cleaned)} 条 —— 请保留最重要的几条。"
             )
         return cleaned
+    if isinstance(value, (list, tuple)):
+        if canonical != ProfileEntryType.VALUES or not all(isinstance(item, str) and item.strip() for item in value):
+            raise InvalidRequest(f"「{ENTRY_TYPE_LABELS[canonical]}」需要一段文本，不能把列表或对象直接写成文字。")
+        value = '、'.join(dict.fromkeys(item.strip() for item in value))
+    if isinstance(value, Mapping):
+        raise InvalidRequest(f"「{ENTRY_TYPE_LABELS[canonical]}」需要一段文本。")
     text = "" if value is None else str(value).strip()
     if not text:
         raise InvalidRequest(f"「{ENTRY_TYPE_LABELS[canonical]}」不能是空的。")
@@ -377,6 +385,20 @@ def normalize_attributes(entry_type: ProfileEntryType, attributes: Mapping[str, 
         )
     normalized: dict[str, Any] = {}
     for key, value in attributes.items():
+        if key == "items":
+            if not isinstance(value, list) or len(value) > TYPE_MAX_ITEMS[entry_type]:
+                raise InvalidRequest("逐项属性必须是有上限的列表")
+            entries = []
+            for item in value:
+                if not isinstance(item, dict) or "value" not in item or "items" in item:
+                    raise InvalidRequest("逐项属性必须包含对应的值，不能嵌套")
+                label = normalize_value("", item["value"], entry_type)[0]
+                attrs = normalize_attributes(entry_type, {k: v for k, v in item.items() if k != "value"})
+                if any(entry["value"] == label for entry in entries):
+                    raise InvalidRequest("逐项属性不能重复同一个对象")
+                entries.append({"value": label, **attrs})
+            normalized[key] = entries
+            continue
         if value is None or (isinstance(value, str) and not value.strip()):
             continue
         choices = specs.get(key, ())
@@ -388,15 +410,75 @@ def normalize_attributes(entry_type: ProfileEntryType, attributes: Mapping[str, 
                 )
             normalized[key] = text
             continue
-        if isinstance(value, bool):
+        if key == "pending_classification":
+            if not isinstance(value, bool):
+                raise InvalidRequest("待归类标记必须是布尔值")
             normalized[key] = value
             continue
+        if not isinstance(value, str):
+            raise InvalidRequest(f"属性「{key}」必须是文本")
         text = str(value).strip()
         limit = ATTRIBUTE_MAX_CHARS.get(key, 240)
         if len(text) > limit:
             raise InvalidRequest(f"「{ENTRY_TYPE_LABELS[entry_type]}」的「{key}」最多 {limit} 个字。")
         normalized[key] = text
     return normalized
+
+
+def merge_preferences(key: str, before: Any, value: Any, attributes: Mapping[str, Any]) -> tuple[Any, dict, bool]:
+    """Append independent interests/foci; only incompatible claims about the same object conflict.
+
+    Semantic object names/polarities come from the model, never keyword classification.
+    Per-item attributes prevent a dislike from changing the polarity of every existing interest.
+    """
+    kind = entry_type_of(key)
+    values = normalize_value(key, value, kind)
+    attrs = normalize_attributes(kind, attributes)
+    if kind not in {ProfileEntryType.INTEREST, ProfileEntryType.CAREER_FOCUS} or before is None:
+        return values, attrs, False
+    old_values = normalize_value(key, before.value, kind)
+    old_attrs = dict(before.attributes or {})
+    def entries(vs, meta):
+        by_value = {item["value"]: item for item in meta.get("items", [])}
+        common = {k: v for k, v in meta.items() if k != "items"}
+        return [{"value": item, **common, **by_value.get(item, {})} for item in vs]
+    old = entries(old_values, old_attrs)
+    incoming = entries(values, attrs)
+    discriminator = "polarity" if kind == ProfileEntryType.INTEREST else "state"
+    conflict = False
+    for item in incoming:
+        existing = next((entry for entry in old if entry["value"] == item["value"]), None)
+        if existing is not None:
+            if existing.get(discriminator) and item.get(discriminator) and existing[discriminator] != item[discriminator]:
+                conflict = True
+            existing.update(item)
+        else:
+            old.append(item)
+    merged = normalize_value(key, [item["value"] for item in old], kind)
+    return merged, normalize_attributes(kind, {"items": old}), conflict
+
+
+def dialogue_contract(keys: Iterable[str]) -> list[dict[str, Any]]:
+    """The same write vocabulary for the conversational model and semantic extractor."""
+    return [{"key": key, "type": entry_type_of(key).value,
+             "value_schema": {"type": "array", "items": {"type": "string"}} if allows_multiple(key) else {"type": "string"},
+             "max_chars": value_limit(key), "max_items": max_items(key),
+             "attributes": {name: attributes_schema()["properties"][name]
+                            for name in ATTRIBUTE_SPECS.get(entry_type_of(key), {})}}
+            for key in sorted(keys)]
+
+
+def attributes_schema() -> dict[str, Any]:
+    properties = {name: {"type": "string", "maxLength": limit} for name, limit in ATTRIBUTE_MAX_CHARS.items()}
+    properties.update(polarity={"type": "string", "enum": list(INTEREST_POLARITIES)},
+                      state={"type": "string", "enum": list(CAREER_FOCUS_STATES)},
+                      evidence_kind={"type": "string", "enum": list(ABILITY_EVIDENCE_KINDS)},
+                      pending_classification={"type": "boolean"})
+    properties['items'] = {"type": "array", "maxItems": 8, "items": {"type": "object", "required": ["value"],
+        "additionalProperties": False, "properties": {"value": {"type": "string", "maxLength": 60},
+            "polarity": properties['polarity'], "state": properties['state'],
+            "context": properties['context'], "occupation_id": properties['occupation_id']}}}
+    return {"type": "object", "additionalProperties": False, "properties": properties}
 
 
 def validate_window(valid_from: Any, valid_to: Any) -> None:

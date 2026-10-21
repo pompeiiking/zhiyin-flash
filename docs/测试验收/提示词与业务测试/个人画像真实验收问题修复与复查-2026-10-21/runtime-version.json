@@ -1,0 +1,16 @@
+{
+  "code_hashes": {
+    "dialogue_runtime": "f0386d6bfe53f6c7e196247ddb0e08744f3f9b59b479df8b53362ba1ec428dde",
+    "profile": "ae784413ad2fabc1bdb0dc311f728afce962e2b57f9481af13491ddc50796f0e",
+    "profile_taxonomy": "1086b02ad675ddc5421b7b0bb7f6fb372ef021ac46013d9373d33e82a23593b0"
+  },
+  "prompt_content_matches_image": {
+    "conversation.main": true,
+    "conversation.memory": true
+  },
+  "source_matches_running": {
+    "dialogue_runtime": true,
+    "profile": true,
+    "profile_taxonomy": true
+  }
+}

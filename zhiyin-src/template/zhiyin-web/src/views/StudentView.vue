@@ -146,7 +146,9 @@ const profileSnapshot = computed(() => {
     label: '画像状态',
     title: '资料正在形成',
     state: '需要补充',
-    detail: '先补充一段真实经历或一个明确偏好，再开始比较方向。',
+    detail: known.value.some(row => row.entryType === 'experience' || row.entryType === 'interest')
+      ? '已有经历或偏好可用于继续探索；可以查看整体分析，方向仍由你逐步比较和选择。'
+      : '可以从一段真实经历或一个偏好开始，资料不齐也能继续交流。',
   }
   return {
     label: '当前重点判断',
@@ -165,7 +167,11 @@ const enrollmentRows = computed(() => {
     { label: '在读状态', row: pick('student_status', 'enrollment_status', 'study_status') },
   ].map(item => ({ ...item, value: item.row ? fieldValue(item.row) : '待补充' }))
 })
-function exportProfile(){const url=URL.createObjectURL(new Blob([JSON.stringify({profile:known.value,gaps:gapRows.value,source:live.value?'本次读取的档案':'个人画像'},null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='职引-个人画像.json';a.click();URL.revokeObjectURL(url)}
+function exportProfile(){
+  const data = {schema_version: 1, exported_at: new Date().toISOString(), scope: 'current_profile_snapshot', history_included: false,
+    profile: live.value ? livePanel.value : {fields: known.value}, collection: live.value ? backendDemo.state.liveWorkspace?.collection_panel : undefined}
+  const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='职引-个人画像.json';a.click();URL.revokeObjectURL(url)
+}
 
 /** 覆盖度环：进入页面从 0 生长到实际值；reduced-motion 直接给终值 */
 onBeforeUnmount(() => {
@@ -215,6 +221,7 @@ onMounted(()=>{ void loadWorkspace() })
       :needs-check="needsCheck"
       @tab="changeTab"
       @jump-conclusion="jumpToConclusion"
+      @verify="verificationOpen = true"
     />
 
     <EnrollmentCard :enrollment-rows="enrollmentRows" :is-verified="isVerified" @verify="verificationOpen = true" />
@@ -243,7 +250,7 @@ onMounted(()=>{ void loadWorkspace() })
               <li v-for="clue in clues" :key="clue.id" class="p7-row p7-clue">
                 <div class="p7-clue__body">
                   <p class="p7-clue__text">{{ clue.text }}</p>
-                  <p v-if="clue.evidence.length" class="p7-clue__evidence">依据：{{ clue.evidence.slice(0, 2).join('；').slice(0, 180) }}</p>
+                  <details v-if="clue.evidence.length" class="p7-clue__evidence"><summary>查看依据（{{ clue.evidence.length }} 段用户原话）</summary><p v-for="(quote, index) in clue.evidence" :key="index">{{ quote }}</p></details>
                 </div>
                 <button class="ws-text-button" type="button" :disabled="profileActionsPending.includes('deny:' + clue.id)" @click="denyClue(clue.id)">{{ profileActionsPending.includes('deny:' + clue.id) ? '正在更新…' : '不是这样' }}</button>
               </li>

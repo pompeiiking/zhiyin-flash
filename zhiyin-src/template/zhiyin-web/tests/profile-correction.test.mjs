@@ -4,14 +4,14 @@ import {readFileSync} from 'node:fs'
 import vm from 'node:vm'
 import ts from 'typescript'
 
-function fixture(correct) {
+function fixture(correct, options = {}) {
   const field = {key: 'experience', value: '旧经历', updated_at: '2026-10-20T00:00:00Z', source: 'conversation'}
-  const workspace = {profile_panel: {fields: [field]}}
+  const workspace = {profile_panel: {fields: [field], clues: [{id: 'old', field_keys: ['experience'], status: 'proposed'}]}}
   const backendDemo = {state: {liveWorkspace: workspace}, rememberProfileOriginal() {}, setWorkspace(next) { this.state.liveWorkspace = next }}
   const demoWrites = []
   const modules = {
     vue: {ref: value => ({value}), computed: read => ({get value() {return read()}}), nextTick: async () => {}},
-    '../api/backend-client': {backendClient: {correct}},
+    '../api/backend-client': {backendClient: {correct, workspace: options.workspace || (async () => backendDemo.state.liveWorkspace), deleteProfileField: options.deleteProfileField}},
     './backend-demo': {backendDemo},
     '../store': {demo: {updateProfileField(...args) {demoWrites.push(args)}}},
   }
@@ -22,10 +22,11 @@ function fixture(correct) {
     assert.ok(modules[name], `Unexpected dependency: ${name}`)
     return modules[name]
   }})
+  const serviceError = {value: ''}
   const state = exports.useProfileCorrection({live: {value: true}, livePanel: {value: workspace.profile_panel},
-    originalLive: {value: {}}, serviceError: {value: ''}, openField: {value: null}, fieldValue: row => row.value, inspect() {}})
+    originalLive: {value: {}}, serviceError, openField: {value: null}, fieldValue: row => row.value, inspect() {}})
   state.edit(field)
-  return {state, backendDemo, demoWrites}
+  return {state, backendDemo, demoWrites, serviceError, field}
 }
 
 test('long live-profile corrections are sent intact and never written to demo data', async () => {
@@ -42,6 +43,34 @@ test('long live-profile corrections are sent intact and never written to demo da
   assert.equal(backendDemo.state.liveWorkspace.profile_panel.fields[0].value, text)
   assert.equal(state.correction.value, null)
   assert.equal(demoWrites.length, 0)
+})
+
+test('correction refreshes derived clues without requiring a page reload', async () => {
+  const latest = {profile_panel: {fields: [{key: 'experience', value: '新经历'}], clues: [{id: 'old', status: 'invalid'}]}}
+  const {state, backendDemo} = fixture(async () => latest.profile_panel.fields[0], {workspace: async () => latest})
+  state.value.value = '新经历'
+  await state.save()
+  assert.equal(backendDemo.state.liveWorkspace, latest)
+  assert.equal(backendDemo.state.liveWorkspace.profile_panel.clues[0].status, 'invalid')
+})
+
+test('a saved correction followed by failed refresh does not offer to repeat the write', async () => {
+  const {state, backendDemo, serviceError} = fixture(async () => ({key: 'experience', value: '新经历'}), {workspace: async () => {throw new Error('offline')}})
+  state.value.value = '新经历'
+  await state.save()
+  assert.equal(state.correction.value, null)
+  assert.match(serviceError.value, /修改已保存/)
+  assert.equal(backendDemo.state.liveWorkspace.profile_panel.clues.length, 0)
+})
+
+test('deletion refreshes all derived state and retains committed deletion on refresh failure', async () => {
+  const {state, backendDemo, serviceError, field} = fixture(async () => {}, {deleteProfileField: async () => {}, workspace: async () => {throw new Error('offline')}})
+  state.askDelete(field)
+  await state.confirmDelete()
+  assert.equal(state.deleting.value, null)
+  assert.equal(backendDemo.state.liveWorkspace.profile_panel.fields.length, 0)
+  assert.equal(backendDemo.state.liveWorkspace.profile_panel.clues.length, 0)
+  assert.match(serviceError.value, /修改已保存/)
 })
 
 test('a server validation failure keeps the correction and does not change the saved profile', async () => {

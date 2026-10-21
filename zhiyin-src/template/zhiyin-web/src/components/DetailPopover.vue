@@ -37,7 +37,7 @@ function inlineToggle() { open.value = !!inlineDetails.value?.open }
       </button>
     </PopoverTrigger>
     <PopoverPortal :to="portalTarget">
-      <PopoverContent :id="id" class="detail-popover" :side="placement" :side-offset="8" :collision-padding="16" :aria-label="title" @escape-key-down="escape">
+      <PopoverContent :id="id" class="detail-popover" :side="placement" :side-offset="8" :collision-padding="16" :prioritize-position="true" sticky="always" update-position-strategy="always" :aria-label="title" @escape-key-down="escape">
         <header><h2>{{ title }}</h2><PopoverClose class="detail-popover__close" aria-label="关闭详情"><UiIcon name="close" :size="17" /></PopoverClose></header>
         <div v-scroll-fade class="detail-popover__body"><slot /></div>
       </PopoverContent>
@@ -46,6 +46,8 @@ function inlineToggle() { open.value = !!inlineDetails.value?.open }
 </template>
 
 <style scoped>
+.detail-popover { max-height: min(calc(100dvh - 32px), var(--reka-popper-available-height)); }
+.detail-popover__body { min-height: 0; overflow-y: auto; }
 .detail-inline { margin: 4px 0 12px; }
 .detail-inline__trigger { width: fit-content; list-style: none; }
 .detail-inline__trigger::-webkit-details-marker { display: none; }

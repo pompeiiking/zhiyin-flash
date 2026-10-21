@@ -4,8 +4,8 @@ import {readFileSync} from 'node:fs'
 import vm from 'node:vm'
 import ts from 'typescript'
 
-function fixture(client) {
-  const workspace = {profile_panel: {fields: [], clues: [{id: 'c1'}], conflicts: [{id: 'r1'}]}}
+function fixture(client, panel = {}) {
+  const workspace = {profile_panel: {fields: [], clues: [{id: 'c1'}], conflicts: [{id: 'r1'}], ...panel}}
   const backendDemo = {state: {liveWorkspace: workspace}, setWorkspace(value) {this.state.liveWorkspace = value}}
   const modules = {
     vue: {ref: value => ({value}), computed: read => ({get value() {return read()}})},
@@ -40,6 +40,16 @@ test('a failed clue denial stays local, preserves the clue and can be retried', 
   await fields.denyClue('c1')
   assert.equal(fields.profileActionError.value, '')
   assert.equal(backendDemo.state.liveWorkspace.profile_panel.clues.length, 0)
+})
+
+test('conflicting polarity remains visible even when the activity name is identical', () => {
+  const {fields} = fixture({}, {
+    fields: [{key: 'interest', label: '兴趣', value: ['调试程序'], source: 'conversation', entry_type: 'interest', attributes: {polarity: 'like'}}],
+    conflicts: [{id: 'r1', key: 'interest', label: '兴趣', value: ['调试程序'], attributes: {items: [{value: '调试程序', polarity: 'dislike'}]}}],
+  })
+  assert.match(fields.conflicts.value[0].currentValue, /喜欢/)
+  assert.match(fields.conflicts.value[0].value, /不喜欢/)
+  assert.notEqual(fields.conflicts.value[0].value, fields.conflicts.value[0].currentValue)
 })
 
 test('opposite choices for a pending conflict cannot be submitted together', async () => {

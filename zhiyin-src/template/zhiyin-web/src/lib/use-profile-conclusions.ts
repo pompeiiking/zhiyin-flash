@@ -100,6 +100,7 @@ interface Conclusion {
 }
 
 interface GapRow {
+  source: string
   key: string
   label: string
   why: string
@@ -291,10 +292,11 @@ export function useProfileConclusions(deps: ProfileConclusionsDeps) {
         return { key, label: conclusion?.label ?? key, brief: conclusion?.brief ?? '' }
       })
       return {
+        source: item.source || '',
         key: item.key,
         label: item.label,
         why: item.reason || meta?.why || '这条信息还没有拿到，相关判断暂时只能给到"待确认"。',
-        next: item.next || meta?.next || '在一次咨询里说清楚就可以',
+        next: item.source === 'chsi' ? '可核验学籍信息，也可先在对话中提供本人自述' : item.next || meta?.next || '在一次咨询里说清楚就可以',
         origin: collect?.origin ?? (item.source === 'chsi' ? '来自学信网' : item.source === 'academic' ? '来自教务系统' : item.source === 'conversation' ? '来自对话' : item.key === 'internship' || item.key === 'project' ? '可以自己写一段发过来' : '来自对话'),
         blocked: collect?.blocked ?? '',
         ask: gapAsk(item.key),

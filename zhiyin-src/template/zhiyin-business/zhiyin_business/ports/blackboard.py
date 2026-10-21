@@ -124,7 +124,9 @@ class ProfileService(ABC):
         """
 
     @abstractmethod
-    async def correct_field(self, user_id: str, key: str, value: object, *, expected_updated_at: datetime | None = None, check_version: bool = False) -> ProfileField:
+    async def correct_field(self, user_id: str, key: str, value: object, *, expected_updated_at: datetime | None = None, check_version: bool = False,
+                            attributes: dict | None = None, origin_ref: str = "", evidence: list[str] | None = None,
+                            valid_from: datetime | None = None, valid_to: datetime | None = None, event_at: datetime | None = None) -> ProfileField:
         """**用户本人**更正一个画像字段（issue #26 第三条）。
 
         与 `update_field` 的分工：那一条是"系统去记"（采集 / 导入 / 推断），

@@ -71,7 +71,7 @@ async function send<T>(operation: Operation, options: Options = {}, opts: { auth
   try {
     const response = await fetch('/api/v1' + path, { method: operation.method, headers, signal: controller.signal, body: options.form ?? (options.body === undefined ? undefined : JSON.stringify(options.body)) })
     sameAccount()
-    if (response.status === 401 && !opts.auth) window.dispatchEvent(new Event('zhiyin:unauthorized'))
+    if (response.status === 401 && !opts.auth && headers.Authorization) window.dispatchEvent(new Event('zhiyin:unauthorized'))
     let result: Envelope<T>
     try {
       result = await response.json() as Envelope<T>
@@ -82,7 +82,7 @@ async function send<T>(operation: Operation, options: Options = {}, opts: { auth
       throw new BackendError(statusMessage(response.status), response.status === 200 ? 1007 : response.status)
     }
     sameAccount()
-    if ((response.status !== 401 && result.code === 1004) && !opts.auth) window.dispatchEvent(new Event('zhiyin:unauthorized'))
+    if ((response.status !== 401 && result.code === 1004) && !opts.auth && headers.Authorization) window.dispatchEvent(new Event('zhiyin:unauthorized'))
     if (!response.ok || result.code !== 0) throw new BackendError(userFacingMessage(result.message) || statusMessage(response.status), result.code ?? response.status, result.trace_id)
 
     return result.data

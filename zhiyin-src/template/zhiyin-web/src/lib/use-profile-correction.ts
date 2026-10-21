@@ -28,6 +28,24 @@ export function useProfileCorrection(deps: ProfileCorrectionDeps) {
   const correctionError = ref('')
   const correctionVersion = ref<string|null>(null)
   const correctionLatest = ref<ProfileFieldView | null>(null)
+  const saveBusy = ref(false)
+
+  async function refreshAfterWrite(key: string) {
+    // The write committed: immediately remove dependent stale interpretations,
+    // then replace all derived state with the authoritative workspace.
+    const workspace = JSON.parse(JSON.stringify(backendDemo.state.liveWorkspace))
+    if (workspace?.profile_panel?.clues) {
+      workspace.profile_panel.clues = workspace.profile_panel.clues.filter((clue: {field_keys?: string[]}) => !clue.field_keys?.includes(key))
+      backendDemo.setWorkspace(workspace)
+    }
+    try {
+      const latest = await backendClient.workspace()
+      if (!latest?.profile_panel) throw new Error('Incomplete profile')
+      backendDemo.setWorkspace(latest)
+    } catch {
+      serviceError.value = '修改已保存，但最新判断暂未读取，请重试读取档案。'
+    }
+  }
   const correctionConflictRows = computed(() => correction.value && correctionLatest.value ? [{
     label: correction.value.label,
     latest: String(correctionLatest.value.value ?? '未填写'),
@@ -50,11 +68,13 @@ export function useProfileCorrection(deps: ProfileCorrectionDeps) {
   }
 
   async function save() {
+    if (saveBusy.value) return
     if (!value.value.trim()) { correctionError.value = '请填写更正后的信息。'; return }
     if (correction.value && live.value) {
       const field = correction.value
       const previous = livePanel.value?.fields?.find((item) => item.key === field.key)
       serviceError.value = ''
+      saveBusy.value = true
       try {
         const updated = await backendClient.correct(field.key, value.value.trim(), correctionVersion.value)
         if (previous && !originalLive.value[field.key]) backendDemo.rememberProfileOriginal(field.key)
@@ -62,6 +82,7 @@ export function useProfileCorrection(deps: ProfileCorrectionDeps) {
         workspace.profile_panel.fields = workspace.profile_panel.fields.map((item: ProfileFieldView) => (item.key === updated.key ? updated : item))
         backendDemo.setWorkspace(workspace)
         correctionLatest.value = null
+        await refreshAfterWrite(field.key)
       } catch (error) {
         correctionError.value = error instanceof Error ? error.message : '更正没有保存成功，输入仍保留，请重试。'
         if ((error as { code?: number }).code === 1003) {
@@ -75,6 +96,8 @@ export function useProfileCorrection(deps: ProfileCorrectionDeps) {
           }
         }
         return
+      } finally {
+        saveBusy.value = false
       }
     }
     if (correction.value && !live.value) demo.updateProfileField(correction.value.key, value.value)
@@ -124,6 +147,7 @@ export function useProfileCorrection(deps: ProfileCorrectionDeps) {
       }
       if (workspace) backendDemo.setWorkspace(workspace)
       deleting.value = null
+      await refreshAfterWrite(field.key)
     } catch (error) {
       deleteError.value = error instanceof Error ? error.message : '删除没有成功，这条记录仍然保留，请重试。'
     } finally {
@@ -132,7 +156,7 @@ export function useProfileCorrection(deps: ProfileCorrectionDeps) {
   }
 
   return {
-    correction, value, correctionError, correctionVersion, correctionLatest,
+    correction, value, correctionError, correctionVersion, correctionLatest, saveBusy,
     correctionConflictRows, inspectField, edit, save, confirmCorrectionConflict,
     deleting, deleteBusy, deleteError, askDelete, closeDelete, confirmDelete,
   }

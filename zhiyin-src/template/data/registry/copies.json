@@ -752,6 +752,22 @@
       "status": "enabled",
       "sort_order": 901,
       "note": "画像字段词表 + 中文名"
+    },
+    {
+      "code": "profile.field.career_focus",
+      "text": "职业关注",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 921,
+      "note": "探索、考虑、选定状态分别保存，不替代专业"
+    },
+    {
+      "code": "profile.field.time",
+      "text": "可用时间",
+      "bundle": "zh-CN",
+      "status": "enabled",
+      "sort_order": 922,
+      "note": "带适用范围和有效期的可用时间，不以短期状态替代长期约束"
     }
   ]
 }
