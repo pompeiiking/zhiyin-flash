@@ -25,6 +25,18 @@ const error = ref('')
 const previewId = ref('')
 const warnings = ref<string[]>([])
 const replaceCount = ref(0)
+const editingRows = ref(false)
+type EditField = { key: string; label: string; numeric?: boolean }
+const editFields = computed<EditField[]>(() => [
+  { key: 'name', label: '课程名称' },
+  ...(props.kind === 'courses' ? [
+    { key: 'weekday', label: '星期（1至7，0为未知）', numeric: true },
+    { key: 'start_period', label: '开始节次', numeric: true },
+    { key: 'end_period', label: '结束节次', numeric: true },
+    { key: 'weeks', label: '周次' }, { key: 'place', label: '上课地点' }, { key: 'teacher', label: '教师' },
+  ] : [{ key: 'score', label: '成绩原文' }, { key: 'point', label: '绩点' }, { key: 'term', label: '成绩所属学期' }, { key: 'kind', label: '课程属性' }]),
+  { key: 'credit', label: '学分' }, { key: 'category', label: '课程性质' },
+])
 let generation = 0
 
 const noun = computed(() => props.kind === 'courses' ? '课表' : '成绩')
@@ -43,6 +55,7 @@ watch(() => props.open, (open) => {
   error.value = ''
   previewId.value = ''
   warnings.value = []
+  editingRows.value = false
   school.value = props.school ?? ''
   term.value = props.term ?? ''
 })
@@ -88,6 +101,7 @@ async function preview() {
     raw.value = JSON.stringify(rows.value, null, 2)
     clearFile()
     stage.value = 'review'
+    editingRows.value = false
   } catch (cause) {
     if (current !== generation) return
     error.value = cause instanceof SyntaxError ? 'JSON 格式不完整，请检查括号和引号。' : (cause as Error).message
@@ -97,7 +111,7 @@ async function preview() {
 }
 
 async function save() {
-  if (busy.value || !rows.value.length) return
+  if (busy.value || !rows.value.length || editingRows.value || !previewId.value) return
   saving.value = true
   busy.value = true
   error.value = ''
@@ -113,6 +127,31 @@ async function save() {
     busy.value = false
     saving.value = false
   }
+}
+function editRows() {
+  editingRows.value = true
+  previewId.value = ''
+  error.value = ''
+}
+
+function editCell(row: Row, field: EditField, value: string) {
+  const record = row as unknown as Record<string, string | number>
+  record[field.key] = field.numeric ? (value.trim() ? Number(value) : 0) : value
+}
+
+async function reviewEdits() {
+  raw.value = JSON.stringify(rows.value)
+  clearFile()
+  await preview()
+}
+
+function restart() {
+  raw.value = ''
+  clearFile()
+  previewId.value = ''
+  editingRows.value = false
+  stage.value = 'edit'
+  error.value = ''
 }
 </script>
 
@@ -131,15 +170,25 @@ async function save() {
     </template>
     <template v-else>
       <div class="import-review-head"><div><strong>{{ rows.length }}</strong><span>{{ kind === 'courses' ? '门课程' : '条成绩' }}</span></div><p>{{ school }} · {{ term }}</p></div>
-      <div class="import-table-wrap"><table><thead><tr><th>课程</th><th v-if="kind === 'courses'">时间</th><th v-if="kind === 'courses'">地点</th><th v-if="kind === 'grades'">成绩</th><th v-if="kind === 'grades'">学分 / 绩点</th></tr></thead><tbody><tr v-for="(row, index) in rows" :key="row.name + index"><td>{{ row.name }}</td><template v-if="kind === 'courses'"><td>{{ (row as AcademicCourseView).weekday ? `周${'一二三四五六日'[(row as AcademicCourseView).weekday! - 1]} · ${(row as AcademicCourseView).start_period || '?'}–${(row as AcademicCourseView).end_period || '?'} 节 · ${(row as AcademicCourseView).weeks || '周次待补充'}` : '待补充' }}</td><td>{{ (row as AcademicCourseView).place || '—' }}</td></template><template v-else><td class="import-score">{{ (row as AcademicGradeView).score || '—' }}</td><td>{{ (row as AcademicGradeView).credit || '—' }} / {{ (row as AcademicGradeView).point || '—' }}</td></template></tr></tbody></table></div>
+      <div v-if="editingRows" class="import-row-editor">
+        <p class="ws-muted">修改后先重新核对，确认前不会保存。</p>
+        <fieldset v-for="(row, index) in rows" :key="index" :disabled="busy">
+          <legend>第 {{ index + 1 }} 条 · {{ row.name || '课程名称待填写' }}</legend>
+          <div class="import-edit-grid"><label v-for="field in editFields" :key="field.key" class="ws-field">{{ field.label }}<input :type="field.numeric ? 'number' : 'text'" :min="field.numeric ? 0 : undefined" :max="field.numeric ? (field.key === 'weekday' ? 7 : 30) : undefined" :maxlength="field.numeric ? undefined : 200" :value="(row as unknown as Record<string, string | number>)[field.key]" @input="editCell(row, field, ($event.target as HTMLInputElement).value)" /></label></div>
+          <button class="ws-text-button" type="button" :disabled="busy" @click="rows.splice(index, 1)">移除第 {{ index + 1 }} 条</button>
+        </fieldset>
+      </div>
+      <div v-else class="import-table-wrap"><table><thead><tr><th>课程</th><th v-if="kind === 'courses'">时间</th><th v-if="kind === 'courses'">地点</th><th v-if="kind === 'grades'">成绩</th><th v-if="kind === 'grades'">学分 / 绩点</th></tr></thead><tbody><tr v-for="(row, index) in rows" :key="row.name + index"><td>{{ row.name }}</td><template v-if="kind === 'courses'"><td>{{ (row as AcademicCourseView).weekday ? `周${'一二三四五六日'[(row as AcademicCourseView).weekday! - 1]} · ${(row as AcademicCourseView).start_period || '?'}–${(row as AcademicCourseView).end_period || '?'} 节 · ${(row as AcademicCourseView).weeks || '周次待补充'}` : '待补充' }}</td><td>{{ (row as AcademicCourseView).place || '—' }}</td></template><template v-else><td class="import-score">{{ (row as AcademicGradeView).score || '—' }}</td><td>{{ (row as AcademicGradeView).credit || '—' }} / {{ (row as AcademicGradeView).point || '—' }}</td></template></tr></tbody></table></div>
       <p class="ws-muted">确认后将用以上 {{ rows.length }} 条记录替换已有 {{ replaceCount }} 条{{ noun }}。</p>
       <ul v-if="warnings.length" class="import-warnings"><li v-for="warning in warnings" :key="warning">{{ warning }}</li></ul>
-      <StatusBanner v-if="error" tone="error" size="sm" :message="error" :retrying="busy" @retry="save" @dismiss="error = ''" />
-      <div class="ws-inline-actions"><button class="btn btn--primary" type="button" :disabled="busy || !rows.length" @click="save">{{ busy ? '正在保存…' : `确认替换${noun}` }}</button><button class="btn" type="button" :disabled="busy" @click="stage='edit'; previewId=''">返回修改</button></div>
+      <StatusBanner v-if="error" tone="error" size="sm" :message="error" :retrying="busy" @retry="editingRows ? reviewEdits() : save()" @dismiss="error = ''" />
+      <div class="ws-inline-actions"><button v-if="editingRows" class="btn btn--primary" type="button" :disabled="busy || !rows.length" @click="reviewEdits">{{ busy ? '正在核对…' : '重新核对修改' }}</button><button v-else class="btn btn--primary" type="button" :disabled="busy || !rows.length || !previewId" @click="save">{{ busy ? '正在保存…' : `确认替换${noun}` }}</button><button v-if="!editingRows" class="btn" type="button" :disabled="busy" @click="editRows">修改识别结果</button><button class="ws-text-button" type="button" :disabled="busy" @click="restart">重新上传</button></div>
     </template>
   </InfoSheet>
 </template>
 
 <style scoped>
+.import-row-editor{display:grid;gap:16px;margin-top:16px}.import-row-editor fieldset{min-width:0;margin:0;padding:14px;border:1px solid var(--c-border);border-radius:var(--r-md)}.import-row-editor legend{padding:0 6px;font-size:var(--fs-13);font-weight:var(--fw-semibold)}.import-edit-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.import-row-editor .ws-text-button{margin-top:12px}@media(max-width:600px){.import-edit-grid{grid-template-columns:1fr}}
+
 .import-lead{margin:0 0 20px;color:var(--c-text-2);font-size:var(--fs-14);line-height:1.75}.import-meta{display:grid;grid-template-columns:1fr 1fr;gap:14px}.import-file{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:8px 12px;margin-top:14px;padding:16px;border:1px dashed var(--c-border-strong);border-radius:var(--r-md);color:var(--c-text-2);font-size:var(--fs-14)}.import-file input{grid-column:1/-1}.import-file small{font-size:var(--fs-12);color:var(--c-text-3)}.ws-inline-actions{margin-top:20px}.import-review-head{display:flex;align-items:end;justify-content:space-between;gap:16px;padding-bottom:18px;border-bottom:1px solid var(--c-border)}.import-review-head div{display:flex;align-items:baseline;gap:8px}.import-review-head strong{font-size:var(--fs-30);font-weight:var(--fw-semibold)}.import-review-head span,.import-review-head p{color:var(--c-text-2);font-size:var(--fs-13)}.import-table-wrap{overflow:auto;max-height:55vh;margin-top:18px;border:1px solid var(--c-border);border-radius:var(--r-md)}table{width:100%;border-collapse:collapse;font-size:var(--fs-13)}th,td{padding:12px 14px;border-bottom:1px solid var(--c-border);text-align:left;white-space:nowrap}th{background:var(--c-surface-2);color:var(--c-text-3);font-size:var(--fs-12);font-weight:var(--fw-medium)}tbody tr:last-child td{border-bottom:0}.import-score{font-size:var(--fs-16);font-weight:var(--fw-semibold);color:var(--c-primary)}@media(max-width:600px){.import-meta{grid-template-columns:1fr}.import-review-head{align-items:start;flex-direction:column}.ws-inline-actions{position:sticky;bottom:0;z-index:2;margin:16px -20px -24px;padding:12px 20px calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--c-border);background:var(--c-surface)}}
 </style>

@@ -5701,12 +5701,12 @@
           "description": "Validation Error"
         }
       },
-      "status": "已接入，自动化验证",
+      "status": "联调通过",
       "frontend": [
         "zhiyin-src/template/zhiyin-web/src/api/backend-client.ts",
         "zhiyin-src/template/zhiyin-web/src/components/AcademicImportSheet.vue"
       ],
-      "verification": "共享HTTP上传/预览/确认及授权边界自动化通过；合成图片经真实DeepSeek Flash识别通过。当前Docker不可用，页面和现有系统部署联调待恢复。详见 图片识别与教务导入接口-2026-10-21.md。"
+      "verification": "共享HTTP上传/预览/确认及授权边界自动化通过；当前Docker后端的真实图片识别、页面预览纠错、确认保存、对话审批拒绝/确认和成绩保留实测通过。桌面与手机尺寸证据见 图片识别与教务导入接口-2026-10-21.md。"
     },
     {
       "id": "POST /api/v1/app/academic/preview/commit",
@@ -5749,12 +5749,12 @@
           "description": "Validation Error"
         }
       },
-      "status": "已接入，自动化验证",
+      "status": "联调通过",
       "frontend": [
         "zhiyin-src/template/zhiyin-web/src/api/backend-client.ts",
         "zhiyin-src/template/zhiyin-web/src/components/AcademicImportSheet.vue"
       ],
-      "verification": "共享HTTP上传/预览/确认及授权边界自动化通过；合成图片经真实DeepSeek Flash识别通过。当前Docker不可用，页面和现有系统部署联调待恢复。详见 图片识别与教务导入接口-2026-10-21.md。"
+      "verification": "共享HTTP上传/预览/确认及授权边界自动化通过；当前Docker后端的真实图片识别、页面预览纠错、确认保存、对话审批拒绝/确认和成绩保留实测通过。桌面与手机尺寸证据见 图片识别与教务导入接口-2026-10-21.md。"
     }
   ],
   "schemas": {
