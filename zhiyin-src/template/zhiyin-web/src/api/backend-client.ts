@@ -1,5 +1,6 @@
 /** Formal BFF transport for integration. Demo data never silently replaces a failed request. */
 import operations from './operations.json'
+import type { AcademicPreview, AcademicPreviewRequest } from './backend-types'
 import type { AuthRequest, CoachNotificationView, ExportResultView, LoginResult, PortalView, WorkspacePageView } from './backend-types'
 import type { AcademicImportAck, AcademicImportRequest, ActionPlanView, ActionTaskDoneRequest, AchievementListView, AssetVersionView, BootstrapView, CalendarNodeView, CapabilitiesView, ConversationMaterialView, ConversationMessageView, ConversationTurnView, DirectionPlanListView, IntelListView, MessageRequest, NoteCreateRequest, NoteView, ProfileConflictView, ProfileFieldView, ReportFullTextView, SessionListView, TaskSessionView, TheoryCardView, TrackEventView } from './backend-types'
 export class BackendError extends Error {
@@ -150,6 +151,8 @@ export const backendClient = {
   noteDone: (note_id: string, done: boolean) => request<NoteView>('noteDone', { params: { note_id }, body: { done } }),
   removeNote: (note_id: string) => request<{ removed: string }>('removeNote', { params: { note_id } }),
   academic: (body: AcademicImportRequest) => request<AcademicImportAck>('academicImport', { body }),
+  academicPreview: (body: AcademicPreviewRequest) => request<AcademicPreview>('academicPreview', { body, timeout: 80_000 }),
+  academicPreviewCommit: (preview_id: string) => request<AcademicImportAck>('academicPreviewCommit', { body: { preview_id } }),
   academicFile: (form: FormData) => request<AcademicImportAck>('academicFile', { form, timeout: 60_000 }),
   revokeAcademic: () => request<{ revoked: boolean }>('academicRevoke'),
   revokeAcademicCourses: () => request<{ revoked: boolean }>('academicCoursesRevoke'),

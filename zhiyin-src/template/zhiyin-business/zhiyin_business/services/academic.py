@@ -103,6 +103,7 @@ class DefaultAcademicService(AcademicService):
         grades_raw: str = "",
         school: str = "",
         term: str = "",
+        expected_version: str = "",
     ) -> AcademicImportResult:
         courses_text = (courses_raw or "").strip()
         grades_text = (grades_raw or "").strip()
@@ -113,6 +114,10 @@ class DefaultAcademicService(AcademicService):
                 "请只保留表头与课表/成绩行，删掉页面上的其他文字后再试；文件上传请确认文件没有夹带无关内容。"
             )
         existing = await self.get(user_id)
+        if expected_version:
+            from zhiyin_business.services.academic_preview import academic_version, AcademicPreviewChanged
+            if academic_version(existing) != expected_version:
+                raise AcademicPreviewChanged("课表或成绩已经变化，请重新预览后确认。")
         source = existing.source if existing else ""
         parsed_term = term.strip() or (existing.term if existing else "")
         courses = list(existing.courses) if existing else []

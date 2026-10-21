@@ -1,0 +1,66 @@
+[
+  {
+    "kind": "courses",
+    "model": "deepseek-flash",
+    "success": true,
+    "seconds": 6.5,
+    "data": {
+      "courses": [
+        {
+          "name": "高等数学",
+          "teacher": "",
+          "weekday": 1,
+          "start_period": 1,
+          "end_period": 2,
+          "weeks": "1-16周",
+          "place": "教学楼101",
+          "credit": "",
+          "category": ""
+        },
+        {
+          "name": "程序设计",
+          "teacher": "",
+          "weekday": 2,
+          "start_period": 3,
+          "end_period": 4,
+          "weeks": "1-8周",
+          "place": "实验楼202",
+          "credit": "",
+          "category": ""
+        }
+      ],
+      "warnings": [
+        "未显示教师、学分和课程类别"
+      ]
+    }
+  },
+  {
+    "kind": "grades",
+    "model": "deepseek-flash",
+    "success": true,
+    "seconds": 3.0,
+    "data": {
+      "grades": [
+        {
+          "term": "2026-2027-1",
+          "name": "程序设计",
+          "credit": "3",
+          "score": "0",
+          "point": "0",
+          "category": "",
+          "kind": ""
+        },
+        {
+          "term": "2026-2027-1",
+          "name": "高等数学",
+          "credit": "4",
+          "score": "优秀",
+          "point": "4.0",
+          "category": "",
+          "kind": ""
+        }
+      ],
+      "warnings": []
+    }
+  }
+]

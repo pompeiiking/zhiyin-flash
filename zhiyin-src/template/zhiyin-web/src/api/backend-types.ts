@@ -347,6 +347,27 @@ export type DirectionWeightsEdit = {
   "stability"?: number
 }
 
+export type AcademicPreview = {
+  "courses"?: Array<CourseEntry>
+  "expected_version": string
+  "expires_at": string
+  "grades"?: Array<GradeEntry>
+  "kind": "courses" | "grades"
+  "preview_id": string
+  "replace_count": number
+  "school": string
+  "term": string
+  "warnings"?: Array<string>
+}
+
+export type AcademicPreviewRequest = {
+  "kind": "courses" | "grades"
+  "material_id"?: string
+  "school"?: string
+  "term"?: string
+  "text"?: string
+}
+
 export type WorkspacePageView = {
   "academic_panel"?: (AcademicPanelView | null)
   "action_panel"?: (StagePanelView | null)
@@ -632,6 +653,28 @@ export type Measurement = {
   "source": string
   "threshold"?: (number | null)
   "value": number
+}
+
+export type CourseEntry = {
+  "category"?: string
+  "credit"?: string
+  "end_period"?: number
+  "name": string
+  "place"?: string
+  "start_period"?: number
+  "teacher"?: string
+  "weekday"?: number
+  "weeks"?: string
+}
+
+export type GradeEntry = {
+  "category"?: string
+  "credit"?: string
+  "kind"?: string
+  "name": string
+  "point"?: string
+  "score"?: string
+  "term"?: string
 }
 
 export type StagePanelView = {

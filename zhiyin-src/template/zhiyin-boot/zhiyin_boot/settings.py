@@ -141,6 +141,7 @@ class Settings:
     llm_api_key: str = ""
     llm_base_url: str = "https://api.deepseek.com"
     llm_model: str = "deepseek-flash"
+    llm_vision_model: str = ""
     embedding_api_key: str = ""
     embedding_base_url: str = "https://ark.cn-beijing.volces.com/api/v3"
     embedding_model: str = "doubao-embedding-text-240715"
@@ -225,6 +226,7 @@ class Settings:
             llm_api_key=_env("ZHIYIN_LLM_API_KEY"),
             llm_base_url=_env("ZHIYIN_LLM_BASE_URL", "https://api.deepseek.com"),
             llm_model=_env("ZHIYIN_LLM_MODEL", "deepseek-flash"),
+            llm_vision_model=_env("ZHIYIN_LLM_VISION_MODEL", ""),
             embedding_api_key=_env("ZHIYIN_EMBEDDING_API_KEY"),
             embedding_base_url=_env(
                 "ZHIYIN_EMBEDDING_BASE_URL",

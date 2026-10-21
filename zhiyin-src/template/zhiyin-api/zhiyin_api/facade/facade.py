@@ -27,6 +27,7 @@ from collections.abc import AsyncIterator
 from typing import Any, Optional
 
 from fastapi import Request
+from zhiyin_business.contracts.academic_preview import AcademicPreview, AcademicPreviewRequest
 
 from zhiyin_kernel.enums import AssetType
 from zhiyin_api.dto.asset import (
@@ -270,6 +271,14 @@ class ApplicationFacade(ABC):
         与上面那条是**同一个动作的两种入口**：读出来什么、写进哪几条画像摘要，
         两条路必须一致 —— 一致性由业务层保证（都落到 `import_`）。
         """
+
+    @abstractmethod
+    async def preview_academic(self, user_id: str, body: AcademicPreviewRequest) -> AcademicPreview:
+        """识别或解析并保存短期预览，不改正式课表或成绩。"""
+
+    @abstractmethod
+    async def commit_academic_preview(self, user_id: str, preview_id: str) -> AcademicImportAck:
+        """用户确认后保存预览，复查账号、有效期和快照版本。"""
 
     @abstractmethod
     async def list_notes(self, user_id: str) -> list["NoteView"]:

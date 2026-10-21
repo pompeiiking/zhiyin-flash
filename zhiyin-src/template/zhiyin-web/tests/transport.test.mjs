@@ -34,6 +34,20 @@ test('business failures never return sample data',async()=>{
   const app=runtime(async()=>json(null,1002))
   await assert.rejects(app.backendClient.workspace(),e=>e.code===1002)
 })
+
+test('academic recognition is separate from confirmation and commit sends only the preview identity',async()=>{
+  const calls=[]
+  const app=runtime(async(url,options)=>{calls.push({url,options});return json(url.endsWith('/commit')?{grades:2,courses:0}:{preview_id:'ap_test',kind:'grades',grades:[{name:'程序设计',score:'0'}]})})
+  const preview=await app.backendClient.academicPreview({kind:'grades',material_id:'mat_image',school:'测试大学',term:'2026-2027-1'})
+  assert.equal(calls.length,1)
+  assert.equal(calls[0].url,'/api/v1/app/academic/preview')
+  assert.equal(preview.grades[0].score,'0')
+  const result=await app.backendClient.academicPreviewCommit(preview.preview_id)
+  assert.equal(result.grades,2)
+  assert.equal(calls[1].url,'/api/v1/app/academic/preview/commit')
+  assert.equal(calls[1].options.method,'POST')
+  assert.deepEqual(JSON.parse(calls[1].options.body),{preview_id:'ap_test'})
+})
 test('401 invalidates authentication, failed login does not invalidate another session',async()=>{
   const app=runtime(async()=>json(null,1004,401))
   await assert.rejects(app.backendClient.bootstrap())

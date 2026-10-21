@@ -35,6 +35,7 @@
 | 记忆策略 | `memory_policy.py` | `MemoryPolicyService` | 账号状态 Repository（策略记录 + 兼容开关） | P0 | 已交付 |
 | 自建内容服务 | `note.py` | `DefaultUserNoteService` | UserNoteRepository | P1 | 已交付 |
 | 教务系统服务 | `academic.py` | `DefaultAcademicService` | AcademicSnapshotRepository | P1 | 已交付 |
+| 教务导入预览 | `academic_preview.py` | `AcademicPreviewService` | AcademicService、材料服务、ObjectStore、视觉识别回调 | P1 | 图片/文字共用只读预览，确认写入校验账号与版本 |
 | AI 任务服务 | `ai_tasks.py` | `AiTaskService` | 画像 / 行为 / 资产 Port | P0 | 已交付 |
 | Asset 服务 | `asset.py` | `DefaultAssetService` | AssetRepository、EventBus + `policies/impact.py` | P0 | 已交付 |
 | 环节产出 → 资产正文 | `asset_content.py` | `report_from_diagnose` / `direction_plans_from_decide` / `action_plan_from_act` | 内核资产模型 | P0 | 已交付 |

@@ -245,6 +245,133 @@
         "title": "AcademicPanelView",
         "type": "object"
       },
+      "AcademicPreview": {
+        "additionalProperties": false,
+        "properties": {
+          "courses": {
+            "items": {
+              "$ref": "#/components/schemas/CourseEntry"
+            },
+            "title": "Courses",
+            "type": "array"
+          },
+          "expected_version": {
+            "title": "Expected Version",
+            "type": "string"
+          },
+          "expires_at": {
+            "title": "Expires At",
+            "type": "string"
+          },
+          "grades": {
+            "items": {
+              "$ref": "#/components/schemas/GradeEntry"
+            },
+            "title": "Grades",
+            "type": "array"
+          },
+          "kind": {
+            "enum": [
+              "courses",
+              "grades"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "preview_id": {
+            "title": "Preview Id",
+            "type": "string"
+          },
+          "replace_count": {
+            "title": "Replace Count",
+            "type": "integer"
+          },
+          "school": {
+            "title": "School",
+            "type": "string"
+          },
+          "term": {
+            "title": "Term",
+            "type": "string"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "preview_id",
+          "kind",
+          "school",
+          "term",
+          "replace_count",
+          "expires_at",
+          "expected_version"
+        ],
+        "title": "AcademicPreview",
+        "type": "object"
+      },
+      "AcademicPreviewCommit": {
+        "additionalProperties": false,
+        "properties": {
+          "preview_id": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Preview Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "preview_id"
+        ],
+        "title": "AcademicPreviewCommit",
+        "type": "object"
+      },
+      "AcademicPreviewRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "enum": [
+              "courses",
+              "grades"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "material_id": {
+            "default": "",
+            "maxLength": 100,
+            "title": "Material Id",
+            "type": "string"
+          },
+          "school": {
+            "default": "",
+            "maxLength": 120,
+            "title": "School",
+            "type": "string"
+          },
+          "term": {
+            "default": "",
+            "maxLength": 40,
+            "title": "Term",
+            "type": "string"
+          },
+          "text": {
+            "default": "",
+            "maxLength": 200000,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "AcademicPreviewRequest",
+        "type": "object"
+      },
       "AcademicRevokeAck": {
         "additionalProperties": false,
         "description": "清空导入的回执。",
@@ -910,6 +1037,37 @@
           }
         },
         "title": "ApiResponse[AcademicImportAck]",
+        "type": "object"
+      },
+      "ApiResponse_AcademicPreview_": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode",
+            "default": 0
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AcademicPreview"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "default": "ok",
+            "title": "Message",
+            "type": "string"
+          },
+          "trace_id": {
+            "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "title": "ApiResponse[AcademicPreview]",
         "type": "object"
       },
       "ApiResponse_AcademicRevokeAck_": {
@@ -3842,6 +4000,66 @@
         "title": "ConversationTurnView",
         "type": "object"
       },
+      "CourseEntry": {
+        "additionalProperties": false,
+        "description": "一门课。字段取的是\"排课\"需要的那些，不是教务系统里所有列。",
+        "properties": {
+          "category": {
+            "default": "",
+            "description": "课程性质 / 类别原文",
+            "title": "Category",
+            "type": "string"
+          },
+          "credit": {
+            "default": "",
+            "title": "Credit",
+            "type": "string"
+          },
+          "end_period": {
+            "default": 0,
+            "description": "第几节结束",
+            "title": "End Period",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "place": {
+            "default": "",
+            "title": "Place",
+            "type": "string"
+          },
+          "start_period": {
+            "default": 0,
+            "description": "第几节开始（1 起）",
+            "title": "Start Period",
+            "type": "integer"
+          },
+          "teacher": {
+            "default": "",
+            "title": "Teacher",
+            "type": "string"
+          },
+          "weekday": {
+            "default": 0,
+            "description": "1=周一 … 7=周日；0 表示没读出来",
+            "title": "Weekday",
+            "type": "integer"
+          },
+          "weeks": {
+            "default": "",
+            "description": "周次原文，如 1-16周",
+            "title": "Weeks",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "CourseEntry",
+        "type": "object"
+      },
       "DependencyEdgeView": {
         "additionalProperties": false,
         "description": "依赖可视化（简版）。",
@@ -4904,6 +5122,54 @@
           "answer"
         ],
         "title": "FaqView",
+        "type": "object"
+      },
+      "GradeEntry": {
+        "additionalProperties": false,
+        "description": "一条成绩。",
+        "properties": {
+          "category": {
+            "default": "",
+            "title": "Category",
+            "type": "string"
+          },
+          "credit": {
+            "default": "",
+            "title": "Credit",
+            "type": "string"
+          },
+          "kind": {
+            "default": "",
+            "description": "必修 / 选修 / 任选",
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "point": {
+            "default": "",
+            "description": "绩点原文",
+            "title": "Point",
+            "type": "string"
+          },
+          "score": {
+            "default": "",
+            "description": "成绩原文；等级制也照原样记，不换算",
+            "title": "Score",
+            "type": "string"
+          },
+          "term": {
+            "default": "",
+            "title": "Term",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "GradeEntry",
         "type": "object"
       },
       "GuideOptionView": {
@@ -9421,6 +9687,90 @@
           }
         },
         "summary": "Import Academic Files",
+        "tags": [
+          "workspace"
+        ]
+      }
+    },
+    "/api/v1/app/academic/preview": {
+      "post": {
+        "description": "识别已上传图片或解析文字，返回30分钟内有效的逐条替换预览；不写课表或成绩。",
+        "operationId": "preview_academic_api_v1_app_academic_preview_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcademicPreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_AcademicPreview_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Preview Academic",
+        "tags": [
+          "workspace"
+        ]
+      }
+    },
+    "/api/v1/app/academic/preview/commit": {
+      "post": {
+        "description": "用户核对并确认预览后保存；不接受替换预览正文或绕过版本校验。",
+        "operationId": "commit_academic_preview_api_v1_app_academic_preview_commit_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcademicPreviewCommit"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_AcademicImportAck_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Commit Academic Preview",
         "tags": [
           "workspace"
         ]

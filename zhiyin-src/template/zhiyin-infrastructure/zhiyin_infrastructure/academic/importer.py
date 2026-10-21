@@ -126,7 +126,7 @@ class ManualAcademicImporter(AcademicImportGateway):
         text = (raw or "").strip()
         if not text:
             raise AcademicImportError(f"还没有{what}内容。", kind=AcademicImportKind.EMPTY)
-        if len(text) < _MIN_LENGTH:
+        if len(text) < _MIN_LENGTH and not looks_like_json(text):
             raise AcademicImportError(
                 f"这段{what}太短了，不像是一份完整的表。",
                 kind=AcademicImportKind.TOO_SHORT,

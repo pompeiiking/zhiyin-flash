@@ -282,6 +282,8 @@ def _material_display_name(raw: str) -> str:
 def _guard_material_suffix(name: str) -> None:
     """扩展名白名单：文本类放行，已知二进制明确拒绝，其余按"不支持的类型"说清楚。"""
     suffix = PurePosixPath(name).suffix.lower()
+    if suffix in {'.png', '.jpg', '.jpeg', '.gif', '.webp'}:
+        return
     if not suffix:
         raise InvalidRequest(
             f"「{name}」没有扩展名，看不出是什么文件 —— 请另存为文本类文件（{_ALLOWED_SUFFIX_HINT}）后再传。"
@@ -366,6 +368,9 @@ async def _read_material(file: UploadFile) -> bytes:
     if not data:
         raise InvalidRequest(f"「{name}」是空的，换一份再试。")
     _guard_material_suffix(name)
+    if PurePosixPath(name).suffix.lower() in {'.png', '.jpg', '.jpeg', '.gif', '.webp'}:
+        # Content validation/normalization happens in the shared material service.
+        return data
     if _looks_binary(data):
         raise InvalidRequest(
             f"「{name}」看起来是二进制文件（含大量不可读字节），读不出文字 —— "

@@ -41,6 +41,7 @@ SKIPPED_PARTS = frozenset({"__pycache__", ".venv", "tests"})
 #: 导入名不等于分布名的两个：`jwt` 来自 PyJWT；`starlette` 由 fastapi 硬依赖带上，
 #: 我们不需要（也不该）单独把它列成自己的依赖。
 IMPORT_NAME_ALIASES: dict[str, str] = {
+    "PIL": "pillow",
     "jwt": "pyjwt",
     "starlette": "fastapi",
 }

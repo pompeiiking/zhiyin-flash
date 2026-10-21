@@ -5,8 +5,7 @@ import { errorCode, friendlyError, TECHNICAL_ERROR } from './use-conversation-er
 
 /**
  * 材料预校验：能在前端拦住的就不要发请求。
- * 后端对 PDF/Word/Excel/图片/压缩包有专门的中文说明（infra/textfile.py），这里给同样的口径；
- * 其余非文本格式（.exe 等）后端会按文本解码成乱码，必须在前端拦下。
+ * 支持文字与静态图片；图片真实内容由服务端解码验证，不能只信扩展名。
  */
 export const MAX_MATERIAL_BYTES = 2_000_000
 export const TEXT_SUFFIXES = new Set(['txt', 'text', 'csv', 'tsv', 'json', 'jsonl', 'md', 'markdown', 'log', 'xml', 'html', 'htm', 'yaml', 'yml', 'sql', 'ini', 'cfg', 'conf', 'properties', 'py', 'js', 'mjs', 'cjs', 'ts', 'tsx', 'jsx', 'vue', 'java', 'c', 'h', 'cpp', 'hpp', 'cs', 'go', 'rs', 'rb', 'php', 'css', 'scss', 'less', 'srt', 'vtt', 'tex', 'bib', 'r'])
@@ -16,13 +15,13 @@ export function materialRejection(file: File) {
   const suffix = fileSuffix(file.name)
   if (file.size > MAX_MATERIAL_BYTES) return `「${file.name}」超过 2MB 上限，请截取相关的那一段后再上传。`
   if (!file.size) return `「${file.name}」是空文件，请换一份有内容的文本。`
-  if (!suffix || TEXT_SUFFIXES.has(suffix)) return ''
+  if (!suffix || TEXT_SUFFIXES.has(suffix) || ['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(suffix)) return ''
   const label = BINARY_LABELS[suffix]
   // 认不出的后缀不抢后端判断权：后端会按内容识别二进制并给出中文说明，别误伤可读文本。
   if (!label) return ''
   if (suffix === 'pdf') return '暂不支持直接读取 PDF：请把需要分析的文字复制为 TXT 后上传，或直接粘贴到输入框。'
   if (label === 'Word 文档' || label === 'Excel 工作簿' || label === 'PPT') return `暂不支持直接读取${label}：请在 Office 里另存为 CSV 或 TXT 后上传。`
-  if (label === '图片' || label === '矢量图') return '图片里的文字读不出来：请把文字复制成文本，或直接用文字描述图片内容。'
+  if (label === '图片' || label === '矢量图') return '请选择 PNG、JPEG、静态 GIF 或 WebP 图片。'
   if (label === '压缩包') return '压缩包读不了：请先解压，再上传其中的 TXT、CSV 等文本文件。'
   return `不支持 .${suffix} 文件：对话里只能读取文字，请上传 TXT、CSV、MD 等文本文件。`
 }
@@ -31,8 +30,8 @@ export function friendlyMaterialError(error: unknown) {
   if (errorCode(error) === 413 || /413|entity too large|payload too large/i.test(message)) return '材料超过大小限制（最多 2MB），请截取相关的那一段后再上传。'
   if (errorCode(error) === 422) {
     // 后端对 PDF/Word/Excel 等有专门说明时保留原话；纯校验/技术文案统一成"格式不支持"。
-    if (/暂不支持|请复制|请上传|TXT|CSV/i.test(message) && /[\u4e00-\u9fa5]/.test(message) && !TECHNICAL_ERROR.test(message)) return message
-    return '这个文件格式不支持，请上传 TXT、CSV、MD 等文本文件。'
+    if (/暂不支持|请复制|请上传|TXT|CSV|图片|PNG|JPEG|WebP/i.test(message) && /[\u4e00-\u9fa5]/.test(message) && !TECHNICAL_ERROR.test(message)) return message
+    return '这个文件格式不支持，请上传 PNG、JPEG 图片或 TXT、CSV、MD 等文本文件。'
   }
   return friendlyError(error)
 }

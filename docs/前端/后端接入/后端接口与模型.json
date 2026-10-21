@@ -5659,6 +5659,102 @@
         "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
       ],
       "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
+    },
+    {
+      "id": "POST /api/v1/app/academic/preview",
+      "method": "POST",
+      "path": "/api/v1/app/academic/preview",
+      "capability": "识别图片或解析文字并返回逐条替换预览，不保存课表或成绩",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py:28",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [],
+      "request": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/AcademicPreviewRequest"
+            }
+          }
+        },
+        "required": true
+      },
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_AcademicPreview_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "已接入，自动化验证",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/api/backend-client.ts",
+        "zhiyin-src/template/zhiyin-web/src/components/AcademicImportSheet.vue"
+      ],
+      "verification": "共享HTTP上传/预览/确认及授权边界自动化通过；合成图片经真实DeepSeek Flash识别通过。当前Docker不可用，页面和现有系统部署联调待恢复。详见 图片识别与教务导入接口-2026-10-21.md。"
+    },
+    {
+      "id": "POST /api/v1/app/academic/preview/commit",
+      "method": "POST",
+      "path": "/api/v1/app/academic/preview/commit",
+      "capability": "确认保存已核对的预览，校验用户、期限和数据版本",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py:36",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [],
+      "request": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/AcademicPreviewCommit"
+            }
+          }
+        },
+        "required": true
+      },
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_AcademicImportAck_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "已接入，自动化验证",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/api/backend-client.ts",
+        "zhiyin-src/template/zhiyin-web/src/components/AcademicImportSheet.vue"
+      ],
+      "verification": "共享HTTP上传/预览/确认及授权边界自动化通过；合成图片经真实DeepSeek Flash识别通过。当前Docker不可用，页面和现有系统部署联调待恢复。详见 图片识别与教务导入接口-2026-10-21.md。"
     }
   ],
   "schemas": {

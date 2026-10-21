@@ -19,9 +19,25 @@ from zhiyin_api.dto.workspace import (
     WorkspacePageView,
 )
 from zhiyin_api.facade import get_facade
+from zhiyin_business.contracts.academic_preview import AcademicPreview, AcademicPreviewRequest, AcademicPreviewCommit
 from zhiyin_kernel.errors import InvalidRequest
 
 router = APIRouter(tags=["workspace"])
+
+@router.post("/app/academic/preview", response_model=ApiResponse[AcademicPreview])
+async def preview_academic(request: Request, body: AcademicPreviewRequest) -> ApiResponse[AcademicPreview]:
+    """识别已上传图片或解析文字，返回30分钟内有效的逐条替换预览；不写课表或成绩。"""
+    facade = get_facade()
+    user_id = await facade.resolve_user_id(request)
+    return ApiResponse(data=await facade.preview_academic(user_id, body))
+
+
+@router.post("/app/academic/preview/commit", response_model=ApiResponse[AcademicImportAck])
+async def commit_academic_preview(request: Request, body: AcademicPreviewCommit) -> ApiResponse[AcademicImportAck]:
+    """用户核对并确认预览后保存；不接受替换预览正文或绕过版本校验。"""
+    facade = get_facade()
+    user_id = await facade.resolve_user_id(request)
+    return ApiResponse(data=await facade.commit_academic_preview(user_id, body.preview_id))
 
 
 @router.get("/app/workspace", response_model=ApiResponse[WorkspacePageView])

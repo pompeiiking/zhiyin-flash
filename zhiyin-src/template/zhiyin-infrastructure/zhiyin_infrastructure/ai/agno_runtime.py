@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any
+from urllib.parse import urlparse
 
 from agno.models.openai import OpenAIChat
 
@@ -37,6 +38,17 @@ class AgnoModelRuntime:
     temperature: float = 0.2
     role_map: dict[str, str] | None = None
     timeout_s: float | None = None
+    vision_model: str = ""
+
+    def model_id(self, *, vision: bool = False) -> str:
+        if vision:
+            if self.vision_model:
+                return self.vision_model
+            if urlparse(self.base_url).hostname == 'api.deepseek.com':
+                # DeepSeek documents vision on Flash. Legacy text aliases and Pro
+                # must not accidentally determine whether an image can be read.
+                return 'deepseek-flash'
+        return self.model
 
     def apply(self, *, api_key: str, base_url: str, model: str) -> bool:
         """用**库里的配置**覆盖启动时的种子值。返回是否真的变了。
@@ -58,6 +70,7 @@ class AgnoModelRuntime:
         temperature: float | None = None,
         timeout_s: float | None = None,
         retries: int | None = None,
+        vision: bool = False,
     ) -> Any:
         """构造一个 agno 模型客户端。
 
@@ -68,7 +81,7 @@ class AgnoModelRuntime:
         避免基础设施的类型反渗进编排层。
         """
         return OpenAIChat(
-            id=self.model,
+            id=self.model_id(vision=vision),
             api_key=self.api_key,
             base_url=self.base_url,
             temperature=self.temperature if temperature is None else temperature,

@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import re
+import asyncio
 from datetime import datetime, timezone
 from hashlib import sha256
 from typing import Optional
@@ -54,6 +55,7 @@ class DefaultConversationMemoryService(ConversationMemoryService):
         turns: Optional[ConversationTurnRepository] = None,
         documents: Optional[DocumentTextGateway] = None,
         object_store: Optional[ObjectStoreGateway] = None,
+        image_reader=None,
     ) -> None:
         self._memories = memories
         # 逐轮原文是可选的：只做摘要续接的装配（单测、纯内存最小装配）可以不接它，
@@ -64,6 +66,7 @@ class DefaultConversationMemoryService(ConversationMemoryService):
         # 材料，模型却什么都没看到，而他不会知道）。
         self._documents = documents
         self._object_store = object_store
+        self._image_reader = image_reader
 
     async def get(self, user_id: str, task_id: str) -> Optional[ConversationMemory]:
         return await self._memories.get(user_id, task_id)
@@ -166,8 +169,15 @@ class DefaultConversationMemoryService(ConversationMemoryService):
         if self._documents is None or self._object_store is None:
             raise RuntimeError("材料上传未装配（Container.documents / object_store）")
         name = _safe_material_name(name)
+        image = ""
         try:
-            text = self._documents.extract_text(data, filename=name)
+            if name.rsplit('.', 1)[-1].lower() in {'png', 'jpg', 'jpeg', 'gif', 'webp'}:
+                if self._image_reader is None:
+                    raise InvalidRequest("图片读取未装配，请稍后重试。")
+                image = await asyncio.to_thread(self._image_reader, data)
+                text = ""
+            else:
+                text = self._documents.extract_text(data, filename=name)
         except DocumentReadError as exc:
             # "这份文件我读不了"（Excel 那种二进制、空文件）是**用户能自己修的事**：
             # 翻成 InvalidRequest，api 按 422 + 原话返回，界面照原样显示那句
@@ -193,7 +203,7 @@ class DefaultConversationMemoryService(ConversationMemoryService):
         # 取用时（拼模型输入）要告诉模型"这段是哪份材料"，而对象存储只认识字节。
         # 统一按 UTF-8 写：读进来时编码已经归一过一次，再存回原文编码会让取用方
         # 多背一份"这份是什么编码"的知识。
-        payload = ConversationMaterialBody(name=name, text=text).model_dump_json()
+        payload = ConversationMaterialBody(name=name, text=text, image_data_url=image).model_dump_json()
         await self._object_store.put(
             key, payload.encode("utf-8"), content_type="application/json"
         )

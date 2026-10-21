@@ -283,6 +283,7 @@ class ConversationMaterialBody(BaseModel):
 
     name: str = ""
     text: str = ""
+    image_data_url: str = Field(default="", repr=False, exclude=False)
 
 
 class UserNoteService(ABC):
@@ -339,6 +340,7 @@ class AcademicService(ABC):
         grades_raw: str = "",
         school: str = "",
         term: str = "",
+        expected_version: str = "",
     ) -> "AcademicImportResult":
         """读用户贴进来的原文，存成一份快照，并把画像摘要更新掉。
 

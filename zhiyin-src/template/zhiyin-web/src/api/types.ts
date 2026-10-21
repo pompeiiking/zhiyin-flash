@@ -59,6 +59,20 @@ export interface paths {
      */
     post: operations["import_academic_files_api_v1_app_academic_import_file_post"];
   };
+  "/api/v1/app/academic/preview": {
+    /**
+     * Preview Academic
+     * @description 识别已上传图片或解析文字，返回30分钟内有效的逐条替换预览；不写课表或成绩。
+     */
+    post: operations["preview_academic_api_v1_app_academic_preview_post"];
+  };
+  "/api/v1/app/academic/preview/commit": {
+    /**
+     * Commit Academic Preview
+     * @description 用户核对并确认预览后保存；不接受替换预览正文或绕过版本校验。
+     */
+    post: operations["commit_academic_preview_api_v1_app_academic_preview_commit_post"];
+  };
   "/api/v1/app/achievements": {
     /**
      * List Achievements
@@ -978,6 +992,65 @@ export interface components {
        */
       term?: string;
     };
+    /** AcademicPreview */
+    AcademicPreview: {
+      /** Courses */
+      courses?: components["schemas"]["CourseEntry"][];
+      /** Expected Version */
+      expected_version: string;
+      /** Expires At */
+      expires_at: string;
+      /** Grades */
+      grades?: components["schemas"]["GradeEntry"][];
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind: "courses" | "grades";
+      /** Preview Id */
+      preview_id: string;
+      /** Replace Count */
+      replace_count: number;
+      /** School */
+      school: string;
+      /** Term */
+      term: string;
+      /** Warnings */
+      warnings?: string[];
+    };
+    /** AcademicPreviewCommit */
+    AcademicPreviewCommit: {
+      /** Preview Id */
+      preview_id: string;
+    };
+    /** AcademicPreviewRequest */
+    AcademicPreviewRequest: {
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind: "courses" | "grades";
+      /**
+       * Material Id
+       * @default
+       */
+      material_id?: string;
+      /**
+       * School
+       * @default
+       */
+      school?: string;
+      /**
+       * Term
+       * @default
+       */
+      term?: string;
+      /**
+       * Text
+       * @default
+       */
+      text?: string;
+    };
     /**
      * AcademicRevokeAck
      * @description 清空导入的回执。
@@ -1290,6 +1363,22 @@ export interface components {
       /** @default 0 */
       code?: components["schemas"]["ErrorCode"];
       data?: components["schemas"]["AcademicImportAck"] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
+    /** ApiResponse[AcademicPreview] */
+    ApiResponse_AcademicPreview_: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      data?: components["schemas"]["AcademicPreview"] | null;
       /**
        * Message
        * @default ok
@@ -2841,6 +2930,59 @@ export interface components {
       task_id: string;
     };
     /**
+     * CourseEntry
+     * @description 一门课。字段取的是"排课"需要的那些，不是教务系统里所有列。
+     */
+    CourseEntry: {
+      /**
+       * Category
+       * @description 课程性质 / 类别原文
+       * @default
+       */
+      category?: string;
+      /**
+       * Credit
+       * @default
+       */
+      credit?: string;
+      /**
+       * End Period
+       * @description 第几节结束
+       * @default 0
+       */
+      end_period?: number;
+      /** Name */
+      name: string;
+      /**
+       * Place
+       * @default
+       */
+      place?: string;
+      /**
+       * Start Period
+       * @description 第几节开始（1 起）
+       * @default 0
+       */
+      start_period?: number;
+      /**
+       * Teacher
+       * @default
+       */
+      teacher?: string;
+      /**
+       * Weekday
+       * @description 1=周一 … 7=周日；0 表示没读出来
+       * @default 0
+       */
+      weekday?: number;
+      /**
+       * Weeks
+       * @description 周次原文，如 1-16周
+       * @default
+       */
+      weeks?: string;
+    };
+    /**
      * DependencyEdgeView
      * @description 依赖可视化（简版）。
      */
@@ -3328,6 +3470,47 @@ export interface components {
       code: string;
       /** Question */
       question: string;
+    };
+    /**
+     * GradeEntry
+     * @description 一条成绩。
+     */
+    GradeEntry: {
+      /**
+       * Category
+       * @default
+       */
+      category?: string;
+      /**
+       * Credit
+       * @default
+       */
+      credit?: string;
+      /**
+       * Kind
+       * @description 必修 / 选修 / 任选
+       * @default
+       */
+      kind?: string;
+      /** Name */
+      name: string;
+      /**
+       * Point
+       * @description 绩点原文
+       * @default
+       */
+      point?: string;
+      /**
+       * Score
+       * @description 成绩原文；等级制也照原样记，不换算
+       * @default
+       */
+      score?: string;
+      /**
+       * Term
+       * @default
+       */
+      term?: string;
     };
     /**
      * GuideOptionView
@@ -4549,7 +4732,7 @@ export interface components {
      * ProfileFieldUpdateRequest
      * @description 用户手动更正一条画像字段（issue #26 第三条）。
      *
-     * 只有一个 `value`，键在路径上（`POST /app/profile/fields/{key}`）：
+     * 取值及其属性/有效期属于同一条资料，键在路径上（`POST /app/profile/fields/{key}`）：
      * "改哪一条"不是可选的 —— 揉进请求体里，就等于允许一次请求改任意多条，
      * 而界面上的入口从来只对着一条。
      *
@@ -4559,16 +4742,26 @@ export interface components {
      * 一句英文的字段名错误，用户看不懂自己该改什么。
      */
     ProfileFieldUpdateRequest: {
+      /** Attributes */
+      attributes?: {
+        [key: string]: unknown;
+      } | null;
+      /** Event At */
+      event_at?: string | null;
       /**
        * Expected Updated At
        * @description 编辑时字段时间；首次填写传 null
        */
       expected_updated_at?: string | null;
+      /** Valid From */
+      valid_from?: string | null;
+      /** Valid To */
+      valid_to?: string | null;
       /**
        * Value
-       * @description 用户认可的那个值（空串会被拒 —— 清空是另一件事）
+       * @description 用户认可的值；多项资料使用数组
        */
-      value: string;
+      value: string | string[];
     };
     /**
      * ProfileFieldView
@@ -5610,6 +5803,56 @@ export interface operations {
     requestBody?: {
       content: {
         "multipart/form-data": components["schemas"]["Body_import_academic_files_api_v1_app_academic_import_file_post"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_AcademicImportAck_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /**
+   * Preview Academic
+   * @description 识别已上传图片或解析文字，返回30分钟内有效的逐条替换预览；不写课表或成绩。
+   */
+  preview_academic_api_v1_app_academic_preview_post: {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["AcademicPreviewRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_AcademicPreview_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /**
+   * Commit Academic Preview
+   * @description 用户核对并确认预览后保存；不接受替换预览正文或绕过版本校验。
+   */
+  commit_academic_preview_api_v1_app_academic_preview_commit_post: {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["AcademicPreviewCommit"];
       };
     };
     responses: {

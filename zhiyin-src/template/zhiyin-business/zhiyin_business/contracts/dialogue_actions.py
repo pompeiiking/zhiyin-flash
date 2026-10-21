@@ -17,6 +17,7 @@ DialogueOperation = Literal[
     'plan.activate', 'plan.patch', 'report.activate', 'directions.activate',
     'direction.select', 'calendar.write', 'calendar.delete', 'memory.forget',
     'action.undo', 'action.approve', 'action.reject',
+    'academic.import',
 ]
 
 
@@ -44,6 +45,7 @@ def action_contracts():
     if definitions:
         directions['$defs'] = definitions
     specs = {
+        'academic.import': ('保存已识别并核对的课表或成绩预览。必须先用 academic.preview 获取真实 preview_id，再生成审批卡；无论用户如何表述，均不得自动保存。预览后的资料变化会使审批失效。', 'proposal', _object({'preview_id': text}, ['preview_id'])),
         'profile.update': ('维护本人明确自述的画像；临时会话不保存。按 profile_record_contract 选择字段、取值与属性。', 'automatic_or_explicit', _object({
             'key': text, 'value': {'anyOf': [text, {'type': 'array', 'items': text}]},
             'attributes': {'type': 'object'}, 'assertion_type': {'enum': ['affirmative_self_statement', 'explicit_correction', 'conflict_candidate']},

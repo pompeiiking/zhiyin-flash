@@ -93,6 +93,8 @@
     "path": "/app/academic/import",
     "surface": "/grades"
   },
+  "academicPreview": { "method": "POST", "path": "/app/academic/preview", "surface": "/schedule" },
+  "academicPreviewCommit": { "method": "POST", "path": "/app/academic/preview/commit", "surface": "/schedule" },
   "academicFile": {
     "method": "POST",
     "path": "/app/academic/import/file",

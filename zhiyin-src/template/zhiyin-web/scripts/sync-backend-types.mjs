@@ -8,6 +8,7 @@ const schemas = spec.components.schemas
 const queue = ['NoteView', 'NoteCreateRequest', 'NoteDoneRequest', 'AcademicPanelView', 'AcademicImportRequest', 'AcademicImportAck', 'ConversationMaterialView', 'TaskSessionView', 'SessionListView', 'MessageRequest', 'GuideOptionView', 'ConversationTurnView', 'ProfileFieldView', 'IntelListView', 'IntelItemView', 'CalendarNodeView', 'AchievementListView', 'ActionPlanView', 'ActionTaskDoneRequest', 'DirectionPlanListView', 'ReportFullTextView', 'AssetVersionView', 'TrackEventView', 'BootstrapView', 'TheoryCardView']
 queue.push("TaskEdit", "PhaseEdit", "Preferences", "Semester", "ReviewEdit", "NotificationEdit", "MeasurementEdit", "MeasurementRecordView", "DirectionWeights", "PreferencesEdit", "SemesterEdit", "DirectionWeightsEdit")
 const seen = new Set()
+queue.push('AcademicPreview', 'AcademicPreviewRequest')
 queue.push('WorkspacePageView', 'ExportResultView', 'LoginResult', 'AuthRequest', 'CoachNotificationView', 'PortalView')
 queue.push('CapabilityListView', 'SessionRenameRequest')
 function type(s = {}) {

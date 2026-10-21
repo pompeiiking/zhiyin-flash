@@ -4,6 +4,8 @@ Business writes use one durable action boundary. Modules remain read-only.
 """
 from __future__ import annotations
 
+from zhiyin_business.services.academic_preview import AcademicPreviewChanged
+
 from contextvars import ContextVar
 from datetime import datetime, timedelta, timezone
 from typing import Literal, Any
@@ -83,7 +85,7 @@ def profile_time(payload: dict, name: str) -> datetime | None:
 
 class DialogueRuntime:
     AGENT = "career_advisor"
-    LABELS = {"profile.update": "更新画像", "task.set_done": "更新任务状态", "plan.save": "保存计划",
+    LABELS = {"academic.import": "导入课表或成绩", "profile.update": "更新画像", "task.set_done": "更新任务状态", "plan.save": "保存计划",
               "report.save": "保存报告", "directions.save": "保存方向方案", "plan.activate": "启用计划",
               "plan.patch": "调整计划", "report.activate": "启用报告", "directions.activate": "启用方向方案",
               "direction.select": "选择方向", "calendar.write": "保存日历提醒", "calendar.delete": "删除日历提醒", "memory.forget": "删除记忆", "action.undo": "撤销上次修改"}
@@ -160,7 +162,9 @@ class DialogueRuntime:
 
     async def read_target(self, operation):
         user = self.request.user_id
-        if operation.startswith("profile") or operation == "memory.forget":
+        if operation == "academic.import":
+            value = await self.o.academic_reader(user)
+        elif operation.startswith("profile") or operation == "memory.forget":
             value = await self.o._profiles.get(user)
         elif operation.startswith("direction"):
             value = await self.o._assets.list_direction_plans(user)
@@ -448,11 +452,14 @@ class DialogueRuntime:
     async def validate_action(self, args):
         payload = dict(args.payload)
         user = self.request.user_id
+        if args.operation == "academic.import":
+            preview = await self.o.academic_previews.read(user, str(payload.get("preview_id", "")))
+            return preview.model_dump(mode="json")
         stable_id = digest({"user": user, "session": self.request.task_id, "run": self.request.client_msg_id, "operation": args.operation, "payload": payload})[:20]
         if args.operation == "action.undo":
             record = await self.ledger.read(user, self.request.task_id)
             original = record["actions"].get(str(payload.get("target_id", "")))
-            if not original or original["state"] != "succeeded" or original["operation"] in {"memory.forget", "action.undo", "direction.select"}:
+            if not original or original["state"] != "succeeded" or original["operation"] in {"memory.forget", "action.undo", "direction.select", "academic.import"}:
                 raise InvalidRequest("该操作不支持自动撤销，请明确说明新的修改要求")
             if original.get("after_version") != await self.snapshot(original["scope_operation"]):
                 raise InvalidRequest("操作之后数据已变化，不能覆盖后续修改")
@@ -662,6 +669,11 @@ class DialogueRuntime:
         self.event("step.started", "正在" + self.LABELS[action["operation"]], step_id=action["id"])
         try:
             receipt = await self.apply(action)
+        except AcademicPreviewChanged as exc:
+            action["state"] = "superseded"
+            await self.ledger.put_action(user, session, action)
+            self.event("step.failed", "预览已失效，请重新核对", step_id=action["id"])
+            result = {"executed": False, "action_id": action["id"], "state": "superseded", "reason": str(exc)}
         except Exception:
             log.exception("对话操作失败：%s", action["id"])
             action["state"] = "outcome_unknown"
@@ -679,6 +691,8 @@ class DialogueRuntime:
 
     async def apply(self, action):
         user, payload, operation = self.request.user_id, action["payload"], action["operation"]
+        if operation == "academic.import":
+            return await self.o.academic_writer(user, payload["preview_id"])
         if operation == "action.undo":
             old_op, before, original = payload["operation"], payload["before"], payload["original_payload"]
             if payload.get("draft_only"):
@@ -913,8 +927,20 @@ class DialogueRuntime:
             await self.extract_facts(policy_only=True)
             profile = await self.o._profiles.get(request.user_id)
             state = await self.o._student_state.get(request.user_id)
+            images = []
+            if request.material_ids:
+                from zhiyin_business.services.analysis_access import current_scope
+                scope = current_scope(request.user_id)
+                if scope is not None and 'material' not in scope.sources:
+                    raise InvalidRequest("本轮未允许使用材料")
+                for material_id in request.material_ids:
+                    body = await self.o._memories.material_body(request.user_id, material_id)
+                    if body.image_data_url:
+                        images.append(body.image_data_url)
+                if len(images) > 4:
+                    raise InvalidRequest("每轮最多分析4张图片，请分次发送。")
             result = await self.o._agent_engine.invoke(AgentRequest(agent_id=session.lead_agent or self.AGENT, conversation=True,
-                blackboard={"user_id": request.user_id, "task_id": request.task_id}, history=history,
+                blackboard={"user_id": request.user_id, "task_id": request.task_id}, history=history, images=images,
                 prompt_vars={**variables, "dialogue_focus": session.loop_stage.value, "user_input": request.message, "raw_user_message": request.message,
                     "today": utcnow(), "profile": serial(profile),
                     "profile_conflicts": serial(await self.o._profiles.list_conflicts(request.user_id)),

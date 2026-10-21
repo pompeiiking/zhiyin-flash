@@ -8,9 +8,10 @@ const records = computed(() => props.actions.filter(a => a.state !== 'proposed')
 const states: Record<string, string> = { succeeded: '已完成', reverted: '已撤回', outcome_unknown: '结果待核对，请查看当前数据', failed: '未完成', superseded: '旧提案已失效', rejected: '未执行', expired: '已过期', executing: '正在执行，请稍后核对结果' }
 const titles: Record<string, string> = { 'plan.activate': '启用这份计划', 'plan.save': '保存计划', 'profile.update': '更新画像', 'task.set_done': '更新任务状态', 'report.save': '保存报告', 'directions.save': '保存方向方案', 'direction.select': '选择方向', 'memory.forget': '删除这项记忆' }
 Object.assign(titles, { 'action.undo': '撤销上次修改', 'plan.patch': '调整计划任务', 'report.activate': '启用这份报告', 'directions.activate': '启用方向方案' })
-Object.assign(titles, { 'calendar.write': '保存日历提醒', 'calendar.delete': '删除日历提醒' })
+Object.assign(titles, { 'academic.import': '保存课表或成绩', 'calendar.write': '保存日历提醒', 'calendar.delete': '删除日历提醒' })
 function preview(a: ConversationAction): string[] {
  const p = a.payload.content || a.payload
+ if (a.operation === 'academic.import') return [`${p.school} · ${p.term}`, `将用 ${(p[p.kind] || []).length} 条记录替换已有 ${p.replace_count} 条${p.kind === 'courses' ? '课程' : '成绩'}；${p.kind === 'courses' ? '成绩' : '课表'}保留。`, ...(p[p.kind] || []).map((r: any) => p.kind === 'courses' ? `${r.name} · 周${r.weekday || '?'} · ${r.start_period || '?'}–${r.end_period || '?'}节 · ${r.weeks || '周次待补充'} · ${r.place || '地点待补充'}` : `${r.name} · ${r.score} · 学分 ${r.credit || '—'} · 绩点 ${r.point || '—'} · ${r.term || p.term}`), ...(p.warnings || [])]
  if (a.operation.startsWith('calendar.')) return [p.title, p.due_at ? new Date(p.due_at).toLocaleString(undefined, { timeZoneName: 'short' }) : '无指定时间', a.operation === 'calendar.delete' ? '确认后删除这一条提醒。' : '确认后保存这一条提醒。']
  if (a.operation === 'direction.select') return [`${p.name}：${p.target_desc}`]
  if (a.operation === 'memory.forget') return [`${p.label}：${p.value}`, '删除这项画像，并重置此前的对话上下文；其他已保存画像保留。历史聊天需另行删除会话。']

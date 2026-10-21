@@ -37,6 +37,7 @@ class AgentRequest(BaseModel):
     )
     conversation: bool = False
     history: list[dict[str, str]] = Field(default_factory=list)
+    images: list[str] = Field(default_factory=list, exclude=True, repr=False, max_length=4)
     blackboard: dict[str, Any] = Field(
         default_factory=dict, description="共享状态快照（已序列化）"
     )

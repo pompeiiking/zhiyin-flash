@@ -41,6 +41,7 @@ dependencies = [
     # 的 openai 是别的项目（document-agent / langchain-openai）顺手装进来的。
     # tests/test_declared_dependencies.py 守着这一条。
     "openai>=1.40",
+    "Pillow>=10.4",
 ]
 
 [project.optional-dependencies]

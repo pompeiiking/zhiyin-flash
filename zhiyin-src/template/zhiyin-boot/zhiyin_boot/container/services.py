@@ -71,6 +71,7 @@ def build_orchestration(container: "Container") -> None:
             api_key=container.settings.llm_api_key,
             base_url=container.settings.llm_base_url,
             model=container.settings.llm_model,
+            vision_model=container.settings.llm_vision_model,
         )
         container.extra["agno_runtime"] = runtime
         registry_tools = ToolRegistry()
@@ -234,11 +235,13 @@ def build_services(container: "Container") -> None:
         # 逐轮原文与累积摘要一起交给记忆服务：摘要给模型续接，原文给会话历史。
         # 文档抽取与对象存储也给它：**用户带上来的材料**归这里收
         # （正文抽出来存对象存储，对话里只留一句"我传了一份材料：xxx"）。
+        from zhiyin_infrastructure.imagefile import image_data_url
         container.memory_service = DefaultConversationMemoryService(
             container.memories,
             container.turns,
             container.documents,
             container.object_store,
+            image_reader=image_data_url,
         )
         container.memory_service = guarded(container.memory_service, "memory")
     if container.notes is not None:
@@ -250,6 +253,20 @@ def build_services(container: "Container") -> None:
             container.profile_service,
         )
         container.academic_service = guarded(container.academic_service, "academic")
+        from zhiyin_business.services.academic_preview import AcademicPreviewService
+        async def vision_reader(image, kind):
+            from zhiyin_infrastructure.ai.academic_vision import recognize_academic
+            from zhiyin_kernel.errors import InvalidRequest
+            runtime = container.extra.get("agno_runtime")
+            if runtime is None:
+                raise InvalidRequest("图片识别模型未装配")
+            refresh = getattr(container.agent_engine, "refresh_model", None)
+            if refresh:
+                await refresh()
+            return await recognize_academic(runtime, image, kind)
+        container.extra["academic_previews"] = AcademicPreviewService(container.academic_service,
+            container.academic, container.memory_service, container.object_store,
+            vision_reader=vision_reader)
     if container.assets is not None and container.event_bus_primitive is not None:
         container.asset_service = DefaultAssetService(
             container.assets,
@@ -423,6 +440,7 @@ def build_services(container: "Container") -> None:
             # 而"缓存装上了"看起来又是真的。装配一处漏接就是这个症状。
             read_cache=container.read_cache,
             web_search_available=container.web_search is not None,
+            academic_previews=container.extra.get("academic_previews"),
         )
 
 
@@ -434,6 +452,9 @@ def build_services(container: "Container") -> None:
         async def direction_writer(user_id, plan_id):
             return await container.facade.select_direction_plan(user_id, plan_id)
         container.orchestrator.direction_writer = direction_writer
+        container.orchestrator.academic_previews = container.extra.get("academic_previews")
+        container.orchestrator.academic_reader = container.academic_service.get
+        container.orchestrator.academic_writer = container.facade.commit_academic_preview
         async def conversation_invalidator(user_id, event):
             if container.ai_task_service is not None:
                 await container.ai_task_service.invalidate_for_event(user_id, event)
