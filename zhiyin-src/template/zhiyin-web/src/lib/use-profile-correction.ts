@@ -14,6 +14,7 @@ interface ProfileCorrectionDeps {
   openField: Ref<string | null>
   fieldValue: (row: FieldRow) => string
   inspect: (key: string, label: string) => void
+  refreshRelated?: () => Promise<void>
 }
 
 export function useProfileCorrection(deps: ProfileCorrectionDeps) {
@@ -29,8 +30,13 @@ export function useProfileCorrection(deps: ProfileCorrectionDeps) {
   const correctionVersion = ref<string|null>(null)
   const correctionLatest = ref<ProfileFieldView | null>(null)
   const saveBusy = ref(false)
+  const correctionAttributes = ref<Record<string, unknown>>({})
+  const preferenceItems = computed(() => (correctionAttributes.value.items ?? []) as {value: string; polarity?: string; state?: string}[])
+  const multiple = computed(() => Array.isArray(livePanel.value?.fields?.find(item => item.key === correction.value?.key)?.value)
+    || ['interest', 'career_focus', 'ability'].includes(correction.value?.entryType ?? ''))
 
   async function refreshAfterWrite(key: string) {
+    backendDemo.markProfileChange(key)
     // The write committed: immediately remove dependent stale interpretations,
     // then replace all derived state with the authoritative workspace.
     const workspace = JSON.parse(JSON.stringify(backendDemo.state.liveWorkspace))
@@ -39,6 +45,10 @@ export function useProfileCorrection(deps: ProfileCorrectionDeps) {
       backendDemo.setWorkspace(workspace)
     }
     try {
+      if (deps.refreshRelated) {
+        await deps.refreshRelated()
+        return
+      }
       const latest = await backendClient.workspace()
       if (!latest?.profile_panel) throw new Error('Incomplete profile')
       backendDemo.setWorkspace(latest)
@@ -63,7 +73,14 @@ export function useProfileCorrection(deps: ProfileCorrectionDeps) {
     correction.value = row
     correctionVersion.value = livePanel.value?.fields?.find(item => item.key === row.key)?.updated_at ?? null
     correctionLatest.value = null
-    value.value = fieldValue(row)
+    const original = livePanel.value?.fields?.find(item => item.key === row.key)
+    correctionAttributes.value = JSON.parse(JSON.stringify(original?.attributes ?? {}))
+    const raw = original?.value
+    if (['interest', 'career_focus'].includes(row.entryType) && !Array.isArray(correctionAttributes.value.items)) {
+      const common = correctionAttributes.value
+      correctionAttributes.value = {items: (Array.isArray(raw) ? raw : [raw]).filter(Boolean).map(item => ({value: item, ...common}))}
+    }
+    value.value = Array.isArray(raw) ? raw.join('\n') : fieldValue(row)
     correctionError.value = ''
   }
 
@@ -76,12 +93,16 @@ export function useProfileCorrection(deps: ProfileCorrectionDeps) {
       serviceError.value = ''
       saveBusy.value = true
       try {
-        const updated = await backendClient.correct(field.key, value.value.trim(), correctionVersion.value)
+        const nextValue = multiple.value ? value.value.split(/\n/).map(item => item.trim()).filter(Boolean) : value.value.trim()
+        const updated = await backendClient.correct(field.key, nextValue, correctionVersion.value, correctionAttributes.value)
         if (previous && !originalLive.value[field.key]) backendDemo.rememberProfileOriginal(field.key)
         const workspace = JSON.parse(JSON.stringify(backendDemo.state.liveWorkspace))
-        workspace.profile_panel.fields = workspace.profile_panel.fields.map((item: ProfileFieldView) => (item.key === updated.key ? updated : item))
-        backendDemo.setWorkspace(workspace)
+        if (workspace?.profile_panel?.fields) {
+          workspace.profile_panel.fields = workspace.profile_panel.fields.map((item: ProfileFieldView) => (item.key === updated.key ? updated : item))
+          backendDemo.setWorkspace(workspace)
+        }
         correctionLatest.value = null
+        correction.value = null
         await refreshAfterWrite(field.key)
       } catch (error) {
         correctionError.value = error instanceof Error ? error.message : '更正没有保存成功，输入仍保留，请重试。'
@@ -150,13 +171,19 @@ export function useProfileCorrection(deps: ProfileCorrectionDeps) {
       await refreshAfterWrite(field.key)
     } catch (error) {
       deleteError.value = error instanceof Error ? error.message : '删除没有成功，这条记录仍然保留，请重试。'
+      if ((error as {code?: number}).code === 1003) {
+        try {
+          backendDemo.setWorkspace(await backendClient.workspace())
+          deleteError.value += ' 已读取最新记录，请核对后再次确认删除。'
+        } catch { deleteError.value += ' 最新记录未取得，请重试读取档案。' }
+      }
     } finally {
       deleteBusy.value = false
     }
   }
 
   return {
-    correction, value, correctionError, correctionVersion, correctionLatest, saveBusy,
+    correction, value, correctionAttributes, preferenceItems, multiple, correctionError, correctionVersion, correctionLatest, saveBusy,
     correctionConflictRows, inspectField, edit, save, confirmCorrectionConflict,
     deleting, deleteBusy, deleteError, askDelete, closeDelete, confirmDelete,
   }

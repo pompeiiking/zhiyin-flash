@@ -91,6 +91,7 @@ const fields = useProfileFields({
   originalLive: workspace.originalLive,
   progress: workspace.progress,
   getFieldDeps: () => conclusions.fieldDeps.value,
+  refreshRelated: workspace.loadWorkspace,
 })
 const { fieldValue, valueParts, known, statusLine, confBands, coverageNote, groups, clues, denyClue, conflicts, resolveConflict, profileActionError, profileActionsPending } = fields
 
@@ -119,14 +120,15 @@ const correctionState = useProfileCorrection({
   openField: navigation.openField,
   fieldValue: fields.fieldValue,
   inspect: (key, label) => { insights.value?.inspect(key, label) },
+  refreshRelated: workspace.loadWorkspace,
 })
-const { correction, value, correctionError, correctionLatest, correctionConflictRows, inspectField, edit, save, confirmCorrectionConflict, deleting, deleteBusy, deleteError, askDelete, closeDelete, confirmDelete } = correctionState
+const { correction, value, preferenceItems, multiple, correctionError, correctionLatest, correctionConflictRows, saveBusy, inspectField, edit, save, confirmCorrectionConflict, deleting, deleteBusy, deleteError, askDelete, closeDelete, confirmDelete } = correctionState
 
 function changeTab(tab: 'facts' | 'judgments' | 'gaps' | 'sources') { profileTab.value = tab }
 
 const identity = computed(() => {
   const pick = (key: string) => known.value.find((row) => row.key === key)?.value
-  const name = live.value ? pick('name') || demo.state.account : STUDENT.name
+  const name = live.value ? pick('student_name') || pick('name') || demo.state.account : STUDENT.name
   const school = live.value ? pick('school') : demo.state.profileEdits.school ?? STUDENT.school
   const grade = live.value ? pick('study_year') || pick('grade') : demo.state.profileEdits.grade ?? demo.use.scenario.value.grade
   if (!live.value && demo.state.account === 'fresh') return { name: '新用户', line: '学校与年级待补充' }
@@ -168,9 +170,10 @@ const enrollmentRows = computed(() => {
   ].map(item => ({ ...item, value: item.row ? fieldValue(item.row) : '待补充' }))
 })
 function exportProfile(){
+  if (loading.value || (live.value && !livePanel.value)) return
   const data = {schema_version: 1, exported_at: new Date().toISOString(), scope: 'current_profile_snapshot', history_included: false,
     profile: live.value ? livePanel.value : {fields: known.value}, collection: live.value ? backendDemo.state.liveWorkspace?.collection_panel : undefined}
-  const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='职引-个人画像.json';a.click();URL.revokeObjectURL(url)
+  const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download=`职引-个人画像-${identity.value.name}-${new Date().toISOString().slice(0,10)}.json`;a.click();URL.revokeObjectURL(url)
 }
 
 /** 覆盖度环：进入页面从 0 生长到实际值；reduced-motion 直接给终值 */
@@ -186,7 +189,7 @@ onMounted(()=>{ void loadWorkspace() })
     <p class="sr-only" role="status" aria-live="polite">{{ loading ? '正在读取个人画像…' : '' }}</p>
     <PageHeading title="个人画像" description="把零散经历整理成可核对、可继续验证的个人画像。"><template #meta><div class="c2-page-meta"><span v-if="live">{{ livePanel ? '已读取的档案' : loading ? '正在读取档案' : '尚未读取档案' }}</span><span>{{ progress.known }} 条已知 · {{ progress.gap }} 条待补充</span></div></template>
       <RouterLink class="btn btn--primary" to="/chat">{{ progress.gap ? '补充关键信息' : '更新信息' }}<UiIcon name="arrow" :size="16" /></RouterLink>
-      <button class="btn" @click="exportProfile"><UiIcon name="download" :size="16"/>导出画像</button>
+      <button class="btn" :disabled="loading || (live && !livePanel)" @click="exportProfile"><UiIcon name="download" :size="16"/>导出画像</button>
     </PageHeading>
 
     <StatusBanner
@@ -238,7 +241,7 @@ onMounted(()=>{ void loadWorkspace() })
       <!-- 全量资料按主题展开，不设置搜索、范围或组织方式筛选。 -->
       <LayoutGroup>
         <motion.div class="p7-groups" :layout="true" :layout-dependency="0" :transition="{ duration: 0.32, ease: [0.23, 1, 0.32, 1] }">
-          <p v-if="profileActionError" class="ws-field-error" role="alert">{{ profileActionError }}</p>
+          <StatusBanner v-if="profileActionError" tone="error" :message="profileActionError" retry-label="重试读取" :retrying="loading" @retry="async () => { await loadWorkspace(); if (!serviceError) profileActionError = '' }" />
           <!-- 系统理解与事实分开：线索必须能单独展示、单独否认。 -->
           <section v-if="clues.length" class="p7-group p7-clues" aria-labelledby="p7-clues-title">
             <header class="p7-group__head">
@@ -423,7 +426,7 @@ onMounted(()=>{ void loadWorkspace() })
           unit="条"
           label="待更新的判断"
           :state="needsRecompute ? 'recompute' : 'done'"
-          :trend="{ label: `你更正了 ${changedFields.size} 条信息 · ${live ? '服务标记' : '依据关联资料更新'}` }"
+          :trend="{ label: changedFields.size ? `本页更新了 ${changedFields.size} 条信息，相关判断需核对` : needsRecompute ? '服务已标记判断待更新' : '当前未发现待更新标记'  }"
         />
       </header>
 
@@ -601,15 +604,20 @@ onMounted(()=>{ void loadWorkspace() })
     <InfoSheet :open="verificationOpen" shape="panel" title="核验学籍信息" @close="verificationOpen=false"><AcademicVerification /></InfoSheet>
     <!-- 更正是一条信息的小表单（`text` + 两个按钮），不是"从一行钻进去看细节"。
          所以 shape 是 dialog（缺省也是它，这里写出来是为了让形态是**显式**的）。 -->
-    <InfoSheet shape="sheet" :open="correction !== null" :title="'更正' + (correction?.label ?? '信息')" @close="correction = null">
+    <InfoSheet shape="sheet" :open="correction !== null" :title="'更正' + (correction?.label ?? '信息')" @close="!saveBusy && (correction = null)">
       <form @submit.prevent="save">
         <label v-if="correction?.key === 'study_year'" class="ws-field">当前学习阶段<select v-model="value"><option v-for="option in STUDY_YEAR_OPTIONS" :key="option.code" :value="option.label">{{option.label}}</option></select></label>
-        <label v-else class="ws-field">更正内容<textarea v-model="value" /></label>
+        <label v-else class="ws-field">更正内容<textarea v-model="value" :disabled="saveBusy" /></label>
+        <p v-if="multiple" class="ws-muted">每行填写一项；已有项目的偏好与有效期会保留。</p>
+        <label v-for="item in preferenceItems" :key="item.value" class="ws-field">{{ item.value }}
+          <select v-if="correction?.entryType === 'interest'" v-model="item.polarity" :disabled="saveBusy"><option :value="undefined">未注明偏好</option><option value="like">喜欢</option><option value="dislike">不喜欢</option><option value="unsure">还不确定</option></select>
+          <select v-else v-model="item.state" :disabled="saveBusy"><option :value="undefined">未注明关注状态</option><option value="exploring">正在了解</option><option value="considering">正在考虑</option><option value="selected">已选择</option></select>
+        </label>
         <FormConflict v-if="correctionLatest" :rows="correctionConflictRows" @confirm="confirmCorrectionConflict" />
         <p v-if="correctionError" class="ws-field-error" role="alert">{{ correctionError }}</p>
         <div class="ws-inline-actions">
-          <button class="btn btn--primary" type="submit" :disabled="correctionLatest !== null">保存更正</button>
-          <button class="btn" type="button" @click="correction = null">取消</button>
+          <button class="btn btn--primary" type="submit" :disabled="saveBusy || correctionLatest !== null">{{ saveBusy ? '正在保存…' : '保存更正' }}</button>
+          <button class="btn" type="button" :disabled="saveBusy" @click="correction = null">取消</button>
         </div>
       </form>
     </InfoSheet>

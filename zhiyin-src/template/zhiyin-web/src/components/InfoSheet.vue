@@ -94,6 +94,7 @@ async function syncOpen(open: boolean, previous?: boolean) {
     } else {
       positionCard()
       addCardListeners()
+      card.value?.querySelector<HTMLElement>('input, textarea, select, button, [tabindex="0"]')?.focus()
     }
     emit('opened')
     return

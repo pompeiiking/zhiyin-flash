@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
 from zhiyin_api.dto.common import TheoryRefView
 from zhiyin_kernel.enums import (
@@ -62,7 +62,7 @@ class ProfileFieldView(BaseModel):
 class ProfileFieldUpdateRequest(BaseModel):
     """用户手动更正一条画像字段（issue #26 第三条）。
 
-    只有一个 `value`，键在路径上（`POST /app/profile/fields/{key}`）：
+    取值及其属性/有效期属于同一条资料，键在路径上（`POST /app/profile/fields/{key}`）：
     "改哪一条"不是可选的 —— 揉进请求体里，就等于允许一次请求改任意多条，
     而界面上的入口从来只对着一条。
 
@@ -74,7 +74,11 @@ class ProfileFieldUpdateRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    value: str = Field(description="用户认可的那个值（空串会被拒 —— 清空是另一件事）")
+    value: str | list[str] = Field(description="用户认可的值；多项资料使用数组")
+    attributes: dict[str, object] | None = None
+    valid_from: AwareDatetime | None = None
+    valid_to: AwareDatetime | None = None
+    event_at: AwareDatetime | None = None
     expected_updated_at: datetime | None = Field(
         default=None, description="编辑时字段时间；首次填写传 null"
     )

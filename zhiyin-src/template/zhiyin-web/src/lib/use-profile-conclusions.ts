@@ -246,7 +246,7 @@ export function useProfileConclusions(deps: ProfileConclusionsDeps) {
   })
 
   const reportFields=computed(()=>new Set(edges.value.filter(e=>e.to_asset==='report'||e.to_asset===backendDemo.state.liveReport?.report_id).flatMap(e=>e.via_profile_keys??[])))
-  const needsCheck=computed(()=>known.value.filter(row=>!Number.isFinite(row.conf)||row.conf<0.8))
+  const needsCheck=computed(()=>known.value.filter(row=>row.needsCheck))
 
   const priorityConclusions = computed(() => Object.values(conclusionMap.value)
     .sort((a, b) => Number(b.kind === 'direction') - Number(a.kind === 'direction'))
@@ -254,7 +254,7 @@ export function useProfileConclusions(deps: ProfileConclusionsDeps) {
 
   /** 更正过的字段：demo 用 backendDemo 的共享标记位模拟，service 用后端的 needs_recompute */
   const changedFields = computed(() => new Set(backendDemo.state.assetChanges.profileKeys))
-  const recomputeIds = computed(() => new Set(Object.keys(conclusionMap.value).filter((key) => conclusionMap.value[key]!.deps.some((dep) => changedFields.value.has(dep.key)))))
+  const recomputeIds = computed(() => new Set(Object.keys(conclusionMap.value).filter((key) => conclusionMap.value[key]!.deps.some((dep) => changedFields.value.has(dep.key)) || (backendDemo.state.reportMetadata?.needs_recompute === true) || (changedFields.value.size > 0 && conclusionMap.value[key]!.deps.length === 0))))
   const needsRecompute = computed(() => recomputeIds.value.size)
 
   /** 依赖关系沿用哪一套：整页只出现一种说法，不混用 */

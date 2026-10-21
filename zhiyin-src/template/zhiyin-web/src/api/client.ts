@@ -6,7 +6,7 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
   const requestToken=authToken()
   try {
     const headers=new Headers(options.headers)
-    headers.set('Accept','application/json');headers.set('Authorization','Bearer '+requestToken)
+    headers.set('Accept','application/json');if(requestToken)headers.set('Authorization','Bearer '+requestToken)
     if(options.body && !(options.body instanceof FormData))headers.set('Content-Type','application/json')
     const response=await fetch('/api/v1'+path,{...options,headers,signal:controller.signal})
     if(authToken()!==requestToken)throw new BackendError('账号已变更，请重新读取。',1004)

@@ -463,12 +463,11 @@ def dialogue_contract(keys: Iterable[str]) -> list[dict[str, Any]]:
     return [{"key": key, "type": entry_type_of(key).value,
              "value_schema": {"type": "array", "items": {"type": "string"}} if allows_multiple(key) else {"type": "string"},
              "max_chars": value_limit(key), "max_items": max_items(key),
-             "attributes": {name: attributes_schema()["properties"][name]
-                            for name in ATTRIBUTE_SPECS.get(entry_type_of(key), {})}}
+             "attributes": attributes_schema(entry_type_of(key))["properties"]}
             for key in sorted(keys)]
 
 
-def attributes_schema() -> dict[str, Any]:
+def attributes_schema(entry_type: ProfileEntryType | None = None) -> dict[str, Any]:
     properties = {name: {"type": "string", "maxLength": limit} for name, limit in ATTRIBUTE_MAX_CHARS.items()}
     properties.update(polarity={"type": "string", "enum": list(INTEREST_POLARITIES)},
                       state={"type": "string", "enum": list(CAREER_FOCUS_STATES)},
@@ -478,6 +477,13 @@ def attributes_schema() -> dict[str, Any]:
         "additionalProperties": False, "properties": {"value": {"type": "string", "maxLength": 60},
             "polarity": properties['polarity'], "state": properties['state'],
             "context": properties['context'], "occupation_id": properties['occupation_id']}}}
+    if entry_type is not None:
+        properties = {key: value for key, value in properties.items() if key in ATTRIBUTE_SPECS.get(entry_type, {})}
+        if 'items' in properties:
+            properties['items'] = {"type": "array", "maxItems": TYPE_MAX_ITEMS[entry_type],
+                "items": {"type": "object", "required": ["value"], "additionalProperties": False,
+                    "properties": {"value": {"type": "string", "maxLength": TYPE_VALUE_LIMITS[entry_type]},
+                        **{key: value for key, value in properties.items() if key != 'items'}}}}
     return {"type": "object", "additionalProperties": False, "properties": properties}
 
 

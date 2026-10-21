@@ -179,6 +179,15 @@ class DefaultProfileService(ProfileService):
         """
         try:
             await self._profiles.invalidate_clues(user_id, list(keys), reason)
+            if self._student_state is not None:
+                def clear_affected(state):
+                    # Snapshots do not carry field-level provenance; discard working
+                    # hypotheses on profile change, retaining original conversation turns.
+                    for record in state.get("conversation_runtime_v2", {}).values():
+                        if isinstance(record, dict):
+                            record.pop("exploration", None)
+                    return state
+                await self._student_state.update(user_id, clear_affected)
         except Exception:  # noqa: BLE001 - 收尾失败不影响主写入
             logger.warning(
                 "画像已写入，但相关待验证线索没失效（user=%s keys=%s）",
@@ -278,6 +287,7 @@ class DefaultProfileService(ProfileService):
         saved = await self._profiles.upsert_field(user_id, field, expected_updated_at=expected_updated_at, check_version=True) if check_version else await self._profiles.upsert_field(user_id, field)
         if before is not None and (
             before.value != normalized or dict(before.attributes or {}) != normalized_attributes
+            or before.valid_from != valid_from or before.valid_to != valid_to or before.event_at != event_at
         ):
             # 旧值进历史（设计第 7 节）：当前值仍是一行一键的兼容投影，
             # 历史只追加，不参与用途读取。
@@ -302,6 +312,9 @@ class DefaultProfileService(ProfileService):
                 },
             )
         )
+        if before is not None and (before.value != saved.value or before.attributes != saved.attributes
+            or before.valid_from != saved.valid_from or before.valid_to != saved.valid_to):
+            await self._invalidate_clues_for(user_id, [key], PROFILE_CLUE_INVALIDATED_BY_CORRECTION)
         return saved
 
     async def replace_gaps(self, user_id: str, gaps: list[ProfileGap]) -> None:
@@ -325,10 +338,10 @@ class DefaultProfileService(ProfileService):
             await MemoryPolicyService(self._student_state).deny_key(
                 user_id, key, source="user_delete", note="本人删除了这条画像信息"
             )
-            def reset(state):
-                state["conversation_memory_reset_at"] = datetime.now(timezone.utc).isoformat()
-                return state
-            await self._student_state.update(user_id, reset)
+        for revision in await self._profiles.list_revisions(user_id, key, status=["conflict"]):
+            await self._profiles.update_revision_status(user_id, revision.id,
+                status=ProfileEntryStatus.WITHDRAWN.value, replaced_at=datetime.now(timezone.utc),
+                change_reason="本人删除了这条记录，旧提案已撤销")
         if before is not None:
             await self._append_history(
                 user_id, before, status=ProfileEntryStatus.WITHDRAWN,
@@ -415,6 +428,11 @@ class DefaultProfileService(ProfileService):
         profile_taxonomy.validate_window(valid_from, valid_to)
         source_value = ProfileSource(source)
         current = next((item for item in await self._profiles.list_fields(user_id, [key])), None)
+        for pending in await self._profiles.list_revisions(user_id, key, status=["conflict"]):
+            if (pending.value == normalized and dict(pending.attributes or {}) == normalized_attributes
+                and pending.entry_version == ((current.entry_version + 1) if current else 1)
+                and pending.valid_from == valid_from and pending.valid_to == valid_to and pending.event_at == event_at):
+                return pending
         revision = ProfileFieldRevision(
             id="",
             user_id=user_id,
@@ -449,6 +467,9 @@ class DefaultProfileService(ProfileService):
         target = next((item for item in conflicts if item.id == revision_id), None)
         if target is None:
             raise ResourceNotFound("这条待核对的说法已经不在了，刷新后再看。")
+        current = next(iter(await self._profiles.list_fields(user_id, [target.key])), None)
+        if choice == "revision" and (current is None or target.entry_version != current.entry_version + 1):
+            raise DuplicateResource("当前记录已经更改或删除，这条旧提案不能再覆盖；请刷新后重新核对。")
         if choice == "revision":
             await self.update_field(
                 user_id,
@@ -464,6 +485,7 @@ class DefaultProfileService(ProfileService):
                 valid_from=target.valid_from,
                 valid_to=target.valid_to,
                 event_at=target.event_at,
+                expected_updated_at=current.updated_at, check_version=True,
             )
             status, reason = ProfileEntryStatus.SUPERSEDED, "本人选择以此版本为准"
             await self._invalidate_clues_for(user_id, [target.key], PROFILE_CLUE_INVALIDATED_BY_CORRECTION)

@@ -26,10 +26,12 @@ export function useProfileWorkspace() {
       const data = await backendClient.workspace()
       if (!data?.profile_panel) throw new Error('Incomplete profile')
       backendDemo.setWorkspace(data)
-      const results=await Promise.allSettled([backendClient.report(),backendClient.directions()])
+      const results=await Promise.allSettled([backendClient.report(),backendClient.directions(),backendClient.versions('report')])
       if(results[0].status==='fulfilled')backendDemo.setReport(results[0].value)
       if(results[1].status==='fulfilled')backendDemo.setLiveDirections(results[1].value)
+      if(results[2].status==='fulfilled')backendDemo.setReportMetadata(results[2].value[0] ?? null)
       const unavailable=[]
+      if(results[2].status==='rejected')unavailable.push('判断有效状态')
       if(results[0].status==='rejected')unavailable.push('分析报告')
       if(results[1].status==='rejected')unavailable.push('方向方案')
       if(unavailable.length)relatedError.value=`个人资料已读取，但${unavailable.join('和')}暂时没有更新；下方判断可能不完整。`
@@ -46,11 +48,11 @@ export function useProfileWorkspace() {
     if (!live.value) return demo.use.profileProgress.value
     const collection = backendDemo.state.liveWorkspace?.collection_panel?.items ?? []
     const present = new Set((livePanel.value?.fields ?? []).map(field => field.key))
-    const gap = collection.filter((item) => !item.got && !present.has(item.key)).length
-    if (collection.length) return { known: present.size, total: present.size + gap, gap }
-    const fields = livePanel.value?.fields?.length ?? 0
-    const gaps = livePanel.value?.gaps?.length ?? 0
-    return { known: fields, total: fields + gaps, gap: gaps }
+    const gaps = new Set((livePanel.value?.gaps ?? []).filter(item => !present.has(item.key)).map(item => item.key))
+    for (const item of collection) if (!item.got && !present.has(item.key)) gaps.add(item.key)
+    const all = new Set([...present, ...gaps, ...collection.map(item => item.key)])
+    return { known: present.size, total: all.size, gap: gaps.size }
+
   })
 
   return {

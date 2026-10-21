@@ -1,0 +1,27 @@
+{
+  "scope": "current_profile_snapshot",
+  "fieldCount": 10,
+  "interest": {
+    "value": [
+      "调试程序",
+      "重复的数据录入"
+    ],
+    "attributes": {
+      "items": [
+        {
+          "value": "调试程序",
+          "context": "尤其是找出错误原因",
+          "polarity": "like"
+        },
+        {
+          "value": "重复的数据录入",
+          "polarity": "dislike"
+        }
+      ]
+    }
+  },
+  "time": {
+    "valid_from": "2026-10-18T16:00:00Z",
+    "valid_to": "2026-10-25T15:59:59Z"
+  }
+}

@@ -1034,7 +1034,17 @@ class DefaultApplicationFacade(ApplicationFacade):
         """
         if self._profiles is None:
             raise RuntimeError("画像服务未装配（Container.profile_service）")
-        field = await self._profiles.correct_field(user_id, key, body.value, expected_updated_at=body.expected_updated_at, check_version=True)
+        previous = next(iter(await self._profiles.get_fields(user_id, [key])), None)
+        metadata = {name: getattr(body, name) if name in body.model_fields_set else
+                    (getattr(previous, name) if previous else None)
+                    for name in ("attributes", "valid_from", "valid_to", "event_at")}
+        from zhiyin_kernel.profile_taxonomy import entry_type_of, normalize_attributes, normalize_value
+        metadata["attributes"] = normalize_attributes(entry_type_of(key), metadata["attributes"])
+        if "items" in metadata["attributes"]:
+            values = normalize_value(key, body.value)
+            metadata["attributes"] = {**metadata["attributes"], "items": [item for item in metadata["attributes"]["items"] if item["value"] in values]}
+        field = await self._profiles.correct_field(user_id, key, body.value, expected_updated_at=body.expected_updated_at,
+            check_version=body.expected_updated_at is not None, **metadata)
         await self._invalidate_user(user_id, "profile_field_updated")
         # 画像更正后必须沿 profile→report→direction→action 标记待核对；
         # 只失效读缓存不够，报告页会继续展示旧值（R2-W2 RPT-016）。

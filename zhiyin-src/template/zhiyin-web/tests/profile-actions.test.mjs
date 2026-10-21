@@ -6,14 +6,14 @@ import ts from 'typescript'
 
 function fixture(client, panel = {}) {
   const workspace = {profile_panel: {fields: [], clues: [{id: 'c1'}], conflicts: [{id: 'r1'}], ...panel}}
-  const backendDemo = {state: {liveWorkspace: workspace}, setWorkspace(value) {this.state.liveWorkspace = value}}
+  const backendDemo = {markProfileChange() {}, setReport() {}, setLiveDirections() {}, state: {liveWorkspace: workspace}, setWorkspace(value) {this.state.liveWorkspace = value}}
   const modules = {
     vue: {ref: value => ({value}), computed: read => ({get value() {return read()}})},
     '../store': {demo: {state: {profileEdits: {}}}},
     '../data/student': {PROFILE_FIELDS: []},
     './server-copy': {profileLabel: (_key, label) => label},
     './backend-demo': {backendDemo},
-    '../api/backend-client': {backendClient: client},
+    '../api/backend-client': {backendClient: {report: async () => ({}), directions: async () => ({}), ...client}},
   }
   const source = readFileSync(new URL('../src/lib/use-profile-fields.ts', import.meta.url), 'utf8')
   const code = ts.transpileModule(source, {compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022}}).outputText

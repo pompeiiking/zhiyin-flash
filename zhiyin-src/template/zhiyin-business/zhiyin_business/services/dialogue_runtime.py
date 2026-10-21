@@ -106,7 +106,6 @@ class DialogueRuntime:
         self._memory_result = None
         self._automatic_memory_safe = True
         self._facts_applied = False
-        self._precollected = {}
 
     def exploration_context(self, turns, record, state):
         """Expose source IDs for exact quotes; assistant guesses remain separate hypotheses."""
@@ -245,10 +244,6 @@ class DialogueRuntime:
         if await self.cancelled(fresh=True):
             return {"executed": False, "state": "cancelled", "reason": "用户已停止，本项未开始执行。"}
         args = ActionInput.model_validate(raw)
-        if args.operation == "profile.update" and args.payload.get("key") in self._precollected and args.payload.get("assertion_type") != "explicit_correction":
-            # The semantic collector already saved this turn's facts for this key.
-            # Return its real receipt, rather than writing a paraphrase a second time.
-            return self._precollected[args.payload["key"]]
         user, session = self.request.user_id, self.request.task_id
         record = await self.ledger.read(user, session)
         if args.operation in {"action.approve", "action.reject"}:
@@ -323,7 +318,7 @@ class DialogueRuntime:
         return self._cancel_value
 
     async def extract_facts(self, *, policy_only=False):
-        """Collect this turn's typed facts once, before the conversational tool loop.
+        """Resolve privacy before the tool loop; persist fallback facts after it.
 
         No string classifiers. It cannot grant approval, execute other writes or
         promote a statement from an attachment into a personal fact.
@@ -346,6 +341,17 @@ class DialogueRuntime:
             "policy": {"type": "object", "additionalProperties": False, "required": ["scope"], "properties": {
                 "scope": {"type": "string", "enum": ["none", "account_off", "account_on", "session_temporary", "deny_content", "deny_key", "save_single"]},
                 "target": {"type": "string"}}}}}
+        update_schema = schema["properties"]["updates"]["items"]
+        variants = []
+        for key in sorted(self.o._allowed_profile_keys()):
+            props = {**update_schema["properties"], "key": {"const": key},
+                "attributes": profile_taxonomy.attributes_schema(profile_taxonomy.entry_type_of(key))}
+            props["value"] = ({"type": "array", "minItems": 1, "maxItems": profile_taxonomy.max_items(key),
+                "items": {"type": "string", "maxLength": profile_taxonomy.value_limit(key)}}
+                if profile_taxonomy.allows_multiple(key) else {"type": "string", "maxLength": profile_taxonomy.value_limit(key)})
+            variants.append({**update_schema, "properties": props})
+        if variants:
+            schema["properties"]["updates"]["items"] = {"anyOf": variants}
         memory_ok = False
         step_id = "memory_" + self.request.client_msg_id
         if policy_only:
@@ -386,8 +392,10 @@ class DialogueRuntime:
                         raise InvalidRequest("记录范围没有指向可识别的画像字段")
                     if scope == "account_off" and current["account_automatic"]:
                         await service.set_account_automatic(self.request.user_id, False, source="conversation", note="用户要求以后不自动记录")
-                    elif scope == "account_on" and not current["account_automatic"]:
+                    elif scope == "account_on":
                         await service.set_account_automatic(self.request.user_id, True, source="conversation", note="用户要求恢复自动记录")
+                        await service.clear_single(self.request.user_id, self.request.task_id)
+                        await service.set_session_temporary(self.request.user_id, self.request.task_id, False, source="conversation", note="用户要求恢复自动记录")
                     elif scope == "session_temporary" and not current["session_temporary"]:
                         await service.set_session_temporary(self.request.user_id, self.request.task_id, True, source="conversation", note="用户要求本次会话不保存长期画像")
                     elif scope == "deny_content":
@@ -483,6 +491,9 @@ class DialogueRuntime:
                 raise InvalidRequest("画像更新必须引用本轮用户的明确自述")
             if isinstance(value, str) and key in {"major", "school", "study_year", "student_name", "degree_level"} and value not in args.evidence:
                 raise InvalidRequest("身份类画像须使用原话中的肯定值，不将否定概括成新身份")
+            memory = await MemoryPolicyService(self.o._student_state).snapshot(user, self.request.task_id)
+            if memory["session_temporary"]:
+                raise InvalidRequest("本次是临时会话，不会保存长期画像；请先明确恢复记录。")
             current: dict[str, Any] = {}
             if args.authorization == "automatic":
                 if not self._automatic_memory_safe:
@@ -513,7 +524,7 @@ class DialogueRuntime:
                 if key not in current:
                     raise InvalidRequest("还没有可供核对的当前记录，不能把候选说法直接当成事实")
             if args.authorization == "automatic" and key in current:
-                record_conflict = current[key].value != normalized_value and payload.get("assertion_type") != "explicit_correction"
+                record_conflict = profile_taxonomy.normalize_value(key, current[key].value) != normalized_value and payload.get("assertion_type") != "explicit_correction"
                 if payload.get("assertion_type") != "explicit_correction" and entry_type.value in {"interest", "career_focus"}:
                     value, attributes, record_conflict = profile_taxonomy.merge_preferences(key, current[key], normalized_value, attributes)
             elif args.authorization == "explicit" and entry_type.value in {"interest", "career_focus"} and payload.get("assertion_type") != "explicit_correction":
@@ -900,10 +911,6 @@ class DialogueRuntime:
             # any write. Reuse the semantic result for fallback extraction later.
             self.exploration_context(turns, data, state)
             await self.extract_facts(policy_only=True)
-            await self.extract_facts()
-            collected = await self.ledger.read(request.user_id, request.task_id)
-            self._precollected = {a["payload"]["key"]: {"executed": True, "action_id": a["id"], "state": "succeeded", "receipt": a.get("receipt")}
-                for a in collected["actions"].values() if a.get("run_id") == request.client_msg_id and a["operation"] == "profile.update" and a["state"] == "succeeded"}
             profile = await self.o._profiles.get(request.user_id)
             state = await self.o._student_state.get(request.user_id)
             result = await self.o._agent_engine.invoke(AgentRequest(agent_id=session.lead_agent or self.AGENT, conversation=True,
@@ -912,7 +919,6 @@ class DialogueRuntime:
                     "today": utcnow(), "profile": serial(profile),
                     "profile_conflicts": serial(await self.o._profiles.list_conflicts(request.user_id)),
                     "profile_conflicts_rule": "这是当前未决画像冲突的权威快照；空列表表示没有待裁定项。历史回复和会话working中的待核对状态可能已过时，不得据此声称仍待核对。",
-                    "collected_profile_keys_this_turn": sorted(self._precollected),
                     "rejected_understandings": [clue.text for clue in (profile.clues if profile else []) if clue.status.value == "invalid"],
                     "rejected_understandings_rule": "用户已否认的理解不能换一种措辞重新提出，也不能当成事实或依据。",
                     "pending_actions": [
@@ -931,6 +937,8 @@ class DialogueRuntime:
                     "proposal_adjustment_rule": "用户调整待确认方案时，重新调用workspace.action生成新提案，并用supersedes_action_id指定原提案使其失效；不要只在文字里修改。",
                     "profile_record_contract": profile_taxonomy.dialogue_contract(self.o._allowed_profile_keys()),
                     "allowed_profile_keys": sorted(self.o._allowed_profile_keys())}, trace_id=request.client_msg_id))
+            # Main-model privacy controls must settle before fallback facts persist.
+            await self.extract_facts()
             text = result.raw_text or result.structured.get("conclusion") or "这次回复未能完成，请稍后继续。"
             # Native dialogue returns text, not stage-shaped JSON. Do not display
             # an incompatible stage response as a successful module operation.

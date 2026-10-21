@@ -7293,8 +7293,32 @@
       },
       "ProfileFieldUpdateRequest": {
         "additionalProperties": false,
-        "description": "用户手动更正一条画像字段（issue #26 第三条）。\n\n只有一个 `value`，键在路径上（`POST /app/profile/fields/{key}`）：\n\"改哪一条\"不是可选的 —— 揉进请求体里，就等于允许一次请求改任意多条，\n而界面上的入口从来只对着一条。\n\n**为什么这里不设长度上限**：上限是业务口径（40 字，见\n`DefaultProfileService.MAX_FIELD_VALUE_CHARS`），超长要说人话\n（\"最多 40 个字，现在有 56 个\"）。交给 Pydantic 的 `max_length` 只会得到\n一句英文的字段名错误，用户看不懂自己该改什么。",
+        "description": "用户手动更正一条画像字段（issue #26 第三条）。\n\n取值及其属性/有效期属于同一条资料，键在路径上（`POST /app/profile/fields/{key}`）：\n\"改哪一条\"不是可选的 —— 揉进请求体里，就等于允许一次请求改任意多条，\n而界面上的入口从来只对着一条。\n\n**为什么这里不设长度上限**：上限是业务口径（40 字，见\n`DefaultProfileService.MAX_FIELD_VALUE_CHARS`），超长要说人话\n（\"最多 40 个字，现在有 56 个\"）。交给 Pydantic 的 `max_length` 只会得到\n一句英文的字段名错误，用户看不懂自己该改什么。",
         "properties": {
+          "attributes": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attributes"
+          },
+          "event_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Event At"
+          },
           "expected_updated_at": {
             "anyOf": [
               {
@@ -7308,10 +7332,44 @@
             "description": "编辑时字段时间；首次填写传 null",
             "title": "Expected Updated At"
           },
+          "valid_from": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid From"
+          },
+          "valid_to": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid To"
+          },
           "value": {
-            "description": "用户认可的那个值（空串会被拒 —— 清空是另一件事）",
-            "title": "Value",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            ],
+            "description": "用户认可的值；多项资料使用数组",
+            "title": "Value"
           }
         },
         "required": [

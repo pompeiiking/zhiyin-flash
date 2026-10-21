@@ -1,0 +1,17 @@
+{
+  "normalization": "LF",
+  "source_matches_running": {
+    "zhiyin-business/zhiyin_business/services/profile.py": true,
+    "zhiyin-business/zhiyin_business/services/dialogue_runtime.py": true,
+    "zhiyin-api/zhiyin_api/facade/application.py": true,
+    "zhiyin-api/zhiyin_api/dto/workspace.py": true,
+    "zhiyin-kernel/zhiyin_kernel/profile_taxonomy.py": true
+  },
+  "source_hashes": {
+    "zhiyin-business/zhiyin_business/services/profile.py": "acbe31578e4f83d8f4db680d5f67d28239f92bbc667b28560e87e30036d67579",
+    "zhiyin-business/zhiyin_business/services/dialogue_runtime.py": "c610e307f1cf749900bfcd7c800315ee7f932d5f3a052eed30cbd6ac8217da3b",
+    "zhiyin-api/zhiyin_api/facade/application.py": "bcce0f86add9cff3b824ff3dc5266daf8ca6566251c1d0e2f8fb7232b710d55b",
+    "zhiyin-api/zhiyin_api/dto/workspace.py": "a937d041a10c139a15a533e57fb188b24ad2f104e1de3493143ebd2cc7318450",
+    "zhiyin-kernel/zhiyin_kernel/profile_taxonomy.py": "fffb5cc504225dd22386ea0b1294772a04dd89ed60962c28da3dd99b9f49a9ca"
+  }
+}

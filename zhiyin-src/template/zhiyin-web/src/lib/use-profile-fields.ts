@@ -187,6 +187,7 @@ interface RowGroup {
 }
 
 export interface ProfileFieldsDeps {
+  refreshRelated?: () => Promise<void>
   live: ComputedRef<boolean>
   livePanel: ComputedRef<LiveProfilePanel>
   originalLive: ComputedRef<LiveProfileOriginals>
@@ -216,8 +217,14 @@ export function useProfileFields(deps: ProfileFieldsDeps) {
         // 类别与核实状态由服务端下发；老数据缺这两个字段时按同一份受控词表兜底。
         const entryType = field.entry_type ?? TYPE_BY_KEY[field.key] ?? 'supplement'
         const verification = verificationOf({ source: field.source, verification: field.verification })
+        const itemAttrs = field.attributes?.items
+        const hasItems = Array.isArray(itemAttrs) && itemAttrs.length > 0
+        const displayValue = hasItems && Array.isArray(field.value) ? field.value.map(value => {
+          const attrs = itemAttrs.find(item => item && typeof item === 'object' && item.value === value)
+          return [value, attrs ? profileAttributeSummary(Object.fromEntries(Object.entries(attrs).filter(([key]) => key !== 'value'))) : ''].filter(Boolean).join('：')
+        }).join('、') : human(field.value)
         return {
-          key: field.key, label: profileLabel(field.key,field.label || field.key), value: human(field.value),
+          key: field.key, label: profileLabel(field.key,field.label || field.key), value: displayValue,
           source: SOURCE_NAMES[field.source] ?? '学校',
           // 契约模式：来源本来就是枚举，直接透传；没有 0–1 时按档位折算（未知仍是未知）
           src: field.source,
@@ -237,7 +244,11 @@ export function useProfileFields(deps: ProfileFieldsDeps) {
           needsCheck: verification === 'pending',
           section: sectionOf(entryType, verification),
           originRef: field.origin_ref ?? '',
-          attributeSummary: profileAttributeSummary(field.attributes ?? {}),
+          attributeSummary: [profileAttributeSummary(hasItems ? {...field.attributes, items: undefined, polarity: undefined, state: undefined} : field.attributes ?? {}),
+            field.valid_from ? `生效：${new Date(field.valid_from).toLocaleString('zh-CN')}` : '',
+            field.valid_to ? `有效至：${new Date(field.valid_to).toLocaleString('zh-CN')}` : '',
+            field.status === 'expired' ? '已过期' : field.status === 'withdrawn' ? '已撤销' : '',
+          ].filter(Boolean).join(' · '),
         }
       })
     }
@@ -333,11 +344,10 @@ export function useProfileFields(deps: ProfileFieldsDeps) {
     const firm = rows.filter((row) => ['user_confirmed', 'record', 'verified'].includes(row.verification)).length
     const check = rows.filter((row) => row.verification === 'self_reported').length
     const thin = rows.filter((row) => row.verification === 'pending').length
-    const confirmedTotal = rows.length + missing.value.length
+    const confirmedTotal = live.value ? progress.value.total : rows.length + missing.value.length
     const computedCoverage = confirmedTotal ? rows.length / confirmedTotal : 0
-    const fromBackend = backendRatio(livePanel.value?.coverage)
-    const coverage = fromBackend ?? computedCoverage
-    const coverageSource: 'backend' | 'local' | 'backend-count' = fromBackend !== null ? 'backend' : live.value ? 'backend-count' : 'local'
+    const coverage = computedCoverage
+    const coverageSource: 'backend' | 'local' | 'backend-count' = live.value ? 'backend-count' : 'local'
     // 兼容字段：页面不再展示整体置信度百分比，这个数只留给旧调用方读取。
     const backendTrust = backendRatio(livePanel.value?.overall_confidence)
     const trust = backendTrust !== null ? Math.round(backendTrust * 100) : 0
@@ -361,7 +371,6 @@ export function useProfileFields(deps: ProfileFieldsDeps) {
   const trustOrigin = computed(() => (tally.value.trustFromBackend ? '后端给出' : live.value ? '本地按各条可信度折算（后端未给出整体可信度）' : '本地按资料对应关系折算'))
   const coverageCount = computed(() => `${known.value.length}/${tally.value.total} 条`)
   const coverageNote = computed(() => {
-    if (tally.value.coverageSource === 'backend') return `覆盖度取自后端（已收到 ${coverageCount.value}）`
     if (tally.value.coverageSource === 'backend-count') return `本次读取：收到 ${coverageCount.value}`
     return `资料对应关系：画像池收到 ${coverageCount.value}`
   })
@@ -466,6 +475,8 @@ export function useProfileFields(deps: ProfileFieldsDeps) {
   async function resolveConflict(id: string, choice: 'revision' | 'current') {
     await profileAction(`resolve:${id}`, async () => {
       await backendClient.resolveProfileConflict(id, choice)
+      const changed = livePanel.value?.conflicts?.find(item => item.id === id)
+      if (changed) backendDemo.markProfileChange(changed.key)
       // The decision has already committed. A failed refresh must not claim
       // that saving failed or offer the same stale decision again.
       const previous = JSON.parse(JSON.stringify(backendDemo.state.liveWorkspace))
@@ -474,7 +485,15 @@ export function useProfileFields(deps: ProfileFieldsDeps) {
         backendDemo.setWorkspace(previous)
       }
       try {
+        if (deps.refreshRelated) {
+          await deps.refreshRelated()
+          return
+        }
         backendDemo.setWorkspace(await backendClient.workspace())
+        const related = await Promise.allSettled([backendClient.report(), backendClient.directions()])
+        if (related[0].status === 'fulfilled') backendDemo.setReport(related[0].value)
+        if (related[1].status === 'fulfilled') backendDemo.setLiveDirections(related[1].value)
+        if (related.some(item => item.status === 'rejected')) throw new Error('related refresh failed')
       } catch {
         throw new Error('裁定已保存，但最新画像暂未读取，请重新核对档案后查看。')
       }

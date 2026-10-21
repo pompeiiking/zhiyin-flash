@@ -101,6 +101,15 @@ class ProfileService(ABC):
         source: str,
         label: str = "",
         evidence: Optional[list[str]] = None,
+        expected_updated_at: datetime | None = None,
+        check_version: bool = False,
+        attributes: dict[str, object] | None = None,
+        verification: str | None = None,
+        origin_ref: str = "",
+        valid_from: datetime | None = None,
+        valid_to: datetime | None = None,
+        event_at: datetime | None = None,
+        status: str | None = None,
     ) -> ProfileField:
         """更新单个画像字段。
 
