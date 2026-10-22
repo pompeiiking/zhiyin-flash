@@ -147,6 +147,7 @@ class DefaultApplicationFacade(ApplicationFacade):
         profiles: Optional[ProfileService] = None,
         student=None,
         web_search_available: bool = False,
+        chsi_available: bool = False,
         academic_previews=None,
     ) -> None:
         """构造依赖由 boot 注入。
@@ -187,6 +188,8 @@ class DefaultApplicationFacade(ApplicationFacade):
         # 能力面板必须反映**本次启动实际装配**的能力，而不是"环境变量里有没有 key"：
         # 启动后再改 .env 不重启，工具其实没装上，面板不能先说可用。
         self._web_search_available = bool(web_search_available)
+        # 学信网核验：网关注入后才算可用；"需要验证码"是使用条件，不是未启用。
+        self._chsi_available = bool(chsi_available)
 
     async def check_analysis_consent(self, user_id):
         if self._student is not None:
@@ -404,9 +407,15 @@ class DefaultApplicationFacade(ApplicationFacade):
             {
                 "key": "chsi_verify",
                 "label": "学信网核验",
-                "available": False,
-                "reason": "需要本人授权并提供学信验证码",
-                "fallback": "可先导入成绩/课表或手动填写，并标注为未核验",
+                # “可用”指流程已经接通；使用条件（本人授权 + 验证码）在页面上
+                # 单独说明。把它写成“未启用”会让一个能用三步完成的事看起来坏掉了。
+                "available": self._chsi_available,
+                "reason": "" if self._chsi_available else "当前部署未接入学信网核验",
+                "fallback": (
+                    ""
+                    if self._chsi_available
+                    else "可先导入成绩/课表或手动填写，并标注为未核验"
+                ),
             },
         ]
         return mappers.capability_list_view(

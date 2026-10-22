@@ -11,6 +11,7 @@ import { navigation } from '../lib/layout'
 import { consultantLabel, agentKeyOf, cleanConsultantText } from '../lib/consultant'
 import { conversationPresentation, journeyState, partialReplySpeaker } from '../lib/conversation-presentation'
 import { personalizedStudyYearEntries, STUDY_YEAR_OPTIONS, studyYearIntro, studyYearLabel } from '../lib/study-year'
+import { messageLengthError } from '../lib/message-limits'
 import { newSession, openSession, loadShell, systemData } from '../lib/system-data'
 import { replyTurns } from '../lib/conversation-turns'
 import { backendClient } from '../api/backend-client'
@@ -64,6 +65,9 @@ let stopArmTimer: ReturnType<typeof setTimeout> | undefined
 // 新建入口每次创建独立会话；旧会话通过历史列表继续。
 let handledNewTopicIntent = ''
 const profileLoaded = ref(false), studyYearSaving = ref(''), studyYearError = ref(''), editingStudyYear = ref(false), savedStudyYear = ref('')
+// 用户点了一个主题、但还缺学习阶段时，先记住这个选择：确认完年级直接开始，
+// 不用让他回头再点一次。
+const pendingTopic = ref<{ code: string; label: string } | null>(null)
 const theoryCards = ref<Record<string, TheoryCardView>>({}), theoryErrors = ref<Record<string, string>>({})
 const theoryLoading = ref<Record<string, boolean>>({})
 const copiedTurn = ref('')
@@ -166,8 +170,16 @@ function assetLabel(type: string) { return ({ report:'诊断报告', direction_p
 async function theory(id: string) { if (theoryCards.value[id] || theoryLoading.value[id]) return; theoryErrors.value[id] = ''; theoryLoading.value[id] = true; try { theoryCards.value[id] = await backendClient.theory(id) } catch (e) { theoryErrors.value[id] = friendlyError(e) } finally { theoryLoading.value[id] = false } }
 async function refreshProfile() { profileLoading.value = true; profileError.value = ''; try { const result = await backendClient.workspace(); if (!disposed) { backendDemo.setWorkspace(result); const stored = result.profile_panel?.fields?.find(field => field.key === 'study_year'); if (stored) savedStudyYear.value = String(stored.value ?? '') } } catch (e) { if (!disposed) profileError.value = friendlyError(e) } finally { profileLoading.value = false; profileLoaded.value = true } }
 function clearTopicQuery() { if (route.query.new === undefined) return; const query = { ...route.query }; delete query.new; void router.replace({ path:route.path, query }) }
-function chooseTopic() { if (thinking.value || systemData.busy || !systemData.shellReady) return; choosingTopic.value = true; historyOpen.value = false; profileOpen.value = false; requestError.value = ''; void nextTick(() => { if (flow.value) flow.value.scrollTop = 0 }) }
+function chooseTopic() {
+ if (thinking.value || systemData.busy || !systemData.shellReady) return
+ // 没有学习阶段时先把那一问摆出来：以前只有“已有年级”的摘要按钮能打开它，
+ // 结果是缺年级的人永远看不到这张卡。
+ if (profileLoaded.value && !studyYear.value) editingStudyYear.value = true
+ choosingTopic.value = true; historyOpen.value = false; profileOpen.value = false; requestError.value = ''
+ void nextTick(() => { if (flow.value) flow.value.scrollTop = 0 })
+}
 function closeTopic() { choosingTopic.value = false; clearTopicQuery(); void bottom(true) }
+function cancelStudyYear() { editingStudyYear.value = false; pendingTopic.value = null; choosingTopic.value = true }
 async function reloadConversation() {
  if (thinking.value || systemData.busy) return
  requestError.value = ''
@@ -178,6 +190,15 @@ async function resume(id: string, startup = false) { if (thinking.value) return;
 async function create(code: string, fresh = false): Promise<boolean> { if (thinking.value || systemData.busy) return false; try { await newSession(code, fresh); choosingTopic.value = false; clearTopicQuery(); pending.value = null; requestError.value = ''; await loadShell(); input.value?.focus(); return true } catch (e) { requestError.value = friendlyError(e); return false } }
 async function start(code: string, label: string) {
  if (startingTopic.value || thinking.value || uploading.value || systemData.busy || restoring.value || !systemData.shellReady) return
+ if (!profileLoaded.value) { requestError.value = '正在读取个人资料，请稍候再试。'; void refreshProfile(); return }
+ if (!studyYear.value) {
+  // 先确认年级，再建会话；确认后由 saveStudyYear 接着开始这个主题。
+  pendingTopic.value = { code, label }
+  editingStudyYear.value = true
+  choosingTopic.value = true
+  requestError.value = ''
+  return
+ }
  startingTopic.value = true
  try {
   // 先确认新会话创建成功，再把用户选中的问题交给模型，避免失败时发到旧会话。
@@ -192,8 +213,11 @@ async function saveStudyYear(label: string) {
  try {
   const updated = await backendClient.correct('study_year', label, studyYearField.value?.updated_at ?? null)
   savedStudyYear.value = String(updated.value ?? label)
-  editingStudyYear.value = false; choosingTopic.value = true
+  const pending = pendingTopic.value
+  pendingTopic.value = null
+  editingStudyYear.value = false; choosingTopic.value = !pending
   await refreshProfile()
+  if (pending) await start(pending.code, pending.label)
  } catch (e) {
   studyYearError.value = friendlyError(e)
   if ((e as { code?: number }).code === 1003) await refreshProfile()
@@ -251,6 +275,14 @@ async function send(retry = false, choice?: { text: string; option?: OptionRef }
  const retried = retry ? (failedRequest ?? failedSend.value?.request ?? null) : null
  const text = retry ? retried?.message : choice ? choice.text : draft.value.trim() || (attached.value.length ? '请结合我上传的材料提供建议。' : '')
  if (!text) return
+ // 超长消息在发出去之前就拦下：不渲染成气泡、不清空输入、不进入“重试”死循环。
+ // 重试一条历史超长请求时，把原文放回输入框让他能直接删短。
+ const lengthIssue = messageLengthError(text)
+ if (lengthIssue) {
+  requestError.value = lengthIssue
+  if (retry) { draft.value = text; remember() }
+  return
+ }
  const outgoingMaterials = resend?.materials ?? (retry ? (failedSend.value?.materials ?? attached.value.map(m => ({ ...m }))) : choice ? [] : attached.value.map(m => ({ ...m })))
  const outgoingOption = choice ? choice.option : selectedOption.value, outgoingDraft = draft.value
  if (!demo.state.currentSessionId) { const code = starters.value[0]?.code; if (!code) { requestError.value = '当前没有可用的咨询入口。'; return }; await create(code); if (!demo.state.currentSessionId || requestError.value) return }
@@ -367,6 +399,9 @@ watch(() => demo.state.currentSessionId, (_id, previous) => {
  const data = backendDemo.getDraft(demo.state.currentSessionId); draft.value = data.text; attached.value = data.materials.map(m => ({ ...m }))
  selectedOption.value = null; failedRequest = null; pending.value = null; requestError.value = ''; uploadError.value = ''; stopped.value = false; choosingTopic.value = false; followTail.value = true
  fillRequest.value = null; replacedDraft.value = null; confirmDismissed.value = []; interrupted.value = null
+ // 朗读状态属于当前会话：切走之后不能把上一段的“回复已停止”念给新会话听。
+ replyAnnouncement.value = ''
+ pendingTopic.value = null
  loadFailure(demo.state.currentSessionId)
  // 记住"这个标签页正在看哪条会话"：刷新后优先回到它，而不是账号级最近会话。
  // （多标签页看不同会话时，按账号恢复会互相抢位置。）
@@ -507,7 +542,7 @@ onUnmounted(() => { disposed = true; clearInterval(recoveryTimer); window.remove
      <p>只用于调整默认咨询方向，不会限制你可以提出的问题。</p>
      <div class="consult-year-options" role="group" aria-label="选择当前学习阶段"><button v-for="option in STUDY_YEAR_OPTIONS" :key="option.code" :disabled="!!studyYearSaving" :aria-pressed="studyYearLabel(studyYear) === option.label" @click="saveStudyYear(option.label)"><span>{{ option.label }}</span><small v-if="studyYearSaving === option.label">正在保存…</small><UiIcon v-else name="arrow" :size="16" /></button></div>
      <p v-if="studyYearError" class="consult-error" role="alert">{{ studyYearError }}</p>
-     <button v-if="editingStudyYear" class="consult-resume" @click="editingStudyYear=false">取消修改</button>
+     <button v-if="editingStudyYear" class="consult-resume" @click="cancelStudyYear">取消修改</button>
     </template>
     <template v-else>
      <button v-if="studyYear" class="consult-year-summary" @click="editingStudyYear=true"><span>当前阶段：{{ studyYearLabel(studyYear) }}</span><small>修改</small></button>

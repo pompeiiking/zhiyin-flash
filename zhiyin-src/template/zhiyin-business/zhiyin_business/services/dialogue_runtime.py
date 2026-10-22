@@ -15,7 +15,7 @@ import time
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from zhiyin_business.contracts.common import AgentBadge, BehaviorGuide, BehaviorEventDraft, ConversationMessage, GuideOption, IntelRef, TheoryRef
+from zhiyin_business.contracts.common import AgentBadge, BehaviorGuide, BehaviorEventDraft, ConversationMessage, Disclosure, GuideOption, IntelRef, TheoryRef
 from zhiyin_business.ports.orchestrator import TurnResult
 from zhiyin_business.contracts.dialogue_actions import DialogueOperation
 from zhiyin_business.policies.renderers import validate_renderables
@@ -60,6 +60,53 @@ def context_cost(text):
     """Conservative mixed-language token estimate, independent of a vendor tokenizer."""
     non_ascii = sum(ord(ch) > 127 for ch in text)
     return non_ascii * 2 + (len(text) - non_ascii + 2) // 3
+
+
+_STAGE_LABELS = {
+    LoopStage.COLLECT: "了解自己",
+    LoopStage.DIAGNOSE: "梳理判断",
+    LoopStage.DECIDE: "比较选择",
+    LoopStage.ACT: "安排下一步",
+    LoopStage.REVIEW: "回顾调整",
+}
+
+
+def user_facing_not_found(message: str) -> ResourceNotFound:
+    """业务层要直接给用户看的一句 404。
+
+    不在内核异常基类里加构造逻辑（内核只放形状）：这里按实例打标记，
+    api 层看到 `user_facing=True` 就原样下发，不再替换成通用提示。
+    """
+    error = ResourceNotFound(message)
+    error.user_facing = True
+    return error
+
+
+def user_facing_invalid(message: str) -> InvalidRequest:
+    """业务层要直接给用户看的一句参数错误（选项失效、确认过期等）。"""
+    error = InvalidRequest(message)
+    error.user_facing = True
+    return error
+
+
+def latest_option_ids(turns) -> set[str]:
+    """上一轮真正下发给用户的选项 ID。
+
+    选项不是自由文本：点了哪一条必须对应服务端上一轮给出的身份。没有历史
+    选项时返回空集（兼容旧会话/首轮），调用方对空集不做“未知即拒绝”的判定。
+    """
+    for turn in reversed(turns):
+        if getattr(turn, "role", "") != "agent":
+            continue
+        metadata = getattr(turn, "metadata", {}) or {}
+        result = metadata.get("result") if isinstance(metadata, dict) else None
+        guide = (result or {}).get("guide") or {}
+        return {
+            str(option.get("option_id"))
+            for option in guide.get("options") or []
+            if isinstance(option, dict) and option.get("option_id")
+        }
+    return set()
 
 
 def field_stamp(action, key):
@@ -914,15 +961,15 @@ class DialogueRuntime:
         self.request = request
         state = await self.o._student_state.get(request.user_id)
         if request.task_id in state.get("deleted_conversations", []):
-            raise ResourceNotFound("会话已删除，请创建新会话")
+            raise user_facing_not_found("会话已删除，请创建新会话")
         session = await self.o._sessions.get(request.task_id)
         if session is None:
             # 会话 id 只能由服务端签发。未知 id 直接拒绝，不能按「咨询对话」静默建会话：
             # 过期/串号的 task_id 会让用户的消息进入一条看似全新的会话，原历史像是消失，
             # 而界面没有任何提示（#35）。需要新对话时走 POST /app/task/enter。
-            raise ResourceNotFound("会话不存在或已失效，请从任务入口重新进入")
+            raise user_facing_not_found("会话不存在或已失效，请从任务入口重新进入")
         if session.user_id != request.user_id:
-            raise ResourceNotFound("会话不属于当前账号，请从任务入口重新进入")
+            raise user_facing_not_found("会话不属于当前账号，请从任务入口重新进入")
         request_hash = digest(request.model_dump(mode="json", exclude={"client_msg_id"}))
         data = await self.ledger.read(request.user_id, request.task_id)
         prior = data["runs"].get(request.client_msg_id)
@@ -975,10 +1022,22 @@ class DialogueRuntime:
         self.pending_summary = [{"id": a["id"], "operation": a["operation"]} for a in pending]
         token = active_dialogue.set(self)
         try:
-            if request.option_id and request.option_id.startswith("action."):
+            is_action_option = bool(
+                request.option_id and request.option_id.startswith("action.")
+            )
+            if request.option_id and not is_action_option:
+                offered = latest_option_ids(turns)
+                if offered and request.option_id not in offered:
+                    raise user_facing_invalid("这个选项已经失效，请刷新后重新选择。")
+            if is_action_option:
                 parts = request.option_id.split(".")
-                if len(parts) != 3:
-                    raise InvalidRequest("确认操作格式无效")
+                if len(parts) != 3 or parts[2] not in {"accept", "decline"}:
+                    raise user_facing_invalid("确认操作格式无效")
+                # 审批对象的身份以台账为准：不存在、已过期、已撤销或已被替代的
+                # action_id 都不能靠客户端拼一个 option_id 重新变成可执行。
+                proposed = data["actions"].get(parts[1])
+                if proposed is None or proposed.get("state") != "proposed":
+                    raise user_facing_invalid("这个确认已经失效，请刷新后重新确认。")
                 receipt = await self.action({"operation": "action.approve" if parts[2] == "accept" else "action.reject",
                     "action_id": parts[1], "evidence": request.message})
                 text = "操作已完成。" if receipt.get("executed") else receipt.get("reason", "本次操作未执行。")
@@ -1072,16 +1131,35 @@ class DialogueRuntime:
             system_receipts.append(ConversationMessage(role="system", text=("已" + name + "。")
                 if receipt.get("executed") else "操作结果待核对，请查看当前数据后再继续。"))
         from zhiyin_kernel.enums import DIALOGUE_ROLE_FOCUS as ROLE_FOCUS
-        lead = session.lead_agent or self.AGENT
-        stage = session.loop_stage
+        previous_lead = session.lead_agent or self.AGENT
+        previous_stage = session.loop_stage
+        lead = previous_lead
+        stage = previous_stage
         if model_result and model_result.valid and model_result.structured.get("dialogue_roles"):
             candidate = model_result.agent_id
             focus = model_result.structured.get("dialogue_stage")
             if candidate in ROLE_FOCUS and focus in ROLE_FOCUS[candidate]:
                 lead, stage = candidate, LoopStage(focus)
-                await self.o._sessions.update_stage(session.id, stage, lead)
-                session = (await self.o._sessions.get(session.id)) or session
+                if (lead, stage) != (previous_lead, previous_stage):
+                    await self.o._sessions.update_stage(session.id, stage, lead)
+                    session = (await self.o._sessions.get(session.id)) or session
         descriptor = await self.o._registry.get_agent(lead)
+        disclosure = None
+        if (lead, stage) != (previous_lead, previous_stage):
+            bits = []
+            if stage != previous_stage:
+                bits.append(
+                    f"工作重点从「{_STAGE_LABELS.get(previous_stage, previous_stage.value)}」"
+                    f"转到「{_STAGE_LABELS.get(stage, stage.value)}」"
+                )
+            if lead != previous_lead:
+                bits.append(f"由{descriptor.name if descriptor else '新的主理'}继续")
+            disclosure = Disclosure(
+                kind="lead_change" if lead != previous_lead else "theory_change",
+                text="，".join(bits) + "。",
+                from_agent=previous_lead,
+                to_agent=lead,
+            )
         # Preserve the actual author of partial text without committing its
         # provisional focus as the conversation's confirmed state.
         speaker = lead
@@ -1094,6 +1172,7 @@ class DialogueRuntime:
         result = TurnResult(task_id=request.task_id, conversation=True, session=session, stage=stage,
             badge=AgentBadge(agent_id=lead, name=descriptor.name if descriptor else "知音",
                              role_summary=descriptor.role_summary if descriptor else "职业发展顾问"),
+            disclosure=disclosure,
             messages=system_receipts + [ConversationMessage(role="agent", agent_id=speaker, text=text,
                 clues=model_result.structured.get("dialogue_clues", []) if model_result else [],
                 theory_refs=[TheoryRef.model_validate(ref) for ref in model_result.structured.get("dialogue_theories", [])] if model_result else [],

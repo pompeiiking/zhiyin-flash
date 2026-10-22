@@ -440,6 +440,7 @@ def build_services(container: "Container") -> None:
             # 而"缓存装上了"看起来又是真的。装配一处漏接就是这个症状。
             read_cache=container.read_cache,
             web_search_available=container.web_search is not None,
+            chsi_available=container.chsi is not None,
             academic_previews=container.extra.get("academic_previews"),
         )
 

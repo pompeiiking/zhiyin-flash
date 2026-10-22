@@ -143,6 +143,12 @@ def test_capabilities_reports_real_availability(client: TestClient) -> None:
     if not items["web_search"]["available"]:
         assert "搜索服务" in items["web_search"]["reason"]
         assert items["web_search"]["fallback"]
+    # 学信网的“需要验证码”是使用条件，不是未启用；只有网关注入失败才说未接入。
+    chsi = items["chsi_verify"]
+    if chsi["available"]:
+        assert chsi["reason"] == ""
+    else:
+        assert "未接入" in chsi["reason"]
 
 
 def test_metrics_endpoint_counts_requests_without_business_data(client: TestClient) -> None:

@@ -26,9 +26,17 @@ from __future__ import annotations
 
 
 class KernelError(Exception):
-    """跨层失败的基类。零依赖，任何层都可以抛与捕。"""
+    """跨层失败的基类。零依赖，任何层都可以抛与捕。
+
+    `user_facing=True` 表示这句异常文案是**写给用户看的**：api 层在流式错误帧里
+    会原样透传，而不是按错误码替换成一句通用话。默认 False —— 大多数层间异常
+    文案含内部标识，不能直接摆到界面上。
+    """
 
     code: str = "ERROR"
+    #: 这句文案是否可以直接给用户看；由抛错方按需覆盖为 True。
+    #: 内核只放形状，不在异常基类里增加带逻辑的构造器。
+    user_facing: bool = False
 
 
 class ResourceNotFound(KernelError, LookupError):

@@ -16,6 +16,13 @@ test('restored guidance does not attach to an older reply before a user message'
  const result=withGuide(prior,{badge,guide:{text:'新引导'}},'g')
  assert.equal(result.length,3);assert.equal(prior[0].guideText,undefined);assert.equal(result[2].guideText,'新引导')
 })
+test('lead-change disclosure stays immediately before the answer in live and restored views',()=>{
+ const disclosure={kind:'lead_change',text:'工作重点从「了解自己」转到「梳理判断」，由职业顾问继续。',from_agent:'profile_analyst',to_agent:'career_advisor'}
+ const live=replyTurns({badge,messages:[{role:'agent',agent_name:'顾问',text:'结论'}],guide:{text:''},disclosure},'live')
+ assert.equal(live.length,2);assert.equal(live[0].from,'system');assert.equal(live[0].text,disclosure.text);assert.equal(live[1].text,'结论')
+ const restored=withGuide([{id:'1',from:'me',text:'问题'},{id:'2',from:'host',speaker:'顾问',text:'结论'}],{badge,guide:{text:''},disclosure},'g')
+ assert.equal(restored.length,3);assert.equal(restored[0].from,'me');assert.equal(restored[1].from,'system');assert.equal(restored[1].text,disclosure.text);assert.equal(restored[2].text,'结论')
+})
 test('distinct speaker is not silently merged; missing cards stay absent',()=>{
  const result=withGuide([{id:'1',from:'host',speaker:'别的顾问',text:'结论'}],{badge,guide:{text:'引导'}},'g')
  assert.equal(result.length,2);assert.equal(result[0].renderables,undefined)

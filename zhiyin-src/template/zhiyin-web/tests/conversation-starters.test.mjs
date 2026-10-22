@@ -17,6 +17,8 @@ function fixture({ fail = false, wait } = {}) {
  const context = {
   thinking: ref(false), uploading: ref(false), restoring: ref(false), startingTopic: ref(false),
   systemData: { busy: false, shellReady: true }, choosingTopic: ref(true), pending: ref(null), requestError: ref(''),
+  profileLoaded: ref(true), studyYear: ref('大三'), editingStudyYear: ref(false), pendingTopic: ref(null),
+  refreshProfile: async () => { events.push('profile') },
   input: ref({ focus() { events.push('focus') } }),
   newSession: async (code, fresh) => { entries.push({ code, fresh }); if (wait) await wait; if (fail) throw new Error('创建失败') },
   clearTopicQuery() { events.push('clear-query') }, loadShell: async () => { events.push('shell') },
@@ -40,6 +42,15 @@ test('free chat creates a fresh blank session without sending its label', async 
  const f = fixture(); await f.context.start('free_chat', '聊聊当前的困惑')
  assert.equal(f.entries.length, 1); assert.equal(f.messages.length, 0)
  assert.ok(f.events.includes('focus'))
+})
+
+test('missing study year asks before creating a session and remembers the chosen topic', async () => {
+ const f = fixture(); f.context.studyYear.value = ''
+ await f.context.start('confused', '认识自己的兴趣与优势')
+ assert.equal(f.entries.length, 0)
+ assert.equal(f.context.editingStudyYear.value, true)
+ assert.equal(f.context.pendingTopic.value.code, 'confused')
+ assert.equal(f.messages.length, 0)
 })
 
 test('failed creation never sends the preset into the previously selected session', async () => {

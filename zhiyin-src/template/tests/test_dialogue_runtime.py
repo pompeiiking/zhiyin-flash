@@ -11,6 +11,7 @@ from zhiyin_business.ports.orchestrator import TurnRequest
 from zhiyin_business.services.dialogue_runtime import active_dialogue
 from zhiyin_business.services.conversation_ledger import ConversationLedger
 from zhiyin_kernel.assets import ActionPlan, ActionPhase, ActionTask
+from zhiyin_kernel.enums import LoopStage
 from zhiyin_kernel.errors import InvalidRequest, ResourceNotFound
 from zhiyin_kernel.streaming import progress_channel
 from zhiyin_orchestration import AgentResult
@@ -82,8 +83,87 @@ async def test_same_run_replays_without_new_model_or_write():
 @pytest.mark.asyncio
 async def test_cross_user_session_is_not_disclosed():
     c, _, s = await setup()
-    with pytest.raises(ResourceNotFound):
+    with pytest.raises(ResourceNotFound) as error:
         await c.orchestrator.handle_message(TurnRequest(user_id="other", task_id=s.id, message="继续"))
+    assert error.value.user_facing is True
+    assert "任务入口" in str(error.value)
+
+
+@pytest.mark.asyncio
+async def test_unknown_session_error_is_safe_to_show_in_the_stream():
+    """流式接口只能把 user_facing 的异常原样下发；#35 的那句话不能被替换成通用提示。"""
+    c, _, _ = await setup()
+    with pytest.raises(ResourceNotFound) as error:
+        await c.orchestrator.handle_message(
+            TurnRequest(user_id="u1", task_id="task-missing", message="继续")
+        )
+    assert error.value.user_facing is True
+    assert "会话不存在或已失效" in str(error.value)
+    from zhiyin_api.controllers.ai_controller import _user_message
+    from zhiyin_api.dto.common import ErrorCode
+    assert _user_message(error.value, ErrorCode.NOT_FOUND) == str(error.value)
+
+
+class _RoleModel:
+    def __init__(self, agent: str, stage: str, text: str = "我们换个角度继续。") -> None:
+        self.agent, self.stage, self.text = agent, stage, text
+
+    async def invoke(self, request):
+        return AgentResult(
+            agent_id=self.agent,
+            raw_text=self.text,
+            valid=True,
+            structured={"dialogue_roles": [self.agent], "dialogue_stage": self.stage},
+        )
+
+
+@pytest.mark.asyncio
+async def test_lead_change_is_disclosed_and_persisted():
+    c, _, s = await setup()
+    c.orchestrator._agent_engine = _RoleModel("career_advisor", "diagnose")
+    r = await send(c, s, "帮我判断一下这个方向行不行")
+    assert r.stage is LoopStage.DIAGNOSE
+    assert r.badge.agent_id == "career_advisor"
+    assert r.disclosure is not None
+    assert r.disclosure.kind == "lead_change"
+    assert r.disclosure.from_agent == "profile_analyst"
+    assert r.disclosure.to_agent == "career_advisor"
+    assert "梳理判断" in r.disclosure.text
+
+    # 同一主理、同一阶段再答一轮，不应重复播报交接。
+    again = await send(c, s, "继续")
+    assert again.disclosure is None
+
+    turns = await c.memory_service.list_turns("u1", s.id)
+    disclosures = [
+        (turn.metadata.get("result") or {}).get("disclosure")
+        for turn in turns
+        if turn.role == "agent"
+    ]
+    assert any(item and item.get("kind") == "lead_change" for item in disclosures)
+
+
+@pytest.mark.asyncio
+async def test_option_must_come_from_the_latest_guide():
+    async def propose(rt):
+        return await rt.action(action("task.set_done", {"task_id": "t1", "done": True}, authorization="proposal"))
+    c, engine, s = await setup(propose)
+    await c.asset_service.save_action_plan("u1", plan())
+    r = await send(c, s)
+    assert r.guide.options
+    engine.callback = None
+    with pytest.raises(InvalidRequest) as fake_option:
+        await send(c, s, "确认", option_id="fake-option")
+    assert fake_option.value.user_facing is True
+    with pytest.raises(InvalidRequest) as fake_action:
+        await send(c, s, "确认", option_id="action.action_fake.accept")
+    assert fake_action.value.user_facing is True
+    approved = await send(
+        c, s, "确认执行", option_id=r.guide.options[0].option_id,
+        option_value=r.guide.options[0].value,
+    )
+    assert approved.messages
+    assert (await c.asset_service.get_action_plan("u1")).phases[0].tasks[0].done
 
 
 @pytest.mark.asyncio
@@ -439,7 +519,8 @@ async def test_revising_pending_proposal_invalidates_its_old_button():
     engine.callback = revise
     await send(c, s)
     engine.callback = None
-    await send(c, s, "确认旧方案", option_id=old.guide.options[0].option_id)
+    with pytest.raises(InvalidRequest):
+        await send(c, s, "确认旧方案", option_id=old.guide.options[0].option_id)
     assert await c.asset_service.get_action_plan("u1") is None
     record = await ConversationLedger(c.student_state).read("u1", s.id)
     assert record["actions"][old_id]["state"] == "superseded"
