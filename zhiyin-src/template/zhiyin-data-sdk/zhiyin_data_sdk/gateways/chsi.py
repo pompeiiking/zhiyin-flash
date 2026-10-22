@@ -48,6 +48,7 @@ class ChsiVerifyErrorKind(str, Enum):
     MALFORMED_CODE = "malformed_code"    # 码的格式就不对，根本没发请求
     INVALID_CODE = "invalid_code"        # 学信网明确回"此在线验证码无效"
     EXPIRED = "expired"                  # 报告已过有效期
+    IDENTITY_MISMATCH = "identity_mismatch"  # 报告姓名/学号与当前画像不一致
     UNREACHABLE = "unreachable"          # 网络或对方服务不可达
     UNPARSEABLE = "unparseable"          # 页面拿到了但读不出字段（多为站点改版）
 

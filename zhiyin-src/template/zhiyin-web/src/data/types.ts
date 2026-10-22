@@ -20,7 +20,7 @@ export interface Confidence {
   bars: number
 }
 
-export type FieldSource = '对话' | '学信网' | '教务系统' | '学校' | '行为记录' | '简历材料' | '综合分析' | '导师记录' | '本人填写'
+export type FieldSource = '对话' | '学信网' | '教务系统' | '学校' | '客观记录' | '行为记录' | '简历材料' | '综合分析' | '导师记录' | '本人填写'
 
 /** 「对你的了解」里的一条 —— 带来源与把握（可被盘问） */
 export interface ProfileField {

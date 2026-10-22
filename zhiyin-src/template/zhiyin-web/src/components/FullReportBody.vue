@@ -77,7 +77,7 @@ const tocItems = computed<TocItem[]>(() => [
 ])
 
 const sourceNames: Record<string, string> = {
-  resume: '简历材料', conversation: '咨询对话', assessment: '综合分析', behavior_inference: '行为记录', mentor: '导师记录', record: '学校记录', user_edit: '本人填写',
+  resume: '简历材料', conversation: '咨询对话', assessment: '综合分析', behavior_inference: '行为记录', mentor: '导师记录', record: '客观记录', user_edit: '本人填写',
 }
 const labels: Record<string, string> = {
   strengths: '优势', weaknesses: '短板', opportunities: '机会', threats: '风险',

@@ -52,6 +52,7 @@ _ERROR_CODE: dict[str, ErrorCode] = {
     "malformed_code": ErrorCode.INVALID_PARAM,
     "invalid_code": ErrorCode.INVALID_PARAM,
     "expired": ErrorCode.INVALID_PARAM,
+    "identity_mismatch": ErrorCode.INVALID_PARAM,
     "unreachable": ErrorCode.DEPENDENCY_UNAVAILABLE,
     "unparseable": ErrorCode.INTERNAL,
     "MISSING_CONFIG": ErrorCode.DEPENDENCY_UNAVAILABLE,
@@ -112,6 +113,13 @@ async def _frames(facade, user_id: str, key: str, arg: str = "") -> AsyncIterato
     """流内的帧。流已经开始了，所以这里只能把失败翻译成错误帧。"""
     try:
         async for frame in facade.run_ai_task(user_id, key, arg):
+            # 学信网失败帧由业务层按 `kind` 下发（业务层不认识 api 错误码）。
+            # 这里补上统一 `code`，否则前端 streamBackend 拿不到 code，会把
+            # “验证码格式不对/报告已过期”统一显示成“暂时没有取得结果”。
+            if isinstance(frame, dict):
+                error = frame.get("error")
+                if isinstance(error, dict) and error.get("kind") and "code" not in error:
+                    error["code"] = int(_ERROR_CODE.get(str(error["kind"]), ErrorCode.INTERNAL))
             yield frame
     except Exception as exc:  # noqa: BLE001 - 流内任何失败都必须变成帧，不能撕连接
         code = _code_of(exc)

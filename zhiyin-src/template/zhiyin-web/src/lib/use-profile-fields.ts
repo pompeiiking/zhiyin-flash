@@ -19,7 +19,7 @@ export type LiveProfileOriginals = BackendState['profileOriginals']
 
 const SOURCE_NAMES: Record<string, ProfileField['source']> = {
   resume: '简历材料', conversation: '对话', assessment: '综合分析',
-  behavior_inference: '行为记录', mentor: '导师记录', record: '学校', user_edit: '本人填写',
+  behavior_inference: '行为记录', mentor: '导师记录', record: '客观记录', user_edit: '本人填写',
 }
 
 /**
@@ -38,6 +38,7 @@ const SOURCE_ENUM: Record<FieldSource, ProfileSource> = {
   行为记录: 'behavior_inference',
   导师记录: 'mentor',
   学校: 'record',
+  客观记录: 'record',
   学信网: 'record',
   教务系统: 'record',
   本人填写: 'user_edit',
@@ -517,7 +518,10 @@ export function profileAttributeSummary(attributes: Readonly<Record<string, unkn
     state: { exploring: '正在了解', considering: '正在考虑', selected: '已选择' },
     evidence_kind: { exposed: '接触过', self_assessed: '本人自评', completed_once: '完成过一次', work_output: '有作品或成果', verified: '有核验依据' },
   }
-  const labels: Record<string, string> = { context: '情境', outcome: '结果', scope: '适用范围', title: '说明' }
+  const labels: Record<string, string> = {
+    context: '情境', outcome: '结果', scope: '适用范围', title: '说明',
+    derived_from: '推算依据', derived_on: '推算日期',
+  }
   return Object.entries(attributes).flatMap(([key, value]) => {
     if (['polarity', 'state'].includes(key) && Array.isArray(attributes.items) && attributes.items.length) return []
     if (key === 'items' && Array.isArray(value)) return value.flatMap(item => {

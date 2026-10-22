@@ -14,6 +14,7 @@ from zhiyin_infrastructure.chsi.client import (
     ChsiReportClient,
     classify_error,
     detect_error,
+    is_report_expired,
     is_well_formed,
     normalize_code,
     parse_report,
@@ -57,6 +58,14 @@ class OnlineVerificationGateway(ChsiVerificationGateway):
         report_no = next(
             (field.value for field in fields if field.key == "chsi_report_no"), ""
         )
+        valid_until = next(
+            (field.value for field in fields if field.key == "valid_until"), ""
+        )
+        if is_report_expired(valid_until):
+            raise ChsiVerifyError(
+                "这份在线验证报告已过期，请重新申请后再核验。",
+                kind=ChsiVerifyErrorKind.EXPIRED,
+            )
         self._last_verify_at = verified_at_now()
         return ChsiReport(
             code=normalized,

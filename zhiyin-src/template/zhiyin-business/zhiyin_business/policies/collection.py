@@ -32,6 +32,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Optional, Sequence
 
+from zhiyin_kernel import profile_taxonomy
 from zhiyin_kernel.blackboard import Profile
 from zhiyin_kernel.enums import ProfileSource
 
@@ -520,7 +521,15 @@ def plan_collection(
     table = _rules_from(rules) if rules else _RULES
     # 画像里现存的字段按**整条**留下（键 → 字段），不是一个只有键的集合：
     # 判"拿到了没"要看来源，而来源只在这条字段本身上（见 `_counts_as_got`）。
-    have = {field.key: field for field in (profile.fields if profile else [])}
+    #
+    # 过期/撤回/冲突的记录不算「已有」：最典型的是按入学日期推算的年级，
+    # 它带有效期；有效期一过还留着旧值，清单就会一直说「大三」已经拿到，
+    # 再也不会让本人确认新学年。
+    have = {
+        field.key: field
+        for field in (profile.fields if profile else [])
+        if profile_taxonomy.is_usable(field)
+    }
     first = _STAGE_FIRST.get((stage or "").lower(), ())
     usable = (
         frozenset(str(item) for item in available_sources)

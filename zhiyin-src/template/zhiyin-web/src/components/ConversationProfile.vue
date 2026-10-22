@@ -19,7 +19,7 @@ const groups = computed(() => {
   const other = fields.value.filter(field => !grouped.has(field.key))
   return other.length ? [...sections, { key:'other', title:'其他信息', items:other }] : sections
 })
-const sources: Record<string,string> = { conversation:'咨询对话',resume:'简历材料',assessment:'测评',behavior_inference:'行为分析',mentor:'导师记录',record:'导入资料',user_edit:'本人填写' }
+const sources: Record<string,string> = { conversation:'咨询对话',resume:'简历材料',assessment:'测评',behavior_inference:'行为分析',mentor:'导师记录',record:'客观记录',user_edit:'本人填写' }
 function valueText(value: unknown): string {
   if (value == null || value === '') return '尚未填写'
   if (Array.isArray(value)) return value.map(valueText).join('、')

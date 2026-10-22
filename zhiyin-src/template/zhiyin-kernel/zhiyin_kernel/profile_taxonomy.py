@@ -139,6 +139,12 @@ ABILITY_EVIDENCE_KINDS: tuple[str, ...] = (
 )
 
 ATTRIBUTE_SPECS: dict[ProfileEntryType, dict[str, tuple[str, ...]]] = {
+    # 学习背景通常不需要属性；这两个只用于「按入学日期推算、不是本人陈述」的年级，
+    # 让界面能说清这条值是怎么来的，而不是把它冒充成学信网直接出具的事实。
+    ProfileEntryType.LEARNING_BACKGROUND: {
+        "derived_from": (),
+        "derived_on": (),
+    },
     ProfileEntryType.INTEREST: {
         "polarity": INTEREST_POLARITIES,
         "context": (),
@@ -165,6 +171,8 @@ ATTRIBUTE_MAX_CHARS: dict[str, int] = {
     "scope": 120,
     "title": 120,
     "occupation_id": 64,
+    "derived_from": 120,
+    "derived_on": 20,
 }
 
 #: 各键的取值上限（字符）。不在表里的键落到类别上限。

@@ -40,19 +40,24 @@ from zhiyin_business.ports.blackboard import (
 )
 from zhiyin_business.policies.collection import filled_by, plan_collection
 from zhiyin_data_sdk.gateways.chsi import (
+    ChsiReportKind,
     ChsiVerificationGateway,
     ChsiVerifyError,
     ChsiVerifyErrorKind,
 )
 from zhiyin_data_sdk.errors import MissingConfigError
 from zhiyin_data_sdk.repositories import AiTaskResultRepository
-from zhiyin_kernel import dynamic_config, profile_taxonomy
+from zhiyin_kernel import academic_time, dynamic_config, profile_taxonomy
 from zhiyin_kernel.blackboard import Profile
 from zhiyin_kernel.enums import ProfilePurpose, ProfileSource, ProfileVerification
 from zhiyin_kernel.errors import ResourceNotFound
 from zhiyin_orchestration import AgentEngine, AgentRequest
 
 _log = logging.getLogger(__name__)
+
+#: 这条年级是「按入学日期推算」而不是本人陈述或学信网直接出具的字段。
+#: 下一次核验要能认出自己的旧推算并更新；用户手填的那条永远不会被它覆盖。
+_DERIVED_STUDY_YEAR_REF = "derived://study_year/enrolled_at"
 
 # 任务 key → （主理智能体、提示词条目、产出契约）。展示名不再硬编码：
 # 交给注册表把 agent_id 翻成用户称呼，改称呼不发版。
@@ -380,6 +385,21 @@ _SIDE_EFFECTING_HEADS: frozenset[str] = frozenset({"bind"})
 它的用途只在"核验这一次"。要再核验，让用户重新给一串新的码即可 ——
 这也正好符合"报告有有效期"这件事。
 """
+
+
+def _same_identity(left: str, right: str, *, ignore_hyphen: bool = False) -> bool:
+    """Compare the report identity with the saved profile identity.
+
+    Whitespace and full/half-width spacing are ignored; student numbers also
+    ignore separators. The point is to catch an obviously different report,
+    not to create a second normalization standard for names.
+    """
+    def normalize(value: str) -> str:
+        text = "".join(str(value or "").split()).casefold()
+        return text.replace("-", "") if ignore_hyphen else text
+    return normalize(left) == normalize(right)
+
+
 class AiTaskService:
     """九项页面 AI 任务的执行与缓存。"""
 
@@ -1400,6 +1420,28 @@ class AiTaskService:
             for field in await self._profiles.get_fields(user_id)
         }
 
+        # A valid code is a bearer key to *someone's* report. Before writing,
+        # reject an obvious identity mismatch instead of merging another
+        # person's name/student number into the current profile. If the
+        # profile has no identity yet, the user has explicitly chosen to
+        # verify this code, so the first import is allowed.
+        report_name = report.value_of("student_name")
+        current_name = existing.get("student_name")
+        if report_name and current_name and not _same_identity(report_name, current_name.value):
+            raise ChsiVerifyError(
+                "这份报告上的姓名与当前画像中的姓名不一致。请确认是本人的报告，或先在画像中更正姓名后再核验。",
+                kind=ChsiVerifyErrorKind.IDENTITY_MISMATCH,
+            )
+        report_student_no = report.value_of("student_no")
+        current_student_no = existing.get("student_no")
+        if report_student_no and current_student_no and not _same_identity(
+            report_student_no, current_student_no.value, ignore_hyphen=True
+        ):
+            raise ChsiVerifyError(
+                "这份报告上的学号与当前画像中的学号不一致。请确认是本人的报告后再核验。",
+                kind=ChsiVerifyErrorKind.IDENTITY_MISMATCH,
+            )
+
         # 采集策略的前后对照：这一趟是**为画像的缺口**去取的，
         # 所以回执必须说清楚"补上了哪几条本来缺的" ——
         # 用户看到的不是"取了 11 条字段"，而是"还差的东西少了 4 条"。
@@ -1444,6 +1486,79 @@ class AiTaskService:
             )
             detail_bits.append(f"{spec.label or item.key} {item.value}")
 
+        # 学信网给的是入学日期，不是「现在大几」。这一步只做一次确定性换算，
+        # 并且把「这是推算值」写进来源/属性 —— 画像里显示「待核对」，
+        # 用户随时可以改成自己确认的年级；用户已经填过的那条永远不被覆盖。
+        report_written = len(written)
+        # 只有「学籍」报告代表现在仍在读。学历/学位报告是毕业后的证明，
+        # 拿它的入学日期推「现在大几」会把毕业生算成在校生。
+        enrolled_at = (
+            report.value_of("enrolled_at")
+            if report.kind is ChsiReportKind.ENROLLMENT
+            else ""
+        )
+        current_study_year = existing.get("study_year")
+        can_replace_study_year = current_study_year is None or (
+            current_study_year.source is ProfileSource.RECORD
+            and str(current_study_year.origin_ref or "").startswith(_DERIVED_STUDY_YEAR_REF)
+        )
+        derived_study_year = (
+            academic_time.study_year_from_enrollment(enrolled_at) if enrolled_at else None
+        )
+        derived_note = ""
+        derived_written = False
+        if derived_study_year and can_replace_study_year:
+            today = datetime.now(academic_time.CHINA_TZ).date()
+            study_year_label = next(
+                (
+                    spec.label
+                    for spec in dynamic_config.snapshot().profile_fields
+                    if spec.key == "study_year" and not spec.alias_of and spec.label
+                ),
+                "当前学习阶段",
+            )
+            before = current_study_year.confidence if current_study_year else 0.0
+            await self._profiles.update_field(
+                user_id,
+                "study_year",
+                derived_study_year,
+                # 0.8 不是「和报告一样权威」：换算本身确定，但它是从入学日推出来的，
+                # 不是学信网直接写明的字段，所以核实状态留在「待核对」。
+                confidence=0.8,
+                source=ProfileSource.RECORD.value,
+                label=study_year_label,
+                evidence=[report.source_url, f"按入学日期 {enrolled_at} 推算"],
+                verification=ProfileVerification.PENDING.value,
+                origin_ref=f"{_DERIVED_STUDY_YEAR_REF}={enrolled_at}",
+                attributes={
+                    "derived_from": f"入学日期 {enrolled_at}",
+                    "derived_on": today.isoformat(),
+                },
+                valid_to=academic_time.study_year_valid_to(enrolled_at),
+            )
+            written.append(
+                ProfileLift(
+                    dim="学习阶段",
+                    **{"from": round(before, 2), "to": 0.8},
+                    because=(
+                        f"按学信网入学日期 {enrolled_at} 推算为{derived_study_year}；"
+                        "这是推算值，可在画像里修改"
+                    ),
+                )
+            )
+            derived_written = True
+            derived_note = f"按入学日期 {enrolled_at} 推算为「{derived_study_year}」"
+        elif enrolled_at and derived_study_year is None:
+            derived_note = (
+                f"报告里的入学日期是 {enrolled_at}，但按本科 1–4 年推算不出当前阶段，"
+                "请在画像里确认"
+            )
+        elif enrolled_at and current_study_year is not None:
+            derived_note = (
+                f"画像里已有你的学习阶段「{current_study_year.value}」，"
+                "没有用推算值覆盖"
+            )
+
         verified_note = " · ".join(detail_bits[:4]) or "报告已核验"
         report_note = f"报告编号 {report.report_no}" if report.report_no else "报告已核验"
 
@@ -1473,8 +1588,23 @@ class AiTaskService:
                 id="s2",
                 label=report.kind.value,
                 detail=verified_note,
-                got=len(written),
+                got=report_written,
                 source=f"学信网 · {report.kind.value}信息",
+            ),
+            # 报告只给入学日期，年级是换算出来的。单独一步把换算过程写出来，
+            # 用户看到的就不是一个来路不明的「大一」，而是「按哪天推算成哪一级」。
+            *(
+                [
+                    BindStep(
+                        id="s2b",
+                        label="推算学习阶段",
+                        detail=derived_note,
+                        got=1 if derived_written else 0,
+                        source="学信网 · 入学日期推算",
+                    )
+                ]
+                if derived_note
+                else []
             ),
             # 这一步是"动态采集"的可视化：取之前缺什么、取完之后还缺什么
             BindStep(
@@ -1487,7 +1617,14 @@ class AiTaskService:
             BindStep(
                 id="s4",
                 label="写入画像",
-                detail=f"写入 {len(written)} 条画像字段，来源标记为「客观档案」",
+                detail=(
+                    f"写入 {len(written)} 条画像字段"
+                    + (
+                        "；学籍字段来自报告，学习阶段是按入学日期推算的待核对值"
+                        if derived_written
+                        else "，来源标记为「客观档案」"
+                    )
+                ),
                 got=len(written),
                 source="画像 · 增量更新",
             ),
@@ -1522,7 +1659,8 @@ class AiTaskService:
             citations,
             by,
             f"共核验 {len(report.fields)} 个报告字段，写入 {len(written)} 条画像字段；"
-            "学信网是权威事实源，这些字段置信度记为 1.0。课程与成绩不在其覆盖范围内。",
+            "报告字段按权威事实源记为 1.0，按入学日期推算的学习阶段记为 0.8 且标为待核对。"
+            "课程与成绩不在学信网覆盖范围内。",
         )
 
     async def _plan(self, user_id: str, profile: Optional[Profile], arg: str, *, by: str) -> AiResultEnvelope:

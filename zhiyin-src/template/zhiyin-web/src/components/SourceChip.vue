@@ -74,8 +74,8 @@ const SOURCE_META: Record<ProfileSource, SourceMeta> = {
     shape: 'attested',
   },
   record: {
-    label: '教务记录',
-    why: '来自教务或学籍系统的记录',
+    label: '客观记录',
+    why: '来自学校教务、学信网等机构出具的记录',
     shape: 'ledger',
   },
   user_edit: {
