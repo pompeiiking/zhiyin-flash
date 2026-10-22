@@ -1073,3 +1073,14 @@ html[data-theme='dark'] .app.app--workspace { --c-bg:#181a20; --workspace-nav:#1
     padding-bottom: max(144px, calc(env(safe-area-inset-bottom, 0px) + 144px));
   }
 }
+
+/* Mobile profile: keep the primary next-step card above the floating nav at first paint. */
+@media (max-width: 767px) {
+  .profile-dossier__header { padding: 14px 16px; gap: 10px; }
+  .profile-dossier__coverage { padding-top: 10px; }
+  .profile-dossier__coverage > p { display: none; }
+  .profile-dossier__statement { padding: 12px 16px; }
+  .profile-next { padding: 16px; }
+  .profile-next .btn,
+  .profile-next .ws-text-button { scroll-margin-bottom: 96px; }
+}

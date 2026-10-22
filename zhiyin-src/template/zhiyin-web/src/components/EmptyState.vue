@@ -271,6 +271,8 @@ const actionTarget = computed<'none' | 'link' | 'href' | 'button'>(() => {
       <slot name="description">{{ description }}</slot>
     </p>
 
+    <div v-if="$slots.body" class="exp-empty__body"><slot name="body" /></div>
+
     <!-- 下一步动作的位置：这个容器永远在，空态不允许没有出口 -->
     <div class="exp-empty__actions">
       <slot>
@@ -388,6 +390,12 @@ const actionTarget = computed<'none' | 'link' | 'href' | 'button'>(() => {
   font-size: var(--fs-14);
   line-height: var(--lh-normal);
   color: var(--c-text-3);
+}
+
+.exp-empty__body {
+  grid-column: 2;
+  align-self: start;
+  min-width: 0;
 }
 
 .exp-empty__actions {

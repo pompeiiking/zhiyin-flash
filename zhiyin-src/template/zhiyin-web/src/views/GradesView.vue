@@ -14,6 +14,7 @@ import StatusBanner from '../components/StatusBanner.vue'
 import UiIcon from '../components/UiIcon.vue'
 import DetailPopover from '../components/DetailPopover.vue'
 import { backendDemo } from '../lib/backend-demo'
+import { academicTermStatusLabel } from '../lib/academic-term'
 import { useAiTask } from '../lib/use-ai-task'
 
 type GradeGroup = { term: string; rows: AcademicGradeView[] }
@@ -430,8 +431,8 @@ onMounted(() => { void loadGrades() })
 
         <div v-if="filteredGroups.length" aria-live="polite">
           <section v-for="(group, groupIndex) in filteredGroups" :key="group.term" class="transcript" :aria-labelledby="`grade-term-${groupIndex}`">
-            <header class="transcript__head"><div><span class="transcript__mark" aria-hidden="true" /><div><p>学期成绩单</p><h3 :id="`grade-term-${groupIndex}`">{{ formatTerm(group.term) }}</h3></div></div><span>{{ group.rows.length }} 门课程</span></header>
-            <div class="transcript__table"><table><thead><tr><th>课程名称</th><th>课程性质</th><th>学分</th><th>绩点</th><th>成绩</th></tr></thead><tbody><tr v-for="(grade,index) in group.rows" :key="grade.name + index"><td><strong>{{ grade.name }}</strong><small v-if="grade.kind && grade.category">{{ grade.category }}</small></td><td>{{ grade.kind || grade.category || '—' }}</td><td>{{ grade.credit || '—' }}</td><td>{{ grade.point || '—' }}</td><td><span class="grade-score" :class="scoreTone(grade.score)">{{ grade.score || '—' }}</span></td></tr></tbody></table></div>
+            <header class="transcript__head"><div><span class="transcript__mark" aria-hidden="true" /><div><p>学期成绩单</p><h3 :id="`grade-term-${groupIndex}`">{{ formatTerm(group.term) }}</h3><span class="transcript__state">{{ academicTermStatusLabel(group.term) }}</span></div></div><span>{{ group.rows.length }} 门课程</span></header>
+            <div class="transcript__table"><table><caption class="sr-only">{{ formatTerm(group.term) }}成绩单</caption><thead><tr><th scope="col">课程名称</th><th scope="col">课程性质</th><th scope="col">学分</th><th scope="col">绩点</th><th scope="col">成绩</th></tr></thead><tbody><tr v-for="(grade,index) in group.rows" :key="grade.name + index"><td><strong>{{ grade.name }}</strong><small v-if="grade.kind && grade.category">{{ grade.category }}</small></td><td>{{ grade.kind || grade.category || '—' }}</td><td>{{ grade.credit || '—' }}</td><td>{{ grade.point || '—' }}</td><td><span class="grade-score" :class="scoreTone(grade.score)">{{ grade.score || '—' }}</span></td></tr></tbody></table></div>
           </section>
         </div>
         <EmptyState v-else kind="search-empty" :heading-level="3" size="sm" title="这个筛选下没有成绩" description="换一个学年或学期查看。" :next="false" />
@@ -452,18 +453,18 @@ onMounted(() => { void loadGrades() })
 <style scoped>
 .grades-page {
   --grade-rule: var(--c-border);
-  --grade-paper: #f7f9fc;
-  --grade-blue-soft: #eaf3fb;
-  --grade-blue-mid: #6e9fca;
+  --grade-paper: var(--c-surface-2);
+  --grade-blue-soft: var(--c-primary-weak);
+  --grade-blue-mid: var(--c-primary-border);
 }
 
 .grade-analysis {
   margin: 10px 0 48px;
   padding: 26px 28px 28px;
-  border: 1px solid #dbe4ec;
+  border: 1px solid var(--c-border);
   border-radius: 18px;
   background: var(--c-surface);
-  box-shadow: 0 12px 32px rgba(35, 58, 79, .06);
+  box-shadow: var(--e-1);
 }
 
 .section-intro,
@@ -564,7 +565,7 @@ onMounted(() => { void loadGrades() })
 }
 
 .metric-switch button {
-  min-height: 30px;
+  min-height: 44px;
   padding: 5px 11px;
   border: 0;
   border-radius: 6px;
@@ -592,7 +593,7 @@ onMounted(() => { void loadGrades() })
 }
 
 .chart-grid line {
-  stroke: #e4e9ef;
+  stroke: var(--c-border);
   stroke-width: 1;
 }
 
@@ -682,7 +683,7 @@ onMounted(() => { void loadGrades() })
   margin-top: 11px;
   overflow: hidden;
   border-radius: 999px;
-  background: #e5eaf0;
+  background: var(--c-surface-3);
 }
 
 .score-distribution__track i {
@@ -693,7 +694,7 @@ onMounted(() => { void loadGrades() })
 .score-distribution .is-excellent { background: var(--c-primary); }
 .score-distribution .is-steady { background: var(--grade-blue-mid); }
 .score-distribution .is-attention { background: var(--c-attention); }
-.score-distribution .is-level { background: #aeb8c2; }
+.score-distribution .is-level { background: var(--c-text-3); }
 
 .score-distribution ul {
   display: grid;
@@ -766,7 +767,7 @@ onMounted(() => { void loadGrades() })
 
 .analysis-filters select {
   width: 100%;
-  min-height: 38px;
+  min-height: 44px;
   padding: 0 32px 0 11px;
   border: 1px solid var(--grade-rule);
   border-radius: var(--r-sm);
@@ -831,7 +832,7 @@ onMounted(() => { void loadGrades() })
   height: 11px;
   overflow: hidden;
   border-radius: 3px;
-  background: #e8edf2;
+  background: var(--c-surface-3);
 }
 
 .course-bars__track i {
@@ -887,7 +888,7 @@ onMounted(() => { void loadGrades() })
   margin: 0 0 54px;
   padding: 26px 28px;
   border: 1px solid var(--grade-rule);
-  border-left: 4px solid var(--c-primary);
+  border-left: 1px solid var(--c-primary-border);
   border-radius: 0 16px 16px 0;
   background: var(--grade-paper);
 }
@@ -947,7 +948,7 @@ onMounted(() => { void loadGrades() })
 
 .learning-analysis__columns section {
   padding-top: 13px;
-  border-top: 2px solid #cad9e7;
+  border-top: 1px solid var(--c-border);
 }
 
 .learning-analysis__columns h4 {
@@ -993,7 +994,7 @@ onMounted(() => { void loadGrades() })
 }
 
 .grade-filters select {
-  min-height: 40px;
+  min-height: 44px;
   padding: 0 34px 0 12px;
   border: 1px solid var(--c-border);
   border-radius: var(--r-sm);
@@ -1018,6 +1019,17 @@ onMounted(() => { void loadGrades() })
   justify-content: space-between;
   gap: 16px;
   padding: 0 2px 14px;
+}
+
+.transcript__state {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 2px 8px;
+  border: 1px solid var(--c-primary-border);
+  border-radius: 999px;
+  background: var(--c-primary-weak);
+  color: var(--c-primary);
+  font-size: var(--fs-12);
 }
 
 .transcript__head > div {
@@ -1056,7 +1068,7 @@ onMounted(() => { void loadGrades() })
   border: 1px solid var(--grade-rule);
   border-radius: 14px;
   background: var(--c-surface);
-  box-shadow: 0 7px 20px rgba(35, 58, 79, .04);
+  box-shadow: var(--e-1);
 }
 
 .transcript table {
@@ -1086,7 +1098,7 @@ onMounted(() => { void loadGrades() })
 
 .transcript tbody tr:last-child td { border-bottom: 0; }
 .transcript tbody tr { transition: background-color .16s ease; }
-.transcript tbody tr:hover { background: #f9fbfd; }
+.transcript tbody tr:hover { background: var(--c-surface-2); }
 .transcript th:last-child,
 .transcript td:last-child { text-align: right; }
 
@@ -1138,7 +1150,7 @@ onMounted(() => { void loadGrades() })
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  min-height: 40px;
+  min-height: 44px;
   padding: 8px 10px;
   border: 1px solid transparent;
   border-radius: var(--r-sm);

@@ -12,6 +12,7 @@ import { toast } from '../store'
 import UiIcon from './UiIcon.vue'
 import { vScrollFade } from '../lib/scroll-fade'
 import { backendDemo } from '../lib/backend-demo'
+import { useDisplayName } from '../lib/display-name'
 import BrandMark from './BrandMark.vue'
 import AccountPopover from './AccountPopover.vue'
 import { studyYearLabel } from '../lib/study-year'
@@ -28,7 +29,7 @@ const sessions = computed(() => [...backendDemo.state.sessions].sort((a, b) => (
 async function resumeSession(id: string) {
   try { await openSession(id); await router.push('/chat') } catch(e) { toast((e as Error).message) }
 }
-const userName = computed(() => demo.state.account || '当前用户')
+const userName = useDisplayName()
 
 /**
  * 底部人名行的副行 = **专业 · 年级**（c2 靶子的 `.nav__me-s`）。
@@ -71,7 +72,7 @@ function sessionDate(date?: string | null) { return date ? formatRelative(date) 
 
     <div v-scroll-fade class="desk-scroll">
     <TooltipProvider :delay-duration="120" :skip-delay-duration="80">
-      <nav v-scroll-fade class="desk-nav" aria-label="学生空间导航"><div class="c2-chat-group-head"><h2>对话</h2><button class="c2-new-consult" aria-label="新建对话" title="新建对话" :disabled="demo.state.chatBusy" @click="$emit('newChat')"><UiIcon name="plus" :size="18" /></button></div>
+      <nav v-scroll-fade class="desk-nav" aria-label="学生空间导航"><div class="c2-chat-group-head"><h2 role="presentation">对话</h2><button class="c2-new-consult" aria-label="新建对话" title="新建对话" :disabled="demo.state.chatBusy" @click="$emit('newChat')"><UiIcon name="plus" :size="18" /></button></div>
         <TooltipRoot :disabled="!railMode">
           <TooltipTrigger as-child>
             <RouterLink :to="WORKSPACE_PRIMARY.to" class="desk-link desk-link--conversation" :aria-label="WORKSPACE_PRIMARY.label" :aria-current="isNavActive(WORKSPACE_PRIMARY, route) ? 'page' : undefined"><UiIcon :name="WORKSPACE_PRIMARY.icon" :size="20" /><span class="hf-label">{{ WORKSPACE_PRIMARY.label }}</span><span class="hf-tail" v-if="sessionCount || chatActive"><span v-if="sessionCount" class="hf-badge">{{ sessionCount }}</span><span v-if="chatActive" class="desk-link__dot" /></span></RouterLink>
@@ -79,7 +80,7 @@ function sessionDate(date?: string | null) { return date ? formatRelative(date) 
           <TooltipPortal><TooltipContent class="desk-rail-tooltip" side="right" :side-offset="12" :collision-padding="8">{{ WORKSPACE_PRIMARY.label }}</TooltipContent></TooltipPortal>
         </TooltipRoot>
         <section v-for="group in navGroups" :key="group.key" class="c2-nav-group">
-          <h2>{{ group.label }}</h2>
+          <h2 role="presentation">{{ group.label }}</h2>
           <TooltipRoot v-for="item in group.items.filter(item => routeEnabled(item.to))" :key="item.key" :disabled="!railMode">
             <TooltipTrigger as-child>
               <RouterLink :to="item.to" :aria-label="item.label" class="desk-link" :aria-current="isNavActive(item, route) ? 'page' : undefined">
@@ -92,7 +93,7 @@ function sessionDate(date?: string | null) { return date ? formatRelative(date) 
         </section>
       </nav>
     </TooltipProvider>
-    <section v-if="chatActive" v-scroll-fade class="desk-history" aria-label="历史会话"><div class="desk-history__head"><h2>历史会话</h2><span>{{ backendDemo.state.sessions.length }}</span><RouterLink class="desk-history__manage" to="/chat?history=1">管理</RouterLink></div><button v-for="session in sessions" :key="session.task_id" class="desk-session" :title="session.task_name + '：' + (session.last_message || '')" :aria-pressed="route.path === '/chat' && session.task_id === demo.state.currentSessionId" :disabled="demo.state.chatBusy" @click="resumeSession(session.task_id)"><span>{{ session.task_name || '未命名咨询' }}</span><em class="desk-session__preview">{{ session.last_message || '还没有消息' }}</em><small><template v-if="session.message_count">{{ session.message_count }} 条 · </template>{{ sessionDate(session.last_message_at || session.last_active_at) }}</small></button><p v-if="!sessions.length" class="desk-history__empty">创建咨询后，会话将显示在这里。</p></section>
+    <section v-if="chatActive" v-scroll-fade class="desk-history" aria-label="历史会话"><div class="desk-history__head"><h2 role="presentation">历史会话</h2><span>{{ backendDemo.state.sessions.length }}</span><RouterLink class="desk-history__manage" to="/chat?history=1">管理</RouterLink></div><button v-for="session in sessions" :key="session.task_id" class="desk-session" :title="session.task_name + '：' + (session.last_message || '')" :aria-pressed="route.path === '/chat' && session.task_id === demo.state.currentSessionId" :disabled="demo.state.chatBusy" @click="resumeSession(session.task_id)"><span>{{ session.task_name || '未命名咨询' }}</span><em class="desk-session__preview">{{ session.last_message || '还没有消息' }}</em><small><template v-if="session.message_count">{{ session.message_count }} 条 · </template>{{ sessionDate(session.last_message_at || session.last_active_at) }}</small></button><p v-if="!sessions.length" class="desk-history__empty">创建咨询后，会话将显示在这里。</p></section>
     </div>
     <!--
       页脚只留两样：账号（与顶栏、移动端指向**同一个「账号」抽屉**）、返回门户。
@@ -195,7 +196,7 @@ function sessionDate(date?: string | null) { return date ? formatRelative(date) 
 #student-desktop-sidebar .desk-footer { flex: none; padding-top: 12px; }
 #student-desktop-sidebar .desk-footer__links { flex-wrap: wrap; gap: 0 14px; }
 #student-desktop-sidebar .desk-footer__links a[aria-current='page'] { color: var(--c-primary); font-weight: var(--fw-semibold); }
-#student-desktop-sidebar .desk-session__preview { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--c-text-3); font-size: 11px; font-style: normal; line-height: 1.4; }
-#student-desktop-sidebar .desk-history__manage { margin-left:auto; color:var(--c-text-3); font-size:11px; font-weight:var(--fw-regular); }
+#student-desktop-sidebar .desk-session__preview { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--c-text-3); font-size: var(--fs-12); font-style: normal; line-height: 1.4; }
+#student-desktop-sidebar .desk-history__manage { margin-left:auto; color:var(--c-text-3); font-size:var(--fs-12); font-weight:var(--fw-regular); }
 #student-desktop-sidebar .desk-history__manage:hover { color:var(--c-primary); }
 </style>

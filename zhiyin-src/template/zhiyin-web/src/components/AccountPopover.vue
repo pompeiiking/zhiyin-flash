@@ -5,6 +5,7 @@ import { auth } from '../lib/auth'
 import { navigation } from '../lib/layout'
 import { PORTAL_LINK } from '../lib/workspace-nav'
 import { demo, toast } from '../store'
+import { useDisplayName } from '../lib/display-name'
 import AnchoredCard from './AnchoredCard.vue'
 import UiIcon from './UiIcon.vue'
 
@@ -12,6 +13,7 @@ defineOptions({ inheritAttrs:false })
 withDefaults(defineProps<{ side?: 'top' | 'bottom' | 'left' | 'right'; align?: 'start' | 'center' | 'end' }>(), { side:'right', align:'end' })
 const route = useRoute()
 const router = useRouter()
+const displayName = useDisplayName()
 const open = ref(false)
 watch(() => route.fullPath, () => { open.value = false })
 async function signOut() {
@@ -24,8 +26,8 @@ async function signOut() {
   <AnchoredCard v-model="open" title="账号" label="账号与工作空间" :side="side" :align="align" v-bind="$attrs">
     <template #trigger><slot name="trigger" /></template>
     <div class="account-popover__identity">
-      <span aria-hidden="true">{{ demo.state.account.slice(0,1) }}</span>
-      <strong>{{ demo.state.account }}</strong>
+      <span aria-hidden="true">{{ displayName.slice(0, 1) }}</span>
+      <strong>{{ displayName }}</strong>
     </div>
     <nav class="account-popover__links" aria-label="账号功能">
       <RouterLink to="/settings"><UiIcon name="settings" :size="18" /><span>账号与资料设置</span><UiIcon name="arrow" :size="15" /></RouterLink>

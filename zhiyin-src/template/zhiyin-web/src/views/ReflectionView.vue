@@ -157,7 +157,7 @@ onMounted(() => load(false))
         </div>
         <div v-else-if="!busy" class="review-session-bar__empty">
           <p>先安排并完成一项任务，再回来记录实际发生的事。</p>
-          <RouterLink class="btn btn--sm" to="/home">去今日行动</RouterLink>
+          <RouterLink class="ws-text-link" to="/home">去今日行动</RouterLink>
         </div>
         <div v-if="focusTaskPool.length > 1" class="review-session-bar__actions">
           <button class="btn btn--sm" :disabled="focusIndex <= 0" @click="selectRelativeTask(-1)">上一项</button>

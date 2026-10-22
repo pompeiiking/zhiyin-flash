@@ -756,7 +756,7 @@ html.is-skin-switching *::after {
   padding: var(--sp-3) var(--sp-4);
   border-radius: var(--r-md);
   /* 同上：信息类用中性底 + 一道主色左线。主色底只留给选中与交互 */
-  border-left: 3px solid var(--c-primary);
+  border-left: 1px solid var(--c-primary);
   background: var(--c-surface-2);
   font-size: var(--fs-14);
   color: var(--c-text);

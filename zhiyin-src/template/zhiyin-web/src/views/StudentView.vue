@@ -58,6 +58,7 @@ import ProfileInsights from '../components/ProfileInsights.vue'
 import AcademicVerification from '../components/AcademicVerification.vue'
 import FormConflict from '../components/FormConflict.vue'
 import { backendDemo } from '../lib/backend-demo'
+import { resolveDisplayName } from '../lib/display-name'
 import { backendClient } from '../api/backend-client'
 import { useProfileWorkspace } from '../lib/use-profile-workspace'
 import { useProfileFields } from '../lib/use-profile-fields'
@@ -151,7 +152,7 @@ async function confirmCollection(item: { key: string; label: string }) {
 
 const identity = computed(() => {
   const pick = (key: string) => known.value.find((row) => row.key === key)?.value
-  const name = live.value ? pick('student_name') || pick('name') || demo.state.account : STUDENT.name
+  const name = live.value ? pick('student_name') || pick('name') || resolveDisplayName() : STUDENT.name
   const school = live.value ? pick('school') : demo.state.profileEdits.school ?? STUDENT.school
   const grade = live.value ? pick('study_year') || pick('grade') : demo.state.profileEdits.grade ?? demo.use.scenario.value.grade
   if (!live.value && demo.state.account === 'fresh') return { name: '新用户', line: '学校与年级待补充' }

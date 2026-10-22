@@ -357,7 +357,7 @@ onMounted(() => { void loadNotes() })
 .notes-flow a:hover strong { color: var(--c-primary); }
 .notes-flow a:focus-visible { outline: 2px solid var(--c-primary); outline-offset: 4px; border-radius: 4px; }
 
-.notes-capture { margin-bottom: 22px; padding: 18px 20px 16px; border: 1px solid var(--c-border); border-top: 3px solid var(--c-primary); border-radius: 0 0 12px 12px; background: var(--c-surface); }
+.notes-capture { margin-bottom: 22px; padding: 18px 20px 16px; border: 1px solid var(--c-border); border-top: 1px solid var(--c-primary); border-radius: 0 0 12px 12px; background: var(--c-surface); }
 .notes-capture__head { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
 .notes-capture__head h2 { font-size: var(--fs-16); font-weight: var(--fw-semibold); }
 .notes-capture__title { display: flex; align-items: center; gap: var(--sp-2); }
@@ -404,7 +404,7 @@ onMounted(() => { void loadNotes() })
 
 .notes-aside { position: sticky; top: 76px; display: flex; flex-direction: column; gap: 16px; }
 .notes-aside > section { padding: 18px; }
-.notes-context { border-left: 3px solid var(--c-primary); background: var(--c-primary-weak); }
+.notes-context { border-left: 1px solid var(--c-primary); background: var(--c-primary-weak); }
 .notes-context header { display: flex; align-items: flex-start; gap: 10px; }
 .notes-context__icon, .notes-plan__icon { display: grid; flex: none; place-items: center; width: 34px; height: 34px; border-radius: 50%; color: var(--c-primary); background: var(--c-surface); }
 .notes-context h2, .notes-plan h2 { font-size: var(--fs-14); font-weight: var(--fw-semibold); }

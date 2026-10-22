@@ -2,6 +2,7 @@
 import { useRoute, useRouter } from 'vue-router'
 import { ref, onMounted, onUnmounted } from 'vue'
 import { demo } from '../store'
+import { useDisplayName } from '../lib/display-name'
 /** 旧门户动态背景恢复自 60d4e4f（2026-10-16 用户确认）。
  * 保留原版光晕与路径节点；按用户反馈移除横向扫光和竖线网格，减少动态效果时保留静态背景。
  * 门户是用户明确要求保留的版本，不套用工作区的装饰动效限制。
@@ -14,6 +15,7 @@ onUnmounted(() => motionPreference.removeEventListener('change', syncMotionPrefe
 
 const router = useRouter()
 const route = useRoute()
+const displayName = useDisplayName()
 
 function start() {
   if (demo.state.authed) router.push('/chat')
@@ -97,7 +99,7 @@ const what = [
         <span class="top__divider" />
         <span class="top__context">河北大学<span class="top__context-detail"> · 生涯规划与就业指导</span></span>
       </div>
-      <div class="pc-controls"><RouterLink v-if="demo.state.authed" class="top__account" to="/chat"><span class="pc-account-name">{{ demo.state.account }} · </span>进入工作空间</RouterLink><button v-else class="top__login" @click="start">登录</button></div>
+      <div class="pc-controls"><RouterLink v-if="demo.state.authed" class="top__account" to="/chat"><span class="pc-account-name">{{ displayName }} · </span>进入工作空间</RouterLink><button v-else class="top__login" @click="start">登录</button></div>
     </header>
 
     <main class="main">

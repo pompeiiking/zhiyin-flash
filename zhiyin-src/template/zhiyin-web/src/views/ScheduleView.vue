@@ -6,6 +6,7 @@ import { backendDemo } from '../lib/backend-demo'
 import { backendClient } from '../api/backend-client'
 import type { ActionTaskView } from '../api/backend-types'
 import { courseTimeLabel, hasCourseTime } from '../lib/academic'
+import { academicTermStatusLabel } from '../lib/academic-term'
 import PageHeading from '../components/PageHeading.vue'
 import ActionMenu from '../components/ActionMenu.vue'
 import UiIcon from '../components/UiIcon.vue'
@@ -23,6 +24,7 @@ import AcademicImportSheet from '../components/AcademicImportSheet.vue'
 type CalendarMode = 'week' | 'month'
 
 const today = new Date()
+const academicTermLabel = computed(() => academicTermStatusLabel(backendDemo.state.academic?.term || '', today))
 const selected = ref(new Date(today.getFullYear(), today.getMonth(), today.getDate()))
 const month = ref(new Date(today.getFullYear(), today.getMonth(), 1))
 const mode = ref<CalendarMode>('week')
@@ -200,6 +202,7 @@ onMounted(() => {
       <template #meta>
         <div class="schedule-meta" aria-label="当前资料概况">
           <span>{{ backendDemo.state.academic?.term || '学期未导入' }}</span>
+          <span v-if="backendDemo.state.academic?.term" class="schedule-term-status">{{ academicTermLabel }}</span>
           <span>{{ timedCourses.length }} 门课程</span>
           <span v-if="readOnce">{{ pendingTasks.length }} 项待执行</span>
         </div>
@@ -280,7 +283,7 @@ onMounted(() => {
     <InfoSheet :open="timePlanOpen" shape="panel" title="本周时间建议" description="结合已导入课表、限制和行为记录，生成可执行时间窗。" @close="timePlanOpen=false"><TimetableAdvice /></InfoSheet>
 
     <section class="schedule-surface timetable-surface" aria-labelledby="course-view-title">
-      <header class="course-view__head"><h2 id="course-view-title">{{ backendDemo.state.academic?.term || '课程表' }}</h2><div class="course-view__meta"><span>{{ timedCourses.length }} 门课程</span><button type="button" class="ws-text-button" @click="capacityOpen=true">检查时间冲突</button><ActionMenu v-if="backendDemo.state.academic?.courses?.length" label="更多课表操作" :items="[{id:'clear',label:'清空课表',danger:true,disabled:calendarBusy}]" @select="courseRevokeOpen=true" /></div></header>
+      <header class="course-view__head"><h2 id="course-view-title">{{ backendDemo.state.academic?.term || '课程表' }}</h2><div class="course-view__meta"><span v-if="backendDemo.state.academic?.term" class="schedule-term-status">{{ academicTermLabel }}</span><span>{{ timedCourses.length }} 门课程</span><button type="button" class="ws-text-button" @click="capacityOpen=true">检查时间冲突</button><ActionMenu v-if="backendDemo.state.academic?.courses?.length" label="更多课表操作" :items="[{id:'clear',label:'清空课表',danger:true,disabled:calendarBusy}]" @select="courseRevokeOpen=true" /></div></header>
       <div v-if="timedCourses.length" ref="timetableScroll" class="timetable-scroll" tabindex="0" aria-label="一周课程表，可横向滚动">
         <div class="timetable-grid" :style="{ '--periods': lastPeriod }">
           <div class="timetable-corner">节次</div>
@@ -313,6 +316,7 @@ onMounted(() => {
 <style scoped>
 .schedule-page { max-width: 1280px; overflow-x: clip; }
 .schedule-meta { display: flex; flex-wrap: wrap; gap: 8px 18px; color: var(--c-text-3); font-size: 13px; }
+.schedule-term-status { padding: 2px 8px; border: 1px solid var(--c-primary-border); border-radius: 999px; background: var(--c-primary-weak); color: var(--c-primary); font-size: 12px; }
 .calendar-mode-switch, .week-strip button, .month-grid button, .timetable-scroll:focus-visible { outline: 0; }
 .calendar-mode-switch:focus-visible, .week-strip button:focus-visible, .month-grid button:focus-visible, .timetable-scroll:focus-visible { outline: 2px solid var(--c-primary); outline-offset: 2px; }
 .schedule-surface { margin-top: 18px; border: 1px solid var(--c-border); border-radius: 16px; background: var(--c-surface); box-shadow: var(--e-1); overflow: hidden; }
@@ -328,7 +332,7 @@ onMounted(() => {
 .week-strip button:last-child { border-right: 0; }
 .week-strip button:hover { background: var(--c-surface-2); }
 .week-strip button.is-selected { color: var(--c-primary); background: color-mix(in srgb, var(--c-primary) 8%, var(--c-surface)); box-shadow: inset 0 -3px var(--c-primary); }
-.week-strip button.is-today span::after { content: '今天'; margin-left: 5px; color: var(--c-primary); font-size: 10px; }
+.week-strip button.is-today span::after { content: '今天'; margin-left: 5px; color: var(--c-primary); font-size: 12px; }
 .week-strip strong { font-size: 24px; font-variant-numeric: tabular-nums; }
 .week-strip small { color: var(--c-text-3); }
 .month-grid { display: grid; grid-template-columns: repeat(7, minmax(68px, 1fr)); padding: 16px 18px 4px; }
@@ -388,12 +392,12 @@ onMounted(() => {
   .schedule-toolbar { align-items: stretch; flex-direction: column; gap: 12px; }
   .schedule-toolbar__actions { flex-wrap: wrap; justify-content: space-between; }
   .calendar-mode-switch { min-height: 44px; justify-content: center; }
-  .week-strip { display: flex; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; }
+  .week-strip { display: flex; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; scroll-snap-type: x proximity; scroll-padding-inline: 12px; }
   .week-strip::-webkit-scrollbar { display: none; }
-  .week-strip button { flex: 0 0 68px; min-height: 96px; }
+  .week-strip button { flex: 0 0 68px; min-height: 96px; scroll-snap-align: start; }
   .month-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); padding: 10px 8px 0; }
   .month-grid button { min-height: 58px; padding: 7px 5px; text-align: center; }
-  .month-grid button small { font-size: 10px; }
+  .month-grid button small { font-size: 12px; }
   .day-agenda { padding: 20px 16px; }
   .course-view__head { align-items: stretch; flex-direction: column; gap: 12px; }
   .course-view__meta { align-items: center; flex-direction: row; flex-wrap: wrap; gap: 8px 14px; }

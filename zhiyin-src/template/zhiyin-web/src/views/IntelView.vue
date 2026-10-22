@@ -441,8 +441,8 @@ onMounted(() => {
 
     <EmptyState v-else kind="intel" :heading-level="2" title="从真实资料开始职业探索" description="先读取职业资料了解可探索范围；也可以直接用当前画像发起一次匹配。" :next="false">
       <div class="intel-empty-actions" aria-label="职业探索起步操作">
-        <button class="intel-empty-action is-primary" type="button" :disabled="busy" @click="load(true)"><span>01</span><strong>{{ refreshing ? '正在更新资料…' : '更新职业资料' }}</strong><small>读取专业相关职业与真实去向</small></button>
-        <button class="intel-empty-action" type="button" data-sheet-trigger @click="startMatch"><span>02</span><strong>用画像匹配</strong><small>根据当前资料生成匹配建议</small></button>
+        <button class="intel-empty-action is-primary" type="button" :disabled="busy" @click="load(true)"><span aria-hidden="true"><UiIcon name="search" :size="18" /></span><strong>{{ refreshing ? '正在更新资料…' : '更新职业资料' }}</strong><small>读取专业相关职业与真实去向</small></button>
+        <button class="ws-text-link" type="button" data-sheet-trigger @click="startMatch">已有方向，直接用画像匹配</button>
       </div>
     </EmptyState>
 
@@ -459,8 +459,8 @@ onMounted(() => {
 <style scoped>
 .intel-page { width: 100%; min-width: 0; padding-bottom: 48px; }
 .intel-loading { padding: 20px; border: 1px solid var(--c-border); border-radius: 16px; background: var(--c-surface); }
-.intel-empty-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; width:min(560px,100%); margin-top:4px; text-align:left; }
-.intel-empty-action { display:grid; grid-template-columns:30px minmax(0,1fr); gap:2px 10px; align-items:center; min-height:72px; padding:12px 14px; border:1px solid var(--c-border-strong); border-radius:12px; background:var(--c-surface); color:var(--c-text); text-align:left; }
+.intel-empty-actions { display:flex; flex-wrap:wrap; align-items:center; gap:12px 18px; width:min(620px,100%); margin-top:4px; text-align:left; }
+.intel-empty-action { display:grid; grid-template-columns:30px minmax(0,1fr); gap:2px 10px; align-items:center; width:min(360px,100%); min-height:72px; padding:12px 14px; border:1px solid var(--c-border-strong); border-radius:12px; background:var(--c-surface); color:var(--c-text); text-align:left; }
 .intel-empty-action:hover { border-color:var(--c-primary-border); background:var(--c-primary-weak-2); }
 .intel-empty-action>span { grid-row:1 / 3; color:var(--c-primary); font-size: 12px; font-variant-numeric:tabular-nums; }
 .intel-empty-action strong { font-size:14px; }
@@ -549,7 +549,7 @@ onMounted(() => {
   .intel-search { min-width: 0; }
   .intel-command__actions { flex-direction:column; }
   .intel-command__actions>.btn { width:100%; }
-  .intel-empty-actions { grid-template-columns:minmax(0,1fr); }
+  .intel-empty-actions { flex-direction:column; align-items:stretch; }
   .intel-route { margin-inline: -4px; }
   .intel-origin { grid-template-columns: 36px minmax(0, 1fr); padding: 15px 14px; }
   .intel-origin__mark { width: 36px; height: 36px; }

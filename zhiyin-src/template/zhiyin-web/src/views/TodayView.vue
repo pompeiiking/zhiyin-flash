@@ -259,7 +259,7 @@ onMounted(load)
 .today-page { max-width: 1080px; margin-inline: auto; }
 .today-layout { display: grid; grid-template-columns: minmax(0, 1fr) 248px; gap: 22px; align-items: start; margin-top: 16px; }
 .today-main { min-width: 0; }
-.today-focus { overflow: hidden; color: var(--c-text); background: var(--c-surface); border: 1px solid var(--c-border); border-top: 4px solid var(--c-primary); border-radius: 12px; box-shadow: var(--e-2); }
+.today-focus { overflow: hidden; color: var(--c-text); background: var(--c-surface); border: 1px solid var(--c-border); border-top: 1px solid var(--c-primary); border-radius: 12px; box-shadow: var(--e-2); }
 .today-focus__body { padding: 24px 28px 26px; }
 .today-focus__head,.today-section-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .today-focus__label { color: var(--c-primary); font-size: var(--fs-14); font-weight: var(--fw-semibold); }

@@ -125,7 +125,7 @@
 .exp-compare tr > :last-child { border-right: 0; }
 .exp-compare tbody tr:last-child > * { border-bottom: 0; }
 .exp-compare li + li { margin-top: 14px; }
-.exp-compare li { padding-left: 12px; border-left: 2px solid var(--c-primary-border); }
+.exp-compare li { padding-left: 12px; border-left: 1px solid var(--c-primary-border); }
 .exp-compare .exp-compare__risk { color: var(--c-attention); }
 .ws-timeline li { position: relative; padding-left: 24px; }
 .ws-timeline li::before { content: ''; position: absolute; left: 0; top: 30px; width: 7px; height: 7px; border: 2px solid var(--c-primary); border-radius: 50%; background: var(--c-surface); z-index: 1; }

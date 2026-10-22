@@ -121,14 +121,14 @@ onMounted(() => {
           <span>{{ pending.length }} 项待补充</span>
         </header>
         <ul class="growth-queue__list">
-          <li v-for="record in pending" :key="record.id" class="growth-queue__item" :data-record-id="record.id">
+          <li v-for="(record, index) in pending" :key="record.id" class="growth-queue__item" :data-record-id="record.id">
             <span class="growth-queue__mark" aria-hidden="true"><UiIcon name="path" :size="20" /></span>
             <div class="growth-queue__body">
               <div><span>{{ record.stage }}</span><strong>待补充</strong></div>
               <h3>{{ record.title }}</h3>
             </div>
             <div class="growth-queue__actions">
-              <RouterLink :to="record.to" class="btn btn--primary">
+              <RouterLink :to="record.to" class="btn" :class="{ 'btn--primary': index === 0 }">
                 {{ record.actionLabel }}<UiIcon name="arrow" :size="17" />
               </RouterLink>
               <DetailPopover :title="record.title + '记录说明'" :label="'查看' + record.title + '的记录说明'">

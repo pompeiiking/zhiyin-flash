@@ -370,7 +370,7 @@ onBeforeUnmount(stopTimer)
 
 /* 错误：竖线最粗 + 图标实心 = 不改色相也能一眼和"注意"分开 */
 .status-banner--error {
-  border-left-width: 3px;
+  border-left-width: 1px;
   border-left-color: var(--status-error-border);
   background: var(--status-error-bg);
   color: var(--status-error-text);

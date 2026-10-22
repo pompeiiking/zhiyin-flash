@@ -135,7 +135,6 @@ const emit = defineEmits<{ (e: 'close'): void; (e: 'resolve'): void }>()
   border: var(--bw) solid var(--line-2);
   box-shadow: var(--e-3), var(--inner-hi);
   transform: rotate(var(--tilt));
-  will-change: transform, opacity, filter;
   transition: transform var(--dur) var(--ease-spring),
               background var(--dur) var(--ease-out),
               border-color var(--dur) var(--ease-out),

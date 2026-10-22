@@ -493,7 +493,7 @@ onUnmounted(() => { disposed = true; clearInterval(recoveryTimer); window.remove
      </template>
      <p v-else class="ws-muted">当前还没有登记可用能力。</p>
     </div></AnchoredCard>
-    <AnchoredCard v-model="profileOpen" class="consult-icon" title="个人画像" side="bottom" align="end"><template #trigger><UiIcon name="profile" :size="19" /><span class="consult-header__label">个人画像</span></template><ConversationProfile embedded :loading="profileLoading" :error="profileError" @close="profileOpen = false" @refresh="refreshProfile" @supplement="fill" /></AnchoredCard>
+    <AnchoredCard v-model="profileOpen" class="consult-icon consult-profile-button" title="个人画像" side="bottom" align="end"><template #trigger><UiIcon name="profile" :size="19" /><span class="consult-header__label">个人画像</span></template><ConversationProfile embedded :loading="profileLoading" :error="profileError" @close="profileOpen = false" @refresh="refreshProfile" @supplement="fill" /></AnchoredCard>
    </div></div>
    <ol v-if="!choosingTopic && demo.state.currentSessionId" class="consult-journey" aria-label="咨询进度：已走过的阶段、当前工作重点与后续阶段，可随话题调整"><li v-for="item in journey" :key="item.key" :data-state="stageState(item.key)" :aria-current="currentStage === item.key ? 'step' : undefined"><i /><span><em class="consult-journey__full">{{ item.label }}</em><em class="consult-journey__short">{{ item.short }}</em></span></li></ol>
   </header>
@@ -683,5 +683,7 @@ onUnmounted(() => { disposed = true; clearInterval(recoveryTimer); window.remove
  .session-row { grid-template-columns: minmax(0, 1fr); }
  .session-row__actions { justify-content: flex-end; }
  .session-row__action, .session-row__edit-actions .btn, .session-search input, .session-manage__tools .ws-text-button { min-height: 44px; }
+ /* The profile drawer remains available from the mobile navigation; keep the chat header focused on history and new chat. */
+ .consult-header__actions :deep(.consult-profile-button) { display: none; }
 }
 </style>

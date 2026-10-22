@@ -338,7 +338,7 @@ function displayAt(raw: string): string {
 .src--stated {
   background: var(--c-primary-weak);
   border-color: var(--c-primary-border);
-  border-left-width: 3px;
+  border-left-width: 1px;
   border-radius: var(--r-sm);
   color: var(--c-primary);
 }
@@ -365,7 +365,7 @@ function displayAt(raw: string): string {
 .src--attested {
   background: var(--c-surface);
   border-color: var(--c-text-3);
-  border-left-width: 3px;
+  border-left-width: 1px;
   border-radius: var(--r-sm);
   color: var(--c-text);
 }
@@ -415,7 +415,7 @@ function displayAt(raw: string): string {
 .src--transcript {
   background: var(--c-surface-3);
   border-color: var(--c-border);
-  border-left-width: 3px;
+  border-left-width: 1px;
   border-radius: var(--r-sm);
   color: var(--c-text-2);
 }

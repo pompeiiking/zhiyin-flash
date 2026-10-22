@@ -40,15 +40,19 @@ onMounted(load)
 <DirectionDetails v-if="plans && !history" :plans="plans" :saving="saving" :impact="impact" :selection-changed="selectionChanged" @select="select"/>
 <ReportHistory v-else-if="history" asset-type="direction_plan"/>
 <section v-else-if="!busy&&!error" class="direction-empty" aria-labelledby="direction-empty-title">
-  <div class="direction-empty__lead"><p>方向尚待形成</p><h2 id="direction-empty-title">先把考虑对象与判断依据放到同一处</h2><RouterLink class="btn btn--primary" to="/chat?question=请根据我的个人资料，帮我整理正在考虑的方向并说明还缺哪些依据">开始梳理方向</RouterLink></div>
-  <ol><li><span>01</span><div><strong>补充考虑对象</strong><p>可以有多个，也可以暂时说“还没定”。</p></div></li><li><span>02</span><div><strong>核对比较依据</strong><p>画像、报告与现实限制会一起参与判断。</p></div></li><li><span>03</span><div><strong>安排一次验证</strong><p>用可执行的小尝试降低选择的不确定性。</p></div></li></ol>
+  <div class="direction-empty__lead"><h2 id="direction-empty-title">先把考虑对象与判断依据放到同一处</h2><p>系统会把方向整理成三种角色，方便你比较取舍，而不是替你选一个。</p><RouterLink class="btn btn--primary" to="/chat?question=请根据我的个人资料，帮我整理正在考虑的方向并说明还缺哪些依据">开始梳理方向</RouterLink></div>
+  <div class="direction-empty__frames" aria-label="方向方案会包含三种角色">
+    <article><span>主攻</span><strong>最值得先验证的方向</strong><small>目标、匹配依据、主要风险</small></article>
+    <article><span>平行</span><strong>可以同时保留的备选</strong><small>与主攻的差异和取舍</small></article>
+    <article><span>保底</span><strong>风险更低的退路</strong><small>现实条件与最低门槛</small></article>
+  </div>
   <div class="direction-empty__links"><RouterLink to="/profile">核对个人画像</RouterLink><RouterLink to="/report">查看诊断报告</RouterLink></div>
 </section>
 </div></template>
 <style scoped>
 .report-page .c2-report-layout > .report-next-rail { grid-column:2; grid-row:1; display:grid; gap:24px; position:sticky; top:20px; padding-top:0; }
-.direction-empty{display:grid;grid-template-columns:minmax(0,.9fr) minmax(360px,1.2fr);gap:42px;margin-top:18px;padding:34px 0;border-top:3px solid var(--c-primary);border-bottom:1px solid var(--c-border)}.direction-empty__lead>p{color:var(--c-primary);font-size:12px;font-weight:600}.direction-empty__lead h2{max-width:14em;margin:7px 0 22px;font-size:28px;line-height:1.38}.direction-empty ol{margin:0;padding:0;list-style:none}.direction-empty li{display:grid;grid-template-columns:34px minmax(0,1fr);gap:12px;padding:13px 0;border-bottom:1px solid var(--c-border)}.direction-empty li>span{color:var(--c-primary);font-size:12px;font-variant-numeric:tabular-nums}.direction-empty li strong{font-size:15px}.direction-empty li p{margin-top:4px;color:var(--c-text-3);font-size:13px}.direction-empty__links{grid-column:1/-1;display:flex;gap:20px}.direction-empty__links a{min-height:44px;color:var(--c-primary)}
-@media(max-width:720px){.direction-empty{grid-template-columns:1fr;gap:20px;padding-top:26px}.direction-empty__lead h2{font-size:23px}.direction-empty__links{flex-wrap:wrap}}
+.direction-empty{display:grid;grid-template-columns:minmax(0,.9fr) minmax(360px,1.2fr);gap:42px;margin-top:18px;padding:34px 0;border-top:1px solid var(--c-primary-border);border-bottom:1px solid var(--c-border)}.direction-empty__lead h2{max-width:14em;margin:0 0 14px;font-size:28px;line-height:1.38}.direction-empty__lead>p{max-width:34em;margin:0 0 22px;color:var(--c-text-2);font-size:14px;line-height:1.8}.direction-empty__frames{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.direction-empty__frames article{display:grid;align-content:start;gap:6px;min-height:150px;padding:16px;border:1px dashed var(--c-border-strong);border-radius:12px;background:var(--c-surface-2)}.direction-empty__frames span{color:var(--c-primary);font-size:12px;font-weight:600}.direction-empty__frames strong{font-size:15px;line-height:1.5}.direction-empty__frames small{color:var(--c-text-3);font-size:12px;line-height:1.6}.direction-empty__links{grid-column:1/-1;display:flex;gap:20px}.direction-empty__links a{min-height:44px;color:var(--c-primary)}
+@media(max-width:720px){.direction-empty{grid-template-columns:1fr;gap:20px;padding-top:26px}.direction-empty__lead h2{font-size:23px}.direction-empty__frames{grid-template-columns:minmax(0,1fr)}.direction-empty__frames article{min-height:0}.direction-empty__links{flex-wrap:wrap}}
 @media(max-width:1279px){.report-page .c2-report-layout{grid-template-columns:minmax(0,1fr)}.report-page .c2-report-layout > .report-next-rail{grid-column:1;grid-row:auto;position:static}}
 
 @media print{.report-page :deep(button),.report-page :deep(.report-next-rail),.report-page :deep(.direction-radio),.report-page :deep(select){display:none!important}.report-page :deep(.c2-report-layout){display:block!important}.report-page :deep(.full-report){width:100%}}

@@ -576,7 +576,7 @@ const sourceDetail = computed(() =>
 
 .tools-chain__readby {
   border: var(--bw-1) solid var(--c-border);
-  border-left: 3px solid var(--c-primary-border);
+  border-left: 1px solid var(--c-primary-border);
   background: var(--c-surface);
   font-weight: var(--fw-medium);
   color: var(--c-text-2);
@@ -726,7 +726,7 @@ const sourceDetail = computed(() =>
   gap: 2px;
   padding: 3px 9px 3px 7px;
   border: var(--bw-1) solid var(--c-border);
-  border-left: 3px solid var(--c-primary-border);
+  border-left: 1px solid var(--c-primary-border);
   border-radius: var(--r-sm);
   background: var(--c-surface);
   font-size: var(--fs-12);

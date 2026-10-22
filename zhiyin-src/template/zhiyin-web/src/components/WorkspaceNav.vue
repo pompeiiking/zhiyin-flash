@@ -5,6 +5,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { backendDemo } from '../lib/backend-demo'
 import { openSession, systemData } from '../lib/system-data'
 import { demo, toast } from '../store'
+import { useDisplayName } from '../lib/display-name'
 import AnchoredCard from './AnchoredCard.vue'
 import UiIcon from './UiIcon.vue'
 import { WORKSPACE_GROUPS, MOBILE_TABS, isNavActive } from '../lib/workspace-nav'
@@ -26,6 +27,7 @@ const router = useRouter()
 const sessions = computed(() => [...backendDemo.state.sessions].sort((a,b) => ((b.last_message_at || b.last_active_at) || '').localeCompare((a.last_message_at || a.last_active_at) || '')))
 async function resume(id: string) { try { await openSession(id); more.value = false; await router.push('/chat') } catch(e) { toast((e as Error).message) } }
 const more = ref(false)
+const displayName = useDisplayName()
 defineExpose({ show() { more.value = true } })
 </script>
 
@@ -44,8 +46,8 @@ defineExpose({ show() { more.value = true } })
     <AnchoredCard v-model="more" class="ws-bookmark ws-bookmark--more" title="全部功能" label="更多功能" side="top" align="end" size="wide">
       <template #trigger><UiIcon name="more" :size="20" /><span>更多</span></template>
     <RouterLink class="mobile-account-entry" to="/settings" @click="more=false">
-      <span class="mobile-account-entry__avatar" aria-hidden="true">{{ demo.state.account.slice(0,1) }}</span>
-      <span><strong>{{ demo.state.account }}</strong><small>账号、资料授权与导出</small></span>
+      <span class="mobile-account-entry__avatar" aria-hidden="true">{{ displayName.slice(0,1) }}</span>
+      <span><strong>{{ displayName }}</strong><small>账号、资料授权与导出</small></span>
       <UiIcon name="arrow" :size="16" />
     </RouterLink>
     <div class="mobile-function-map">

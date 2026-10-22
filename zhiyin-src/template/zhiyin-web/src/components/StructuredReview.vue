@@ -516,7 +516,7 @@ form .ws-field { margin: 0; }
 .review-entry__head > span { flex: none; padding: 4px 8px; border: 1px solid var(--c-border); border-radius: var(--r-pill); color: var(--c-text-3); font-size: var(--fs-12); }
 .review-entry__head > span.is-pending { border-color: var(--c-primary-border); background: var(--c-primary-weak); color: var(--c-primary); }
 .review-entry__note { display: -webkit-box; overflow: hidden; color: var(--c-text-2); line-height: 1.65; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-.review-entry__impact { margin-top: 12px; padding: 12px 14px; background: var(--c-primary-weak); border-left: 3px solid var(--c-primary); }
+.review-entry__impact { margin-top: 12px; padding: 12px 14px; background: var(--c-primary-weak); border-left: 1px solid var(--c-primary); }
 .review-entry__impact strong { font-size: var(--fs-12); }
 .review-entry__impact p { margin-top: 4px; color: var(--c-text-2); font-size: var(--fs-12); }
 .review-entry__actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; }

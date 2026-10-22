@@ -39,7 +39,7 @@ html[data-theme='dark'] .app.app--workspace {
   --e-1: 0 1px 1px rgba(0,0,0,.28),0 8px 20px -18px rgba(0,0,0,.7);
   --e-2: 0 1px 2px rgba(0,0,0,.34),0 18px 40px -26px rgba(0,0,0,.8);
 }
-.app.app--workspace::before { content:''; position:fixed; inset:0 0 auto; height:3px; z-index:70; background:linear-gradient(90deg,#96000e 0 34%,#0058a7 76%); pointer-events:none; }
+.app.app--workspace::before { content:''; position:fixed; inset:0 0 auto; height:2px; z-index:70; background:linear-gradient(90deg,#96000e 0 34%,#0058a7 76%); pointer-events:none; }
 .app.app--desktop { padding-left:264px; }
 .app.app--desktop { height:100dvh; overflow:hidden; }
 .app.app--desktop .app__main { min-height:0; overflow-y:auto; }
@@ -330,7 +330,7 @@ html[data-theme='dark'] .app.app--workspace {
 .c2-plan-tools { display:grid; grid-template-columns:minmax(0,1fr) 312px; gap:24px; padding:20px; margin-top:24px; background:var(--c-surface); border:1px solid var(--c-border); border-radius:16px; }
 .app.app--workspace .c2-plan-surface { padding:20px; border:1px solid var(--c-border); border-radius:16px; background:var(--c-surface); box-shadow:var(--e-2); }
 .app.app--workspace .plan-current { margin-bottom:20px; }
-.app.app--workspace .plan-stages .fold { border:0; border-left:2px solid var(--c-border); border-radius:0; margin-left:9px; padding-left:16px; }
+.app.app--workspace .plan-stages .fold { border:0; border-left: 1px solid var(--c-border); border-radius:0; margin-left:9px; padding-left:16px; }
 .app.app--workspace .plan-stage__mark { background:var(--c-primary-weak); color:var(--c-primary); border-color:var(--c-primary-border); border-radius:50%; }
 .app.app--workspace .journey-action-main { display:flex; flex-direction:column; gap:20px; }
 .app.app--workspace .hm-live { padding:20px; border:1px solid var(--c-border); border-radius:16px; background:var(--c-surface); }

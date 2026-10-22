@@ -559,12 +559,12 @@ html[data-accent='red'] .dialogue-page {
  * 【2026-10-14 · P0-2】14px → 16px：这一块是"真正用来读的那一档"（tokens.css:113 登记
  * "16 学生空间正文/对话"），实测改前整个 /chat 只有 2 个 16px 节点 —— 长段落被压在 14px 上。
  * 层级不靠"比正文小"（那正是"规格表感"的来源），靠左线 + 缩进 + 颜色（--c-text-2）。 */
-.chat-block--detail { padding-left: 14px; border-left: 2px solid var(--c-border); color: var(--c-text-2); font-size: var(--fs-16); line-height: var(--lh-normal); }
+.chat-block--detail { padding-left: 14px; border-left: 1px solid var(--c-border); color: var(--c-text-2); font-size: var(--fs-16); line-height: var(--lh-normal); }
 .chat-block--detail p { white-space: pre-wrap; }
 /* 流式期间的过渡正文：它马上会被分块版本接管，所以只降低自身重量，不做闪烁。
     光标跟着它走，保证"字正在出来"这件事始终停在真实的字尾。
     这里与 --detail 同档（同一段话的两个状态，换字号会让流式结束瞬间跳一下）。 */
-.chat-block--transient { padding-left: 14px; border-left: 2px solid var(--c-border); color: var(--c-text-3); font-size: var(--fs-16); line-height: var(--lh-normal); white-space: pre-wrap; }
+.chat-block--transient { padding-left: 14px; border-left: 1px solid var(--c-border); color: var(--c-text-3); font-size: var(--fs-16); line-height: var(--lh-normal); white-space: pre-wrap; }
 
 /* 块四 · 行动（全页两个抬升面之一）
    边与卡头退回中性：卡片不能和它自己的主按钮抢蓝。视线路径变成
@@ -774,7 +774,7 @@ html[data-accent='red'] .dialogue-page {
  * 错误态：说清"哪一步失败了 / 你的东西还在 / 下一步点哪里"
  * 用注意色的**左侧竖线 + 浅底**，不用发光边框 —— 全站只有这一种注意语法。
  * ========================================================================== */
-.chat-error { display: flex; flex-direction: column; gap: 8px; width: 100%; padding: 16px 18px; border: var(--bw-1) solid var(--c-attention-border); border-left: 3px solid var(--c-attention); border-radius: var(--r-lg); background: var(--c-attention-weak); animation: block-grow 240ms var(--ease-out) both; }
+.chat-error { display: flex; flex-direction: column; gap: 8px; width: 100%; padding: 16px 18px; border: var(--bw-1) solid var(--c-attention-border); border-left: 1px solid var(--c-attention); border-radius: var(--r-lg); background: var(--c-attention-weak); animation: block-grow 240ms var(--ease-out) both; }
 .chat-error__head { display: flex; align-items: center; gap: 8px; color: var(--c-attention); font-size: var(--fs-14); }
 .chat-error p { color: var(--c-text-2); font-size: var(--fs-14); line-height: var(--lh-normal); }
 .chat-error__actions { display: flex; gap: 10px; margin-top: 4px; }
