@@ -2783,6 +2783,18 @@ export interface components {
        */
       available?: boolean;
       /**
+       * Confirmable
+       * @description 是否可直接确认已有自述
+       * @default false
+       */
+      confirmable?: boolean;
+      /**
+       * Field Source
+       * @description 画像里这条记录的实际来源
+       * @default
+       */
+      field_source?: string;
+      /**
        * Got
        * @default false
        */
@@ -2796,6 +2808,29 @@ export interface components {
        * @description chsi / conversation / academic
        */
       source: string;
+      /**
+       * State
+       * @description missing=完全没有；unverified=画像里已有自述但来源还不足以算拿到；got=已拿到。界面据此分开「待补充」与「已有待核实」
+       * @default missing
+       */
+      state?: string;
+      /**
+       * Status Text
+       * @description 当前状态的用户可读说明
+       * @default
+       */
+      status_text?: string;
+      /**
+       * Value
+       * @description 画像里已有的值；unverified 时用于一键确认
+       */
+      value?: unknown;
+      /**
+       * Verification
+       * @description 画像里这条记录的实际核实状态
+       * @default
+       */
+      verification?: string;
       /**
        * Why
        * @description 这条数据挡着哪一步判断 —— 给用户看的理由
@@ -2826,7 +2861,7 @@ export interface components {
       items?: components["schemas"]["CollectionItemView"][];
       /**
        * Missing
-       * @description 还差几条
+       * @description 还差几条（含已有自述但未核实）
        * @default 0
        */
       missing?: number;
@@ -2835,6 +2870,12 @@ export interface components {
        * @description 下一步最该走的源头
        */
       next_source?: string | null;
+      /**
+       * Unverified
+       * @description 其中已有自述、尚待核实的条数
+       * @default 0
+       */
+      unverified?: number;
     };
     /**
      * ConversationMaterialView

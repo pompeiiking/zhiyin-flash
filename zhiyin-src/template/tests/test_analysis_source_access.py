@@ -72,7 +72,8 @@ async def test_chat_and_tools_exclude_old_derivations_but_keep_allowed_sources(a
     recorder = Recorder(app)
     app.orchestrator._agent_engine = recorder
     app.orchestrator._intent_policy = None
-    request = TurnRequest(user_id="a", task_id="session", message="我想了解自己 CURRENT_SENTINEL",
+    session = await app.orchestrator.enter_task("a", "free_chat")
+    request = TurnRequest(user_id="a", task_id=session.id, message="我想了解自己 CURRENT_SENTINEL",
                           attachment_text="MATERIAL_SENTINEL" if material else "")
     await app.orchestrator.handle_message(request)
     content = serialized(recorder.requests) + serialized(recorder.tools)

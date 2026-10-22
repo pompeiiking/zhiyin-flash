@@ -66,6 +66,22 @@ class CollectionStep:
     而不是"请填写：兴趣"。问题本身是采集口径的一部分，所以它跟 `why` 一样
     属于策略层输出 —— 改它不发版。
     """
+    state: str = "missing"
+    """`missing`（完全没有）/ `unverified`（画像里有自述，但来源不相称）/ `got`。
+
+    把「已经说过、只是还没核实」与「完全没拿到」分开：两处用同一个 `got=false`
+    会让画像页写着「专业：市场营销」，采集清单同时说「专业未获取」（#39）。
+    """
+    value: Any = None
+    """画像里已有的值（`unverified` 时给用户确认用；`missing` 为 None）。"""
+    field_source: str = ""
+    """画像里这条记录的实际来源（不是采集登记表要求的来源）。"""
+    verification: str = ""
+    """画像里这条记录的实际核实状态。"""
+    status_text: str = ""
+    """这一条当前状态的用户可读说明。"""
+    confirmable: bool = False
+    """是否可以直接把已有自述确认为本人确认（`unverified` 时成立）。"""
 
 
 @dataclass(frozen=True)
@@ -88,7 +104,9 @@ class CollectionPlan:
 
     steps: tuple[CollectionStep, ...] = ()
     missing: int = 0
-    """还差几条"""
+    """还差几条（含已有自述但未核实）"""
+    unverified: int = 0
+    """其中画像里已有自述、但来源还不足以算「拿到」的条数"""
     by_source: dict[str, int] = field(default_factory=dict)
     """每个源还差几条 —— 界面按它分组说"从哪取"""
     blocked: tuple[str, ...] = ()
@@ -369,6 +387,12 @@ def _field_source(field: Any) -> Optional[ProfileSource]:
         return None
 
 
+def _field_verification(field: Any) -> str:
+    """读一个画像字段的核实状态（枚举/字符串两种都认）。"""
+    raw = getattr(field, "verification", None)
+    return str(getattr(raw, "value", raw) or "")
+
+
 def _counts_as_got(rule_source: CollectionSource, field: Any) -> bool:
     """这一条算不算"已经拿到了"。
 
@@ -510,15 +534,29 @@ def plan_collection(
     by_source: dict[str, int] = {}
     blocked: list[str] = []
     missing = 0
+    unverified = 0
 
     for key, label, source, why, ask in table:
+        field = have.get(key)
         # 判据是"这条值由谁出具"，不是"这个键出现过没有" ——
         # 只对话里提过一句的权威字段，仍然该去做学信网核验（见 `_counts_as_got`）。
-        got = _counts_as_got(source, have.get(key))
+        got = _counts_as_got(source, field)
         available = source.value in usable
         signal = heard_by_key.get(key)
         if signal is not None:
             why = _compose_why(signal, why)
+        if field is None:
+            state = "missing"
+            status_text = ""
+        elif got:
+            state = "got"
+            status_text = "已拿到与来源相称的值"
+        else:
+            # 值已经在画像里，只是来源还不够权威：这是「已有待核实」，
+            # 不是「完全没拿到」。两处必须说同一句话（#39）。
+            state = "unverified"
+            unverified += 1
+            status_text = "画像里已有你的自述，还没有核实"
         if not got:
             missing += 1
             if available:
@@ -537,6 +575,12 @@ def plan_collection(
                 # 只有"问一句"那一类才有问题；已经拿到的不再问，所以也不给问题 ——
                 # 界面据此不给已完成的条目挂"去回答"。
                 ask=ask if (source is CollectionSource.CONVERSATION and not got) else "",
+                state=state,
+                value=getattr(field, "value", None) if field is not None else None,
+                field_source=_field_source(field).value if field is not None and _field_source(field) else "",
+                verification=_field_verification(field) if field is not None else "",
+                status_text=status_text,
+                confirmable=state == "unverified",
             )
         )
 
@@ -572,6 +616,7 @@ def plan_collection(
     return CollectionPlan(
         steps=tuple(steps),
         missing=missing,
+        unverified=unverified,
         by_source=by_source,
         blocked=tuple(blocked),
     )

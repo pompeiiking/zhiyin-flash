@@ -24,9 +24,10 @@ from zhiyin_business.services.unit_of_work import atomic_repository
 from zhiyin_business.services.dialogue_exploration import ExplorationUpdate, privacy_stamp
 from zhiyin_business.services.memory_policy import MemoryPolicyService
 from zhiyin_kernel import profile_taxonomy
+from zhiyin_kernel.report_quality import report_verdict_issue
 from zhiyin_kernel.assets import ActionPlan, Report, DirectionPlan, CalendarNode
-from zhiyin_kernel.blackboard import ProfileClue, TaskSession
-from zhiyin_kernel.enums import LoopStage, TaskStatus, BehaviorEventType, ProfileSource
+from zhiyin_kernel.blackboard import ProfileClue
+from zhiyin_kernel.enums import LoopStage, BehaviorEventType, ProfileSource
 from zhiyin_kernel.errors import InvalidRequest, ResourceNotFound
 from zhiyin_kernel.privacy import redact_sensitive
 from zhiyin_kernel.streaming import emit_progress
@@ -280,6 +281,14 @@ class DialogueRuntime:
             superseded = record["actions"].get(args.supersedes_action_id)
             if not superseded or superseded["state"] != "proposed" or superseded["operation"] != args.operation:
                 raise InvalidRequest("待调整的提案不存在或已失效")
+            # 取代必须落在同一个对象上。只校验操作名时，一次批量 profile.update
+            # 可以把任意字段的提案取代掉：没被重新提出的字段会永久停在 superseded，
+            # 用户原话里逐项说清楚的资料就此静默丢失（#38）。
+            if args.operation == "profile.update":
+                before_key = str((superseded.get("payload") or {}).get("key") or "")
+                after_key = str(normalized.get("key") or "")
+                if before_key != after_key:
+                    raise InvalidRequest("只能替换同一字段的上一版提案；其他字段请分别提出，不能借一次写入取代")
             if not args.evidence or args.evidence not in self.request.message:
                 raise InvalidRequest("调整提案需要本轮用户要求")
         action_id = "action_" + digest({"run": self.request.client_msg_id, "op": args.operation,
@@ -296,6 +305,7 @@ class DialogueRuntime:
         action = {"id": action_id, "run_id": self.request.client_msg_id, "operation": args.operation, "payload": normalized,
                   "scope_operation": scope_operation, "before": before,
                   "authorization": args.authorization, "evidence": args.evidence,
+                  "supersedes_action_id": args.supersedes_action_id or "",
                   "base_version": version, "state": "proposed", "created_at": utcnow(),
                   "expires_at": (datetime.now(timezone.utc) + timedelta(minutes=30)).isoformat()}
         await self.ledger.put_action(user, session, action)
@@ -530,13 +540,16 @@ class DialogueRuntime:
                 current = {f.key: f for f in await self.o._profiles.get_fields(user)}
                 if key not in current:
                     raise InvalidRequest("还没有可供核对的当前记录，不能把候选说法直接当成事实")
-            if args.authorization == "automatic" and key in current:
+            if entry_type.value in {"interest", "career_focus"} and payload.get("assertion_type") != "explicit_correction":
+                # 兴趣/职业关注先合并再落库：首次写入也要走同一套极性拆分与去重，
+                # 否则「喜欢…但不喜欢…」会在第一轮把否定项直接写进兴趣（#40）。
+                before_preference = current.get(key)
+                if before_preference is None:
+                    before_preference = next((field for field in await self.o._profiles.get_fields(user) if field.key == key), None)
+                value, attributes, record_conflict = profile_taxonomy.merge_preferences(
+                    key, before_preference, normalized_value, attributes)
+            elif args.authorization == "automatic" and key in current:
                 record_conflict = profile_taxonomy.normalize_value(key, current[key].value) != normalized_value and payload.get("assertion_type") != "explicit_correction"
-                if payload.get("assertion_type") != "explicit_correction" and entry_type.value in {"interest", "career_focus"}:
-                    value, attributes, record_conflict = profile_taxonomy.merge_preferences(key, current[key], normalized_value, attributes)
-            elif args.authorization == "explicit" and entry_type.value in {"interest", "career_focus"} and payload.get("assertion_type") != "explicit_correction":
-                before = next((field for field in await self.o._profiles.get_fields(user) if field.key == key), None)
-                value, attributes, record_conflict = profile_taxonomy.merge_preferences(key, before, normalized_value, attributes)
             record_conflict = record_conflict or wants_conflict
             save_scope = str(payload.get("save_scope") or "")
             if save_scope not in {"", "single"}:
@@ -602,8 +615,12 @@ class DialogueRuntime:
                 raise InvalidRequest("计划任务编号重复")
             return plan.model_dump(mode="json")
         if args.operation == "report.save":
-            return Report.model_validate({**payload, "user_id": user, "id": "report_" + stable_id,
-                "version": 1, "generated_at": utcnow()}).model_dump(mode="json")
+            report = Report.model_validate({**payload, "user_id": user, "id": "report_" + stable_id,
+                "version": 1, "generated_at": utcnow()})
+            issue = report_verdict_issue(report.verdict)
+            if issue:
+                raise InvalidRequest(issue)
+            return report.model_dump(mode="json")
         if args.operation == "directions.save":
             plans = [DirectionPlan.model_validate({**p, "id": f"direction_{stable_id}_{index}",
                        "selected": False, "match_score": None}) for index, p in enumerate(payload.get("plans", []))]
@@ -654,15 +671,48 @@ class DialogueRuntime:
         async with self.o._assets.mutation_scope(self.request.user_id):
             return await self._execute_transaction(action, approved)
 
+    async def _restore_superseded(self, action):
+        """A replacement that never landed must not leave the old proposal dead.
+
+        被取代的提案在新提案执行失败后原本永久停在 superseded：用户既看不到它，
+        也不能再确认，而新提案也失败了 —— 一次写入失败会连带吞掉上一条可用提案。
+        """
+        target_id = str(action.get("supersedes_action_id") or "")
+        if not target_id:
+            return
+        record = await self.ledger.read(self.request.user_id, self.request.task_id)
+        target = record["actions"].get(target_id)
+        if target is None or target.get("state") != "superseded" or target.get("superseded_by") != action["id"]:
+            return
+        target["state"] = "proposed"
+        target["superseded_by"] = ""
+        await self.ledger.put_action(self.request.user_id, self.request.task_id, target)
+
+    async def _has_version_conflict(self, action):
+        """执行前的版本校验。
+
+        profile.update 只比较**目标字段**自己的时间戳：同一轮里模型连续写学校、专业、
+        学制等不同字段时，第一条写入会改变整份画像快照，但不应让同轮其他字段全部
+        被判成「数据已变化」而静默 superseded（#38）。同一字段被并发改写仍然会拦住。
+        """
+        if action.get("scope_operation") == "profile.update" or action.get("operation") == "profile.update":
+            key = str((action.get("payload") or {}).get("key") or "")
+            current = next((field for field in await self.o._profiles.get_fields(self.request.user_id)
+                            if field.key == key), None)
+            return (current.updated_at if current else None) != field_stamp(action, key)
+        return await self.snapshot(action.get("scope_operation", action["operation"])) != action["base_version"]
+
     async def _execute_transaction(self, action, approved):
         user, session = self.request.user_id, self.request.task_id
         if await self.cancelled(fresh=True):
             action["state"] = "rejected"
             await self.ledger.put_action(user, session, action)
+            await self._restore_superseded(action)
             return {"executed": False, "state": "cancelled", "reason": "用户已停止，本项未开始执行。"}
-        if await self.snapshot(action.get("scope_operation", action["operation"])) != action["base_version"]:
+        if await self._has_version_conflict(action):
             action["state"] = "superseded"
             await self.ledger.put_action(user, session, action)
+            await self._restore_superseded(action)
             return {"executed": False, "reason": "数据已变化，本次确认未执行。"}
         action.update(state="executing", approved=approved)
         await self.ledger.put_action(user, session, action)
@@ -672,12 +722,20 @@ class DialogueRuntime:
         except AcademicPreviewChanged as exc:
             action["state"] = "superseded"
             await self.ledger.put_action(user, session, action)
+            await self._restore_superseded(action)
             self.event("step.failed", "预览已失效，请重新核对", step_id=action["id"])
             result = {"executed": False, "action_id": action["id"], "state": "superseded", "reason": str(exc)}
+        except InvalidRequest as exc:
+            action["state"] = "rejected"
+            await self.ledger.put_action(user, session, action)
+            await self._restore_superseded(action)
+            self.event("step.failed", str(exc), step_id=action["id"])
+            result = {"executed": False, "action_id": action["id"], "state": "rejected", "reason": str(exc)}
         except Exception:
             log.exception("对话操作失败：%s", action["id"])
             action["state"] = "outcome_unknown"
             await self.ledger.put_action(user, session, action)
+            await self._restore_superseded(action)
             self.event("step.failed", "操作未能确认完成，请查看记录后核对", step_id=action["id"])
             result = {"executed": False, "action_id": action["id"], "state": "outcome_unknown"}
         else:
@@ -821,7 +879,11 @@ class DialogueRuntime:
         elif operation in {"report.save", "report.activate"}:
             if operation == "report.save" and await self.o._assets.get_report(user) is not None:
                 return {"draft_saved": True, "draft_id": action["id"], "active_changed": False}
-            version = await self.o._assets.save_report(user, Report.model_validate(payload.get("content", payload)),
+            report = Report.model_validate(payload.get("content", payload))
+            issue = report_verdict_issue(report.verdict)
+            if issue:
+                raise InvalidRequest(issue)
+            version = await self.o._assets.save_report(user, report,
                 depends_on_profile_keys=dependencies,
                 diff_from_previous="用户请求生成报告")
         elif operation in {"directions.save", "directions.activate"}:
@@ -854,13 +916,13 @@ class DialogueRuntime:
         if request.task_id in state.get("deleted_conversations", []):
             raise ResourceNotFound("会话已删除，请创建新会话")
         session = await self.o._sessions.get(request.task_id)
-        if session is not None and session.user_id != request.user_id:
-            raise ResourceNotFound("会话不存在")
         if session is None:
-            session = await self.o._sessions.create(TaskSession(id=request.task_id, user_id=request.user_id,
-                task_code="free_chat", task_name="咨询对话", loop_stage=LoopStage.COLLECT,
-                lead_agent=self.AGENT, status=TaskStatus.ACTIVE,
-                created_at=datetime.now(timezone.utc), updated_at=datetime.now(timezone.utc)))
+            # 会话 id 只能由服务端签发。未知 id 直接拒绝，不能按「咨询对话」静默建会话：
+            # 过期/串号的 task_id 会让用户的消息进入一条看似全新的会话，原历史像是消失，
+            # 而界面没有任何提示（#35）。需要新对话时走 POST /app/task/enter。
+            raise ResourceNotFound("会话不存在或已失效，请从任务入口重新进入")
+        if session.user_id != request.user_id:
+            raise ResourceNotFound("会话不属于当前账号，请从任务入口重新进入")
         request_hash = digest(request.model_dump(mode="json", exclude={"client_msg_id"}))
         data = await self.ledger.read(request.user_id, request.task_id)
         prior = data["runs"].get(request.client_msg_id)

@@ -21,6 +21,7 @@ from zhiyin_kernel.assets import ActionPlan, DirectionPlan, Report
 from zhiyin_kernel.blackboard import AssetVersion
 from zhiyin_kernel.enums import AssetType
 from zhiyin_kernel.errors import InvalidRequest
+from zhiyin_kernel.report_quality import report_verdict_issue
 from zhiyin_orchestration import DomainEvent, EventBus
 
 
@@ -247,6 +248,11 @@ class DefaultAssetService(AssetService):
         depends_on_profile_keys: Sequence[str] = (),
         diff_from_previous: Optional[str] = None,
     ) -> AssetVersion:
+        # 报告正文在落库前过同一道内容护栏：未通过校验的产出不能成为可激活版本，
+        # 否则对话层说「已生成」、报告层却显示「结论待重新生成」（#41）。
+        issue = report_verdict_issue(report.verdict)
+        if issue:
+            raise InvalidRequest(issue)
         version = await self._next_version(user_id, AssetType.REPORT)
         saved = report.model_copy(update={"user_id": user_id, "version": version})
         await self._assets.save_report(saved)

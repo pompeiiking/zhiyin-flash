@@ -236,6 +236,18 @@ class CollectionItemView(BaseModel):
             "界面点「去回答」就把它带进对话，不为空表示这一条有可直接执行的动作"
         ),
     )
+    state: str = Field(
+        default="missing",
+        description=(
+            "missing=完全没有；unverified=画像里已有自述但来源还不足以算拿到；"
+            "got=已拿到。界面据此分开「待补充」与「已有待核实」"
+        ),
+    )
+    value: Any = Field(default=None, description="画像里已有的值；unverified 时用于一键确认")
+    field_source: str = Field(default="", description="画像里这条记录的实际来源")
+    verification: str = Field(default="", description="画像里这条记录的实际核实状态")
+    status_text: str = Field(default="", description="当前状态的用户可读说明")
+    confirmable: bool = Field(default=False, description="是否可直接确认已有自述")
 
 
 class CollectionPanelView(BaseModel):
@@ -247,7 +259,8 @@ class CollectionPanelView(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    missing: int = Field(default=0, description="还差几条")
+    missing: int = Field(default=0, description="还差几条（含已有自述但未核实）")
+    unverified: int = Field(default=0, description="其中已有自述、尚待核实的条数")
     by_source: dict[str, int] = Field(default_factory=dict, description="每个源还差几条")
     blocked: list[str] = Field(default_factory=list, description="有缺口、但没有源头")
     next_source: Optional[str] = Field(default=None, description="下一步最该走的源头")

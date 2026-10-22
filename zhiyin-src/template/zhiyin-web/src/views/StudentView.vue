@@ -58,6 +58,7 @@ import ProfileInsights from '../components/ProfileInsights.vue'
 import AcademicVerification from '../components/AcademicVerification.vue'
 import FormConflict from '../components/FormConflict.vue'
 import { backendDemo } from '../lib/backend-demo'
+import { backendClient } from '../api/backend-client'
 import { useProfileWorkspace } from '../lib/use-profile-workspace'
 import { useProfileFields } from '../lib/use-profile-fields'
 import { useProfileConclusions } from '../lib/use-profile-conclusions'
@@ -125,6 +126,28 @@ const correctionState = useProfileCorrection({
 const { correction, value, preferenceItems, multiple, correctionError, correctionLatest, correctionConflictRows, saveBusy, inspectField, edit, save, confirmCorrectionConflict, deleting, deleteBusy, deleteError, askDelete, closeDelete, confirmDelete } = correctionState
 
 function changeTab(tab: 'facts' | 'judgments' | 'gaps' | 'sources') { profileTab.value = tab }
+
+/** 画像里已有自述、但采集来源还不足以算「拿到」的字段：单独展示，不与完全缺失混在一起。 */
+const unverifiedCollection = computed(() =>
+  (backendDemo.state.liveWorkspace?.collection_panel?.items ?? []).filter(item => item.state === 'unverified'),
+)
+const confirmingKey = ref('')
+const confirmError = ref('')
+async function confirmCollection(item: { key: string; label: string }) {
+  if (!live.value || confirmingKey.value) return
+  const field = livePanel.value?.fields?.find(field => field.key === item.key)
+  if (!field) return
+  confirmingKey.value = item.key
+  confirmError.value = ''
+  try {
+    await backendClient.correct(item.key, field.value as string | string[], field.updated_at ?? null, field.attributes ?? {})
+    await loadWorkspace()
+  } catch (error) {
+    confirmError.value = error instanceof Error ? error.message : '确认没有保存成功，原记录仍然保留，请重试。'
+  } finally {
+    confirmingKey.value = ''
+  }
+}
 
 const identity = computed(() => {
   const pick = (key: string) => known.value.find((row) => row.key === key)?.value
@@ -541,6 +564,35 @@ onMounted(()=>{ void loadWorkspace() })
         </div>
         <span class="p7-block__count">{{ gapRows.length }} 条待补充</span>
       </header>
+
+      <section v-if="unverifiedCollection.length" class="p7-unverified" aria-labelledby="p7-unverified-title">
+        <header class="p7-block__head">
+          <div>
+            <h3 id="p7-unverified-title">已有你的自述，待核实</h3>
+            <p>这些信息已经在画像里，只是来源仍是本人自述；确认后就以「本人确认」记录。</p>
+          </div>
+          <span class="p7-block__count">{{ unverifiedCollection.length }} 条</span>
+        </header>
+        <p v-if="confirmError" class="ws-field-error" role="alert">{{ confirmError }}</p>
+        <ul class="p7-gaps">
+          <li v-for="item in unverifiedCollection" :key="item.key" class="p7-gap">
+            <div class="p7-gap__head">
+              <h3>{{ item.label }}</h3>
+              <EvidenceState state="unverified" />
+            </div>
+            <p class="p7-gap__why"><span>已有</span>{{ Array.isArray(item.value) ? item.value.join('、') : item.value }}</p>
+            <p class="p7-gap__where"><span>状态</span>{{ item.status_text || '画像里已有你的自述，还没有核实' }}</p>
+            <div class="p7-gap__actions">
+              <button class="btn btn--primary" type="button" :disabled="!!confirmingKey" @click="confirmCollection(item)">
+                {{ confirmingKey === item.key ? '正在确认…' : '确认这个值' }}
+              </button>
+              <button class="ws-text-button" type="button" @click="profileTab = 'sources'; verificationOpen = true">
+                去学信网核验<UiIcon name="shield" :size="14" />
+              </button>
+            </div>
+          </li>
+        </ul>
+      </section>
 
       <ul v-if="gapRows.length" class="p7-gaps">
         <li

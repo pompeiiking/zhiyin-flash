@@ -13,13 +13,26 @@ from zhiyin_orchestration import AgentResult
 def test_independent_negative_interest_preserves_each_objects_polarity():
     old = SimpleNamespace(value=['调试程序'], attributes={'polarity': 'like'})
     values, attrs, conflict = taxonomy.merge_preferences('interest', old, ['重复录入'], {'polarity': 'dislike'})
-    assert values == ['调试程序', '重复录入'] and not conflict
+    # 否定项不是兴趣：它保留逐项极性，但不进入兴趣的取值列表（#40）。
+    assert values == ['调试程序'] and not conflict
     assert attrs['items'] == [dict(value='调试程序', polarity='like'), dict(value='重复录入', polarity='dislike')]
     same = SimpleNamespace(value=values, attributes=attrs)
     assert taxonomy.merge_preferences('interest', same, ['调试程序'], {'polarity': 'dislike'})[2]
     candidate, candidate_attrs, _ = taxonomy.merge_preferences('interest', same, ['调试程序'], {'polarity': 'dislike'})
-    assert candidate == values and candidate_attrs['items'][1]['polarity'] == 'dislike'
+    assert candidate == values and candidate_attrs['items'][0]['polarity'] == 'dislike'
     assert taxonomy.merge_preferences('interest', same, ['重复录入'], {'polarity': 'dislike'})[:2] == (values, attrs)
+
+
+def test_same_concept_negative_phrases_are_deduplicated_without_entering_interest():
+    old = SimpleNamespace(value=['写东西', '研究人为什么买'], attributes={'items': [
+        dict(value='写东西', polarity='like'), dict(value='研究人为什么买', polarity='like')]})
+    values, attrs, _ = taxonomy.merge_preferences(
+        'interest', old, ['天天应酬', '应酬'],
+        {'items': [dict(value='天天应酬', polarity='dislike'), dict(value='应酬', polarity='dislike')]},
+    )
+    assert values == ['写东西', '研究人为什么买']
+    dislikes = [item for item in attrs['items'] if item['polarity'] == 'dislike']
+    assert [item['value'] for item in dislikes] == ['天天应酬']
 
 
 def test_per_item_attributes_are_bounded_and_cannot_nest_or_use_unknown_types():
@@ -38,7 +51,8 @@ async def test_runtime_appends_interests_instead_of_generating_false_conflict():
     await _send(c, s, '调试程序')
     await _send(c, s, '重复录入')
     fields = await c.profile_service.get_fields('u1', ['interest'])
-    assert fields[0].value == ['调试程序', '重复录入']
+    # 否定项保留在逐项属性里，但不作为兴趣值展示。
+    assert fields[0].value == ['调试程序']
     assert fields[0].attributes['items'][1]['polarity'] == 'dislike'
     assert not await c.profile_service.list_conflicts('u1')
 

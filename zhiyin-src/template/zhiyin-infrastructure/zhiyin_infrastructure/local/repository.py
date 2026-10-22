@@ -129,7 +129,10 @@ class InMemoryProfileRepository(ProfileRepository):
         profile = self._ensure(user_id)
         existing = next((f for f in profile.fields if f.key == field.key), None)
         if check_version:
-            if existing and existing.value == field.value and existing.source == field.source:
+            # 值没变、只有逐项属性（例如兴趣极性）变了，仍然是一次真实更新；
+            # 只比值会让「喜欢/不喜欢」这种属性变化被静默丢弃（#40）。
+            if (existing and existing.value == field.value and existing.source == field.source
+                    and dict(existing.attributes or {}) == dict(field.attributes or {})):
                 return _snapshot(existing)
             if (existing.updated_at if existing else None) != expected_updated_at:
                 raise DuplicateResource("这项画像已更新，你的输入仍保留，请核对最新信息后再保存。")

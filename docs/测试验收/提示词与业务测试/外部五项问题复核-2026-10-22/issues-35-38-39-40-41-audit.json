@@ -1,0 +1,52 @@
+{
+  "35": {
+    "accepted": true,
+    "persisted": true
+  },
+  "38": {
+    "cross_field_replacement_accepted": true,
+    "old_key": "school",
+    "old_state": "superseded",
+    "superseded_by": "action_94756c1b7adfdfe53c495d65",
+    "new_key": "duration",
+    "stored_keys": []
+  },
+  "39": {
+    "profile_major": "市场营销",
+    "collection_got": false,
+    "source": "chsi"
+  },
+  "41": {
+    "executed": true,
+    "saved_version": 1,
+    "stored_title": "本报告说明",
+    "display_verdict": {
+      "title": "本版结论待重新生成",
+      "summary": "本版报告生成时混入了对旧报告/生成过程的评论，未通过内容校验，暂不作为诊断结论展示。请补充材料后重新生成报告。"
+    }
+  },
+  "40": {
+    "stored_values": [
+      "写东西",
+      "应酬",
+      "天天应酬"
+    ],
+    "attributes": {
+      "items": [
+        {
+          "value": "写东西",
+          "polarity": "like"
+        },
+        {
+          "value": "应酬",
+          "polarity": "dislike"
+        },
+        {
+          "value": "天天应酬",
+          "polarity": "dislike"
+        }
+      ]
+    },
+    "same_concept_deduplicated": false
+  }
+}

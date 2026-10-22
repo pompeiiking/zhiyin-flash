@@ -1,0 +1,224 @@
+[
+  {
+    "case": "38",
+    "message": "我叫小林，女，22岁，大三，在重庆工商大学读市场营销，2027年6月毕业，学制四年，全日制本科，现在在读。",
+    "elapsed": 8.54,
+    "reply": "小林你好，信息我记下了：重庆工商大学市场营销，大三，2027年6月毕业，全日制本科在读。这个时间点其实挺关键——离毕业还有一年多，正好是能试错、也能攒经历的阶段。\n\n现在你心里对毕业后的方向有大致想法吗？比如是偏市场、运营、销售这类，还是想往别的方向看看；如果还没想清楚，也可以说说最近在琢磨什么。",
+    "fields": [
+      {
+        "key": "student_name",
+        "value": "小林",
+        "attributes": {},
+        "source": "ProfileSource.CONVERSATION"
+      },
+      {
+        "key": "school",
+        "value": "重庆工商大学",
+        "attributes": {},
+        "source": "ProfileSource.CONVERSATION"
+      },
+      {
+        "key": "major",
+        "value": "市场营销",
+        "attributes": {},
+        "source": "ProfileSource.CONVERSATION"
+      },
+      {
+        "key": "study_year",
+        "value": "大三",
+        "attributes": {},
+        "source": "ProfileSource.CONVERSATION"
+      },
+      {
+        "key": "expected_graduation",
+        "value": "2027年6月",
+        "attributes": {},
+        "source": "ProfileSource.CONVERSATION"
+      },
+      {
+        "key": "duration",
+        "value": "四年",
+        "attributes": {},
+        "source": "ProfileSource.CONVERSATION"
+      },
+      {
+        "key": "degree_level",
+        "value": "本科",
+        "attributes": {},
+        "source": "ProfileSource.CONVERSATION"
+      },
+      {
+        "key": "study_mode",
+        "value": "全日制",
+        "attributes": {},
+        "source": "ProfileSource.CONVERSATION"
+      },
+      {
+        "key": "enrollment_status",
+        "value": "在读",
+        "attributes": {},
+        "source": "ProfileSource.CONVERSATION"
+      }
+    ],
+    "actions": [
+      {
+        "key": "student_name",
+        "value": "小林",
+        "state": "succeeded",
+        "superseded_by": null,
+        "error": null
+      },
+      {
+        "key": "school",
+        "value": "重庆工商大学",
+        "state": "succeeded",
+        "superseded_by": null,
+        "error": null
+      },
+      {
+        "key": "major",
+        "value": "市场营销",
+        "state": "succeeded",
+        "superseded_by": null,
+        "error": null
+      },
+      {
+        "key": "study_year",
+        "value": "大三",
+        "state": "succeeded",
+        "superseded_by": null,
+        "error": null
+      },
+      {
+        "key": "expected_graduation",
+        "value": "2027年6月",
+        "state": "succeeded",
+        "superseded_by": null,
+        "error": null
+      },
+      {
+        "key": "duration",
+        "value": "四年",
+        "state": "succeeded",
+        "superseded_by": null,
+        "error": null
+      },
+      {
+        "key": "degree_level",
+        "value": "本科",
+        "state": "succeeded",
+        "superseded_by": null,
+        "error": null
+      },
+      {
+        "key": "study_mode",
+        "value": "全日制",
+        "state": "succeeded",
+        "superseded_by": null,
+        "error": null
+      },
+      {
+        "key": "enrollment_status",
+        "value": "在读",
+        "state": "succeeded",
+        "superseded_by": null,
+        "error": null
+      }
+    ]
+  },
+  {
+    "case": "40",
+    "message": "我更喜欢写东西和研究人为什么买，不太喜欢天天应酬；能力上文案、活动执行比较有信心，数据分析只会基础Excel。不想做销售。",
+    "elapsed": 8.7,
+    "reply": "你描述的方向挺清楚：喜欢写、喜欢琢磨人为什么买，但不想靠应酬和推销吃饭，这几点其实指向同一类工作状态。\n\n想先听一个具体的：你说的“写东西”，最近一次写得比较投入是什么场景？比如公众号、社团推文、课程作业还是别的？",
+    "fields": [
+      {
+        "key": "interest",
+        "value": [
+          "写东西",
+          "研究人为什么买",
+          "天天应酬"
+        ],
+        "attributes": {
+          "items": [
+            {
+              "value": "写东西",
+              "polarity": "like"
+            },
+            {
+              "value": "研究人为什么买",
+              "polarity": "like"
+            },
+            {
+              "value": "天天应酬",
+              "polarity": "dislike"
+            }
+          ]
+        },
+        "source": "ProfileSource.CONVERSATION"
+      },
+      {
+        "key": "skills",
+        "value": [
+          "文案",
+          "活动执行",
+          "基础Excel"
+        ],
+        "attributes": {
+          "evidence_kind": "self_assessed"
+        },
+        "source": "ProfileSource.CONVERSATION"
+      },
+      {
+        "key": "constraints",
+        "value": "不想做销售",
+        "attributes": {
+          "scope": "职业方向"
+        },
+        "source": "ProfileSource.CONVERSATION"
+      }
+    ],
+    "actions": [
+      {
+        "key": "interest",
+        "value": [
+          "写东西",
+          "研究人为什么买",
+          "天天应酬"
+        ],
+        "state": "succeeded",
+        "superseded_by": null,
+        "error": null
+      },
+      {
+        "key": "skills",
+        "value": [
+          "文案",
+          "活动执行",
+          "基础Excel"
+        ],
+        "state": "succeeded",
+        "superseded_by": null,
+        "error": null
+      },
+      {
+        "key": "skills",
+        "value": [
+          "文案",
+          "活动执行",
+          "数据分析（基础Excel）"
+        ],
+        "state": "succeeded",
+        "superseded_by": null,
+        "error": null
+      },
+      {
+        "key": "constraints",
+        "value": "不想做销售",
+        "state": "succeeded",
+        "superseded_by": null,
+        "error": null
+      }
+    ]
+  }
+]

@@ -693,6 +693,7 @@ export type CollectionPanelView = {
   "items"?: Array<CollectionItemView>
   "missing"?: number
   "next_source"?: (string | null)
+  "unverified"?: number
 }
 
 export type DependencyEdgeView = {
@@ -780,10 +781,16 @@ export type ReportDimensionItemView = {
 export type CollectionItemView = {
   "ask"?: string
   "available"?: boolean
+  "confirmable"?: boolean
+  "field_source"?: string
   "got"?: boolean
   "key": string
   "label": string
   "source": string
+  "state"?: string
+  "status_text"?: string
+  "value"?: unknown
+  "verification"?: string
   "why": string
 }
 

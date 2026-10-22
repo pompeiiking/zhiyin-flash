@@ -188,8 +188,10 @@ async def test_material_text_reaches_the_model_but_not_the_conversation(
 ) -> None:
     """一份材料交上去：模型看得到正文，对话流里只有那一句话。"""
     engine = _RecordingEngine()
-    task_id = "t-material"
-    await _orchestrator(container, engine).handle_message(
+    orchestrator = _orchestrator(container, engine)
+    session = await orchestrator.enter_task(USER_ID, "free_chat")
+    task_id = session.id
+    await orchestrator.handle_message(
         TurnRequest(
             user_id=USER_ID,
             task_id=task_id,

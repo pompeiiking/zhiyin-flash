@@ -3732,6 +3732,18 @@
             "title": "Available",
             "type": "boolean"
           },
+          "confirmable": {
+            "default": false,
+            "description": "是否可直接确认已有自述",
+            "title": "Confirmable",
+            "type": "boolean"
+          },
+          "field_source": {
+            "default": "",
+            "description": "画像里这条记录的实际来源",
+            "title": "Field Source",
+            "type": "string"
+          },
           "got": {
             "default": false,
             "title": "Got",
@@ -3748,6 +3760,28 @@
           "source": {
             "description": "chsi / conversation / academic",
             "title": "Source",
+            "type": "string"
+          },
+          "state": {
+            "default": "missing",
+            "description": "missing=完全没有；unverified=画像里已有自述但来源还不足以算拿到；got=已拿到。界面据此分开「待补充」与「已有待核实」",
+            "title": "State",
+            "type": "string"
+          },
+          "status_text": {
+            "default": "",
+            "description": "当前状态的用户可读说明",
+            "title": "Status Text",
+            "type": "string"
+          },
+          "value": {
+            "description": "画像里已有的值；unverified 时用于一键确认",
+            "title": "Value"
+          },
+          "verification": {
+            "default": "",
+            "description": "画像里这条记录的实际核实状态",
+            "title": "Verification",
             "type": "string"
           },
           "why": {
@@ -3794,7 +3828,7 @@
           },
           "missing": {
             "default": 0,
-            "description": "还差几条",
+            "description": "还差几条（含已有自述但未核实）",
             "title": "Missing",
             "type": "integer"
           },
@@ -3809,6 +3843,12 @@
             ],
             "description": "下一步最该走的源头",
             "title": "Next Source"
+          },
+          "unverified": {
+            "default": 0,
+            "description": "其中已有自述、尚待核实的条数",
+            "title": "Unverified",
+            "type": "integer"
           }
         },
         "title": "CollectionPanelView",

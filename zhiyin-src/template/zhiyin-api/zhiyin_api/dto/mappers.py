@@ -101,6 +101,7 @@ from zhiyin_business.ports.workspace import WorkspaceView
 from zhiyin_kernel.assets import Report
 from zhiyin_kernel.assets import ActionPlan, DirectionPlan
 from zhiyin_kernel import profile_taxonomy
+from zhiyin_kernel.report_quality import report_verdict_issue
 from zhiyin_kernel.assets import CalendarNode
 from zhiyin_kernel.assets import TrackEvent
 from zhiyin_kernel.assets import Achievement
@@ -666,6 +667,7 @@ def workspace_page_view(view: WorkspaceView) -> WorkspacePageView:
     collection = view.collection
     collection_panel = CollectionPanelView(
         missing=collection.missing if collection else 0,
+        unverified=collection.unverified if collection else 0,
         by_source=dict(collection.by_source) if collection else {},
         blocked=list(collection.blocked) if collection else [],
         next_source=(
@@ -681,6 +683,12 @@ def workspace_page_view(view: WorkspaceView) -> WorkspacePageView:
                 available=step.available,
                 # 「去回答」要问的那一句随清单一起下发：界面只渲染，不自己拼问题
                 ask=step.ask,
+                state=step.state,
+                value=step.value,
+                field_source=step.field_source,
+                verification=step.verification,
+                status_text=step.status_text,
+                confirmable=step.confirmable,
             )
             for step in (collection.steps if collection else ())
         ],
@@ -803,32 +811,13 @@ def academic_panel_view(snapshot: Any) -> Optional[AcademicPanelView]:
     )
 
 
-_META_VERDICT_MARKERS = (
-    "报告里",
-    "本报告",
-    "这轮",
-    "本轮",
-    "上一版",
-    "上一轮",
-    "匹配度最高",
-    "没看到算法",
-    "情报原文",
-    "更新的是依据",
-    "先补依据",
-    "你转来的那句话",
-    "不照做",
-    "本轮未取回",
-)
-
-
 def _safe_report_verdict(verdict: Mapping[str, Any]) -> dict[str, Any]:
     """存量报告里若混入“对旧报告/生成过程的点评”，不把它当诊断结论展示。
 
-    新报告在编排器落库前已拦截；这里兜住历史版本，避免用户点开旧报告又看到
-    “这轮能更新的是依据不是结论”这类莫名其妙的话。
+    新报告在写入资产前已由 `report_verdict_issue` 拦截（#41）；这里兜住历史版本，
+    避免用户点开旧报告又看到“这轮能更新的是依据不是结论”这类莫名其妙的话。
     """
-    prose = f"{verdict.get('title') or ''} {verdict.get('summary') or ''}"
-    if not any(marker in prose for marker in _META_VERDICT_MARKERS):
+    if not report_verdict_issue(verdict):
         return dict(verdict)
     return {
         **dict(verdict),

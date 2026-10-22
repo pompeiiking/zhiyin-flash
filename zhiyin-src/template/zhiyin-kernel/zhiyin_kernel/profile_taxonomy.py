@@ -425,6 +425,62 @@ def normalize_attributes(entry_type: ProfileEntryType, attributes: Mapping[str, 
     return normalized
 
 
+def _same_preference_object(left: Any, right: Any) -> bool:
+    """同一条偏好概念的保守判定：只有一个短语完整包含另一个时才算。
+
+    只用于兴趣这类多值偏好。「应酬」与「天天应酬」是同一个对象的不同说法；
+    「写东西」与「研究人为什么买」互不包含，必须保留两条。单字不参与，
+    否则「写」会把「写东西」吞掉。
+    """
+    first, second = str(left or "").strip(), str(right or "").strip()
+    if len(first) < 2 or len(second) < 2:
+        return False
+    return first in second or second in first
+
+
+def _merge_preference_entries(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """合并逐项偏好：同值合并、同一概念的包含关系只留更具体的那条。
+
+    极性不同的两条不算同一个对象（喜欢「调试程序」和不喜欢「调试程序」是
+    两项相反的偏好，必须并存等待澄清），所以只在极性相同时做包含去重。
+    """
+    merged: list[dict[str, Any]] = []
+    for item in entries:
+        existing = next((entry for entry in merged if entry["value"] == item["value"]), None)
+        if existing is not None:
+            existing.update(item)
+            continue
+        same_object = next(
+            (
+                entry
+                for entry in merged
+                if entry.get("polarity") == item.get("polarity")
+                and _same_preference_object(entry.get("value"), item.get("value"))
+            ),
+            None,
+        )
+        if same_object is None:
+            merged.append(item)
+            continue
+        # 保留更具体的那句话，并把它缺的属性从另一条补上。
+        longer, shorter = (item, same_object) if len(str(item["value"])) >= len(str(same_object["value"])) else (same_object, item)
+        combined = {**shorter, **longer}
+        combined["value"] = longer["value"]
+        merged[merged.index(same_object)] = combined
+    return merged
+
+
+def _visible_interest_values(entries: list[dict[str, Any]]) -> list[Any]:
+    """兴趣字段的值只放正向/未定向项；否定项留在 attributes.items 里。
+
+    否定项不是兴趣。把它放进 `value` 会让「兴趣：写东西 研究人为什么买 天天应酬」
+    直接出现在画像页，并污染方向推荐（#40）。如果用户只表达了否定项，
+    仍保留在 value 里，避免一条纯排除偏好因为字段不能为空而无法保存。
+    """
+    affirmative = [entry["value"] for entry in entries if entry.get("polarity") != "dislike"]
+    return affirmative or [entry["value"] for entry in entries]
+
+
 def merge_preferences(key: str, before: Any, value: Any, attributes: Mapping[str, Any]) -> tuple[Any, dict, bool]:
     """Append independent interests/foci; only incompatible claims about the same object conflict.
 
@@ -434,17 +490,32 @@ def merge_preferences(key: str, before: Any, value: Any, attributes: Mapping[str
     kind = entry_type_of(key)
     values = normalize_value(key, value, kind)
     attrs = normalize_attributes(kind, attributes)
-    if kind not in {ProfileEntryType.INTEREST, ProfileEntryType.CAREER_FOCUS} or before is None:
+    if kind not in {ProfileEntryType.INTEREST, ProfileEntryType.CAREER_FOCUS}:
         return values, attrs, False
-    old_values = normalize_value(key, before.value, kind)
-    old_attrs = dict(before.attributes or {})
+
     def entries(vs, meta):
         by_value = {item["value"]: item for item in meta.get("items", [])}
         common = {k: v for k, v in meta.items() if k != "items"}
         return [{"value": item, **common, **by_value.get(item, {})} for item in vs]
+
+    if before is None:
+        # 首次写入没有旧值可合并。只有逐项属性明确存在时才需要拆开处理；
+        # 单一极性写在字段级属性上时保持原样，避免把「一条兴趣 + 全局极性」
+        # 这种既有契约改写成另一种形状。
+        if kind is ProfileEntryType.INTEREST and attrs.get("items"):
+            incoming = _merge_preference_entries(entries(values, attrs))
+            return (
+                normalize_value(key, _visible_interest_values(incoming), kind),
+                normalize_attributes(kind, {"items": incoming}),
+                False,
+            )
+        return values, attrs, False
+
+    old_values = normalize_value(key, before.value, kind)
+    old_attrs = dict(before.attributes or {})
     old = entries(old_values, old_attrs)
-    incoming = entries(values, attrs)
-    discriminator = "polarity" if kind == ProfileEntryType.INTEREST else "state"
+    incoming = _merge_preference_entries(entries(values, attrs)) if kind is ProfileEntryType.INTEREST else entries(values, attrs)
+    discriminator = "polarity" if kind is ProfileEntryType.INTEREST else "state"
     conflict = False
     for item in incoming:
         existing = next((entry for entry in old if entry["value"] == item["value"]), None)
@@ -454,7 +525,12 @@ def merge_preferences(key: str, before: Any, value: Any, attributes: Mapping[str
             existing.update(item)
         else:
             old.append(item)
-    merged = normalize_value(key, [item["value"] for item in old], kind)
+    if kind is ProfileEntryType.INTEREST:
+        old = _merge_preference_entries(old)
+        merged_values = _visible_interest_values(old)
+    else:
+        merged_values = [item["value"] for item in old]
+    merged = normalize_value(key, merged_values, kind)
     return merged, normalize_attributes(kind, {"items": old}), conflict
 
 

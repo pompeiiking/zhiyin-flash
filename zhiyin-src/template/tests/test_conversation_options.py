@@ -93,8 +93,9 @@ def _orchestrator(container: Container, engine: AgentEngine) -> DefaultOrchestra
 
 async def _prompt_vars(container: Container, **extra: Any) -> dict[str, Any]:
     engine = _RecordingEngine()
+    session = await container.orchestrator.enter_task(USER_ID, "free_chat")
     await _orchestrator(container, engine).handle_message(
-        TurnRequest(user_id=USER_ID, task_id="t-option", message="我现在还在念书", **extra)
+        TurnRequest(user_id=USER_ID, task_id=session.id, message="我现在还在念书", **extra)
     )
     return engine.requests[0].prompt_vars
 
