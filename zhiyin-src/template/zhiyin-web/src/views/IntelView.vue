@@ -247,12 +247,16 @@ async function load(refresh = false) {
     if (result.status === 'failed') {
       error.value = String(result.message || '这次没有取到职业资料（不是"没有相关内容"）。可以稍后重试。')
     } else if (result.status === 'empty') {
-      // 没有搜索词时的"0 条"交给页面空态解释；搜索后再显示"没找到匹配"。
-      status.value = query.value.trim() ? String(result.message || '没有找到匹配的职业资料，可以换一个关键词或稍后重试。') : ''
+      // 没有搜索词时，首次进入交给页面空态解释；但用户主动点“更新”必须有回执。
+      status.value = query.value.trim() || refresh
+        ? String(result.message || '这次没有取到匹配的公开资料；这不等于平台没有收录，可以补一条明确的专业或职业方向后再试。')
+        : ''
     }
-    if (refresh) status.value = result.items.length
-      ? `已重新获取 ${result.items.length} 条职业资料。`
-      : (result.status === 'empty' ? status.value : '本次未获取到职业资料，可稍后重试或使用画像匹配。')
+    if (refresh && result.status !== 'empty' && !error.value) {
+      status.value = result.items.length
+        ? `已重新获取 ${result.items.length} 条职业资料。`
+        : '本次未获取到职业资料，可稍后重试或使用画像匹配。'
+    }
     if (!result.items.some((item) => item.id === selectedId.value)) {
       selectedId.value = result.items.find((item) => item.kind === 'occupation')?.id ?? result.items[0]?.id ?? ''
     }

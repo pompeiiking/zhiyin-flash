@@ -3916,6 +3916,11 @@
             ],
             "title": "Agent Name"
           },
+          "client_msg_id": {
+            "default": "",
+            "title": "Client Msg Id",
+            "type": "string"
+          },
           "clues": {
             "description": "可公开的判断标准与待核实项，不是内部推理或已核实来源",
             "items": {

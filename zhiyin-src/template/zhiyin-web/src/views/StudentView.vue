@@ -77,7 +77,7 @@ const insights = ref<InstanceType<typeof ProfileInsights> | null>(null)
 
 /** 来源视角：把原来的「来源筛选」并进视角切换，不再两套并存 */
 const SOURCE_GROUPS: { key: string; label: string; from: ProfileField['source'][] }[] = [
-  { key: 'school', label: '学校档案', from: ['学校', '学信网', '教务系统'] },
+  { key: 'school', label: '学校档案', from: ['学校', '学信网', '教务系统', '客观记录'] },
   { key: 'talk', label: '咨询记录', from: ['对话'] },
   { key: 'material', label: '材料与分析', from: ['简历材料', '综合分析', '导师记录'] },
   { key: 'behavior', label: '行为记录', from: ['行为记录'] },
@@ -433,7 +433,7 @@ onMounted(()=>{ void loadWorkspace() })
 
 
 <InfoSheet :open="!!fieldReading" shape="panel" :title="fieldReading?.label || '完整资料'" @close="fieldReading=null"><template v-if="fieldReading"><p class="profile-fact-value">{{fieldValue(fieldReading)}}</p><p class="ws-muted">{{fieldReading.desc}} · {{fieldReading.noted}}</p><h3>原始证据</h3><ul class="ws-mini-list"><li v-for="item in fieldReading.evidence" :key="item">{{item}}</li></ul></template></InfoSheet>
-<InfoSheet :open="profileTab === 'judgments'" shape="panel" title="分析与判断" @close="profileTab='facts'"><section><ProfileInsights ref="insights" /></section><section class="p7-block" aria-labelledby="p7-b-title">
+<InfoSheet :open="profileTab === 'judgments'" shape="panel" title="分析与判断" keep-mounted @close="profileTab='facts'"><section><ProfileInsights ref="insights" /></section><section class="p7-block" aria-labelledby="p7-b-title">
       <header class="p7-block__head">
         <div>
           <h2 id="p7-b-title">资料支持的判断</h2>
@@ -550,7 +550,7 @@ onMounted(()=>{ void loadWorkspace() })
             <button v-if="item.kind === 'direction'" class="ws-text-button" type="button" @click="toggleLingerConclusion(item.key)">
               看它用到哪几条<UiIcon name="arrow" :size="14" />
             </button>
-            <button v-else class="ws-text-button" type="button" @click="insights?.inspect(item.key, item.label)">
+            <button v-else class="ws-text-button" type="button" @click="insights?.inspectReport(item.full, item.label, item.evidence)">
               深入了解这条判断<UiIcon name="arrow" :size="14" />
             </button>
           </div>
@@ -625,7 +625,7 @@ onMounted(()=>{ void loadWorkspace() })
           <p v-if="gap.ask" class="p7-gap__ask"><span>可以直接回答</span>{{ gap.ask }}</p>
           <div class="p7-gap__actions">
             <RouterLink class="ws-text-link" :to="'/chat?gap=' + encodeURIComponent(gap.key) + '&label=' + encodeURIComponent(gap.label)">在咨询里补充<UiIcon name="arrow" :size="14" /></RouterLink>
-            <button class="ws-text-button" type="button" @click="insights?.inspect(gap.key, gap.label, true)">看看需要补充什么</button>
+            <button class="ws-text-button" type="button" @click="insights?.inspectGap(gap.key, gap.label, { why: gap.why, next: gap.next, ask: gap.ask })">看看需要补充什么</button>
           </div>
         </li>
       </ul>

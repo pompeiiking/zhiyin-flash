@@ -121,7 +121,7 @@ export function useConversationRecovery({ turns, thinking, stopped, pending, req
     if (interrupted.value?.turnId !== question.id) interrupted.value = {
       text: question.text,
       turnId: question.id,
-      clientMsgId: question.id.endsWith('-user') ? question.id.slice(0, -5) : undefined,
+      clientMsgId: question.client_msg_id || (question.id.endsWith('-user') ? question.id.slice(0, -5) : undefined),
       materials: question.materials?.map(item => ({ id: item.id, name: item.name })),
     }
     if (markerPending) clearChatPending(demo.state.currentSessionId)

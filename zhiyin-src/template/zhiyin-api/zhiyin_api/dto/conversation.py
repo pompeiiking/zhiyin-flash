@@ -126,6 +126,8 @@ class ConversationMessageView(BaseModel):
     role: Literal["agent", "user", "system"]
     clues: list[str] = Field(default_factory=list, max_length=8, description="可公开的判断标准与待核实项，不是内部推理或已核实来源")
     text: str
+    #: 前端幂等键：刷新后“重新发送这个问题”必须复用它，否则会再写一条用户消息。
+    client_msg_id: str = ""
     agent_id: Optional[str] = None
     agent_name: Optional[str] = None
     theory_refs: list[TheoryRefView] = Field(

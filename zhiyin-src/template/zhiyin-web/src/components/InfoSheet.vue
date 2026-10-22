@@ -11,7 +11,12 @@ const props = withDefaults(defineProps<{
   shape?: Shape
   draggable?: boolean
   description?: string
-}>(), { shape: 'dialog', draggable: true, description: '' })
+  /**
+   * 非 dialog 形态下关闭时保留内容挂载：详情弹层由子组件里的 Teleport 打开时，
+   * 子组件不能因为外层 sheet 关闭而被卸载（画像的“深入了解”就是这条路径）。
+   */
+  keepMounted?: boolean
+}>(), { shape: 'dialog', draggable: true, description: '', keepMounted: false })
 
 const emit = defineEmits<{ close: []; opened: [] }>()
 const modal = ref<HTMLDialogElement | null>(null)
@@ -134,7 +139,8 @@ onBeforeUnmount(() => {
   <Teleport v-else to="body">
     <Transition name="expand-card">
       <section
-        v-if="open"
+        v-if="open || keepMounted"
+        v-show="open"
         ref="card"
         class="ws-expand-card"
         :class="`ws-expand-card--${shape}`"

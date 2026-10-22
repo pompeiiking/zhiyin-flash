@@ -118,3 +118,24 @@ async def test_new_session_does_not_affect_other_task_codes() -> None:
     by_id = {item.task_id: item for item in listing.sessions}
     assert by_id[other.task_id].status is TaskStatus.ACTIVE, "别的入口不能被顺手结束"
     assert by_id[first.task_id].status is TaskStatus.COMPLETED
+
+
+@pytest.mark.asyncio
+async def test_turn_views_expose_the_client_msg_id_for_interrupted_retry() -> None:
+    """刷新后“重新发送这个问题”必须拿回原幂等键，否则会再写一条用户消息。"""
+    from zhiyin_api.dto.conversation import TaskEnterRequest
+
+    container = _facade()
+    facade = container.facade
+    user = "u-history-idempotency"
+    session = await facade.enter_task(user, TaskEnterRequest(task_code="free_chat"))
+    await container.memory_service.record_turn(
+        user,
+        session.task_id,
+        role="user",
+        text="刷新前发出的问题。",
+        loop_stage=LoopStage.COLLECT,
+        client_msg_id="client-interrupted-1",
+    )
+    turns = await facade.list_session_turns(user, session.task_id)
+    assert turns[0].client_msg_id == "client-interrupted-1"

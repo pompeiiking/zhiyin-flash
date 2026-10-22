@@ -119,6 +119,7 @@ export interface DirectionPlan {
 
 /** 对话里的一条消息 */
 export interface ChatTurn {
+  client_msg_id?: string
   clues?: string[]
   pipelineCards?: import('../api/backend-types').PipelineCardView[]
   changedAssets?: import('../api/backend-types').AssetVersionView[]

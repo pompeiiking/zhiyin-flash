@@ -18,7 +18,7 @@ function revealRules(event:Event){
   if(!details.open)return
   requestAnimationFrame(()=>details.scrollIntoView({block:'nearest',behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'}))
 }
-watch(open,v=>{if(!v)return;savedId.value='';requestId.value=crypto.randomUUID();const p=phases.value.find(p=>p.id===props.phaseId);expectedPhase.value=p?snapshot(p):null;name.value=p?.name??'';dependencies.value=[...(p?.depends_on??[])];start.value=dateKey(p?.starts_at);end.value=dateKey(p?.ends_at);dateRange.value=p?.date_range??'';datesTouched.value=false;blocks.value=p?.blocking_conditions?.join('\n')??'';handoff.value=p?.handoff_requirements?.join('\n')??'';status.value='';error.value=''})
+watch(open,v=>{if(!v)return;savedId.value='';requestId.value=crypto.randomUUID();deleteConfirm.value=false;deleting.value=false;const p=phases.value.find(p=>p.id===props.phaseId);expectedPhase.value=p?snapshot(p):null;name.value=p?.name??'';dependencies.value=[...(p?.depends_on??[])];start.value=dateKey(p?.starts_at);end.value=dateKey(p?.ends_at);dateRange.value=p?.date_range??'';datesTouched.value=false;blocks.value=p?.blocking_conditions?.join('\n')??'';handoff.value=p?.handoff_requirements?.join('\n')??'';status.value='';error.value=''})
 async function save(){
   if(busy.value)return
   error.value='';status.value=''

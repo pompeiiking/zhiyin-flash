@@ -1,5 +1,5 @@
 /** Shared authenticated transport for the retained developer module. */
-import { BackendError } from './backend-client'
+import { BackendError, invalidateReadCache } from './backend-client'
 export const authToken = () => localStorage.getItem('zhiyin_token') || ''
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
   const controller=new AbortController(), timeout=setTimeout(()=>controller.abort(),60000)
@@ -15,6 +15,7 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
     if(authToken()!==requestToken)throw new BackendError('账号已变更，请重新读取。',1004)
     if(requestToken&&response.status!==401&&body.code===1004)window.dispatchEvent(new Event('zhiyin:unauthorized'))
     if(!response.ok||body.code!==0)throw new BackendError(body.message||'请求失败',body.code??response.status,body.trace_id)
+    if((options.method ?? 'GET').toUpperCase() !== 'GET') invalidateReadCache()
     return body.data as T
   } catch (error) {
     if(error instanceof BackendError)throw error

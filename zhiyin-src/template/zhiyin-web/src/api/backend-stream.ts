@@ -1,6 +1,6 @@
 /** AI endpoints return progress/result/error frames, not JSON page data. */
 import operations from './operations.json'
-import { BackendError } from './backend-client'
+import { BackendError, invalidateReadCache } from './backend-client'
 export type StreamProgress = { pct?: number; note?: string; text?: string; agent?: string; stage?: string; protocol?: number; type?: string; step_id?: string; sequence?: number; run_id?: string }
 export async function streamBackend<T>(
   key: keyof typeof operations,
@@ -79,5 +79,7 @@ export async function streamBackend<T>(
     clearTimeout(idle); clearTimeout(total)
     options.signal?.removeEventListener('abort', abort)
     await reader?.cancel().catch(() => undefined)
+    // 对话流可能写入画像/计划/资产；流结束后所有 GET 读必须重新取数。
+    invalidateReadCache()
   }
 }

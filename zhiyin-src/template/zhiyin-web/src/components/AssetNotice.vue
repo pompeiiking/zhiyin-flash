@@ -11,6 +11,7 @@ const localHasChanges = computed(() => changes.value.profileKeys.length > 0 || c
 // 真正是否已经重算，只有版本上的 needs_recompute 知道 —— 否则重算后横幅清不掉，
 // 或页面改字段后横幅根本不出现（本轮两种实测都出现过）。
 const serverStale = ref<Array<'report' | 'direction_plan' | 'action_plan'> | null>(null)
+const staleReadFailed = ref(false)
 const dismissed = ref(false)
 const route = useRoute()
 /**
@@ -27,13 +28,18 @@ const pageTypes = computed<Array<'report' | 'direction_plan' | 'action_plan'>>((
 
 async function loadStale() {
   const found: Array<'report' | 'direction_plan' | 'action_plan'> = []
+  let failed = false
   for (const type of pageTypes.value) {
     try {
       const versions = await backendClient.versions(type)
       const latest = versions?.slice().sort((a, b) => b.version - a.version)[0]
       if (latest?.needs_recompute) found.push(type)
-    } catch { /* 读不到版本时保留本地提示，不把"未知"当"无需核对" */ }
+    } catch {
+      // 读不到版本时不能把“未知”当成“无需核对”；保留本地变化提示。
+      failed = true
+    }
   }
+  staleReadFailed.value = failed
   serverStale.value = found
 }
 function refresh() { dismissed.value = false; void loadStale() }
@@ -50,7 +56,11 @@ const staleLabel = computed(() => {
 })
 const hasChanges = computed(() => {
   if (dismissed.value) return false
-  if (serverStale.value !== null) return serverStale.value.length > 0
+  if (serverStale.value !== null) {
+    if (serverStale.value.length > 0) return true
+    // 版本读取失败时服务端的“无待核对”不可信，仍按本地变化提示。
+    return staleReadFailed.value && localHasChanges.value
+  }
   return localHasChanges.value
 })
 const noticeText = computed(() => {

@@ -481,6 +481,7 @@ export type BehaviorGuideView = {
 export type ConversationMessageView = {
   "agent_id"?: (string | null)
   "agent_name"?: (string | null)
+  "client_msg_id"?: string
   "clues"?: Array<string>
   "created_at"?: (string | null)
   "intel_refs"?: Array<IntelRefView>

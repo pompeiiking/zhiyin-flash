@@ -65,6 +65,10 @@ async function expandSidebar() {
 async function newChat() {
  try { await router.push({ path:'/chat', query:{ new:String(Date.now()) } }) } catch(e) { toast((e as Error).message) }
 }
+function skipToMain() {
+  // hash 路由下不能把 href="#main-content" 交给浏览器：它会变成一次路由跳转。
+  document.getElementById('main-content')?.focus()
+}
 
 /**
  * 顶部进度条的宽度：**跟内容列对齐**，不是一个全页固定值。
@@ -120,7 +124,7 @@ onUnmounted(()=>{clearInterval(notificationTimer);pageErrorObserver?.disconnect(
 
 <template>
   <div class="app" :data-route="route.path" :data-nav="layout.mode.value" :class="{ 'app--workspace': !bare, 'app--desktop': !bare && desktop, 'app--sidebar-collapsed': !bare && desktop && layout.sidebarCollapsed.value, 'app--chat': route.name === 'chat' }" :style="{ '--progress-max': progressMax }">
-    <a v-if="!bare" class="skip-link" href="#main-content">跳到主要内容</a>
+    <a v-if="!bare" class="skip-link" href="#main-content" @click.prevent="skipToMain">跳到主要内容</a>
     <template v-if="bare && !routeLoadError">
       <RouterView v-slot="{ Component }">
         <Transition name="page" mode="out-in">

@@ -44,6 +44,8 @@ function cacheKeyOf(key: string, options: Options) {
   return [key, JSON.stringify(options.params ?? {}), JSON.stringify(options.query ?? {}), token].join('|')
 }
 function clearGetCache() { getCache.clear() }
+/** 其他传输出口（studentApi / SSE）写成功后调用，保证写后读不会命中旧快照。 */
+export function invalidateReadCache() { clearGetCache() }
 /**
  * 会话历史管理（PATCH/DELETE /app/sessions/{task_id}）与能力清单（GET /app/capabilities）
  * 由这一轮新增，尚未写进 `operations.json`（该文件不在本次改动范围）。这里用显式

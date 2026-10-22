@@ -45,14 +45,20 @@ test('every published navigation entry resolves to a real route', () => {
 })
 
 // 14 = 12 个学生主循环入口 + 「帮助与工具」分组里的 使用指南 / 应用工具（#9 修复后新增的可发现入口）。
-test('every workspace has one active item; mobile tabs only highlight their own route', () => {
+test('every workspace has one active item; mobile tabs highlight their group route', () => {
   assert.equal(nav.WORKSPACE_ITEMS.length, 14)
   for (const item of nav.WORKSPACE_ITEMS) {
     const route = { path: item.to, query: {} }
     assert.deepEqual(Array.from(nav.WORKSPACE_ITEMS.filter(i => nav.isNavActive(i, route)), i => i.key), [item.key])
   }
   assert.equal(nav.activeGroup({ path: '/grades', query: {} }).key, 'self')
-  assert.equal(nav.isNavActive(nav.MOBILE_TABS.find(i => i.key === 'profile'), { path: '/grades', query: {} }), false)
+  const profileTab = nav.MOBILE_TABS.find(i => i.key === 'profile')
+  const reportTab = nav.MOBILE_TABS.find(i => i.key === 'report')
+  assert.equal(nav.isMobileTabActive(profileTab, { path: '/grades', query: {} }), true)
+  assert.equal(nav.isMobileTabActive(reportTab, { path: '/grades', query: {} }), false)
+  assert.equal(nav.isMobileMoreActive({ path: '/grades', query: {} }), false)
+  assert.equal(nav.isMobileMoreActive({ path: '/review', query: {} }), true)
+  assert.equal(nav.isMobileMoreActive({ path: '/intel', query: {} }), false)
   assert.deepEqual(Array.from(nav.MOBILE_TABS, item => item.key), ['chat', 'profile', 'report', 'directions', 'home', 'plan'])
   assert.equal(nav.WORKSPACE_ITEMS.some(i => i.to === '/academic'), false)
 })

@@ -2915,6 +2915,11 @@ export interface components {
       /** Agent Name */
       agent_name?: string | null;
       /**
+       * Client Msg Id
+       * @default
+       */
+      client_msg_id?: string;
+      /**
        * Clues
        * @description 可公开的判断标准与待核实项，不是内部推理或已核实来源
        */

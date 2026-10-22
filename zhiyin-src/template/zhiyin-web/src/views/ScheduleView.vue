@@ -109,10 +109,11 @@ function monthAriaLabel(day: number) {
 const timedCourses = computed(() => backendDemo.state.academic?.courses?.filter(hasCourseTime) ?? [])
 const untimedCourses = computed(() => backendDemo.state.academic?.courses?.filter(course => !hasCourseTime(course)) ?? [])
 const selectedCourses = computed(() => coursesForDate(selected.value))
-const lastPeriod = computed(() => Math.min(20, Math.max(10, ...timedCourses.value.map(course => course.end_period ?? 0))))
+// 后端允许节次到 30；网格必须跟着真实课程走，不能把 21–30 节的课静默过滤掉。
+const lastPeriod = computed(() => Math.min(30, Math.max(10, ...timedCourses.value.map(course => course.end_period ?? 0))))
 const courseBlocks = computed(() => weekdays.flatMap((_weekday, index) => {
   const laneEnds: number[] = []
-  const courses = timedCourses.value.filter(course => course.weekday === index + 1 && (course.end_period ?? 0) <= 20).slice().sort((a, b) => (a.start_period ?? 0) - (b.start_period ?? 0))
+  const courses = timedCourses.value.filter(course => course.weekday === index + 1 && (course.end_period ?? 0) <= lastPeriod.value).slice().sort((a, b) => (a.start_period ?? 0) - (b.start_period ?? 0))
   const assigned = courses.map(course => {
     let lane = laneEnds.findIndex(end => end < (course.start_period ?? 0))
     if (lane < 0) lane = laneEnds.length
@@ -167,8 +168,8 @@ function toggleMode() {
   if (mode.value === 'week') centerSelectedWeek()
 }
 
-async function loadCalendar() {
-  if (calendarBusy.value) return
+async function loadCalendar(): Promise<boolean> {
+  if (calendarBusy.value) return false
   calendarBusy.value = true
   calendarError.value = ''
   try {
@@ -179,15 +180,17 @@ async function loadCalendar() {
     backendDemo.setWorkspace(workspace)
     readOnce.value = true
     centerTodayCourse()
+    return true
   } catch {
     calendarError.value = '最新日程没有取得。请重试；当前日期不会改变。'
+    return false
   } finally {
     calendarBusy.value = false
   }
 }
 
-async function courseImported(message:string){courseImportOpen.value=false;await loadCalendar();academicStatus.value=message}
-async function revokeCourses(){if(calendarBusy.value)return;calendarBusy.value=true;academicError.value='';try{const result=await backendClient.revokeAcademicCourses();if(!result.revoked)throw new Error('Not confirmed');backendDemo.revokeAcademicCourses();courseRevokeOpen.value=false;academicStatus.value='已清空课表，成绩记录保持不变。';backendDemo.setWorkspace(await backendClient.workspace())}catch{academicError.value='清空结果暂时没有确认，请刷新日程后核对。'}finally{calendarBusy.value=false}}
+async function courseImported(message:string){courseImportOpen.value=false;if(await loadCalendar())academicStatus.value=message}
+async function revokeCourses(){if(calendarBusy.value)return;calendarBusy.value=true;academicError.value='';try{const result=await backendClient.revokeAcademicCourses();if(!result.revoked)throw new Error('Not confirmed');backendDemo.revokeAcademicCourses();courseRevokeOpen.value=false;backendDemo.setWorkspace(await backendClient.workspace());academicStatus.value='已清空课表，成绩记录保持不变。'}catch{academicError.value='清空结果暂时没有确认，请刷新日程后核对。'}finally{calendarBusy.value=false}}
 onMounted(() => {
   centerSelectedWeek(); centerTodayCourse(); void loadCalendar()
   // 从「今日容量 · 填写时间」跳进来时直接打开课表检查面板：

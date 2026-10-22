@@ -3,12 +3,12 @@ import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { auth } from '../lib/auth'
 import { featureEnabled, routeEnabled } from '../lib/features'
-import { demo } from '../store'
 import { backendClient, BackendError } from '../api/backend-client'
 import AccountPreferences from '../components/AccountPreferences.vue'
 import { downloadExport } from '../api/student-capabilities'
 import NotificationCenter from '../components/NotificationCenter.vue'
 import { skin } from '../lib/theme'
+import { useDisplayName } from '../lib/display-name'
 import PageHeading from '../components/PageHeading.vue'
 import StatusBanner from '../components/StatusBanner.vue'
 import DetailPopover from '../components/DetailPopover.vue'
@@ -16,6 +16,7 @@ import AchievementsSection from '../components/AchievementsSection.vue'
 import UiIcon from '../components/UiIcon.vue'
 
 const route = useRoute()
+const displayName = useDisplayName()
 const key = computed(() => String(route.name))
 const error = ref('')
 const status = ref('')
@@ -104,7 +105,7 @@ async function exportData() {
     if (notes.status === 'rejected') throw notes.reason
     const reportValue = report.status === 'fulfilled' ? report.value : null
     const actionValue = action.status === 'fulfilled' ? action.value : null
-    const account = demo.state.account || '当前账号'
+    const account = displayName.value || '当前账号'
     const day = new Intl.DateTimeFormat('sv-SE', { dateStyle: 'short', timeStyle: 'medium' }).format(new Date()).replace(/[: ]/g, '-')
     // 「我的全部资料」= 画像 + 学业 + 待办 + 阶段计划/任务 + 当前报告。
     // 计划这次没读到就不写假数据，导出提示里如实说明，不继续称"全部"。
@@ -132,13 +133,13 @@ async function exportData() {
 <template>
   <div class="ws-page">
     <PageHeading :title="titles[key] || '账号'" :description="descriptions[key] || '管理当前账号。'" />
-    <StatusBanner v-if="error" tone="error" :message="error" />
+    <StatusBanner v-if="error" tone="error" :message="error" :retryable="false" />
     <StatusBanner v-if="status" tone="info" :message="status" />
 
     <template v-if="key === 'settings'">
       <section class="settings-identity">
-        <span class="settings-identity__avatar" aria-hidden="true">{{ demo.state.account.slice(0,1) }}</span>
-        <div class="settings-identity__name"><p>当前登录</p><h2>{{ demo.state.account }}</h2></div>
+        <span class="settings-identity__avatar" aria-hidden="true">{{ displayName.slice(0,1) }}</span>
+        <div class="settings-identity__name"><p>当前登录</p><h2>{{ displayName }}</h2></div>
         <div class="settings-identity__state"><span><i aria-hidden="true" />{{ skinLabel }}</span><span><UiIcon name="check" :size="15" />资料已连接</span></div>
         <button class="btn" @click="logout">退出登录</button>
       </section>

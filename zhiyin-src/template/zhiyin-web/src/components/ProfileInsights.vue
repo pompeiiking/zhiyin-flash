@@ -33,14 +33,41 @@ const analysis = useAiTask<PortraitAnalysis>(), dimension = useAiTask<DimensionR
 const analysisSerial=ref(-1)
 const stale=computed(()=>!!analysis.result.value&&analysisSerial.value!==backendDemo.state.profileEditSerial)
 async function analyze(){const revision=backendDemo.state.profileEditSerial;const result=await analysis.run('portraitAnalysis');if(result)analysisSerial.value=revision}
-const detail = ref<{ key: string; label: string; gap: boolean } | null>(null)
+type Detail = {
+  key: string
+  label: string
+  gap: boolean
+  /** report/gapLocal 直接展示已有事实，不再去请求只接受画像字段/真实缺口的接口。 */
+  mode?: 'report' | 'gapLocal'
+  full?: string
+  evidence?: string[]
+  why?: string
+  next?: string
+  ask?: string
+}
+const detail = ref<Detail | null>(null)
 function inspect(key: string, label: string, missing = false) {
   dimension.cancel(); gap.cancel(); dimension.result.value = null; gap.result.value = null
   detail.value = { key, label, gap: missing }; void readDetail()
 }
-function readDetail() { if (detail.value) return detail.value.gap ? gap.run('gap', { params: { gap_key: detail.value.key } }) : dimension.run('dimension', { params: { dimension_id: detail.value.key } }) }
+/** 报告维度不是画像字段：用它自己已有的结论和依据展开，避免发给 /app/dimensions 造成 404。 */
+function inspectReport(full: string, label: string, evidence: string[] = []) {
+  dimension.cancel(); gap.cancel(); dimension.result.value = null; gap.result.value = null
+  detail.value = { key: '', label, gap: false, mode: 'report', full, evidence }
+}
+/** 采集清单里的缺口不一定在 profile.gaps 中；直接展示策略层已经给出的解释。 */
+function inspectGap(key: string, label: string, note: { why?: string; next?: string; ask?: string }) {
+  dimension.cancel(); gap.cancel(); dimension.result.value = null; gap.result.value = null
+  detail.value = { key, label, gap: true, mode: 'gapLocal', ...note }
+}
+function readDetail() {
+  if (!detail.value || detail.value.mode) return
+  return detail.value.gap
+    ? gap.run('gap', { params: { gap_key: detail.value.key } })
+    : dimension.run('dimension', { params: { dimension_id: detail.value.key } })
+}
 function close() { dimension.cancel(); gap.cancel(); detail.value = null }
-defineExpose({ inspect })
+defineExpose({ inspect, inspectReport, inspectGap })
 </script>
 <template>
 <section class="profile-insights"><div class="ws-section-head"><h2>整体分析</h2><button v-if="analysis.result.value" class="btn" :disabled="analysis.busy.value" @click="analyze">重新分析</button></div>
@@ -49,7 +76,29 @@ defineExpose({ inspect })
 <EmptyState v-else-if="!analysis.busy.value" kind="profile" size="sm" title="还没有整体分析" description="把已有信息放在一起看，核对优势、限制和下一步；资料不足时保留待确认项。" :next="false"><button class="btn btn--primary" @click="analyze">分析已有信息</button></EmptyState></section>
 <!-- Details can open while the overview dialog is closed. Keep them outside that hidden ancestor. -->
 <Teleport to="body"><InfoSheet :open="detail!==null" shape="sheet" :title="detail ? (detail.gap?'补充':'深入了解')+detail.label : '画像详情'" @close="close">
-<template v-if="detail?.gap"><AiStatus :busy="gap.busy.value" :error="gap.error.value" :progress="gap.progress.value" @cancel="gap.cancel" @retry="readDetail"/><template v-if="gap.result.value"><h3>{{ studentVoice(gap.result.value.data.question) }}</h3><p class="ws-section">{{ studentVoice(gap.result.value.data.whyNow) }}</p><ul class="ws-mini-list"><li v-for="p in gap.result.value.data.options" :key="p.label"><strong>{{ studentVoice(p.label) }}</strong><p>{{ studentVoice(p.why) }}</p></li></ul><AiResultMeta :result="gap.result.value"/></template><RouterLink class="btn btn--primary ws-section" :to="'/chat?gap='+encodeURIComponent(detail.key)+'&label='+encodeURIComponent(detail.label)" @click="close">在咨询中补充这项信息</RouterLink></template>
-<template v-else><AiStatus :busy="dimension.busy.value" :error="dimension.error.value" :progress="dimension.progress.value" @cancel="dimension.cancel" @retry="readDetail"/><template v-if="dimension.result.value"><h3>{{ studentVoice(dimension.result.value.data.conclusion) }}</h3><ReadableText :text="studentVoice(dimension.result.value.data.reading)"/><dl v-if="Number.isFinite(dimension.result.value.data.score)" class="analysis-measures"><div><dt>本次评分</dt><dd>{{ dimension.result.value.data.score }}</dd></div><div v-if="dimension.result.value.data.bench"><dt>方向基准</dt><dd>{{ dimension.result.value.data.bench }}</dd></div></dl><ol v-if="dimension.result.value.data.trend?.length" class="ws-mini-list"><li v-for="p in dimension.result.value.data.trend" :key="p.at">{{ p.at }} · {{ p.v }}<p>{{ studentVoice(p.why) }}</p></li></ol><p class="ws-section">下一步：{{ studentVoice(dimension.result.value.data.next) }}</p><AiResultMeta :result="dimension.result.value"/></template><RouterLink v-if="detail" class="ws-text-link ws-section" :to="'/chat?gap='+encodeURIComponent(detail.key)+'&label='+encodeURIComponent(detail.label)" @click="close">补充这项信息的依据</RouterLink></template>
+<template v-if="detail?.gap">
+  <template v-if="detail.mode === 'gapLocal'">
+    <h3>{{ detail.label }}</h3>
+    <p v-if="detail.why" class="ws-section">{{ detail.why }}</p>
+    <p v-if="detail.next" class="ws-section">下一步：{{ detail.next }}</p>
+    <p v-if="detail.ask" class="ws-section">可以直接回答：{{ detail.ask }}</p>
+    <RouterLink class="btn btn--primary ws-section" :to="'/chat?gap='+encodeURIComponent(detail.key)+'&label='+encodeURIComponent(detail.label)" @click="close">在咨询中补充这项信息</RouterLink>
+  </template>
+  <template v-else>
+    <AiStatus :busy="gap.busy.value" :error="gap.error.value" :progress="gap.progress.value" @cancel="gap.cancel" @retry="readDetail"/><template v-if="gap.result.value"><h3>{{ studentVoice(gap.result.value.data.question) }}</h3><p class="ws-section">{{ studentVoice(gap.result.value.data.whyNow) }}</p><ul class="ws-mini-list"><li v-for="p in gap.result.value.data.options" :key="p.label"><strong>{{ studentVoice(p.label) }}</strong><p>{{ studentVoice(p.why) }}</p></li></ul><AiResultMeta :result="gap.result.value"/></template><RouterLink class="btn btn--primary ws-section" :to="'/chat?gap='+encodeURIComponent(detail.key)+'&label='+encodeURIComponent(detail.label)" @click="close">在咨询中补充这项信息</RouterLink>
+  </template>
+</template>
+<template v-else>
+  <template v-if="detail?.mode === 'report'">
+    <ReadableText v-if="detail.full" :text="studentVoice(detail.full)"/>
+    <p v-if="detail.evidence?.length" class="ws-section"><strong>这条判断引用的原材料</strong></p>
+    <ul v-if="detail.evidence?.length" class="ws-mini-list"><li v-for="line in detail.evidence" :key="line">{{ line }}</li></ul>
+    <p v-else class="ws-muted">这条判断目前没有附原材料，可回到画像或对话继续核对。</p>
+  </template>
+  <template v-else>
+    <AiStatus :busy="dimension.busy.value" :error="dimension.error.value" :progress="dimension.progress.value" @cancel="dimension.cancel" @retry="readDetail"/><template v-if="dimension.result.value"><h3>{{ studentVoice(dimension.result.value.data.conclusion) }}</h3><ReadableText :text="studentVoice(dimension.result.value.data.reading)"/><dl v-if="Number.isFinite(dimension.result.value.data.score)" class="analysis-measures"><div><dt>本次评分</dt><dd>{{ dimension.result.value.data.score }}</dd></div><div v-if="dimension.result.value.data.bench"><dt>方向基准</dt><dd>{{ dimension.result.value.data.bench }}</dd></div></dl><ol v-if="dimension.result.value.data.trend?.length" class="ws-mini-list"><li v-for="p in dimension.result.value.data.trend" :key="p.at">{{ p.at }} · {{ p.v }}<p>{{ studentVoice(p.why) }}</p></li></ol><p class="ws-section">下一步：{{ studentVoice(dimension.result.value.data.next) }}</p><AiResultMeta :result="dimension.result.value"/></template>
+  </template>
+  <RouterLink v-if="detail && detail.mode !== 'report'" class="ws-text-link ws-section" :to="'/chat?gap='+encodeURIComponent(detail.key)+'&label='+encodeURIComponent(detail.label)" @click="close">补充这项信息的依据</RouterLink>
+</template>
 </InfoSheet></Teleport>
 </template>

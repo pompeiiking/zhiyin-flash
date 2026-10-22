@@ -1057,6 +1057,7 @@ def conversation_message_view(
     return ConversationMessageView(
         role=turn.role,
         text=turn.text,
+        client_msg_id=turn.client_msg_id,
         agent_id=turn.agent_id or None,
         agent_name=agent_name,
         created_at=turn.created_at,

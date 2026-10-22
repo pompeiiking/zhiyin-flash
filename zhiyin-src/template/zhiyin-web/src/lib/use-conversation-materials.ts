@@ -8,17 +8,21 @@ import { errorCode, friendlyError, TECHNICAL_ERROR } from './use-conversation-er
  * 支持文字与静态图片；图片真实内容由服务端解码验证，不能只信扩展名。
  */
 export const MAX_MATERIAL_BYTES = 2_000_000
-export const TEXT_SUFFIXES = new Set(['txt', 'text', 'csv', 'tsv', 'json', 'jsonl', 'md', 'markdown', 'log', 'xml', 'html', 'htm', 'yaml', 'yml', 'sql', 'ini', 'cfg', 'conf', 'properties', 'py', 'js', 'mjs', 'cjs', 'ts', 'tsx', 'jsx', 'vue', 'java', 'c', 'h', 'cpp', 'hpp', 'cs', 'go', 'rs', 'rb', 'php', 'css', 'scss', 'less', 'srt', 'vtt', 'tex', 'bib', 'r'])
+/** 与后端 `MessageRequest.material_ids` 的 max_length 一致。 */
+export const MAX_MATERIALS = 5
+/** 与后端 `_TEXT_SUFFIXES` 保持同一份清单；多列一种就会在服务端 422。 */
+export const TEXT_SUFFIXES = new Set(['txt', 'text', 'csv', 'tsv', 'json', 'md', 'markdown', 'log', 'xml', 'yaml', 'yml', 'sql', 'py', 'js', 'mjs', 'cjs', 'ts', 'tsx', 'jsx', 'html', 'htm', 'css', 'ini', 'cfg', 'conf', 'rst', 'tex'])
 const BINARY_LABELS: Record<string, string> = { pdf: 'PDF', doc: 'Word 文档', docx: 'Word 文档', xls: 'Excel 工作簿', xlsx: 'Excel 工作簿', xlsm: 'Excel 工作簿', ppt: 'PPT', pptx: 'PPT', zip: '压缩包', rar: '压缩包', '7z': '压缩包', png: '图片', jpg: '图片', jpeg: '图片', gif: '图片', webp: '图片', bmp: '图片', heic: '图片', svg: '矢量图', exe: '可执行文件', dll: '程序文件', msi: '安装包', bin: '二进制文件', iso: '光盘镜像', mp3: '音频', wav: '音频', mp4: '视频', mov: '视频', avi: '视频', ttf: '字体', otf: '字体', woff: '字体', woff2: '字体', psd: '设计文件' }
 export function fileSuffix(name: string) { const index = name.lastIndexOf('.'); return index > 0 ? name.slice(index + 1).toLowerCase() : '' }
 export function materialRejection(file: File) {
   const suffix = fileSuffix(file.name)
   if (file.size > MAX_MATERIAL_BYTES) return `「${file.name}」超过 2MB 上限，请截取相关的那一段后再上传。`
   if (!file.size) return `「${file.name}」是空文件，请换一份有内容的文本。`
-  if (!suffix || TEXT_SUFFIXES.has(suffix) || ['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(suffix)) return ''
+  if (!suffix) return `「${file.name}」没有扩展名；请另存为 TXT、CSV 或其他受支持的文本格式后再上传。`
+  if (TEXT_SUFFIXES.has(suffix) || ['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(suffix)) return ''
   const label = BINARY_LABELS[suffix]
-  // 认不出的后缀不抢后端判断权：后端会按内容识别二进制并给出中文说明，别误伤可读文本。
-  if (!label) return ''
+  // 后端只收固定文本后缀与图片；前端不能把未知后缀放过去等 422。
+  if (!label) return `不支持 .${suffix} 文件：对话里只能读取 TXT、CSV、MD 等文本文件或 PNG/JPEG/WebP 图片。`
   if (suffix === 'pdf') return '暂不支持直接读取 PDF：请把需要分析的文字复制为 TXT 后上传，或直接粘贴到输入框。'
   if (label === 'Word 文档' || label === 'Excel 工作簿' || label === 'PPT') return `暂不支持直接读取${label}：请在 Office 里另存为 CSV 或 TXT 后上传。`
   if (label === '图片' || label === '矢量图') return '请选择 PNG、JPEG、静态 GIF 或 WebP 图片。'
@@ -54,9 +58,17 @@ export function useConversationMaterials({ thinking, attached, isDisposed }: Mat
       if (fileInput.value) fileInput.value.value = ''
       return
     }
+    const slots = Math.max(0, MAX_MATERIALS - attached.value.length)
+    if (!slots) {
+      uploadError.value = `每轮最多添加 ${MAX_MATERIALS} 份材料；请先移除一些，或分次发送。`
+      if (fileInput.value) fileInput.value.value = ''
+      return
+    }
     // 先做格式与大小预校验：能当场说清楚的不发请求（深度测试 DEF-DS-03/04）。
     const problems = files.map(file => materialRejection(file)).filter(Boolean)
-    const acceptable = files.filter(file => !materialRejection(file))
+    const valid = files.filter(file => !materialRejection(file))
+    if (valid.length > slots) problems.push(`每轮最多添加 ${MAX_MATERIALS} 份材料，超出的 ${valid.length - slots} 份本次没有上传。`)
+    const acceptable = valid.slice(0, slots)
     uploadError.value = problems.join(' ')
     if (!acceptable.length) { if (fileInput.value) fileInput.value.value = ''; return }
     uploading.value = true

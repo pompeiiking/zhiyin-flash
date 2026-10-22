@@ -261,15 +261,17 @@ async function analyzeLearning() {
   if (result) analysisSerial.value = revision
 }
 
-async function loadGrades(notify = false) {
-  if (loading.value) return
+async function loadGrades(notify = false): Promise<boolean> {
+  if (loading.value) return false
   loading.value = true
   error.value = ''
   try {
     backendDemo.setWorkspace(await backendClient.workspace())
     if (notify) status.value = '已读取最新成绩记录。'
+    return true
   } catch {
     error.value = '最新成绩暂时没有读取成功，当前内容仍保留。'
+    return false
   } finally {
     loading.value = false
   }
@@ -277,7 +279,9 @@ async function loadGrades(notify = false) {
 
 async function imported(message: string) {
   importOpen.value = false
-  await loadGrades()
+  if (!await loadGrades()) return
+  // 新成绩已成功写入并读回：让已生成的 AI 学习分析明确过期。
+  backendDemo.markProfileChange('scores')
   status.value = message
 }
 
@@ -317,7 +321,7 @@ onMounted(() => { void loadGrades() })
       <section class="grade-analysis" aria-labelledby="grade-analysis-title">
         <header class="section-intro">
           <div><p>成绩概览</p><h2 id="grade-analysis-title">成绩分析与趋势</h2></div>
-          <span>{{ academic?.school || '学校待补充' }} · {{ importedAt }}</span>
+          <span>{{ academic?.school ? `成绩来源：${academic.school}` : '成绩来源学校待补充' }} · {{ importedAt }}</span>
         </header>
 
         <div

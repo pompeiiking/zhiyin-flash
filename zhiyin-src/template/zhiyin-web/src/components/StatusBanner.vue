@@ -132,6 +132,14 @@ watch(
     closed.value = false
   }
 )
+// 常驻挂载的调用方（Notes/Tools 用 :open="!!status"）重新打开同一条文案时，
+// message/tone 没变，也必须让用户重新看到它。
+watch(
+  () => props.open,
+  open => {
+    if (open) closed.value = false
+  }
+)
 
 watch(
   () => [resolvedAutoDismiss.value, visible.value] as const,

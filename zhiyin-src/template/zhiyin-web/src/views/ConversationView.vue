@@ -27,6 +27,7 @@ import AnchoredCard from '../components/AnchoredCard.vue'
 import RenderableBlock from '../components/RenderableBlock.vue'
 import ConversationProfile from '../components/ConversationProfile.vue'
 import ConversationOperations from '../components/ConversationOperations.vue'
+import StatusBanner from '../components/StatusBanner.vue'
 import type { ConversationRuntimeState } from '../api/backend-client'
 import { errorCode, friendlyError } from '../lib/use-conversation-errors'
 import { type OptionRef, useConversationDraft } from '../lib/use-conversation-draft'
@@ -270,7 +271,10 @@ async function toggleTask(guideTask: NonNullable<ChatTurn['guideTask']>) {
 }
 function stop() { if (!stopArmed.value) return; stopped.value = true; markChatStopped(demo.state.currentSessionId); if (activeRunId.value) void backendClient.cancelConversationRun(demo.state.currentSessionId, activeRunId.value).catch(() => toast('已停止接收，执行状态请稍后核对。')); controller?.abort() }
 async function send(retry = false, choice?: { text: string; option?: OptionRef }, resend?: { clientMsgId?: string; materials?: { id: string; name: string }[] }) {
- if (thinking.value || uploading.value || systemData.busy) return
+ if (thinking.value || uploading.value || systemData.busy || backgroundRun.value) {
+  if (backgroundRun.value && !thinking.value) requestError.value = '上一轮仍在处理，请等它完成或先停止后再发送。'
+  return
+ }
  // 刷新后 failedRequest 会因为本轮普通消息成功而被清空，失败态里仍保存着原始请求。
  const retried = retry ? (failedRequest ?? failedSend.value?.request ?? null) : null
  const text = retry ? retried?.message : choice ? choice.text : draft.value.trim() || (attached.value.length ? '请结合我上传的材料提供建议。' : '')
@@ -504,7 +508,7 @@ onUnmounted(() => { disposed = true; clearInterval(recoveryTimer); window.remove
         <div class="session-row__edit-actions"><button type="button" class="btn btn--danger btn--sm" :disabled="deleteBusy" @click="confirmDelete(session)">{{ deleteBusy ? '删除中…' : '确认删除' }}</button><button type="button" class="btn btn--sm" :disabled="deleteBusy" @click="cancelDelete">取消</button></div>
        </div>
        <template v-else>
-        <button type="button" class="session-row__main" :aria-pressed="session.task_id === demo.state.currentSessionId" @click="resume(session.task_id)"><strong>{{ session.task_name }}</strong><span class="consult-session-preview">{{ session.last_message || '还没有消息' }}</span><small><template v-if="session.message_count">{{ session.message_count }} 条 · </template>{{ sessionTimeLabel(session) }}</small></button>
+        <button type="button" class="session-row__main" :aria-pressed="session.task_id === demo.state.currentSessionId" :disabled="thinking || systemData.busy" :title="thinking ? '当前回复生成中，完成后可切换会话' : undefined" @click="resume(session.task_id)"><strong>{{ session.task_name }}</strong><span class="consult-session-preview">{{ session.last_message || '还没有消息' }}</span><small><template v-if="session.message_count">{{ session.message_count }} 条 · </template>{{ sessionTimeLabel(session) }}</small></button>
         <div class="session-row__actions"><button type="button" class="session-row__action" :aria-label="`重命名会话：${session.task_name}`" @click="startRename(session)">重命名</button><button type="button" class="session-row__action session-row__action--danger" :aria-label="`删除会话：${session.task_name}`" @click="askDelete(session)">删除</button></div>
        </template>
       </li>
@@ -532,6 +536,7 @@ onUnmounted(() => { disposed = true; clearInterval(recoveryTimer); window.remove
    </div></div>
    <ol v-if="!choosingTopic && demo.state.currentSessionId" class="consult-journey" aria-label="咨询进度：已走过的阶段、当前工作重点与后续阶段，可随话题调整"><li v-for="item in journey" :key="item.key" :data-state="stageState(item.key)" :aria-current="currentStage === item.key ? 'step' : undefined"><i /><span><em class="consult-journey__full">{{ item.label }}</em><em class="consult-journey__short">{{ item.short }}</em></span></li></ol>
   </header>
+  <StatusBanner v-if="systemData.error" class="consult-system-error" tone="error" :message="systemData.error" retry-label="重新读取" @retry="loadShell" @dismiss="systemData.error = ''" />
   <div ref="flow" v-scroll-fade class="consult-flow" tabindex="0" aria-label="对话记录" @scroll.passive="onScroll">
    <div v-if="systemData.busy || restoring" class="consult-loading" role="status">正在读取会话…</div>
    <div v-else-if="showStudyYearQuestion || choosingTopic || (!turns.length && !pending && !showFailedSend && !demo.state.currentSessionId)" class="consult-intro" :class="{'consult-intro--onboarding':showStudyYearQuestion}">
@@ -550,7 +555,7 @@ onUnmounted(() => { disposed = true; clearInterval(recoveryTimer); window.remove
      <div class="consult-topics"><button v-for="(entry,i) in starters" :key="entry.code" :class="{'consult-topic--free':entry.code==='free_chat'}" :disabled="!systemData.shellReady || systemData.busy || restoring || startingTopic || uploading" @click="start(entry.code, entry.label)"><UiIcon :name="['profile','directions','action','review'][i % 4]" :size="21" /><span>{{ entry.label }}</span><UiIcon name="arrow" :size="17" /></button></div>
      <p v-if="requestError" class="consult-error" role="alert">{{ requestError }}</p>
      <button v-if="choosingTopic && demo.state.currentSessionId" class="consult-resume" @click="closeTopic">返回当前会话</button>
-     <button v-else-if="sessions.length && sessions[0].task_id !== demo.state.currentSessionId" class="consult-resume" @click="resume(sessions[0].task_id)">继续最近的咨询：{{ sessions[0].task_name }}</button>
+     <button v-else-if="sessions.length && sessions[0].task_id !== demo.state.currentSessionId" class="consult-resume" :disabled="thinking || systemData.busy" @click="resume(sessions[0].task_id)">继续最近的咨询：{{ sessions[0].task_name }}</button>
     </template>
    </div>
    <div v-else class="consult-messages" :aria-busy="thinking">
@@ -628,7 +633,7 @@ onUnmounted(() => { disposed = true; clearInterval(recoveryTimer); window.remove
     <div v-if="draggingFiles" class="consult-drop-label" aria-hidden="true"><UiIcon name="attachment" :size="20" />松开以添加材料</div>
     <div v-if="attached.length" class="consult-attachments"><span v-for="(m,i) in attached" :key="m.id"><UiIcon name="attachment" :size="14" />{{ m.name }}<button type="button" :aria-label="'移除' + m.name" @click="attached.splice(i,1)"><UiIcon name="close" :size="14" /></button></span></div>
     <textarea ref="input" v-model="draft" rows="1" aria-label="输入咨询内容" placeholder="说说你的想法，或添加材料…" @input="selectedOption?.label !== draft && (selectedOption = null)" @keydown="keydown" @paste="pasteFiles" />
-    <div class="consult-compose-tools"><input ref="fileInput" type="file" hidden multiple :disabled="uploading || thinking" @change="upload" /><button type="button" class="consult-attach" :disabled="uploading || thinking" @click="fileInput?.click()"><UiIcon name="plus" :size="18" />{{ uploading ? '上传中…' : '添加材料' }}</button><span class="consult-send-hint">{{ thinking ? '回复生成中，可先准备下一条消息' : 'Enter 发送 · Shift + Enter 换行' }}</span><button v-if="thinking" type="button" class="consult-send consult-stop" :disabled="!stopArmed" aria-label="停止接收" @click="stop"><span /></button><button v-else type="submit" class="consult-send" aria-label="发送消息" :disabled="(!draft.trim() && !attached.length) || uploading || systemData.busy"><UiIcon name="arrow" :size="20" /></button></div>
+    <div class="consult-compose-tools"><input ref="fileInput" type="file" hidden multiple :disabled="uploading || thinking" @change="upload" /><button type="button" class="consult-attach" :disabled="uploading || thinking" @click="fileInput?.click()"><UiIcon name="plus" :size="18" />{{ uploading ? '上传中…' : '添加材料' }}</button><span class="consult-send-hint">{{ thinking ? '回复生成中，可先准备下一条消息' : 'Enter 发送 · Shift + Enter 换行' }}</span><button v-if="thinking" type="button" class="consult-send consult-stop" :disabled="!stopArmed" aria-label="停止接收" @click="stop"><span /></button><button v-else type="submit" class="consult-send" aria-label="发送消息" :disabled="(!draft.trim() && !attached.length) || uploading || systemData.busy || !!backgroundRun"><UiIcon name="arrow" :size="20" /></button></div>
    </form>
    <p class="consult-disclaimer">建议供参考，重要决定由你做出。<DetailPopover title="资料使用说明" side="top"><template #trigger><UiIcon name="info" :size="13" /></template><p>材料和对话将按你的资料偏好参与分析。你可以查看、更正个人画像，或调整资料使用范围。</p><RouterLink to="/settings">管理资料偏好</RouterLink></DetailPopover></p>
   </footer>
@@ -714,7 +719,9 @@ onUnmounted(() => { disposed = true; clearInterval(recoveryTimer); window.remove
 .capability-badge[data-state="available"] { border-color: var(--c-primary-border); background: var(--c-primary-weak); color: var(--c-primary); }
 .capability-item__reason, .capability-item__fallback { margin: 0; color: var(--c-text-2); font-size: var(--fs-12); line-height: 1.6; }
 .capability-item__fallback { color: var(--c-text-3); }
+.consult-system-error { margin: 12px 24px 0; }
 @media (max-width: 767px) {
+ .consult-system-error { margin: 8px 12px 0; }
  .session-row { grid-template-columns: minmax(0, 1fr); }
  .session-row__actions { justify-content: flex-end; }
  .session-row__action, .session-row__edit-actions .btn, .session-search input, .session-manage__tools .ws-text-button { min-height: 44px; }

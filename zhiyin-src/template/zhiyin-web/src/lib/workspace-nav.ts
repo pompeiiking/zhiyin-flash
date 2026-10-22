@@ -154,6 +154,29 @@ interface RouteLike {
   query: Record<string, unknown>
 }
 
+/**
+ * 移动底栏是**分组入口**，不是六个精确地址：
+ * 例如「画像」覆盖个人画像与我的成绩，「方向」覆盖方向方案与职业探索。
+ * 二级页面没有自己的 tab 时，由「更多」承担当前位置。
+ */
+const MOBILE_TAB_PATHS: Record<string, readonly string[]> = {
+  chat: ['/chat'],
+  profile: ['/profile', '/grades'],
+  report: ['/report'],
+  directions: ['/directions', '/intel'],
+  home: ['/home', '/schedule', '/notes'],
+  plan: ['/plan'],
+}
+const MOBILE_MORE_PATHS = new Set(['/review', '/achievements', '/settings', '/reminders', '/tools', '/guide'])
+
+export function isMobileTabActive(item: NavItem, route: RouteLike): boolean {
+  return isNavActive(item, route) || (MOBILE_TAB_PATHS[item.key] ?? []).includes(route.path)
+}
+
+export function isMobileMoreActive(route: RouteLike): boolean {
+  return MOBILE_MORE_PATHS.has(route.path)
+}
+
 function queryMatches(item: NavItem, route: RouteLike): boolean {
   if (!item.query) return true
   return Object.entries(item.query).every(([k, v]) => route.query[k] === v)
