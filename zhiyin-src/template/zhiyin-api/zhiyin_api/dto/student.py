@@ -10,7 +10,7 @@ from zhiyin_business.contracts.student import (
     Measurement,
     DirectionWeights,
 )
-from zhiyin_kernel.assets import ActionPlan, DirectionPlan
+from zhiyin_kernel.assets import ActionPlan, DirectionPlan, Report
 
 
 class NotificationStateView(BaseModel):
@@ -87,7 +87,7 @@ class WorkloadView(BaseModel):
 
 
 class AssetSnapshotView(BaseModel):
-    asset_type: Literal["direction_plan", "action_plan"]
+    asset_type: Literal["direction_plan", "action_plan", "report"]
     version: int
     created_at: datetime
-    content: ActionPlan | list[DirectionPlan] | None
+    content: Report | ActionPlan | list[DirectionPlan] | None

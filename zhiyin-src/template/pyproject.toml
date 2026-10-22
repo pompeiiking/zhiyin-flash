@@ -135,6 +135,8 @@ line-length = 100
 # 与 `requires-python` / CI（3.11）/ 镜像（python:3.11-slim）对齐：
 # 测试里用到 `tomllib`（3.11+），代码只按 3.11 跑过，就别声称支持 3.10。
 target-version = "py311"
+# 本地验收脚本与运行产物不参与源码 lint；它们不是发布代码。
+exclude = ["output"]
 
 [tool.ruff.lint]
 # 只开启「真问题」类别：E/W 语法与错误、F 未使用/未定义、B 常见缺陷。

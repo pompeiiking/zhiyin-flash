@@ -16,7 +16,7 @@ from zhiyin_infrastructure.local.repository import (
 )
 from zhiyin_infrastructure.local.student import InMemoryStudentStateRepository
 from zhiyin_infrastructure.local.asset_documents import render_asset_document
-from zhiyin_kernel.assets import DirectionPlan
+from zhiyin_kernel.assets import DirectionPlan, Report, Swot, Verdict
 from zhiyin_kernel.enums import PlanRole
 from zhiyin_kernel.errors import InvalidRequest, ResourceNotFound
 from zhiyin_business.contracts.student import (
@@ -126,6 +126,29 @@ async def test_phase_cycles_rejected_and_history_is_exact(service):
         await service.snapshot("b", "action_plan", 1)
     with pytest.raises(ResourceNotFound):
         await service.snapshot("a", "action_plan", 999)
+
+
+@pytest.mark.asyncio
+async def test_report_snapshot_is_readable_and_serializes_as_report(service):
+    """报告版本正文必须能按通用快照契约读取，不能在校验响应时变成 500。"""
+    from zhiyin_api.dto.student import AssetSnapshotView
+
+    report = Report(
+        id="rpt_snapshot",
+        user_id="a",
+        version=0,
+        generated_at=datetime.now(timezone.utc),
+        verdict=Verdict(title="诊断结论", summary="有依据的说明"),
+        swot=Swot(),
+    )
+    saved = await service.asset_service.save_report("a", report)
+    snapshot = await service.snapshot("a", "report", saved.version)
+    assert snapshot["asset_type"] == "report"
+    assert snapshot["content"]["verdict"]["title"] == "诊断结论"
+    view = AssetSnapshotView.model_validate(snapshot)
+    assert view.asset_type == "report"
+    assert isinstance(view.content, Report)
+    assert view.content.verdict.title == "诊断结论"
 
 
 @pytest.mark.asyncio

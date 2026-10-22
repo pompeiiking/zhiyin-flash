@@ -1,9 +1,9 @@
-from tests.test_dialogue_presentation import reply
 """Working-state boundaries; model behaviour is separately checked with real multi-turn samples."""
 from unittest.mock import AsyncMock
 
 import pytest
 
+from tests.test_dialogue_presentation import reply
 from tests.test_dialogue_runtime import setup, send
 from zhiyin_business.services.conversation_ledger import ConversationLedger
 from zhiyin_business.services.dialogue_runtime import active_dialogue

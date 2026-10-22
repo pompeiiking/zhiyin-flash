@@ -1,4 +1,3 @@
-from tests.test_dialogue_presentation import reply
 """Image decoding, shared preview and real permission/version boundaries (no network)."""
 import json
 from io import BytesIO
@@ -19,7 +18,8 @@ from zhiyin_infrastructure.local.repository import InMemoryAcademicSnapshotRepos
 from zhiyin_infrastructure.local.object_store import LocalFileStore
 from zhiyin_infrastructure.textfile import LocalTextExtractor
 from zhiyin_kernel.errors import InvalidRequest
-from tests.test_materials import client
+from tests.test_dialogue_presentation import reply
+from tests.test_materials import client as client_fixture  # noqa: F401 - pytest fixture import
 
 
 def png(size=(40, 40)):
@@ -189,7 +189,8 @@ async def test_native_dialogue_sends_image_parts_and_excludes_binary_from_contex
     assert 'base64' not in seen['messages'][-2].content and 'base64' not in request_.model_dump_json()
 
 
-def test_real_http_upload_preview_and_confirmation_share_one_service(client):
+def test_real_http_upload_preview_and_confirmation_share_one_service(client_fixture):  # noqa: F811 - pytest fixture shadowed by parameter
+    client = client_fixture
     from zhiyin_api.facade import get_facade
     facade = get_facade()
     facade._academic_previews.vision_reader = AsyncMock(return_value={'grades': [

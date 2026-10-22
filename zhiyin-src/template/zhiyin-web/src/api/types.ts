@@ -2460,9 +2460,9 @@ export interface components {
        * Asset Type
        * @enum {string}
        */
-      asset_type: "direction_plan" | "action_plan";
+      asset_type: "direction_plan" | "action_plan" | "report";
       /** Content */
-      content: components["schemas"]["ActionPlan"] | components["schemas"]["DirectionPlan"][] | null;
+      content: components["schemas"]["Report"] | components["schemas"]["ActionPlan"] | components["schemas"]["DirectionPlan"][] | null;
       /**
        * Created At
        * Format: date-time
@@ -3511,6 +3511,25 @@ export interface components {
       code: string;
       /** Question */
       question: string;
+    };
+    /**
+     * GapClaim
+     * @description 差距认领记录。诊断 → 决策的衔接点。
+     */
+    GapClaim: {
+      /**
+       * Claimed At
+       * Format: date-time
+       */
+      claimed_at: string;
+      /** Gap Id */
+      gap_id: string;
+      /**
+       * Label
+       * @description 用户认领的是哪一条（他自己点的那句话），复盘与报告里要能读回来
+       * @default
+       */
+      label?: string;
     };
     /**
      * GradeEntry
@@ -5050,6 +5069,79 @@ export interface components {
       title?: string;
     };
     /**
+     * Report
+     * @description 15 维诊断报告。
+     */
+    Report: {
+      /** Dimensions */
+      dimensions?: components["schemas"]["ReportDimensionGroup"][];
+      /** Gap Claims */
+      gap_claims?: components["schemas"]["GapClaim"][];
+      /**
+       * Generated At
+       * Format: date-time
+       */
+      generated_at: string;
+      /** Id */
+      id: string;
+      /**
+       * Methodologies
+       * @description 本次使用的理论模型
+       */
+      methodologies?: string[];
+      /**
+       * Sources
+       * @description 事实来源，如学职平台/JD
+       */
+      sources?: string[];
+      swot: components["schemas"]["Swot"];
+      /** User Id */
+      user_id: string;
+      verdict: components["schemas"]["Verdict"];
+      /** Version */
+      version: number;
+    };
+    /**
+     * ReportDimensionGroup
+     * @description 15 维分组：自我画像 6 / 职业环境 5 / 决策与风险 4。
+     */
+    ReportDimensionGroup: {
+      /**
+       * Group
+       * @enum {string}
+       */
+      group: "SELF-PORTRAIT" | "JOB-MARKET" | "DECISION-RISK";
+      /**
+       * Group Method
+       * @description 该分组支撑的方法论
+       */
+      group_method: string;
+      /** Items */
+      items?: components["schemas"]["ReportDimensionItem"][];
+    };
+    /**
+     * ReportDimensionItem
+     * @description 15 维中的单维。
+     */
+    ReportDimensionItem: {
+      /** Conclusion */
+      conclusion: string;
+      /**
+       * Evidence
+       * @description 证据引用，必须可溯源
+       */
+      evidence: string;
+      /** Index */
+      index: number;
+      /** Name */
+      name: string;
+      /**
+       * Tag
+       * @description 维度标签，如优势/短板/待验证
+       */
+      tag: string;
+    };
+    /**
      * ReportDimensionItemView
      * @description 15 维里的单维。**逐字段声明**而不是 `dict`：前端要按 `tag` 上色、
      * 按 `evidence` 做可溯源展示，字段名一旦漂移，界面会静默变成空白。
@@ -5360,6 +5452,20 @@ export interface components {
       /** Version */
       version?: number | null;
     };
+    /**
+     * Swot
+     * @description SWOT。每项不少于 2 条。
+     */
+    Swot: {
+      /** Opportunity */
+      opportunity?: string[];
+      /** Risk */
+      risk?: string[];
+      /** Strength */
+      strength?: string[];
+      /** Weakness */
+      weakness?: string[];
+    };
     /** TaskEdit */
     TaskEdit: {
       /** Client Request Id */
@@ -5666,6 +5772,16 @@ export interface components {
       msg: string;
       /** Error Type */
       type: string;
+    };
+    /**
+     * Verdict
+     * @description 报告综合结论。
+     */
+    Verdict: {
+      /** Summary */
+      summary: string;
+      /** Title */
+      title: string;
     };
     /** WorkloadView */
     WorkloadView: {

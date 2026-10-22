@@ -3159,13 +3159,17 @@
           "asset_type": {
             "enum": [
               "direction_plan",
-              "action_plan"
+              "action_plan",
+              "report"
             ],
             "title": "Asset Type",
             "type": "string"
           },
           "content": {
             "anyOf": [
+              {
+                "$ref": "#/components/schemas/Report"
+              },
               {
                 "$ref": "#/components/schemas/ActionPlan"
               },
@@ -5162,6 +5166,33 @@
           "answer"
         ],
         "title": "FaqView",
+        "type": "object"
+      },
+      "GapClaim": {
+        "additionalProperties": false,
+        "description": "差距认领记录。诊断 → 决策的衔接点。",
+        "properties": {
+          "claimed_at": {
+            "format": "date-time",
+            "title": "Claimed At",
+            "type": "string"
+          },
+          "gap_id": {
+            "title": "Gap Id",
+            "type": "string"
+          },
+          "label": {
+            "default": "",
+            "description": "用户认领的是哪一条（他自己点的那句话），复盘与报告里要能读回来",
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "gap_id",
+          "claimed_at"
+        ],
+        "title": "GapClaim",
         "type": "object"
       },
       "GradeEntry": {
@@ -8075,6 +8106,145 @@
         "title": "RenderableView",
         "type": "object"
       },
+      "Report": {
+        "additionalProperties": false,
+        "description": "15 维诊断报告。",
+        "properties": {
+          "dimensions": {
+            "items": {
+              "$ref": "#/components/schemas/ReportDimensionGroup"
+            },
+            "title": "Dimensions",
+            "type": "array"
+          },
+          "gap_claims": {
+            "items": {
+              "$ref": "#/components/schemas/GapClaim"
+            },
+            "title": "Gap Claims",
+            "type": "array"
+          },
+          "generated_at": {
+            "format": "date-time",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "methodologies": {
+            "description": "本次使用的理论模型",
+            "items": {
+              "type": "string"
+            },
+            "title": "Methodologies",
+            "type": "array"
+          },
+          "sources": {
+            "description": "事实来源，如学职平台/JD",
+            "items": {
+              "type": "string"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "swot": {
+            "$ref": "#/components/schemas/Swot"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "string"
+          },
+          "verdict": {
+            "$ref": "#/components/schemas/Verdict"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "user_id",
+          "version",
+          "generated_at",
+          "verdict",
+          "swot"
+        ],
+        "title": "Report",
+        "type": "object"
+      },
+      "ReportDimensionGroup": {
+        "additionalProperties": false,
+        "description": "15 维分组：自我画像 6 / 职业环境 5 / 决策与风险 4。",
+        "properties": {
+          "group": {
+            "enum": [
+              "SELF-PORTRAIT",
+              "JOB-MARKET",
+              "DECISION-RISK"
+            ],
+            "title": "Group",
+            "type": "string"
+          },
+          "group_method": {
+            "description": "该分组支撑的方法论",
+            "title": "Group Method",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReportDimensionItem"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "group",
+          "group_method"
+        ],
+        "title": "ReportDimensionGroup",
+        "type": "object"
+      },
+      "ReportDimensionItem": {
+        "additionalProperties": false,
+        "description": "15 维中的单维。",
+        "properties": {
+          "conclusion": {
+            "title": "Conclusion",
+            "type": "string"
+          },
+          "evidence": {
+            "description": "证据引用，必须可溯源",
+            "title": "Evidence",
+            "type": "string"
+          },
+          "index": {
+            "title": "Index",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "tag": {
+            "description": "维度标签，如优势/短板/待验证",
+            "title": "Tag",
+            "type": "string"
+          }
+        },
+        "required": [
+          "index",
+          "name",
+          "tag",
+          "conclusion",
+          "evidence"
+        ],
+        "title": "ReportDimensionItem",
+        "type": "object"
+      },
       "ReportDimensionItemView": {
         "additionalProperties": false,
         "description": "15 维里的单维。**逐字段声明**而不是 `dict`：前端要按 `tag` 上色、\n按 `evidence` 做可溯源展示，字段名一旦漂移，界面会静默变成空白。",
@@ -8713,6 +8883,42 @@
           "title"
         ],
         "title": "StagePanelView",
+        "type": "object"
+      },
+      "Swot": {
+        "additionalProperties": false,
+        "description": "SWOT。每项不少于 2 条。",
+        "properties": {
+          "opportunity": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Opportunity",
+            "type": "array"
+          },
+          "risk": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Risk",
+            "type": "array"
+          },
+          "strength": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Strength",
+            "type": "array"
+          },
+          "weakness": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Weakness",
+            "type": "array"
+          }
+        },
+        "title": "Swot",
         "type": "object"
       },
       "TaskEdit": {
@@ -9366,6 +9572,26 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "Verdict": {
+        "additionalProperties": false,
+        "description": "报告综合结论。",
+        "properties": {
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "summary"
+        ],
+        "title": "Verdict",
         "type": "object"
       },
       "WorkloadView": {
