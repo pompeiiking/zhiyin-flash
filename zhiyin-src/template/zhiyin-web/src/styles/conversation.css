@@ -85,9 +85,6 @@
 .consult-option-group {margin-top:20px;padding-top:0;border-top:0;}
 .consult-option-group>p {margin:0 0 8px;color:var(--c-text-3);font-size:12px;}
 .consult-copy {display:flex;align-items:center;justify-content:center;width:44px;height:44px;border:0;background:none;color:var(--c-text-3);cursor:pointer;}
-.consult-turn-status {display:flex;flex-wrap:wrap;gap:7px;margin:12px 0;color:var(--c-text-2);font-size:12px;}
-.consult-turn-status span {display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:5px 9px;border-radius:8px;background:var(--c-surface-2);}
-.consult-turn-status span[data-status=done] {color:var(--c-primary);background:var(--c-primary-weak);}
 .consult-turn-progress {margin:12px 0;color:var(--c-text-3);font-size:12px;}
 .consult-turn-progress>summary {display:flex;align-items:center;gap:7px;width:fit-content;min-height:36px;cursor:pointer;list-style:none;color:var(--c-text-2);}
 .consult-turn-progress>summary::-webkit-details-marker {display:none;}
@@ -281,3 +278,5 @@
  .consult-messages {width:100%;box-sizing:border-box;overflow-x:hidden;}
  .consult-turn--host>.consult-answer {max-width:calc(100% - 40px);}
 }
+
+.consult-saved-assets { display:flex; flex-wrap:wrap; gap:6px 12px; margin:8px 0; color:var(--c-text-2); font-size:12px; }

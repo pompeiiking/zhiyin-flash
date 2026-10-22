@@ -290,10 +290,10 @@ async function revokeGrades() {
     backendDemo.revokeAcademicGrades()
     backendDemo.markProfileChange('scores')
     revokeOpen.value = false
-    status.value = '已撤回成绩记录，课表保持不变。'
+    status.value = '已清空成绩记录，课表保持不变。'
     await loadGrades()
   } catch {
-    error.value = '撤回结果暂时没有确认，请重新读取后再试。'
+    error.value = '清空结果暂时没有确认，请刷新成绩后核对。'
   } finally {
     loading.value = false
   }
@@ -305,8 +305,8 @@ onMounted(() => { void loadGrades() })
 <template>
   <div class="ws-page grades-page">
     <PageHeading title="我的成绩" description="先看成绩变化与学习建议，再按学年、学期核对课程明细。">
-      <button v-if="grades.length" class="btn" :disabled="loading" @click="loadGrades(true)">{{ loading ? '正在读取…' : '刷新成绩' }}</button>
-      <button v-if="grades.length" class="btn btn--primary" @click="importOpen = true"><UiIcon name="upload" :size="16" />更新成绩</button>
+      <button v-if="grades.length" class="btn btn--primary" @click="importOpen = true"><UiIcon name="upload" :size="16" />重新导入成绩</button>
+      <button v-if="grades.length" class="ws-text-button" :disabled="loading" @click="loadGrades(true)">{{ loading ? '正在刷新…' : '刷新成绩' }}</button>
     </PageHeading>
 
     <StatusBanner v-if="status" tone="success" size="sm" :message="status" @dismiss="status=''" />
@@ -437,7 +437,7 @@ onMounted(() => { void loadGrades() })
         <EmptyState v-else kind="search-empty" :heading-level="3" size="sm" title="这个筛选下没有成绩" description="换一个学年或学期查看。" :next="false" />
       </section>
 
-      <section class="grade-notes"><DetailPopover title="成绩口径" label="查看成绩口径"><template #trigger>成绩口径</template><p>等级制成绩按原文保留，不自动换算；绩点以学校导出值为准。趋势仅使用已录入的数值成绩，不推算排名或综合绩点，避免混用不同学校的计算规则。</p></DetailPopover><button class="grade-revoke" @click="revokeOpen=true"><UiIcon name="trash" :size="16" />撤回成绩记录</button></section>
+      <section class="grade-notes"><DetailPopover title="成绩口径" label="查看成绩口径"><template #trigger>成绩口径</template><p>等级制成绩按原文保留，不自动换算；绩点以学校导出值为准。趋势仅使用已录入的数值成绩，不推算排名或综合绩点，避免混用不同学校的计算规则。</p></DetailPopover><button class="grade-revoke" @click="revokeOpen=true"><UiIcon name="trash" :size="16" />清空成绩记录</button></section>
     </template>
 
     <EmptyState v-else kind="academic" :heading-level="2" title="还没有成绩记录" description="从教务系统复制带表头的成绩表，保存前可以先预览识别结果。" action-label="导入成绩" @action="importOpen=true" />
@@ -445,7 +445,7 @@ onMounted(() => { void loadGrades() })
     <nav class="ws-related"><RouterLink to="/profile">查看学籍与个人画像<UiIcon name="profile" :size="16" /></RouterLink><RouterLink to="/schedule">查看日历与课表<UiIcon name="calendar" :size="16" /></RouterLink></nav>
 
     <AcademicImportSheet :open="importOpen" kind="grades" :has-rows="!!grades.length" :school="academic?.school" :term="academic?.term" @close="importOpen=false" @saved="imported" />
-    <InfoSheet :open="revokeOpen" shape="dialog" title="撤回成绩记录" @close="revokeOpen=false"><p>将删除当前保存的全部成绩。课程表、学籍信息、行动记录不会受影响。</p><div class="ws-inline-actions"><button class="btn btn--danger" :disabled="loading" @click="revokeGrades">{{ loading ? '正在撤回…' : '确认撤回成绩' }}</button><button class="btn" :disabled="loading" @click="revokeOpen=false">取消</button></div></InfoSheet>
+    <InfoSheet :open="revokeOpen" shape="dialog" title="清空成绩记录" @close="revokeOpen=false"><p>将清空当前保存的全部成绩，需要时可重新导入。课表、学籍信息和行动记录会保留。</p><div class="ws-inline-actions"><button class="btn btn--danger" :disabled="loading" @click="revokeGrades">{{ loading ? '正在清空…' : '确认清空成绩' }}</button><button class="btn" :disabled="loading" @click="revokeOpen=false">取消</button></div></InfoSheet>
   </div>
 </template>
 

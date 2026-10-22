@@ -137,14 +137,14 @@ onMounted(() => load(false))
   <div class="ws-page review-page">
     <PageHeading title="任务复盘" description="回看一次行动，把经验变成更清楚的下一步。">
       <button class="btn" :disabled="busy" @click="load(true)">{{ busy ? '正在刷新…' : '刷新记录' }}</button>
-      <RouterLink class="btn" to="/home">回到今日行动</RouterLink>
+      <RouterLink v-if="tasks.length" class="ws-text-link" to="/home">回到今日行动</RouterLink>
     </PageHeading>
 
     <StatusBanner v-if="error" tone="error" :message="error" retry-label="重试" @retry="load(true)" />
     <p v-if="status" class="review-page__status" role="status">{{ status }}</p>
 
-    <section class="review-workspace" aria-labelledby="review-workspace-title">
-      <nav class="review-session-bar" aria-label="复盘队列" :aria-busy="busy">
+    <section class="review-workspace" aria-label="任务复盘工作区">
+      <nav v-if="busy || tasks.length" class="review-session-bar" aria-label="复盘队列" :aria-busy="busy">
         <div class="review-session-bar__copy">
           <span id="review-workspace-title">本次回看</span>
           <strong v-if="busy && !tasks.length">正在整理任务…</strong>
@@ -159,7 +159,7 @@ onMounted(() => load(false))
           <p>先安排并完成一项任务，再回来记录实际发生的事。</p>
           <RouterLink class="btn btn--sm" to="/home">去今日行动</RouterLink>
         </div>
-        <div class="review-session-bar__actions">
+        <div v-if="focusTaskPool.length > 1" class="review-session-bar__actions">
           <button class="btn btn--sm" :disabled="focusIndex <= 0" @click="selectRelativeTask(-1)">上一项</button>
           <button class="btn btn--sm" :disabled="focusIndex < 0 || focusIndex >= focusTaskPool.length - 1" @click="selectRelativeTask(1)">下一项</button>
         </div>

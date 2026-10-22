@@ -51,7 +51,7 @@ const guideSteps = [
   {
     title: '核对报告依据', to: '/report',
     what: '报告先给总体判断，再逐条给依据。带「待验证」的条目不是结论，而是需要你在现实中验证的问题。',
-    how: '点页头的「重新读取」拿最新报告；点报告里的蓝色文字可以展开这条判断的依据与来源。',
+    how: '点报告页「更多」里的「刷新报告」读取最新版本；点报告里的蓝色文字可以展开这条判断的依据与来源。',
     output: '一份知道"依据在哪、还缺什么"的诊断报告，也可以导出 JSON 保存。',
   },
   {
@@ -183,7 +183,7 @@ async function exportData() {
         </li>
       </ol>
       <p class="guide-tools">需要单独核验学籍、导入成绩或课表时，去「应用工具」页，每个工具都写明了读什么、给你什么、什么时候用。</p>
-      <div class="ws-inline-actions"><RouterLink class="btn" to="/chat">开始咨询</RouterLink><RouterLink class="btn" to="/profile">核对画像</RouterLink><RouterLink class="btn" to="/directions">比较方向</RouterLink><RouterLink class="btn" to="/tools">打开应用工具</RouterLink></div>
+      <div class="ws-inline-actions"><RouterLink class="btn btn--primary" to="/chat">开始咨询</RouterLink><RouterLink class="ws-text-link" to="/tools">查看应用工具</RouterLink></div>
       <DetailPopover title="状态与术语" label="查看状态与术语"><template #trigger>状态与术语</template><dl><dt>待验证</dt><dd>目前证据还不够，需要你在现实中做一次尝试后再回来更新，不是最终结论。</dd><dt>主攻 / 平行 / 保底</dt><dd>主攻是最想投入的方向，平行是同时准备的方向，保底是万一不顺仍能接受的方向。</dd><dt>已读</dt><dd>看过提醒，不代表事项已处理。</dd><dt>待重新计算</dt><dd>依赖资料已变化，旧报告保留原版，需要生成新版。</dd><dt>个人待办</dt><dd>自己记录的安排，与阶段计划任务分别保存。</dd><dt>待支持</dt><dd>功能入口保留，尚缺相应服务能力。</dd></dl></DetailPopover>
     </section>
   </div>

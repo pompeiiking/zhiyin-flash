@@ -88,7 +88,7 @@ async function removeTask(){
         <p v-if="error" role="alert" class="ws-field-error">{{error}}</p>
         <p v-if="status" role="status">{{status}}</p>
         <div v-if="task&&!split" class="task-editor-danger">
-          <template v-if="deleteConfirm"><span>删除后无法恢复，确认删除这项任务吗？</span><button type="button" class="btn" :disabled="deleting" @click="deleteConfirm=false">取消</button><button type="button" class="btn" :disabled="deleting" @click="removeTask">{{deleting?'正在删除…':'确认删除'}}</button></template>
+          <template v-if="deleteConfirm"><span>删除后无法恢复，确认删除这项任务吗？</span><button type="button" class="btn" :disabled="deleting" @click="deleteConfirm=false">取消</button><button type="button" class="btn btn--danger" :disabled="deleting" @click="removeTask">{{deleting?'正在删除…':'确认删除'}}</button></template>
           <button v-else type="button" class="ws-text-button" @click="deleteConfirm=true">删除任务</button>
         </div>
         <button class="btn btn--primary" :disabled="busy||!phase">{{busy?'正在保存…':'保存安排'}}</button>

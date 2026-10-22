@@ -241,7 +241,7 @@ onMounted(() => { void load() })
                 <p>{{ selectedReview.reason }} · {{ selectedReview.note || '没有补充说明' }}</p>
                 <p v-for="(version, index) in selectedReview.history" :key="index">修订前：{{ version.reason }} · {{ version.note || '没有补充说明' }}</p>
               </DetailPopover>
-              <label class="review-task-switcher">
+              <label v-if="tasks.length" class="review-task-switcher">
                 <span>切换任务</span>
                 <select v-model="selectedId" name="review-task" autocomplete="off">
                   <option value="">选择一项任务</option>
@@ -371,7 +371,7 @@ onMounted(() => { void load() })
               <li><span>02</span><strong>记录实际情况</strong></li>
               <li><span>03</span><strong>决定继续或调整</strong></li>
             </ol>
-            <div v-if="!tasks.length && !props.loadingTasks" class="review-editor__empty-actions"><RouterLink class="btn btn--primary" to="/plan">安排阶段任务</RouterLink><RouterLink class="ws-text-link" to="/home">查看今日行动</RouterLink></div>
+            <div v-if="!tasks.length && !props.loadingTasks" class="review-editor__empty-actions"><RouterLink class="btn btn--primary" to="/plan">安排阶段任务</RouterLink></div>
           </div>
         </fieldset>
       </form>

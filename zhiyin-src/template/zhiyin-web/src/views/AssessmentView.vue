@@ -5,6 +5,7 @@ import { backendClient, BackendError } from '../api/backend-client'
 import { backendDemo } from '../lib/backend-demo'
 import type { ReportFullTextView, AssetVersionView, WorkspacePageView } from '../api/backend-types'
 import PageHeading from '../components/PageHeading.vue'
+import ActionMenu from '../components/ActionMenu.vue'
 import FullReportBody from '../components/FullReportBody.vue'
 import ReportHistory from '../components/ReportHistory.vue'
 import AssetNotice from '../components/AssetNotice.vue'
@@ -87,6 +88,16 @@ async function load() {
   } finally { busy.value = false }
 }
 function printReport() { window.print() }
+const moreActions = computed(() => [
+  { id: 'refresh', label: historicalView.value ? '回到最新版' : '刷新报告', disabled: busy.value },
+  { id: 'export', label: '导出 JSON 数据', disabled: busy.value },
+  { id: 'print', label: '打印报告' },
+])
+function selectMore(id: string) {
+  if (id === 'refresh') void load()
+  else if (id === 'export') exportReport()
+  else if (id === 'print') printReport()
+}
 /**
  * 【#24】页头加「导出」：用本页已经加载的报告数据（GET /app/report/full-text + 版本元信息）
  * 在浏览器端生成一个 JSON 文件下载，不需要新接口。没有报告时按钮禁用并提示先生成。
@@ -133,9 +144,9 @@ onMounted(load)
       <RouterLink v-if="!history" class="btn btn--primary" :to="regenerateTarget">{{ report ? '重新生成报告' : '生成报告' }}</RouterLink>
       <button v-if="history" class="btn" @click="setHistory(false)">返回报告</button>
       <template v-else-if="report">
-        <button class="ws-text-button" :disabled="busy" @click="load">{{ busy ? '正在读取…' : historicalView ? '回到最新版' : '重新读取' }}</button><button class="ws-text-button" @click="setHistory(true)">版本记录</button><button class="ws-text-button" :disabled="busy" @click="exportReport">导出</button><button class="ws-text-button" @click="printReport">打印</button>
+        <button class="ws-text-button" @click="setHistory(true)">版本记录</button>
+        <ActionMenu label="更多报告操作" :items="moreActions" @select="selectMore" />
       </template>
-      <button v-else class="ws-text-button" disabled title="先生成报告后才能导出">导出</button>
     </PageHeading>
 
     <AssetNotice />
@@ -183,6 +194,6 @@ onMounted(load)
 .report-coverage-note{margin-top:12px;padding:12px 14px;border-left:3px solid var(--c-primary-border);border-radius:0 10px 10px 0;background:var(--c-primary-weak-2);color:var(--c-text-2);font-size:var(--fs-13)!important;line-height:1.75!important}
 @media(max-width:980px){.report-masthead-grid{grid-template-columns:minmax(0,1fr) 44px;gap:20px}}
 @media(max-width:767px){.report-article-shell{margin:12px auto 28px;border-right:0;border-left:0;box-shadow:none}.report-masthead-grid{display:block}.report-masthead{padding:24px 20px 30px}.report-cover__title{align-items:flex-start;padding:32px 0 26px}.report-cover__title h2{font-size:34px;letter-spacing:.02em}.report-cover__edition{width:66px;padding-left:12px}.report-cover__edition strong{font-size:21px}.report-cover__verdict{margin-bottom:30px;padding-left:14px;font-size:19px;line-height:1.75}.report-cover__footer{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 0}.report-cover__footer>div:nth-child(3){padding-left:0;border-left:0}.report-reading-footer{padding-top:42px}}
-@media(max-width:480px){.report-cover__title{flex-direction:column;align-items:flex-start;gap:12px}.report-cover__edition{display:flex;align-items:baseline;gap:8px;width:auto;padding-left:0;border-left:0}.report-page :deep(.ws-heading__actions){display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.report-page :deep(.ws-heading__actions .btn),.report-page :deep(.ws-heading__actions .ws-text-button){width:100%;justify-content:center;white-space:normal}}
+@media(max-width:480px){.report-cover__title{flex-direction:column;align-items:flex-start;gap:12px}.report-cover__edition{display:flex;align-items:baseline;gap:8px;width:auto;padding-left:0;border-left:0}.report-page :deep(.ws-heading__actions){display:flex;flex-wrap:wrap;align-items:center;gap:6px}.report-page :deep(.ws-heading__actions .btn),.report-page :deep(.ws-heading__actions .ws-text-button){flex:none;width:auto;justify-content:center;white-space:nowrap}}
 @media print{.report-page :deep(button),.report-page :deep(.direction-radio),.report-page :deep(select),.report-reading-footer{display:none!important}.report-masthead-grid{display:block}.report-masthead{padding-bottom:30px}}
 </style>

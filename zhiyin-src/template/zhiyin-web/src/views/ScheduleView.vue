@@ -7,6 +7,7 @@ import { backendClient } from '../api/backend-client'
 import type { ActionTaskView } from '../api/backend-types'
 import { courseTimeLabel, hasCourseTime } from '../lib/academic'
 import PageHeading from '../components/PageHeading.vue'
+import ActionMenu from '../components/ActionMenu.vue'
 import UiIcon from '../components/UiIcon.vue'
 import DetailPopover from '../components/DetailPopover.vue'
 import DayAdvicePanel from '../components/DayAdvicePanel.vue'
@@ -184,7 +185,7 @@ async function loadCalendar() {
 }
 
 async function courseImported(message:string){courseImportOpen.value=false;await loadCalendar();academicStatus.value=message}
-async function revokeCourses(){if(calendarBusy.value)return;calendarBusy.value=true;academicError.value='';try{const result=await backendClient.revokeAcademicCourses();if(!result.revoked)throw new Error('Not confirmed');backendDemo.revokeAcademicCourses();courseRevokeOpen.value=false;academicStatus.value='已撤回课表，成绩记录保持不变。';backendDemo.setWorkspace(await backendClient.workspace())}catch{academicError.value='撤回结果暂时没有确认，请重新读取后再试。'}finally{calendarBusy.value=false}}
+async function revokeCourses(){if(calendarBusy.value)return;calendarBusy.value=true;academicError.value='';try{const result=await backendClient.revokeAcademicCourses();if(!result.revoked)throw new Error('Not confirmed');backendDemo.revokeAcademicCourses();courseRevokeOpen.value=false;academicStatus.value='已清空课表，成绩记录保持不变。';backendDemo.setWorkspace(await backendClient.workspace())}catch{academicError.value='清空结果暂时没有确认，请刷新日程后核对。'}finally{calendarBusy.value=false}}
 onMounted(() => {
   centerSelectedWeek(); centerTodayCourse(); void loadCalendar()
   // 从「今日容量 · 填写时间」跳进来时直接打开课表检查面板：
@@ -203,11 +204,11 @@ onMounted(() => {
           <span v-if="readOnce">{{ pendingTasks.length }} 项待执行</span>
         </div>
       </template>
-      <button class="btn" :disabled="calendarBusy" @click="loadCalendar">
+      <button v-if="backendDemo.state.academic?.courses?.length" class="btn btn--primary" @click="courseImportOpen=true"><UiIcon name="upload" :size="16" aria-hidden="true" />重新导入课表</button>
+      <button class="ws-text-button" :disabled="calendarBusy" @click="loadCalendar">
         <UiIcon name="refresh" :size="16" aria-hidden="true" />
-        {{ calendarBusy ? '正在读取…' : readOnce ? '更新日程' : '读取日程' }}
+        {{ calendarBusy ? '正在刷新…' : '刷新日程' }}
       </button>
-      <button class="btn" @click="courseImportOpen=true"><UiIcon name="upload" :size="16" aria-hidden="true" />{{ backendDemo.state.academic?.courses?.length ? "更新课表" : "导入课表" }}</button>
     </PageHeading>
 
     <StatusBanner v-if="academicStatus" tone="success" size="sm" :message="academicStatus" @dismiss="academicStatus=''"/><StatusBanner :retryable="false" v-if="academicError" tone="error" size="sm" :message="academicError" @dismiss="academicError=''"/>
@@ -228,9 +229,11 @@ onMounted(() => {
             <UiIcon :name="mode === 'week' ? 'calendar' : 'action'" :size="16" aria-hidden="true" />
             {{ mode === 'week' ? '月度节点' : '本周安排' }}
           </button>
+          <div class="schedule-date-nav" role="group" aria-label="切换日期范围">
           <button class="ws-icon-button" :aria-label="mode === 'week' ? '上一周' : '上个月'" @click="move(-1)"><UiIcon name="back" /></button>
           <button class="btn" @click="resetDate">今天</button>
           <button class="ws-icon-button" :aria-label="mode === 'week' ? '下一周' : '下个月'" @click="move(1)"><UiIcon name="arrow" /></button>
+          </div>
         </div>
       </header>
 
@@ -277,7 +280,7 @@ onMounted(() => {
     <InfoSheet :open="timePlanOpen" shape="panel" title="本周时间建议" description="结合已导入课表、限制和行为记录，生成可执行时间窗。" @close="timePlanOpen=false"><TimetableAdvice /></InfoSheet>
 
     <section class="schedule-surface timetable-surface" aria-labelledby="course-view-title">
-      <header class="course-view__head"><h2 id="course-view-title">{{ backendDemo.state.academic?.term || '课程表' }}</h2><div class="course-view__meta"><span>{{ timedCourses.length }} 门课程</span><button type="button" class="ws-text-button" @click="capacityOpen=true">检查时间冲突</button><button class="ws-text-button" @click="courseImportOpen=true">更新课表</button><button v-if="backendDemo.state.academic?.courses?.length" class="ws-text-button" @click="courseRevokeOpen=true">撤回课表</button></div></header>
+      <header class="course-view__head"><h2 id="course-view-title">{{ backendDemo.state.academic?.term || '课程表' }}</h2><div class="course-view__meta"><span>{{ timedCourses.length }} 门课程</span><button type="button" class="ws-text-button" @click="capacityOpen=true">检查时间冲突</button><ActionMenu v-if="backendDemo.state.academic?.courses?.length" label="更多课表操作" :items="[{id:'clear',label:'清空课表',danger:true,disabled:calendarBusy}]" @select="courseRevokeOpen=true" /></div></header>
       <div v-if="timedCourses.length" ref="timetableScroll" class="timetable-scroll" tabindex="0" aria-label="一周课程表，可横向滚动">
         <div class="timetable-grid" :style="{ '--periods': lastPeriod }">
           <div class="timetable-corner">节次</div>
@@ -304,7 +307,7 @@ onMounted(() => {
     <Foldable v-if="undatedTasks.length" title="尚未排期的计划任务" variant="section" :count="undatedTasks.length"><ul class="ws-mini-list"><li v-for="task in undatedTasks" :key="task.task_id">{{ task.text }} <TaskEditor :task="task" /></li></ul></Foldable>
   </div>
 <AcademicImportSheet :open="courseImportOpen" kind="courses" :has-rows="!!backendDemo.state.academic?.courses?.length" :school="backendDemo.state.academic?.school" :term="backendDemo.state.academic?.term" @close="courseImportOpen=false" @saved="courseImported" />
-<InfoSheet :open="courseRevokeOpen" shape="dialog" title="撤回课表" @close="courseRevokeOpen=false"><p>将删除当前保存的课程和排课信息。成绩、学籍与行动记录不会受影响。</p><div class="ws-inline-actions"><button class="btn btn--danger" :disabled="calendarBusy" @click="revokeCourses">{{calendarBusy?'正在撤回…':'确认撤回课表'}}</button><button class="btn" :disabled="calendarBusy" @click="courseRevokeOpen=false">取消</button></div></InfoSheet>
+<InfoSheet :open="courseRevokeOpen" shape="dialog" title="清空课表" @close="courseRevokeOpen=false"><p>将清空当前保存的全部课程和排课信息，需要时可重新导入。成绩、学籍和行动记录会保留。</p><div class="ws-inline-actions"><button class="btn btn--danger" :disabled="calendarBusy" @click="revokeCourses">{{calendarBusy?'正在清空…':'确认清空课表'}}</button><button class="btn" :disabled="calendarBusy" @click="courseRevokeOpen=false">取消</button></div></InfoSheet>
 </template>
 
 <style scoped>
@@ -317,6 +320,7 @@ onMounted(() => {
 .schedule-toolbar p, .course-view__head p, .day-agenda__head p { margin: 0 0 4px; color: var(--c-text-3); font-size: 12px; font-weight: 700; letter-spacing: .08em; }
 .schedule-toolbar h2, .course-view__head h2, .day-agenda__head h2 { margin: 0; font-size: 20px; text-wrap: balance; }
 .schedule-toolbar__actions { display: flex; align-items: center; gap: 8px; }
+.schedule-date-nav { display: flex; flex: none; align-items: center; gap: 6px; }
 .calendar-mode-switch { display: inline-flex; align-items: center; gap: 7px; min-height: 40px; padding: 0 12px; border: 1px solid var(--c-border); border-radius: 9px; color: var(--c-primary); background: var(--c-surface); font-weight: 700; cursor: pointer; }
 .calendar-mode-switch:hover { border-color: var(--c-primary); background: color-mix(in srgb, var(--c-primary) 7%, var(--c-surface)); }
 .week-strip { display: grid; grid-template-columns: repeat(7, minmax(80px, 1fr)); border-bottom: 1px solid var(--c-border); }
@@ -381,9 +385,9 @@ onMounted(() => {
   .schedule-page { padding-bottom: 90px; }
   .schedule-toolbar, .course-view__head { padding: 18px 16px; }
   .schedule-toolbar h2, .course-view__head h2 { font-size: 18px; }
-  .schedule-toolbar { align-items: flex-start; }
-  .schedule-toolbar__actions { flex-wrap: wrap; justify-content: flex-end; }
-  .calendar-mode-switch { order: 4; width: 100%; min-height: 44px; justify-content: center; }
+  .schedule-toolbar { align-items: stretch; flex-direction: column; gap: 12px; }
+  .schedule-toolbar__actions { flex-wrap: wrap; justify-content: space-between; }
+  .calendar-mode-switch { min-height: 44px; justify-content: center; }
   .week-strip { display: flex; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; }
   .week-strip::-webkit-scrollbar { display: none; }
   .week-strip button { flex: 0 0 68px; min-height: 96px; }

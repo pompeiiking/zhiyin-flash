@@ -156,7 +156,7 @@ function restart() {
 </script>
 
 <template>
-  <InfoSheet :open="open" shape="panel" :title="`${hasRows ? '更新' : '导入'}${noun}`" @close="!saving && emit('close')">
+  <InfoSheet :open="open" shape="panel" :title="`${hasRows ? '重新导入' : '导入'}${noun}`" @close="!saving && emit('close')">
     <template v-if="stage === 'edit'">
       <p class="import-lead">只会替换当前{{ noun }}，不会改动{{ kind === 'courses' ? '成绩记录' : '日历中的课程' }}。保存前可逐条预览。</p>
       <div class="import-meta">
@@ -182,7 +182,7 @@ function restart() {
       <p class="ws-muted">确认后将用以上 {{ rows.length }} 条记录替换已有 {{ replaceCount }} 条{{ noun }}。</p>
       <ul v-if="warnings.length" class="import-warnings"><li v-for="warning in warnings" :key="warning">{{ warning }}</li></ul>
       <StatusBanner v-if="error" tone="error" size="sm" :message="error" :retrying="busy" @retry="editingRows ? reviewEdits() : save()" @dismiss="error = ''" />
-      <div class="ws-inline-actions"><button v-if="editingRows" class="btn btn--primary" type="button" :disabled="busy || !rows.length" @click="reviewEdits">{{ busy ? '正在核对…' : '重新核对修改' }}</button><button v-else class="btn btn--primary" type="button" :disabled="busy || !rows.length || !previewId" @click="save">{{ busy ? '正在保存…' : `确认替换${noun}` }}</button><button v-if="!editingRows" class="btn" type="button" :disabled="busy" @click="editRows">修改识别结果</button><button class="ws-text-button" type="button" :disabled="busy" @click="restart">重新上传</button></div>
+      <div class="ws-inline-actions"><button v-if="editingRows" class="btn btn--primary" type="button" :disabled="busy || !rows.length" @click="reviewEdits">{{ busy ? '正在核对…' : '重新核对修改' }}</button><button v-else class="btn btn--primary" type="button" :disabled="busy || !rows.length || !previewId" @click="save">{{ busy ? '正在保存…' : `确认${replaceCount ? '替换' : '导入'}${noun}` }}</button><button v-if="!editingRows" class="btn" type="button" :disabled="busy" @click="editRows">修改识别结果</button><button class="ws-text-button" type="button" :disabled="busy" @click="restart">重新上传</button></div>
     </template>
   </InfoSheet>
 </template>

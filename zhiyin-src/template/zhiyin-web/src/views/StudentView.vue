@@ -188,7 +188,7 @@ onMounted(()=>{ void loadWorkspace() })
   <div class="ws-page profile-page p7" :aria-busy="loading">
     <p class="sr-only" role="status" aria-live="polite">{{ loading ? '正在读取个人画像…' : '' }}</p>
     <PageHeading title="个人画像" description="把零散经历整理成可核对、可继续验证的个人画像。"><template #meta><div class="c2-page-meta"><span v-if="live">{{ livePanel ? '已读取的档案' : loading ? '正在读取档案' : '尚未读取档案' }}</span><span>{{ progress.known }} 条已知 · {{ progress.gap }} 条待补充</span></div></template>
-      <RouterLink class="btn btn--primary" to="/chat">{{ progress.gap ? '补充关键信息' : '更新信息' }}<UiIcon name="arrow" :size="16" /></RouterLink>
+      <RouterLink class="btn btn--primary" to="/chat">补充信息<UiIcon name="arrow" :size="16" /></RouterLink>
       <button class="btn" :disabled="loading || (live && !livePanel)" @click="exportProfile"><UiIcon name="download" :size="16"/>导出画像</button>
     </PageHeading>
 
@@ -597,7 +597,7 @@ onMounted(()=>{ void loadWorkspace() })
         </section>
       </div>
     </Foldable><aside class="c2-profile-side" aria-label="画像操作与来源">
-      <section><h2>核对与管理资料</h2><RouterLink class="btn" to="/chat">补充一条信息<UiIcon name="plus" :size="16" /></RouterLink><button class="btn" :disabled="loading" @click="loadWorkspace">{{ loading ? '正在读取…' : '重新核对档案' }}</button><p>点开一条信息，可以查看依据、修改内容。更正后会标出受影响的判断。</p></section>
+      <section><h2>核对与管理资料</h2><RouterLink class="btn" to="/chat">补充信息<UiIcon name="plus" :size="16" /></RouterLink><button class="btn" :disabled="loading" @click="loadWorkspace">{{ loading ? '正在读取…' : '刷新个人资料' }}</button><p>点开一条信息，可以查看依据、修改内容。更正后会标出受影响的判断。</p></section>
       <section><h2>这 {{ known.length }} 条从哪里来</h2><div v-for="source in SOURCE_GROUPS" :key="source.key" class="c2-source-row"><span>{{ source.label }}</span><span class="c2-source-track" role="meter" :aria-label="source.label" :aria-valuenow="known.filter(row => source.from.includes(row.desc)).length" :aria-valuemax="Math.max(1, known.length)" aria-valuemin="0"><i :style="{width: known.filter(row => source.from.includes(row.desc)).length / Math.max(1, known.length) * 100 + '%'}" /></span><b>{{ known.filter(row => source.from.includes(row.desc)).length }}</b></div></section>
       <section><h2>{{ identity.name }}</h2><p>{{ identity.line }}</p><p>已记录 {{ progress.known }} 条 · {{ confBands[0]?.title }} {{ confBands[0]?.count ?? 0 }} 条 · {{ confBands[2]?.title }} {{ confBands[2]?.count ?? 0 }} 条</p><Foldable variant="inline" title="查看来源与核实状态"><p>{{ statusLine }}</p><p>{{ coverageNote }}</p><p>这里不显示内部置信度分数；每条记录由来源与核实状态分别说明。</p></Foldable></section>
     </aside></InfoSheet>
@@ -625,7 +625,7 @@ onMounted(()=>{ void loadWorkspace() })
       <p>删除后这条不再作为咨询依据；依赖它的判断会标记待核对。历史聊天记录需要在会话里另行删除。</p>
       <p v-if="deleteError" class="ws-field-error" role="alert">{{ deleteError }}</p>
       <div class="ws-inline-actions">
-        <button class="btn btn--primary" type="button" :disabled="deleteBusy" @click="confirmDelete">{{ deleteBusy ? '正在删除…' : '确认删除' }}</button>
+        <button class="btn btn--danger" type="button" :disabled="deleteBusy" @click="confirmDelete">{{ deleteBusy ? '正在删除…' : '确认删除' }}</button>
         <button class="btn" type="button" :disabled="deleteBusy" @click="closeDelete">取消</button>
       </div>
     </InfoSheet>

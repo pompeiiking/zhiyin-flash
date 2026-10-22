@@ -5,7 +5,8 @@ import {refreshNotifications} from '../lib/system-data'
 import {dateKey} from '../lib/action-insights.mjs'
 import {usePagedItems} from '../lib/paged-items'
 import ResultPager from './ResultPager.vue'
-import DetailPopover from './DetailPopover.vue'
+import ActionMenu from './ActionMenu.vue'
+import InfoSheet from './InfoSheet.vue'
 import StatusBanner from './StatusBanner.vue'
 
 /**
@@ -28,6 +29,23 @@ const notices=ref<Notice[]>([]),query=ref(''),filter=ref('pending'),busy=ref(fal
 const snooze=ref<Record<string,string>>({}),snoozeError=ref<Record<string,string>>({})
 const justRead=ref<string[]>([])
 const expanded=ref<string[]>([])
+const snoozeGroup=ref<NoticeGroup|null>(null)
+function moreItems(group:NoticeGroup) {
+  return [
+    ...(group.notice.status==='pending' ? [{id:'read',label:'标为已读'}] : [{id:'pending',label:'恢复待处理'}]),
+    {id:'later',label:'稍后再提醒'},
+  ]
+}
+function moreAction(group:NoticeGroup,id:string) {
+  if(id==='later') snoozeGroup.value=group
+  else if(id==='read'||id==='pending') void change(group,id)
+}
+async function saveSnooze() {
+  if(busy.value||!snoozeGroup.value)return
+  const group=snoozeGroup.value
+  await change(group,'later')
+  if(!error.value&&!snoozeError.value[group.notice.id])snoozeGroup.value=null
+}
 const tabs=[{key:'pending',label:'未读提醒'},{key:'read',label:'已读历史'},{key:'later',label:'稍后处理'},{key:'done',label:'已处理'}]
 const statusLabels:Record<string,string>={pending:'待处理',read:'已读',later:'稍后处理',done:'已处理'}
 /** 当前分类 + 本屏刚点开的已读项（点开后不立刻消失，便于看到展开的详情）。 */
@@ -160,23 +178,9 @@ onMounted(load)
         </div>
       </section>
       <div class="ws-inline-actions">
-        <button class="btn" :disabled="busy" @click="reveal(g)">{{isExpanded(g.key)?'收起详情':(g.notice.action?.label||'看看是什么')}}</button>
-        <button v-if="g.notice.status==='pending'" class="btn" :disabled="busy" @click="change(g,'read')">标为已读</button>
-        <button v-if="g.notice.status!=='done'" class="btn" :disabled="busy" @click="change(g,'done')">标为已处理</button>
-        <button v-if="g.notice.status!=='pending'" class="btn" :disabled="busy" @click="change(g,'pending')">恢复待处理</button>
-        <DetailPopover title="稍后再提醒" side="right">
-          <template #trigger>稍后处理</template>
-          <label class="ws-field">提醒时间<input v-model="snooze[g.notice.id]" type="datetime-local"/></label>
-          <button class="btn" :disabled="busy||!snooze[g.notice.id]" @click="change(g,'later')">保存提醒时间</button>
-          <p v-if="snoozeError[g.notice.id]" class="ws-field-error" role="alert">{{snoozeError[g.notice.id]}}</p>
-          <p>仅调整提醒状态，不自动完成关联任务。</p>
-        </DetailPopover>
-        <DetailPopover title="关联信息" side="right">
-          <template #trigger>关联信息</template>
-          <p>{{g.notice.body}}</p>
-          <p v-if="g.notice.action?.label" class="ws-muted">提醒里的操作：{{g.notice.action.label}}</p>
-          <RouterLink class="ws-text-link" to="/plan">核对阶段计划</RouterLink>
-        </DetailPopover>
+        <button class="btn btn--primary" :disabled="busy" @click="reveal(g)">{{isExpanded(g.key)?'收起详情':'查看详情'}}</button>
+        <button v-if="g.notice.status!=='done'" class="ws-text-button" :disabled="busy" @click="change(g,'done')">标为已处理</button>
+        <ActionMenu :label="'更多提醒操作：'+g.notice.title" :items="moreItems(g)" :disabled="busy" @select="moreAction(g,$event)" />
       </div>
     </article>
     <div v-if="!filtered.length&&!busy&&!error" class="ws-empty" role="status">
@@ -188,6 +192,16 @@ onMounted(load)
       <template v-else>此分类暂无提醒。</template>
     </div>
     <ResultPager v-model:page="page" :total="groups.length" :size="5" label="提醒"/>
+    <InfoSheet :open="!!snoozeGroup" title="稍后再提醒" @close="snoozeGroup=null">
+      <template v-if="snoozeGroup">
+        <p>{{ snoozeGroup.notice.title }}</p>
+        <label class="ws-field">提醒时间<input v-model="snooze[snoozeGroup.notice.id]" type="datetime-local" /></label>
+        <p v-if="snoozeError[snoozeGroup.notice.id]" class="ws-field-error" role="alert">{{ snoozeError[snoozeGroup.notice.id] }}</p>
+        <p v-if="error" class="ws-field-error" role="alert">{{ error }}</p>
+        <p class="ws-muted">仅调整提醒状态，不自动完成关联任务。</p>
+        <div class="ws-inline-actions"><button class="btn btn--primary" :disabled="busy||!snooze[snoozeGroup.notice.id]" @click="saveSnooze">{{busy?'正在保存…':'保存提醒时间'}}</button><button class="btn" :disabled="busy" @click="snoozeGroup=null">取消</button></div>
+      </template>
+    </InfoSheet>
   </section>
 </template>
 

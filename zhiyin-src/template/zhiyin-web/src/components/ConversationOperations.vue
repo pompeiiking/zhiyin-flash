@@ -4,11 +4,25 @@ import type { ConversationAction } from '../api/backend-client'
 const props = defineProps<{ actions: ConversationAction[]; busy: boolean }>()
 const emit = defineEmits<{ decide: [id: string, accept: boolean] }>()
 const pending = computed(() => props.actions.filter(a => a.state === 'proposed' && Date.parse(a.expires_at) > Date.now()))
-const records = computed(() => props.actions.filter(a => a.state !== 'proposed').slice(-5).reverse())
+const records = computed(() => {
+ const items = props.actions.filter(a => a.state !== 'proposed')
+ return items.filter((a, index) => ['outcome_unknown', 'executing'].includes(a.state) || index === items.length - 1)
+})
 const states: Record<string, string> = { succeeded: '已完成', reverted: '已撤回', outcome_unknown: '结果待核对，请查看当前数据', failed: '未完成', superseded: '旧提案已失效', rejected: '未执行', expired: '已过期', executing: '正在执行，请稍后核对结果' }
 const titles: Record<string, string> = { 'plan.activate': '启用这份计划', 'plan.save': '保存计划', 'profile.update': '更新画像', 'task.set_done': '更新任务状态', 'report.save': '保存报告', 'directions.save': '保存方向方案', 'direction.select': '选择方向', 'memory.forget': '删除这项记忆' }
 Object.assign(titles, { 'action.undo': '撤销上次修改', 'plan.patch': '调整计划任务', 'report.activate': '启用这份报告', 'directions.activate': '启用方向方案' })
 Object.assign(titles, { 'academic.import': '保存课表或成绩', 'calendar.write': '保存日历提醒', 'calendar.delete': '删除日历提醒' })
+function actionTitle(a: ConversationAction) {
+ const p = a.payload.content || a.payload
+ return a.operation === 'academic.import' ? (p.kind === 'courses' ? '替换课表' : '替换成绩') : titles[a.operation] || '确认变更'
+}
+function confirmLabel(a: ConversationAction) {
+ const p = a.payload.content || a.payload
+ if (a.operation === 'academic.import') return p.kind === 'courses' ? '确认替换课表' : '确认替换成绩'
+ if (a.operation === 'task.set_done') return p.done ? '标记任务完成' : '恢复为未完成'
+ return titles[a.operation] || '确认这项变更'
+}
+function dangerous(a: ConversationAction) { return ['memory.forget', 'calendar.delete'].includes(a.operation) }
 function preview(a: ConversationAction): string[] {
  const p = a.payload.content || a.payload
  if (a.operation === 'academic.import') return [`${p.school} · ${p.term}`, `将用 ${(p[p.kind] || []).length} 条记录替换已有 ${p.replace_count} 条${p.kind === 'courses' ? '课程' : '成绩'}；${p.kind === 'courses' ? '成绩' : '课表'}保留。`, ...(p[p.kind] || []).map((r: any) => p.kind === 'courses' ? `${r.name} · 周${r.weekday || '?'} · ${r.start_period || '?'}–${r.end_period || '?'}节 · ${r.weeks || '周次待补充'} · ${r.place || '地点待补充'}` : `${r.name} · ${r.score} · 学分 ${r.credit || '—'} · 绩点 ${r.point || '—'} · ${r.term || p.term}`), ...(p.warnings || [])]
@@ -43,13 +57,13 @@ function preview(a: ConversationAction): string[] {
 <template>
  <section v-if="pending.length" class="conversation-operations" aria-label="待确认的变更">
   <article v-for="a in pending" :key="a.id" class="conversation-operation">
-   <h3>{{ titles[a.operation] || '确认变更' }}</h3>
+   <h3>{{ actionTitle(a) }}</h3>
    <p>确认后执行以下内容。你也可以继续输入调整要求。</p>
    <ul><li v-for="(line, index) in preview(a)" :key="index">{{ line }}</li></ul>
-   <div><button type="button" class="btn btn--primary btn--sm" :disabled="busy" @click="emit('decide', a.id, true)">确认执行</button><button type="button" class="btn btn--sm" :disabled="busy" @click="emit('decide', a.id, false)">暂不执行</button></div>
+   <div><button type="button" class="btn btn--sm" :class="dangerous(a) ? 'btn--danger' : 'btn--primary'" :disabled="busy" @click="emit('decide', a.id, true)">{{ confirmLabel(a) }}</button><button type="button" class="btn btn--sm" :disabled="busy" @click="emit('decide', a.id, false)">暂不执行</button></div>
   </article>
  </section>
- <details v-if="records.length" class="conversation-receipts"><summary>操作记录</summary><ul><li v-for="a in records" :key="a.id">{{ titles[a.operation] || '操作' }} · {{ states[a.state] || '状态待核对' }}</li></ul></details>
+ <p v-for="a in records" :key="a.id" class="conversation-receipt" role="status">{{ actionTitle(a) }} · {{ states[a.state] || '状态待核对' }}</p>
 </template>
 <style scoped>
 .conversation-operations { display: grid; gap: 12px; margin: 16px 0; }
@@ -59,7 +73,5 @@ function preview(a: ConversationAction): string[] {
 .conversation-operation ul { max-height: 240px; overflow: auto; padding-left: 22px; line-height: 1.7; }
 .conversation-operation > div { display: flex; gap: 10px; flex-wrap: wrap; }
 .conversation-operation > div button { min-height: 44px; min-width: 88px; }
-.conversation-receipts { margin: 12px 0; font-size: 14px; color: var(--c-text-2); }
-.conversation-receipts summary { cursor: pointer; }
-.conversation-receipts li { line-height: 1.8; }
+.conversation-receipt { margin: 8px 0; font-size: 13px; line-height: 1.7; color: var(--c-text-2); }
 </style>
