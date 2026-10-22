@@ -20,3 +20,20 @@ export function conversationPresentation(
 export function partialReplySpeaker(pendingAgent: string | undefined, previousHost: string) {
   return pendingAgent || previousHost
 }
+
+export type JourneyState = 'past' | 'current' | 'future'
+
+/**
+ * 阶段条三态：当前阶段之前的算已走过，当前阶段高亮，之后的仍是未到。
+ *
+ * 这是固定顺序的进度条，不是访问日志：阶段真正由模型按当前工作需要切换，
+ * 可能回到更早的环节；一旦回到更早环节，它之后的阶段就重新显示为未到。
+ */
+export function journeyState(stages: readonly string[], current: string, key: string): JourneyState {
+  const currentIndex = stages.indexOf(current)
+  const index = stages.indexOf(key)
+  if (index < 0 || currentIndex < 0) return 'future'
+  if (index < currentIndex) return 'past'
+  if (index === currentIndex) return 'current'
+  return 'future'
+}

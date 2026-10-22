@@ -9,7 +9,7 @@ import { isComposingKey } from '../lib/scroll-intent'
 import { vScrollFade } from '../lib/scroll-fade'
 import { navigation } from '../lib/layout'
 import { consultantLabel, agentKeyOf, cleanConsultantText } from '../lib/consultant'
-import { conversationPresentation, partialReplySpeaker } from '../lib/conversation-presentation'
+import { conversationPresentation, journeyState, partialReplySpeaker } from '../lib/conversation-presentation'
 import { personalizedStudyYearEntries, STUDY_YEAR_OPTIONS, studyYearIntro, studyYearLabel } from '../lib/study-year'
 import { newSession, openSession, loadShell, systemData } from '../lib/system-data'
 import { replyTurns } from '../lib/conversation-turns'
@@ -103,6 +103,8 @@ const journey = [
  { key:'decide', label:'比较选择', short:'选择' }, { key:'act', label:'安排下一步', short:'行动' },
  { key:'review', label:'回顾调整', short:'回顾' },
 ]
+const journeyKeys = journey.map(item => item.key)
+const stageState = (key: string) => journeyState(journeyKeys, currentStage.value, key)
 const host = computed(() => presentation.value.host)
 const studyYearField = computed(() => backendDemo.state.liveWorkspace?.profile_panel?.fields?.find(field => field.key === 'study_year'))
 const studyYear = computed(() => savedStudyYear.value || String(studyYearField.value?.value ?? ''))
@@ -493,7 +495,7 @@ onUnmounted(() => { disposed = true; clearInterval(recoveryTimer); window.remove
     </div></AnchoredCard>
     <AnchoredCard v-model="profileOpen" class="consult-icon" title="个人画像" side="bottom" align="end"><template #trigger><UiIcon name="profile" :size="19" /><span class="consult-header__label">个人画像</span></template><ConversationProfile embedded :loading="profileLoading" :error="profileError" @close="profileOpen = false" @refresh="refreshProfile" @supplement="fill" /></AnchoredCard>
    </div></div>
-   <ol v-if="!choosingTopic && demo.state.currentSessionId" class="consult-journey" aria-label="咨询进度：当前工作重点，可随话题调整"><li v-for="item in journey" :key="item.key" :data-state="currentStage === item.key ? 'current' : 'future'" :aria-current="currentStage === item.key ? 'step' : undefined"><i /><span><em class="consult-journey__full">{{ item.label }}</em><em class="consult-journey__short">{{ item.short }}</em></span></li></ol>
+   <ol v-if="!choosingTopic && demo.state.currentSessionId" class="consult-journey" aria-label="咨询进度：已走过的阶段、当前工作重点与后续阶段，可随话题调整"><li v-for="item in journey" :key="item.key" :data-state="stageState(item.key)" :aria-current="currentStage === item.key ? 'step' : undefined"><i /><span><em class="consult-journey__full">{{ item.label }}</em><em class="consult-journey__short">{{ item.short }}</em></span></li></ol>
   </header>
   <div ref="flow" v-scroll-fade class="consult-flow" tabindex="0" aria-label="对话记录" @scroll.passive="onScroll">
    <div v-if="systemData.busy || restoring" class="consult-loading" role="status">正在读取会话…</div>
