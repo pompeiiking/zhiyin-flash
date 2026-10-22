@@ -1,0 +1,153 @@
+{
+  "environment": "当前模型与数据库提示词；模拟学生及会话在隔离内存中",
+  "cases": [
+    {
+      "case": "collect",
+      "agent": "profile_analyst",
+      "stage": "collect",
+      "saved_agent": "profile_analyst",
+      "saved_stage": "collect",
+      "frames": [
+        {
+          "type": "first.text",
+          "elapsed": 4.991
+        }
+      ],
+      "elapsed": 5.588
+    },
+    {
+      "case": "diagnose",
+      "agent": "career_advisor",
+      "stage": "diagnose",
+      "saved_agent": "career_advisor",
+      "saved_stage": "diagnose",
+      "frames": [
+        {
+          "type": "role.selected",
+          "agent": "career_advisor",
+          "stage": "diagnose",
+          "note": "已加载职业顾问专业能力",
+          "protocol": 2,
+          "conversation_id": "task-340c111f32d6",
+          "run_id": "8a1c2c6d460f4143a7b375242140ecf9",
+          "sequence": 7,
+          "timestamp": "2026-10-22T09:11:13.929535+00:00",
+          "elapsed": 4.291
+        },
+        {
+          "type": "first.text",
+          "elapsed": 4.851
+        }
+      ],
+      "elapsed": 6.767
+    },
+    {
+      "case": "act",
+      "agent": "profile_analyst",
+      "stage": "collect",
+      "saved_agent": "profile_analyst",
+      "saved_stage": "collect",
+      "frames": [
+        {
+          "type": "first.text",
+          "elapsed": 1.704
+        }
+      ],
+      "elapsed": 4.073
+    },
+    {
+      "case": "review",
+      "agent": "profile_analyst",
+      "stage": "collect",
+      "saved_agent": "profile_analyst",
+      "saved_stage": "collect",
+      "frames": [
+        {
+          "type": "first.text",
+          "elapsed": 3.706
+        }
+      ],
+      "elapsed": 4.685
+    },
+    {
+      "case": "scout",
+      "agent": "profile_analyst",
+      "stage": "collect",
+      "saved_agent": "profile_analyst",
+      "saved_stage": "collect",
+      "frames": [
+        {
+          "type": "first.text",
+          "elapsed": 3.662
+        }
+      ],
+      "elapsed": 5.364
+    },
+    {
+      "case": "decide",
+      "agent": "profile_analyst",
+      "stage": "collect",
+      "saved_agent": "profile_analyst",
+      "saved_stage": "collect",
+      "frames": [
+        {
+          "type": "first.text",
+          "elapsed": 9.44
+        }
+      ],
+      "elapsed": 10.394
+    },
+    {
+      "case": "planner_explicit",
+      "agent": "path_planner",
+      "stage": "act",
+      "saved_agent": "path_planner",
+      "saved_stage": "act",
+      "frames": [
+        {
+          "type": "role.selected",
+          "agent": "path_planner",
+          "stage": "act",
+          "note": "已加载路径规划师专业能力",
+          "protocol": 2,
+          "conversation_id": "task-d5b77593527d",
+          "run_id": "1085b21ba6c1497a831f58183aa3ad1a",
+          "sequence": 5,
+          "timestamp": "2026-10-22T09:12:51.456641+00:00",
+          "elapsed": 1.793
+        },
+        {
+          "type": "first.text",
+          "elapsed": 4.263
+        }
+      ],
+      "elapsed": 6.6
+    },
+    {
+      "case": "coach_explicit",
+      "agent": "companion_coach",
+      "stage": "review",
+      "saved_agent": "companion_coach",
+      "saved_stage": "review",
+      "frames": [
+        {
+          "type": "role.selected",
+          "agent": "companion_coach",
+          "stage": "review",
+          "note": "已加载陪伴教练专业能力",
+          "protocol": 2,
+          "conversation_id": "task-847aa40b1dfa",
+          "run_id": "df98ae52020e4c9eb08aa61cde3c008e",
+          "sequence": 5,
+          "timestamp": "2026-10-22T09:12:58.087010+00:00",
+          "elapsed": 1.819
+        },
+        {
+          "type": "first.text",
+          "elapsed": 7.021
+        }
+      ],
+      "elapsed": 7.569
+    }
+  ]
+}

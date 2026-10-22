@@ -14,6 +14,8 @@ from zhiyin_kernel.streaming import emit_progress, is_streaming, cancellation_re
 from zhiyin_kernel.privacy import redact_sensitive
 from zhiyin_kernel.errors import InvalidRequest
 from zhiyin_orchestration.agent import AgentResult
+from .dialogue_presentation import (DialogueReply, load_professionals, presentation_instructions,
+                                   stream_public_reply, finish_public_reply, history_content)
 
 log = logging.getLogger(__name__)
 
@@ -71,12 +73,12 @@ def traced(handler, name):
     return call
 
 
-async def dialogue_tool_names(engine, agent_id):
+async def dialogue_tool_names(engine, agent_id, professionals=None):
     """The native dialogue and capability inspection use the same installed pool."""
     from .dialogue_specialists import ROLE_FOCUS
     names = ["workspace.read", "material.read", "academic.preview", "workspace.action", "workspace.memory", "workspace.classify", "workspace.exploration", "workspace.report_draft"]
     for role_id in ROLE_FOCUS:
-        descriptor = await engine._registry.get_agent(role_id)
+        descriptor = professionals.get(role_id, (None, None))[0] if professionals is not None else await engine._registry.get_agent(role_id)
         if descriptor and str(getattr(descriptor.status, "value", descriptor.status)) == "enabled":
             names.extend(descriptor.tools)
     if engine.module_tool_names is not None:
@@ -96,7 +98,8 @@ async def invoke_dialogue(engine, request):
     from .dialogue_specialists import specialist_tools
     presentation = {"lead": request.agent_id, "stage": request.prompt_vars.get("dialogue_focus", ""), "roles": [],
                     "methods": {}, "clues": [], "theories": []}
-    names = await dialogue_tool_names(engine, request.agent_id)
+    professionals = await load_professionals(engine._registry)
+    names = await dialogue_tool_names(engine, request.agent_id, professionals)
     tools = []
     for name in dict.fromkeys(names):
         if name in {"workspace.task.set_done", "plan.read", "profile.read", "behavior.recent"}:
@@ -112,13 +115,14 @@ async def invoke_dialogue(engine, request):
     model = engine._model_factory(**{k: v for k, v in (prompt.params or {}).items()
                                       if k in {"timeout_s", "temperature", "retries"}},
                                   **({"vision": True} if request.images else {}))
-    fingerprint = sha256(json.dumps({"content": prompt.content, "params": prompt.params},
+    identity_instructions = presentation_instructions(professionals)
+    fingerprint = sha256(json.dumps({"content": prompt.content, "params": prompt.params, "identity_protocol": identity_instructions},
         sort_keys=True, ensure_ascii=False).encode()).hexdigest()[:16]
     emit_progress({"type": "run.model", "model": getattr(model, "id", ""),
                    "prompt_code": prompt.code, "prompt_fingerprint": fingerprint})
-    agent = Agent(model=model, instructions=[prompt.content], tools=tools, telemetry=False,
-                  tool_call_limit=12, use_json_mode=False, parse_response=False)
-    messages = [Message(role=i["role"], content=redact_sensitive(i["content"])) for i in request.history]
+    agent = Agent(model=model, instructions=[prompt.content, identity_instructions], tools=tools, telemetry=False,
+                  tool_call_limit=12, output_schema=DialogueReply, use_json_mode=True, parse_response=False)
+    messages = [Message(role=i["role"], content=history_content(i)) for i in request.history]
     current = request.prompt_vars.get("raw_user_message", request.prompt_vars.get("user_input"))
     if isinstance(current, str):
         # Keep the actual user utterance last, outside the large context JSON.
@@ -133,10 +137,17 @@ async def invoke_dialogue(engine, request):
         messages.append(Message(role="user", content=content))
     else:
         messages.append(Message(role="user", content=engine._compose_input(request, {"guide": None})))
-    text, output, after_tool = "", None, False
-    try:
+    text = ""
+    def partial_result(error):
+        speaker = presentation['lead'] if text and presentation.get('selected') else request.agent_id
+        return AgentResult(agent_id=speaker, raw_text=text, valid=False, degraded=True, errors=[error],
+            structured={'dialogue_partial_speaker': speaker} if text and presentation.get('selected') else {},
+            renderables=_renderables_from_run_context(kwargs))
+    async def receive(reply_agent, reply_messages):
+        nonlocal text
+        raw, output, after_tool = "", None, False
         if is_streaming():
-            async for event in agent.arun(input=messages, stream=True, stream_events=True, yield_run_output=True, **kwargs):
+            async for event in reply_agent.arun(input=reply_messages, stream=True, stream_events=True, yield_run_output=True, **kwargs):
                 if await cancellation_requested():
                     break
                 if isinstance(event, RunOutput):
@@ -150,11 +161,15 @@ async def invoke_dialogue(engine, request):
                     delta = getattr(event, "content", "")
                     if isinstance(delta, str) and delta:
                         if after_tool:
-                            text, after_tool = "", False
-                        text += delta
-                        emit_progress({"type": "message.delta", "text": text, "delta": delta, "note": "正在回复"})
+                            raw, after_tool = "", False
+                        raw += delta
+                        public = stream_public_reply(raw, presentation, professionals)
+                        if public != text:
+                            change = public[len(text):] if public.startswith(text) else public
+                            text = public
+                            emit_progress({"type": "message.delta", "text": text, "delta": change, "note": "正在回复"})
         else:
-            output = await agent.arun(input=messages, **kwargs)
+            output = await reply_agent.arun(input=reply_messages, **kwargs)
         if output is not None:
             status = getattr(output, "status", None)
             if str(getattr(status, "value", status)).lower() == "error":
@@ -163,10 +178,44 @@ async def invoke_dialogue(engine, request):
             last = messages_out[-1] if messages_out else None
             if (getattr(last, "role", None) == "assistant" and not getattr(last, "tool_calls", None)
                     and isinstance(getattr(last, "content", None), str) and last.content.strip()):
-                text = last.content
-            elif not text:
-                text = str(getattr(output, "content", "") or "")
-        return AgentResult(agent_id=presentation["lead"], raw_text=text, valid=bool(text.strip()),
+                raw = last.content
+            elif not raw:
+                raw = str(getattr(output, "content", "") or "")
+        return raw, output
+    try:
+        raw, output = await receive(agent, messages)
+        if await cancellation_requested():
+            return partial_result("本轮回复已停止")
+        try:
+            final_text = finish_public_reply(raw, presentation, professionals)
+        except (ValidationError, ValueError):
+            if output is None or await cancellation_requested():
+                raise
+            # Reformat only: tools are deliberately absent, so an already committed
+            # write or generated approval cannot execute a second time.
+            emit_progress({"type": "reply.repair", "note": "正在整理回复"})
+            repair = Agent(model=model, instructions=[prompt.content, identity_instructions,
+                "只整理最终回复。使用已有用户内容和工具回执，不调用工具、不发起新操作、不重复任何写入。"
+                "严格输出role_id、focus、collaborators和answer；未确认成功的操作如实说明。"],
+                tools=[], tool_call_limit=0, telemetry=False,
+                output_schema=DialogueReply, use_json_mode=True, parse_response=False)
+            continuation = [message for message in (getattr(output, "messages", None) or messages)
+                            if getattr(message, "role", None) != "system"]
+            # End on a new instruction, rather than asking the provider to
+            # continue the malformed assistant text as an assistant prefix.
+            continuation.append(Message(role='user', content=(
+                '这是内部传输格式修复，不是新的咨询话题。按上一条真实用户请求选主理和工作重点，'
+                '使用已有工具回执，重新给出完整JSON对象：role_id、focus、collaborators、answer。'
+                '不要延续上一段残缺格式，不加前言或代码围栏，不执行任何操作。')))
+            raw, _ = await receive(repair, continuation)
+            if await cancellation_requested():
+                return partial_result("本轮回复已停止")
+            final_text = finish_public_reply(raw, presentation, professionals)
+        if is_streaming() and final_text != text:
+            emit_progress({"type": "message.delta", "text": final_text,
+                           "delta": final_text[len(text):] if final_text.startswith(text) else final_text, "note": "正在回复"})
+        text = final_text
+        return AgentResult(agent_id=presentation["lead"], raw_text=text, valid=True,
             structured={"dialogue_stage": presentation["stage"], "dialogue_roles": presentation["roles"],
                 "dialogue_clues": presentation["clues"], "dialogue_theories": [
                     {"theory_id": key, "name": presentation["methods"][key].name,
@@ -179,5 +228,4 @@ async def invoke_dialogue(engine, request):
             log.warning("视觉对话模型调用失败：%s", type(exc).__name__)
         else:
             log.exception("自然对话模型调用失败")
-        return AgentResult(agent_id=request.agent_id, valid=False, degraded=True, raw_text=text,
-            errors=["对话模型未能完成"], renderables=_renderables_from_run_context(kwargs))
+        return partial_result("对话模型未能完成")

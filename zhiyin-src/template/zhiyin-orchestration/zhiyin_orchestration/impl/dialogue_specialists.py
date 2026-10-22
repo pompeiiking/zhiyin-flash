@@ -15,8 +15,8 @@ def specialist_tools(registry, state):
     ) -> dict:
         """Load professional instructions and registered method cards before doing specialist work.
 
-        Can load several collaborating roles; info_scout assists without replacing the lead.
-        Focus is the current topic, never completion or permission to write.
+        Loads collaborating instructions/methods, never changes the lead or focus.
+        Select the final lead and focus in the reply's presentation fields instead.
         """
         if role_id not in ROLE_FOCUS:
             return {"loaded": False, "reason": "未知专业角色。"}
@@ -34,13 +34,7 @@ def specialist_tools(registry, state):
         if role_id not in state["roles"]:
             state["roles"].append(role_id)
         state["methods"].update({card.id: card for card in cards})
-        if role_id != "info_scout":
-            state["lead"] = role_id
-            previous = state["stage"]
-            state["stage"] = focus or (previous if previous in ROLE_FOCUS[role_id] else
-                "diagnose" if role_id == "career_advisor" else next(iter(ROLE_FOCUS[role_id])))
-        emit_progress({"type": "role.selected", "agent": state["lead"],
-                       "stage": state["stage"], "note": "已加载" + role.name + "专业能力"})
+        emit_progress({"type": "role.loaded", "role_id": role_id, "note": "已加载" + role.name + "专业能力"})
         return {"loaded": True, "role": role.name, "instructions": prompt.content,
                 "responsibility": role.role_summary, "boundaries": role.not_to_do,
                 "methods": [card.model_dump(mode="json") for card in cards],

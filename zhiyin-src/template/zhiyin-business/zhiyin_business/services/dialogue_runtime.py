@@ -901,7 +901,9 @@ class DialogueRuntime:
             cost = context_cost(t.text)
             if t.role not in {"user", "agent", "system"} or cost > budget:
                 continue
-            history.append({"role": "user" if t.role == "user" else "assistant", "content": t.text})
+            history.append({"role": "user" if t.role == "user" else "assistant", "content": t.text,
+                "agent_id": t.agent_id or '',
+                "focus": str(getattr(t.loop_stage, 'value', t.loop_stage) or '')})
             budget -= cost
         history.reverse()
         self.history = history
@@ -1018,10 +1020,19 @@ class DialogueRuntime:
                 await self.o._sessions.update_stage(session.id, stage, lead)
                 session = (await self.o._sessions.get(session.id)) or session
         descriptor = await self.o._registry.get_agent(lead)
+        # Preserve the actual author of partial text without committing its
+        # provisional focus as the conversation's confirmed state.
+        speaker = lead
+        if model_result and not model_result.valid and model_result.raw_text:
+            partial_speaker = model_result.structured.get('dialogue_partial_speaker')
+            if partial_speaker in ROLE_FOCUS and partial_speaker != 'info_scout':
+                partial_descriptor = await self.o._registry.get_agent(partial_speaker)
+                if partial_descriptor and str(getattr(partial_descriptor.status, 'value', partial_descriptor.status)) == 'enabled':
+                    speaker = partial_speaker
         result = TurnResult(task_id=request.task_id, conversation=True, session=session, stage=stage,
             badge=AgentBadge(agent_id=lead, name=descriptor.name if descriptor else "知音",
                              role_summary=descriptor.role_summary if descriptor else "职业发展顾问"),
-            messages=system_receipts + [ConversationMessage(role="agent", agent_id=lead, text=text,
+            messages=system_receipts + [ConversationMessage(role="agent", agent_id=speaker, text=text,
                 clues=model_result.structured.get("dialogue_clues", []) if model_result else [],
                 theory_refs=[TheoryRef.model_validate(ref) for ref in model_result.structured.get("dialogue_theories", [])] if model_result else [],
                 intel_refs=[IntelRef.model_validate(ref) for ref in model_result.source_refs] if model_result else [],
@@ -1031,7 +1042,7 @@ class DialogueRuntime:
             await self.o._memories.record_turn(request.user_id, request.task_id, role="system", text=receipt.text,
                 loop_stage=session.loop_stage, client_msg_id=request.client_msg_id)
         await self.o._memories.record_turn(request.user_id, request.task_id, role="agent", text=text,
-            loop_stage=stage, agent_id=lead, client_msg_id=request.client_msg_id,
+            loop_stage=stage, agent_id=speaker, client_msg_id=request.client_msg_id,
             renderables=[serial(r) for r in result.messages[-1].renderables],
             metadata={"result": result.model_dump(mode="json"), "request_hash": record["runs"][request.client_msg_id]["request_hash"],
                       "actions": pending, "receipts": self.receipts})

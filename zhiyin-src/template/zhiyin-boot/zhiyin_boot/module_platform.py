@@ -200,7 +200,15 @@ def product_tools(container):
                                  statements: list[QuotedStatement] | None = None, hypotheses: list[str] | None = None,
                                  explored_topics: list[str] | None = None, open_questions: list[str] | None = None,
                                  next_focus: str = "") -> str:
-        """Update bounded conversation working context, not the permanent profile. Quotes require user turn_id from exploration_context. Hypotheses remain unverified. Use only when exploration changes; ordinary factual answers need no call."""
+        """Update bounded conversation working context, not the permanent profile.
+
+        mode is ONLY explore (learning about the user), answer (direct explanation),
+        act (discussing actions), or paused (user pauses exploration).
+        It is NOT the presentation stage: collect/diagnose/decide/review are invalid modes.
+        For reviewing execution use act, or explore when understanding the user's experience.
+        Quotes require user turn_id from exploration_context. Hypotheses remain unverified.
+        Use only when exploration changes; ordinary factual answers need no call.
+        """
         from zhiyin_business.services.dialogue_runtime import active_dialogue
         runtime = active_dialogue.get()
         if runtime is None or runtime.request.user_id != run_context.user_id:

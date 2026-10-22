@@ -2,7 +2,7 @@
 import json
 
 
-def partial_root_string(raw: str, field: str) -> str:
+def partial_root_string(raw: str, field: str, *, complete_only: bool = False) -> str:
     start = raw.find('{')
     if start < 0:
         return ''
@@ -27,6 +27,8 @@ def partial_root_string(raw: str, field: str) -> str:
                         return json.loads(token)
                     except ValueError:
                         return ''
+                if complete_only:
+                    return ''
                 # Trim an unfinished escape, including split unicode escapes.
                 content = token[1:]
                 cut = len(content)

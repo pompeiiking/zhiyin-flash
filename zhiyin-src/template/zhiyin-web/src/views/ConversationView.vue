@@ -9,6 +9,7 @@ import { isComposingKey } from '../lib/scroll-intent'
 import { vScrollFade } from '../lib/scroll-fade'
 import { navigation } from '../lib/layout'
 import { consultantLabel, agentKeyOf, cleanConsultantText } from '../lib/consultant'
+import { conversationPresentation, partialReplySpeaker } from '../lib/conversation-presentation'
 import { personalizedStudyYearEntries, STUDY_YEAR_OPTIONS, studyYearIntro, studyYearLabel } from '../lib/study-year'
 import { newSession, openSession, loadShell, systemData } from '../lib/system-data'
 import { replyTurns } from '../lib/conversation-turns'
@@ -68,7 +69,7 @@ const theoryLoading = ref<Record<string, boolean>>({})
 const copiedTurn = ref('')
 let copyTimer: ReturnType<typeof setTimeout> | undefined
 const { failedSend, confirmDismissed, askPending, interrupted, showFailedSend, rememberFailure, clearFailure, loadFailure, discardFailure, clearAllFailures, syncInterruptedNotice, retryInterrupted, dismissInterrupted, markChatPending, markChatStopped, clearChatPending } = useConversationRecovery({
-  turns, thinking, pending, requestError, input, send, setFailedRequest: value => { failedRequest = value },
+  turns, thinking, stopped, pending, requestError, input, send, setFailedRequest: value => { failedRequest = value },
 })
 const { draft, attached, selectedOption, fillRequest, replacedDraft, fill, applyFill, confirmFillReplace, cancelFillReplace, undoFillReplace, remember, resizeInput } = useConversationDraft({ flow, input, profileOpen, thinking })
 const { uploading, draggingFiles, uploadError, fileInput, upload, dragOver, dropFiles, pasteFiles } = useConversationMaterials({ thinking, attached, isDisposed: () => disposed })
@@ -95,13 +96,14 @@ const { sessions, filteredSessions, sessionQuery, sessionListLoading, sessionLis
 const { capabilitiesOpen, capabilitiesLoading, capabilitiesError, capabilities, capabilityItems, capabilityStatus, loadCapabilities } = useConversationCapabilities()
 const title = computed(() => showStudyYearQuestion.value ? '开始咨询' : choosingTopic.value ? '选择咨询主题' : backendDemo.currentSession.value?.task_name || '咨询对话')
 const latestHostId = computed(() => turns.value.at(-1)?.from === 'host' ? turns.value.at(-1)?.id : undefined)
-const currentStage = computed(() => liveFocus.value || systemData.snapshot?.stage || backendDemo.currentSession.value?.stage || 'collect')
+const presentation = computed(() => conversationPresentation(demo.state.currentSessionId, systemData.snapshot, backendDemo.currentSession.value, liveFocus.value, thinking.value))
+const currentStage = computed(() => presentation.value.stage)
 const journey = [
  { key:'collect', label:'了解自己', short:'了解' }, { key:'diagnose', label:'梳理判断', short:'判断' },
  { key:'decide', label:'比较选择', short:'选择' }, { key:'act', label:'安排下一步', short:'行动' },
  { key:'review', label:'回顾调整', short:'回顾' },
 ]
-const host = computed(() => systemData.snapshot?.badge.name || backendDemo.currentSession.value?.lead_agent_name || '咨询顾问')
+const host = computed(() => presentation.value.host)
 const studyYearField = computed(() => backendDemo.state.liveWorkspace?.profile_panel?.fields?.find(field => field.key === 'study_year'))
 const studyYear = computed(() => savedStudyYear.value || String(studyYearField.value?.value ?? ''))
 const showStudyYearQuestion = computed(() => profileLoaded.value && editingStudyYear.value)
@@ -294,11 +296,12 @@ async function send(retry = false, choice?: { text: string; option?: OptionRef }
     // 停止不是"撤回提问"：问题已经发出并落库，保留它；已收到的部分正文留着，
     // 并明确标注没说完（不伪装成完整回复）。
     const partial = pending.value?.text?.trim() ?? ''
+    const speaker = partialReplySpeaker(pending.value?.agent, host.value)
     pending.value = null
     if (partial) demo.addChatTurn({
       id: `${request.client_msg_id}-partial`,
       from: 'host',
-      speaker: host.value,
+      speaker,
       text: partial,
       guideText: '（已停止接收，以上是已经收到的部分，没有说完。）',
     })
@@ -310,7 +313,7 @@ async function send(retry = false, choice?: { text: string; option?: OptionRef }
     if (demo.state.currentSessionId === sessionId) rememberFailure(sessionId, { request, materials: outgoingMaterials, error: requestError.value, at: new Date().toISOString() })
    }
   } }
- finally { if (run === serial) { thinking.value = false; controller = null; if (!stopped.value) clearChatPending(sessionId) } }
+ finally { if (run === serial) { thinking.value = false; liveFocus.value = ''; controller = null; if (!stopped.value) clearChatPending(sessionId) } }
 }
 async function copy(text: string, turnId?: string) {
   const done = (ok: boolean) => {

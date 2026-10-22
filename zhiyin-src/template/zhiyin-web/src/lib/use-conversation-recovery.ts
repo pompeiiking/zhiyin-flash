@@ -12,6 +12,7 @@ export type InterruptedItem = { text: string; turnId: string; clientMsgId?: stri
 type RecoveryDeps = {
   turns: { readonly value: ChatTurn[] }
   thinking: Ref<boolean>
+  stopped: Ref<boolean>
   pending: Ref<{ text: string; agent: string; note: string } | null>
   requestError: Ref<string>
   input: Ref<HTMLTextAreaElement | null>
@@ -19,7 +20,7 @@ type RecoveryDeps = {
   setFailedRequest: (value: MessageRequest | null) => void
 }
 /** 发送失败与生成中刷新/切页留下的残局：失败消息、确认条、中断提示与重新尝试入口。 */
-export function useConversationRecovery({ turns, thinking, pending, requestError, input, send, setFailedRequest }: RecoveryDeps) {
+export function useConversationRecovery({ turns, thinking, stopped, pending, requestError, input, send, setFailedRequest }: RecoveryDeps) {
   // 发送失败的消息与错误按会话持久化，刷新后仍然可见、可重新尝试（问题 15）。
   const failedSend = ref<FailedSend | null>(null)
   // 已点过按钮的确认不再重复出现（问题 2：可以 / 先不要）。
@@ -96,6 +97,7 @@ export function useConversationRecovery({ turns, thinking, pending, requestError
     const previous = list.at(-2)
     const markerPending = hasChatPending(demo.state.currentSessionId)
     if (hasChatStopped(demo.state.currentSessionId)) {
+      stopped.value = true
       // 主动停止不是“刷新导致的中断”：刷新后明确告诉用户上一轮是停止的，
       // 不出现“重新发送这个问题”，避免把未完成说成系统故障。
       // 标记保留到下一轮发送/用户明确处理，刷新后仍能区分“主动停止”和“异常中断”。

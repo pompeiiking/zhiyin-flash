@@ -1,0 +1,19 @@
+{
+  "stopped": true,
+  "distinctStreamLengths": 9,
+  "beforeStop": {
+    "host": "行动规划顾问",
+    "length": 61,
+    "pending": true,
+    "phase": "安排下一步"
+  },
+  "afterReload": {
+    "announcement": "",
+    "metadataLeak": false,
+    "phase": "回顾调整",
+    "speakers": [
+      "行动支持顾问",
+      "行动规划顾问当前建议"
+    ]
+  }
+}

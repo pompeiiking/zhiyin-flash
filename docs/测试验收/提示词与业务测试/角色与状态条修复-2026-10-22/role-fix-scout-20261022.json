@@ -1,0 +1,33 @@
+[
+  {
+    "case": "scout",
+    "agent": "profile_analyst",
+    "stage": "collect",
+    "saved_agent": "profile_analyst",
+    "saved_stage": "collect",
+    "frames": [
+      {
+        "type": "role.selected",
+        "agent": "profile_analyst",
+        "stage": "collect",
+        "note": "正在分析你的问题",
+        "protocol": 2,
+        "conversation_id": "task-697694ff2ae8",
+        "run_id": "64a305b9a08749eb8816450efdf79777",
+        "sequence": 7,
+        "timestamp": "2026-10-22T09:39:36.722702+00:00",
+        "elapsed": 4.526
+      },
+      {
+        "type": "first.text",
+        "elapsed": 4.548
+      }
+    ],
+    "elapsed": 5.951,
+    "reply": "学职平台对软件测试工程师的定义是：理解产品功能要求，对软件进行测试，检查是否存在缺陷（Bug），验证稳定性，并编写测试规范和测试用例；在企业中承担“质量管理”角色，发现问题并推动修正。平台按级别分为三类：初级按测试方案和流程做功能测验、检查缺陷；中级编写测试方案与测试文档，与项目组共同制定测试阶段工作计划，并合理使用测试工具完成任务；高级除测试与开发技术外，还需熟悉所测软件对应行业，能预判和评估可能出现的问题。平台另注明该职业也称“测试开发工程师”，指测试项目并编写测试过程中的工具，以减少重复性测试。\n\n出处：学职平台职业详情页 https://xz.chsi.com.cn/occupation/occudetail.action?id=wxp0kxgjvynecims（取数时间 2026-10-22）。需要说明的是，这是按名称检索到的相关职业条目，不代表官方专业对口映射；平台该页对“主要工作”的描述以职业定义和分级职责为主，没有更细的日常任务清单。按你的要求，本轮只查公开资料，没有创建计划，也没有记录画像。如果你愿意，可以接着说说你是从哪一点开始关注这个岗位的。",
+    "roles": [
+      "profile_analyst",
+      "info_scout"
+    ]
+  }
+]

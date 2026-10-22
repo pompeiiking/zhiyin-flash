@@ -1,0 +1,8 @@
+{
+  "valid": true,
+  "agent": "career_advisor",
+  "stage": "diagnose",
+  "text": "红色圆形位于图片左上方；蓝色三角形位于右上方，两者大致处在同一水平线上。绿色矩形在下方，横跨图片中部到右侧，位于圆形和三角形的下方。",
+  "text_updates": 38,
+  "metadata_leaked": false
+}

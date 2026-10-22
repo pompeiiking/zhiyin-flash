@@ -1,3 +1,4 @@
+from tests.test_dialogue_presentation import reply
 """Working-state boundaries; model behaviour is separately checked with real multi-turn samples."""
 from unittest.mock import AsyncMock
 
@@ -160,7 +161,7 @@ async def test_current_user_utterance_is_last_and_working_context_never_becomes_
             captured.update(kwargs)
         async def arun(self, input, **kwargs):
             captured["input"] = input
-            return SimpleNamespace(status="completed", messages=[], content="好的，先不追问。")
+            return SimpleNamespace(status="completed", messages=[], content=reply("好的，先不追问。"))
     monkeypatch.setattr(dialogue_engine, "Agent", Agent)
     engine = AgnoAgentEngine(model_factory=lambda **_: _StubModel(), registry=_PromptRegistry())
     result = await engine.invoke(AgentRequest(agent_id="test", conversation=True,

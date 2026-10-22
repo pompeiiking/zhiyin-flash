@@ -27,8 +27,8 @@ async def test_professionals_load_distinct_guidance_and_methods_without_writes()
             assert result["loaded"]
             instructions.append(result["instructions"])
     assert len(set(instructions)) == 5
-    assert s["lead"] == "companion_coach" and s["stage"] == "review"
-    assert len(frames) == 5 and all(f["type"] == "role.selected" for f in frames)
+    assert s["lead"] == "career_advisor" and s["stage"] == "collect"
+    assert len(frames) == 5 and all(f["type"] == "role.loaded" for f in frames)
     assert await c.asset_service.get_action_plan("u1") is None
     assert not (await clues([], [], ["invented_method"]))["saved"]
     assert not (await clues(["a" * 241], [], []))["saved"]
@@ -82,6 +82,24 @@ async def test_incomplete_generation_cannot_commit_new_focus():
     result = await send(c, session)
     assert result.stage == session.loop_stage
     assert result.badge.agent_id == session.lead_agent
+
+
+@pytest.mark.asyncio
+async def test_partial_reply_author_survives_history_without_committing_stage():
+    from zhiyin_api.dto.mappers import conversation_turn_view
+    c, engine, session = await setup()
+    engine.invoke = AsyncMock(return_value=AgentResult(agent_id='path_planner', valid=False,
+        raw_text='第一天先创建文件。', structured={'dialogue_partial_speaker': 'path_planner'}))
+    result = await send(c, session, '安排七天步骤', client_msg_id='partial-role')
+    assert result.stage == session.loop_stage and result.badge.agent_id == session.lead_agent
+    assert result.messages[-1].agent_id == 'path_planner'
+    saved = (await c.memory_service.list_turns('u1', session.id, limit=10))[-1]
+    assert saved.agent_id == 'path_planner'
+    dto = conversation_turn_view(result)
+    assert dto.messages[-1].agent_id == 'path_planner' and dto.messages[-1].agent_name is None
+    assert (await c.orchestrator._sessions.get(session.id)).lead_agent == session.lead_agent
+    replay = await send(c, session, '安排七天步骤', client_msg_id='partial-role')
+    assert replay.messages[-1].agent_id == 'path_planner' and engine.invoke.await_count == 1
 
 
 @pytest.mark.asyncio

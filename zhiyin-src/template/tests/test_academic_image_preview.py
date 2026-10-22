@@ -1,3 +1,4 @@
+from tests.test_dialogue_presentation import reply
 """Image decoding, shared preview and real permission/version boundaries (no network)."""
 import json
 from io import BytesIO
@@ -173,9 +174,10 @@ async def test_native_dialogue_sends_image_parts_and_excludes_binary_from_contex
             pass
         async def arun(self, input, **kwargs):
             seen['messages'] = input
-            return SimpleNamespace(status='completed', messages=[], content='图中蓝色区域在右边。')
+            return SimpleNamespace(status='completed', messages=[], content=reply('图中蓝色区域在右边。'))
     monkeypatch.setattr(dialogue_engine, 'Agent', Agent)
-    registry = SimpleNamespace(get_prompt=AsyncMock(return_value=SimpleNamespace(content='回答用户', code='conversation.main', params={})), get_agent=AsyncMock(return_value=None))
+    from tests.test_orchestration import _PromptRegistry
+    registry = _PromptRegistry()
     engine = SimpleNamespace(refresh_model=None, _registry=registry, module_tool_names=None, _tools={},
         _model_factory=lambda **kwargs: SimpleNamespace(id='test-vision'), _run_context_kwargs=lambda r: {'dependencies': {}},
         _compose_input=lambda r, context: r.model_dump_json())

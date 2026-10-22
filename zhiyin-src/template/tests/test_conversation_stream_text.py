@@ -1,3 +1,4 @@
+from tests.test_dialogue_presentation import reply
 import unittest
 from zhiyin_orchestration.impl.stream_text import partial_root_string
 
@@ -102,7 +103,7 @@ async def test_native_conversation_streams_plain_text_before_completion():
     frames = []
     class StreamingModel(_StubModel):
         async def ainvoke_stream(self, *args, **kwargs):
-            for chunk in ['先解释', '高等数学', '的学习方法。']:
+            for chunk in [reply('')[:-2] + '先解释', '高等数学', '的学习方法。"}']:
                 yield ModelResponse(content=chunk)
                 if chunk == '高等数学':
                     assert frames and frames[-1]['text'] == '先解释高等数学'
@@ -182,8 +183,8 @@ async def test_native_tool_turn_does_not_duplicate_pretool_answer(monkeypatch):
     class Agent:
         def __init__(self, **kwargs): pass
         async def arun(self, **kwargs):
-            for event, content in [('RunContent','先从一道例题开始。'), ('ToolCallStarted',''),
-                                   ('ToolCallCompleted',''), ('RunContent','先从'), ('RunContent','一道例题开始。')]:
+            for event, content in [('RunContent',reply('先从一道例题开始。')), ('ToolCallStarted',''),
+                                   ('ToolCallCompleted',''), ('RunContent',reply('')[:-2] + '先从'), ('RunContent','一道例题开始。"}')]:
                 yield SimpleNamespace(event=event, content=content)
     monkeypatch.setattr(dialogue_engine, 'Agent', Agent)
     engine=AgnoAgentEngine(model_factory=lambda **_: _StubModel(), registry=_PromptRegistry())
@@ -207,7 +208,7 @@ async def test_nonstream_prefers_final_assistant_message_over_tool_turn_aggregat
         async def arun(self, **kwargs):
             return RunOutput(content='我先核对资料。最终建议。',messages=[
                 Message(role='assistant',content='我先核对资料。'),
-                Message(role='tool',content='已查到'),Message(role='assistant',content='最终建议。')])
+                Message(role='tool',content='已查到'),Message(role='assistant',content=reply('最终建议。'))])
     monkeypatch.setattr(dialogue_engine, 'Agent', Agent)
     engine=AgnoAgentEngine(model_factory=lambda **_: _StubModel(), registry=_PromptRegistry())
     result=await engine.invoke(AgentRequest(agent_id='career_advisor',conversation=True))

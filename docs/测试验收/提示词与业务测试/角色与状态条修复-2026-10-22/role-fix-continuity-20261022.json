@@ -1,0 +1,180 @@
+[
+  {
+    "case": "act1",
+    "agent": "path_planner",
+    "stage": "act",
+    "saved_agent": "path_planner",
+    "saved_stage": "act",
+    "frames": [
+      {
+        "type": "role.selected",
+        "agent": "path_planner",
+        "stage": "act",
+        "note": "正在分析你的问题",
+        "protocol": 2,
+        "conversation_id": "task-40a9ff798ed8",
+        "run_id": "d3fd882ffe094a298bcf5084bc3684e3",
+        "sequence": 5,
+        "timestamp": "2026-10-22T10:01:45.168429+00:00",
+        "elapsed": 2.555
+      },
+      {
+        "type": "first.text",
+        "elapsed": 2.57
+      }
+    ],
+    "elapsed": 5.151,
+    "reply": "明白，只在对话里给，不保存任何资料。下面按每天20分钟排，前四天打基础，后三天做一个小整合。\n\n**第1天：读写一个文本文件**\n步骤：新建 `demo.txt` 写几行中文；用 `open(..., encoding='utf-8')` 读出来并打印。\n完成标准：能读出全部内容，中文不乱码，能说出 `with open` 为什么比手动 close 好。\n\n**第2天：逐行处理**\n步骤：读文件时按行遍历，给每行加行号输出；统计总行数。\n完成标准：行号从1开始且连续，行数与文件实际一致（含空行）。\n\n**第3天：写入与追加**\n步骤：把第2天的带行号结果写到新文件；再用 `'a'` 模式追加一行。\n完成标准：新文件内容正确；追加后原内容没被覆盖，能解释 `'w'` 和 `'a'` 的区别。\n\n**第4天：路径与目录遍历**\n步骤：用 `pathlib.Path` 列出某目录下所有 `.txt` 文件，打印文件名和大小。\n完成标准：能筛出指定后缀，能说出 `Path` 和字符串拼路径的差别。\n\n**第5天：异常处理**\n步骤：故意读一个不存在的文件，用 `try/except FileNotFoundError` 捕获并给出友好提示。\n完成标准：程序不崩，提示信息能说清是哪个文件；能说出至少两种可能出错的情况。\n\n**第6天：小工具整合**\n步骤：写一个脚本，输入目录路径，输出每个 txt 的行数和字符数。\n完成标准：对至少3个文件结果正确，空文件不报错。\n\n**第7天：复盘与改进**\n步骤：回看前六天代码，把重复的读写逻辑抽成一个函数；写5行说明自己踩过的坑。\n完成标准：函数能被至少两处调用，说明里能写出具体错误和改法。\n\n如果哪天卡住，把报错贴给我，我们当场看。想调整节奏或换练习内容也可以直接说。",
+    "native": {
+      "valid": true,
+      "roles": [
+        "path_planner"
+      ],
+      "errors": []
+    }
+  },
+  {
+    "case": "review",
+    "agent": "companion_coach",
+    "stage": "review",
+    "saved_agent": "companion_coach",
+    "saved_stage": "review",
+    "frames": [
+      {
+        "type": "reply.repair",
+        "elapsed": 4.226
+      },
+      {
+        "type": "role.selected",
+        "agent": "companion_coach",
+        "stage": "review",
+        "note": "正在分析你的问题",
+        "protocol": 2,
+        "conversation_id": "task-40a9ff798ed8",
+        "run_id": "379f6d5ffcb442bc87c208c6faf7ba57",
+        "sequence": 8,
+        "timestamp": "2026-10-22T10:01:52.819972+00:00",
+        "elapsed": 5.053
+      },
+      {
+        "type": "first.text",
+        "elapsed": 5.082
+      }
+    ],
+    "elapsed": 5.731,
+    "reply": "“任务太大、起步不清楚”这两个卡点其实是一回事：打开电脑时不知道该先敲哪一行，于是整件事在脑子里显得很重。上周只练了一次，不代表你坚持不下来，更可能是启动门槛设得太高。\n\n想先确认一下：上周那一次，你是从哪一步开始的，又是在哪个地方停下的？知道这个，我们才能看清是任务拆得不够小，还是开始前缺一个明确的第一个动作。",
+    "native": {
+      "valid": true,
+      "roles": [
+        "companion_coach"
+      ],
+      "errors": []
+    }
+  },
+  {
+    "case": "act2",
+    "agent": "path_planner",
+    "stage": "act",
+    "saved_agent": "path_planner",
+    "saved_stage": "act",
+    "frames": [
+      {
+        "type": "role.selected",
+        "agent": "path_planner",
+        "stage": "act",
+        "note": "正在分析你的问题",
+        "protocol": 2,
+        "conversation_id": "task-40a9ff798ed8",
+        "run_id": "80b4095120464f2a83caa0faf754fccd",
+        "sequence": 5,
+        "timestamp": "2026-10-22T10:01:55.229146+00:00",
+        "elapsed": 1.728
+      },
+      {
+        "type": "first.text",
+        "elapsed": 1.742
+      }
+    ],
+    "elapsed": 5.674,
+    "reply": "好，这次按你说的加上常见错误和例子，全程只在对话里，不保存。考虑到你上次卡在“任务太大、起步不清楚”，我把每天的第一个动作都写成可以直接照着敲的一行，20分钟做不完就停在当天那一步，第二天接着来。\n\n**第1天：读一个文件**\n步骤：新建 `demo.txt`，写三行中文；然后运行：\n```python\nwith open('demo.txt', encoding='utf-8') as f:\n    print(f.read())\n```\n完成标准：终端打印出三行中文，没有乱码。\n常见错误：忘了 `encoding='utf-8'` 导致中文乱码；文件不在当前目录报 `FileNotFoundError`（把脚本和 txt 放同一个文件夹）。\n\n**第2天：逐行读并加行号**\n步骤：\n```python\nwith open('demo.txt', encoding='utf-8') as f:\n    for i, line in enumerate(f, 1):\n        print(i, line.strip())\n```\n完成标准：行号从1开始，每行内容后面没有多余空行。\n常见错误：`enumerate` 不写起始值会从0开始；不 `strip()` 会多出空行（每行自带换行符）。\n\n**第3天：写入新文件**\n步骤：把第2天的结果写进 `out.txt`：\n```python\nwith open('demo.txt', encoding='utf-8') as f, open('out.txt', 'w', encoding='utf-8') as g:\n    for i, line in enumerate(f, 1):\n        g.write(f'{i}: {line.strip()}\\n')\n```\n完成标准：`out.txt` 里每行是“序号: 内容”，行数与原文一致。\n常见错误：`write` 不自动换行，要自己加 `\\n`；用 `'w'` 打开已存在的文件会清空原内容。\n\n**第4天：追加与模式对比**\n步骤：用 `'a'` 模式往 `out.txt` 末尾加一行 `print('---end---')` 式的标记：\n```python\nwith open('out.txt', 'a', encoding='utf-8') as g:\n    g.write('---end---\\n')\n```\n完成标准：原内容还在，末尾多了一行标记；能说出 `'w'`、`'a'`、`'r'` 的区别。\n常见错误：把 `'a'` 写成 `'w'` 导致前面内容全没了。\n\n**第5天：遍历目录找 txt**\n步骤：\n```python\nfrom pathlib import Path\nfor p in Path('.').glob('*.txt'):\n    print(p.name, p.stat().st_size)\n```\n完成标准：列出当前目录所有 txt 的文件名和字节数。\n常见错误：`glob('*.txt')` 只匹配当前层，子目录要用 `rglob`；`p.name` 和 `p` 打印结果不同，别混。\n\n**第6天：异常处理**\n步骤：故意读一个不存在的文件：\n```python\ntry:\n    with open('nofile.txt', encoding='utf-8') as f:\n        print(f.read())\nexcept FileNotFoundError:\n    print('文件不存在，请检查路径')\n```\n完成标准：程序不崩，打印出友好提示。\n常见错误：`except` 写成 `except FileNotFoundError as e` 却没用 `e`；把 `try` 包得太大，出错时分不清是哪一步。\n\n**第7天：合成小工具**\n步骤：写一个函数，输入目录，输出每个 txt 的行数和字符数：\n```python\ndef stat_txt(folder):\n    from pathlib import Path\n    for p in Path(folder).glob('*.txt'):\n        text = p.read_text(encoding='utf-8')\n        print(p.name, len(text.splitlines()), len(text))\n\nstat_txt('.')\n```\n完成标准：对至少3个文件输出正确，空文件不报错。\n常见错误：`splitlines()` 和 `len(text)` 混用导致行数算错；目录不存在时没加异常处理。\n\n哪天卡住，把报错原文贴过来，我们当场看。想调整某天的难度或换练习内容，直接说。",
+    "native": {
+      "valid": true,
+      "roles": [
+        "path_planner"
+      ],
+      "errors": []
+    }
+  },
+  {
+    "case": "collect",
+    "agent": "profile_analyst",
+    "stage": "collect",
+    "saved_agent": "profile_analyst",
+    "saved_stage": "collect",
+    "frames": [
+      {
+        "type": "reply.repair",
+        "elapsed": 4.977
+      },
+      {
+        "type": "role.selected",
+        "agent": "profile_analyst",
+        "stage": "collect",
+        "note": "正在分析你的问题",
+        "protocol": 2,
+        "conversation_id": "task-40a9ff798ed8",
+        "run_id": "001de735c5e844648f378a8bf0f4ccca",
+        "sequence": 8,
+        "timestamp": "2026-10-22T10:02:05.169622+00:00",
+        "elapsed": 5.995
+      },
+      {
+        "type": "first.text",
+        "elapsed": 6.019
+      }
+    ],
+    "elapsed": 6.523,
+    "reply": "好，那先放下计划，聊聊拆装玩具这件事。从小喜欢拆装，往往说明你对东西怎么运作、里面长什么样有天然的好奇，不过具体是哪一部分吸引你，还得听你说。\n\n回想一下，拆开一个玩具时，最让你投入的是拆的过程、装回去的过程，还是弄明白它为什么能动？",
+    "native": {
+      "valid": true,
+      "roles": [
+        "profile_analyst"
+      ],
+      "errors": []
+    }
+  },
+  {
+    "case": "decide",
+    "agent": "career_advisor",
+    "stage": "decide",
+    "saved_agent": "career_advisor",
+    "saved_stage": "decide",
+    "frames": [
+      {
+        "type": "role.selected",
+        "agent": "career_advisor",
+        "stage": "decide",
+        "note": "正在分析你的问题",
+        "protocol": 2,
+        "conversation_id": "task-40a9ff798ed8",
+        "run_id": "0b5bba1a35784e85815796f7e9c46b80",
+        "sequence": 8,
+        "timestamp": "2026-10-22T10:02:10.101974+00:00",
+        "elapsed": 5.013
+      },
+      {
+        "type": "first.text",
+        "elapsed": 5.045
+      }
+    ],
+    "elapsed": 6.358,
+    "reply": "先按你说的，不排日程，也不保存。\n\n“接口”和“测试用例”其实不是同一层的两个选项：接口更偏“把系统之间怎么对接设计出来”，测试用例更偏“把可能出问题的地方想全并验证”。前者练的是抽象和设计，后者练的是边界意识和严谨。你说更看重学习空间，那关键就在于你想学的是哪一种——是不断接触新系统、新协议的设计能力，还是把一个东西摸透、找出漏洞的深度。\n\n可撤回的选择我先给一个：**以接口为主，测试用例作为并行的补充**。理由是接口能持续带来新场景，学习曲线更陡；而测试用例的严谨习惯会反过来提升接口设计的质量。这只是暂定，随时可以推翻。\n\n想确认一点：你说的“学习空间”，更接近“能不断遇到新问题”，还是“能在一个方向上越钻越深”？",
+    "native": {
+      "valid": true,
+      "roles": [
+        "career_advisor"
+      ],
+      "errors": []
+    }
+  }
+]
