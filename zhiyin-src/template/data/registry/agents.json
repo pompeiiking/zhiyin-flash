@@ -42,7 +42,6 @@
         "plan.read",
         "kb.search",
         "xuezhi.search",
-        "web.search",
         "chart.render"
       ],
       "call_scenarios": [
@@ -111,7 +110,6 @@
       "theory_packages": [],
       "tools": [
         "xuezhi.search",
-        "web.search",
         "kb.search"
       ],
       "call_scenarios": [
