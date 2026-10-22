@@ -3449,6 +3449,48 @@ export interface components {
      * @enum {integer}
      */
     ErrorCode: 0 | 1001 | 1002 | 1003 | 1004 | 1005 | 1006 | 1007 | 1008 | 1009 | 1999;
+    /** EvidenceAssessment */
+    EvidenceAssessment: {
+      /** Assessed At */
+      assessed_at?: string | null;
+      /** Contradictions */
+      contradictions?: string[];
+      /** Entry Version */
+      entry_version?: number | null;
+      /**
+       * Input Hash
+       * @default
+       */
+      input_hash?: string;
+      /** Missing Evidence */
+      missing_evidence?: string[];
+      /**
+       * Model
+       * @default
+       */
+      model?: string;
+      /**
+       * Prompt Version
+       * @default
+       */
+      prompt_version?: string;
+      /** Reasons */
+      reasons?: string[];
+      /** Score */
+      score?: number | null;
+      /** Source Refs */
+      source_refs?: string[];
+      /** Sources */
+      sources?: {
+        [key: string]: string;
+      };
+      /**
+       * Status
+       * @default pending
+       * @enum {string}
+       */
+      status?: "pending" | "processing" | "evaluated" | "insufficient" | "stale" | "failed";
+    };
     /** ExecutorUpdate */
     ExecutorUpdate: {
       /** Event */
@@ -4778,6 +4820,105 @@ export interface components {
      */
     ProfileEntryType: "learning_background" | "interest" | "experience" | "ability" | "career_focus" | "values" | "condition" | "supplement";
     /**
+     * ProfileField
+     * @description 画像里的一条记录（活状态的最小单位）。
+     *
+     * 记录结构见《个人画像设计-2026-10-20》第 4 节：一条记录除了「键值」，
+     * 还要能回答六件事 —— 它属于哪一类内容、内容结构是什么、原话/资料在哪、
+     * 来源方式与核实状态分别是什么、何时知道/何时发生/何时仍适用、以及它现在是
+     * 有效、被更正、存在冲突还是已撤回。
+     *
+     * 兼容阶段保留 `confidence`：它不再充当真实性、熟练度或写权限的共同开关，
+     * 也不直接展示成百分比。新字段全部有默认值，老数据读出来仍是合法记录
+     * （缺类别时由受控词表按键推导，缺核实状态时由来源推导）。
+     */
+    ProfileField: {
+      /**
+       * Attributes
+       * @description 类型专属的结构化属性（受控键；不是任意模型输出）
+       */
+      attributes?: {
+        [key: string]: unknown;
+      };
+      /**
+       * Confidence
+       * @description 置信度 0-1（兼容字段，不再直接展示）
+       */
+      confidence: number;
+      /** @description 内容类别（学习背景/兴趣/经历/能力/职业关注/价值取向/现实条件/补充信息） */
+      entry_type?: components["schemas"]["ProfileEntryType"] | null;
+      /**
+       * Entry Version
+       * @description 条目版本，从 1 开始
+       * @default 1
+       */
+      entry_version?: number;
+      /**
+       * Event At
+       * @description 事情发生的时间（不是记录时间）
+       */
+      event_at?: string | null;
+      /**
+       * Evidence
+       * @description 证据来源引用（原话/资料片段）
+       */
+      evidence?: string[];
+      evidence_assessment?: components["schemas"]["EvidenceAssessment"] | null;
+      /**
+       * Key
+       * @description 字段键，如 major / skills / interest（取数用，不直接展示）
+       */
+      key: string;
+      /**
+       * Label
+       * @description 这个字段用中文该怎么称呼（如「专业」「兴趣方向」）。字段键由模型自由生成（`interest_direction` 这种），界面拿不到中文名就只能把英文键摆给用户看 —— 名字必须跟着数据一起存
+       * @default
+       */
+      label?: string;
+      /**
+       * Origin Ref
+       * @description 原话或资料来源引用（不编造引用）
+       * @default
+       */
+      origin_ref?: string;
+      /** @description 来源：这条信息从哪儿来 */
+      source: components["schemas"]["ProfileSource"];
+      /**
+       * @description 当前状态：有效/已更正/冲突/过期/撤回
+       * @default active
+       */
+      status?: components["schemas"]["ProfileEntryStatus"];
+      /**
+       * Superseded By
+       * @description 被哪条记录替代（修订关系）
+       * @default
+       */
+      superseded_by?: string;
+      /**
+       * Updated At
+       * Format: date-time
+       * @description 更新时间（何时知道这条记录）
+       */
+      updated_at: string;
+      /**
+       * Valid From
+       * @description 有效范围起点；未知不补成当前时间
+       */
+      valid_from?: string | null;
+      /**
+       * Valid To
+       * @description 有效范围终点
+       */
+      valid_to?: string | null;
+      /**
+       * Value
+       * @description 字段值，结构由画像 schema 决定
+       */
+      value: unknown;
+      /** @description 核实状态（自述/本人确认/资料记录/核验/待核实） */
+      verification?: components["schemas"]["ProfileVerification"] | null;
+    };
+    /**
      * ProfileFieldDeleteAck
      * @description 用户删除一条画像信息的回执。
      */
@@ -4828,7 +4969,7 @@ export interface components {
      * @description 画像里的一条记录（活状态的最小单位）。
      *
      * 此前这里是 `dict[str, Any]`：契约只说"有 fields"，不说每条里有什么。
-     * 前端要按 `confidence` 画把握度、按 `evidence` 做可溯源展示、按 `source`
+     * 前端按独立 `evidence_assessment` 展示把握度、按 `evidence` 溯源、按 `source`
      * 说明这条从哪来 —— 全是猜的字段名。现在逐字段声明。
      *
      * 《个人画像设计-2026-10-20》第 4 节：一条记录还要能回答「属于哪一类内容、
@@ -4866,6 +5007,8 @@ export interface components {
        * @description 证据来源引用
        */
       evidence?: string[];
+      /** @description 仅用于展示的模型证据评估；不参与业务门禁 */
+      evidence_assessment?: components["schemas"]["EvidenceAssessment"] | null;
       /**
        * Key
        * @description 字段键，如 major / skills / interest（取数用，不直接展示）
@@ -5090,6 +5233,11 @@ export interface components {
        */
       methodologies?: string[];
       /**
+       * Profile Snapshot
+       * @description 保存报告时的资料及把握度快照；旧报告为空
+       */
+      profile_snapshot?: components["schemas"]["ProfileField"][] | null;
+      /**
        * Sources
        * @description 事实来源，如学职平台/JD
        */
@@ -5190,6 +5338,11 @@ export interface components {
        * @description 本次使用的理论模型名
        */
       methodologies?: string[];
+      /**
+       * Profile Snapshot
+       * @description 报告保存时的资料与评估快照；历史报告可能没有
+       */
+      profile_snapshot?: components["schemas"]["ProfileFieldView"][] | null;
       /** Report Id */
       report_id: string;
       /**

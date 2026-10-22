@@ -223,7 +223,8 @@ def build_services(container: "Container") -> None:
 
     if container.profiles is not None and container.event_bus_primitive is not None:
         container.profile_service = DefaultProfileService(
-            container.profiles, container.event_bus_primitive, container.student_state
+            container.profiles, container.event_bus_primitive, container.student_state,
+            evidence_assessments=container.extra.get("evidence_assessment"),
         )
         container.profile_service = guarded(container.profile_service, "profile")
     if container.behaviors is not None and container.event_bus_primitive is not None:
@@ -273,6 +274,7 @@ def build_services(container: "Container") -> None:
             container.event_bus_primitive,
             DependencyImpactPolicy(),
             student_state=container.student_state,
+            profile_service=container.profile_service,
         )
         container.asset_service = guarded(container.asset_service, "asset")
     if container.registry is not None and container.feature_flags is not None:
@@ -470,6 +472,9 @@ def build_workers(container: "Container") -> None:
     `python -m zhiyin_boot worker <name>` 独立运行，两者复用同一个 container。
     """
     container.workers = []
+    if container.extra.get("evidence_assessment") is not None:
+        from zhiyin_business.workers.evidence import ProfileEvidenceWorker
+        container.workers.append(ProfileEvidenceWorker(container.extra["evidence_assessment"]))
     if container.rag is not None and container.settings.use_postgres:
         from zhiyin_infrastructure.rag import JsonKnowledgeDocumentSource
         from zhiyin_infrastructure.postgres.database import get_database

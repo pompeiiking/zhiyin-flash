@@ -8,6 +8,7 @@ from typing import Any, Optional
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
 from zhiyin_api.dto.common import TheoryRefView
+from zhiyin_kernel.evidence_assessment import EvidenceAssessment
 from zhiyin_kernel.enums import (
     LoopStage,
     ProfileClueStatus,
@@ -22,7 +23,7 @@ class ProfileFieldView(BaseModel):
     """画像里的一条记录（活状态的最小单位）。
 
     此前这里是 `dict[str, Any]`：契约只说"有 fields"，不说每条里有什么。
-    前端要按 `confidence` 画把握度、按 `evidence` 做可溯源展示、按 `source`
+    前端按独立 `evidence_assessment` 展示把握度、按 `evidence` 溯源、按 `source`
     说明这条从哪来 —— 全是猜的字段名。现在逐字段声明。
 
     《个人画像设计-2026-10-20》第 4 节：一条记录还要能回答「属于哪一类内容、
@@ -39,6 +40,7 @@ class ProfileFieldView(BaseModel):
     )
     value: Any = Field(default=None, description="字段值，结构由画像 schema 决定")
     confidence: float = Field(default=0.0, ge=0.0, le=1.0, description="兼容字段，界面不再展示成百分比")
+    evidence_assessment: EvidenceAssessment | None = Field(default=None, description="仅用于展示的模型证据评估；不参与业务门禁")
     source: ProfileSource
     updated_at: datetime
     evidence: list[str] = Field(default_factory=list, description="证据来源引用")

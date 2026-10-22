@@ -90,3 +90,35 @@ async def test_validation_feedback_identifies_fields_without_echoing_input():
     assert result['state'] == 'validation_failed' and not result['executed']
     assert result['errors'][0]['path'] == ['verdict', 'wrong']
     assert 'sample-private-value' not in json.dumps(result)
+
+
+async def test_successful_report_automatically_attaches_persisted_evidence_chart():
+    from tests.test_dialogue_runtime import setup, send, action
+
+    async def callback(rt):
+        return await rt.action(action('report.save', {
+            'verdict': {'title': '资料整理', 'summary': '依据仍待核实'}, 'swot': {}},
+            evidence='生成诊断报告'))
+
+    c, engine, session = await setup(callback)
+    await c.profile_service.correct_field('u1', 'interest', '喜欢写代码')
+    result = await send(c, session, '生成诊断报告', client_msg_id='report-with-chart')
+    charts = result.messages[-1].renderables
+    assert len(charts) == 1 and charts[0].kind == 'profile_evidence_chart'
+    assert charts[0].payload['metric'] == 'profile_evidence'
+    point = charts[0].payload['points'][0]
+    assert point['key'] == 'interest'
+    assert point['assessment']['status'] == 'pending'
+    assert point['assessment']['score'] is None  # old manual confidence=1 never becomes 100%
+    turns = await c.memory_service.list_turns('u1', session.id)
+    assert next(t for t in reversed(turns) if t.role == 'agent').renderables[0]['kind'] == 'profile_evidence_chart'
+    replay = await send(c, session, '生成诊断报告', client_msg_id='report-with-chart')
+    assert replay.messages[-1].renderables == charts and len(engine.requests) == 1
+
+
+async def test_regular_conversation_does_not_gain_report_chart():
+    from tests.test_dialogue_runtime import setup, send
+    c, _, session = await setup()
+    await c.profile_service.correct_field('u1', 'interest', '喜欢写代码')
+    result = await send(c, session, '你好')
+    assert not result.messages[-1].renderables

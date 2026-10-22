@@ -283,3 +283,21 @@ CREATE TABLE IF NOT EXISTS biz_student_state (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 """
+
+
+DDL += """
+CREATE TABLE IF NOT EXISTS biz_profile_evidence_assessment (
+    user_id TEXT NOT NULL,
+    field_key TEXT NOT NULL,
+    input_hash TEXT NOT NULL,
+    payload JSONB NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    attempts INTEGER NOT NULL DEFAULT 0,
+    lease_token TEXT NOT NULL DEFAULT '',
+    leased_until TIMESTAMPTZ,
+    next_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (user_id,field_key)
+);
+CREATE INDEX IF NOT EXISTS idx_profile_evidence_jobs ON biz_profile_evidence_assessment(status,next_at);
+"""

@@ -120,6 +120,7 @@ def _validate_bars(payload: dict[str, Any]) -> dict[str, Any]:
     if len(checked) < 2:
         raise ValueError("一个点画不成图")
     return {
+        **({'metric': payload['metric']} if payload.get('metric') in ('plan_progress', 'direction_match') else {}),
         "unit": str(payload.get("unit") or "")[:4],
         "points": checked,
     }
@@ -134,6 +135,44 @@ register_renderer(
         validate=_validate_bars,
     )
 )
+
+
+def _validate_profile_evidence(payload):
+    from zhiyin_kernel.evidence_assessment import EvidenceAssessment
+    if payload.get('metric') != 'profile_evidence' or payload.get('version') != 1:
+        raise ValueError('unknown evidence metric')
+    points = payload.get('points')
+    if not isinstance(points, list) or not 1 <= len(points) <= 200:
+        raise ValueError('invalid evidence points')
+    checked = []
+    for point in points:
+        assessment = EvidenceAssessment.model_validate(point['assessment'])
+        if assessment.status != 'evaluated' and assessment.score is not None:
+            raise ValueError('unassessed fields cannot have a score')
+        if assessment.status == 'evaluated' and (assessment.score is None or not assessment.input_hash or not assessment.assessed_at):
+            raise ValueError('missing evidence provenance')
+        if not str(point.get('key', '')).strip() or not str(point.get('label', '')).strip():
+            raise ValueError('missing field identity')
+        checked.append({'key': str(point['key'])[:200], 'label': str(point['label'])[:120],
+                        'assessment': assessment.model_dump(mode='json')})
+    return {'metric': 'profile_evidence', 'version': 1, 'points': checked}
+
+
+def profile_evidence_snapshot(fields):
+    """Snapshot server-owned assessments after a successful report operation."""
+    from zhiyin_kernel.evidence_assessment import EvidenceAssessment
+
+    points = [{'key': field.key, 'label': field.label or field.key,
+               'assessment': (field.evidence_assessment or EvidenceAssessment()).model_dump(mode='json')}
+              for field in fields]
+    if not points:
+        return None
+    return {'kind': 'profile_evidence_chart', 'title': '各项资料的把握度',
+            'payload': {'metric': 'profile_evidence', 'version': 1, 'points': points}}
+
+
+register_renderer(RendererSpec(kind='profile_evidence_chart', label='画像把握度',
+    source='独立模型证据评估及其版本快照', validate=_validate_profile_evidence))
 
 
 __all__ = [

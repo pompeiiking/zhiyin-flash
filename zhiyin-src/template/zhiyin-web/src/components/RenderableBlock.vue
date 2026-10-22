@@ -15,11 +15,15 @@
 import { computed, ref, watch } from 'vue'
 import { profileLabel } from '../lib/server-copy'
 import ModuleRenderable from '../modules/ModuleRenderable.vue'
+import ProfileEvidenceChart from './charts/ProfileEvidenceChart.vue'
+import type { EvidenceAssessment } from '../api/backend-types'
 import type { RenderableView } from '../api/backend-types'
 
 const props = defineProps<{ item: RenderableView }>()
 const expanded = ref(false)
 const label = (key: string) => profileLabel(key, ({ courses:'课程表', scores:'成绩单' } as Record<string,string>)[key] || key)
+const evidencePoints = computed(() => (props.item.payload?.points ?? []) as Array<{key:string;label:string;assessment:EvidenceAssessment}>)
+const legacyBars = computed(() => props.item.kind === 'bars_chart' && !props.item.payload?.metric)
 
 interface BarsPoint {
   label: string
@@ -55,12 +59,6 @@ const bars = computed<{ title: string; unit: string; points: BarsPoint[]; max: n
     max,
     ratio: max <= 1,
   }
-})
-
-const flatFullScale = computed(() => {
-  const chart = bars.value
-  return !!chart && chart.points.length >= 3 && chart.ratio
-    && chart.points.every((point) => Math.abs(point.value - 1) < Number.EPSILON)
 })
 
 /** 条宽：按本组最大值成比例；最小留 2% 让"很小"也看得见 */
@@ -99,12 +97,10 @@ const numberText = (value: number, unit: string, ratio: boolean) =>
 </script>
 
 <template>
+  <ProfileEvidenceChart v-if="item.kind === 'profile_evidence_chart'" :title="item.title || '把握度'" :points="evidencePoints" />
+  <aside v-if="legacyBars" class="rb rb--notice" role="note"><strong>旧版图表记录</strong><p>这张图保留当时的原始数值，指标口径未标识，不代表新版把握度评估。</p></aside>
   <ModuleRenderable v-if="item.kind.startsWith('module.')" :kind="item.kind" :payload="item.payload || {}" />
-  <aside v-if="flatFullScale" class="rb rb--notice" role="note">
-    <strong>这些项目目前都是已确认记录</strong>
-    <p>数值相同，无法比较差异，因此不再显示一排 100% 的进度条。这里的 100% 不代表兴趣、能力或经历已经被完全验证。</p>
-  </aside>
-  <figure v-else-if="bars" class="rb">
+  <figure v-if="bars" class="rb">
     <figcaption class="label rb__k">{{ bars.title }}</figcaption>
     <ul class="rb__rows">
       <li v-for="point in (expanded ? bars.points : bars.points.slice(0, 6))" :key="point.label">

@@ -12,6 +12,7 @@ from typing import Literal, Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 from zhiyin_kernel.enums import PlanRole
+from zhiyin_kernel.blackboard import ProfileField
 
 
 class Verdict(BaseModel):
@@ -84,6 +85,7 @@ class Report(BaseModel):
     gap_claims: list[GapClaim] = Field(default_factory=list)
     sources: list[str] = Field(default_factory=list, description="事实来源，如学职平台/JD")
     methodologies: list[str] = Field(default_factory=list, description="本次使用的理论模型")
+    profile_snapshot: list[ProfileField] | None = Field(default=None, description="保存报告时的资料及把握度快照；旧报告为空")
 
 
 class PlanGap(BaseModel):

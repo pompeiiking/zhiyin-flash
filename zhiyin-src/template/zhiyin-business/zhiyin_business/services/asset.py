@@ -42,8 +42,10 @@ class DefaultAssetService(AssetService):
         event_bus: EventBus,
         impact_policy: ImpactPolicy,
         student_state=None,
+        profile_service=None,
     ) -> None:
         self._student_state = student_state
+        self._profile_service = profile_service
         self._assets = assets
         self._event_bus = event_bus
         self._impact_policy = impact_policy
@@ -255,6 +257,9 @@ class DefaultAssetService(AssetService):
             raise InvalidRequest(issue)
         version = await self._next_version(user_id, AssetType.REPORT)
         saved = report.model_copy(update={"user_id": user_id, "version": version})
+        # Never accept model-supplied assessments or attach today's scores to old reports.
+        fields = await self._profile_service.get_fields(user_id) if self._profile_service else None
+        saved = saved.model_copy(update={"profile_snapshot": fields})
         await self._assets.save_report(saved)
         return await self.save_version(
             user_id,

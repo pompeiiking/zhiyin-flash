@@ -11,6 +11,7 @@ from datetime import datetime
 from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
+from zhiyin_kernel.evidence_assessment import EvidenceAssessment
 
 from zhiyin_kernel.enums import (
     AssetType,
@@ -79,6 +80,7 @@ class ProfileField(BaseModel):
     #: 同一条记录的版本：并发更新与「我看到的是哪一版」的依据。
     entry_version: int = Field(default=1, ge=1, description="条目版本，从 1 开始")
     superseded_by: str = Field(default="", description="被哪条记录替代（修订关系）")
+    evidence_assessment: EvidenceAssessment | None = None
 
 
 class ProfileFieldRevision(BaseModel):

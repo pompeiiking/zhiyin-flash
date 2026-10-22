@@ -8,6 +8,7 @@ from typing import Any, Literal, Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 from zhiyin_kernel.enums import AssetType, PlanRole
+from zhiyin_api.dto.workspace import ProfileFieldView
 
 
 class AssetVersionView(BaseModel):
@@ -88,6 +89,7 @@ class ReportFullTextView(BaseModel):
     swot: dict[str, Any] = Field(default_factory=dict, description="SWOT 四象限")
     methodologies: list[str] = Field(default_factory=list, description="本次使用的理论模型名")
     sources: list[str] = Field(default_factory=list, description="事实来源清单")
+    profile_snapshot: list[ProfileFieldView] | None = Field(default=None, description="报告保存时的资料与评估快照；历史报告可能没有")
 
 
 class PlanGapView(BaseModel):
