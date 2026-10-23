@@ -103,18 +103,21 @@ watch(selectedId, (id, previousId) => {
 })
 watch(() => props.taskId, (id) => { if (id && id !== selectedId.value) selectedId.value = id }, { immediate: true })
 
+let loadSerial = 0
 async function load(raise = false) {
+  const serial = ++loadSerial
   loading.value = true
   error.value = ''
   try {
     const data = await studentApi.reviews()
+    if (serial !== loadSerial) return
     items.value = data.items
     emit('loaded', data.items)
   } catch (caught) {
-    error.value = (caught as Error).message
+    if (serial === loadSerial) error.value = (caught as Error).message
     if (raise) throw caught
   } finally {
-    loading.value = false
+    if (serial === loadSerial) loading.value = false
   }
 }
 
@@ -184,13 +187,14 @@ async function apply(item: Review) {
   status.value = ''
   try {
     await studentApi.applyReview(item.id)
-    try {
-      backendDemo.setAction(await backendClient.action())
-      await load(true)
-      status.value = item.result === 'complete' ? '任务已标记为完成，阶段计划已更新。' : '任务调整已应用，阶段计划已更新。'
-    } catch {
-      status.value = '任务调整已保存，但页面暂未刷新，请重新读取后查看。'
-    }
+    let actionFresh = false
+    try { backendDemo.setAction(await backendClient.action()); actionFresh = true }
+    catch { /* review state is still authoritative even if the plan read failed */ }
+    try { await load() }
+    catch { /* keep the applied item visible; the next load can retry */ }
+    status.value = actionFresh
+      ? (item.result === 'complete' ? '任务已标记为完成，阶段计划已更新。' : '任务调整已应用，阶段计划已更新。')
+      : '复盘已保存；阶段计划暂未刷新成功，请重新读取后核对。'
   } catch (caught) {
     error.value = (caught as Error).message
   } finally {

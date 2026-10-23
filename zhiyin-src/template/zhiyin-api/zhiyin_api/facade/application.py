@@ -451,7 +451,54 @@ class DefaultApplicationFacade(ApplicationFacade):
                     message = message.model_copy(update={'theory_refs': source.theory_refs, 'intel_refs': source.intel_refs, 'clues': source.clues})
                     break
             messages.append(message)
+        await self._hydrate_evidence_renderables(user_id, messages)
         return messages
+
+    async def _hydrate_evidence_renderables(
+        self, user_id: str, messages: list[ConversationMessageView]
+    ) -> None:
+        """Refresh frozen confidence charts when their input version still matches.
+
+        A report turn is persisted with the assessment state at save time. The
+        worker often finishes a second later; without this read-side hydration the
+        chart stayed "pending" forever. A point from an older entry version is
+        marked stale instead of borrowing today's score.
+        """
+        if self._profiles is None or not any(
+            item.kind == "profile_evidence_chart"
+            for message in messages for item in message.renderables
+        ):
+            return
+        try:
+            fields = await self._profiles.get_fields(user_id)
+        except Exception:  # noqa: BLE001 - the conversation itself must still read
+            logger.warning("读取画像失败，把握度图保留保存时状态", exc_info=True)
+            return
+        by_key = {field.key: field for field in fields}
+        for message in messages:
+            for item in message.renderables:
+                if item.kind != "profile_evidence_chart":
+                    continue
+                points = item.payload.get("points")
+                if not isinstance(points, list):
+                    continue
+                for point in points:
+                    if not isinstance(point, dict):
+                        continue
+                    key = str(point.get("key", ""))
+                    field = by_key.get(key)
+                    old = point.get("assessment") if isinstance(point.get("assessment"), dict) else {}
+                    if field is None:
+                        point["assessment"] = {**old, "status": "stale", "score": None}
+                        continue
+                    if old.get("entry_version") not in (None, field.entry_version):
+                        point["assessment"] = {**old, "status": "stale", "score": None}
+                        continue
+                    assessment = field.evidence_assessment
+                    point["assessment"] = (
+                        assessment.model_dump(mode="json") if assessment is not None
+                        else {"status": "pending", "entry_version": field.entry_version}
+                    )
 
     async def enter_task(self, user_id: str, body: TaskEnterRequest) -> TaskSessionView:
         session = await self._orchestrator.enter_task(

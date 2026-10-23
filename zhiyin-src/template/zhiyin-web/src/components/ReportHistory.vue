@@ -14,7 +14,16 @@ const props = withDefaults(defineProps<{assetType?: 'report'|'direction_plan'|'a
 defineEmits<{ open: [report: ReportFullTextView, metadata: AssetVersionView | null] }>()
 const heading=computed(()=>props.assetType==='direction_plan'?'方案版本与更新状态':props.assetType==='action_plan'?'计划版本与更新状态':'完整版本与更新状态')
 const historical=ref<{version:number;content:any}|null>(null)
-async function readSnapshot(version:number){error.value='';try{historical.value=await studentApi.snapshot(props.assetType,version)}catch(e){error.value=(e as Error).message}}
+const snapshotError=ref(''), snapshotLoading=ref(false)
+async function readSnapshot(version:number){
+  error.value=''; snapshotError.value=''; snapshotLoading.value=true
+  try{
+    const result=await studentApi.snapshot(props.assetType,version)
+    if(!result?.content) throw new Error('这一版没有保存正文快照。')
+    historical.value=result
+  }catch(e){ snapshotError.value=(e as Error).message || '历史正文暂时没有取得，请重试。' }
+  finally{ snapshotLoading.value=false }
+}
 const versions = ref<AssetVersionView[] | null>(null), busy = ref(false), error = ref(''), reading = ref<number | null>(null)
 async function load() {
   if (busy.value) return
@@ -58,10 +67,10 @@ onMounted(()=>{ void load() })
       <p class="ws-muted ws-section">生成于 {{ formatDate(v.created_at) }}</p>
       <p class="ws-section">{{ studentVersionDiff(v.diff_from_previous) || '本版没有提供差异摘要。' }}</p>
       <p v-if="v.depends_on_profile_keys?.length" class="ws-muted">参考的个人信息：{{ v.depends_on_profile_keys.join('、') }}</p>
-      <DetailPopover :title="'第 '+v.version+' 版正文'" side="right" @update:model-value="open=>open&&readSnapshot(v.version)"><template #trigger>阅读历史正文</template><template v-if="historical?.version===v.version"><template v-if="assetType==='action_plan'"><section v-for="p in historical.content.phases" :key="p.id||p.name"><h3>{{p.name}}</h3><p v-for="t in p.tasks" :key="t.id">{{t.done?'✓':'○'}} {{t.text}}</p></section></template><template v-else><section v-for="p in historical.content" :key="p.id" class="history-direction"><h3>{{p.name}}</h3><dl><div><dt>方向目标</dt><dd>{{p.target_desc||'本版未提供'}}</dd></div><div><dt>匹配依据</dt><dd>{{p.fit_reason||'本版未提供'}}</dd></div><div><dt>主要风险</dt><dd>{{p.main_risk||'本版未提供'}}</dd></div></dl><section v-if="p.gaps?.length"><h4>差距与补齐建议</h4><article v-for="(gap,index) in p.gaps" :key="gap.id||index"><strong>{{gap.requirement||'未命名要求'}}</strong><p>当前情况：{{gap.current_state||'本版未提供'}}</p><p>补齐建议：{{gap.suggestion||'本版未提供'}}</p></article></section></section></template></template><p v-else>正在读取历史正文；缺少快照时会在版本列表显示原因。</p></DetailPopover>
+      <DetailPopover :title="'第 '+v.version+' 版正文'" side="right" @update:model-value="open=>open&&readSnapshot(v.version)"><template #trigger>阅读历史正文</template><template v-if="historical?.version===v.version"><template v-if="assetType==='action_plan'"><section v-for="p in historical.content.phases" :key="p.id||p.name"><h3>{{p.name}}</h3><p v-for="t in p.tasks" :key="t.id">{{t.done?'✓':'○'}} {{t.text}}</p></section></template><template v-else><section v-for="p in historical.content" :key="p.id" class="history-direction"><h3>{{p.name}}</h3><dl><div><dt>方向目标</dt><dd>{{p.target_desc||'本版未提供'}}</dd></div><div><dt>匹配依据</dt><dd>{{p.fit_reason||'本版未提供'}}</dd></div><div><dt>主要风险</dt><dd>{{p.main_risk||'本版未提供'}}</dd></div></dl><section v-if="p.gaps?.length"><h4>差距与补齐建议</h4><article v-for="(gap,index) in p.gaps" :key="gap.id||index"><strong>{{gap.requirement||'未命名要求'}}</strong><p>当前情况：{{gap.current_state||'本版未提供'}}</p><p>补齐建议：{{gap.suggestion||'本版未提供'}}</p></article></section></section></template></template><p v-else-if="snapshotLoading">正在读取历史正文…</p><p v-else class="ws-field-error" role="alert">{{ snapshotError || '这一版没有保存正文快照。' }}</p></DetailPopover>
     </article>
     </template>
-    <EmptyState v-if="!versions.length" kind="report" size="sm" title="尚无已保存的资产版本" description="生成第一版后，这里会按版本列出生成时间、依赖信息与更新状态。" />
+    <EmptyState v-if="!versions.length" kind="report" size="sm" title="版本记录暂时为空" description="这次没有返回版本记录。若当前已有内容，暂时无法确认它是否已过期；请重新读取版本记录后再核对。" />
   </template>
   <p v-else-if="!busy" class="ws-muted ws-section">按所选数据来源读取完整正文、生成时间、依赖信息和待更新标记。</p>
 </section></template>

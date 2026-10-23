@@ -22,7 +22,8 @@ const plan=computed(()=>backendDemo.state.liveAction)
 const tasks=computed(()=>actionRows(plan.value))
 const workspace=computed(()=>backendDemo.state.liveWorkspace)
 const directions=computed(()=>backendDemo.state.liveDirections)
-const busy=ref(false),savingTask=ref(''),error=ref(''),status=ref('')
+const busy=ref(false),savingTask=ref(''),error=ref(''),relatedError=ref(''),status=ref('')
+const directionsKnown=ref(false),workspaceKnown=ref(false)
 const selected=ref(-1),selectionTouched=ref(false),query=ref(''),filter=ref('pending')
 let statusTimer:ReturnType<typeof setTimeout>|undefined
 
@@ -45,9 +46,11 @@ const overallPercent=computed(()=>tasks.value.length?Math.round(doneCount.value/
 const allDone=computed(()=>tasks.value.length>0&&doneCount.value===tasks.value.length)
 // 方向未确认但计划已存在：这是"试用计划"，确认方向后后端会重排，不该写成"方向尚未确认"。
 const directionUnconfirmed=computed(()=>!selectedDirection.value&&tasks.value.length>0)
-const directionTitle=computed(()=>selectedDirection.value?.name||(directionUnconfirmed.value?'试用计划':'方向尚未确认'))
+const directionTitle=computed(()=>selectedDirection.value?.name
+  ||(!directionsKnown.value?'方向信息暂未读取':directionUnconfirmed.value?'试用计划':'方向尚未确认'))
 const directionDescription=computed(()=>{
   if(selectedDirection.value)return selectedDirection.value.target_desc||selectedDirection.value.fit_reason||''
+  if(!directionsKnown.value)return '方向方案这次没有读取成功，暂时不能判断这份计划是否已对齐方向。'
   if(directionUnconfirmed.value)return '方向还没有确认，这份计划先按试用方案推进；确认方向后会自动对齐。'
   return '先核对方向方案，再让行动计划围绕一个清晰目标展开。'
 })
@@ -116,19 +119,24 @@ function showStatus(message:string){
   if(statusTimer)clearTimeout(statusTimer)
   statusTimer=setTimeout(()=>{status.value=''},4200)
 }
+let loadSerial=0
 async function load(){
   if(busy.value||savingTask.value)return
-  busy.value=true;error.value='';status.value=''
+  const serial=++loadSerial
+  busy.value=true;error.value='';relatedError.value='';status.value=''
   try{
     const results=await Promise.allSettled([backendClient.action(),backendClient.workspace(),backendClient.directions()])
+    if(serial!==loadSerial)return
     if(results[0].status==='fulfilled')backendDemo.setAction(results[0].value)
     if(results[1].status==='fulfilled')backendDemo.setWorkspace(results[1].value)
     if(results[2].status==='fulfilled')backendDemo.setLiveDirections(results[2].value)
+    workspaceKnown.value=results[1].status==='fulfilled'
+    directionsKnown.value=results[2].status==='fulfilled'
     if(results[0].status==='fulfilled')initializeSelection()
-    const failed=results.find(result=>result.status==='rejected')
-    if(failed?.status==='rejected')throw failed.reason
-  }catch(e){error.value=(e as Error).message}
-  finally{busy.value=false}
+    if(results[1].status==='rejected'||results[2].status==='rejected')relatedError.value='计划已读取，但方向或资料依据暂时没有完整取得；下方依据可能不完整。'
+    if(results[0].status==='rejected')throw results[0].reason
+  }catch(e){if(serial===loadSerial)error.value=(e as Error).message}
+  finally{if(serial===loadSerial)busy.value=false}
 }
 async function toggle(task:ActionTaskView){
   if(savingTask.value||busy.value)return
@@ -140,15 +148,20 @@ async function toggle(task:ActionTaskView){
   finally{savingTask.value=''}
 }
 onMounted(load)
-onBeforeUnmount(()=>{if(statusTimer)clearTimeout(statusTimer)})
+onBeforeUnmount(()=>{loadSerial++;if(statusTimer)clearTimeout(statusTimer)})
 </script>
 
 <template>
   <section class="restored-plan" :aria-busy="busy">
     <StatusBanner v-if="error" tone="error" :message="error" retry-label="重试" @retry="load"/>
+    <StatusBanner v-if="relatedError" tone="info" :message="relatedError" retry-label="重新读取" @retry="load"/>
     <p v-if="status" role="status" class="plan-toast">{{status}}</p>
 
-    <section v-if="!busy&&plan?.has_plan===false" class="plan-empty-path">
+    <section v-if="!busy&&error&&!plan" class="plan-empty-path" aria-live="polite">
+      <header><div><h2>行动计划暂时没有取得</h2><p>这次读取失败，不能据此判断你还没有计划。请重新读取。</p></div><div class="plan-empty-path__actions"><button class="btn btn--primary" type="button" @click="load">重新读取</button></div></header>
+    </section>
+
+    <section v-else-if="!busy&&plan?.has_plan===false" class="plan-empty-path">
       <header><div><h2>把方向、时间和第一步连起来</h2></div><div class="plan-empty-path__actions"><PhaseEditor/><RouterLink class="btn btn--primary" :to="'/chat?question='+encodeURIComponent('请根据我的资料和可投入时间，一起建立阶段行动计划')">开始规划</RouterLink></div></header>
       <ol><li><span>方向</span><strong>确定这轮要靠近什么</strong><RouterLink to="/directions">查看方向方案</RouterLink></li><li><span>时间</span><strong>确认每周能投入多少</strong><RouterLink to="/schedule">核对课表与时间</RouterLink></li><li><span>第一步</span><strong>安排一件现在能开始的事</strong><RouterLink to="/notes">查看待办与目标</RouterLink></li></ol>
     </section>
@@ -218,7 +231,7 @@ onBeforeUnmount(()=>{if(statusTimer)clearTimeout(statusTimer)})
                 <summary>阶段操作</summary>
                 <div class="plan-stage-menu-panel" @click="closeStageMenu">
                   <PhaseEditor :phase-id="inspectedPhase.id"/>
-                  <DetailPopover title="这份计划怎样形成" label="查看计划依据"><template #trigger>查看计划依据</template><p v-if="timeFact">{{timeFact.label||'每周可投入'}}：{{timeFact.value}}</p><p v-if="workspace?.plan_panel?.evaluation">{{workspace.plan_panel.evaluation}}</p><ul v-if="workspace?.dependencies?.length" class="ws-mini-list"><li v-for="edge in workspace.dependencies" :key="edge.from_asset+edge.to_asset">{{assetLabels[edge.from_asset]||edge.from_asset}} → {{assetLabels[edge.to_asset]||edge.to_asset}}<p v-if="edge.via_profile_keys?.length">参考：{{edge.via_profile_keys.map(key=>workspace?.profile_panel?.fields?.find(field=>field.key===key)?.label||key).join('、')}}</p></li></ul><p v-else>当前没有返回资料关联关系。</p></DetailPopover>
+                  <DetailPopover title="这份计划怎样形成" label="查看计划依据"><template #trigger>查看计划依据</template><p v-if="timeFact">{{timeFact.label||'每周可投入'}}：{{timeFact.value}}</p><p v-if="workspace?.plan_panel?.evaluation">{{workspace.plan_panel.evaluation}}</p><ul v-if="workspace?.dependencies?.length" class="ws-mini-list"><li v-for="edge in workspace.dependencies" :key="edge.from_asset+edge.to_asset">{{assetLabels[edge.from_asset]||edge.from_asset}} → {{assetLabels[edge.to_asset]||edge.to_asset}}<p v-if="edge.via_profile_keys?.length">参考：{{edge.via_profile_keys.map(key=>workspace?.profile_panel?.fields?.find(field=>field.key===key)?.label||key).join('、')}}</p></li></ul><p v-else>{{ workspaceKnown ? '当前没有返回资料关联关系。' : '资料依据暂时没有读取成功，不能确认这里没有关联关系。' }}</p></DetailPopover>
                   <RouterLink to="/schedule">{{plan?.reminders_synced?'查看课表安排':'结合课表安排'}}</RouterLink>
                   <RouterLink :to="'/chat?question='+encodeURIComponent('请一起核对阶段「'+inspectedPhase.name+'」的安排、前置条件与完成标志')">讨论这一阶段</RouterLink>
                 </div>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { formatDate, formatDateRange, formatMonthDay } from '../lib/format'
 import { backendDemo } from '../lib/backend-demo'
 import { backendClient } from '../api/backend-client'
@@ -32,6 +32,7 @@ const courseImportOpen=ref(false),courseRevokeOpen=ref(false),academicStatus=ref
 const adviceOpen = ref(false)
 const calendarBusy = ref(false)
 const calendarError = ref('')
+const scheduleRelatedError = ref('')
 const readOnce = ref(false)
 const weekStrip = ref<HTMLElement | null>(null)
 const timetableScroll = ref<HTMLElement | null>(null)
@@ -39,6 +40,7 @@ const capacityOpen = ref(false)
 const timePlanOpen = ref(false)
 const weekdays = ['一', '二', '三', '四', '五', '六', '日']
 const route = useRoute()
+const router = useRouter()
 
 function dateKey(value: Date) {
   return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`
@@ -168,16 +170,25 @@ function toggleMode() {
   if (mode.value === 'week') centerSelectedWeek()
 }
 
+let loadSerial = 0
 async function loadCalendar(): Promise<boolean> {
   if (calendarBusy.value) return false
+  const serial = ++loadSerial
   calendarBusy.value = true
   calendarError.value = ''
+  scheduleRelatedError.value = ''
   try {
-    const [calendar, plan, workspace] = await Promise.all([backendClient.calendar(), backendClient.action(), backendClient.workspace()])
-    if (!Array.isArray(calendar)) throw new Error('Incomplete calendar')
-    backendDemo.setCalendar(calendar)
-    backendDemo.setAction(plan)
-    backendDemo.setWorkspace(workspace)
+    const [calendarResult, planResult, workspaceResult] = await Promise.allSettled([
+      backendClient.calendar(), backendClient.action(), backendClient.workspace(),
+    ])
+    if (serial !== loadSerial) return false
+    if (calendarResult.status === 'rejected' || !Array.isArray(calendarResult.value)) throw new Error('Incomplete calendar')
+    backendDemo.setCalendar(calendarResult.value)
+    if (planResult.status === 'fulfilled') backendDemo.setAction(planResult.value)
+    if (workspaceResult.status === 'fulfilled') backendDemo.setWorkspace(workspaceResult.value)
+    if (planResult.status === 'rejected' || workspaceResult.status === 'rejected') {
+      scheduleRelatedError.value = '课程已读取，但计划或课表资料没有完整取得；下方任务与容量可能暂时不完整。'
+    }
     readOnce.value = true
     centerTodayCourse()
     return true
@@ -185,9 +196,10 @@ async function loadCalendar(): Promise<boolean> {
     calendarError.value = '最新日程没有取得。请重试；当前日期不会改变。'
     return false
   } finally {
-    calendarBusy.value = false
+    if (serial === loadSerial) calendarBusy.value = false
   }
 }
+onUnmounted(() => { loadSerial++ })
 
 async function courseImported(message:string){courseImportOpen.value=false;if(await loadCalendar())academicStatus.value=message}
 async function revokeCourses(){if(calendarBusy.value)return;calendarBusy.value=true;academicError.value='';try{const result=await backendClient.revokeAcademicCourses();if(!result.revoked)throw new Error('Not confirmed');backendDemo.revokeAcademicCourses();courseRevokeOpen.value=false;backendDemo.setWorkspace(await backendClient.workspace());academicStatus.value='已清空课表，成绩记录保持不变。'}catch{academicError.value='清空结果暂时没有确认，请刷新日程后核对。'}finally{calendarBusy.value=false}}
@@ -195,7 +207,12 @@ onMounted(() => {
   centerSelectedWeek(); centerTodayCourse(); void loadCalendar()
   // 从「今日容量 · 填写时间」跳进来时直接打开课表检查面板：
   // 每周可投入分钟就在「课表检查 → 设置学期时间」里，少一步找入口。
-  if (route.query.setup === '1') capacityOpen.value = true
+})
+watch(() => route.query.setup, value => { if (value === '1') capacityOpen.value = true }, { immediate: true })
+watch(capacityOpen, open => {
+  if (open || route.query.setup !== '1') return
+  const query = { ...route.query }; delete query.setup
+  void router.replace({ query })
 })
 </script>
 
@@ -219,6 +236,7 @@ onMounted(() => {
 
     <StatusBanner v-if="academicStatus" tone="success" size="sm" :message="academicStatus" @dismiss="academicStatus=''"/><StatusBanner :retryable="false" v-if="academicError" tone="error" size="sm" :message="academicError" @dismiss="academicError=''"/>
     <p v-if="calendarError" class="ws-field-error" role="alert">{{ calendarError }}</p>
+    <p v-if="scheduleRelatedError" class="ws-field-error" role="status">{{ scheduleRelatedError }}</p>
     <div v-if="timedCourses.length" class="ws-muted schedule-week-note" role="status">
       <p>课程按星期和节次作为参考展示，尚未按教学周筛选，不能据此确认某天一定有课。<template v-if="timedCourses.some(course => !course.weeks?.trim())">部分课程未提供周次，请先补充后再核对。</template><template v-else>请结合课程周次及学期设置核对。</template></p>
       <div v-if="timedCourses.some(course => !course.weeks?.trim())" class="schedule-week-note__actions">
@@ -303,7 +321,8 @@ onMounted(() => {
           </div>
         </div>
       </div>
-      <EmptyState v-else kind="schedule" :heading-level="2" title="课表还没有放进来" description="导入已有课表后，课程会按星期与节次排列。" ><button class="btn btn--primary" @click="courseImportOpen=true">导入课表</button></EmptyState>
+      <EmptyState v-else-if="!calendarError" kind="schedule" :heading-level="2" title="课表还没有放进来" description="导入已有课表后，课程会按星期与节次排列。" ><button class="btn btn--primary" @click="courseImportOpen=true">导入课表</button></EmptyState>
+      <p v-else class="ws-muted">课表这次没有读取成功，不能据此判断你还没有课程。</p>
       <StatusBanner v-if="untimedCourses.length" tone="warning" :message="`有 ${untimedCourses.length} 门课程缺少星期或节次，没有排进课表。`" />
       <Foldable v-if="untimedCourses.length" title="时间待补充的课程" variant="section" :count="untimedCourses.length"><ul class="ws-mini-list"><li v-for="(course, index) in untimedCourses" :key="`${course.name}-${index}`">{{ course.name }} · {{ courseTimeLabel(course) }}</li></ul></Foldable>
     </section>

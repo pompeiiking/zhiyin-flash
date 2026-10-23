@@ -8,7 +8,7 @@ from pydantic import ConfigDict, create_model
 
 from zhiyin_kernel.assets import ActionPlan, ActionTask, DirectionPlan, Report
 
-REPORT_OWNED_FIELDS = {'id', 'user_id', 'version', 'generated_at'}
+REPORT_OWNED_FIELDS = {'id', 'user_id', 'version', 'generated_at', 'profile_snapshot'}
 ReportDraftInput = create_model('ReportDraftInput', __config__=ConfigDict(extra='forbid'),
     **{name: (field.annotation, deepcopy(field)) for name, field in Report.model_fields.items() if name not in REPORT_OWNED_FIELDS})
 

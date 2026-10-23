@@ -535,10 +535,9 @@ class InMemoryAssetRepository(AssetRepository):
             return None
         if version is None:
             return _snapshot(reports[-1])
-        # 指定版本没有正文时退到"不晚于它的最新一版"：影响面传播留下的空版本
-        # （只有版本行、没有正文）点了不该是空白页 —— 见 mark_needs_recompute。
-        candidates = [item for item in reports if item.version <= version]
-        return _snapshot(candidates[-1]) if candidates else None
+        # An explicit historical version must never silently render another
+        # version's body. Missing content is reported as unavailable upstream.
+        return next((_snapshot(item) for item in reversed(reports) if item.version == version), None)
 
     async def save_report(self, report: Report) -> Report:
         stored = _snapshot(report)

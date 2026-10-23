@@ -33,7 +33,7 @@ function valueText(value: unknown): string {
     <div class="consult-profile__scroll">
       <p v-if="loading" role="status" class="consult-muted">正在更新资料…</p>
       <p v-if="error" role="alert" class="consult-error">{{ error }} <button @click="$emit('refresh')">重试</button></p>
-      <p v-if="!fields.length && !loading" class="consult-empty">尚未收集到个人信息。可以从兴趣、经历或当前目标开始交流。</p>
+      <p v-if="!fields.length && !loading && !error" class="consult-empty">尚未收集到个人信息。可以从兴趣、经历或当前目标开始交流。</p>
       <section v-for="group in groups" :key="group.key" class="consult-profile__group">
         <h3>{{ group.title }}<small>{{ group.items.length }}</small></h3>
         <dl><div v-for="field in group.items" :key="field.key" class="consult-profile__field">

@@ -18,9 +18,10 @@ type RecoveryDeps = {
   input: Ref<HTMLTextAreaElement | null>
   send: (retry?: boolean, choice?: { text: string; option?: OptionRef }, resend?: { clientMsgId?: string; materials?: { id: string; name: string }[] }) => Promise<void>
   setFailedRequest: (value: MessageRequest | null) => void
+  hasBackgroundRun: () => boolean
 }
 /** 发送失败与生成中刷新/切页留下的残局：失败消息、确认条、中断提示与重新尝试入口。 */
-export function useConversationRecovery({ turns, thinking, stopped, pending, requestError, input, send, setFailedRequest }: RecoveryDeps) {
+export function useConversationRecovery({ turns, thinking, stopped, pending, requestError, input, send, setFailedRequest, hasBackgroundRun }: RecoveryDeps) {
   // 发送失败的消息与错误按会话持久化，刷新后仍然可见、可重新尝试（问题 15）。
   const failedSend = ref<FailedSend | null>(null)
   // 已点过按钮的确认不再重复出现（问题 2：可以 / 先不要）。
@@ -92,6 +93,9 @@ export function useConversationRecovery({ turns, thinking, stopped, pending, req
    */
   function syncInterruptedNotice() {
     if (thinking.value || systemData.busy) return
+    // A server-side run still streaming is not an interrupted reply. Reporting
+    // it as one creates a retry button that send() immediately refuses.
+    if (hasBackgroundRun()) { interrupted.value = null; return }
     const list = turns.value
     const last = list.at(-1)
     const previous = list.at(-2)
@@ -113,7 +117,10 @@ export function useConversationRecovery({ turns, thinking, stopped, pending, req
     }
     const question = phantom ? previous : last?.from === 'me' && (!pending.value || markerPending) ? last : undefined
     if (!question) {
-      if (last?.from === 'host') interrupted.value = null
+      if (last?.from === 'host') {
+        interrupted.value = null
+        if (markerPending) clearChatPending(demo.state.currentSessionId)
+      }
       return
     }
     // 已有失败态时优先走"重新尝试"那条通道，避免两条重试入口同时出现。
@@ -129,6 +136,10 @@ export function useConversationRecovery({ turns, thinking, stopped, pending, req
   function retryInterrupted() {
     const item = interrupted.value
     if (!item || thinking.value || systemData.busy) return
+    if (hasBackgroundRun()) {
+      requestError.value = '上一轮仍在处理，请等它完成或先停止后再重试。'
+      return
+    }
     interrupted.value = null
     // 复用原 client_msg_id / 材料：服务端已保存这条用户消息，重发只补回答，
     // 不再新增一条重复的用户气泡。

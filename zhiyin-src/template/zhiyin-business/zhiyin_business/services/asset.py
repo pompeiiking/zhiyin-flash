@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 from functools import wraps
 
 from collections import Counter, defaultdict
+import logging
 import re
 from typing import Optional, Sequence
 from uuid import uuid4
@@ -23,6 +24,8 @@ from zhiyin_kernel.enums import AssetType
 from zhiyin_kernel.errors import InvalidRequest
 from zhiyin_kernel.report_quality import report_verdict_issue
 from zhiyin_orchestration import DomainEvent, EventBus
+
+logger = logging.getLogger(__name__)
 
 
 def asset_mutation(method):
@@ -233,7 +236,40 @@ class DefaultAssetService(AssetService):
             await scope.record("version", version, sources=analysis_sources)
 
     async def get_report(self, user_id: str, version: Optional[int] = None) -> Optional[Report]:
-        return await self._assets.get_report(user_id, version)
+        report = await self._assets.get_report(user_id, version)
+        if report is None and version is not None and self._student_state is not None:
+            # Older deployments stored one content row per report id, so an
+            # earlier version lost its body while its immutable snapshot still
+            # lives in student state. Recover it rather than showing a dead
+            # "version exists but cannot be read" row.
+            try:
+                state = await self._student_state.get(user_id)
+                content = (state.get('asset_snapshots') or {}).get(f'report:{version}', {}).get('content')
+                if content:
+                    report = Report.model_validate(content)
+            except Exception:  # noqa: BLE001 - fallback only; missing body stays missing
+                logger.warning("历史报告正文回退读取失败（version=%s）", version, exc_info=True)
+        if report is None or self._profile_service is None or not report.profile_snapshot:
+            return report
+        latest = await self._assets.get_latest_version(user_id, AssetType.REPORT)
+        # Historical reports keep the assessment they were saved with. The
+        # current report may hydrate a still-matching assessment that finished
+        # after the report was persisted; otherwise its chart is stuck pending.
+        if version is not None and (latest is None or report.version != latest.version):
+            return report
+        try:
+            fields = await self._profile_service.get_fields(user_id)
+        except Exception:  # noqa: BLE001 - reading a report must not depend on projection
+            logger.warning("读取当前报告时刷新把握度失败，保留保存时快照", exc_info=True)
+            return report
+        by_key = {field.key: field for field in fields}
+        snapshot = []
+        for saved in report.profile_snapshot:
+            current = by_key.get(saved.key)
+            if current is not None and current.entry_version == saved.entry_version:
+                saved = saved.model_copy(update={"evidence_assessment": current.evidence_assessment})
+            snapshot.append(saved)
+        return report.model_copy(update={"profile_snapshot": snapshot})
 
     # ---------- 写侧：环节产出 → 资产正文 ----------
     #
@@ -260,7 +296,7 @@ class DefaultAssetService(AssetService):
         # Never accept model-supplied assessments or attach today's scores to old reports.
         fields = await self._profile_service.get_fields(user_id) if self._profile_service else None
         saved = saved.model_copy(update={"profile_snapshot": fields})
-        await self._assets.save_report(saved)
+        saved = await self._assets.save_report(saved)
         return await self.save_version(
             user_id,
             AssetUpdateDraft(

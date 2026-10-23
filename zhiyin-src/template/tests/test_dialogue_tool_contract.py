@@ -79,7 +79,18 @@ def test_report_tool_native_parameters_expose_real_report_structure():
     report = function.parameters['properties']['report']
     assert {'verdict', 'swot'}.issubset(report['properties'])
     assert {'verdict', 'swot'}.issubset(report['required'])
-    assert not {'id', 'user_id', 'version', 'generated_at'}.intersection(report['properties'])
+    assert not {'id', 'user_id', 'version', 'generated_at', 'profile_snapshot'}.intersection(report['properties'])
+    from pydantic import ValidationError
+    from zhiyin_business.contracts.dialogue_actions import ReportDraftInput
+    try:
+        ReportDraftInput.model_validate({
+            'verdict': {'title': 'ok', 'summary': 'ok'}, 'swot': {},
+            'profile_snapshot': [{'key': 'interest', 'value': 'fabricated'}],
+        })
+    except ValidationError:
+        pass
+    else:
+        raise AssertionError('model-supplied profile_snapshot must be rejected')
 
 
 async def test_validation_feedback_identifies_fields_without_echoing_input():

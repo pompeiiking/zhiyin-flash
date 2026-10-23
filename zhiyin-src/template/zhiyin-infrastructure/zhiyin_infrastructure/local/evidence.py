@@ -13,7 +13,8 @@ class InMemoryEvidenceAssessmentRepository:
     async def enqueue(self, record):
         key = (record['user_id'], record['field_key'])
         previous = self.records.get(key)
-        if previous and previous['input_hash'] == record['input_hash']:
+        if (previous and previous['input_hash'] == record['input_hash']
+                and previous.get('status') not in ('failed', 'stale')):
             return
         self.records[key] = {**deepcopy(record), 'status': 'pending', 'attempts': 0,
                              'next_at': time.time() + 2, 'lease_until': 0, 'lease_token': ''}
@@ -21,7 +22,7 @@ class InMemoryEvidenceAssessmentRepository:
     async def claim(self):
         now = time.time()
         for row in self.records.values():
-            if (row['status'] == 'pending' and row['next_at'] <= now or
+            if (row['status'] in ('pending', 'failed', 'stale') and row['next_at'] <= now or
                     row['status'] == 'processing' and row['lease_until'] <= now):
                 row.update(status='processing', attempts=row['attempts'] + 1,
                            lease_until=now + 120, lease_token=uuid4().hex)
@@ -32,10 +33,12 @@ class InMemoryEvidenceAssessmentRepository:
         row = self.records.get((job['user_id'], job['field_key']))
         if not row or row['input_hash'] != job['input_hash'] or row['lease_token'] != job['lease_token']:
             return False
+        row.pop('inputs', None)
+        row.pop('prompt', None)
         row['result'] = deepcopy(result)
         row['dependency_hashes'] = deepcopy(job.get('dependency_hashes', {}))
         row['status'] = 'pending' if retry else result['status']
-        row['next_at'] = time.time() + 10
+        row['next_at'] = time.time() + (10 if retry or result['status'] not in ('failed', 'stale') else 3600)
         row['lease_until'] = 0
         return True
 

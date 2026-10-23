@@ -25,6 +25,7 @@ function setHistory(open: boolean) { const query = {...route.query}; delete quer
 const viewedReport = ref<ReportFullTextView | null>(null)
 const viewedMetadata = ref<AssetVersionView | null>(null)
 const profileError = ref('')
+const versionError = ref('')
 const report = computed(() => viewedReport.value)
 const workspace = ref<WorkspacePageView | null>(null)
 const reportItems = computed(() => report.value?.sections?.flatMap((section) => section.items ?? []) ?? [])
@@ -53,7 +54,11 @@ const pendingDimensionCount = computed(() => Math.max(0, promisedDimensionTotal.
 const exportStatus = ref('')
 const latestVersion = computed(() => backendDemo.state.liveReport?.version ?? null)
 const historicalView = computed(() => !!report.value && latestVersion.value !== null && report.value.version !== latestVersion.value)
-const reportState = computed(() => historicalView.value ? '历史版本' : viewedMetadata.value?.needs_recompute ? '待重新核对' : '当前版本')
+const reportState = computed(() => {
+  if (historicalView.value) return '历史版本'
+  if (!viewedMetadata.value) return '更新状态未知'
+  return viewedMetadata.value.needs_recompute ? '待重新核对' : '当前版本'
+})
 
 function reportText(value: unknown): string {
   if (value === null || value === undefined) return ''
@@ -63,29 +68,51 @@ function reportText(value: unknown): string {
 }
 const reportDate = (value: string) => formatDateTime(value) || '未记录时间'
 
+let loadSerial = 0
 async function load() {
   if (busy.value) return
+  const serial = ++loadSerial
   busy.value = true
   error.value = ''
   profileError.value = ''
+  versionError.value = ''
   try {
-    {
-      const [current, versions, workspaceResult] = await Promise.all([
-        backendClient.report(),
-        backendClient.versions('report'),
-        backendClient.workspace().catch(() => null),
-      ])
-      const metadata = versions.find((item) => item.version === current.version) ?? null
-      if (workspaceResult) { backendDemo.setWorkspace(workspaceResult); workspace.value = workspaceResult }
-      else if (!workspace.value) profileError.value = '个人档案暂时没有读取到，诊断正文仍可继续查看。'
-      backendDemo.setReport(current)
-      backendDemo.setReportMetadata(metadata)
-      viewedReport.value = current.version > 0 || metadata ? current : null
-      viewedMetadata.value = metadata
+    // Report body and version metadata are independent reads. A version-list
+    // failure must not discard a report that already loaded successfully.
+    const [reportResult, versionsResult, workspaceResult] = await Promise.allSettled([
+      backendClient.report(),
+      backendClient.versions('report'),
+      backendClient.workspace(),
+    ])
+    if (serial !== loadSerial) return
+    if (workspaceResult.status === 'fulfilled') {
+      backendDemo.setWorkspace(workspaceResult.value); workspace.value = workspaceResult.value
+    } else if (!workspace.value) {
+      profileError.value = '个人档案暂时没有读取到，诊断正文仍可继续查看。'
     }
-  } catch (caught) {
-    if (!(caught instanceof BackendError && caught.code === 1002)) error.value = (caught as Error).message
-  } finally { busy.value = false }
+    if (reportResult.status === 'rejected') {
+      const caught = reportResult.reason
+      if (!(caught instanceof BackendError && caught.code === 1002)) error.value = (caught as Error).message
+      viewedReport.value = null
+      viewedMetadata.value = null
+      backendDemo.setReportMetadata(null)
+      return
+    }
+    const current = reportResult.value
+    let metadata: AssetVersionView | null = null
+    if (versionsResult.status === 'fulfilled' && Array.isArray(versionsResult.value)) {
+      metadata = versionsResult.value.find((item) => item.version === current.version) ?? null
+      if (!metadata && current.version > 0) {
+        versionError.value = '版本记录里没有这份报告的状态，暂时无法判断是否需要重新核对。'
+      }
+    } else {
+      versionError.value = '版本状态暂时没有读取到；报告正文仍可查看，但无法确认它是否已过期。'
+    }
+    backendDemo.setReport(current)
+    backendDemo.setReportMetadata(metadata)
+    viewedReport.value = current.version > 0 || metadata ? current : null
+    viewedMetadata.value = metadata
+  } finally { if (serial === loadSerial) busy.value = false }
 }
 function printReport() { window.print() }
 const moreActions = computed(() => [
@@ -152,6 +179,7 @@ onMounted(load)
     <AssetNotice />
     <p v-if="!history" class="ws-muted">{{ historicalView ? '重新生成会使用最新资料，当前查看的历史版本会保留。' : '在对话中生成新版，确认后再更新正式报告。' }}</p>
     <StatusBanner v-if="error" tone="error" :message="error" retry-label="重试" @retry="load" />
+    <StatusBanner v-if="versionError" tone="info" :message="versionError" retry-label="重新读取版本" @retry="load" />
     <StatusBanner v-if="exportStatus" tone="info" :message="exportStatus" @dismiss="exportStatus = ''" />
     <SkeletonBlock v-if="busy" variant="list" :lines="4" />
     <ReportHistory v-if="history" asset-type="report" @open="historical" />

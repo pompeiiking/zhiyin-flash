@@ -13,6 +13,7 @@ import EvidenceAssessmentDetails from './EvidenceAssessmentDetails.vue'
 import EvidenceState from './EvidenceState.vue'
 import DetailPopover from './DetailPopover.vue'
 import InfoSheet from './InfoSheet.vue'
+import ProfileEvidenceChart from './charts/ProfileEvidenceChart.vue'
 
 type ReportReading = { headline: string; paragraphs: string[]; moves: { label: string; why: string }[] }
 type ProfileSection = { key: string; title: string; fields: ProfileFieldView[] }
@@ -35,7 +36,16 @@ const activeSection = ref('overview')
 const all = computed(() => props.report.sections?.flatMap((section) => section.items ?? []) ?? [])
 const pendingItems = computed(() => all.value.filter(isPending))
 const supportedCount = computed(() => all.value.filter((item) => !isPending(item)).length)
-const profileFields = computed(() => props.workspace?.profile_panel?.fields ?? [])
+const snapshotFields = computed(() => props.report.profile_snapshot ?? null)
+const usingSnapshot = computed(() => snapshotFields.value !== null)
+// The appendix explains what the report *used*. Reading the live profile here
+// rewrote history after every correction and made deleted fields disappear.
+const profileFields = computed(() => snapshotFields.value ?? props.workspace?.profile_panel?.fields ?? [])
+const evidencePoints = computed(() => profileFields.value.map((field) => ({
+  key: field.key,
+  label: field.label || field.key,
+  assessment: field.evidence_assessment ?? undefined,
+})))
 const profileGaps = computed(() => props.workspace?.profile_panel?.gaps ?? [])
 const academic = computed(() => props.workspace?.academic_panel ?? null)
 const executiveFindings = computed(() => {
@@ -94,14 +104,15 @@ function content(value: unknown): string {
   return String(value)
 }
 function profileValue(field: ProfileFieldView): string {
-  if (field.key === 'courses' && academic.value?.courses?.length) return `已记录 ${academic.value.courses.length} 门课程`
-  if (field.key === 'scores' && academic.value?.grades?.length) return `已记录 ${academic.value.grades.length} 条成绩`
+  if (!usingSnapshot.value && field.key === 'courses' && academic.value?.courses?.length) return `已记录 ${academic.value.courses.length} 门课程`
+  if (!usingSnapshot.value && field.key === 'scores' && academic.value?.grades?.length) return `已记录 ${academic.value.grades.length} 条成绩`
   return content(field.value) || '尚待补充'
 }
-// Scores belong to the report snapshot, while the original appendix contents stay intact.
+// When a snapshot exists, each field already carries the assessment saved with
+// it. Do not look up today's profile by key/version: a subsequent correction
+// made the old score look like it never existed.
 function reportAssessment(field: ProfileFieldView) {
-  return props.report.profile_snapshot?.find(saved => saved.key === field.key
-    && saved.entry_version === field.entry_version && saved.updated_at === field.updated_at)?.evidence_assessment
+  return field.evidence_assessment ?? undefined
 }
 function fieldDate(value: string) {
   return formatDate(value) || '未记录时间'
@@ -173,6 +184,10 @@ function requestAiReading() {
 }
 onMounted(() => { void prepareDocument(); requestAiReading() })
 watch([() => props.report.version, () => props.workspace?.profile_panel?.updated_at], prepareDocument)
+watch(() => route.query.section, section => {
+  if (typeof section !== 'string' || section === activeSection.value) return
+  if (tocItems.value.some(item => item.id === section)) void scrollToSection(section, false)
+})
 watch(() => props.allowAiSummary, requestAiReading)
 onBeforeUnmount(() => observer?.disconnect())
 </script>
@@ -293,16 +308,20 @@ onBeforeUnmount(() => observer?.disconnect())
     </div>
 
     <InfoSheet :open="profileSheet" shape="panel" title="本报告使用的个人资料" @close="profileSheet = false">
-      <p class="sheet-intro">这里汇总账号中已经保存的个人画像、课程和成绩。它们都是报告可以使用的输入；没有记录的部分不会被 AI 自行补写。</p>
-      <p v-if="profileError" class="report-profile-error" role="status">{{ profileError }}</p>
+      <p class="sheet-intro" v-if="usingSnapshot">这里汇总的是这份报告保存时使用的个人资料快照。报告生成后你在画像里做的更正，不会改写这份历史记录。</p>
+      <p class="sheet-intro" v-else>这份报告没有保存资料快照；下面显示的是当前账号资料，不代表报告生成时的输入。</p>
+      <ProfileEvidenceChart v-if="evidencePoints.length" :title="usingSnapshot ? '报告保存时各项资料的把握度' : '当前各项资料的把握度'" :points="evidencePoints" :snapshot="usingSnapshot" />
+      <p v-if="profileError && !usingSnapshot" class="report-profile-error" role="status">{{ profileError }}</p>
       <section v-for="section in profileSections" :key="section.key" class="profile-sheet-section">
         <h2>{{ section.title }}</h2>
-        <article v-for="field in section.fields" :key="field.key" class="profile-sheet-field"><header><strong>{{ profileLabel(field.key, field.label || field.key) }}</strong><span>{{ sourceNames[field.source] || field.source }}</span></header><p>{{ profileValue(field) }}</p><small>更新于 {{ fieldDate(field.updated_at) }}</small><EvidenceAssessmentDetails :assessment="reportAssessment(field)" :historical="!reportAssessment(field)" /><ul v-if="field.evidence?.length"><li v-for="evidence in field.evidence" :key="evidence">{{ evidence }}</li></ul></article>
+        <article v-for="field in section.fields" :key="field.key" class="profile-sheet-field"><header><strong>{{ profileLabel(field.key, field.label || field.key) }}</strong><span>{{ sourceNames[field.source] || field.source }}</span></header><p>{{ profileValue(field) }}</p><small>更新于 {{ fieldDate(field.updated_at) }}</small><EvidenceAssessmentDetails :assessment="reportAssessment(field)" :historical="usingSnapshot && !reportAssessment(field)" :snapshot="usingSnapshot" /><ul v-if="field.evidence?.length"><li v-for="evidence in field.evidence" :key="evidence">{{ evidence }}</li></ul></article>
       </section>
-      <section v-if="academic?.courses?.length" class="profile-sheet-section"><h2>课程记录 · {{ academic.courses.length }} 门</h2><div class="academic-prose"><article v-for="course in academic.courses" :key="course.name + '-' + course.weekday + '-' + course.start_period"><h3>{{ course.name }}</h3><p>{{ weekday(course.weekday) }}<template v-if="course.start_period">，第 {{ course.start_period }}–{{ course.end_period ?? course.start_period }} 节</template><template v-if="course.place">，上课地点为 {{ course.place }}</template><template v-if="course.teacher">，任课教师为 {{ course.teacher }}</template>。</p></article></div></section>
-      <section v-if="academic?.grades?.length" class="profile-sheet-section"><h2>成绩记录 · {{ academic.grades.length }} 条</h2><div class="academic-prose"><article v-for="grade in academic.grades" :key="grade.name + '-' + grade.term"><h3>{{ grade.name }}</h3><p>{{ grade.term || '未注明学期' }}的记录中，成绩为 {{ grade.score || '未提供' }}<template v-if="grade.credit">，课程学分为 {{ grade.credit }}</template>。</p></article></div></section>
-      <section v-if="profileGaps.length" class="profile-sheet-section"><h2>还缺的资料</h2><article v-for="gap in profileGaps" :key="gap.key" class="profile-sheet-field is-gap"><header><strong>{{ gap.label || profileLabel(gap.key, gap.key) }}</strong></header><p>{{ studentVoice(gap.reason) }}</p><small v-if="gap.suggested_next_action">下一步：{{ studentVoice(gap.suggested_next_action) }}</small></article></section>
-      <p v-if="!profileSections.length && !academic?.courses?.length && !academic?.grades?.length" class="ws-muted">当前没有读取到个人资料。</p>
+      <template v-if="!usingSnapshot">
+        <section v-if="academic?.courses?.length" class="profile-sheet-section"><h2>课程记录 · {{ academic.courses.length }} 门</h2><div class="academic-prose"><article v-for="course in academic.courses" :key="course.name + '-' + course.weekday + '-' + course.start_period"><h3>{{ course.name }}</h3><p>{{ weekday(course.weekday) }}<template v-if="course.start_period">，第 {{ course.start_period }}–{{ course.end_period ?? course.start_period }} 节</template><template v-if="course.place">，上课地点为 {{ course.place }}</template><template v-if="course.teacher">，任课教师为 {{ course.teacher }}</template>。</p></article></div></section>
+        <section v-if="academic?.grades?.length" class="profile-sheet-section"><h2>成绩记录 · {{ academic.grades.length }} 条</h2><div class="academic-prose"><article v-for="grade in academic.grades" :key="grade.name + '-' + grade.term"><h3>{{ grade.name }}</h3><p>{{ grade.term || '未注明学期' }}的记录中，成绩为 {{ grade.score || '未提供' }}<template v-if="grade.credit">，课程学分为 {{ grade.credit }}</template>。</p></article></div></section>
+        <section v-if="profileGaps.length" class="profile-sheet-section"><h2>还缺的资料</h2><article v-for="gap in profileGaps" :key="gap.key" class="profile-sheet-field is-gap"><header><strong>{{ gap.label || profileLabel(gap.key, gap.key) }}</strong></header><p>{{ studentVoice(gap.reason) }}</p><small v-if="gap.suggested_next_action">下一步：{{ studentVoice(gap.suggested_next_action) }}</small></article></section>
+      </template>
+      <p v-if="!profileSections.length && !usingSnapshot && !academic?.courses?.length && !academic?.grades?.length" class="ws-muted">当前没有读取到个人资料。</p>
     </InfoSheet>
 
     <InfoSheet :open="appendix" shape="panel" title="分析方式与资料来源" @close="appendix = false">

@@ -22,7 +22,11 @@ import type { RenderableView } from '../api/backend-types'
 const props = defineProps<{ item: RenderableView }>()
 const expanded = ref(false)
 const label = (key: string) => profileLabel(key, ({ courses:'课程表', scores:'成绩单' } as Record<string,string>)[key] || key)
-const evidencePoints = computed(() => (props.item.payload?.points ?? []) as Array<{key:string;label:string;assessment:EvidenceAssessment}>)
+const evidencePoints = computed(() => ((props.item.payload?.points ?? []) as Array<{key?:string;label?:string;assessment?:EvidenceAssessment}>)
+  .filter((point): point is {key:string;label:string;assessment?:EvidenceAssessment} =>
+    !!point && typeof point.key === 'string' && point.key.trim().length > 0
+    && typeof point.label === 'string' && point.label.trim().length > 0)
+  .map(point => ({ key: point.key, label: point.label, assessment: point.assessment })))
 const legacyBars = computed(() => props.item.kind === 'bars_chart' && !props.item.payload?.metric)
 
 interface BarsPoint {

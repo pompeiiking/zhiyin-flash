@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { backendClient } from '../api/backend-client'
 import { studentApi } from '../api/student-capabilities'
 import { backendDemo } from '../lib/backend-demo'
@@ -93,8 +93,10 @@ function weekStartKey() {
   return `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`
 }
 
+let loadSerial = 0
 async function load() {
   if (busy.value) return
+  const serial = ++loadSerial
   busy.value = true
   error.value = ''
   arrangementError.value = ''
@@ -104,6 +106,7 @@ async function load() {
       backendClient.workspace(),
       studentApi.workload(weekStartKey()),
     ])
+    if (serial !== loadSerial) return
     if (actionResult.status === 'fulfilled') backendDemo.setAction(actionResult.value)
     else error.value = (actionResult.reason as Error).message
     if (workspaceResult.status === 'fulfilled') backendDemo.setWorkspace(workspaceResult.value)
@@ -113,9 +116,10 @@ async function load() {
       capacityMinutes.value = typeof week?.remaining_minutes === 'number' ? week.remaining_minutes : null
     }
   } finally {
-    busy.value = false
+    if (serial === loadSerial) busy.value = false
   }
 }
+onUnmounted(() => { loadSerial++ })
 
 async function finish(task: ActionTaskView) {
   if (savingId.value) return
@@ -171,6 +175,7 @@ onMounted(load)
 
         <section v-else class="today-empty today-empty--focus">
           <template v-if="busy"><h2>正在读取行动计划…</h2></template>
+          <template v-else-if="error"><h2>行动计划暂时没有取得</h2><p>这次读取失败，不能据此判断当前没有任务。请重新读取。</p><button class="btn btn--primary" type="button" @click="load">重新读取</button></template>
           <template v-else-if="plan?.has_plan === false"><h2>还没有行动计划</h2><p>先从咨询中明确目标，再把建议保存为阶段与任务。</p><RouterLink class="btn btn--primary" to="/chat">开始咨询</RouterLink></template>
           <template v-else-if="tasks.length && !activeTasks.length"><h2>计划内任务已全部完成</h2><p>可以查看复盘，或回到阶段计划安排下一步。</p><RouterLink class="btn" to="/review">查看复盘</RouterLink></template>
           <template v-else><h2>当前没有可直接执行的任务</h2><p>任务可能仍在等待依赖；请先核对等待条件或阶段计划。</p><RouterLink class="btn" to="/plan">查看阶段计划</RouterLink></template>

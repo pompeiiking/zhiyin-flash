@@ -183,7 +183,7 @@ test('review retry keeps request identity and distinguishes saved write from fai
 
 test('successful review apply is not reported as failed when the following plan read fails',async()=>{
   let applied=0
-  const app=setup('StructuredReview',{applyReview:async()=>{applied++}})
+  const app=setup('StructuredReview',{applyReview:async()=>{applied++},reviews:async()=>({items:[]})})
   try{
     await app.state.apply({id:'r',result:'adjust'})
     assert.equal(applied,1)

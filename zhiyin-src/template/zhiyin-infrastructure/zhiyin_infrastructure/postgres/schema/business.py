@@ -300,4 +300,9 @@ CREATE TABLE IF NOT EXISTS biz_profile_evidence_assessment (
     PRIMARY KEY (user_id,field_key)
 );
 CREATE INDEX IF NOT EXISTS idx_profile_evidence_jobs ON biz_profile_evidence_assessment(status,next_at);
+-- Pre-fix rows stored a full profile copy. The worker now rebuilds context on
+-- demand; keeping those copies would retain fields the user already deleted.
+UPDATE biz_profile_evidence_assessment
+SET payload = payload - 'inputs' - 'prompt', updated_at = NOW()
+WHERE payload ? 'inputs' OR payload ? 'prompt';
 """

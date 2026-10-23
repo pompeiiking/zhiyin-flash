@@ -52,13 +52,21 @@ export function useConversationSessions({ historyOpen, thinking, choosingTopic, 
     backendDemo.setSessions(list, keep)
     return true
   }
-  async function refreshSessionList(notify = false) {
+  async function refreshSessionList(notify = false, preserveCurrent = false) {
     if (sessionListLoading.value) return false
     sessionListLoading.value = true
     if (notify) sessionListError.value = ''
     try {
       const result = await backendClient.sessions()
-      if (!isDisposed()) applySessionListResult(result)
+      if (!isDisposed()) {
+        if (preserveCurrent) {
+          // A newly created session may not be in history yet. Refreshing the
+          // list on mount must not switch the user to an older conversation.
+          backendDemo.setSessions(result.sessions ?? [], demo.state.currentSessionId)
+        } else {
+          applySessionListResult(result)
+        }
+      }
       return true
     } catch (e) {
       if (notify && !isDisposed()) sessionListError.value = friendlyError(e)

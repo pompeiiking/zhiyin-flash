@@ -2,7 +2,7 @@
 import { studentVoice } from '../lib/student-voice'
 import EvidenceState from '../components/EvidenceState.vue'
 import {STUDY_YEAR_OPTIONS, studyYearLabel} from '../lib/study-year'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 /**
  * 个人画像 · v8
  * ---------------------------------------------------------------------------
@@ -70,8 +70,21 @@ import EnrollmentCard from './profile/EnrollmentCard.vue'
 
 const profileTab = ref<'facts' | 'judgments' | 'gaps' | 'sources'>('facts')
 const profileRoute = useRoute()
+const router = useRouter()
 const verificationOpen = ref(false)
-watch(() => profileRoute.query.tab, (tab) => { if (tab === 'gaps') profileTab.value = 'gaps' }, { immediate: true })
+watch(() => profileRoute.query.tab, (tab) => {
+  if (typeof tab === 'string' && ['facts','judgments','gaps','sources'].includes(tab)) profileTab.value = tab as typeof profileTab.value
+}, { immediate: true })
+watch(profileTab, (tab) => {
+  // Keep the URL in sync so the same deep link can reopen the panel later.
+  const desired = tab === 'facts' ? undefined : tab
+  const current = typeof profileRoute.query.tab === 'string' ? profileRoute.query.tab : undefined
+  if (current === desired) return
+  const query = { ...profileRoute.query }
+  if (desired) query.tab = desired
+  else delete query.tab
+  void router.replace({ query })
+})
 watch(() => profileRoute.query.section, async section => { if(section === 'enrollment') { await nextTick(); document.getElementById('enrollment-title')?.scrollIntoView({block:'start'}) } }, {immediate:true})
 const insights = ref<InstanceType<typeof ProfileInsights> | null>(null)
 
@@ -412,7 +425,10 @@ onMounted(()=>{ void loadWorkspace() })
 
       <!-- 空态：`kind="profile"` 才画人像（缺省是 notes 的便签）。A 段整块被顶掉，
            所以标题层级显式提到 h2 —— 与它上面那个 <h2>「A 我知道什么」齐平。 -->
-      <EmptyState v-if="!known.length" kind="profile" :heading-level="2" title="暂无个人信息" description="可以从一次咨询开始，也可以导入已有的学校资料。">
+      <EmptyState v-if="!known.length && serviceError" kind="profile" :heading-level="2" title="个人信息暂时没有取得" description="这次读取失败，不能据此判断你还没有填写资料。请重新读取后再看。">
+        <button class="btn" type="button" :disabled="loading" @click="loadWorkspace">{{ loading ? '正在读取…' : '重新读取' }}</button>
+      </EmptyState>
+      <EmptyState v-else-if="!known.length && !loading" kind="profile" :heading-level="2" title="暂无个人信息" description="可以从一次咨询开始，也可以导入已有的学校资料。">
         <RouterLink class="btn" to="/chat">开始咨询</RouterLink>
       </EmptyState>
     </section>
@@ -563,8 +579,9 @@ onMounted(()=>{ void loadWorkspace() })
           <h2 id="p7-c-title">建议补充的信息</h2>
           <p>优先完善会影响方向选择的信息。</p>
         </div>
-        <span class="p7-block__count">{{ gapRows.length }} 条待补充</span>
+        <span class="p7-block__count">{{ serviceError ? '暂时无法核对' : gapRows.length + ' 条待补充' }}</span>
       </header>
+      <p v-if="serviceError" class="ws-field-error" role="alert">{{ serviceError }} <button class="ws-text-button" type="button" :disabled="loading" @click="loadWorkspace">重试</button></p>
 
       <section v-if="unverifiedCollection.length" class="p7-unverified" aria-labelledby="p7-unverified-title">
         <header class="p7-block__head">
@@ -629,7 +646,7 @@ onMounted(()=>{ void loadWorkspace() })
           </div>
         </li>
       </ul>
-      <p v-else class="ws-muted p7-none">暂未发现缺口。已记录的信息会继续按来源与可信度核对。</p>
+      <p v-else-if="!serviceError" class="ws-muted p7-none">暂未发现缺口。已记录的信息会继续按来源与可信度核对。</p>
     </section></InfoSheet>
 <InfoSheet :open="profileTab === 'sources'" shape="panel" title="资料管理" @close="profileTab='facts'"><Foldable class="p7-sources" static variant="section" title="资料来源与核验说明">
       <div class="ws-context__body">

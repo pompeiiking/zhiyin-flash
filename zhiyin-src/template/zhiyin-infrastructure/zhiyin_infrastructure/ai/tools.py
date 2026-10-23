@@ -483,12 +483,21 @@ def build_tool_catalog(
             if points is None:
                 return f"这一类图现在画不出来：{_CHART_KINDS[wanted]}还缺数据。别硬画，也别编数字。"
             if wanted == 'profile_confidence':
+                allowed = {'pending', 'processing', 'evaluated', 'insufficient', 'stale', 'failed'}
+                if not isinstance(points, list) or not 1 <= len(points) <= 200:
+                    return '把握度图现在画不出来：资料条目太多或为空。别在回复里编百分比。'
+                if any(not isinstance(p, dict) or not str(p.get('key', '')).strip()
+                       or not str(p.get('label', '')).strip()
+                       or not isinstance(p.get('assessment'), dict)
+                       or p['assessment'].get('status') not in allowed for p in points):
+                    return '把握度图现在画不出来：评估数据不完整。别在回复里编百分比。'
+                dependencies = getattr(run_context, 'dependencies', None)
+                if not isinstance(dependencies, dict):
+                    return '把握度图现在挂不上：这一轮没有可回传的展示位置。别在回复里说图已生成。'
                 spec = {'kind': 'profile_evidence_chart',
                     'title': (title or '').strip()[:40] or _DEFAULT_CHART_TITLES[wanted],
                     'payload': {'metric': 'profile_evidence', 'version': 1, 'points': points}}
-                dependencies = getattr(run_context, 'dependencies', None)
-                if isinstance(dependencies, dict):
-                    dependencies.setdefault(CHART_BOX_KEY, []).append(spec)
+                dependencies.setdefault(CHART_BOX_KEY, []).append(spec)
                 return '把握度图已挂上：来自已保存的模型证据评估；待评估或失败项不显示百分比，不是客观准确率。'
             if len(points) < 2:
                 return "只有一项，画成图看不出什么，直接用话说给他听更清楚。"

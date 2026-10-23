@@ -93,7 +93,12 @@ async function send<T>(operation: Operation, options: Options = {}, opts: { auth
     if (error instanceof BackendError) throw error
     if (controller.signal.aborted) throw new BackendError('等待超时，输入内容已保留，请重新尝试。', 1007)
     throw new BackendError('网络或服务暂时不可用，请稍后重试。', 1007)
-  } finally { clearTimeout(timeout); options.signal?.removeEventListener('abort', abort) }
+  } finally {
+    clearTimeout(timeout); options.signal?.removeEventListener('abort', abort)
+    // A timed-out/aborted write may still have committed server-side. Invalidate
+    // on exit, not only on success, so the next read cannot serve a pre-write GET.
+    if (operation.method !== 'GET') clearGetCache()
+  }
 }
 async function request<T>(key: keyof typeof operations, options: Options = {}): Promise<T> {
   const operation = operations[key]

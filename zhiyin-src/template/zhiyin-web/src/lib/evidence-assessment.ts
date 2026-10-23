@@ -9,3 +9,10 @@ export function assessmentPercent(assessment?: EvidenceAssessment | null): strin
       || !Number.isFinite(assessment.score) || assessment.score < 0 || assessment.score > 1) return null
   return new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 1 }).format(assessment.score * 100) + '%'
 }
+/** Unknown statuses and half-written evaluations must not masquerade as complete. */
+export function assessmentLabel(assessment?: EvidenceAssessment | null): string {
+  const percent = assessmentPercent(assessment)
+  if (percent) return percent
+  if (assessment?.status === 'evaluated') return '评估结果不完整'
+  return assessmentStatus[assessment?.status ?? 'pending'] ?? '状态未知'
+}

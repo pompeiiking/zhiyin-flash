@@ -15,10 +15,14 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
     if(authToken()!==requestToken)throw new BackendError('账号已变更，请重新读取。',1004)
     if(requestToken&&response.status!==401&&body.code===1004)window.dispatchEvent(new Event('zhiyin:unauthorized'))
     if(!response.ok||body.code!==0)throw new BackendError(body.message||'请求失败',body.code??response.status,body.trace_id)
-    if((options.method ?? 'GET').toUpperCase() !== 'GET') invalidateReadCache()
     return body.data as T
   } catch (error) {
     if(error instanceof BackendError)throw error
     throw new BackendError(controller.signal.aborted?'请求超时，保存结果尚未确认。请重新读取记录后再决定是否重试。':'未收到完整的服务响应，保存结果尚未确认。请重新读取记录后再决定是否重试。',1007)
-  } finally {clearTimeout(timeout)}
+  } finally {
+    clearTimeout(timeout)
+    // Timeout/abort does not prove the server rolled back. Clear on every write
+    // exit so the next same-tab read cannot reuse a pre-write snapshot.
+    if((options.method ?? 'GET').toUpperCase() !== 'GET') invalidateReadCache()
+  }
 }

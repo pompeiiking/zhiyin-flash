@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from zhiyin_business.services.unit_of_work import atomic_repository
+from zhiyin_business.services.unit_of_work import atomic_repository, transaction
 from zhiyin_business.services.memory_policy import MemoryPolicyService
 
 import logging
@@ -65,9 +65,29 @@ class DefaultProfileService(ProfileService):
         self._student_state = student_state
         self._evidence_assessments = evidence_assessments
 
-    async def _assessment_changed(self, user_id, key):
-        if self._evidence_assessments is not None:
+    async def _schedule_assessment(self, user_id, key):
+        """Schedule display-only evidence work **after** the profile commit.
+
+        Assessment is a projection. A prompt-registry read, a queue write or a
+        malformed historical payload must never roll back the user's correction,
+        deletion or conflict decision. Failures stay in the log and the next
+        profile change (or worker retry) will refresh the projection.
+        """
+        if self._evidence_assessments is None:
+            return
+        try:
             await self._evidence_assessments.changed(user_id, [key])
+        except Exception:  # noqa: BLE001 - projection failure cannot fail the write
+            logger.warning("画像已提交，但把握度评估没有排入队列（key=%s）", key, exc_info=True)
+
+    async def _attach_assessment(self, user_id, field):
+        if self._evidence_assessments is None:
+            return field
+        try:
+            return (await self._evidence_assessments.attach(user_id, [field]))[0]
+        except Exception:  # noqa: BLE001 - display enrichment is optional
+            logger.warning("画像已读取，但把握度评估暂时不可用（key=%s）", field.key, exc_info=True)
+            return field
 
     async def get(self, user_id: str) -> Optional[Profile]:
         profile = await self._profiles.get(user_id)
@@ -205,8 +225,40 @@ class DefaultProfileService(ProfileService):
                 exc_info=True,
             )
 
-    @atomic_repository("_profiles")
     async def update_field(
+        self,
+        user_id: str,
+        key: str,
+        value: object,
+        *,
+        confidence: float,
+        source: str,
+        label: str = "",
+        evidence: Optional[list[str]] = None,
+        expected_updated_at: datetime | None = None,
+        check_version: bool = False,
+        attributes: dict[str, object] | None = None,
+        verification: str | None = None,
+        origin_ref: str = "",
+        valid_from: datetime | None = None,
+        valid_to: datetime | None = None,
+        event_at: datetime | None = None,
+        status: str | None = None,
+    ) -> ProfileField:
+        """Commit the profile write first, then refresh the display projection."""
+        async with transaction(self._profiles):
+            saved = await self._update_field(
+                user_id, key, value, confidence=confidence, source=source, label=label,
+                evidence=evidence, expected_updated_at=expected_updated_at,
+                check_version=check_version, attributes=attributes, verification=verification,
+                origin_ref=origin_ref, valid_from=valid_from, valid_to=valid_to,
+                event_at=event_at, status=status,
+            )
+        await self._schedule_assessment(user_id, key)
+        return await self._attach_assessment(user_id, saved)
+
+    @atomic_repository("_profiles")
+    async def _update_field(
         self,
         user_id: str,
         key: str,
@@ -324,16 +376,18 @@ class DefaultProfileService(ProfileService):
         if before is not None and (before.value != saved.value or before.attributes != saved.attributes
             or before.valid_from != saved.valid_from or before.valid_to != saved.valid_to):
             await self._invalidate_clues_for(user_id, [key], PROFILE_CLUE_INVALIDATED_BY_CORRECTION)
-        await self._assessment_changed(user_id, key)
-        if self._evidence_assessments is not None:
-            return (await self._evidence_assessments.attach(user_id, [saved]))[0]
         return saved
 
     async def replace_gaps(self, user_id: str, gaps: list[ProfileGap]) -> None:
         await self._profiles.replace_gaps(user_id, gaps)
 
-    @atomic_repository("_profiles")
     async def drop_field(self, user_id: str, key: str, *, expected_updated_at: datetime | None = None, check_version: bool = False) -> None:
+        async with transaction(self._profiles):
+            await self._drop_field(user_id, key, expected_updated_at=expected_updated_at, check_version=check_version)
+        await self._schedule_assessment(user_id, key)
+
+    @atomic_repository("_profiles")
+    async def _drop_field(self, user_id: str, key: str, *, expected_updated_at: datetime | None = None, check_version: bool = False) -> None:
         """删掉一个画像字段（撤销授权时用）。
 
         删完把依据这一格的待验证线索一起标记失效（设计第 7 节）：依据没了，
@@ -363,7 +417,6 @@ class DefaultProfileService(ProfileService):
             event_type=PROFILE_FIELD_UPDATED, occurred_at=datetime.now(timezone.utc),
             payload={"user_id": user_id, "field_key": key, "deleted": True, "is_new": False}))
         await self._invalidate_clues_for(user_id, [key], PROFILE_CLUE_INVALIDATED_BY_DELETION)
-        await self._assessment_changed(user_id, key)
 
     # ---------- 历史版本与冲突裁定（设计第 4、7 节） ----------
 
@@ -413,8 +466,33 @@ class DefaultProfileService(ProfileService):
         """当前等待用户裁定的冲突提案（不参与用途读取）。"""
         return await self._profiles.list_revisions(user_id, status=["conflict"])
 
-    @atomic_repository("_profiles")
     async def record_conflict(
+        self,
+        user_id: str,
+        key: str,
+        value: object,
+        *,
+        confidence: float = 0.8,
+        source: str = ProfileSource.CONVERSATION.value,
+        label: str = "",
+        evidence: Optional[list[str]] = None,
+        attributes: dict[str, object] | None = None,
+        origin_ref: str = "",
+        valid_from: datetime | None = None,
+        valid_to: datetime | None = None,
+        event_at: datetime | None = None,
+    ) -> ProfileFieldRevision:
+        async with transaction(self._profiles):
+            revision = await self._record_conflict(
+                user_id, key, value, confidence=confidence, source=source, label=label,
+                evidence=evidence, attributes=attributes, origin_ref=origin_ref,
+                valid_from=valid_from, valid_to=valid_to, event_at=event_at,
+            )
+        await self._schedule_assessment(user_id, key)
+        return revision
+
+    @atomic_repository("_profiles")
+    async def _record_conflict(
         self,
         user_id: str,
         key: str,
@@ -467,12 +545,18 @@ class DefaultProfileService(ProfileService):
             replaced_at=None,
             change_reason="与当前记录不一致，等待核对",
         )
-        saved_revision = await self._profiles.append_revision(user_id, revision)
-        await self._assessment_changed(user_id, key)
-        return saved_revision
+        return await self._profiles.append_revision(user_id, revision)
+
+    async def resolve_conflict(
+        self, user_id: str, revision_id: str, *, choice: str
+    ) -> ProfileFieldRevision:
+        async with transaction(self._profiles):
+            resolved = await self._resolve_conflict(user_id, revision_id, choice=choice)
+        await self._schedule_assessment(user_id, resolved.key)
+        return resolved
 
     @atomic_repository("_profiles")
-    async def resolve_conflict(
+    async def _resolve_conflict(
         self, user_id: str, revision_id: str, *, choice: str
     ) -> ProfileFieldRevision:
         """用户裁定一条冲突：`revision`=以新说法为准，`current`=保留当前记录。"""
@@ -486,7 +570,7 @@ class DefaultProfileService(ProfileService):
         if choice == "revision" and (current is None or target.entry_version != current.entry_version + 1):
             raise DuplicateResource("当前记录已经更改或删除，这条旧提案不能再覆盖；请刷新后重新核对。")
         if choice == "revision":
-            await self.update_field(
+            await self._update_field(
                 user_id,
                 target.key,
                 target.value,
@@ -532,7 +616,6 @@ class DefaultProfileService(ProfileService):
                         record.pop("exploration", None)
                     return state
                 await self._student_state.update(user_id, clear_working)
-        await self._assessment_changed(user_id, target.key)
         return target.model_copy(
             update={"status": status, "replaced_at": datetime.now(timezone.utc), "change_reason": reason}
         )
@@ -560,8 +643,20 @@ class DefaultProfileService(ProfileService):
             labels.setdefault(spec.key, spec.label or spec.key)
         return labels
 
-    @atomic_repository("_profiles")
     async def correct_field(self, user_id: str, key: str, value: object, *, expected_updated_at: datetime | None = None, check_version: bool = False,
+                            attributes: dict | None = None, origin_ref: str = "", evidence: list[str] | None = None,
+                            valid_from: datetime | None = None, valid_to: datetime | None = None, event_at: datetime | None = None) -> ProfileField:
+        async with transaction(self._profiles):
+            saved = await self._correct_field(
+                user_id, key, value, expected_updated_at=expected_updated_at,
+                check_version=check_version, attributes=attributes, origin_ref=origin_ref,
+                evidence=evidence, valid_from=valid_from, valid_to=valid_to, event_at=event_at,
+            )
+        await self._schedule_assessment(user_id, key)
+        return await self._attach_assessment(user_id, saved)
+
+    @atomic_repository("_profiles")
+    async def _correct_field(self, user_id: str, key: str, value: object, *, expected_updated_at: datetime | None = None, check_version: bool = False,
                             attributes: dict | None = None, origin_ref: str = "", evidence: list[str] | None = None,
                             valid_from: datetime | None = None, valid_to: datetime | None = None, event_at: datetime | None = None) -> ProfileField:
         """用户本人更正一个画像字段（issue #26 第三条）。
@@ -623,7 +718,7 @@ class DefaultProfileService(ProfileService):
         # 这里改成"带了期望版本就校验"，比让每个调用方各自记得传更可靠。
         enforce_version = check_version or expected_updated_at is not None
         try:
-            saved = await self.update_field(
+            saved = await self._update_field(
                 user_id,
                 key,
                 text,

@@ -2,6 +2,7 @@
 import {computed,onMounted,ref} from 'vue'
 import {useRoute,useRouter} from 'vue-router'
 import {backendClient,BackendError} from '../api/backend-client'
+import {latestAssetVersion} from '../lib/asset-version'
 import {backendDemo} from '../lib/backend-demo'
 import type {AssetVersionView} from '../api/backend-types'
 import PageHeading from '../components/PageHeading.vue'
@@ -16,8 +17,16 @@ const history=computed(()=>route.query.view==='versions'||route.query.focus==='v
 const impact=ref({report:false,plan:false,checked:false})
 async function loadImpact(){
  const settled=await Promise.allSettled([backendClient.versions('report'),backendClient.versions('action_plan')])
- const latest=(result:PromiseSettledResult<AssetVersionView[]>)=>result.status==='fulfilled'?[...result.value].sort((a,b)=>b.version-a.version)[0]:undefined
- impact.value={report:latest(settled[0])?.needs_recompute===true,plan:latest(settled[1])?.needs_recompute===true,checked:settled.every(result=>result.status==='fulfilled')}
+ const read=(result:PromiseSettledResult<AssetVersionView[]>)=>{
+   if(result.status!=='fulfilled'||!Array.isArray(result.value))return{known:false,needs:false}
+   const latest=latestAssetVersion(result.value)
+   // An empty list cannot prove there is no report/plan; never turn it into
+   // "current assets need no recompute".
+   if(!latest)return{known:false,needs:false}
+   return{known:true,needs:latest.needs_recompute===true}
+ }
+ const report=read(settled[0]),plan=read(settled[1])
+ impact.value={report:report.needs,plan:plan.needs,checked:report.known&&plan.known}
 }
 async function load(){if(busy.value)return;busy.value=true;error.value='';try{
  backendDemo.setLiveDirections(await backendClient.directions());await loadImpact()

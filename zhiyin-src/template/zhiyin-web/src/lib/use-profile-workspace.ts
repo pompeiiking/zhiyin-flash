@@ -1,5 +1,6 @@
 import { computed, ref } from 'vue'
 import { backendClient } from '../api/backend-client'
+import { latestAssetVersion } from './asset-version'
 import { backendDemo } from './backend-demo'
 import { demo } from '../store'
 
@@ -17,21 +18,36 @@ export function useProfileWorkspace() {
   const live = computed(() => backendDemo.state.dataMode === 'service')
   const originalLive = computed(() => backendDemo.state.profileOriginals)
 
+  let loadSerial = 0
   async function loadWorkspace() {
     if (loading.value) return
+    const serial = ++loadSerial
     loading.value = true
     serviceError.value = ''
     relatedError.value = ''
     try {
       const data = await backendClient.workspace()
+      if (serial !== loadSerial) return
       if (!data?.profile_panel) throw new Error('Incomplete profile')
       backendDemo.setWorkspace(data)
       const results=await Promise.allSettled([backendClient.report(),backendClient.directions(),backendClient.versions('report')])
+      if (serial !== loadSerial) return
       if(results[0].status==='fulfilled')backendDemo.setReport(results[0].value)
       if(results[1].status==='fulfilled')backendDemo.setLiveDirections(results[1].value)
-      if(results[2].status==='fulfilled')backendDemo.setReportMetadata(results[2].value[0] ?? null)
       const unavailable=[]
-      if(results[2].status==='rejected')unavailable.push('判断有效状态')
+      let versionUnknown=results[2].status==='rejected'
+      if(results[2].status==='fulfilled') {
+        // The versions endpoint is ordered ascending. Reading [0] marked the
+        // oldest report as current and made this page claim "0 pending" while
+        // the report page correctly showed a stale latest version.
+        const latest=latestAssetVersion(results[2].value) ?? null
+        backendDemo.setReportMetadata(latest)
+        if(!latest && results[0].status==='fulfilled' && (results[0].value?.version??0)>0) versionUnknown=true
+      }
+      if(versionUnknown) {
+        backendDemo.setReportMetadata(null)
+        unavailable.push('判断有效状态')
+      }
       if(results[0].status==='rejected')unavailable.push('分析报告')
       if(results[1].status==='rejected')unavailable.push('方向方案')
       if(unavailable.length)relatedError.value=`个人资料已读取，但${unavailable.join('和')}暂时没有更新；下方判断可能不完整。`

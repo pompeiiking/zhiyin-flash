@@ -152,6 +152,27 @@ async def test_report_snapshot_is_readable_and_serializes_as_report(service):
 
 
 @pytest.mark.asyncio
+async def test_each_report_version_keeps_its_own_body(service):
+    """The same report identity must not overwrite the previous version's body."""
+    base = Report(
+        id="rpt_versions",
+        user_id="a",
+        version=0,
+        generated_at=datetime.now(timezone.utc),
+        verdict=Verdict(title="第一版", summary="第一版说明"),
+        swot=Swot(),
+    )
+    first = await service.asset_service.save_report("a", base)
+    second = await service.asset_service.save_report(
+        "a", base.model_copy(update={"verdict": Verdict(title="第二版", summary="第二版说明")})
+    )
+    assert (first.version, second.version) == (1, 2)
+    assert (await service.asset_service.get_report("a", 1)).verdict.title == "第一版"
+    assert (await service.asset_service.get_report("a", 2)).verdict.title == "第二版"
+    assert (await service.asset_service.get_report("a")).verdict.title == "第二版"
+
+
+@pytest.mark.asyncio
 async def test_notifications_full_history_snooze_restore(service):
     service.notifications.add("a", {"id": "n1", "title": "任务提醒"})
     later = NotificationEdit(

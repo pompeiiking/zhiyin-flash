@@ -732,7 +732,7 @@ class PostgresProfileRepository(ProfileRepository):
             WHERE user_id = $1
               AND ($2::text IS NULL OR key = $2)
               AND ($3::text[] IS NULL OR status = ANY($3::text[]))
-            ORDER BY created_at ASC
+            ORDER BY created_at ASC, id ASC
             """,
             user_id,
             key,
@@ -1287,13 +1287,14 @@ class PostgresAssetRepository(AssetRepository):
                 user_id,
             )
         else:
-            # 指定版本没有正文时退到"不晚于它的最新一版"：影响面传播留下的空版本
-            # （只有版本行、没有正文）点了不该是空白页 —— 见 mark_needs_recompute。
+            # Each saved report version owns its own content row. Returning an
+            # older body for a missing version made the UI claim "V1" while
+            # showing V0/V2; an unavailable historical body must stay unavailable.
             row = await self._db.fetchrow(
                 """
                 SELECT payload FROM biz_asset_content
-                WHERE user_id = $1 AND asset_type = 'report' AND version <= $2
-                ORDER BY version DESC LIMIT 1
+                WHERE user_id = $1 AND asset_type = 'report' AND version = $2
+                ORDER BY created_at DESC LIMIT 1
                 """,
                 user_id,
                 version,
@@ -1316,7 +1317,14 @@ class PostgresAssetRepository(AssetRepository):
             )
             if latest is not None:
                 stored.version = max(stored.version, _load(Report, latest["payload"]).version + 1)
-            await self._put_content(stored.user_id, "report", stored.version, stored, connection)
+            # A report keeps one stable business id across versions (approvals
+            # reference it), but each version needs its own content row. Using
+            # model.id alone made V2 overwrite V1 in place, leaving V1 with a
+            # version row and no body.
+            await self._put_content(
+                stored.user_id, "report", stored.version, stored, connection,
+                record_id=f"{stored.id}:v{stored.version}",
+            )
         return stored
 
     async def list_direction_plans(self, user_id: str) -> list[DirectionPlan]:
@@ -1423,6 +1431,8 @@ class PostgresAssetRepository(AssetRepository):
         model: Any,
         connection: Any = None,
         sort_order: int = 0,
+        *,
+        record_id: str | None = None,
     ) -> None:
         executor = connection or self._db
         status = await executor.execute(
@@ -1436,7 +1446,7 @@ class PostgresAssetRepository(AssetRepository):
                 sort_order = EXCLUDED.sort_order
             WHERE biz_asset_content.user_id = EXCLUDED.user_id AND biz_asset_content.asset_type = EXCLUDED.asset_type
             """,
-            model.id,
+            record_id or model.id,
             user_id,
             asset_type,
             version,

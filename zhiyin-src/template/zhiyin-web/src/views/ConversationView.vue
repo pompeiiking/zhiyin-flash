@@ -48,6 +48,8 @@ let waitTimer: ReturnType<typeof setInterval> | undefined
 let requestStarted = 0
 const pending = ref<{ text: string; agent: string; note: string } | null>(null)
 const runtimeState = ref<ConversationRuntimeState | null>(null)
+const runtimeError = ref('')
+let runtimeSerial = 0
 const backgroundRun = computed(() => runtimeState.value?.runs.find(r => r.state === 'running'))
 let recoveryTimer: ReturnType<typeof setInterval> | undefined
 const activeRunId = ref('')
@@ -55,6 +57,10 @@ const liveFocus = ref('')
 let controller: AbortController | null = null, serial = 0, disposed = false
 let failedRequest: MessageRequest | null = null
 const requestError = ref(''), profileError = ref(''), guideSaving = ref('')
+const askConfirm = ref<{ text: string; previousText: string; previousOption: OptionRef | null } | null>(null)
+// The shell banner and the in-conversation error often describe the same
+// failed session read. Show the more specific one instead of two retry paths.
+const systemErrorVisible = computed(() => !!systemData.error && !requestError.value)
 const profileOpen = ref(false), historyOpen = ref(false), profileLoading = ref(false)
 const choosingTopic = ref(false)
 // 恢复会话的短暂空态：避免刚刷新时先闪一句"新会话已就绪/咨询对话"。
@@ -75,15 +81,18 @@ const copiedTurn = ref('')
 let copyTimer: ReturnType<typeof setTimeout> | undefined
 const { failedSend, confirmDismissed, askPending, interrupted, showFailedSend, rememberFailure, clearFailure, loadFailure, discardFailure, clearAllFailures, syncInterruptedNotice, retryInterrupted, dismissInterrupted, markChatPending, markChatStopped, clearChatPending } = useConversationRecovery({
   turns, thinking, stopped, pending, requestError, input, send, setFailedRequest: value => { failedRequest = value },
+  hasBackgroundRun: () => !!backgroundRun.value,
 })
 const { draft, attached, selectedOption, fillRequest, replacedDraft, fill, applyFill, confirmFillReplace, cancelFillReplace, undoFillReplace, remember, resizeInput } = useConversationDraft({ flow, input, profileOpen, thinking })
 const { uploading, draggingFiles, uploadError, fileInput, upload, dragOver, dropFiles, pasteFiles } = useConversationMaterials({ thinking, attached, isDisposed: () => disposed })
 async function refreshRuntime() {
  const id = demo.state.currentSessionId
- if (!id) { runtimeState.value = null; return }
+ const serial = ++runtimeSerial
+ if (!id) { runtimeState.value = null; runtimeError.value = ''; return }
  try {
   const value = await backendClient.conversationRuntime(id)
-  if (demo.state.currentSessionId !== id) return
+  if (serial !== runtimeSerial || demo.state.currentSessionId !== id) return
+  runtimeError.value = ''
   const recovering = runtimeState.value?.runs.some(r => r.state === 'running')
   runtimeState.value = value
   if (!thinking.value) {
@@ -91,7 +100,13 @@ async function refreshRuntime() {
    if (run?.state === 'running') activeRunId.value = run.id
    else if (recovering) { await openSession(id); syncInterruptedNotice() }
   }
- } catch { /* 普通历史仍可查看，执行权限由服务端校验 */ }
+ } catch {
+  // A hidden runtime error means approval cards silently disappear and a
+  // still-running reply gets mistaken for an interrupted one.
+  if (serial === runtimeSerial && demo.state.currentSessionId === id) {
+   runtimeError.value = '这一步的执行状态暂时没有取得。审批卡和后台回复可能暂时看不到，请重试。'
+  }
+ }
 }
 function decideAction(id: string, accept: boolean) {
  void send(false, { text: accept ? '确认执行这项变更' : '暂不执行这项变更', option: { option_id: `action.${id}.${accept ? 'accept' : 'decline'}`, label: accept ? '确认执行' : '暂不执行', value: {action_id: id} } })
@@ -393,9 +408,12 @@ watch(() => route.query.history, value => {
 watch(() => navigation.width.value, () => { void nextTick(resizeInput) })
 watch(requestError, message => {
  if (!message) return
+ // Only a real send attempt can be announced as a reply failure. Session-list
+ // and shell errors are operations, not a reply the user just sent.
+ const attemptedReply = !!failedRequest || thinking.value || !!pending.value || stopped.value
  replyAnnouncement.value = stopped.value
   ? '回复已停止，已接收的内容保留。'
-  : '回复失败，可以重试。'
+  : attemptedReply ? '回复失败，可以重试。' : '这一步没有完成，请按页面提示重试。'
 })
 watch([draft, attached], () => { remember(); void nextTick(resizeInput) }, { deep:true })
 watch(() => demo.state.currentSessionId, (_id, previous) => {
@@ -416,13 +434,18 @@ watch(() => demo.state.currentSessionId, (_id, previous) => {
 // 刷新/切页恢复到"最后一条是提问、没有回复"的会话时，修复残局并给出中断提示。
 // 也监听 systemData.busy：刷新恢复走的是 App 壳的 loadShell→openSession，
 // 消息是在 busy=true 期间写入的，等 busy 落回 false 后还要再检查一次。
-watch([turns, thinking, () => systemData.busy, () => demo.state.currentSessionId], () => syncInterruptedNotice(), { flush: 'post' })
+watch([turns, thinking, () => systemData.busy, () => demo.state.currentSessionId, () => !!backgroundRun.value], () => syncInterruptedNotice(), { flush: 'post' })
 function applyConsultationContext() {
  // 报告页等入口用 ?ask= 直接发起一句咨询：自动填入并发送，发送后清掉参数。
  const ask = typeof route.query.ask === 'string' ? route.query.ask.trim() : ''
  if (ask) {
-  const query = { ...route.query }; delete query.ask
-  void router.replace({ path: route.path, query })
+  // Do not delete ?ask before it is actually sent: if the user leaves while the
+  // page is restoring, the next visit can still finish the explicit action.
+  if (draft.value.trim() && draft.value.trim() !== ask) {
+   askConfirm.value = { text: ask, previousText: draft.value, previousOption: selectedOption.value }
+   askPending.value = ''
+   return
+  }
   askPending.value = ask
   void runAsk()
   return
@@ -433,8 +456,12 @@ function applyConsultationContext() {
   : typeof query.topic === 'string' ? '我想讨论：' + query.topic
   : typeof query.label === 'string' ? '我想补充' + query.label + '：' : ''
  if (!text) return
- // Preserve an unfinished draft when arriving from another page.
- applyFill(draft.value.trim() && draft.value.trim() !== text ? draft.value.trim() + '\n\n' + text : text)
+ // Preserve an unfinished draft when arriving from another page, but do not
+ // append the same deep-link sentence twice on repeated navigation.
+ const existing = draft.value.trim()
+ applyFill(existing && existing !== text
+  ? (existing.includes(text) ? existing : existing + '\n\n' + text)
+  : text)
  remember()
  const rest = { ...query }; for (const key of ['question', 'topic', 'label', 'gap']) delete rest[key]
  void router.replace({ path: route.path, query: rest })
@@ -449,6 +476,24 @@ function applyNewTopicIntent() {
  chooseTopic()
 }
 watch([() => systemData.busy, () => systemData.shellReady, thinking, restoring], applyNewTopicIntent)
+function clearAskQuery() {
+ if (typeof route.query.ask !== 'string') return
+ const query = { ...route.query }; delete query.ask
+ void router.replace({ path: route.path, query })
+}
+function sendAskReplacingDraft() {
+ const request = askConfirm.value
+ if (!request) return
+ askConfirm.value = null
+ replacedDraft.value = { text: request.previousText, option: request.previousOption }
+ askPending.value = request.text
+ void runAsk()
+}
+function keepDraft() {
+ askConfirm.value = null
+ askPending.value = ''
+ clearAskQuery()
+}
 async function runAsk() {
  if (!askPending.value || thinking.value || uploading.value || systemData.busy) return
  // 等壳层、画像与首屏问句就绪，避免把消息发进一个还没准备好的会话、跳过年级确认。
@@ -460,6 +505,9 @@ async function runAsk() {
  askPending.value = ''
  draft.value = ask
  await send()
+ // send() clears the draft only after it accepted the turn. If it refused
+ // (busy/background run/no entrance), keep ?ask so the action is not lost.
+ if (draft.value !== ask) clearAskQuery()
 }
 watch([() => systemData.shellReady, () => systemData.busy, () => showStudyYearQuestion.value, () => profileLoaded.value, choosingTopic, thinking, uploading], () => void runAsk())
 watch(showStudyYearQuestion, open => {
@@ -477,6 +525,9 @@ onMounted(() => {
  }
  loadFailure(demo.state.currentSessionId)
  void refreshProfile()
+ // Sessions created elsewhere (report/approval flows) are not in the shell
+ // snapshot loaded at app start. Refresh silently without changing selection.
+ void refreshSessionList(false, true)
  applyConsultationContext()
  void bottom(true)
 })
@@ -536,7 +587,8 @@ onUnmounted(() => { disposed = true; clearInterval(recoveryTimer); window.remove
    </div></div>
    <ol v-if="!choosingTopic && demo.state.currentSessionId" class="consult-journey" aria-label="咨询进度：已走过的阶段、当前工作重点与后续阶段，可随话题调整"><li v-for="item in journey" :key="item.key" :data-state="stageState(item.key)" :aria-current="currentStage === item.key ? 'step' : undefined"><i /><span><em class="consult-journey__full">{{ item.label }}</em><em class="consult-journey__short">{{ item.short }}</em></span></li></ol>
   </header>
-  <StatusBanner v-if="systemData.error" class="consult-system-error" tone="error" :message="systemData.error" retry-label="重新读取" @retry="loadShell" @dismiss="systemData.error = ''" />
+  <StatusBanner v-if="systemErrorVisible" class="consult-system-error" tone="error" :message="systemData.error" retry-label="重新读取" @retry="loadShell" @dismiss="systemData.error = ''" />
+  <StatusBanner v-if="runtimeError" class="consult-system-error" tone="info" :message="runtimeError" retry-label="重新读取执行状态" @retry="refreshRuntime" @dismiss="runtimeError = ''" />
   <div ref="flow" v-scroll-fade class="consult-flow" tabindex="0" aria-label="对话记录" @scroll.passive="onScroll">
    <div v-if="systemData.busy || restoring" class="consult-loading" role="status">正在读取会话…</div>
    <div v-else-if="showStudyYearQuestion || choosingTopic || (!turns.length && !pending && !showFailedSend && !demo.state.currentSessionId)" class="consult-intro" :class="{'consult-intro--onboarding':showStudyYearQuestion}">
@@ -621,7 +673,11 @@ onUnmounted(() => { disposed = true; clearInterval(recoveryTimer); window.remove
      <button type="button" :disabled="thinking || systemData.busy" @click="chooseConfirm(pendingConfirm.no)">{{ cleanConsultantText(pendingConfirm.no.label) }}</button>
     </div>
    </div>
-   <div v-if="fillRequest" class="consult-draft-bar" role="alert">
+   <div v-if="askConfirm" class="consult-draft-bar" role="alert">
+    <p>输入框里还有一段未发送的草稿。要先发送系统带来的这个问题吗？</p>
+    <div><button type="button" @click="sendAskReplacingDraft">发送问题</button><button type="button" @click="keepDraft">保留草稿</button></div>
+   </div>
+   <div v-else-if="fillRequest" class="consult-draft-bar" role="alert">
     <p>输入框里已有草稿，要替换成「{{ cleanConsultantText(fillRequest.text) }}」吗？</p>
     <div><button type="button" @click="confirmFillReplace">替换</button><button type="button" @click="cancelFillReplace">保留草稿</button></div>
    </div>

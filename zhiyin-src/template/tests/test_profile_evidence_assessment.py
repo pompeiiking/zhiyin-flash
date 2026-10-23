@@ -69,6 +69,7 @@ async def test_change_dedup_cached_result_and_legacy_independence(setup):
 async def test_concurrent_change_discards_response(setup):
     profiles, repo, llm, service, business = setup
     await service.changed('u', ['interest'])
+    old_hash = repo.records['u', 'interest']['input_hash']
     due(repo)
     entered, release = asyncio.Event(), asyncio.Event()
     async def response(*args, **kwargs):
@@ -82,8 +83,10 @@ async def test_concurrent_change_discards_response(setup):
     release.set()
     await running
     row = repo.records['u', 'interest']
-    assert row['status'] == 'pending' and row['inputs']['fields']['interest']['value'] == ['喜欢绘画']
+    assert row['status'] == 'pending' and row['input_hash'] != old_hash
     assert 'result' not in row
+    # The queue stores only the target/version/hashes, never a full profile copy.
+    assert 'inputs' not in row and 'prompt' not in row
 
 
 @pytest.mark.parametrize('patch', [dict(score=1.2), dict(score='0.9'), dict(score=True),
@@ -159,9 +162,10 @@ async def test_conflict_and_resolution_schedule_new_input(setup):
     proposal = await business.record_conflict('u', key='interest', value='不喜欢写代码',
         confidence=.9, source=ProfileSource.CONVERSATION, evidence=['我不喜欢写代码'])
     assert repo.records['u', 'interest']['input_hash'] != original
-    assert repo.records['u', 'interest']['inputs']['fields']['interest']['conflicts']
+    context = await service.context('u')
+    assert context['interest']['conflicts']
     await business.resolve_conflict('u', proposal.id, choice='current')
-    assert not repo.records['u', 'interest']['inputs']['fields']['interest']['conflicts']
+    assert not (await service.context('u'))['interest']['conflicts']
 
 
 async def test_new_user_edits_never_immediately_become_100_or_90(setup):
@@ -182,3 +186,83 @@ async def test_snapshot_never_changes_after_evidence_mutation(setup):
     await business.drop_field('u', 'interest')
     assert snapshot.evidence_assessment.score == .713
     assert not await profiles.list_fields('u')
+
+
+async def test_failed_same_input_can_recover_after_provider_returns(setup):
+    profiles, repo, llm, service, _ = setup
+    llm.chat.side_effect = TimeoutError()
+    await service.changed('u', ['interest'])
+    for _ in range(3):
+        due(repo)
+        await service.run_once()
+    assert repo.records['u', 'interest']['status'] == 'failed'
+
+    llm.chat.side_effect = None
+    await service.changed('u', ['interest'])
+    assert repo.records['u', 'interest']['status'] == 'pending'
+    due(repo)
+    await service.run_once()
+    result = (await service.attach('u', await profiles.list_fields('u')))[0].evidence_assessment
+    assert result.status == 'evaluated' and result.score == .713
+
+
+async def test_failed_job_retries_after_cooldown_without_profile_change(setup):
+    profiles, repo, llm, service, _ = setup
+    llm.chat.side_effect = TimeoutError()
+    await service.changed('u', ['interest'])
+    for _ in range(3):
+        due(repo)
+        await service.run_once()
+    assert repo.records['u', 'interest']['status'] == 'failed'
+
+    llm.chat.side_effect = None
+    due(repo)  # simulate the hourly recovery window opening
+    await service.run_once()
+    result = (await service.attach('u', await profiles.list_fields('u')))[0].evidence_assessment
+    assert result.status == 'evaluated' and result.score == .713
+
+
+async def test_queue_payload_contains_no_profile_copy(setup):
+    _, repo, _, service, _ = setup
+    await service.changed('u', ['interest'])
+    row = repo.records['u', 'interest']
+    assert 'inputs' not in row and 'prompt' not in row
+    assert set(row) >= {'user_id', 'field_key', 'input_hash', 'entry_version', 'dependency_hashes'}
+
+
+async def test_one_tick_drains_multiple_fields(setup):
+    profiles, repo, _, service, _ = setup
+    await profiles.upsert_field('u', ProfileField(key='skills', value='Python', confidence=.8,
+        source=ProfileSource.CONVERSATION, updated_at=datetime.now(timezone.utc)))
+    await service.changed('u', ['interest', 'skills'])
+    for row in repo.records.values():
+        row['next_at'] = 0
+    assert await service.run_once() == 2
+    assert {r['status'] for r in repo.records.values()} == {'evaluated'}
+
+
+async def test_expired_field_is_not_shown_as_current_evidence(setup):
+    profiles, repo, _, service, _ = setup
+    await service.changed('u', ['interest'])
+    due(repo)
+    await service.run_once()
+    profiles._profiles['u'].fields[0].valid_to = datetime(2020, 1, 1, tzinfo=timezone.utc)
+    result = (await service.attach('u', await profiles.list_fields('u')))[0].evidence_assessment
+    assert result.status == 'stale' and result.score is None  # saved score is not promoted to current
+
+
+async def test_profile_write_survives_projection_outage(setup):
+    profiles, repo, _, _, _ = setup
+
+    class BrokenEvidence:
+        async def changed(self, user_id, keys):
+            raise RuntimeError('assessment queue unavailable')
+
+        async def attach(self, user_id, fields):
+            return fields
+
+    business = DefaultProfileService(profiles, AsyncMock(), evidence_assessments=BrokenEvidence())
+    saved = await business.update_field('u', 'major', '计算机', confidence=.9,
+        source=ProfileSource.CONVERSATION)
+    assert saved.value == '计算机'
+    assert (await profiles.list_fields('u', ['major']))[0].value == '计算机'

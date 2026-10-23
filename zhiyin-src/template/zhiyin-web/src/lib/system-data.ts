@@ -13,6 +13,7 @@ import type { TrackEventView, AchievementListView } from '../api/backend-types'
 export const systemData = reactive({ snapshot: null as ConversationTurnView|null, busy: false, shellReady: false, error: '', events: [] as TrackEventView[], achievements: null as AchievementListView | null })
 export function clearSystemData(){selecting++;systemData.snapshot=null;systemData.events=[];systemData.achievements=null;systemData.error='';systemData.busy=false;systemData.shellReady=false}
 let selecting = 0
+let shellSerial = 0
 if (typeof window !== 'undefined') window.addEventListener('zhiyin:session-cleared', clearSystemData)
 export async function openSession(id: string) {
   if (demo.state.chatBusy) return
@@ -47,15 +48,19 @@ export async function newSession(taskCode?: string, fresh = false) {
   } catch(e) { systemData.error = (e as Error).message; throw e }
   finally { systemData.busy = false }
 }
-export async function refreshNotifications(current?: Notice[]) {
+export async function refreshNotifications(current?: Notice[], isCurrent: () => boolean = () => true) {
   const notices = current ?? await studentApi.notifications()
+  if (!isCurrent()) return
   demo.setNotices(notices.filter(n => n.status === 'pending').map(n => ({ id:n.id, title:n.title, body:n.body ?? '', kind:'提醒', action:'标为已读', secondary:'关闭', queued:0 })))
 }
 export async function loadShell() {
+  const serial = ++shellSerial
   systemData.shellReady = false
   systemData.error = ''
+  const fresh = () => serial === shellSerial
   const results = await Promise.allSettled([
     backendClient.sessions().then(async s => {
+      if (!fresh()) return
       // The history endpoint intentionally omits empty sessions. A tab's
       // explicit selection may still be a valid new session, so validate it
       // through owner-checked reads instead of replacing it with old history.
@@ -66,7 +71,7 @@ export async function loadShell() {
       if (current) return
       const fallback = s.current_task_id || s.sessions?.[0]?.task_id
       const restoreId = tabSession || fallback
-      if (!restoreId) return
+      if (!restoreId || !fresh()) return
       try { await openSession(restoreId) }
       catch (error) {
         if (!tabSession || !(error instanceof BackendError) || ![1002, 404].includes(error.code)) throw error
@@ -78,11 +83,12 @@ export async function loadShell() {
         else { backendDemo.selectSession(''); demo.setChatTurns([], ''); systemData.error = '' }
       }
     }),
-    backendClient.action().then(backendDemo.setAction),
-    backendClient.notes().then(backendDemo.setNotes),
-    backendClient.workspace().then(backendDemo.setWorkspace),
-    refreshNotifications(),
+    backendClient.action().then(value => { if (fresh()) backendDemo.setAction(value) }),
+    backendClient.notes().then(value => { if (fresh()) backendDemo.setNotes(value) }),
+    backendClient.workspace().then(value => { if (fresh()) backendDemo.setWorkspace(value) }),
+    refreshNotifications(undefined, fresh),
   ])
+  if (!fresh()) return
   const failure = results.find(r => r.status === 'rejected')
   if (failure?.status === 'rejected') systemData.error = failure.reason instanceof Error ? failure.reason.message : '部分资料加载失败'
   systemData.shellReady = true
