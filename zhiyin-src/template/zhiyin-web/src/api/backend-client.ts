@@ -72,7 +72,11 @@ async function send<T>(operation: Operation, options: Options = {}, opts: { auth
     if (headers.Authorization !== (localStorage.getItem('zhiyin_token') ? 'Bearer ' + localStorage.getItem('zhiyin_token') : undefined)) throw new BackendError('账号已变更，请重新读取。', 1004)
   }
   try {
-    const response = await fetch('/api/v1' + path, { method: operation.method, headers, signal: controller.signal, body: options.form ?? (options.body === undefined ? undefined : JSON.stringify(options.body)) })
+    // The app already deduplicates concurrent reads for 800ms above. Letting the
+    // browser reuse an older API response on top of that can show a pre-write
+    // snapshot after a route change (for example, the previous report version
+    // right after an approval), so API reads always go to the network.
+    const response = await fetch('/api/v1' + path, { method: operation.method, headers, cache: 'no-store', signal: controller.signal, body: options.form ?? (options.body === undefined ? undefined : JSON.stringify(options.body)) })
     sameAccount()
     if (response.status === 401 && !opts.auth && headers.Authorization) window.dispatchEvent(new Event('zhiyin:unauthorized'))
     let result: Envelope<T>
