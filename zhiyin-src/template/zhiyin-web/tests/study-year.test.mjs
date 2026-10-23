@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { STUDY_YEAR_OPTIONS, personalizedStudyYearEntries, studyYearCode, studyYearIntro, studyYearLabel } from '../src/lib/study-year.ts'
+import { STUDY_YEAR_OPTIONS, needsInitialStudyYearChoice, personalizedStudyYearEntries, studyYearCode, studyYearIntro, studyYearLabel } from '../src/lib/study-year.ts'
 
 const entries = [
   ['confused', '不清楚', 1],
@@ -41,4 +41,13 @@ test('大一和大四获得不同的默认咨询方向，且都保留自由交�
 test('没有学习阶段时保留服务端下发的原始入口顺序和文案', () => {
   const result = personalizedStudyYearEntries(entries, '')
   assert.deepEqual(result.map(entry => entry.label), entries.map(entry => entry.label))
+})
+
+test('新账号首次进入先确认年级，已有内容或会话时不再拦截', () => {
+  const empty = { studyYear: '', hasSession: false, hasTurns: false, hasPending: false }
+  assert.equal(needsInitialStudyYearChoice(empty), true)
+  assert.equal(needsInitialStudyYearChoice({ ...empty, studyYear: '大一' }), false)
+  assert.equal(needsInitialStudyYearChoice({ ...empty, hasSession: true }), false)
+  assert.equal(needsInitialStudyYearChoice({ ...empty, hasTurns: true }), false)
+  assert.equal(needsInitialStudyYearChoice({ ...empty, hasPending: true }), false)
 })

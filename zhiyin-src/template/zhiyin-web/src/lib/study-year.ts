@@ -61,6 +61,16 @@ export function studyYearIntro(value: unknown): string {
   return code ? INTRO[code] : '从你现在最关心的事开始。'
 }
 
+/** 新账号第一次进入对话：还没有年级、会话和首轮内容时，先确认年级。 */
+export function needsInitialStudyYearChoice(input: {
+  studyYear: unknown
+  hasSession: boolean
+  hasTurns: boolean
+  hasPending: boolean
+}): boolean {
+  return !String(input.studyYear ?? '').trim() && !input.hasSession && !input.hasTurns && !input.hasPending
+}
+
 export function personalizedStudyYearEntries(entries: readonly TaskEntryView[], value: unknown): TaskEntryView[] {
   const code = studyYearCode(value)
   if (!code) return [...entries].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))

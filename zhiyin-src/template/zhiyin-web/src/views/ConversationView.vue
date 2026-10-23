@@ -10,7 +10,7 @@ import { vScrollFade } from '../lib/scroll-fade'
 import { navigation } from '../lib/layout'
 import { consultantLabel, agentKeyOf, cleanConsultantText } from '../lib/consultant'
 import { conversationPresentation, journeyState, partialReplySpeaker } from '../lib/conversation-presentation'
-import { personalizedStudyYearEntries, STUDY_YEAR_OPTIONS, studyYearIntro, studyYearLabel } from '../lib/study-year'
+import { needsInitialStudyYearChoice, personalizedStudyYearEntries, STUDY_YEAR_OPTIONS, studyYearIntro, studyYearLabel } from '../lib/study-year'
 import { messageLengthError } from '../lib/message-limits'
 import { newSession, openSession, loadShell, systemData } from '../lib/system-data'
 import { replyTurns } from '../lib/conversation-turns'
@@ -184,7 +184,7 @@ function displayDate(raw: string) { const date = new Date(raw); return Number.is
 function evidenceCount(t: ChatTurn) { return (t.theory_refs?.length ?? 0) + (t.intel_refs?.length ?? 0) + (t.clues?.length ?? 0) }
 function assetLabel(type: string) { return ({ report:'诊断报告', direction_plan:'方向方案', action_plan:'行动计划' } as Record<string,string>)[type] || '关联资料' }
 async function theory(id: string) { if (theoryCards.value[id] || theoryLoading.value[id]) return; theoryErrors.value[id] = ''; theoryLoading.value[id] = true; try { theoryCards.value[id] = await backendClient.theory(id) } catch (e) { theoryErrors.value[id] = friendlyError(e) } finally { theoryLoading.value[id] = false } }
-async function refreshProfile() { profileLoading.value = true; profileError.value = ''; try { const result = await backendClient.workspace(); if (!disposed) { backendDemo.setWorkspace(result); const stored = result.profile_panel?.fields?.find(field => field.key === 'study_year'); if (stored) savedStudyYear.value = String(stored.value ?? '') } } catch (e) { if (!disposed) profileError.value = friendlyError(e) } finally { profileLoading.value = false; profileLoaded.value = true } }
+async function refreshProfile(options: { promptMissingStudyYear?: boolean } = {}) { profileLoading.value = true; profileError.value = ''; try { const result = await backendClient.workspace(); if (!disposed) { backendDemo.setWorkspace(result); const stored = result.profile_panel?.fields?.find(field => field.key === 'study_year'); if (stored) savedStudyYear.value = String(stored.value ?? ''); if (options.promptMissingStudyYear && needsInitialStudyYearChoice({ studyYear: studyYear.value, hasSession: !!demo.state.currentSessionId, hasTurns: turns.value.length > 0, hasPending: !!pending.value })) editingStudyYear.value = true } } catch (e) { if (!disposed) profileError.value = friendlyError(e) } finally { if (!disposed) { profileLoading.value = false; profileLoaded.value = true } } }
 function clearTopicQuery() { if (route.query.new === undefined) return; const query = { ...route.query }; delete query.new; void router.replace({ path:route.path, query }) }
 function chooseTopic() {
  if (thinking.value || systemData.busy || !systemData.shellReady) return
@@ -524,7 +524,7 @@ onMounted(() => {
   void resume(demo.state.currentSessionId, true).finally(() => { restoring.value = false })
  }
  loadFailure(demo.state.currentSessionId)
- void refreshProfile()
+ void refreshProfile({ promptMissingStudyYear: true })
  // Sessions created elsewhere (report/approval flows) are not in the shell
  // snapshot loaded at app start. Refresh silently without changing selection.
  void refreshSessionList(false, true)
@@ -593,15 +593,16 @@ onUnmounted(() => { disposed = true; clearInterval(recoveryTimer); window.remove
   </div>
   <div ref="flow" v-scroll-fade class="consult-flow" tabindex="0" aria-label="对话记录" @scroll.passive="onScroll">
    <div v-if="systemData.busy || restoring" class="consult-loading" role="status">正在读取会话…</div>
+   <div v-else-if="!profileLoaded && !demo.state.currentSessionId" class="consult-loading" role="status">正在读取个人资料…</div>
    <div v-else-if="showStudyYearQuestion || choosingTopic || (!turns.length && !pending && !showFailedSend && !demo.state.currentSessionId)" class="consult-intro" :class="{'consult-intro--onboarding':showStudyYearQuestion}">
     <AgentAvatar agent="career_advisor" :size="64" aria-label="知音 · 待命" title="知音 · 职业发展顾问" />
     <template v-if="showStudyYearQuestion">
      <p class="consult-intro__eyebrow">开始前确认一项信息</p>
-     <h2>为了更准确地安排咨询重点，先确认一下：你目前处于哪个学习阶段？</h2>
+     <h2>先确认一下：你现在大几？</h2>
      <p>只用于调整默认咨询方向，不会限制你可以提出的问题。</p>
-     <div class="consult-year-options" role="group" aria-label="选择当前学习阶段"><button v-for="option in STUDY_YEAR_OPTIONS" :key="option.code" :disabled="!!studyYearSaving" :aria-pressed="studyYearLabel(studyYear) === option.label" @click="saveStudyYear(option.label)"><span>{{ option.label }}</span><small v-if="studyYearSaving === option.label">正在保存…</small><UiIcon v-else name="arrow" :size="16" /></button></div>
+     <div class="consult-year-options" role="group" aria-label="选择年级"><button v-for="option in STUDY_YEAR_OPTIONS" :key="option.code" :disabled="!!studyYearSaving" :aria-pressed="studyYearLabel(studyYear) === option.label" @click="saveStudyYear(option.label)"><span>{{ option.label }}</span><small v-if="studyYearSaving === option.label">正在保存…</small><UiIcon v-else name="arrow" :size="16" /></button></div>
      <p v-if="studyYearError" class="consult-error" role="alert">{{ studyYearError }}</p>
-     <button v-if="editingStudyYear" class="consult-resume" @click="cancelStudyYear">取消修改</button>
+     <button v-if="editingStudyYear && (studyYear || pendingTopic)" class="consult-resume" @click="cancelStudyYear">取消修改</button>
     </template>
     <template v-else>
      <button v-if="studyYear" class="consult-year-summary" @click="editingStudyYear=true"><span>当前阶段：{{ studyYearLabel(studyYear) }}</span><small>修改</small></button>
