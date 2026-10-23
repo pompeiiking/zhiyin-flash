@@ -106,6 +106,7 @@ export type ProfileFieldView = {
   "entry_version"?: number
   "event_at"?: (string | null)
   "evidence"?: Array<string>
+  "evidence_assessment"?: (EvidenceAssessment | null)
   "key": string
   "label"?: string
   "origin_ref"?: string
@@ -183,6 +184,7 @@ export type DirectionPlanListView = {
 export type ReportFullTextView = {
   "generated_at": string
   "methodologies"?: Array<string>
+  "profile_snapshot"?: (Array<ProfileFieldView> | null)
   "report_id": string
   "sections"?: Array<ReportSectionView>
   "sources"?: Array<string>
@@ -502,6 +504,21 @@ export type PipelineCardView = {
 }
 
 export type ProfileEntryType = "learning_background" | "interest" | "experience" | "ability" | "career_focus" | "values" | "condition" | "supplement"
+
+export type EvidenceAssessment = {
+  "assessed_at"?: (string | null)
+  "contradictions"?: Array<string>
+  "entry_version"?: (number | null)
+  "input_hash"?: string
+  "missing_evidence"?: Array<string>
+  "model"?: string
+  "prompt_version"?: string
+  "reasons"?: Array<string>
+  "score"?: (number | null)
+  "source_refs"?: Array<string>
+  "sources"?: Record<string, string>
+  "status"?: "pending" | "processing" | "evaluated" | "insufficient" | "stale" | "failed"
+}
 
 export type ProfileSource = "resume" | "conversation" | "assessment" | "behavior_inference" | "mentor" | "record" | "user_edit"
 

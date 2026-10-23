@@ -59,18 +59,27 @@ PROFILE_CLUE_DENIED_REASON = "本人否认了这条理解"
 class DefaultProfileService(ProfileService):
     IMPLEMENTATION_STATUS = "wired"
 
-    def __init__(self, profiles: ProfileRepository, event_bus: EventBus, student_state=None) -> None:
+    def __init__(self, profiles: ProfileRepository, event_bus: EventBus, student_state=None, *, evidence_assessments=None) -> None:
         self._profiles = profiles
         self._event_bus = event_bus
         self._student_state = student_state
+        self._evidence_assessments = evidence_assessments
+
+    async def _assessment_changed(self, user_id, key):
+        if self._evidence_assessments is not None:
+            await self._evidence_assessments.changed(user_id, [key])
 
     async def get(self, user_id: str) -> Optional[Profile]:
-        return await self._profiles.get(user_id)
+        profile = await self._profiles.get(user_id)
+        if profile is not None and self._evidence_assessments is not None:
+            profile = profile.model_copy(update={'fields': await self._evidence_assessments.attach(user_id, profile.fields)})
+        return profile
 
     async def get_fields(
         self, user_id: str, keys: Optional[Sequence[str]] = None
     ) -> list[ProfileField]:
-        return await self._profiles.list_fields(user_id, keys)
+        fields = await self._profiles.list_fields(user_id, keys)
+        return await self._evidence_assessments.attach(user_id, fields) if self._evidence_assessments is not None else fields
 
     async def get_gaps(self, user_id: str) -> list[ProfileGap]:
         return await self._profiles.list_gaps(user_id)
@@ -315,6 +324,9 @@ class DefaultProfileService(ProfileService):
         if before is not None and (before.value != saved.value or before.attributes != saved.attributes
             or before.valid_from != saved.valid_from or before.valid_to != saved.valid_to):
             await self._invalidate_clues_for(user_id, [key], PROFILE_CLUE_INVALIDATED_BY_CORRECTION)
+        await self._assessment_changed(user_id, key)
+        if self._evidence_assessments is not None:
+            return (await self._evidence_assessments.attach(user_id, [saved]))[0]
         return saved
 
     async def replace_gaps(self, user_id: str, gaps: list[ProfileGap]) -> None:
@@ -351,6 +363,7 @@ class DefaultProfileService(ProfileService):
             event_type=PROFILE_FIELD_UPDATED, occurred_at=datetime.now(timezone.utc),
             payload={"user_id": user_id, "field_key": key, "deleted": True, "is_new": False}))
         await self._invalidate_clues_for(user_id, [key], PROFILE_CLUE_INVALIDATED_BY_DELETION)
+        await self._assessment_changed(user_id, key)
 
     # ---------- 历史版本与冲突裁定（设计第 4、7 节） ----------
 
@@ -454,7 +467,9 @@ class DefaultProfileService(ProfileService):
             replaced_at=None,
             change_reason="与当前记录不一致，等待核对",
         )
-        return await self._profiles.append_revision(user_id, revision)
+        saved_revision = await self._profiles.append_revision(user_id, revision)
+        await self._assessment_changed(user_id, key)
+        return saved_revision
 
     @atomic_repository("_profiles")
     async def resolve_conflict(
@@ -517,6 +532,7 @@ class DefaultProfileService(ProfileService):
                         record.pop("exploration", None)
                     return state
                 await self._student_state.update(user_id, clear_working)
+        await self._assessment_changed(user_id, target.key)
         return target.model_copy(
             update={"status": status, "replaced_at": datetime.now(timezone.utc), "change_reason": reason}
         )

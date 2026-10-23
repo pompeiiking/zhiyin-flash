@@ -666,12 +666,12 @@ async def test_chart_render_draws_from_real_rows_not_from_the_model() -> None:
     result = await catalog["chart.render"].handler(context, kind="profile_confidence")
 
     spec = context.dependencies["renderables"][0]
-    assert spec["kind"] == "bars_chart"
-    assert spec["payload"]["points"] == [
-        {"label": "专业", "value": 0.9},
-        {"label": "兴趣方向", "value": 0.6},
-    ]
-    assert "90%" in result  # 说给模型听的是同一批真实数字
+    assert spec["kind"] == "profile_evidence_chart"
+    assert spec["payload"]["metric"] == "profile_evidence"
+    assert [p['assessment']['status'] for p in spec['payload']['points']] == ['pending', 'pending']
+    assert all(p['assessment']['score'] is None for p in spec['payload']['points'])
+    assert "90%" not in result and "待评估" in result
+
 
 
 async def test_chart_render_refuses_an_unknown_kind() -> None:
@@ -704,5 +704,5 @@ async def test_chart_render_says_so_when_there_is_not_enough_data() -> None:
     catalog = build_tool_catalog(profile_reader=read_profile)
     context = _chart_context()
     result = await catalog["chart.render"].handler(context, kind="profile_confidence")
-    assert "只有一项" in result
-    assert context.dependencies["renderables"] == []
+    assert "待评估" in result
+    assert len(context.dependencies["renderables"][0]["payload"]["points"]) == 1

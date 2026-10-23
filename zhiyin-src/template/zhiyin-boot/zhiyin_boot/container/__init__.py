@@ -182,6 +182,16 @@ def build_container(settings: Optional[Settings] = None) -> Container:
     )
     container.extra["ai_config"] = ai_config
     container.extra["ai_router"] = ai_router
+    from zhiyin_infrastructure.local.evidence import InMemoryEvidenceAssessmentRepository
+    if settings.use_postgres:
+        from zhiyin_infrastructure.postgres.evidence import PostgresEvidenceAssessmentRepository
+        from zhiyin_infrastructure.postgres.database import get_database
+        evidence_repository = PostgresEvidenceAssessmentRepository(get_database(settings.postgres_dsn))
+    else:
+        evidence_repository = InMemoryEvidenceAssessmentRepository()
+    from zhiyin_business.services.evidence_assessment import ProfileEvidenceService
+    container.extra["evidence_assessment"] = ProfileEvidenceService(
+        container.profiles, evidence_repository, container.llm, container.registry)
     container.extra["closables"] = [
         value
         for value in [*gateway_values.values(), *repository_values.values()]

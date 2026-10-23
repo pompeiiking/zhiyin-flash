@@ -83,7 +83,7 @@ SERVICE_PORTS: tuple[str, ...] = (
 # 异步执行者：业务规则驱动（business/workers）与纯数据管道（infrastructure/workers）。
 # 两者共用同一份 `zhiyin_kernel.worker.Worker` 契约与同一个驱动
 # （zhiyin_boot/workers.py），只是规则性质不同。
-WORKER_PORTS: tuple[str, ...] = ("impact", "active_event", "vector_sync")
+WORKER_PORTS: tuple[str, ...] = ("impact", "active_event", "vector_sync", "profile_evidence")
 
 # 启动前必须齐备的能力位：缺任何一个都不许带病启动。
 MINIMUM_VIABLE: tuple[str, ...] = (

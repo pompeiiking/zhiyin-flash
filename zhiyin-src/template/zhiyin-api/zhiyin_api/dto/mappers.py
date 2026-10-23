@@ -556,6 +556,7 @@ def profile_field_view(field: Any, labels: Mapping[str, str]) -> ProfileFieldVie
         label=field.label or labels.get(field.key, ""),
         value=field.value,
         confidence=field.confidence,
+        evidence_assessment=getattr(field, 'evidence_assessment', None),
         source=field.source,
         updated_at=field.updated_at,
         evidence=list(field.evidence),
@@ -878,6 +879,8 @@ def report_full_text_view(
         swot=report.swot.model_dump(mode="json"),
         methodologies=report.methodologies,
         sources=report.sources,
+        profile_snapshot=([profile_field_view(field, {}) for field in report.profile_snapshot]
+                          if report.profile_snapshot is not None else None),
     )
 
 

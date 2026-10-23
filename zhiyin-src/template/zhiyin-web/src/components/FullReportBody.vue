@@ -8,7 +8,8 @@ import { useAiTask } from '../lib/use-ai-task'
 import AiResultMeta from './AiResultMeta.vue'
 import AiStatus from './AiStatus.vue'
 import { studentVoice } from '../lib/student-voice'
-import { formatDate, formatDateTime, formatPercent } from '../lib/format'
+import { formatDate, formatDateTime } from '../lib/format'
+import EvidenceAssessmentDetails from './EvidenceAssessmentDetails.vue'
 import EvidenceState from './EvidenceState.vue'
 import DetailPopover from './DetailPopover.vue'
 import InfoSheet from './InfoSheet.vue'
@@ -96,6 +97,11 @@ function profileValue(field: ProfileFieldView): string {
   if (field.key === 'courses' && academic.value?.courses?.length) return `已记录 ${academic.value.courses.length} 门课程`
   if (field.key === 'scores' && academic.value?.grades?.length) return `已记录 ${academic.value.grades.length} 条成绩`
   return content(field.value) || '尚待补充'
+}
+// Scores belong to the report snapshot, while the original appendix contents stay intact.
+function reportAssessment(field: ProfileFieldView) {
+  return props.report.profile_snapshot?.find(saved => saved.key === field.key
+    && saved.entry_version === field.entry_version && saved.updated_at === field.updated_at)?.evidence_assessment
 }
 function fieldDate(value: string) {
   return formatDate(value) || '未记录时间'
@@ -291,7 +297,7 @@ onBeforeUnmount(() => observer?.disconnect())
       <p v-if="profileError" class="report-profile-error" role="status">{{ profileError }}</p>
       <section v-for="section in profileSections" :key="section.key" class="profile-sheet-section">
         <h2>{{ section.title }}</h2>
-        <article v-for="field in section.fields" :key="field.key" class="profile-sheet-field"><header><strong>{{ profileLabel(field.key, field.label || field.key) }}</strong><span>{{ sourceNames[field.source] || field.source }}</span></header><p>{{ profileValue(field) }}</p><small><span v-if="field.confidence !== undefined">可信度 {{ formatPercent(field.confidence) }} · </span>更新于 {{ fieldDate(field.updated_at) }}</small><ul v-if="field.evidence?.length"><li v-for="evidence in field.evidence" :key="evidence">{{ evidence }}</li></ul></article>
+        <article v-for="field in section.fields" :key="field.key" class="profile-sheet-field"><header><strong>{{ profileLabel(field.key, field.label || field.key) }}</strong><span>{{ sourceNames[field.source] || field.source }}</span></header><p>{{ profileValue(field) }}</p><small>更新于 {{ fieldDate(field.updated_at) }}</small><EvidenceAssessmentDetails :assessment="reportAssessment(field)" :historical="!reportAssessment(field)" /><ul v-if="field.evidence?.length"><li v-for="evidence in field.evidence" :key="evidence">{{ evidence }}</li></ul></article>
       </section>
       <section v-if="academic?.courses?.length" class="profile-sheet-section"><h2>课程记录 · {{ academic.courses.length }} 门</h2><div class="academic-prose"><article v-for="course in academic.courses" :key="course.name + '-' + course.weekday + '-' + course.start_period"><h3>{{ course.name }}</h3><p>{{ weekday(course.weekday) }}<template v-if="course.start_period">，第 {{ course.start_period }}–{{ course.end_period ?? course.start_period }} 节</template><template v-if="course.place">，上课地点为 {{ course.place }}</template><template v-if="course.teacher">，任课教师为 {{ course.teacher }}</template>。</p></article></div></section>
       <section v-if="academic?.grades?.length" class="profile-sheet-section"><h2>成绩记录 · {{ academic.grades.length }} 条</h2><div class="academic-prose"><article v-for="grade in academic.grades" :key="grade.name + '-' + grade.term"><h3>{{ grade.name }}</h3><p>{{ grade.term || '未注明学期' }}的记录中，成绩为 {{ grade.score || '未提供' }}<template v-if="grade.credit">，课程学分为 {{ grade.credit }}</template>。</p></article></div></section>

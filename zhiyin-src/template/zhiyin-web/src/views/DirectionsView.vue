@@ -40,7 +40,7 @@ onMounted(load)
 <DirectionDetails v-if="plans && !history" :plans="plans" :saving="saving" :impact="impact" :selection-changed="selectionChanged" @select="select"/>
 <ReportHistory v-else-if="history" asset-type="direction_plan"/>
 <section v-else-if="!busy&&!error" class="direction-empty" aria-labelledby="direction-empty-title">
-  <div class="direction-empty__lead"><h2 id="direction-empty-title">先把考虑对象与判断依据放到同一处</h2><p>系统会把方向整理成三种角色，方便你比较取舍，而不是替你选一个。</p><RouterLink class="btn btn--primary" to="/chat?question=请根据我的个人资料，帮我整理正在考虑的方向并说明还缺哪些依据">开始梳理方向</RouterLink></div>
+  <div class="direction-empty__lead"><h2 id="direction-empty-title">先把考虑对象与判断依据放到同一处</h2><p>系统会把方向整理成三种角色，方便你比较取舍，而不是替你选一个。</p><RouterLink class="btn btn--primary" to="/chat?question=请根据我的已有资料，为我生成一份方向方案，依据不足的部分请标为待核实">开始梳理方向</RouterLink></div>
   <div class="direction-empty__frames" aria-label="方向方案会包含三种角色">
     <article><span>主攻</span><strong>最值得先验证的方向</strong><small>目标、匹配依据、主要风险</small></article>
     <article><span>平行</span><strong>可以同时保留的备选</strong><small>与主攻的差异和取舍</small></article>

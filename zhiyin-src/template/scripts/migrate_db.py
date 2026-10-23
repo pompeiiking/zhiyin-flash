@@ -85,6 +85,7 @@ USER_TABLES: tuple[str, ...] = (
     "infra_auth_credential",
     "biz_profile",
     "biz_profile_field",
+    "biz_profile_evidence_assessment",
     "biz_profile_field_revision",
     "biz_profile_gap",
     "biz_profile_clue",

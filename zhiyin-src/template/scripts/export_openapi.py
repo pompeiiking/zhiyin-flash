@@ -35,7 +35,7 @@ def _ensure_importable() -> None:
     for name in SOURCE_DIRS:
         path = str(TEMPLATE_ROOT / name)
         if path not in sys.path:
-            sys.path.append(path)
+            sys.path.insert(0, path)
 
 
 def main(argv: list[str] | None = None) -> int:

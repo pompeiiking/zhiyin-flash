@@ -5035,6 +5035,112 @@
         "title": "ErrorCode",
         "type": "integer"
       },
+      "EvidenceAssessment": {
+        "additionalProperties": false,
+        "properties": {
+          "assessed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assessed At"
+          },
+          "contradictions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Contradictions",
+            "type": "array"
+          },
+          "entry_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entry Version"
+          },
+          "input_hash": {
+            "default": "",
+            "title": "Input Hash",
+            "type": "string"
+          },
+          "missing_evidence": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Evidence",
+            "type": "array"
+          },
+          "model": {
+            "default": "",
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt_version": {
+            "default": "",
+            "title": "Prompt Version",
+            "type": "string"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "source_refs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Source Refs",
+            "type": "array"
+          },
+          "sources": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Sources",
+            "type": "object"
+          },
+          "status": {
+            "default": "pending",
+            "enum": [
+              "pending",
+              "processing",
+              "evaluated",
+              "insufficient",
+              "stale",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "title": "EvidenceAssessment",
+        "type": "object"
+      },
       "ExecutorUpdate": {
         "additionalProperties": false,
         "properties": {
@@ -7617,6 +7723,162 @@
         "title": "ProfileEntryType",
         "type": "string"
       },
+      "ProfileField": {
+        "additionalProperties": false,
+        "description": "画像里的一条记录（活状态的最小单位）。\n\n记录结构见《个人画像设计-2026-10-20》第 4 节：一条记录除了「键值」，\n还要能回答六件事 —— 它属于哪一类内容、内容结构是什么、原话/资料在哪、\n来源方式与核实状态分别是什么、何时知道/何时发生/何时仍适用、以及它现在是\n有效、被更正、存在冲突还是已撤回。\n\n兼容阶段保留 `confidence`：它不再充当真实性、熟练度或写权限的共同开关，\n也不直接展示成百分比。新字段全部有默认值，老数据读出来仍是合法记录\n（缺类别时由受控词表按键推导，缺核实状态时由来源推导）。",
+        "properties": {
+          "attributes": {
+            "additionalProperties": true,
+            "description": "类型专属的结构化属性（受控键；不是任意模型输出）",
+            "title": "Attributes",
+            "type": "object"
+          },
+          "confidence": {
+            "description": "置信度 0-1（兼容字段，不再直接展示）",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "type": "number"
+          },
+          "entry_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProfileEntryType"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "内容类别（学习背景/兴趣/经历/能力/职业关注/价值取向/现实条件/补充信息）"
+          },
+          "entry_version": {
+            "default": 1,
+            "description": "条目版本，从 1 开始",
+            "minimum": 1.0,
+            "title": "Entry Version",
+            "type": "integer"
+          },
+          "event_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "事情发生的时间（不是记录时间）",
+            "title": "Event At"
+          },
+          "evidence": {
+            "description": "证据来源引用（原话/资料片段）",
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "evidence_assessment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EvidenceAssessment"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "key": {
+            "description": "字段键，如 major / skills / interest（取数用，不直接展示）",
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "default": "",
+            "description": "这个字段用中文该怎么称呼（如「专业」「兴趣方向」）。字段键由模型自由生成（`interest_direction` 这种），界面拿不到中文名就只能把英文键摆给用户看 —— 名字必须跟着数据一起存",
+            "title": "Label",
+            "type": "string"
+          },
+          "origin_ref": {
+            "default": "",
+            "description": "原话或资料来源引用（不编造引用）",
+            "title": "Origin Ref",
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/components/schemas/ProfileSource",
+            "description": "来源：这条信息从哪儿来"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ProfileEntryStatus",
+            "default": "active",
+            "description": "当前状态：有效/已更正/冲突/过期/撤回"
+          },
+          "superseded_by": {
+            "default": "",
+            "description": "被哪条记录替代（修订关系）",
+            "title": "Superseded By",
+            "type": "string"
+          },
+          "updated_at": {
+            "description": "更新时间（何时知道这条记录）",
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "valid_from": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "有效范围起点；未知不补成当前时间",
+            "title": "Valid From"
+          },
+          "valid_to": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "有效范围终点",
+            "title": "Valid To"
+          },
+          "value": {
+            "description": "字段值，结构由画像 schema 决定",
+            "title": "Value"
+          },
+          "verification": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProfileVerification"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "核实状态（自述/本人确认/资料记录/核验/待核实）"
+          }
+        },
+        "required": [
+          "key",
+          "value",
+          "confidence",
+          "source",
+          "updated_at"
+        ],
+        "title": "ProfileField",
+        "type": "object"
+      },
       "ProfileFieldDeleteAck": {
         "additionalProperties": false,
         "description": "用户删除一条画像信息的回执。",
@@ -7722,7 +7984,7 @@
       },
       "ProfileFieldView": {
         "additionalProperties": false,
-        "description": "画像里的一条记录（活状态的最小单位）。\n\n此前这里是 `dict[str, Any]`：契约只说\"有 fields\"，不说每条里有什么。\n前端要按 `confidence` 画把握度、按 `evidence` 做可溯源展示、按 `source`\n说明这条从哪来 —— 全是猜的字段名。现在逐字段声明。\n\n《个人画像设计-2026-10-20》第 4 节：一条记录还要能回答「属于哪一类内容、\n结构是什么、原话在哪、核实到什么程度、何时仍适用」。这些字段都来自服务端\n词表与写入校验，前端只按它们组织展示，不再自己猜键的含义。",
+        "description": "画像里的一条记录（活状态的最小单位）。\n\n此前这里是 `dict[str, Any]`：契约只说\"有 fields\"，不说每条里有什么。\n前端按独立 `evidence_assessment` 展示把握度、按 `evidence` 溯源、按 `source`\n说明这条从哪来 —— 全是猜的字段名。现在逐字段声明。\n\n《个人画像设计-2026-10-20》第 4 节：一条记录还要能回答「属于哪一类内容、\n结构是什么、原话在哪、核实到什么程度、何时仍适用」。这些字段都来自服务端\n词表与写入校验，前端只按它们组织展示，不再自己猜键的含义。",
         "properties": {
           "attributes": {
             "additionalProperties": true,
@@ -7772,6 +8034,17 @@
             },
             "title": "Evidence",
             "type": "array"
+          },
+          "evidence_assessment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EvidenceAssessment"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "仅用于展示的模型证据评估；不参与业务门禁"
           },
           "key": {
             "description": "字段键，如 major / skills / interest（取数用，不直接展示）",
@@ -8146,6 +8419,21 @@
             "title": "Methodologies",
             "type": "array"
           },
+          "profile_snapshot": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ProfileField"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "保存报告时的资料及把握度快照；旧报告为空",
+            "title": "Profile Snapshot"
+          },
           "sources": {
             "description": "事实来源，如学职平台/JD",
             "items": {
@@ -8305,6 +8593,21 @@
             },
             "title": "Methodologies",
             "type": "array"
+          },
+          "profile_snapshot": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ProfileFieldView"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "报告保存时的资料与评估快照；历史报告可能没有",
+            "title": "Profile Snapshot"
           },
           "report_id": {
             "title": "Report Id",

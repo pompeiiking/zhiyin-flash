@@ -30,6 +30,7 @@
 | Orchestrator | `orchestrator.py` | `DefaultOrchestrator` | 黑板四件套 + `policies/` + AgentEngine | P0 | 已交付 |
 | 原子写入 | `unit_of_work.py` | `atomic_repository` | Repository 事务上下文 | P0 | 已交付 |
 | Profile 服务 | `profile.py` | `DefaultProfileService` | ProfileRepository、EventBus | P0 | 已交付 |
+| 把握度证据评估 | `evidence_assessment.py` | `ProfileEvidenceService` | ProfileRepository、EvidenceAssessmentRepository、LLMGateway | P1 | 已交付 |
 | Behavior 服务 | `behavior.py` | `DefaultBehaviorService` | BehaviorRepository、EventBus | P0 | 已交付 |
 | Memory 服务 | `memory.py` | `DefaultConversationMemoryService` | ConversationMemoryRepository | P0 | 已交付 |
 | 记忆策略 | `memory_policy.py` | `MemoryPolicyService` | 账号状态 Repository（策略记录 + 兼容开关） | P0 | 已交付 |

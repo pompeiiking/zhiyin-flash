@@ -72,7 +72,7 @@ def _capture_sources(run_context, rows):
 #: 能让模型传数值进来。它决定"画哪一类"，数字由服务端读真实数据算出来。
 #: 想加一种图，就在 `_chart_points` 里加一个分支，并在下面登记它的说明。
 _CHART_KINDS: dict[str, str] = {
-    "profile_confidence": "他现在每一项情况的把握度（来自画像里每条的真实把握度）",
+    "profile_confidence": "画像把握度（已保存的模型证据评估；未评估项无百分比）",
     "direction_match": "已经存下来的几套方向各自的匹配度（来自方案资产的真实分值）",
     "plan_progress": "行动计划每个阶段做完了多少（来自已存计划里的勾选状态）",
 }
@@ -98,7 +98,7 @@ async def _chart_points(
     """按类别从**库里**读出点位。读不到就返回 None（调用方负责如实说画不出来）。
 
     三种图各自读一份真实数据，全部来自服务端：
-      · 画像把握度 ← 画像里每条字段自带的 confidence；
+      · 画像把握度 ← 独立 evidence_assessment，旧 confidence 不用于展示；
       · 方向匹配度 ← 已落库的方案资产（match_score）；
       · 计划进度   ← 已落库的行动计划里每个阶段的勾选状态。
     **没有一个数字来自模型的自由发挥**，这是这张图能被信任的全部理由。
@@ -117,15 +117,15 @@ async def _chart_points(
                 item.get("label") if isinstance(item, dict) else ""
             )
             key = getattr(item, "key", "") or (item.get("key") if isinstance(item, dict) else "")
-            confidence = getattr(item, "confidence", None)
-            if confidence is None and isinstance(item, dict):
-                confidence = item.get("confidence")
-            if confidence is None:
-                continue
+            from zhiyin_kernel.evidence_assessment import EvidenceAssessment
+            assessment = getattr(item, "evidence_assessment", None)
+            if assessment is None and isinstance(item, dict):
+                assessment = item.get("evidence_assessment")
+            assessment = EvidenceAssessment.model_validate(assessment or {})
             points.append(
                 {
-                    "label": str(label or key)[:12],
-                    "value": round(float(confidence), 4),
+                    "key": key, "label": str(label or key),
+                    "assessment": assessment.model_dump(mode='json'),
                 }
             )
         return points or None
@@ -482,12 +482,20 @@ def build_tool_catalog(
             points = await _chart_points(wanted, run_context, profile_reader, plan_reader)
             if points is None:
                 return f"这一类图现在画不出来：{_CHART_KINDS[wanted]}还缺数据。别硬画，也别编数字。"
+            if wanted == 'profile_confidence':
+                spec = {'kind': 'profile_evidence_chart',
+                    'title': (title or '').strip()[:40] or _DEFAULT_CHART_TITLES[wanted],
+                    'payload': {'metric': 'profile_evidence', 'version': 1, 'points': points}}
+                dependencies = getattr(run_context, 'dependencies', None)
+                if isinstance(dependencies, dict):
+                    dependencies.setdefault(CHART_BOX_KEY, []).append(spec)
+                return '把握度图已挂上：来自已保存的模型证据评估；待评估或失败项不显示百分比，不是客观准确率。'
             if len(points) < 2:
                 return "只有一项，画成图看不出什么，直接用话说给他听更清楚。"
             spec = {
                 "kind": "bars_chart",
                 "title": (title or "").strip()[:30] or _DEFAULT_CHART_TITLES[wanted],
-                "payload": {"unit": _CHART_UNITS[wanted], "points": points},
+                "payload": {"metric": wanted, "unit": _CHART_UNITS[wanted], "points": points},
             }
             # 放进这一次运行的**回传盒子**：跑完由引擎取走，交给编排器校验后挂到消息上。
             # 盒子不在（比如某个调用方没接）也不报错 —— 可视件是加分项。

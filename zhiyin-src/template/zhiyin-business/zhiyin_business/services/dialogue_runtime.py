@@ -18,7 +18,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from zhiyin_business.contracts.common import AgentBadge, BehaviorGuide, BehaviorEventDraft, ConversationMessage, Disclosure, GuideOption, IntelRef, TheoryRef
 from zhiyin_business.ports.orchestrator import TurnResult
 from zhiyin_business.contracts.dialogue_actions import DialogueOperation
-from zhiyin_business.policies.renderers import validate_renderables
+from zhiyin_business.policies.renderers import profile_evidence_snapshot, validate_renderables
 from zhiyin_business.services.conversation_ledger import ConversationLedger, digest, utcnow
 from zhiyin_business.services.unit_of_work import atomic_repository
 from zhiyin_business.services.dialogue_exploration import ExplorationUpdate, privacy_stamp
@@ -1169,6 +1169,16 @@ class DialogueRuntime:
                 partial_descriptor = await self.o._registry.get_agent(partial_speaker)
                 if partial_descriptor and str(getattr(partial_descriptor.status, 'value', partial_descriptor.status)) == 'enabled':
                     speaker = partial_speaker
+        renderables = validate_renderables(model_result.renderables if model_result else [])
+        report_written = any(receipt.get('executed') and record['actions'].get(receipt['action_id'], {}).get('operation')
+                             in {'report.save', 'report.activate'} for receipt in self.receipts)
+        if report_written and not any(item.kind == 'profile_evidence_chart' for item in renderables):
+            # Report output always includes its evidence chart, independently of model tool selection.
+            # This is a read-only snapshot: it never schedules assessments or changes business gates.
+            fields = await self.o._profiles.get_fields(request.user_id)
+            chart = profile_evidence_snapshot(fields)
+            if chart is not None:
+                renderables.extend(validate_renderables([chart]))
         result = TurnResult(task_id=request.task_id, conversation=True, session=session, stage=stage,
             badge=AgentBadge(agent_id=lead, name=descriptor.name if descriptor else "知音",
                              role_summary=descriptor.role_summary if descriptor else "职业发展顾问"),
@@ -1177,7 +1187,7 @@ class DialogueRuntime:
                 clues=model_result.structured.get("dialogue_clues", []) if model_result else [],
                 theory_refs=[TheoryRef.model_validate(ref) for ref in model_result.structured.get("dialogue_theories", [])] if model_result else [],
                 intel_refs=[IntelRef.model_validate(ref) for ref in model_result.source_refs] if model_result else [],
-                renderables=validate_renderables(model_result.renderables if model_result else []))],
+                renderables=renderables)],
             guide=guide, asset_versions=self.versions)
         for receipt in system_receipts:
             await self.o._memories.record_turn(request.user_id, request.task_id, role="system", text=receipt.text,
