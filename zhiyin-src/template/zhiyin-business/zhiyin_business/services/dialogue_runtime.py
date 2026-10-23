@@ -21,7 +21,7 @@ from zhiyin_business.contracts.dialogue_actions import DialogueOperation
 from zhiyin_business.policies.renderers import profile_evidence_snapshot, validate_renderables
 from zhiyin_business.services.conversation_ledger import ConversationLedger, digest, utcnow
 from zhiyin_business.services.unit_of_work import atomic_repository
-from zhiyin_business.services.dialogue_exploration import ExplorationUpdate, privacy_stamp
+from zhiyin_business.services.dialogue_exploration import ExplorationUpdate, is_operation_message, privacy_stamp
 from zhiyin_business.services.memory_policy import MemoryPolicyService
 from zhiyin_kernel import profile_taxonomy
 from zhiyin_kernel.report_quality import report_verdict_issue
@@ -1241,6 +1241,10 @@ class DialogueRuntime:
 
     async def persist_profile_clues(self, request):
         try:
+            # “生成报告/保存草稿/确认启用”是操作指令，不是用户对自己的描述。
+            # 这类轮次既不新增线索，也不得用本轮 prompt 覆盖已有线索的依据。
+            if is_operation_message(request.message):
+                return
             statements = self.pending_exploration.get("statements") or []
             policy = await MemoryPolicyService(self.o._student_state).snapshot(request.user_id, request.task_id)
             # A later turn must not publish a quote from an earlier denied message.
@@ -1257,10 +1261,27 @@ class DialogueRuntime:
                 for action in record["actions"].values() if action["operation"] == "profile.update"]))[:20]
             if set(linked_keys).intersection(policy["denied_keys"]):
                 return
-            clues = [ProfileClue(id="", user_id=request.user_id, session_id=request.task_id,
-                                text=text[:240], evidence=quotes[:12], field_keys=linked_keys,
-                                source=ProfileSource.ASSESSMENT, created_at=utcnow(), updated_at=utcnow())
-                     for text in hypotheses]
+            previous = {clue.text.strip(): clue for clue in await self.o._profiles.get_clues(request.user_id)
+                        if clue.session_id == request.task_id}
+            clues = []
+            for text in hypotheses:
+                prior = previous.get(text)
+                # A hypothesis that survived from an earlier turn keeps the
+                # evidence that originally supported it. Never attach the latest
+                # turn's quote merely because it is the most recent text. Also
+                # drop operational prompts that older builds wrongly stored as
+                # evidence.
+                prior_evidence = [quote for quote in (prior.evidence if prior else [])
+                                  if not is_operation_message(quote)]
+                evidence = prior_evidence if prior is not None else (
+                    quotes[:12] if len(hypotheses) == 1 else []
+                )
+                clues.append(ProfileClue(
+                    id="", user_id=request.user_id, session_id=request.task_id,
+                    text=text[:240], evidence=evidence,
+                    field_keys=list(prior.field_keys) if prior is not None and prior.field_keys else linked_keys,
+                    source=ProfileSource.ASSESSMENT, created_at=utcnow(), updated_at=utcnow(),
+                ))
             await self.o._profiles.replace_session_clues(request.user_id, request.task_id, clues)
         except Exception:  # noqa: BLE001 - 线索旁路失败不阻断回复
             log.warning("待验证线索保存失败；本轮对话仍保留工作快照", exc_info=True)

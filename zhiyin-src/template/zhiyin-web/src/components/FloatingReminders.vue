@@ -26,7 +26,7 @@ const mobile = computed(() => viewportWidth.value <= 767)
 const minY = computed(() => 72)
 const maxY = computed(() => Math.max(minY.value, viewportHeight.value - (mobile.value ? 132 : 78)))
 const minX = computed(() => 8)
-const maxX = computed(() => Math.max(minX.value, viewportWidth.value - 52))
+const maxX = computed(() => Math.max(minX.value, viewportWidth.value - (mobile.value ? 26 : 52)))
 const defaultY = computed(() => mobile.value ? Math.round(viewportHeight.value * .54) : maxY.value)
 const defaultX = computed(() => mobile.value ? maxX.value : 0)
 const triggerStyle = computed(() => mobile.value
@@ -211,8 +211,9 @@ watch(() => route.path, () => { if (!hasSavedPosition) restore(); demo.closeNoti
 .floating-reminders__card>footer>span { color:var(--c-text-3); }
 .floating-reminders__card>footer button { color:var(--c-text-3); }
 @media (max-width:767px) {
-  .floating-reminders__trigger { right:auto; width:44px; height:44px; padding:0; border-radius:14px; }
-  .floating-reminders__trigger>span { top:-6px; right:-6px; }
+  .floating-reminders__trigger { right:auto; width:26px; height:44px; padding:0; border-radius:13px 0 0 13px; }
+  .floating-reminders__trigger::after { position:absolute; top:50%; left:50%; width:44px; height:44px; content:''; transform:translate(-50%,-50%); }
+  .floating-reminders__trigger>span { top:-5px; right:0; font-size:10px; }
   .floating-reminders__card { right:12px; width:calc(100vw - 24px); max-height:min(56dvh,440px); }
 }
 @media (prefers-reduced-motion:reduce) { .floating-reminders__trigger { transition:none; } }

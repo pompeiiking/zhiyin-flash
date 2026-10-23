@@ -204,6 +204,90 @@ async def test_exploration_hypotheses_are_stored_as_separate_clues() -> None:
 
 
 @pytest.mark.asyncio
+async def test_existing_clue_does_not_borrow_the_latest_turn_quote() -> None:
+    """A hypothesis that survives a turn keeps its original evidence."""
+    calls = {"n": 0}
+
+    async def callback(runtime) -> None:
+        calls["n"] += 1
+        turn_id = list(runtime.exploration_sources)[-1]
+        quote = "我喜欢调试程序" if calls["n"] == 1 else "嗯"
+        await runtime.record_exploration({
+            "goal": "了解兴趣",
+            "mode": "explore",
+            "statements": [{"turn_id": turn_id, "quote": quote}],
+            "hypotheses": ["可能更关注弄清原因的过程"],
+            "explored_topics": ["调试"],
+            "open_questions": [],
+            "next_focus": "继续了解具体经历",
+        })
+
+    container, session = await _setup(callback)
+    await _send(container, session, "我喜欢调试程序")
+    await _send(container, session, "嗯")
+    clues = await container.profile_service.get_clues("u1")
+    assert [clue.evidence for clue in clues] == [["我喜欢调试程序"]]
+
+
+@pytest.mark.asyncio
+async def test_report_operation_turn_cannot_replace_clue_evidence() -> None:
+    """生成/保存/启用报告是操作指令，不能成为“用户原话”证据。"""
+    calls = {"n": 0}
+    prompt = "请根据我更新后的资料重新生成一份报告草稿，先保存草稿，不要生效。"
+
+    async def callback(runtime) -> None:
+        calls["n"] += 1
+        turn_id = list(runtime.exploration_sources)[-1]
+        quote = "我喜欢调试程序" if calls["n"] == 1 else prompt
+        await runtime.record_exploration({
+            "goal": "了解兴趣",
+            "mode": "explore",
+            "statements": [{"turn_id": turn_id, "quote": quote}],
+            "hypotheses": ["可能更关注弄清原因的过程"],
+            "explored_topics": ["调试"],
+            "open_questions": [],
+            "next_focus": "继续了解具体经历",
+        })
+
+    container, session = await _setup(callback)
+    await _send(container, session, "我喜欢调试程序")
+    await _send(container, session, prompt)
+    clues = await container.profile_service.get_clues("u1")
+    assert [clue.evidence for clue in clues] == [["我喜欢调试程序"]]
+
+
+@pytest.mark.asyncio
+async def test_legacy_operation_evidence_is_not_shown_as_user_provenance() -> None:
+    from datetime import datetime, timezone
+    from zhiyin_kernel.blackboard import ProfileClue
+
+    container, _ = await _setup(lambda runtime: None)
+    now = datetime.now(timezone.utc)
+    await container.profile_service.replace_session_clues("u1", "s1", [ProfileClue(
+        id="", user_id="u1", session_id="s1", text="可能更关注弄清原因的过程",
+        evidence=[
+            "请根据我更新后的资料重新生成一份报告草稿，先保存草稿，不要生效。",
+            "请根据我的已有资料，为我生成一份方向方案，依据不足的部分请标为待核实",
+            "我喜欢调试程序",
+        ],
+        field_keys=["interest"], source="assessment", created_at=now, updated_at=now,
+    )])
+    clues = await container.profile_service.get_clues("u1")
+    assert clues[0].evidence == ["我喜欢调试程序"]
+    # The workspace DTO also reads profile.clues, not only get_clues().
+    profile = await container.profile_service.get("u1")
+    assert profile.clues[0].evidence == ["我喜欢调试程序"]
+
+
+def test_direction_and_report_generation_prompts_are_operations_not_provenance() -> None:
+    from zhiyin_business.services.dialogue_exploration import is_operation_message
+
+    assert is_operation_message("请根据我的已有资料，为我生成一份方向方案，依据不足的部分请标为待核实")
+    assert is_operation_message("请根据我最新资料生成诊断报告草稿；先保存草稿，不要直接生效。")
+    assert not is_operation_message("我喜欢数据分析，也做过一个课程项目")
+
+
+@pytest.mark.asyncio
 async def test_content_level_denial_blocks_the_automatic_extraction_from_that_message() -> None:
     """“这条不要记录”：同一条消息及其派生的自动写入被服务端策略拦住，其他内容不受影响。"""
     from zhiyin_business.services.conversation_ledger import digest

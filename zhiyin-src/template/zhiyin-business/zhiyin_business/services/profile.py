@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from zhiyin_business.services.unit_of_work import atomic_repository, transaction
 from zhiyin_business.services.memory_policy import MemoryPolicyService
+from zhiyin_business.services.dialogue_exploration import is_operation_message
 
 import logging
 from datetime import datetime, timezone
@@ -89,10 +90,21 @@ class DefaultProfileService(ProfileService):
             logger.warning("画像已读取，但把握度评估暂时不可用（key=%s）", field.key, exc_info=True)
             return field
 
+    @staticmethod
+    def _without_operation_evidence(clues: list[ProfileClue]) -> list[ProfileClue]:
+        return [
+            clue.model_copy(update={
+                "evidence": [quote for quote in clue.evidence if not is_operation_message(quote)],
+            })
+            for clue in clues
+        ]
+
     async def get(self, user_id: str) -> Optional[Profile]:
         profile = await self._profiles.get(user_id)
         if profile is not None and self._evidence_assessments is not None:
             profile = profile.model_copy(update={'fields': await self._evidence_assessments.attach(user_id, profile.fields)})
+        if profile is not None:
+            profile = profile.model_copy(update={'clues': self._without_operation_evidence(profile.clues)})
         return profile
 
     async def get_fields(
@@ -112,7 +124,9 @@ class DefaultProfileService(ProfileService):
         与 `get_fields` 分开是因为它们回答的是两个问题：字段答"他提供了什么"，
         线索答"系统理解为可能怎样" —— 后者必须能单独展示、单独否认。
         """
-        return await self._profiles.list_clues(user_id)
+        # Older builds stored report/approval prompts as if they were user
+        # self-descriptions. Never present those as provenance.
+        return self._without_operation_evidence(await self._profiles.list_clues(user_id))
 
     async def replace_session_clues(
         self, user_id: str, session_id: str, clues: list[ProfileClue]
@@ -149,6 +163,7 @@ class DefaultProfileService(ProfileService):
                         "id": clue_id,
                         "user_id": user_id,
                         "session_id": session_id,
+                        "evidence": [quote for quote in clue.evidence if not is_operation_message(quote)],
                         "created_at": existing[clue_id].created_at
                         if clue_id in existing
                         else clue.created_at,

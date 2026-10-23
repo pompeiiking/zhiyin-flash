@@ -5,6 +5,19 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from zhiyin_business.services.conversation_ledger import digest
 
+#: These are UI/approval instructions, not self-descriptions. They can be valid
+#: user turns, but they must never become evidence for a profile clue.
+OPERATION_MESSAGE_HINTS = (
+    "生成诊断报告", "报告草稿", "保存草稿", "启用这份报告", "启用这份新报告",
+    "设为正式报告", "发起启用审批", "确认执行", "不要生效",
+    "生成一份方向方案", "生成方向方案", "方向方案草稿", "启用这份方案",
+)
+
+
+def is_operation_message(message: object) -> bool:
+    text = " ".join(str(message or "").split())
+    return any(hint in text for hint in OPERATION_MESSAGE_HINTS)
+
 
 class QuotedStatement(BaseModel):
     model_config = ConfigDict(extra="forbid")
