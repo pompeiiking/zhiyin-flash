@@ -2,7 +2,9 @@
 .app.app--chat .app__main {padding:0;overflow:hidden;}
 .app.app--chat .app__content {max-width:none;width:100%;height:100%;padding:0;}
 .consultation-page {height:calc(100dvh - 64px);min-height:300px;display:grid;grid-template-columns:minmax(0,1fr);background:var(--c-bg);color:var(--c-text);overflow:hidden;}
-.consult-main {min-width:0;min-height:0;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto;}
+.consult-main {min-width:0;min-height:0;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr) auto;}
+.consult-banners {display:grid;gap:8px;padding:8px 16px 0;min-width:0;}
+.consult-banners:empty {padding:0;}
 .consult-header {padding:12px 28px 10px;border-bottom:1px solid var(--c-border);background:var(--c-surface);}
 .consult-header__top {min-height:38px;display:flex;align-items:center;justify-content:space-between;gap:16px;}
 .consult-heading {min-width:0;}

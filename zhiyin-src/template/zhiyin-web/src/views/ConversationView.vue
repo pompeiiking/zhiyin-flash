@@ -587,8 +587,10 @@ onUnmounted(() => { disposed = true; clearInterval(recoveryTimer); window.remove
    </div></div>
    <ol v-if="!choosingTopic && demo.state.currentSessionId" class="consult-journey" aria-label="咨询进度：已走过的阶段、当前工作重点与后续阶段，可随话题调整"><li v-for="item in journey" :key="item.key" :data-state="stageState(item.key)" :aria-current="currentStage === item.key ? 'step' : undefined"><i /><span><em class="consult-journey__full">{{ item.label }}</em><em class="consult-journey__short">{{ item.short }}</em></span></li></ol>
   </header>
-  <StatusBanner v-if="systemErrorVisible" class="consult-system-error" tone="error" :message="systemData.error" retry-label="重新读取" @retry="loadShell" @dismiss="systemData.error = ''" />
-  <StatusBanner v-if="runtimeError" class="consult-system-error" tone="info" :message="runtimeError" retry-label="重新读取执行状态" @retry="refreshRuntime" @dismiss="runtimeError = ''" />
+  <div class="consult-banners">
+   <StatusBanner v-if="systemErrorVisible" class="consult-system-error" tone="error" :message="systemData.error" retry-label="重新读取" @retry="loadShell" @dismiss="systemData.error = ''" />
+   <StatusBanner v-if="runtimeError" class="consult-system-error" tone="info" :message="runtimeError" retry-label="重新读取执行状态" @retry="refreshRuntime" @dismiss="runtimeError = ''" />
+  </div>
   <div ref="flow" v-scroll-fade class="consult-flow" tabindex="0" aria-label="对话记录" @scroll.passive="onScroll">
    <div v-if="systemData.busy || restoring" class="consult-loading" role="status">正在读取会话…</div>
    <div v-else-if="showStudyYearQuestion || choosingTopic || (!turns.length && !pending && !showFailedSend && !demo.state.currentSessionId)" class="consult-intro" :class="{'consult-intro--onboarding':showStudyYearQuestion}">

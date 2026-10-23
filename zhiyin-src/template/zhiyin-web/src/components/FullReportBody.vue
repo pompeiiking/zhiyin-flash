@@ -347,4 +347,31 @@ onBeforeUnmount(() => observer?.disconnect())
 @media(min-width:1240px){.report-toc-rail{right:max(20px,calc((100vw - 1074px)/2 - 60px))}}
 @media(prefers-reduced-motion:reduce){.report-toc,.report-toc__panel,.report-toc__ticks i{transition:none}}
 @media print{.report-toc-rail,.article-meta-link,.article-reading-note button,.reference-links{display:none!important}.report-document__grid{display:block}.article-section{break-inside:avoid}:deep(.detail-trigger.article-evidence-link){color:inherit!important;text-decoration:none}}
+/* Long URLs and unbroken tokens must wrap instead of being clipped by .app__main overflow-x:clip. */
+.article-prose,.article-prose p,.article-finding__conclusion,.article-finding__reading,.appendix-section p,.appendix-section a,.profile-sheet-field>p,.profile-sheet-field header strong{overflow-wrap:anywhere;}
+/* A visually hidden table must not participate in table-layout width calculation. */
+.sr-only.print-table{max-width:1px;table-layout:fixed;}
+@media(min-width:768px) and (max-width:1239px){
+ .report-document__grid{grid-template-columns:minmax(0,1fr);gap:0}
+ .report-toc-rail{display:block;top:auto;right:0;bottom:140px;width:44px;height:44px;max-height:none;transform:none}
+ .report-toc{top:auto;right:0;bottom:0;width:44px;height:44px;min-height:44px}
+ .report-toc__handle{top:auto;bottom:0;width:44px;height:44px}
+ .report-toc__line{top:7px;bottom:7px;left:21px}
+ .report-toc__ticks{inset:7px 0}
+ .report-toc__ticks i{display:none}
+ .report-toc__ticks i.is-active{display:block;width:9px;height:9px}
+ .report-toc-rail:hover .report-toc{width:44px}
+ .report-toc-rail:hover .report-toc__panel{width:0;height:0;padding:0;opacity:0;pointer-events:none}
+ .report-toc-rail.is-open .report-toc,.report-toc:has(:focus-visible){width:44px}
+ .report-toc-rail.is-open .report-toc__panel,.report-toc:has(:focus-visible) .report-toc__panel{position:absolute;right:44px;bottom:0;left:auto;top:auto;width:min(254px,calc(100vw - 120px));height:auto;max-height:calc(100vh - 180px);overflow-y:auto;padding:14px 8px 14px 12px;opacity:1;pointer-events:auto;margin:0;border:1px solid var(--c-border);border-radius:14px;background:var(--c-surface);box-shadow:var(--e-3)}
+}
+@media(max-width:767px){
+ .report-toc-rail{right:auto;left:-8px}
+ .report-toc{right:auto;left:0}
+ .report-toc__handle{right:auto;left:0}
+ .report-toc__line{left:21px;right:auto}
+ .report-toc-rail.is-open{right:auto;left:12px}
+ .report-toc-rail.is-open .report-toc__panel,.report-toc:has(:focus-visible) .report-toc__panel{margin-left:44px;margin-right:0}
+ .article-finding__heading>.article-finding__state{grid-column:2;grid-row:2;margin-top:2px;justify-self:start}
+}
 </style>

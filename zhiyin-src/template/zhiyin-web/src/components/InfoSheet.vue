@@ -4,6 +4,8 @@ import UiIcon from './UiIcon.vue'
 import { vScrollFade } from '../lib/scroll-fade'
 
 type Shape = 'dialog' | 'sheet' | 'panel'
+let openSheets = 0
+let previousBodyOverflow = ''
 
 const props = withDefaults(defineProps<{
   open: boolean
@@ -25,6 +27,7 @@ const anchor = ref<HTMLElement | null>(null)
 const cardStyle = ref<Record<string, string>>({})
 const bodyId = `info-sheet-body-${Math.random().toString(36).slice(2, 8)}`
 const isDialog = computed(() => props.shape === 'dialog')
+let bodyLocked = false
 
 function focusFallback() {
   const target = anchor.value
@@ -72,7 +75,38 @@ function onDocumentPointer(event: PointerEvent) {
 }
 
 function onDocumentKey(event: KeyboardEvent) {
-  if (event.key === 'Escape' && props.open && !isDialog.value) emit('close')
+  if (!props.open || isDialog.value) return
+  if (event.key === 'Escape') { emit('close'); return }
+  if (event.key !== 'Tab' || !card.value) return
+  // Reka popovers are teleported outside the sheet and manage their own focus.
+  if (document.querySelector('[data-reka-popper-content-wrapper],.detail-popover,.anchored-card,.skin__pop')) return
+  const focusable = [...card.value.querySelectorAll<HTMLElement>(
+    'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])',
+  )].filter((element) => element.offsetParent !== null)
+  if (!focusable.length) return
+  const first = focusable[0]!
+  const last = focusable[focusable.length - 1]!
+  const active = document.activeElement
+  if (event.shiftKey && (active === first || !card.value.contains(active))) {
+    event.preventDefault(); last.focus()
+  } else if (!event.shiftKey && (active === last || !card.value.contains(active))) {
+    event.preventDefault(); first.focus()
+  }
+}
+
+function lockBody() {
+  if (openSheets === 0) {
+    previousBodyOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+  }
+  openSheets++
+  bodyLocked = true
+}
+function unlockBody() {
+  if (!bodyLocked) return
+  bodyLocked = false
+  openSheets = Math.max(0, openSheets - 1)
+  if (openSheets === 0) document.body.style.overflow = previousBodyOverflow
 }
 
 function addCardListeners() {
@@ -99,12 +133,14 @@ async function syncOpen(open: boolean, previous?: boolean) {
     } else {
       positionCard()
       addCardListeners()
+      lockBody()
       card.value?.querySelector<HTMLElement>('input, textarea, select, button, [tabindex="0"]')?.focus()
     }
     emit('opened')
     return
   }
   removeCardListeners()
+  if (!isDialog.value) unlockBody()
   if (modal.value?.open) modal.value.close()
   if (previous) focusFallback()
 }
@@ -112,6 +148,7 @@ async function syncOpen(open: boolean, previous?: boolean) {
 watch(() => props.open, syncOpen, { immediate: true })
 onBeforeUnmount(() => {
   removeCardListeners()
+  if (props.open && !isDialog.value) unlockBody()
   if (modal.value?.open) modal.value.close()
 })
 </script>
@@ -146,7 +183,7 @@ onBeforeUnmount(() => {
         :class="`ws-expand-card--${shape}`"
         :style="cardStyle"
         role="dialog"
-        aria-modal="false"
+        aria-modal="true"
         :aria-label="title"
         :aria-describedby="description ? `${bodyId}-desc` : undefined"
       >

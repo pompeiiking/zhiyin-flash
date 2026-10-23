@@ -270,7 +270,7 @@ onMounted(load)
 .today-focus__label { color: var(--c-primary); font-size: var(--fs-14); font-weight: var(--fw-semibold); }
 .today-focus__source,.today-focus__phase { color: var(--c-text-3); font-size: var(--fs-12); }
 .today-focus__phase { margin-top: 22px; }
-.today-focus__body > h2 { max-width: 22em; margin-top: 6px; color: var(--c-text); font-size: clamp(23px, 2.5vw, 30px); font-weight: 650; line-height: 1.38; letter-spacing: -.02em; }
+.today-focus__body > h2 { max-width: 22em; margin-top: 6px; color: var(--c-text); font-size: clamp(23px, 2.5vw, 30px); font-weight: 650; line-height: 1.38; letter-spacing: -.02em; overflow-wrap: anywhere; }
 .today-focus__deadline { flex: none; padding: 5px 9px; color: var(--c-text-2); background: var(--c-surface-2); border: 1px solid var(--c-border); border-radius: var(--r-sm); font-size: var(--fs-12); }
 .today-focus__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; margin-top: 22px; }
 .today-focus__actions .btn--primary { box-shadow: none; }

@@ -313,7 +313,7 @@ watch(capacityOpen, open => {
           </div>
           <div v-for="period in lastPeriod" :key="`period-${period}`" class="timetable-period" :style="{ gridColumn: 1, gridRow: period + 1 }"><span>{{ period }}</span></div>
           <div v-for="index in 7" :key="`column-${index}`" class="timetable-column" :class="{ 'is-today': index === (today.getDay() + 6) % 7 + 1 }" :style="{ gridColumn: index + 1, gridRow: `2 / span ${lastPeriod}` }" />
-          <div v-for="(course, index) in courseBlocks" :key="`${course.name}-${course.weekday}-${course.start_period}-${index}`" class="timetable-course" :class="courseTone(course.name)" :style="{ gridColumn: (course.weekday ?? 1) + 1, gridRow: `${(course.start_period ?? 1) + 1} / span ${(course.end_period ?? course.start_period ?? 1) - (course.start_period ?? 1) + 1}`, width: `calc((100% - 8px) / ${course.lanes})`, marginLeft: `calc(4px + (100% - 8px) * ${course.lane} / ${course.lanes})` }">
+          <div v-for="(course, index) in courseBlocks" :key="`${course.name}-${course.weekday}-${course.start_period}-${index}`" class="timetable-course" :class="[courseTone(course.name), { 'timetable-course--short': (course.end_period ?? course.start_period) === course.start_period }]" :style="{ gridColumn: (course.weekday ?? 1) + 1, gridRow: `${(course.start_period ?? 1) + 1} / span ${(course.end_period ?? course.start_period ?? 1) - (course.start_period ?? 1) + 1}`, width: `calc((100% - 8px) / ${course.lanes})`, marginLeft: `calc(4px + (100% - 8px) * ${course.lane} / ${course.lanes})` }">
             <DetailPopover :title="course.name" :label="`查看${course.name}详情`" side="bottom">
               <template #trigger><strong>{{ course.name }}</strong><span>{{ course.start_period }}–{{ course.end_period }} 节</span><small>{{ course.place || '地点未提供' }}</small></template>
               <dl class="course-detail"><div><dt>上课时间</dt><dd>{{ courseTimeLabel(course) }}</dd></div><div><dt>地点</dt><dd>{{ course.place || '未提供' }}</dd></div><div><dt>周次</dt><dd>{{ course.weeks || '未提供' }}</dd></div><div><dt>教师</dt><dd>{{ course.teacher || '未提供' }}</dd></div></dl>
@@ -395,7 +395,9 @@ watch(capacityOpen, open => {
 .timetable-course { z-index: 2; min-width: 0; padding: 3px 0; }
 .timetable-course :deep(.detail-trigger) { display: flex; flex-direction: column; align-items: stretch; gap: 4px; width: 100%; height: 100%; min-width: 0; padding: 9px; overflow: hidden; border: 1px solid var(--course-border); border-radius: 8px; color: var(--c-text); background: var(--course-bg); text-align: left; }
 .timetable-course :deep(.detail-trigger:hover) { border-color: var(--course-accent); filter: saturate(1.08); }
-.timetable-course :deep(.detail-trigger strong) { display: -webkit-box; overflow: hidden; font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
+.timetable-course :deep(.detail-trigger strong) { display: -webkit-box; overflow: hidden; font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.timetable-course--short :deep(.detail-trigger) { justify-content: center; gap: 2px; padding: 5px 8px; }
+.timetable-course--short :deep(.detail-trigger span), .timetable-course--short :deep(.detail-trigger small) { display: none; }
 .timetable-course :deep(.detail-trigger span) { color: var(--course-accent); font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .timetable-course :deep(.detail-trigger small) { overflow: hidden; color: var(--c-text-2); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 .timetable-course.tone-0 { --course-accent: #2563eb; --course-border: color-mix(in srgb, #3b82f6 42%, var(--c-border)); --course-bg: color-mix(in srgb, #3b82f6 15%, var(--c-surface)); }
@@ -414,7 +416,7 @@ watch(capacityOpen, open => {
   .schedule-toolbar { align-items: stretch; flex-direction: column; gap: 12px; }
   .schedule-toolbar__actions { flex-wrap: wrap; justify-content: space-between; }
   .calendar-mode-switch { min-height: 44px; justify-content: center; }
-  .week-strip { display: flex; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; scroll-snap-type: x proximity; scroll-padding-inline: 12px; }
+  .week-strip { display: flex; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; scroll-snap-type: x proximity; scroll-padding-inline: 12px; -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 12px, #000 calc(100% - 12px), transparent 100%); mask-image: linear-gradient(90deg, transparent 0, #000 12px, #000 calc(100% - 12px), transparent 100%); }
   .week-strip::-webkit-scrollbar { display: none; }
   .week-strip button { flex: 0 0 68px; min-height: 96px; scroll-snap-align: start; }
   .month-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); padding: 10px 8px 0; }

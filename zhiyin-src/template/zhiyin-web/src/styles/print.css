@@ -96,7 +96,9 @@
   .sr-only.print-table {
     position: static !important;
     width: auto !important;
+    max-width: none !important;
     height: auto !important;
+    table-layout: auto !important;
     clip: auto !important;
     clip-path: none !important;
     overflow: visible !important;

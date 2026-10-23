@@ -339,6 +339,7 @@
 .ws-inbox-trigger { position: relative; }
 .ws-inbox-trigger span { position: absolute; right: 2px; top: 2px; color: var(--c-attention); font-size: var(--fs-12); background: var(--c-bg); padding: 0 3px; font-weight: 600; }
 .ws-command-search { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: var(--c-surface-2); border-radius: var(--r-md); }
+.ws-command-search:focus-within { background: var(--c-surface); box-shadow: 0 0 0 2px var(--c-primary); }
 .ws-command-search input { width: 100%; min-width: 0; background: transparent; border: 0; outline: 0; font-size: var(--fs-16); }
 .ws-command-search input::placeholder { color: var(--field-placeholder); }
 .ws-command-results { max-height: 50dvh; overflow: auto; padding-top: 16px; }
