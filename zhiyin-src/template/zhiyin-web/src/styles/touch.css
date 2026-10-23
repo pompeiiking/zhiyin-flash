@@ -209,15 +209,16 @@ input[type='radio'] {
   min-height: 32px;
 }
 
-/* 7) F7：手机端给右侧悬浮铃铛留出固定栏位，任何滚动位置都不压住右侧按钮 */
+/* 7) 手机页面使用左右对称留白；铃铛现在可拖动，不再用 56px 右栏把正文整体挤偏。 */
 @media (max-width: 767px) {
   .app.app--workspace:not([data-route='/reminders']) .ws-page.ws-page {
-    padding-right: max(56px, calc(16px + env(safe-area-inset-right, 0px)));
+    padding-left: max(16px, calc(16px + env(safe-area-inset-left, 0px)));
+    padding-right: max(16px, calc(16px + env(safe-area-inset-right, 0px)));
   }
 
-  /* 对话页不是 .ws-page：给输入区右侧留出同一栏位，发送按钮不被铃铛盖住 */
+  /* 对话页同样使用对称留白；铃铛默认在输入区上方，拖动后也不会挤压排版。 */
   .app.app--workspace .consult-compose-area {
-    padding-right: max(56px, calc(12px + env(safe-area-inset-right, 0px)));
+    padding-right: max(12px, calc(12px + env(safe-area-inset-right, 0px)));
   }
 }
 

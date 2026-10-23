@@ -9,20 +9,28 @@ const route = useRoute()
 const viewportHeight = ref(typeof window === 'undefined' ? 800 : window.innerHeight)
 const viewportWidth = ref(typeof window === 'undefined' ? 1280 : window.innerWidth)
 const y = ref(88)
+const x = ref(0)
 let dragging = false
 let moved = false
 let suppressClick = false
 let startY = 0
+let startX = 0
 let startTop = 0
+let startLeft = 0
 let hasSavedPosition = false
-const positionKey = 'zhiyin-reminder-y-v4'
+let lastMobile = typeof window === 'undefined' ? false : window.innerWidth <= 767
+const positionKey = 'zhiyin-reminder-position-v6'
+const legacyPositionKey = 'zhiyin-reminder-y-v4'
 
 const mobile = computed(() => viewportWidth.value <= 767)
-const minY = computed(() => mobile.value ? 136 : 72)
-const maxY = computed(() => Math.max(minY.value, viewportHeight.value - (mobile.value ? 138 : 78)))
+const minY = computed(() => 72)
+const maxY = computed(() => Math.max(minY.value, viewportHeight.value - (mobile.value ? 132 : 78)))
+const minX = computed(() => 8)
+const maxX = computed(() => Math.max(minX.value, viewportWidth.value - 52))
 const defaultY = computed(() => mobile.value ? Math.round(viewportHeight.value * .54) : maxY.value)
+const defaultX = computed(() => mobile.value ? maxX.value : 0)
 const triggerStyle = computed(() => mobile.value
-  ? { bottom: 'calc(88px + env(safe-area-inset-bottom, 0px))' }
+  ? { left: `${Math.min(maxX.value, Math.max(minX.value, x.value))}px`, top: `${Math.min(maxY.value, Math.max(minY.value, y.value))}px` }
   : { top: `${Math.min(maxY.value, Math.max(minY.value, y.value))}px` })
 const cardY = computed(() => {
   const height = mobile.value ? 356 : 390
@@ -31,7 +39,7 @@ const cardY = computed(() => {
     : Math.min(y.value + 54, Math.max(72, viewportHeight.value - height))
 })
 const cardStyle = computed(() => mobile.value
-  ? { bottom: 'calc(146px + env(safe-area-inset-bottom, 0px))' }
+  ? { top: `${cardY.value}px`, bottom: 'auto' }
   : { top: `${cardY.value}px` })
 /**
  * 同一条提醒（标题+正文完全相同）只显示一次，并在卡片里标出"出现了 N 次"。
@@ -53,33 +61,73 @@ async function resolveGroup(entry: { notice: (typeof demo.state.noticeQueue)[num
   for (const id of entry.ids) await demo.resolveNotice(id)
 }
 
-function clamp(value: number) { return Math.min(maxY.value, Math.max(minY.value, value)) }
+function clampY(value: number) { return Math.min(maxY.value, Math.max(minY.value, value)) }
+function clampX(value: number) { return Math.min(maxX.value, Math.max(minX.value, value)) }
 function resize() {
   viewportHeight.value = window.innerHeight
   viewportWidth.value = window.innerWidth
-  y.value = hasSavedPosition ? clamp(y.value) : clamp(defaultY.value)
+  const nextMobile = viewportWidth.value <= 767
+  if (nextMobile !== lastMobile) {
+    // A desktop position must not become a top-left mobile button after resizing.
+    lastMobile = nextMobile
+    hasSavedPosition = false
+    y.value = clampY(defaultY.value)
+    x.value = clampX(defaultX.value)
+    return
+  }
+  y.value = hasSavedPosition ? clampY(y.value) : clampY(defaultY.value)
+  x.value = hasSavedPosition ? clampX(x.value) : clampX(defaultX.value)
 }
 function restore() {
-  const raw = localStorage.getItem(positionKey)
-  const saved = Number(raw)
-  hasSavedPosition = raw !== null && Number.isFinite(saved)
-  if (hasSavedPosition) y.value = clamp(saved)
-  else y.value = clamp(defaultY.value)
+  let savedX = defaultX.value
+  let savedY: number | null = null
+  let modeMatches = false
+  try {
+    const raw = localStorage.getItem(positionKey)
+    if (raw) {
+      const parsed = JSON.parse(raw) as { x?: number; y?: number; mobile?: boolean }
+      if (parsed.mobile === mobile.value) {
+        modeMatches = true
+        if (typeof parsed.x === 'number' && Number.isFinite(parsed.x)) savedX = parsed.x
+        if (typeof parsed.y === 'number' && Number.isFinite(parsed.y)) savedY = parsed.y
+      }
+    } else if (!mobile.value) {
+      // The old format only stored a desktop vertical position.
+      const legacy = Number(localStorage.getItem(legacyPositionKey))
+      if (Number.isFinite(legacy)) { savedY = legacy; savedX = 0; modeMatches = true }
+    }
+  } catch { /* storage unavailable */ }
+  hasSavedPosition = modeMatches && savedY !== null
+  y.value = clampY(hasSavedPosition ? savedY! : defaultY.value)
+  x.value = clampX(hasSavedPosition ? savedX : defaultX.value)
 }
-function save() { hasSavedPosition = true; localStorage.setItem(positionKey, String(Math.round(y.value))) }
-function resetPosition() { hasSavedPosition = false; localStorage.removeItem(positionKey); y.value = clamp(defaultY.value) }
+function save() {
+  hasSavedPosition = true
+  try { localStorage.setItem(positionKey, JSON.stringify({ x: Math.round(x.value), y: Math.round(y.value), mobile: mobile.value })) } catch { /* ignore */ }
+}
+function resetPosition() {
+  hasSavedPosition = false
+  try { localStorage.removeItem(positionKey); localStorage.removeItem(legacyPositionKey) } catch { /* ignore */ }
+  y.value = clampY(defaultY.value)
+  x.value = clampX(defaultX.value)
+}
 function pointerDown(event: PointerEvent) {
-  if (mobile.value) return // 手机端固定在右下角，不参与拖拽
-  if (event.button !== 0) return
-  dragging = true; moved = false; startY = event.clientY; startTop = y.value
+  if (event.pointerType === 'mouse' && event.button !== 0) return
+  dragging = true; moved = false
+  startY = event.clientY; startX = event.clientX; startTop = y.value; startLeft = x.value
   window.addEventListener('pointermove', pointerMove)
   window.addEventListener('pointerup', pointerUp, { once: true })
 }
 function pointerMove(event: PointerEvent) {
   if (!dragging) return
-  const delta = event.clientY - startY
-  if (Math.abs(delta) > 4) moved = true
-  if (moved) { event.preventDefault(); y.value = clamp(startTop + delta) }
+  const deltaY = event.clientY - startY
+  const deltaX = mobile.value ? event.clientX - startX : 0
+  if (Math.abs(deltaY) > 4 || Math.abs(deltaX) > 4) moved = true
+  if (moved) {
+    event.preventDefault()
+    y.value = clampY(startTop + deltaY)
+    if (mobile.value) x.value = clampX(startLeft + deltaX)
+  }
 }
 function pointerUp() {
   dragging = false
@@ -106,7 +154,7 @@ watch(() => route.path, () => { if (!hasSavedPosition) restore(); demo.closeNoti
       :style="triggerStyle"
       type="button"
       :aria-expanded="demo.state.noticeOpen"
-      :aria-label="`提醒，${noticeTotal} 条待处理${mobile ? '' : '。可上下拖动位置'}`"
+      :aria-label="`提醒，${noticeTotal} 条待处理。可拖动位置`"
       @pointerdown="pointerDown"
       @click="toggle"
     >
@@ -126,7 +174,7 @@ watch(() => route.path, () => { if (!hasSavedPosition) restore(); demo.closeNoti
       </div>
       <p v-else class="floating-reminders__empty">目前没有待处理提醒。</p>
       <RouterLink class="floating-reminders__more" to="/reminders" @click="demo.closeNotice()">查看全部提醒</RouterLink>
-      <footer v-if="!mobile"><span>上下拖动可调整位置</span><button type="button" @click="resetPosition">恢复默认位置</button></footer>
+      <footer><span>拖动提醒按钮可调整位置</span><button type="button" @click="resetPosition">恢复默认位置</button></footer>
     </section>
   </div>
 </template>
@@ -163,7 +211,7 @@ watch(() => route.path, () => { if (!hasSavedPosition) restore(); demo.closeNoti
 .floating-reminders__card>footer>span { color:var(--c-text-3); }
 .floating-reminders__card>footer button { color:var(--c-text-3); }
 @media (max-width:767px) {
-  .floating-reminders__trigger { right:calc(10px + env(safe-area-inset-right, 0px)); width:44px; height:44px; padding:0; border-radius:14px; }
+  .floating-reminders__trigger { right:auto; width:44px; height:44px; padding:0; border-radius:14px; }
   .floating-reminders__trigger>span { top:-6px; right:-6px; }
   .floating-reminders__card { right:12px; width:calc(100vw - 24px); max-height:min(56dvh,440px); }
 }
