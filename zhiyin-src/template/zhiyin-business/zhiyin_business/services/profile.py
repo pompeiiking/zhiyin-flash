@@ -292,6 +292,7 @@ class DefaultProfileService(ProfileService):
         valid_to: datetime | None = None,
         event_at: datetime | None = None,
         status: str | None = None,
+        deferred_events: list | None = None,
     ) -> ProfileField:
         """写入一条画像记录（所有来源共用的唯一写入口）。
 
@@ -371,8 +372,7 @@ class DefaultProfileService(ProfileService):
                 user_id, before, status=ProfileEntryStatus.SUPERSEDED,
                 replaced_at=saved.updated_at, reason="被后续版本替代",
             )
-        await self._event_bus.publish(
-            DomainEvent(
+        event = DomainEvent(
                 event_id=f"profile-{uuid4().hex[:12]}",
                 event_type=PROFILE_FIELD_UPDATED,
                 occurred_at=saved.updated_at,
@@ -387,11 +387,26 @@ class DefaultProfileService(ProfileService):
                     "status": status_value.value,
                 },
             )
-        )
+        if deferred_events is not None:
+            deferred_events.append(event)
+        else:
+            await self._event_bus.publish(event)
         if before is not None and (before.value != saved.value or before.attributes != saved.attributes
             or before.valid_from != saved.valid_from or before.valid_to != saved.valid_to):
             await self._invalidate_clues_for(user_id, [key], PROFILE_CLUE_INVALIDATED_BY_CORRECTION)
         return saved
+
+    async def write_report_entries(self, user_id, entries):
+        """Called inside the import repository's shared transaction."""
+        events = []
+        for entry in entries:
+            await self._update_field(user_id, **entry, check_version=True, deferred_events=events)
+        for event in events:
+            await self._event_bus.publish(event)
+        return [entry["key"] for entry in entries]
+
+    async def refresh_report_assessment(self, user_id, key):
+        await self._schedule_assessment(user_id, key)
 
     async def replace_gaps(self, user_id: str, gaps: list[ProfileGap]) -> None:
         await self._profiles.replace_gaps(user_id, gaps)

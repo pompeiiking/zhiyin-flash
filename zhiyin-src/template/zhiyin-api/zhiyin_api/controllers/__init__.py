@@ -14,6 +14,7 @@ from zhiyin_api.controllers.auth_controller import router as auth_router
 from zhiyin_api.controllers.config_controller import router as config_router
 from zhiyin_api.controllers.note_controller import router as note_router
 from zhiyin_api.controllers.profile_controller import router as profile_router
+from zhiyin_api.controllers.chsi_controller import router as chsi_router
 from zhiyin_api.controllers.module_controller import router as module_router
 from zhiyin_api.controllers.developer_controller import router as developer_router
 
@@ -32,6 +33,7 @@ ROUTERS = [
     config_router,
     note_router,
     profile_router,
+    chsi_router,
     module_router,
     developer_router,
 ]

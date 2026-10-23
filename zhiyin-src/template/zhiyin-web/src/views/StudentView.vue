@@ -671,7 +671,7 @@ onMounted(()=>{ void loadWorkspace() })
       <section><h2>这 {{ known.length }} 条从哪里来</h2><div v-for="source in SOURCE_GROUPS" :key="source.key" class="c2-source-row"><span>{{ source.label }}</span><span class="c2-source-track" role="meter" :aria-label="source.label" :aria-valuenow="known.filter(row => source.from.includes(row.desc)).length" :aria-valuemax="Math.max(1, known.length)" aria-valuemin="0"><i :style="{width: known.filter(row => source.from.includes(row.desc)).length / Math.max(1, known.length) * 100 + '%'}" /></span><b>{{ known.filter(row => source.from.includes(row.desc)).length }}</b></div></section>
       <section><h2>{{ identity.name }}</h2><p>{{ identity.line }}</p><p>已记录 {{ progress.known }} 条 · {{ confBands[0]?.title }} {{ confBands[0]?.count ?? 0 }} 条 · {{ confBands[2]?.title }} {{ confBands[2]?.count ?? 0 }} 条</p><Foldable variant="inline" title="查看来源与核实状态"><p>{{ statusLine }}</p><p>{{ coverageNote }}</p><p>这里不显示内部置信度分数；每条记录由来源与核实状态分别说明。</p></Foldable></section>
     </aside></InfoSheet>
-    <InfoSheet :open="verificationOpen" shape="panel" title="核验学籍信息" @close="verificationOpen=false"><AcademicVerification /></InfoSheet>
+    <InfoSheet :open="verificationOpen" shape="panel" title="学籍核验与报告导入" @close="verificationOpen=false"><AcademicVerification /></InfoSheet>
     <!-- 更正是一条信息的小表单（`text` + 两个按钮），不是"从一行钻进去看细节"。
          所以 shape 是 dialog（缺省也是它，这里写出来是为了让形态是**显式**的）。 -->
     <InfoSheet shape="sheet" :open="correction !== null" :title="'更正' + (correction?.label ?? '信息')" @close="!saveBusy && (correction = null)">

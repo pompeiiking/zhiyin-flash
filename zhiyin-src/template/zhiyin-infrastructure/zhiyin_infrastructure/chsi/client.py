@@ -72,6 +72,8 @@ _LABELS: tuple[tuple[tuple[str, ...], str], ...] = (
     (("身份证号", "证件号码"), "id_card"),
     (("学号",), "student_no"),
     (("学制",), "duration"),
+    (("班级",), "class_name"),
+    (("学习类型", "类型"), "education_type"),
     (("姓名",), "student_name"),
     (("性别",), "gender"),
     (("民族",), "ethnicity"),
@@ -131,6 +133,9 @@ class ChsiReportClient:
                 response.raise_for_status()
                 return response.text, f"{self._base_url}/xlcx/bgcx.jsp"
         except httpx.HTTPError as exc:
+            if isinstance(exc, httpx.HTTPStatusError) and exc.response.status_code == 403:
+                raise ChsiVerifyError("服务器访问学信网核验页面被拒绝，请使用 PDF 报告导入。",
+                    kind=ChsiVerifyErrorKind.UNREACHABLE) from exc
             raise ChsiVerifyError(
                 "连不上学信网的核验服务，请稍后再试。",
                 kind=ChsiVerifyErrorKind.UNREACHABLE,
@@ -212,7 +217,7 @@ def classify_error(message: str) -> ChsiVerifyErrorKind:
     return ChsiVerifyErrorKind.INVALID_CODE
 
 
-def parse_fields(text: str) -> list[ChsiField]:
+def parse_fields(text: str, *, strict_labels: bool = False) -> list[ChsiField]:
     """按标签取值。
 
     做法：在文本里找出所有"标签（可选冒号）"的位置，
@@ -226,6 +231,12 @@ def parse_fields(text: str) -> list[ChsiField]:
     for aliases, key in _LABELS:
         for alias in aliases:
             for match in re.finditer(re.escape(alias) + r"\s*[:：]?", flat):
+                if strict_labels:
+                    label_end = match.start() + len(alias)
+                    if match.start() and not flat[match.start() - 1].isspace():
+                        continue
+                    if label_end < len(flat) and not (flat[label_end].isspace() or flat[label_end] in ':：'):
+                        continue
                 hits.append((match.start(), match.end(), key, alias))
 
     hits.sort(key=lambda item: (item[0], -(item[1] - item[0])))
@@ -274,29 +285,7 @@ def verified_at_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def parse_chsi_date(value: str) -> date | None:
-    """解析报告里的日期（中文/短横线/斜杠三种常见写法）；认不出返回 None。"""
-    match = re.search(r"(20\d{2})\D{1,4}(\d{1,2})\D{1,4}(\d{1,2})", (value or "").strip())
-    if not match:
-        return None
-    try:
-        return date(int(match.group(1)), int(match.group(2)), int(match.group(3)))
-    except ValueError:
-        return None
-
-
-def is_report_expired(valid_until: str, *, today: date | None = None) -> bool:
-    """报告有效期是否已经过去。
-
-    学信网通常会把过期报告渲染成错误页，但版式变化时不保证；只要报告还
-    解析出了字段，就必须再用「有效期至」兜一次，否则过期报告会被按
-    `verified=true, confidence=1.0` 写进画像。
-    """
-    expiry = parse_chsi_date(valid_until)
-    if expiry is None:
-        return False
-    current = today or datetime.now(timezone(timedelta(hours=8))).date()
-    return expiry < current
+from zhiyin_kernel.chsi_dates import parse_chsi_date, is_report_expired
 
 
 __all__ = [

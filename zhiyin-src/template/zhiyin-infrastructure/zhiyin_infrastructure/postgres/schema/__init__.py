@@ -8,6 +8,7 @@
 """
 
 from zhiyin_infrastructure.postgres.schema.business import DDL as BUSINESS_DDL
+from zhiyin_infrastructure.postgres.schema.chsi_imports import DDL as CHSI_IMPORT_DDL
 from zhiyin_infrastructure.postgres.schema.infrastructure import (
     DDL as INFRASTRUCTURE_DDL,
 )
@@ -28,6 +29,7 @@ SCHEMA_SQL = "\n".join(
         "CREATE EXTENSION IF NOT EXISTS vector;",
         INFRASTRUCTURE_DDL,
         BUSINESS_DDL,
+        CHSI_IMPORT_DDL,
         ORCHESTRATION_DDL,
         VECTOR_DDL,
         MODULE_DDL,

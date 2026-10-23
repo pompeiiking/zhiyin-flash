@@ -69,6 +69,12 @@ from zhiyin_api.dto.workspace import (
 class ApplicationFacade(ABC):
     """BFF 应用门面。"""
 
+    async def preview_chsi_pdf(self, user_id, data):
+        raise NotImplementedError
+
+    async def confirm_chsi_pdf(self, user_id, body):
+        raise NotImplementedError
+
     # ---------- 身份 ----------
 
     async def check_analysis_consent(self, user_id: str) -> None:

@@ -71,6 +71,8 @@ class OnlineVerificationGateway(ChsiVerificationGateway):
             code=normalized,
             kind=kind,
             report_no=report_no,
+            valid_until=valid_until,
+            report_date=next((field.value for field in fields if field.key == "verified_date"), ""),
             fields=fields,
             verified_at=self._last_verify_at,
             source_url=source_url,

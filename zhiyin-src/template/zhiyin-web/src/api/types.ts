@@ -172,6 +172,14 @@ export interface paths {
      */
     post: operations["chsi_bind_api_v1_app_chsi_bind_post"];
   };
+  "/api/v1/app/chsi/pdf/confirm": {
+    /** Confirm Chsi Pdf */
+    post: operations["confirm_chsi_pdf_api_v1_app_chsi_pdf_confirm_post"];
+  };
+  "/api/v1/app/chsi/pdf/preview": {
+    /** Preview Chsi Pdf */
+    post: operations["preview_chsi_pdf_api_v1_app_chsi_pdf_preview_post"];
+  };
   "/api/v1/app/config/reload": {
     /**
      * Reload Config
@@ -1486,6 +1494,38 @@ export interface components {
        */
       trace_id?: string;
     };
+    /** ApiResponse[ChsiPdfPreview] */
+    ApiResponse_ChsiPdfPreview_: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      data?: components["schemas"]["ChsiPdfPreview"] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
+    /** ApiResponse[ChsiPdfReceipt] */
+    ApiResponse_ChsiPdfReceipt_: {
+      /** @default 0 */
+      code?: components["schemas"]["ErrorCode"];
+      data?: components["schemas"]["ChsiPdfReceipt"] | null;
+      /**
+       * Message
+       * @default ok
+       */
+      message?: string;
+      /**
+       * Trace Id
+       * @description 链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用
+       */
+      trace_id?: string;
+    };
     /** ApiResponse[ConversationMaterialView] */
     ApiResponse_ConversationMaterialView_: {
       /** @default 0 */
@@ -2593,6 +2633,11 @@ export interface components {
        */
       term?: string;
     };
+    /** Body_preview_chsi_pdf_api_v1_app_chsi_pdf_preview_post */
+    Body_preview_chsi_pdf_api_v1_app_chsi_pdf_preview_post: {
+      /** File */
+      file: string;
+    };
     /** Body_upload_material_api_v1_app_conversation_material_post */
     Body_upload_material_api_v1_app_conversation_material_post: {
       /** File */
@@ -2719,6 +2764,64 @@ export interface components {
       generated_at?: string;
       /** Items */
       items?: components["schemas"]["CapabilityItemView"][];
+    };
+    /** ChsiPdfConfirm */
+    ChsiPdfConfirm: {
+      /**
+       * Ownership Confirmed
+       * @default false
+       */
+      ownership_confirmed?: boolean;
+      /** Preview Id */
+      preview_id: string;
+      /** Selected Keys */
+      selected_keys: string[];
+    };
+    /** ChsiPdfPreview */
+    ChsiPdfPreview: {
+      /** Can Import */
+      can_import: boolean;
+      /** Expires At */
+      expires_at: string;
+      /** Fields */
+      fields: components["schemas"]["PdfFieldPreview"][];
+      /** Preview Id */
+      preview_id: string;
+      /**
+       * Report Date
+       * @default
+       */
+      report_date?: string;
+      /**
+       * Requires Ownership Confirmation
+       * @default false
+       */
+      requires_ownership_confirmation?: boolean;
+      /**
+       * Valid Until
+       * @default
+       */
+      valid_until?: string;
+      /** Warnings */
+      warnings?: string[];
+    };
+    /** ChsiPdfReceipt */
+    ChsiPdfReceipt: {
+      /** Import Id */
+      import_id: string;
+      /** Imported */
+      imported: string[];
+      /** Imported At */
+      imported_at: string;
+      /**
+       * Message
+       * @default 报告材料已导入，待在线核验。
+       */
+      message?: string;
+      /** Retained */
+      retained: string[];
+      /** Skipped */
+      skipped: string[];
     };
     /**
      * CoachNotificationView
@@ -4429,6 +4532,29 @@ export interface components {
       status: "pending" | "read" | "later" | "done";
       /** Title */
       title: string;
+    };
+    /** PdfFieldPreview */
+    PdfFieldPreview: {
+      /** Current Value */
+      current_value?: unknown;
+      /** Key */
+      key: string;
+      /** Label */
+      label: string;
+      /**
+       * Reason
+       * @default
+       */
+      reason?: string;
+      /** Selectable */
+      selectable: boolean;
+      /**
+       * Selected
+       * @default false
+       */
+      selected?: boolean;
+      /** Value */
+      value: unknown;
     };
     /** Period */
     Period: {
@@ -6438,6 +6564,50 @@ export interface operations {
       200: {
         content: {
           "application/json": unknown;
+        };
+      };
+    };
+  };
+  /** Confirm Chsi Pdf */
+  confirm_chsi_pdf_api_v1_app_chsi_pdf_confirm_post: {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ChsiPdfConfirm"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_ChsiPdfReceipt_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Preview Chsi Pdf */
+  preview_chsi_pdf_api_v1_app_chsi_pdf_preview_post: {
+    requestBody: {
+      content: {
+        "multipart/form-data": components["schemas"]["Body_preview_chsi_pdf_api_v1_app_chsi_pdf_preview_post"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_ChsiPdfPreview_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };

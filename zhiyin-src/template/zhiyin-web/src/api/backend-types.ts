@@ -349,6 +349,32 @@ export type DirectionWeightsEdit = {
   "stability"?: number
 }
 
+export type ChsiPdfPreview = {
+  "can_import": boolean
+  "expires_at": string
+  "fields": Array<PdfFieldPreview>
+  "preview_id": string
+  "report_date"?: string
+  "requires_ownership_confirmation"?: boolean
+  "valid_until"?: string
+  "warnings"?: Array<string>
+}
+
+export type ChsiPdfConfirm = {
+  "ownership_confirmed"?: boolean
+  "preview_id": string
+  "selected_keys": Array<string>
+}
+
+export type ChsiPdfReceipt = {
+  "import_id": string
+  "imported": Array<string>
+  "imported_at": string
+  "message"?: string
+  "retained": Array<string>
+  "skipped": Array<string>
+}
+
 export type AcademicPreview = {
   "courses"?: Array<CourseEntry>
   "expected_version": string
@@ -671,6 +697,16 @@ export type Measurement = {
   "source": string
   "threshold"?: (number | null)
   "value": number
+}
+
+export type PdfFieldPreview = {
+  "current_value"?: unknown
+  "key": string
+  "label": string
+  "reason"?: string
+  "selectable": boolean
+  "selected"?: boolean
+  "value": unknown
 }
 
 export type CourseEntry = {

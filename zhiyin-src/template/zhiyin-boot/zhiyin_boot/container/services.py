@@ -226,6 +226,17 @@ def build_services(container: "Container") -> None:
             container.profiles, container.event_bus_primitive, container.student_state,
             evidence_assessments=container.extra.get("evidence_assessment"),
         )
+        from zhiyin_business.services.chsi_import import ChsiPdfImportService
+        from zhiyin_infrastructure.chsi.pdf import ChsiPdfReader
+        from zhiyin_infrastructure.local.chsi_imports import InMemoryChsiImportRepository
+        if container.settings.use_postgres:
+            from zhiyin_infrastructure.postgres.chsi_imports import PostgresChsiImportRepository
+            from zhiyin_infrastructure.postgres.database import get_database
+            imports = PostgresChsiImportRepository(get_database(container.settings.postgres_dsn))
+        else:
+            imports = InMemoryChsiImportRepository(container.profiles)
+        container.extra["chsi_imports"] = ChsiPdfImportService(
+            container.profile_service, imports, ChsiPdfReader(), container.registry)
         container.profile_service = guarded(container.profile_service, "profile")
     if container.behaviors is not None and container.event_bus_primitive is not None:
         container.behavior_service = DefaultBehaviorService(
@@ -444,6 +455,7 @@ def build_services(container: "Container") -> None:
             web_search_available=container.web_search is not None,
             chsi_available=container.chsi is not None,
             academic_previews=container.extra.get("academic_previews"),
+            chsi_imports=container.extra.get("chsi_imports"),
         )
 
 
@@ -472,6 +484,9 @@ def build_workers(container: "Container") -> None:
     `python -m zhiyin_boot worker <name>` 独立运行，两者复用同一个 container。
     """
     container.workers = []
+    if container.extra.get("chsi_imports") is not None:
+        from zhiyin_business.workers.chsi_imports import ChsiImportCleanupWorker
+        container.workers.append(ChsiImportCleanupWorker(container.extra["chsi_imports"].records))
     if container.extra.get("evidence_assessment") is not None:
         from zhiyin_business.workers.evidence import ProfileEvidenceWorker
         container.workers.append(ProfileEvidenceWorker(container.extra["evidence_assessment"]))

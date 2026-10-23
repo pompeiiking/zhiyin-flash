@@ -131,3 +131,7 @@ _backup-*
 
 # Local integration credentials and raw responses
 _tmp-spike/
+.runtime/
+.runtime312/
+.pytest-tmp*/
+zhiyin-src/template/zhiyin-web/_chsi_pdf_acceptance.html

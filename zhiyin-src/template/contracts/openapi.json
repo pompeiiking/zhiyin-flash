@@ -1256,6 +1256,68 @@
         "title": "ApiResponse[CapabilityListView]",
         "type": "object"
       },
+      "ApiResponse_ChsiPdfPreview_": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode",
+            "default": 0
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChsiPdfPreview"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "default": "ok",
+            "title": "Message",
+            "type": "string"
+          },
+          "trace_id": {
+            "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "title": "ApiResponse[ChsiPdfPreview]",
+        "type": "object"
+      },
+      "ApiResponse_ChsiPdfReceipt_": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode",
+            "default": 0
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChsiPdfReceipt"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "default": "ok",
+            "title": "Message",
+            "type": "string"
+          },
+          "trace_id": {
+            "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "title": "ApiResponse[ChsiPdfReceipt]",
+        "type": "object"
+      },
       "ApiResponse_ConversationMaterialView_": {
         "additionalProperties": false,
         "properties": {
@@ -3451,6 +3513,20 @@
         "title": "Body_import_academic_files_api_v1_app_academic_import_file_post",
         "type": "object"
       },
+      "Body_preview_chsi_pdf_api_v1_app_chsi_pdf_preview_post": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_preview_chsi_pdf_api_v1_app_chsi_pdf_preview_post",
+        "type": "object"
+      },
       "Body_upload_material_api_v1_app_conversation_material_post": {
         "properties": {
           "file": {
@@ -3652,6 +3728,136 @@
           }
         },
         "title": "CapabilityListView",
+        "type": "object"
+      },
+      "ChsiPdfConfirm": {
+        "additionalProperties": false,
+        "properties": {
+          "ownership_confirmed": {
+            "default": false,
+            "title": "Ownership Confirmed",
+            "type": "boolean"
+          },
+          "preview_id": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Preview Id",
+            "type": "string"
+          },
+          "selected_keys": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Selected Keys",
+            "type": "array"
+          }
+        },
+        "required": [
+          "preview_id",
+          "selected_keys"
+        ],
+        "title": "ChsiPdfConfirm",
+        "type": "object"
+      },
+      "ChsiPdfPreview": {
+        "properties": {
+          "can_import": {
+            "title": "Can Import",
+            "type": "boolean"
+          },
+          "expires_at": {
+            "title": "Expires At",
+            "type": "string"
+          },
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/PdfFieldPreview"
+            },
+            "title": "Fields",
+            "type": "array"
+          },
+          "preview_id": {
+            "title": "Preview Id",
+            "type": "string"
+          },
+          "report_date": {
+            "default": "",
+            "title": "Report Date",
+            "type": "string"
+          },
+          "requires_ownership_confirmation": {
+            "default": false,
+            "title": "Requires Ownership Confirmation",
+            "type": "boolean"
+          },
+          "valid_until": {
+            "default": "",
+            "title": "Valid Until",
+            "type": "string"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "preview_id",
+          "expires_at",
+          "fields",
+          "can_import"
+        ],
+        "title": "ChsiPdfPreview",
+        "type": "object"
+      },
+      "ChsiPdfReceipt": {
+        "properties": {
+          "import_id": {
+            "title": "Import Id",
+            "type": "string"
+          },
+          "imported": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Imported",
+            "type": "array"
+          },
+          "imported_at": {
+            "title": "Imported At",
+            "type": "string"
+          },
+          "message": {
+            "default": "报告材料已导入，待在线核验。",
+            "title": "Message",
+            "type": "string"
+          },
+          "retained": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Retained",
+            "type": "array"
+          },
+          "skipped": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Skipped",
+            "type": "array"
+          }
+        },
+        "required": [
+          "import_id",
+          "imported_at",
+          "imported",
+          "retained",
+          "skipped"
+        ],
+        "title": "ChsiPdfReceipt",
         "type": "object"
       },
       "CoachNotificationView": {
@@ -7015,6 +7221,46 @@
           "status"
         ],
         "title": "NotificationStateView",
+        "type": "object"
+      },
+      "PdfFieldPreview": {
+        "properties": {
+          "current_value": {
+            "title": "Current Value"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "reason": {
+            "default": "",
+            "title": "Reason",
+            "type": "string"
+          },
+          "selectable": {
+            "title": "Selectable",
+            "type": "boolean"
+          },
+          "selected": {
+            "default": false,
+            "title": "Selected",
+            "type": "boolean"
+          },
+          "value": {
+            "title": "Value"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "value",
+          "selectable"
+        ],
+        "title": "PdfFieldPreview",
         "type": "object"
       },
       "Period": {
@@ -10756,6 +11002,88 @@
         "summary": "Chsi Bind",
         "tags": [
           "ai"
+        ]
+      }
+    },
+    "/api/v1/app/chsi/pdf/confirm": {
+      "post": {
+        "operationId": "confirm_chsi_pdf_api_v1_app_chsi_pdf_confirm_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChsiPdfConfirm"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_ChsiPdfReceipt_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Confirm Chsi Pdf",
+        "tags": [
+          "chsi"
+        ]
+      }
+    },
+    "/api/v1/app/chsi/pdf/preview": {
+      "post": {
+        "operationId": "preview_chsi_pdf_api_v1_app_chsi_pdf_preview_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_preview_chsi_pdf_api_v1_app_chsi_pdf_preview_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_ChsiPdfPreview_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Preview Chsi Pdf",
+        "tags": [
+          "chsi"
         ]
       }
     },

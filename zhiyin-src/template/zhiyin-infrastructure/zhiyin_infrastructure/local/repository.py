@@ -21,6 +21,9 @@ TODO：按自有基础设施演进。
 from __future__ import annotations
 
 import json
+import asyncio
+from contextlib import asynccontextmanager
+from copy import deepcopy
 from datetime import datetime, timezone, timedelta
 from typing import Any, Optional, Sequence
 from uuid import uuid4
@@ -114,6 +117,25 @@ class InMemoryProfileRepository(ProfileRepository):
     def __init__(self) -> None:
         self._profiles: dict[str, Profile] = {}
         self._revisions: dict[str, list[ProfileFieldRevision]] = {}
+        self._transaction_lock = asyncio.Lock()
+        self._transaction_owner = None
+
+    @asynccontextmanager
+    async def transaction(self):
+        task = asyncio.current_task()
+        if self._transaction_owner is task:
+            yield
+            return
+        async with self._transaction_lock:
+            before = deepcopy((self._profiles, self._revisions))
+            self._transaction_owner = task
+            try:
+                yield
+            except BaseException:
+                self._profiles, self._revisions = before
+                raise
+            finally:
+                self._transaction_owner = None
 
     async def get(self, user_id: str) -> Optional[Profile]:
         profile = self._profiles.get(user_id)

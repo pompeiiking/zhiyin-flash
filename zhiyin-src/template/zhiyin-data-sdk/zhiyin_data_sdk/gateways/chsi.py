@@ -28,7 +28,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -106,11 +106,14 @@ class ChsiField(BaseModel):
 
 
 class ChsiReport(BaseModel):
-    """一份核验通过的在线验证报告。"""
+    """统一报告结果；PDF 材料不代表在线核验通过，须结合 acquisition 使用。"""
 
     model_config = ConfigDict(extra="forbid")
 
-    code: str
+    code: str = Field(default="", repr=False)
+    acquisition: Literal["online", "pdf"] = "online"
+    report_date: str = ""
+    valid_until: str = ""
     kind: ChsiReportKind = ChsiReportKind.UNKNOWN
     report_no: str = ""
     fields: list[ChsiField] = Field(default_factory=list)

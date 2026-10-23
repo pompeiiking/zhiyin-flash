@@ -149,6 +149,7 @@ class DefaultApplicationFacade(ApplicationFacade):
         web_search_available: bool = False,
         chsi_available: bool = False,
         academic_previews=None,
+        chsi_imports=None,
     ) -> None:
         """构造依赖由 boot 注入。
 
@@ -174,6 +175,7 @@ class DefaultApplicationFacade(ApplicationFacade):
         # 教务系统取回来的课表与成绩单：绑定任务存、界面读、撤销时删
         self._academic = academic
         self._academic_previews = academic_previews
+        self._chsi_imports = chsi_imports
         # 用户对资产的动作（③ 选方案 / ④ 勾任务）是**业务行为**，要进行为日志：
         # 它是"停滞判定"与"成就解锁"的输入之一。允许缺省（纯 api 单测的装配），
         # 缺省时只做状态变更、不记行为。
@@ -190,6 +192,16 @@ class DefaultApplicationFacade(ApplicationFacade):
         self._web_search_available = bool(web_search_available)
         # 学信网核验：网关注入后才算可用；"需要验证码"是使用条件，不是未启用。
         self._chsi_available = bool(chsi_available)
+
+    async def preview_chsi_pdf(self, user_id, data):
+        if self._chsi_imports is None:
+            raise InvalidRequest("学籍 PDF 导入暂未装配。")
+        return await self._chsi_imports.preview(user_id, data)
+
+    async def confirm_chsi_pdf(self, user_id, body):
+        if self._chsi_imports is None:
+            raise InvalidRequest("学籍 PDF 导入暂未装配。")
+        return await self._chsi_imports.confirm(user_id, body)
 
     async def check_analysis_consent(self, user_id):
         if self._student is not None:

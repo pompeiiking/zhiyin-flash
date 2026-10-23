@@ -62,7 +62,7 @@ WIRED_SERVICE_PORTS: frozenset[str] = frozenset(
         "facade",
     }
 )
-WIRED_WORKER_PORTS: frozenset[str] = frozenset({"vector_sync", "impact", "active_event", "profile_evidence"})
+WIRED_WORKER_PORTS: frozenset[str] = frozenset({"vector_sync", "impact", "active_event", "profile_evidence", "chsi_import_cleanup"})
 
 
 def test_shell_tables_are_not_empty() -> None:

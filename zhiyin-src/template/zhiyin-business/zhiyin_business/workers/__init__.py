@@ -12,6 +12,7 @@
 | --- | --- | --- | --- | --- |
 | `impact` | `workers/impact.py` | `ImpactPropagationWorker` | 消费 profile_field_updated，按影响面规则重算并升版本 | 事件订阅 |
 | `active_event` | `workers/active_event.py` | `ActiveEventWorker` | 按干预规则扫描行为日志，触发交接与提醒 | 定时调度 |
+| `chsi_import_cleanup` | `workers/chsi_imports.py` | `ChsiImportCleanupWorker` | 删除过期的学籍 PDF 预览 | 定时调度 |
 
 两者复用同一个 container（`zhiyin-boot` 装配），第一期可同进程随 lifespan 启动，
 成长期用 `python -m zhiyin_boot worker <name>` 独立部署——**部署形态变了，代码不变**。

@@ -51,6 +51,7 @@
     { "port": "impact", "owner": "业务编排负责人", "scope": "影响面传播 Worker" },
     { "port": "active_event", "owner": "业务编排负责人", "scope": "停滞干预 Worker" },
     { "port": "profile_evidence", "owner": "业务编排负责人", "scope": "画像证据评估 Worker（持久化队列、租约恢复、展示用途）" },
+    { "port": "chsi_import_cleanup", "owner": "业务编排负责人", "scope": "清除超过 30 分钟的学籍 PDF 预览，不删除已提交回执" },
     { "port": "vector_sync", "owner": "基础设施负责人", "scope": "向量同步 / 嵌入补偿 Worker（纯数据管道）" }
   ]
 }

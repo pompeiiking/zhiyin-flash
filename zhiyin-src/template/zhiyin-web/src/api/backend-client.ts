@@ -1,5 +1,6 @@
 /** Formal BFF transport for integration. Demo data never silently replaces a failed request. */
 import operations from './operations.json'
+import type { ChsiPdfPreview, ChsiPdfConfirm, ChsiPdfReceipt } from './backend-types'
 import type { AcademicPreview, AcademicPreviewRequest } from './backend-types'
 import type { AuthRequest, CoachNotificationView, ExportResultView, LoginResult, PortalView, WorkspacePageView } from './backend-types'
 import type { AcademicImportAck, AcademicImportRequest, ActionPlanView, ActionTaskDoneRequest, AchievementListView, AssetVersionView, BootstrapView, CalendarNodeView, CapabilitiesView, ConversationMaterialView, ConversationMessageView, ConversationTurnView, DirectionPlanListView, IntelListView, MessageRequest, NoteCreateRequest, NoteView, ProfileConflictView, ProfileFieldView, ReportFullTextView, SessionListView, TaskSessionView, TheoryCardView, TrackEventView } from './backend-types'
@@ -121,6 +122,8 @@ async function request<T>(key: keyof typeof operations, options: Options = {}): 
   return send<T>(operation, options, { auth: key === 'login' || key === 'register' })
 }
 export const backendClient = {
+  chsiPdfPreview: (form: FormData) => request<ChsiPdfPreview>('chsiPdfPreview', { form, timeout: 25_000 }),
+  chsiPdfConfirm: (body: ChsiPdfConfirm) => request<ChsiPdfReceipt>('chsiPdfConfirm', { body }),
   portal: () => request<PortalView>('portal'),
   authenticate: (mode: 'login' | 'register', body: AuthRequest) => request<LoginResult>(mode, { body }),
   logout: () => request<{ logged_out: boolean }>('logout'),
