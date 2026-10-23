@@ -363,7 +363,7 @@ onBeforeUnmount(() => observer?.disconnect())
  .report-toc-rail:hover .report-toc{width:44px}
  .report-toc-rail:hover .report-toc__panel{width:0;height:0;padding:0;opacity:0;pointer-events:none}
  .report-toc-rail.is-open .report-toc,.report-toc:has(:focus-visible){width:44px}
- .report-toc-rail.is-open .report-toc__panel,.report-toc:has(:focus-visible) .report-toc__panel{position:absolute;right:44px;bottom:0;left:auto;top:auto;width:min(254px,calc(100vw - 120px));height:auto;max-height:calc(100vh - 180px);overflow-y:auto;padding:14px 8px 14px 12px;opacity:1;pointer-events:auto;margin:0;border:1px solid var(--c-border);border-radius:14px;background:var(--c-surface);box-shadow:var(--e-3)}
+ .report-toc-rail.is-open .report-toc__panel,.report-toc:has(:focus-visible) .report-toc__panel{position:absolute;right:44px;bottom:0;left:auto;top:auto;width:min(254px,calc(100vw - 120px));height:auto;max-height:calc(100vh - 240px);overflow-y:auto;padding:14px 8px 14px 12px;opacity:1;pointer-events:auto;margin:0;border:1px solid var(--c-border);border-radius:14px;background:var(--c-surface);box-shadow:var(--e-3)}
 }
 @media(max-width:767px){
  .report-toc-rail{right:auto;left:-8px}
@@ -371,7 +371,7 @@ onBeforeUnmount(() => observer?.disconnect())
  .report-toc__handle{right:auto;left:0}
  .report-toc__line{left:21px;right:auto}
  .report-toc-rail.is-open{right:auto;left:12px}
- .report-toc-rail.is-open .report-toc__panel,.report-toc:has(:focus-visible) .report-toc__panel{margin-left:44px;margin-right:0}
+ .report-toc-rail.is-open .report-toc__panel,.report-toc:has(:focus-visible) .report-toc__panel{margin-left:44px;margin-right:0;max-height:calc(100dvh - 220px)}
  .article-finding__heading>.article-finding__state{grid-column:2;grid-row:2;margin-top:2px;justify-self:start}
 }
 </style>
