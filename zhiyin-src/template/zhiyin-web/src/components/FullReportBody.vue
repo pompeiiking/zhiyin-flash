@@ -371,7 +371,13 @@ onBeforeUnmount(() => observer?.disconnect())
  .report-toc__handle{right:auto;left:0}
  .report-toc__line{left:21px;right:auto}
  .report-toc-rail.is-open{right:auto;left:12px}
- .report-toc-rail.is-open .report-toc__panel,.report-toc:has(:focus-visible) .report-toc__panel{margin-left:44px;margin-right:0;max-height:calc(100dvh - 220px)}
+ .report-toc-rail.is-open .report-toc__panel,.report-toc:has(:focus-visible) .report-toc__panel{margin-left:44px;margin-right:0;max-height:min(48dvh,380px);padding:10px 6px 10px 8px;border-radius:12px}
+ .report-toc-rail.is-open .report-toc,.report-toc:has(:focus-visible){width:min(236px,calc(100vw - 40px))}
+ .report-toc-rail.is-open .report-toc__panel,.report-toc:has(:focus-visible) .report-toc__panel{width:calc(min(236px,calc(100vw - 40px)) - 44px)}
+ .report-toc__panel>p{margin-bottom:4px;font-size:11px}
+ .report-toc__panel>button{padding:6px;font-size:12px;line-height:1.5}
+ .report-toc__panel>button.report-toc__section{margin-top:4px}
+ .report-toc__panel>button.report-toc__item{padding:5px 6px 5px 16px;font-size:11px}
  .article-finding__heading>.article-finding__state{grid-column:2;grid-row:2;margin-top:2px;justify-self:start}
 }
 </style>
