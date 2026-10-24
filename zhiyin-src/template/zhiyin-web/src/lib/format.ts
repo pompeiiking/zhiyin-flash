@@ -96,3 +96,40 @@ export function formatCount(value: unknown, unit: string): string {
 export function visibleEvidence(items: readonly string[] | undefined | null): string[] {
   return (items ?? []).filter(item => !/^(?!https?:\/\/)[a-z][a-z0-9+.-]*:\/\//i.test(item.trim()))
 }
+
+/**
+ * 已知的画像字段中文名（内部键 → 学生看的叫法）。
+ * 兜底用：渲染层优先拿后端下发的 label（profile_panel / 报告快照都有）。
+ */
+const FIELD_LABELS: Record<string, string> = {
+  school: '学校', department: '院系', major: '专业', major_name: '专业',
+  degree_level: '学历层次', duration: '学制', study_mode: '学习形式',
+  enrolled_at: '入学日期', expected_graduation: '预计毕业时间',
+  enrollment_status: '学籍状态', study_year: '当前学习阶段', grade: '年级',
+  student_no: '学号', student_name: '姓名',
+}
+
+function fieldLabel(key: string): string {
+  return FIELD_LABELS[key] ?? '画像资料'
+}
+
+/**
+ * 把模型/存量数据里的**内部追溯记号**翻译成给学生看的话。
+ *
+ * 评估结论与报告引用里可能出现：`chsi-pdf://imports/<id>`（PDF 导入回执键）、
+ * `derived://study_year/...`（推算键）、`field:<key>` / `evidence:<key>:<n>` /
+ * `conflict:<id>`（评估的内部编号）。它们是溯源用的，落到卡片上就是开发数据。
+ * 只影响显示，不改数据；评估提示词已要求新产出的模型文本不再携带这些记号，
+ * 这里兜住**已经存库**的旧文本。
+ */
+export function studentizeRefs(text: string | undefined | null): string {
+  const raw = String(text ?? '')
+  if (!raw) return ''
+  return raw
+    .replace(/chsi-pdf:\/\/[a-z0-9/:._-]+/gi, '学信网学籍报告（PDF 导入）')
+    .replace(/derived:\/\/[a-z0-9/:._=-]+/gi, '按入学日期推算')
+    .replace(/evidence:([a-z_][a-z0-9_]*):(\d+)/gi, (_m, key: string, index: string) => `${fieldLabel(key)}的第${Number(index) + 1}份材料`)
+    .replace(/evidence:([a-z_][a-z0-9_]*)/gi, (_m, key: string) => `${fieldLabel(key)}的相关材料`)
+    .replace(/field:([a-z_][a-z0-9_]*)/gi, (_m, key: string) => fieldLabel(key))
+    .replace(/conflict:[A-Za-z0-9_-]+/g, '一条待核对的冲突')
+}

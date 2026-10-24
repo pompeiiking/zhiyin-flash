@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { backendDemo } from '../lib/backend-demo'
 import { profileLabel } from '../lib/server-copy'
 import { PROFILE_TOPICS, profilePriority } from '../lib/profile-organization'
+import { studentizeRefs, visibleEvidence } from '../lib/format'
 import DetailPopover from './DetailPopover.vue'
 import UiIcon from './UiIcon.vue'
 defineProps<{ loading?: boolean; error?: string; embedded?: boolean }>()
@@ -37,7 +38,7 @@ function valueText(value: unknown): string {
       <section v-for="group in groups" :key="group.key" class="consult-profile__group">
         <h3>{{ group.title }}<small>{{ group.items.length }}</small></h3>
         <dl><div v-for="field in group.items" :key="field.key" class="consult-profile__field">
-          <dt>{{ profileLabel(field.key, field.label || field.key) }}<DetailPopover :title="profileLabel(field.key, field.label || field.key) + ' · 信息来源'" side="left"><template #trigger><UiIcon name="info" :size="15" /></template><p>来源：{{ sources[field.source] || field.source }}</p><p v-for="(e,i) in field.evidence" :key="i">{{ e }}</p><p v-if="!field.evidence?.length">暂无详细依据。</p><RouterLink to="/profile" @click="$emit('close')">查看或更正资料</RouterLink></DetailPopover></dt>
+          <dt>{{ profileLabel(field.key, field.label || field.key) }}<DetailPopover :title="profileLabel(field.key, field.label || field.key) + ' · 信息来源'" side="left"><template #trigger><UiIcon name="info" :size="15" /></template><p>来源：{{ sources[field.source] || field.source }}</p><p v-for="(e,i) in visibleEvidence(field.evidence)" :key="i">{{ studentizeRefs(e) }}</p><p v-if="!visibleEvidence(field.evidence).length">暂无详细依据。</p><RouterLink to="/profile" @click="$emit('close')">查看或更正资料</RouterLink></DetailPopover></dt>
           <dd>{{ valueText(field.value) }}</dd>
         </div></dl>
       </section>

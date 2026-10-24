@@ -7,6 +7,26 @@ from zhiyin_kernel.enums import ProfileSource, ProfileVerification
 
 _DERIVED_STUDY_YEAR_REF = "derived://study_year/enrolled_at"
 
+def origin_ref_label(origin_ref: str) -> str:
+    """内部追溯引用 → 给学生看的一句话。
+
+    origin_ref 承载的是幂等与溯源键（chsi-pdf://imports/<id>、derived://…），
+    给模型或界面原样展示就是一串开发数据。http(s) 链接是真实出处，原样保留。
+    """
+    text = str(origin_ref or "").strip()
+    if not text:
+        return ""
+    if text.startswith("chsi-pdf://"):
+        return "学信网学籍报告（PDF 导入）"
+    if text.startswith("derived://"):
+        return "按入学日期推算"
+    if text.startswith("http://") or text.startswith("https://"):
+        return text
+    if "://" in text:
+        return "系统内部记录"
+    return text
+
+
 def _same_identity(left: str, right: str, *, ignore_hyphen: bool = False) -> bool:
     """Compare the report identity with the saved profile identity.
 

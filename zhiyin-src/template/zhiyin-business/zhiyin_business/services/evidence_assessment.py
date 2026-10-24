@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from zhiyin_data_sdk.gateways.ai import LLMMessage
 from zhiyin_kernel.evidence_assessment import EvidenceAssessment
 from zhiyin_business.contracts.evidence_assessment import ASSESSMENT_PROMPT, EvidenceJudgment
+from zhiyin_business.services.enrollment_report import origin_ref_label
 from zhiyin_business.services.unit_of_work import transaction
 
 logger = logging.getLogger(__name__)
@@ -224,5 +225,5 @@ class ProfileEvidenceService:
         text = reference.get('text', reference.get('value', ''))
         if not isinstance(text, str):
             text = json.dumps(text, ensure_ascii=False)
-        origin = reference.get('origin_ref') or ''
-        return f"{reference['label']}：{text[:500]}" + (f"（{origin}）" if origin else '')
+        origin = origin_ref_label(reference.get('origin_ref') or '')
+        return f"{reference['label']}：{text[:500]}" + (f"（来源：{origin}）" if origin else '')

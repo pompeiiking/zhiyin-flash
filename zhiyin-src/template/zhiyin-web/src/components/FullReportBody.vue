@@ -8,7 +8,7 @@ import { useAiTask } from '../lib/use-ai-task'
 import AiResultMeta from './AiResultMeta.vue'
 import AiStatus from './AiStatus.vue'
 import { studentVoice } from '../lib/student-voice'
-import { formatDate, formatDateTime } from '../lib/format'
+import { formatDate, formatDateTime, studentizeRefs, visibleEvidence } from '../lib/format'
 import EvidenceAssessmentDetails from './EvidenceAssessmentDetails.vue'
 import EvidenceState from './EvidenceState.vue'
 import DetailPopover from './DetailPopover.vue'
@@ -136,7 +136,7 @@ function sectionLead(section: ReportSectionView) {
 function chapterLabel(index: number) { return ['第一章', '第二章', '第三章', '第四章'][index] ?? `第 ${index + 1} 章` }
 function itemId(item: ReportDimensionItemView) { return `finding-${item.index}` }
 function isPending(item: ReportDimensionItemView) { return !item.evidence?.trim() || /待|缺|不足|未知/.test(item.tag || '') }
-function evidenceText(value?: string | null) { return (value || '').replace(/\b[a-z]+(?:_[a-z]+)+\b/g, key => profileLabel(key, key)) }
+function evidenceText(value?: string | null) { return studentizeRefs((value || '').replace(/\b[a-z]+(?:_[a-z]+)+\b/g, key => profileLabel(key, key))) }
 function sectionDomId(id: string) { return `report-section-${id.replace(/[^a-zA-Z0-9_-]/g, '-')}` }
 function askLink(item: ReportDimensionItemView) {
   return '/chat?question=' + encodeURIComponent(`我想核对第${props.report.version}版报告中的「${item.name}」：${item.conclusion}${item.evidence ? `；依据：${item.evidence}` : '；目前没有提供依据'}`)
@@ -314,7 +314,7 @@ onBeforeUnmount(() => observer?.disconnect())
       <p v-if="profileError && !usingSnapshot" class="report-profile-error" role="status">{{ profileError }}</p>
       <section v-for="section in profileSections" :key="section.key" class="profile-sheet-section">
         <h2>{{ section.title }}</h2>
-        <article v-for="field in section.fields" :key="field.key" class="profile-sheet-field"><header><strong>{{ profileLabel(field.key, field.label || field.key) }}</strong><span>{{ sourceNames[field.source] || field.source }}</span></header><p>{{ profileValue(field) }}</p><small>更新于 {{ fieldDate(field.updated_at) }}</small><EvidenceAssessmentDetails :assessment="reportAssessment(field)" :historical="usingSnapshot && !reportAssessment(field)" :snapshot="usingSnapshot" /><ul v-if="field.evidence?.length"><li v-for="evidence in field.evidence" :key="evidence">{{ evidence }}</li></ul></article>
+        <article v-for="field in section.fields" :key="field.key" class="profile-sheet-field"><header><strong>{{ profileLabel(field.key, field.label || field.key) }}</strong><span>{{ sourceNames[field.source] || field.source }}</span></header><p>{{ profileValue(field) }}</p><small>更新于 {{ fieldDate(field.updated_at) }}</small><EvidenceAssessmentDetails :assessment="reportAssessment(field)" :historical="usingSnapshot && !reportAssessment(field)" :snapshot="usingSnapshot" /><ul v-if="visibleEvidence(field.evidence).length"><li v-for="evidence in visibleEvidence(field.evidence)" :key="evidence">{{ studentizeRefs(evidence) }}</li></ul></article>
       </section>
       <template v-if="!usingSnapshot">
         <section v-if="academic?.courses?.length" class="profile-sheet-section"><h2>课程记录 · {{ academic.courses.length }} 门</h2><div class="academic-prose"><article v-for="course in academic.courses" :key="course.name + '-' + course.weekday + '-' + course.start_period"><h3>{{ course.name }}</h3><p>{{ weekday(course.weekday) }}<template v-if="course.start_period">，第 {{ course.start_period }}–{{ course.end_period ?? course.start_period }} 节</template><template v-if="course.place">，上课地点为 {{ course.place }}</template><template v-if="course.teacher">，任课教师为 {{ course.teacher }}</template>。</p></article></div></section>
