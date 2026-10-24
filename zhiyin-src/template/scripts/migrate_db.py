@@ -94,6 +94,11 @@ USER_TABLES: tuple[str, ...] = (
     "biz_conversation_turn",
     "biz_user_note",
     "biz_academic_snapshot",
+    # 学籍 PDF 导入的预览与回执：画像字段的 origin_ref 指向 chsi-pdf://imports/<id>，
+    # 不迁的话这些来源引用会悬空；committed 回执同时承载"已导入"的幂等语义，
+    # 搬家后重复确认仍应返回同一份回执而不是再导一次。pending 预览 30 分钟过期，
+    # 带过去也只是等清理，无害。
+    "biz_chsi_pdf_import",
     "biz_task_session",
     "biz_asset_version",
     "biz_asset_content",

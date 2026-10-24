@@ -234,17 +234,27 @@ class StudentService:
                     raise InvalidRequest("首次创建已保存，请重新读取任务后编辑；本次重试不会重复创建或覆盖已保存的内容。")
                 if body.expected_task is not None and current != body.expected_task:
                     raise InvalidRequest("这项任务已在其他页面更新。你的输入仍保留，请重新读取最新任务后核对修改，避免覆盖他人的更新。")
+            drop_parent = False
             if body.parent_task_id:
                 parent = tasks.get(body.parent_task_id)
                 if parent is None:
-                    raise ResourceNotFound("被拆分任务不存在")
-                seen = {task_id}
-                while parent:
-                    if parent.id in seen:
-                        raise InvalidRequest("拆分关联不能形成循环")
-                    seen.add(parent.id)
-                    parent = tasks.get(parent.parent_task_id)
+                    if old is not None and old.parent_task_id == body.parent_task_id:
+                        # 历史遗留的悬空关联（父任务删除早于"删除时提升子任务"
+                        # 的修复）：解除它，让这次编辑同时把子任务恢复成独立任务，
+                        # 而不是从此永远报"被拆分任务不存在"。
+                        drop_parent = True
+                    else:
+                        raise ResourceNotFound("被拆分任务不存在")
+                else:
+                    seen = {task_id}
+                    while parent:
+                        if parent.id in seen:
+                            raise InvalidRequest("拆分关联不能形成循环")
+                        seen.add(parent.id)
+                        parent = tasks.get(parent.parent_task_id)
             values = body.model_dump(exclude={"phase_id", "expected_task", "client_request_id"})
+            if drop_parent:
+                values["parent_task_id"] = None
             values.update(
                 id=identity,
                 done=body.status == "completed",
@@ -344,6 +354,13 @@ class StudentService:
                 kept = [task for task in phase.tasks if task.id != task_id]
                 if len(kept) != len(phase.tasks):
                     phase.tasks = kept
+                    # 被删任务拆分出的子任务提升为独立任务：留着指向已删除
+                    # 父任务的 parent_task_id，子任务下次保存会被
+                    # "被拆分任务不存在"挡住，成了删不掉也改不了的悬空记录。
+                    for other in plan.phases:
+                        for task in other.tasks:
+                            if task.parent_task_id == task_id:
+                                task.parent_task_id = None
                     removed["done"] = True
                     return plan
             raise ResourceNotFound("行动任务不存在")
@@ -362,10 +379,20 @@ class StudentService:
             if plan is None:
                 raise ResourceNotFound("请先创建一个阶段")
             normalize(plan)
-            kept = [phase for phase in plan.phases if phase.id != phase_id]
-            if len(kept) == len(plan.phases):
+            target = next((p for p in plan.phases if p.id == phase_id), None)
+            if target is None:
                 raise ResourceNotFound("阶段不存在")
-            plan.phases = kept
+            removed_tasks = {task.id for task in target.tasks}
+            plan.phases = [phase for phase in plan.phases if phase.id != phase_id]
+            # 删除后不留悬空引用：依赖被删阶段的后续阶段解除依赖（否则
+            # blocked_by 永远满足不了，next_task 一直是 null）；被删任务拆分出的
+            # 子任务提升为独立任务。同一个变更里一起改，语义保持"删除阶段及其下任务"。
+            for phase in plan.phases:
+                if phase_id in phase.depends_on:
+                    phase.depends_on = [dep for dep in phase.depends_on if dep != phase_id]
+                for task in phase.tasks:
+                    if task.parent_task_id in removed_tasks:
+                        task.parent_task_id = None
             removed["done"] = True
             return plan
 
@@ -948,19 +975,32 @@ class StudentService:
             import re
 
             raw_weeks = course.weeks.replace("周", "").replace("，", ",")
-            weeks = set()
             if not re.fullmatch(r"[0-9,\s\-单双()（）]+", raw_weeks):
                 missing.append(f"课程「{course.name}」教学周无法识别")
                 continue
-            for lo, hi in re.findall(r"(\d+)(?:\s*-\s*(\d+))?", raw_weeks):
-                if not 1 <= int(lo) <= int(hi or lo) <= 53:
-                    missing.append(f"课程「{course.name}」教学周超出范围")
+            # 单/双周限定词作用于**它紧跟的那一段**（如 `1-3(单),2-4(双)`），
+            # 不是整门课：先合并全部区间再对整个集合依次过滤，一段带"单"、
+            # 一段带"双"时必然过滤成空集 —— 这门课会从负荷里凭空消失。
+            weeks: set[int] = set()
+            for segment in raw_weeks.split(","):
+                segment = segment.strip()
+                if not segment:
                     continue
-                weeks.update(range(int(lo), int(hi or lo) + 1))
-            if "单" in raw_weeks:
-                weeks = {w for w in weeks if w % 2}
-            if "双" in raw_weeks:
-                weeks = {w for w in weeks if not w % 2}
+                part: set[int] = set()
+                for lo, hi in re.findall(r"(\d+)(?:\s*-\s*(\d+))?", segment):
+                    if not 1 <= int(lo) <= int(hi or lo) <= 53:
+                        missing.append(f"课程「{course.name}」教学周超出范围")
+                        continue
+                    part.update(range(int(lo), int(hi or lo) + 1))
+                if "单" in segment and "双" in segment:
+                    # 同一段同时声明单、双周没有可实现的语义：显式报缺失，不猜。
+                    missing.append(f"课程「{course.name}」教学周限定无法识别")
+                    continue
+                if "单" in segment:
+                    part = {w for w in part if w % 2}
+                if "双" in segment:
+                    part = {w for w in part if not w % 2}
+                weeks.update(part)
             for week in sorted(weeks):
                 day = semester.first_monday + timedelta(weeks=week - 1, days=course.weekday - 1)
                 if week > semester.weeks:

@@ -13,7 +13,6 @@ def extract(data):
     from pypdf import PdfReader
     from zhiyin_infrastructure.chsi.client import parse_fields
     from zhiyin_data_sdk.gateways.chsi import ChsiReport, ChsiReportKind
-    from zhiyin_kernel.chsi_dates import parse_chsi_date
 
     reader = PdfReader(io.BytesIO(data))
     if reader.is_encrypted:

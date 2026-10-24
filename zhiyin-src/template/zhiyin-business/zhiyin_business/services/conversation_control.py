@@ -26,6 +26,12 @@ class ConversationControl:
             await self.ledger.remove_session(user_id, task_id)
             def deleted(state):
                 state.get("conversation_settings", {}).pop(task_id, None)
+                # 复制保存的消息快照是**会话拥有**的存储：会话删了，这三处
+                # （最新一份、按消息 id 的回执副本、已保存消息索引）必须跟着清，
+                # 否则敏感原文在会话删除后仍留在账号状态里持续累积。
+                state.get("session_snapshots", {}).pop(task_id, None)
+                state.get("conversation_reply_snapshots", {}).pop(task_id, None)
+                state.get("snapshot_messages", {}).pop(task_id, None)
                 ids = state.setdefault("deleted_conversations", [])
                 if task_id not in ids:
                     ids.append(task_id)

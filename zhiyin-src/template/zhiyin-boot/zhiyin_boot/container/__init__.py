@@ -142,6 +142,15 @@ def build_container(settings: Optional[Settings] = None) -> Container:
     """构造完整容器：Gateways → Repositories → 编排原语 → 服务 → Worker。"""
     settings = settings or Settings.from_env()
 
+    # 生产配置防护：本地仓储只在内存里存数据，重启即丢、也无法多实例部署；
+    # prod 漏配持久化时直接拒绝启动，而不是让账号数据静默住进内存。
+    if settings.env == "prod" and not settings.use_postgres:
+        raise RuntimeError(
+            "生产环境（ZHIYIN_ENV=prod）必须启用 PostgreSQL 持久化"
+            "（ZHIYIN_USE_POSTGRES=1）：本地仓储不落盘，重启即丢数据。"
+            "本地演示请把 ZHIYIN_ENV 保持在 local/dev。"
+        )
+
     # 所有 PostgreSQL 仓储共用同一个进程级池。必须在 AI 路由仓储等
     # 第一个消费者装配之前确定池大小，否则它们会先用默认值建池。
     if settings.use_postgres:

@@ -103,6 +103,11 @@ async function exportData() {
     ])
     if (workspace.status === 'rejected') throw workspace.reason
     if (notes.status === 'rejected') throw notes.reason
+    // 报告/计划读取失败（非"尚未生成"）不能悄悄降级成 null：那样用户拿到的是
+    // 一份缺了章节却标着"已导出"的文件，分不清"从未生成"和"没导出成功"。
+    // 与画像/待办同一条口径 —— 意外失败直接中止，让用户看到具体错误再重试。
+    if (report.status === 'rejected') throw report.reason
+    if (action.status === 'rejected') throw action.reason
     const reportValue = report.status === 'fulfilled' ? report.value : null
     const actionValue = action.status === 'fulfilled' ? action.value : null
     const account = displayName.value || '当前账号'

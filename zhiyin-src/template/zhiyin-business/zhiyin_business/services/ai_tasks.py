@@ -27,7 +27,6 @@ from zhiyin_business.contracts.ai_tasks import (
     DimensionReading,
     GapClarify,
     MatchResult,
-    ProfileLift,
     PortraitAnalysis,
     ReportSummary,
     TimetablePlan,
@@ -40,14 +39,13 @@ from zhiyin_business.ports.blackboard import (
 )
 from zhiyin_business.policies.collection import filled_by, plan_collection
 from zhiyin_data_sdk.gateways.chsi import (
-    ChsiReportKind,
     ChsiVerificationGateway,
     ChsiVerifyError,
     ChsiVerifyErrorKind,
 )
 from zhiyin_data_sdk.errors import MissingConfigError
 from zhiyin_data_sdk.repositories import AiTaskResultRepository
-from zhiyin_kernel import academic_time, dynamic_config, profile_taxonomy
+from zhiyin_kernel import dynamic_config, profile_taxonomy
 from zhiyin_kernel.blackboard import Profile
 from zhiyin_kernel.enums import ProfilePurpose, ProfileSource, ProfileVerification
 from zhiyin_kernel.errors import ResourceNotFound
@@ -1424,7 +1422,18 @@ class AiTaskService:
 
         from zhiyin_business.services.enrollment_report import EnrollmentReportService
         applied = await EnrollmentReportService(self._profiles).apply(
-            user_id, report, existing, await self._chsi_field_specs())
+            user_id, report, existing, await self._chsi_field_specs(), write=False)
+        # 在线核验与 PDF 导入同一套写入纪律：先收集全部条目、带上"我看到的是哪一版"，
+        # 再在一个事务里写入。逐字段各自提交的话，中途失败会把画像留在
+        # "核验了一半"的状态（部分字段已写入、事件已发出），界面却报核验失败。
+        entries = applied["entries"]
+        for entry in entries:
+            field = existing.get(entry["key"])
+            entry["expected_updated_at"] = field.updated_at if field else None
+        changed = await self._profiles.write_report_entries(user_id, entries)
+        # 展示层的把握度评估是提交后的旁路投影（与 update_field 单字段路径同口径）。
+        for key in changed:
+            await self._profiles.refresh_report_assessment(user_id, key)
         written = applied["written"]
         detail_bits = applied["detail_bits"]
         report_written = applied["report_written"]

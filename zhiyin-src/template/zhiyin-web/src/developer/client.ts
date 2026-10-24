@@ -60,12 +60,18 @@ export function parseObject(text: string, label: string): JsonObject {
   return value as JsonObject
 }
 export async function downloadPackage(url: string, filename: string) {
-  const response = await fetch(`/api/v1${url}`, { headers: { Authorization: `Bearer ${authToken()}` } })
+  const token = authToken()
+  const response = await fetch(`/api/v1${url}`, { headers: { Authorization: `Bearer ${token}` } })
+  // 与普通导出（downloadExport）同一条保护：等待网络与 blob 的间隙里账号可能
+  // 已切换，旧账号的文件不能在这个异步边界之后被下载到当前会话。
+  if (authToken() !== token) throw new Error('账号已变更，请重新下载。')
   if (!response.ok || response.headers.get('content-type')?.includes('application/json')) {
     const body = await response.json().catch(() => null) as { message?: string } | null
     throw new Error(body?.message || `下载失败：HTTP ${response.status}`)
   }
-  const objectUrl = URL.createObjectURL(await response.blob())
+  const blob = await response.blob()
+  if (authToken() !== token) throw new Error('账号已变更，请重新下载。')
+  const objectUrl = URL.createObjectURL(blob)
   const link = document.createElement('a'); link.href = objectUrl; link.download = filename; link.click()
   setTimeout(() => URL.revokeObjectURL(objectUrl), 1000)
 }

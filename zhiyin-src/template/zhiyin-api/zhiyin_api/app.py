@@ -157,7 +157,10 @@ def create_app(
         finally:
             elapsed = (time.perf_counter() - started) * 1000
             route = request.scope.get("route")
-            route_path = getattr(route, "path", None) or request.url.path
+            # 没匹配到路由时不能用完整路径做键：路径扫描/恶意请求会让这个字典
+            # 无界增长（内存与 /metrics 序列化都跟着膨胀），而它对排查毫无增量 ——
+            # 未匹配统一记成 unmatched，基数与路由表同阶。
+            route_path = getattr(route, "path", None) or "unmatched"
             _METRICS["requests"] = int(_METRICS["requests"]) + 1
             status = getattr(response, "status_code", 500)
             if status >= 400:

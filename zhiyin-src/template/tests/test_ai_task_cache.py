@@ -67,6 +67,17 @@ async def test_bind_runs_twice_and_never_serves_a_cached_envelope() -> None:
                 updated_at=datetime.now(timezone.utc),
             )
 
+        async def write_report_entries(self, user_id, entries):
+            # bind.chsi 现在与 PDF 导入同一条原子批量写入路径；替身按同样顺序落字段。
+            for entry in entries:
+                await self.update_field(user_id, entry["key"], entry["value"], **{
+                    k: v for k, v in entry.items() if k not in {"key", "value"}
+                })
+            return [entry["key"] for entry in entries]
+
+        async def refresh_report_assessment(self, user_id, key):
+            return None
+
     class _Registry:
         """回执上的"谁在替你做这件事"来自注册表，不写死在服务里。"""
 

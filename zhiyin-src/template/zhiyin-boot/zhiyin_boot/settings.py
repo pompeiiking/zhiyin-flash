@@ -113,6 +113,11 @@ class Settings:
     rate_limit_auth: int = 30
     rate_limit_write: int = 120
     rate_limit_conversation: int = 20
+    #: 信任的代理来源（逗号分隔的 IP/CIDR，"*" = 全部信任，慎用）。
+    #: 限流按客户端 IP 计数；前面有 nginx 等反代时，只有来源在这些网段里，
+    #: X-Forwarded-For 才会被采信还原真实客户端 —— 否则所有用户共用代理的
+    #: 一个限流桶，正常多人登录会互相触发 429。默认只信任本机回环。
+    trusted_proxies: str = "127.0.0.1"
 
     # ---------- 外部存储 ----------
     # 只保留 Redis 与 PostgreSQL + pgvector。
@@ -195,6 +200,7 @@ class Settings:
             rate_limit_auth=_env_int("ZHIYIN_RATE_LIMIT_AUTH", 30),
             rate_limit_write=_env_int("ZHIYIN_RATE_LIMIT_WRITE", 120),
             rate_limit_conversation=_env_int("ZHIYIN_RATE_LIMIT_CONVERSATION", 20),
+            trusted_proxies=_env("ZHIYIN_TRUSTED_PROXIES", "127.0.0.1"),
             env=_env("ZHIYIN_ENV", "local"),
             use_redis=_env_bool("ZHIYIN_USE_REDIS"),
             redis_url=_env("ZHIYIN_REDIS_URL", "redis://redis:6379/0"),

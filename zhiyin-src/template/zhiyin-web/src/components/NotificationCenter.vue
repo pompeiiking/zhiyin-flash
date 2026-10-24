@@ -110,10 +110,18 @@ async function change(target: NoticeGroup | Notice, state: NoticeState) {
   }
   busy.value=true;error.value=''
   try{
-    const updated=await Promise.all(group.items.map(n=>studentApi.notification(n.id,{status:state,snoozed_until:state==='later'?until:null})))
+    // 逐项接收回执：一组里几条成功几条失败时，已成功的先按回执更新，再从
+    // 服务器回读对齐 —— 不让"任一失败就整组报错"把界面留在与服务器不一致的状态。
+    const results=await Promise.allSettled(group.items.map(n=>studentApi.notification(n.id,{status:state,snoozed_until:state==='later'?until:null})))
+    const updated=results.filter((r):r is PromiseFulfilledResult<Notice>=>r.status==='fulfilled').map(r=>r.value)
+    const failed=results.length-updated.length
     markUpdated(updated)
-    if(state!=='read')justRead.value=justRead.value.filter(id=>!group.ids.includes(id))
-    status.value=group.items.length>1?`已更新 ${group.items.length} 条同内容提醒的状态。`:'提醒状态已保存。'
+    if(state!=='read')justRead.value=justRead.value.filter(id=>!updated.some(u=>u.id===id))
+    if(failed>0){
+      error.value=`${failed} 条提醒没有保存成功（成功 ${updated.length} 条）。列表已按服务器最新状态刷新，可对未成功的一条条重试。`
+    }else{
+      status.value=group.items.length>1?`已更新 ${group.items.length} 条同内容提醒的状态。`:'提醒状态已保存。'
+    }
     await refreshNotifications(notices.value)
   }catch(e){error.value=(e as Error).message}finally{busy.value=false}
 }
@@ -129,10 +137,17 @@ async function reveal(group:NoticeGroup){
   if(!pending.length)return
   busy.value=true;error.value=''
   try{
-    const updated=await Promise.all(pending.map(n=>studentApi.notification(n.id,{status:'read'})))
+    // 同 change()：逐项接收，部分失败也先把成功的落到位，再回读服务器对齐。
+    const results=await Promise.allSettled(pending.map(n=>studentApi.notification(n.id,{status:'read'})))
+    const updated=results.filter((r):r is PromiseFulfilledResult<Notice>=>r.status==='fulfilled').map(r=>r.value)
+    const failed=results.length-updated.length
     markUpdated(updated)
     justRead.value=[...new Set([...justRead.value,...updated.map(u=>u.id)])]
-    status.value=pending.length>1?'已标为已读（同内容的几条一起标记），可在「已读历史」回看。':'已标为已读，可在「已读历史」回看。'
+    if(failed>0){
+      error.value=`${failed} 条没有标成已读（成功 ${updated.length} 条）。列表已按服务器最新状态刷新，可稍后重试。`
+    }else{
+      status.value=pending.length>1?'已标为已读（同内容的几条一起标记），可在「已读历史」回看。':'已标为已读，可在「已读历史」回看。'
+    }
     await refreshNotifications(notices.value)
   }catch(e){error.value=(e as Error).message}finally{busy.value=false}
 }

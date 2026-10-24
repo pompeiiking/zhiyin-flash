@@ -201,7 +201,16 @@ class DefaultApplicationFacade(ApplicationFacade):
     async def confirm_chsi_pdf(self, user_id, body):
         if self._chsi_imports is None:
             raise InvalidRequest("学籍 PDF 导入暂未装配。")
-        return await self._chsi_imports.confirm(user_id, body)
+        receipt = await self._chsi_imports.confirm(user_id, body)
+        # 导入成功后同步失效该账号的读缓存与 AI 产出缓存（与画像更正同一条收尾口径）。
+        # 前端清自己的 GET 缓存清不掉后端这份：不失效的话，TTL 内用户会看到
+        # "导入成功"但工作台还是旧画像。失效失败只记日志 —— 写入已经落库，
+        # 不能把已成功的导入说成失败；下一次读自会按新值重建。
+        try:
+            await self._invalidate_user(user_id, "profile_field_updated")
+        except Exception:  # noqa: BLE001 - 写入已提交，失效失败不推翻它
+            logger.warning("学籍 PDF 导入已提交，但缓存失效失败（user=%s）", user_id, exc_info=True)
+        return receipt
 
     async def check_analysis_consent(self, user_id):
         if self._student is not None:

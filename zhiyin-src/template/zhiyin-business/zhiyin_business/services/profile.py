@@ -397,12 +397,19 @@ class DefaultProfileService(ProfileService):
         return saved
 
     async def write_report_entries(self, user_id, entries):
-        """Called inside the import repository's shared transaction."""
-        events = []
-        for entry in entries:
-            await self._update_field(user_id, **entry, check_version=True, deferred_events=events)
-        for event in events:
-            await self._event_bus.publish(event)
+        """全部报告条目放进**同一个事务**写入（内容、版本与事件一次提交）。
+
+        PDF 导入的调用方已经开着导入仓储的共享事务，这里的 `transaction()`
+        会按仓储语义并入外层（嵌套即保存点）；在线核验没有外层事务，
+        这里就是原子边界 —— 否则逐字段各自提交，中途失败会把画像留在
+        "核验了一半"的状态，还已经发出了一部分更新事件。
+        """
+        async with transaction(self._profiles):
+            events = []
+            for entry in entries:
+                await self._update_field(user_id, **entry, check_version=True, deferred_events=events)
+            for event in events:
+                await self._event_bus.publish(event)
         return [entry["key"] for entry in entries]
 
     async def refresh_report_assessment(self, user_id, key):

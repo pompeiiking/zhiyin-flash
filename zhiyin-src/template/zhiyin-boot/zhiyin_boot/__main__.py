@@ -249,6 +249,10 @@ def main(argv: list[str] | None = None) -> int:
     # uvicorn 的热重载要求传 import string（它要能重新导入模块），所以这条分支
     # 走 `zhiyin_boot.asgi:app`；不带 --reload 时仍用已经装配好的实例，
     # 避免重复读库与重复建连接池。
+    #
+    # proxy_headers：反代后面只有来源在可信网段（settings.trusted_proxies）里，
+    # X-Forwarded-For 才会被采信还原客户端 IP —— 限流按它计数，否则所有用户
+    # 共用代理的一个限流桶。
     if args.reload:
         uvicorn.run(
             "zhiyin_boot.asgi:app",
@@ -257,9 +261,17 @@ def main(argv: list[str] | None = None) -> int:
             reload=True,
             # 传空列表 uvicorn 会当成"没有目录"；不传才是"默认整个工作目录"。
             reload_dirs=list(args.reload_dir) or None,
+            proxy_headers=True,
+            forwarded_allow_ips=settings.trusted_proxies,
         )
     else:
-        uvicorn.run(app, host=args.host, port=args.port)
+        uvicorn.run(
+            app,
+            host=args.host,
+            port=args.port,
+            proxy_headers=True,
+            forwarded_allow_ips=settings.trusted_proxies,
+        )
     return 0
 
 

@@ -1,11 +1,18 @@
+<script lang="ts">
+// 滚动锁是**全站共享**的计数器，必须放模块级：<script setup> 里的顶层变量
+// 每个实例各有一份 —— 两个浮层叠开时，第二个保存到的"旧 overflow"已经是
+// hidden，先关的那个会把滚动解锁（另一个还开着），两个都关掉反而锁死。
+// 锁只在最后一份释放时还原页面。
+let openSheets = 0
+let previousBodyOverflow = ''
+</script>
+
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import UiIcon from './UiIcon.vue'
 import { vScrollFade } from '../lib/scroll-fade'
 
 type Shape = 'dialog' | 'sheet' | 'panel'
-let openSheets = 0
-let previousBodyOverflow = ''
 
 const props = withDefaults(defineProps<{
   open: boolean

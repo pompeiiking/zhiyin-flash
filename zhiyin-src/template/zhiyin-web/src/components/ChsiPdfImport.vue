@@ -17,7 +17,11 @@ const canConfirm = computed(() => preview.value?.can_import && selected.value.le
   (!preview.value.requires_ownership_confirmation || ownership.value))
 
 function choose(event: Event) {
-  file.value = (event.target as HTMLInputElement).files?.[0] ?? null
+  const input = event.target as HTMLInputElement
+  file.value = input.files?.[0] ?? null
+  // 读到文件后立刻重置原生控件：不清的话，导入成功（或解析失败）后再选
+  // **同一个**文件不触发 change，界面停在"选择学籍报告"、解析按钮一直禁用。
+  input.value = ''
   preview.value = null; receipt.value = null; error.value = ''; ownership.value = false
   selected.value = []; clearTimeout(expiryTimer)
 }

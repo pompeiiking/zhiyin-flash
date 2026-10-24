@@ -60,6 +60,8 @@ class ImpactPropagationWorker(Worker):
         顺序要求：**先出队、再处理、成功后才记去重**。
         此前是"出队即记 `_seen`"，于是 `propagate` 抛错时这一批剩余用户的工作不会执行，
         而它们的 event_id 已经进了去重表 —— 驱动方重试也会被过滤掉，**工作永久丢失**。
+        处理中抛错时，失败用户与尚未轮到的用户的事件会放回队列等待下一轮，
+        保证"重试真的有工作可做"。
         """
         batch: dict[str, set[str]] = {}
         fresh: set[str] = set()
@@ -85,6 +87,7 @@ class ImpactPropagationWorker(Worker):
             events.append(event)
 
         done = 0
+        processed: set[str] = set()
         for user_id, keys in batch.items():
             try:
                 await self._assets.propagate(
@@ -104,8 +107,13 @@ class ImpactPropagationWorker(Worker):
                     )
             except Exception:  # noqa: BLE001 - 单用户失败不能拖垮整批
                 # 不记去重：这批事件还没成功，绝不能让它们"看起来已处理"。
-                # 直接抛给驱动方（`zhiyin_boot.workers` 会记日志并按间隔重试）。
+                # 但队列已经清空了 —— 失败的用户和本轮还没轮到的用户，
+                # 事件必须放回队列，否则驱动方重试时无事件可处理，工作直接丢失。
+                for event in events:
+                    if str(event.payload.get("user_id")) not in processed:
+                        self._queue.put_nowait(event)
                 raise
+            processed.add(user_id)
             done += 1
 
         for event in events:

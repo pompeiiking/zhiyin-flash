@@ -195,6 +195,17 @@ class _RecordingProfiles:
         self.fields = [item for item in self.fields if item.key != key] + [field]
         return field
 
+    async def write_report_entries(self, user_id, entries):
+        """bind.chsi 与 PDF 导入同一条原子批量写入路径；替身按同样顺序落字段。"""
+        for entry in entries:
+            await self.update_field(user_id, entry["key"], entry["value"], **{
+                k: v for k, v in entry.items() if k not in {"key", "value"}
+            })
+        return [entry["key"] for entry in entries]
+
+    async def refresh_report_assessment(self, user_id, key):
+        return None
+
 
 def _derivation_service(
     profiles: _RecordingProfiles, chsi: object | None = None

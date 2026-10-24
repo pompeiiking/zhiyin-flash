@@ -17,6 +17,13 @@ services:
       ZHIYIN_POSTGRES_DSN: postgresql://zhiyin:zhiyin@postgres:5432/zhiyin
       ZHIYIN_AUTH_JWT_SECRET: ${ZHIYIN_AUTH_JWT_SECRET:?ZHIYIN_AUTH_JWT_SECRET is required}
       ZHIYIN_AUTH_TOKEN_TTL_S: "86400"
+      # 限流按客户端 IP 计数。web 容器里的 nginx 反代到本服务时传 X-Forwarded-For，
+      # 只有来源在可信网段里才会被采信还原真实客户端 —— 不配的话所有用户共用
+      # 代理的一个限流桶，正常多人登录会互相触发 429。compose 网段在私网范围内
+      # 动态分配；后端端口只绑回环（见下），私网来源只可能是本 compose 的容器，
+      # 所以这里信任 RFC1918 私网是安全的。本机直连宿主机 8000 的开发工具
+      # 不经反代，X-Forwarded-For 不存在，行为与之前一致。
+      ZHIYIN_TRUSTED_PROXIES: "172.16.0.0/12,10.0.0.0/8,192.168.0.0/16"
     volumes:
       # 迁移文件（策略与配置）只读挂进来，供一次性导入用：
       #   docker compose run --rm zhiyin-flash \
@@ -27,7 +34,12 @@ services:
       - ./deploy:/migration:ro
       - zhiyin_objects:/app/data/objects
     ports:
-      - "8000:8000"
+      # 只绑回环（与 redis / postgres 同一条口径）：前端 nginx 在 compose 网内
+      # 直连服务名，不受影响；宿主机上的开发工具走 127.0.0.1:8000 也不受影响。
+      # 不对局域网开放可以保证"来自私网的请求都是本 compose 的容器"，
+      # 上面的 ZHIYIN_TRUSTED_PROXIES 才能放心信任私网来源，LAN 上的机器
+      # 无法直连后端伪造 X-Forwarded-For 绕过限流。
+      - "127.0.0.1:8000:8000"
     restart: unless-stopped
     depends_on:
       redis:

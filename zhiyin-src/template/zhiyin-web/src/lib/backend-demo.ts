@@ -15,6 +15,8 @@ const emptyState = () => ({
   liveCalendar: [] as CalendarNodeView[]|null, liveReport: null as ReportFullTextView|null,
   liveDirections: null as DirectionPlanListView|null, reportMetadata: null as AssetVersionView|null,
   profileOriginals: {} as Record<string,ProfileFieldView>, profileEditSerial: 0,
+  /** 本地待办写入次数（upsert/remove 各 +1）：列表读请求用它判断"读取期间发生过写入"，旧快照不能再覆盖新写入。 */
+  noteWriteSerial: 0,
   intelOrigin: 'live' as 'sample'|'live', notesOrigin: 'live' as 'sample'|'live', academicOrigin: 'live' as 'sample'|'local'|'live',
   liveNoteIds: [] as string[], drafts: {} as Record<string,{text:string;materials:{id:string;name:string}[];scroll:number|null}>,
   currentSessionId: '', sessions: [] as TaskSessionView[], histories: {} as Record<string,ChatTurn[]>,
@@ -54,7 +56,7 @@ export const backendDemo = {
   setCalendar(nodes: CalendarNodeView[]) { state.liveCalendar = nodes },
   setReport(report: ReportFullTextView) { state.liveReport = report },
   setReportMetadata(metadata: AssetVersionView | null) { state.reportMetadata = metadata },
-  upsertNote(note: NoteView) { const i=state.notes.findIndex(n=>n.id===note.id);if(i>=0)state.notes[i]=note;else state.notes.unshift(note);state.notes.sort(newestFirst);if(!state.liveNoteIds.includes(note.id))state.liveNoteIds.push(note.id) },
+  upsertNote(note: NoteView) { state.noteWriteSerial++;const i=state.notes.findIndex(n=>n.id===note.id);if(i>=0)state.notes[i]=note;else state.notes.unshift(note);state.notes.sort(newestFirst);if(!state.liveNoteIds.includes(note.id))state.liveNoteIds.push(note.id) },
   setNotes(notes: NoteView[]) { state.notes=[...notes].sort(newestFirst);state.notesOrigin='live';state.liveNoteIds=state.notes.map(n=>n.id) },
   getDraft(id: string) { return state.drafts[id] ?? { text: '', materials: [], scroll: null } },
   saveDraft(id: string, text: string, materials: { id: string; name: string }[], scroll: number | null) { state.drafts[id] = { text, materials: materials.map(m => ({ ...m })), scroll } },
@@ -74,7 +76,7 @@ export const backendDemo = {
     return true
   },
   setNoteDone(id: string, done: boolean) { const note = state.notes.find(n => n.id === id); if (note) note.done = done },
-  removeNote(id: string) { state.notes = state.notes.filter(n => n.id !== id) },
+  removeNote(id: string) { state.noteWriteSerial++;state.notes = state.notes.filter(n => n.id !== id) },
   loadAcademicSample() { throw new Error('请导入自己的学业资料') },
   academicSample(): AcademicPanelView { return {courses:[],grades:[]} },
   setAcademic(courses: AcademicCourseView[], grades: AcademicGradeView[], school: string, term: string) {

@@ -707,6 +707,102 @@
       "verification": "前端已连接；非法验证码 SSE 错误路径通过。正向验收需要本人有效学信网在线验证码；文件导入不等于学信核验。见 剩余接口验收结果.json。"
     },
     {
+      "id": "POST /api/v1/app/chsi/pdf/preview",
+      "method": "POST",
+      "path": "/api/v1/app/chsi/pdf/preview",
+      "capability": "学籍报告 PDF 导入预览：上传学信网下载的原版报告 PDF，服务端解析出可导入字段并生成 30 分钟有效的预览（含与现有资料的冲突提示、本人确认要求）。导入仅作为材料记录，不代表在线核验。",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/chsi_controller.py:10",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [],
+      "request": {
+        "content": {
+          "multipart/form-data": {
+            "schema": {
+              "$ref": "#/components/schemas/Body_preview_chsi_pdf_api_v1_app_chsi_pdf_preview_post"
+            }
+          }
+        },
+        "required": true
+      },
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_ChsiPdfPreview_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/components/ChsiPdfImport.vue",
+        "zhiyin-src/template/zhiyin-web/src/components/AcademicVerification.vue"
+      ],
+      "verification": "前端已连接；合成 PDF 上传→解析→预览全链路经真实后端组件与浏览器检查通过（2026-10-24 全面检查）。真实学信网多版式 PDF 未全测。"
+    },
+    {
+      "id": "POST /api/v1/app/chsi/pdf/confirm",
+      "method": "POST",
+      "path": "/api/v1/app/chsi/pdf/confirm",
+      "capability": "学籍报告 PDF 导入确认：把预览中选定的字段按版本写入画像（来源为 record，核实状态为待核对；已有在线核验资料不覆盖），同批字段与回执在一个事务里提交；同一预览重复提交幂等返回原回执。",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/chsi_controller.py:23",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [],
+      "request": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ChsiPdfConfirm"
+            }
+          }
+        },
+        "required": true
+      },
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_ChsiPdfReceipt_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/components/ChsiPdfImport.vue",
+        "zhiyin-src/template/zhiyin-web/src/components/AcademicVerification.vue"
+      ],
+      "verification": "前端已连接；合成 PDF 确认导入与回执幂等经真实后端组件与浏览器检查通过（2026-10-24 全面检查）。真实学信网多版式 PDF 未全测。"
+    },
+    {
       "id": "POST /api/v1/app/conversation/material",
       "method": "POST",
       "path": "/api/v1/app/conversation/material",

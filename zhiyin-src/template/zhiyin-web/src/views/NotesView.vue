@@ -77,9 +77,13 @@ async function loadNotes() {
   if (loading.value) return
   loading.value = true
   loadError.value = ''
+  const startedWrites = backendDemo.state.noteWriteSerial
   try {
     const notes = await backendClient.notes()
     if (!Array.isArray(notes)) throw new Error('Incomplete notes')
+    // 读取期间发生过任何写入（新增 / 勾选 / 删除）：这份快照是写入前的旧列表，
+    // 套上去会把刚保存的记录"消失"、把已删的"复活"。本地状态已经含写入，直接丢弃。
+    if (backendDemo.state.noteWriteSerial !== startedWrites) return
     backendDemo.setNotes(notes)
   } catch {
     loadError.value = '最新记录没有取得。现有条目和输入仍保留。'
@@ -92,24 +96,30 @@ async function add() {
   if (adding.value) return
   actionError.value = ''
   status.value = ''
-  const cleaned = text.value.trim()
+  // 提交那一刻就固定分类与文案：请求返回前用户可能已切到另一类、或往输入框
+  // 写了新内容 —— 成功后的清理只对"仍等于已提交内容的草稿"生效，
+  // 提示也用提交时的分类，不能拿当前界面的分类张冠李戴。
+  const kind = scope.value
+  const kindLabel = kind === 'todo' ? '待办' : '目标'
+  const cleaned = drafts.value[kind].trim()
   if (!cleaned || cleaned.length > 200) {
     actionError.value = '请写下 1–200 个字。'
     return
   }
-  if (items.value.some((note) => note.text === cleaned)) {
-    status.value = `这条${scopeLabel.value}已经存在，原记录没有改变。`
+  const kindNotes = kind === 'todo' ? todoNotes.value : goalNotes.value
+  if (kindNotes.some((note) => note.text === cleaned)) {
+    status.value = `这条${kindLabel}已经存在，原记录没有改变。`
     return
   }
   adding.value = true
   try {
-    const note = await backendClient.addNote({ kind: scope.value, text: cleaned })
+    const note = await backendClient.addNote({ kind, text: cleaned })
     backendDemo.upsertNote(note)
     notesPage.value = 1
-    text.value = ''
-    status.value = `${scopeLabel.value}已保存到个人记录。`
+    if (drafts.value[kind] === cleaned) drafts.value[kind] = ''
+    status.value = `${kindLabel}已保存到个人记录。`
   } catch {
-    actionError.value = `这条${scopeLabel.value}没有保存成功，请核对内容后重试。输入仍保留。`
+    actionError.value = `这条${kindLabel}没有保存成功，请核对内容后重试。输入仍保留。`
   } finally {
     adding.value = false
   }

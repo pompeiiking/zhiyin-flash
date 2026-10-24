@@ -161,6 +161,15 @@ def build_gateways(
             secret=settings.auth_jwt_secret,
             ttl_s=settings.auth_token_ttl_s,
         )
+    if settings.env == "prod" and getattr(type(auth), "IMPLEMENTATION_STATUS", "") != "wired":
+        # 生产配置防护：默认通过鉴权把所有请求解析为同一个演示用户，
+        # 等于放弃账号隔离。装配漏配（比如没开 PostgreSQL）时宁可拒绝启动，
+        # 也不能带病上生产 —— 这是启动检查，不是运行时可降级的开关。
+        raise RuntimeError(
+            f"生产环境（ZHIYIN_ENV=prod）拒绝骨架鉴权实现（{type(auth).__name__}）。"
+            "请配置 PostgreSQL（ZHIYIN_USE_POSTGRES=1）以启用 JWT 鉴权；"
+            "本地演示请把 ZHIYIN_ENV 保持在 local/dev。"
+        )
 
     from zhiyin_infrastructure.xuezhi import XueZhiClient, XueZhiDataSourceGateway
 

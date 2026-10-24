@@ -22,7 +22,7 @@ from __future__ import annotations
 import asyncio
 import html as html_module
 import re
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 import httpx
 
@@ -32,6 +32,7 @@ from zhiyin_data_sdk.gateways.chsi import (
     ChsiVerifyError,
     ChsiVerifyErrorKind,
 )
+from zhiyin_kernel.chsi_dates import is_report_expired, parse_chsi_date
 
 DEFAULT_BASE_URL = "https://www.chsi.com.cn"
 
@@ -283,9 +284,6 @@ def parse_report(page_html: str, *, code: str) -> tuple[ChsiReportKind, list[Chs
 
 def verified_at_now() -> str:
     return datetime.now(timezone.utc).isoformat()
-
-
-from zhiyin_kernel.chsi_dates import parse_chsi_date, is_report_expired
 
 
 __all__ = [

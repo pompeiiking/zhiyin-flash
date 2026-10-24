@@ -42,6 +42,10 @@ class DefaultReadCacheService(ReadCacheService):
         self._hits = 0
         self._misses = 0
         self._errors = 0
+        # 失效代次（按 namespace）：未命中后等待 loader 的那段时间里，如果缓存
+        # 被失效过，这份数据就是"失效前开始读的旧状态"—— 无条件回填会把旧值
+        # 盖回去，且此后 TTL 内每次读都命中旧值。回填前比对代次，变过就不写。
+        self._epochs: dict[str, int] = {}
 
     # ---------- 策略：每一片 TTL 多长、什么事件让它失效 ----------
 
@@ -89,6 +93,7 @@ class DefaultReadCacheService(ReadCacheService):
                 logger.warning("缓存内容解不开（%s/%s），按未命中处理", namespace, key)
 
         self._misses += 1
+        epoch = self._epochs.get(namespace, 0)
         # 契约要求 loader 可等待。给了同步 loader 也照做，但**留痕**：
         # `await` 一个非可等待对象会直接 500，而这条路径只在缓存装配后才走到
         # （没装缓存时调用方走的是直读分支）—— 属于"上缓存才炸"的那一类。
@@ -102,6 +107,11 @@ class DefaultReadCacheService(ReadCacheService):
                 key,
             )
             value = pending
+        if self._epochs.get(namespace, 0) != epoch:
+            # 读到一半这片缓存被失效过：loader 的结果是旧快照，回填会让写操作
+            # 之后短期内反复读到旧状态。本次结果仍返回给调用方，只是不进缓存。
+            logger.info("读缓存 %s/%s 在装载期间被失效，跳过回填", namespace, key)
+            return value
         try:
             await self._cache.set(
                 namespace, key, _encode(value), ttl_s=self.namespace_ttl(namespace)
@@ -114,6 +124,8 @@ class DefaultReadCacheService(ReadCacheService):
     # ---------- 失效 ----------
 
     async def invalidate(self, namespace: str, key: Optional[str] = None) -> None:
+        # 代次先加一：即使底层删除失败，在途装载也不能把旧值回填进新的一轮。
+        self._epochs[namespace] = self._epochs.get(namespace, 0) + 1
         try:
             if key is None:
                 await self._cache.clear_namespace(namespace)
