@@ -7,7 +7,7 @@ import hashlib
 import json
 import logging
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Iterable, Optional
 
 from zhiyin_data_sdk.errors import MissingConfigError
 from zhiyin_data_sdk.repositories import RegistryRepository
@@ -371,6 +371,66 @@ class PostgresRegistryRepository(RegistryRepository):
         await self._ensure_seeded()
         await self._ensure_ai_seeded()
 
+    async def ensure_entries(self, kinds: Iterable[str]) -> list[str]:
+        """按类别**只补缺失的条目**（已有的原样不动），返回新插入的 `kind:code`。
+
+        与 `ensure_seeded` 的区别：那个看"这一类有没有行"，这里的粒度是**条目**。
+        与 `reload()` 的区别：它不覆盖已有条目、也不删除多余条目。
+
+        为什么必须有这一档：画像字段词表（copies 的 `profile.field.*`）与采集规则
+        是**写侧门禁的词表** —— 代码新增一个字段后，旧库里永远不会自动多出这一键，
+        于是「你现在大几」这类写入被"画像里没有这一格"拒掉、职业关注静默丢失
+        （2026-10-24 复盘 issue #44）。文案内容仍以库为准（运营改过的不动），
+        但"这个字段存在"是结构事实，必须随代码到达每一个环境。
+        """
+        inserted: list[str] = []
+        async with self._lock:
+            for kind in kinds:
+                filename = _FILES.get(kind)
+                if not filename:
+                    continue
+                path = self._registry_dir / filename
+                if not path.is_file():
+                    continue
+                for item in _read_items(path):
+                    code = str(
+                        item.get("code")
+                        or item.get("id")
+                        or item.get("key")
+                        or ""
+                    )
+                    if not code:
+                        continue
+                    status = (
+                        str(item.get("status", "enabled"))
+                        if kind in _STATUS_FILTERED_KINDS
+                        else "enabled"
+                    )
+                    result = await self._db.execute(
+                        """
+                        INSERT INTO biz_registry_item
+                            (kind, code, payload, status, sort_order)
+                        VALUES ($1, $2, $3::jsonb, $4, $5)
+                        ON CONFLICT (kind, code) DO NOTHING
+                        """,
+                        kind,
+                        code,
+                        json.dumps(item, ensure_ascii=False),
+                        status,
+                        int(item.get("sort_order", 0) or 0),
+                    )
+                    tail = str(result).rsplit(" ", 1)[-1]
+                    if tail == "1":
+                        inserted.append(f"{kind}:{code}")
+            if inserted:
+                logger.warning(
+                    "动态资源补入缺失条目 %d 项：%s（已有条目未改动；"
+                    "内容以库为准，要以文件为准请执行 --resync-registry）",
+                    len(inserted),
+                    "、".join(inserted[:12]) + ("…" if len(inserted) > 12 else ""),
+                )
+        return inserted
+
     async def _ensure_ai_seeded(self, *, force: bool = False) -> None:
         """把 AI 区的种子导进各自表里（按类别判断，已有的不覆盖）。
 
@@ -388,11 +448,18 @@ class PostgresRegistryRepository(RegistryRepository):
                     existing = await self._count_ai(kind)
                     if existing > 0:
                         if kind == "prompts":
-                            # Ensure product additions exist without replacing
-                            # administrator-maintained prompt content.
                             path = self._registry_dir / filename
                             for item in _read_items(path):
-                                if item.get("code", "").startswith("conversation.") or item.get("code") in {"task.academic.analysis", "disclosure.field_kept_by_user"}:
+                                code = str(item.get("code", ""))
+                                if code == "conversation.memory":
+                                    # 语义提取契约（极性/否定/记录范围/字段词表）写在
+                                    # 这条提示词里，是**随代码走的产品契约**：旧行会让
+                                    # 模型按旧契约写画像 —— 否定项静默变成普通兴趣、
+                                    # 新字段写不进（2026-10-24 复盘 issue #43/#44）。
+                                    # 所以每次启动都按文件刷新它。
+                                    await self._insert_ai("prompts", item)
+                                elif code.startswith("conversation.") or code in {"task.academic.analysis", "disclosure.field_kept_by_user"}:
+                                    # 其余产品提示词：只补缺，不覆盖管理员维护的内容。
                                     await self._insert_missing_prompt(item)
                         continue
                 path = self._registry_dir / filename

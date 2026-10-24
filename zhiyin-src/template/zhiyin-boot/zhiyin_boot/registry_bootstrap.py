@@ -45,6 +45,16 @@ REQUIRED_PROMPTS: tuple[str, ...] = (
 新增提示词时同时给出调用点，再把它加进来。
 """
 
+#: 启动时按**条目**补缺的结构词表类别（只插缺失键，已有条目原样不动）。
+#:
+#: 这两类是**写侧门禁的词表**：`collection_rules` 是采集清单，
+#: `copies` 里的 `profile.field.*` 是画像字段词表与中文名 ——
+#: 代码新增一个字段后，旧库里永远不会自动多出这一键，于是
+#: 「你现在大几」这类写入被"画像里没有这一格"拒掉、职业关注静默丢失
+#: （2026-10-24 复盘 issue #44）。字段"存在与否"是结构事实，必须随代码
+#: 到达每一个环境；字段的内容（文案/口径）仍以库为准。
+STRUCTURAL_REGISTRY_KINDS: tuple[str, ...] = ("collection_rules", "copies")
+
 
 class RegistryContentError(RuntimeError):
     """动态资源内容缺失或自相矛盾。启动阶段直接抛，不降级。"""
@@ -91,6 +101,9 @@ async def hydrate_registry_content(settings: Settings, *, resync: bool = False) 
             if removed:
                 logger.warning("功能开关重导：库里多出的 %s 已按文件删除", removed)
         await repository.ensure_seeded()
+        # 结构词表按条目补缺（只插缺失键）：新字段的键必须随代码到达旧库，
+        # 否则写侧门禁会拒掉它（issue #44）。
+        await repository.ensure_entries(STRUCTURAL_REGISTRY_KINDS)
         drift = await detect_registry_drift(repository, settings.local_registry_dir)
         if drift:
             if resync:
@@ -209,6 +222,7 @@ def _item_key(item: dict[str, Any]) -> str:
 
 __all__ = [
     "REQUIRED_PROMPTS",
+    "STRUCTURAL_REGISTRY_KINDS",
     "RegistryContentError",
     "check_registry_content",
     "detect_registry_drift",

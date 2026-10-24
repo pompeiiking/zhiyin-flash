@@ -507,10 +507,13 @@ def merge_preferences(key: str, before: Any, value: Any, attributes: Mapping[str
         return [{"value": item, **common, **by_value.get(item, {})} for item in vs]
 
     if before is None:
-        # 首次写入没有旧值可合并。只有逐项属性明确存在时才需要拆开处理；
-        # 单一极性写在字段级属性上时保持原样，避免把「一条兴趣 + 全局极性」
-        # 这种既有契约改写成另一种形状。
-        if kind is ProfileEntryType.INTEREST and attrs.get("items"):
+        # 首次写入没有旧值可合并。兴趣的极性无论是逐项给的还是写在字段级，
+        # 都要拆成逐项条目：只认 items 的话，「一开口就不喜欢…」这类
+        # 字段级极性的否定项会以无标注的值直接进字段（#43 复现的路径）。
+        # 拆开后 _visible_interest_values 才能把否定项挡在展示值之外；
+        # 纯否定时字段仍不能为空，值里保留原对象、逐项属性标明极性。
+        # career_focus 的 state 保持既有字段级形状（展示与测试都认它）。
+        if kind is ProfileEntryType.INTEREST and (attrs.get("items") or attrs.get("polarity")):
             incoming = _merge_preference_entries(entries(values, attrs))
             return (
                 normalize_value(key, _visible_interest_values(incoming), kind),

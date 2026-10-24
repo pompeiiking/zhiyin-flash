@@ -72,7 +72,9 @@ async def test_conversation_write_carries_attributes_and_origin_turn() -> None:
     await _send(container, session, "我喜欢把程序调通")
     field = next(f for f in await container.profile_service.get_fields("u1") if f.key == "interest")
     assert field.entry_type is ProfileEntryType.INTEREST
-    assert field.attributes == {"polarity": "like", "context": "一次文件读取的调试"}
+    # 首次写入即拆逐项条目（issue #43）：极性与情境跟随各自的对象，不再留在字段级。
+    assert field.attributes["items"] == [{
+        "value": "调试程序", "polarity": "like", "context": "一次文件读取的调试"}]
     assert field.verification is ProfileVerification.SELF_REPORTED
     assert field.origin_ref.startswith(f"conversation:{session.id}:")
     assert field.value == ["调试程序"]

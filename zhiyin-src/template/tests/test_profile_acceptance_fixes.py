@@ -23,6 +23,30 @@ def test_independent_negative_interest_preserves_each_objects_polarity():
     assert taxonomy.merge_preferences('interest', same, ['重复录入'], {'polarity': 'dislike'})[:2] == (values, attrs)
 
 
+def test_opening_negation_with_field_level_polarity_still_marks_each_object():
+    """一开口就是否定（issue #43 复现路径）：首次写入没有旧值，极性写在字段级。
+
+    字段级极性同样要拆成逐项条目 —— 否则两项排斥对象以无标注的值进字段，
+    界面上与"喜欢"看不出差别。纯否定时字段不能为空，值里保留原对象、
+    逐项属性标明 dislike（画像页据此显示"不喜欢"）。
+    """
+    values, attrs, conflict = taxonomy.merge_preferences(
+        'interest', None, ['天天应酬', '纯销售工作'], {'polarity': 'dislike'})
+    assert not conflict
+    assert values == ['天天应酬', '纯销售工作']  # 纯排除偏好：字段不能为空的既有兜底
+    assert attrs['items'] == [
+        dict(value='天天应酬', polarity='dislike'),
+        dict(value='纯销售工作', polarity='dislike'),
+    ]
+
+
+def test_opening_career_focus_keeps_the_field_level_state_contract():
+    values, attrs, _ = taxonomy.merge_preferences(
+        'career_focus', None, ['算法工程师'], {'state': 'exploring'})
+    assert values == ['算法工程师']
+    assert attrs == {'state': 'exploring'}
+
+
 def test_same_concept_negative_phrases_are_deduplicated_without_entering_interest():
     old = SimpleNamespace(value=['写东西', '研究人为什么买'], attributes={'items': [
         dict(value='写东西', polarity='like'), dict(value='研究人为什么买', polarity='like')]})
