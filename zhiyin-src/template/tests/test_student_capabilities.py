@@ -173,6 +173,51 @@ async def test_each_report_version_keeps_its_own_body(service):
 
 
 @pytest.mark.asyncio
+async def test_identical_report_content_does_not_create_a_version(service):
+    """重算出的正文与当前版本一致时不再 +1：升版是"内容重算"的单位（ZY-07 同口径）。"""
+    from zhiyin_kernel.enums import AssetType
+
+    base = Report(
+        id="rpt_dupe",
+        user_id="a",
+        version=0,
+        generated_at=datetime.now(timezone.utc),
+        verdict=Verdict(title="同一结论", summary="同一说明"),
+        swot=Swot(),
+    )
+    first = await service.asset_service.save_report("a", base)
+    again = await service.asset_service.save_report(
+        "a", base.model_copy(update={"generated_at": datetime.now(timezone.utc)})
+    )
+    assert again.version == first.version
+    assert again.needs_recompute is False
+    assert len(await service.asset_service.list_versions("a", AssetType.REPORT)) == 1
+
+
+@pytest.mark.asyncio
+async def test_regenerating_a_stale_report_lands_a_fresh_version(service):
+    """被标"待重算"的报告重新生成时，即使内容一致也要落一版干净的：
+    否则版本记录里的当前版本会一直挂着"待重新核对"，用户重算了也消不掉。"""
+    from zhiyin_kernel.enums import AssetType
+
+    base = Report(
+        id="rpt_stale",
+        user_id="a",
+        version=0,
+        generated_at=datetime.now(timezone.utc),
+        verdict=Verdict(title="结论", summary="说明"),
+        swot=Swot(),
+    )
+    first = await service.asset_service.save_report("a", base)
+    await service.asset_service.mark_asset_stale("a", AssetType.REPORT, reason="画像变了")
+    again = await service.asset_service.save_report(
+        "a", base.model_copy(update={"generated_at": datetime.now(timezone.utc)})
+    )
+    assert again.version == first.version + 1
+    assert again.needs_recompute is False
+
+
+@pytest.mark.asyncio
 async def test_notifications_full_history_snooze_restore(service):
     service.notifications.add("a", {"id": "n1", "title": "任务提醒"})
     later = NotificationEdit(

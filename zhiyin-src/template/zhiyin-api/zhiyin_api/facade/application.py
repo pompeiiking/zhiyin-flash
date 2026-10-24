@@ -90,6 +90,7 @@ from zhiyin_business.ports.orchestrator import Orchestrator, TurnRequest
 from zhiyin_business.ports.registry import RegistryService
 from zhiyin_business.ports.workspace import WorkspaceService
 from zhiyin_kernel.enums import AssetType
+from zhiyin_kernel.blackboard import AssetVersion
 from zhiyin_kernel.errors import InvalidRequest, ResourceNotFound
 from zhiyin_kernel.registry import AgentDescriptor
 
@@ -122,6 +123,20 @@ def report_full_text_cache_key(user_id: str, version: Optional[int]) -> str:
     `/healthz` 自述 errors 140）。
     """
     return cache_key(user_id, "v2", version if version is not None else "latest")
+
+
+def _without_resolved_stale(version: AssetVersion, latest_version: Optional[int]) -> AssetVersion:
+    """历史版本行不带"待重算"标记 —— 这个标记只对**当前版本**有意义。
+
+    画像变更只把**当时**的最新版标成待重算（`mark_needs_recompute` 原地更新那一行）；
+    之后每一版新产出都是重新算过的，而旧行上的标记没有任何机制去清。
+    不在视图层收口的话，版本记录里会越积越多"待重新核对"的历史行，
+    且存量库里的标记无处迁移清除。当前版本的标记保持原样：报告页的
+    "结论待重新生成"横幅仍靠它。
+    """
+    if latest_version is None or version.version == latest_version or not version.needs_recompute:
+        return version
+    return version.model_copy(update={"needs_recompute": False, "recompute_reason": ""})
 
 
 class DefaultApplicationFacade(ApplicationFacade):
@@ -640,10 +655,13 @@ class DefaultApplicationFacade(ApplicationFacade):
         self, user_id: str, asset_type: AssetType
     ) -> list[AssetVersionView]:
         versions = await self._assets.list_versions(user_id, asset_type)
+        latest = max((version.version for version in versions), default=None)
         views: list[AssetVersionView] = []
         for index, version in enumerate(versions):
-            previous = versions[index - 1] if index > 0 else None
-            views.append(mappers.asset_version_view(version, previous=previous))
+            views.append(mappers.asset_version_view(
+                _without_resolved_stale(version, latest),
+                previous=versions[index - 1] if index > 0 else None,
+            ))
         return views
 
     async def get_report_full_text(

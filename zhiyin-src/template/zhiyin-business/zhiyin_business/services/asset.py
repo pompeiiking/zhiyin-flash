@@ -27,6 +27,15 @@ from zhiyin_orchestration import DomainEvent, EventBus
 
 logger = logging.getLogger(__name__)
 
+#: 报告比较时排除的记账字段：版本号还没落、生成时间每次必变、
+#: 画像快照跟着当前画像走 —— 算进比较的话"内容没变就不升版"永远不成立。
+_REPORT_VOLATILE_FIELDS = frozenset({"id", "user_id", "version", "generated_at", "profile_snapshot"})
+
+
+def _report_content(report: Report) -> dict:
+    """报告的**内容**部分：判词、维度、差距、来源与方法论。"""
+    return report.model_dump(mode="json", exclude=_REPORT_VOLATILE_FIELDS)
+
 
 def asset_mutation(method):
     @wraps(method)
@@ -296,6 +305,15 @@ class DefaultAssetService(AssetService):
         # Never accept model-supplied assessments or attach today's scores to old reports.
         fields = await self._profile_service.get_fields(user_id) if self._profile_service else None
         saved = saved.model_copy(update={"profile_snapshot": fields})
+        # 内容没变就不升版（与 save_action_plan 的 ZY-07 同一条口径：升版是
+        # "内容重算"的单位）。例外是当前版本还挂着"待重算"：这次重算哪怕
+        # 结论一字未变，也要落一版干净的 —— 否则版本记录里的当前版本
+        # 会一直显示"待重新核对"，用户重算了也消不掉。
+        current = await self._assets.get_report(user_id)
+        latest = await self._assets.get_latest_version(user_id, AssetType.REPORT)
+        if (current is not None and latest is not None and not latest.needs_recompute
+                and _report_content(current) == _report_content(saved)):
+            return latest
         saved = await self._assets.save_report(saved)
         return await self.save_version(
             user_id,
