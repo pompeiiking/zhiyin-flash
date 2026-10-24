@@ -57,7 +57,10 @@ class EnrollmentReportService:
         async def save(user_id, key, value, **kwargs):
             if report.acquisition == "pdf":
                 kwargs["origin_ref"] = origin_ref if key != "study_year" else kwargs["origin_ref"]
-                kwargs["evidence"] = [origin_ref, "用户上传学信网报告，待在线核验"]
+                # 原始证据只放**给人读的话**；chsi-pdf://imports/<id> 是内部追溯键，
+                # 留在 origin_ref 里供幂等与来源核对 —— 卡片、报告引用都会原样
+                # 带出 evidence，内部 URI 混进去就是用户眼里的"开发数据"。
+                kwargs["evidence"] = ["用户上传学信网报告，待在线核验"]
                 if key != "study_year":
                     kwargs["verification"] = ProfileVerification.RECORD.value
             entries.append({"key": key, "value": value, **kwargs})

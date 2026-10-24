@@ -84,3 +84,15 @@ export function formatCount(value: unknown, unit: string): string {
   const num = typeof value === 'number' ? value : Number(value)
   return Number.isFinite(num) ? `${num} ${unit}` : `— ${unit}`
 }
+
+/**
+ * 原始证据的展示口径：滤掉**内部追溯引用**，只留给人读的话。
+ *
+ * 画像字段的 evidence / 判断依据里可能混有 `chsi-pdf://imports/…`、
+ * `derived://…` 这类内部键 —— 它们是给溯源和幂等用的（`origin_ref` 同款），
+ * 展示到卡片上就是一串"开发数据"。http(s) 链接是真实出处，保留。
+ * 数据不删不改，只影响显示。
+ */
+export function visibleEvidence(items: readonly string[] | undefined | null): string[] {
+  return (items ?? []).filter(item => !/^(?!https?:\/\/)[a-z][a-z0-9+.-]*:\/\//i.test(item.trim()))
+}

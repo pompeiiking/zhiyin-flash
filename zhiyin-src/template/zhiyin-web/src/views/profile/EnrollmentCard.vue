@@ -4,12 +4,12 @@ import UiIcon from '../../components/UiIcon.vue'
 
 interface EnrollmentRow { label: string; value: string }
 
-defineProps<{ enrollmentRows: EnrollmentRow[]; isVerified: boolean }>()
+defineProps<{ enrollmentRows: EnrollmentRow[]; isVerified: boolean; hasImportedReport: boolean }>()
 const emit = defineEmits<{ verify: [] }>()
 </script>
 
 <template>
-<section class="enrollment" aria-labelledby="enrollment-title"><header><div><span class="enrollment__eyebrow">学校档案</span><h2 id="enrollment-title">学籍信息 <DetailPopover title="学籍信息说明" label="查看学籍信息说明"><p>可在线核验学籍，或导入学信网下载的学籍报告 PDF。</p></DetailPopover></h2></div><button class="btn" @click="emit('verify')"><UiIcon name="shield" :size="16" />{{ isVerified ? '核验与报告导入' : '核验或导入学籍' }}</button></header><dl><div v-for="item in enrollmentRows" :key="item.label"><dt>{{item.label}}</dt><dd :class="{'is-missing':item.value==='待补充'}">{{item.value}}</dd></div></dl><footer><span :class="['enrollment__state', isVerified ? 'is-verified' : '']"><i />{{ isVerified ? '已通过学信网在线核验' : '尚未完成学信核验' }}</span><RouterLink class="ws-text-link" to="/grades">查看我的成绩<UiIcon name="arrow" :size="14" /></RouterLink></footer></section>
+<section class="enrollment" aria-labelledby="enrollment-title"><header><div><span class="enrollment__eyebrow">学校档案</span><h2 id="enrollment-title">学籍信息 <DetailPopover title="学籍信息说明" label="查看学籍信息说明"><p>可在线核验学籍，或导入学信网下载的学籍报告 PDF。</p></DetailPopover></h2></div><button class="btn" @click="emit('verify')"><UiIcon name="shield" :size="16" />{{ isVerified ? '核验与报告导入' : '核验或导入学籍' }}</button></header><dl><div v-for="item in enrollmentRows" :key="item.label"><dt>{{item.label}}</dt><dd :class="{'is-missing':item.value==='待补充'}">{{item.value}}</dd></div></dl><footer><span :class="['enrollment__state', isVerified ? 'is-verified' : '']"><i /><template v-if="isVerified">已通过学信网在线核验</template><template v-else-if="hasImportedReport">已导入学籍报告，待在线核验</template><template v-else>尚未完成学信网核验</template></span><RouterLink class="ws-text-link" to="/grades">查看我的成绩<UiIcon name="arrow" :size="14" /></RouterLink></footer></section>
 </template>
 
 <style scoped>

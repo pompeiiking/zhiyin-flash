@@ -104,3 +104,12 @@ export const auth = { state: readonly(state),
 }
 window.addEventListener('zhiyin:unauthorized', () => auth.expire())
 window.addEventListener('storage', event => { if (event.key === 'zhiyin_token') window.location.reload() })
+
+/**
+ * 开发者/管理员角色判定：工具页的开发者模块目录与 WorkflowRunner 共用这一份。
+ * 学生账号看不到这些入口 —— 运行已发布流程是管理操作（流程编号要管理员给），
+ * 模块目录与执行记录对 学生只有困惑没有动作（深度测试 D2 的结论）。
+ */
+export function isDeveloperRole(): boolean {
+  return ['admin', 'developer'].includes(auth.state.bootstrap?.identity?.role ?? '')
+}

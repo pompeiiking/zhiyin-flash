@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import {computed,ref} from 'vue'
 import {backendRequest} from '../api/backend-client'
-import {auth} from '../lib/auth'
+import {isDeveloperRole} from '../lib/auth'
 import StructuredFacts from './StructuredFacts.vue'
 /**
  * 运行已发布流程是**管理操作**（流程编号要管理员给，还有"允许写入"开关）。
  * 学生拿不到流程编号，看到表单只会困惑、甚至以为能自行提权（深度测试 D2）。
  * 所以只有开发者/管理员角色才渲染；学生端整块不出现。
  */
-const isDeveloper=computed(()=>['admin','developer'].includes(auth.state.bootstrap?.identity?.role??''))
+const isDeveloper=computed(()=>isDeveloperRole())
 const id=ref(''),input=ref('{}'),confirm=ref(false),busy=ref(false),error=ref(''),result=ref<Record<string,unknown>|null>(null)
 let requestId=''
 async function run(){

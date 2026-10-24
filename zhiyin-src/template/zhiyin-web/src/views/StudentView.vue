@@ -59,6 +59,7 @@ import AcademicVerification from '../components/AcademicVerification.vue'
 import FormConflict from '../components/FormConflict.vue'
 import { backendDemo } from '../lib/backend-demo'
 import { resolveDisplayName } from '../lib/display-name'
+import { visibleEvidence } from '../lib/format'
 import { backendClient } from '../api/backend-client'
 import { useProfileWorkspace } from '../lib/use-profile-workspace'
 import { useProfileFields } from '../lib/use-profile-fields'
@@ -264,7 +265,7 @@ onMounted(()=>{ void loadWorkspace() })
       @verify="verificationOpen = true"
     />
 
-    <EnrollmentCard :enrollment-rows="enrollmentRows" :is-verified="isVerified" @verify="verificationOpen = true" />
+    <EnrollmentCard :enrollment-rows="enrollmentRows" :is-verified="isVerified" :has-imported-report="backendDemo.chsiPdfImported.value" @verify="verificationOpen = true" />
 
 
 
@@ -290,7 +291,7 @@ onMounted(()=>{ void loadWorkspace() })
               <li v-for="clue in clues" :key="clue.id" class="p7-row p7-clue">
                 <div class="p7-clue__body">
                   <p class="p7-clue__text">{{ clue.text }}</p>
-                  <details v-if="clue.evidence.length" class="p7-clue__evidence"><summary>查看依据（{{ clue.evidence.length }} 段用户原话）</summary><p v-for="(quote, index) in clue.evidence" :key="index">{{ quote }}</p></details>
+                  <details v-if="visibleEvidence(clue.evidence).length" class="p7-clue__evidence"><summary>查看依据（{{ visibleEvidence(clue.evidence).length }} 段用户原话）</summary><p v-for="(quote, index) in visibleEvidence(clue.evidence)" :key="index">{{ quote }}</p></details>
                 </div>
                 <button class="ws-text-button" type="button" :disabled="profileActionsPending.includes('deny:' + clue.id)" @click="denyClue(clue.id)">{{ profileActionsPending.includes('deny:' + clue.id) ? '正在更新…' : '不是这样' }}</button>
               </li>
@@ -382,15 +383,15 @@ onMounted(()=>{ void loadWorkspace() })
                       <button class="ws-text-button" type="button" @click="edit(row)">更正信息<UiIcon name="arrow" :size="14" /></button>
                       <button v-if="live" class="ws-text-button" type="button" @click="askDelete(row)">删除这条</button>
                     </div>
-                    <template v-if="row.evidence.length">
+                    <template v-if="visibleEvidence(row.evidence).length">
                       <p class="p7-facts__title">原始证据</p>
                       <ul class="ws-mini-list p7-evidence">
-                        <li v-for="item in row.evidence.slice(0,2)" :key="item">{{ item.slice(0,180) }}{{item.length>180?'…':''}}</li>
+                        <li v-for="item in visibleEvidence(row.evidence).slice(0,2)" :key="item">{{ item.slice(0,180) }}{{item.length>180?'…':''}}</li>
                       </ul>
                     </template>
                     <p v-else class="p7-evidence__none">这条没有附原始证据，只有来源与时间。</p>
 
-                    <button v-if="row.evidence.length>2 || row.evidence.some(item=>item.length>180) || fieldValue(row).length>240" class="ws-text-button" @click="readField(row)">阅读完整资料与证据<UiIcon name="arrow" :size="14"/></button>
+                    <button v-if="visibleEvidence(row.evidence).length>2 || visibleEvidence(row.evidence).some(item=>item.length>180) || fieldValue(row).length>240" class="ws-text-button" @click="readField(row)">阅读完整资料与证据<UiIcon name="arrow" :size="14"/></button>
                     <!-- 关系本身在折叠内可点：跳到 B 段那条判断（≥44px 的行，不再是 24px 的 chip） -->
                     <p v-if="fieldDeps[row.key]?.length" class="p7-facts__title">关联判断 <span class="ws-muted">{{ fieldDeps[row.key]?.length || 0 }} 条</span></p>
                     <ul v-if="fieldDeps[row.key]?.length" class="p7-links">
@@ -448,7 +449,7 @@ onMounted(()=>{ void loadWorkspace() })
 
 
 
-<InfoSheet :open="!!fieldReading" shape="panel" :title="fieldReading?.label || '完整资料'" @close="fieldReading=null"><template v-if="fieldReading"><p class="profile-fact-value">{{fieldValue(fieldReading)}}</p><p class="ws-muted">{{fieldReading.desc}} · {{fieldReading.noted}}</p><h3>原始证据</h3><ul class="ws-mini-list"><li v-for="item in fieldReading.evidence" :key="item">{{item}}</li></ul></template></InfoSheet>
+<InfoSheet :open="!!fieldReading" shape="panel" :title="fieldReading?.label || '完整资料'" @close="fieldReading=null"><template v-if="fieldReading"><p class="profile-fact-value">{{fieldValue(fieldReading)}}</p><p class="ws-muted">{{fieldReading.desc}} · {{fieldReading.noted}}</p><template v-if="visibleEvidence(fieldReading.evidence).length"><h3>原始证据</h3><ul class="ws-mini-list"><li v-for="item in visibleEvidence(fieldReading.evidence)" :key="item">{{item}}</li></ul></template></template></InfoSheet>
 <InfoSheet :open="profileTab === 'judgments'" shape="panel" title="分析与判断" keep-mounted @close="profileTab='facts'"><section><ProfileInsights ref="insights" /></section><section class="p7-block" aria-labelledby="p7-b-title">
       <header class="p7-block__head">
         <div>
@@ -537,10 +538,10 @@ onMounted(()=>{ void loadWorkspace() })
             <p v-if="item.note" class="p7-concl__note">门槛解释：{{ item.note }}</p>
             <p v-if="item.risk" class="p7-concl__note">风险：{{ item.risk }}</p>
             <p v-if="item.ripple" class="p7-concl__note">连带影响：{{ item.ripple }}</p>
-            <template v-if="item.evidence.length">
-              <p class="p7-concl__more-label">这条判断引用的原材料</p>
+            <template v-if="visibleEvidence(item.evidence).length">
+              <p class="p7-facts__title">这条判断用到的原始材料</p>
               <ul class="ws-mini-list p7-evidence">
-                <li v-for="line in item.evidence" :key="line">{{ line }}</li>
+                <li v-for="line in visibleEvidence(item.evidence)" :key="line">{{ line }}</li>
               </ul>
             </template>
 

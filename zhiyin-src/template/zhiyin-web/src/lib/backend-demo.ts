@@ -30,6 +30,8 @@ rememberSession('production-drafts', state, ['drafts'])
 export const backendDemo = {
   state: readonly(state),
   chsiVerified: computed(()=>state.liveWorkspace?.profile_panel?.fields?.some(f=>f.source==='record'&&f.verification==='verified'&&f.evidence?.some(e=>{try{const host=new URL(e).hostname;return host==='chsi.com.cn'||host.endsWith('.chsi.com.cn')}catch{return false}}))??false),
+  /** 已通过学籍报告 PDF 导入过资料（材料记录，待在线核验）：与"已在线核验"、"完全没核验"是三种状态，界面上要分开说。 */
+  chsiPdfImported: computed(()=>state.liveWorkspace?.profile_panel?.fields?.some(f=>f.origin_ref?.startsWith('chsi-pdf://')||f.evidence?.some(e=>e.startsWith('chsi-pdf://')))??false),
   isFresh: computed(()=>state.freshAccount),
   setDataMode(_mode: 'demo'|'service') { state.dataMode='service' },
   currentSession: computed(() => state.sessions.find(s => s.task_id === state.currentSessionId)),
