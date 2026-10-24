@@ -61,14 +61,24 @@ export function studyYearIntro(value: unknown): string {
   return code ? INTRO[code] : '从你现在最关心的事开始。'
 }
 
-/** 新账号第一次进入对话：还没有年级、会话和首轮内容时，先确认年级。 */
-export function needsInitialStudyYearChoice(input: {
+/** 首次进入对话的前置问题：'verify' = 先问能否学信网核验，'year' = 直接问年级。 */
+export type InitialOnboardingQuestion = 'verify' | 'year'
+
+/** 新账号第一次进入对话（还没有年级、会话和首轮内容）时的前置问题。
+ *
+ *  先问"能否学信网核验"：核验一次能带进学校/专业/年级/学制等一串基本信息，
+ *  对话采集就能少问大半。已通过在线核验或 PDF 导入带过学籍资料（chsiTouched）
+ *  的不再问核验——缺年级时直问年级（例如毕业生导入了学历报告）。
+ *  返回 null = 不拦截（已有年级，或已有会话/消息/待确认内容）。 */
+export function initialOnboardingQuestion(input: {
   studyYear: unknown
   hasSession: boolean
   hasTurns: boolean
   hasPending: boolean
-}): boolean {
-  return !String(input.studyYear ?? '').trim() && !input.hasSession && !input.hasTurns && !input.hasPending
+  chsiTouched: boolean
+}): InitialOnboardingQuestion | null {
+  if (String(input.studyYear ?? '').trim() || input.hasSession || input.hasTurns || input.hasPending) return null
+  return input.chsiTouched ? 'year' : 'verify'
 }
 
 export function personalizedStudyYearEntries(entries: readonly TaskEntryView[], value: unknown): TaskEntryView[] {

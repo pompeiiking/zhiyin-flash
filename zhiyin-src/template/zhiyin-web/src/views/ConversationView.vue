@@ -10,7 +10,7 @@ import { vScrollFade } from '../lib/scroll-fade'
 import { navigation } from '../lib/layout'
 import { consultantLabel, agentKeyOf, cleanConsultantText } from '../lib/consultant'
 import { conversationPresentation, journeyState, partialReplySpeaker } from '../lib/conversation-presentation'
-import { needsInitialStudyYearChoice, personalizedStudyYearEntries, STUDY_YEAR_OPTIONS, studyYearIntro, studyYearLabel } from '../lib/study-year'
+import { initialOnboardingQuestion, personalizedStudyYearEntries, STUDY_YEAR_OPTIONS, studyYearIntro, studyYearLabel, type InitialOnboardingQuestion } from '../lib/study-year'
 import { messageLengthError } from '../lib/message-limits'
 import { newSession, openSession, loadShell, systemData } from '../lib/system-data'
 import { replyTurns } from '../lib/conversation-turns'
@@ -28,6 +28,8 @@ import RenderableBlock from '../components/RenderableBlock.vue'
 import ConversationProfile from '../components/ConversationProfile.vue'
 import ConversationOperations from '../components/ConversationOperations.vue'
 import StatusBanner from '../components/StatusBanner.vue'
+import InfoSheet from '../components/InfoSheet.vue'
+import AcademicVerification from '../components/AcademicVerification.vue'
 import type { ConversationRuntimeState } from '../api/backend-client'
 import { errorCode, friendlyError } from '../lib/use-conversation-errors'
 import { type OptionRef, useConversationDraft } from '../lib/use-conversation-draft'
@@ -72,6 +74,9 @@ let stopArmTimer: ReturnType<typeof setTimeout> | undefined
 // 新建入口每次创建独立会话；旧会话通过历史列表继续。
 let handledNewTopicIntent = ''
 const profileLoaded = ref(false), studyYearSaving = ref(''), studyYearError = ref(''), editingStudyYear = ref(false), savedStudyYear = ref('')
+/** 首问流程：'verify' 问能否学信网核验，'year' 问年级，null = 已过前置问。 */
+const onboardingQuestion = ref<InitialOnboardingQuestion | null>(null)
+const verificationOpen = ref(false)
 // 用户点了一个主题、但还缺学习阶段时，先记住这个选择：确认完年级直接开始，
 // 不用让他回头再点一次。
 const pendingTopic = ref<{ code: string; label: string } | null>(null)
@@ -114,7 +119,7 @@ function decideAction(id: string, accept: boolean) {
 watch(() => demo.state.currentSessionId, () => { liveFocus.value = ''; runtimeState.value = null; void refreshRuntime() }, { immediate: true })
 const { sessions, filteredSessions, sessionQuery, sessionListLoading, sessionListError, renamingId, renameDraft, renameError, renameBusy, deletingId, deleteBusy, deleteError, refreshSessionList, refreshSessionsOnFocus, sessionTimeLabel, startRename, cancelRename, saveRename, askDelete, cancelDelete, confirmDelete } = useConversationSessions({ historyOpen, thinking, choosingTopic, requestError, uploadError, interrupted, pending, isDisposed: () => disposed, clearFailure, resume, refreshProfile })
 const { capabilitiesOpen, capabilitiesLoading, capabilitiesError, capabilities, capabilityItems, capabilityStatus, loadCapabilities } = useConversationCapabilities()
-const title = computed(() => showStudyYearQuestion.value ? '开始咨询' : choosingTopic.value ? '选择咨询主题' : backendDemo.currentSession.value?.task_name || '咨询对话')
+const title = computed(() => showVerifyQuestion.value || showStudyYearQuestion.value ? '开始咨询' : choosingTopic.value ? '选择咨询主题' : backendDemo.currentSession.value?.task_name || '咨询对话')
 const latestHostId = computed(() => turns.value.at(-1)?.from === 'host' ? turns.value.at(-1)?.id : undefined)
 const presentation = computed(() => conversationPresentation(demo.state.currentSessionId, systemData.snapshot, backendDemo.currentSession.value, liveFocus.value, thinking.value))
 const currentStage = computed(() => presentation.value.stage)
@@ -129,6 +134,20 @@ const host = computed(() => presentation.value.host)
 const studyYearField = computed(() => backendDemo.state.liveWorkspace?.profile_panel?.fields?.find(field => field.key === 'study_year'))
 const studyYear = computed(() => savedStudyYear.value || String(studyYearField.value?.value ?? ''))
 const showStudyYearQuestion = computed(() => profileLoaded.value && editingStudyYear.value)
+const showVerifyQuestion = computed(() => profileLoaded.value && onboardingQuestion.value === 'verify')
+/** 开场摘要：核验过的写"学籍已核验"（PDF 导入写"待在线核验"），只有手填年级的保持原样。 */
+const enrollmentSummary = computed(() => {
+  const label = studyYearLabel(studyYear.value)
+  const verified = backendDemo.chsiVerified.value
+  if (!verified && !backendDemo.chsiPdfImported.value) return `当前阶段：${label}`
+  const pick = (key: string) => {
+    const field = backendDemo.state.liveWorkspace?.profile_panel?.fields?.find(item => item.key === key)
+    if (!field) return ''
+    return String(Array.isArray(field.value) ? field.value.join('、') : field.value ?? '')
+  }
+  const parts = [pick('school'), pick('major'), label].filter(Boolean).join(' · ')
+  return (verified ? '学籍已核验：' : '已导入学籍报告，待在线核验：') + (parts || label)
+})
 const starters = computed(() => personalizedStudyYearEntries(auth.state.bootstrap?.task_entries ?? [], studyYear.value))
 // 对话任务卡：guideTask.task_id 可能来自旧计划，甚至只是模型给的一条建议（不在计划里）。
 const planTaskRows = computed(() => {
@@ -184,7 +203,7 @@ function displayDate(raw: string) { const date = new Date(raw); return Number.is
 function evidenceCount(t: ChatTurn) { return (t.theory_refs?.length ?? 0) + (t.intel_refs?.length ?? 0) + (t.clues?.length ?? 0) }
 function assetLabel(type: string) { return ({ report:'诊断报告', direction_plan:'方向方案', action_plan:'行动计划' } as Record<string,string>)[type] || '关联资料' }
 async function theory(id: string) { if (theoryCards.value[id] || theoryLoading.value[id]) return; theoryErrors.value[id] = ''; theoryLoading.value[id] = true; try { theoryCards.value[id] = await backendClient.theory(id) } catch (e) { theoryErrors.value[id] = friendlyError(e) } finally { theoryLoading.value[id] = false } }
-async function refreshProfile(options: { promptMissingStudyYear?: boolean } = {}) { profileLoading.value = true; profileError.value = ''; try { const result = await backendClient.workspace(); if (!disposed) { backendDemo.setWorkspace(result); const stored = result.profile_panel?.fields?.find(field => field.key === 'study_year'); if (stored) savedStudyYear.value = String(stored.value ?? ''); if (options.promptMissingStudyYear && needsInitialStudyYearChoice({ studyYear: studyYear.value, hasSession: !!demo.state.currentSessionId, hasTurns: turns.value.length > 0, hasPending: !!pending.value })) editingStudyYear.value = true } } catch (e) { if (!disposed) profileError.value = friendlyError(e) } finally { if (!disposed) { profileLoading.value = false; profileLoaded.value = true } } }
+async function refreshProfile(options: { promptMissingStudyYear?: boolean } = {}) { profileLoading.value = true; profileError.value = ''; try { const result = await backendClient.workspace(); if (!disposed) { backendDemo.setWorkspace(result); const stored = result.profile_panel?.fields?.find(field => field.key === 'study_year'); if (stored) savedStudyYear.value = String(stored.value ?? ''); if (options.promptMissingStudyYear && !disposed) { const question = initialOnboardingQuestion({ studyYear: studyYear.value, hasSession: !!demo.state.currentSessionId, hasTurns: turns.value.length > 0, hasPending: !!pending.value, chsiTouched: backendDemo.chsiVerified.value || backendDemo.chsiPdfImported.value }); onboardingQuestion.value = question; if (question === 'year') editingStudyYear.value = true } } } catch (e) { if (!disposed) profileError.value = friendlyError(e) } finally { if (!disposed) { profileLoading.value = false; profileLoaded.value = true } } }
 function clearTopicQuery() { if (route.query.new === undefined) return; const query = { ...route.query }; delete query.new; void router.replace({ path:route.path, query }) }
 function chooseTopic() {
  if (thinking.value || systemData.busy || !systemData.shellReady) return
@@ -196,6 +215,23 @@ function chooseTopic() {
 }
 function closeTopic() { choosingTopic.value = false; clearTopicQuery(); void bottom(true) }
 function cancelStudyYear() { editingStudyYear.value = false; pendingTopic.value = null; choosingTopic.value = true }
+function startOnboardingVerification() { verificationOpen.value = true }
+function skipOnboardingVerification() { onboardingQuestion.value = 'year'; editingStudyYear.value = true }
+/** 核验面板收口（核验完成的通知与手动关闭共用）：
+ *  学籍把年级带了进来 → 直接进主题选择；带了资料但推算不出年级（如学历报告）
+ *  或没核验 → 落到年级一问。任何路径都不会卡在开场。
+ *  studyYear 跟随后端状态：面板内每次读取都会刷新它，这里不必再请求一次。 */
+function settleVerification() {
+  verificationOpen.value = false
+  if (studyYear.value) {
+    onboardingQuestion.value = null
+    editingStudyYear.value = false
+    choosingTopic.value = !pendingTopic.value
+  } else {
+    onboardingQuestion.value = 'year'
+    editingStudyYear.value = true
+  }
+}
 async function reloadConversation() {
  if (thinking.value || systemData.busy) return
  requestError.value = ''
@@ -231,7 +267,7 @@ async function saveStudyYear(label: string) {
   savedStudyYear.value = String(updated.value ?? label)
   const pending = pendingTopic.value
   pendingTopic.value = null
-  editingStudyYear.value = false; choosingTopic.value = !pending
+  editingStudyYear.value = false; onboardingQuestion.value = null; choosingTopic.value = !pending
   await refreshProfile()
   if (pending) await start(pending.code, pending.label)
  } catch (e) {
@@ -594,9 +630,16 @@ onUnmounted(() => { disposed = true; clearInterval(recoveryTimer); window.remove
   <div ref="flow" v-scroll-fade class="consult-flow" tabindex="0" aria-label="对话记录" @scroll.passive="onScroll">
    <div v-if="systemData.busy || restoring" class="consult-loading" role="status">正在读取会话…</div>
    <div v-else-if="!profileLoaded && !demo.state.currentSessionId" class="consult-loading" role="status">正在读取个人资料…</div>
-   <div v-else-if="showStudyYearQuestion || choosingTopic || (!turns.length && !pending && !showFailedSend && !demo.state.currentSessionId)" class="consult-intro" :class="{'consult-intro--onboarding':showStudyYearQuestion}">
+   <div v-else-if="showVerifyQuestion || showStudyYearQuestion || choosingTopic || (!turns.length && !pending && !showFailedSend && !demo.state.currentSessionId)" class="consult-intro" :class="{'consult-intro--onboarding':showVerifyQuestion || showStudyYearQuestion}">
     <AgentAvatar agent="career_advisor" :size="64" aria-label="知音 · 待命" title="知音 · 职业发展顾问" />
-    <template v-if="showStudyYearQuestion">
+    <template v-if="showVerifyQuestion">
+     <p class="consult-intro__eyebrow">开始前确认一项信息</p>
+     <h2>方便做一次学信网核验吗？</h2>
+     <p>核验通过后，学校、专业、年级这些就不用逐条问了。只需要学信档案的在线验证码，或学信网下载的报告 PDF——不需要账号密码。</p>
+     <div class="consult-year-options consult-year-options--two" role="group" aria-label="选择是否核验学籍"><button :disabled="!!studyYearSaving" @click="startOnboardingVerification"><span>可以，现在核验</span><UiIcon name="shield" :size="16" /></button><button :disabled="!!studyYearSaving" @click="skipOnboardingVerification"><span>暂不核验，先聊聊</span><UiIcon name="arrow" :size="16" /></button></div>
+     <p class="consult-intro__footnote">也可以稍后在「个人画像 → 学籍信息」里随时核验。</p>
+    </template>
+    <template v-else-if="showStudyYearQuestion">
      <p class="consult-intro__eyebrow">开始前确认一项信息</p>
      <h2>先确认一下：你现在大几？</h2>
      <p>只用于调整默认咨询方向，不会限制你可以提出的问题。</p>
@@ -605,7 +648,7 @@ onUnmounted(() => { disposed = true; clearInterval(recoveryTimer); window.remove
      <button v-if="editingStudyYear && (studyYear || pendingTopic)" class="consult-resume" @click="cancelStudyYear">取消修改</button>
     </template>
     <template v-else>
-     <button v-if="studyYear" class="consult-year-summary" @click="editingStudyYear=true"><span>当前阶段：{{ studyYearLabel(studyYear) }}</span><small>修改</small></button>
+     <button v-if="studyYear" class="consult-year-summary" @click="editingStudyYear=true"><span>{{ enrollmentSummary }}</span><small>修改</small></button>
      <h2>{{ studyYear ? `已按${studyYearLabel(studyYear)}安排咨询重点` : '从你现在关心的事开始' }}</h2><p>{{ studyYear ? studyYearIntro(studyYear) : '先选一个主题。进入后仍可自由补充，不会覆盖已有会话。' }}</p>
      <div class="consult-topics"><button v-for="(entry,i) in starters" :key="entry.code" :class="{'consult-topic--free':entry.code==='free_chat'}" :disabled="!systemData.shellReady || systemData.busy || restoring || startingTopic || uploading" @click="start(entry.code, entry.label)"><UiIcon :name="['profile','directions','action','review'][i % 4]" :size="21" /><span>{{ entry.label }}</span><UiIcon name="arrow" :size="17" /></button></div>
      <p v-if="requestError" class="consult-error" role="alert">{{ requestError }}</p>
@@ -697,6 +740,7 @@ onUnmounted(() => { disposed = true; clearInterval(recoveryTimer); window.remove
    <p class="consult-disclaimer">建议供参考，重要决定由你做出。<DetailPopover title="资料使用说明" side="top"><template #trigger><UiIcon name="info" :size="13" /></template><p>材料和对话将按你的资料偏好参与分析。你可以查看、更正个人画像，或调整资料使用范围。</p><RouterLink to="/settings">管理资料偏好</RouterLink></DetailPopover></p>
   </footer>
  </div>
+ <InfoSheet :open="verificationOpen" shape="panel" title="学籍核验与报告导入" @close="settleVerification"><AcademicVerification @changed="settleVerification" /></InfoSheet>
 </section>
 </template>
 <style scoped>

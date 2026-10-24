@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { STUDY_YEAR_OPTIONS, needsInitialStudyYearChoice, personalizedStudyYearEntries, studyYearCode, studyYearIntro, studyYearLabel } from '../src/lib/study-year.ts'
+import { STUDY_YEAR_OPTIONS, initialOnboardingQuestion, personalizedStudyYearEntries, studyYearCode, studyYearIntro, studyYearLabel } from '../src/lib/study-year.ts'
 
 const entries = [
   ['confused', '不清楚', 1],
@@ -43,11 +43,12 @@ test('没有学习阶段时保留服务端下发的原始入口顺序和文案',
   assert.deepEqual(result.map(entry => entry.label), entries.map(entry => entry.label))
 })
 
-test('新账号首次进入先确认年级，已有内容或会话时不再拦截', () => {
+test('首次进入先问能否学信网核验；核验过/已有内容时各有归属', () => {
   const empty = { studyYear: '', hasSession: false, hasTurns: false, hasPending: false }
-  assert.equal(needsInitialStudyYearChoice(empty), true)
-  assert.equal(needsInitialStudyYearChoice({ ...empty, studyYear: '大一' }), false)
-  assert.equal(needsInitialStudyYearChoice({ ...empty, hasSession: true }), false)
-  assert.equal(needsInitialStudyYearChoice({ ...empty, hasTurns: true }), false)
-  assert.equal(needsInitialStudyYearChoice({ ...empty, hasPending: true }), false)
+  assert.equal(initialOnboardingQuestion({ ...empty, chsiTouched: false }), 'verify')
+  assert.equal(initialOnboardingQuestion({ ...empty, chsiTouched: true }), 'year')
+  assert.equal(initialOnboardingQuestion({ ...empty, studyYear: '大一', chsiTouched: false }), null)
+  assert.equal(initialOnboardingQuestion({ ...empty, hasSession: true, chsiTouched: false }), null)
+  assert.equal(initialOnboardingQuestion({ ...empty, hasTurns: true, chsiTouched: false }), null)
+  assert.equal(initialOnboardingQuestion({ ...empty, hasPending: true, chsiTouched: false }), null)
 })
