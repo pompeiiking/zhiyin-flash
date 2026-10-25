@@ -135,3 +135,4 @@ _tmp-spike/
 .runtime312/
 .pytest-tmp*/
 zhiyin-src/template/zhiyin-web/_chsi_pdf_acceptance.html
+zhiyin-src/template/output/
