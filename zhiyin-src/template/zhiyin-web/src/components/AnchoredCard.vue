@@ -28,13 +28,14 @@ const portalTarget = computed(() => trigger.value?.closest('dialog') ?? undefine
  * 此时回退为**居中弹窗**：同样的内容，独立的关闭按钮与遮罩。
  */
 const anchorHidden = ref(false)
+// immediate：?history=1 这类入口在挂载前就把 open 置真，挂载后也要补一次检测。
 watch(open, value => {
   if (!value) { anchorHidden.value = false; return }
   void nextTick(() => {
     const rect = trigger.value?.getBoundingClientRect()
     anchorHidden.value = !rect || rect.width === 0 || rect.height === 0
   })
-})
+}, { immediate: true })
 function close() { open.value = false }
 </script>
 
