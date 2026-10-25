@@ -129,6 +129,8 @@ export const backendClient = {
   logout: () => request<{ logged_out: boolean }>('logout'),
   bootstrap: () => request<BootstrapView>('bootstrap'),
   sessions: () => request<SessionListView>('sessions'),
+  /** 历史会话全文检索：命中会话带片段（matches[task_id]），fresh 绕过 GET 短缓存。 */
+  sessionSearch: (q: string) => request<SessionListView>('sessionSearch', { query: { q }, fresh: true }),
   conversationRuntime: (id: string) => send<ConversationRuntimeState>({ method: 'GET', path: `/app/sessions/${encodeURIComponent(id)}/runtime` }, { fresh: true }),
   conversationSettings: (id: string, temporary: boolean) => send<ConversationRuntimeState>({ method: 'PATCH', path: `/app/sessions/${encodeURIComponent(id)}/settings` }, { body: { temporary } }),
   cancelConversationRun: (id: string, run: string) => send<Record<string, unknown>>({ method: 'POST', path: `/app/sessions/${encodeURIComponent(id)}/runs/${encodeURIComponent(run)}/cancel` }),

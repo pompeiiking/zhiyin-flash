@@ -549,6 +549,16 @@ export interface paths {
      */
     get: operations["list_sessions_api_v1_app_sessions_get"];
   };
+  "/api/v1/app/sessions/search": {
+    /**
+     * Search Sessions
+     * @description 历史会话全文检索：在当前账号的逐轮原文里找关键词。
+     *
+     * 命中的会话带片段（matches[task_id]）；标题命中但没有正文命中的会话
+     * 也在结果里。逐轮仓储不支持检索时退化为只搜标题。
+     */
+    get: operations["search_sessions_api_v1_app_sessions_search_get"];
+  };
   "/api/v1/app/sessions/{task_id}": {
     /**
      * Delete Session
@@ -5697,6 +5707,10 @@ export interface components {
     SessionListView: {
       /** Current Task Id */
       current_task_id?: string | null;
+      /** Matches */
+      matches?: {
+        [key: string]: string;
+      } | null;
       /** Sessions */
       sessions?: components["schemas"]["TaskSessionView"][];
     };
@@ -7880,6 +7894,34 @@ export interface operations {
       200: {
         content: {
           "application/json": components["schemas"]["ApiResponse_SessionListView_"];
+        };
+      };
+    };
+  };
+  /**
+   * Search Sessions
+   * @description 历史会话全文检索：在当前账号的逐轮原文里找关键词。
+   *
+   * 命中的会话带片段（matches[task_id]）；标题命中但没有正文命中的会话
+   * 也在结果里。逐轮仓储不支持检索时退化为只搜标题。
+   */
+  search_sessions_api_v1_app_sessions_search_get: {
+    parameters: {
+      query: {
+        q: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ApiResponse_SessionListView_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };

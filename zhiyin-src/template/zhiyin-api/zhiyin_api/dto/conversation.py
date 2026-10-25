@@ -221,6 +221,8 @@ class SessionListView(BaseModel):
 
     sessions: list[TaskSessionView] = Field(default_factory=list)
     current_task_id: Optional[str] = None
+    #: 全文检索的命中片段（task_id → 命中原文窗口）；普通列表为 None。
+    matches: Optional[dict[str, str]] = None
 
 
 class SessionRenameRequest(BaseModel):

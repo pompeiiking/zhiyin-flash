@@ -376,10 +376,11 @@ def task_session_view(
 
 
 def session_list_view(
-    sessions: Sequence[TaskSessionView], *, current_task_id: Optional[str] = None
+    sessions: Sequence[TaskSessionView], *, current_task_id: Optional[str] = None,
+    matches: Optional[dict[str, str]] = None
 ) -> SessionListView:
     """左栏会话列表。"""
-    return SessionListView(sessions=list(sessions), current_task_id=current_task_id)
+    return SessionListView(sessions=list(sessions), current_task_id=current_task_id, matches=matches)
 
 
 def conversation_turn_view(turn: TurnResult) -> ConversationTurnView:

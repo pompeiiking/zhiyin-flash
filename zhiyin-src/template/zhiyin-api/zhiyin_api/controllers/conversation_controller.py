@@ -43,6 +43,18 @@ async def list_sessions(request: Request) -> ApiResponse[SessionListView]:
     return ApiResponse(data=await facade.list_sessions(user_id))
 
 
+@router.get("/app/sessions/search", response_model=ApiResponse[SessionListView])
+async def search_sessions(request: Request, q: str) -> ApiResponse[SessionListView]:
+    """历史会话全文检索：在当前账号的逐轮原文里找关键词。
+
+    命中的会话带片段（matches[task_id]）；标题命中但没有正文命中的会话
+    也在结果里。逐轮仓储不支持检索时退化为只搜标题。
+    """
+    facade = get_facade()
+    user_id = await facade.resolve_user_id(request)
+    return ApiResponse(data=await facade.search_sessions(user_id, q))
+
+
 @router.patch("/app/sessions/{task_id}", response_model=ApiResponse[SessionListView])
 async def rename_session(
     request: Request, task_id: str, body: SessionRenameRequest

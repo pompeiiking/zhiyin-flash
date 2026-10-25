@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { routeEnabled } from '../lib/features'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { TooltipContent, TooltipPortal, TooltipProvider, TooltipRoot, TooltipTrigger } from 'reka-ui'
 import { WORKSPACE_GROUPS, WORKSPACE_PRIMARY, PORTAL_LINK, isNavActive, type NavItem } from '../lib/workspace-nav'
@@ -9,6 +9,7 @@ import { formatRelative } from '../lib/format'
 import { demo, toast } from '../store'
 import { openSession, systemData } from '../lib/system-data'
 import { backendClient } from '../api/backend-client'
+import type { TaskSessionView } from '../api/backend-types'
 import UiIcon from './UiIcon.vue'
 import { vScrollFade } from '../lib/scroll-fade'
 import { backendDemo } from '../lib/backend-demo'
@@ -31,7 +32,9 @@ async function resumeSession(id: string) {
 }
 /**
  * 侧栏历史会话就地管理（2026-10-25 用户要求）：搜索按钮取代"管理"跳转、
- * 列表就地过滤、每条会话带垃圾桶删除入口（行内二次确认）。
+ * 每条会话带垃圾桶删除入口（行内二次确认）。
+ * 搜索是**全文检索**：关键词非空时调 GET /app/sessions/search（300ms 防抖），
+ * 在当前账号的逐轮原文里匹配并返回命中片段；关键词为空回到本地列表。
  * 删除复用与会话面板相同的 DELETE 接口；删掉当前会话时顺延到最近一条，
  * 全部删完则回到"从主题开始"的空态。
  */
@@ -39,13 +42,49 @@ const searchOpen = ref(false)
 const sessionQuery = ref('')
 const deletingId = ref('')
 const deleteBusy = ref(false)
-const visibleSessions = computed(() => {
-  const query = sessionQuery.value.trim().toLocaleLowerCase()
-  if (!query) return sessions.value
-  return sessions.value.filter(session =>
-    (session.task_name || '').toLocaleLowerCase().includes(query) ||
-    (session.last_message || '').toLocaleLowerCase().includes(query))
+const searchLoading = ref(false)
+const searchError = ref('')
+const searchResults = ref<{ sessions: TaskSessionView[]; matches: Record<string, string> } | null>(null)
+let searchSerial = 0
+let searchTimer: ReturnType<typeof setTimeout> | undefined
+watch([searchOpen, sessionQuery], ([open, value]) => {
+  clearTimeout(searchTimer)
+  const keyword = value.trim()
+  if (!open || !keyword) { searchResults.value = null; searchLoading.value = false; searchError.value = ''; return }
+  searchLoading.value = true
+  const serial = ++searchSerial
+  searchTimer = setTimeout(async () => {
+    try {
+      const view = await backendClient.sessionSearch(keyword)
+      if (serial !== searchSerial) return
+      searchResults.value = { sessions: view.sessions ?? [], matches: view.matches ?? {} }
+      searchError.value = ''
+    } catch (e) {
+      if (serial !== searchSerial) return
+      searchResults.value = null
+      searchError.value = (e as Error).message || '搜索暂时没有成功，请稍后重试。'
+    } finally {
+      if (serial === searchSerial) searchLoading.value = false
+    }
+  }, 300)
 })
+/** 命中片段按关键词切段，模板里把命中段包成 <mark>。 */
+function snippetParts(text: string): { text: string; hit: boolean }[] {
+  const keyword = sessionQuery.value.trim()
+  if (!keyword) return [{ text, hit: false }]
+  const lower = text.toLocaleLowerCase()
+  const needle = keyword.toLocaleLowerCase()
+  const parts: { text: string; hit: boolean }[] = []
+  let index = 0
+  for (;;) {
+    const found = lower.indexOf(needle, index)
+    if (found < 0) { parts.push({ text: text.slice(index), hit: false }); break }
+    if (found > index) parts.push({ text: text.slice(index, found), hit: false })
+    parts.push({ text: text.slice(found, found + needle.length), hit: true })
+    index = found + needle.length
+  }
+  return parts.filter(part => part.text)
+}
 function toggleSearch() {
   searchOpen.value = !searchOpen.value
   if (!searchOpen.value) sessionQuery.value = ''
@@ -157,18 +196,35 @@ function sessionDate(date?: string | null) { return date ? formatRelative(date) 
       </nav>
     </TooltipProvider>
     <section v-if="chatActive" v-scroll-fade class="desk-history" aria-label="历史会话"><div class="desk-history__head"><h2 role="presentation">历史会话</h2><span>{{ backendDemo.state.sessions.length }}</span><button type="button" class="desk-history__search-toggle" :aria-label="searchOpen ? '收起会话搜索' : '搜索会话'" :aria-pressed="searchOpen" :title="searchOpen ? '收起会话搜索' : '搜索会话'" @click="toggleSearch"><UiIcon name="search" :size="15" /></button></div>
-      <div v-if="searchOpen" class="desk-history__search"><label class="sr-only" for="desk-session-search">搜索会话</label><input id="desk-session-search" v-model="sessionQuery" type="search" placeholder="搜索标题或最后一句" autocomplete="off" /></div>
-      <template v-for="session in visibleSessions" :key="session.task_id">
-        <div v-if="deletingId === session.task_id" class="desk-session desk-session--confirm">
-          <p>删除「{{ session.task_name || '未命名咨询' }}」？删除后不可恢复。</p>
-          <div><button type="button" class="desk-session__confirm" :disabled="deleteBusy" @click="confirmDelete(session)">{{ deleteBusy ? '删除中…' : '确认删除' }}</button><button type="button" class="desk-session__cancel" :disabled="deleteBusy" @click="cancelDelete">取消</button></div>
-        </div>
-        <div v-else class="desk-session-row">
-          <button type="button" class="desk-session" :title="session.task_name + '：' + (session.last_message || '')" :aria-pressed="route.path === '/chat' && session.task_id === demo.state.currentSessionId" :disabled="demo.state.chatBusy" @click="resumeSession(session.task_id)"><span>{{ session.task_name || '未命名咨询' }}</span><em class="desk-session__preview">{{ session.last_message || '还没有消息' }}</em><small><template v-if="session.message_count">{{ session.message_count }} 条 · </template>{{ sessionDate(session.last_message_at || session.last_active_at) }}</small></button>
-          <button type="button" class="desk-session__delete" :aria-label="`删除会话：${session.task_name || '未命名咨询'}`" :disabled="deleteBusy || demo.state.chatBusy" @click.stop="askDelete(session)"><UiIcon name="trash" :size="15" /></button>
-        </div>
+      <div v-if="searchOpen" class="desk-history__search"><label class="sr-only" for="desk-session-search">搜索会话</label><input id="desk-session-search" v-model="sessionQuery" type="search" placeholder="搜索标题或聊天内容" autocomplete="off" /></div>
+      <p v-if="searchLoading" class="desk-history__empty" role="status">正在搜索…</p>
+      <p v-else-if="searchError" class="desk-history__empty" role="alert">{{ searchError }}</p>
+      <p v-else-if="searchOpen && sessionQuery.trim() && !searchResults?.sessions.length" class="desk-history__empty">没有匹配的会话。</p>
+      <template v-else-if="searchOpen && sessionQuery.trim()">
+        <template v-for="session in searchResults?.sessions ?? []" :key="session.task_id">
+          <div v-if="deletingId === session.task_id" class="desk-session desk-session--confirm">
+            <p>删除「{{ session.task_name || '未命名咨询' }}」？删除后不可恢复。</p>
+            <div><button type="button" class="desk-session__confirm" :disabled="deleteBusy" @click="confirmDelete(session)">{{ deleteBusy ? '删除中…' : '确认删除' }}</button><button type="button" class="desk-session__cancel" :disabled="deleteBusy" @click="cancelDelete">取消</button></div>
+          </div>
+          <div v-else class="desk-session-row">
+            <button type="button" class="desk-session" :title="session.task_name + '：' + (session.last_message || '')" :aria-pressed="route.path === '/chat' && session.task_id === demo.state.currentSessionId" :disabled="demo.state.chatBusy" @click="resumeSession(session.task_id)"><span>{{ session.task_name || '未命名咨询' }}</span><em class="desk-session__preview"><template v-for="(part, pi) in snippetParts(searchResults?.matches?.[session.task_id] || session.last_message || '还没有消息')" :key="pi"><mark v-if="part.hit">{{ part.text }}</mark><template v-else>{{ part.text }}</template></template></em><small><template v-if="session.message_count">{{ session.message_count }} 条 · </template>{{ sessionDate(session.last_message_at || session.last_active_at) }}</small></button>
+            <button type="button" class="desk-session__delete" :aria-label="`删除会话：${session.task_name || '未命名咨询'}`" :disabled="deleteBusy || demo.state.chatBusy" @click.stop="askDelete(session)"><UiIcon name="trash" :size="15" /></button>
+          </div>
+        </template>
       </template>
-      <p v-if="!visibleSessions.length" class="desk-history__empty">{{ sessionQuery ? '没有匹配的会话。' : '创建咨询后，会话将显示在这里。' }}</p></section>
+      <template v-else>
+        <template v-for="session in sessions" :key="session.task_id">
+          <div v-if="deletingId === session.task_id" class="desk-session desk-session--confirm">
+            <p>删除「{{ session.task_name || '未命名咨询' }}」？删除后不可恢复。</p>
+            <div><button type="button" class="desk-session__confirm" :disabled="deleteBusy" @click="confirmDelete(session)">{{ deleteBusy ? '删除中…' : '确认删除' }}</button><button type="button" class="desk-session__cancel" :disabled="deleteBusy" @click="cancelDelete">取消</button></div>
+          </div>
+          <div v-else class="desk-session-row">
+            <button type="button" class="desk-session" :title="session.task_name + '：' + (session.last_message || '')" :aria-pressed="route.path === '/chat' && session.task_id === demo.state.currentSessionId" :disabled="demo.state.chatBusy" @click="resumeSession(session.task_id)"><span>{{ session.task_name || '未命名咨询' }}</span><em class="desk-session__preview">{{ session.last_message || '还没有消息' }}</em><small><template v-if="session.message_count">{{ session.message_count }} 条 · </template>{{ sessionDate(session.last_message_at || session.last_active_at) }}</small></button>
+            <button type="button" class="desk-session__delete" :aria-label="`删除会话：${session.task_name || '未命名咨询'}`" :disabled="deleteBusy || demo.state.chatBusy" @click.stop="askDelete(session)"><UiIcon name="trash" :size="15" /></button>
+          </div>
+        </template>
+        <p v-if="!sessions.length" class="desk-history__empty">创建咨询后，会话将显示在这里。</p>
+      </template></section>
     </div>
     <!--
       页脚只留两样：账号（与顶栏、移动端指向**同一个「账号」抽屉**）、返回门户。
@@ -289,6 +345,7 @@ function sessionDate(date?: string | null) { return date ? formatRelative(date) 
 #student-desktop-sidebar .desk-footer__links { flex-wrap: wrap; gap: 0 14px; }
 #student-desktop-sidebar .desk-footer__links a[aria-current='page'] { color: var(--c-primary); font-weight: var(--fw-semibold); }
 #student-desktop-sidebar .desk-session__preview { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--c-text-3); font-size: var(--fs-12); font-style: normal; line-height: 1.4; }
+#student-desktop-sidebar .desk-session__preview mark { background: transparent; color: var(--c-primary); font-weight: 600; }
 #student-desktop-sidebar .desk-history__manage { margin-left:auto; color:var(--c-text-3); font-size:var(--fs-12); font-weight:var(--fw-regular); }
 #student-desktop-sidebar .desk-history__manage:hover { color:var(--c-primary); }
 </style>

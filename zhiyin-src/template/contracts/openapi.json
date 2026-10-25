@@ -9344,6 +9344,20 @@
             ],
             "title": "Current Task Id"
           },
+          "matches": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matches"
+          },
           "sessions": {
             "items": {
               "$ref": "#/components/schemas/TaskSessionView"
@@ -13218,6 +13232,49 @@
           }
         },
         "summary": "List Sessions",
+        "tags": [
+          "conversation"
+        ]
+      }
+    },
+    "/api/v1/app/sessions/search": {
+      "get": {
+        "description": "历史会话全文检索：在当前账号的逐轮原文里找关键词。\n\n命中的会话带片段（matches[task_id]）；标题命中但没有正文命中的会话\n也在结果里。逐轮仓储不支持检索时退化为只搜标题。",
+        "operationId": "search_sessions_api_v1_app_sessions_search_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "schema": {
+              "title": "Q",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_SessionListView_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Search Sessions",
         "tags": [
           "conversation"
         ]

@@ -227,6 +227,16 @@ class ConversationMemoryService(ABC):
     ) -> list[ConversationTurn]:
         """按时间正序读一条会话的全部轮次。"""
 
+    async def search_turns(
+        self, user_id: str, query: str, *, limit: int = 40
+    ) -> list[ConversationTurn]:
+        """在当前账号的逐轮原文里做关键词匹配（历史会话全文检索）。
+
+        默认未实现：只有接了支持检索的逐轮仓储才可用；调用方捕获
+        NotImplementedError 并退化为"只搜标题"。
+        """
+        raise NotImplementedError("此记忆服务不支持全文检索")
+
     @abstractmethod
     async def delete_session(self, user_id: str, task_id: str) -> None:
         """删除一条会话的记忆摘要与逐轮原文（会话删除时调用）。"""

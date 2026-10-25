@@ -145,6 +145,14 @@ class DefaultConversationMemoryService(ConversationMemoryService):
             return []
         return await self._turns.list_by_task(user_id, task_id, limit=limit)
 
+    async def search_turns(
+        self, user_id: str, query: str, *, limit: int = 40
+    ) -> list[ConversationTurn]:
+        """逐轮原文关键词匹配（历史会话全文检索的数据源）。"""
+        if self._turns is None:
+            return []
+        return await self._turns.search_by_text(user_id, query, limit=limit)
+
     async def delete_session(self, user_id: str, task_id: str) -> None:
         """删除会话的记忆摘要与逐轮原文（会话删除时调用）。"""
         if self._turns is not None:

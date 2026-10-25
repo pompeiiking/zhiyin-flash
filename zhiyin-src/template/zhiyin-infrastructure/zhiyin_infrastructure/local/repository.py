@@ -431,6 +431,20 @@ class InMemoryConversationTurnRepository(ConversationTurnRepository):
         matched.sort(key=lambda item: item.created_at)
         return _snapshot(matched[-1])
 
+    async def search_by_text(
+        self, user_id: str, query: str, *, limit: int = 40
+    ) -> list[ConversationTurn]:
+        needle = (query or "").strip().lower()
+        if not needle:
+            return []
+        matched = [
+            turn
+            for turn in self._turns
+            if turn.user_id == user_id and needle in (turn.text or "").lower()
+        ]
+        matched.sort(key=lambda item: item.created_at, reverse=True)
+        return [_snapshot(item) for item in matched][:limit]
+
     async def delete_by_task(self, user_id: str, task_id: str) -> int:
         before = len(self._turns)
         self._turns = [

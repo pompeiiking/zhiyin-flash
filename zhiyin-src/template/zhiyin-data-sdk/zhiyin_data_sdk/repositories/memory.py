@@ -58,3 +58,14 @@ class ConversationTurnRepository(ABC):
     @abstractmethod
     async def delete_by_task(self, user_id: str, task_id: str) -> int:
         """删除一条会话的全部逐轮原文，返回删除条数（删除会话时使用）。"""
+
+    async def search_by_text(
+        self, user_id: str, query: str, *, limit: int = 40
+    ) -> list[ConversationTurn]:
+        """在**当前账号**的逐轮原文里做关键词匹配，按时间倒序返回命中轮次。
+
+        会话全文检索（历史会话搜索）的数据源。默认未实现：只有逐轮仓储的
+        具体实现（内存 / PostgreSQL）才支持；调用方需捕获 NotImplementedError
+        并退化为"只搜标题"。
+        """
+        raise NotImplementedError("此逐轮仓储不支持全文检索")

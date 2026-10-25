@@ -29,6 +29,11 @@
     "path": "/app/sessions",
     "surface": "/chat"
   },
+  "sessionSearch": {
+    "method": "GET",
+    "path": "/app/sessions/search",
+    "surface": "/chat"
+  },
   "sessionTurns": {
     "method": "GET",
     "path": "/app/sessions/{task_id}/turns",

@@ -401,6 +401,75 @@ class DefaultApplicationFacade(ApplicationFacade):
             views, current_task_id=views[0].task_id if views else None
         )
 
+    async def search_sessions(self, user_id: str, query: str) -> SessionListView:
+        """历史会话全文检索：在当前账号的逐轮原文里找关键词。
+
+        命中的会话附带**命中片段**（原文窗口，非改写）；标题命中的会话也在
+        结果里（片段为空，前端回退显示最后一句）。逐轮仓储不支持检索时
+        （NotImplementedError）退化为"只搜标题"——列表永远可用。
+        """
+        keyword = (query or "").strip()
+        sessions = await self._workspace.list_sessions(user_id)
+        matches: dict[str, str] = {}
+        if keyword and self._memories is not None:
+            try:
+                turns = await self._memories.search_turns(user_id, keyword, limit=60)
+            except NotImplementedError:
+                logger.warning("逐轮仓储不支持全文检索，历史会话搜索退化为只搜标题")
+                turns = []
+            for turn in turns:
+                if turn.task_id in matches:
+                    continue
+                text = turn.text or ""
+                index = text.lower().find(keyword.lower())
+                if index < 0:
+                    continue
+                start = max(0, index - 30)
+                end = min(len(text), index + len(keyword) + 50)
+                snippet = ("…" if start > 0 else "") + " ".join(text[start:end].split())
+                if end < len(text):
+                    snippet += "…"
+                matches[turn.task_id] = snippet
+        views = []
+        for session in sessions:
+            title_match = bool(keyword) and keyword.lower() in (session.task_name or "").lower()
+            if keyword and session.id not in matches and not title_match:
+                continue
+            turns = (
+                await self._memories.list_turns(user_id, session.id, limit=200)
+                if self._memories is not None
+                else []
+            )
+            if not turns:
+                continue
+            agent = await self._registry.get_agent(session.lead_agent)
+            last = turns[-1]
+            views.append(
+                mappers.task_session_view(
+                    session,
+                    task_name=session.task_name,
+                    lead_agent_name=agent.name if agent else "",
+                    message_count=len(turns),
+                    last_message=_preview(last.text),
+                    last_message_at=last.created_at,
+                )
+            )
+        views.sort(
+            key=lambda view: (
+                (view.last_message_at or view.last_active_at).isoformat()
+                if (view.last_message_at or view.last_active_at)
+                else "",
+                (view.last_active_at.isoformat() if view.last_active_at else ""),
+                view.task_id,
+            ),
+            reverse=True,
+        )
+        return mappers.session_list_view(
+            views,
+            current_task_id=views[0].task_id if views else None,
+            matches=matches or None,
+        )
+
     async def rename_session(
         self, user_id: str, task_id: str, task_name: str
     ) -> SessionListView:

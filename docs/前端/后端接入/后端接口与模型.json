@@ -3336,6 +3336,51 @@
       "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
     },
     {
+      "id": "GET /api/v1/app/sessions/search",
+      "method": "GET",
+      "path": "/api/v1/app/sessions/search",
+      "capability": "历史会话全文检索：按当前账号在逐轮对话原文里匹配关键词（ILIKE，转义通配符），返回命中的会话与命中片段（matches[task_id]）；标题命中但没有正文命中的会话也在结果里。逐轮仓储不支持检索时退化为只搜标题。",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py:46",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [
+        {
+          "name": "q",
+          "in": "query",
+          "required": true,
+          "description": "检索关键词"
+        }
+      ],
+      "request": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_SessionListView_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "联调通过",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/components/DesktopSidebar.vue"
+      ],
+      "verification": "前端已连接；侧栏历史会话搜索经内存后端与真实会话数据验证（2026-10-25）。"
+    },
+    {
       "id": "DELETE /api/v1/app/sessions/{task_id}",
       "method": "DELETE",
       "path": "/api/v1/app/sessions/{task_id}",

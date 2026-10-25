@@ -1030,6 +1030,46 @@ class PostgresConversationTurnRepository(ConversationTurnRepository):
         except (ValueError, IndexError):
             return 0
 
+    async def search_by_text(
+        self, user_id: str, query: str, *, limit: int = 40
+    ) -> list[ConversationTurn]:
+        needle = (query or "").strip()
+        if not needle:
+            return []
+        # ILIKE 的 % _ \ 是通配符：用户搜"100%通过"不能变成匹配任意串。
+        escaped = needle.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        rows = await self._db.fetch(
+            """
+            SELECT id, user_id, task_id, role, text, loop_stage, agent_id,
+                   client_msg_id, created_at, renderables, metadata
+            FROM biz_conversation_turn
+            WHERE user_id = $1 AND text ILIKE '%' || $2 || '%'
+            ORDER BY created_at DESC, id DESC
+            LIMIT $3
+            """,
+            user_id,
+            escaped,
+            limit,
+        )
+        return [
+            ConversationTurn(
+                id=row["id"],
+                user_id=row["user_id"],
+                task_id=row["task_id"] or None,
+                role=row["role"],
+                text=row["text"],
+                loop_stage=LoopStage(row["loop_stage"]),
+                agent_id=row["agent_id"],
+                client_msg_id=row["client_msg_id"],
+                metadata=json.loads(row["metadata"]) if isinstance(row.get("metadata"), str) else (row.get("metadata") or {}),
+                created_at=row["created_at"],
+                renderables=json.loads(row["renderables"])
+                if isinstance(row["renderables"], str)
+                else row["renderables"],
+            )
+            for row in rows
+        ]
+
 
 class PostgresUserNoteRepository(UserNoteRepository):
     """用户自己写下的东西。列式存储：文本要能被查询与引用，不该埋在 JSON 里。"""
