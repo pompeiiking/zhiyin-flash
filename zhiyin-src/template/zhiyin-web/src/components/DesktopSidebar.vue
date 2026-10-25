@@ -6,9 +6,9 @@ import { TooltipContent, TooltipPortal, TooltipProvider, TooltipRoot, TooltipTri
 import { WORKSPACE_GROUPS, WORKSPACE_PRIMARY, PORTAL_LINK, isNavActive, type NavItem } from '../lib/workspace-nav'
 import { navigation } from '../lib/layout'
 import { formatRelative } from '../lib/format'
-import { demo } from '../store'
-import { openSession } from '../lib/system-data'
-import { toast } from '../store'
+import { demo, toast } from '../store'
+import { openSession, systemData } from '../lib/system-data'
+import { backendClient } from '../api/backend-client'
 import UiIcon from './UiIcon.vue'
 import { vScrollFade } from '../lib/scroll-fade'
 import { backendDemo } from '../lib/backend-demo'
@@ -28,6 +28,69 @@ defineExpose({ focusCollapse() { collapseButton.value?.focus() } })
 const sessions = computed(() => [...backendDemo.state.sessions].sort((a, b) => ((b.last_message_at || b.last_active_at) ?? '').localeCompare((a.last_message_at || a.last_active_at) ?? '')))
 async function resumeSession(id: string) {
   try { await openSession(id); await router.push('/chat') } catch(e) { toast((e as Error).message) }
+}
+/**
+ * 侧栏历史会话就地管理（2026-10-25 用户要求）：搜索按钮取代"管理"跳转、
+ * 列表就地过滤、每条会话带垃圾桶删除入口（行内二次确认）。
+ * 删除复用与会话面板相同的 DELETE 接口；删掉当前会话时顺延到最近一条，
+ * 全部删完则回到"从主题开始"的空态。
+ */
+const searchOpen = ref(false)
+const sessionQuery = ref('')
+const deletingId = ref('')
+const deleteBusy = ref(false)
+const visibleSessions = computed(() => {
+  const query = sessionQuery.value.trim().toLocaleLowerCase()
+  if (!query) return sessions.value
+  return sessions.value.filter(session =>
+    (session.task_name || '').toLocaleLowerCase().includes(query) ||
+    (session.last_message || '').toLocaleLowerCase().includes(query))
+})
+function toggleSearch() {
+  searchOpen.value = !searchOpen.value
+  if (!searchOpen.value) sessionQuery.value = ''
+}
+function applySessionList(result: unknown): boolean {
+  const sessionsResult = result && Array.isArray((result as { sessions?: unknown }).sessions)
+    ? result as { sessions: Array<{ task_id: string }>; current_task_id?: string } : null
+  if (!sessionsResult) return false
+  const list = sessionsResult.sessions ?? []
+  const keep = list.some(session => session.task_id === demo.state.currentSessionId)
+    ? demo.state.currentSessionId
+    : (sessionsResult.current_task_id || '')
+  backendDemo.setSessions(list as never, keep)
+  return true
+}
+function askDelete(session: { task_id: string }) {
+  if (deleteBusy.value) return
+  deletingId.value = session.task_id
+}
+function cancelDelete() { deletingId.value = '' }
+async function confirmDelete(session: { task_id: string; task_name?: string }) {
+  if (deleteBusy.value) return
+  const wasCurrent = session.task_id === demo.state.currentSessionId
+  if (wasCurrent && demo.state.chatBusy) { toast('回复生成中，等这一轮结束后再删除当前会话。'); return }
+  deleteBusy.value = true
+  try {
+    let result = await backendClient.sessionDelete(session.task_id)
+    backendDemo.saveDraft(session.task_id, '', [], null)
+    if (!applySessionList(result)) {
+      result = await backendClient.sessions()
+      applySessionList(result)
+    }
+    deletingId.value = ''
+    toast(`已删除会话「${session.task_name || '未命名咨询'}」。`)
+    if (wasCurrent) {
+      const next = sessions.value[0]
+      if (next) { try { await openSession(next.task_id) } catch { /* 空态由下方兜底 */ } }
+      else {
+        demo.setChatTurns([], '')
+        systemData.snapshot = null
+        demo.setChatBusy(false)
+      }
+    }
+  } catch (e) { toast((e as Error).message || '删除没有成功，请稍后重试。') }
+  finally { deleteBusy.value = false }
 }
 const userName = useDisplayName()
 
@@ -93,7 +156,19 @@ function sessionDate(date?: string | null) { return date ? formatRelative(date) 
         </section>
       </nav>
     </TooltipProvider>
-    <section v-if="chatActive" v-scroll-fade class="desk-history" aria-label="历史会话"><div class="desk-history__head"><h2 role="presentation">历史会话</h2><span>{{ backendDemo.state.sessions.length }}</span><RouterLink class="desk-history__manage" to="/chat?history=1">管理</RouterLink></div><button v-for="session in sessions" :key="session.task_id" class="desk-session" :title="session.task_name + '：' + (session.last_message || '')" :aria-pressed="route.path === '/chat' && session.task_id === demo.state.currentSessionId" :disabled="demo.state.chatBusy" @click="resumeSession(session.task_id)"><span>{{ session.task_name || '未命名咨询' }}</span><em class="desk-session__preview">{{ session.last_message || '还没有消息' }}</em><small><template v-if="session.message_count">{{ session.message_count }} 条 · </template>{{ sessionDate(session.last_message_at || session.last_active_at) }}</small></button><p v-if="!sessions.length" class="desk-history__empty">创建咨询后，会话将显示在这里。</p></section>
+    <section v-if="chatActive" v-scroll-fade class="desk-history" aria-label="历史会话"><div class="desk-history__head"><h2 role="presentation">历史会话</h2><span>{{ backendDemo.state.sessions.length }}</span><button type="button" class="desk-history__search-toggle" :aria-label="searchOpen ? '收起会话搜索' : '搜索会话'" :aria-pressed="searchOpen" :title="searchOpen ? '收起会话搜索' : '搜索会话'" @click="toggleSearch"><UiIcon name="search" :size="15" /></button></div>
+      <div v-if="searchOpen" class="desk-history__search"><label class="sr-only" for="desk-session-search">搜索会话</label><input id="desk-session-search" v-model="sessionQuery" type="search" placeholder="搜索标题或最后一句" autocomplete="off" /></div>
+      <template v-for="session in visibleSessions" :key="session.task_id">
+        <div v-if="deletingId === session.task_id" class="desk-session desk-session--confirm">
+          <p>删除「{{ session.task_name || '未命名咨询' }}」？删除后不可恢复。</p>
+          <div><button type="button" class="desk-session__confirm" :disabled="deleteBusy" @click="confirmDelete(session)">{{ deleteBusy ? '删除中…' : '确认删除' }}</button><button type="button" class="desk-session__cancel" :disabled="deleteBusy" @click="cancelDelete">取消</button></div>
+        </div>
+        <div v-else class="desk-session-row">
+          <button type="button" class="desk-session" :title="session.task_name + '：' + (session.last_message || '')" :aria-pressed="route.path === '/chat' && session.task_id === demo.state.currentSessionId" :disabled="demo.state.chatBusy" @click="resumeSession(session.task_id)"><span>{{ session.task_name || '未命名咨询' }}</span><em class="desk-session__preview">{{ session.last_message || '还没有消息' }}</em><small><template v-if="session.message_count">{{ session.message_count }} 条 · </template>{{ sessionDate(session.last_message_at || session.last_active_at) }}</small></button>
+          <button type="button" class="desk-session__delete" :aria-label="`删除会话：${session.task_name || '未命名咨询'}`" :disabled="deleteBusy || demo.state.chatBusy" @click.stop="askDelete(session)"><UiIcon name="trash" :size="15" /></button>
+        </div>
+      </template>
+      <p v-if="!visibleSessions.length" class="desk-history__empty">{{ sessionQuery ? '没有匹配的会话。' : '创建咨询后，会话将显示在这里。' }}</p></section>
     </div>
     <!--
       页脚只留两样：账号（与顶栏、移动端指向**同一个「账号」抽屉**）、返回门户。
@@ -136,6 +211,23 @@ function sessionDate(date?: string | null) { return date ? formatRelative(date) 
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+/* ---- 历史会话就地管理：搜索、逐条删除（行内二次确认） ---- */
+#student-desktop-sidebar .desk-history__search-toggle { margin-left:auto; display:grid; place-items:center; width:26px; height:26px; border:0; border-radius:7px; background:transparent; color:var(--c-text-3); cursor:pointer; }
+#student-desktop-sidebar .desk-history__search-toggle:hover, #student-desktop-sidebar .desk-history__search-toggle[aria-pressed='true'] { color:var(--c-primary); background:var(--c-surface-2); }
+#student-desktop-sidebar .desk-history__search { padding:0 12px 6px; }
+#student-desktop-sidebar .desk-history__search input { width:100%; min-height:34px; padding:6px 10px; border:1px solid var(--c-border); border-radius:8px; background:var(--c-bg); color:var(--c-text); font-size:13px; }
+#student-desktop-sidebar .desk-history__search input:focus-visible { outline:2px solid var(--c-primary); outline-offset:1px; }
+#student-desktop-sidebar .desk-session-row { display:flex; align-items:center; gap:2px; }
+#student-desktop-sidebar .desk-session-row .desk-session { flex:1; min-width:0; }
+#student-desktop-sidebar .desk-session__delete { flex:none; display:grid; place-items:center; width:28px; height:28px; border:0; border-radius:7px; background:transparent; color:var(--c-text-3); cursor:pointer; }
+#student-desktop-sidebar .desk-session__delete:hover { color:var(--c-attention); background:var(--c-surface-2); }
+#student-desktop-sidebar .desk-session__delete:focus-visible { outline:2px solid var(--c-primary); outline-offset:1px; }
+#student-desktop-sidebar .desk-session--confirm { display:grid; gap:6px; padding:9px 10px; border-radius:var(--r-md); background:var(--c-surface-2); font-size:12px; color:var(--c-text-2); }
+#student-desktop-sidebar .desk-session--confirm p { margin:0; line-height:1.5; overflow-wrap:anywhere; }
+#student-desktop-sidebar .desk-session--confirm div { display:flex; gap:6px; }
+#student-desktop-sidebar .desk-session__confirm, #student-desktop-sidebar .desk-session__cancel { min-height:32px; padding:0 10px; border-radius:8px; cursor:pointer; font-size:12px; }
+#student-desktop-sidebar .desk-session__confirm { border:0; background:var(--c-attention); color:#fff; }
+#student-desktop-sidebar .desk-session__cancel { border:1px solid var(--c-border); background:var(--c-surface); color:var(--c-text-2); }
 /* 徽标与"当前页"圆点一起收进尾组：两个都带 `margin-left:auto` 时会把空隙对半分，
    徽标就会飘到行的中间；用一个 auto 外边距的尾组，它们始终贴在同一侧。 */
 .hf-tail {

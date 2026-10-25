@@ -172,7 +172,7 @@
 .consult-session-list button[aria-pressed=true] {color:var(--c-primary);}
 .app--chat .desk-scroll {display:flex;flex-direction:column;overflow:hidden;}
 .app--chat .desk-nav {overflow:auto;min-height:0;flex:1;}
-.app--chat .desk-history {flex:none;max-height:210px;overflow:auto;}
+.app--chat .desk-history {flex:none;max-height:280px;overflow:auto;}
 .app--desktop:not(.app--sidebar-collapsed) .consult-history-button,.app--desktop:not(.app--sidebar-collapsed) .consult-new-button {display:none;}
 @media(max-width:767px) {
  .consultation-page {height:calc(100dvh - 128px);min-height:180px;}
