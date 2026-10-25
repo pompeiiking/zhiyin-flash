@@ -3,7 +3,7 @@ import type { ProfileFieldView, ReportDimensionItemView, ReportFullTextView, Rep
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { PROFILE_TOPICS } from '../lib/profile-organization'
-import { profileLabel } from '../lib/server-copy'
+import { profileLabel, translateFieldKeys } from '../lib/server-copy'
 import { useAiTask } from '../lib/use-ai-task'
 import AiResultMeta from './AiResultMeta.vue'
 import AiStatus from './AiStatus.vue'
@@ -136,7 +136,11 @@ function sectionLead(section: ReportSectionView) {
 function chapterLabel(index: number) { return ['第一章', '第二章', '第三章', '第四章'][index] ?? `第 ${index + 1} 章` }
 function itemId(item: ReportDimensionItemView) { return `finding-${item.index}` }
 function isPending(item: ReportDimensionItemView) { return !item.evidence?.trim() || /待|缺|不足|未知/.test(item.tag || '') }
-function evidenceText(value?: string | null) { return studentizeRefs((value || '').replace(/\b[a-z]+(?:_[a-z]+)+\b/g, key => profileLabel(key, key))) }
+function evidenceText(value?: string | null) {
+  // 顺序不能换：先 studentizeRefs 整体消费 field:/evidence:/内部链接等带前缀
+  // 记号，再 translateFieldKeys 把下划线裸键与"登记过的单词键"换成中文名。
+  return translateFieldKeys(studentizeRefs(value || ''))
+}
 function sectionDomId(id: string) { return `report-section-${id.replace(/[^a-zA-Z0-9_-]/g, '-')}` }
 function askLink(item: ReportDimensionItemView) {
   return '/chat?question=' + encodeURIComponent(`我想核对第${props.report.version}版报告中的「${item.name}」：${item.conclusion}${item.evidence ? `；依据：${item.evidence}` : '；目前没有提供依据'}`)

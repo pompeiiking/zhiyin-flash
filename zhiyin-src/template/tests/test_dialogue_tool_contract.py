@@ -103,7 +103,11 @@ async def test_validation_feedback_identifies_fields_without_echoing_input():
     assert 'sample-private-value' not in json.dumps(result)
 
 
-async def test_successful_report_automatically_attaches_persisted_evidence_chart():
+async def test_successful_report_does_not_attach_the_inline_evidence_chart():
+    """报告落库后对话里不再追加把握度大图表（2026-10-25 用户反馈：又高又卡、
+    难以滚动）；图表在报告页"本报告使用的个人资料"面板常驻，对话回执给入口。
+    保留幂等语义：同一轮重放不重复触发模型。
+    """
     from tests.test_dialogue_runtime import setup, send, action
 
     async def callback(rt):
@@ -114,17 +118,11 @@ async def test_successful_report_automatically_attaches_persisted_evidence_chart
     c, engine, session = await setup(callback)
     await c.profile_service.correct_field('u1', 'interest', '喜欢写代码')
     result = await send(c, session, '生成诊断报告', client_msg_id='report-with-chart')
-    charts = result.messages[-1].renderables
-    assert len(charts) == 1 and charts[0].kind == 'profile_evidence_chart'
-    assert charts[0].payload['metric'] == 'profile_evidence'
-    point = charts[0].payload['points'][0]
-    assert point['key'] == 'interest'
-    assert point['assessment']['status'] == 'pending'
-    assert point['assessment']['score'] is None  # old manual confidence=1 never becomes 100%
+    assert not result.messages[-1].renderables
     turns = await c.memory_service.list_turns('u1', session.id)
-    assert next(t for t in reversed(turns) if t.role == 'agent').renderables[0]['kind'] == 'profile_evidence_chart'
+    assert not next(t for t in reversed(turns) if t.role == 'agent').renderables
     replay = await send(c, session, '生成诊断报告', client_msg_id='report-with-chart')
-    assert replay.messages[-1].renderables == charts and len(engine.requests) == 1
+    assert replay.messages[-1].renderables == [] and len(engine.requests) == 1
 
 
 async def test_regular_conversation_does_not_gain_report_chart():

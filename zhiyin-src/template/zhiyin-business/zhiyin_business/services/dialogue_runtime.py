@@ -18,7 +18,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from zhiyin_business.contracts.common import AgentBadge, BehaviorGuide, BehaviorEventDraft, ConversationMessage, Disclosure, GuideOption, IntelRef, TheoryRef
 from zhiyin_business.ports.orchestrator import TurnResult
 from zhiyin_business.contracts.dialogue_actions import DialogueOperation
-from zhiyin_business.policies.renderers import profile_evidence_snapshot, validate_renderables
+from zhiyin_business.policies.renderers import validate_renderables
 from zhiyin_business.services.conversation_ledger import ConversationLedger, digest, utcnow
 from zhiyin_business.services.unit_of_work import atomic_repository
 from zhiyin_business.services.dialogue_exploration import ExplorationUpdate, is_operation_message, privacy_stamp
@@ -1170,15 +1170,10 @@ class DialogueRuntime:
                 if partial_descriptor and str(getattr(partial_descriptor.status, 'value', partial_descriptor.status)) == 'enabled':
                     speaker = partial_speaker
         renderables = validate_renderables(model_result.renderables if model_result else [])
-        report_written = any(receipt.get('executed') and record['actions'].get(receipt['action_id'], {}).get('operation')
-                             in {'report.save', 'report.activate'} for receipt in self.receipts)
-        if report_written and not any(item.kind == 'profile_evidence_chart' for item in renderables):
-            # Report output always includes its evidence chart, independently of model tool selection.
-            # This is a read-only snapshot: it never schedules assessments or changes business gates.
-            fields = await self.o._profiles.get_fields(request.user_id)
-            chart = profile_evidence_snapshot(fields)
-            if chart is not None:
-                renderables.extend(validate_renderables([chart]))
+        # 报告落库后不再向对话追加"各项资料的把握度"大图表：它在流里是一块
+        # 又高又重的渲染（最多 200 个点位带完整评估载荷），拖慢本轮回复且难以
+        # 滚动（2026-10-25 用户反馈）。把握度图表在报告页的"本报告使用的个人
+        # 资料"面板常驻；对话里的回执卡直接给去报告页的入口。
         result = TurnResult(task_id=request.task_id, conversation=True, session=session, stage=stage,
             badge=AgentBadge(agent_id=lead, name=descriptor.name if descriptor else "知音",
                              role_summary=descriptor.role_summary if descriptor else "职业发展顾问"),

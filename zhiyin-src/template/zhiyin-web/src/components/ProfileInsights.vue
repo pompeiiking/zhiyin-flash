@@ -30,6 +30,7 @@ import InfoSheet from './InfoSheet.vue'
 import StatusBanner from './StatusBanner.vue'
 import { studentVoice } from '../lib/student-voice'
 import { studentizeRefs, visibleEvidence } from '../lib/format'
+import { translateFieldKeys } from '../lib/server-copy'
 const analysis = useAiTask<PortraitAnalysis>(), dimension = useAiTask<DimensionReading>(), gap = useAiTask<GapClarify>()
 const analysisSerial=ref(-1)
 const stale=computed(()=>!!analysis.result.value&&analysisSerial.value!==backendDemo.state.profileEditSerial)
@@ -93,7 +94,7 @@ defineExpose({ inspect, inspectReport, inspectGap })
   <template v-if="detail?.mode === 'report'">
     <ReadableText v-if="detail.full" :text="studentVoice(detail.full)"/>
     <p v-if="visibleEvidence(detail.evidence).length" class="ws-section"><strong>这条判断引用的原材料</strong></p>
-    <ul v-if="visibleEvidence(detail.evidence).length" class="ws-mini-list"><li v-for="line in visibleEvidence(detail.evidence)" :key="line">{{ studentizeRefs(line) }}</li></ul>
+    <ul v-if="visibleEvidence(detail.evidence).length" class="ws-mini-list"><li v-for="line in visibleEvidence(detail.evidence)" :key="line">{{ translateFieldKeys(studentizeRefs(line)) }}</li></ul>
     <p v-else class="ws-muted">这条判断目前没有附原材料，可回到画像或对话继续核对。</p>
   </template>
   <template v-else>

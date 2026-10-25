@@ -3,13 +3,14 @@ import { computed } from 'vue'
 import type { EvidenceAssessment } from '../api/backend-types'
 import { assessmentLabel } from '../lib/evidence-assessment'
 import { formatDateTime, studentizeRefs } from '../lib/format'
+import { translateFieldKeys } from '../lib/server-copy'
 const props = defineProps<{ assessment?: EvidenceAssessment | null; historical?: boolean; snapshot?: boolean; compact?: boolean }>()
 const label = computed(() => props.historical ? '报告保存时未评估' : assessmentLabel(props.assessment))
 const stale = computed(() => props.assessment?.status === 'stale')
 const hasDetails = computed(() => !!props.assessment && (!!props.assessment.reasons?.length || !!props.assessment.assessed_at))
 // reasons 等是模型写的说明：新产出口径已要求学生语言，这里兜住存量文本里的
 // 内部编号（field:/evidence:/chsi-pdf:// 等）。
-const studentText = (value: string) => studentizeRefs(value)
+const studentText = (value: string) => translateFieldKeys(studentizeRefs(value))
 const citedSources = computed(() => (props.assessment?.source_refs ?? [])
   .map(id => props.assessment?.sources?.[id] || id)
   .map(studentText))

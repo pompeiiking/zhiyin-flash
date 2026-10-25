@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, useId } from 'vue'
+import { computed, nextTick, ref, useId, watch } from 'vue'
 import { PopoverClose, PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from 'reka-ui'
 import UiIcon from './UiIcon.vue'
 import { vScrollFade } from '../lib/scroll-fade'
@@ -22,6 +22,20 @@ const open = computed({
 const id = useId()
 const trigger = ref<HTMLButtonElement | null>(null)
 const portalTarget = computed(() => trigger.value?.closest('dialog') ?? undefined)
+/**
+ * 锚点不可见时（例如桌面侧栏展开时头部按钮被隐藏，而侧栏"管理"链接仍会
+ * 通过 ?history=1 把卡片打开），弹层会锚到 (0,0) 顶在屏幕左上角。
+ * 此时回退为**居中弹窗**：同样的内容，独立的关闭按钮与遮罩。
+ */
+const anchorHidden = ref(false)
+watch(open, value => {
+  if (!value) { anchorHidden.value = false; return }
+  void nextTick(() => {
+    const rect = trigger.value?.getBoundingClientRect()
+    anchorHidden.value = !rect || rect.width === 0 || rect.height === 0
+  })
+})
+function close() { open.value = false }
 </script>
 
 <template>
@@ -33,8 +47,8 @@ const portalTarget = computed(() => trigger.value?.closest('dialog') ?? undefine
         type="button"
         class="anchored-card__trigger"
         :aria-label="label || title"
-        :aria-expanded="open"
-        :aria-controls="open ? id : undefined"
+        :aria-expanded="open && !anchorHidden"
+        :aria-controls="open && !anchorHidden ? id : undefined"
         aria-haspopup="dialog"
       >
         <slot name="trigger" />
@@ -42,6 +56,7 @@ const portalTarget = computed(() => trigger.value?.closest('dialog') ?? undefine
     </PopoverTrigger>
     <PopoverPortal :to="portalTarget">
       <PopoverContent
+        v-if="!anchorHidden"
         :id="id"
         class="anchored-card"
         :class="`anchored-card--${size}`"
@@ -59,6 +74,24 @@ const portalTarget = computed(() => trigger.value?.closest('dialog') ?? undefine
       </PopoverContent>
     </PopoverPortal>
   </PopoverRoot>
+  <Teleport to="body">
+    <div v-if="open && anchorHidden" class="anchored-card-backdrop" @click="close()">
+      <div
+        :id="id"
+        class="anchored-card anchored-card--modal"
+        :class="`anchored-card--${size}`"
+        role="dialog"
+        :aria-label="title"
+        @click.stop
+      >
+        <header class="anchored-card__header">
+          <h2>{{ title }}</h2>
+          <button type="button" class="anchored-card__close" :aria-label="`关闭${title}`" @click="close()"><UiIcon name="close" :size="17" /></button>
+        </header>
+        <div v-scroll-fade class="anchored-card__body"><slot /></div>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <style>
@@ -70,6 +103,8 @@ const portalTarget = computed(() => trigger.value?.closest('dialog') ?? undefine
 .anchored-card__close { display:grid; place-items:center; width:44px; height:44px; border:0; border-radius:12px; background:transparent; color:var(--c-text-2); cursor:pointer; }
 .anchored-card__close:hover { background:var(--c-surface-2); color:var(--c-text); }
 .anchored-card__body { min-height:0; overflow:auto; padding:14px 18px 18px; }
+.anchored-card-backdrop { position:fixed; inset:0; z-index:119; background:var(--overlay-mask); }
+.anchored-card--modal { position:fixed; inset:0; margin:auto; height:max-content; max-height:min(680px,calc(100dvh - 48px)); }
 @keyframes anchored-card-in { from { opacity:0; transform:scale(.97) translateY(-4px); } }
 @media (max-width:767px) {
   .anchored-card,.anchored-card--wide { width:min(460px,calc(100vw - 20px)); max-height:calc(100dvh - 112px); border-radius:17px; }

@@ -128,8 +128,20 @@ export function studentizeRefs(text: string | undefined | null): string {
   return raw
     .replace(/chsi-pdf:\/\/[a-z0-9/:._-]+/gi, '学信网学籍报告（PDF 导入）')
     .replace(/derived:\/\/[a-z0-9/:._=-]+/gi, '按入学日期推算')
+    .replace(/verification=([a-z_]+)/gi, (_m, value: string) => `核实状态：${VERIFY_LABELS[value] ?? value}`)
+    .replace(/assertion_type=([a-z_]+)/gi, (_m, value: string) => ASSERT_LABELS[value] ?? value)
     .replace(/evidence:([a-z_][a-z0-9_]*):(\d+)/gi, (_m, key: string, index: string) => `${fieldLabel(key)}的第${Number(index) + 1}份材料`)
     .replace(/evidence:([a-z_][a-z0-9_]*)/gi, (_m, key: string) => `${fieldLabel(key)}的相关材料`)
     .replace(/field:([a-z_][a-z0-9_]*)/gi, (_m, key: string) => fieldLabel(key))
     .replace(/conflict:[A-Za-z0-9_-]+/g, '一条待核对的冲突')
+}
+
+const VERIFY_LABELS: Record<string, string> = {
+  self_reported: '本人自述，尚无独立核实', user_confirmed: '本人确认',
+  verified: '已核验', record: '客观记录', pending: '待核对',
+}
+const ASSERT_LABELS: Record<string, string> = {
+  affirmative_self_statement: '本人自述', explicit_correction: '本人更正',
+  conflict_candidate: '待核对候选', negative: '否定表述', hypothetical: '假设',
+  quoted: '引用原文', uncertain: '不确定', refusal: '拒绝回答',
 }
