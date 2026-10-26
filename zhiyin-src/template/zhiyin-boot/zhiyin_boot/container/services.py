@@ -431,6 +431,8 @@ def build_services(container: "Container") -> None:
             behaviors=container.behavior_service,
             read_cache=container.read_cache,
             ai_tasks=container.ai_task_service,
+            profiles=container.profile_service,
+            notes=container.note_service,
         )
         container.facade = DefaultApplicationFacade(
             student=container.student_service,

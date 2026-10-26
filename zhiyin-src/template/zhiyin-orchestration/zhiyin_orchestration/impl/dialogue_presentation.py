@@ -1,16 +1,55 @@
 """Model-selected identity in the same response as streamed public text."""
 import asyncio
 import json
+from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from zhiyin_kernel.assets import PlanGap
 from zhiyin_kernel.enums import DIALOGUE_ROLE_FOCUS
 from zhiyin_kernel.streaming import emit_progress
 from zhiyin_kernel.privacy import redact_sensitive
 from .stream_text import partial_root_string
 
 Role = Literal['profile_analyst', 'career_advisor', 'path_planner', 'companion_coach']
+
+
+class DirectionDraft(BaseModel):
+    """本轮生成的一套方向方案（服务端补 id 并保存草稿）。
+
+    为什么放在回复 JSON 里、而不是只依赖模型调用 workspace.action：
+    实测模型会把三套方向完整写进正文，却没有调用保存操作 —— 对话里有方案、
+    方案页始终为空。正文和结构化字段走同一次输出，服务端拿到后确定性落草稿，
+    不再把"页面有没有内容"交给模型记不记得调工具。
+    """
+    model_config = ConfigDict(extra='ignore')
+    role: Literal['main', 'parallel', 'fallback']
+    name: str = Field(min_length=1, max_length=60)
+    target_desc: str = Field(default='', max_length=1000)
+    fit_reason: str = Field(default='', max_length=2000)
+    main_risk: str = Field(default='', max_length=1000)
+    gaps: list[PlanGap] = Field(default_factory=list, max_length=8)
+
+
+class PlanTaskDraft(BaseModel):
+    model_config = ConfigDict(extra='ignore')
+    text: str = Field(min_length=1, max_length=300)
+    due_date: datetime | None = None
+    scheduled_at: datetime | None = None
+    estimated_minutes: int | None = Field(default=None, ge=1, le=1440)
+
+
+class PlanPhaseDraft(BaseModel):
+    model_config = ConfigDict(extra='ignore')
+    name: str = Field(min_length=1, max_length=80)
+    date_range: str = Field(default='', max_length=80)
+    tasks: list[PlanTaskDraft] = Field(default_factory=list, max_length=20)
+
+
+class ActionPlanDraft(BaseModel):
+    model_config = ConfigDict(extra='ignore')
+    phases: list[PlanPhaseDraft] = Field(default_factory=list, max_length=8)
 
 
 class DialogueReply(BaseModel):
@@ -20,6 +59,9 @@ class DialogueReply(BaseModel):
     focus: Literal['collect', 'diagnose', 'decide', 'act', 'review']
     collaborators: list[Literal['profile_analyst', 'career_advisor', 'path_planner', 'companion_coach', 'info_scout']] = Field(default_factory=list, max_length=4)
     answer: str = Field(min_length=1)
+    # 放在 answer 之后：流式解析先拿到正文，结构化资产在结尾一起到。
+    directions: list[DirectionDraft] = Field(default_factory=list, max_length=6)
+    plan: ActionPlanDraft | None = None
 
     @model_validator(mode='after')
     def matching_focus(self):
@@ -62,6 +104,13 @@ def presentation_instructions(professionals):
         'answer 是直接给用户的自然正文，继续遵守简洁、引导和权限规则；不包含身份字段、JSON封装或私有推理。'
         '系统会剥离外层 JSON，只把 answer 实时展示；先前不输出JSON的要求适用于 answer 正文。'
         '顶部 focus 和 record_exploration.mode 是两种字段；后者只能是 explore/answer/act/paused，复盘不要填 review。'
+        '本轮若完整给出方向方案（主攻/平行/保底），必须同时填写顶层 directions：每项含 role（main/parallel/fallback）、'
+        'name、target_desc、fit_reason、main_risk，gaps 可选（requirement/current_state/suggestion）。'
+        '本轮若完整给出行动计划（阶段与可执行任务），必须同时填写顶层 plan：phases 每项含 name、date_range、'
+        'tasks（text 必填，due_date/scheduled_at 可选）。这两项是正文交付物的一部分，不能只写在正文里。'
+        '服务端会按 directions / plan 自动保存（首次生成时作为当前版本；已有版本时只存草稿，不替换正式版本），'
+        '因此不要再为同一份内容调用 workspace.action 保存；'
+        '只有用户明确要求保存、启用或修改已有资产时才调用对应工具。没有完整生成时，directions 留空数组、plan 留 null。'
         '\n已加载的真实专业职责：' + json.dumps(roles, ensure_ascii=False)
     )
 
@@ -111,4 +160,15 @@ def finish_public_reply(raw, state, professionals):
     for role in reply.collaborators:
         if role not in state['roles']:
             state['roles'].append(role)
+    # 结构化交付物随最终回复一起交给业务层；由业务层在同一个动作边界里
+    # 保存草稿，不依赖模型是否记得调用保存工具。
+    assets = {}
+    if reply.directions:
+        assets['directions'] = [item.model_dump(mode='json', exclude_none=True) for item in reply.directions]
+    if reply.plan and any(phase.tasks for phase in reply.plan.phases):
+        assets['plan'] = reply.plan.model_dump(mode='json', exclude_none=True)
+    if assets:
+        state['reply_assets'] = assets
+    else:
+        state.pop('reply_assets', None)
     return reply.answer

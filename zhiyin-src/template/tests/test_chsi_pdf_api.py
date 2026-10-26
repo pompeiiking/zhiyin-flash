@@ -2,7 +2,6 @@ from datetime import datetime, timezone
 from unittest.mock import AsyncMock
 
 import httpx
-import pytest
 
 from zhiyin_api.app import create_app
 from zhiyin_api.facade import configure_facade

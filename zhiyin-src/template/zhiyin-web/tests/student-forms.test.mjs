@@ -18,6 +18,7 @@ function setup(name,api={},props={},plan={phases:[]}){
     '../api/student-capabilities':{studentApi:api},
     '../api/backend-client':{backendClient:{action:async()=>{throw Error('计划读取失败')}}},
     '../lib/form-values.mjs':formValues,
+    '../lib/random-id':{randomId:()=>'request-id'},
     // 统一日期格式化的最小替身：测试断言语义，不核对具体排版。
     '../lib/format':{formatDate:v=>v?String(v).slice(0,10):'',formatDateTime:v=>v?String(v).replace('T',' ').slice(0,16):''},
     '../lib/form-conflict':{conflictRows:()=>[],rebaseForm:(draft,original,latest)=>({...latest,...draft})},

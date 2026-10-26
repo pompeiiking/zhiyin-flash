@@ -65,7 +65,7 @@ defineExpose({ show() { more.value = true } })
       <div><UiIcon name="sidebar" :size="18"/><span><strong>桌面侧栏</strong><small>恢复大分类、小分类与历史会话</small></span></div>
       <button type="button" class="btn" @click="navigation.set('desktop');more=false">切换</button>
     </div>
-    <details class="mobile-session-history" aria-label="历史会话"><summary><span>历史会话</span><small>{{ sessions.length }} 个</small><UiIcon name="chevron" :size="16"/></summary><div><button v-for="session in sessions" :key="session.task_id" :disabled="demo.state.chatBusy || systemData.busy" :aria-pressed="session.task_id === demo.state.currentSessionId" @click="resume(session.task_id)"><strong>{{ session.task_name }}</strong><small>{{ session.last_message || '还没有消息' }}</small></button><p v-if="!sessions.length">还没有历史会话。开始咨询后会自动保存在这里。</p></div></details>
+    <details class="mobile-session-history" aria-label="历史会话"><summary><span>历史会话</span><small>{{ sessions.length }} 个</small><UiIcon name="chevron" :size="16"/></summary><div><button v-for="session in sessions" :key="session.task_id" :disabled="demo.state.chatBusy || systemData.busy" :aria-pressed="session.task_id === demo.state.currentSessionId" @click="resume(session.task_id)"><strong>{{ session.task_name }}</strong><small>{{ session.last_message || '还没有消息' }}</small></button><p v-if="!sessions.length">还没有历史会话。空白对话不会保存；发出第一条消息后会自动保存在这里。</p></div></details>
     </AnchoredCard>
   </nav>
 </template>

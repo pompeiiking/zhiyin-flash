@@ -333,11 +333,21 @@ def max_items(key: str, entry_type: ProfileEntryType | None = None) -> int:
     return TYPE_MAX_ITEMS.get(entry_type or entry_type_of(key), 1)
 
 
-def normalize_value(key: str, value: Any, entry_type: ProfileEntryType | None = None) -> Any:
+def normalize_value(
+    key: str,
+    value: Any,
+    entry_type: ProfileEntryType | None = None,
+    *,
+    allow_empty: bool = False,
+) -> Any:
     """把写入值整理成该类别的合法形状。
 
     - 多值类别：列表逐项去空白、去重、保序，最多 `max_items` 项；
     - 单值类别：字符串去空白；空值明确拒绝（清空是撤回/删除，不是写空串）。
+
+    `allow_empty` 只给兴趣留一个口子：纯否定偏好（全部 dislike）不是空记录，
+    它的事实留在 `attributes.items` 里；值列表留空，避免否定项继续污染
+    兴趣推荐与画像的"兴趣"一栏。其他字段/其他场景仍拒绝空值。
     """
     canonical = entry_type or entry_type_of(key)
     limit = value_limit(key, canonical)
@@ -356,6 +366,8 @@ def normalize_value(key: str, value: Any, entry_type: ProfileEntryType | None = 
             if text not in cleaned:
                 cleaned.append(text)
         if not cleaned:
+            if allow_empty and canonical is ProfileEntryType.INTEREST:
+                return []
             raise InvalidRequest(f"「{ENTRY_TYPE_LABELS[canonical]}」不能是空的。")
         if len(cleaned) > max_items(key, canonical):
             raise InvalidRequest(
@@ -478,15 +490,29 @@ def _merge_preference_entries(entries: list[dict[str, Any]]) -> list[dict[str, A
     return merged
 
 
+def interest_is_negative_only(key: str, attributes: Mapping[str, Any] | None) -> bool:
+    """这条兴趣记录只有否定项吗（写入口据此允许 value 为空列表）。
+
+    条件很窄：键必须是 interest，且 attributes.items 非空、每一项都明确标了
+    dislike。普通清空（value 为空且没有 items）仍然被 `normalize_value` 拒绝。
+    """
+    if entry_type_of(key) is not ProfileEntryType.INTEREST or not isinstance(attributes, Mapping):
+        return False
+    items = attributes.get("items")
+    if not isinstance(items, list) or not items:
+        return False
+    return all(isinstance(item, Mapping) and item.get("polarity") == "dislike" for item in items)
+
+
 def _visible_interest_values(entries: list[dict[str, Any]]) -> list[Any]:
     """兴趣字段的值只放正向/未定向项；否定项留在 attributes.items 里。
 
     否定项不是兴趣。把它放进 `value` 会让「兴趣：写东西 研究人为什么买 天天应酬」
-    直接出现在画像页，并污染方向推荐（#40）。如果用户只表达了否定项，
-    仍保留在 value 里，避免一条纯排除偏好因为字段不能为空而无法保存。
+    直接出现在画像页，并污染方向推荐（#40）。纯否定偏好允许 value 为空列表：
+    事实已经完整保存在 `attributes.items`（每项带 polarity=dislike），
+    不是"清空字段"；界面会从 items 里把「不喜欢…」照常列出来。
     """
-    affirmative = [entry["value"] for entry in entries if entry.get("polarity") != "dislike"]
-    return affirmative or [entry["value"] for entry in entries]
+    return [entry["value"] for entry in entries if entry.get("polarity") != "dislike"]
 
 
 def merge_preferences(key: str, before: Any, value: Any, attributes: Mapping[str, Any]) -> tuple[Any, dict, bool]:
@@ -504,25 +530,32 @@ def merge_preferences(key: str, before: Any, value: Any, attributes: Mapping[str
     def entries(vs, meta):
         by_value = {item["value"]: item for item in meta.get("items", [])}
         common = {k: v for k, v in meta.items() if k != "items"}
-        return [{"value": item, **common, **by_value.get(item, {})} for item in vs]
+        ordered = list(vs)
+        if kind is ProfileEntryType.INTEREST:
+            # 纯否定偏好不会出现在 value 里，但它是已记录的事实：下一轮合并
+            # 必须从 attributes.items 把它带回来，否则一次新的喜欢就会把
+            # 之前所有"不喜欢…"静默丢掉。
+            ordered += [item["value"] for item in meta.get("items", [])
+                        if item.get("value") and item["value"] not in ordered]
+        return [{"value": item, **common, **by_value.get(item, {})} for item in ordered]
 
     if before is None:
         # 首次写入没有旧值可合并。兴趣的极性无论是逐项给的还是写在字段级，
         # 都要拆成逐项条目：只认 items 的话，「一开口就不喜欢…」这类
         # 字段级极性的否定项会以无标注的值直接进字段（#43 复现的路径）。
         # 拆开后 _visible_interest_values 才能把否定项挡在展示值之外；
-        # 纯否定时字段仍不能为空，值里保留原对象、逐项属性标明极性。
+        # 纯否定时 value 为空列表、items 保留否定事实（allow_empty）。
         # career_focus 的 state 保持既有字段级形状（展示与测试都认它）。
         if kind is ProfileEntryType.INTEREST and (attrs.get("items") or attrs.get("polarity")):
             incoming = _merge_preference_entries(entries(values, attrs))
             return (
-                normalize_value(key, _visible_interest_values(incoming), kind),
+                normalize_value(key, _visible_interest_values(incoming), kind, allow_empty=True),
                 normalize_attributes(kind, {"items": incoming}),
                 False,
             )
         return values, attrs, False
 
-    old_values = normalize_value(key, before.value, kind)
+    old_values = normalize_value(key, before.value, kind, allow_empty=kind is ProfileEntryType.INTEREST)
     old_attrs = dict(before.attributes or {})
     old = entries(old_values, old_attrs)
     incoming = _merge_preference_entries(entries(values, attrs)) if kind is ProfileEntryType.INTEREST else entries(values, attrs)
@@ -541,7 +574,7 @@ def merge_preferences(key: str, before: Any, value: Any, attributes: Mapping[str
         merged_values = _visible_interest_values(old)
     else:
         merged_values = [item["value"] for item in old]
-    merged = normalize_value(key, merged_values, kind)
+    merged = normalize_value(key, merged_values, kind, allow_empty=kind is ProfileEntryType.INTEREST)
     return merged, normalize_attributes(kind, {"items": old}), conflict
 
 

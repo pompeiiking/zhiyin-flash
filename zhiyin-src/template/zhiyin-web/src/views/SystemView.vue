@@ -53,7 +53,7 @@ const guideSteps = [
     title: '核对报告依据', to: '/report',
     what: '报告先给总体判断，再逐条给依据。带「待验证」的条目不是结论，而是需要你在现实中验证的问题。',
     how: '点报告页「更多」里的「刷新报告」读取最新版本；点报告里的蓝色文字可以展开这条判断的依据与来源。',
-    output: '一份知道"依据在哪、还缺什么"的诊断报告，也可以导出 JSON 保存。',
+    output: '一份知道"依据在哪、还缺什么"的诊断报告，也可以导出为 PDF 或 Word 保存。',
   },
   {
     title: '比较并确认方向', to: '/directions',
@@ -153,7 +153,7 @@ async function exportData() {
         <div class="settings-main">
           <AccountPreferences />
           <section class="settings-block settings-export" aria-labelledby="settings-export-title">
-            <header><div><p>保存副本</p><h2 id="settings-export-title">导出资料</h2></div><DetailPopover title="导出说明" label="查看导出说明"><p>个人资料导出为 JSON；报告、方向和计划由服务生成相应文件。导出只读取当前账号的真实数据。</p></DetailPopover></header>
+            <header><div><p>保存副本</p><h2 id="settings-export-title">导出资料</h2></div><DetailPopover title="导出说明" label="查看导出说明"><p>个人画像导出为可读的 PDF；报告、方向和计划由服务生成 PDF 或 Word。导出只读取当前账号的真实数据。</p></DetailPopover></header>
             <div class="settings-export-grid">
               <article class="settings-export-all"><span><UiIcon name="download" :size="21"/></span><div><h3>我的全部资料</h3><p>画像、学业、待办、阶段计划与任务，以及当前报告的 JSON 副本</p></div><button class="btn" :disabled="busy" @click="exportData">导出</button></article>
               <article v-if="featureEnabled('export')" class="settings-export-single"><span><UiIcon name="report" :size="21"/></span><div><h3>单项成果</h3><p>生成适合保存或打印的文件</p></div><div class="settings-export-options"><label><span>内容</span><select v-model="asset"><option value="report">诊断报告</option><option value="direction_plan">方向方案</option><option value="action_plan">行动计划</option></select></label><label><span>格式</span><select v-model="format"><option value="pdf">PDF</option><option value="docx">Word</option></select></label></div><button class="btn" :disabled="busy" @click="exportAsset">{{ busy ? '正在请求…' : '生成文件' }}</button></article>

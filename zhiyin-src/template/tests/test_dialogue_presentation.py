@@ -149,6 +149,37 @@ async def test_unused_transport_annotations_are_never_public():
 
 
 @pytest.mark.asyncio
+async def test_complete_assets_in_the_reply_are_handed_to_the_business_layer():
+    """正文里的完整方向/计划要随最终回复一起交给业务层；不靠模型再调保存工具。"""
+    roles = await load_professionals(_PromptRegistry())
+    raw = json.loads(reply('三套方向已经给出。'))
+    raw['directions'] = [
+        {'role': 'main', 'name': '主攻：算法', 'target_desc': '算法岗',
+         'fit_reason': '基础匹配', 'main_risk': '项目不足'},
+        {'role': 'fallback', 'name': '保底：测试', 'target_desc': '测试岗',
+         'fit_reason': '门槛较低', 'main_risk': '成长空间'},
+    ]
+    raw['plan'] = {'phases': [{'name': '第一周', 'date_range': '本周',
+                              'tasks': [{'text': '完成一次练习'}]}]}
+    s = state()
+    assert finish_public_reply(json.dumps(raw), s, roles) == '三套方向已经给出。'
+    assets = s['reply_assets']
+    assert [item['role'] for item in assets['directions']] == ['main', 'fallback']
+    assert assets['plan']['phases'][0]['tasks'][0]['text'] == '完成一次练习'
+
+
+@pytest.mark.asyncio
+async def test_incomplete_assets_are_not_announced_to_the_business_layer():
+    roles = await load_professionals(_PromptRegistry())
+    raw = json.loads(reply('先聊聊你现在的课程。'))
+    raw['directions'] = []
+    raw['plan'] = {'phases': [{'name': '第一周', 'date_range': '本周', 'tasks': []}]}
+    s = state()
+    finish_public_reply(json.dumps(raw), s, roles)
+    assert 'reply_assets' not in s
+
+
+@pytest.mark.asyncio
 async def test_cancelled_stream_never_commits_provisional_identity(monkeypatch):
     from types import SimpleNamespace
     from tests.test_orchestration import _StubModel

@@ -7,6 +7,9 @@ import { profileLabel } from './server-copy'
 import { backendDemo } from './backend-demo'
 import { backendClient } from '../api/backend-client'
 import type { ProfileSource } from '../api/backend-types'
+import { humanProfileValue, profileAttributeSummary, profileDisplayValue } from './profile-display'
+
+export { profileAttributeSummary } from './profile-display'
 
 type BackendState = typeof backendDemo.state
 /** `backendDemo.state` 是 readonly 的，读出来的画像面板与原件也是只读结构 */
@@ -199,12 +202,7 @@ export interface ProfileFieldsDeps {
 export function useProfileFields(deps: ProfileFieldsDeps) {
   const { live, livePanel, originalLive, progress, getFieldDeps } = deps
 
-  function human(value: unknown): string {
-    if (value == null) return '尚待补充'
-    if (Array.isArray(value)) return value.map(human).join('、')
-    if (typeof value === 'object') return Object.values(value).map(human).join('；')
-    return String(value)
-  }
+  const human = humanProfileValue
 
   const rowsBase = computed<Omit<FieldRow, 'supports'>[]>(() => {
     if (live.value) {
@@ -220,10 +218,7 @@ export function useProfileFields(deps: ProfileFieldsDeps) {
         const verification = verificationOf({ source: field.source, verification: field.verification })
         const itemAttrs = field.attributes?.items
         const hasItems = Array.isArray(itemAttrs) && itemAttrs.length > 0
-        const displayValue = hasItems && Array.isArray(field.value) ? field.value.map(value => {
-          const attrs = itemAttrs.find(item => item && typeof item === 'object' && item.value === value)
-          return [value, attrs ? profileAttributeSummary(Object.fromEntries(Object.entries(attrs).filter(([key]) => key !== 'value'))) : ''].filter(Boolean).join('：')
-        }).join('、') : human(field.value)
+        const displayValue = profileDisplayValue(field.value, field.attributes)
         return {
           key: field.key, label: profileLabel(field.key,field.label || field.key), value: displayValue,
           source: SOURCE_NAMES[field.source] ?? '学校',
@@ -511,26 +506,3 @@ export function useProfileFields(deps: ProfileFieldsDeps) {
 
 export type { FieldRow }
 export { LEGACY_CONF }
-
-export function profileAttributeSummary(attributes: Readonly<Record<string, unknown>>): string {
-  const choices: Record<string, Record<string, string>> = {
-    polarity: { like: '喜欢', dislike: '不喜欢', unsure: '还不确定' },
-    state: { exploring: '正在了解', considering: '正在考虑', selected: '已选择' },
-    evidence_kind: { exposed: '接触过', self_assessed: '本人自评', completed_once: '完成过一次', work_output: '有作品或成果', verified: '有核验依据' },
-  }
-  const labels: Record<string, string> = {
-    context: '情境', outcome: '结果', scope: '适用范围', title: '说明',
-    derived_from: '推算依据', derived_on: '推算日期',
-  }
-  return Object.entries(attributes).flatMap(([key, value]) => {
-    if (['polarity', 'state'].includes(key) && Array.isArray(attributes.items) && attributes.items.length) return []
-    if (key === 'items' && Array.isArray(value)) return value.flatMap(item => {
-      if (!item || typeof item !== 'object') return []
-      const labels = [choices.polarity?.[item.polarity], choices.state?.[item.state]].filter(Boolean)
-      return labels.length ? [`${item.value}：${labels.join('，')}`] : []
-    })
-    if (typeof value !== 'string' || !value.trim()) return []
-    const choice = choices[key]?.[value]
-    return choice ? [choice] : labels[key] ? [`${labels[key]}：${value}`] : []
-  }).join(' · ')
-}

@@ -244,11 +244,15 @@ class TrackEventView(BaseModel):
 
 
 class ExportRequest(BaseModel):
-    """导出请求。"""
+    """导出请求。
+
+    `profile` 不是版本化资产（没有 AssetType），但用户需要一份能读、能打印的
+    个人画像；它走同一个文档生成与下载链路，而不是让前端下载 JSON。
+    """
 
     model_config = ConfigDict(extra="forbid")
 
-    asset_type: AssetType
+    asset_type: Literal["report", "direction_plan", "action_plan", "profile"]
     format: Literal["pdf", "docx"] = "pdf"
 
 

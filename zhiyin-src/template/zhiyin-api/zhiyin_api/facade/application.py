@@ -927,9 +927,9 @@ class DefaultApplicationFacade(ApplicationFacade):
     async def export_asset(self, user_id: str, body: ExportRequest) -> ExportResultView:
         if self._student is not None:
             return mappers.export_result_view(
-                await self._student.export(user_id, body.asset_type.value, body.format)
+                await self._student.export(user_id, body.asset_type, body.format)
             )
-        result = await self._function.export_asset(user_id, body.asset_type.value, body.format)
+        result = await self._function.export_asset(user_id, body.asset_type, body.format)
         return mappers.export_result_view(result)
 
     async def get_external_intel(

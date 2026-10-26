@@ -5,7 +5,7 @@
       "method": "DELETE",
       "path": "/api/v1/app/academic",
       "capability": "清空导入的课表与成绩（画像里那两条摘要一起删）。  只清快照不删摘要的话，采集清单会一直显示\"课程表已拿到\"， 用户再也回不到导入入口 —— 那是\"看起来清掉了\"。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py:124",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py:140",
       "scope": "学生端",
       "stream": false,
       "parameters": [],
@@ -33,7 +33,7 @@
       "method": "POST",
       "path": "/api/v1/app/academic/analysis",
       "capability": "Academic Analysis",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py:188",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py:196",
       "scope": "学生端",
       "stream": true,
       "parameters": [],
@@ -60,7 +60,7 @@
       "method": "DELETE",
       "path": "/api/v1/app/academic/courses",
       "capability": "只清空课表；成绩单由「我的成绩」独立管理。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py:136",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py:152",
       "scope": "学生端",
       "stream": false,
       "parameters": [],
@@ -89,7 +89,7 @@
       "method": "DELETE",
       "path": "/api/v1/app/academic/grades",
       "capability": "只清空成绩；课程仍保留在「日历与课表」。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py:144",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py:160",
       "scope": "学生端",
       "stream": false,
       "parameters": [],
@@ -118,7 +118,7 @@
       "method": "POST",
       "path": "/api/v1/app/academic/import",
       "capability": "导入课表与成绩单（学生自己贴原文）。  这条路是产品有意选的：不做替学生登录学校系统，也不经手他校内账号的密码。 用户的体验压在解析上 —— 贴进来的东西读不出来时，回执要说清楚**改哪里**。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py:51",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py:67",
       "scope": "学生端",
       "stream": false,
       "parameters": [],
@@ -167,7 +167,7 @@
       "method": "POST",
       "path": "/api/v1/app/academic/import/file",
       "capability": "导入课表与成绩单（**上传文件**那一版：multipart/form-data）。  为什么和上面那条并存，而不是合成一条：粘贴与上传是两种真实动作， 表单上也是两个不同的入口。合成一条的话，每次都要把\"这次有没有文件\"编码进 同一种请求体里，读的人得先解码一遍才知道这条路在做什么。两条路共用同一条业务 链路（`import_files` → `import_`），所以\"同一份数据读出来必须一样\"这件事 由业务层保证，不靠接口形状。  文件在这一层只做一件事：**限大小**。编码识别与二进制格式拒绝都在网关里 （见 `AcademicImportGateway.read_text`）—— 那一层才知道\"读不出来\"该怎么说。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py:74",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py:90",
       "scope": "学生端",
       "stream": false,
       "parameters": [],
@@ -209,11 +209,107 @@
       "verification": "已连接；Docker Nginx → 后端真实 API 联调通过（2026-10-16），见 基础联调结果.json"
     },
     {
+      "id": "POST /api/v1/app/academic/preview",
+      "method": "POST",
+      "path": "/api/v1/app/academic/preview",
+      "capability": "识别已上传图片或解析文字，返回30分钟内有效的逐条替换预览；不写课表或成绩。",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py:28",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [],
+      "request": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/AcademicPreviewRequest"
+            }
+          }
+        },
+        "required": true
+      },
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_AcademicPreview_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "前端已连接",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/components/AcademicImportSheet.vue",
+        "zhiyin-src/template/zhiyin-web/src/api/backend-client.ts"
+      ],
+      "verification": "课表/成绩导入预览与确认链路已接入前端；单元测试与前端构建通过，待独立 HTTP 联调。"
+    },
+    {
+      "id": "POST /api/v1/app/academic/preview/commit",
+      "method": "POST",
+      "path": "/api/v1/app/academic/preview/commit",
+      "capability": "用户核对并确认预览后保存；不接受替换预览正文或绕过版本校验。",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py:36",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [],
+      "request": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/AcademicPreviewCommit"
+            }
+          }
+        },
+        "required": true
+      },
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_AcademicImportAck_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "前端已连接",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/components/AcademicImportSheet.vue",
+        "zhiyin-src/template/zhiyin-web/src/api/backend-client.ts"
+      ],
+      "verification": "确认只提交预览编号；单元测试与前端构建通过，待独立 HTTP 联调。"
+    },
+    {
       "id": "GET /api/v1/app/achievements",
       "method": "GET",
       "path": "/api/v1/app/achievements",
       "capability": "完成记录：这个人做到过的那几件事（界面上叫「完成记录」，不叫成就）。  要登录：它读的是**你自己的**行为日志，没有别人能看的版本。 返回的是全部规则 + 其中拿到几枚（没拿到的也返回，界面上要能说\"还差哪几件\"）。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py:166",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py:182",
       "scope": "学生端",
       "stream": false,
       "parameters": [],
@@ -330,7 +426,9 @@
       },
       "status": "联调通过",
       "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/views/SystemView.vue"
+        "zhiyin-src/template/zhiyin-web/src/views/SystemView.vue",
+        "zhiyin-src/template/zhiyin-web/src/views/StudentView.vue",
+        "zhiyin-src/template/zhiyin-web/src/views/AssessmentView.vue"
       ],
       "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
     },
@@ -598,7 +696,7 @@
       "method": "POST",
       "path": "/api/v1/app/brief/today",
       "capability": "今日简报：今天为什么是这两件事。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py:165",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py:173",
       "scope": "学生端",
       "stream": true,
       "parameters": [],
@@ -654,7 +752,7 @@
       "method": "GET",
       "path": "/api/v1/app/capabilities",
       "capability": "当前部署真实可用的能力（联网/学职/知识库/写任务/学信核验等）。  对话能力面板与服务端配置同源：未配置的能力明确显示不可用与替代， 不再让模型在对话里临时解释\"我没有这个工具\"。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py:39",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py:55",
       "scope": "学生端",
       "stream": false,
       "parameters": [],
@@ -684,7 +782,7 @@
       "method": "POST",
       "path": "/api/v1/app/chsi/bind",
       "capability": "学信网绑定管线：核验在线验证码 → 读学籍 → 写画像。  请求体 `arg` 是用户在学信档案申请到的**在线验证码**。 不接收、也不要求用户的学信网账号密码 —— 那条路既不合法，也不必要。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py:225",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py:233",
       "scope": "学生端",
       "stream": true,
       "parameters": [],
@@ -707,59 +805,11 @@
       "verification": "前端已连接；非法验证码 SSE 错误路径通过。正向验收需要本人有效学信网在线验证码；文件导入不等于学信核验。见 剩余接口验收结果.json。"
     },
     {
-      "id": "POST /api/v1/app/chsi/pdf/preview",
-      "method": "POST",
-      "path": "/api/v1/app/chsi/pdf/preview",
-      "capability": "学籍报告 PDF 导入预览：上传学信网下载的原版报告 PDF，服务端解析出可导入字段并生成 30 分钟有效的预览（含与现有资料的冲突提示、本人确认要求）。导入仅作为材料记录，不代表在线核验。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/chsi_controller.py:10",
-      "scope": "学生端",
-      "stream": false,
-      "parameters": [],
-      "request": {
-        "content": {
-          "multipart/form-data": {
-            "schema": {
-              "$ref": "#/components/schemas/Body_preview_chsi_pdf_api_v1_app_chsi_pdf_preview_post"
-            }
-          }
-        },
-        "required": true
-      },
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_ChsiPdfPreview_"
-              }
-            }
-          },
-          "description": "Successful Response"
-        },
-        "422": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/HTTPValidationError"
-              }
-            }
-          },
-          "description": "Validation Error"
-        }
-      },
-      "status": "联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/components/ChsiPdfImport.vue",
-        "zhiyin-src/template/zhiyin-web/src/components/AcademicVerification.vue"
-      ],
-      "verification": "前端已连接；合成 PDF 上传→解析→预览全链路经真实后端组件与浏览器检查通过（2026-10-24 全面检查）。真实学信网多版式 PDF 未全测。"
-    },
-    {
       "id": "POST /api/v1/app/chsi/pdf/confirm",
       "method": "POST",
       "path": "/api/v1/app/chsi/pdf/confirm",
-      "capability": "学籍报告 PDF 导入确认：把预览中选定的字段按版本写入画像（来源为 record，核实状态为待核对；已有在线核验资料不覆盖），同批字段与回执在一个事务里提交；同一预览重复提交幂等返回原回执。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/chsi_controller.py:23",
+      "capability": "Confirm Chsi Pdf",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/chsi_controller.py:24",
       "scope": "学生端",
       "stream": false,
       "parameters": [],
@@ -795,19 +845,67 @@
           "description": "Validation Error"
         }
       },
-      "status": "联调通过",
+      "status": "前端已连接",
       "frontend": [
         "zhiyin-src/template/zhiyin-web/src/components/ChsiPdfImport.vue",
-        "zhiyin-src/template/zhiyin-web/src/components/AcademicVerification.vue"
+        "zhiyin-src/template/zhiyin-web/src/api/backend-client.ts"
       ],
-      "verification": "前端已连接；合成 PDF 确认导入与回执幂等经真实后端组件与浏览器检查通过（2026-10-24 全面检查）。真实学信网多版式 PDF 未全测。"
+      "verification": "确认只提交预览编号与勾选字段；单元测试与前端构建通过，待独立 HTTP 联调。"
+    },
+    {
+      "id": "POST /api/v1/app/chsi/pdf/preview",
+      "method": "POST",
+      "path": "/api/v1/app/chsi/pdf/preview",
+      "capability": "Preview Chsi Pdf",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/chsi_controller.py:11",
+      "scope": "学生端",
+      "stream": false,
+      "parameters": [],
+      "request": {
+        "content": {
+          "multipart/form-data": {
+            "schema": {
+              "$ref": "#/components/schemas/Body_preview_chsi_pdf_api_v1_app_chsi_pdf_preview_post"
+            }
+          }
+        },
+        "required": true
+      },
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiResponse_ChsiPdfPreview_"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      },
+      "status": "前端已连接",
+      "frontend": [
+        "zhiyin-src/template/zhiyin-web/src/components/ChsiPdfImport.vue",
+        "zhiyin-src/template/zhiyin-web/src/api/backend-client.ts"
+      ],
+      "verification": "学信网报告 PDF 预览与逐项确认链路已接入；单元测试与前端构建通过，待独立 HTTP 联调。"
     },
     {
       "id": "POST /api/v1/app/conversation/material",
       "method": "POST",
       "path": "/api/v1/app/conversation/material",
       "capability": "交一份材料（multipart 上传）。  为什么材料要**上传**而不是在浏览器里读成文本再塞进消息：  · 编码（教务/办公软件导出的 GBK 文本）与二进制格式都由服务端统一处理，   浏览器那一侧不做第二份解码实现； · 正文不进对话气泡 —— 回执只有\"它是什么\"，正文留在服务端、只在用到它的   那一轮进模型输入。  这一层负责的边界（都在拿到字节之后、落库之前说清楚）： 文件大小 → 是否为空 → 扩展名白名单/二进制后缀拒绝 → 内容嗅探（空字节/控制字节） → 编码可解码性 → 正文字数。读不出来时给的都是**用户能照着做**的一句中文。 文件名只用来拼提示（取 basename、去控制字符、限长），不进日志正文。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py:243",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py:255",
       "scope": "学生端",
       "stream": false,
       "parameters": [],
@@ -855,7 +953,7 @@
       "method": "POST",
       "path": "/api/v1/app/conversation/message",
       "capability": "发送自然对话一轮，返回正文和实际业务操作回执。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py:95",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py:107",
       "scope": "学生端",
       "stream": false,
       "parameters": [],
@@ -905,7 +1003,7 @@
       "method": "POST",
       "path": "/api/v1/app/conversation/message/stream",
       "capability": "Model text arrives incrementally; cards are released only after persistence.",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py:105",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py:117",
       "scope": "学生端",
       "stream": false,
       "parameters": [],
@@ -946,7 +1044,7 @@
       "method": "POST",
       "path": "/api/v1/app/day/{day}/advice",
       "capability": "「这一天的建议」：日历里点开某一天时生成（`day` 是 YYYY-MM-DD）。  日历上其余的东西都是事实（那天有哪几门课、哪个节点到期、哪件事该做完）， 前端直接读；这一条是那一天**怎么用**的建议，要模型下判断。  请求体里的 `arg` 是客户端的时区偏移（分钟，东为正）—— \"那一天\"是用户 手表上的那一天，不带这个偏移，傍晚以后的事会被算到前一天。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py:193",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py:201",
       "scope": "学生端",
       "stream": true,
       "parameters": [
@@ -993,7 +1091,7 @@
       "method": "POST",
       "path": "/api/v1/app/dimensions/{dimension_id}",
       "capability": "维度解读（点开才生成，后端缓存）。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py:171",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py:179",
       "scope": "学生端",
       "stream": true,
       "parameters": [
@@ -1041,7 +1139,7 @@
       "method": "POST",
       "path": "/api/v1/app/gaps/{gap_key}/clarify",
       "capability": "缺口追问话术。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py:213",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py:221",
       "scope": "学生端",
       "stream": true,
       "parameters": [
@@ -1088,7 +1186,7 @@
       "method": "GET",
       "path": "/api/v1/app/intel",
       "capability": "外部情报：公开事实（学职平台 + 通用网络检索）。  **不要求登录**：登了录就按你的画像收窄，没登录就按 `?q=` 或平台通用数据取。 每条都带来源链接 —— 这类信息\"凭什么这么说\"就是那个链接， 所以取不到来源的条目在服务层就被丢掉了，不会返回。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py:178",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py:194",
       "scope": "学生端",
       "stream": false,
       "parameters": [
@@ -1141,7 +1239,7 @@
       "method": "POST",
       "path": "/api/v1/app/intel/refresh",
       "capability": "现在去取一次（用户主动点）。同样**不要求登录**。  只在这条路上推通知：后台顺带取到的东西不弹 —— 浮窗要留给\"值得打断他\"的事，而\"他自己刚点的\"就是值得回一句的事。 （未登录时没有收件人，自然也不推。）",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py:191",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py:207",
       "scope": "学生端",
       "stream": false,
       "parameters": [
@@ -1190,7 +1288,7 @@
       "method": "POST",
       "path": "/api/v1/app/match/careers",
       "capability": "学职网匹配：矩阵 + 排名 + 推荐。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py:254",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py:262",
       "scope": "学生端",
       "stream": true,
       "parameters": [],
@@ -2445,7 +2543,7 @@
       "method": "POST",
       "path": "/api/v1/app/plan/timetable",
       "capability": "课表 → 可投入时间。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py:242",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py:250",
       "scope": "学生端",
       "stream": true,
       "parameters": [],
@@ -2472,7 +2570,7 @@
       "method": "POST",
       "path": "/api/v1/app/plan/todos/suggestions",
       "capability": "待办建议（可采纳 / 可否决，回流画像）。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py:248",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py:256",
       "scope": "学生端",
       "stream": true,
       "parameters": [],
@@ -2529,7 +2627,7 @@
       "method": "POST",
       "path": "/api/v1/app/portrait/analysis",
       "capability": "「对你的分析」：整份画像合起来的一段判断（打开画像时生成）。  与「维度解读」的分工：那一条回答\"这条字段是什么、凭什么\"， 这一条回答\"这些合起来说明我现在是个什么处境\"。两件都要有 —— 只有前者的时候，画像看起来就是一张信息标签表。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py:177",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py:185",
       "scope": "学生端",
       "stream": true,
       "parameters": [],
@@ -2980,7 +3078,7 @@
       "method": "POST",
       "path": "/api/v1/app/report/summary",
       "capability": "整份报告的结论段。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py:219",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/ai_controller.py:227",
       "scope": "学生端",
       "stream": true,
       "parameters": [],
@@ -3339,16 +3437,19 @@
       "id": "GET /api/v1/app/sessions/search",
       "method": "GET",
       "path": "/api/v1/app/sessions/search",
-      "capability": "历史会话全文检索：按当前账号在逐轮对话原文里匹配关键词（ILIKE，转义通配符），返回命中的会话与命中片段（matches[task_id]）；标题命中但没有正文命中的会话也在结果里。逐轮仓储不支持检索时退化为只搜标题。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py:46",
+      "capability": "历史会话全文检索：在当前账号的逐轮原文里找关键词。  命中的会话带片段（matches[task_id]）；标题命中但没有正文命中的会话 也在结果里。逐轮仓储不支持检索时退化为只搜标题。",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py:47",
       "scope": "学生端",
       "stream": false,
       "parameters": [
         {
-          "name": "q",
           "in": "query",
+          "name": "q",
           "required": true,
-          "description": "检索关键词"
+          "schema": {
+            "title": "Q",
+            "type": "string"
+          }
         }
       ],
       "request": null,
@@ -3374,18 +3475,19 @@
           "description": "Validation Error"
         }
       },
-      "status": "联调通过",
+      "status": "前端已连接",
       "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/components/DesktopSidebar.vue"
+        "zhiyin-src/template/zhiyin-web/src/components/DesktopSidebar.vue",
+        "zhiyin-src/template/zhiyin-web/src/api/backend-client.ts"
       ],
-      "verification": "前端已连接；侧栏历史会话搜索经内存后端与真实会话数据验证（2026-10-25）。"
+      "verification": "历史会话全文检索已接入侧栏；本轮局域网页面完成真实 HTTP 关键词命中与片段展示验证。"
     },
     {
       "id": "DELETE /api/v1/app/sessions/{task_id}",
       "method": "DELETE",
       "path": "/api/v1/app/sessions/{task_id}",
       "capability": "删除会话及其逐轮原文；返回删除后的列表。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py:57",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py:69",
       "scope": "学生端",
       "stream": false,
       "parameters": [
@@ -3434,7 +3536,7 @@
       "method": "PATCH",
       "path": "/api/v1/app/sessions/{task_id}",
       "capability": "会话改名：只改展示名，不改变环节、消息与已有资产。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py:47",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py:59",
       "scope": "学生端",
       "stream": false,
       "parameters": [
@@ -3492,7 +3594,7 @@
       "method": "POST",
       "path": "/api/v1/app/sessions/{task_id}/runs/{run_id}/cancel",
       "capability": "Cancel Conversation Run",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py:181",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py:193",
       "scope": "学生端",
       "stream": false,
       "parameters": [
@@ -3550,7 +3652,7 @@
       "method": "GET",
       "path": "/api/v1/app/sessions/{task_id}/runtime",
       "capability": "Conversation Runtime",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py:174",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py:186",
       "scope": "学生端",
       "stream": false,
       "parameters": [
@@ -3609,7 +3711,7 @@
       "method": "PATCH",
       "path": "/api/v1/app/sessions/{task_id}/settings",
       "capability": "Conversation Settings",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py:188",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py:200",
       "scope": "学生端",
       "stream": false,
       "parameters": [
@@ -3717,7 +3819,7 @@
       "method": "GET",
       "path": "/api/v1/app/sessions/{task_id}/turns",
       "capability": "一条会话的逐轮原文。  会话列表点进去要能看见\"这条会话发生过什么\" —— 此前只有一张清单， 因为逐轮原文压根没落库（库里只有累积摘要）。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py:68",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py:80",
       "scope": "学生端",
       "stream": false,
       "parameters": [
@@ -3775,7 +3877,7 @@
       "method": "POST",
       "path": "/api/v1/app/task/enter",
       "capability": "从首页任务入口进入微循环。  编排器判定目标环节与主理；已存在进行中的同一任务时执行\"续接\"而非重建。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py:82",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/conversation_controller.py:94",
       "scope": "学生端",
       "stream": false,
       "parameters": [],
@@ -4024,7 +4126,7 @@
       "method": "GET",
       "path": "/api/v1/app/workspace",
       "capability": "工作台聚合视图：画像 / 报告 / 方案 / 计划 / 跟踪 + 功能块。  进入工作台属于持久化行为，游客在此处被登录拦截。",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py:28",
+      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py:44",
       "scope": "学生端",
       "stream": false,
       "parameters": [],
@@ -5800,102 +5902,6 @@
         "zhiyin-src/template/zhiyin-web/src/developer/client.ts"
       ],
       "verification": "前端已连接；2026-10-16 独立 PostgreSQL/Redis、合成账号与业务资料、真实 HTTP 正向验收通过；见 剩余接口验收结果.json。"
-    },
-    {
-      "id": "POST /api/v1/app/academic/preview",
-      "method": "POST",
-      "path": "/api/v1/app/academic/preview",
-      "capability": "识别图片或解析文字并返回逐条替换预览，不保存课表或成绩",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py:28",
-      "scope": "学生端",
-      "stream": false,
-      "parameters": [],
-      "request": {
-        "content": {
-          "application/json": {
-            "schema": {
-              "$ref": "#/components/schemas/AcademicPreviewRequest"
-            }
-          }
-        },
-        "required": true
-      },
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_AcademicPreview_"
-              }
-            }
-          },
-          "description": "Successful Response"
-        },
-        "422": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/HTTPValidationError"
-              }
-            }
-          },
-          "description": "Validation Error"
-        }
-      },
-      "status": "联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/api/backend-client.ts",
-        "zhiyin-src/template/zhiyin-web/src/components/AcademicImportSheet.vue"
-      ],
-      "verification": "共享HTTP上传/预览/确认及授权边界自动化通过；当前Docker后端的真实图片识别、页面预览纠错、确认保存、对话审批拒绝/确认和成绩保留实测通过。桌面与手机尺寸证据见 图片识别与教务导入接口-2026-10-21.md。"
-    },
-    {
-      "id": "POST /api/v1/app/academic/preview/commit",
-      "method": "POST",
-      "path": "/api/v1/app/academic/preview/commit",
-      "capability": "确认保存已核对的预览，校验用户、期限和数据版本",
-      "source": "zhiyin-src/template/zhiyin-api/zhiyin_api/controllers/workspace_controller.py:36",
-      "scope": "学生端",
-      "stream": false,
-      "parameters": [],
-      "request": {
-        "content": {
-          "application/json": {
-            "schema": {
-              "$ref": "#/components/schemas/AcademicPreviewCommit"
-            }
-          }
-        },
-        "required": true
-      },
-      "responses": {
-        "200": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiResponse_AcademicImportAck_"
-              }
-            }
-          },
-          "description": "Successful Response"
-        },
-        "422": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/HTTPValidationError"
-              }
-            }
-          },
-          "description": "Validation Error"
-        }
-      },
-      "status": "联调通过",
-      "frontend": [
-        "zhiyin-src/template/zhiyin-web/src/api/backend-client.ts",
-        "zhiyin-src/template/zhiyin-web/src/components/AcademicImportSheet.vue"
-      ],
-      "verification": "共享HTTP上传/预览/确认及授权边界自动化通过；当前Docker后端的真实图片识别、页面预览纠错、确认保存、对话审批拒绝/确认和成绩保留实测通过。桌面与手机尺寸证据见 图片识别与教务导入接口-2026-10-21.md。"
     }
   ],
   "schemas": {
@@ -6141,6 +6147,133 @@
         }
       },
       "title": "AcademicPanelView",
+      "type": "object"
+    },
+    "AcademicPreview": {
+      "additionalProperties": false,
+      "properties": {
+        "courses": {
+          "items": {
+            "$ref": "#/components/schemas/CourseEntry"
+          },
+          "title": "Courses",
+          "type": "array"
+        },
+        "expected_version": {
+          "title": "Expected Version",
+          "type": "string"
+        },
+        "expires_at": {
+          "title": "Expires At",
+          "type": "string"
+        },
+        "grades": {
+          "items": {
+            "$ref": "#/components/schemas/GradeEntry"
+          },
+          "title": "Grades",
+          "type": "array"
+        },
+        "kind": {
+          "enum": [
+            "courses",
+            "grades"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "preview_id": {
+          "title": "Preview Id",
+          "type": "string"
+        },
+        "replace_count": {
+          "title": "Replace Count",
+          "type": "integer"
+        },
+        "school": {
+          "title": "School",
+          "type": "string"
+        },
+        "term": {
+          "title": "Term",
+          "type": "string"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Warnings",
+          "type": "array"
+        }
+      },
+      "required": [
+        "preview_id",
+        "kind",
+        "school",
+        "term",
+        "replace_count",
+        "expires_at",
+        "expected_version"
+      ],
+      "title": "AcademicPreview",
+      "type": "object"
+    },
+    "AcademicPreviewCommit": {
+      "additionalProperties": false,
+      "properties": {
+        "preview_id": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Preview Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "preview_id"
+      ],
+      "title": "AcademicPreviewCommit",
+      "type": "object"
+    },
+    "AcademicPreviewRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "courses",
+            "grades"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "material_id": {
+          "default": "",
+          "maxLength": 100,
+          "title": "Material Id",
+          "type": "string"
+        },
+        "school": {
+          "default": "",
+          "maxLength": 120,
+          "title": "School",
+          "type": "string"
+        },
+        "term": {
+          "default": "",
+          "maxLength": 40,
+          "title": "Term",
+          "type": "string"
+        },
+        "text": {
+          "default": "",
+          "maxLength": 200000,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "AcademicPreviewRequest",
       "type": "object"
     },
     "AcademicRevokeAck": {
@@ -6810,6 +6943,37 @@
       "title": "ApiResponse[AcademicImportAck]",
       "type": "object"
     },
+    "ApiResponse_AcademicPreview_": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "$ref": "#/components/schemas/ErrorCode",
+          "default": 0
+        },
+        "data": {
+          "anyOf": [
+            {
+              "$ref": "#/components/schemas/AcademicPreview"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "message": {
+          "default": "ok",
+          "title": "Message",
+          "type": "string"
+        },
+        "trace_id": {
+          "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+          "title": "Trace Id",
+          "type": "string"
+        }
+      },
+      "title": "ApiResponse[AcademicPreview]",
+      "type": "object"
+    },
     "ApiResponse_AcademicRevokeAck_": {
       "additionalProperties": false,
       "properties": {
@@ -6994,6 +7158,68 @@
         }
       },
       "title": "ApiResponse[CapabilityListView]",
+      "type": "object"
+    },
+    "ApiResponse_ChsiPdfPreview_": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "$ref": "#/components/schemas/ErrorCode",
+          "default": 0
+        },
+        "data": {
+          "anyOf": [
+            {
+              "$ref": "#/components/schemas/ChsiPdfPreview"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "message": {
+          "default": "ok",
+          "title": "Message",
+          "type": "string"
+        },
+        "trace_id": {
+          "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+          "title": "Trace Id",
+          "type": "string"
+        }
+      },
+      "title": "ApiResponse[ChsiPdfPreview]",
+      "type": "object"
+    },
+    "ApiResponse_ChsiPdfReceipt_": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "$ref": "#/components/schemas/ErrorCode",
+          "default": 0
+        },
+        "data": {
+          "anyOf": [
+            {
+              "$ref": "#/components/schemas/ChsiPdfReceipt"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "message": {
+          "default": "ok",
+          "title": "Message",
+          "type": "string"
+        },
+        "trace_id": {
+          "description": "链路追踪 id，由 BFF 生成并回写 X-Trace-Id 响应头；日志排查用",
+          "title": "Trace Id",
+          "type": "string"
+        }
+      },
+      "title": "ApiResponse[ChsiPdfReceipt]",
       "type": "object"
     },
     "ApiResponse_ConversationMaterialView_": {
@@ -8899,13 +9125,17 @@
         "asset_type": {
           "enum": [
             "direction_plan",
-            "action_plan"
+            "action_plan",
+            "report"
           ],
           "title": "Asset Type",
           "type": "string"
         },
         "content": {
           "anyOf": [
+            {
+              "$ref": "#/components/schemas/Report"
+            },
             {
               "$ref": "#/components/schemas/ActionPlan"
             },
@@ -9187,6 +9417,20 @@
       "title": "Body_import_academic_files_api_v1_app_academic_import_file_post",
       "type": "object"
     },
+    "Body_preview_chsi_pdf_api_v1_app_chsi_pdf_preview_post": {
+      "properties": {
+        "file": {
+          "contentMediaType": "application/octet-stream",
+          "title": "File",
+          "type": "string"
+        }
+      },
+      "required": [
+        "file"
+      ],
+      "title": "Body_preview_chsi_pdf_api_v1_app_chsi_pdf_preview_post",
+      "type": "object"
+    },
     "Body_upload_material_api_v1_app_conversation_material_post": {
       "properties": {
         "file": {
@@ -9390,6 +9634,136 @@
       "title": "CapabilityListView",
       "type": "object"
     },
+    "ChsiPdfConfirm": {
+      "additionalProperties": false,
+      "properties": {
+        "ownership_confirmed": {
+          "default": false,
+          "title": "Ownership Confirmed",
+          "type": "boolean"
+        },
+        "preview_id": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Preview Id",
+          "type": "string"
+        },
+        "selected_keys": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Selected Keys",
+          "type": "array"
+        }
+      },
+      "required": [
+        "preview_id",
+        "selected_keys"
+      ],
+      "title": "ChsiPdfConfirm",
+      "type": "object"
+    },
+    "ChsiPdfPreview": {
+      "properties": {
+        "can_import": {
+          "title": "Can Import",
+          "type": "boolean"
+        },
+        "expires_at": {
+          "title": "Expires At",
+          "type": "string"
+        },
+        "fields": {
+          "items": {
+            "$ref": "#/components/schemas/PdfFieldPreview"
+          },
+          "title": "Fields",
+          "type": "array"
+        },
+        "preview_id": {
+          "title": "Preview Id",
+          "type": "string"
+        },
+        "report_date": {
+          "default": "",
+          "title": "Report Date",
+          "type": "string"
+        },
+        "requires_ownership_confirmation": {
+          "default": false,
+          "title": "Requires Ownership Confirmation",
+          "type": "boolean"
+        },
+        "valid_until": {
+          "default": "",
+          "title": "Valid Until",
+          "type": "string"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Warnings",
+          "type": "array"
+        }
+      },
+      "required": [
+        "preview_id",
+        "expires_at",
+        "fields",
+        "can_import"
+      ],
+      "title": "ChsiPdfPreview",
+      "type": "object"
+    },
+    "ChsiPdfReceipt": {
+      "properties": {
+        "import_id": {
+          "title": "Import Id",
+          "type": "string"
+        },
+        "imported": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Imported",
+          "type": "array"
+        },
+        "imported_at": {
+          "title": "Imported At",
+          "type": "string"
+        },
+        "message": {
+          "default": "报告材料已导入，待在线核验。",
+          "title": "Message",
+          "type": "string"
+        },
+        "retained": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Retained",
+          "type": "array"
+        },
+        "skipped": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Skipped",
+          "type": "array"
+        }
+      },
+      "required": [
+        "import_id",
+        "imported_at",
+        "imported",
+        "retained",
+        "skipped"
+      ],
+      "title": "ChsiPdfReceipt",
+      "type": "object"
+    },
     "CoachNotificationView": {
       "description": "教练主动介入的通知（前端浮窗轮询消费）。\n\n形状由两个读侧实现共同决定：`InMemoryNotificationRepository`（本地消息表）与\n`PostgresNotificationRepository`（`orc_notification`）。两边都至少有\nid / title / body / channel / occurred_at，本地那份还多带 user_id 这类调试字段。\n\n因此这里用 `extra=\"ignore\"` 而不是 `forbid`：**多出来的字段不该让这个接口报 500**，\n但 `id` / `title` 缺了前端就没法渲染，仍需强制。\n\n此前这个接口的返回类型是裸 `list`，前端只能猜字段（它猜的是 `by`——\n后端从来没有这个字段），于是每条通知署名永远为空。现在逐字段声明。",
       "properties": {
@@ -9472,6 +9846,18 @@
           "title": "Available",
           "type": "boolean"
         },
+        "confirmable": {
+          "default": false,
+          "description": "是否可直接确认已有自述",
+          "title": "Confirmable",
+          "type": "boolean"
+        },
+        "field_source": {
+          "default": "",
+          "description": "画像里这条记录的实际来源",
+          "title": "Field Source",
+          "type": "string"
+        },
         "got": {
           "default": false,
           "title": "Got",
@@ -9488,6 +9874,28 @@
         "source": {
           "description": "chsi / conversation / academic",
           "title": "Source",
+          "type": "string"
+        },
+        "state": {
+          "default": "missing",
+          "description": "missing=完全没有；unverified=画像里已有自述但来源还不足以算拿到；got=已拿到。界面据此分开「待补充」与「已有待核实」",
+          "title": "State",
+          "type": "string"
+        },
+        "status_text": {
+          "default": "",
+          "description": "当前状态的用户可读说明",
+          "title": "Status Text",
+          "type": "string"
+        },
+        "value": {
+          "description": "画像里已有的值；unverified 时用于一键确认",
+          "title": "Value"
+        },
+        "verification": {
+          "default": "",
+          "description": "画像里这条记录的实际核实状态",
+          "title": "Verification",
           "type": "string"
         },
         "why": {
@@ -9534,7 +9942,7 @@
         },
         "missing": {
           "default": 0,
-          "description": "还差几条",
+          "description": "还差几条（含已有自述但未核实）",
           "title": "Missing",
           "type": "integer"
         },
@@ -9549,6 +9957,12 @@
           ],
           "description": "下一步最该走的源头",
           "title": "Next Source"
+        },
+        "unverified": {
+          "default": 0,
+          "description": "其中已有自述、尚待核实的条数",
+          "title": "Unverified",
+          "type": "integer"
         }
       },
       "title": "CollectionPanelView",
@@ -9611,6 +10025,11 @@
             }
           ],
           "title": "Agent Name"
+        },
+        "client_msg_id": {
+          "default": "",
+          "title": "Client Msg Id",
+          "type": "string"
         },
         "clues": {
           "description": "可公开的判断标准与待核实项，不是内部推理或已核实来源",
@@ -9738,6 +10157,66 @@
         "guide"
       ],
       "title": "ConversationTurnView",
+      "type": "object"
+    },
+    "CourseEntry": {
+      "additionalProperties": false,
+      "description": "一门课。字段取的是\"排课\"需要的那些，不是教务系统里所有列。",
+      "properties": {
+        "category": {
+          "default": "",
+          "description": "课程性质 / 类别原文",
+          "title": "Category",
+          "type": "string"
+        },
+        "credit": {
+          "default": "",
+          "title": "Credit",
+          "type": "string"
+        },
+        "end_period": {
+          "default": 0,
+          "description": "第几节结束",
+          "title": "End Period",
+          "type": "integer"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "place": {
+          "default": "",
+          "title": "Place",
+          "type": "string"
+        },
+        "start_period": {
+          "default": 0,
+          "description": "第几节开始（1 起）",
+          "title": "Start Period",
+          "type": "integer"
+        },
+        "teacher": {
+          "default": "",
+          "title": "Teacher",
+          "type": "string"
+        },
+        "weekday": {
+          "default": 0,
+          "description": "1=周一 … 7=周日；0 表示没读出来",
+          "title": "Weekday",
+          "type": "integer"
+        },
+        "weeks": {
+          "default": "",
+          "description": "周次原文，如 1-16周",
+          "title": "Weeks",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "CourseEntry",
       "type": "object"
     },
     "DependencyEdgeView": {
@@ -10666,6 +11145,112 @@
       "title": "ErrorCode",
       "type": "integer"
     },
+    "EvidenceAssessment": {
+      "additionalProperties": false,
+      "properties": {
+        "assessed_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Assessed At"
+        },
+        "contradictions": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Contradictions",
+          "type": "array"
+        },
+        "entry_version": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Entry Version"
+        },
+        "input_hash": {
+          "default": "",
+          "title": "Input Hash",
+          "type": "string"
+        },
+        "missing_evidence": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Missing Evidence",
+          "type": "array"
+        },
+        "model": {
+          "default": "",
+          "title": "Model",
+          "type": "string"
+        },
+        "prompt_version": {
+          "default": "",
+          "title": "Prompt Version",
+          "type": "string"
+        },
+        "reasons": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reasons",
+          "type": "array"
+        },
+        "score": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Score"
+        },
+        "source_refs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Refs",
+          "type": "array"
+        },
+        "sources": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Sources",
+          "type": "object"
+        },
+        "status": {
+          "default": "pending",
+          "enum": [
+            "pending",
+            "processing",
+            "evaluated",
+            "insufficient",
+            "stale",
+            "failed"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "title": "EvidenceAssessment",
+      "type": "object"
+    },
     "ExecutorUpdate": {
       "additionalProperties": false,
       "properties": {
@@ -10729,10 +11314,17 @@
     },
     "ExportRequest": {
       "additionalProperties": false,
-      "description": "导出请求。",
+      "description": "导出请求。\n\n`profile` 不是版本化资产（没有 AssetType），但用户需要一份能读、能打印的\n个人画像；它走同一个文档生成与下载链路，而不是让前端下载 JSON。",
       "properties": {
         "asset_type": {
-          "$ref": "#/components/schemas/AssetType"
+          "enum": [
+            "report",
+            "direction_plan",
+            "action_plan",
+            "profile"
+          ],
+          "title": "Asset Type",
+          "type": "string"
         },
         "format": {
           "default": "pdf",
@@ -10802,6 +11394,81 @@
         "answer"
       ],
       "title": "FaqView",
+      "type": "object"
+    },
+    "GapClaim": {
+      "additionalProperties": false,
+      "description": "差距认领记录。诊断 → 决策的衔接点。",
+      "properties": {
+        "claimed_at": {
+          "format": "date-time",
+          "title": "Claimed At",
+          "type": "string"
+        },
+        "gap_id": {
+          "title": "Gap Id",
+          "type": "string"
+        },
+        "label": {
+          "default": "",
+          "description": "用户认领的是哪一条（他自己点的那句话），复盘与报告里要能读回来",
+          "title": "Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "gap_id",
+        "claimed_at"
+      ],
+      "title": "GapClaim",
+      "type": "object"
+    },
+    "GradeEntry": {
+      "additionalProperties": false,
+      "description": "一条成绩。",
+      "properties": {
+        "category": {
+          "default": "",
+          "title": "Category",
+          "type": "string"
+        },
+        "credit": {
+          "default": "",
+          "title": "Credit",
+          "type": "string"
+        },
+        "kind": {
+          "default": "",
+          "description": "必修 / 选修 / 任选",
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "point": {
+          "default": "",
+          "description": "绩点原文",
+          "title": "Point",
+          "type": "string"
+        },
+        "score": {
+          "default": "",
+          "description": "成绩原文；等级制也照原样记，不换算",
+          "title": "Score",
+          "type": "string"
+        },
+        "term": {
+          "default": "",
+          "title": "Term",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "GradeEntry",
       "type": "object"
     },
     "GuideOptionView": {
@@ -12467,6 +13134,46 @@
       "title": "NotificationStateView",
       "type": "object"
     },
+    "PdfFieldPreview": {
+      "properties": {
+        "current_value": {
+          "title": "Current Value"
+        },
+        "key": {
+          "title": "Key",
+          "type": "string"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "reason": {
+          "default": "",
+          "title": "Reason",
+          "type": "string"
+        },
+        "selectable": {
+          "title": "Selectable",
+          "type": "boolean"
+        },
+        "selected": {
+          "default": false,
+          "title": "Selected",
+          "type": "boolean"
+        },
+        "value": {
+          "title": "Value"
+        }
+      },
+      "required": [
+        "key",
+        "label",
+        "value",
+        "selectable"
+      ],
+      "title": "PdfFieldPreview",
+      "type": "object"
+    },
     "Period": {
       "additionalProperties": false,
       "properties": {
@@ -13173,6 +13880,162 @@
       "title": "ProfileEntryType",
       "type": "string"
     },
+    "ProfileField": {
+      "additionalProperties": false,
+      "description": "画像里的一条记录（活状态的最小单位）。\n\n记录结构见《个人画像设计-2026-10-20》第 4 节：一条记录除了「键值」，\n还要能回答六件事 —— 它属于哪一类内容、内容结构是什么、原话/资料在哪、\n来源方式与核实状态分别是什么、何时知道/何时发生/何时仍适用、以及它现在是\n有效、被更正、存在冲突还是已撤回。\n\n兼容阶段保留 `confidence`：它不再充当真实性、熟练度或写权限的共同开关，\n也不直接展示成百分比。新字段全部有默认值，老数据读出来仍是合法记录\n（缺类别时由受控词表按键推导，缺核实状态时由来源推导）。",
+      "properties": {
+        "attributes": {
+          "additionalProperties": true,
+          "description": "类型专属的结构化属性（受控键；不是任意模型输出）",
+          "title": "Attributes",
+          "type": "object"
+        },
+        "confidence": {
+          "description": "置信度 0-1（兼容字段，不再直接展示）",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "entry_type": {
+          "anyOf": [
+            {
+              "$ref": "#/components/schemas/ProfileEntryType"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "内容类别（学习背景/兴趣/经历/能力/职业关注/价值取向/现实条件/补充信息）"
+        },
+        "entry_version": {
+          "default": 1,
+          "description": "条目版本，从 1 开始",
+          "minimum": 1.0,
+          "title": "Entry Version",
+          "type": "integer"
+        },
+        "event_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "事情发生的时间（不是记录时间）",
+          "title": "Event At"
+        },
+        "evidence": {
+          "description": "证据来源引用（原话/资料片段）",
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence",
+          "type": "array"
+        },
+        "evidence_assessment": {
+          "anyOf": [
+            {
+              "$ref": "#/components/schemas/EvidenceAssessment"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "key": {
+          "description": "字段键，如 major / skills / interest（取数用，不直接展示）",
+          "title": "Key",
+          "type": "string"
+        },
+        "label": {
+          "default": "",
+          "description": "这个字段用中文该怎么称呼（如「专业」「兴趣方向」）。字段键由模型自由生成（`interest_direction` 这种），界面拿不到中文名就只能把英文键摆给用户看 —— 名字必须跟着数据一起存",
+          "title": "Label",
+          "type": "string"
+        },
+        "origin_ref": {
+          "default": "",
+          "description": "原话或资料来源引用（不编造引用）",
+          "title": "Origin Ref",
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/components/schemas/ProfileSource",
+          "description": "来源：这条信息从哪儿来"
+        },
+        "status": {
+          "$ref": "#/components/schemas/ProfileEntryStatus",
+          "default": "active",
+          "description": "当前状态：有效/已更正/冲突/过期/撤回"
+        },
+        "superseded_by": {
+          "default": "",
+          "description": "被哪条记录替代（修订关系）",
+          "title": "Superseded By",
+          "type": "string"
+        },
+        "updated_at": {
+          "description": "更新时间（何时知道这条记录）",
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        },
+        "valid_from": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "有效范围起点；未知不补成当前时间",
+          "title": "Valid From"
+        },
+        "valid_to": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "有效范围终点",
+          "title": "Valid To"
+        },
+        "value": {
+          "description": "字段值，结构由画像 schema 决定",
+          "title": "Value"
+        },
+        "verification": {
+          "anyOf": [
+            {
+              "$ref": "#/components/schemas/ProfileVerification"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "核实状态（自述/本人确认/资料记录/核验/待核实）"
+        }
+      },
+      "required": [
+        "key",
+        "value",
+        "confidence",
+        "source",
+        "updated_at"
+      ],
+      "title": "ProfileField",
+      "type": "object"
+    },
     "ProfileFieldDeleteAck": {
       "additionalProperties": false,
       "description": "用户删除一条画像信息的回执。",
@@ -13191,8 +14054,32 @@
     },
     "ProfileFieldUpdateRequest": {
       "additionalProperties": false,
-      "description": "用户手动更正一条画像字段（issue #26 第三条）。\n\n只有一个 `value`，键在路径上（`POST /app/profile/fields/{key}`）：\n\"改哪一条\"不是可选的 —— 揉进请求体里，就等于允许一次请求改任意多条，\n而界面上的入口从来只对着一条。\n\n**为什么这里不设长度上限**：上限是业务口径（40 字，见\n`DefaultProfileService.MAX_FIELD_VALUE_CHARS`），超长要说人话\n（\"最多 40 个字，现在有 56 个\"）。交给 Pydantic 的 `max_length` 只会得到\n一句英文的字段名错误，用户看不懂自己该改什么。",
+      "description": "用户手动更正一条画像字段（issue #26 第三条）。\n\n取值及其属性/有效期属于同一条资料，键在路径上（`POST /app/profile/fields/{key}`）：\n\"改哪一条\"不是可选的 —— 揉进请求体里，就等于允许一次请求改任意多条，\n而界面上的入口从来只对着一条。\n\n**为什么这里不设长度上限**：上限是业务口径（40 字，见\n`DefaultProfileService.MAX_FIELD_VALUE_CHARS`），超长要说人话\n（\"最多 40 个字，现在有 56 个\"）。交给 Pydantic 的 `max_length` 只会得到\n一句英文的字段名错误，用户看不懂自己该改什么。",
       "properties": {
+        "attributes": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Attributes"
+        },
+        "event_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Event At"
+        },
         "expected_updated_at": {
           "anyOf": [
             {
@@ -13206,10 +14093,44 @@
           "description": "编辑时字段时间；首次填写传 null",
           "title": "Expected Updated At"
         },
+        "valid_from": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Valid From"
+        },
+        "valid_to": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Valid To"
+        },
         "value": {
-          "description": "用户认可的那个值（空串会被拒 —— 清空是另一件事）",
-          "title": "Value",
-          "type": "string"
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          ],
+          "description": "用户认可的值；多项资料使用数组",
+          "title": "Value"
         }
       },
       "required": [
@@ -13220,7 +14141,7 @@
     },
     "ProfileFieldView": {
       "additionalProperties": false,
-      "description": "画像里的一条记录（活状态的最小单位）。\n\n此前这里是 `dict[str, Any]`：契约只说\"有 fields\"，不说每条里有什么。\n前端要按 `confidence` 画把握度、按 `evidence` 做可溯源展示、按 `source`\n说明这条从哪来 —— 全是猜的字段名。现在逐字段声明。\n\n《个人画像设计-2026-10-20》第 4 节：一条记录还要能回答「属于哪一类内容、\n结构是什么、原话在哪、核实到什么程度、何时仍适用」。这些字段都来自服务端\n词表与写入校验，前端只按它们组织展示，不再自己猜键的含义。",
+      "description": "画像里的一条记录（活状态的最小单位）。\n\n此前这里是 `dict[str, Any]`：契约只说\"有 fields\"，不说每条里有什么。\n前端按独立 `evidence_assessment` 展示把握度、按 `evidence` 溯源、按 `source`\n说明这条从哪来 —— 全是猜的字段名。现在逐字段声明。\n\n《个人画像设计-2026-10-20》第 4 节：一条记录还要能回答「属于哪一类内容、\n结构是什么、原话在哪、核实到什么程度、何时仍适用」。这些字段都来自服务端\n词表与写入校验，前端只按它们组织展示，不再自己猜键的含义。",
       "properties": {
         "attributes": {
           "additionalProperties": true,
@@ -13270,6 +14191,17 @@
           },
           "title": "Evidence",
           "type": "array"
+        },
+        "evidence_assessment": {
+          "anyOf": [
+            {
+              "$ref": "#/components/schemas/EvidenceAssessment"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "仅用于展示的模型证据评估；不参与业务门禁"
         },
         "key": {
           "description": "字段键，如 major / skills / interest（取数用，不直接展示）",
@@ -13609,6 +14541,160 @@
       "title": "RenderableView",
       "type": "object"
     },
+    "Report": {
+      "additionalProperties": false,
+      "description": "15 维诊断报告。",
+      "properties": {
+        "dimensions": {
+          "items": {
+            "$ref": "#/components/schemas/ReportDimensionGroup"
+          },
+          "title": "Dimensions",
+          "type": "array"
+        },
+        "gap_claims": {
+          "items": {
+            "$ref": "#/components/schemas/GapClaim"
+          },
+          "title": "Gap Claims",
+          "type": "array"
+        },
+        "generated_at": {
+          "format": "date-time",
+          "title": "Generated At",
+          "type": "string"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "methodologies": {
+          "description": "本次使用的理论模型",
+          "items": {
+            "type": "string"
+          },
+          "title": "Methodologies",
+          "type": "array"
+        },
+        "profile_snapshot": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/components/schemas/ProfileField"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "保存报告时的资料及把握度快照；旧报告为空",
+          "title": "Profile Snapshot"
+        },
+        "sources": {
+          "description": "事实来源，如学职平台/JD",
+          "items": {
+            "type": "string"
+          },
+          "title": "Sources",
+          "type": "array"
+        },
+        "swot": {
+          "$ref": "#/components/schemas/Swot"
+        },
+        "user_id": {
+          "title": "User Id",
+          "type": "string"
+        },
+        "verdict": {
+          "$ref": "#/components/schemas/Verdict"
+        },
+        "version": {
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "user_id",
+        "version",
+        "generated_at",
+        "verdict",
+        "swot"
+      ],
+      "title": "Report",
+      "type": "object"
+    },
+    "ReportDimensionGroup": {
+      "additionalProperties": false,
+      "description": "15 维分组：自我画像 6 / 职业环境 5 / 决策与风险 4。",
+      "properties": {
+        "group": {
+          "enum": [
+            "SELF-PORTRAIT",
+            "JOB-MARKET",
+            "DECISION-RISK"
+          ],
+          "title": "Group",
+          "type": "string"
+        },
+        "group_method": {
+          "description": "该分组支撑的方法论",
+          "title": "Group Method",
+          "type": "string"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/components/schemas/ReportDimensionItem"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "group",
+        "group_method"
+      ],
+      "title": "ReportDimensionGroup",
+      "type": "object"
+    },
+    "ReportDimensionItem": {
+      "additionalProperties": false,
+      "description": "15 维中的单维。",
+      "properties": {
+        "conclusion": {
+          "title": "Conclusion",
+          "type": "string"
+        },
+        "evidence": {
+          "description": "证据引用，必须可溯源",
+          "title": "Evidence",
+          "type": "string"
+        },
+        "index": {
+          "title": "Index",
+          "type": "integer"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "tag": {
+          "description": "维度标签，如优势/短板/待验证",
+          "title": "Tag",
+          "type": "string"
+        }
+      },
+      "required": [
+        "index",
+        "name",
+        "tag",
+        "conclusion",
+        "evidence"
+      ],
+      "title": "ReportDimensionItem",
+      "type": "object"
+    },
     "ReportDimensionItemView": {
       "additionalProperties": false,
       "description": "15 维里的单维。**逐字段声明**而不是 `dict`：前端要按 `tag` 上色、\n按 `evidence` 做可溯源展示，字段名一旦漂移，界面会静默变成空白。",
@@ -13664,6 +14750,21 @@
           },
           "title": "Methodologies",
           "type": "array"
+        },
+        "profile_snapshot": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/components/schemas/ProfileFieldView"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "报告保存时的资料与评估快照；历史报告可能没有",
+          "title": "Profile Snapshot"
         },
         "report_id": {
           "title": "Report Id",
@@ -14154,6 +15255,20 @@
           ],
           "title": "Current Task Id"
         },
+        "matches": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Matches"
+        },
         "sessions": {
           "items": {
             "$ref": "#/components/schemas/TaskSessionView"
@@ -14247,6 +15362,42 @@
         "title"
       ],
       "title": "StagePanelView",
+      "type": "object"
+    },
+    "Swot": {
+      "additionalProperties": false,
+      "description": "SWOT。每项不少于 2 条。",
+      "properties": {
+        "opportunity": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Opportunity",
+          "type": "array"
+        },
+        "risk": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Risk",
+          "type": "array"
+        },
+        "strength": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Strength",
+          "type": "array"
+        },
+        "weakness": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Weakness",
+          "type": "array"
+        }
+      },
+      "title": "Swot",
       "type": "object"
     },
     "TaskEdit": {
@@ -14900,6 +16051,26 @@
         "type"
       ],
       "title": "ValidationError",
+      "type": "object"
+    },
+    "Verdict": {
+      "additionalProperties": false,
+      "description": "报告综合结论。",
+      "properties": {
+        "summary": {
+          "title": "Summary",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "summary"
+      ],
+      "title": "Verdict",
       "type": "object"
     },
     "WorkloadView": {

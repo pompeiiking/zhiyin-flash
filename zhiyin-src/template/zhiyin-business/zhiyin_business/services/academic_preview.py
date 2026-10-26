@@ -119,7 +119,16 @@ class AcademicPreviewService:
                 if bool(row.start_period) != bool(row.end_period) or row.start_period > row.end_period:
                     raise InvalidRequest('课程开始、结束节次不完整，请修正后预览。')
                 if not row.weekday or not row.start_period:
-                    warnings.append(f'{row.name}：上课时间待补充，保存后暂不出现在课表网格中。')
+                    # 说清"缺的是哪一半"：只缺星期时，节次其实已经读到了，
+                    # 再说"上课时间待补充"会让用户以为整段都没识别出来（实测反馈）。
+                    missing = (
+                        "星期和节次都没读出来"
+                        if not row.weekday and not row.start_period
+                        else "没认出星期（节次已读到）"
+                        if not row.weekday
+                        else "没认出节次（星期已读到）"
+                    )
+                    warnings.append(f"{row.name}：{missing}，保存后暂不出现在课表网格中。")
             elif not row.score.strip():
                 raise InvalidRequest(f'「{row.name}」的成绩无法确认，请补充后重新预览；不会猜测分数。')
         snapshot = await self.academic.get(user_id)

@@ -3,6 +3,7 @@ import {computed,ref} from 'vue'
 import {backendRequest} from '../api/backend-client'
 import {isDeveloperRole} from '../lib/auth'
 import StructuredFacts from './StructuredFacts.vue'
+import {randomId} from '../lib/random-id'
 /**
  * 运行已发布流程是**管理操作**（流程编号要管理员给，还有"允许写入"开关）。
  * 学生拿不到流程编号，看到表单只会困惑、甚至以为能自行提权（深度测试 D2）。
@@ -19,7 +20,7 @@ async function run(){
   let data:unknown
   try{data=JSON.parse(input.value)}catch{throw new Error('流程参数不是合法的 JSON，请检查括号、引号和逗号是否成对后重试。')}
   if(!data||Array.isArray(data)||typeof data!=='object')throw new Error('流程参数须为 JSON 对象，例如 {"keyword":"示例"}。')
-  busy.value=true;requestId ||= crypto.randomUUID()
+  busy.value=true;requestId ||= randomId()
   result.value=await backendRequest<Record<string,unknown>>('workflowRun',{params:{workflow_id:id.value.trim()},body:{request_id:requestId,input:data,mode:'live',confirm_actions:confirm.value},timeout:180000})
   requestId=''
  }catch(e){

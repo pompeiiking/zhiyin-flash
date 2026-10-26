@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
 import vm from 'node:vm'
 import ts from 'typescript'
+import * as profileDisplay from '../src/lib/profile-display.ts'
 
 function fixture(client, panel = {}) {
   const workspace = {profile_panel: {fields: [], clues: [{id: 'c1'}], conflicts: [{id: 'r1'}], ...panel}}
@@ -12,6 +13,7 @@ function fixture(client, panel = {}) {
     '../store': {demo: {state: {profileEdits: {}}}},
     '../data/student': {PROFILE_FIELDS: []},
     './server-copy': {profileLabel: (_key, label) => label},
+    './profile-display': profileDisplay,
     './backend-demo': {backendDemo},
     '../api/backend-client': {backendClient: {report: async () => ({}), directions: async () => ({}), ...client}},
   }

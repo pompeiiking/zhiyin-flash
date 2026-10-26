@@ -12,7 +12,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from zhiyin_api.dto.asset import AssetVersionView
 from zhiyin_api.dto.common import (
@@ -54,6 +54,20 @@ class MessageRequest(BaseModel):
     task_id: str = Field(min_length=1, max_length=200)
     message: str = Field(min_length=1, max_length=16000)
     client_msg_id: Optional[str] = Field(default=None, max_length=200, description="前端幂等键")
+
+    @field_validator("message")
+    @classmethod
+    def message_not_blank(cls, value: str) -> str:
+        """只有空格的消息不是一句话。
+
+        `min_length=1` 只管字符数：一个空格也能通过，然后被当成一轮真实输入
+        记进会话、触发模型调用（实测纯空格返回 200）。界面按钮会 trim，
+        但接口是公开的，校验必须落在服务端；这里只拒绝，不替用户删改正文。
+        """
+        if not value.strip():
+            raise ValueError("消息不能只有空格，请输入要说的内容。")
+        return value
+
     option_id: Optional[str] = Field(
         default=None, max_length=400, description="这一轮点了哪个选项（guide.options[].option_id）"
     )

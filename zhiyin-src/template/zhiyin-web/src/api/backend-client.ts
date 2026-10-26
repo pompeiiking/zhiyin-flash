@@ -179,7 +179,7 @@ export const backendClient = {
   achievements: () => request<AchievementListView>('achievements'),
   notifications: () => request<CoachNotificationView[]>('notifications'),
   notificationRead: (message_id: string) => request<{ read: boolean }>('notificationRead', { params: { message_id } }),
-  exportAsset: (asset_type: 'report' | 'direction_plan' | 'action_plan', format: 'pdf' | 'docx') => request<ExportResultView>('export', { body: { asset_type, format } }),
+  exportAsset: (asset_type: 'report' | 'direction_plan' | 'action_plan' | 'profile', format: 'pdf' | 'docx') => request<ExportResultView>('export', { body: { asset_type, format } }),
 }
 
 export type ConversationAction = { id: string; operation: string; state: string; payload: Record<string, any>; expires_at: string; receipt?: Record<string, any> }

@@ -5,6 +5,7 @@ import { auth } from './lib/auth'
 import {backendRequest} from './api/backend-client'
 import { ref } from 'vue'
 import { sessionCacheAvailable } from './lib/session-cache'
+import { randomId } from './lib/random-id'
 export const routeLoadError = ref(false)
 /** 路由懒加载进行中：App 壳层用它给 <main> 标 aria-busy，并播报"正在加载页面…"。 */
 export const routeLoading = ref(false)
@@ -144,7 +145,7 @@ router.afterEach((to) => {
   routeLoading.value = false
   syncDocumentTitle(to)
   const event:Record<string,string>={'/report':'diagnosis_view','/directions':'decision_compare','/profile':'collect_gap_show'}
-  if(demo.state.authed && event[to.path])void backendRequest('track',{body:{event:event[to.path],payload:{path:to.path},client_event_id:crypto.randomUUID()}}).catch(()=>{})
+  if(demo.state.authed && event[to.path])void backendRequest('track',{body:{event:event[to.path],payload:{path:to.path},client_event_id:randomId()}}).catch(()=>{})
 
   routeLoadError.value = false
   try {

@@ -13,7 +13,7 @@ for (const concurrent of [false,true]) test('new task retry preserves identity; 
   const plan=vue.reactive({phases:[{id:'first',name:'阶段一',tasks:[]},{id:'selected',name:'当前阶段',tasks:[]}]})
   const calls=[]
   const client={saveTask:async(body,id)=>{calls.push({body,id});return {phases:[{id:'first',tasks:[]},{id:'selected',tasks:[...(concurrent?[{task_id:'other-task',text:'其他标签的任务'}]:[]),{task_id:'saved-task',text:body.text}]}]}}}
-  const modules={vue,'../lib/form-values.mjs':{localDateTime:()=>''},'../api/student-capabilities':{studentApi:client},'../lib/backend-demo':{backendDemo:{state:{liveAction:plan},setAction:next=>plan.phases=next.phases}}}
+  const modules={vue,'../lib/random-id':{randomId:()=>'request-id'},'../lib/form-values.mjs':{localDateTime:()=>''},'../api/student-capabilities':{studentApi:client},'../lib/backend-demo':{backendDemo:{state:{liveAction:plan},setAction:next=>plan.phases=next.phases}}}
   const exports={};vm.runInNewContext(code,{exports,crypto:webcrypto,require:path=>modules[path]??{}})
   const state=exports.default.setup({phaseId:'selected'},{expose:()=>{}})
   state.open.value=true;await vue.nextTick()

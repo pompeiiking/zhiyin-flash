@@ -426,6 +426,14 @@ def test_http_roundtrip_download_and_ownership(tmp_path):
         response = client.get(path)
         assert response.status_code == 200
         assert "已完成" in ZipFile(BytesIO(response.content)).read("word/document.xml").decode()
+        # 个人画像导出的是可读文档，不是接口 JSON（前端不再自己拼 JSON 下载）。
+        call("POST", "/profile/fields/major", {"value": "计算机科学与技术"})
+        profile_export = call("POST", "/assets/export", {"asset_type": "profile", "format": "docx"})
+        assert profile_export["available"]
+        profile_response = client.get("/api/v1/app/assets/download/" + profile_export["object_key"])
+        assert profile_response.status_code == 200
+        profile_text = ZipFile(BytesIO(profile_response.content)).read("word/document.xml").decode()
+        assert "个人画像" in profile_text and "计算机科学与技术" in profile_text
         client.headers["Authorization"] = "Bearer capability_other"
         assert client.get(path).status_code == 404
         assert call("GET", "/reviews")["items"] == []

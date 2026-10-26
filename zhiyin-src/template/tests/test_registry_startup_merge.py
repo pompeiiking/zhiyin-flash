@@ -16,6 +16,10 @@ import json
 from pathlib import Path
 
 from zhiyin_infrastructure.postgres.registry import PostgresRegistryRepository
+from zhiyin_infrastructure.postgres.feature_flag import (
+    SEED_VERSION_KEY,
+    PostgresFeatureFlagGateway,
+)
 
 TEMPLATE_ROOT = Path(__file__).resolve().parents[1]
 REGISTRY_DIR = TEMPLATE_ROOT / "data" / "registry"
@@ -93,3 +97,92 @@ def test_structural_kinds_constant_is_wired():
     from zhiyin_boot.registry_bootstrap import STRUCTURAL_REGISTRY_KINDS
 
     assert set(STRUCTURAL_REGISTRY_KINDS) == {"collection_rules", "copies"}
+
+
+class _FlagDatabase:
+    """功能开关网关的假库：按 SQL 形状回答版本与行数。"""
+
+    def __init__(self, *, applied=None, count=0):
+        self.applied = applied
+        self.count = count
+        self.statements: list[tuple[str, tuple]] = []
+
+    async def execute(self, query, *args):
+        self.statements.append((query, args))
+        return "INSERT 0 1"
+
+    async def fetchval(self, query, *args):
+        if "value->>'version'" in query:
+            return self.applied
+        if "COUNT(*)" in query:
+            return self.count
+        return 0
+
+    async def fetch(self, query, *args):
+        return []
+
+
+def _flags_seed(tmp_path: Path, version: int, export: bool) -> Path:
+    (tmp_path / "feature_flags.json").write_text(json.dumps({
+        "_version": version,
+        "items": [{"code": "export", "enabled": export}],
+    }), encoding="utf-8")
+    return tmp_path
+
+
+def test_seed_version_upgrade_enables_a_product_default_once():
+    """库里的版本落后时按文件重导一次；导完记下版本，之后以库为准。"""
+
+    async def run():
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = _flags_seed(Path(directory), 2, True)
+            database = _FlagDatabase(applied="1", count=1)
+            gateway = PostgresFeatureFlagGateway(database, str(root))
+            await gateway.all()
+            return database.statements
+
+    statements = asyncio.run(run())
+    flag_upserts = [(query, args) for query, args in statements
+                    if "INSERT INTO infra_feature_flag" in query]
+    assert flag_upserts and "DO UPDATE SET enabled" in flag_upserts[0][0]
+    assert ("export", True) in [args for _query, args in flag_upserts]
+    version_writes = [(query, args) for query, args in statements
+                      if "infra_runtime_config" in query]
+    assert version_writes and json.loads(version_writes[0][1][1]) == {"version": 2}
+    assert version_writes[0][1][0] == SEED_VERSION_KEY
+
+
+def test_same_seed_version_does_not_overwrite_operator_changes():
+    """版本相同就不动已有开关 —— 运维在库里关掉的不能被重启重新打开。"""
+
+    async def run():
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = _flags_seed(Path(directory), 2, True)
+            database = _FlagDatabase(applied="2", count=1)
+            gateway = PostgresFeatureFlagGateway(database, str(root))
+            await gateway.all()
+            return database.statements
+
+    statements = asyncio.run(run())
+    assert not [item for item in statements if "infra_feature_flag" in item[0]]
+
+
+def test_empty_flag_table_gets_the_seed_and_remembers_its_version():
+    async def run():
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = _flags_seed(Path(directory), 2, True)
+            database = _FlagDatabase(applied=None, count=0)
+            gateway = PostgresFeatureFlagGateway(database, str(root))
+            await gateway.all()
+            return database.statements
+
+    statements = asyncio.run(run())
+    inserts = [args for query, args in statements if "INSERT INTO infra_feature_flag" in query]
+    assert ("export", True) in inserts
+    assert any("infra_runtime_config" in query for query, _args in statements)

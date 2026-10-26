@@ -61,6 +61,8 @@ import { backendDemo } from '../lib/backend-demo'
 import { resolveDisplayName } from '../lib/display-name'
 import { visibleEvidence } from '../lib/format'
 import { backendClient } from '../api/backend-client'
+import { downloadExport } from '../api/student-capabilities'
+import { featureEnabled } from '../lib/features'
 import { useProfileWorkspace } from '../lib/use-profile-workspace'
 import { useProfileFields } from '../lib/use-profile-fields'
 import { useProfileConclusions } from '../lib/use-profile-conclusions'
@@ -100,6 +102,8 @@ const SOURCE_GROUPS: { key: string; label: string; from: ProfileField['source'][
 
 const workspace = useProfileWorkspace()
 const { loading, serviceError, relatedError, live, livePanel, isVerified, progress, loadWorkspace } = workspace
+const exportBusy = ref(false)
+const exportError = ref('')
 
 const fields = useProfileFields({
   live: workspace.live,
@@ -208,10 +212,20 @@ const enrollmentRows = computed(() => {
   ].map(item => ({ ...item, value: item.row ? fieldValue(item.row) : '待补充' }))
 })
 function exportProfile(){
-  if (loading.value || (live.value && !livePanel.value)) return
-  const data = {schema_version: 1, exported_at: new Date().toISOString(), scope: 'current_profile_snapshot', history_included: false,
-    profile: live.value ? livePanel.value : {fields: known.value}, collection: live.value ? backendDemo.state.liveWorkspace?.collection_panel : undefined}
-  const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download=`职引-个人画像-${identity.value.name}-${new Date().toISOString().slice(0,10)}.json`;a.click();URL.revokeObjectURL(url)
+  if (loading.value || exportBusy.value || !featureEnabled('export') || (live.value && !livePanel.value)) return
+  exportBusy.value = true
+  exportError.value = ''
+  void (async () => {
+    try {
+      const result = await backendClient.exportAsset('profile', 'pdf')
+      if (!result.available || !result.object_key) throw new Error(result.message || '导出暂时不可用，请稍后重试。')
+      await downloadExport(result.object_key, `职引-个人画像-${identity.value.name}-${new Date().toISOString().slice(0,10)}.pdf`)
+    } catch (error) {
+      exportError.value = error instanceof Error ? error.message : '导出失败，请稍后重试。'
+    } finally {
+      exportBusy.value = false
+    }
+  })()
 }
 
 /** 覆盖度环：进入页面从 0 生长到实际值；reduced-motion 直接给终值 */
@@ -227,7 +241,7 @@ onMounted(()=>{ void loadWorkspace() })
     <p class="sr-only" role="status" aria-live="polite">{{ loading ? '正在读取个人画像…' : '' }}</p>
     <PageHeading title="个人画像" description="把零散经历整理成可核对、可继续验证的个人画像。"><template #meta><div class="c2-page-meta"><span v-if="live">{{ livePanel ? '已读取的档案' : loading ? '正在读取档案' : '尚未读取档案' }}</span><span>{{ progress.known }} 条已知 · {{ progress.gap }} 条待补充</span></div></template>
       <RouterLink class="btn btn--primary" to="/chat">补充信息<UiIcon name="arrow" :size="16" /></RouterLink>
-      <button class="btn" :disabled="loading || (live && !livePanel)" @click="exportProfile"><UiIcon name="download" :size="16"/>导出画像</button>
+      <button v-if="featureEnabled('export')" class="btn" :disabled="loading || exportBusy || (live && !livePanel)" @click="exportProfile"><UiIcon name="download" :size="16"/>{{ exportBusy ? '正在生成…' : '导出画像' }}</button>
     </PageHeading>
 
     <StatusBanner
@@ -245,6 +259,14 @@ onMounted(()=>{ void loadWorkspace() })
       size="sm"
       :message="relatedError"
       :dismissible="false"
+    />
+    <StatusBanner
+      v-if="exportError"
+      tone="error"
+      size="sm"
+      :message="exportError"
+      dismissible
+      @dismiss="exportError = ''"
     />
 
 

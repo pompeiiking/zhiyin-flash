@@ -1100,7 +1100,49 @@ class DialogueRuntime:
         finally:
             active_dialogue.reset(token)
 
+    async def _commit_reply_assets(self, model_result):
+        """把本轮正文里已经生成的方向/计划草稿确定性落库。
+
+        模型偶尔只把方案写在正文、没调用 workspace.action（实测：对话里三套
+        方向齐全，方案页一直为空）。结构化字段和正文来自同一次输出，服务端
+        看到完整资产就落库：首次生成作为当前版本，已有版本时只存草稿、不替换
+        正式版本。若模型已经为本轮提出/执行过同一操作，则不再重复保存。
+        """
+        if not model_result or not getattr(model_result, "valid", False):
+            return
+        assets = (model_result.structured or {}).get("dialogue_assets") or {}
+        if not isinstance(assets, dict) or not assets:
+            return
+        record = await self.ledger.read(self.request.user_id, self.request.task_id)
+        handled = {
+            action.get("operation")
+            for action in record["actions"].values()
+            if action.get("run_id") == self.request.client_msg_id
+            and action.get("state") in {"proposed", "succeeded"}
+        }
+        pending = []
+        if assets.get("directions") and "directions.save" not in handled:
+            pending.append(("directions.save", {"plans": assets["directions"]}))
+        if assets.get("plan") and "plan.save" not in handled:
+            pending.append(("plan.save", assets["plan"]))
+        for operation, payload in pending:
+            try:
+                receipt = await self.action({
+                    "operation": operation,
+                    "payload": payload,
+                    "authorization": "explicit",
+                    "evidence": self.request.message,
+                })
+            except Exception:  # noqa: BLE001 - 草稿保存失败不推翻已经生成的正文
+                log.warning("本轮生成的 %s 草稿保存失败", operation, exc_info=True)
+                continue
+            if not receipt.get("executed"):
+                # 结构不完整或版本变化时 action 会返回未执行；正文照常保留，
+                # 但不要在这里补一句"已保存"（finish 只按真实回执写字）。
+                log.info("本轮生成的 %s 草稿未执行：%s", operation, receipt.get("reason", ""))
+
     async def finish(self, request, session, text, model_result=None):
+        await self._commit_reply_assets(model_result)
         record = await self.ledger.read(request.user_id, request.task_id)
         pending = [a for a in record["actions"].values() if a["state"] == "proposed"
                    and datetime.fromisoformat(a["expires_at"]) > datetime.now(timezone.utc)]

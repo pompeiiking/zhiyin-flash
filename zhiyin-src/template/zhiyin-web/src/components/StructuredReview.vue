@@ -11,6 +11,7 @@ import DetailPopover from './DetailPopover.vue'
 import StatusBanner from './StatusBanner.vue'
 import ResultPager from './ResultPager.vue'
 import InfoSheet from './InfoSheet.vue'
+import { randomId } from '../lib/random-id'
 import { usePagedItems } from '../lib/paged-items'
 
 const props = defineProps<{ taskId?: string; loadingTasks?: boolean }>()
@@ -89,7 +90,7 @@ watch(selectedId, (id, previousId) => {
   const draft = reviewDraft(selected.value)
   const localDraft = localDrafts.get(id)
   editing.value = localDraft?.editing ?? ''
-  requestId.value = localDraft?.requestId ?? crypto.randomUUID()
+  requestId.value = localDraft?.requestId ?? randomId()
   expectedUpdatedAt.value = localDraft?.expectedUpdatedAt ?? null
   expectedTask.value = localDraft?.expectedTask ?? taskSnapshot()
   reason.value = localDraft?.reason ?? ''
@@ -208,7 +209,7 @@ async function edit(item: Review) {
   editing.value = item.id
   expectedUpdatedAt.value = item.updated_at
   expectedTask.value = taskSnapshot()
-  requestId.value = crypto.randomUUID()
+  requestId.value = randomId()
   reason.value = item.reason
   note.value = item.note ?? ''
   result.value = item.result

@@ -443,7 +443,7 @@ onMounted(() => {
       </div>
     </template>
 
-    <EmptyState v-else kind="intel" :heading-level="2" title="从真实资料开始职业探索" description="先读取职业资料了解可探索范围；也可以直接用当前画像发起一次匹配。" :next="false">
+    <EmptyState v-else kind="intel" :heading-level="2" title="从真实资料开始职业探索" description="先读取职业资料了解可探索范围；也可以直接用当前画像发起一次匹配。暂时没有结果，通常只是职业库还没收录你的专业方向，不代表没有可选方向。" :next="false">
       <div class="intel-empty-actions" aria-label="职业探索起步操作">
         <button class="intel-empty-action is-primary" type="button" :disabled="busy" @click="load(true)"><span aria-hidden="true"><UiIcon name="search" :size="18" /></span><strong>{{ refreshing ? '正在更新资料…' : '更新职业资料' }}</strong><small>读取专业相关职业与真实去向</small></button>
         <button class="ws-text-link" type="button" data-sheet-trigger @click="startMatch">已有方向，直接用画像匹配</button>

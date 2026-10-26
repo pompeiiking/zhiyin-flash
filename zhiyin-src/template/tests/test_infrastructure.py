@@ -356,7 +356,7 @@ async def test_feature_flags_come_from_json() -> None:
     store = LocalFeatureFlagStore(str(DATA_DIR / "registry"))
     flags = await store.all()
     assert flags["report_full_text"] is True
-    assert flags["export"] is False
+    assert flags["export"] is True
     # 未知开关默认关闭，避免"配置漏了反而打开"
     assert await store.is_enabled("not_configured") is False
 

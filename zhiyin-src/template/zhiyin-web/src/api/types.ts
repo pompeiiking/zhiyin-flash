@@ -3629,9 +3629,16 @@ export interface components {
     /**
      * ExportRequest
      * @description 导出请求。
+     *
+     * `profile` 不是版本化资产（没有 AssetType），但用户需要一份能读、能打印的
+     * 个人画像；它走同一个文档生成与下载链路，而不是让前端下载 JSON。
      */
     ExportRequest: {
-      asset_type: components["schemas"]["AssetType"];
+      /**
+       * Asset Type
+       * @enum {string}
+       */
+      asset_type: "report" | "direction_plan" | "action_plan" | "profile";
       /**
        * Format
        * @default pdf

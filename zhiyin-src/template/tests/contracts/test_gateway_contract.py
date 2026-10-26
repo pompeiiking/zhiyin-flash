@@ -101,7 +101,9 @@ async def test_feature_flag_contract(gateways) -> None:
     all_flags = await flags.all()
     assert all_flags, "种子数据里必须有开关"
     assert await flags.is_enabled("report_full_text") is True
-    assert await flags.is_enabled("export") is False
+    # 导出已经实现并纳入默认能力（2026-10-26）；导师仍是未实现预留能力。
+    assert await flags.is_enabled("export") is True
+    assert await flags.is_enabled("mentor") is False
 
     # 配置漏了不能反而把功能打开（这是"默认通过层"最容易犯的错）
     assert await flags.is_enabled("not_configured") is False

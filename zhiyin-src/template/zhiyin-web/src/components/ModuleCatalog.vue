@@ -64,6 +64,7 @@ import StructuredFacts from './StructuredFacts.vue'
 import ModuleContent from '../modules/ModuleContent.vue'
 import type { ModuleView } from '../modules/client'
 import { loadShell } from '../lib/system-data'
+import { randomId } from '../lib/random-id'
 type Schema={type?:string;title?:string;enum?:unknown[];default?:unknown;properties?:Record<string,Schema>;required?:string[]}
 type Module = ModuleView & { manifest: ModuleView['manifest'] & { input_schema?: Schema } }
 type Result={data:Record<string,unknown>;sources?:string[];empty?:boolean;module_version?:string}
@@ -126,7 +127,7 @@ async function load(user=false){
   }finally{busy.value=false;loading.value=false}
 }
 async function open(module:Module){if(busy.value)return;active.value=module;result.value=null;status.value='';inputs.value={};fields.value.forEach(([key,s])=>{if(['string','number','boolean'].includes(typeof s.default))inputs.value[key]=s.default as string|number|boolean});await fetchData()}
-async function fetchData(invoke=false){if(!active.value||busy.value)return;busy.value=true;if(!invoke)loading.value=true;error.value='';try{const m=active.value.manifest;if(invoke){for(const k of m.input_schema?.required??[])if(inputs.value[k]===undefined||inputs.value[k]==='')throw new Error('请填写所有必填项。')}const data=await backendRequest<Result>(invoke?'moduleInvoke':'moduleData',{params:{module_id:m.id},body:invoke?{input:inputs.value,expected_version:m.version,request_id:crypto.randomUUID()}:undefined});if(!data||typeof data.data!=='object')throw new Error('Incomplete module result');result.value=data;status.value=invoke?'工具调用已完成。':'工具数据已读取。'}catch(e){lastFailed.value='data';error.value=e instanceof Error&&e.message==='请填写所有必填项。'?e.message:'工具暂时没有返回结果，请重试。输入和原内容仍保留。';pendingError.value=error.value;dismissedError.value='';userInitiated.value=true}finally{busy.value=false;loading.value=false}}
+async function fetchData(invoke=false){if(!active.value||busy.value)return;busy.value=true;if(!invoke)loading.value=true;error.value='';try{const m=active.value.manifest;if(invoke){for(const k of m.input_schema?.required??[])if(inputs.value[k]===undefined||inputs.value[k]==='')throw new Error('请填写所有必填项。')}const data=await backendRequest<Result>(invoke?'moduleInvoke':'moduleData',{params:{module_id:m.id},body:invoke?{input:inputs.value,expected_version:m.version,request_id:randomId()}:undefined});if(!data||typeof data.data!=='object')throw new Error('Incomplete module result');result.value=data;status.value=invoke?'工具调用已完成。':'工具数据已读取。'}catch(e){lastFailed.value='data';error.value=e instanceof Error&&e.message==='请填写所有必填项。'?e.message:'工具暂时没有返回结果，请重试。输入和原内容仍保留。';pendingError.value=error.value;dismissedError.value='';userInitiated.value=true}finally{busy.value=false;loading.value=false}}
 async function performAction(action:string,payload:Record<string,unknown>){
   if(!active.value||busy.value)return
   busy.value=true;error.value=''

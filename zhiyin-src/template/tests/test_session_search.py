@@ -8,7 +8,6 @@
 from __future__ import annotations
 
 import pytest
-from datetime import datetime, timezone
 
 from tests.e2e.test_main_path import _container
 
@@ -19,7 +18,6 @@ async def test_session_search_matches_turn_text_and_returns_snippet():
     from zhiyin_business.services.dynamic_config import load_snapshot
     await load_snapshot(c.registry_service)
     session = await c.orchestrator.enter_task("u1", "free_chat")
-    now = datetime.now(timezone.utc)
     await c.memory_service.record_turn("u1", session.id, role="user",
         text="我想了解算法工程师需要准备什么", loop_stage=session.loop_stage,
         client_msg_id="m1")

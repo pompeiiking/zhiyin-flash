@@ -61,7 +61,9 @@
   "POST /api/v1/app/assets/export": {
     "status": "联调通过",
     "frontend": [
-      "zhiyin-src/template/zhiyin-web/src/views/SystemView.vue"
+      "zhiyin-src/template/zhiyin-web/src/views/SystemView.vue",
+      "zhiyin-src/template/zhiyin-web/src/views/StudentView.vue",
+      "zhiyin-src/template/zhiyin-web/src/views/AssessmentView.vue"
     ],
     "verification": "当前本机 Docker + PostgreSQL + JWT，新建验收账号真实 HTTP 正向通过；含越权拒绝、重启回读。见 新增能力接口验收结果.json、 新增能力重启回读结果.json。"
   },
@@ -1026,5 +1028,45 @@
       "zhiyin-src/template/zhiyin-web/src/views/StudentView.vue"
     ],
     "verification": "代码可达；画像页冲突裁定入口已接入，本轮未做真实 HTTP 联调。"
+  },
+  "POST /api/v1/app/academic/preview": {
+    "status": "前端已连接",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/components/AcademicImportSheet.vue",
+      "zhiyin-src/template/zhiyin-web/src/api/backend-client.ts"
+    ],
+    "verification": "课表/成绩导入预览与确认链路已接入前端；单元测试与前端构建通过，待独立 HTTP 联调。"
+  },
+  "POST /api/v1/app/academic/preview/commit": {
+    "status": "前端已连接",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/components/AcademicImportSheet.vue",
+      "zhiyin-src/template/zhiyin-web/src/api/backend-client.ts"
+    ],
+    "verification": "确认只提交预览编号；单元测试与前端构建通过，待独立 HTTP 联调。"
+  },
+  "POST /api/v1/app/chsi/pdf/preview": {
+    "status": "前端已连接",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/components/ChsiPdfImport.vue",
+      "zhiyin-src/template/zhiyin-web/src/api/backend-client.ts"
+    ],
+    "verification": "学信网报告 PDF 预览与逐项确认链路已接入；单元测试与前端构建通过，待独立 HTTP 联调。"
+  },
+  "POST /api/v1/app/chsi/pdf/confirm": {
+    "status": "前端已连接",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/components/ChsiPdfImport.vue",
+      "zhiyin-src/template/zhiyin-web/src/api/backend-client.ts"
+    ],
+    "verification": "确认只提交预览编号与勾选字段；单元测试与前端构建通过，待独立 HTTP 联调。"
+  },
+  "GET /api/v1/app/sessions/search": {
+    "status": "前端已连接",
+    "frontend": [
+      "zhiyin-src/template/zhiyin-web/src/components/DesktopSidebar.vue",
+      "zhiyin-src/template/zhiyin-web/src/api/backend-client.ts"
+    ],
+    "verification": "历史会话全文检索已接入侧栏；本轮局域网页面完成真实 HTTP 关键词命中与片段展示验证。"
   }
 }

@@ -34,6 +34,7 @@ const { router } = load('../src/router.ts', {
   './lib/features': { routeEnabled: () => true },
   './api/backend-client': { backendRequest: async () => ({}) },
   './lib/session-cache': { sessionCacheAvailable: ref(false) },
+  './lib/random-id': { randomId: () => 'request-id' },
 })
 
 test('every published navigation entry resolves to a real route', () => {

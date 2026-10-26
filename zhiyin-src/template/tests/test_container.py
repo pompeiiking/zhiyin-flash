@@ -78,7 +78,7 @@ async def test_feature_flags_come_from_dynamic_resource(settings: Settings) -> N
     container = build_container(settings)
     flags = await container.feature_flags.all()
     assert flags.get("report_full_text") is True
-    assert flags.get("export") is False
+    assert flags.get("export") is True
     assert "mentor" in flags
 
 

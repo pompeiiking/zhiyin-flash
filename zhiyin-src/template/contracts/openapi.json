@@ -5410,10 +5410,17 @@
       },
       "ExportRequest": {
         "additionalProperties": false,
-        "description": "导出请求。",
+        "description": "导出请求。\n\n`profile` 不是版本化资产（没有 AssetType），但用户需要一份能读、能打印的\n个人画像；它走同一个文档生成与下载链路，而不是让前端下载 JSON。",
         "properties": {
           "asset_type": {
-            "$ref": "#/components/schemas/AssetType"
+            "enum": [
+              "report",
+              "direction_plan",
+              "action_plan",
+              "profile"
+            ],
+            "title": "Asset Type",
+            "type": "string"
           },
           "format": {
             "default": "pdf",

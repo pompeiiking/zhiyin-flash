@@ -12,7 +12,7 @@ test('phase edits retain their original snapshot after a failed save',async()=>{
   const code=ts.transpileModule(compileScript(descriptor,{id:'PhaseEditor'}).content,{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText
   const plan=vue.reactive({phases:[{id:'one',name:'原阶段',depends_on:[],tasks:[]}]})
   const calls=[]
-  const modules={vue,'../lib/action-insights.mjs':{dateKey:()=>''},'../api/student-capabilities':{studentApi:{savePhase:async(body,id)=>{calls.push({body,id});throw new Error('阶段已在其他页面更新')}}},'../lib/backend-demo':{backendDemo:{state:{liveAction:plan}}}}
+  const modules={vue,'../lib/random-id':{randomId:()=>'request-id'},'../lib/action-insights.mjs':{dateKey:()=>''},'../api/student-capabilities':{studentApi:{savePhase:async(body,id)=>{calls.push({body,id});throw new Error('阶段已在其他页面更新')}}},'../lib/backend-demo':{backendDemo:{state:{liveAction:plan}}}}
   const exports={};vm.runInNewContext(code,{exports,crypto:webcrypto,require:path=>modules[path]??{}})
   const state=exports.default.setup({phaseId:'one'},{expose:()=>{}})
   state.open.value=true;await vue.nextTick()

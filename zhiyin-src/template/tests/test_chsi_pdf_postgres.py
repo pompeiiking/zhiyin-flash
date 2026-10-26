@@ -61,10 +61,12 @@ async def test_two_independent_api_instances_commit_once_and_rollback(monkeypatc
         async def fail(*args, **kwargs):
             nonlocal writes
             writes += 1
-            if writes == 2: raise RuntimeError('injected')
+            if writes == 2:
+                raise RuntimeError('injected')
             return await original(*args, **kwargs)
         monkeypatch.setattr(profiles1, 'upsert_field', fail)
-        with pytest.raises(RuntimeError): await service1.confirm(second_user, body)
+        with pytest.raises(RuntimeError):
+            await service1.confirm(second_user, body)
         assert not await profiles1.list_fields(second_user)
         assert await db1.fetchval('SELECT status FROM biz_chsi_pdf_import WHERE id=$1', preview.preview_id) == 'pending'
     finally:

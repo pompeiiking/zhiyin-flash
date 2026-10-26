@@ -217,6 +217,7 @@ async def invoke_dialogue(engine, request):
         text = final_text
         return AgentResult(agent_id=presentation["lead"], raw_text=text, valid=True,
             structured={"dialogue_stage": presentation["stage"], "dialogue_roles": presentation["roles"],
+                "dialogue_assets": presentation.get("reply_assets", {}),
                 "dialogue_clues": presentation["clues"], "dialogue_theories": [
                     {"theory_id": key, "name": presentation["methods"][key].name,
                      "stage": presentation["stage"]} for key in presentation["theories"]]},

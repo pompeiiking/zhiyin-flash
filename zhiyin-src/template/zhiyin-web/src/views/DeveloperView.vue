@@ -9,6 +9,7 @@ import ProjectsVersions from '@/developer/ProjectsVersions.vue'
 import Workflows from '@/developer/Workflows.vue'
 import { platformStatus, type PlatformStatus } from '@/developer/client'
 import '@/developer/developer.css'
+import { randomId } from '@/lib/random-id'
 
 const context = ref<DeveloperContext>()
 const isWorkbench = computed(() => context.value?.environment === 'workbench')
@@ -95,7 +96,7 @@ function check() { void run(() => api('/developer/checks', { method:'POST' }), '
 function save(module: ModuleView) { void run(() => api(`/developer/modules/${module.manifest.id}/policy`, jsonRequest('PUT', module.policy)), '权限配置已保存。') }
 function release() {
   const key = `module-release:${commit.value.trim()}:${kind.value}`
-  const requestId = sessionStorage.getItem(key) || crypto.randomUUID()
+  const requestId = sessionStorage.getItem(key) || randomId()
   sessionStorage.setItem(key, requestId)
   void run(() => api('/developer/releases', jsonRequest('POST', { commit:commit.value.trim(), kind:kind.value, request_id:requestId })), '任务已创建，管理员确认后由执行器处理。')
 }

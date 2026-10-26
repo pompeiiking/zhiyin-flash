@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import type { ModuleView } from '@/modules/client'
 import { parseObject, pretty, publishWorkflow, runWorkflow, saveWorkflow, statusLabel, unpublishWorkflow, workflowRuns, workflows, type Workflow, type WorkflowNode, type WorkflowRun } from './client'
+import { randomId } from '@/lib/random-id'
 const props = defineProps<{ modules: ModuleView[]; administrator: boolean }>()
 interface NodeEditor { id: string; module_id: string; module_version: string; operation: 'read' | 'action'; action: string; inputText: string; bindings: { field: string; source: string }[] }
 const rows = ref<Workflow[]>([])
@@ -55,7 +56,7 @@ async function execute() {
   await perform(async () => {
     const input = parseObject(runInput.value, '运行输入')
     const key = JSON.stringify([selected.value!.id, selected.value!.revision, input, mode.value, confirmActions.value])
-    if (requestKey !== key || !requestId) { requestKey = key; requestId = crypto.randomUUID() }
+    if (requestKey !== key || !requestId) { requestKey = key; requestId = randomId() }
     result.value = await runWorkflow(selected.value!.id, { input, mode: mode.value, confirm_actions: mode.value === 'live' && confirmActions.value, request_id: requestId, expected_revision: selected.value!.revision })
     requestId = ''
     runs.value = await workflowRuns(selected.value!.id)

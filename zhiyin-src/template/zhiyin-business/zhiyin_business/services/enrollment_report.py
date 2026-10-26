@@ -20,6 +20,10 @@ def origin_ref_label(origin_ref: str) -> str:
         return "学信网学籍报告（PDF 导入）"
     if text.startswith("derived://"):
         return "按入学日期推算"
+    if text.startswith("conversation:"):
+        return "对话原话"
+    if text.startswith("material:") or text.startswith("material://"):
+        return "上传材料"
     if text.startswith("http://") or text.startswith("https://"):
         return text
     if "://" in text:

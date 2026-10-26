@@ -84,13 +84,15 @@ async def test_real_subprocess_extracts_text_and_drops_private_identifiers():
 
 @pytest.mark.parametrize('data', [b'not pdf', b'%PDF-broken', b'x' * 2_000_001], ids=['not-pdf','broken','oversize'])
 async def test_invalid_pdf(data):
-    with pytest.raises(InvalidRequest): await ChsiPdfReader().read(data)
+    with pytest.raises(InvalidRequest):
+        await ChsiPdfReader().read(data)
 
 
 @pytest.mark.parametrize('kwargs', [dict(pages=4), dict(encrypted=True), dict(lines=[]),
     dict(lines=['教育部学历证书电子注册备案表']), dict(lines=['教育部学籍在线验证报告', '姓名：张三'])])
 async def test_wrong_reports_rejected(kwargs):
-    with pytest.raises(InvalidRequest): await ChsiPdfReader().read(pdf_bytes(**kwargs))
+    with pytest.raises(InvalidRequest):
+        await ChsiPdfReader().read(pdf_bytes(**kwargs))
 
 
 async def test_pdf_timeout_terminates_child():
@@ -135,10 +137,12 @@ async def test_ownership_and_protected_fields():
     assert fields['major'].selectable and not fields['major'].selected
     body = request(preview)
     body.ownership_confirmed = False
-    with pytest.raises(InvalidRequest, match='本人'): await service.confirm('alice', body)
+    with pytest.raises(InvalidRequest, match='本人'):
+        await service.confirm('alice', body)
     body.ownership_confirmed = True
     body.selected_keys.append('school')
-    with pytest.raises(InvalidRequest): await service.confirm('alice', body)
+    with pytest.raises(InvalidRequest):
+        await service.confirm('alice', body)
     body.selected_keys.remove('school')
     body.selected_keys.append('major')
     await service.confirm('alice', body)
@@ -179,7 +183,8 @@ async def test_identity_mismatch_expiry_and_unknown_expiry():
     await service.profiles.update_field('alice', 'student_name', '李四', confidence=1, source='user_edit')
     preview = await service.preview('alice', b'synthetic')
     assert not preview.can_import
-    with pytest.raises(InvalidRequest): await service.confirm('alice', request(preview))
+    with pytest.raises(InvalidRequest):
+        await service.confirm('alice', request(preview))
     service, _, _ = setup()
     service.reader.expiry = '2020-01-01'
     assert not (await service.preview('alice', b'synthetic')).can_import
@@ -191,11 +196,14 @@ async def test_identity_mismatch_expiry_and_unknown_expiry():
 async def test_preview_authorization_expiry_cleanup_and_optimistic_conflict():
     service, repo, _ = setup()
     preview = await service.preview('alice', b'synthetic')
-    with pytest.raises(ResourceNotFound): await service.confirm('bob', request(preview))
+    with pytest.raises(ResourceNotFound):
+        await service.confirm('bob', request(preview))
     await service.profiles.update_field('alice', 'major', '新专业', confidence=1, source='user_edit')
-    with pytest.raises(DuplicateResource): await service.confirm('alice', request(preview))
+    with pytest.raises(DuplicateResource):
+        await service.confirm('alice', request(preview))
     service.records.records[preview.preview_id]['expires_at'] = (datetime.now(timezone.utc)-timedelta(seconds=1)).isoformat()
-    with pytest.raises(InvalidRequest, match='过期'): await service.confirm('alice', request(preview))
+    with pytest.raises(InvalidRequest, match='过期'):
+        await service.confirm('alice', request(preview))
     assert await service.records.cleanup() == 1
 
 
@@ -207,10 +215,12 @@ async def test_mid_write_failure_rolls_back_every_field_and_receipt(monkeypatch)
     async def failing(*args, **kwargs):
         nonlocal count
         count += 1
-        if count == 2: raise RuntimeError('injected failure')
+        if count == 2:
+            raise RuntimeError('injected failure')
         return await original(*args, **kwargs)
     monkeypatch.setattr(repo, 'upsert_field', failing)
-    with pytest.raises(RuntimeError): await service.confirm('alice', request(preview))
+    with pytest.raises(RuntimeError):
+        await service.confirm('alice', request(preview))
     assert await repo.list_fields('alice') == []
     assert service.records.records[preview.preview_id]['status'] == 'pending'
     assert not events.events

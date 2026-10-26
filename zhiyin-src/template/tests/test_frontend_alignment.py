@@ -82,7 +82,7 @@ def test_chat_preserves_retry_identity_and_real_task_ids():
     chat = "".join(chat.split())
     for code in [
         # 普通发送新建身份；中断重发复用原 client_msg_id，避免重复用户气泡。
-        "client_msg_id:resend?.clientMsgId||crypto.randomUUID()",
+        "client_msg_id:resend?.clientMsgId||randomId()",
         # 重试必须复用失败时那条请求的 client_msg_id（身份不变），而不是新建一条
         "retried=retry?(failedRequest??failedSend.value?.request??null):null",
         "demo.state.currentSessionId!==sessionId",

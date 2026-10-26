@@ -766,3 +766,63 @@ async def test_calendar_commit_invalidates_only_the_current_users_day_advice():
     await send(c, s, "确认", option_id=pending.guide.options[0].option_id)
     assert await c.ai_task_results.get("u1", "day.advice.test") is None
     assert await c.ai_task_results.get("other", "day.advice.test") is not None
+
+
+class _AssetModel:
+    """Simulates a reply that contains complete assets but forgets the save tool."""
+
+    def __init__(self, assets):
+        self.assets = assets
+
+    async def invoke(self, request):
+        return AgentResult(agent_id=request.agent_id, raw_text="这是本轮的方案。", valid=True,
+            structured={"dialogue_assets": self.assets})
+
+
+@pytest.mark.asyncio
+async def test_reply_embedded_direction_plans_are_persisted_without_a_save_tool_call():
+    """模型只把方向写进正文/结构化字段时，方案页也不能是空的。"""
+    c, _, s = await setup()
+    c.orchestrator._agent_engine = _AssetModel({"directions": [
+        {"role": "main", "name": "主攻：算法工程", "target_desc": "算法岗",
+         "fit_reason": "已有数学与编程基础", "main_risk": "项目经历不足"},
+        {"role": "parallel", "name": "平行：数据分析", "target_desc": "数据岗",
+         "fit_reason": "统计课程匹配", "main_risk": "业务经验不足"},
+    ]})
+    result = await send(c, s, "帮我出三套方向方案")
+    plans = await c.asset_service.list_direction_plans("u1")
+    assert [plan.name for plan in plans] == ["主攻：算法工程", "平行：数据分析"]
+    assert any("已保存方向方案" in message.text for message in result.messages)
+    assert (await c.asset_service.get_latest_version("u1", __import__("zhiyin_kernel.enums", fromlist=["AssetType"]).AssetType.DIRECTION_PLAN)) is not None
+
+
+@pytest.mark.asyncio
+async def test_reply_embedded_action_plan_becomes_real_tasks():
+    """对话里给出的阶段任务要成为计划页可执行的任务，而不是只停在文字里。"""
+    c, _, s = await setup()
+    c.orchestrator._agent_engine = _AssetModel({"plan": {"phases": [{
+        "name": "第一周", "date_range": "本周",
+        "tasks": [{"text": "完成一次算法题练习", "estimated_minutes": 60}],
+    }]}})
+    result = await send(c, s, "帮我排一下这周的行动")
+    saved = await c.asset_service.get_action_plan("u1")
+    assert saved is not None
+    assert [task.text for phase in saved.phases for task in phase.tasks] == ["完成一次算法题练习"]
+    assert any("已保存计划" in message.text for message in result.messages)
+
+
+@pytest.mark.asyncio
+async def test_embedded_assets_do_not_duplicate_an_explicit_save_action():
+    """同一轮已经调用过保存工具时，结构化字段不能再写一遍。"""
+    c, _, s = await setup()
+    async def callback(rt):
+        return await rt.action(action("directions.save", {"plans": [
+            {"role": "main", "name": "模型明确保存的方向", "target_desc": "算法", "fit_reason": "依据", "main_risk": "风险"},
+        ]}, evidence="继续"))
+    c.orchestrator._agent_engine = _AssetModel({"directions": [
+        {"role": "main", "name": "模型明确保存的方向", "target_desc": "算法", "fit_reason": "依据", "main_risk": "风险"},
+    ]})
+    c.orchestrator._agent_engine.callback = callback
+    await send(c, s, "继续")
+    plans = await c.asset_service.list_direction_plans("u1")
+    assert len(plans) == 1

@@ -309,8 +309,13 @@ class DefaultProfileService(ProfileService):
         """
         source_value = ProfileSource(source)
         entry_type = profile_taxonomy.entry_type_of(key)
-        normalized = profile_taxonomy.normalize_value(key, value, entry_type)
         normalized_attributes = profile_taxonomy.normalize_attributes(entry_type, attributes)
+        normalized = profile_taxonomy.normalize_value(
+            key,
+            value,
+            entry_type,
+            allow_empty=profile_taxonomy.interest_is_negative_only(key, normalized_attributes),
+        )
         profile_taxonomy.validate_window(valid_from, valid_to)
         try:
             verification_value = (
@@ -551,8 +556,13 @@ class DefaultProfileService(ProfileService):
         当前值继续作为兼容投影供旧 API 读取；冲突提案单独等待用户裁定。
         """
         entry_type = profile_taxonomy.entry_type_of(key)
-        normalized = profile_taxonomy.normalize_value(key, value, entry_type)
         normalized_attributes = profile_taxonomy.normalize_attributes(entry_type, attributes)
+        normalized = profile_taxonomy.normalize_value(
+            key,
+            value,
+            entry_type,
+            allow_empty=profile_taxonomy.interest_is_negative_only(key, normalized_attributes),
+        )
         profile_taxonomy.validate_window(valid_from, valid_to)
         source_value = ProfileSource(source)
         current = next((item for item in await self._profiles.list_fields(user_id, [key])), None)

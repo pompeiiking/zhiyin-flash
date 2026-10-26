@@ -69,9 +69,8 @@ export type TaskSessionView = {
 
 export type SessionListView = {
   "current_task_id"?: (string | null)
+  "matches"?: (Record<string, string> | null)
   "sessions"?: Array<TaskSessionView>
-  /** 全文检索的命中片段（task_id → 命中原文窗口）；普通列表为 null。 */
-  "matches"?: ({ [key: string]: string } | null)
 }
 
 export type MessageRequest = {

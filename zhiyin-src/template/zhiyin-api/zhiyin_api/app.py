@@ -58,6 +58,172 @@ _log = logging.getLogger(__name__)
 
 DEFAULT_TITLE = "职引 API"
 
+#: 请求字段 → 学生看得懂的名字。Pydantic 的 `loc` 是英文变量名，直接回显
+#: 等于把开发者词汇丢给用户（实测：复盘结果填错时只看到一句"有填写项不符合
+#: 要求"，不知道是哪一项）。这里按领域常用字段建立受控词表；不在表里的字段
+#: 只报位置（第几项），不把原始键名漏出去。
+_REQUEST_FIELD_LABELS = {
+    "task_id": "任务",
+    "phase_id": "所属阶段",
+    "message": "消息内容",
+    "text": "内容",
+    "name": "名称",
+    "title": "标题",
+    "reason": "复盘原因",
+    "note": "复盘说明",
+    "result": "复盘结果",
+    "adjustment": "调整内容",
+    "status": "状态",
+    "waiting_reason": "等待原因",
+    "progress": "完成进度",
+    "estimated_minutes": "预计用时",
+    "due_date": "截止时间",
+    "scheduled_at": "安排时间",
+    "starts_at": "开始时间",
+    "ends_at": "结束时间",
+    "date_range": "阶段时间",
+    "depends_on": "前置阶段",
+    "blocking_conditions": "阻塞条件",
+    "handoff_requirements": "交接要求",
+    "tasks": "任务",
+    "phases": "阶段",
+    "plans": "方向方案",
+    "role": "方向角色",
+    "target_desc": "目标描述",
+    "fit_reason": "契合依据",
+    "main_risk": "主要风险",
+    "gaps": "差距",
+    "requirement": "能力要求",
+    "current_state": "目前情况",
+    "suggestion": "建议",
+    "key": "资料项",
+    "value": "填写内容",
+    "attributes": "补充属性",
+    "assertion_type": "说法类型",
+    "save_scope": "保存范围",
+    "valid_from": "生效时间",
+    "valid_to": "有效至",
+    "event_at": "发生时间",
+    "expected_updated_at": "资料版本",
+    "expected_task": "任务版本",
+    "client_request_id": "请求编号",
+    "client_msg_id": "消息编号",
+    "option_id": "选项",
+    "option_value": "选项取值",
+    "material_ids": "材料",
+    "kind": "类别",
+    "school": "学校",
+    "term": "学期",
+    "courses": "课程",
+    "grades": "成绩",
+    "score": "成绩",
+    "credit": "学分",
+    "point": "绩点",
+    "category": "课程类别",
+    "weekday": "星期",
+    "start_period": "开始节次",
+    "end_period": "结束节次",
+    "weeks": "教学周",
+    "place": "上课地点",
+    "weekday_text": "星期",
+    "period_text": "节次",
+    "preview_id": "预览编号",
+    "asset_type": "导出内容",
+    "format": "文件格式",
+    "snoozed_until": "稍后提醒时间",
+    "badge_key": "完成记录",
+    "items": "条目",
+    "measurements": "衡量记录",
+    "weights": "权重",
+    "minimum": "最小值",
+    "maximum": "最大值",
+    "threshold": "门槛",
+    "source": "来源",
+    "sources": "资料来源",
+    "version": "版本",
+}
+
+#: 枚举取值 → 中文。只翻译认识的；不认识的取值不直接回显英文。
+_REQUEST_VALUE_LABELS = {
+    "continue": "继续",
+    "adjust": "调整",
+    "complete": "完成",
+    "pending": "待处理",
+    "in_progress": "进行中",
+    "waiting": "等待中",
+    "completed": "已完成",
+    "read": "已读",
+    "later": "稍后",
+    "done": "已完成",
+    "pdf": "PDF",
+    "docx": "Word",
+    "report": "诊断报告",
+    "direction_plan": "方向方案",
+    "action_plan": "行动计划",
+    "profile": "个人画像",
+}
+
+
+def _request_field_label(loc: Iterable[Any]) -> str:
+    """从 Pydantic 的 `loc` 里拼出一句可读的位置，不回显英文键名。"""
+    labels: list[str] = []
+    item_number: int | None = None
+    for part in loc:
+        if isinstance(part, int):
+            item_number = part + 1
+            continue
+        label = _REQUEST_FIELD_LABELS.get(str(part))
+        if label:
+            labels.append(label)
+    if labels:
+        text = "的".join(labels)
+        return f"{text}第 {item_number} 项" if item_number else text
+    return f"第 {item_number} 项" if item_number else "本次填写"
+
+
+def _validation_reason(raw: str) -> str:
+    """把 Pydantic 的英文默认文案翻成一句可执行的中文。"""
+    clean = re.sub(r"^Value error,\s*", "", str(raw or "")).strip()
+    if not clean:
+        return "格式或取值不符合要求"
+    lowered = clean.lower()
+    if "field required" in lowered:
+        return "不能为空"
+    if "string should have at least" in lowered:
+        match = re.search(r"at least (\d+) character", lowered)
+        return f"至少需要 {match.group(1)} 个字" if match else "内容太短"
+    if "string should have at most" in lowered:
+        match = re.search(r"at most (\d+) character", lowered)
+        return f"最多只能填 {match.group(1)} 个字" if match else "内容太长"
+    if "input should be a valid integer" in lowered:
+        return "请填写整数"
+    if "input should be a valid number" in lowered or "input should be a valid float" in lowered:
+        return "请填写数字"
+    if "input should be a valid boolean" in lowered:
+        return "请选择是或否"
+    if "input should be a valid datetime" in lowered or "input should be a valid date" in lowered:
+        return "请填写有效日期"
+    if "input should be a valid list" in lowered:
+        return "请按列表填写"
+    if "input should be a valid dictionary or object" in lowered or "input should be a valid dictionary" in lowered:
+        return "格式不正确"
+    if "extra inputs are not permitted" in lowered:
+        return "包含不支持的填写项"
+    if "json decode error" in lowered:
+        return "内容不是有效的 JSON"
+    if re.search(r"[\u4e00-\u9fff]", clean):
+        # 自定义校验器写的中文提示：原样保留，它通常已经说清改法。
+        return clean
+    if "input should be" in lowered:
+        # 枚举类错误带有 'a', 'b' or 'c'：只翻译认识的值，避免把英文代号回显。
+        choices = re.findall(r"['\"]([^'\"]+)['\"]", clean)
+        translated = [_REQUEST_VALUE_LABELS.get(choice) for choice in choices]
+        if choices and all(translated):
+            return "只能是：" + "、".join(dict.fromkeys(translated))
+        return "取值不在允许范围内"
+    return "格式或取值不符合要求"
+
+
 #: 进程内运行指标。只记数量与耗时，不记 URL 参数、用户身份或请求体。
 _METRICS: dict[str, object] = {
     "requests": 0,
@@ -275,22 +441,19 @@ def _install_error_handlers(app: FastAPI) -> None:
         """
         problems = []
         for item in exc.errors():
-            location = ".".join(str(part) for part in item.get("loc", ()) if part != "body")
+            location = tuple(item.get("loc", ()))
+            where = _request_field_label(part for part in location if part != "body")
             raw = str(item.get("msg", "格式不正确") or "格式不正确")
-            # Pydantic 会在自定义 validator 前加"Value error, "；字段名/英文原文
-            # 不该直接丢给学生（深度测试实测：安静时段只填一端时看到
-            # "请求参数不合法 —— body：Value error, 安静时段需同时填写…"）。
-            clean = re.sub(r"^Value error,\s*", "", raw).strip()
-            if "安静时段" in clean:
+            # 自定义校验器写的中文提示优先：它通常已经说清"为什么、怎么改"。
+            cleaned = re.sub(r"^Value error,\s*", "", raw).strip()
+            if "安静时段" in cleaned:
                 problems.append("安静时段：需要同时填写开始和结束时间")
                 continue
-            if re.search(r"[A-Za-z]{4,}", clean) or re.search(r"[A-Za-z_]{3,}", location):
-                problems.append("有填写项不符合要求，请检查格式与长度后再保存")
-                continue
-            problems.append(f"{location or '本次填写'}：{clean}")
+            reason = _validation_reason(raw)
+            problems.append(f"{where}：{reason}")
         return _envelope(
             ErrorCode.INVALID_PARAM,
-            "有几个填写项需要检查：" + "；".join(dict.fromkeys(problems))[:200],
+            "有几个填写项需要检查：" + "；".join(dict.fromkeys(problems))[:300],
             422,
         )
 

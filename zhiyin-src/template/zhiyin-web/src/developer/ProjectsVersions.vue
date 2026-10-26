@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { api } from '@/api/client'
 import type { ReleaseJob } from '@/modules/client'
 import { createProject, downloadVersion, getVersion, pretty, projects, releaseVersion, retryVersion, saveProject, statusLabel, uploadVersion, versions, type PlatformStatus, type Project, type Version } from './client'
+import { randomId } from '@/lib/random-id'
 const props = defineProps<{ administrator: boolean; account: string; platform?: PlatformStatus }>()
 const emit = defineEmits<{ changed: []; releases: [] }>()
 const items = ref<Project[]>([])
@@ -88,7 +89,7 @@ async function upload() {
   if (outdatedBase.value) { error.value = '当前分支已有新版本。请先合并修改，再选择最新基线提交，避免覆盖他人的工作。'; return }
   const source = file.value
   const key = [selectedId.value, channel.value, baseVersionId.value, baseCommit.value, source.name, source.size, source.lastModified].join(':')
-  if (uploadIdentity !== key) { uploadIdentity = key; uploadRequestId = crypto.randomUUID() }
+  if (uploadIdentity !== key) { uploadIdentity = key; uploadRequestId = randomId() }
   await perform(async () => {
     const encoded = await new Promise<string>((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result).split(',')[1]); reader.onerror = () => reject(new Error('无法读取 ZIP 文件。')); reader.readAsDataURL(source) })
     version.value = await uploadVersion(selectedId.value, { package_base64: encoded, channel: channel.value, base_version_id: baseVersionId.value, base_commit: baseCommit.value.trim(), request_id: uploadRequestId })

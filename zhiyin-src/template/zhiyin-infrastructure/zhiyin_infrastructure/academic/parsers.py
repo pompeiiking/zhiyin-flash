@@ -815,12 +815,20 @@ def parse_tabular_courses(raw: str) -> tuple[str, list[CourseEntry]]:
         name = (item.get("name") or "").strip()
         if not name:
             continue
-        start, end = parse_periods(item.get("period", ""))
+        weekday_text = item.get("weekday", "")
+        period_text = item.get("period", "")
+        # 很多学校把星期和节次并成一列（表头写「上课时间」，值是「周二 3-4节」）。
+        # 只按列名各读各的时，这一列的星期会整列丢失：三门课的 weekday 全是 0，
+        # 回执还说"上课时间待补充"，而节次其实已经读到了。星期可以来自任一列。
+        weekday = parse_weekday(weekday_text) or parse_weekday(period_text)
+        start, end = parse_periods(period_text)
+        if not start:
+            start, end = parse_periods(weekday_text)
         courses.append(
             CourseEntry(
                 name=name,
                 teacher=item.get("teacher", ""),
-                weekday=parse_weekday(item.get("weekday", "")),
+                weekday=weekday,
                 start_period=start,
                 end_period=end,
                 weeks=item.get("weeks", ""),

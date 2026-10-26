@@ -4,10 +4,18 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 from pathlib import Path
 
 from zhiyin_data_sdk.gateways.feature_flag import FeatureFlagGateway
 from zhiyin_infrastructure.postgres.database import PostgresDatabase
+
+logger = logging.getLogger(__name__)
+
+#: 落在 `infra_runtime_config` 里的种子版本。只在文件版本更高时重导一次，
+#: 之后仍以库为准 —— 这样“产品默认值改了”能随发布生效，而运维在库里的
+#: 开关调整不会被每次重启覆盖。
+SEED_VERSION_KEY = "feature_flags.seed_version"
 
 
 class PostgresFeatureFlagGateway(FeatureFlagGateway):
@@ -63,6 +71,7 @@ class PostgresFeatureFlagGateway(FeatureFlagGateway):
             await self._db.execute(
                 "DELETE FROM infra_feature_flag WHERE code = ANY($1::text[])", stale
             )
+        await self._remember_version(_read_version(self._seed_path))
         self._seeded = True
         return stale
 
@@ -72,19 +81,71 @@ class PostgresFeatureFlagGateway(FeatureFlagGateway):
         async with self._lock:
             if self._seeded:
                 return
-            count = await self._db.fetchval("SELECT COUNT(*) FROM infra_feature_flag")
-            if int(count or 0) == 0:
-                for code, enabled in _read_flags(self._seed_path).items():
+            seed = _read_flags(self._seed_path)
+            version = _read_version(self._seed_path)
+            applied = await self._applied_version()
+            if version > applied:
+                # 种子升级：文件是发布内容的一部分，产品默认值（例如把已经
+                # 实现的导出打开）必须能到达已有库；只在这一刻以文件为准，
+                # 之后库里的运维调整继续有效。
+                for code, enabled in seed.items():
                     await self._db.execute(
                         """
                         INSERT INTO infra_feature_flag (code, enabled)
                         VALUES ($1, $2)
-                        ON CONFLICT (code) DO NOTHING
+                        ON CONFLICT (code) DO UPDATE SET enabled = EXCLUDED.enabled
                         """,
                         code,
                         enabled,
                     )
+                await self._remember_version(version)
+                if applied:
+                    logger.warning(
+                        "功能开关种子已升级（版本 %s → %s），已按 data/registry/feature_flags.json 重导；"
+                        "之后的库内调整仍以库为准。",
+                        applied,
+                        version,
+                    )
+            else:
+                count = await self._db.fetchval("SELECT COUNT(*) FROM infra_feature_flag")
+                if int(count or 0) == 0:
+                    for code, enabled in seed.items():
+                        await self._db.execute(
+                            """
+                            INSERT INTO infra_feature_flag (code, enabled)
+                            VALUES ($1, $2)
+                            ON CONFLICT (code) DO NOTHING
+                            """,
+                            code,
+                            enabled,
+                        )
+                    await self._remember_version(version)
             self._seeded = True
+
+    async def _applied_version(self) -> int:
+        raw = await self._db.fetchval(
+            "SELECT value->>'version' FROM infra_runtime_config WHERE key = $1",
+            SEED_VERSION_KEY,
+        )
+        try:
+            return int(raw or 0)
+        except (TypeError, ValueError):
+            return 0
+
+    async def _remember_version(self, version: int) -> None:
+        await self._db.execute(
+            """
+            INSERT INTO infra_runtime_config (key, value, description, updated_at)
+            VALUES ($1, $2::jsonb, $3, NOW())
+            ON CONFLICT (key) DO UPDATE SET
+                value = EXCLUDED.value,
+                description = EXCLUDED.description,
+                updated_at = NOW()
+            """,
+            SEED_VERSION_KEY,
+            json.dumps({"version": version}),
+            "功能开关种子已应用到的版本",
+        )
 
 
 def _read_flags(path: Path) -> dict[str, bool]:
@@ -107,4 +168,20 @@ def _read_flags(path: Path) -> dict[str, bool]:
     }
 
 
-__all__ = ["PostgresFeatureFlagGateway"]
+def _read_version(path: Path) -> int:
+    """种子版本：没有写 `_version` 的旧文件按 1 算（不会触发意外重导）。"""
+    if not path.is_file():
+        return 1
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return 1
+    if not isinstance(raw, dict):
+        return 1
+    try:
+        return int(raw.get("_version", 1))
+    except (TypeError, ValueError):
+        return 1
+
+
+__all__ = ["PostgresFeatureFlagGateway", "SEED_VERSION_KEY"]

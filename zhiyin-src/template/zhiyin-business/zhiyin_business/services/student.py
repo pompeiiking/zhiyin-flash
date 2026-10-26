@@ -899,6 +899,13 @@ class StudentService:
                         lines.append(
                             f"排期：{t.scheduled_at.isoformat()}，预计 {t.estimated_minutes or '未填写'} 分钟"
                         )
+        elif asset_type == "profile":
+            profile = await self.profiles.get(user_id) if self.profiles is not None else None
+            fields = list(getattr(profile, "fields", []) or [])
+            if not fields:
+                raise ResourceNotFound("还没有可导出的个人画像")
+            title = "个人画像"
+            lines.extend(_profile_export_lines(fields))
         else:
             raise InvalidRequest("不支持导出此类资产")
         content = await asyncio.to_thread(self.document_renderer, title, lines, fmt)
@@ -1054,3 +1061,93 @@ class StudentService:
             "missing": list(dict.fromkeys(missing)),
             "capacity_method": "剩余时间＝本人填写的每周课外可用时间－已排期任务用时；课程用时单列",
         }
+
+
+#: 画像导出用的中文标签。模型自由生成的字段键不能直接出现在给用户看的文件里。
+_PROFILE_SOURCE_LABELS = {
+    "resume": "简历",
+    "conversation": "对话",
+    "assessment": "测评",
+    "behavior_inference": "行为推断",
+    "mentor": "导师建议",
+    "record": "资料记录",
+    "user_edit": "本人修改",
+}
+
+_PROFILE_POLARITY_LABELS = {"like": "喜欢", "dislike": "不喜欢", "unsure": "还不确定"}
+_PROFILE_STATE_LABELS = {"exploring": "正在了解", "considering": "正在考虑", "selected": "已选择"}
+
+
+def _profile_export_value(field) -> str:
+    """把一条画像记录摊成一行能读的话（逐项偏好带极性，不丢否定项）。"""
+    attributes = field.attributes or {}
+    items = attributes.get("items") if isinstance(attributes, dict) else None
+    values = field.value if isinstance(field.value, list) else [field.value]
+    if isinstance(items, list) and items:
+        parts: list[str] = []
+        seen: set[str] = set()
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            value = str(item.get("value") or "").strip()
+            if not value or value in seen:
+                continue
+            seen.add(value)
+            marks = [
+                _PROFILE_POLARITY_LABELS.get(str(item.get("polarity") or "")),
+                _PROFILE_STATE_LABELS.get(str(item.get("state") or "")),
+            ]
+            marks = [mark for mark in marks if mark]
+            parts.append(f"{value}（{'，'.join(marks)}）" if marks else value)
+        for value in values:
+            text = str(value or "").strip()
+            if text and text not in seen:
+                seen.add(text)
+                parts.append(text)
+        if parts:
+            return "；".join(parts)
+    if isinstance(field.value, list):
+        return "；".join(str(item) for item in field.value if str(item).strip())
+    if isinstance(field.value, dict):
+        return "；".join(str(item) for item in field.value.values() if str(item).strip())
+    return str(field.value or "")
+
+
+def _profile_export_lines(fields) -> list[str]:
+    """按内容类别分段，只输出学生看得懂的字段名、取值、来源与核实方式。"""
+    from zhiyin_business.services.enrollment_report import origin_ref_label
+    from zhiyin_kernel import profile_taxonomy
+
+    grouped: dict[str, list] = {}
+    for field in fields:
+        entry_type = field.entry_type or profile_taxonomy.entry_type_of(field.key)
+        grouped.setdefault(profile_taxonomy.ENTRY_TYPE_LABELS.get(entry_type, "其他信息"), []).append(field)
+    lines: list[str] = []
+    for group, rows in grouped.items():
+        lines.append(f"【{group}】")
+        for field in rows:
+            label = field.label or field.key
+            value = _profile_export_value(field)
+            lines.append(f"{label}：{value}")
+            meta = [
+                "来源：" + _PROFILE_SOURCE_LABELS.get(
+                    str(getattr(field.source, "value", field.source)), "本人提供"
+                ),
+                "核实：" + profile_taxonomy.VERIFICATION_LABELS.get(
+                    field.verification or profile_taxonomy.verification_for(field.source), "待核对"
+                ),
+            ]
+            if field.status != profile_taxonomy.ProfileEntryStatus.ACTIVE:
+                meta.append(
+                    "状态：" + profile_taxonomy.STATUS_LABELS.get(field.status, "当前有效")
+                )
+            if field.updated_at:
+                meta.append("记录于：" + field.updated_at.strftime("%Y-%m-%d"))
+            origin = origin_ref_label(field.origin_ref)
+            if origin:
+                meta.append("出处：" + origin)
+            lines.append(" · ".join(meta))
+            if field.evidence:
+                lines.append("依据：" + "；".join(str(item) for item in field.evidence if str(item).strip()))
+        lines.append("")
+    return lines

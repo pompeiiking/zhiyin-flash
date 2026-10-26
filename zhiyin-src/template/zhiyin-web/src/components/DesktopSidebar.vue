@@ -223,7 +223,7 @@ function sessionDate(date?: string | null) { return date ? formatRelative(date) 
             <button type="button" class="desk-session__delete" :aria-label="`删除会话：${session.task_name || '未命名咨询'}`" :disabled="deleteBusy || demo.state.chatBusy" @click.stop="askDelete(session)"><UiIcon name="trash" :size="15" /></button>
           </div>
         </template>
-        <p v-if="!sessions.length" class="desk-history__empty">创建咨询后，会话将显示在这里。</p>
+        <p v-if="!sessions.length" class="desk-history__empty">还没有可显示的会话。空白对话不会保存；发出第一条消息后，会话会出现在这里。</p>
       </template></section>
     </div>
     <!--

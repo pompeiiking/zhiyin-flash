@@ -19,7 +19,8 @@ def test_independent_negative_interest_preserves_each_objects_polarity():
     same = SimpleNamespace(value=values, attributes=attrs)
     assert taxonomy.merge_preferences('interest', same, ['调试程序'], {'polarity': 'dislike'})[2]
     candidate, candidate_attrs, _ = taxonomy.merge_preferences('interest', same, ['调试程序'], {'polarity': 'dislike'})
-    assert candidate == values and candidate_attrs['items'][0]['polarity'] == 'dislike'
+    # 原来的喜欢被改成不喜欢：兴趣取值里不再有它，但 dislike 事实仍在 items。
+    assert candidate == [] and candidate_attrs['items'][0]['polarity'] == 'dislike'
     assert taxonomy.merge_preferences('interest', same, ['重复录入'], {'polarity': 'dislike'})[:2] == (values, attrs)
 
 
@@ -27,17 +28,33 @@ def test_opening_negation_with_field_level_polarity_still_marks_each_object():
     """一开口就是否定（issue #43 复现路径）：首次写入没有旧值，极性写在字段级。
 
     字段级极性同样要拆成逐项条目 —— 否则两项排斥对象以无标注的值进字段，
-    界面上与"喜欢"看不出差别。纯否定时字段不能为空，值里保留原对象、
-    逐项属性标明 dislike（画像页据此显示"不喜欢"）。
+    界面上与"喜欢"看不出差别。纯否定时兴趣取值留空（它本来就不是兴趣），
+    事实完整保存在逐项属性里；画像页从 items 照常显示"不喜欢"。
     """
     values, attrs, conflict = taxonomy.merge_preferences(
         'interest', None, ['天天应酬', '纯销售工作'], {'polarity': 'dislike'})
     assert not conflict
-    assert values == ['天天应酬', '纯销售工作']  # 纯排除偏好：字段不能为空的既有兜底
+    assert values == []
     assert attrs['items'] == [
         dict(value='天天应酬', polarity='dislike'),
         dict(value='纯销售工作', polarity='dislike'),
     ]
+    # 下一次写入喜欢的东西时，之前的否定项必须还在（不能因为 value 为空被丢掉）。
+    values, attrs, _ = taxonomy.merge_preferences(
+        'interest', SimpleNamespace(value=values, attributes=attrs), ['写东西'], {'polarity': 'like'})
+    assert values == ['写东西']
+    assert {item['value']: item['polarity'] for item in attrs['items']} == {
+        '天天应酬': 'dislike', '纯销售工作': 'dislike', '写东西': 'like'}
+
+
+def test_empty_interest_is_only_allowed_for_negative_only_records():
+    """普通清空仍不允许：写入口只在带 dislike 条目的纯否定偏好上放开空值。"""
+    with pytest.raises(InvalidRequest):
+        taxonomy.normalize_value('interest', [])
+    assert taxonomy.normalize_value('interest', [], allow_empty=True) == []
+    assert taxonomy.interest_is_negative_only('interest', {'items': [dict(value='应酬', polarity='dislike')]})
+    assert not taxonomy.interest_is_negative_only('interest', {'items': [dict(value='写作', polarity='like')]})
+    assert not taxonomy.interest_is_negative_only('career_focus', {'items': [dict(value='算法', polarity='dislike')]})
 
 
 def test_opening_career_focus_keeps_the_field_level_state_contract():
@@ -210,7 +227,13 @@ async def test_requested_conflict_candidate_does_not_overwrite_and_adoption_keep
     await ConversationLedger(c.student_state).change('u1', s.id, lambda record: record.update(exploration={'working': {'hypotheses': ['仍待核对']}}))
     await c.profile_service.resolve_conflict('u1', conflict.id, choice=choice)
     after = (await c.profile_service.get_fields('u1', ['interest']))[0]
-    assert after.value == ['调试程序', '重复录入']
-    assert after.attributes['items'][0]['polarity'] == ('dislike' if choice == 'revision' else 'like')
+    if choice == 'revision':
+        # 接受新说法后两项都是 dislike：兴趣取值里不保留否定项，事实在 items。
+        assert after.value == []
+        assert {item['value']: item['polarity'] for item in after.attributes['items']} == {
+            '调试程序': 'dislike', '重复录入': 'dislike'}
+    else:
+        assert after.value == ['调试程序', '重复录入']
+        assert after.attributes['items'][0]['polarity'] == 'like'
     assert all(clue.status.value == 'invalid' for clue in await c.profile_service.get_clues('u1'))
     assert 'exploration' not in await ConversationLedger(c.student_state).read('u1', s.id)

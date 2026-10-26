@@ -11,6 +11,7 @@ import { navigation } from '../lib/layout'
 import { consultantLabel, agentKeyOf, cleanConsultantText } from '../lib/consultant'
 import { conversationPresentation, journeyState, partialReplySpeaker } from '../lib/conversation-presentation'
 import { initialOnboardingQuestion, personalizedStudyYearEntries, STUDY_YEAR_OPTIONS, studyYearIntro, studyYearLabel, type InitialOnboardingQuestion } from '../lib/study-year'
+import { randomId } from '../lib/random-id'
 import { messageLengthError } from '../lib/message-limits'
 import { newSession, openSession, loadShell, systemData } from '../lib/system-data'
 import { replyTurns } from '../lib/conversation-turns'
@@ -303,7 +304,7 @@ async function toggleTask(guideTask: NonNullable<ChatTurn['guideTask']>) {
     const phase = preferred ?? phases.find(row => !row.blocked_by?.length) ?? phases[0]
     if (!phase.id) { toast('这条建议暂时加不进阶段计划，请到「阶段计划」手动添加。'); return }
     backendDemo.setAction(await studentApi.saveTask({
-      client_request_id: crypto.randomUUID(),
+      client_request_id: randomId(),
       expected_task: null,
       text: guideTask.text,
       phase_id: phase.id,
@@ -344,7 +345,7 @@ async function send(retry = false, choice?: { text: string; option?: OptionRef }
  if (!demo.state.currentSessionId) { const code = starters.value[0]?.code; if (!code) { requestError.value = '当前没有可用的咨询入口。'; return }; await create(code); if (!demo.state.currentSessionId || requestError.value) return }
  const sessionId = demo.state.currentSessionId
  markChatPending(sessionId)
- const request: MessageRequest = retried ?? { task_id:sessionId, message:text, client_msg_id:resend?.clientMsgId || crypto.randomUUID(), material_ids:outgoingMaterials.map(m => m.id), ...(outgoingOption ? { option_id:outgoingOption.option_id, option_value:outgoingOption.value } : {}) }
+ const request: MessageRequest = retried ?? { task_id:sessionId, message:text, client_msg_id:resend?.clientMsgId || randomId(), material_ids:outgoingMaterials.map(m => m.id), ...(outgoingOption ? { option_id:outgoingOption.option_id, option_value:outgoingOption.value } : {}) }
  const run = ++serial
  failedRequest = request; requestError.value = ''; stopped.value = false
  controller = new AbortController(); thinking.value = true
@@ -373,7 +374,7 @@ async function send(retry = false, choice?: { text: string; option?: OptionRef }
   if (retry && !turns.value.some(turn => turn.id === `${request.client_msg_id}-user` || (turn.from === 'me' && turn.text === text))) {
    demo.addChatTurn({ id:`${request.client_msg_id}-user`, from:'me', text, materials:outgoingMaterials })
   }
-  demo.setChatTurns([...turns.value, ...replyTurns(result, request.client_msg_id || crypto.randomUUID())], sessionId)
+  demo.setChatTurns([...turns.value, ...replyTurns(result, request.client_msg_id || randomId())], sessionId)
   systemData.snapshot = result; pending.value = null; failedRequest = null; void refreshRuntime()
   clearChatPending(sessionId)
   // 只有"重新尝试"成功才清掉失败记录；普通新消息成功不应抹掉另一条待重试的消息。
@@ -576,10 +577,10 @@ onUnmounted(() => { disposed = true; clearInterval(recoveryTimer); window.remove
   <header class="consult-header">
    <div class="consult-header__top"><div class="consult-heading"><h1>咨询对话</h1><p v-if="!choosingTopic && demo.state.currentSessionId" class="consult-session-title" :title="title">{{ title }}</p></div><div class="consult-header__actions">
     <AnchoredCard v-model="historyOpen" class="consult-icon consult-history-button" title="历史会话" side="bottom" align="end" size="wide"><template #trigger><UiIcon name="chat" :size="18" /></template><div class="session-manage">
-     <div class="session-manage__tools"><label class="information-search session-search"><span class="sr-only">搜索历史会话</span><input v-model="sessionQuery" type="search" aria-label="搜索历史会话" placeholder="搜索标题或最后一句" autocomplete="off" /></label><button type="button" class="ws-text-button" :disabled="sessionListLoading" @click="refreshSessionList(true)">{{ sessionListLoading ? '刷新中…' : '刷新列表' }}</button></div>
+     <div class="session-manage__tools"><label class="information-search session-search"><span class="sr-only">搜索历史会话</span><input v-model="sessionQuery" type="search" aria-label="搜索历史会话" placeholder="搜索标题或聊天内容" autocomplete="off" /></label><button type="button" class="ws-text-button" :disabled="sessionListLoading" @click="refreshSessionList(true)">{{ sessionListLoading ? '刷新中…' : '刷新列表' }}</button></div>
      <p v-if="sessionListError" class="consult-error session-manage__error" role="alert">{{ sessionListError }}<button type="button" @click="refreshSessionList(true)">重试</button></p>
      <div class="session-manage__copy"><button type="button" class="ws-text-button" :disabled="!turns.length" @click="copy(turns.map(t => (t.from === 'me' ? '我' : t.speaker || '系统') + '：' + t.text).join('\n\n'))">复制当前会话记录</button></div>
-     <p v-if="!sessions.length" class="ws-muted">还没有历史会话。开始咨询后会自动保存在这里。</p>
+     <p v-if="!sessions.length" class="ws-muted">还没有历史会话。空白对话不会保存；发出第一条消息后会自动保存在这里。</p>
      <p v-else-if="!filteredSessions.length" class="ws-muted">没有找到匹配「{{ sessionQuery }}」的会话。</p>
      <ul v-else class="session-rows">
       <li v-for="session in filteredSessions" :key="session.task_id" class="session-row" :class="{ 'is-current': session.task_id === demo.state.currentSessionId }">

@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { backendClient, BackendError } from '../api/backend-client'
+import { downloadExport } from '../api/student-capabilities'
 import { backendDemo } from '../lib/backend-demo'
 import type { ReportFullTextView, AssetVersionView, WorkspacePageView } from '../api/backend-types'
 import PageHeading from '../components/PageHeading.vue'
@@ -115,50 +116,40 @@ async function load() {
   } finally { if (serial === loadSerial) busy.value = false }
 }
 function printReport() { window.print() }
+const exporting = ref(false)
 const moreActions = computed(() => [
   { id: 'refresh', label: historicalView.value ? '回到最新版' : '刷新报告', disabled: busy.value },
-  { id: 'export', label: '导出 JSON 数据', disabled: busy.value },
+  { id: 'export', label: '导出 PDF', disabled: busy.value || exporting.value || !report.value },
   { id: 'print', label: '打印报告' },
 ])
 function selectMore(id: string) {
   if (id === 'refresh') void load()
-  else if (id === 'export') exportReport()
+  else if (id === 'export') void exportReport()
   else if (id === 'print') printReport()
 }
 /**
- * 【#24】页头加「导出」：用本页已经加载的报告数据（GET /app/report/full-text + 版本元信息）
- * 在浏览器端生成一个 JSON 文件下载，不需要新接口。没有报告时按钮禁用并提示先生成。
+ * 报告导出走服务端文档生成（PDF），与「个人画像」「单项成果」同一条链路。
+ * 此前这里是浏览器端拼 JSON：普通用户拿到的是接口数据，且导出入口与功能开关
+ * 各说各话（开关关着时其它入口 403，这个入口却照样下载）。
  */
-function downloadJson(filename: string, body: unknown) {
-  const url = URL.createObjectURL(new Blob([JSON.stringify(body, null, 2)], { type: 'application/json;charset=utf-8' }))
-  const anchor = document.createElement('a')
-  anchor.href = url
-  anchor.download = filename
-  anchor.rel = 'noopener'
-  document.body.appendChild(anchor)
-  anchor.click()
-  anchor.remove()
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
-}
-function exportReport() {
+async function exportReport() {
   const current = report.value
   if (!current) { exportStatus.value = '先生成报告后才能导出。'; return }
-  const day = new Date().toISOString().slice(0, 10)
-  downloadJson(`职引-诊断报告-V${current.version}-${day}.json`, {
-    exported_at: new Date().toISOString(),
-    source: 'GET /app/report/full-text',
-    version: current.version,
-    report_state: reportState.value,
-    coverage: {
-      evidenced_dimensions: evidencedDimensionCount.value,
-      promised_dimensions: promisedDimensionTotal.value,
-      pending_dimensions: pendingDimensionCount.value,
-      note: '只导出有证据的维度；其余维度待补充资料后重新生成。',
-    },
-    metadata: viewedMetadata.value,
-    report: current,
-  })
-  exportStatus.value = `已导出 V${current.version} 报告（JSON）。`
+  if (exporting.value) return
+  exporting.value = true
+  exportStatus.value = ''
+  try {
+    const result = await backendClient.exportAsset('report', 'pdf')
+    if (!result.available || !result.object_key) {
+      throw new Error(result.message || '导出暂时不可用，请稍后重试。')
+    }
+    await downloadExport(result.object_key, `职引-诊断报告-第${current.version}版.pdf`)
+    exportStatus.value = `报告已导出为 PDF（第 ${current.version} 版）。`
+  } catch (error) {
+    exportStatus.value = error instanceof Error ? error.message : '导出失败，请稍后重试。'
+  } finally {
+    exporting.value = false
+  }
 }
 function historical(document: ReportFullTextView, metadata: AssetVersionView | null) { viewedReport.value = document; viewedMetadata.value = metadata; setHistory(false) }
 onMounted(load)

@@ -119,6 +119,19 @@ def test_message_request_takes_the_option_identity() -> None:
     assert clicked.option_value == "studying"
 
 
+def test_whitespace_only_message_is_rejected_instead_of_becoming_a_turn() -> None:
+    """只有空格的消息不是一句话：接口层就要拒绝，而不是记进会话再调模型。"""
+    import pytest
+    from pydantic import ValidationError
+
+    for blank in (" ", "   ", "\u3000", "\n\t "):
+        with pytest.raises(ValidationError) as excinfo:
+            MessageRequest(task_id="t1", message=blank)
+        assert "消息不能只有空格" in str(excinfo.value)
+    # 正文里的空格与换行照常保留，不替用户改写。
+    assert MessageRequest(task_id="t1", message=" 你好 ").message == " 你好 "
+
+
 # ------------------------------------------------------------------ 编排
 
 

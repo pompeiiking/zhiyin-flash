@@ -1,5 +1,6 @@
 import { computed, reactive, readonly } from 'vue'
 import { rememberSession } from './session-cache'
+import { randomId } from './random-id'
 import type { AcademicPanelView, AcademicCourseView, AcademicGradeView, ConversationMaterialView, IntelItemView, MessageRequest, NoteView, TaskSessionView, DirectionPlanListView, ActionPlanView, WorkspacePageView, ProfileFieldView, CalendarNodeView, ReportFullTextView, AssetVersionView } from '../api/backend-types'
 import type { ChatTurn } from '../data/types'
 const now = () => new Date().toISOString()
@@ -64,7 +65,7 @@ export const backendDemo = {
   saveDraft(id: string, text: string, materials: { id: string; name: string }[], scroll: number | null) { state.drafts[id] = { text, materials: materials.map(m => ({ ...m })), scroll } },
   recordEvent(event: string) { if (!state.eventTimes[event]) state.eventTimes[event] = now() },
   newSession(name = '新的咨询对话') {
-    const id = 'session-' + crypto.randomUUID()
+    const id = 'session-' + randomId()
     state.sessions.unshift({ task_id: id, task_name: name, stage: 'collect', stage_label: '了解自己', lead_agent_name: '了解你情况的人', status: 'active', progress: 0, last_active_at: now() })
     state.histories[id] = []
     state.currentSessionId = id
@@ -74,7 +75,7 @@ export const backendDemo = {
     const cleaned = text.trim()
     if (!cleaned || cleaned.length > 200) throw new Error('请写下 1–200 个字。')
     if (state.notes.some(n => n.kind === kind && n.text === cleaned)) return false
-    state.notes.unshift({ id: 'note-' + crypto.randomUUID(), kind, text: cleaned, done: false, created_at: now() })
+    state.notes.unshift({ id: 'note-' + randomId(), kind, text: cleaned, done: false, created_at: now() })
     return true
   },
   setNoteDone(id: string, done: boolean) { const note = state.notes.find(n => n.id === id); if (note) note.done = done },
@@ -99,7 +100,7 @@ export const backendDemo = {
   recordMaterial(file: File) {
     if (!file.size) throw new Error('这个文件是空的，请换一份。')
     if (file.size > 2_000_000) throw new Error('材料需小于 2MB，请截取相关的部分。')
-    const item: ConversationMaterialView = { material_id: 'material-' + crypto.randomUUID(), name: file.name, size: file.size, chars: 0 }
+    const item: ConversationMaterialView = { material_id: 'material-' + randomId(), name: file.name, size: file.size, chars: 0 }
     state.materials.push(item)
     return item
   },

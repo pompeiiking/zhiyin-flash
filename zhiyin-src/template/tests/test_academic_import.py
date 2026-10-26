@@ -282,6 +282,32 @@ def test_tabular_courses_accept_a_title_line_before_the_header() -> None:
     assert [c.name for c in courses] == ["高等数学"]
 
 
+def test_merged_class_time_column_still_yields_the_weekday() -> None:
+    """星期与节次合并成一列（表头「上课时间」）时不能把星期整列丢掉。
+
+    实测复现：一张「课程名称 / 上课时间」两列的表，三门课的 weekday 全是 0，
+    而节次其实已经读到了 —— 课表页因此整片空白，回执却说"上课时间待补充"。
+    """
+    pasted = (
+        "课程名称\t上课时间\n"
+        "高等数学\t周二 3-4节\n"
+        "大学英语\t周三 5-6节\n"
+        "数据结构\t周一 1-2节"
+    )
+    _, courses = parse_tabular_courses(pasted)
+    assert [(c.name, c.weekday, c.start_period, c.end_period) for c in courses] == [
+        ("高等数学", 2, 3, 4),
+        ("大学英语", 3, 5, 6),
+        ("数据结构", 1, 1, 2),
+    ]
+
+
+def test_split_weekday_and_period_columns_keep_their_own_values() -> None:
+    pasted = "课程名称\t星期\t节次\n高等数学\t周二\t3-4节\n大学英语\t周三\t5-6节"
+    _, courses = parse_tabular_courses(pasted)
+    assert [(c.weekday, c.start_period) for c in courses] == [(2, 3), (3, 5)]
+
+
 def test_headerless_rows_are_read_by_row_shape() -> None:
     """没有表头、但每行是「课名 + 时间」时也要能读出来。
 
