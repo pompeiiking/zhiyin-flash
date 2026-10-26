@@ -38,6 +38,8 @@ const sidebar = ref<{ focusCollapse: () => void } | null>(null)
 const mobileNav = ref<{ show: () => void } | null>(null)
 
 const bare = computed(() => route.meta.public === true)
+/** 管理台有自己的导航与顶栏，不套学生端的工作区壳层。 */
+const adminShell = computed(() => route.meta.admin === true)
 
 /* 页面自己已经给出错误横幅时，壳层不再重复一条同样的提示（同一句话出现两遍）。 */
 const contentRef = ref<HTMLElement | null>(null)
@@ -123,9 +125,9 @@ onUnmounted(()=>{clearInterval(notificationTimer);pageErrorObserver?.disconnect(
 </script>
 
 <template>
-  <div class="app" :data-route="route.path" :data-nav="layout.mode.value" :class="{ 'app--workspace': !bare, 'app--desktop': !bare && desktop, 'app--sidebar-collapsed': !bare && desktop && layout.sidebarCollapsed.value, 'app--chat': route.name === 'chat' }" :style="{ '--progress-max': progressMax }">
+  <div class="app" :data-route="route.path" :data-nav="layout.mode.value" :class="{ 'app--workspace': !bare && !adminShell, 'app--desktop': !bare && !adminShell && desktop, 'app--sidebar-collapsed': !bare && !adminShell && desktop && layout.sidebarCollapsed.value, 'app--chat': route.name === 'chat' }" :style="{ '--progress-max': progressMax }">
     <a v-if="!bare" class="skip-link" href="#main-content" @click.prevent="skipToMain">跳到主要内容</a>
-    <template v-if="bare && !routeLoadError">
+    <template v-if="(bare || adminShell) && !routeLoadError">
       <RouterView v-slot="{ Component }">
         <Transition name="page" mode="out-in">
           <component :is="Component" :key="route.path" />
@@ -151,12 +153,12 @@ onUnmounted(()=>{clearInterval(notificationTimer);pageErrorObserver?.disconnect(
       <WorkspaceNav v-if="!desktop" ref="mobileNav" />
     </template>
 
-    <CommandPalette ref="palette" />
+    <CommandPalette v-if="!adminShell" ref="palette" />
     <AuthLayer v-if="authOpen" @close="closeAuth" />
     <!-- 提醒是登录后的产品功能，不出现在公开门户上 -->
-    <FloatingReminders v-if="demo.state.authed && !bare" />
+    <FloatingReminders v-if="demo.state.authed && !bare && !adminShell" />
     <InterventionModal
-      v-if="demo.state.interventionOpen"
+      v-if="!adminShell && demo.state.interventionOpen"
       :host="INTERVENTION.host"
       :title="INTERVENTION.title"
       :body="INTERVENTION.body"

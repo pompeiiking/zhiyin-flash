@@ -30,6 +30,7 @@ export const router = createRouter({
   history: createWebHashHistory(),
   routes: [
     { path:'/login',redirect:'/?signin=1' },
+    { path:'/admin',component:()=>import('./views/AdminView.vue'),meta:{title:'管理台',admin:true} },
     { path:'/developer',component:()=>import('./views/DeveloperView.vue'),meta:{title:'开发者管理'} },
     {
       path: '/',

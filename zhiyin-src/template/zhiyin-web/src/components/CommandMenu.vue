@@ -5,6 +5,7 @@ import { WORKSPACE_ITEMS, PORTAL_LINK, DIRECTORY_PAGES } from '../lib/workspace-
 import InfoSheet from './InfoSheet.vue'
 import UiIcon from './UiIcon.vue'
 import { isComposingKey } from '../lib/scroll-intent'
+import { isDeveloperRole } from '../lib/auth'
 interface Item { label: string; hint: string; run: () => void }
 const open = ref(false)
 const query = ref('')
@@ -15,6 +16,7 @@ const commands = computed<Item[]>(() => [
   // 学生任务与低频辅助入口共用唯一模型，内部预览页不进入日常搜索。
   // 这里不再提供「外观」命令：外观的唯一入口是账号菜单 → 外观（PLAN §3.5）。
   ...[...WORKSPACE_ITEMS, ...DIRECTORY_PAGES, PORTAL_LINK].map((s) => ({ label: s.label, hint: s.hint, run: () => { router.push(s.to) } })),
+  ...(isDeveloperRole() ? [{ label: '管理台', hint: '模块、发布与运行状态', run: () => { void router.push('/admin') } }] : []),
 ])
 const results = computed(() => commands.value.filter((c) => (c.label + c.hint).toLowerCase().includes(query.value.trim().toLowerCase())))
 watch(query, () => { cursor.value = 0 })

@@ -166,6 +166,7 @@ async function exportData() {
             <RouterLink to="/profile"><span><UiIcon name="profile" :size="19"/></span><div><strong>个人画像与学籍</strong><small>核对资料和来源</small></div><UiIcon name="arrow" :size="15"/></RouterLink>
             <RouterLink to="/grades"><span><UiIcon name="academic" :size="19"/></span><div><strong>成绩记录</strong><small>录入、导入与分析</small></div><UiIcon name="arrow" :size="15"/></RouterLink>
             <RouterLink v-if="routeEnabled('/schedule')" to="/schedule"><span><UiIcon name="calendar" :size="19"/></span><div><strong>课表与时间</strong><small>课程和可投入时间</small></div><UiIcon name="arrow" :size="15"/></RouterLink>
+            <RouterLink v-if="auth.state.bootstrap?.identity?.role === 'admin'" to="/admin"><span><UiIcon name="apps" :size="19"/></span><div><strong>管理台</strong><small>模块、发布与运行状态</small></div><UiIcon name="arrow" :size="15"/></RouterLink>
             <RouterLink v-if="['admin','developer'].includes(auth.state.bootstrap?.identity?.role || '')" to="/developer"><span><UiIcon name="settings" :size="19"/></span><div><strong>开发者管理</strong><small>模块与接入检查</small></div><UiIcon name="arrow" :size="15"/></RouterLink>
           </nav>
         </aside>

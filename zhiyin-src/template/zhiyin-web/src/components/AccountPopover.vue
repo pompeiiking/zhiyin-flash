@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { auth } from '../lib/auth'
+import { auth, isDeveloperRole } from '../lib/auth'
 import { navigation } from '../lib/layout'
 import { PORTAL_LINK } from '../lib/workspace-nav'
 import { demo, toast } from '../store'
@@ -31,6 +31,7 @@ async function signOut() {
     </div>
     <nav class="account-popover__links" aria-label="账号功能">
       <RouterLink to="/settings"><UiIcon name="settings" :size="18" /><span>账号与资料设置</span><UiIcon name="arrow" :size="15" /></RouterLink>
+      <RouterLink v-if="isDeveloperRole()" to="/admin"><UiIcon name="apps" :size="18" /><span>管理台</span><UiIcon name="arrow" :size="15" /></RouterLink>
       <RouterLink :to="PORTAL_LINK.to"><UiIcon name="home" :size="18" /><span>{{ PORTAL_LINK.label }}</span><UiIcon name="arrow" :size="15" /></RouterLink>
     </nav>
     <div class="account-popover__workspace">
