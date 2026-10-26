@@ -25,7 +25,7 @@ export function parseAcademicSource(source: string, kind: Kind): (AcademicCourse
   if (!Array.isArray(list) || !list.length) throw new Error('没有可导入的课程记录，请在表头下添加数据。')
   const textKeys = kind === 'courses' ? ['name', 'teacher', 'weeks', 'place', 'credit', 'category'] : ['name', 'term', 'credit', 'score', 'point', 'category', 'kind']
   return list.map((item, index) => {
-    if (!item || typeof item !== 'object' || Array.isArray(item) || typeof item.name !== 'string' || !item.name.trim()) throw new Error(`第 ${index + 1} 条记录需要课程名称 name。`)
+    if (!item || typeof item !== 'object' || Array.isArray(item) || typeof item.name !== 'string' || !item.name.trim()) throw new Error(`第 ${index + 1} 条记录需要填写课程名称。`)
     const row: Record<string, string | number> = {}
     for (const key of textKeys) {
       const value = item[key]

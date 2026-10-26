@@ -194,6 +194,7 @@ watch(() => route.query.section, section => {
 })
 watch(() => props.allowAiSummary, requestAiReading)
 onBeforeUnmount(() => observer?.disconnect())
+defineExpose({ scrollToSection })
 </script>
 
 <template>

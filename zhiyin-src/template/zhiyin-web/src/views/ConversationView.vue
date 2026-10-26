@@ -90,7 +90,7 @@ const { failedSend, confirmDismissed, askPending, interrupted, showFailedSend, r
   hasBackgroundRun: () => !!backgroundRun.value,
 })
 const { draft, attached, selectedOption, fillRequest, replacedDraft, fill, applyFill, confirmFillReplace, cancelFillReplace, undoFillReplace, remember, resizeInput } = useConversationDraft({ flow, input, profileOpen, thinking })
-const { uploading, draggingFiles, uploadError, fileInput, upload, dragOver, dropFiles, pasteFiles } = useConversationMaterials({ thinking, attached, isDisposed: () => disposed })
+const { uploading, draggingFiles, uploadError, uploadNotice, fileInput, upload, dragOver, dropFiles, pasteFiles } = useConversationMaterials({ thinking, attached, isDisposed: () => disposed })
 async function refreshRuntime() {
  const id = demo.state.currentSessionId
  const serial = ++runtimeSerial
@@ -713,6 +713,7 @@ onUnmounted(() => { disposed = true; clearInterval(recoveryTimer); window.remove
   </div>
   <footer v-if="!choosingTopic && !showStudyYearQuestion" class="consult-compose-area">
    <div v-if="uploadError" class="consult-error" role="alert"><p>{{ uploadError }}</p><button :disabled="uploading || thinking" @click="fileInput?.click()">重新选择材料</button><button @click="uploadError = ''">关闭上传提示</button></div>
+   <p v-if="uploadNotice" class="consult-upload-note" role="status">{{ uploadNotice }}</p>
    <button v-if="showLatest" class="consult-latest" @click="followTail = true; bottom(true)"><UiIcon name="down" :size="15" />回到最新消息</button>
    <ConversationOperations v-if="runtimeState" :actions="runtimeState.actions" :busy="thinking || systemData.busy" @decide="decideAction" /><div v-if="pendingConfirm && !runtimeState?.actions.some(a => a.state === 'proposed')" class="consult-confirm" role="status" aria-label="待确认事项">
     <div class="consult-confirm__copy"><strong>有一条确认还没回复</strong><p>可以直接点选；继续输入其他内容也不会自动取消它。</p></div>

@@ -386,7 +386,7 @@ onMounted(()=>{ void loadWorkspace() })
               >
                 <div class="p7-row__wrap">
                 <!-- 整行就是命中区：这一行的关系与来历都从这一下开始，注脚尺寸只留给信息本身 -->
-                <DetailPopover class="profile-fact" :title="row.label" :label="row.label + '：' + fieldValue(row) + '，查看依据'" :model-value="openField === row.key" @update:model-value="(open: boolean) => openField = open ? row.key : null"><template #trigger>
+                <DetailPopover class="profile-fact" :title="row.label" :label="row.label + '：' + fieldValue(row) + '，查看依据、更正或删除'" :model-value="openField === row.key" @update:model-value="(open: boolean) => openField = open ? row.key : null"><template #trigger>
                   <span class="p7-row__label">{{ row.label }}</span>
                   <span class="p7-row__main">
                     <span class="p7-row__value" :title="fieldValue(row)">{{ valueParts(row).head }}</span>
@@ -403,7 +403,7 @@ onMounted(()=>{ void loadWorkspace() })
                     <div class="p7-row__actions">
                       <button class="ws-text-button" type="button" @click="inspectField(row)">深入了解这项信息</button>
                       <button class="ws-text-button" type="button" @click="edit(row)">更正信息<UiIcon name="arrow" :size="14" /></button>
-                      <button v-if="live" class="ws-text-button" type="button" @click="askDelete(row)">删除这条</button>
+                      <button v-if="live" class="ws-text-button" type="button" style="color:var(--c-attention-strong)" @click="askDelete(row)">删除这条资料</button>
                     </div>
                     <template v-if="visibleEvidence(row.evidence).length">
                       <p class="p7-facts__title">原始证据</p>
@@ -690,8 +690,8 @@ onMounted(()=>{ void loadWorkspace() })
         </section>
       </div>
     </Foldable><aside class="c2-profile-side" aria-label="画像操作与来源">
-      <section><h2>核对与管理资料</h2><RouterLink class="btn" to="/chat">补充信息<UiIcon name="plus" :size="16" /></RouterLink><button class="btn" :disabled="loading" @click="loadWorkspace">{{ loading ? '正在读取…' : '刷新个人资料' }}</button><p>点开一条信息，可以查看依据、修改内容。更正后会标出受影响的判断。</p></section>
-      <section><h2>这 {{ known.length }} 条从哪里来</h2><div v-for="source in SOURCE_GROUPS" :key="source.key" class="c2-source-row"><span>{{ source.label }}</span><span class="c2-source-track" role="meter" :aria-label="source.label" :aria-valuenow="known.filter(row => source.from.includes(row.desc)).length" :aria-valuemax="Math.max(1, known.length)" aria-valuemin="0"><i :style="{width: known.filter(row => source.from.includes(row.desc)).length / Math.max(1, known.length) * 100 + '%'}" /></span><b>{{ known.filter(row => source.from.includes(row.desc)).length }}</b></div></section>
+      <section><h2>核对与管理资料</h2><RouterLink class="btn" to="/chat">补充信息<UiIcon name="plus" :size="16" /></RouterLink><button class="btn" :disabled="loading" @click="loadWorkspace">{{ loading ? '正在读取…' : '刷新个人资料' }}</button><p>点开任意一条信息，可以查看依据、更正或删除。系统从对话中自动记录的内容也会出现在这里，来源标为「对话」。</p></section>
+      <section><h2>这 {{ known.length }} 条从哪里来</h2><p class="ws-muted">「咨询记录」就是系统在对话中自动记下的内容；每条都可以点开核对或删除。</p><div v-for="source in SOURCE_GROUPS" :key="source.key" class="c2-source-row"><span>{{ source.label }}</span><span class="c2-source-track" role="meter" :aria-label="source.label" :aria-valuenow="known.filter(row => source.from.includes(row.desc)).length" :aria-valuemax="Math.max(1, known.length)" aria-valuemin="0"><i :style="{width: known.filter(row => source.from.includes(row.desc)).length / Math.max(1, known.length) * 100 + '%'}" /></span><b>{{ known.filter(row => source.from.includes(row.desc)).length }}</b></div></section>
       <section><h2>{{ identity.name }}</h2><p>{{ identity.line }}</p><p>已记录 {{ progress.known }} 条 · {{ confBands[0]?.title }} {{ confBands[0]?.count ?? 0 }} 条 · {{ confBands[2]?.title }} {{ confBands[2]?.count ?? 0 }} 条</p><Foldable variant="inline" title="查看来源与核实状态"><p>{{ statusLine }}</p><p>{{ coverageNote }}</p><p>这里不显示内部置信度分数；每条记录由来源与核实状态分别说明。</p></Foldable></section>
     </aside></InfoSheet>
     <InfoSheet :open="verificationOpen" shape="panel" title="学籍核验与报告导入" @close="verificationOpen=false"><AcademicVerification /></InfoSheet>

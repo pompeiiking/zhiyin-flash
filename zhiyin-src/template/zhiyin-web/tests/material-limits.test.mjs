@@ -14,6 +14,7 @@ vm.runInNewContext(ts.transpileModule(source, { compilerOptions: { module: ts.Mo
     if (name === '../store') return { demo: { state: { currentSessionId: '' } } }
     if (name === '../api/backend-client') return { backendClient: { material: async () => ({ material_id: 'm', name: 'x' }) } }
     if (name === './use-conversation-errors') return { errorCode: () => 0, friendlyError: e => String(e), TECHNICAL_ERROR: /$^/ }
+    if (name === './image-compress') return { prepareImageForUpload: async file => ({ file, compressed: false, originalBytes: file.size }) }
     throw new Error(`Unexpected import: ${name}`)
   },
 })

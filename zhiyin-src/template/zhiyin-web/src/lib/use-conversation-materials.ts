@@ -2,6 +2,7 @@ import { ref, type Ref } from 'vue'
 import { demo } from '../store'
 import { backendClient } from '../api/backend-client'
 import { errorCode, friendlyError, TECHNICAL_ERROR } from './use-conversation-errors'
+import { prepareImageForUpload } from './image-compress'
 
 /**
  * 材料预校验：能在前端拦住的就不要发请求。
@@ -49,6 +50,7 @@ type MaterialsDeps = {
 export function useConversationMaterials({ thinking, attached, isDisposed }: MaterialsDeps) {
   const uploading = ref(false), draggingFiles = ref(false)
   const uploadError = ref('')
+  const uploadNotice = ref('')
   const fileInput = ref<HTMLInputElement | null>(null)
   async function upload(event: Event) { await uploadFiles(Array.from((event.target as HTMLInputElement).files ?? [])) }
   async function uploadFiles(files: File[]) {
@@ -64,18 +66,49 @@ export function useConversationMaterials({ thinking, attached, isDisposed }: Mat
       if (fileInput.value) fileInput.value.value = ''
       return
     }
-    // 先做格式与大小预校验：能当场说清楚的不发请求（深度测试 DEF-DS-03/04）。
-    const problems = files.map(file => materialRejection(file)).filter(Boolean)
-    const valid = files.filter(file => !materialRejection(file))
-    if (valid.length > slots) problems.push(`每轮最多添加 ${MAX_MATERIALS} 份材料，超出的 ${valid.length - slots} 份本次没有上传。`)
-    const acceptable = valid.slice(0, slots)
-    uploadError.value = problems.join(' ')
-    if (!acceptable.length) { if (fileInput.value) fileInput.value.value = ''; return }
+    const problems: string[] = []
+    const notices: string[] = []
     uploading.value = true
     const sessionId = demo.state.currentSessionId
-    try { for (const file of acceptable) { const material = await backendClient.material(file); if (isDisposed() || sessionId !== demo.state.currentSessionId) return; if (!attached.value.some(item => item.id === material.material_id)) attached.value.push({ id: material.material_id, name: material.name || file.name }) } }
-    catch (e) { if (!isDisposed() && sessionId === demo.state.currentSessionId) uploadError.value = friendlyMaterialError(e) }
-    finally { uploading.value = false; if (fileInput.value) fileInput.value.value = '' }
+    try {
+      // 手机照片经常超过 2MB。先压缩再走同一套格式/大小校验；
+      // 压缩失败时说明原因，不把一张照片的问题算到其他文件头上。
+      const prepared: File[] = []
+      for (const file of files) {
+        try {
+          const result = await prepareImageForUpload(file)
+          prepared.push(result.file)
+          if (result.compressed) notices.push(`「${file.name}」已压缩到 2MB 以内。`)
+        } catch (error) {
+          problems.push(error instanceof Error ? error.message : '这张图片无法读取，请换一张。')
+        }
+      }
+      if (thinking.value) {
+        problems.push('回复生成中，先等这一轮结束再添加材料。')
+        return
+      }
+      const valid: File[] = []
+      for (const file of prepared) {
+        const problem = materialRejection(file)
+        if (problem) problems.push(problem)
+        else valid.push(file)
+      }
+      if (valid.length > slots) problems.push(`每轮最多添加 ${MAX_MATERIALS} 份材料，超出的 ${valid.length - slots} 份本次没有上传。`)
+      const acceptable = valid.slice(0, slots)
+      uploadError.value = problems.join(' ')
+      uploadNotice.value = notices.join(' ')
+      if (!acceptable.length) return
+      for (const file of acceptable) {
+        const material = await backendClient.material(file)
+        if (isDisposed() || sessionId !== demo.state.currentSessionId) return
+        if (!attached.value.some(item => item.id === material.material_id)) attached.value.push({ id: material.material_id, name: material.name || file.name })
+      }
+    } catch (e) {
+      if (!isDisposed() && sessionId === demo.state.currentSessionId) uploadError.value = friendlyMaterialError(e)
+    } finally {
+      uploading.value = false
+      if (fileInput.value) fileInput.value.value = ''
+    }
   }
   function dragOver(event: DragEvent) {
     if (!event.dataTransfer?.types.includes('Files')) return
@@ -89,5 +122,5 @@ export function useConversationMaterials({ thinking, attached, isDisposed }: Mat
     const files = Array.from(event.clipboardData?.files ?? [])
     if (files.length && !event.clipboardData?.getData('text/plain')) { event.preventDefault(); void uploadFiles(files) }
   }
-  return { uploading, draggingFiles, uploadError, fileInput, upload, uploadFiles, dragOver, dropFiles, pasteFiles }
+  return { uploading, draggingFiles, uploadError, uploadNotice, fileInput, upload, uploadFiles, dragOver, dropFiles, pasteFiles }
 }

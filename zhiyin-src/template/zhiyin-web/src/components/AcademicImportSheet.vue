@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import type { AcademicCourseView, AcademicGradeView } from '../api/backend-types'
 import { backendClient } from '../api/backend-client'
 import { decodeAcademicFile, parseAcademicSource } from '../lib/academic-parser'
+import { formatBytes, isImageFile, prepareImageForUpload } from '../lib/image-compress'
 import InfoSheet from './InfoSheet.vue'
 import StatusBanner from './StatusBanner.vue'
 
@@ -26,6 +27,8 @@ const previewId = ref('')
 const warnings = ref<string[]>([])
 const replaceCount = ref(0)
 const editingRows = ref(false)
+const imageNote = ref('')
+const usedImage = ref(false)
 type EditField = { key: string; label: string; numeric?: boolean }
 const editFields = computed<EditField[]>(() => [
   { key: 'name', label: '课程名称' },
@@ -56,12 +59,16 @@ watch(() => props.open, (open) => {
   previewId.value = ''
   warnings.value = []
   editingRows.value = false
+  imageNote.value = ''
+  usedImage.value = false
   school.value = props.school ?? ''
   term.value = props.term ?? ''
 })
 
 function selectFile(event: Event) {
   file.value = (event.target as HTMLInputElement).files?.[0] ?? null
+  imageNote.value = ''
+  usedImage.value = false
 }
 
 function clearFile() {
@@ -78,14 +85,31 @@ async function preview() {
     if (!school.value.trim() || !term.value.trim()) throw new Error('请填写学校和学期，方便日后核对。')
     let source = raw.value
     let materialId = ''
+    if (!file.value) {
+      usedImage.value = false
+      imageNote.value = ''
+    }
     if (file.value) {
-      if (file.value.size > 2_000_000) throw new Error('文件需小于 2MB。')
-      if (/\.(png|jpe?g|gif|webp)$/i.test(file.value.name)) {
-        materialId = (await backendClient.material(file.value)).material_id
+      let upload = file.value
+      if (isImageFile(upload)) {
+        usedImage.value = true
+        const prepared = await prepareImageForUpload(upload)
         if (current !== generation) return
+        if (prepared.compressed) {
+          const original = formatBytes(prepared.originalBytes)
+          imageNote.value = `手机照片较大（${original}），已压缩到 2MB 以内再识别；请核对文字是否清晰。`
+          upload = prepared.file
+        }
+      }
+      if (upload.size > 2_000_000) throw new Error('文件需小于 2MB。')
+      if (isImageFile(upload)) {
+        materialId = (await backendClient.material(upload)).material_id
+        if (current !== generation) return
+        const imageHint = '图片识别可能漏行，请逐条核对；缺行可点「修改识别结果」补充。'
+        imageNote.value = imageNote.value ? `${imageNote.value} ${imageHint}` : imageHint
       } else {
-        if (!/\.(json|csv|tsv|txt)$/i.test(file.value.name)) throw new Error('请选择图片，或 JSON、CSV、TSV、TXT 文件。')
-        source = decodeAcademicFile(await file.value.arrayBuffer())
+        if (!/\.(json|csv|tsv|txt)$/i.test(upload.name)) throw new Error('请选择图片，或 JSON、CSV、TSV、TXT 文件。')
+        source = decodeAcademicFile(await upload.arrayBuffer())
       }
     }
     if (!source.trim() && !materialId) throw new Error(`请粘贴${noun.value}，或选择一份文件。`)
@@ -134,6 +158,24 @@ function editRows() {
   error.value = ''
 }
 
+function addRow() {
+  if (props.kind === 'courses') {
+    rows.value.push({ name: '', teacher: '', weekday: 0, start_period: 0, end_period: 0, weeks: '', place: '', credit: '', category: '' } as AcademicCourseView)
+  } else {
+    rows.value.push({ name: '', score: '', credit: '', point: '', term: term.value, kind: '', category: '' } as AcademicGradeView)
+  }
+  editingRows.value = true
+}
+
+function switchToPaste() {
+  raw.value = JSON.stringify(rows.value, null, 2)
+  clearFile()
+  previewId.value = ''
+  editingRows.value = false
+  stage.value = 'edit'
+  error.value = ''
+}
+
 function editCell(row: Row, field: EditField, value: string) {
   const record = row as unknown as Record<string, string | number>
   record[field.key] = field.numeric ? (value.trim() ? Number(value) : 0) : value
@@ -152,6 +194,8 @@ function restart() {
   editingRows.value = false
   stage.value = 'edit'
   error.value = ''
+  imageNote.value = ''
+  usedImage.value = false
 }
 </script>
 
@@ -164,25 +208,28 @@ function restart() {
         <label class="ws-field">学期<input v-model="term" maxlength="40" placeholder="例如：2026-2027-1" /></label>
       </div>
       <label class="ws-field">粘贴{{ noun }}表格<textarea v-model="raw" rows="9" maxlength="200000" :placeholder="example" /></label>
-      <label class="import-file"><span>或选择文件</span><input ref="fileInput" type="file" accept=".png,.jpg,.jpeg,.gif,.webp,.json,.csv,.tsv,.txt,image/png,image/jpeg,image/gif,image/webp,text/plain,text/csv,application/json" @change="selectFile" /><small>{{ file?.name || '支持图片、JSON、CSV、TSV、TXT，最大 2MB' }}</small></label><button v-if="file" class="ws-text-button" type="button" @click="clearFile">移除所选文件</button>
+      <label class="import-file"><span>或选择文件</span><input ref="fileInput" type="file" accept=".png,.jpg,.jpeg,.gif,.webp,.json,.csv,.tsv,.txt,image/png,image/jpeg,image/gif,image/webp,text/plain,text/csv,application/json" @change="selectFile" /><small>{{ file?.name || '支持图片、JSON、CSV、TSV、TXT，最大 2MB；手机大图会先压缩' }}</small></label><button v-if="file" class="ws-text-button" type="button" @click="clearFile">移除所选文件</button>
+      <p v-if="imageNote" class="import-image-note" role="status">{{ imageNote }}</p>
       <StatusBanner v-if="error" tone="error" size="sm" :message="error" :retrying="busy" @retry="preview" @dismiss="error = ''" />
       <div class="ws-inline-actions"><button class="btn btn--primary" type="button" :disabled="busy" @click="preview">{{ busy ? '正在读取…' : '预览识别结果' }}</button><button class="btn" type="button" @click="emit('close')">取消</button></div>
     </template>
     <template v-else>
       <div class="import-review-head"><div><strong>{{ rows.length }}</strong><span>{{ kind === 'courses' ? '门课程' : '条成绩' }}</span></div><p>{{ school }} · {{ term }}</p></div>
       <div v-if="editingRows" class="import-row-editor">
-        <p class="ws-muted">修改后先重新核对，确认前不会保存。</p>
+        <p class="ws-muted">修改或补行后先重新核对，确认前不会保存。新增行需要填写课程名称。</p>
         <fieldset v-for="(row, index) in rows" :key="index" :disabled="busy">
           <legend>第 {{ index + 1 }} 条 · {{ row.name || '课程名称待填写' }}</legend>
           <div class="import-edit-grid"><label v-for="field in editFields" :key="field.key" class="ws-field">{{ field.label }}<input :type="field.numeric ? 'number' : 'text'" :min="field.numeric ? 0 : undefined" :max="field.numeric ? (field.key === 'weekday' ? 7 : 30) : undefined" :maxlength="field.numeric ? undefined : 200" :value="(row as unknown as Record<string, string | number>)[field.key]" @input="editCell(row, field, ($event.target as HTMLInputElement).value)" /></label></div>
           <button class="ws-text-button" type="button" :disabled="busy" @click="rows.splice(index, 1)">移除第 {{ index + 1 }} 条</button>
         </fieldset>
+        <button class="btn" type="button" :disabled="busy" @click="addRow">添加一条</button>
       </div>
       <div v-else class="import-table-wrap"><table><thead><tr><th>课程</th><th v-if="kind === 'courses'">时间</th><th v-if="kind === 'courses'">地点</th><th v-if="kind === 'grades'">成绩</th><th v-if="kind === 'grades'">学分 / 绩点</th></tr></thead><tbody><tr v-for="(row, index) in rows" :key="row.name + index"><td>{{ row.name }}</td><template v-if="kind === 'courses'"><td>{{ (row as AcademicCourseView).weekday ? `周${'一二三四五六日'[(row as AcademicCourseView).weekday! - 1]} · ${(row as AcademicCourseView).start_period || '?'}–${(row as AcademicCourseView).end_period || '?'} 节 · ${(row as AcademicCourseView).weeks || '周次待补充'}` : '待补充' }}</td><td>{{ (row as AcademicCourseView).place || '—' }}</td></template><template v-else><td class="import-score">{{ (row as AcademicGradeView).score || '—' }}</td><td>{{ (row as AcademicGradeView).credit || '—' }} / {{ (row as AcademicGradeView).point || '—' }}</td></template></tr></tbody></table></div>
       <p class="ws-muted">确认后将用以上 {{ rows.length }} 条记录替换已有 {{ replaceCount }} 条{{ noun }}。</p>
+      <p v-if="imageNote && !editingRows" class="import-image-note" role="status">{{ imageNote }}</p>
       <ul v-if="warnings.length" class="import-warnings"><li v-for="warning in warnings" :key="warning">{{ warning }}</li></ul>
       <StatusBanner v-if="error" tone="error" size="sm" :message="error" :retrying="busy" @retry="editingRows ? reviewEdits() : save()" @dismiss="error = ''" />
-      <div class="ws-inline-actions"><button v-if="editingRows" class="btn btn--primary" type="button" :disabled="busy || !rows.length" @click="reviewEdits">{{ busy ? '正在核对…' : '重新核对修改' }}</button><button v-else class="btn btn--primary" type="button" :disabled="busy || !rows.length || !previewId" @click="save">{{ busy ? '正在保存…' : `确认${replaceCount ? '替换' : '导入'}${noun}` }}</button><button v-if="!editingRows" class="btn" type="button" :disabled="busy" @click="editRows">修改识别结果</button><button class="ws-text-button" type="button" :disabled="busy" @click="restart">重新上传</button></div>
+      <div class="ws-inline-actions"><button v-if="editingRows" class="btn btn--primary" type="button" :disabled="busy || !rows.length" @click="reviewEdits">{{ busy ? '正在核对…' : '重新核对修改' }}</button><button v-else class="btn btn--primary" type="button" :disabled="busy || !rows.length || !previewId" @click="save">{{ busy ? '正在保存…' : `确认${replaceCount ? '替换' : '导入'}${noun}` }}</button><button v-if="!editingRows" class="btn" type="button" :disabled="busy" @click="editRows">修改识别结果</button><button v-if="usedImage && !editingRows" class="ws-text-button" type="button" :disabled="busy" @click="switchToPaste">改用粘贴表格</button><button class="ws-text-button" type="button" :disabled="busy" @click="restart">重新上传</button></div>
     </template>
   </InfoSheet>
 </template>
@@ -190,5 +237,5 @@ function restart() {
 <style scoped>
 .import-row-editor{display:grid;gap:16px;margin-top:16px}.import-row-editor fieldset{min-width:0;margin:0;padding:14px;border:1px solid var(--c-border);border-radius:var(--r-md)}.import-row-editor legend{padding:0 6px;font-size:var(--fs-13);font-weight:var(--fw-semibold)}.import-edit-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.import-row-editor .ws-text-button{margin-top:12px}@media(max-width:600px){.import-edit-grid{grid-template-columns:1fr}}
 
-.import-lead{margin:0 0 20px;color:var(--c-text-2);font-size:var(--fs-14);line-height:1.75}.import-meta{display:grid;grid-template-columns:1fr 1fr;gap:14px}.import-file{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:8px 12px;margin-top:14px;padding:16px;border:1px dashed var(--c-border-strong);border-radius:var(--r-md);color:var(--c-text-2);font-size:var(--fs-14)}.import-file input{grid-column:1/-1}.import-file small{font-size:var(--fs-12);color:var(--c-text-3)}.ws-inline-actions{margin-top:20px}.import-review-head{display:flex;align-items:end;justify-content:space-between;gap:16px;padding-bottom:18px;border-bottom:1px solid var(--c-border)}.import-review-head div{display:flex;align-items:baseline;gap:8px}.import-review-head strong{font-size:var(--fs-30);font-weight:var(--fw-semibold)}.import-review-head span,.import-review-head p{color:var(--c-text-2);font-size:var(--fs-13)}.import-table-wrap{overflow:auto;max-height:55vh;margin-top:18px;border:1px solid var(--c-border);border-radius:var(--r-md)}table{width:100%;border-collapse:collapse;font-size:var(--fs-13)}th,td{padding:12px 14px;border-bottom:1px solid var(--c-border);text-align:left;white-space:nowrap}th{background:var(--c-surface-2);color:var(--c-text-3);font-size:var(--fs-12);font-weight:var(--fw-medium)}tbody tr:last-child td{border-bottom:0}.import-score{font-size:var(--fs-16);font-weight:var(--fw-semibold);color:var(--c-primary)}@media(max-width:600px){.import-meta{grid-template-columns:1fr}.import-review-head{align-items:start;flex-direction:column}.ws-inline-actions{position:sticky;bottom:0;z-index:2;margin:16px -20px -24px;padding:12px 20px calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--c-border);background:var(--c-surface)}}
+.import-image-note{margin:10px 0 0;padding:10px 12px;border-left:2px solid var(--c-primary);border-radius:0 var(--r-md) var(--r-md) 0;background:var(--c-primary-weak);color:var(--c-text-2);font-size:var(--fs-12);line-height:1.7}.import-lead{margin:0 0 20px;color:var(--c-text-2);font-size:var(--fs-14);line-height:1.75}.import-meta{display:grid;grid-template-columns:1fr 1fr;gap:14px}.import-file{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:8px 12px;margin-top:14px;padding:16px;border:1px dashed var(--c-border-strong);border-radius:var(--r-md);color:var(--c-text-2);font-size:var(--fs-14)}.import-file input{grid-column:1/-1}.import-file small{font-size:var(--fs-12);color:var(--c-text-3)}.ws-inline-actions{margin-top:20px}.import-review-head{display:flex;align-items:end;justify-content:space-between;gap:16px;padding-bottom:18px;border-bottom:1px solid var(--c-border)}.import-review-head div{display:flex;align-items:baseline;gap:8px}.import-review-head strong{font-size:var(--fs-30);font-weight:var(--fw-semibold)}.import-review-head span,.import-review-head p{color:var(--c-text-2);font-size:var(--fs-13)}.import-table-wrap{overflow:auto;max-height:55vh;margin-top:18px;border:1px solid var(--c-border);border-radius:var(--r-md)}table{width:100%;border-collapse:collapse;font-size:var(--fs-13)}th,td{padding:12px 14px;border-bottom:1px solid var(--c-border);text-align:left;white-space:nowrap}th{background:var(--c-surface-2);color:var(--c-text-3);font-size:var(--fs-12);font-weight:var(--fw-medium)}tbody tr:last-child td{border-bottom:0}.import-score{font-size:var(--fs-16);font-weight:var(--fw-semibold);color:var(--c-primary)}@media(max-width:600px){.import-meta{grid-template-columns:1fr}.import-review-head{align-items:start;flex-direction:column}.ws-inline-actions{position:sticky;bottom:0;z-index:2;margin:16px -20px -24px;padding:12px 20px calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--c-border);background:var(--c-surface)}}
 </style>

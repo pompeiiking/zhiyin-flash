@@ -146,6 +146,7 @@
 .consult-loading,.consult-empty {padding:24px;font-size:14px;color:var(--c-text-3);line-height:1.8;}
 .consult-error {font-size:13px;line-height:1.65;color:var(--c-text-2);padding:12px 16px;background:var(--c-surface);border-left:2px solid var(--c-primary);margin:12px 0;}
 .consult-error button {border:0;background:none;color:var(--c-primary);padding:8px 12px 8px 0;cursor:pointer;}
+.consult-upload-note {margin:8px 0;padding:8px 12px;border-left:2px solid var(--c-primary-border);background:var(--c-primary-weak);color:var(--c-text-2);font-size:12px;line-height:1.6;}
 .consult-profile {display:flex;flex-direction:column;min-height:0;min-width:0;border-left:1px solid var(--c-border);background:var(--c-surface);}
 .consult-profile header {display:flex;align-items:center;justify-content:space-between;padding:22px 20px 14px;}
 .consult-profile h2 {font-size:16px;font-weight:500;margin:0;}
